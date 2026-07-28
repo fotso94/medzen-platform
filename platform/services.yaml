@@ -1,0 +1,184 @@
+# A2 — Component specifications, machine-readable.
+#
+# THIS FILE IS THE SOURCE OF TRUTH for service topology, IAM and Kubernetes.
+# platform/generate.py renders IAM policies and k8s manifests FROM this file,
+# so the deployed system cannot drift from the architecture document.
+#
+# Change here first, regenerate, then commit both. Never hand-edit generated output.
+
+meta:
+  region: eu-central-1                 # correction 2 (v5)
+  account_id: "REPLACE_AT_B0"          # eu-central-1 MedZen account — pending B0.1
+  namespace: medzen
+  cluster_name: medzen
+  # S3 zones from A3. One bucket, prefixes are the lineage boundary.
+  buckets:
+    data: medzen-speech                # raw/ curated/ eval/ approved/
+    audio_cache: medzen-audio-cache    # tts/ (90d lifecycle), user-audio/ (30d)
+  registry_ssm_prefix: /medzen/registry
+
+# --------------------------------------------------------------------------
+# Runtime services (deployed to EKS)
+# --------------------------------------------------------------------------
+services:
+
+  speech-orchestrator:
+    role: The only internet-adjacent service. Owns VAD, language routing,
+          session state, the pre-LLM safety gate, streaming backpressure and
+          circuit breakers. Calls every other service; is called by MedZen.
+    node_pool: cpu
+    public: true                       # only service with an ALB route
+    image_repo: medzen-orchestrator
+    replicas: {min: 2, max: 6}
+    hpa: {metric: cpu, target_utilization: 70}
+    resources:
+      requests: {cpu: "500m", memory: "1Gi"}
+      limits:   {cpu: "2",    memory: "2Gi"}
+    probes:
+      readiness: {path: /readyz, port: 8080, initial_delay: 10, period: 10, failure_threshold: 3}
+      liveness:  {path: /healthz, port: 8080, period: 30, failure_threshold: 3}
+    pod_identity:
+      role_name: medzen-orch-role
+      permissions:
+        - {actions: [s3:GetObject, s3:PutObject], resource: audio_cache, path: "tts/*"}
+        - {actions: [s3:PutObject], resource: audio_cache, path: "user-audio/*"}
+        - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
+        - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/client-api-keys}
+    depends_on: [asr-runtime, llm-gateway, tts-gateway]
+    notes: Emergency detection runs here, pre-LLM, with no shed path (A6).
+
+  asr-runtime:
+    role: Speech to text. Serves ONE multilingual Whisper artifact for all
+          languages; per-language approval lives in the registry, not in
+          separate deployments.
+    node_pool: gpu
+    public: false
+    image_repo: medzen-asr-runtime
+    replicas: {min: 1, max: 1}         # fixed — no GPU autoscaling in MVP
+    hpa: null
+    resources:
+      requests: {cpu: "2", memory: "8Gi"}
+      limits:   {cpu: "4", memory: "12Gi", "nvidia.com/gpu": 1}
+    gpu:
+      toleration: {key: "nvidia.com/gpu", operator: Equal, value: "true", effect: NoSchedule}
+      node_selector: {workload: gpu}
+    probes:
+      # 5-minute budget: 6-8 GB image + 30-60s model load. Web-app defaults
+      # crash-loop this pod and the cause is not obvious from the events.
+      startup:  {path: /healthz, port: 8081, period: 10, failure_threshold: 30}
+      liveness: {path: /healthz, port: 8081, period: 30, failure_threshold: 3}
+      readiness: {path: /readyz, port: 8081, period: 10, failure_threshold: 3}
+    init_container: model-loader
+    pod_identity:
+      role_name: medzen-asr-role
+      permissions:
+        - {actions: [s3:GetObject], resource: data, path: "approved/asr/*"}
+    notes: Artifact is NOT baked into the image. decode_strategy comes from
+           the registry per language (correction 3).
+
+  llm-gateway:
+    role: Understanding and response generation. Bedrock Claude now; a vLLM
+          Qwen3-8B upstream is added later, per language, when the A5 trigger
+          fires. Applies the per-language policy from the registry.
+    node_pool: cpu
+    public: false
+    image_repo: medzen-llm-gateway
+    replicas: {min: 2, max: 4}
+    hpa: {metric: cpu, target_utilization: 70}
+    resources:
+      requests: {cpu: "250m", memory: "512Mi"}
+      limits:   {cpu: "1",    memory: "1Gi"}
+    probes:
+      readiness: {path: /readyz, port: 8082, initial_delay: 5, period: 10, failure_threshold: 3}
+      liveness:  {path: /healthz, port: 8082, period: 30, failure_threshold: 3}
+    pod_identity:
+      role_name: medzen-llm-role
+      permissions:
+        - {actions: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream], resource: bedrock}
+        - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
+    depends_on: [rag-index]
+    notes: Clinical facts stay in RAG, never in weights (A5 invariant).
+
+  tts-gateway:
+    role: Text to speech. Fish Audio API now; Qwen3-TTS pod later. Owns the
+          voice registry, the content-hash cache and the fallback chain.
+    node_pool: cpu
+    public: false
+    image_repo: medzen-tts-gateway
+    replicas: {min: 1, max: 3}
+    hpa: {metric: cpu, target_utilization: 70}
+    resources:
+      requests: {cpu: "250m", memory: "512Mi"}
+      limits:   {cpu: "1",    memory: "1Gi"}
+    probes:
+      readiness: {path: /readyz, port: 8080, initial_delay: 5, period: 10, failure_threshold: 3}
+      liveness:  {path: /healthz, port: 8080, period: 30, failure_threshold: 3}
+    pod_identity:
+      role_name: medzen-tts-role
+      permissions:
+        - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/fish-api-key}
+        - {actions: [s3:GetObject, s3:PutObject], resource: audio_cache, path: "tts/*"}
+        - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
+    existing_code: ../medzen-tts-gateway      # already built and tested; port at B0.5
+    notes: Fallback chain Fish -> self-hosted (registry-approved only) -> text-only.
+
+  rag-index:
+    role: Retrieval over clinical content. Serves only owner-approved content
+          versions; publish and rollback are alias switches.
+    node_pool: cpu
+    public: false
+    image_repo: medzen-rag-index
+    replicas: {min: 2, max: 4}
+    hpa: {metric: cpu, target_utilization: 70}
+    resources:
+      requests: {cpu: "500m", memory: "2Gi"}
+      limits:   {cpu: "2",    memory: "4Gi"}
+    probes:
+      readiness: {path: /readyz, port: 8083, initial_delay: 15, period: 10, failure_threshold: 3}
+      liveness:  {path: /healthz, port: 8083, period: 30, failure_threshold: 3}
+    pod_identity:
+      role_name: medzen-rag-role
+      permissions:
+        - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "content/*"}
+    notes: Index built at image build time; alias switch = publish/rollback.
+
+# --------------------------------------------------------------------------
+# Init container — runs inside asr-runtime (and later the Qwen/TTS GPU pods)
+# --------------------------------------------------------------------------
+init_containers:
+  model-loader:
+    role: Download the approved artifact, verify SHA-256, run an inference
+          smoke test, exit 0. A failure leaves the pod unready rather than
+          half-loaded serving wrong weights.
+    image_repo: medzen-model-loader
+    resources:
+      requests: {cpu: "500m", memory: "2Gi"}
+      limits:   {cpu: "2",    memory: "4Gi"}
+    pod_identity:
+      role_name: medzen-loader-role
+      permissions:
+        - {actions: [s3:GetObject], resource: data, path: "approved/*"}
+
+# --------------------------------------------------------------------------
+# Offline — NOT in the cluster, NOT reachable from it
+# --------------------------------------------------------------------------
+offline:
+  trainer:
+    role: Model factory. Plain Docker so the same image runs on EC2 now and
+          SageMaker later (B10) with no change.
+    compute: ec2-spot
+    instance_type: g6.xlarge           # verify G-family availability in eu-central-1 (B0.4)
+    iam_role: medzen-trainer-role
+    permissions:
+      - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: data, path: "raw/*"}
+      - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: data, path: "curated/*"}
+      - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "eval/*"}     # READ ONLY
+      - {actions: [s3:PutObject], resource: data, path: "candidates/*"}
+    explicit_denies:
+      # The isolation SageMaker sells, obtained for free by construction.
+      - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",
+         why: "A3 — eval sets are write-denied to training roles by IAM, not by discipline"}
+      - {actions: ["secretsmanager:*"], resource: "*",
+         why: "training never holds production credentials"}
+      - {actions: ["bedrock:*"], resource: "*",
+         why: "training plane has no production model access"}

@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/content/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "content/*"
+          ]
+        }
+      }
+    }
+  ]
+}
