@@ -23,7 +23,7 @@ spec:
       serviceAccountName: asr-runtime
       containers:
       - name: asr-runtime
-        image: REPLACE_AT_B0.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime:PLACEHOLDER_TAG
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime:PLACEHOLDER_TAG
         ports:
         - containerPort: 8081
         resources:
@@ -67,7 +67,7 @@ spec:
         effect: NoSchedule
       initContainers:
       - name: model-loader
-        image: REPLACE_AT_B0.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader:PLACEHOLDER_TAG
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader:PLACEHOLDER_TAG
         resources:
           requests:
             cpu: 500m

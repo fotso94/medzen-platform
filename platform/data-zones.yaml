@@ -1,0 +1,139 @@
+# A3 — Data layer. Zones, lifecycle, retention, access.
+#
+# Source of truth for the Terraform s3-data module (B1). Prefix separation IS
+# the lineage boundary: which prefix a byte lives in determines who may read it,
+# how long it survives, and whether it may enter a training set.
+
+meta:
+  region: eu-central-1
+  account_id: "558069890522"
+
+buckets:
+
+  # ------------------------------------------------------------------ #
+  data:
+    name: medzen-speech
+    versioning: true                # deletion must be auditable, not silent
+    encryption: {type: aws:kms, key_alias: alias/medzen-data}
+    public_access_block: true
+    object_ownership: BucketOwnerEnforced
+
+    prefixes:
+
+      raw:
+        path: raw/{lang}/{source}/
+        contents: Immutable as-acquired audio + transcripts + the licence record
+        writers: [trainer, ingest-job]
+        readers: [trainer, ingest-job]
+        lifecycle: null             # retained while the licence is valid
+        deletion: Cascades from the consent registry — a revoked consent_id
+                  deletes every derived object carrying it (A3 deletion propagation)
+        notes: Never edited. A correction produces a new source_id.
+
+      curated:
+        path: curated/{lang}/v{N}/
+        contents: Cleaned, 16 kHz mono, WebDataset shards + manifest.jsonl
+        writers: [trainer, ingest-job]
+        readers: [trainer]
+        lifecycle: {expire_noncurrent_versions_days: 90}
+        deletion: Rebuild, never edit — a fix is curated/v{N+1}
+        immutable_after_publish: true
+
+      eval:
+        path: eval/{lang}/v{N}/
+        contents: Frozen evaluation sets
+        writers: [ingest-job]       # ONE writer, at creation only
+        readers: [trainer, evaluator]
+        lifecycle: null
+        deletion: Never (an eval set is a measurement instrument)
+        enforcement: |
+          medzen-trainer-role carries an explicit Deny on s3:PutObject and
+          s3:DeleteObject for this prefix. Verified by
+          scripts/validate_architecture.py. This is A3's "write-denied by IAM,
+          not by discipline" made real.
+
+      candidates:
+        path: candidates/{track}/{run_id}/
+        contents: Unapproved training output awaiting gates
+        writers: [trainer]
+        readers: [trainer, evaluator]
+        lifecycle: {expire_days: 60}   # ungated candidates are disposable
+        deletion: Auto-expire; promotion copies to approved/
+
+      approved:
+        path: approved/{track}/v{N}/
+        contents: Signed artifact + manifest {sha256, tokenizer, decode config,
+                  gate report ref}
+        writers: [promotion-pipeline]
+        readers: [model-loader, asr-runtime, evaluator]
+        lifecycle: null
+        immutable_after_publish: true
+        deletion: Never while any registry entry references the version
+
+      content:
+        path: content/v{N}/
+        contents: Clinician-approved clinical content for RAG
+        writers: [content-pipeline]
+        readers: [rag-index]
+        lifecycle: null
+        deletion: Superseded versions retained for audit
+
+  # ------------------------------------------------------------------ #
+  audio_cache:
+    name: medzen-audio-cache
+    versioning: false               # derived data; regeneratable
+    encryption: {type: aws:kms, key_alias: alias/medzen-audio}
+    public_access_block: true
+
+    prefixes:
+
+      tts:
+        path: tts/{lang}/{hash[:2]}/{hash}.{fmt}
+        contents: Generated speech, content-addressed on (text, voice, model, fmt)
+        writers: [tts-gateway]
+        readers: [tts-gateway, speech-orchestrator]
+        lifecycle: {expire_days: 90}
+        notes: Cache, not a record. Safe to purge at any time.
+
+      user_audio:
+        path: user-audio/{yyyy}/{mm}/{dd}/{request_id}.{fmt}
+        contents: Production request audio
+        writers: [speech-orchestrator]
+        readers: []                 # no service reads it back in the request path
+        lifecycle: {expire_days: 30}
+        retention_rule: |
+          30-day hard expiry. Audio may ONLY leave this prefix by being copied
+          into raw/ under an explicit consent_for_training consent_id — and the
+          original still expires on schedule. Voice is biometric data: access is
+          role-gated with read logging (CloudTrail data events on this prefix).
+        deletion: Automatic; no manual retention path
+
+# -------------------------------------------------------------------- #
+# PHI-safe logging (A3)
+# -------------------------------------------------------------------- #
+logging:
+  application_stream:
+    destination: CloudWatch /medzen/{service}
+    retention_days: 30
+    allowed_fields: [request_id, session_id_hashed, language, model_versions,
+                     latency_ms, byte_counts, status_code, provider, cache_hit,
+                     circuit_breaker_state]
+    forbidden_fields: |
+      Transcript text, response text, user identifiers, audio bytes, voice ids,
+      API keys. These must never appear at INFO or below, in any service.
+    enforcement: A log-redaction unit test per service asserts that a payload
+                 containing a known sentinel string does not appear in emitted logs.
+
+  audit_stream:
+    destination: Kinesis Firehose -> s3://medzen-speech/audit/ (separate KMS key)
+    retention_days: 365
+    contents: Full turn payloads — transcript, response, citations, model
+              versions, escalation decisions
+    access: Named roles only; every read logged
+    purpose: Clinical review and incident investigation. This is the only place
+             full conversation content is retained.
+
+  identifiers:
+    rule: User identifiers are hashed at the edge (orchestrator) with a
+          rotating salt held in Secrets Manager. Downstream services never
+          receive a raw user id.

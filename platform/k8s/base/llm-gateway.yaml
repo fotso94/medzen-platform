@@ -23,7 +23,7 @@ spec:
       serviceAccountName: llm-gateway
       containers:
       - name: llm-gateway
-        image: REPLACE_AT_B0.dkr.ecr.eu-central-1.amazonaws.com/medzen-llm-gateway:PLACEHOLDER_TAG
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-llm-gateway:PLACEHOLDER_TAG
         ports:
         - containerPort: 8082
         resources:

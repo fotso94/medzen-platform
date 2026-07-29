@@ -27,7 +27,7 @@
         "ssm:GetParametersByPath"
       ],
       "Resource": [
-        "arn:aws:ssm:eu-central-1:REPLACE_AT_B0:parameter/medzen/registry/*"
+        "arn:aws:ssm:eu-central-1:558069890522:parameter/medzen/registry/*"
       ]
     },
     {
@@ -36,7 +36,7 @@
         "secretsmanager:GetSecretValue"
       ],
       "Resource": [
-        "arn:aws:secretsmanager:eu-central-1:REPLACE_AT_B0:secret:medzen/client-api-keys*"
+        "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys*"
       ]
     }
   ]

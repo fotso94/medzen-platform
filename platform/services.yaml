@@ -8,7 +8,7 @@
 
 meta:
   region: eu-central-1                 # correction 2 (v5)
-  account_id: "REPLACE_AT_B0"          # eu-central-1 MedZen account — pending B0.1
+  account_id: "558069890522"        # eu-central-1 MedZen account (profile: medzen)
   namespace: medzen
   cluster_name: medzen
   # S3 zones from A3. One bucket, prefixes are the lineage boundary.

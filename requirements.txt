@@ -1,1 +1,3 @@
 pyyaml>=6.0
+jsonschema>=4.23
+pytest>=8.0
