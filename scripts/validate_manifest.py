@@ -177,7 +177,22 @@ def main() -> int:
                                   f"not in registry")
 
     # ---- 6,7 leakage ------------------------------------------------------
-    for field in ("speaker_id", "session_id"):
+    # Which identity must be disjoint depends on what the corpus has to
+    # generalise to. Near-duplicate TEXT (check 8) is forbidden either way.
+    strategies = {r.get("split_strategy") for r in rows if r.get("split_strategy")}
+    if len(strategies) > 1:
+        errors.append(f"mixed split_strategy in one manifest: {sorted(strategies)} "
+                      f"— a corpus must be split one way")
+    strategy = next(iter(strategies), "speaker_disjoint")
+    # Under text_disjoint the SAME speakers deliberately appear on both sides —
+    # that is the design (one voice, unseen sentences). No identity check
+    # applies; check 8 (near-duplicate text) carries the whole invariant.
+    leak_fields = ("speaker_id", "session_id") if strategy == "speaker_disjoint" else ()
+    if strategy == "text_disjoint":
+        warns.append("split_strategy=text_disjoint: speaker/session overlap is BY "
+                     "DESIGN (parallel TTS corpus). Text-disjointness (check 8) is "
+                     "the invariant that matters here.")
+    for field in leak_fields:
         by_split: dict[str, set[str]] = collections.defaultdict(set)
         for r in rows:
             if r.get("split") and r.get(field):

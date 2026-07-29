@@ -121,3 +121,88 @@ def test_manifest_language_check_uses_registry():
                         "--registry", str(REG)], capture_output=True, text=True)
     assert p.returncode == 0
     assert "check 5" not in p.stdout, "language check should no longer be skipped"
+
+
+# --------------------------------------------------------------------------- #
+# B2 — normalizers and split strategy
+# --------------------------------------------------------------------------- #
+import sys as _sys
+_sys.path.insert(0, str(ROOT))
+from pipeline.normalizers import for_language, strip_tones  # noqa: E402
+
+
+def test_pidgin_normalizer_maps_unambiguous_variants():
+    n = for_language("pidgin")
+    assert n("Weting dey do you?") == "wetin dey do you"
+    assert n("Abek, de pickin nor well") == "abeg de pikin no well"
+    assert n.version == "pidgin-norm-v1"
+
+
+@pytest.mark.parametrize("token", ["de", "wan", "shop", "sef"])
+def test_ambiguous_pidgin_tokens_are_left_alone(token):
+    """A mapping that is wrong half the time corrupts WER worse than none.
+    These need context to disambiguate, so they pass through untouched."""
+    assert for_language("pidgin")(token) == token
+
+
+def test_tonal_languages_keep_diacritics_but_normalise_composition():
+    y = for_language("yoruba")
+    assert y.tonal is True
+    composed, decomposed = "ọmọ náà", "ọmọ náà"
+    assert y(composed) == y(decomposed), "NFC must make the two forms identical"
+    assert "á" in y(composed), "tone marks are phonemic — never stripped by default"
+
+
+def test_tone_stripping_is_available_separately():
+    assert strip_tones("Ọmọ náà ń ṣàìsàn") == "Omo naa n saisan"
+
+
+def test_split_strategy_selects_the_right_leak_check(tmp_path):
+    """Parallel TTS corpora share speakers across splits BY DESIGN; ASR corpora
+    must not. The declared strategy picks which invariant is enforced."""
+    import json as _json
+    base = _json.loads((FIX / "good.jsonl").read_text().splitlines()[0])
+
+    def row(spk, txt, split, strat):
+        r = dict(base)
+        r.update(speaker_id=spk, session_id=f"ses_{spk}", text_normalized=txt,
+                 text_verbatim=txt, split=split, split_strategy=strat)
+        return r
+
+    # same speaker both sides, different text -> OK under text_disjoint
+    ok = tmp_path / "tts.jsonl"
+    ok.write_text("\n".join(_json.dumps(r) for r in [
+        row("spk1", "wetin dey happen for house", "train", "text_disjoint"),
+        row("spk1", "the pikin get fever this morning", "test", "text_disjoint"),
+    ]) + "\n")
+    p = subprocess.run([sys.executable, str(VALIDATOR), str(ok)],
+                       capture_output=True, text=True)
+    assert p.returncode == 0, p.stdout
+
+    # identical rows but declared speaker_disjoint -> must be rejected
+    bad = tmp_path / "asr.jsonl"
+    bad.write_text("\n".join(_json.dumps(r) for r in [
+        row("spk1", "wetin dey happen for house", "train", "speaker_disjoint"),
+        row("spk1", "the pikin get fever this morning", "test", "speaker_disjoint"),
+    ]) + "\n")
+    p = subprocess.run([sys.executable, str(VALIDATOR), str(bad)],
+                       capture_output=True, text=True)
+    assert p.returncode == 1 and "LEAK" in p.stdout
+
+
+def test_near_dup_still_blocks_under_text_disjoint(tmp_path):
+    """Relaxing the identity check must NOT relax text-disjointness."""
+    import json as _json
+    base = _json.loads((FIX / "good.jsonl").read_text().splitlines()[0])
+    same = "take this medicine two times a day"
+    rows = []
+    for spk, split in (("spk1", "train"), ("spk2", "test")):
+        r = dict(base)
+        r.update(speaker_id=spk, session_id=f"ses_{spk}", text_normalized=same,
+                 text_verbatim=same, split=split, split_strategy="text_disjoint")
+        rows.append(r)
+    f = tmp_path / "dup.jsonl"
+    f.write_text("\n".join(_json.dumps(r) for r in rows) + "\n")
+    p = subprocess.run([sys.executable, str(VALIDATOR), str(f)],
+                       capture_output=True, text=True)
+    assert p.returncode == 1 and "NEAR-DUP" in p.stdout

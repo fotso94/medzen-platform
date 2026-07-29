@@ -5,70 +5,182 @@
   "description": "One JSON object per line in manifest.jsonl. Every dataset, regardless of source, is normalised into this shape by its adapter.",
   "type": "object",
   "required": [
-    "audio_filepath", "audio_checksum_sha256", "duration_s", "sample_rate",
-    "channels", "text_verbatim", "text_normalized", "normalization_version",
-    "primary_language", "speaker_id", "session_id", "split",
-    "consent_id", "source_id", "dataset_release", "license_policy", "allowed_use"
+    "audio_filepath",
+    "audio_checksum_sha256",
+    "duration_s",
+    "sample_rate",
+    "channels",
+    "text_verbatim",
+    "text_normalized",
+    "normalization_version",
+    "primary_language",
+    "speaker_id",
+    "session_id",
+    "split",
+    "consent_id",
+    "source_id",
+    "dataset_release",
+    "license_policy",
+    "allowed_use",
+    "split_strategy"
   ],
   "additionalProperties": false,
   "properties": {
-    "audio_filepath":        {"type": "string", "pattern": "^s3://"},
-    "audio_checksum_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-
-    "duration_s":  {"type": "number", "minimum": 1.0, "maximum": 30.0,
-                    "description": "Whisper truncates beyond 30s; under 1s is not useful speech"},
-    "sample_rate": {"const": 16000, "description": "Resample BEFORE anything touches the model"},
-    "channels":    {"const": 1},
-
-    "text_verbatim":   {"type": "string", "minLength": 1,
-                        "description": "As spoken. Never normalised into English."},
-    "text_normalized": {"type": "string", "minLength": 1,
-                        "description": "Canonical form used for scoring and search"},
-    "normalization_version": {"type": "string", "minLength": 1,
-                              "description": "e.g. pidgin-norm-v2 — changing it invalidates cached scores"},
-
-    "primary_language": {"type": "string",
-                         "description": "Registry alias or ISO code; 'mixed' for code-switched"},
+    "audio_filepath": {
+      "type": "string",
+      "pattern": "^s3://"
+    },
+    "audio_checksum_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "duration_s": {
+      "type": "number",
+      "minimum": 1.0,
+      "maximum": 30.0,
+      "description": "Whisper truncates beyond 30s; under 1s is not useful speech"
+    },
+    "sample_rate": {
+      "const": 16000,
+      "description": "Resample BEFORE anything touches the model"
+    },
+    "channels": {
+      "const": 1
+    },
+    "text_verbatim": {
+      "type": "string",
+      "minLength": 1,
+      "description": "As spoken. Never normalised into English."
+    },
+    "text_normalized": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Canonical form used for scoring and search"
+    },
+    "normalization_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "e.g. pidgin-norm-v2 \u2014 changing it invalidates cached scores"
+    },
+    "primary_language": {
+      "type": "string",
+      "description": "Registry alias or ISO code; 'mixed' for code-switched"
+    },
     "segments": {
       "type": "array",
       "description": "Span-level code-switch annotation. A single 'mixed' label is insufficient for error analysis.",
       "items": {
         "type": "object",
-        "required": ["start", "end", "text", "language"],
+        "required": [
+          "start",
+          "end",
+          "text",
+          "language"
+        ],
         "additionalProperties": false,
         "properties": {
-          "start":    {"type": "number", "minimum": 0},
-          "end":      {"type": "number", "minimum": 0},
-          "text":     {"type": "string"},
-          "language": {"type": "string"}
+          "start": {
+            "type": "number",
+            "minimum": 0
+          },
+          "end": {
+            "type": "number",
+            "minimum": 0
+          },
+          "text": {
+            "type": "string"
+          },
+          "language": {
+            "type": "string"
+          }
         }
       }
     },
-
-    "speaker_id": {"type": "string", "minLength": 1},
-    "session_id": {"type": "string", "minLength": 1},
-    "gender":     {"type": "string", "enum": ["m", "f", "other", "unknown"]},
-    "age_band":   {"type": "string"},
-    "region":     {"type": "string"},
-    "device":     {"type": "string"},
-    "noise_class":{"type": "string"},
-    "domain":     {"type": "string"},
-
-    "split": {"type": "string", "enum": ["train", "dev", "test"]},
-
-    "consent_id":     {"type": "string", "minLength": 1,
-                       "description": "Links to the consent registry. Deletion propagates from here."},
-    "source_id":      {"type": "string", "minLength": 1},
-    "dataset_release":{"type": "string", "minLength": 1,
-                       "description": "Exact upstream release, so a result is reproducible"},
-    "license_policy": {"type": "string", "minLength": 1,
-                       "examples": ["commercial_training_approved", "research_only_nc",
-                                    "cc_by_sa_4_0_review_sharealike"]},
+    "speaker_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "m",
+        "f",
+        "other",
+        "unknown"
+      ]
+    },
+    "age_band": {
+      "type": "string"
+    },
+    "region": {
+      "type": "string"
+    },
+    "device": {
+      "type": "string"
+    },
+    "noise_class": {
+      "type": "string"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "split": {
+      "type": "string",
+      "enum": [
+        "train",
+        "dev",
+        "test"
+      ]
+    },
+    "consent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Links to the consent registry. Deletion propagates from here."
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dataset_release": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Exact upstream release, so a result is reproducible"
+    },
+    "license_policy": {
+      "type": "string",
+      "minLength": 1,
+      "examples": [
+        "commercial_training_approved",
+        "research_only_nc",
+        "cc_by_sa_4_0_review_sharealike"
+      ]
+    },
     "allowed_use": {
-      "type": "array", "minItems": 1,
-      "items": {"type": "string",
-                "enum": ["asr_train", "asr_eval", "tts_train", "tts_eval",
-                         "llm_sft", "internal_demo"]}
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "asr_train",
+          "asr_eval",
+          "tts_train",
+          "tts_eval",
+          "llm_sft",
+          "internal_demo"
+        ]
+      }
+    },
+    "split_strategy": {
+      "type": "string",
+      "enum": [
+        "speaker_disjoint",
+        "text_disjoint"
+      ],
+      "description": "How train/test were separated, which determines WHICH leakage invariant applies. ASR corpora must generalise to unseen SPEAKERS -> speaker_disjoint. Parallel TTS corpora (many speakers reading one script) must generalise to unseen TEXT -> text_disjoint; speaker overlap is the point, not a leak. Near-duplicate text may never straddle splits under either strategy."
     }
   }
 }
