@@ -1,0 +1,39 @@
+alias: igbo
+iso_code: ig
+display_name: Igbo
+status: declared
+
+asr:
+  artifact: null
+  approved_version: null
+  decode_strategy:
+    mode: pending_experiment
+    chosen_by_run: null
+    frozen_eval: null
+    candidates_compared: [auto, learned]
+
+llm:
+  engine: bedrock
+  policy: igbo-medzen-v1
+  qwen_trigger_rounds_failed: 0
+
+tts:
+  provider: fish
+  voice_id: null
+  approved: false
+  consent_record: null
+  adaptation_seed: waxalnlp-media-trust-igbo-tts
+  fallback_provider: null
+
+thresholds_ref: gates/igbo-v1.yaml
+fallback_language: english
+
+provenance:
+  data_sources: [waxalnlp-igbo, naijavoices-igbo]
+  licence_status:
+    waxalnlp-igbo: sharealike_review
+    naijavoices-igbo: research_only_nc
+  notes: |
+    Tonal with diacritics: NFC-normalise before scoring, report diacritized AND
+    tone-stripped. NaijaVoices Igbo is CC-BY-NC-SA and gated — research only.
+    WaxalNLP Igbo (CC-BY-SA) is the commercially workable path.

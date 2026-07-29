@@ -1,0 +1,7 @@
+inherits: _defaults.yaml
+language: english
+version: v1-initial
+rationale: African-accented English. Baseline is strong, so the ceiling is tighter.
+overrides:
+  asr:
+    absolute_wer_max: 0.15

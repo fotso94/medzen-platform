@@ -1,0 +1,20 @@
+inherits: _defaults.yaml
+language: pidgin
+version: v1-initial
+rationale: |
+  Pidgin has no standard orthography, so WER is scored on the normalized form
+  (normalization_version pidgin-norm-v2). The absolute ceiling is looser than
+  accented English because the baseline is far weaker and the corpus far smaller.
+  Code-switch tolerance is tighter than default: Pidgin<->English<->French
+  switching is the normal case for these users, not an edge case.
+overrides:
+  asr:
+    absolute_wer_max: 0.20             # normalized WER
+    code_switch_wer_ratio_max: 1.20    # tighter — switching is the common case
+    code_switch_span_langid_min: 0.85
+  tts:
+    accent_authenticity_min: 4.0
+    notes: |
+      Nigerian-Pidgin drift is the failure mode. Accent raters MUST be
+      Cameroonian for any Cameroon-targeted voice; a Nigerian-sounding voice
+      can pass MOS and still fail the product.

@@ -1,0 +1,9 @@
+inherits: _defaults.yaml
+language: french
+version: v1-initial
+rationale: |
+  Cameroon French. Whisper has strong general French; the work is accent,
+  local vocabulary and names. Ceiling matches accented English.
+overrides:
+  asr:
+    absolute_wer_max: 0.15

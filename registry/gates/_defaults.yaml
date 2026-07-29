@@ -1,0 +1,45 @@
+# A5 promotion thresholds — platform defaults.
+# Per-language files inherit these and override only what differs.
+# Status: v1-initial. Frozen per language at onboarding; changed ONLY by PR with
+# written justification, NEVER mid-evaluation.
+
+version: v1-initial
+
+asr:
+  relative_wer_gain_min: 0.15          # vs frozen zero-shot baseline, target slices
+  absolute_wer_max: 0.20               # overridden per language
+  absolute_cer_max: null               # tonal languages set this
+  slice_regression_max: 0.02           # any accent/region/device/noise slice
+  general_replay_regression_max: 0.02  # EN/FR general speech
+  named_entity_wer_max: 0.25           # names, drugs, numbers
+  named_entity_never_worse_than_previous: true
+  code_switch_wer_ratio_max: 1.25      # vs monolingual average
+  code_switch_span_langid_min: 0.85
+
+understanding:
+  native_naturalness_min: 4.0          # median, >=2 reviewers, /5
+  intent_accuracy_min: 0.90
+  citation_grounding_required: 1.00    # every clinical claim carries a citation
+  redteam_critical_failures_max: 0
+  refusal_correctness_min: 0.95
+  qwen_trigger_failed_rounds: 2
+
+tts:
+  native_mos_min: 4.0
+  accent_authenticity_min: 4.0         # /5, native raters
+  asr_backtest_wer_max: 0.15           # synthesize -> own ASR -> score
+  pronunciation_set_accuracy_min: 0.98 # drug names, numbers, place names
+  streaming_dropped_chunks_max: 0      # 100-session soak
+
+platform:
+  file_first_audio_p50_ms: 2000
+  file_first_audio_p95_ms: 3500
+  stream_first_partial_p95_ms: 800
+  stream_first_audio_p95_ms: 2500
+  error_rate_24h_max: 0.01
+  availability_min: 0.995
+  canary_rollback:
+    error_rate_over: 0.02
+    error_window_min: 5
+    p95_latency_ratio_over: 1.5
+    latency_window_min: 10

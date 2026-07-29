@@ -1,0 +1,45 @@
+# Nigerian Pidgin now; Cameroon Pidgin (Kamtok) is the eventual target and will
+# be validated separately — the two are related but distinct varieties and
+# models drift toward the better-resourced Nigerian one.
+alias: pidgin
+iso_code: pcm
+display_name: Pidgin
+status: declared                 # nothing trained yet
+
+asr:
+  artifact: null
+  approved_version: null
+  decode_strategy:
+    mode: pending_experiment     # CORRECTION 3 — B3 decides this, not us
+    chosen_by_run: null
+    frozen_eval: null
+    candidates_compared: [en_token, auto, learned]
+
+llm:
+  engine: bedrock
+  policy: pidgin-medzen-v1
+  qwen_trigger_rounds_failed: 0
+
+tts:
+  provider: fish
+  voice_id: "101351e6043e44888064c585143fdf6c"
+  approved: false                # marketplace clone: no consent chain, Nigerian
+  consent_record: null
+  adaptation_seed: waxalnlp-media-trust-pcm-tts
+  fallback_provider: null
+
+thresholds_ref: gates/pidgin-v1.yaml
+fallback_language: english
+
+provenance:
+  data_sources: [waxalnlp-pcm-tts, africanvoices-tbd, own-collection-r1]
+  licence_status:
+    waxalnlp-pcm-tts: sharealike_review
+    africanvoices-tbd: pending_written_terms
+    own-collection-r1: own_consented
+  notes: |
+    WaxalNLP Media Trust pcm_tts (~2k rows, CC-BY-SA-4.0) is a TTS adaptation
+    SEED, not a complete voice. ShareAlike effect on model weights is legally
+    unsettled — legal review before any commercial model ships on it.
+    AfricanVoices.io (1,900h incl. Pidgin) is the ASR source, blocked on written
+    terms. Neither is Cameroonian: validate on Cameroonian ears.
