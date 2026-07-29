@@ -1,7 +1,6 @@
-# NOTE: medzen-tts-gateway already exists and is in use by the RUNNING
-# medzen-tts-dev ECS service. It is deliberately NOT managed here — taking
-# Terraform ownership of something production depends on needs an explicit
-# `terraform import`, not a side effect of a plan.
+# medzen-tts-gateway (no "speech-") belongs to a SEPARATE, unrelated project.
+# Never managed, referenced or touched by this stack. Ours is
+# medzen-speech-tts-gateway.
 locals {
   ecr_repos = [
     "medzen-orchestrator",
@@ -9,6 +8,7 @@ locals {
     "medzen-llm-gateway",
     "medzen-rag-index",
     "medzen-model-loader",
+    "medzen-speech-tts-gateway",
     "medzen-trainer",
   ]
 }

@@ -12,15 +12,13 @@ terraform {
     aws = { source = "hashicorp/aws", version = "~> 5.60" }
   }
 
-  # State starts LOCAL so `plan` can run before any resource exists.
-  # bootstrap.sh creates the bucket + lock table; then uncomment and re-init.
-  # backend "s3" {
-  #   bucket         = "medzen-speech-tfstate-558069890522"
-  #   key            = "platform/terraform.tfstate"
-  #   region         = "eu-central-1"
-  #   dynamodb_table = "medzen-speech-tflock"
-  #   encrypt        = true
-  # }
+  backend "s3" {
+    bucket         = "medzen-speech-tfstate-558069890522"
+    key            = "platform/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "medzen-speech-tflock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
