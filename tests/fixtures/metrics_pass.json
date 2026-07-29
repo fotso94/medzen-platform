@@ -1,0 +1,8 @@
+{"asr": {"wer": 0.185, "baseline_wer": 0.260,
+         "slices": {"douala": 0.19, "yaounde": 0.20, "phone": 0.22},
+         "baseline_slices": {"douala": 0.20, "yaounde": 0.21, "phone": 0.225},
+         "general_replay_wer": 0.105, "baseline_general_replay_wer": 0.100,
+         "named_entity_wer": 0.21, "previous_named_entity_wer": 0.24,
+         "code_switch_wer": 0.21, "monolingual_avg_wer": 0.185,
+         "code_switch_span_langid": 0.88,
+         "artifact_is_quantized": true}}

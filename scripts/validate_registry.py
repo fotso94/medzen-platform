@@ -17,6 +17,7 @@ demo deadline.
 """
 from __future__ import annotations
 
+import collections
 import json
 import sys
 from pathlib import Path
@@ -167,14 +168,28 @@ def main() -> int:
 
     # ---- report -----------------------------------------------------------
     print(f"registry: {len(langs)} language(s)\n")
-    print(f"  {'LANGUAGE':<10} {'ISO':<5} {'STATUS':<16} {'ASR':<20} {'TTS':<12} LICENCE")
+    print(f"  {'LANGUAGE':<10} {'ISO':<5} {'CAPABILITY':<14} {'STATUS':<12} "
+          f"{'DECODE':<20} COMMERCIAL")
+    print("  " + "-" * 78)
+    counts = collections.Counter()
     for n, d in sorted(langs.items()):
-        ds = d["asr"]["decode_strategy"]["mode"]
-        tts = f"{d['tts']['provider']}{'' if d['tts']['approved'] else ' (unappr)'}"
+        cap = d.get("capabilities", {})
+        a_ok = cap.get("asr", {}).get("available")
+        t_ok = cap.get("tts", {}).get("available")
+        profile = ("full turn" if a_ok and t_ok else
+                   "listen only" if a_ok else
+                   "speak only" if t_ok else "NEITHER")
+        counts[profile] += 1
         lic = d["provenance"]["licence_status"].values()
         licsum = "clear" if all(v in COMMERCIAL_OK for v in lic) else "blocked"
-        print(f"  {n:<10} {d['iso_code']:<5} {d['status']:<16} "
-              f"decode:{ds:<13} {tts:<12} {licsum}")
+        counts[f"licence:{licsum}"] += 1
+        print(f"  {n:<10} {d['iso_code']:<5} {profile:<14} {d['status']:<12} "
+              f"{d['asr']['decode_strategy']['mode']:<20} {licsum}")
+    print(f"\n  capability: {counts['full turn']} full turn · "
+          f"{counts['listen only']} listen only · {counts['speak only']} speak only"
+          f"{f' · {counts[chr(78)+chr(69)+chr(73)+chr(84)+chr(72)+chr(69)+chr(82)]} NEITHER' if counts['NEITHER'] else ''}")
+    print(f"  licence:    {counts['licence:clear']} commercially clear · "
+          f"{counts['licence:blocked']} blocked")
     print()
     for w in warns:
         print(f"  WARN  {w}")

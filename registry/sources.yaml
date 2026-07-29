@@ -1,0 +1,151 @@
+# Dataset x language x task x licence matrix — VERIFIED against source cards.
+# registry/languages/*.yaml is GENERATED from this file by
+# scripts/generate_languages.py. Add a language here, not there.
+#
+# THE CRITICAL RULE (v5 plan): a model only learns what is in its training
+# data. ASR data does not teach TTS and TTS data does not teach ASR. A language
+# therefore has a CAPABILITY PROFILE, not a single "supported" flag.
+
+meta:
+  verified_on: "2026-07-29"
+  verified_against: [waxalnlp-card, afrispeech-card, naijavoices-card, africanvoices-site]
+
+# ---------------------------------------------------------------------------
+datasets:
+
+  waxalnlp:
+    url: https://huggingface.co/datasets/google/WaxalNLP
+    totals: {asr_hours: 1250, tts_hours: 180, asr_languages: 19, tts_languages: 17}
+    access: open
+    # licence varies BY PROVIDER — always check the provider, not the dataset
+    providers:
+      makerere:        {licence: cc_by_sa_4_0, commercial: sharealike_review}
+      university_ghana: {licence: cc_by_4_0,    commercial: commercial_ok}
+      digital_umuganda: {licence: cc_by_sa_4_0, commercial: sharealike_review}
+      media_trust:     {licence: cc_by_sa_4_0, commercial: sharealike_review}
+      loud_and_clear:  {licence: cc_by_sa_4_0, commercial: sharealike_review}
+      aims_senegal:    {licence: cc_by_sa_4_0, commercial: sharealike_review}
+
+  afrispeech_200:
+    url: https://huggingface.co/datasets/intronhealth/afrispeech-200
+    licence: cc_by_nc_sa_4_0
+    commercial: research_only_nc
+    access: open
+    note: African-ACCENTED ENGLISH, not separate languages. Clinical + general.
+
+  naijavoices:
+    url: https://huggingface.co/datasets/naijavoices/naijavoices-dataset
+    licence: cc_by_nc_sa_4_0
+    commercial: research_only_nc
+    access: gated
+    note: Igbo/Hausa/Yoruba ASR. No Pidgin despite widespread claims.
+
+  africanvoices_io:
+    url: https://africanvoices.io
+    licence: unpublished
+    commercial: pending_written_terms
+    access: registration
+    note: 1900h incl. Nigerian Pidgin ASR. BLOCKED until terms are in writing.
+
+  common_voice:
+    url: https://commonvoice.mozilla.org
+    licence: cc0
+    commercial: commercial_ok
+    access: open
+
+# ---------------------------------------------------------------------------
+# One entry per language. asr/tts list the datasets that actually provide that
+# capability. An empty list means the capability CANNOT be built today.
+#
+# iso_review: true  => the WaxalNLP card's code looks wrong to me and must be
+# confirmed before it reaches an API contract. Flagged, not silently "fixed".
+languages:
+
+  # --- both ASR and TTS available (the only ones that can do a full turn) ---
+  acholi:    {iso: ach, name: Acholi,   asr: [waxalnlp/makerere], tts: [waxalnlp/makerere]}
+  luganda:   {iso: lug, name: Luganda,  asr: [waxalnlp/makerere], tts: [waxalnlp/makerere]}
+  nyankole:  {iso: nyn, name: Nyankole, asr: [waxalnlp/makerere], tts: [waxalnlp/makerere]}
+  akan:      {iso: aka, name: Akan,     asr: [waxalnlp/university_ghana], tts: [waxalnlp/university_ghana]}
+  ewe:       {iso: ewe, name: Ewe,      asr: [waxalnlp/university_ghana], tts: [waxalnlp/university_ghana]}
+  fula:      {iso: ful, name: Fula,     asr: [waxalnlp/digital_umuganda], tts: [waxalnlp/aims_senegal],
+              note: "Spoken in northern Cameroon — strategically relevant."}
+
+  # --- ASR only (can listen, cannot speak) ---------------------------------
+  masaaba:   {iso: mas, name: Masaaba,  asr: [waxalnlp/makerere], tts: [], iso_review: true}
+  soga:      {iso: sog, name: Soga,     asr: [waxalnlp/makerere], tts: [], iso_review: true}
+  dagbani:   {iso: dag, name: Dagbani,  asr: [waxalnlp/university_ghana], tts: []}
+  dagaare:   {iso: dga, name: Dagaare,  asr: [waxalnlp/university_ghana], tts: []}
+  ikposo:    {iso: kpo, name: Ikposo,   asr: [waxalnlp/university_ghana], tts: []}
+  lingala:   {iso: lin, name: Lingala,  asr: [waxalnlp/digital_umuganda], tts: []}
+  shona:     {iso: sna, name: Shona,    asr: [waxalnlp/digital_umuganda], tts: []}
+  malagasy:  {iso: mlg, name: Malagasy, asr: [waxalnlp/digital_umuganda], tts: []}
+  amharic:   {iso: amh, name: Amharic,  asr: [waxalnlp/digital_umuganda], tts: []}
+  oromo:     {iso: orm, name: Oromo,    asr: [waxalnlp/digital_umuganda], tts: []}
+  sidama:    {iso: sid, name: Sidama,   asr: [waxalnlp/digital_umuganda], tts: []}
+  tigrinya:  {iso: tir, name: Tigrinya, asr: [waxalnlp/digital_umuganda], tts: []}
+  wolaytta:  {iso: wal, name: Wolaytta, asr: [waxalnlp/digital_umuganda], tts: []}
+
+  # --- TTS only (can speak, cannot listen — from WaxalNLP alone) -----------
+  kikuyu:    {iso: kik, name: Kikuyu,   asr: [], tts: [waxalnlp/loud_and_clear]}
+  luo:       {iso: luo, name: Luo,      asr: [], tts: [waxalnlp/loud_and_clear]}
+  bambara:   {iso: bam, name: Bambara,  asr: [], tts: [waxalnlp/aims_senegal]}
+  pular:     {iso: fuf, name: Pular,    asr: [], tts: [waxalnlp/aims_senegal], iso_review: true,
+              note: "Card says 'ful', colliding with Fula. Pular is ISO 639-3 fuf."}
+  wolof:     {iso: wol, name: Wolof,    asr: [], tts: [waxalnlp/aims_senegal]}
+  baoule:    {iso: bau, name: Baoule,   asr: [], tts: [waxalnlp/university_ghana], iso_review: true,
+              note: "Card says 'bau'; ISO 639-3 for Baoulé is bci."}
+  twi:       {iso: twi, name: Fante/Twi,asr: [], tts: [waxalnlp/university_ghana]}
+
+  # --- TTS from Waxal, ASR only from restricted sources -------------------
+  swahili:   {iso: swa, name: Kiswahili, asr: [common_voice], tts: [waxalnlp/loud_and_clear]}
+  igbo:      {iso: ibo, name: Igbo,      asr: [naijavoices], tts: [waxalnlp/media_trust]}
+  hausa:     {iso: hau, name: Hausa,     asr: [naijavoices, common_voice], tts: [waxalnlp/media_trust],
+              note: "Also spoken in northern Cameroon."}
+  yoruba:    {iso: yor, name: Yoruba,    asr: [naijavoices, common_voice], tts: [waxalnlp/media_trust]}
+  pidgin:    {iso: pcm, name: Pidgin,    asr: [africanvoices_io], tts: [waxalnlp/media_trust],
+              note: "Nigerian Pidgin. Cameroon Pidgin (Kamtok) is the real target and
+                     is NOT in any public source — own collection required. Models drift
+                     toward the better-resourced Nigerian variety; validate on Cameroonian ears."}
+
+  # --- the base languages -------------------------------------------------
+  english:   {iso: en, name: English, asr: [afrispeech_200, common_voice], tts: [],
+              note: "African-accented English. TTS via provider voice, not a trained model."}
+  french:    {iso: fr, name: French,  asr: [common_voice], tts: [],
+              note: "Cameroon French is the target; character must come from own collection."}
+
+# ---------------------------------------------------------------------------
+# ACTIVE SCOPE — the languages that get a registry entry generated.
+# Everything above is verified reference; adding a language to production is a
+# one-line change here plus a regeneration.
+#
+# Requested-but-dropped: somali, zulu, arabic, kinyarwanda — none appear in
+# WaxalNLP. Expansion path for them is FLEURS (CC-BY-4.0, ~12h/language,
+# 3 native speakers per sentence), which covers Somali, Zulu, Kinyarwanda,
+# Xhosa, Afrikaans, Nyanja, Luo, Kamba, Umbundu and more. Commercially clean,
+# but 12h is an eval/seed corpus, not a training corpus.
+scope:
+  # requested and available (11)
+  - swahili
+  - hausa
+  - yoruba
+  - amharic
+  - oromo
+  - igbo
+  - lingala
+  - shona
+  - wolof
+  - fula          # Fulfulde — also northern Cameroon
+  - pidgin
+  # added to reach 15 — chosen because ALL FOUR have both ASR and TTS in
+  # WaxalNLP, so they are the only languages that can complete a full voice
+  # turn from open data alone. Akan and Ewe additionally carry CC-BY-4.0
+  # (University of Ghana) rather than ShareAlike — the cleanest licence here.
+  - akan          # ASR + TTS, CC-BY-4.0
+  - ewe           # ASR + TTS, CC-BY-4.0
+  - luganda       # ASR + TTS, CC-BY-SA-4.0
+  - acholi        # ASR + TTS, CC-BY-SA-4.0
+  # base languages — NOT part of the 15 African-language scope, but structurally
+  # required: english is the fallback target of every entry above, and both are
+  # the general-speech replay languages that keep the multilingual mix honest.
+  - english
+  - french
