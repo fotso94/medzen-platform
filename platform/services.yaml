@@ -15,7 +15,31 @@ meta:
   buckets:
     data: medzen-speech                # raw/ curated/ eval/ approved/
     audio_cache: medzen-audio-cache    # tts/ (90d lifecycle), user-audio/ (30d)
-  registry_ssm_prefix: /medzen/registry
+  registry_ssm_prefix: /medzen/registry     # existing app config lives under
+                                           # /medzen-health-pro/* and /medzen/tts/* — no collision
+
+  # --- B0 resolved decisions ------------------------------------------------
+  network:
+    vpc_id: vpc-051aa9df8b64bf141           # DEFAULT VPC — shared with MedZen production
+    subnets: [subnet-00232b25bc1ac407a, subnet-05029419c6c61a536, subnet-01fb2fc3f56bce55e]
+    subnet_type: public                     # DECISION: option B, revisit before production
+    azs: [eu-central-1a, eu-central-1b, eu-central-1c]
+    igw: igw-04e2f0034001281e2
+    nat: null
+    co_tenancy_warning: |
+      This VPC also hosts MedZen production: medzen-ehrbase-alb (internet-facing,
+      clinical records), cache-proxy-prod/test, and the live medzen-tts-dev
+      gateway. 25 ENIs. Any security group or route change here can affect
+      production. Private subnets (option A) are the intended end state.
+
+  bedrock:
+    # Bare model ids CANNOT be invoked ("on-demand throughput isn't supported").
+    # Newer Claude models require an inference profile. Verified 2026-07-29.
+    primary_model: eu.anthropic.claude-sonnet-5
+    cheap_model: eu.anthropic.claude-haiku-4-5-20251001-v1:0
+    routing: eu_cross_region                # routes within EU regions only
+    residency_note: EU-wide, not Frankfurt-only. Single-region lock is not
+                    available for current Claude models on Bedrock.
 
 # --------------------------------------------------------------------------
 # Runtime services (deployed to EKS)
