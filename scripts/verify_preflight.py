@@ -80,6 +80,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default=None)
     ap.add_argument("--instance", default=None)
+    ap.add_argument("--expect-digest", default=None,
+                    help="image digest the run must report (container preflight)")
+    ap.add_argument("--expect-manifest", default=None,
+                    help="base-model MANIFEST.json sha256 the run must report")
     a = ap.parse_args()
 
     s = sess()
@@ -146,23 +150,45 @@ def main() -> int:
     chk("dataset fingerprint recorded", bool(fp) and len(str(fp)) >= 8,
         f"dataset_fingerprint={fp!r}")
 
-    # --- 7. real checkpoint-3 objects in S3 (listed, not claimed) -----------
-    cand = ls(cli, f"{CKPT_PREFIX}/")
-    ck = [(k, sz) for k, sz in cand if "checkpoint-3/" in k]
-    tot = sum(sz for _, sz in ck)
-    chk("checkpoint-3 in S3", len(ck) > 0 and tot > 0,
-        f"{len(ck)} object(s), {tot/1e6:.1f} MB under {CKPT_PREFIX}/**/checkpoint-3/")
+    # The run id scopes every artifact check below, so resolve it first.
+    mrid = result.get("mlflow_run_id", runj.get("mlflow_run_id"))
 
-    # --- 7b. final adapter (the artifact that actually gets registered) -----
-    fin_objs = [(k, sz) for k, sz in cand if "/final/" in k]
-    weights = [k for k, sz in fin_objs
-               if k.endswith((".safetensors", ".bin")) and sz > 0]
-    chk("final adapter in S3", bool(weights),
-        f"{len(fin_objs)} object(s), {sum(sz for _, sz in fin_objs)/1e6:.1f} MB, "
-        f"weights={[k.split('/')[-1] for k in weights] or 'NONE'}")
+    # --- 7. artifacts, SCOPED TO THIS RUN -----------------------------------
+    # Listing candidates/asr/ wholesale aggregated every past run's objects, so
+    # the counts were meaningless and the duplicate adapter names looked like
+    # nested copies in this run when they were separate runs. Everything here is
+    # scoped to candidates/asr/<mlflow_run_id>/.
+    if not mrid:
+        chk("checkpoint-3 in S3", False, "no mlflow_run_id; cannot scope artifact checks")
+        chk("final adapter in S3", False, "no mlflow_run_id; cannot scope artifact checks")
+        chk("no checkpoint inside final/", False, "no mlflow_run_id")
+        run_objs = []
+    else:
+        base_run = f"{CKPT_PREFIX}/{mrid}"
+        run_objs = ls(cli, base_run + "/")
+        rel = {k[len(base_run) + 1:]: sz for k, sz in run_objs}
+
+        ck = {k: sz for k, sz in rel.items() if k.startswith("checkpoint-3/")}
+        chk("checkpoint-3 in S3", bool(ck) and sum(ck.values()) > 0,
+            f"{len(ck)} object(s), {sum(ck.values())/1e6:.1f} MB under {base_run}/checkpoint-3/")
+
+        # The exact filename a loader opens -- not any .safetensors/.bin, which
+        # previously let training_args.bin count as weights.
+        ADAPTER = "final/adapter_model.safetensors"
+        fin = {k: sz for k, sz in rel.items() if k.startswith("final/")}
+        chk("final adapter in S3", rel.get(ADAPTER, 0) > 0,
+            f"{ADAPTER} = {rel.get(ADAPTER, 0)/1e6:.1f} MB; "
+            f"{len(fin)} object(s) under final/")
+
+        # The skip_checkpoints fix: final/ must hold the adapter and processor
+        # only. A nested checkpoint duplicates data already stored under its own
+        # prefix and makes final/ ambiguous for a loader.
+        nested = sorted(k for k in fin if k.startswith("final/checkpoint-"))
+        chk("no checkpoint inside final/", not nested,
+            f"{len(nested)} nested checkpoint object(s)"
+            + (f": {nested[:3]}" if nested else ""))
 
     # --- 8. MLflow ----------------------------------------------------------
-    mrid = result.get("mlflow_run_id", runj.get("mlflow_run_id"))
     mldb = ls(cli, "mlflow/db/")
     chk("MLflow run recorded", bool(mrid) and len(str(mrid)) >= 8,
         f"mlflow_run_id={mrid!r}")
@@ -202,6 +228,26 @@ def main() -> int:
     pin_ok = bool(m) and m.group(1) == m.group(2)
     chk("torch pin enforced", bool(tv) and pin_ok,
         f"torch={tv!r} cuda={cv!r} " + (f"pinned={m.group(1)} loaded={m.group(2)}" if m else "pin line absent"))
+
+    # --- 11b. the artifact that ran, and the weights it loaded --------------
+    # A green preflight for a DIFFERENT image or a different base checkpoint
+    # proves nothing about the one being adopted.
+    if a.expect_digest:
+        got = result.get("image_digest")
+        chk("image digest matches", got == a.expect_digest,
+            f"reported={got} expected={a.expect_digest}")
+        chk("ran in container", result.get("ran_in_container") is True,
+            f"ran_in_container={result.get('ran_in_container')!r}")
+    src = result.get("base_source", runj.get("base_source"))
+    man = result.get("base_manifest_sha256", runj.get("base_manifest_sha256"))
+    chk("base model from the S3 cache", src == "s3_cache",
+        f"base_source={src!r} (hf_hub would mean the offline path did not hold)")
+    if a.expect_manifest:
+        chk("base cache manifest matches", man == a.expect_manifest,
+            f"reported={man} expected={a.expect_manifest}")
+    else:
+        chk("base cache manifest recorded", bool(man) and len(str(man)) == 64,
+            f"base_manifest_sha256={man}")
 
     # --- 12. instance terminated -------------------------------------------
     iid = a.instance
