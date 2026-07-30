@@ -119,6 +119,27 @@
         "*"
       ],
       "Sid": "ImageBuildsNeverHoldProductionCredentials"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "bedrock:*"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Sid": "A1Invariant2TheBuildPlaneHasNoProducti"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/eval/*"
+      ],
+      "Sid": "A3EvalSetsAreWriteDeniedToEveryOffline"
     }
   ]
 }

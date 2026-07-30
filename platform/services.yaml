@@ -253,3 +253,7 @@ offline:
          why: "the build plane has no business writing corpus data"}
       - {actions: ["secretsmanager:*"], resource: "*",
          why: "image builds never hold production credentials"}
+      - {actions: ["bedrock:*"], resource: "*",
+         why: "A1 invariant 2 — the build plane has no production model access"}
+      - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",
+         why: "A3 — eval sets are write-denied to every offline role, builders included"}
