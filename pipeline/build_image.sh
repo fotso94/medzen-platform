@@ -96,7 +96,17 @@ systemctl enable --now docker 2>/dev/null || systemctl start docker 2>/dev/null 
 for i in $(seq 1 20); do docker version >/dev/null 2>&1 && break; sleep 3; done
 docker version || { echo "FATAL: docker daemon unavailable"; exit 12; }
 
-# --- fetch and FULLY verify the source bundle -------------------------------
+# --- source tree -------------------------------------------------------------
+# BUNDLE_DIR means the trusted user-data wrapper already downloaded the archive,
+# matched it against a hash embedded at launch time, extracted it with
+# filter="data", and verified the full file set. Re-doing that here would add
+# nothing: this script is itself part of the tree that was verified, so its own
+# checks cannot establish trust in it. They remain for the standalone path.
+if [ -n "${BUNDLE_DIR:-}" ]; then
+  [ -d "$BUNDLE_DIR/pipeline" ] || { echo "FATAL: BUNDLE_DIR has no pipeline/"; exit 13; }
+  SRC="$BUNDLE_DIR"
+  echo "using bundle pre-verified by the trusted wrapper: $SRC"
+else
 rm -rf /opt/medzen && mkdir -p /opt/medzen/src && cd /opt/medzen
 aws s3 cp "$BUNDLE_BASE/medzen_code.tgz" . \
   || { echo "FATAL: no bundle at $BUNDLE_BASE (publish_bundle.py first)"; exit 13; }
@@ -158,9 +168,11 @@ if bad:
 print(f"BUNDLE VERIFIED: git_sha {man['git_sha']}, {len(declared)} files, "
       f"complete set, sizes and sha256 all match")
 VERIFY_BUNDLE
+SRC=/opt/medzen/src
+fi
 
 TAG="$GIT_SHA"
-cd /opt/medzen/src
+cd "$SRC" || { echo "FATAL: cannot cd $SRC"; exit 13; }
 echo "building $REPO:$TAG (native $(uname -m))"
 docker build -f pipeline/Dockerfile.trainer -t "$REPO:$TAG" . \
   || { echo "FATAL: docker build"; exit 15; }

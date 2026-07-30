@@ -105,3 +105,75 @@ def test_publish_bundle_uses_a_per_commit_path():
     # BUNDLE.json must be written after the tarball, so its presence means the
     # pair is complete
     assert s.index('f"{base}/medzen_code.tgz"') < s.index('f"{base}/BUNDLE.json"')
+
+
+# --------------------------------------------------------------------------- #
+# bootstrap trust: verification must precede execution of anything from S3
+# --------------------------------------------------------------------------- #
+WRAPPER = ROOT / "pipeline" / "builder_userdata.sh"
+TRAINER = ROOT / "pipeline" / "trainer_userdata.sh"
+
+
+def test_wrapper_is_valid_bash():
+    r = subprocess.run(["bash", "-n", str(WRAPPER)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+
+
+def test_wrapper_verifies_the_archive_against_a_hash_from_user_data():
+    """The root of trust must not come from the same place as the artifact.
+
+    The first wrapper executed build_image.sh from the bundle and let that
+    script verify the bundle it came from -- circular, since unverified code was
+    already running. TAR_SHA256 is substituted at launch from the publishing
+    machine, so S3 cannot influence it.
+    """
+    s = WRAPPER.read_text()
+    assert 'TAR_SHA256="${TAR_SHA256}"' in s
+    assert "${#TAR_SHA256} -eq 64" in s
+    assert "sha256sum medzen_code.tgz" in s
+    assert "ARCHIVE HASH VERIFIED against user-data" in s
+    # and it must happen before anything from the bundle is executed
+    assert s.index("ARCHIVE HASH VERIFIED") < s.index("bash /opt/boot/src/pipeline/build_image.sh")
+
+
+def test_wrapper_extracts_safely():
+    s = WRAPPER.read_text()
+    assert 'filter="data"' in s, "unverified archives must not be extracted unfiltered"
+    # check CODE, not the comment that explains why shell tar is unsuitable
+    code = "\n".join(l for l in s.splitlines() if not l.lstrip().startswith("#"))
+    assert "tar xzf" not in code, "shell tar gives no traversal protection here"
+
+
+def test_wrapper_verifies_before_executing_and_full_set():
+    s = WRAPPER.read_text()
+    assert s.index("BUNDLE VERIFIED") < s.index("bash /opt/boot/src/pipeline/build_image.sh")
+    assert "declared - on_disk" in s and "on_disk - declared" in s
+
+
+def test_every_wrapper_failure_terminates():
+    """A builder that limps on after a failed download is how a half-built
+    image reaches a registry."""
+    s = WRAPPER.read_text()
+    assert "shutdown -h now" in s.split("die()")[1].split("}")[0], \
+        "die() must terminate the instance"
+    for critical in ("bundle download from", "BUNDLE.json download from",
+                     "archive sha256 mismatch", "bundle verification",
+                     "build_image.sh absent from the verified bundle"):
+        assert critical in s, f"missing a die() guard for: {critical}"
+
+
+def test_build_image_trusts_a_pre_verified_bundle_dir():
+    """It cannot meaningfully verify itself, so when the wrapper has done it,
+    it must say so rather than pretend to re-establish trust."""
+    s = BUILD.read_text()
+    assert 'if [ -n "${BUNDLE_DIR:-}" ]; then' in s
+    assert "pre-verified by the trusted wrapper" in s
+    assert "cannot establish trust in it" in s
+
+
+def test_trainer_launcher_also_verifies_against_user_data():
+    s = TRAINER.read_text()
+    assert 'EXPECT_TAR="${TAR_SHA256}"' in s
+    assert "ARCHIVE HASH VERIFIED against user-data" in s
+    assert 'filter="data"' in s
+    assert s.index("ARCHIVE HASH VERIFIED") < s.index("bootstrap_trainer.sh")

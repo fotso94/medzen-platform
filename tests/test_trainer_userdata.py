@@ -21,7 +21,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = ROOT / "pipeline" / "trainer_userdata.sh"
 BOOTSTRAP = ROOT / "pipeline" / "bootstrap_trainer.sh"
-SUBST = "${TRAIN_ARGS} ${WATCHDOG_SECONDS} ${GIT_SHA}"
+SUBST = "${TRAIN_ARGS} ${WATCHDOG_SECONDS} ${GIT_SHA} ${TAR_SHA256}"
 
 # Variables the script expands AT RUNTIME. If rendering consumes any of them,
 # the generated launcher is silently wrong.
@@ -35,7 +35,7 @@ pytestmark = pytest.mark.skipif(shutil.which("envsubst") is None,
 def render(train_args: str = "--max-steps 3 --languages pidgin",
            watchdog: str = "2700", subst: str | None = SUBST) -> str:
     env = {**os.environ, "TRAIN_ARGS": train_args, "WATCHDOG_SECONDS": watchdog,
-           "GIT_SHA": "0" * 40}
+           "GIT_SHA": "0" * 40, "TAR_SHA256": "0" * 64}
     cmd = ["envsubst", subst] if subst is not None else ["envsubst"]
     return subprocess.run(cmd, stdin=LAUNCHER.open(), env=env,
                           capture_output=True, text=True, check=True).stdout
