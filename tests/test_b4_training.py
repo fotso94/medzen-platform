@@ -321,61 +321,79 @@ def test_verified_cache_loads_locally_with_no_network(monkeypatch, tmp_path):
 
 
 def test_corrupt_file_is_refused_even_though_it_exists(monkeypatch, tmp_path):
-    """Presence is not verification: a swapped or truncated file passes an
-    existence check and would train on the wrong weights."""
-    from unittest.mock import MagicMock, patch
+    """Verification must refuse, and refuse even after a refetch that also
+    returns bad bytes -- fail closed, never fall back, never loop."""
+    from unittest.mock import patch
+    import hashlib
     import pipeline.train_asr as T
     monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
-    local = tmp_path / "whisper-large-v3" / REV
-    local.mkdir(parents=True)
-    man = _seed_local(local, {"config.json": b"{}", "model.safetensors": b"weights"})
-    (local / "MANIFEST.json").write_text(json.dumps(man))
-    (local / "model.safetensors").write_bytes(b"TAMPERED")   # right name, wrong bytes
+    good = b"weights"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"config.json": {"sha256": hashlib.sha256(b"{}").hexdigest(), "bytes": 2},
+                     "model.safetensors": {"sha256": hashlib.sha256(good).hexdigest(),
+                                           "bytes": len(good)}}}
 
-    cli = MagicMock()
-    cli.get_object.return_value = {"Body": MagicMock(read=lambda: json.dumps(man).encode())}
-    with patch.object(T, "s3", return_value=cli):
+    def bad_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "config.json").write_bytes(b"{}")
+        (Path(local) / "model.safetensors").write_bytes(b"TAMPERED")
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", bad_sync):
         with pytest.raises(SystemExit) as e:
             T.base_model_source("openai/whisper-large-v3", REV)
     assert "failed verification" in str(e.value)
-    assert "model.safetensors" in str(e.value)
-
+    assert not (tmp_path / "whisper-large-v3" / REV).exists()
 
 def test_truncated_file_is_refused_on_size(monkeypatch, tmp_path):
-    from unittest.mock import MagicMock, patch
+    """Verification must refuse, and refuse even after a refetch that also
+    returns bad bytes -- fail closed, never fall back, never loop."""
+    from unittest.mock import patch
+    import hashlib
     import pipeline.train_asr as T
     monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
-    local = tmp_path / "whisper-large-v3" / REV
-    local.mkdir(parents=True)
-    man = _seed_local(local, {"config.json": b"{}", "model.safetensors": b"weights"})
-    (local / "MANIFEST.json").write_text(json.dumps(man))
-    (local / "model.safetensors").write_bytes(b"weig")       # truncated
+    good = b"weights"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"config.json": {"sha256": hashlib.sha256(b"{}").hexdigest(), "bytes": 2},
+                     "model.safetensors": {"sha256": hashlib.sha256(good).hexdigest(),
+                                           "bytes": len(good)}}}
 
-    cli = MagicMock()
-    cli.get_object.return_value = {"Body": MagicMock(read=lambda: json.dumps(man).encode())}
-    with patch.object(T, "s3", return_value=cli):
+    def bad_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "config.json").write_bytes(b"{}")
+        (Path(local) / "model.safetensors").write_bytes(b"weig")
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", bad_sync):
         with pytest.raises(SystemExit) as e:
             T.base_model_source("openai/whisper-large-v3", REV)
     assert "bytes, expected" in str(e.value)
-
+    assert not (tmp_path / "whisper-large-v3" / REV).exists()
 
 def test_missing_file_is_refused(monkeypatch, tmp_path):
-    from unittest.mock import MagicMock, patch
+    """Verification must refuse, and refuse even after a refetch that also
+    returns bad bytes -- fail closed, never fall back, never loop."""
+    from unittest.mock import patch
+    import hashlib
     import pipeline.train_asr as T
     monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
-    local = tmp_path / "whisper-large-v3" / REV
-    local.mkdir(parents=True)
-    man = _seed_local(local, {"config.json": b"{}", "model.safetensors": b"weights"})
-    (local / "MANIFEST.json").write_text(json.dumps(man))
-    (local / "model.safetensors").unlink()
+    good = b"weights"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"config.json": {"sha256": hashlib.sha256(b"{}").hexdigest(), "bytes": 2},
+                     "model.safetensors": {"sha256": hashlib.sha256(good).hexdigest(),
+                                           "bytes": len(good)}}}
 
-    cli = MagicMock()
-    cli.get_object.return_value = {"Body": MagicMock(read=lambda: json.dumps(man).encode())}
-    with patch.object(T, "s3", return_value=cli):
+    def bad_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "config.json").write_bytes(b"{}")
+        pass  # model.safetensors deliberately absent
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", bad_sync):
         with pytest.raises(SystemExit) as e:
             T.base_model_source("openai/whisper-large-v3", REV)
     assert "missing" in str(e.value)
-
+    assert not (tmp_path / "whisper-large-v3" / REV).exists()
 
 def test_image_forces_hub_offline():
     """The container must be unable to reach the Hub at all."""
@@ -391,3 +409,178 @@ def test_seeder_revision_matches_trainer_pin():
     t = re.search(r'BASE_REVISION = os\.environ\.get\("BASE_REVISION", "([0-9a-f]{40})"\)',
                   TRAIN.read_text())
     assert m.group(1) == t.group(1), "cache would hold weights the trainer does not pin"
+
+
+# --------------------------------------------------------------------------- #
+# training must work with NO Hub and NO network for the model
+# --------------------------------------------------------------------------- #
+@pytest.mark.slow
+def test_real_cache_loads_offline_from_s3(tmp_path, monkeypatch):
+    """End-to-end offline proof against the ACTUAL seeded cache.
+
+    Downloads the real 3.09 GB cache from S3, verifies every sha256, and loads
+    the processor from the local directory with HF_HUB_OFFLINE=1 set — so any
+    attempt to reach the Hub raises rather than silently succeeding. The mocked
+    tests prove the refusal logic; this proves a real checkpoint loads with the
+    Hub unreachable.
+    """
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    monkeypatch.setenv("HF_HUB_OFFLINE", "1")
+    monkeypatch.setenv("AWS_PROFILE", "medzen")
+
+    from pipeline.train_asr import BASE_REVISION, base_model_source
+    src = base_model_source("openai/whisper-large-v3", BASE_REVISION)
+    assert src.kwargs == {}
+    local = Path(src.path)
+    assert (local / "model.safetensors").stat().st_size == 3_087_130_976
+
+    from transformers import WhisperProcessor
+    proc = WhisperProcessor.from_pretrained(src.path)
+    assert proc.tokenizer is not None and proc.feature_extractor is not None
+    # the tokenizer must know the language tokens the trainer sets
+    proc.tokenizer.set_prefix_tokens(language="en", task="transcribe")
+
+
+# --------------------------------------------------------------------------- #
+# atomic download + provenance
+# --------------------------------------------------------------------------- #
+def _mock_cli(man):
+    """A mock S3 client that cannot hang.
+
+    list_objects_v2 must return a REAL dict: with a bare MagicMock,
+    r.get("IsTruncated") is a truthy mock and sync_down's pagination loop never
+    terminates -- which is how three of these tests wedged the suite for seven
+    minutes rather than failing.
+    """
+    from unittest.mock import MagicMock
+    cli = MagicMock()
+    cli.get_object.return_value = {"Body": MagicMock(read=lambda: json.dumps(man).encode())}
+    cli.list_objects_v2.return_value = {"Contents": [], "IsTruncated": False}
+    return cli
+
+
+def test_download_is_atomic_partial_never_visible(monkeypatch, tmp_path):
+    """A transfer that dies must leave nothing at the real path, or a later run
+    finds a plausible cache and either trusts it or refuses forever."""
+    from unittest.mock import patch
+    import pipeline.train_asr as T
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"model.safetensors": {"sha256": "a" * 64, "bytes": 7}}}
+    final = tmp_path / "whisper-large-v3" / REV
+
+    def dying_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "model.safetensors").write_bytes(b"part")   # short
+        raise RuntimeError("connection reset")
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", dying_sync):
+        with pytest.raises(RuntimeError):
+            T.base_model_source("openai/whisper-large-v3", REV)
+    assert not final.exists(), "a partial download became visible at the real path"
+
+
+def test_failed_verification_leaves_nothing_behind(monkeypatch, tmp_path):
+    from unittest.mock import patch
+    import pipeline.train_asr as T
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"model.safetensors": {"sha256": "a" * 64, "bytes": 7}}}
+    final = tmp_path / "whisper-large-v3" / REV
+
+    def bad_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "model.safetensors").write_bytes(b"1234567")   # right size, wrong bytes
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", bad_sync):
+        with pytest.raises(SystemExit):
+            T.base_model_source("openai/whisper-large-v3", REV)
+    assert not final.exists()
+    assert not list((tmp_path / "whisper-large-v3").glob("*.partial-*")), "scratch dir left behind"
+
+
+def test_corrupt_existing_cache_self_heals(monkeypatch, tmp_path):
+    """Fail-closed must not mean stuck: a bad local copy is refetched."""
+    from unittest.mock import patch
+    import hashlib
+    import pipeline.train_asr as T
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    good = b"real weights"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"model.safetensors":
+                     {"sha256": hashlib.sha256(good).hexdigest(), "bytes": len(good)}}}
+    final = tmp_path / "whisper-large-v3" / REV
+    final.mkdir(parents=True)
+    (final / "model.safetensors").write_bytes(b"TAMPERED!!!!")   # same length, wrong bytes
+
+    def good_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "model.safetensors").write_bytes(good)
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", good_sync):
+        src = T.base_model_source("openai/whisper-large-v3", REV)
+    assert (final / "model.safetensors").read_bytes() == good
+
+
+def test_stale_partial_dirs_are_cleaned(monkeypatch, tmp_path):
+    from unittest.mock import patch
+    import hashlib
+    import pipeline.train_asr as T
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    good = b"w"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"m": {"sha256": hashlib.sha256(good).hexdigest(), "bytes": 1}}}
+    root = tmp_path / "whisper-large-v3"
+    stale = root / f"{REV}.partial-99999"
+    stale.mkdir(parents=True)
+    (stale / "junk").write_bytes(b"x" * 100)
+
+    def good_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "m").write_bytes(good)
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", good_sync):
+        T.base_model_source("openai/whisper-large-v3", REV)
+    assert not stale.exists(), "abandoned scratch dir from a killed run was not cleaned"
+
+
+def test_provenance_is_recorded(monkeypatch, tmp_path):
+    """Cache URI, manifest digest and verified revision must be logged."""
+    from unittest.mock import patch
+    import hashlib
+    import pipeline.train_asr as T
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    good = b"w"
+    man = {"repo": "openai/whisper-large-v3", "revision": REV,
+           "files": {"m": {"sha256": hashlib.sha256(good).hexdigest(), "bytes": 1}}}
+    expect_sha = hashlib.sha256(json.dumps(man).encode()).hexdigest()
+
+    def good_sync(uri, local):
+        Path(local).mkdir(parents=True, exist_ok=True)
+        (Path(local) / "m").write_bytes(good)
+
+    with patch.object(T, "s3", return_value=_mock_cli(man)), \
+         patch.object(T, "sync_down", good_sync):
+        src = T.base_model_source("openai/whisper-large-v3", REV)
+    p = src.provenance()
+    assert p["base_source"] == "s3_cache"
+    assert p["base_cache_uri"].endswith(f"models/base/whisper-large-v3/{REV}")
+    assert p["base_manifest_sha256"] == expect_sha
+    assert p["base_revision_verified"] == REV
+    assert p["base_cache_files"] == 1
+
+
+def test_hub_provenance_is_distinguishable():
+    from pipeline.train_asr import base_model_source
+    p = base_model_source("openai/whisper-large-v3", REV, allow_hub=True).provenance()
+    assert p["base_source"] == "hf_hub" and p["base_cache_uri"] == ""
+
+
+def test_provenance_reaches_mlflow_and_run_json():
+    src = TRAIN.read_text()
+    assert src.count("**src.provenance()") == 2, \
+        "provenance must land in BOTH the MLflow params and run.json"

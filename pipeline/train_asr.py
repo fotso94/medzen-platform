@@ -227,6 +227,24 @@ class BaseSource(NamedTuple):
     """Where to load the base checkpoint from, and how to prove it is the pin."""
     path: str
     kwargs: dict
+    uri: str | None = None            # s3 cache prefix, None when loaded from the Hub
+    manifest_sha256: str | None = None
+    revision: str = ""
+    n_files: int = 0
+
+    def provenance(self) -> dict:
+        """What gets recorded in MLflow and run.json.
+
+        Without the manifest digest, "loaded from the cache at revision X" is
+        unfalsifiable after the fact: the cache could be re-seeded and every
+        past run would still claim the same thing. The digest pins which bytes
+        the manifest itself described.
+        """
+        return {"base_source": "s3_cache" if self.uri else "hf_hub",
+                "base_cache_uri": self.uri or "",
+                "base_manifest_sha256": self.manifest_sha256 or "",
+                "base_revision_verified": self.revision,
+                "base_cache_files": self.n_files}
 
 
 def sha256_file(p: Path) -> str:
@@ -256,13 +274,17 @@ def base_model_source(repo: str, rev: str, allow_hub: bool = False) -> BaseSourc
     cached SHA) and for a deliberate MEDZEN_ALLOW_HUB=1 override. Both are
     explicit choices, never a silent consequence of a broken cache.
     """
+    import hashlib
+    import shutil
+
     if allow_hub:
         print(f"  base model  Hub {repo}@{rev} (explicitly allowed)")
-        return BaseSource(repo, {"revision": rev})
+        return BaseSource(repo, {"revision": rev}, revision=rev)
 
     name = repo.split("/")[-1]
     uri = f"s3://{BUCKET}/models/base/{name}/{rev}"
-    local = Path(os.environ.get("MEDZEN_MODEL_DIR", "/tmp/medzen-base")) / name / rev
+    root = Path(os.environ.get("MEDZEN_MODEL_DIR", "/tmp/medzen-base")) / name
+    local = root / rev
 
     def refuse(why: str) -> None:
         raise SystemExit(
@@ -276,35 +298,55 @@ def base_model_source(repo: str, rev: str, allow_hub: bool = False) -> BaseSourc
     try:
         cli = s3()
         bucket, prefix = s3_uri_parts(uri)
-        man = json.loads(cli.get_object(Bucket=bucket,
-                                        Key=f"{prefix}/MANIFEST.json")["Body"].read())
+        raw = cli.get_object(Bucket=bucket, Key=f"{prefix}/MANIFEST.json")["Body"].read()
+        man = json.loads(raw)
     except Exception as e:
         refuse(f"no readable MANIFEST.json ({type(e).__name__}: {e})")
 
+    man_sha = hashlib.sha256(raw).hexdigest()
     if man.get("revision") != rev:
         refuse(f"manifest revision {man.get('revision')!r} != pinned {rev!r}")
 
-    if not (local / "MANIFEST.json").exists():
-        print(f"  base model  fetching {uri} -> {local}")
-        sync_down(uri, local)
+    def verify(d: Path) -> list[str]:
+        bad: list[str] = []
+        for rel, meta in sorted(man["files"].items()):
+            f = d / rel
+            if not f.exists():
+                bad.append(f"{rel}: missing")
+            elif f.stat().st_size != meta["bytes"]:
+                bad.append(f"{rel}: {f.stat().st_size} bytes, expected {meta['bytes']}")
+            elif (got := sha256_file(f)) != meta["sha256"]:
+                bad.append(f"{rel}: sha256 {got[:12]}, expected {meta['sha256'][:12]}")
+        return bad
+
+    # ATOMIC: download into a scratch directory, verify it there, and only then
+    # move it into place. A partial transfer must never be visible at the real
+    # path, or a later run finds a plausible-looking cache and either trusts it
+    # or refuses forever without self-healing. os.replace on the directory makes
+    # the switch a single filesystem operation.
+    if local.exists() and not verify(local):
+        print(f"  base model  {local} (already local, verified)")
     else:
-        print(f"  base model  {local} (already local)")
+        if local.exists():
+            print(f"  base model  {local} failed verification; refetching")
+            shutil.rmtree(local, ignore_errors=True)
+        for stale in root.glob(f"{rev}.partial-*"):       # abandoned by a killed run
+            shutil.rmtree(stale, ignore_errors=True)
+        tmp = root / f"{rev}.partial-{os.getpid()}"
+        shutil.rmtree(tmp, ignore_errors=True)
+        print(f"  base model  fetching {uri} -> {tmp}")
+        sync_down(uri, tmp)
+        bad = verify(tmp)
+        if bad:
+            shutil.rmtree(tmp, ignore_errors=True)        # never leave it behind
+            refuse(f"{len(bad)} file(s) failed verification: " + "; ".join(bad[:5]))
+        tmp.replace(local)
+        print(f"  base model  fetched and moved into {local}")
 
-    bad: list[str] = []
-    for rel, meta in sorted(man["files"].items()):
-        f = local / rel
-        if not f.exists():
-            bad.append(f"{rel}: missing")
-        elif f.stat().st_size != meta["bytes"]:
-            bad.append(f"{rel}: {f.stat().st_size} bytes, expected {meta['bytes']}")
-        elif (got := sha256_file(f)) != meta["sha256"]:
-            bad.append(f"{rel}: sha256 {got[:12]}, expected {meta['sha256'][:12]}")
-    if bad:
-        refuse(f"{len(bad)} file(s) failed verification: " + "; ".join(bad[:5]))
-
-    print(f"  base model  revision {rev} verified, "
-          f"{len(man['files'])} files sha256-checked, no network used")
-    return BaseSource(str(local), {})
+    print(f"  base model  revision {rev} verified, {len(man['files'])} files "
+          f"sha256-checked, manifest {man_sha[:12]}, no network used")
+    return BaseSource(str(local), {}, uri=uri, manifest_sha256=man_sha,
+                      revision=rev, n_files=len(man["files"]))
 
 
 def sync_down(uri: str, local: Path) -> Path:
@@ -454,6 +496,8 @@ def main() -> int:
         "dataset_fingerprint": fingerprint,
         "trainable_params": trainable, "total_params": total,
         "mix": mixinfo, "lang_tokens": LANG_TOKEN,
+        # where the base weights actually came from, and proof of which bytes
+        **src.provenance(),
     }
     run = start_run("asr-multilingual-lora",
                     f"lora-r{a.rank}-{'smoke' if a.smoke else 'full'}", params,
@@ -518,6 +562,7 @@ def main() -> int:
         "gpu_peak_mb": gpu_peak_mb, "gpu_name": gpu_name,
         "torch_version": torch.__version__, "cuda_version": torch.version.cuda,
         "device_used": device,
+        **src.provenance(),
     }, indent=2) + "\n")
     print(f"\n  adapter -> {a.out}")
     print(f"  loss {result.training_loss:.4f}  steps {result.global_step}  {wall:.0f}s")
