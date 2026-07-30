@@ -137,6 +137,7 @@ mkdir -p /opt/medzen-out /opt/medzen-cache
 docker run --rm --gpus all \
   -e AWS_REGION=eu-central-1 -e AWS_DEFAULT_REGION=eu-central-1 \
   -e MEDZEN_BUCKET=medzen-speech \
+  -e MEDZEN_IMAGE_DIGEST="$DIGEST" \
   -e MEDZEN_MODEL_DIR=/opt/medzen-base \
   -v /opt/medzen-out:/opt/medzen/artifacts \
   -v /opt/medzen-cache:/opt/medzen-base \
@@ -169,6 +170,7 @@ print(json.dumps({
     "base_source": run.get("base_source"),
     "base_cache_uri": run.get("base_cache_uri"),
     "base_manifest_sha256": run.get("base_manifest_sha256"),
+    "image_git_sha": run.get("image_git_sha"),
 }, indent=2))
 WRITE_RESULT
 cat /tmp/result.json

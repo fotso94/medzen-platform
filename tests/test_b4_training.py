@@ -584,3 +584,62 @@ def test_provenance_reaches_mlflow_and_run_json():
     src = TRAIN.read_text()
     assert src.count("**src.provenance()") == 2, \
         "provenance must land in BOTH the MLflow params and run.json"
+
+
+# --------------------------------------------------------------------------- #
+# run provenance: which artifact, from which commit
+# --------------------------------------------------------------------------- #
+def test_runtime_provenance_distinguishes_container_from_venv(monkeypatch):
+    from pipeline.train_asr import BaseSource
+    monkeypatch.setenv("MEDZEN_IMAGE_DIGEST", "sha256:" + "a" * 64)
+    monkeypatch.setenv("MEDZEN_GIT_SHA", "b" * 40)
+    p = BaseSource.runtime_provenance()
+    assert p["ran_in_container"] is True
+    assert p["image_digest"].startswith("sha256:")
+    assert p["image_git_sha"] == "b" * 40
+
+    monkeypatch.delenv("MEDZEN_IMAGE_DIGEST")
+    p = BaseSource.runtime_provenance()
+    assert p["ran_in_container"] is False, "no digest means the EC2 venv path"
+    assert p["image_digest"] == ""
+
+
+def test_provenance_reaches_mlflow_and_run_json_both():
+    src = TRAIN.read_text()
+    assert src.count("**BaseSource.runtime_provenance()") == 2, \
+        "artifact provenance must land in BOTH the MLflow params and run.json"
+
+
+def test_commit_is_baked_not_passed():
+    """An image told its own provenance can be told the wrong thing."""
+    df = (ROOT / "pipeline" / "Dockerfile.trainer").read_text()
+    assert "ARG GIT_SHA" in df and "ENV MEDZEN_GIT_SHA=$GIT_SHA" in df
+    # and below the expensive layers, or every commit invalidates the pip layer
+    assert df.index("RUN pip install -r requirements.txt") < df.index("ARG GIT_SHA")
+
+
+def test_build_verifies_the_baked_commit():
+    s = (ROOT / "pipeline" / "build_image.sh").read_text()
+    assert "--build-arg GIT_SHA=" in s
+    assert "printenv" in s and "MEDZEN_GIT_SHA" in s
+    assert "exit 37" in s, "a mismatched baked commit must fail the build"
+
+
+def test_launcher_passes_the_verified_digest_into_the_container():
+    s = (ROOT / "pipeline" / "container_userdata.sh").read_text()
+    assert '-e MEDZEN_IMAGE_DIGEST="$DIGEST"' in s
+    # and only after the pulled digest has been checked against the pin
+    assert s.index("DIGEST VERIFIED") < s.index('-e MEDZEN_IMAGE_DIGEST')
+
+
+def test_training_cannot_promote_to_approved():
+    """Promotion is B5 and manual. Nothing in the training path may write
+    approved/ or the SSM registry that gates serving."""
+    for f in (TRAIN, ROOT / "pipeline" / "container_entrypoint.sh"):
+        code = "\n".join(l for l in f.read_text().splitlines()
+                         if not l.lstrip().startswith("#"))
+        assert "approved/" not in code, f"{f.name} references approved/"
+    spec = (ROOT / "platform" / "services.yaml").read_text()
+    trainer = spec.split("  trainer:")[1].split("\n  builder:")[0]
+    assert "approved" not in trainer, "the trainer must have no approved/ grant"
+    assert "ssm:" not in trainer, "the trainer must not write the serving registry"

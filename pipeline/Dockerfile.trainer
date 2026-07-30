@@ -77,6 +77,16 @@ RUN bash pipeline/audit_python_deps.sh
 # checks themselves are shared with the EC2 path, so they cannot drift.
 RUN MODE=verify bash pipeline/bootstrap_trainer.sh /opt/medzen
 
+# The source commit is BAKED IN, not passed at run time: an image that is told
+# its own provenance can be told the wrong thing. The digest cannot be baked --
+# it is computed after the push -- so it is passed at run time, and the launcher
+# verifies the pulled digest against the pin before starting the container.
+#
+# Placed AFTER the pip layers deliberately: this value changes every commit, and
+# above them it would invalidate the ~4 GB requirements layer on every build.
+ARG GIT_SHA=unknown
+ENV MEDZEN_GIT_SHA=$GIT_SHA
+
 # Re-run at container start too. Build-time success proves the image was built
 # correctly; start-time success proves it still is on this host, with this
 # driver, and costs ~15s against a multi-hour training run.

@@ -82,6 +82,8 @@ def main() -> int:
     ap.add_argument("--instance", default=None)
     ap.add_argument("--expect-digest", default=None,
                     help="image digest the run must report (container preflight)")
+    ap.add_argument("--expect-commit", default=None,
+                    help="source commit the image must report as baked in")
     ap.add_argument("--expect-manifest", default=None,
                     help="base-model MANIFEST.json sha256 the run must report")
     a = ap.parse_args()
@@ -238,6 +240,15 @@ def main() -> int:
             f"reported={got} expected={a.expect_digest}")
         chk("ran in container", result.get("ran_in_container") is True,
             f"ran_in_container={result.get('ran_in_container')!r}")
+    # The commit is baked into the image, so the RUN's own record of it is the
+    # image describing itself rather than a launcher asserting it.
+    commit = runj.get("image_git_sha") or result.get("image_git_sha")
+    if a.expect_commit:
+        chk("image source commit matches", commit == a.expect_commit,
+            f"run.json image_git_sha={commit} expected={a.expect_commit}")
+    else:
+        chk("image source commit recorded", bool(commit) and len(str(commit)) == 40,
+            f"image_git_sha={commit!r}")
     src = result.get("base_source", runj.get("base_source"))
     man = result.get("base_manifest_sha256", runj.get("base_manifest_sha256"))
     chk("base model from the S3 cache", src == "s3_cache",

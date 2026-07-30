@@ -117,8 +117,15 @@ echo "using bundle pre-verified by the trusted wrapper: $SRC"
 TAG="$GIT_SHA"
 cd "$SRC" || { echo "FATAL: cannot cd $SRC"; exit 13; }
 echo "building $REPO:$TAG (native $(uname -m))"
-docker build -f pipeline/Dockerfile.trainer -t "$REPO:$TAG" . \
+docker build --build-arg GIT_SHA="$GIT_SHA" \
+  -f pipeline/Dockerfile.trainer -t "$REPO:$TAG" . \
   || { echo "FATAL: docker build"; exit 15; }
+
+# The baked value must be the commit we verified the bundle against.
+BAKED=$(docker run --rm --entrypoint printenv "$REPO:$TAG" MEDZEN_GIT_SHA 2>/dev/null)
+[ "$BAKED" = "$GIT_SHA" ] || {
+  echo "FATAL: image reports MEDZEN_GIT_SHA=$BAKED, expected $GIT_SHA"; exit 37; }
+echo "IMAGE PROVENANCE: MEDZEN_GIT_SHA=$BAKED baked in"
 
 docker image inspect "$REPO:$TAG" --format '{{.Size}}' | \
   awk '{printf "image size: %.2f GB\n", $1/1e9}'

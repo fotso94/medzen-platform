@@ -232,6 +232,22 @@ class BaseSource(NamedTuple):
     revision: str = ""
     n_files: int = 0
 
+    @staticmethod
+    def runtime_provenance() -> dict:
+        """What artifact produced this run, and from which commit.
+
+        MEDZEN_GIT_SHA is baked into the image at build time, so it describes
+        the image itself rather than what a launcher claimed. MEDZEN_IMAGE_DIGEST
+        is passed in, because a digest cannot be known until after the push --
+        but the launcher verifies the pulled digest against the pin before the
+        container starts, so what arrives here has already been checked.
+
+        Empty values mean this is the EC2 venv path, not a container.
+        """
+        return {"image_digest": os.environ.get("MEDZEN_IMAGE_DIGEST", ""),
+                "image_git_sha": os.environ.get("MEDZEN_GIT_SHA", ""),
+                "ran_in_container": bool(os.environ.get("MEDZEN_IMAGE_DIGEST"))}
+
     def provenance(self) -> dict:
         """What gets recorded in MLflow and run.json.
 
@@ -498,6 +514,8 @@ def main() -> int:
         "mix": mixinfo, "lang_tokens": LANG_TOKEN,
         # where the base weights actually came from, and proof of which bytes
         **src.provenance(),
+        # and which artifact, from which commit, produced this run
+        **BaseSource.runtime_provenance(),
     }
     run = start_run("asr-multilingual-lora",
                     f"lora-r{a.rank}-{'smoke' if a.smoke else 'full'}", params,
@@ -563,6 +581,7 @@ def main() -> int:
         "torch_version": torch.__version__, "cuda_version": torch.version.cuda,
         "device_used": device,
         **src.provenance(),
+        **BaseSource.runtime_provenance(),
     }, indent=2) + "\n")
     print(f"\n  adapter -> {a.out}")
     print(f"  loss {result.training_loss:.4f}  steps {result.global_step}  {wall:.0f}s")
