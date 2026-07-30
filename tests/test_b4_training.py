@@ -643,3 +643,61 @@ def test_training_cannot_promote_to_approved():
     trainer = spec.split("  trainer:")[1].split("\n  builder:")[0]
     assert "approved" not in trainer, "the trainer must have no approved/ grant"
     assert "ssm:" not in trainer, "the trainer must not write the serving registry"
+
+
+# --------------------------------------------------------------------------- #
+# MLflow provenance tags must not lie in a container
+# --------------------------------------------------------------------------- #
+def test_baked_commit_beats_absent_git(monkeypatch):
+    """A container has no .git, so asking git returned unknown/dirty and every
+    containerised run was tagged reproducible=False -- exactly inverted, since
+    publish_bundle refuses a dirty tree and the launcher verifies every file."""
+    import importlib
+    import pipeline.tracking as t
+    monkeypatch.setenv("MEDZEN_GIT_SHA", "c" * 40)
+    importlib.reload(t)
+    assert t.git_sha() == "c" * 40
+    assert t.git_dirty() is False
+    assert t.provenance_source() == "baked_image"
+
+
+def test_local_git_still_used_when_no_baked_commit(monkeypatch):
+    import importlib
+    import pipeline.tracking as t
+    monkeypatch.delenv("MEDZEN_GIT_SHA", raising=False)
+    importlib.reload(t)
+    assert t.provenance_source() == "local_git"
+    # a real sha here, or "unknown" outside a repo -- but never the baked value
+    assert t.git_sha() != "c" * 40
+
+
+def test_unknown_baked_value_is_not_trusted(monkeypatch):
+    """ARG GIT_SHA defaults to "unknown"; a build that failed to pass it must
+    not be reported as a clean baked provenance."""
+    import importlib
+    import pipeline.tracking as t
+    monkeypatch.setenv("MEDZEN_GIT_SHA", "unknown")
+    importlib.reload(t)
+    assert t.provenance_source() == "local_git"
+
+
+def test_provenance_source_tag_is_recorded():
+    src = TRACK.read_text()
+    assert '"provenance_source": provenance_source()' in src, \
+        "the tag must say which path supplied git_sha, or it is ambiguous"
+
+
+def test_resume_auto_explains_first_launch_versus_recovery():
+    """--resume auto without --resume-run is a usage error, and the message must
+    distinguish a first launch (pass neither) from a recovery (pass both)."""
+    src = TRAIN.read_text()
+    assert "A FIRST launch passes neither" in src
+    assert "A RECOVERY passes both" in src
+
+
+def test_resume_records_mlflow_lineage():
+    """A resumed run is a NEW MLflow run; without a link the chain from the
+    interrupted run is lost and the loss curve appears to start mid-training."""
+    src = TRAIN.read_text()
+    assert '"resumed_from": a.resume_run' in src
+    assert '"resume_checkpoint"' in src

@@ -65,6 +65,22 @@ def tracking_uri() -> str:
 
 
 def git_sha() -> str:
+    """The commit this code came from.
+
+    In a container there is no .git at all -- the bundle is `git archive` output
+    -- so asking git returns nothing and the run used to be tagged
+    git_sha=unknown, git_dirty=True, reproducible=False. That was exactly
+    inverted: the container is the MORE reproducible path, since
+    publish_bundle.py refuses a dirty tree and the launcher verifies the archive
+    hash and every file against BUNDLE.json before anything executes.
+
+    MEDZEN_GIT_SHA is baked into the image at build time and build_image.sh
+    fails unless it equals the commit the bundle was verified against, so it is
+    preferred over the local git query when present.
+    """
+    baked = os.environ.get("MEDZEN_GIT_SHA", "").strip()
+    if baked and baked != "unknown":
+        return baked
     try:
         return subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
                               capture_output=True, text=True).stdout.strip() or "unknown"
@@ -73,12 +89,28 @@ def git_sha() -> str:
 
 
 def git_dirty() -> bool:
+    """True only when the working tree really has uncommitted changes.
+
+    A baked commit means the code came from a clean-tree publish, verified
+    file-by-file. Reporting that as dirty because `git` is absent would make
+    every container run look unreproducible.
+    """
+    if os.environ.get("MEDZEN_GIT_SHA", "").strip() not in ("", "unknown"):
+        return False
     try:
         out = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT,
-                             capture_output=True, text=True).stdout.strip()
-        return bool(out)
+                             capture_output=True, text=True)
+        if out.returncode != 0:
+            return True            # git present but unhappy: assume the worst
+        return bool(out.stdout.strip())
     except Exception:
         return True
+
+
+def provenance_source() -> str:
+    """Which path supplied git_sha, so the tag is never ambiguous."""
+    baked = os.environ.get("MEDZEN_GIT_SHA", "").strip()
+    return "baked_image" if baked and baked != "unknown" else "local_git"
 
 
 def manifest_fingerprint(manifests: list[dict]) -> str:
@@ -101,6 +133,7 @@ def start_run(experiment: str, run_name: str, params: dict, tags: dict | None = 
         "git_sha": git_sha(),
         "git_dirty": str(git_dirty()),
         "reproducible": str(not git_dirty()),
+        "provenance_source": provenance_source(),
     }
     mlflow.set_tags({**base, **(tags or {})})
     # params must be flat for MLflow; nest into JSON where needed

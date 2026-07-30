@@ -541,11 +541,22 @@ def main() -> int:
     resume = a.resume
     if resume == "auto":
         if not a.resume_run:
-            raise SystemExit("--resume auto needs --resume-run <mlflow_run_id>")
+            raise SystemExit(
+                "--resume auto needs --resume-run <mlflow_run_id>.\n"
+                "  A FIRST launch passes neither: there is no prior run to resume from.\n"
+                "  A RECOVERY passes both, naming the interrupted run whose checkpoints\n"
+                "  are to be picked up.")
         found = latest_checkpoint(f"s3://{BUCKET}/candidates/asr/{a.resume_run}")
         if not found:
             print("  --resume auto: no checkpoint found, starting fresh")
         resume = found
+    # MLflow lineage: a resumed run is a NEW run, so without this the chain from
+    # the interrupted run to its continuation is lost and the loss curve looks
+    # like it starts mid-training for no reason.
+    if a.resume_run:
+        mlflow.set_tags({"resumed_from": a.resume_run,
+                         "resume_checkpoint": str(resume or "none")})
+        print(f"  lineage     resumed_from {a.resume_run}")
     if resume and str(resume).startswith("s3://"):
         resume = str(sync_down(resume, a.out / "resumed"))
 
