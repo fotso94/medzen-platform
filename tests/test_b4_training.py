@@ -750,3 +750,85 @@ def test_missing_tracking_db_fails_rather_than_skips():
     s = VERIFY.read_text()
     assert "no mlflow/db/" in s
     assert "if not db:" in s, "an absent tracking DB must fail the checks"
+
+
+# --------------------------------------------------------------------------- #
+# descent gate: a multi-hour run that never descends is expensive AND produces
+# a checkpoint someone might mistake for a trained model
+# --------------------------------------------------------------------------- #
+class _Args:
+    max_steps = 600
+
+
+class _State:
+    def __init__(self, step):
+        self.global_step = step
+
+
+def _feed(gate, losses, gate_step=100):
+    """Drive the callback as Trainer would, hitting gate_step on the last log."""
+    n = len(losses)
+    for i, l in enumerate(losses, 1):
+        gate.on_log(_Args(), _State(gate_step if i == n else i), None, logs={"loss": l})
+
+
+def test_descent_gate_passes_a_descending_loss():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=3)
+    _feed(g, [20, 19, 18, 10, 9, 8])
+    assert g.fired is True, "the gate must evaluate at the gate step"
+
+
+def test_descent_gate_aborts_a_rising_loss():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=3)
+    with pytest.raises(SystemExit) as e:
+        _feed(g, [10, 10, 10, 12, 13, 14])
+    msg = str(e.value)
+    assert "not descending" in msg
+    assert "LANG_TOKEN" in msg, "the message must point at the leading hypothesis"
+    assert "resumable" in msg, "and say the partial work is not lost"
+
+
+def test_descent_gate_aborts_a_flat_loss():
+    """Flat is not descending: 600 steps of no progress is still wasted."""
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=2)
+    with pytest.raises(SystemExit):
+        _feed(g, [7.0, 7.0, 7.0, 7.0])
+
+
+def test_descent_gate_aborts_on_non_finite():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=3)
+    with pytest.raises(SystemExit) as e:
+        _feed(g, [10, 9, 8, 7, float("nan"), 5])
+    assert "non-finite" in str(e.value)
+
+
+def test_descent_gate_compares_windows_not_single_points():
+    """Single-step losses are noisy enough that a point comparison would fire or
+    pass at random. A noisy but clearly descending series must pass."""
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=4)
+    _feed(g, [20, 25, 18, 22, 9, 13, 7, 11])   # last point > previous, trend down
+    assert g.fired is True
+
+
+def test_descent_gate_does_not_fire_before_its_step():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, window=2)
+    for i, l in enumerate([50, 60, 70, 80], 1):    # rising, but all below step 100
+        g.on_log(_Args(), _State(i), None, logs={"loss": l})
+    assert g.fired is False, "must not judge before the gate step"
+
+
+def test_descent_gate_is_attached_after_the_upload_callback():
+    """An abort must not pre-empt the checkpoint upload for the step it fires on."""
+    src = TRAIN.read_text()
+    # compare CALL sites within the callbacks assembly, not a def against a call
+    block = src[src.index("callbacks = [make_upload_callback"):src.index("callbacks=callbacks")]
+    assert block.index("make_upload_callback(run_prefix)") < block.index("make_descent_gate("), \
+        "the upload callback must be registered first"
+    assert "--descent-gate-step" in src
+    assert "a.descent_gate_step < a.max_steps" in src, "must not gate a run shorter than the gate"

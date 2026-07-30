@@ -424,12 +424,73 @@ def make_upload_callback(run_prefix: str):
     return UploadCheckpoint()
 
 
+def make_descent_gate(at_step: int, window: int = 5):
+    """Abort if the loss is not clearly descending by `at_step`.
+
+    The 14-language mix starts at a much higher loss than a three-language one
+    (23.26 vs 3.85 at step 3), which is plausible -- several of these languages
+    are ones Whisper handles badly zero-shot -- but plausible is not verified. A
+    multi-hour run that never descends is expensive and, worse, produces a
+    checkpoint someone might later mistake for a trained model.
+
+    This compares the mean of the first `window` logged losses against the mean
+    of the last `window` at the gate step, rather than two individual points:
+    single-step losses are noisy enough that a point comparison would fire or
+    pass at random. Raising SystemExit inside a callback propagates out of
+    Trainer.train(), so the launcher's EXIT trap still uploads the log and the
+    partial checkpoints.
+
+    A gate that fires is a signal to check the LANG_TOKEN mapping first: ten of
+    the fourteen languages train under an approximate token (akan/ewe/igbo -> yo,
+    acholi/luganda/fula/oromo -> sw), and a wrong mapping would look exactly
+    like this.
+    """
+    from transformers import TrainerCallback
+
+    class DescentGate(TrainerCallback):
+        def __init__(self):
+            self.losses: list[float] = []
+            self.fired = False
+
+        def on_log(self, args, state, control, logs=None, **kw):
+            if not logs or "loss" not in logs:
+                return control
+            self.losses.append(float(logs["loss"]))
+            if self.fired or state.global_step < at_step or len(self.losses) < 2 * window:
+                return control
+            self.fired = True
+            first = sum(self.losses[:window]) / window
+            last = sum(self.losses[-window:]) / window
+            import math as _m
+            finite = all(_m.isfinite(x) for x in self.losses)
+            print(f"\n  descent gate at step {state.global_step}: "
+                  f"first{window}={first:.4f} last{window}={last:.4f} "
+                  f"delta={last - first:+.4f} finite={finite}", flush=True)
+            if not finite:
+                raise SystemExit(
+                    f"ABORTING at step {state.global_step}: a non-finite loss was logged.")
+            if last >= first:
+                raise SystemExit(
+                    f"ABORTING at step {state.global_step}: smoothed loss is not "
+                    f"descending ({first:.4f} -> {last:.4f}).\n"
+                    "  Check the LANG_TOKEN mapping before spending more GPU time: ten of\n"
+                    "  fourteen languages train under an approximate Whisper token, and a\n"
+                    "  wrong mapping presents exactly this way.\n"
+                    "  Checkpoints written so far are in S3 and the run is resumable.")
+            print(f"  descent gate PASSED — continuing to {args.max_steps} steps", flush=True)
+            return control
+
+    return DescentGate()
+
+
 # --------------------------------------------------------------------------- #
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true",
                     help="3 steps on a handful of rows, CPU-friendly")
     ap.add_argument("--max-steps", type=int, default=600)
+    ap.add_argument("--descent-gate-step", type=int, default=100,
+                    help="abort if the smoothed loss is not descending by this step; 0 disables")
     ap.add_argument("--batch-size", type=int, default=2)
     ap.add_argument("--grad-accum", type=int, default=8)
     ap.add_argument("--lr", type=float, default=1e-3)
@@ -534,6 +595,11 @@ def main() -> int:
     )
     run_prefix = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}"
     callbacks = [make_upload_callback(run_prefix)] if a.push_s3 else []
+    # Ordered after the upload callback so the gate's abort cannot pre-empt the
+    # checkpoint upload for the step it fires on.
+    if a.descent_gate_step and a.descent_gate_step < a.max_steps:
+        callbacks.append(make_descent_gate(a.descent_gate_step))
+        print(f"  descent gate at step {a.descent_gate_step}")
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
                              data_collator=collate(processor),
                              callbacks=callbacks)
