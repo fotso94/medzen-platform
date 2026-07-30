@@ -131,6 +131,31 @@
       }
     },
     {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/models/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "models/*"
+          ]
+        }
+      }
+    },
+    {
       "Sid": "SseKmsFor9C336116C648",
       "Effect": "Allow",
       "Action": [
@@ -172,6 +197,17 @@
         "*"
       ],
       "Sid": "TrainingPlaneHasNoProductionModelAccess"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/models/*"
+      ],
+      "Sid": "BaseCheckpointsAreImmutableInputsWriteDen"
     }
   ]
 }

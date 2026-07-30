@@ -1,0 +1,55 @@
+# medzen-trainer — the validated B4 environment, baked.
+#
+# Why this image exists: the EC2 venv path installs ~4 GB from PyPI on every
+# start. That is paid again after every Spot interruption, which erodes exactly
+# the saving Spot is bought for. Here it is paid once, at build time.
+#
+# No CUDA base image. The torch wheels carry their own CUDA runtime, so a slim
+# Python base plus the host's driver (via nvidia-container-toolkit) is enough,
+# and it avoids stacking a second CUDA userspace that could disagree with the
+# one torch expects — which is the class of breakage that cost preflight
+# attempts 4 and 5 on the DLAMI.
+#
+# The base Whisper checkpoint is deliberately NOT baked in: it is cached in S3
+# under models/base/ and fetched at run time, so the image stays ~3 GB smaller
+# and the model can be re-pinned without a rebuild.
+#
+#   docker buildx build --platform linux/amd64 -f pipeline/Dockerfile.trainer .
+FROM python:3.12-slim-bookworm
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HUB_DISABLE_XET=1 \
+    MEDZEN_BUCKET=medzen-speech \
+    AWS_DEFAULT_REGION=eu-central-1
+
+# libsndfile is what soundfile/librosa read our 16 kHz mono wav through.
+# ffmpeg is deliberately omitted: the curated corpus is wav end to end
+# (verified by verify_corpus.py), and it would add ~100 MB for nothing.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libsndfile1 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/medzen
+
+# Requirements first: this layer is the expensive one and must not be
+# invalidated by a source change.
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+COPY pipeline ./pipeline
+COPY scripts ./scripts
+COPY registry ./registry
+COPY schemas ./schemas
+
+# The SAME gates the EC2 venv path runs — stale packages absent, pip check,
+# torch pin, import gate — executed at build time so a broken environment can
+# never reach ECR. MODE=verify skips venv creation and installation; the
+# checks themselves are shared with the EC2 path, so they cannot drift.
+RUN MODE=verify bash pipeline/bootstrap_trainer.sh /opt/medzen
+
+# Re-run at container start too. Build-time success proves the image was built
+# correctly; start-time success proves it still is on this host, with this
+# driver, and costs ~15s against a multi-hour training run.
+ENTRYPOINT ["bash", "/opt/medzen/pipeline/container_entrypoint.sh"]

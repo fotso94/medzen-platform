@@ -12,13 +12,19 @@
 # continue past a failure -- an environment that is wrong here produces
 # checkpoints that cannot be trusted.
 #
-#   bash pipeline/bootstrap_trainer.sh
+#   bash pipeline/bootstrap_trainer.sh                 # venv + install + verify
+#   MODE=verify bash pipeline/bootstrap_trainer.sh     # verify only
+#
+# MODE=verify exists so the container image runs the SAME gates as the EC2 venv
+# path -- at build time after pip install, and again at container start. Two
+# copies of these checks would drift; one file cannot.
 #
 # Exit codes are distinct so a launcher can report which stage failed:
 #   15 pip install   16 torch pin   17 imports   18 pip check   19 stale pkgs
 set -o pipefail
 
 ROOT="${1:-$(pwd)}"
+MODE="${MODE:-all}"
 REQ="$ROOT/requirements.txt"
 [ -f "$REQ" ] || { echo "FATAL: no requirements.txt at $REQ"; exit 15; }
 
@@ -33,6 +39,9 @@ REQ="$ROOT/requirements.txt"
 # A venv with no system site-packages removes the entire class: only the pinned
 # set exists. The GPU driver still comes from the AMI, which is the one thing
 # pip cannot supply; the CUDA runtime rides along in the torch wheels.
+if [ "$MODE" = verify ]; then
+  echo "--- verify-only: using the ambient interpreter $(which python) ($(python -V 2>&1)) ---"
+else
 VENV="${VENV:-/opt/medzen/venv}"
 BASEPY=""
 for c in /opt/pytorch/bin/python python3.12 python3; do
@@ -60,6 +69,7 @@ echo "VENV ISOLATED"
 # --- 2. install the pinned set ---------------------------------------------
 echo "--- installing pinned requirements ---"
 pip install -q -r "$REQ" || { echo "FATAL: pip install"; exit 15; }
+fi   # end install stage
 
 echo "--- resolved environment ---"
 pip list 2>/dev/null | grep -iE '^(torch|torchvision|torchaudio|transformers|peft|accelerate|mlflow|datasets|numpy|pyarrow) ' || true

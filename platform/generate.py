@@ -48,6 +48,10 @@ def arn_for(perm: dict, meta: dict) -> list[str]:
         return [f"arn:aws:ssm:{region}:{acct}:parameter{meta['registry_ssm_prefix']}/*"]
     if res == "secret":
         return [f"arn:aws:secretsmanager:{region}:{acct}:secret:{perm['name']}*"]
+    if res == "ecr":
+        # No trailing wildcard: a repository grant must name one repository.
+        # "repository/medzen-trainer*" would also match medzen-trainer-anything.
+        return [f"arn:aws:ecr:{region}:{acct}:repository/{perm['name']}"]
     if res == "bedrock":
         # both in-region model ARNs and the EU cross-region inference profile
         return [f"arn:aws:bedrock:{region}::foundation-model/*",

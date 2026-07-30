@@ -212,6 +212,10 @@ offline:
       # MLflow artifacts + the tracking DB must outlive a disposable spot box
       - {actions: [s3:GetObject, s3:PutObject], resource: data, path: "mlflow/*"}
       - {actions: [s3:ListBucket], resource: data, path: "mlflow/*"}
+      # Base checkpoints, cached once. READ ONLY: pulling from the Hub on every
+      # start is a rate-limitable 3 GB download, but training must never be
+      # able to rewrite the base weights it is fine-tuning from.
+      - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "models/*"}
     explicit_denies:
       # The isolation SageMaker sells, obtained for free by construction.
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",
@@ -220,3 +224,32 @@ offline:
          why: "training never holds production credentials"}
       - {actions: ["bedrock:*"], resource: "*",
          why: "training plane has no production model access"}
+      - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "models/*",
+         why: "base checkpoints are immutable inputs, write-denied like eval sets"}
+
+  builder:
+    role: >-
+      Builds the trainer container image and pushes it to ECR. Deliberately
+      separate from the trainer, because a training job must not be able to
+      overwrite the image it runs from, or any other service's image.
+    compute: ec2-on-demand
+    instance_type: c7i.2xlarge      # x86; the dev laptop is arm64 and would emulate
+    iam_role: medzen-builder-role
+    permissions:
+      - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "candidates/bootstrap/*"}
+      - {actions: [s3:GetObject, s3:PutObject], resource: data, path: "candidates/build/*"}
+      - {actions: [s3:ListBucket], resource: data, path: "candidates/build/*"}
+      - {actions: [ecr:GetAuthorizationToken], resource: "*"}
+      - {actions: [ecr:BatchCheckLayerAvailability, ecr:InitiateLayerUpload,
+                   ecr:UploadLayerPart, ecr:CompleteLayerUpload, ecr:PutImage,
+                   ecr:BatchGetImage, ecr:DescribeImages, ecr:DescribeImageScanFindings],
+         resource: ecr, name: medzen-trainer}
+    explicit_denies:
+      # The build plane touches exactly one repository. medzen-tts-gateway
+      # belongs to an unrelated project and is not ours to write to.
+      - {actions: ["ecr:*"], resource: ecr, name: medzen-tts-gateway,
+         why: "unrelated project's repository, explicitly out of scope"}
+      - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "curated/*",
+         why: "the build plane has no business writing corpus data"}
+      - {actions: ["secretsmanager:*"], resource: "*",
+         why: "image builds never hold production credentials"}

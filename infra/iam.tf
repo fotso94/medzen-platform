@@ -73,3 +73,24 @@ resource "aws_iam_instance_profile" "trainer" {
   name = "medzen-trainer-profile"
   role = aws_iam_role.trainer.name
 }
+
+# ---- builder (offline, EC2 image build) ------------------------------------
+# Separate from the trainer so a training job cannot overwrite the image it
+# runs from. The dev laptop is arm64, so building linux/amd64 there would mean
+# QEMU emulation of a ~10 GB CUDA image; an in-region x86 box builds natively
+# and pushes to ECR over the AWS network instead of a home uplink.
+resource "aws_iam_role" "builder" {
+  name               = "medzen-builder-role"
+  assume_role_policy = data.aws_iam_policy_document.trainer_trust.json # ec2 + sagemaker
+}
+
+resource "aws_iam_role_policy" "builder" {
+  name   = "medzen-builder-access"
+  role   = aws_iam_role.builder.id
+  policy = file("${local.iam_dir}/medzen-builder-role.json")
+}
+
+resource "aws_iam_instance_profile" "builder" {
+  name = "medzen-builder-profile"
+  role = aws_iam_role.builder.name
+}
