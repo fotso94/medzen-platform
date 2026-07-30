@@ -101,7 +101,9 @@ def main() -> int:
                                  capture_output=True, check=True).stdout
         (tmp / "archive.tar").write_bytes(archive)
         with tarfile.open(tmp / "archive.tar") as t:
-            t.extractall(src)
+            # filter="data" is the safe extraction policy and the default from
+            # Python 3.14; without it this warns now and breaks later.
+            t.extractall(src, filter="data")
 
         files = {}
         for p in sorted(x for x in src.rglob("*") if x.is_file()):
