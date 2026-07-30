@@ -21,8 +21,14 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     HF_HUB_DISABLE_XET=1 \
+    HF_HUB_OFFLINE=1 \
     MEDZEN_BUCKET=medzen-speech \
     AWS_DEFAULT_REGION=eu-central-1
+
+# HF_HUB_OFFLINE=1 above is a hard guarantee, not a preference: the base
+# checkpoint comes from the S3 cache with per-file sha256 verification, so any
+# attempt to reach the Hub at training time is a bug and must fail loudly
+# rather than quietly downloading 3 GB of unverified weights.
 
 # libsndfile is what soundfile/librosa read our 16 kHz mono wav through.
 # ffmpeg is deliberately omitted: the curated corpus is wav end to end

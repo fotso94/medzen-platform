@@ -17,7 +17,8 @@ cache that silently holds different weights than the pin claims is worse than
 no cache, in exactly the way a recorded-but-unenforced model revision was.
 
     python scripts/seed_base_model.py                      # seed if absent
-    python scripts/seed_base_model.py --verify             # check, upload nothing
+    python scripts/seed_base_model.py --verify             # sizes, upload nothing
+    python scripts/seed_base_model.py --verify --checksums # stream + hash every object
     python scripts/seed_base_model.py --force              # re-upload
 """
 from __future__ import annotations
@@ -73,6 +74,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--verify", action="store_true", help="report state, upload nothing")
     ap.add_argument("--force", action="store_true", help="re-upload even if present")
+    ap.add_argument("--checksums", action="store_true",
+                    help="stream every object from S3 and verify sha256 (slow, thorough)")
     a = ap.parse_args()
 
     c = cli()
@@ -88,8 +91,41 @@ def main() -> int:
         if existing.get("revision") != REVISION:
             print("  MISMATCH — the cached revision is not the pinned one")
             return 1
+
+        # Check the manifest against S3 rather than against itself. Sizes come
+        # from HeadObject and are cheap; --checksums additionally streams every
+        # object and hashes it, which is the only way to catch a file that is
+        # the right length but the wrong bytes.
+        problems: list[str] = []
+        for rel, meta in sorted(existing["files"].items()):
+            try:
+                head = c.head_object(Bucket=BUCKET, Key=f"{prefix()}/{rel}")
+            except Exception as e:
+                problems.append(f"{rel}: MISSING in S3 ({type(e).__name__})")
+                continue
+            if head["ContentLength"] != meta["bytes"]:
+                problems.append(f"{rel}: S3 has {head['ContentLength']} bytes, "
+                                f"manifest says {meta['bytes']}")
+            elif a.checksums:
+                h = hashlib.sha256()
+                body = c.get_object(Bucket=BUCKET, Key=f"{prefix()}/{rel}")["Body"]
+                for chunk in iter(lambda: body.read(1 << 22), b""):
+                    h.update(chunk)
+                got = h.hexdigest()
+                mark = "ok" if got == meta["sha256"] else "MISMATCH"
+                print(f"  {meta['bytes']/1e6:>9.1f} MB  {rel}  {got[:12]}  {mark}")
+                if got != meta["sha256"]:
+                    problems.append(f"{rel}: sha256 {got[:12]} != {meta['sha256'][:12]}")
+        if problems:
+            print(f"\n{len(problems)} PROBLEM(S) — cache is NOT usable:")
+            for p in problems:
+                print(f"  {p}")
+            return 1
+        print(f"  all {len(existing['files'])} objects present with correct sizes"
+              + (" and sha256" if a.checksums else " (sizes only; --checksums to hash)"))
+
         if not a.force:
-            print("\nOK — cache already holds the pinned revision (use --force to re-upload)")
+            print("\nOK — cache holds the pinned revision and verifies")
             return 0
     elif a.verify:
         print("NOT SEEDED — no MANIFEST.json at the target prefix")

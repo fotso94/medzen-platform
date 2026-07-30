@@ -229,48 +229,81 @@ class BaseSource(NamedTuple):
     kwargs: dict
 
 
-def base_model_source(repo: str, rev: str) -> BaseSource:
-    """Prefer the S3 cache; fall back to the Hub.
+def sha256_file(p: Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
-    The Hub path passes revision= so the pin is enforced by the library. The
-    cache path CANNOT: from_pretrained on a local directory ignores revision
-    entirely, so passing it would look like a pin while enforcing nothing --
-    the same trap as recording a revision without applying it. Instead the
-    cache carries a MANIFEST.json whose revision must equal the one asked for,
-    and this refuses to load if it does not.
+
+def base_model_source(repo: str, rev: str, allow_hub: bool = False) -> BaseSource:
+    """Resolve the base checkpoint. FAIL CLOSED: no automatic Hub fallback.
+
+    A fallback is worse than an error here. If the cache is missing, stale or
+    corrupt, falling back would silently train on weights nobody verified while
+    the run reported the pinned SHA -- and it would do so on every Spot
+    restart, unauthenticated, which is what the cache exists to stop.
+
+    from_pretrained on a LOCAL DIRECTORY ignores revision= entirely, so the
+    pin cannot be enforced by the library on the cache path. It is enforced
+    here instead: the manifest's revision must equal the requested one, and
+    every file must match its recorded size and sha256. Presence is not
+    enough; a truncated or swapped file passes an existence check.
+
+    allow_hub is for the laptop smoke test (SMOKE_REVISION is a branch, not a
+    cached SHA) and for a deliberate MEDZEN_ALLOW_HUB=1 override. Both are
+    explicit choices, never a silent consequence of a broken cache.
     """
-    if os.environ.get("MEDZEN_NO_MODEL_CACHE"):
+    if allow_hub:
+        print(f"  base model  Hub {repo}@{rev} (explicitly allowed)")
         return BaseSource(repo, {"revision": rev})
 
     name = repo.split("/")[-1]
     uri = f"s3://{BUCKET}/models/base/{name}/{rev}"
     local = Path(os.environ.get("MEDZEN_MODEL_DIR", "/tmp/medzen-base")) / name / rev
+
+    def refuse(why: str) -> None:
+        raise SystemExit(
+            f"REFUSING: base model cache unusable — {why}\n"
+            f"  cache: {uri}\n"
+            "  There is deliberately NO Hub fallback: it would train on\n"
+            "  unverified weights while reporting the pinned revision.\n"
+            "  Seed it:  python scripts/seed_base_model.py\n"
+            "  Override: MEDZEN_ALLOW_HUB=1 (deliberate, not for training runs)")
+
     try:
         cli = s3()
         bucket, prefix = s3_uri_parts(uri)
         man = json.loads(cli.get_object(Bucket=bucket,
                                         Key=f"{prefix}/MANIFEST.json")["Body"].read())
     except Exception as e:
-        print(f"  base cache  miss ({type(e).__name__}); loading from the Hub")
-        return BaseSource(repo, {"revision": rev})
+        refuse(f"no readable MANIFEST.json ({type(e).__name__}: {e})")
 
     if man.get("revision") != rev:
-        raise SystemExit(
-            f"REFUSING: cached base model at {uri} declares revision "
-            f"{man.get('revision')!r}, but this run pins {rev!r}.\n"
-            "  A local directory ignores revision=, so loading it would report "
-            "the pin while training on different weights.")
+        refuse(f"manifest revision {man.get('revision')!r} != pinned {rev!r}")
 
     if not (local / "MANIFEST.json").exists():
-        print(f"  base cache  {uri} -> {local}")
+        print(f"  base model  fetching {uri} -> {local}")
         sync_down(uri, local)
     else:
-        print(f"  base cache  {local} (already present)")
+        print(f"  base model  {local} (already local)")
 
-    missing = [f for f in man["files"] if not (local / f).exists()]
-    if missing:
-        raise SystemExit(f"REFUSING: cached base model incomplete, missing {missing[:5]}")
-    print(f"  base cache  revision {man['revision']} verified, {len(man['files'])} files")
+    bad: list[str] = []
+    for rel, meta in sorted(man["files"].items()):
+        f = local / rel
+        if not f.exists():
+            bad.append(f"{rel}: missing")
+        elif f.stat().st_size != meta["bytes"]:
+            bad.append(f"{rel}: {f.stat().st_size} bytes, expected {meta['bytes']}")
+        elif (got := sha256_file(f)) != meta["sha256"]:
+            bad.append(f"{rel}: sha256 {got[:12]}, expected {meta['sha256'][:12]}")
+    if bad:
+        refuse(f"{len(bad)} file(s) failed verification: " + "; ".join(bad[:5]))
+
+    print(f"  base model  revision {rev} verified, "
+          f"{len(man['files'])} files sha256-checked, no network used")
     return BaseSource(str(local), {})
 
 
@@ -396,7 +429,9 @@ def main() -> int:
 
     rev = SMOKE_REVISION if a.smoke else BASE_REVISION
     print(f"  revision    {rev}")
-    src = base_model_source(a.base_model, rev)
+    # Only the laptop smoke path or a deliberate override may touch the Hub.
+    allow_hub = bool(a.smoke or os.environ.get("MEDZEN_ALLOW_HUB"))
+    src = base_model_source(a.base_model, rev, allow_hub=allow_hub)
     processor = WhisperProcessor.from_pretrained(src.path, **src.kwargs)
     model = WhisperForConditionalGeneration.from_pretrained(src.path, **src.kwargs)
     model.config.forced_decoder_ids = None
