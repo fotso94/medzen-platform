@@ -55,7 +55,7 @@ for c in $ORDER; do
   lang=${c%%:*}; task=${c##*:}
   say ""
   say "═══ $lang / $task  ($(date '+%H:%M:%S')) ═══"
-  mark=$(wc -l < "$LOG")
+  mark=$(wc -l < "$LOG" | tr -d " ")   # macOS wc pads: strip or tail -n + breaks
 
   # setsid puts the child in a new process group; fall back to plain exec if
   # unavailable (then the group is the child's own pid anyway under set -m).
@@ -81,7 +81,8 @@ for c in $ORDER; do
     fi
   done
   wait "$pid" 2>/dev/null; rc=$?
-  tail_out=$(tail -n +"$mark" "$LOG")
+  tail_out=$(tail -n "+${mark:-1}" "$LOG" 2>/dev/null)
+  [ -z "$tail_out" ] && tail_out=$(tail -60 "$LOG")   # never classify on empty
 
   if [ "$timed_out" = "1" ]; then
     SLOW+=("$lang/$task")
