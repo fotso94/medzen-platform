@@ -25,6 +25,17 @@
           ]
         }
       }
+    },
+    {
+      "Sid": "SseKmsFor9C336116C648",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": [
+        "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+      ]
     }
   ]
 }

@@ -57,6 +57,44 @@ def arn_for(perm: dict, meta: dict) -> list[str]:
     raise ValueError(f"unknown resource shorthand: {res}")
 
 
+def kms_statements(perms: list[dict], meta: dict) -> list[dict]:
+    """Derive the SSE-KMS key grants implied by the S3 grants.
+
+    Both buckets use SSE-KMS with customer-managed keys, so an s3:GetObject
+    grant is inert without kms:Decrypt and s3:PutObject without
+    kms:GenerateDataKey. The resulting AccessDenied names the KMS action, not
+    the S3 one, so an S3-only policy review passes while every call fails.
+
+    Derived, not declared: writing these by hand per role is exactly the
+    omission that cost three preflight attempts, and it would recur for every
+    role added later. A key grant cannot be forgotten if nobody writes it.
+
+    Multipart uploads (checkpoints are large) need Decrypt as well as
+    GenerateDataKey, so a write grant implies both.
+    """
+    keys = meta.get("kms", {})
+    need: dict[str, set[str]] = {}
+    for p in perms:
+        arn = keys.get(p["resource"])
+        if not arn:
+            continue                                  # unencrypted or non-S3
+        actions = set(p["actions"])
+        if "s3:GetObject" in actions:
+            need.setdefault(arn, set()).add("kms:Decrypt")
+        if "s3:PutObject" in actions:
+            need.setdefault(arn, set()).update({"kms:GenerateDataKey", "kms:Decrypt"})
+    return [{"Sid": f"SseKmsFor{_sid(arn)}", "Effect": "Allow",
+             # DescribeKey lets the SDK resolve key state before a transfer;
+             # read-only metadata, no data-plane power.
+             "Action": sorted(acts | {"kms:DescribeKey"}), "Resource": [arn]}
+            for arn, acts in sorted(need.items())]     # sorted => idempotent output
+
+
+def _sid(key_arn: str) -> str:
+    """Stable Sid fragment from a key ARN (Sids allow only alphanumerics)."""
+    return key_arn.rsplit("/", 1)[-1].replace("-", "")[:12].title()
+
+
 def build_policy(perms: list[dict], denies: list[dict], meta: dict) -> dict:
     """Split each permission so object actions and ListBucket get correct ARNs,
     and constrain ListBucket to its prefix with a condition (a resource path
@@ -73,6 +111,7 @@ def build_policy(perms: list[dict], denies: list[dict], meta: dict) -> dict:
                 "Effect": "Allow", "Action": ["s3:ListBucket"],
                 "Resource": arn_for({**p, "actions": ["s3:ListBucket"]}, meta),
                 "Condition": {"StringLike": {"s3:prefix": [f"{prefix}*"]}}})
+    stmts.extend(kms_statements(perms, meta))
     for d in denies or []:
         stmts.append({"Effect": "Deny", "Action": d["actions"],
                       "Resource": arn_for(d, meta), "Sid": "".join(

@@ -29,6 +29,18 @@
       "Resource": [
         "arn:aws:ssm:eu-central-1:558069890522:parameter/medzen/registry/*"
       ]
+    },
+    {
+      "Sid": "SseKmsForD3C8D8Fab188",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": [
+        "arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda"
+      ]
     }
   ]
 }

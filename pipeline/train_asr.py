@@ -391,7 +391,15 @@ def main() -> int:
     result = trainer.train(resume_from_checkpoint=resume)
     wall = time.time() - t0
 
+    # Peak GPU memory MUST be read in the training process. A fresh process
+    # reports 0 because the allocator stats are per-process.
+    gpu_peak_mb = (round(torch.cuda.max_memory_allocated() / 1e6, 1)
+                   if torch.cuda.is_available() else 0.0)
+    gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else None
+    mlflow.set_tags({"gpu_name": str(gpu_name), "torch_version": torch.__version__,
+                     "cuda_version": str(torch.version.cuda)})
     mlflow.log_metrics({
+        "gpu_peak_mb": gpu_peak_mb,
         "train_loss": result.training_loss,
         "train_runtime_s": round(wall, 1),
         "steps": result.global_step,
@@ -401,9 +409,15 @@ def main() -> int:
     a.out.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(a.out)
     processor.save_pretrained(a.out)
+    import math as _math
     (a.out / "run.json").write_text(json.dumps({
         "mlflow_run_id": run.info.run_id, "dataset_fingerprint": fingerprint,
         "params": params, "train_loss": result.training_loss,
+        "loss_is_finite": bool(_math.isfinite(result.training_loss)),
+        "steps": result.global_step,
+        "gpu_peak_mb": gpu_peak_mb, "gpu_name": gpu_name,
+        "torch_version": torch.__version__, "cuda_version": torch.version.cuda,
+        "device_used": device,
     }, indent=2) + "\n")
     print(f"\n  adapter -> {a.out}")
     print(f"  loss {result.training_loss:.4f}  steps {result.global_step}  {wall:.0f}s")
