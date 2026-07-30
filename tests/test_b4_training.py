@@ -757,7 +757,8 @@ def test_missing_tracking_db_fails_rather_than_skips():
 # a checkpoint someone might mistake for a trained model
 # --------------------------------------------------------------------------- #
 class _Args:
-    max_steps = 600
+    def __init__(self, max_steps=600):
+        self.max_steps = max_steps
 
 
 class _State:
@@ -765,70 +766,111 @@ class _State:
         self.global_step = step
 
 
-def _feed(gate, losses, gate_step=100):
-    """Drive the callback as Trainer would, hitting gate_step on the last log."""
-    n = len(losses)
-    for i, l in enumerate(losses, 1):
-        gate.on_log(_Args(), _State(gate_step if i == n else i), None, logs={"loss": l})
+def drive(gate, losses_by_step, save_steps, max_steps=600):
+    """Drive the callback the way Trainer actually does.
+
+    Trainer LOGS BEFORE IT SAVES within a step, which is the whole reason the
+    abort moved to on_save; a test that only calls on_log cannot catch that.
+    Returns the step at which SystemExit was raised, or None.
+    """
+    args = _Args(max_steps)
+    saves = []
+    for step in sorted(losses_by_step):
+        try:
+            gate.on_log(args, _State(step), None, logs={"loss": losses_by_step[step]})
+        except SystemExit as e:
+            return step, "on_log", str(e), saves
+        if save_steps and step % save_steps == 0:
+            saves.append(step)          # the upload callback ran first
+            try:
+                gate.on_save(args, _State(step), None)
+            except SystemExit as e:
+                return step, "on_save", str(e), saves
+    return None, None, None, saves
 
 
-def test_descent_gate_passes_a_descending_loss():
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=3)
-    _feed(g, [20, 19, 18, 10, 9, 8])
-    assert g.fired is True, "the gate must evaluate at the gate step"
+REAL_LOG_EVERY = 10      # what main() sets for gate_step=100, GATE_WINDOW=5
+REAL_SAVE_EVERY = 100
 
 
-def test_descent_gate_aborts_a_rising_loss():
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=3)
-    with pytest.raises(SystemExit) as e:
-        _feed(g, [10, 10, 10, 12, 13, 14])
-    msg = str(e.value)
-    assert "not descending" in msg
-    assert "LANG_TOKEN" in msg, "the message must point at the leading hypothesis"
-    assert "resumable" in msg, "and say the partial work is not lost"
+def _series(f, upto=600, every=REAL_LOG_EVERY):
+    return {st: f(st) for st in range(every, upto + 1, every)}
 
 
-def test_descent_gate_aborts_a_flat_loss():
-    """Flat is not descending: 600 steps of no progress is still wasted."""
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=2)
-    with pytest.raises(SystemExit):
-        _feed(g, [7.0, 7.0, 7.0, 7.0])
-
-
-def test_descent_gate_aborts_on_non_finite():
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=3)
-    with pytest.raises(SystemExit) as e:
-        _feed(g, [10, 9, 8, 7, float("nan"), 5])
-    assert "non-finite" in str(e.value)
-
-
-def test_descent_gate_compares_windows_not_single_points():
-    """Single-step losses are noisy enough that a point comparison would fire or
-    pass at random. A noisy but clearly descending series must pass."""
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=4)
-    _feed(g, [20, 25, 18, 22, 9, 13, 7, 11])   # last point > previous, trend down
-    assert g.fired is True
-
-
-def test_descent_gate_does_not_fire_before_its_step():
-    from pipeline.train_asr import make_descent_gate
-    g = make_descent_gate(100, window=2)
-    for i, l in enumerate([50, 60, 70, 80], 1):    # rising, but all below step 100
-        g.on_log(_Args(), _State(i), None, logs={"loss": l})
-    assert g.fired is False, "must not judge before the gate step"
-
-
-def test_descent_gate_is_attached_after_the_upload_callback():
-    """An abort must not pre-empt the checkpoint upload for the step it fires on."""
+def test_logging_cadence_yields_ten_losses_by_step_100():
+    """The real bug: at the default cadence (600//20 = 30) the tenth loss did
+    not exist until step 300, so the gate evaluated there while claiming 100."""
     src = TRAIN.read_text()
-    # compare CALL sites within the callbacks assembly, not a def against a call
+    assert "log_every = min(log_every, max(1, a.descent_gate_step // (2 * GATE_WINDOW)))" in src
+    gate_step, window = 100, 5
+    log_every = min(600 // 20, max(1, gate_step // (2 * window)))
+    assert log_every == 10
+    losses_by_100 = len(range(log_every, gate_step + 1, log_every))
+    assert losses_by_100 >= 2 * window, f"only {losses_by_100} losses by step {gate_step}"
+
+
+def test_gate_evaluates_at_step_100_on_the_real_schedule():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
+    step, where, msg, saves = drive(g, _series(lambda st: 25.0 - st * 0.02),
+                                    REAL_SAVE_EVERY)
+    assert step is None, f"a descending run must not abort (aborted at {step})"
+    assert g.verdict is not None and g.verdict[0] is True
+    assert 100 in saves
+
+
+def test_abort_happens_on_save_after_the_checkpoint_not_on_log():
+    """Trainer logs before it saves, so raising from on_log kills the very
+    checkpoint that makes the abort recoverable."""
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
+    step, where, msg, saves = drive(g, _series(lambda st: 20.0 + st * 0.01),
+                                    REAL_SAVE_EVERY)
+    assert step == 100
+    assert where == "on_save", f"aborted from {where}; the checkpoint would be lost"
+    assert 100 in saves, "checkpoint-100 must have been written before the abort"
+    assert "not descending" in msg and "LANG_TOKEN" in msg
+
+
+def test_abort_is_immediate_when_no_checkpoint_step_remains():
+    """Deferring to a save that will never happen would let a doomed run finish."""
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, 1000, 600)          # no save at or before 600
+    step, where, msg, saves = drive(g, _series(lambda st: 20.0 + st * 0.01), 1000)
+    assert where == "on_log" and step == 100
+    assert "no checkpoint step remains" in msg
+
+
+def test_non_finite_aborts_on_the_real_schedule():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
+    ser = _series(lambda st: 20.0 - st * 0.05)
+    ser[70] = float("nan")
+    step, where, msg, saves = drive(g, ser, REAL_SAVE_EVERY)
+    assert step == 100 and "non-finite" in msg
+
+
+def test_gate_does_not_judge_before_its_step():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
+    for st in range(10, 100, 10):                  # rising, all below step 100
+        g.on_log(_Args(), _State(st), None, logs={"loss": 10.0 + st})
+    assert g.verdict is None, "must not judge before the gate step"
+
+
+def test_noisy_but_descending_passes():
+    from pipeline.train_asr import make_descent_gate
+    g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
+    noise = [0, +4, -3, +5, -2, +3, -4, +2, -1, +3]
+    ser = {st: 25.0 - st * 0.15 + noise[i] for i, st in enumerate(range(10, 101, 10))}
+    step, where, msg, saves = drive(g, ser, REAL_SAVE_EVERY, max_steps=600)
+    assert step is None, f"noisy descent must pass, aborted: {msg}"
+
+
+def test_descent_gate_registered_after_the_upload_callback():
+    src = TRAIN.read_text()
     block = src[src.index("callbacks = [make_upload_callback"):src.index("callbacks=callbacks")]
     assert block.index("make_upload_callback(run_prefix)") < block.index("make_descent_gate("), \
-        "the upload callback must be registered first"
+        "the upload callback must run first within a save"
     assert "--descent-gate-step" in src
-    assert "a.descent_gate_step < a.max_steps" in src, "must not gate a run shorter than the gate"
+    assert "a.descent_gate_step < a.max_steps" in src

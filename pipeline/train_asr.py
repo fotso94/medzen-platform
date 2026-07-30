@@ -424,60 +424,101 @@ def make_upload_callback(run_prefix: str):
     return UploadCheckpoint()
 
 
-def make_descent_gate(at_step: int, window: int = 5):
+GATE_WINDOW = 5          # losses per comparison window; see make_descent_gate
+
+
+def make_descent_gate(at_step: int, save_steps: int, max_steps: int,
+                      window: int = GATE_WINDOW):
     """Abort if the loss is not clearly descending by `at_step`.
 
     The 14-language mix starts at a much higher loss than a three-language one
     (23.26 vs 3.85 at step 3), which is plausible -- several of these languages
     are ones Whisper handles badly zero-shot -- but plausible is not verified. A
-    multi-hour run that never descends is expensive and, worse, produces a
-    checkpoint someone might later mistake for a trained model.
+    multi-hour run that never descends costs GPU hours AND leaves a checkpoint
+    someone might later mistake for a trained model.
 
-    This compares the mean of the first `window` logged losses against the mean
-    of the last `window` at the gate step, rather than two individual points:
-    single-step losses are noisy enough that a point comparison would fire or
-    pass at random. Raising SystemExit inside a callback propagates out of
-    Trainer.train(), so the launcher's EXIT trap still uploads the log and the
-    partial checkpoints.
+    Two timing subtleties, both found in review after a first version got them
+    wrong:
 
-    A gate that fires is a signal to check the LANG_TOKEN mapping first: ten of
-    the fourteen languages train under an approximate token (akan/ewe/igbo -> yo,
-    acholi/luganda/fula/oromo -> sw), and a wrong mapping would look exactly
-    like this.
+    1. The gate needs 2*window logged losses before it can compare anything. The
+       trainer logs every max_steps//20 steps -- 30 for a 600-step run -- so ten
+       losses did not exist until step 300, and the gate silently evaluated
+       there while claiming step 100. main() now tightens logging_steps so the
+       losses exist by `at_step`; this asserts that rather than assuming it.
+    2. Trainer logs BEFORE it saves within a step, so raising from on_log at the
+       gate step pre-empts the very checkpoint that makes the abort recoverable.
+       The verdict is therefore computed in on_log and raised from on_save, once
+       the checkpoint for that step has been uploaded. Registration order alone
+       does not achieve this: the upload runs in a different callback's on_save,
+       which never gets called if on_log has already raised.
+
+    Windows rather than points: single-step losses are noisy enough that
+    comparing two individual values would fire or pass at random.
     """
     from transformers import TrainerCallback
+
+    def next_save_at_or_after(step: int) -> int | None:
+        if save_steps <= 0:
+            return None
+        nxt = ((step + save_steps - 1) // save_steps) * save_steps
+        return nxt if nxt <= max_steps else None
 
     class DescentGate(TrainerCallback):
         def __init__(self):
             self.losses: list[float] = []
-            self.fired = False
+            self.verdict: tuple[bool, str] | None = None
+            self.done = False
+            # where the abort can safely happen, if it comes to that
+            self.abort_at = next_save_at_or_after(at_step)
 
-        def on_log(self, args, state, control, logs=None, **kw):
-            if not logs or "loss" not in logs:
-                return control
-            self.losses.append(float(logs["loss"]))
-            if self.fired or state.global_step < at_step or len(self.losses) < 2 * window:
-                return control
-            self.fired = True
+        def _judge(self, step: int) -> tuple[bool, str]:
+            import math as _m
             first = sum(self.losses[:window]) / window
             last = sum(self.losses[-window:]) / window
-            import math as _m
             finite = all(_m.isfinite(x) for x in self.losses)
-            print(f"\n  descent gate at step {state.global_step}: "
+            print(f"\n  descent gate at step {step}: "
                   f"first{window}={first:.4f} last{window}={last:.4f} "
-                  f"delta={last - first:+.4f} finite={finite}", flush=True)
+                  f"delta={last - first:+.4f} finite={finite} "
+                  f"({len(self.losses)} losses)", flush=True)
             if not finite:
-                raise SystemExit(
-                    f"ABORTING at step {state.global_step}: a non-finite loss was logged.")
+                return False, f"ABORTING at step {step}: a non-finite loss was logged."
             if last >= first:
-                raise SystemExit(
-                    f"ABORTING at step {state.global_step}: smoothed loss is not "
-                    f"descending ({first:.4f} -> {last:.4f}).\n"
+                return False, (
+                    f"ABORTING at step {step}: smoothed loss is not descending "
+                    f"({first:.4f} -> {last:.4f}).\n"
                     "  Check the LANG_TOKEN mapping before spending more GPU time: ten of\n"
                     "  fourteen languages train under an approximate Whisper token, and a\n"
                     "  wrong mapping presents exactly this way.\n"
                     "  Checkpoints written so far are in S3 and the run is resumable.")
-            print(f"  descent gate PASSED — continuing to {args.max_steps} steps", flush=True)
+            return True, f"  descent gate PASSED — continuing to {max_steps} steps"
+
+        def on_log(self, args, state, control, logs=None, **kw):
+            if self.done or not logs or "loss" not in logs:
+                return control
+            self.losses.append(float(logs["loss"]))
+            if self.verdict is not None:
+                return control
+            if state.global_step < at_step or len(self.losses) < 2 * window:
+                return control
+            self.verdict = self._judge(state.global_step)
+            # If no checkpoint will ever be written at or after this step, there
+            # is nothing to wait for and deferring would let a doomed run finish.
+            if not self.verdict[0] and self.abort_at is None:
+                self.done = True
+                raise SystemExit(self.verdict[1] +
+                                 "\n  (no checkpoint step remains; aborting immediately)")
+            return control
+
+        def on_save(self, args, state, control, **kw):
+            # Runs after the upload callback's on_save for the same step, so the
+            # checkpoint is already in S3 before an abort can happen.
+            if self.done or self.verdict is None:
+                return control
+            self.done = True
+            ok, msg = self.verdict
+            if not ok:
+                raise SystemExit(msg)
+            print(msg, flush=True)
             return control
 
     return DescentGate()
@@ -584,12 +625,21 @@ def main() -> int:
     print(f"  mlflow run {run.info.run_id}")
 
     ds = build_dataset(mix, cli, processor, ROOT / ".cache" / "audio")
+    # The descent gate needs 2*GATE_WINDOW logged losses by its step. At the
+    # default cadence (max_steps//20 = 30 for a 600-step run) the tenth loss does
+    # not exist until step 300, so the gate would evaluate there while claiming
+    # step 100. Tighten the cadence so the losses exist when the gate needs them.
+    log_every = max(1, a.max_steps // 20)
+    if a.descent_gate_step and a.descent_gate_step < a.max_steps:
+        log_every = min(log_every, max(1, a.descent_gate_step // (2 * GATE_WINDOW)))
+    print(f"  logging every {log_every} steps")
+
     args = Seq2SeqTrainingArguments(
         output_dir=str(a.out), per_device_train_batch_size=a.batch_size,
         gradient_accumulation_steps=a.grad_accum, learning_rate=a.lr,
         max_steps=a.max_steps, warmup_steps=min(50, a.max_steps // 10),
         bf16=use_bf16, gradient_checkpointing=False,
-        logging_steps=max(1, a.max_steps // 20), save_steps=a.save_steps,
+        logging_steps=log_every, save_steps=a.save_steps,
         save_total_limit=3, report_to=[], remove_unused_columns=False,
         dataloader_num_workers=0, seed=a.seed,
     )
@@ -598,8 +648,9 @@ def main() -> int:
     # Ordered after the upload callback so the gate's abort cannot pre-empt the
     # checkpoint upload for the step it fires on.
     if a.descent_gate_step and a.descent_gate_step < a.max_steps:
-        callbacks.append(make_descent_gate(a.descent_gate_step))
-        print(f"  descent gate at step {a.descent_gate_step}")
+        callbacks.append(make_descent_gate(a.descent_gate_step, a.save_steps, a.max_steps))
+        print(f"  descent gate at step {a.descent_gate_step} "
+              f"(aborts from on_save so the checkpoint survives)")
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
                              data_collator=collate(processor),
                              callbacks=callbacks)

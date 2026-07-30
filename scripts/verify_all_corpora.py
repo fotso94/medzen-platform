@@ -34,6 +34,7 @@ import concurrent.futures as cf
 import hashlib
 import io
 import json
+import pathlib
 import random
 import sys
 import time
@@ -51,6 +52,33 @@ def client():
 
 def key_of(uri: str) -> str:
     return uri.split(f"{BUCKET}/", 1)[1]
+
+
+def verifier_provenance() -> dict:
+    """Which code produced this record, and from which commit.
+
+    A verification record that does not say what produced it cannot be
+    reproduced or challenged later: "the corpus was verified" is only a claim
+    until you can point at the commit that checked it.
+    """
+    import subprocess
+    root = pathlib.Path(__file__).resolve().parent.parent
+
+    def git(*args):
+        try:
+            r = subprocess.run(["git", "-C", str(root), *args],
+                               capture_output=True, text=True)
+            return r.stdout.strip() if r.returncode == 0 else ""
+        except Exception:
+            return ""
+
+    src = pathlib.Path(__file__).read_bytes()
+    return {
+        "verifier": "scripts/verify_all_corpora.py",
+        "verifier_sha256": hashlib.sha256(src).hexdigest(),
+        "git_commit": git("rev-parse", "HEAD") or "unknown",
+        "git_dirty": bool(git("status", "--porcelain")),
+    }
 
 
 def manifests(cli) -> list[str]:
@@ -75,10 +103,15 @@ def expected_bytes(rec: dict) -> int:
     return int(rec["duration_s"] * rec["sample_rate"] * rec["channels"] * 2) + 44
 
 
-# duration_s is stored to 2dp, so +/-0.005s is +/-160 bytes at 16 kHz mono, and
-# wav headers vary with optional chunks. 4 KiB absorbs both; a truncated file is
-# wrong by far more.
+# The tolerance is max(4 KiB, 2% of expected) -- NOT a flat 4 KiB, which is what
+# an earlier comment claimed. 4 KiB absorbs wav header variation and the 2dp
+# rounding of duration_s (+/-0.005s is +/-160 bytes at 16 kHz mono); the 2% arm
+# dominates above ~200 KiB, i.e. clips longer than about 6 seconds, where it is
+# the looser of the two. Observed objects match exactly (delta 0), so this is
+# slack rather than necessity -- but it means the check would not catch a
+# truncation of under 2% on a long clip.
 SIZE_TOL_BYTES = 4096
+SIZE_TOL_FRAC = 0.02
 
 
 def check_existence(cli, rec: dict) -> list[str]:
@@ -93,7 +126,7 @@ def check_existence(cli, rec: dict) -> list[str]:
         bad.append(f"curated EMPTY {cur}")
     else:
         want = expected_bytes(rec)
-        if abs(got - want) > max(SIZE_TOL_BYTES, int(want * 0.02)):
+        if abs(got - want) > max(SIZE_TOL_BYTES, int(want * SIZE_TOL_FRAC)):
             bad.append(f"SIZE {cur}: s3={got} expected~{want} "
                        f"({rec['duration_s']}s @ {rec['sample_rate']}Hz x{rec['channels']})")
     raw = rec.get("raw_filepath")
@@ -170,6 +203,7 @@ def main() -> int:
 
     record = {
         "recorded_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "provenance": verifier_provenance(),
         "tiers": {
             "existence": ("every row: curated object present, non-empty, size consistent with "
                           "duration x rate x channels; raw artifact present; raw checksum recorded"),
@@ -187,9 +221,11 @@ def main() -> int:
     for key in keys:
         _, lang, task, cfg, ver, _ = key.split("/")
         name = f"{lang}/{task}/{cfg}/{ver}"
-        rows = [json.loads(l) for l in
-                cli.get_object(Bucket=BUCKET, Key=key)["Body"].read().decode().splitlines()
-                if l.strip()]
+        raw_manifest = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+        # Bind the record to the EXACT manifest bytes: a corpus re-ingested or a
+        # manifest edited after this run must not appear to inherit its result.
+        manifest_sha = hashlib.sha256(raw_manifest).hexdigest()
+        rows = [json.loads(l) for l in raw_manifest.decode().splitlines() if l.strip()]
         by_split = {}
         for r in rows:
             by_split.setdefault(r["split"], []).append(r)
@@ -209,6 +245,7 @@ def main() -> int:
 
         record["corpora"][name] = {
             "manifest": f"s3://{BUCKET}/{key}",
+            "manifest_sha256": manifest_sha,
             "rows": len(rows),
             "splits": {k: len(v) for k, v in sorted(by_split.items())},
             "existence_checked": len(rows),
