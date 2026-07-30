@@ -516,20 +516,39 @@ def test_completion_record_no_longer_claims_adoption():
     assert 'comp.get("adopted")' not in s
 
 
-def test_no_adoption_record_exists_yet():
-    """v2 must stay blocked until an ADOPTION.json is separately reviewed."""
+def test_published_adoption_binds_what_it_approved():
+    """v2 is now adopted for the B4 experiment. The record must bind the RAW
+    completion bytes and the deferral policy actually in force -- an adoption
+    floating free of both would approve whatever the bucket happens to hold."""
+    import hashlib
+    import json as _json
+
     import boto3
     import botocore
     try:
         cli = boto3.Session(profile_name="medzen", region_name="eu-central-1").client("s3")
-        cli.head_object(Bucket="medzen-speech",
-                        Key="curated/_versions/v2/ADOPTION.json")
-        raise AssertionError("an ADOPTION.json exists; v2 should still be blocked")
-    except botocore.exceptions.ClientError:
-        pass          # expected: it does not exist
+        adopt = _json.loads(cli.get_object(
+            Bucket="medzen-speech",
+            Key="curated/_versions/v2/ADOPTION.json")["Body"].read())
+        comp_raw = cli.get_object(
+            Bucket="medzen-speech",
+            Key="curated/_versions/v2/COMPLETE.json")["Body"].read()
     except (botocore.exceptions.NoCredentialsError,
-            botocore.exceptions.ProfileNotFound):
-        pytest.skip("no AWS credentials in this environment")
+            botocore.exceptions.ProfileNotFound,
+            botocore.exceptions.ClientError):
+        pytest.skip("no AWS access in this environment")
+
+    assert adopt["status"] == "approved"
+    assert adopt["complete_raw_sha256"] == hashlib.sha256(comp_raw).hexdigest()
+
+    policy = (ROOT / "platform/decisions/DQ-2026-002-policy-deferral.json").read_bytes()
+    assert adopt["deferral_policy_sha256"] == hashlib.sha256(policy).hexdigest()
+    assert adopt["deferred_rows"] == 20
+    # it approves a corpus; it does not claim anyone reviewed the deferred rows
+    assert adopt["human_review_performed"] is False
+    assert adopt["independent_human_approval_claimed"] is False
+    assert adopt["scope"]["promotion_permitted"] is False
+    assert adopt["scope"]["eval_permitted"] is False
 
 
 def test_porcelain_first_path_is_not_truncated(tmp_path, monkeypatch):
