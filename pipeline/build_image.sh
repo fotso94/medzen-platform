@@ -176,33 +176,105 @@ aws ecr describe-image-scan-findings --repository-name medzen-trainer \
   --image-id imageDigest="$DIGEST" > /tmp/scan.json 2>&1 \
   || { echo "FATAL: cannot read scan findings"; exit 33; }
 
-# Thresholds. CRITICAL is zero and is not negotiable for an image that will
-# process consented health-related speech. HIGH also defaults to zero so the
-# first build REPORTS the real base-image count rather than having a number
-# guessed for it; raising it is a deliberate decision made with findings in hand.
+# Thresholds stay at ZERO. Findings are excluded only by NAMED, JUSTIFIED,
+# EXPIRING exception in platform/cve_allowlist.json -- never by raising a
+# threshold, which would also hide the next finding nobody has seen yet.
+#
+# An exception stops applying the moment a fix exists: every justification rests
+# on "there is nothing to upgrade to", so if fixed_in_version appears the waiver
+# is void and the build fails until the image is rebuilt.
 SCAN_MAX_CRITICAL="${SCAN_MAX_CRITICAL:-0}"
 SCAN_MAX_HIGH="${SCAN_MAX_HIGH:-0}"
-python3 /dev/stdin "$SCAN_MAX_CRITICAL" "$SCAN_MAX_HIGH" <<'CHECK_SCAN'
-import json, sys
-max_crit, max_high = int(sys.argv[1]), int(sys.argv[2])
+ALLOWLIST="$SRC/platform/cve_allowlist.json"
+[ -f "$ALLOWLIST" ] || { echo "FATAL: no CVE allowlist at $ALLOWLIST"; exit 36; }
+python3 /dev/stdin "$SCAN_MAX_CRITICAL" "$SCAN_MAX_HIGH" "$ALLOWLIST" <<'CHECK_SCAN'
+import datetime, json, sys
+
+max_crit, max_high, allow_path = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+today = datetime.date.today()
+
+allow = json.load(open(allow_path))
+waivers = {e["cve"]: e for e in allow["entries"]}
+
 d = json.load(open("/tmp/scan.json"))
 fi = d.get("imageScanFindings", {})
-counts = fi.get("findingSeverityCounts") or fi.get("enhancedFindingSeverityCounts") or {}
-print("SCAN SEVERITY COUNTS:", json.dumps(counts))
-crit, high = counts.get("CRITICAL", 0), counts.get("HIGH", 0)
+findings = fi.get("findings") or fi.get("enhancedFindings") or []
+print("SCAN SEVERITY COUNTS:",
+      json.dumps(fi.get("findingSeverityCounts")
+                 or fi.get("enhancedFindingSeverityCounts") or {}))
+print(f"allowlist: {len(waivers)} entries, review_by {allow.get('review_by')}")
+
+waived, unwaived, invalid = [], [], []
+for f in findings:
+    cve = f.get("name")
+    sev = f.get("severity")
+    attrs = {a["key"]: a["value"] for a in f.get("attributes", [])}
+    pkg, fix = attrs.get("package_name"), attrs.get("fixed_in_version")
+    w = waivers.get(cve)
+    if not w:
+        unwaived.append((sev, cve, pkg, fix))
+        continue
+    # A fix now exists: the justification no longer holds.
+    if fix:
+        invalid.append((sev, cve, pkg, f"FIX NOW AVAILABLE ({fix}) -- waiver void"))
+        continue
+    if datetime.date.fromisoformat(w["expires"]) < today:
+        invalid.append((sev, cve, pkg, f"waiver EXPIRED {w['expires']}"))
+        continue
+    if w.get("package") != pkg:
+        invalid.append((sev, cve, pkg, f"waiver names package {w.get('package')!r}"))
+        continue
+    waived.append((sev, cve, pkg))
+
+print(f"\nwaived by allowlist ({len(waived)}):")
+for sev, cve, pkg in sorted(waived):
+    print(f"  {sev:<9} {cve:<18} {pkg}  (reachable="
+          f"{str(waivers[cve].get('reachable')).lower()}, expires {waivers[cve]['expires']})")
+
+stale = sorted(set(waivers) - {c for _, c, _ in waived} - {c for _, c, _, _ in invalid})
+if stale:
+    print(f"\nnote: {len(stale)} allowlist entries not present in this scan "
+          f"(candidates for removal): {', '.join(stale)}")
+
+fail = False
+if invalid:
+    print(f"\nINVALID WAIVERS ({len(invalid)}) -- these do NOT count as waived:")
+    for sev, cve, pkg, why in sorted(invalid):
+        print(f"  {sev:<9} {cve:<18} {pkg}  {why}")
+    fail = True
+
+counts = {}
+for sev, cve, pkg, fix in unwaived:
+    counts[sev] = counts.get(sev, 0) + 1
+if unwaived:
+    print(f"\nNOT WAIVED ({len(unwaived)}):")
+    for sev, cve, pkg, fix in sorted(unwaived):
+        print(f"  {sev:<9} {cve:<18} {pkg}  fix={fix or 'none'}")
+
+# Count invalid waivers alongside unwaived findings, and SAY so: a message
+# reading "CRITICAL 0 unwaived > 0" is how a real failure gets misread as a bug
+# in the gate.
 over = []
-if crit > max_crit:
-    over.append(f"CRITICAL {crit} > {max_crit}")
-if high > max_high:
-    over.append(f"HIGH {high} > {max_high}")
+for sev, limit in (("CRITICAL", max_crit), ("HIGH", max_high)):
+    n_unwaived = counts.get(sev, 0)
+    n_invalid = sum(1 for i in invalid if i[0] == sev)
+    if n_unwaived + n_invalid > limit:
+        parts = []
+        if n_unwaived:
+            parts.append(f"{n_unwaived} unwaived")
+        if n_invalid:
+            parts.append(f"{n_invalid} with an invalid waiver")
+        over.append(f"{sev}: {' + '.join(parts)} > limit {limit}")
 if over:
-    print("SCAN THRESHOLD EXCEEDED: " + "; ".join(over))
-    for f in (fi.get("findings") or fi.get("enhancedFindings") or [])[:20]:
-        sev = f.get("severity", "?")
-        name = f.get("name") or f.get("title") or "?"
-        print(f"  {sev:<9} {name}")
+    print("\nSCAN THRESHOLD EXCEEDED")
+    for o in over:
+        print(f"  {o}")
     sys.exit(1)
-print("SCAN THRESHOLDS OK")
+if fail:
+    print("\nSCAN GATE FAILED: invalid waivers present (see above)")
+    sys.exit(1)
+print(f"\nSCAN THRESHOLDS OK: {len(waived)} finding(s) waived by named exception, "
+      f"0 unwaived above threshold")
 CHECK_SCAN
 SCAN_RC=$?
 

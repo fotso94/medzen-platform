@@ -34,7 +34,7 @@ BUCKET = "medzen-speech"
 PROFILE = "medzen"
 REGION = "eu-central-1"
 PREFIX = "candidates/bootstrap"   # per-commit subpath: PREFIX/<full 40-char sha>/
-PATHS = ["pipeline", "scripts", "registry", "schemas", "requirements.txt"]
+PATHS = ["pipeline", "scripts", "registry", "schemas", "platform", "requirements.txt"]
 
 ROOT = Path(__file__).resolve().parent.parent
 
