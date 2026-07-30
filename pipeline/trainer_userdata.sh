@@ -2,8 +2,8 @@
 # EC2 user-data for a trainer host. Version-controlled: every line here is a
 # lesson from B4 preflight attempts 1-5, and none of it should be retyped.
 #
-#   TRAIN_ARGS="--max-steps 3 ..." WATCHDOG_SECONDS=2700 \
-#     envsubst '${TRAIN_ARGS} ${WATCHDOG_SECONDS}' < this > /tmp/ud.sh
+#   TRAIN_ARGS="--max-steps 3 ..." WATCHDOG_SECONDS=2700 GIT_SHA=<40-char sha> \
+#     envsubst '${TRAIN_ARGS} ${WATCHDOG_SECONDS} ${GIT_SHA}' < this > /tmp/ud.sh
 #   bash -n /tmp/ud.sh && aws ec2 run-instances --user-data file:///tmp/ud.sh ...
 #
 # The envsubst ARGUMENT LIST IS MANDATORY. Bare `envsubst` substitutes every
@@ -60,8 +60,8 @@ finish() {
   aws s3 cp /var/log/medzen-trainer.log "$S3/preflight.log" || true
   aws s3 cp /tmp/exit_code "$S3/exit_code" || true
   [ -f /tmp/result.json ] && aws s3 cp /tmp/result.json "$S3/result.json" || true
-  [ -f /opt/medzen/artifacts/asr-lora/run.json ] && \
-    aws s3 cp /opt/medzen/artifacts/asr-lora/run.json "$S3/run.json" || true
+  [ -f /opt/medzen/src/artifacts/asr-lora/run.json ] && \
+    aws s3 cp /opt/medzen/src/artifacts/asr-lora/run.json "$S3/run.json" || true
   shutdown -h now
 }
 trap finish EXIT                      # rule 2: before anything that can fail
@@ -87,16 +87,41 @@ case "$out" in
   *) echo "FATAL: eval write failed for the WRONG reason: $out"; exit 26 ;;
 esac
 
-mkdir -p /opt/medzen && cd /opt/medzen
-aws s3 cp s3://medzen-speech/candidates/bootstrap/medzen_code.tgz . || { echo "FATAL: code fetch"; exit 11; }
-tar xzf medzen_code.tgz || { echo "FATAL: untar"; exit 12; }
+# Per-commit bundle path, and the bundle is verified before it is trusted --
+# the same guarantee the image build gets. A shared "latest" key would let this
+# box run different code than was reviewed.
+BUNDLE_SHA="${GIT_SHA}"
+[ ${#BUNDLE_SHA} -eq 40 ] || { echo "FATAL: GIT_SHA must be 40 chars, got '${BUNDLE_SHA}'"; exit 31; }
+BUNDLE_BASE="s3://medzen-speech/candidates/bootstrap/$BUNDLE_SHA"
+rm -rf /opt/medzen && mkdir -p /opt/medzen/src && cd /opt/medzen
+aws s3 cp "$BUNDLE_BASE/medzen_code.tgz" . || { echo "FATAL: code fetch"; exit 11; }
+aws s3 cp "$BUNDLE_BASE/BUNDLE.json" /tmp/BUNDLE.json || { echo "FATAL: no BUNDLE.json"; exit 31; }
+tar xzf medzen_code.tgz -C /opt/medzen/src || { echo "FATAL: untar"; exit 12; }
+python3 /dev/stdin "$BUNDLE_SHA" <<'VERIFY_BUNDLE' || { echo "FATAL: bundle verification"; exit 32; }
+import hashlib, json, pathlib, sys
+man = json.loads(pathlib.Path("/tmp/BUNDLE.json").read_text())
+root = pathlib.Path("/opt/medzen/src")
+if man["git_sha"] != sys.argv[1]:
+    print(f"MISMATCH: bundle {man['git_sha']} != requested {sys.argv[1]}"); sys.exit(1)
+on_disk = {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
+declared = set(man["files"])
+if on_disk != declared:
+    print(f"FILE SET MISMATCH: missing {sorted(declared-on_disk)[:5]} "
+          f"unexpected {sorted(on_disk-declared)[:5]}"); sys.exit(1)
+bad = [rel for rel, m in man["files"].items()
+       if hashlib.sha256((root/rel).read_bytes()).hexdigest() != m["sha256"]]
+if bad:
+    print(f"{len(bad)} file(s) failed sha256: {bad[:5]}"); sys.exit(1)
+print(f"BUNDLE VERIFIED: {man['git_sha']}, {len(declared)} files")
+VERIFY_BUNDLE
+cd /opt/medzen/src
 
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader | tee /tmp/gpu.txt \
   || { echo "FATAL: nvidia-smi"; exit 14; }
 
 # Environment setup lives in version control, not here. Its exit codes name the
 # failing stage (15 install, 16 pin, 17 imports, 18 pip check, 19 stale pkgs).
-bash /opt/medzen/pipeline/bootstrap_trainer.sh /opt/medzen
+bash /opt/medzen/src/pipeline/bootstrap_trainer.sh /opt/medzen/src
 BOOT_RC=$?
 [ $BOOT_RC -eq 0 ] || { echo "FATAL: bootstrap failed rc=$BOOT_RC"; exit $BOOT_RC; }
 
@@ -115,7 +140,7 @@ echo "TRAIN_RC=$TRAIN_RC"
 python - "$TRAIN_RC" <<'PY' > /tmp/result.json
 import json, sys, pathlib
 rc = int(sys.argv[1])
-rj = pathlib.Path("/opt/medzen/artifacts/asr-lora/run.json")
+rj = pathlib.Path("/opt/medzen/src/artifacts/asr-lora/run.json")
 run = json.loads(rj.read_text()) if rj.exists() else {}
 print(json.dumps({
     "train_exit_code": rc,

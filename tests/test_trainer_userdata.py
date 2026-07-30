@@ -21,7 +21,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 LAUNCHER = ROOT / "pipeline" / "trainer_userdata.sh"
 BOOTSTRAP = ROOT / "pipeline" / "bootstrap_trainer.sh"
-SUBST = "${TRAIN_ARGS} ${WATCHDOG_SECONDS}"
+SUBST = "${TRAIN_ARGS} ${WATCHDOG_SECONDS} ${GIT_SHA}"
 
 # Variables the script expands AT RUNTIME. If rendering consumes any of them,
 # the generated launcher is silently wrong.
@@ -34,7 +34,8 @@ pytestmark = pytest.mark.skipif(shutil.which("envsubst") is None,
 
 def render(train_args: str = "--max-steps 3 --languages pidgin",
            watchdog: str = "2700", subst: str | None = SUBST) -> str:
-    env = {**os.environ, "TRAIN_ARGS": train_args, "WATCHDOG_SECONDS": watchdog}
+    env = {**os.environ, "TRAIN_ARGS": train_args, "WATCHDOG_SECONDS": watchdog,
+           "GIT_SHA": "0" * 40}
     cmd = ["envsubst", subst] if subst is not None else ["envsubst"]
     return subprocess.run(cmd, stdin=LAUNCHER.open(), env=env,
                           capture_output=True, text=True, check=True).stdout
@@ -105,6 +106,18 @@ def test_trap_is_installed_before_anything_that_can_fail() -> None:
     """Attempts 1-3 uploaded nothing because the credential check ran first."""
     text = LAUNCHER.read_text()
     trap = text.index("trap finish EXIT")
-    for later in ("get-caller-identity", "aws s3 cp s3://medzen-speech/candidates/bootstrap",
-                  "bootstrap_trainer.sh"):
+    for later in ("get-caller-identity", "BUNDLE_BASE=", "bootstrap_trainer.sh"):
         assert text.index(later) > trap, f"{later!r} runs before the EXIT trap"
+
+
+def test_launcher_verifies_the_bundle_before_bootstrapping():
+    text = LAUNCHER.read_text()
+    assert "BUNDLE VERIFIED" in text
+    assert text.index("BUNDLE VERIFIED") < text.index("bootstrap_trainer.sh")
+    assert "FILE SET MISMATCH" in text, "extra files must fail, not just missing ones"
+
+
+def test_launcher_requires_a_full_sha_bundle_path():
+    text = LAUNCHER.read_text()
+    assert 'BUNDLE_BASE="s3://medzen-speech/candidates/bootstrap/$BUNDLE_SHA"' in text
+    assert "${#BUNDLE_SHA} -eq 40" in text
