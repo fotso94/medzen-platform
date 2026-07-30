@@ -166,6 +166,10 @@ print(json.dumps({
     "steps": run.get("steps"),
     "mlflow_run_id": run.get("mlflow_run_id"),
     "dataset_fingerprint": run.get("dataset_fingerprint"),
+    # Surfaced here as well as in run.json: this summary is what a reviewer
+    # reads first, and "which rows were removed, under which policy" must not
+    # require opening a second file to answer.
+    "deferral": run.get("deferral"),
     "base_revision": (run.get("params") or {}).get("base_revision"),
     "base_source": run.get("base_source"),
     "base_cache_uri": run.get("base_cache_uri"),
