@@ -43,15 +43,10 @@ BASE_MODEL = os.environ.get("BASE_MODEL", "openai/whisper-large-v3")
 BASE_REVISION = os.environ.get("BASE_REVISION", "06f233fe06e710322aca913c1bc4249a0d71fce1")
 SMOKE_REVISION = os.environ.get("SMOKE_REVISION", "main")
 
-# Whisper decoder tokens. Languages with no token train under the closest
-# usable one; Pidgin uses `en` per the B3 experiment (provisional).
-LANG_TOKEN = {
-    "amharic": "am", "hausa": "ha", "lingala": "ln", "shona": "sn",
-    "swahili": "sw", "yoruba": "yo",
-    "pidgin": "en",                       # B3: en_token, provisional
-    "acholi": "sw", "luganda": "sw", "fula": "sw",   # Bantu/regional neighbours
-    "akan": "yo", "ewe": "yo", "igbo": "yo", "oromo": "sw",
-}
+# Language -> Whisper token. Defined in pipeline/languages.py so the mapping can
+# be imported without importing the trainer; re-exported here because it is part
+# of this module's long-standing interface.
+from pipeline.languages import LANG_TOKEN  # noqa: E402
 
 
 def boto_session():
@@ -90,25 +85,104 @@ def list_manifests(cli) -> list[str]:
 
 
 def load_mix(cli, temperature: float, seed: int,
-             languages: list[str] | None) -> list[dict]:
-    """Build the training mix with temperature sampling.
+             languages: list[str] | None, version: str = "v1",
+             require_use: str = "asr_train") -> tuple[list[dict], dict]:
+    """Build the training mix with temperature sampling. FAILS CLOSED.
+
+    Three refusals, each of which was a real hole:
+
+    * allowed_use is enforced. It is required by the manifest schema, was set at
+      ingest, and was checked by nothing -- so an ASR run silently trained on
+      2,305 TTS-licensed rows. A row must carry `require_use` explicitly; there
+      is no default-permit.
+    * exactly one manifest version. Mixing versions means a fingerprint that
+      describes no single state of the corpus, and a v1 row and its v2
+      counterpart differ only in metadata, so a mixed mix double-counts audio.
+    * duplicate rows are rejected. The same audio appearing twice silently
+      reweights a language relative to the temperature schedule.
+
+    Returns (mix, provenance) where provenance records the exact manifest
+    versions and hashes the mix was built from, so a run can state what it read.
 
     p_i proportional to n_i**temperature. At 0.5 a corpus ten times larger is
-    sampled ~3x more, not 10x — otherwise the biggest language dominates and
+    sampled ~3x more, not 10x -- otherwise the biggest language dominates and
     the smallest ones contribute nothing.
     """
+    import hashlib
+
     per_lang: dict[str, list[dict]] = {}
-    for key in list_manifests(cli):
-        _, lang, task, _cfg, _v, _ = key.split("/")
+    sources: dict[str, dict] = {}
+    rejected = {"wrong_split": 0, "not_permitted": 0}
+    seen: dict[str, str] = {}
+    duplicates: list[str] = []
+
+    # A version is only usable if its migration COMPLETED. The completion record
+    # is written last, so its absence means an interrupted migration -- and a
+    # half-written version must never be mistaken for a finished one.
+    comp_key = f"curated/_versions/{version}/COMPLETE.json"
+    try:
+        comp = json.loads(cli.get_object(Bucket=BUCKET, Key=comp_key)["Body"].read())
+    except Exception as e:
+        raise SystemExit(
+            f"REFUSING: no completion record at s3://{BUCKET}/{comp_key} "
+            f"({type(e).__name__}). Version {version!r} is not adopted; a migration "
+            "that did not finish must not be trained from.")
+    if comp.get("adopted") is not True:
+        raise SystemExit(
+            f"REFUSING: version {version!r} is published but NOT ADOPTED "
+            f"(adopted={comp.get('adopted')!r}). Adoption is a reviewed decision, "
+            "not a side effect of the files existing.")
+
+    keys = [k for k in list_manifests(cli) if f"/{version}/manifest.jsonl" in k]
+    if not keys:
+        raise SystemExit(f"REFUSING: no manifests found at version {version!r}")
+    other = [k for k in list_manifests(cli) if f"/{version}/manifest.jsonl" not in k]
+    other_versions = sorted({k.split("/")[4] for k in other})
+
+    for key in keys:
+        _, lang, task, cfg, ver, _ = key.split("/")
+        if ver != version:
+            raise SystemExit(f"REFUSING: mixed manifest versions ({ver} vs {version})")
         if languages and lang not in languages:
             continue
-        body = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read().decode()
-        rows = [json.loads(l) for l in body.splitlines() if l.strip()]
-        rows = [r for r in rows if r["split"] == "train"]
-        for r in rows:
+        body = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+        sha = hashlib.sha256(body).hexdigest()
+        label = f"{lang}/{task}/{cfg}"
+        # Every manifest must match the hash the completion record vouches for.
+        declared = (comp.get("manifests") or {}).get(label, {}).get("sha256")
+        if declared is None:
+            raise SystemExit(f"REFUSING: {label} is not listed in {comp_key}")
+        if declared != sha:
+            raise SystemExit(
+                f"REFUSING: {label} sha256 {sha[:16]} does not match the "
+                f"{declared[:16]} recorded in {comp_key}; the manifest changed "
+                "after the migration completed.")
+        sources[label] = {"key": key, "version": ver, "manifest_sha256": sha}
+        for line in body.decode().splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            if r.get("split") != "train":
+                rejected["wrong_split"] += 1
+                continue
+            if require_use not in (r.get("allowed_use") or []):
+                rejected["not_permitted"] += 1
+                continue
+            sha = r["audio_checksum_sha256"]
+            if sha in seen:
+                duplicates.append(f"{sha[:16]} in {seen[sha]} and {lang}/{task}")
+                continue
+            seen[sha] = f"{lang}/{task}"
             r["_lang"] = lang
             r["_task"] = task
-        per_lang.setdefault(lang, []).extend(rows)
+            per_lang.setdefault(lang, []).append(r)
+
+    if duplicates:
+        raise SystemExit(f"REFUSING: {len(duplicates)} duplicate row(s) across "
+                         f"corpora, e.g. {duplicates[:3]}")
+    if not per_lang:
+        raise SystemExit(f"REFUSING: no rows permit {require_use!r} at version "
+                         f"{version!r}; nothing to train on")
 
     counts = {k: len(v) for k, v in per_lang.items()}
     weights = {k: n ** temperature for k, n in counts.items()}
@@ -125,7 +199,20 @@ def load_mix(cli, temperature: float, seed: int,
         # sample with replacement only if the target exceeds what exists
         mix += [pool[i % len(pool)] for i in range(n)]
     rng.shuffle(mix)
-    return mix
+
+    provenance = {
+        "manifest_version": version,
+        "require_allowed_use": require_use,
+        "manifests": sources,
+        "eligible_rows": target,
+        "rejected": rejected,
+        "other_versions_present_but_unused": other_versions,
+    }
+    print(f"  manifests   {len(sources)} at version {version}; "
+          f"eligible rows {target}; rejected "
+          f"{rejected['not_permitted']} not permitted, "
+          f"{rejected['wrong_split']} wrong split")
+    return mix, provenance
 
 
 def report_mix(mix: list[dict]) -> dict:
@@ -432,6 +519,27 @@ class CheckpointStatus:
         return max(self.confirmed) if self.confirmed else None
 
 
+def load_exclusions(ref: str) -> dict[str, dict]:
+    """Load a reviewed exclusion list: checksum -> {reason, category, decided}.
+
+    An exclusion is a recorded decision about a specific row, not a runtime
+    convenience. It carries a category so a data defect and a deferred
+    model-limit incompatibility are never conflated in the record.
+    """
+    if ref.startswith("s3://"):
+        b, k = s3_uri_parts(ref)
+        raw = s3().get_object(Bucket=b, Key=k)["Body"].read()
+    else:
+        raw = Path(ref).read_bytes()
+    doc = json.loads(raw)
+    out = {e["audio_checksum_sha256"]: e for e in doc["exclusions"]}
+    print(f"  exclusions  {len(out)} row(s) from {doc.get('list_id', ref)} "
+          f"({doc.get('status')})")
+    if doc.get("status") != "approved":
+        raise SystemExit(f"REFUSING: exclusion list {doc.get('list_id')} is not approved")
+    return out
+
+
 def make_upload_callback(run_prefix: str, status: "CheckpointStatus | None" = None):
     from transformers import TrainerCallback
 
@@ -610,6 +718,12 @@ def main() -> int:
     ap.add_argument("--smoke", action="store_true",
                     help="3 steps on a handful of rows, CPU-friendly")
     ap.add_argument("--max-steps", type=int, default=600)
+    ap.add_argument("--manifest-version", default="v1",
+                    help="exactly one curated manifest version to train from")
+    ap.add_argument("--require-allowed-use", default="asr_train",
+                    help="a row must declare this in allowed_use to be eligible")
+    ap.add_argument("--exclusions", default=None,
+                    help="path or s3:// URI of a reviewed exclusion list")
     ap.add_argument("--descent-gate-step", type=int, default=100,
                     help="abort if the smoothed loss is not descending by this step; 0 disables")
     ap.add_argument("--batch-size", type=int, default=2)
@@ -645,11 +759,13 @@ def main() -> int:
     cli = s3()
     print(f"base model  {a.base_model}")
     print("building mix...")
-    mix = load_mix(cli, a.temperature, a.seed, a.languages)
+    mix, mix_provenance = load_mix(cli, a.temperature, a.seed, a.languages,
+                                   version=a.manifest_version,
+                                   require_use=a.require_allowed_use)
     if a.smoke:
         mix = mix[:6]
     mixinfo = report_mix(mix)
-    fingerprint = manifest_fingerprint(mix)
+    fingerprint = manifest_fingerprint(mix)   # provisional; recomputed after filtering
     print(f"  dataset fingerprint {fingerprint[:16]}")
 
     device = ("cuda" if torch.cuda.is_available()
@@ -674,6 +790,51 @@ def main() -> int:
     src = base_model_source(a.base_model, rev, allow_hub=allow_hub)
     processor = WhisperProcessor.from_pretrained(src.path, **src.kwargs)
     model = WhisperForConditionalGeneration.from_pretrained(src.path, **src.kwargs)
+    # Label length is checked with the SHARED prefix-aware function, so the
+    # audit, this guard and the tests cannot disagree. Rows are NOT dropped
+    # dynamically: a run must train on a reviewed, explicitly listed set, or
+    # refuse. Silently shrinking the corpus at runtime is how two runs quoting
+    # the same fingerprint end up having trained on different data.
+    from pipeline.label_length import label_lengths
+
+    max_labels = model.config.max_target_positions
+    excluded = load_exclusions(a.exclusions) if a.exclusions else {}
+    over = []
+    for rec in mix:
+        _raw, eff = label_lengths(processor.tokenizer, rec["text_normalized"],
+                                  rec["_lang"])
+        if eff > max_labels:
+            over.append((rec, eff))
+
+    unlisted = [(r, n) for r, n in over
+                if r["audio_checksum_sha256"] not in excluded]
+    if unlisted:
+        lines = "\n".join(
+            f"    {n:>5} tokens  {r['_lang']:<9} "
+            f"sha256={r['audio_checksum_sha256'][:16]}"
+            for r, n in sorted(unlisted, key=lambda x: -x[1])[:10])
+        raise SystemExit(
+            f"REFUSING: {len(unlisted)} row(s) exceed the decoder limit of "
+            f"{max_labels} label tokens and are not in a reviewed exclusion list.\n"
+            f"{lines}\n"
+            "  Dropping them here would silently change the training set. Review "
+            "them\n  (scripts/audit_label_lengths.py) and either add them to an "
+            "exclusion list\n  with a recorded reason, or re-segment them at "
+            "ingest. Do not truncate labels.")
+
+    if excluded:
+        before = len(mix)
+        mix = [r for r in mix if r["audio_checksum_sha256"] not in excluded]
+        print(f"  exclusions  {before - len(mix)} row(s) removed per "
+              f"{a.exclusions}")
+        mixinfo = report_mix(mix)
+        fingerprint = manifest_fingerprint(mix)
+        print(f"  dataset fingerprint {fingerprint[:16]} (after exclusions)")
+
+    # UNCONDITIONAL. An earlier edit left this inside `if excluded:`, so a run
+    # without an exclusion list never cleared the forced decoder tokens -- the
+    # model would emit a fixed prefix regardless of the language token set per
+    # row, silently training against the wrong targets.
     model.config.forced_decoder_ids = None
     model.config.suppress_tokens = []
 
@@ -694,6 +855,8 @@ def main() -> int:
         "dataset_fingerprint": fingerprint,
         "trainable_params": trainable, "total_params": total,
         "mix": mixinfo, "lang_tokens": LANG_TOKEN,
+        # exactly which manifests, at which version, with which hashes
+        "manifest_provenance": mix_provenance,
         # where the base weights actually came from, and proof of which bytes
         **src.provenance(),
         # and which artifact, from which commit, produced this run
@@ -790,6 +953,7 @@ def main() -> int:
         "gpu_peak_mb": gpu_peak_mb, "gpu_name": gpu_name,
         "torch_version": torch.__version__, "cuda_version": torch.version.cuda,
         "device_used": device,
+        "manifest_provenance": mix_provenance,
         **src.provenance(),
         **BaseSource.runtime_provenance(),
     }, indent=2) + "\n")

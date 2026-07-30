@@ -990,3 +990,20 @@ def test_sync_up_returns_the_keys_it_uploaded():
     """The uploader cannot verify what it does not know it wrote."""
     src = TRAIN.read_text()
     assert "keys.append(key)" in src and "return keys" in src
+
+
+# --------------------------------------------------------------------------- #
+# over-length labels — policy now lives in tests/test_b4_policy.py, which tests
+# the REFUSAL behaviour functionally. What remains here is the fingerprint
+# invariant, which is about recording rather than policy.
+# --------------------------------------------------------------------------- #
+def test_fingerprint_is_recomputed_when_the_mix_changes():
+    """The fingerprint must describe what was trained on, not what was selected
+    before exclusions -- otherwise two runs quoting the same fingerprint trained
+    on different data, which is exactly what it exists to prevent."""
+    src = TRAIN.read_text()
+    excl = src.index("if excluded:")
+    recompute = src.index("fingerprint = manifest_fingerprint(mix)", excl)
+    params = src.index('"dataset_fingerprint": fingerprint')
+    assert excl < recompute < params, \
+        "the fingerprint must be recomputed after exclusions and before it is logged"

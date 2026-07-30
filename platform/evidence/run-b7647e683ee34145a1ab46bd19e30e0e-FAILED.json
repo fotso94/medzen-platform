@@ -1,0 +1,40 @@
+{
+  "record_type": "failed_training_run",
+  "mlflow_run_id": "b7647e683ee34145a1ab46bd19e30e0e",
+  "status": "FAILED",
+  "recorded_utc": "2026-07-30T16:55:20Z",
+  "phase": "B4 first full training attempt",
+  "failure": {
+    "category": "data_incompatibility",
+    "step": 59,
+    "of_max_steps": 600,
+    "error": "ValueError: Labels' sequence length 536 cannot exceed the maximum allowed length of 448 tokens",
+    "cause": "One training transcript tokenises to 536 label tokens against Whisper's max_target_positions of 448. Lazy audio/label loading means a 3-step preflight touches ~48 of 4,619 rows, so no preflight could have found it.",
+    "not_a_loss_problem": true,
+    "descent_gate_reached": false
+  },
+  "resumability": {
+    "resumable": false,
+    "reason": "died at step 59; the first checkpoint is at step 100",
+    "checkpoint_objects_in_s3": 0,
+    "mlflow_db_objects_in_s3": 0
+  },
+  "artifact": {
+    "image_digest": "sha256:f66d3fbdda243e83419a01bf4218291c99bdd51e3992814d6da6e4d975a35e74",
+    "image_git_sha": "d5b9cb02a629f1b40a0ba0d9948f7b3d0414c663",
+    "instance": "i-06795b5c7be86235b",
+    "instance_state": "terminated"
+  },
+  "dataset": {
+    "fingerprint": "42c805482bb65c076de493869e1cb09b52eba9c266a5a4583d2a967bf637df89",
+    "mix_rows": 4619,
+    "languages": 14,
+    "manifest_version": "v1",
+    "note": "This mix was built BEFORE allowed_use was enforced, so it included 2,305 rows whose v1 allowed_use did not permit asr_train. See decision LIC-2026-001. No checkpoint was produced, so nothing derived from those rows persists from this run."
+  },
+  "cost_usd_approx": 0.11,
+  "provenance": {
+    "git_commit": "d5b9cb02a629f1b40a0ba0d9948f7b3d0414c663",
+    "git_dirty": true
+  }
+}

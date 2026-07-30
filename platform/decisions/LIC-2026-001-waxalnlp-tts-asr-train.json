@@ -1,0 +1,178 @@
+{
+  "decision_id": "LIC-2026-001-waxalnlp-tts-asr-train",
+  "title": "WaxalNLP TTS configs are licence-eligible for ASR training",
+  "status": "approved",
+  "decided_utc": "2026-07-30T16:41:28Z",
+  "reviewer": {
+    "role": "project owner",
+    "decision_reference": "LIC-2026-001",
+    "approval_channel": "recorded project decision; see repository history for the",
+    "note": "Deliberately no personal identifiers. A licence record is a long-lived artefact that may be shared with partners or auditors; it needs an accountable ROLE and a referenceable decision, not an individual's contact details."
+  },
+  "source": {
+    "repo": "google/WaxalNLP",
+    "revision": "e0a62aaebc61bd5bb8cac17a08d1b42c65551dd2",
+    "readme_sha256": "aa7680f2abf5c15f0e4bc600be4140a67fafd9e26da2300fabff118b7d44d11f",
+    "readme_bytes": 29234,
+    "readme_note": "Fetched at the pinned revision and hashed; licence table read directly, not inferred."
+  },
+  "licences": {
+    "CC-BY-SA-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "CC-BY-4.0": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "rationale": [
+    "The adapter assigned allowed_use mechanically from the config's task name:",
+    "allowed_use = ['tts_train','tts_eval'] if task == 'tts' else ['asr_train','asr_eval'].",
+    "That is an internal convention derived from WHICH CONFIG WAS PULLED, not from any",
+    "licence term. Nothing in the upstream licences distinguishes speech synthesis from",
+    "speech recognition.",
+    "",
+    "Neither CC BY 4.0 nor CC BY-SA 4.0 contains a field-of-use restriction. Both permit",
+    "use, adaptation and redistribution for any purpose, subject to attribution and (for",
+    "BY-SA) share-alike on adapted material. A TTS corpus is (text, audio) pairs; the",
+    "licence does not care which direction a model learns.",
+    "",
+    "The README's own guidance (line 1114) is that licences differ per language, so this",
+    "record binds PER CONFIG rather than making a blanket claim about 'TTS corpora'."
+  ],
+  "authorizes": [
+    "ASR TRAINING, internally, on the configs listed below. Nothing else."
+  ],
+  "does_not_authorize": [
+    "ASR EVALUATION. These corpora are text-disjoint and same-speaker split; they are",
+    "not evidence of speaker-generalising ASR performance. asr_eval is deliberately NOT",
+    "granted.",
+    "Model promotion to approved/ or the serving registry. That remains B5 and manual.",
+    "Model distribution. CC BY-SA share-alike and attribution obligations, and voice /",
+    "privacy review, are a separate B5 distribution gate (see open_obligations)."
+  ],
+  "configs_authorized": [
+    {
+      "config": "ach_tts",
+      "language": "acholi",
+      "provider_adapter": "makerere",
+      "readme_provider": "Makerere University",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "lug_tts",
+      "language": "luganda",
+      "provider_adapter": "makerere",
+      "readme_provider": "Makerere University",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "ewe_tts",
+      "language": "ewe",
+      "provider_adapter": "university_ghana",
+      "readme_provider": "University of Ghana",
+      "licence": "CC-BY-4.0",
+      "note": "CC BY 4.0, NOT share-alike. Attribution still required; no copyleft on adapted material."
+    },
+    {
+      "config": "ful_tts",
+      "language": "fula",
+      "provider_adapter": "digital_umuganda",
+      "readme_provider": "Media Trust (TTS table)",
+      "licence": "CC-BY-SA-4.0",
+      "note": "PROVIDER DISCREPANCY: the adapter attributes ful_tts to digital_umuganda; the README TTS table lists Fula under Media Trust. Both are CC-BY-SA-4.0, so the licence conclusion is unaffected, but ATTRIBUTION would name the wrong licensor. Must be resolved before distribution."
+    },
+    {
+      "config": "pcm_tts",
+      "language": "pidgin",
+      "provider_adapter": "media_trust",
+      "readme_provider": "Media Trust",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "ibo_tts",
+      "language": "igbo",
+      "provider_adapter": "media_trust",
+      "readme_provider": "Media Trust",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "hau_tts",
+      "language": "hausa",
+      "provider_adapter": "media_trust",
+      "readme_provider": "Media Trust",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "yor_tts",
+      "language": "yoruba",
+      "provider_adapter": "media_trust",
+      "readme_provider": "Media Trust",
+      "licence": "CC-BY-SA-4.0"
+    },
+    {
+      "config": "swa_tts",
+      "language": "swahili",
+      "provider_adapter": "loud_and_clear",
+      "readme_provider": "Loud and Clear",
+      "licence": "CC-BY-SA-4.0"
+    }
+  ],
+  "effect": {
+    "manifest_change": "allowed_use gains 'asr_train'; 'tts_train' and 'tts_eval' retained; 'asr_eval' NOT added.",
+    "manifest_versioning": "A NEW immutable manifest version is written. v1 is never overwritten.",
+    "rows_affected": 2305,
+    "languages_restored_to_asr_training": [
+      "hausa",
+      "igbo",
+      "pidgin",
+      "swahili",
+      "yoruba"
+    ]
+  },
+  "open_obligations": [
+    "B5 DISTRIBUTION GATE: CC BY-SA 4.0 share-alike may attach to a model trained on",
+    "BY-SA material depending on jurisdiction and on whether the model is an adaptation.",
+    "Unresolved. Internal training authorisation does NOT settle distribution.",
+    "B5 DISTRIBUTION GATE: attribution must name the correct licensor per corpus. The",
+    "ful_tts provider discrepancy above must be resolved first.",
+    "B5 DISTRIBUTION GATE: voice / privacy review. These are identifiable human voices;",
+    "consent is recorded at dataset level only (consent_id=dataset-level:waxalnlp/*).",
+    "EVALUATION: a speaker-disjoint Pidgin ASR evaluation set is still required before",
+    "any B5 promotion. TTS-test WER is not a substitute."
+  ],
+  "provenance": {
+    "git_commit": "d5b9cb02a629f1b40a0ba0d9948f7b3d0414c663",
+    "git_dirty": true
+  },
+  "scope": {
+    "licence_permits_asr_training": {
+      "status": "RESOLVED - yes",
+      "basis": "CC BY 4.0 and CC BY-SA 4.0 impose no field-of-use restriction; read from the README at the pinned revision and hashed.",
+      "applies_to": "internal training only"
+    },
+    "consent_and_privacy": {
+      "status": "UNRESOLVED",
+      "why": "Licence permission is not consent. These are identifiable human voices. consent_id is 'dataset-level:waxalnlp/<provider>' -- a dataset-level assertion, not per-speaker consent for our downstream use. Nothing in this record establishes that the speakers agreed to ASR model training, only that the licence does not forbid it.",
+      "blocks": [
+        "model distribution",
+        "any use beyond internal training"
+      ]
+    },
+    "distribution": {
+      "status": "UNRESOLVED",
+      "why": "CC BY-SA share-alike may attach to a model trained on BY-SA material; attribution must name the correct licensor per corpus; voice/privacy review has not been done.",
+      "blocks": [
+        "B5 promotion",
+        "publishing weights",
+        "serving to users"
+      ]
+    }
+  },
+  "tracked_issues": [
+    {
+      "id": "ATTR-2026-001",
+      "title": "ful_tts licensor attribution disagrees between adapter and dataset card",
+      "status": "OPEN",
+      "detail": "pipeline/adapters/waxalnlp.py maps ful_tts -> digital_umuganda; the README TTS provider table lists Fula under Media Trust. Both are CC-BY-SA-4.0, so licence eligibility is unaffected -- but CC BY-SA requires attributing the correct licensor, so published attribution would name the wrong party.",
+      "resolution_required_before": "any distribution or publication of a model or corpus",
+      "does_not_block": "internal ASR training under this record",
+      "next_step": "Confirm the true licensor for ful_tts with the upstream maintainers, or attribute both providers pending clarification."
+    }
+  ]
+}
