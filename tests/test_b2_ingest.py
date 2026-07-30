@@ -252,3 +252,36 @@ def test_audio_is_spilled_to_disk_not_held_in_ram():
     assert '"wav_bytes"' not in src, "retaining audio bytes drove peak RSS to ~1.9 GB"
     ing = (ROOT / "pipeline" / "ingest.py").read_text()
     assert 'it["wav_path"]' in ing, "uploads must stream from disk"
+
+
+# --------------------------------------------------------------------------- #
+# B3 — decode evidence must be paired, and provisional must block production
+# --------------------------------------------------------------------------- #
+def test_pidgin_decode_is_recorded_as_provisional():
+    d = yaml.safe_load((REG / "pidgin.yaml").read_text())
+    ds = d["asr"]["decode_strategy"]
+    assert ds["mode"] == "en_token"
+    assert ds["provisional"] is True, "44 read clips from 2 speakers is not a settled result"
+    ev = ds["evidence"]
+    lo, hi = ev["paired_ci95"]
+    assert lo < 0 < hi, "if the paired CI excluded zero it would not be provisional"
+    assert ev["distinguishable"] is False
+    assert ev["confirm_on"], "a provisional choice must state what would settle it"
+
+
+def test_production_cannot_rest_on_a_provisional_decode_strategy():
+    d = json.loads((ROOT / "schemas" / "language.schema.json").read_text())
+    prod = d["allOf"][0]["then"]["properties"]["asr"]["properties"]["decode_strategy"]
+    assert prod["properties"]["provisional"] == {"const": False}
+
+
+def test_runner_no_longer_claims_a_winner_from_an_unpaired_ranking():
+    src = (ROOT / "scripts" / "run_baseline.py").read_text()
+    assert "RANKING, not a result" in src
+    assert "Record decode_strategy.mode=" not in src, "unpaired ranking is not evidence"
+
+
+def test_paired_comparison_tool_exists_and_reports_an_interval():
+    src = (ROOT / "scripts" / "compare_decode_paired.py").read_text()
+    assert "paired_ci95" in src and "distinguishable" in src
+    assert "utterance-aligned" in src, "must verify arms are paired before pairing them"

@@ -283,8 +283,13 @@ def main() -> int:
                 mark = "  <-- winner" if r is best else ""
                 print(f"    {r['decode']:<9} token={str(r['decode_token']):<5} "
                       f"WER {r['wer']:.3f}  CER {r['cer']:.3f}{mark}")
-            print(f"\n  Record decode_strategy.mode={best['decode']} in the registry, "
-                  f"with this run as chosen_by_run.")
+            # An unpaired ranking is not evidence. The arms share utterances,
+            # so the honest comparison is a PAIRED bootstrap of the difference;
+            # a 44-clip eval set will rarely separate close arms.
+            print(f"\n  Best observed: {best['decode']}. This is a RANKING, not a result.")
+            print("  Before it goes in the registry, run scripts/compare_decode_paired.py")
+            print("  for the paired interval. If it crosses zero, record the winner as")
+            print("  PROVISIONAL and confirm on a larger, more representative set.")
         print(f"  wrote {out}")
         return 0
 

@@ -1,0 +1,10 @@
+{
+  "observed_diff": -0.043681747269890825,
+  "paired_ci95": [
+    -0.13973799126637554,
+    0.04851330203442872
+  ],
+  "p_en_better": 0.8105,
+  "n_utterances": 44,
+  "n_hypotheses_differing": 25
+}

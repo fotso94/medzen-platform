@@ -102,6 +102,53 @@
               "items": {
                 "type": "string"
               }
+            },
+            "provisional": {
+              "type": "boolean",
+              "description": "True when the winning arm is NOT statistically distinguishable from the runner-up. A provisional strategy may be used, but MUST NOT be cited as settled and blocks status=production."
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Paired-bootstrap result behind the choice. An unpaired ranking is not evidence.",
+              "properties": {
+                "runner_up": {
+                  "type": "string"
+                },
+                "wer_winner": {
+                  "type": "number"
+                },
+                "wer_runner_up": {
+                  "type": "number"
+                },
+                "observed_diff": {
+                  "type": "number"
+                },
+                "paired_ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "p_winner_better": {
+                  "type": "number"
+                },
+                "n_utterances": {
+                  "type": "integer"
+                },
+                "n_speakers": {
+                  "type": "integer"
+                },
+                "distinguishable": {
+                  "type": "boolean"
+                },
+                "confirm_on": {
+                  "type": "string",
+                  "description": "What must be measured before this stops being provisional."
+                }
+              }
             }
           }
         }
@@ -318,6 +365,9 @@
                   },
                   "frozen_eval": {
                     "type": "string"
+                  },
+                  "provisional": {
+                    "const": false
                   }
                 }
               }

@@ -1,0 +1,19 @@
+{
+  "language": "pidgin",
+  "task": "tts",
+  "arm_a": "en_token",
+  "arm_b": "auto",
+  "wer_a": 0.5257,
+  "wer_b": 0.5694,
+  "observed_diff": -0.0437,
+  "paired_ci95": [
+    -0.1397,
+    0.0485
+  ],
+  "p_a_better": 0.81,
+  "n_utterances": 44,
+  "n_speakers": 2,
+  "n_hypotheses_differing": 25,
+  "distinguishable": false,
+  "verdict": "PROVISIONAL \u2014 interval crosses zero; arms are not statistically distinguishable on this eval set"
+}

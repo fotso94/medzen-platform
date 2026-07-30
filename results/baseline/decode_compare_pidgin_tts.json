@@ -1,0 +1,77 @@
+{
+  "model": "mlx-community/whisper-large-v3-mlx",
+  "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+  "language": "pidgin",
+  "task": "tts",
+  "results": [
+    {
+      "language": "pidgin",
+      "task": "tts",
+      "decode": "native",
+      "decode_token": null,
+      "rows": 44,
+      "audio_min": 7.9,
+      "wer": 0.5694,
+      "cer": 0.3655,
+      "wer_ci95": [
+        0.438,
+        0.7378
+      ],
+      "wer_median_utt": 0.5228,
+      "latency_s_median": 0.696,
+      "rtf_median": 0.079,
+      "whisper_knows_language": false,
+      "model": "mlx-community/whisper-large-v3-mlx",
+      "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+      "normalization_version": "pidgin-norm-v1",
+      "eval_set": "s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl",
+      "detail": "results/baseline/native/detail/pidgin_tts.jsonl"
+    },
+    {
+      "language": "pidgin",
+      "task": "tts",
+      "decode": "auto",
+      "decode_token": null,
+      "rows": 44,
+      "audio_min": 7.9,
+      "wer": 0.5694,
+      "cer": 0.3655,
+      "wer_ci95": [
+        0.438,
+        0.7378
+      ],
+      "wer_median_utt": 0.5228,
+      "latency_s_median": 0.724,
+      "rtf_median": 0.083,
+      "whisper_knows_language": false,
+      "model": "mlx-community/whisper-large-v3-mlx",
+      "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+      "normalization_version": "pidgin-norm-v1",
+      "eval_set": "s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl",
+      "detail": "results/baseline/auto/detail/pidgin_tts.jsonl"
+    },
+    {
+      "language": "pidgin",
+      "task": "tts",
+      "decode": "en_token",
+      "decode_token": "en",
+      "rows": 44,
+      "audio_min": 7.9,
+      "wer": 0.5257,
+      "cer": 0.3759,
+      "wer_ci95": [
+        0.3984,
+        0.645
+      ],
+      "wer_median_utt": 0.3484,
+      "latency_s_median": 0.375,
+      "rtf_median": 0.042,
+      "whisper_knows_language": false,
+      "model": "mlx-community/whisper-large-v3-mlx",
+      "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+      "normalization_version": "pidgin-norm-v1",
+      "eval_set": "s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl",
+      "detail": "results/baseline/en_token/detail/pidgin_tts.jsonl"
+    }
+  ]
+}
