@@ -22,7 +22,9 @@
     "dataset_release",
     "license_policy",
     "allowed_use",
-    "split_strategy"
+    "split_strategy",
+    "raw_filepath",
+    "raw_checksum_sha256"
   ],
   "additionalProperties": false,
   "properties": {
@@ -181,6 +183,16 @@
         "text_disjoint"
       ],
       "description": "How train/test were separated, which determines WHICH leakage invariant applies. ASR corpora must generalise to unseen SPEAKERS -> speaker_disjoint. Parallel TTS corpora (many speakers reading one script) must generalise to unseen TEXT -> text_disjoint; speaker overlap is the point, not a leak. Near-duplicate text may never straddle splits under either strategy."
+    },
+    "raw_filepath": {
+      "type": "string",
+      "pattern": "^s3://",
+      "description": "REQUIRED. The original artifact as acquired, before resampling. Every curated object must be re-derivable and auditable from its source."
+    },
+    "raw_checksum_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "REQUIRED. Checksum of the ORIGINAL bytes; audio_checksum_sha256 covers the curated 16 kHz WAV that is actually trained on."
     }
   }
 }

@@ -1,20 +1,25 @@
 #!/usr/bin/env python3
-"""B2.3 — ingest a source into the A3 zones.
+"""B2.3 — ingest a source into the A3 zones, audio included.
 
-    adapter -> decode/resample -> raw/ (audio) -> manifest -> validate -> curated/
+    adapter -> raw/ (original bytes)
+            -> curated/{lang}/{task}/v1/audio/*.wav   (16 kHz mono PCM_16)
+            -> manifest referencing the CURATED objects
+            -> validate -> curated/.../manifest.jsonl + frozen eval/
 
-Nothing reaches curated/ that has not passed scripts/validate_manifest.py.
-A rejected manifest leaves the zone untouched: a partial corpus is worse than
-no corpus, because it looks complete.
+A manifest whose audio was never uploaded is not a corpus. Both forms are
+stored: raw/ so a curated object can be re-derived and audited, curated/ because
+that is what training reads.
 
-    python -m pipeline.ingest --source waxalnlp --language pidgin --limit 200
-    python -m pipeline.ingest --source waxalnlp --language pidgin --dry-run
+    python -m pipeline.ingest --source waxalnlp --language akan --task asr --limit 300
+    python -m pipeline.ingest --source waxalnlp --language akan --dry-run
 """
 from __future__ import annotations
 
 import argparse
-import io
+import concurrent.futures as cf
+import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -22,80 +27,168 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_BUCKET = "medzen-speech"
+MIN_CLUSTERS = 8      # below this, no meaningful text-disjoint split exists
 PROFILE = "medzen"
 REGION = "eu-central-1"
 
 
-def s3(*args: str) -> None:
-    subprocess.run(["aws", "--profile", PROFILE, "--region", REGION, "s3", *args],
-                   check=True, capture_output=True)
+def s3_client():
+    import boto3
+    return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
 
 
-def build_adapter(source: str, language: str):
+def prefix_exists(cli, prefix: str) -> bool:
+    r = cli.list_objects_v2(Bucket=DATA_BUCKET, Prefix=prefix, MaxKeys=1)
+    return r.get("KeyCount", 0) > 0
+
+
+def build_adapter(source: str, language: str, task: str | None = None,
+                  version: str = "v1"):
     if source == "waxalnlp":
         from .adapters.waxalnlp import WaxalNLPAdapter
-        return WaxalNLPAdapter(language)
+        return WaxalNLPAdapter(language, task=task, version=version)
     raise SystemExit(f"unknown source '{source}'")
 
 
 def assign_splits(rows: list[dict], test_frac: float = 0.15) -> None:
     """Split on whatever the corpus must generalise to.
 
-    ASR  -> unseen SPEAKERS, so whole speakers move together.
-    TTS  -> unseen TEXT. Parallel TTS corpora have every speaker reading the
-            same script, so a speaker split leaves identical sentences on both
-            sides. Splitting by text is the only split that means anything.
+    ASR -> unseen SPEAKERS. TTS -> unseen TEXT: parallel TTS corpora have every
+    speaker reading the same script, so a speaker split leaves identical
+    sentences on both sides and means nothing.
     """
     strategy = rows[0].get("split_strategy", "speaker_disjoint")
 
     if strategy == "text_disjoint":
-        import hashlib
+        # Hashing EXACT text is not enough: sentences at Jaccard 0.8-0.95 are
+        # different strings, hash independently, and land on opposite sides -
+        # which the near-dup validator then correctly rejects (seen on
+        # acholi/tts). Cluster near-duplicates first; move whole clusters.
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from validate_manifest import near_duplicate_pairs
+
         texts = sorted({r["text_normalized"] for r in rows})
-        h = {t: int(hashlib.sha256(t.encode()).hexdigest()[:8], 16) for t in texts}
-        cutoff = int(0xFFFFFFFF * test_frac)
-        test_texts = {t for t in texts if h[t] < cutoff}
+        idx = {t: i for i, t in enumerate(texts)}
+        parent = list(range(len(texts)))
+
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+
+        for a, b, _ in near_duplicate_pairs([{"text_normalized": t} for t in texts]):
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[max(ra, rb)] = min(ra, rb)
+
+        clusters: dict[int, list[str]] = {}
+        for t in texts:
+            clusters.setdefault(find(idx[t]), []).append(t)
+
+        # RANK clusters by hash and take the first k, rather than thresholding
+        # each hash independently. Thresholding is unbiased only for many
+        # clusters; with a few dozen it frequently draws 0 (observed: 16
+        # clusters, 0 selected). Ranking is equally deterministic but
+        # guarantees a non-empty, correctly-proportioned test split.
+        ranked = sorted(clusters.values(),
+                        key=lambda m: hashlib.sha256(min(m).encode()).hexdigest())
+        k = max(1, round(len(ranked) * test_frac))
+        held: set[str] = {t for m in ranked[:k] for t in m}
+
         for r in rows:
-            r["split"] = "test" if r["text_normalized"] in test_texts else "train"
-        n = sum(1 for r in rows if r["split"] == "test")
-        print(f"  split by TEXT (parallel TTS corpus): "
-              f"{len(test_texts)}/{len(texts)} sentences held out -> {n} rows")
+            r["split"] = "test" if r["text_normalized"] in held else "train"
+        n_test = sum(1 for r in rows if r["split"] == "test")
+        merged = sum(1 for m in clusters.values() if len(m) > 1)
+        print(f"  split by TEXT CLUSTER: {len(clusters)} clusters / {len(texts)} "
+              f"sentences ({merged} near-dup clusters) -> {n_test} test rows")
+
+        # Degenerate case: a heavily templated corpus (e.g. number/arithmetic
+        # prompts) collapses into very few clusters, so no split can be both
+        # non-empty and text-disjoint. Clustering is right; the corpus simply
+        # cannot supply an eval set. Say so rather than emit a lopsided split
+        # that the validator would reject anyway.
+        if n_test == 0 or n_test == len(rows) or len(clusters) < MIN_CLUSTERS:
+            print(f"  WARNING: {len(clusters)} distinct text cluster(s) is too few for a "
+                  f"text-disjoint split (need >= {MIN_CLUSTERS}). This corpus is heavily "
+                  f"templated. All rows tagged 'train'; it CANNOT supply an eval set "
+                  f"on its own — pair it with a separate held-out source.")
+            for r in rows:
+                r["split"] = "train"
         return
 
     speakers = sorted({r["speaker_id"] for r in rows})
     if len(speakers) < 2:
         print(f"  WARNING: only {len(speakers)} speaker(s) — a speaker-disjoint "
-              f"test split is impossible. All rows tagged 'train'; this source "
-              f"cannot supply an eval set on its own.")
+              f"test split is impossible. All rows 'train'; this source cannot "
+              f"supply an eval set on its own.")
         for r in rows:
             r["split"] = "train"
         return
     n_test = max(1, round(len(speakers) * test_frac))
-    test = set(speakers[-n_test:])
+    held = set(speakers[-n_test:])
     for r in rows:
-        r["split"] = "test" if r["speaker_id"] in test else "train"
-    print(f"  split by SPEAKER: train={sorted(set(speakers) - test)} test={sorted(test)}")
+        r["split"] = "test" if r["speaker_id"] in held else "train"
+    print(f"  split by SPEAKER: {len(speakers) - len(held)} train / {len(held)} test")
+
+
+def upload_all(cli, items: list[dict], workers: int = 16) -> None:
+    def put(it):
+        rec = it["record"]
+        raw_key = rec["raw_filepath"].split(f"{DATA_BUCKET}/", 1)[1]
+        cur_key = rec["audio_filepath"].split(f"{DATA_BUCKET}/", 1)[1]
+        with open(it["raw_path"], "rb") as fh:
+            cli.put_object(Bucket=DATA_BUCKET, Key=raw_key, Body=fh,
+                           ContentType=f"audio/{it['raw_ext']}")
+        with open(it["wav_path"], "rb") as fh:
+            cli.put_object(Bucket=DATA_BUCKET, Key=cur_key, Body=fh,
+                           ContentType="audio/wav")
+
+    done = 0
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        for _ in ex.map(put, items):
+            done += 1
+            if done % 100 == 0:
+                print(f"    uploaded {done}/{len(items)} pairs", flush=True)
+    print(f"  uploaded {done} raw + {done} curated audio objects")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", required=True)
     ap.add_argument("--language", required=True)
+    ap.add_argument("--task", default=None, choices=["asr", "tts"])
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--version", default="v1")
-    ap.add_argument("--dry-run", action="store_true", help="build + validate, write nothing")
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force-eval", action="store_true",
+                    help="allow replacing an existing frozen eval version")
     a = ap.parse_args()
 
-    import librosa, numpy as np, soundfile as sf  # noqa: E401
-    from datasets import Audio, load_dataset  # noqa: F401
+    adapter = build_adapter(a.source, a.language, a.task, a.version)
+    base = f"{a.language}/{adapter.task}/{adapter.config}"
+    cur_prefix = f"curated/{base}/{a.version}"
+    eval_prefix = f"eval/{a.language}/{adapter.task}/{a.version}"
 
-    adapter = build_adapter(a.source, a.language)
     print(f"source   {adapter.spec.source_id}")
     print(f"release  {adapter.spec.dataset_release}")
     print(f"licence  {adapter.spec.license_policy}   use={adapter.spec.allowed_use}")
 
-    rows = list(adapter.rows(limit=a.limit))
-    if not rows:
-        print("no rows produced"); return 1
+    cli = None if a.dry_run else s3_client()
+
+    # ---- eval immutability guard ------------------------------------------
+    # An eval set is a measurement instrument. Silently replacing one makes
+    # every previously reported number incomparable and unreproducible.
+    if cli and not a.force_eval and prefix_exists(cli, eval_prefix + "/"):
+        print(f"\nREFUSING: s3://{DATA_BUCKET}/{eval_prefix}/ already exists.")
+        print("An eval version is frozen once written. Use a new --version, or")
+        print("--force-eval only if you accept invalidating prior results.")
+        return 1
+
+    items = list(adapter.items(limit=a.limit))
+    if not items:
+        print("no usable rows produced"); return 1
+    rows = [it["record"] for it in items]
     print(f"\nbuilt {len(rows)} records")
     assign_splits(rows)
 
@@ -108,31 +201,36 @@ def main() -> int:
             [sys.executable, str(ROOT / "scripts" / "validate_manifest.py"), str(mpath),
              "--registry", str(ROOT / "registry" / "languages")],
             capture_output=True, text=True)
-        print("\n".join("  " + l for l in v.stdout.strip().splitlines()[-6:]))
+        print("\n".join("  " + l for l in v.stdout.strip().splitlines()[-5:]))
         if v.returncode != 0:
-            print("\nREJECTED — curated/ untouched.")
+            print("\nREJECTED — nothing uploaded.")
             return 1
 
         if a.dry_run:
-            print("\ndry run: nothing written")
+            print(f"\ndry run: would upload {len(items)} raw + {len(items)} curated objects")
             return 0
 
-        prefix = f"curated/{a.language}/{a.version}"
-        s3("cp", str(mpath), f"s3://{DATA_BUCKET}/{prefix}/manifest.jsonl")
-        print(f"\nwrote s3://{DATA_BUCKET}/{prefix}/manifest.jsonl")
+        print(f"\nuploading audio...")
+        upload_all(cli, items)
 
-        # eval/ is written ONCE and is write-denied to the trainer role
+        cli.put_object(Bucket=DATA_BUCKET, Key=f"{cur_prefix}/manifest.jsonl",
+                       Body=mpath.read_bytes(), ContentType="application/x-ndjson")
+        print(f"  wrote s3://{DATA_BUCKET}/{cur_prefix}/manifest.jsonl")
+
         test_rows = [r for r in rows if r["split"] == "test"]
         if test_rows:
-            epath = Path(td) / "eval.jsonl"
-            epath.write_text("\n".join(json.dumps(r) for r in test_rows) + "\n")
-            s3("cp", str(epath), f"s3://{DATA_BUCKET}/eval/{a.language}/{a.version}/manifest.jsonl")
-            print(f"wrote s3://{DATA_BUCKET}/eval/{a.language}/{a.version}/manifest.jsonl "
+            body = ("\n".join(json.dumps(r) for r in test_rows) + "\n").encode()
+            cli.put_object(Bucket=DATA_BUCKET, Key=f"{eval_prefix}/manifest.jsonl",
+                           Body=body, ContentType="application/x-ndjson")
+            print(f"  wrote s3://{DATA_BUCKET}/{eval_prefix}/manifest.jsonl "
                   f"({len(test_rows)} rows, FROZEN)")
         else:
-            print("no test split — eval set not written (see warning above)")
+            print("  no test split — eval set not written")
     return 0
 
 
 if __name__ == "__main__":
+    # No os._exit(): the local-shard reader owns no background threads, so a
+    # normal exit must work. If this ever hangs again, that is a real resource
+    # leak to find — not something to mask with a hard exit.
     sys.exit(main())
