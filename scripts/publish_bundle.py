@@ -112,10 +112,26 @@ def main() -> int:
             files[rel] = {"sha256": sha256_bytes(data), "bytes": len(data)}
         print(f"  {len(files)} files")
 
+        # REPRODUCIBLE archive: a given commit must always produce identical
+        # bytes, so tar_sha256 can be recomputed and checked independently
+        # rather than being an incidental value only this run knows. gzip
+        # normally records the current time, and tar records mtimes and
+        # ownership, all of which would change the hash on every publish.
         bundle = tmp / "medzen_code.tgz"
-        with tarfile.open(bundle, "w:gz") as t:
-            for rel in files:
-                t.add(src / rel, arcname=rel)
+
+        def normalise(ti: tarfile.TarInfo) -> tarfile.TarInfo:
+            ti.mtime = 0
+            ti.uid = ti.gid = 0
+            ti.uname = ti.gname = ""
+            ti.mode = 0o755 if ti.mode & 0o100 else 0o644
+            return ti
+
+        import gzip
+        with open(bundle, "wb") as raw:
+            with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0) as gz:
+                with tarfile.open(fileobj=gz, mode="w", format=tarfile.PAX_FORMAT) as t:
+                    for rel in files:          # already sorted
+                        t.add(src / rel, arcname=rel, filter=normalise)
 
         manifest = {"git_sha": sha, "git_sha_short": sha[:7],
                     "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -133,8 +149,14 @@ def main() -> int:
                      Body=(json.dumps(manifest, indent=2) + "\n").encode())
         print(f"  uploaded {base}/BUNDLE.json ({len(files)} files)")
 
+        tar_sha = manifest["tar_sha256"]
+
+    # Printed here, from the machine that built the archive. Launchers must take
+    # TAR_SHA256 from THIS output, never by reading BUNDLE.json back out of S3:
+    # a hash fetched from the same place as the artifact verifies nothing.
     print(f"\npublished s3://{BUCKET}/{PREFIX}/{sha}/")
-    print(f"  launch with GIT_SHA={sha}")
+    print(f"GIT_SHA={sha}")
+    print(f"TAR_SHA256={tar_sha}")
     return 0
 
 

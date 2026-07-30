@@ -177,3 +177,22 @@ def test_trainer_launcher_also_verifies_against_user_data():
     assert "ARCHIVE HASH VERIFIED against user-data" in s
     assert 'filter="data"' in s
     assert s.index("ARCHIVE HASH VERIFIED") < s.index("bootstrap_trainer.sh")
+
+
+def test_bundle_archive_is_reproducible():
+    """The trust root must be recomputable, not an incidental value.
+
+    gzip records the current time and tar records mtimes and ownership, so an
+    unnormalised archive hashes differently on every publish -- meaning
+    TAR_SHA256 could only ever be taken on faith from the run that produced it.
+    """
+    s = PUBLISH.read_text()
+    assert "mtime=0" in s and "ti.mtime = 0" in s
+    assert "ti.uid = ti.gid = 0" in s
+    assert "PAX_FORMAT" in s
+
+
+def test_publish_prints_the_hash_for_launchers():
+    s = PUBLISH.read_text()
+    assert 'print(f"TAR_SHA256={tar_sha}")' in s
+    assert "never by reading BUNDLE.json back out of S3" in s
