@@ -35,10 +35,23 @@ unset AWS_PROFILE
 
 GIT_SHA="${GIT_SHA}"
 TAR_SHA256="${TAR_SHA256}"
-BOOT_S3="s3://medzen-speech/candidates/build/boot-$(date +%s)"
+BOOT_ID="boot-$(date +%s)"
+BOOT_S3="s3://medzen-speech/candidates/build/$BOOT_ID"
+
+# Ship the boot log ALWAYS, not only on failure. The archive-hash check is the
+# security control this whole wrapper exists for, so a successful run that
+# leaves its evidence on a terminated instance proves nothing after the fact.
+# This is the same lesson as the preflights that died with nothing uploaded.
+ship_boot_log() {
+  aws s3 cp /var/log/medzen-boot.log "$BOOT_S3/boot.log" 2>/dev/null || true
+}
+( while true; do ship_boot_log; sleep 20; done ) &
+BOOT_SHIPPER=$!
 
 die() {
   echo "FATAL: $*"
+  kill $BOOT_SHIPPER 2>/dev/null || true
+  ship_boot_log
   aws s3 cp /var/log/medzen-boot.log "$BOOT_S3/boot-failure.log" 2>/dev/null || true
   shutdown -h now
   exit 1
@@ -111,6 +124,12 @@ print(f"BUNDLE VERIFIED: git_sha {want}, {len(declared)} files, "
 VERIFY_AND_EXTRACT
 
 [ -f /opt/boot/src/pipeline/build_image.sh ] || die "build_image.sh absent from the verified bundle"
+
+# Record the verification evidence in S3 before handing control to bundle code,
+# so it exists even if the build itself never finishes.
+echo "BOOTSTRAP EVIDENCE: git_sha=$GIT_SHA archive_sha256=$ACTUAL boot_id=$BOOT_ID"
+kill $BOOT_SHIPPER 2>/dev/null || true
+ship_boot_log
 echo "executing verified build_image.sh"
 
 GIT_SHA="$GIT_SHA" \

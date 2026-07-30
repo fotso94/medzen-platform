@@ -246,3 +246,16 @@ def test_container_launcher_documents_the_imds_hop_limit():
 def test_container_launcher_is_valid_bash():
     r = subprocess.run(["bash", "-n", str(CONTAINER)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
+
+
+def test_wrapper_ships_its_boot_log_on_success_too():
+    """The archive-hash check is the control this wrapper exists for. A
+    successful run that leaves the evidence on a terminated instance proves
+    nothing afterwards -- the same failure mode as the preflights that died
+    with nothing uploaded."""
+    s = WRAPPER.read_text()
+    assert "ship_boot_log()" in s
+    assert "BOOT_SHIPPER" in s, "the log must ship continuously, not only at the end"
+    assert "BOOTSTRAP EVIDENCE:" in s
+    # evidence must be recorded before control passes to bundle code
+    assert s.index("BOOTSTRAP EVIDENCE") < s.index("bash /opt/boot/src/pipeline/build_image.sh")
