@@ -1,0 +1,207 @@
+{
+  "record": "TRAINING-RUN",
+  "recorded_utc": "2026-07-30T23:27:39Z",
+  "experiment": "b4-whisper-large-v3-lora",
+  "status": "COMPLETED",
+  "evaluation_performed": false,
+  "promotion_performed": false,
+  "statement": "This records that a training run completed and what it trained on. It says NOTHING about model quality: no evaluation was run, and a falling training loss is evidence that the optimiser worked, not that transcription improved. The adapter stays in candidates/.",
+  "run_id": "23868bab2d8448759fc1b9ed26156952",
+  "mlflow_run_status": "FINISHED",
+  "mlflow_db": "s3://medzen-speech/mlflow/db/23868bab2d8448759fc1b9ed26156952/mlflow.db",
+  "artifact_prefix": "s3://medzen-speech/candidates/asr/23868bab2d8448759fc1b9ed26156952",
+  "preflight_prefix": "s3://medzen-speech/candidates/preflight/preflight-1785439231",
+  "image": {
+    "digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+    "ecr_tags": [
+      "202b005190a70b5f155d02ca74fc91fbfd81638a"
+    ],
+    "baked_git_sha": "202b005190a70b5f155d02ca74fc91fbfd81638a",
+    "provenance_source": "baked_image",
+    "git_dirty": "False"
+  },
+  "training": {
+    "steps": 600,
+    "final_train_loss": 8.165385093688965,
+    "loss_is_finite": true,
+    "losses_logged": 60,
+    "first5_mean": 16.8976,
+    "last5_mean": 4.6429,
+    "loss_by_step": {
+      "10": 22.5263,
+      "20": 18.4625,
+      "30": 16.3212,
+      "40": 13.5346,
+      "50": 13.6434,
+      "60": 12.0409,
+      "70": 11.7463,
+      "80": 12.2503,
+      "90": 11.6454,
+      "100": 10.8094,
+      "110": 9.94,
+      "120": 10.3792,
+      "130": 9.7807,
+      "140": 9.134,
+      "150": 9.9688,
+      "160": 9.6756,
+      "170": 9.5797,
+      "180": 9.2883,
+      "190": 8.6533,
+      "200": 9.2006,
+      "210": 9.1471,
+      "220": 7.9414,
+      "230": 8.4454,
+      "240": 8.7699,
+      "250": 8.1183,
+      "260": 7.7195,
+      "270": 7.3357,
+      "280": 9.4313,
+      "290": 7.2121,
+      "300": 6.0531,
+      "310": 6.636,
+      "320": 6.5266,
+      "330": 6.4534,
+      "340": 5.8641,
+      "350": 6.0322,
+      "360": 6.4699,
+      "370": 6.7215,
+      "380": 6.6426,
+      "390": 6.1996,
+      "400": 5.4021,
+      "410": 6.3041,
+      "420": 5.9858,
+      "430": 6.53,
+      "440": 5.7341,
+      "450": 5.5765,
+      "460": 5.7226,
+      "470": 5.0962,
+      "480": 5.6428,
+      "490": 5.8959,
+      "500": 5.8607,
+      "510": 6.0904,
+      "520": 4.9375,
+      "530": 4.8804,
+      "540": 5.6489,
+      "550": 5.1,
+      "560": 5.5394,
+      "570": 5.2059,
+      "580": 4.4083,
+      "590": 4.0604,
+      "600": 4.0007
+    },
+    "descent_gate_step": 100,
+    "descent_gate_verdict": "PASSED",
+    "device": "cuda",
+    "gpu": "NVIDIA L4",
+    "gpu_peak_mb": 13200.7,
+    "torch": "2.13.0+cu130",
+    "cuda": "13.0"
+  },
+  "data": {
+    "dataset_fingerprint": "77c7ce61edba96c806fa22a0d50792fc4976a3cebe01a3322493583d94cb9b7c",
+    "fingerprint_sources_agree": [
+      "run.json",
+      "mlflow.params"
+    ],
+    "manifest_version": "v2",
+    "eligible_rows_before_exclusions": 4620,
+    "eligible_rows_after_exclusions": 4600,
+    "sampled_rows": 4601,
+    "over_limit_rows_remaining": 0,
+    "decoder_label_limit": 448
+  },
+  "deferral": {
+    "exclusions_list_id": "DQ-2026-002-policy-deferral",
+    "exclusions_decision_type": "policy_deferral",
+    "exclusions_policy_sha256": "f921e2a4cdf3f9bae3e93d01cbbad00913fd730c19d67898a9fdd4571f03226c",
+    "exclusions_human_review_performed": false,
+    "exclusions_declared": 20,
+    "exclusions_removed": 20,
+    "exclusions_over_decoder_limit": 6,
+    "exclusions_extreme_token_rate": 14,
+    "exclusions_applied": "before_temperature_sampling",
+    "eligible_rows_before_exclusions": 4620,
+    "eligible_rows_after_exclusions": 4600,
+    "sampled_rows": 4601,
+    "over_limit_rows_remaining": 0,
+    "decoder_label_limit": 448,
+    "v2_complete_raw_sha256": "a4c0211eb83f3830f210f34363676964dfb1ce744999d07dc2d27c3ec4b0f681",
+    "adoption_key": "s3://medzen-speech/curated/_versions/v2/ADOPTION.json",
+    "promotion_permitted": false,
+    "artifacts_scope": "candidates_only",
+    "policy_key": "s3://medzen-speech/curated/_versions/v2/DEFERRAL-DQ-2026-002.json",
+    "policy_sha256_recomputed_from_s3": "f921e2a4cdf3f9bae3e93d01cbbad00913fd730c19d67898a9fdd4571f03226c",
+    "adoption_binds_this_policy": true,
+    "corpus_unchanged_since_adoption": true,
+    "human_review_performed": false,
+    "note": "the 20 deferred rows remain UNREVIEWED. This run did not train on them and does not license their reuse."
+  },
+  "base_model": {
+    "revision": null,
+    "source": "s3_cache",
+    "cache_uri": "s3://medzen-speech/models/base/whisper-large-v3/06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1"
+  },
+  "artifacts": {
+    "final": {
+      "README.md": {
+        "sha256": "a10b8b424990e3f7188efb8bc3597f8fe3607c88cbdd4b9241c1a3581aaaf6b9",
+        "bytes": 5272
+      },
+      "adapter_config.json": {
+        "sha256": "0632e8a06d07f12913b6cb0db9c618d458a6eb223499d2a579b60d0fe8cd1fb1",
+        "bytes": 1252
+      },
+      "adapter_model.safetensors": {
+        "sha256": "17e1b7381b7b3fdb362ecb692d72b92a2dc295d7ee79ff6367a8d6a9c7cd3195",
+        "bytes": 62969640
+      },
+      "processor_config.json": {
+        "sha256": "8efb801da889b24fc64a28d0af16d376852508aefb97d497a4c6d2200b114a33",
+        "bytes": 410
+      },
+      "run.json": {
+        "sha256": "4c4ccb895b7b4166bffedcb9e42ae85efa484be05a86fb2ee00d840a2466272f",
+        "bytes": 14793
+      },
+      "tokenizer.json": {
+        "sha256": "46b274dfc1c3f667568fa1fed9751a9d60d304e0ae8104dbfb1bde6e256b53e0",
+        "bytes": 3931381
+      },
+      "tokenizer_config.json": {
+        "sha256": "1eab365bea2dad5e5c29ab932837cefa3e4b90427817a9b221cc94ecb9d9e421",
+        "bytes": 2104
+      }
+    },
+    "adapter_sha256": "17e1b7381b7b3fdb362ecb692d72b92a2dc295d7ee79ff6367a8d6a9c7cd3195",
+    "adapter_bytes": 62969640,
+    "checkpoints": {
+      "checkpoint-100": {
+        "objects": 8,
+        "bytes": 189157522
+      },
+      "checkpoint-200": {
+        "objects": 8,
+        "bytes": 189159399
+      },
+      "checkpoint-300": {
+        "objects": 8,
+        "bytes": 189161214
+      },
+      "checkpoint-400": {
+        "objects": 8,
+        "bytes": 189163033
+      },
+      "checkpoint-500": {
+        "objects": 8,
+        "bytes": 189164852
+      },
+      "checkpoint-600": {
+        "objects": 8,
+        "bytes": 189166665
+      }
+    },
+    "scope": "candidates/ only"
+  },
+  "verification": "adapter and every final artifact hashed from S3 bytes (not ETags); step count and losses read from checkpoint trainer_state, not the trainer summary; fingerprint and exclusion counts cross-checked against the MLflow tracking DB; policy hash recomputed from the S3 object and matched to the adoption record; image digest confirmed in ECR with the baked commit as its tag"
+}
