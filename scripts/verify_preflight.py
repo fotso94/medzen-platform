@@ -65,6 +65,17 @@ def ls(cli, prefix: str) -> list[tuple[str, int]]:
         tok["ContinuationToken"] = r["NextContinuationToken"]
 
 
+def ls_dated(cli, prefix: str) -> list[tuple[str, float]]:
+    """Keys with their LastModified epoch. Paginated — eval/ exceeds one page."""
+    out, tok = [], {"Bucket": BUCKET, "Prefix": prefix}
+    while True:
+        r = cli.list_objects_v2(**tok)
+        out += [(o["Key"], o["LastModified"].timestamp()) for o in r.get("Contents", [])]
+        if not r.get("IsTruncated"):
+            return out
+        tok["ContinuationToken"] = r["NextContinuationToken"]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", default=None)
@@ -105,11 +116,14 @@ def main() -> int:
     steps = result.get("steps", runj.get("steps"))
     chk(f"steps == {EXPECT_STEPS}", steps == EXPECT_STEPS, f"steps={steps!r}")
 
-    # --- 3. CUDA actually used ---------------------------------------------
+    # --- 3. CUDA actually used, on the L4 a g6.xlarge is supposed to have ---
     dev = result.get("device_used", runj.get("device_used"))
-    gpu = result.get("gpu_name", runj.get("gpu_name"))
+    gpu = str(result.get("gpu_name", runj.get("gpu_name")) or "")
+    smi = str(result.get("nvidia_smi") or "")
     chk("CUDA used", dev == "cuda" and bool(gpu) and gpu != "None",
         f"device_used={dev!r} gpu_name={gpu!r}")
+    chk("GPU is an L4", "L4" in gpu or "L4" in smi,
+        f"torch reports {gpu!r}; nvidia-smi reports {smi.splitlines()[0] if smi else 'nothing'!r}")
 
     # --- 4. GPU memory above zero ------------------------------------------
     peak = result.get("gpu_peak_mb", runj.get("gpu_peak_mb"))
@@ -127,11 +141,25 @@ def main() -> int:
     chk("base revision pinned", rev == EXPECT_BASE_REVISION,
         f"recorded={rev!r} expected={EXPECT_BASE_REVISION!r}")
 
+    # --- 6b. dataset fingerprint recorded -----------------------------------
+    fp = result.get("dataset_fingerprint", runj.get("dataset_fingerprint"))
+    chk("dataset fingerprint recorded", bool(fp) and len(str(fp)) >= 8,
+        f"dataset_fingerprint={fp!r}")
+
     # --- 7. real checkpoint-3 objects in S3 (listed, not claimed) -----------
-    ck = [k for k, _ in ls(cli, f"{CKPT_PREFIX}/") if "checkpoint-3/" in k]
-    tot = sum(sz for k, sz in ls(cli, f"{CKPT_PREFIX}/") if "checkpoint-3/" in k)
+    cand = ls(cli, f"{CKPT_PREFIX}/")
+    ck = [(k, sz) for k, sz in cand if "checkpoint-3/" in k]
+    tot = sum(sz for _, sz in ck)
     chk("checkpoint-3 in S3", len(ck) > 0 and tot > 0,
         f"{len(ck)} object(s), {tot/1e6:.1f} MB under {CKPT_PREFIX}/**/checkpoint-3/")
+
+    # --- 7b. final adapter (the artifact that actually gets registered) -----
+    fin_objs = [(k, sz) for k, sz in cand if "/final/" in k]
+    weights = [k for k, sz in fin_objs
+               if k.endswith((".safetensors", ".bin")) and sz > 0]
+    chk("final adapter in S3", bool(weights),
+        f"{len(fin_objs)} object(s), {sum(sz for _, sz in fin_objs)/1e6:.1f} MB, "
+        f"weights={[k.split('/')[-1] for k in weights] or 'NONE'}")
 
     # --- 8. MLflow ----------------------------------------------------------
     mrid = result.get("mlflow_run_id", runj.get("mlflow_run_id"))
@@ -142,13 +170,30 @@ def main() -> int:
         f"{len(mldb)} db object(s); run-specific key present={any(mrid and mrid in k for k,_ in mldb) if mrid else False}")
 
     # --- 9. log present and error-free -------------------------------------
-    hits = sorted({f for f in LOG_FAILURES if f in log})
+    # The guardrail probe DELIBERATELY provokes an AccessDenied on
+    # eval/_probe_should_fail.txt, and set -x echoes it into the trace. Scanning
+    # the raw log would therefore fail every healthy run, so drop exactly those
+    # lines -- and only those -- before looking for real failures.
+    scanned = "\n".join(l for l in log.splitlines() if "_probe_should_fail" not in l)
+    hits = sorted({f for f in LOG_FAILURES if f in scanned})
     chk("log uploaded", len(log) > 0, f"{len(log)} bytes")
     chk("log error-free", len(log) > 0 and not hits, f"failure markers: {hits or 'none'}")
 
     # --- 10. guardrail still intact on the real host ------------------------
     chk("eval write-Deny verified on host", "EVAL DENY INTACT" in log,
         "'EVAL DENY INTACT' in log" if "EVAL DENY INTACT" in log else "marker absent")
+
+    # --- 10b. eval/ physically untouched ------------------------------------
+    # The Deny proves the attempt was refused; this proves nothing landed by
+    # any other route. Anything modified at or after the run's start timestamp
+    # (which the run id carries) would be new.
+    started = int(run.split("-")[1])
+    ev = ls_dated(cli, "eval/")          # paginated: eval/ holds audio, >1000 keys
+    touched = [k for k, ts in ev if ts >= started]
+    stray = [k for k, _ in ev if "_probe_should_fail" in k]
+    chk("eval/ prefix untouched", not touched and not stray,
+        f"{len(ev)} object(s) under eval/, {len(touched)} modified since run start, "
+        f"stray probes: {stray or 'none'}")
 
     # --- 11. torch/CUDA actually reported ----------------------------------
     tv = result.get("torch_version", runj.get("torch_version"))
