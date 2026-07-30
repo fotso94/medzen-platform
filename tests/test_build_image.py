@@ -259,3 +259,62 @@ def test_wrapper_ships_its_boot_log_on_success_too():
     assert "BOOTSTRAP EVIDENCE:" in s
     # evidence must be recorded before control passes to bundle code
     assert s.index("BOOTSTRAP EVIDENCE") < s.index("bash /opt/boot/src/pipeline/build_image.sh")
+
+
+# --------------------------------------------------------------------------- #
+# OS base and Python dependency gates
+# --------------------------------------------------------------------------- #
+AUDIT = ROOT / "pipeline" / "audit_python_deps.sh"
+
+
+def test_base_is_trixie_not_bookworm():
+    """bookworm carried 3 CRITICAL + 5 HIGH in perl-base with NO FIX AVAILABLE,
+    and perl-base is Essential so it cannot be removed. A newer base was the
+    only remediation that did not mean waiving a CRITICAL."""
+    s = DOCKERFILE.read_text()
+    m = re.search(r"^FROM (\S+)@sha256:([0-9a-f]{64})\s*$", s, re.M)
+    assert m, "base must still be pinned by digest"
+    # the FROM line itself, not the comment that explains why bookworm was dropped
+    assert "trixie" in m.group(1), f"expected a trixie base, got {m.group(1)}"
+    assert "bookworm" not in m.group(1)
+
+
+def test_pip_is_upgraded_before_installing():
+    """The base ships a pip with 6 advisories against it."""
+    s = DOCKERFILE.read_text()
+    assert re.search(r'RUN pip install --no-cache-dir "pip==\d', s)
+    assert s.index("pip==") < s.index("RUN pip install -r requirements.txt")
+
+
+def test_python_dependency_audit_runs_at_build():
+    s = DOCKERFILE.read_text()
+    assert "RUN bash pipeline/audit_python_deps.sh" in s
+    # before the verify gate, so the gate proves the env survived the cleanup
+    assert s.index("audit_python_deps.sh") < s.index("MODE=verify")
+
+
+def test_audit_script_is_valid_and_fails_closed():
+    r = subprocess.run(["bash", "-n", str(AUDIT)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    s = AUDIT.read_text()
+    assert "--strict" in s, "pip-audit must fail on findings, not just report them"
+    assert "exit 51" in s
+    assert "Do not waive" in s
+    assert 'PIP_AUDIT_VERSION="${PIP_AUDIT_VERSION:-' in s, "the audit tool must be pinned"
+
+
+def test_audit_removes_only_what_it_added():
+    """Uninstalling by name==version would strip a package pip-audit merely
+    upgraded, taking a trainer dependency with it."""
+    s = AUDIT.read_text()
+    assert "comm -13" in s
+    assert "cut -d= -f1" in s, "compare names, not name==version"
+
+
+def test_audit_is_not_in_the_runtime_path():
+    """pip-audit needs the network; the trainer deliberately has no guarantee of
+    it, so an audit at container start would fail closed on a healthy host."""
+    entry = (ROOT / "pipeline" / "container_entrypoint.sh").read_text()
+    assert "audit_python_deps" not in entry
+    boot = (ROOT / "pipeline" / "bootstrap_trainer.sh").read_text()
+    assert "pip-audit" not in boot

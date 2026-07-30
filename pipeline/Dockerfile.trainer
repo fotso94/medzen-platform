@@ -15,11 +15,18 @@
 # and the model can be re-pinned without a rebuild.
 #
 #   docker buildx build --platform linux/amd64 -f pipeline/Dockerfile.trainer .
-# Pinned by DIGEST, not tag: python:3.12-slim-bookworm moves with every patch
-# release, so the same Dockerfile would silently produce different images over
-# time and the ECR scan findings would not describe what was reviewed. Refresh
-# deliberately: docker manifest inspect --verbose python:3.12-slim-bookworm
-FROM python:3.12-slim-bookworm@sha256:72d3d75f2639ab82b34b29390ad3d6e0827c775befee94edda8e9976818f488d
+# Pinned by DIGEST, not tag: a tag moves with every patch release, so the same
+# Dockerfile would silently produce different images over time and the ECR scan
+# findings would not describe what was reviewed. Refresh deliberately:
+#   docker manifest inspect --verbose python:3.12-slim-trixie
+#
+# Debian 13 (trixie), NOT bookworm. The bookworm base carried 3 CRITICAL and 5
+# HIGH CVEs in perl-base 5.36.0-7+deb12u3, every one marked NO FIX AVAILABLE in
+# Debian 12, so no apt upgrade could clear them. perl-base is Essential and
+# cannot be removed without breaking dpkg. Trixie ships perl-base 5.40.1-6 and
+# util-linux 2.41-5, which is the only remediation that does not mean waiving a
+# CRITICAL finding on an image that will process consented health speech.
+FROM python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -45,6 +52,10 @@ WORKDIR /opt/medzen
 
 # Requirements first: this layer is the expensive one and must not be
 # invalidated by a source change.
+# pip itself is a dependency with advisories: the base ships 25.0.1, which
+# pip-audit flags for 6 issues fixed by 26.x. Upgrade before installing anything.
+RUN pip install --no-cache-dir "pip==26.2"
+
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
@@ -52,6 +63,13 @@ COPY pipeline ./pipeline
 COPY scripts ./scripts
 COPY registry ./registry
 COPY schemas ./schemas
+
+# Python-dependency audit. ECR basic scanning covers OS packages only, so
+# without this nothing looks at torch, transformers, or the Flask/gunicorn tail
+# mlflow installs. Runs BEFORE the verify gate deliberately: the audit removes
+# the tooling it installed, and the gate below then proves the environment
+# survived that cleanup.
+RUN bash pipeline/audit_python_deps.sh
 
 # The SAME gates the EC2 venv path runs — stale packages absent, pip check,
 # torch pin, import gate — executed at build time so a broken environment can
