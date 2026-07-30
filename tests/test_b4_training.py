@@ -166,7 +166,13 @@ def test_base_model_revision_is_pinned_and_passed():
     import re
     m = re.search(r'BASE_REVISION = os\.environ\.get\("BASE_REVISION", "([0-9a-f]{40})"\)', src)
     assert m, "base revision must default to a 40-char commit SHA"
-    assert src.count("revision=rev") >= 2, "revision must reach model AND processor"
+    # The pin is now applied through base_model_source(), which either passes
+    # revision= to the Hub or verifies the cache's MANIFEST revision. Both
+    # from_pretrained calls must go through it -- one bypassing it would load
+    # unpinned weights while the run still reported the SHA.
+    assert "src = base_model_source(a.base_model, rev)" in src
+    assert src.count("**src.kwargs") == 2, "revision must reach model AND processor"
+    assert "from_pretrained(src.path" in src
 
 
 # --------------------------------------------------------------------------- #
@@ -218,3 +224,94 @@ def test_final_sync_call_uses_the_exclusion():
     src = TRAIN.read_text()
     assert "sync_up(a.out, dest, skip_checkpoints=True)" in src, \
         "the final upload must exclude nested checkpoints"
+
+
+# --------------------------------------------------------------------------- #
+# base model cache: the revision must be ENFORCED, not just recorded
+# --------------------------------------------------------------------------- #
+REV = "06f233fe06e710322aca913c1bc4249a0d71fce1"
+
+
+def _manifest(rev=REV, files=("config.json", "model.safetensors")):
+    return {"repo": "openai/whisper-large-v3", "revision": rev,
+            "files": {f: {"sha256": "x" * 64, "bytes": 1} for f in files}}
+
+
+def test_cache_disabled_falls_back_to_hub_with_revision(monkeypatch):
+    from pipeline.train_asr import base_model_source
+    monkeypatch.setenv("MEDZEN_NO_MODEL_CACHE", "1")
+    src = base_model_source("openai/whisper-large-v3", REV)
+    assert src.path == "openai/whisper-large-v3"
+    assert src.kwargs == {"revision": REV}, "the Hub path must still enforce the pin"
+
+
+def test_cache_miss_falls_back_to_hub(monkeypatch):
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+    monkeypatch.delenv("MEDZEN_NO_MODEL_CACHE", raising=False)
+    cli = MagicMock()
+    cli.get_object.side_effect = RuntimeError("NoSuchKey")
+    with patch.object(T, "s3", return_value=cli):
+        src = T.base_model_source("openai/whisper-large-v3", REV)
+    assert src.kwargs == {"revision": REV}
+
+
+def test_cache_with_wrong_revision_is_refused(monkeypatch):
+    """A local directory ignores revision=, so a mismatched cache would train on
+    different weights while the run reported the pinned SHA."""
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+    monkeypatch.delenv("MEDZEN_NO_MODEL_CACHE", raising=False)
+    cli = MagicMock()
+    cli.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps(_manifest(rev="dead" * 10)).encode())}
+    with patch.object(T, "s3", return_value=cli):
+        with pytest.raises(SystemExit) as e:
+            T.base_model_source("openai/whisper-large-v3", REV)
+    assert "REFUSING" in str(e.value) and REV in str(e.value)
+
+
+def test_cache_hit_loads_locally_without_a_meaningless_revision(monkeypatch, tmp_path):
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+    monkeypatch.delenv("MEDZEN_NO_MODEL_CACHE", raising=False)
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    local = tmp_path / "whisper-large-v3" / REV
+    local.mkdir(parents=True)
+    for f in ("MANIFEST.json", "config.json", "model.safetensors"):
+        (local / f).write_text("x")
+    cli = MagicMock()
+    cli.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps(_manifest()).encode())}
+    with patch.object(T, "s3", return_value=cli):
+        src = T.base_model_source("openai/whisper-large-v3", REV)
+    assert src.path == str(local)
+    assert src.kwargs == {}, "revision= on a local dir is silently ignored; do not pass it"
+
+
+def test_incomplete_cache_is_refused(monkeypatch, tmp_path):
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+    monkeypatch.delenv("MEDZEN_NO_MODEL_CACHE", raising=False)
+    monkeypatch.setenv("MEDZEN_MODEL_DIR", str(tmp_path))
+    local = tmp_path / "whisper-large-v3" / REV
+    local.mkdir(parents=True)
+    (local / "MANIFEST.json").write_text("x")     # present, so no re-download
+    (local / "config.json").write_text("x")       # model.safetensors missing
+    cli = MagicMock()
+    cli.get_object.return_value = {
+        "Body": MagicMock(read=lambda: json.dumps(_manifest()).encode())}
+    with patch.object(T, "s3", return_value=cli):
+        with pytest.raises(SystemExit) as e:
+            T.base_model_source("openai/whisper-large-v3", REV)
+    assert "incomplete" in str(e.value)
+
+
+def test_seeder_revision_matches_trainer_pin():
+    import re
+    seeder = (ROOT / "scripts" / "seed_base_model.py").read_text()
+    m = re.search(r'^REVISION = "([0-9a-f]{40})"', seeder, re.M)
+    assert m, "seeder must pin a 40-char SHA"
+    t = re.search(r'BASE_REVISION = os\.environ\.get\("BASE_REVISION", "([0-9a-f]{40})"\)',
+                  TRAIN.read_text())
+    assert m.group(1) == t.group(1), "cache would hold weights the trainer does not pin"

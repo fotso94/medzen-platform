@@ -27,6 +27,7 @@ import random
 import sys
 import time
 from pathlib import Path
+from typing import NamedTuple
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -222,6 +223,57 @@ def sync_up(local: Path, uri: str, skip_checkpoints: bool = False) -> None:
         cli.upload_file(str(f), bucket, f"{prefix}/{rel}")
 
 
+class BaseSource(NamedTuple):
+    """Where to load the base checkpoint from, and how to prove it is the pin."""
+    path: str
+    kwargs: dict
+
+
+def base_model_source(repo: str, rev: str) -> BaseSource:
+    """Prefer the S3 cache; fall back to the Hub.
+
+    The Hub path passes revision= so the pin is enforced by the library. The
+    cache path CANNOT: from_pretrained on a local directory ignores revision
+    entirely, so passing it would look like a pin while enforcing nothing --
+    the same trap as recording a revision without applying it. Instead the
+    cache carries a MANIFEST.json whose revision must equal the one asked for,
+    and this refuses to load if it does not.
+    """
+    if os.environ.get("MEDZEN_NO_MODEL_CACHE"):
+        return BaseSource(repo, {"revision": rev})
+
+    name = repo.split("/")[-1]
+    uri = f"s3://{BUCKET}/models/base/{name}/{rev}"
+    local = Path(os.environ.get("MEDZEN_MODEL_DIR", "/tmp/medzen-base")) / name / rev
+    try:
+        cli = s3()
+        bucket, prefix = s3_uri_parts(uri)
+        man = json.loads(cli.get_object(Bucket=bucket,
+                                        Key=f"{prefix}/MANIFEST.json")["Body"].read())
+    except Exception as e:
+        print(f"  base cache  miss ({type(e).__name__}); loading from the Hub")
+        return BaseSource(repo, {"revision": rev})
+
+    if man.get("revision") != rev:
+        raise SystemExit(
+            f"REFUSING: cached base model at {uri} declares revision "
+            f"{man.get('revision')!r}, but this run pins {rev!r}.\n"
+            "  A local directory ignores revision=, so loading it would report "
+            "the pin while training on different weights.")
+
+    if not (local / "MANIFEST.json").exists():
+        print(f"  base cache  {uri} -> {local}")
+        sync_down(uri, local)
+    else:
+        print(f"  base cache  {local} (already present)")
+
+    missing = [f for f in man["files"] if not (local / f).exists()]
+    if missing:
+        raise SystemExit(f"REFUSING: cached base model incomplete, missing {missing[:5]}")
+    print(f"  base cache  revision {man['revision']} verified, {len(man['files'])} files")
+    return BaseSource(str(local), {})
+
+
 def sync_down(uri: str, local: Path) -> Path:
     cli = s3()
     bucket, prefix = s3_uri_parts(uri)
@@ -344,8 +396,9 @@ def main() -> int:
 
     rev = SMOKE_REVISION if a.smoke else BASE_REVISION
     print(f"  revision    {rev}")
-    processor = WhisperProcessor.from_pretrained(a.base_model, revision=rev)
-    model = WhisperForConditionalGeneration.from_pretrained(a.base_model, revision=rev)
+    src = base_model_source(a.base_model, rev)
+    processor = WhisperProcessor.from_pretrained(src.path, **src.kwargs)
+    model = WhisperForConditionalGeneration.from_pretrained(src.path, **src.kwargs)
     model.config.forced_decoder_ids = None
     model.config.suppress_tokens = []
 
