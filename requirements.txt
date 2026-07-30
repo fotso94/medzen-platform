@@ -21,6 +21,14 @@ pytest==9.1.1
 # torch 2.13 + transformers 5.14 + peft 0.20 is the combination the smoke test
 # passed on; the EC2 DLAMI ships torch 2.7, so the trainer pins explicitly
 # rather than inheriting whatever the image happens to have.
+#
+# The trainer MUST uninstall the DLAMI's torchvision/torchaudio before
+# installing this file. They are compiled against torch 2.7, so under the
+# pinned torch they import but register no ops ("torchvision::nms does not
+# exist"); transformers touches torchvision.io while lazily loading Bloom,
+# which peft imports at module scope, so every peft import dies. Nothing here
+# uses either package -- absent is safe, stale-and-broken is not. They are
+# deliberately NOT listed below: adding a pin would reinstall what must go.
 torch==2.13.0
 transformers==5.14.1
 peft==0.20.0
