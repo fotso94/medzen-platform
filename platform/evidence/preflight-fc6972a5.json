@@ -1,0 +1,73 @@
+{
+  "record": "PREFLIGHT",
+  "recorded_utc": "2026-07-30T19:09:25Z",
+  "image_digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+  "image_tag_and_baked_git_sha": "202b005190a70b5f155d02ca74fc91fbfd81638a",
+  "attempts": [
+    {
+      "attempt": 1,
+      "instance_id": "i-0d0bb4c00cfd54aa5",
+      "run_prefix": "s3://medzen-speech/candidates/preflight/preflight-1785437128",
+      "result": "FAILED",
+      "exit_code": 1,
+      "cause": "--exclusions pointed at /opt/medzen/platform/decisions/... but Dockerfile.trainer copies pipeline, scripts, registry and schemas only. platform/ is not in the image, so the policy file did not exist at that path.",
+      "reached": "KMS round trip OK, eval-write deny intact, digest verified, container started, torch 2.13.0+cu130 with CUDA available; failed at exclusion load, before any training step",
+      "instance_terminated": true
+    },
+    {
+      "attempt": 2,
+      "instance_id": "i-077e0c5c7f73d8763",
+      "run_prefix": "s3://medzen-speech/candidates/preflight/preflight-1785437786",
+      "result": "PASSED",
+      "exit_code": 0,
+      "change_from_attempt_1": "policy served from s3://medzen-speech/curated/_versions/v2/DEFERRAL-DQ-2026-002.json instead of an in-image path; SAME image digest, no rebuild",
+      "instance_terminated": true,
+      "mlflow_run_id": "a0d940ff563b4323a8bb2457c6ae29fa",
+      "mlflow_db": "s3://medzen-speech/mlflow/db/a0d940ff563b4323a8bb2457c6ae29fa/mlflow.db",
+      "verified": {
+        "cuda_used": true,
+        "gpu": "NVIDIA L4 23034 MiB driver 595.71.05",
+        "gpu_peak_mb": 12652.4,
+        "device_used": "cuda",
+        "torch": "2.13.0+cu130",
+        "cuda_version": "13.0",
+        "steps": 3,
+        "train_loss": 19.915076573689777,
+        "loss_is_finite": true,
+        "base_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+        "base_source": "s3_cache",
+        "kms_round_trip": "OK",
+        "eval_write_deny": "INTACT",
+        "digest_verified_after_pull": true,
+        "provenance_source": "baked_image",
+        "git_dirty": false
+      },
+      "deferral": {
+        "policy_id": "DQ-2026-002-policy-deferral",
+        "policy_sha256": "f921e2a4cdf3f9bae3e93d01cbbad00913fd730c19d67898a9fdd4571f03226c",
+        "human_review_performed": false,
+        "declared": 20,
+        "removed": 20,
+        "over_decoder_limit": 6,
+        "extreme_token_rate_under_limit": 14,
+        "applied": "before_temperature_sampling",
+        "eligible_before": 4620,
+        "eligible_after": 4600,
+        "sampled_rows": 4601,
+        "over_limit_rows_remaining": 0,
+        "decoder_label_limit": 448,
+        "excluded_rows_present_in_mix": 0,
+        "dataset_fingerprint": "77c7ce61edba96c806fa22a0d50792fc4976a3cebe01a3322493583d94cb9b7c"
+      },
+      "scope_observed": {
+        "artifacts_written": "candidates/ and mlflow/ only",
+        "promotion_permitted": false,
+        "eval_permitted": false,
+        "eval_write_probe": "AccessDenied (guardrail exercised, not assumed)"
+      }
+    }
+  ],
+  "open_before_full_training": [
+    "trainer IAM still holds s3:PutObject on curated/* in the DEPLOYED role; the tightening is coded and planned (0 add, 1 change, 0 destroy) but NOT applied"
+  ]
+}
