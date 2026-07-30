@@ -288,3 +288,40 @@ def test_paired_comparison_tool_exists_and_reports_an_interval():
     src = (ROOT / "scripts" / "compare_decode_paired.py").read_text()
     assert "paired_ci95" in src and "distinguishable" in src
     assert "utterance-aligned" in src, "must verify arms are paired before pairing them"
+
+
+def test_chosen_by_run_is_a_stable_durable_reference():
+    """A relative local path does not survive a machine change and nothing
+    detects if the file is edited afterwards."""
+    ds = yaml.safe_load((REG / "pidgin.yaml").read_text())["asr"]["decode_strategy"]
+    ref = ds["chosen_by_run"]
+    assert ref.startswith(("s3://", "mlflow://")), f"unstable reference: {ref}"
+    assert not ref.startswith("file://"), "local paths are not citable evidence"
+    sha = ds["evidence"]["artifact_sha256"]
+    assert len(sha) == 64 and all(c in "0123456789abcdef" for c in sha)
+
+
+def test_language_generation_is_idempotent_and_preserves_earned_state():
+    """status, decode_strategy, tts approval and llm engine are results of
+    experiments and reviews. Regeneration must never discard them."""
+    import hashlib
+    gen = ROOT / "scripts" / "generate_languages.py"
+
+    def fingerprint():
+        h = hashlib.sha256()
+        for f in sorted(REG.glob("*.yaml")):
+            h.update(f.read_bytes())
+        return h.hexdigest()
+
+    before = fingerprint()
+    for _ in range(2):
+        r = subprocess.run([sys.executable, str(gen)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout + r.stderr
+        assert fingerprint() == before, "generation is not idempotent"
+
+    ds = yaml.safe_load((REG / "pidgin.yaml").read_text())["asr"]["decode_strategy"]
+    assert ds["mode"] == "en_token", "regeneration clobbered the experiment result"
+    assert ds["provisional"] is True
+
+    chk = subprocess.run([sys.executable, str(gen), "--check"], capture_output=True, text=True)
+    assert chk.returncode == 0, chk.stdout + chk.stderr

@@ -147,6 +147,14 @@
                 "confirm_on": {
                   "type": "string",
                   "description": "What must be measured before this stops being provisional."
+                },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$",
+                  "description": "Checksum of the evidence artifact, so a silent edit is detectable."
+                },
+                "superseded_by": {
+                  "type": "string"
                 }
               }
             }

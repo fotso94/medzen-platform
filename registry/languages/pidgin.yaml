@@ -19,7 +19,7 @@ asr:
   decode_strategy:
     mode: en_token
     provisional: true
-    chosen_by_run: file://results/baseline/paired_pidgin_tts_en_token_vs_auto.json
+    chosen_by_run: s3://medzen-speech/evidence/decode/pidgin_tts_en_token_vs_auto_551827a900f0.json
     frozen_eval: s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl
     candidates_compared:
     - en_token
@@ -41,6 +41,9 @@ asr:
         labelled code-switch spans. The present evidence is 44 read clips from 2 Nigerian
         speakers; it cannot support a claim about Cameroon Pidgin or about code-switched utterances,
         which are the actual target.
+      artifact_sha256: 551827a900f0b937fdaf4cdfc88ac2e081c8b0c861d93663794cc9b2cbb1fd1c
+      superseded_by: An MLflow run id once the tracking server is stood up in B4; until then
+        the content-addressed S3 artifact is the citable record.
 llm:
   engine: bedrock
   policy: pidgin-medzen-v1
