@@ -22,15 +22,40 @@ ROOT="${1:-$(pwd)}"
 REQ="$ROOT/requirements.txt"
 [ -f "$REQ" ] || { echo "FATAL: no requirements.txt at $REQ"; exit 15; }
 
-# --- 1. remove the DLAMI's torch-coupled packages --------------------------
-# torchvision/torchaudio ship compiled against the image's torch (2.7). Under
-# the pinned torch they still IMPORT but register no ops, so any consumer hits
-# "operator torchvision::nms does not exist". transformers touches
-# torchvision.io while lazily loading Bloom, and peft imports Bloom at module
-# scope -- so a stale torchvision breaks every peft import. Nothing in this
-# pipeline uses either package: absent is safe, stale-and-broken is not.
-echo "--- removing torch-coupled image packages ---"
-pip uninstall -y torchvision torchaudio 2>/dev/null || true
+# --- 1. build a CLEAN venv instead of mutating the image's ------------------
+# Every package the DLAMI ships is compiled against ITS torch (2.7). Under the
+# pinned torch each becomes importable-but-broken, and the failures surface far
+# from the cause: torchvision as "operator torchvision::nms does not exist" via
+# transformers' lazy Bloom import, transformer_engine as a missing
+# libcudnn_graph.so.9 via peft's optional-backend probe. Uninstalling them one
+# per launch is whack-a-mole against an unknown list.
+#
+# A venv with no system site-packages removes the entire class: only the pinned
+# set exists. The GPU driver still comes from the AMI, which is the one thing
+# pip cannot supply; the CUDA runtime rides along in the torch wheels.
+VENV="${VENV:-/opt/medzen/venv}"
+BASEPY=""
+for c in /opt/pytorch/bin/python python3.12 python3; do
+  command -v "$c" >/dev/null 2>&1 && { BASEPY=$(command -v "$c"); break; }
+done
+[ -n "$BASEPY" ] || { echo "FATAL: no python to build a venv from"; exit 15; }
+echo "--- creating clean venv at $VENV from $BASEPY ($("$BASEPY" -V 2>&1)) ---"
+rm -rf "$VENV"
+"$BASEPY" -m venv "$VENV" || { echo "FATAL: venv creation"; exit 15; }
+# shellcheck disable=SC1091
+source "$VENV/bin/activate" || { echo "FATAL: venv activate"; exit 15; }
+python -m pip install -q --upgrade pip || { echo "FATAL: pip upgrade"; exit 15; }
+echo "venv python: $(which python) $(python -V 2>&1)"
+
+# Prove the venv is actually isolated before trusting anything installed in it.
+python - <<'PYISO' || { echo "FATAL: venv is not isolated"; exit 19; }
+import sys, importlib.util as u
+leaked = [m for m in ("torch", "torchvision", "torchaudio", "transformer_engine",
+                      "transformers", "peft") if u.find_spec(m) is not None]
+print("pre-install importable (must be empty):", leaked or "none")
+sys.exit(1 if leaked else 0)
+PYISO
+echo "VENV ISOLATED"
 
 # --- 2. install the pinned set ---------------------------------------------
 echo "--- installing pinned requirements ---"

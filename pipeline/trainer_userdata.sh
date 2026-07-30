@@ -2,10 +2,15 @@
 # EC2 user-data for a trainer host. Version-controlled: every line here is a
 # lesson from B4 preflight attempts 1-5, and none of it should be retyped.
 #
-#   TRAIN_ARGS="--max-steps 3 --save-steps 3 ..." envsubst < this > /tmp/ud.sh
-#   aws ec2 run-instances --user-data file:///tmp/ud.sh ...
+#   TRAIN_ARGS="--max-steps 3 ..." WATCHDOG_SECONDS=2700 \
+#     envsubst '${TRAIN_ARGS} ${WATCHDOG_SECONDS}' < this > /tmp/ud.sh
+#   bash -n /tmp/ud.sh && aws ec2 run-instances --user-data file:///tmp/ud.sh ...
 #
-# Substituted before launch: ${TRAIN_ARGS}. Everything else is fixed.
+# The envsubst ARGUMENT LIST IS MANDATORY. Bare `envsubst` substitutes every
+# variable it finds, which would erase $RUN_ID, $S3, $SHIPPER and $TRAIN_RC --
+# producing a script that uploads to the wrong prefix and reports the wrong
+# exit status, with no syntax error to reveal it. tests/test_trainer_userdata.py
+# renders this file and asserts those survive.
 #
 # The four rules this file exists to enforce:
 #   1. Ship the log from the first second. Attempts 1-3 died with nothing
@@ -31,8 +36,19 @@ unset AWS_PROFILE                     # the instance role, never a stale profile
   done ) &
 SHIPPER=$!
 
-( sleep 2700
-  echo "WATCHDOG: hard timeout" >> /var/log/medzen-trainer.log
+# Parameterised: a 3-step preflight and a multi-hour full training run need
+# very different ceilings, and a watchdog shorter than the job silently
+# truncates it. Defaults to 45 min.
+#
+# WATCHDOG_SECONDS is the RENDER-time placeholder and appears exactly once;
+# WATCHDOG is the runtime variable and is never substituted. Reusing one name
+# for both would mean an unrendered launch produced `sleep ""` -- which fails
+# instantly and shuts the box down mid-training. envsubst also ignores the
+# ${VAR:-default} form, so the fallback has to be a separate bash line.
+WATCHDOG="${WATCHDOG_SECONDS}"
+: "${WATCHDOG:=2700}"
+( sleep "$WATCHDOG"
+  echo "WATCHDOG: hard timeout after ${WATCHDOG}s" >> /var/log/medzen-trainer.log
   aws s3 cp /var/log/medzen-trainer.log "$S3/watchdog.log" || true
   shutdown -h now ) &
 
@@ -75,8 +91,6 @@ mkdir -p /opt/medzen && cd /opt/medzen
 aws s3 cp s3://medzen-speech/candidates/bootstrap/medzen_code.tgz . || { echo "FATAL: code fetch"; exit 11; }
 tar xzf medzen_code.tgz || { echo "FATAL: untar"; exit 12; }
 
-source /opt/pytorch/bin/activate 2>/dev/null || echo "note: no /opt/pytorch venv, using system python"
-which python; python -V
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader | tee /tmp/gpu.txt \
   || { echo "FATAL: nvidia-smi"; exit 14; }
 
@@ -85,6 +99,10 @@ nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader | 
 bash /opt/medzen/pipeline/bootstrap_trainer.sh /opt/medzen
 BOOT_RC=$?
 [ $BOOT_RC -eq 0 ] || { echo "FATAL: bootstrap failed rc=$BOOT_RC"; exit $BOOT_RC; }
+
+# bootstrap builds a clean venv; use it, never the image's interpreter
+source /opt/medzen/venv/bin/activate || { echo "FATAL: venv activate"; exit 19; }
+which python; python -V
 
 # rule 4: no pipe, so $? is the trainer's own status
 python -m pipeline.train_asr ${TRAIN_ARGS}
