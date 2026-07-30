@@ -203,7 +203,10 @@ offline:
     instance_type: g6.xlarge           # verify G-family availability in eu-central-1 (B0.4)
     iam_role: medzen-trainer-role
     permissions:
-      - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: data, path: "raw/*"}
+      # READ ONLY, same reasoning as curated/*: training reads source audio from
+      # here and writes nothing. An unused write grant is only a way to corrupt
+      # the inputs a run claims to have trained on.
+      - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "raw/*"}
       # READ ONLY. Training reads manifests, COMPLETE.json, ADOPTION.json and the
       # deferral policy from here, and every integrity check in the loader is a
       # check against these objects. A job that can rewrite them can rewrite the
@@ -238,6 +241,9 @@ offline:
          why: "training plane has no production model access"}
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "models/*",
          why: "base checkpoints are immutable inputs, write-denied like eval sets"}
+      - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "raw/*",
+         why: "Training reads source audio and never writes it. Write access
+               would let a run alter the inputs it reports having used."}
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "curated/*",
          why: "A training job must not be able to rewrite its own governance. The
                corpus manifests, COMPLETE.json, ADOPTION.json and the deferral

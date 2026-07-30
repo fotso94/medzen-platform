@@ -4,8 +4,7 @@
     {
       "Effect": "Allow",
       "Action": [
-        "s3:GetObject",
-        "s3:PutObject"
+        "s3:GetObject"
       ],
       "Resource": [
         "arn:aws:s3:::medzen-speech/raw/*"
@@ -228,6 +227,17 @@
         "arn:aws:s3:::medzen-speech/models/*"
       ],
       "Sid": "BaseCheckpointsAreImmutableInputsWriteDen"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/raw/*"
+      ],
+      "Sid": "TrainingReadsSourceAudioAndNeverWritesIt"
     },
     {
       "Effect": "Deny",
