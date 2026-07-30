@@ -231,9 +231,25 @@ def test_migration_writes_lineage_for_every_manifest():
 # --------------------------------------------------------------------------- #
 # a version is usable only if its migration completed AND was adopted
 # --------------------------------------------------------------------------- #
-def _cli_with_completion(manifests, completion):
+DERIVE = object()          # default: a valid adoption bound to the completion
+
+
+def _adoption(completion, status="approved", bound=True):
+    """An adoption record as the approver would produce it."""
+    import hashlib
+    return {
+        "status": status,
+        "complete_record_sha256": (
+            hashlib.sha256(json.dumps(completion, sort_keys=True).encode()).hexdigest()
+            if bound else "0" * 64),
+    }
+
+
+def _cli_with_completion(manifests, completion, adoption=DERIVE):
     cli = _cli(manifests)
     orig = cli.get_object.side_effect
+    if adoption is DERIVE:
+        adoption = _adoption(completion) if completion is not None else None
 
     def get_object(Bucket, Key):
         if Key.endswith("COMPLETE.json"):
@@ -241,17 +257,49 @@ def _cli_with_completion(manifests, completion):
                 raise RuntimeError("NoSuchKey")
             body = json.dumps(completion).encode()
             return {"Body": MagicMock(read=lambda: body)}
+        if Key.endswith("ADOPTION.json"):
+            if adoption is None:
+                raise RuntimeError("NoSuchKey")
+            body = json.dumps(adoption).encode()
+            return {"Body": MagicMock(read=lambda: body)}
         return orig(Bucket=Bucket, Key=Key)
 
     cli.get_object.side_effect = get_object
     return cli
 
 
-def _load_v(manifests, completion, **kw):
+def _load_v(manifests, completion, adoption=DERIVE, **kw):
     import pipeline.train_asr as T
-    cli = _cli_with_completion(manifests, completion)
+    cli = _cli_with_completion(manifests, completion, adoption)
     with patch.object(T, "list_manifests", lambda c: list(manifests)):
         return T.load_mix(cli, 0.5, 0, None, **kw)
+
+
+# --- adoption is a separate decision from completion ---------------------- #
+def test_completed_version_without_an_adoption_record_is_refused():
+    """COMPLETE.json only says the writing finished. It is not approval."""
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, _completion(rows), adoption=None, version="v2")
+    assert "no adoption record" in str(e.value)
+    assert "not an approved one" in str(e.value)
+
+
+def test_unapproved_adoption_record_is_refused():
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows)
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, comp, adoption=_adoption(comp, status="draft"), version="v2")
+    assert "not 'approved'" in str(e.value)
+
+
+def test_adoption_bound_to_a_different_completion_record_is_refused():
+    """Approve v2, then change v2: the approval must not carry over."""
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows)
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, comp, adoption=_adoption(comp, bound=False), version="v2")
+    assert "changed after it was adopted" in str(e.value)
 
 
 def _completion(manifests, adopted=True):

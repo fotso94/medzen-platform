@@ -34,8 +34,11 @@ REVIEWABLE_DIRTY = {"platform/decisions/DQ-2026-001-label-review.json"}
 
 
 def git(*args: str) -> str:
+    """Trailing newline only. `--porcelain` encodes status in the first TWO
+    columns, so ' M path' begins with a significant space; stripping it shifts
+    every offset and silently truncates the first path by one character."""
     r = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
-    return r.stdout.strip() if r.returncode == 0 else ""
+    return r.stdout.rstrip("\n") if r.returncode == 0 else ""
 
 
 def dirty_paths() -> list[str]:
@@ -45,7 +48,7 @@ def dirty_paths() -> list[str]:
     for line in out.splitlines():
         if not line.strip():
             continue
-        rest = line[3:] if len(line) > 3 else line
+        rest = line[3:] if len(line) > 3 else line.lstrip()
         # a rename is reported as "old -> new"; both sides are changes
         if " -> " in rest:
             paths += [p.strip().strip('"') for p in rest.split(" -> ")]

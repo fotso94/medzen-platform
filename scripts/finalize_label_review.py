@@ -60,6 +60,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--approver-role", required=True,
                     help="ROLE of the approver; must differ from every reviewer role")
+    ap.add_argument("--attest-independent", action="store_true",
+                    help="the approver attests to being a DIFFERENT PERSON from every "
+                         "reviewer. This tool compares role strings; it cannot verify "
+                         "people, so the claim is recorded as an attestation.")
+    ap.add_argument("--no-independent-approval", metavar="REASON",
+                    help="record that independent approval was NOT available, with a "
+                         "reason. The decision is still produced, but it says so.")
     ap.add_argument("--upload", action="store_true")
     a = ap.parse_args()
 
@@ -163,9 +170,24 @@ def main() -> int:
                             f"listening, not metrics")
 
     # ---- separation of duties ---------------------------------------------
+    # A different role string is NOT a different person. This tool cannot tell
+    # them apart, so it refuses to imply independence that nobody asserted: the
+    # approver either attests to being a different person, or records that
+    # independent approval was unavailable and why. Silence is not an option.
     if a.approver_role in roles:
         problems.append(f"self-approval: approver role {a.approver_role!r} also reviewed "
                         f"entries. Approval by the same role adds no independent check.")
+    if a.attest_independent and a.no_independent_approval:
+        problems.append("--attest-independent and --no-independent-approval are "
+                        "contradictory")
+    if not a.attest_independent and not a.no_independent_approval:
+        problems.append(
+            "independence not stated. Different role strings do not prove different "
+            "people, and this tool cannot verify who is at the keyboard.\n"
+            "    Pass --attest-independent if the approver is genuinely a different "
+            "authorised person,\n"
+            "    or --no-independent-approval '<reason>' to record that it was not "
+            "available.")
 
     if problems:
         print(f"REFUSING — {len(problems)} problem(s):")
@@ -185,6 +207,16 @@ def main() -> int:
         "approved_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "approver_role": a.approver_role,
         "reviewer_roles": sorted(roles),
+        "independence": {
+            "independent_approval": bool(a.attest_independent),
+            "basis": ("attested by the approver: a different authorised person from "
+                      "every reviewer" if a.attest_independent
+                      else a.no_independent_approval),
+            "enforcement": ("ROLE STRINGS ONLY. This process compares role names and "
+                            "cannot verify that two different people were involved. "
+                            "Treat the flag above as a human attestation, not a "
+                            "technical control."),
+        },
         "bindings": doc["bindings"],
         # The exact draft these classifications came from. Without it, an
         # approved record could be paired with a different draft afterwards.

@@ -133,6 +133,26 @@ def load_mix(cli, temperature: float, seed: int,
             f"(adopted={comp.get('adopted')!r}). Adoption is a reviewed decision, "
             "not a side effect of the files existing.")
 
+    # Completion and adoption are DIFFERENT decisions and live in different
+    # records. COMPLETE.json says a migration finished; ADOPTION.json says a
+    # human reviewed it and approved training from it. A version that merely
+    # finished writing is not a version anyone agreed to use.
+    adopt_key = f"curated/_versions/{version}/ADOPTION.json"
+    try:
+        adopt = json.loads(cli.get_object(Bucket=BUCKET, Key=adopt_key)["Body"].read())
+    except Exception as e:
+        raise SystemExit(
+            f"REFUSING: no adoption record at s3://{BUCKET}/{adopt_key} "
+            f"({type(e).__name__}). A completed migration is not an approved one.")
+    if adopt.get("status") != "approved":
+        raise SystemExit(f"REFUSING: {adopt_key} status is {adopt.get('status')!r}, "
+                         "not 'approved'")
+    if adopt.get("complete_record_sha256") != hashlib.sha256(
+            json.dumps(comp, sort_keys=True).encode()).hexdigest():
+        raise SystemExit(
+            f"REFUSING: {adopt_key} was approved against a different completion "
+            "record; the version changed after it was adopted.")
+
     keys = [k for k in list_manifests(cli) if f"/{version}/manifest.jsonl" in k]
     if not keys:
         raise SystemExit(f"REFUSING: no manifests found at version {version!r}")

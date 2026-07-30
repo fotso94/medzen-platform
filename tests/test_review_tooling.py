@@ -455,3 +455,100 @@ def test_approved_record_binds_the_final_draft_hash():
     s = FINAL.read_text()
     assert '"approved_draft_sha256": hashlib.sha256(draft_raw).hexdigest()' in s
     assert "draft_raw = DRAFT.read_bytes()" in s
+
+
+# --------------------------------------------------------------------------- #
+# independence is an attestation, not a technical control -- say so
+# --------------------------------------------------------------------------- #
+def test_independence_must_be_stated_not_implied():
+    """Different role strings are not different people. The tool cannot tell,
+    so it refuses to produce a record that is silent on the question."""
+    s = FINAL.read_text()
+    assert "independence not stated" in s
+    assert "--attest-independent" in s and "--no-independent-approval" in s
+    assert "cannot verify who is at the keyboard" in s
+
+
+def test_contradictory_independence_flags_are_refused():
+    s = FINAL.read_text()
+    assert "contradictory" in s
+    assert "a.attest_independent and a.no_independent_approval" in s
+
+
+def test_record_states_the_limits_of_the_control():
+    s = FINAL.read_text()
+    assert '"independent_approval": bool(a.attest_independent)' in s
+    assert "ROLE STRINGS ONLY" in s
+    assert "human attestation, not a " in s and "technical control." in s
+    assert '"basis"' in s, "a false attestation must carry its stated reason"
+
+
+def test_self_approval_still_refused_regardless_of_attestation():
+    s = FINAL.read_text()
+    assert "self-approval" in s
+    assert "adds no independent check" in s
+
+
+# --------------------------------------------------------------------------- #
+# completion != adoption
+# --------------------------------------------------------------------------- #
+def test_loader_requires_a_separate_adoption_record():
+    """COMPLETE.json says a migration finished; ADOPTION.json says a human
+    approved training from it. They are different decisions."""
+    s = (ROOT / "pipeline/train_asr.py").read_text()
+    assert 'adopt_key = f"curated/_versions/{version}/ADOPTION.json"' in s
+    assert "no adoption record at" in s
+    assert "A completed migration is not an approved one" in s
+    assert 'adopt.get("status") != "approved"' in s
+
+
+def test_adoption_is_bound_to_the_completion_record_it_approved():
+    s = (ROOT / "pipeline/train_asr.py").read_text()
+    assert 'adopt.get("complete_record_sha256")' in s
+    assert "the version changed after it was adopted" in s
+
+
+def test_no_adoption_record_exists_yet():
+    """v2 must stay blocked until an ADOPTION.json is separately reviewed."""
+    import boto3
+    import botocore
+    try:
+        cli = boto3.Session(profile_name="medzen", region_name="eu-central-1").client("s3")
+        cli.head_object(Bucket="medzen-speech",
+                        Key="curated/_versions/v2/ADOPTION.json")
+        raise AssertionError("an ADOPTION.json exists; v2 should still be blocked")
+    except botocore.exceptions.ClientError:
+        pass          # expected: it does not exist
+    except (botocore.exceptions.NoCredentialsError,
+            botocore.exceptions.ProfileNotFound):
+        pytest.skip("no AWS credentials in this environment")
+
+
+def test_porcelain_first_path_is_not_truncated(tmp_path, monkeypatch):
+    """`.strip()` on porcelain output eats the leading status space, shifting
+    line[3:] by one and turning 'pipeline/x' into 'ipeline/x'. A mangled path
+    can never match REVIEWABLE_DIRTY, so an interrupted review whose draft
+    sorted first would be refused -- the very case the allowance exists for."""
+    import subprocess
+    from pipeline import review_bindings as RB
+
+    repo = tmp_path / "r"
+    repo.mkdir()
+    run = lambda *a: subprocess.run(["git", "-C", str(repo), *a],
+                                    capture_output=True, text=True)
+    run("init", "-q")
+    run("config", "user.email", "t@t"); run("config", "user.name", "t")
+    for name in ("pipeline_first.py", "zzz_last.py"):
+        (repo / name).write_text("x\n")
+    run("add", "-A"); run("commit", "-qm", "init")
+    for name in ("pipeline_first.py", "zzz_last.py"):
+        (repo / name).write_text("changed\n")
+
+    monkeypatch.setattr(RB, "ROOT", repo)
+    assert RB.dirty_paths() == ["pipeline_first.py", "zzz_last.py"]
+
+
+def test_git_helper_preserves_the_status_column():
+    s = (ROOT / "pipeline/review_bindings.py").read_text()
+    assert 'r.stdout.rstrip("\\n")' in s
+    assert ".stdout.strip()" not in s
