@@ -36,28 +36,40 @@ def test_git_sha_must_be_a_full_40_char_hex_sha():
 
 
 def test_bundle_is_fetched_from_a_per_commit_path():
-    s = BUILD.read_text()
-    assert 'BUNDLE_BASE="s3://medzen-speech/candidates/bootstrap/$GIT_SHA"' in s, \
+    """Fetching happens only in the trusted wrapper now."""
+    s = (ROOT / "pipeline" / "builder_userdata.sh").read_text()
+    assert 'B="s3://medzen-speech/candidates/bootstrap/$GIT_SHA"' in s, \
         "a shared path lets the builder fetch different bytes than were verified"
-    assert '"$BUNDLE_BASE/medzen_code.tgz"' in s
-    assert '"$BUNDLE_BASE/BUNDLE.json"' in s
+    assert '"$B/medzen_code.tgz"' in s
+    assert '"$B/BUNDLE.json"' in s
 
 
 def test_bundle_verification_covers_set_sizes_and_hashes():
-    s = BUILD.read_text()
-    # both directions of the set comparison
+    s = (ROOT / "pipeline" / "builder_userdata.sh").read_text()
     assert "declared - on_disk" in s and "on_disk - declared" in s, \
         "an unexpected extra file in the image must fail the build"
     assert "FILE SET MISMATCH" in s
     assert 'meta["bytes"]' in s and 'meta["sha256"]' in s
-    assert 'man["tar_sha256"]' in s, "the archive bytes themselves must be checked"
     assert "BUNDLE VERIFIED" in s
 
 
-def test_verification_runs_before_the_build():
+def test_build_image_has_no_fetch_or_extract_path_of_its_own():
+    """A second, unfiltered way into the build is an unaudited route around the
+    trusted wrapper. There must be exactly one entry point."""
     s = BUILD.read_text()
-    assert s.index("BUNDLE VERIFIED") < s.index("docker build"), \
-        "verifying after building defeats the purpose"
+    code = "\n".join(l for l in s.splitlines() if not l.lstrip().startswith("#"))
+    assert "tar xzf" not in code
+    assert "medzen_code.tgz" not in code
+    assert "BUNDLE_BASE" not in code
+
+
+def test_bundle_dir_is_mandatory():
+    s = BUILD.read_text()
+    assert 'if [ -z "${BUNDLE_DIR:-}" ]; then' in s
+    assert "FATAL: BUNDLE_DIR is required" in s
+    assert "There is no self-service fetch path" in s
+    # and it must be checked before the build
+    assert s.index("BUNDLE_DIR is required") < s.index("docker build")
 
 
 def test_base_image_is_pinned_by_digest():
@@ -162,13 +174,10 @@ def test_every_wrapper_failure_terminates():
         assert critical in s, f"missing a die() guard for: {critical}"
 
 
-def test_build_image_trusts_a_pre_verified_bundle_dir():
-    """It cannot meaningfully verify itself, so when the wrapper has done it,
-    it must say so rather than pretend to re-establish trust."""
+def test_build_image_says_why_it_cannot_verify_itself():
     s = BUILD.read_text()
-    assert 'if [ -n "${BUNDLE_DIR:-}" ]; then' in s
     assert "pre-verified by the trusted wrapper" in s
-    assert "cannot establish trust in it" in s
+    assert "proves nothing" in s
 
 
 def test_trainer_launcher_also_verifies_against_user_data():
@@ -196,3 +205,44 @@ def test_publish_prints_the_hash_for_launchers():
     s = PUBLISH.read_text()
     assert 'print(f"TAR_SHA256={tar_sha}")' in s
     assert "never by reading BUNDLE.json back out of S3" in s
+
+
+# --------------------------------------------------------------------------- #
+# digest validation: exactly sha256: + 64 lowercase hex
+# --------------------------------------------------------------------------- #
+CONTAINER = ROOT / "pipeline" / "container_userdata.sh"
+
+
+def test_build_validates_the_digest_ecr_returns():
+    """The CLI returns the string "None" for a missing image, and that would be
+    recorded as the artifact identity and pinned by deployments."""
+    s = BUILD.read_text()
+    assert "${#DIGEST_HEX} -ne 64" in s
+    assert 'DIGEST_HEX="${DIGEST#sha256:}"' in s
+    assert "digest not lowercase hex" in s
+    assert "exit 35" in s
+
+
+def test_container_launcher_validates_the_digest():
+    s = CONTAINER.read_text()
+    assert "${#DIGEST_HEX} -eq 64" in s
+    assert "IMAGE_DIGEST must start with sha256:" in s
+    assert "IMAGE_DIGEST not lowercase hex" in s
+
+
+def test_container_launcher_verifies_the_pulled_digest():
+    s = CONTAINER.read_text()
+    assert "DIGEST VERIFIED" in s
+    assert '[ "$GOT" = "$IMAGE_DIGEST" ]' in s
+
+
+def test_container_launcher_documents_the_imds_hop_limit():
+    """A container on the bridge network is one hop further from IMDS; EC2's
+    default limit of 1 denies it credentials and looks like an IAM fault."""
+    s = CONTAINER.read_text()
+    assert "HttpPutResponseHopLimit=2" in s
+
+
+def test_container_launcher_is_valid_bash():
+    r = subprocess.run(["bash", "-n", str(CONTAINER)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr

@@ -65,7 +65,6 @@ case "$GIT_SHA" in
   *[!0-9a-f]*) echo "FATAL: GIT_SHA is not lowercase hex: $GIT_SHA"; exit 30 ;;
 esac
 echo "GIT_SHA $GIT_SHA accepted"
-BUNDLE_BASE="s3://medzen-speech/candidates/bootstrap/$GIT_SHA"
 
 aws sts get-caller-identity || { echo "FATAL: no instance credentials"; exit 10; }
 
@@ -96,80 +95,24 @@ systemctl enable --now docker 2>/dev/null || systemctl start docker 2>/dev/null 
 for i in $(seq 1 20); do docker version >/dev/null 2>&1 && break; sleep 3; done
 docker version || { echo "FATAL: docker daemon unavailable"; exit 12; }
 
-# --- source tree -------------------------------------------------------------
-# BUNDLE_DIR means the trusted user-data wrapper already downloaded the archive,
-# matched it against a hash embedded at launch time, extracted it with
-# filter="data", and verified the full file set. Re-doing that here would add
-# nothing: this script is itself part of the tree that was verified, so its own
-# checks cannot establish trust in it. They remain for the standalone path.
-if [ -n "${BUNDLE_DIR:-}" ]; then
-  [ -d "$BUNDLE_DIR/pipeline" ] || { echo "FATAL: BUNDLE_DIR has no pipeline/"; exit 13; }
-  SRC="$BUNDLE_DIR"
-  echo "using bundle pre-verified by the trusted wrapper: $SRC"
-else
-rm -rf /opt/medzen && mkdir -p /opt/medzen/src && cd /opt/medzen
-aws s3 cp "$BUNDLE_BASE/medzen_code.tgz" . \
-  || { echo "FATAL: no bundle at $BUNDLE_BASE (publish_bundle.py first)"; exit 13; }
-aws s3 cp "$BUNDLE_BASE/BUNDLE.json" /tmp/BUNDLE.json \
-  || { echo "FATAL: no BUNDLE.json at $BUNDLE_BASE"; exit 31; }
-tar xzf medzen_code.tgz -C /opt/medzen/src || { echo "FATAL: untar"; exit 14; }
-
-python3 /dev/stdin "$GIT_SHA" <<'VERIFY_BUNDLE' || { echo "FATAL: bundle verification failed"; exit 32; }
-import hashlib, json, pathlib, sys
-
-want = sys.argv[1]
-man = json.loads(pathlib.Path("/tmp/BUNDLE.json").read_text())
-root = pathlib.Path("/opt/medzen/src")
-
-if man["git_sha"] != want:
-    print(f"MISMATCH: bundle is {man['git_sha']}, asked to tag {want}")
-    sys.exit(1)
-
-# The tarball itself, as bytes. Catches a swapped archive before its contents
-# are even considered.
-tar = pathlib.Path("/opt/medzen/medzen_code.tgz").read_bytes()
-if "tar_sha256" in man:
-    got = hashlib.sha256(tar).hexdigest()
-    if got != man["tar_sha256"]:
-        print(f"MISMATCH: tar sha256 {got[:12]} != {man['tar_sha256'][:12]}")
-        sys.exit(1)
-    print(f"tar sha256 ok ({got[:12]})")
-
-# The COMPLETE file set, both directions. Missing files break the build
-# obviously; EXTRA files do not, and an unexpected file in the image is exactly
-# what a verification step exists to catch.
-on_disk = {p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file()}
-declared = set(man["files"])
-missing, extra = sorted(declared - on_disk), sorted(on_disk - declared)
-if missing or extra:
-    print(f"FILE SET MISMATCH: {len(missing)} missing, {len(extra)} unexpected")
-    for m in missing[:10]:
-        print(f"  missing: {m}")
-    for e in extra[:10]:
-        print(f"  unexpected: {e}")
-    sys.exit(1)
-
-bad = []
-for rel, meta in sorted(man["files"].items()):
-    f = root / rel
-    data = f.read_bytes()
-    if len(data) != meta["bytes"]:
-        bad.append(f"{rel}: {len(data)} bytes != {meta['bytes']}")
-        continue
-    h = hashlib.sha256(data).hexdigest()
-    if h != meta["sha256"]:
-        bad.append(f"{rel}: sha256 {h[:12]} != {meta['sha256'][:12]}")
-if bad:
-    print(f"{len(bad)} file(s) failed verification:")
-    for b in bad[:10]:
-        print("  " + b)
-    sys.exit(1)
-
-print(f"BUNDLE VERIFIED: git_sha {man['git_sha']}, {len(declared)} files, "
-      f"complete set, sizes and sha256 all match")
-VERIFY_BUNDLE
-SRC=/opt/medzen/src
+# --- source tree (MANDATORY: pre-verified by the trusted wrapper) ------------
+# BUNDLE_DIR is required, and this script deliberately has NO fetch-and-extract
+# path of its own. It is itself part of the tree being verified, so any check it
+# performs on that tree proves nothing -- and keeping a second, unfiltered
+# extraction path around would be an unsafe alternative route into the build
+# that nobody audits. builder_userdata.sh is the only way in: it verifies the
+# archive against a hash embedded in user-data, extracts with filter="data",
+# and checks the complete file set before executing anything here.
+if [ -z "${BUNDLE_DIR:-}" ]; then
+  echo "FATAL: BUNDLE_DIR is required."
+  echo "  Launch through pipeline/builder_userdata.sh, which verifies the bundle"
+  echo "  before executing this script. There is no self-service fetch path."
+  exit 13
 fi
+[ -d "$BUNDLE_DIR/pipeline" ] || { echo "FATAL: BUNDLE_DIR has no pipeline/: $BUNDLE_DIR"; exit 13; }
+[ -f "$BUNDLE_DIR/pipeline/Dockerfile.trainer" ] || { echo "FATAL: no Dockerfile in $BUNDLE_DIR"; exit 13; }
+SRC="$BUNDLE_DIR"
+echo "using bundle pre-verified by the trusted wrapper: $SRC"
 
 TAG="$GIT_SHA"
 cd "$SRC" || { echo "FATAL: cannot cd $SRC"; exit 13; }
@@ -192,6 +135,19 @@ DIGEST=$(aws ecr describe-images --repository-name medzen-trainer \
           --image-ids imageTag="$TAG" \
           --query 'imageDetails[0].imageDigest' --output text) \
   || { echo "FATAL: digest lookup"; exit 18; }
+# An empty or malformed digest would be recorded as the artifact identity and
+# pinned by deployments. "None" is what the CLI returns for a missing image.
+case "$DIGEST" in
+  sha256:*) ;;
+  *) echo "FATAL: digest not sha256-prefixed: '$DIGEST'"; exit 35 ;;
+esac
+DIGEST_HEX="${DIGEST#sha256:}"
+if [ ${#DIGEST_HEX} -ne 64 ]; then
+  echo "FATAL: digest hex must be 64 chars, got ${#DIGEST_HEX}: '$DIGEST'"; exit 35
+fi
+case "$DIGEST_HEX" in
+  *[!0-9a-f]*) echo "FATAL: digest not lowercase hex: '$DIGEST'"; exit 35 ;;
+esac
 echo "DIGEST $DIGEST"
 
 # --- scan must reach COMPLETE ------------------------------------------------

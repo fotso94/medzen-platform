@@ -58,9 +58,18 @@ finish() {
 }
 trap finish EXIT
 
+# Exactly sha256: plus 64 lowercase hex. A malformed digest would either fail
+# the pull in a confusing way or, worse, be recorded as the artifact identity of
+# whatever did get pulled.
 case "${IMAGE_DIGEST:-}" in
   sha256:*) ;;
-  *) echo "FATAL: IMAGE_DIGEST must be sha256:...; got '${IMAGE_DIGEST:-}'"; exit 40 ;;
+  *) echo "FATAL: IMAGE_DIGEST must start with sha256:; got '${IMAGE_DIGEST:-}'"; exit 40 ;;
+esac
+DIGEST_HEX="${IMAGE_DIGEST#sha256:}"
+[ ${#DIGEST_HEX} -eq 64 ] || {
+  echo "FATAL: IMAGE_DIGEST hex must be 64 chars, got ${#DIGEST_HEX}"; exit 40; }
+case "$DIGEST_HEX" in
+  *[!0-9a-f]*) echo "FATAL: IMAGE_DIGEST not lowercase hex"; exit 40 ;;
 esac
 echo "image $IMAGE"
 
