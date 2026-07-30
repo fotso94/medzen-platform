@@ -90,9 +90,12 @@ def test_vulnerability_thresholds_are_enforced_and_default_to_zero():
     s = BUILD.read_text()
     assert 'SCAN_MAX_CRITICAL="${SCAN_MAX_CRITICAL:-0}"' in s
     assert 'SCAN_MAX_HIGH="${SCAN_MAX_HIGH:-0}"' in s
-    assert "SCAN THRESHOLD EXCEEDED" in s
+    assert "SCAN GATE FAILED" in s, "the gate must have a failure path"
     assert "exit 34" in s, "exceeding the threshold must fail the build"
     assert '"adoptable": scan_rc == 0' in s, "image.json must record adoptability"
+    # all four actionable severities gated, not just the top two
+    for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        assert f'"{sev}":' in s, f"{sev} must be gated"
 
 
 def test_scan_gate_is_documented_as_post_push():

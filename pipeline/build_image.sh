@@ -188,10 +188,23 @@ SCAN_MAX_HIGH="${SCAN_MAX_HIGH:-0}"
 ALLOWLIST="$SRC/platform/cve_allowlist.json"
 [ -f "$ALLOWLIST" ] || { echo "FATAL: no CVE allowlist at $ALLOWLIST"; exit 36; }
 python3 /dev/stdin "$SCAN_MAX_CRITICAL" "$SCAN_MAX_HIGH" "$ALLOWLIST" <<'CHECK_SCAN'
-import datetime, json, sys
+import datetime, json, os, sys
 
 max_crit, max_high, allow_path = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
 today = datetime.date.today()
+
+# Every severity is gated at zero unless explicitly raised. Gating only CRITICAL
+# and HIGH let a brand-new unlisted MEDIUM through silently, which defeats the
+# point of an allowlist: the allowlist is the record of what we have looked at.
+# INFORMATIONAL and UNDEFINED are reported but not gated -- they are not findings
+# that call for action, and gating them would train people to raise limits.
+limits = {
+    "CRITICAL": max_crit,
+    "HIGH": max_high,
+    "MEDIUM": int(os.environ.get("SCAN_MAX_MEDIUM", "0")),
+    "LOW": int(os.environ.get("SCAN_MAX_LOW", "0")),
+}
+UNGATED = {"INFORMATIONAL", "UNDEFINED"}
 
 allow = json.load(open(allow_path))
 waivers = {e["cve"]: e for e in allow["entries"]}
@@ -203,59 +216,83 @@ print("SCAN SEVERITY COUNTS:",
       json.dumps(fi.get("findingSeverityCounts")
                  or fi.get("enhancedFindingSeverityCounts") or {}))
 print(f"allowlist: {len(waivers)} entries, review_by {allow.get('review_by')}")
+print(f"gate limits: {json.dumps(limits)} (ungated: {', '.join(sorted(UNGATED))})")
+
+hard_fail = []
+
+# The allowlist as a whole expires. Past review_by, every waiver in it is stale
+# by definition and the file must be re-reviewed rather than kept running.
+review_by = allow.get("review_by")
+if not review_by:
+    hard_fail.append("allowlist has no review_by date")
+elif datetime.date.fromisoformat(review_by) < today:
+    hard_fail.append(f"allowlist review_by {review_by} has passed; re-review required")
 
 waived, unwaived, invalid = [], [], []
 for f in findings:
-    cve = f.get("name")
-    sev = f.get("severity")
-    attrs = {a["key"]: a["value"] for a in f.get("attributes", [])}
-    pkg, fix = attrs.get("package_name"), attrs.get("fixed_in_version")
+    cve, sev = f.get("name"), f.get("severity")
+    a = {x["key"]: x["value"] for x in f.get("attributes", [])}
+    pkg, pkgver, fix = a.get("package_name"), a.get("package_version"), a.get("fixed_in_version")
     w = waivers.get(cve)
     if not w:
-        unwaived.append((sev, cve, pkg, fix))
+        unwaived.append((sev, cve, pkg, pkgver, fix))
         continue
-    # A fix now exists: the justification no longer holds.
+    # A fix now exists: every justification rests on there being nothing to
+    # upgrade to, so the waiver is void.
     if fix:
         invalid.append((sev, cve, pkg, f"FIX NOW AVAILABLE ({fix}) -- waiver void"))
-        continue
-    if datetime.date.fromisoformat(w["expires"]) < today:
+    elif datetime.date.fromisoformat(w["expires"]) < today:
         invalid.append((sev, cve, pkg, f"waiver EXPIRED {w['expires']}"))
-        continue
-    if w.get("package") != pkg:
+    elif w.get("package") != pkg:
         invalid.append((sev, cve, pkg, f"waiver names package {w.get('package')!r}"))
-        continue
-    waived.append((sev, cve, pkg))
+    elif w.get("package_version") != pkgver:
+        # A waiver is written against a specific package build. A different
+        # version is a different artifact and has not been reviewed.
+        invalid.append((sev, cve, pkg,
+                        f"waiver is for {pkg} {w.get('package_version')!r}, "
+                        f"scan reports {pkgver!r}"))
+    elif w.get("severity") != sev:
+        # A CVE re-rated upward must not stay waived under a justification
+        # written when it was less severe.
+        invalid.append((sev, cve, pkg,
+                        f"severity changed: waiver says {w.get('severity')}, "
+                        f"scan says {sev}"))
+    else:
+        waived.append((sev, cve, pkg))
 
 print(f"\nwaived by allowlist ({len(waived)}):")
 for sev, cve, pkg in sorted(waived):
-    print(f"  {sev:<9} {cve:<18} {pkg}  (reachable="
-          f"{str(waivers[cve].get('reachable')).lower()}, expires {waivers[cve]['expires']})")
+    w = waivers[cve]
+    print(f"  {sev:<9} {cve:<18} {pkg} {w['package_version']}  "
+          f"(reachable={str(w.get('reachable')).lower()}, expires {w['expires']})")
 
-stale = sorted(set(waivers) - {c for _, c, _ in waived} - {c for _, c, _, _ in invalid})
+# Entries that match nothing in this scan are stale and must be pruned. Leaving
+# them is how an allowlist quietly becomes a list of things nobody checks.
+matched = {c for _, c, _ in waived} | {c for _, c, _, _ in invalid}
+stale = sorted(set(waivers) - matched)
 if stale:
-    print(f"\nnote: {len(stale)} allowlist entries not present in this scan "
-          f"(candidates for removal): {', '.join(stale)}")
+    hard_fail.append(f"{len(stale)} stale allowlist entr{'y' if len(stale)==1 else 'ies'} "
+                     f"matching nothing in this scan: {', '.join(stale)} -- prune them")
 
-fail = False
 if invalid:
     print(f"\nINVALID WAIVERS ({len(invalid)}) -- these do NOT count as waived:")
     for sev, cve, pkg, why in sorted(invalid):
         print(f"  {sev:<9} {cve:<18} {pkg}  {why}")
-    fail = True
 
-counts = {}
-for sev, cve, pkg, fix in unwaived:
-    counts[sev] = counts.get(sev, 0) + 1
 if unwaived:
     print(f"\nNOT WAIVED ({len(unwaived)}):")
-    for sev, cve, pkg, fix in sorted(unwaived):
-        print(f"  {sev:<9} {cve:<18} {pkg}  fix={fix or 'none'}")
+    for sev, cve, pkg, pkgver, fix in sorted(unwaived):
+        print(f"  {sev:<9} {cve:<18} {pkg} {pkgver}  fix={fix or 'none'}")
 
-# Count invalid waivers alongside unwaived findings, and SAY so: a message
-# reading "CRITICAL 0 unwaived > 0" is how a real failure gets misread as a bug
-# in the gate.
+counts = {}
+for sev, cve, pkg, pkgver, fix in unwaived:
+    counts[sev] = counts.get(sev, 0) + 1
+
 over = []
-for sev, limit in (("CRITICAL", max_crit), ("HIGH", max_high)):
+for sev in sorted(set(counts) | {i[0] for i in invalid}):
+    if sev in UNGATED:
+        continue
+    limit = limits.get(sev, 0)
     n_unwaived = counts.get(sev, 0)
     n_invalid = sum(1 for i in invalid if i[0] == sev)
     if n_unwaived + n_invalid > limit:
@@ -265,16 +302,16 @@ for sev, limit in (("CRITICAL", max_crit), ("HIGH", max_high)):
         if n_invalid:
             parts.append(f"{n_invalid} with an invalid waiver")
         over.append(f"{sev}: {' + '.join(parts)} > limit {limit}")
-if over:
-    print("\nSCAN THRESHOLD EXCEEDED")
+
+if over or hard_fail:
+    print("\nSCAN GATE FAILED")
     for o in over:
         print(f"  {o}")
-    sys.exit(1)
-if fail:
-    print("\nSCAN GATE FAILED: invalid waivers present (see above)")
+    for h in hard_fail:
+        print(f"  {h}")
     sys.exit(1)
 print(f"\nSCAN THRESHOLDS OK: {len(waived)} finding(s) waived by named exception, "
-      f"0 unwaived above threshold")
+      f"0 unwaived or invalid above threshold")
 CHECK_SCAN
 SCAN_RC=$?
 

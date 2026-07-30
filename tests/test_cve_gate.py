@@ -188,3 +188,127 @@ def test_scan_provenance_is_recorded():
     scout = rec["docker_scout_base_comparison"]
     assert scout["authoritative"] is False, "ECR must remain the authority"
     assert rec["python_dependency_audit"]["packages_audited"] == 163
+
+
+# --------------------------------------------------------------------------- #
+# an allowlist is only a record of what was looked at if it is exact
+# --------------------------------------------------------------------------- #
+def test_every_entry_pins_a_package_version(allow):
+    """A waiver is written against a specific package build. Without a version,
+    a base-image bump silently carries every justification forward onto
+    artifacts nobody reviewed."""
+    for e in allow["entries"]:
+        assert e.get("package_version"), f"{e['cve']} has no package_version"
+
+
+def test_entry_versions_and_severities_match_the_recorded_scan(allow, scan):
+    by_cve = {}
+    for f in scan["imageScanFindings"]["findings"]:
+        a = {x["key"]: x["value"] for x in f.get("attributes", [])}
+        by_cve[f["name"]] = (f["severity"], a.get("package_name"), a.get("package_version"))
+    for e in allow["entries"]:
+        sev, pkg, ver = by_cve[e["cve"]]
+        assert e["severity"] == sev, f"{e['cve']}: allowlist {e['severity']} != scan {sev}"
+        assert e["package"] == pkg
+        assert e["package_version"] == ver
+
+
+def test_a_waiver_for_a_different_package_version_fails(gate, scan, allow, tmp_path):
+    a = copy.deepcopy(allow)
+    for e in a["entries"]:
+        if e["cve"] == "CVE-2026-5450":
+            e["package_version"] = "2.41-99+deb13u9"     # a build nobody reviewed
+    r = run(gate, scan, a, tmp_path)
+    assert r.returncode == 1
+    assert "waiver is for glibc" in r.stdout
+    assert "scan reports" in r.stdout
+
+
+def test_a_severity_escalation_voids_the_waiver(gate, scan, allow, tmp_path):
+    """A CVE re-rated upward must not stay waived under a justification written
+    when it was less severe."""
+    s = copy.deepcopy(scan)
+    for f in s["imageScanFindings"]["findings"]:
+        if f["name"] == "CVE-2026-7010":          # MEDIUM in the allowlist
+            f["severity"] = "CRITICAL"
+    r = run(gate, s, allow, tmp_path)
+    assert r.returncode == 1
+    assert "severity changed" in r.stdout
+
+
+def test_a_passed_review_by_fails_the_whole_gate(gate, scan, allow, tmp_path):
+    """Past review_by every waiver is stale by definition, whatever its own
+    expiry says."""
+    a = copy.deepcopy(allow)
+    a["review_by"] = "2026-01-01"
+    r = run(gate, scan, a, tmp_path)
+    assert r.returncode == 1
+    assert "review_by" in r.stdout and "has passed" in r.stdout
+
+
+def test_a_missing_review_by_fails(gate, scan, allow, tmp_path):
+    a = copy.deepcopy(allow)
+    del a["review_by"]
+    r = run(gate, scan, a, tmp_path)
+    assert r.returncode == 1
+    assert "no review_by" in r.stdout
+
+
+def test_stale_entries_fail_rather_than_warn(gate, scan, allow, tmp_path):
+    """Leaving entries that match nothing is how an allowlist quietly becomes a
+    list of things nobody checks."""
+    a = copy.deepcopy(allow)
+    a["entries"].append({
+        "cve": "CVE-2020-00000", "package": "openssl", "package_version": "1.0",
+        "severity": "HIGH", "reachable": False, "expires": "2026-10-28",
+        "justification": "x" * 100,
+    })
+    r = run(gate, scan, a, tmp_path)
+    assert r.returncode == 1
+    assert "stale allowlist" in r.stdout
+    assert "CVE-2020-00000" in r.stdout
+
+
+def test_a_new_unlisted_medium_fails(gate, scan, allow, tmp_path):
+    """Gating only CRITICAL and HIGH let a brand-new MEDIUM through silently."""
+    s = copy.deepcopy(scan)
+    f = {"name": "CVE-2026-88888", "severity": "MEDIUM"}
+    _attr(f, "package_name", "zlib")
+    _attr(f, "package_version", "1.3")
+    s["imageScanFindings"]["findings"].append(f)
+    r = run(gate, s, allow, tmp_path)
+    assert r.returncode == 1
+    assert "CVE-2026-88888" in r.stdout
+    assert "MEDIUM: 1 unwaived" in r.stdout
+
+
+def test_a_new_unlisted_low_fails(gate, scan, allow, tmp_path):
+    s = copy.deepcopy(scan)
+    f = {"name": "CVE-2026-77777", "severity": "LOW"}
+    _attr(f, "package_name", "zlib")
+    _attr(f, "package_version", "1.3")
+    s["imageScanFindings"]["findings"].append(f)
+    r = run(gate, s, allow, tmp_path)
+    assert r.returncode == 1
+    assert "LOW: 1 unwaived" in r.stdout
+
+
+def test_informational_findings_are_reported_but_not_gated(gate, scan, allow, tmp_path):
+    """These are not findings that call for action, and gating them would train
+    people to raise limits."""
+    s = copy.deepcopy(scan)
+    f = {"name": "CVE-2026-66666", "severity": "INFORMATIONAL"}
+    _attr(f, "package_name", "zlib")
+    _attr(f, "package_version", "1.3")
+    s["imageScanFindings"]["findings"].append(f)
+    r = run(gate, s, allow, tmp_path)
+    assert r.returncode == 0, r.stdout
+    assert "CVE-2026-66666" in r.stdout, "it must still be visible"
+
+
+def test_all_gated_severities_default_to_zero():
+    s = BUILD.read_text()
+    for sev in ("CRITICAL", "HIGH", "MEDIUM", "LOW"):
+        assert f'"{sev}"' in s, f"{sev} must be gated"
+    assert 'SCAN_MAX_MEDIUM", "0"' in s
+    assert 'SCAN_MAX_LOW", "0"' in s
