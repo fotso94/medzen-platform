@@ -303,12 +303,41 @@ def test_audit_script_is_valid_and_fails_closed():
     assert 'PIP_AUDIT_VERSION="${PIP_AUDIT_VERSION:-' in s, "the audit tool must be pinned"
 
 
-def test_audit_removes_only_what_it_added():
-    """Uninstalling by name==version would strip a package pip-audit merely
-    upgraded, taking a trainer dependency with it."""
+def test_audit_never_mutates_the_target_environment():
+    """Removing audit packages by NAME does not undo a version UPGRADE to a
+    package that was already installed, and pip check validates compatibility
+    rather than exact versions -- so the image could ship a dependency set
+    different from the pinned one it was verified as. pip-audit therefore runs
+    from its own venv against an exported freeze, touching nothing.
+    """
     s = AUDIT.read_text()
-    assert "comm -13" in s
-    assert "cut -d= -f1" in s, "compare names, not name==version"
+    # check CODE throughout: the comments deliberately NAME the things that must
+    # be absent, so scanning the whole file matches its own explanations
+    code = "\n".join(l for l in s.splitlines() if not l.lstrip().startswith("#"))
+    assert 'python -m venv "$AUDIT_VENV"' in code
+    assert "--system-site-packages" not in code, "the audit venv must NOT see the target env"
+    assert '-r "$FREEZE_BEFORE"' in code, "audit the exported freeze, not the live env"
+    assert "--no-deps" in code
+    # pip-audit must be installed into the audit venv only
+    assert '"$AUDIT_VENV/bin/pip" install -q "pip-audit==' in code
+    assert "\npip install" not in code, "nothing may be installed into the target env"
+
+
+def test_audit_proves_the_freeze_is_byte_identical():
+    """The isolation means nothing can be mutated; this proves it was not."""
+    s = AUDIT.read_text()
+    assert 'diff -q "$FREEZE_BEFORE" "$FREEZE_AFTER"' in s
+    assert "FREEZE UNCHANGED" in s
+    assert "exit 52" in s, "a changed environment must fail the build"
+    assert "pip freeze --all" in s, "--all so pip/setuptools/wheel are covered too"
+
+
+def test_audit_refuses_an_unauditable_freeze():
+    """Editable or local installs cannot be audited by pin, and auditing less
+    than the whole set silently is worse than failing."""
+    s = AUDIT.read_text()
+    assert "editable or local installs" in s
+    assert "@ file://" in s
 
 
 def test_audit_is_not_in_the_runtime_path():
