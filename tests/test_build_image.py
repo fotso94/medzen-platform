@@ -229,14 +229,17 @@ def test_build_validates_the_digest_ecr_returns():
 def test_container_launcher_validates_the_digest():
     s = CONTAINER.read_text()
     assert "${#DIGEST_HEX} -eq 64" in s
-    assert "IMAGE_DIGEST must start with sha256:" in s
-    assert "IMAGE_DIGEST not lowercase hex" in s
+    assert "digest must start with sha256:" in s
+    assert "digest not lowercase hex" in s
+    # validation must read the RUNTIME variable, not the render-time placeholder:
+    # envsubst leaves ${VAR:-} alone, so the latter evaluates empty on the box
+    assert 'case "$DIGEST" in' in s
 
 
 def test_container_launcher_verifies_the_pulled_digest():
     s = CONTAINER.read_text()
     assert "DIGEST VERIFIED" in s
-    assert '[ "$GOT" = "$IMAGE_DIGEST" ]' in s
+    assert '[ "$GOT" = "$DIGEST" ]' in s
 
 
 def test_container_launcher_documents_the_imds_hop_limit():

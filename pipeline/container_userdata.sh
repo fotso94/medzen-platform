@@ -1,8 +1,10 @@
 #!/bin/bash
 # EC2 user-data to run the trainer FROM THE ECR IMAGE, pinned by digest.
 #
-#   IMAGE_DIGEST=sha256:... TRAIN_ARGS="--max-steps 3 ..." WATCHDOG_SECONDS=2700 \
-#     envsubst '${IMAGE_DIGEST} ${TRAIN_ARGS} ${WATCHDOG_SECONDS}' < this > /tmp/ud.sh
+#   IMAGE_DIGEST=sha256:<64 hex> TRAIN_ARGS="--max-steps 3 ..." WATCHDOG_SECONDS=2700 \
+#     envsubst 'DOLLAR{IMAGE_DIGEST} DOLLAR{TRAIN_ARGS} DOLLAR{WATCHDOG_SECONDS}' \
+#       < this > /tmp/ud.sh      # write DOLLAR as $ -- spelled out so envsubst
+#                                # does not substitute inside this comment
 #   bash -n /tmp/ud.sh && aws ec2 run-instances --user-data file:///tmp/ud.sh ...
 #
 # The envsubst ARGUMENT LIST IS MANDATORY; bare envsubst would erase $RUN_ID,
@@ -26,7 +28,18 @@ RUN_ID="preflight-$(date +%s)"
 S3="s3://medzen-speech/candidates/preflight/$RUN_ID"
 REGISTRY=558069890522.dkr.ecr.eu-central-1.amazonaws.com
 REPO="$REGISTRY/medzen-trainer"
-IMAGE="$REPO@${IMAGE_DIGEST}"
+# IMAGE_DIGEST is the RENDER-time placeholder and must appear exactly once.
+# DIGEST is the runtime variable. envsubst does not substitute the ${VAR:-}
+# form, so a validation written against ${IMAGE_DIGEST:-} survives rendering
+# and then evaluates EMPTY on the instance -- which is exactly how the first
+# attempt failed at exit 40 with a correctly-built IMAGE.
+DIGEST="${IMAGE_DIGEST}"
+IMAGE="$REPO@$DIGEST"
+
+# Same split, same reason. An empty ARGS would run the trainer with its
+# defaults -- 600 steps, batch 2, grad-accum 8 -- which is FULL TRAINING, not a
+# preflight. That must never happen by omission.
+ARGS="${TRAIN_ARGS}"
 export AWS_DEFAULT_REGION=eu-central-1 AWS_REGION=eu-central-1
 unset AWS_PROFILE
 
@@ -61,17 +74,23 @@ trap finish EXIT
 # Exactly sha256: plus 64 lowercase hex. A malformed digest would either fail
 # the pull in a confusing way or, worse, be recorded as the artifact identity of
 # whatever did get pulled.
-case "${IMAGE_DIGEST:-}" in
+case "$DIGEST" in
   sha256:*) ;;
-  *) echo "FATAL: IMAGE_DIGEST must start with sha256:; got '${IMAGE_DIGEST:-}'"; exit 40 ;;
+  *) echo "FATAL: digest must start with sha256:; got '$DIGEST'"; exit 40 ;;
 esac
-DIGEST_HEX="${IMAGE_DIGEST#sha256:}"
+DIGEST_HEX="${DIGEST#sha256:}"
 [ ${#DIGEST_HEX} -eq 64 ] || {
-  echo "FATAL: IMAGE_DIGEST hex must be 64 chars, got ${#DIGEST_HEX}"; exit 40; }
+  echo "FATAL: digest hex must be 64 chars, got ${#DIGEST_HEX}"; exit 40; }
 case "$DIGEST_HEX" in
-  *[!0-9a-f]*) echo "FATAL: IMAGE_DIGEST not lowercase hex"; exit 40 ;;
+  *[!0-9a-f]*) echo "FATAL: digest not lowercase hex: '$DIGEST'"; exit 40 ;;
 esac
 echo "image $IMAGE"
+
+[ -n "$ARGS" ] || {
+  echo "FATAL: TRAIN_ARGS rendered empty. The trainer would fall back to its"
+  echo "  defaults (--max-steps 600), which is full training, not a preflight."
+  exit 43; }
+echo "train args: $ARGS"
 
 aws sts get-caller-identity || { echo "FATAL: no instance credentials"; exit 10; }
 
@@ -106,7 +125,7 @@ docker pull "$IMAGE" || { echo "FATAL: docker pull"; exit 41; }
 # trust when the artifact trains production models.
 GOT=$(docker image inspect "$IMAGE" --format '{{index .RepoDigests 0}}' | sed 's/.*@//')
 echo "pulled digest $GOT"
-[ "$GOT" = "$IMAGE_DIGEST" ] || { echo "FATAL: digest mismatch: $GOT != $IMAGE_DIGEST"; exit 42; }
+[ "$GOT" = "$DIGEST" ] || { echo "FATAL: digest mismatch: $GOT != $DIGEST"; exit 42; }
 echo "DIGEST VERIFIED"
 
 # Host-side directories so artifacts and the base-model cache survive the
@@ -121,11 +140,11 @@ docker run --rm --gpus all \
   -e MEDZEN_MODEL_DIR=/opt/medzen-base \
   -v /opt/medzen-out:/opt/medzen/artifacts \
   -v /opt/medzen-cache:/opt/medzen-base \
-  "$IMAGE" ${TRAIN_ARGS}
+  "$IMAGE" $ARGS
 TRAIN_RC=$?
 echo "TRAIN_RC=$TRAIN_RC"
 
-python3 /dev/stdin "$TRAIN_RC" "$IMAGE_DIGEST" <<'WRITE_RESULT' > /tmp/result.json
+python3 /dev/stdin "$TRAIN_RC" "$DIGEST" <<'WRITE_RESULT' > /tmp/result.json
 import json, pathlib, sys
 rc, digest = int(sys.argv[1]), sys.argv[2]
 rj = pathlib.Path("/opt/medzen-out/asr-lora/run.json")
