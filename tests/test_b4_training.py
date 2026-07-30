@@ -870,7 +870,123 @@ def test_noisy_but_descending_passes():
 def test_descent_gate_registered_after_the_upload_callback():
     src = TRAIN.read_text()
     block = src[src.index("callbacks = [make_upload_callback"):src.index("callbacks=callbacks")]
-    assert block.index("make_upload_callback(run_prefix)") < block.index("make_descent_gate("), \
+    assert block.index("make_upload_callback(run_prefix,") < block.index("make_descent_gate("), \
         "the upload callback must run first within a save"
     assert "--descent-gate-step" in src
     assert "a.descent_gate_step < a.max_steps" in src
+
+
+# --------------------------------------------------------------------------- #
+# the abort must not claim resumability the uploader never achieved
+# --------------------------------------------------------------------------- #
+def test_uploader_verifies_objects_are_readable_after_upload(tmp_path, monkeypatch):
+    """upload_file returning without raising is not the same as the objects
+    being readable afterwards."""
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+
+    ck = tmp_path / "checkpoint-100"
+    ck.mkdir()
+    (ck / "adapter_model.safetensors").write_bytes(b"w" * 64)
+    (ck / "optimizer.pt").write_bytes(b"o" * 64)
+
+    cli = MagicMock()
+    cli.head_object.return_value = {"ContentLength": 64}
+    status = T.CheckpointStatus()
+    cb = T.make_upload_callback("s3://medzen-speech/candidates/asr/RID", status)
+
+    class A:
+        output_dir = str(tmp_path)
+
+    class S:
+        global_step = 100
+
+    with patch.object(T, "s3", return_value=cli), \
+         patch("pipeline.tracking.push_tracking_db", lambda *a, **k: None):
+        cb.on_save(A(), S(), None)
+    assert status.is_confirmed(100), "a verified upload must be recorded as confirmed"
+    assert status.confirmed[100] == 2
+    assert cli.head_object.call_count == 2, "every uploaded object must be checked"
+
+
+def test_uploader_records_failure_when_objects_are_not_readable(tmp_path):
+    """The real failure mode: PUT succeeds, the object is not there."""
+    from unittest.mock import MagicMock, patch
+    import pipeline.train_asr as T
+
+    ck = tmp_path / "checkpoint-100"
+    ck.mkdir()
+    (ck / "adapter_model.safetensors").write_bytes(b"w" * 64)
+
+    cli = MagicMock()
+    cli.head_object.side_effect = RuntimeError("NoSuchKey")
+    status = T.CheckpointStatus()
+    cb = T.make_upload_callback("s3://medzen-speech/candidates/asr/RID", status)
+
+    class A:
+        output_dir = str(tmp_path)
+
+    class S:
+        global_step = 100
+
+    with patch.object(T, "s3", return_value=cli):
+        cb.on_save(A(), S(), None)          # must NOT raise: a run survives a blip
+    assert not status.is_confirmed(100)
+    assert "not readable after upload" in status.failed[100]
+
+
+def test_abort_message_reflects_a_confirmed_upload():
+    from pipeline.train_asr import CheckpointStatus, make_descent_gate
+    st = CheckpointStatus()
+    st.confirmed[100] = 8
+    g = make_descent_gate(100, 100, 600, status=st)
+    _, where, msg, _ = drive(g, _series(lambda s: 20.0 + s * 0.01), REAL_SAVE_EVERY)
+    assert where == "on_save"
+    assert "confirmed in S3 (8 objects verified readable)" in msg
+    assert "--resume auto --resume-run" in msg
+
+
+def test_abort_says_not_resumable_when_no_upload_was_confirmed():
+    """The gap: the gate previously asserted the run was resumable regardless."""
+    from pipeline.train_asr import CheckpointStatus, make_descent_gate
+    st = CheckpointStatus()
+    st.failed[100] = "AccessDenied on PutObject"
+    g = make_descent_gate(100, 100, 600, status=st)
+    _, _, msg, _ = drive(g, _series(lambda s: 20.0 + s * 0.01), REAL_SAVE_EVERY)
+    assert "NOT resumable" in msg
+    assert "AccessDenied" in msg
+    # the POSITIVE claim must be absent -- "NO checkpoint is confirmed in S3"
+    # legitimately contains the same words, so match the specific phrasing
+    assert "checkpoint-100 is confirmed in S3" not in msg
+    assert "Resume with:" not in msg, "must not offer a resume command"
+
+
+def test_abort_names_the_newest_confirmed_checkpoint_when_the_latest_failed():
+    from pipeline.train_asr import CheckpointStatus, make_descent_gate
+    st = CheckpointStatus()
+    st.confirmed[50] = 8
+    st.failed[100] = "connection reset"
+    g = make_descent_gate(100, 100, 600, status=st)
+    _, _, msg, _ = drive(g, _series(lambda s: 20.0 + s * 0.01), REAL_SAVE_EVERY)
+    assert "NOT confirmed" in msg
+    assert "recovers to step 50, not 100" in msg
+
+
+def test_gate_message_states_the_token_counts_correctly():
+    """Seven approximate, eight including provisional pidgin -- not ten."""
+    from pipeline.train_asr import LANG_TOKEN
+    exact = {"amharic": "am", "hausa": "ha", "lingala": "ln",
+             "shona": "sn", "swahili": "sw", "yoruba": "yo"}
+    approx = [l for l, t in LANG_TOKEN.items()
+              if l != "pidgin" and exact.get(l) != t]
+    assert len(approx) == 7, f"expected 7 approximate mappings, found {len(approx)}: {approx}"
+    assert len(LANG_TOKEN) == 14
+    src = TRAIN.read_text()
+    assert "SEVEN of" in src and "eight of fourteen" in src
+    assert "ten of" not in src, "the old inaccurate count must be gone"
+
+
+def test_sync_up_returns_the_keys_it_uploaded():
+    """The uploader cannot verify what it does not know it wrote."""
+    src = TRAIN.read_text()
+    assert "keys.append(key)" in src and "return keys" in src

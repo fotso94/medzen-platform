@@ -200,7 +200,7 @@ def s3_uri_parts(uri: str) -> tuple[str, str]:
     return b, k.rstrip("/")
 
 
-def sync_up(local: Path, uri: str, skip_checkpoints: bool = False) -> None:
+def sync_up(local: Path, uri: str, skip_checkpoints: bool = False) -> list[str]:
     """Upload a checkpoint directory. Runs on the SAVE step, not at the end:
     a spot reclaim gives ~2 minutes' notice, so anything only written at the
     end of training is lost.
@@ -211,16 +211,25 @@ def sync_up(local: Path, uri: str, skip_checkpoints: bool = False) -> None:
     already uploaded under its own prefix, and an ambiguous directory for
     anything loading the adapter. At 600 steps with --save-steps 100 that is
     over a gigabyte of redundant upload.
+
+    Returns the keys written, so the caller can VERIFY they are readable
+    afterwards. upload_file returning without raising is not the same as the
+    object being there, and a checkpoint nobody confirmed must not be reported
+    as a checkpoint somebody can resume from.
     """
     cli = s3()
     bucket, prefix = s3_uri_parts(uri)
+    keys: list[str] = []
     for f in local.rglob("*"):
         if not f.is_file():
             continue
         rel = f.relative_to(local)
         if skip_checkpoints and any(p.startswith("checkpoint-") for p in rel.parts[:-1]):
             continue
-        cli.upload_file(str(f), bucket, f"{prefix}/{rel}")
+        key = f"{prefix}/{rel}"
+        cli.upload_file(str(f), bucket, key)
+        keys.append(key)
+    return keys
 
 
 class BaseSource(NamedTuple):
@@ -403,22 +412,67 @@ def latest_checkpoint(uri_prefix: str) -> str | None:
     return f"{uri_prefix.rstrip('/')}/{best}"
 
 
-def make_upload_callback(run_prefix: str):
+class CheckpointStatus:
+    """What is actually in S3, as opposed to what was attempted.
+
+    The uploader deliberately does not kill a run over a transient S3 error --
+    losing hours of training to one failed PUT would be worse than continuing --
+    but "we tried and warned" must not be mistaken for "it is safe in S3". The
+    descent gate consults this before telling anyone a run is resumable.
+    """
+
+    def __init__(self) -> None:
+        self.confirmed: dict[int, int] = {}     # step -> objects verified present
+        self.failed: dict[int, str] = {}        # step -> why
+
+    def is_confirmed(self, step: int) -> bool:
+        return self.confirmed.get(step, 0) > 0
+
+    def latest_confirmed(self) -> int | None:
+        return max(self.confirmed) if self.confirmed else None
+
+
+def make_upload_callback(run_prefix: str, status: "CheckpointStatus | None" = None):
     from transformers import TrainerCallback
 
     class UploadCheckpoint(TrainerCallback):
         def on_save(self, args, state, control, **kw):
-            local = Path(args.output_dir) / f"checkpoint-{state.global_step}"
-            if local.exists():
-                dest = f"{run_prefix.rstrip('/')}/checkpoint-{state.global_step}"
-                try:
-                    sync_up(local, dest)
-                    from pipeline.tracking import push_tracking_db
-                    # metadata must survive alongside the checkpoint
-                    push_tracking_db(run_prefix.rstrip("/").split("/")[-1])
-                    print(f"    checkpoint {state.global_step} -> {dest}", flush=True)
-                except Exception as e:                       # noqa: BLE001
-                    print(f"    WARNING checkpoint upload failed: {e}", flush=True)
+            step = state.global_step
+            local = Path(args.output_dir) / f"checkpoint-{step}"
+            if not local.exists():
+                if status is not None:
+                    status.failed[step] = "no local checkpoint directory"
+                return control
+            dest = f"{run_prefix.rstrip('/')}/checkpoint-{step}"
+            try:
+                keys = sync_up(local, dest)
+                # Verify rather than infer: upload_file raising nothing is not
+                # the same as the objects being readable afterwards.
+                cli = s3()
+                bucket, _ = s3_uri_parts(dest)
+                missing = []
+                for k in keys:
+                    try:
+                        if cli.head_object(Bucket=bucket, Key=k)["ContentLength"] <= 0:
+                            missing.append(k)
+                    except Exception:                        # noqa: BLE001
+                        missing.append(k)
+                if missing:
+                    raise RuntimeError(
+                        f"{len(missing)}/{len(keys)} objects not readable after upload, "
+                        f"e.g. {missing[0]}")
+                from pipeline.tracking import push_tracking_db
+                # metadata must survive alongside the checkpoint
+                push_tracking_db(run_prefix.rstrip("/").split("/")[-1])
+                if status is not None:
+                    status.confirmed[step] = len(keys)
+                print(f"    checkpoint {step} -> {dest} ({len(keys)} objects verified)",
+                      flush=True)
+            except Exception as e:                           # noqa: BLE001
+                if status is not None:
+                    status.failed[step] = str(e)
+                print(f"    WARNING checkpoint upload FAILED at step {step}: {e}",
+                      flush=True)
             return control
 
     return UploadCheckpoint()
@@ -428,7 +482,8 @@ GATE_WINDOW = 5          # losses per comparison window; see make_descent_gate
 
 
 def make_descent_gate(at_step: int, save_steps: int, max_steps: int,
-                      window: int = GATE_WINDOW):
+                      window: int = GATE_WINDOW,
+                      status: "CheckpointStatus | None" = None):
     """Abort if the loss is not clearly descending by `at_step`.
 
     The 14-language mix starts at a much higher loss than a three-language one
@@ -486,10 +541,11 @@ def make_descent_gate(at_step: int, save_steps: int, max_steps: int,
                 return False, (
                     f"ABORTING at step {step}: smoothed loss is not descending "
                     f"({first:.4f} -> {last:.4f}).\n"
-                    "  Check the LANG_TOKEN mapping before spending more GPU time: ten of\n"
-                    "  fourteen languages train under an approximate Whisper token, and a\n"
-                    "  wrong mapping presents exactly this way.\n"
-                    "  Checkpoints written so far are in S3 and the run is resumable.")
+                    "  Check the LANG_TOKEN mapping before spending more GPU time: SEVEN of\n"
+                    "  fourteen languages train under an approximate Whisper token\n"
+                    "  (acholi/luganda/fula/oromo -> sw, akan/ewe/igbo -> yo), and pidgin -> en\n"
+                    "  is provisional from B3, so eight of fourteen are not exact matches.\n"
+                    "  A wrong mapping presents exactly this way.")
             return True, f"  descent gate PASSED — continuing to {max_steps} steps"
 
         def on_log(self, args, state, control, logs=None, **kw):
@@ -511,15 +567,39 @@ def make_descent_gate(at_step: int, save_steps: int, max_steps: int,
 
         def on_save(self, args, state, control, **kw):
             # Runs after the upload callback's on_save for the same step, so the
-            # checkpoint is already in S3 before an abort can happen.
+            # checkpoint has already been uploaded AND verified by the time this
+            # sees it -- which is what makes the resumability claim checkable.
             if self.done or self.verdict is None:
                 return control
             self.done = True
             ok, msg = self.verdict
-            if not ok:
-                raise SystemExit(msg)
-            print(msg, flush=True)
-            return control
+            if ok:
+                print(msg, flush=True)
+                return control
+            raise SystemExit(msg + "\n" + self._recovery_note(state.global_step))
+
+        def _recovery_note(self, step: int) -> str:
+            """Say what is actually recoverable, never what should have been.
+
+            The uploader warns and continues on a failed upload rather than
+            killing a run over a transient S3 error. That is the right default,
+            but it means "we tried" must never be reported as "it is in S3".
+            """
+            if status is None:
+                return ("  Resumability UNKNOWN: no checkpoint status was tracked for this run.")
+            if status.is_confirmed(step):
+                n = status.confirmed[step]
+                return (f"  checkpoint-{step} is confirmed in S3 ({n} objects verified "
+                        f"readable).\n"
+                        f"  Resume with: --resume auto --resume-run <this run id>")
+            latest = status.latest_confirmed()
+            why = status.failed.get(step, "upload not confirmed")
+            if latest is not None:
+                return (f"  WARNING: checkpoint-{step} is NOT confirmed in S3 ({why}).\n"
+                        f"  The newest confirmed checkpoint is {latest}; resuming from this\n"
+                        f"  run recovers to step {latest}, not {step}.")
+            return (f"  WARNING: NO checkpoint is confirmed in S3 for this run ({why}).\n"
+                    f"  This run is NOT resumable; the {step} steps are lost.")
 
     return DescentGate()
 
@@ -644,11 +724,13 @@ def main() -> int:
         dataloader_num_workers=0, seed=a.seed,
     )
     run_prefix = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}"
-    callbacks = [make_upload_callback(run_prefix)] if a.push_s3 else []
+    ckpt_status = CheckpointStatus()
+    callbacks = [make_upload_callback(run_prefix, ckpt_status)] if a.push_s3 else []
     # Ordered after the upload callback so the gate's abort cannot pre-empt the
     # checkpoint upload for the step it fires on.
     if a.descent_gate_step and a.descent_gate_step < a.max_steps:
-        callbacks.append(make_descent_gate(a.descent_gate_step, a.save_steps, a.max_steps))
+        callbacks.append(make_descent_gate(a.descent_gate_step, a.save_steps, a.max_steps,
+                                           status=ckpt_status))
         print(f"  descent gate at step {a.descent_gate_step} "
               f"(aborts from on_save so the checkpoint survives)")
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
