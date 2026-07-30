@@ -86,8 +86,13 @@ def test_all_languages_start_unapproved():
         d = yaml.safe_load(f.read_text())
         assert d["status"] == "declared", f"{f.stem} claims status {d['status']}"
         assert d["tts"]["approved"] is False, f"{f.stem} claims an approved voice"
-        assert d["asr"]["decode_strategy"]["mode"] == "pending_experiment", \
-            f"{f.stem} has a decode strategy but no experiment has run"
+        ds = d["asr"]["decode_strategy"]
+        if ds["mode"] == "pending_experiment":
+            assert ds["chosen_by_run"] is None
+        else:
+            # A non-pending mode is only legitimate with evidence behind it.
+            assert ds.get("chosen_by_run"), f"{f.stem}: decode mode without a run"
+            assert ds.get("evidence"), f"{f.stem}: decode mode without paired evidence"
 
 
 @pytest.mark.parametrize("mutate,expect", [
@@ -102,8 +107,8 @@ def test_all_languages_start_unapproved():
      "no chosen_by_run"),
 ])
 def test_readiness_ladder_blocks_premature_promotion(mutate, expect, tmp_path):
-    src = REG / "pidgin.yaml"
-    backup = tmp_path / "pidgin.yaml"
+    src = REG / "acholi.yaml"      # still pending_experiment
+    backup = tmp_path / "acholi.yaml"
     shutil.copy(src, backup)
     try:
         d = yaml.safe_load(src.read_text())

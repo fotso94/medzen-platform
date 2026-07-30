@@ -12,6 +12,7 @@ import os
 import subprocess
 import sys
 import time
+import yaml
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,8 @@ sys.path.insert(0, str(ROOT))
 
 from pipeline.adapters.waxalnlp import CONFIGS, REVISION, WaxalNLPAdapter  # noqa: E402
 from pipeline.ingest import assign_splits  # noqa: E402
+
+REG = ROOT / "registry" / "languages"
 
 
 # --------------------------------------------------------------------------- #

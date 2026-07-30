@@ -112,6 +112,37 @@ def main() -> int:
         if not g.exists() or args_regen(g):
             files[g] = default_gate(alias, langs[alias])
 
+    # PRESERVE EARNED STATE. status, decode_strategy, tts approval and consent
+    # are results of experiments and reviews, not facts derivable from
+    # sources.yaml. Regenerating must never silently discard them.
+    import copy
+    PRESERVE = [("status",), ("asr", "decode_strategy"),
+                ("tts", "approved"), ("tts", "consent_record"),
+                ("tts", "voice_id"), ("llm", "engine")]
+    for path, content in list(files.items()):
+        if path.parent != OUT or not path.exists():
+            continue
+        prev = yaml.safe_load(path.read_text()) or {}
+        cur = yaml.safe_load(content)
+        changed = False
+        for keys in PRESERVE:
+            src = prev
+            for k in keys:
+                if not isinstance(src, dict) or k not in src:
+                    src = None; break
+                src = src[k]
+            if src is None:
+                continue
+            gen = cur
+            for k in keys[:-1]:
+                gen = gen.setdefault(k, {})
+            if gen.get(keys[-1]) != src:
+                gen[keys[-1]] = copy.deepcopy(src)
+                changed = True
+        if changed:
+            files[path] = BANNER + yaml.dump(cur, sort_keys=False,
+                                             allow_unicode=True, width=88)
+
     stale = [p for p, c in files.items() if not p.exists() or p.read_text() != c]
     if a.check:
         if stale:
