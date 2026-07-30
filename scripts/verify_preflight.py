@@ -82,6 +82,10 @@ def main() -> int:
     ap.add_argument("--instance", default=None)
     ap.add_argument("--expect-digest", default=None,
                     help="image digest the run must report (container preflight)")
+    ap.add_argument("--expect-rows", type=int, default=None,
+                    help="training mix row count the run must report")
+    ap.add_argument("--expect-languages", type=int, default=None,
+                    help="number of languages the mix must contain")
     ap.add_argument("--expect-commit", default=None,
                     help="source commit the image must report as baked in")
     ap.add_argument("--expect-manifest", default=None,
@@ -259,6 +263,78 @@ def main() -> int:
     else:
         chk("base cache manifest recorded", bool(man) and len(str(man)) == 64,
             f"base_manifest_sha256={man}")
+
+    # --- 11c. the MLflow tracking store itself ------------------------------
+    # run.json and MLflow are written by the same process, but the tracking DB
+    # is what B5 registration will actually read, so it is verified directly
+    # rather than trusted to agree with the JSON beside it.
+    if mrid:
+        import sqlite3
+        import tempfile
+        db = get(cli, f"mlflow/db/{mrid}/mlflow.db")
+        if not db:
+            for nm in ("tags", "params", "metrics", "mix"):
+                chk(f"MLflow {nm} in the tracking DB", False,
+                    f"no mlflow/db/{mrid}/mlflow.db in S3")
+        else:
+            with tempfile.NamedTemporaryFile(suffix=".db") as tf:
+                tf.write(db)
+                tf.flush()
+                con = sqlite3.connect(f"file:{tf.name}?mode=ro", uri=True)
+                tags = dict(con.execute(
+                    "SELECT key, value FROM tags WHERE run_uuid=?", (mrid,)).fetchall())
+                prms = dict(con.execute(
+                    "SELECT key, value FROM params WHERE run_uuid=?", (mrid,)).fetchall())
+                mets = dict(con.execute(
+                    "SELECT key, value FROM metrics WHERE run_uuid=?", (mrid,)).fetchall())
+                con.close()
+
+            print(f"\nMLflow tracking DB: {len(tags)} tags, {len(prms)} params, "
+                  f"{len(mets)} metrics for run {mrid}")
+
+            # Provenance tags were inverted for every container run before this:
+            # git_sha=unknown, git_dirty=True, reproducible=False, because a
+            # container has no .git. Verify the corrected values in the DB.
+            want_tags = {"git_dirty": "False", "reproducible": "True",
+                         "provenance_source": "baked_image"}
+            for k, v in want_tags.items():
+                chk(f"MLflow tag {k}={v}", tags.get(k) == v,
+                    f"tracking DB has {k}={tags.get(k)!r}")
+            if a.expect_commit:
+                chk("MLflow tag git_sha matches", tags.get("git_sha") == a.expect_commit,
+                    f"DB git_sha={tags.get('git_sha')} expected={a.expect_commit}")
+                chk("MLflow param image_git_sha matches",
+                    prms.get("image_git_sha") == a.expect_commit,
+                    f"DB image_git_sha={prms.get('image_git_sha')}")
+            if a.expect_digest:
+                chk("MLflow param image_digest matches",
+                    prms.get("image_digest") == a.expect_digest,
+                    f"DB image_digest={prms.get('image_digest')}")
+            chk("MLflow param ran_in_container", prms.get("ran_in_container") == "True",
+                f"DB ran_in_container={prms.get('ran_in_container')!r}")
+            chk("MLflow param base_source is the cache",
+                prms.get("base_source") == "s3_cache",
+                f"DB base_source={prms.get('base_source')!r}")
+
+            # The mix the run actually trained on, from the DB.
+            mix = json.loads(prms.get("mix", "{}"))
+            if a.expect_rows is not None:
+                chk(f"MLflow mix rows == {a.expect_rows}", mix.get("rows") == a.expect_rows,
+                    f"DB mix.rows={mix.get('rows')}")
+            if a.expect_languages is not None:
+                chk(f"MLflow mix languages == {a.expect_languages}",
+                    mix.get("languages") == a.expect_languages,
+                    f"DB mix.languages={mix.get('languages')}, "
+                    f"per_language={sorted((mix.get('per_language') or {}))}")
+            chk("MLflow dataset_fingerprint matches run.json",
+                prms.get("dataset_fingerprint") == str(fp),
+                f"DB={prms.get('dataset_fingerprint','')[:16]}… run.json={str(fp)[:16]}…")
+
+            # Step timing, for sizing the full run from measurement.
+            sps = mets.get("samples_per_second")
+            chk("MLflow step timing recorded", sps is not None and float(sps) > 0,
+                f"samples_per_second={sps}, wall={mets.get('wall_seconds')}, "
+                f"steps={mets.get('steps')}")
 
     # --- 12. instance terminated -------------------------------------------
     iid = a.instance

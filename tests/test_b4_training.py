@@ -701,3 +701,52 @@ def test_resume_records_mlflow_lineage():
     src = TRAIN.read_text()
     assert '"resumed_from": a.resume_run' in src
     assert '"resume_checkpoint"' in src
+
+
+# --------------------------------------------------------------------------- #
+# the verifier must read the tracking store, not just the JSON beside it
+# --------------------------------------------------------------------------- #
+VERIFY = ROOT / "scripts" / "verify_preflight.py"
+
+
+def test_verifier_queries_the_mlflow_sqlite_store():
+    """run.json and MLflow are written by the same process, but the tracking DB
+    is what B5 registration reads, so it is verified directly."""
+    s = VERIFY.read_text()
+    assert "import sqlite3" in s
+    assert 'f"mlflow/db/{mrid}/mlflow.db"' in s
+    for table in ("FROM tags WHERE run_uuid=?", "FROM params WHERE run_uuid=?",
+                  "FROM metrics WHERE run_uuid=?"):
+        assert table in s, f"must query {table}"
+    assert "mode=ro" in s, "the tracking DB must be opened read-only"
+
+
+def test_verifier_checks_the_corrected_provenance_tags():
+    s = VERIFY.read_text()
+    for k, v in (("git_dirty", "False"), ("reproducible", "True"),
+                 ("provenance_source", "baked_image")):
+        assert f'"{k}": "{v}"' in s, f"must assert {k}={v} in the tracking DB"
+    assert 'tags.get("git_sha") == a.expect_commit' in s
+    assert 'prms.get("image_git_sha") == a.expect_commit' in s
+    assert 'prms.get("image_digest") == a.expect_digest' in s
+
+
+def test_verifier_checks_the_mix_from_the_tracking_db():
+    """The scope blocker: a green preflight on 3 languages says nothing about a
+    14-language run."""
+    s = VERIFY.read_text()
+    assert "--expect-rows" in s and "--expect-languages" in s
+    assert 'mix.get("rows") == a.expect_rows' in s
+    assert 'mix.get("languages") == a.expect_languages' in s
+
+
+def test_verifier_cross_checks_fingerprint_between_db_and_run_json():
+    s = VERIFY.read_text()
+    assert 'prms.get("dataset_fingerprint") == str(fp)' in s, \
+        "a disagreement means the two records describe different training data"
+
+
+def test_missing_tracking_db_fails_rather_than_skips():
+    s = VERIFY.read_text()
+    assert "no mlflow/db/" in s
+    assert "if not db:" in s, "an absent tracking DB must fail the checks"
