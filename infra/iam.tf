@@ -65,3 +65,11 @@ data "aws_iam_openid_connect_provider" "github" {
   count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
   url   = "https://token.actions.githubusercontent.com"
 }
+
+# EC2 cannot assume a role directly — it needs an instance profile. The role
+# already exists with the A3 guardrails (explicit Deny on eval writes,
+# secretsmanager and bedrock); this only makes it attachable to a trainer box.
+resource "aws_iam_instance_profile" "trainer" {
+  name = "medzen-trainer-profile"
+  role = aws_iam_role.trainer.name
+}

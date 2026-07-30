@@ -197,7 +197,12 @@ offline:
       - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: data, path: "raw/*"}
       - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: data, path: "curated/*"}
       - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "eval/*"}     # READ ONLY
-      - {actions: [s3:PutObject], resource: data, path: "candidates/*"}
+      # write AND read: a spot resume must fetch the checkpoint it wrote
+      - {actions: [s3:GetObject, s3:PutObject], resource: data, path: "candidates/*"}
+      - {actions: [s3:ListBucket], resource: data, path: "candidates/*"}
+      # MLflow artifacts + the tracking DB must outlive a disposable spot box
+      - {actions: [s3:GetObject, s3:PutObject], resource: data, path: "mlflow/*"}
+      - {actions: [s3:ListBucket], resource: data, path: "mlflow/*"}
     explicit_denies:
       # The isolation SageMaker sells, obtained for free by construction.
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",

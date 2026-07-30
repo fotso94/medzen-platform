@@ -81,11 +81,54 @@
     {
       "Effect": "Allow",
       "Action": [
+        "s3:GetObject",
         "s3:PutObject"
       ],
       "Resource": [
         "arn:aws:s3:::medzen-speech/candidates/*"
       ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "candidates/*"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/mlflow/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "mlflow/*"
+          ]
+        }
+      }
     },
     {
       "Effect": "Deny",

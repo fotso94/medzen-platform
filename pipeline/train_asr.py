@@ -36,8 +36,11 @@ PROFILE = os.environ.get("AWS_PROFILE", "medzen")
 REGION = os.environ.get("AWS_REGION", "eu-central-1")
 
 BASE_MODEL = os.environ.get("BASE_MODEL", "openai/whisper-large-v3")
-# Pinned: an unpinned base makes two runs incomparable for invisible reasons.
-BASE_REVISION = os.environ.get("BASE_REVISION", "main")
+# Pinned to a commit SHA and ACTUALLY PASSED to from_pretrained(). Recording a
+# revision without enforcing it is worse than not pinning: the run would claim
+# a SHA it did not use.
+BASE_REVISION = os.environ.get("BASE_REVISION", "06f233fe06e710322aca913c1bc4249a0d71fce1")
+SMOKE_REVISION = os.environ.get("SMOKE_REVISION", "main")
 
 # Whisper decoder tokens. Languages with no token train under the closest
 # usable one; Pidgin uses `en` per the B3 experiment (provisional).
@@ -50,9 +53,24 @@ LANG_TOKEN = {
 }
 
 
-def s3():
+def boto_session():
+    """Prefer the instance role on EC2; fall back to a named local profile.
+
+    Hardcoding profile_name works on a laptop and fails on EC2, where the
+    credentials come from the instance profile and no such profile exists.
+    """
     import boto3
-    return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
+    if os.environ.get("AWS_PROFILE") or os.environ.get("MEDZEN_FORCE_PROFILE"):
+        try:
+            return boto3.Session(profile_name=os.environ.get("AWS_PROFILE", PROFILE),
+                                 region_name=REGION)
+        except Exception:
+            pass
+    return boto3.Session(region_name=REGION)     # instance role / env creds
+
+
+def s3():
+    return boto_session().client("s3")
 
 
 # --------------------------------------------------------------------------- #
@@ -173,6 +191,85 @@ def collate(processor):
 
 
 # --------------------------------------------------------------------------- #
+# spot recovery
+# --------------------------------------------------------------------------- #
+def s3_uri_parts(uri: str) -> tuple[str, str]:
+    rest = uri[len("s3://"):]
+    b, _, k = rest.partition("/")
+    return b, k.rstrip("/")
+
+
+def sync_up(local: Path, uri: str) -> None:
+    """Upload a checkpoint directory. Runs on the SAVE step, not at the end:
+    a spot reclaim gives ~2 minutes' notice, so anything only written at the
+    end of training is lost."""
+    cli = s3()
+    bucket, prefix = s3_uri_parts(uri)
+    for f in local.rglob("*"):
+        if f.is_file():
+            cli.upload_file(str(f), bucket, f"{prefix}/{f.relative_to(local)}")
+
+
+def sync_down(uri: str, local: Path) -> Path:
+    cli = s3()
+    bucket, prefix = s3_uri_parts(uri)
+    local.mkdir(parents=True, exist_ok=True)
+    tok = {"Bucket": bucket, "Prefix": prefix + "/"}
+    n = 0
+    while True:
+        r = cli.list_objects_v2(**tok)
+        for o in r.get("Contents", []):
+            rel = o["Key"][len(prefix) + 1:]
+            if not rel:
+                continue
+            dest = local / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            cli.download_file(bucket, o["Key"], str(dest))
+            n += 1
+        if not r.get("IsTruncated"):
+            break
+        tok["ContinuationToken"] = r["NextContinuationToken"]
+    if n == 0:
+        raise SystemExit(f"no checkpoint objects under {uri}")
+    print(f"  resumed {n} files from {uri}")
+    return local
+
+
+def latest_checkpoint(uri_prefix: str) -> str | None:
+    """Newest checkpoint-N under a run prefix, for unattended spot restart."""
+    cli = s3()
+    bucket, prefix = s3_uri_parts(uri_prefix)
+    r = cli.list_objects_v2(Bucket=bucket, Prefix=prefix + "/", Delimiter="/")
+    cps = [p["Prefix"].rstrip("/").split("/")[-1] for p in r.get("CommonPrefixes", [])]
+    cps = [c for c in cps if c.startswith("checkpoint-")]
+    if not cps:
+        return None
+    best = max(cps, key=lambda c: int(c.split("-")[1]))
+    return f"{uri_prefix.rstrip('/')}/{best}"
+
+
+def make_upload_callback(run_prefix: str):
+    from transformers import TrainerCallback
+
+    class UploadCheckpoint(TrainerCallback):
+        def on_save(self, args, state, control, **kw):
+            local = Path(args.output_dir) / f"checkpoint-{state.global_step}"
+            if local.exists():
+                dest = f"{run_prefix.rstrip('/')}/checkpoint-{state.global_step}"
+                try:
+                    sync_up(local, dest)
+                    from pipeline.tracking import push_tracking_db
+                    # metadata must survive alongside the checkpoint
+                    push_tracking_db(run_prefix.rstrip("/").split("/")[-1])
+                    print(f"    checkpoint {state.global_step} -> {dest}", flush=True)
+                except Exception as e:                       # noqa: BLE001
+                    print(f"    WARNING checkpoint upload failed: {e}", flush=True)
+            return control
+
+    return UploadCheckpoint()
+
+
+# --------------------------------------------------------------------------- #
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--smoke", action="store_true",
@@ -186,7 +283,9 @@ def main() -> int:
     ap.add_argument("--languages", nargs="*")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--save-steps", type=int, default=100)
-    ap.add_argument("--resume", help="local dir or s3:// checkpoint to resume from")
+    ap.add_argument("--resume",
+                    help="local dir, s3:// checkpoint, or 'auto' with --resume-run")
+    ap.add_argument("--resume-run", help="mlflow run id whose checkpoints to resume")
     ap.add_argument("--push-s3", action="store_true",
                     help="upload checkpoints to s3://…/candidates/ (spot safety)")
     ap.add_argument("--out", type=Path, default=ROOT / "artifacts" / "asr-lora")
@@ -199,7 +298,8 @@ def main() -> int:
     from transformers import (Seq2SeqTrainer, Seq2SeqTrainingArguments,
                               WhisperForConditionalGeneration, WhisperProcessor)
 
-    from pipeline.tracking import manifest_fingerprint, start_run
+    from pipeline.tracking import (manifest_fingerprint, push_tracking_db,
+                                   start_run)
 
     if a.smoke:
         a.max_steps, a.save_steps, a.batch_size, a.grad_accum = 3, 3, 1, 1
@@ -220,8 +320,20 @@ def main() -> int:
     use_bf16 = device == "cuda"
     print(f"  device {device}  bf16={use_bf16}")
 
-    processor = WhisperProcessor.from_pretrained(a.base_model)
-    model = WhisperForConditionalGeneration.from_pretrained(a.base_model)
+    # A real run on CPU/MPS would appear to work and take days, quietly burning
+    # a spot instance or a laptop. Only --smoke may run off-GPU.
+    if not a.smoke and device != "cuda" and not os.environ.get("MEDZEN_ALLOW_NO_CUDA"):
+        raise SystemExit(
+            f"REFUSING: non-smoke training requires CUDA, found device={device}.\n"
+            "  whisper-large-v3 LoRA on CPU/MPS is orders of magnitude too slow "
+            "and would silently waste the run.\n"
+            "  Use --smoke for a laptop check, or set MEDZEN_ALLOW_NO_CUDA=1 to "
+            "override deliberately.")
+
+    rev = SMOKE_REVISION if a.smoke else BASE_REVISION
+    print(f"  revision    {rev}")
+    processor = WhisperProcessor.from_pretrained(a.base_model, revision=rev)
+    model = WhisperForConditionalGeneration.from_pretrained(a.base_model, revision=rev)
     model.config.forced_decoder_ids = None
     model.config.suppress_tokens = []
 
@@ -234,7 +346,7 @@ def main() -> int:
           f"({100*trainable/total:.2f}%)")
 
     params = {
-        "base_model": a.base_model, "base_revision": BASE_REVISION,
+        "base_model": a.base_model, "base_revision": rev,
         "lora_rank": a.rank, "lora_target": "q_proj,v_proj",
         "lr": a.lr, "batch_size": a.batch_size, "grad_accum": a.grad_accum,
         "max_steps": a.max_steps, "temperature_sampling": a.temperature,
@@ -258,11 +370,25 @@ def main() -> int:
         save_total_limit=3, report_to=[], remove_unused_columns=False,
         dataloader_num_workers=0, seed=a.seed,
     )
+    run_prefix = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}"
+    callbacks = [make_upload_callback(run_prefix)] if a.push_s3 else []
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
-                             data_collator=collate(processor))
+                             data_collator=collate(processor),
+                             callbacks=callbacks)
+
+    resume = a.resume
+    if resume == "auto":
+        if not a.resume_run:
+            raise SystemExit("--resume auto needs --resume-run <mlflow_run_id>")
+        found = latest_checkpoint(f"s3://{BUCKET}/candidates/asr/{a.resume_run}")
+        if not found:
+            print("  --resume auto: no checkpoint found, starting fresh")
+        resume = found
+    if resume and str(resume).startswith("s3://"):
+        resume = str(sync_down(resume, a.out / "resumed"))
 
     t0 = time.time()
-    result = trainer.train(resume_from_checkpoint=a.resume)
+    result = trainer.train(resume_from_checkpoint=resume)
     wall = time.time() - t0
 
     mlflow.log_metrics({
@@ -283,14 +409,20 @@ def main() -> int:
     print(f"  loss {result.training_loss:.4f}  steps {result.global_step}  {wall:.0f}s")
 
     if a.push_s3:
-        import subprocess
-        dest = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}/"
-        subprocess.run(["aws", "--profile", PROFILE, "--region", REGION,
-                        "s3", "sync", str(a.out), dest], check=True)
+        # boto with the shared session, NOT `aws --profile`: on EC2 the profile
+        # does not exist and the CLI would fail after a completed run.
+        dest = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}/final"
+        sync_up(a.out, dest)
         mlflow.set_tag("artifact_s3", dest)
         print(f"  pushed {dest}")
 
+    # capture the id BEFORE ending the run: afterwards there is no active run
+    # and the DB would be filed under "unattributed"
+    rid = run.info.run_id
     mlflow.end_run()
+    db = push_tracking_db(rid)
+    if db:
+        print(f"  tracking db -> {db}")
     return 0
 
 

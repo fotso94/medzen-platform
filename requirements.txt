@@ -3,7 +3,7 @@
 # (Apache Arrow #45214). The WaxalNLP adapter downloads shards and reads
 # locally for exactly this reason.
 datasets==5.0.1
-pyarrow==25.0.0
+pyarrow==24.0.0   # downgraded from 25 by an mlflow/datasets transitive dep; B2 verified on both
 huggingface-hub==1.25.1
 hf-xet==1.5.2
 fsspec==2026.6.0
@@ -16,3 +16,15 @@ boto3==1.43.58
 PyYAML==6.0.3
 jsonschema==4.26.0
 pytest==9.1.1
+
+# --- B4 training stack. Pinned 2026-07-30 against a verified-working env.
+# torch 2.13 + transformers 5.14 + peft 0.20 is the combination the smoke test
+# passed on; the EC2 DLAMI ships torch 2.7, so the trainer pins explicitly
+# rather than inheriting whatever the image happens to have.
+torch==2.13.0
+transformers==5.14.1
+peft==0.20.0
+accelerate==1.14.0
+mlflow==3.14.0
+mlx-whisper==0.4.3 ; sys_platform == "darwin"   # Apple-silicon only; not installable on the Linux trainer
+jiwer==4.0.0

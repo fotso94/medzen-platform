@@ -21,7 +21,43 @@ ROOT = Path(__file__).resolve().parent.parent
 # maintenance mode, and the Model Registry that B5 needs requires a database
 # backend regardless. Still a single local file - no server to operate.
 DEFAULT_URI = f"sqlite:///{ROOT / 'mlflow.db'}"
-ARTIFACT_ROOT = str(ROOT / "mlruns")
+
+# Artifacts go to S3 by default. On a spot instance the local disk disappears
+# with the box, so anything only on local disk is lost the moment training is
+# reclaimed - including the record of the run that produced a candidate.
+BUCKET = os.environ.get("MEDZEN_BUCKET", "medzen-speech")
+ARTIFACT_ROOT = os.environ.get("MLFLOW_ARTIFACT_ROOT", f"s3://{BUCKET}/mlflow/artifacts")
+
+
+def push_tracking_db(run_id: str | None = None) -> str | None:
+    """Copy the SQLite tracking DB to S3.
+
+    The DB itself is a local file; without this the run metadata dies with the
+    instance even though the artifacts survived. Called at run end and after
+    each checkpoint, so an interrupted run still leaves a queryable record.
+    """
+    db = ROOT / "mlflow.db"
+    if not db.exists():
+        return None
+    import boto3
+    # Run-specific key. A shared "latest" is a lost-update race the moment two
+    # runs overlap, and it destroys the ability to recover the DB for one run.
+    rid = run_id or os.environ.get("MEDZEN_RUN_ID")
+    if not rid:
+        try:
+            import mlflow
+            active = mlflow.active_run()
+            rid = active.info.run_id if active else None
+        except Exception:
+            rid = None
+    if not rid:
+        rid = "unattributed"
+    key = f"mlflow/db/{rid}/mlflow.db"
+    sess = (boto3.Session(profile_name=os.environ["AWS_PROFILE"])
+            if os.environ.get("AWS_PROFILE") else boto3.Session())
+    sess.client("s3", region_name=os.environ.get("AWS_REGION", "eu-central-1")) \
+        .upload_file(str(db), BUCKET, key)
+    return f"s3://{BUCKET}/{key}"
 
 
 def tracking_uri() -> str:
