@@ -997,13 +997,17 @@ def test_sync_up_returns_the_keys_it_uploaded():
 # the REFUSAL behaviour functionally. What remains here is the fingerprint
 # invariant, which is about recording rather than policy.
 # --------------------------------------------------------------------------- #
-def test_fingerprint_is_recomputed_when_the_mix_changes():
-    """The fingerprint must describe what was trained on, not what was selected
-    before exclusions -- otherwise two runs quoting the same fingerprint trained
-    on different data, which is exactly what it exists to prevent."""
+def test_fingerprint_describes_the_post_exclusion_mix():
+    """The fingerprint must describe what was trained on. Exclusions now apply
+    to the eligible pool inside load_mix, so the mix is already final when the
+    fingerprint is taken -- and nothing may remove rows afterwards."""
     src = TRAIN.read_text()
-    excl = src.index("if excluded:")
-    recompute = src.index("fingerprint = manifest_fingerprint(mix)", excl)
+    load = src.index("mix, mix_provenance = load_mix(")
+    fp = src.index("fingerprint = manifest_fingerprint(mix)", load)
     params = src.index('"dataset_fingerprint": fingerprint')
-    assert excl < recompute < params, \
-        "the fingerprint must be recomputed after exclusions and before it is logged"
+    assert load < fp < params
+    assert "exclusions=excluded" in src, "the mix must be built already filtered"
+    # no post-sampling mutation of `mix` may survive
+    after = src[fp:params]
+    assert "mix = [r for r in mix" not in after, \
+        "rows removed after the fingerprint is taken would invalidate it"

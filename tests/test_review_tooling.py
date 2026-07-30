@@ -504,8 +504,16 @@ def test_loader_requires_a_separate_adoption_record():
 
 def test_adoption_is_bound_to_the_completion_record_it_approved():
     s = (ROOT / "pipeline/train_asr.py").read_text()
-    assert 'adopt.get("complete_record_sha256")' in s
+    assert 'adopt.get("complete_raw_sha256")' in s
     assert "the version changed after it was adopted" in s
+    assert "hashlib.sha256(comp_raw).hexdigest()" in s
+
+
+def test_completion_record_no_longer_claims_adoption():
+    """Requiring adopted:true inside COMPLETE.json asked a record written at
+    migration time to attest to a decision taken later."""
+    s = (ROOT / "pipeline/train_asr.py").read_text()
+    assert 'comp.get("adopted")' not in s
 
 
 def test_no_adoption_record_exists_yet():

@@ -234,14 +234,18 @@ def test_migration_writes_lineage_for_every_manifest():
 DERIVE = object()          # default: a valid adoption bound to the completion
 
 
-def _adoption(completion, status="approved", bound=True):
-    """An adoption record as the approver would produce it."""
+def _adoption(completion, status="approved", bound=True, policy=None):
+    """An adoption record as the approver would produce it.
+
+    Binds the RAW BYTES the bucket serves -- the same json.dumps(completion)
+    the fake client returns -- not a re-serialisation of the parsed dict."""
     import hashlib
     return {
         "status": status,
-        "complete_record_sha256": (
-            hashlib.sha256(json.dumps(completion, sort_keys=True).encode()).hexdigest()
+        "complete_raw_sha256": (
+            hashlib.sha256(json.dumps(completion).encode()).hexdigest()
             if bound else "0" * 64),
+        **({"deferral_policy_sha256": policy} if policy else {}),
     }
 
 
@@ -321,13 +325,35 @@ def test_missing_completion_record_is_refused():
     assert "no completion record" in str(e.value)
 
 
-def test_published_but_unadopted_version_is_refused():
-    """Adoption is a reviewed decision, not a side effect of files existing --
-    this is exactly the state v2 was left in after being published early."""
+def test_completion_record_does_not_get_a_vote_on_adoption():
+    """COMPLETE.json is written when the migration finishes. Approval happens
+    afterwards, so a field inside it cannot attest to approval -- and requiring
+    one meant the migration had to predict its own review. adopted=false here is
+    ignored; the separate ADOPTION.json decides."""
     rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows, adopted=False)
+    mix, prov = _load_v(rows, comp, version="v2")
+    assert len(mix) == 1
+    assert prov["complete_raw_sha256"]
+
+
+def test_adoption_binds_raw_bytes_not_a_reserialisation():
+    """A dict that round-trips through json.dumps is a different byte string.
+    An adoption hashing the re-serialised form would accept a bucket object it
+    never saw, so the loader must compare against the bytes actually served."""
+    import hashlib
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    # keys deliberately NOT in sorted order, so the two encodings differ
+    base = _completion(rows)
+    comp = {"manifests": base["manifests"], "adopted": base["adopted"]}
+    reser = hashlib.sha256(json.dumps(comp, sort_keys=True).encode()).hexdigest()
+    raw = hashlib.sha256(json.dumps(comp).encode()).hexdigest()
+    assert reser != raw, "fixture must actually differ, or this proves nothing"
     with pytest.raises(SystemExit) as e:
-        _load_v(rows, _completion(rows, adopted=False), version="v2")
-    assert "NOT ADOPTED" in str(e.value)
+        _load_v(rows, comp,
+                adoption={"status": "approved", "complete_raw_sha256": reser},
+                version="v2")
+    assert "changed after it was adopted" in str(e.value)
 
 
 def test_manifest_hash_mismatch_is_refused():
@@ -395,3 +421,63 @@ def test_audit_distinguishes_source_pool_from_sampled_mix():
     s = (ROOT / "scripts" / "audit_label_lengths.py").read_text()
     assert "eligible_source_pool_rows" in s
     assert "temperature-sampled" in s
+
+
+# --------------------------------------------------------------------------- #
+# exclusions are an input to sampling, not a filter on its output
+# --------------------------------------------------------------------------- #
+def _policy(checksums, triggers=None):
+    return {
+        "list_id": "TEST-POLICY", "status": "approved",
+        "decision_type": "policy_deferral", "human_review_performed": False,
+        "scope": {"promotion_permitted": False},
+        "exclusions": [{"audio_checksum_sha256": c, "defect": False,
+                        "action": "defer_pending_review",
+                        "trigger": (triggers or {}).get(c, "over_decoder_limit")}
+                       for c in checksums],
+    }
+
+
+def test_excluded_rows_never_reach_the_sampling_weights():
+    """The pool must shrink before counts are taken. If a row is removed after
+    sampling it has already shifted its language's weight."""
+    rows = {V2: [_row(c * 64, use=("asr_train",)) for c in "abcdef"]}
+    comp = _completion(rows)
+    mix, prov = _load_v(rows, comp,
+                        adoption=_adoption(comp, policy="p" * 64),
+                        version="v2", exclusions={"a" * 64: {"trigger": "t"}},
+                        exclusions_sha256="p" * 64)
+    assert prov["eligible_rows_before_exclusions"] == 6
+    assert prov["eligible_rows"] == 5
+    assert prov["exclusions"]["removed_from_eligible_pool"] == 1
+    assert prov["exclusions"]["applied"] == "before temperature sampling"
+    assert all(r["audio_checksum_sha256"] != "a" * 64 for r in mix)
+
+
+def test_deferred_row_absent_from_the_pool_is_refused():
+    """A policy naming a row this corpus does not contain describes something
+    else; silently removing nothing would still report success."""
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows)
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, comp, adoption=_adoption(comp, policy="p" * 64),
+                version="v2", exclusions={"z" * 64: {}}, exclusions_sha256="p" * 64)
+    assert "not in the eligible pool" in str(e.value)
+
+
+def test_adoption_granted_for_a_different_policy_is_refused():
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows)
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, comp, adoption=_adoption(comp, policy="p" * 64),
+                version="v2", exclusions={"a" * 64: {}}, exclusions_sha256="q" * 64)
+    assert "does not transfer between policies" in str(e.value)
+
+
+def test_exclusions_without_an_adopted_policy_are_refused():
+    rows = {V2: [_row("a" * 64, use=("asr_train",))]}
+    comp = _completion(rows)
+    with pytest.raises(SystemExit) as e:
+        _load_v(rows, comp, adoption=_adoption(comp), version="v2",
+                exclusions={"a" * 64: {}}, exclusions_sha256="q" * 64)
+    assert "did not contemplate removing rows" in str(e.value)

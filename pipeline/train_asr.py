@@ -20,6 +20,7 @@ interval and --resume picks up the newest one.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import os
@@ -86,7 +87,10 @@ def list_manifests(cli) -> list[str]:
 
 def load_mix(cli, temperature: float, seed: int,
              languages: list[str] | None, version: str = "v1",
-             require_use: str = "asr_train") -> tuple[list[dict], dict]:
+             require_use: str = "asr_train",
+             exclusions: dict[str, dict] | None = None,
+             exclusions_sha256: str | None = None,
+             exclusions_id: str | None = None) -> tuple[list[dict], dict]:
     """Build the training mix with temperature sampling. FAILS CLOSED.
 
     Three refusals, each of which was a real hole:
@@ -101,6 +105,14 @@ def load_mix(cli, temperature: float, seed: int,
     * duplicate rows are rejected. The same audio appearing twice silently
       reweights a language relative to the temperature schedule.
 
+    Exclusions are applied to the ELIGIBLE POOL, before per-language counts are
+    taken and before temperature sampling. Removing rows afterwards is wrong in
+    two ways: the excluded rows have already influenced the sampling weights, and
+    because sampling draws with replacement when a target exceeds the pool, one
+    excluded row can appear in the mix any number of times -- so "remove 20 rows"
+    silently becomes "remove some number of mix entries". Filtering first makes
+    the count exact and the weights honest.
+
     Returns (mix, provenance) where provenance records the exact manifest
     versions and hashes the mix was built from, so a run can state what it read.
 
@@ -108,35 +120,36 @@ def load_mix(cli, temperature: float, seed: int,
     sampled ~3x more, not 10x -- otherwise the biggest language dominates and
     the smallest ones contribute nothing.
     """
-    import hashlib
-
     per_lang: dict[str, list[dict]] = {}
     sources: dict[str, dict] = {}
     rejected = {"wrong_split": 0, "not_permitted": 0}
     seen: dict[str, str] = {}
     duplicates: list[str] = []
+    excl_keys = set(exclusions or {})
+    excl_hits: dict[str, int] = {}
 
     # A version is only usable if its migration COMPLETED. The completion record
     # is written last, so its absence means an interrupted migration -- and a
     # half-written version must never be mistaken for a finished one.
+    # COMPLETE.json proves ONE thing: the migration finished writing. It is
+    # written last, so its absence means an interrupted migration. It carries no
+    # opinion about whether anyone approved training -- a record cannot
+    # meaningfully attest to a decision taken after it was written.
     comp_key = f"curated/_versions/{version}/COMPLETE.json"
     try:
-        comp = json.loads(cli.get_object(Bucket=BUCKET, Key=comp_key)["Body"].read())
+        comp_raw = cli.get_object(Bucket=BUCKET, Key=comp_key)["Body"].read()
+        comp = json.loads(comp_raw)
     except Exception as e:
         raise SystemExit(
             f"REFUSING: no completion record at s3://{BUCKET}/{comp_key} "
-            f"({type(e).__name__}). Version {version!r} is not adopted; a migration "
-            "that did not finish must not be trained from.")
-    if comp.get("adopted") is not True:
-        raise SystemExit(
-            f"REFUSING: version {version!r} is published but NOT ADOPTED "
-            f"(adopted={comp.get('adopted')!r}). Adoption is a reviewed decision, "
-            "not a side effect of the files existing.")
+            f"({type(e).__name__}). A migration that did not finish must not be "
+            "trained from.")
 
-    # Completion and adoption are DIFFERENT decisions and live in different
-    # records. COMPLETE.json says a migration finished; ADOPTION.json says a
-    # human reviewed it and approved training from it. A version that merely
-    # finished writing is not a version anyone agreed to use.
+    # ADOPTION.json is the approval, and it is a separate immutable object.
+    # It binds the RAW BYTES of the completion record it approved. Hashing a
+    # re-serialisation (json.dumps of the parsed dict) would prove nothing: key
+    # order, separators and float formatting all change the bytes, so the digest
+    # would describe Python's output rather than the object in the bucket.
     adopt_key = f"curated/_versions/{version}/ADOPTION.json"
     try:
         adopt = json.loads(cli.get_object(Bucket=BUCKET, Key=adopt_key)["Body"].read())
@@ -147,11 +160,27 @@ def load_mix(cli, temperature: float, seed: int,
     if adopt.get("status") != "approved":
         raise SystemExit(f"REFUSING: {adopt_key} status is {adopt.get('status')!r}, "
                          "not 'approved'")
-    if adopt.get("complete_record_sha256") != hashlib.sha256(
-            json.dumps(comp, sort_keys=True).encode()).hexdigest():
+    comp_raw_sha = hashlib.sha256(comp_raw).hexdigest()
+    if adopt.get("complete_raw_sha256") != comp_raw_sha:
         raise SystemExit(
-            f"REFUSING: {adopt_key} was approved against a different completion "
-            "record; the version changed after it was adopted.")
+            f"REFUSING: {adopt_key} approved COMPLETE raw sha256 "
+            f"{str(adopt.get('complete_raw_sha256'))[:16]}, bucket now holds "
+            f"{comp_raw_sha[:16]}; the version changed after it was adopted.")
+
+    # If the adoption was granted on the basis of a deferral policy, that exact
+    # policy must be the one in force. Otherwise an approval obtained for one
+    # set of deferred rows would silently license a different set.
+    want_policy = adopt.get("deferral_policy_sha256")
+    if want_policy and want_policy != exclusions_sha256:
+        raise SystemExit(
+            f"REFUSING: {adopt_key} was adopted with deferral policy "
+            f"{want_policy[:16]}, this run supplies "
+            f"{(exclusions_sha256 or 'none')[:16]}. Adoption does not transfer "
+            "between policies.")
+    if exclusions and not want_policy:
+        raise SystemExit(
+            f"REFUSING: exclusions supplied but {adopt_key} records no deferral "
+            "policy; the adoption did not contemplate removing rows.")
 
     keys = [k for k in list_manifests(cli) if f"/{version}/manifest.jsonl" in k]
     if not keys:
@@ -189,6 +218,10 @@ def load_mix(cli, temperature: float, seed: int,
                 rejected["not_permitted"] += 1
                 continue
             sha = r["audio_checksum_sha256"]
+            # Eligible, but deferred: drop it BEFORE it can influence counts.
+            if sha in excl_keys:
+                excl_hits[sha] = excl_hits.get(sha, 0) + 1
+                continue
             if sha in seen:
                 duplicates.append(f"{sha[:16]} in {seen[sha]} and {lang}/{task}")
                 continue
@@ -200,6 +233,22 @@ def load_mix(cli, temperature: float, seed: int,
     if duplicates:
         raise SystemExit(f"REFUSING: {len(duplicates)} duplicate row(s) across "
                          f"corpora, e.g. {duplicates[:3]}")
+
+    # Every deferred row must have been found exactly once in the eligible pool.
+    # Absent means the policy describes a corpus this is not; twice means the
+    # row is duplicated and the removal count would be ambiguous.
+    if excl_keys:
+        missing = sorted(excl_keys - set(excl_hits))
+        if missing:
+            raise SystemExit(
+                f"REFUSING: {len(missing)} deferred row(s) are not in the eligible "
+                f"pool at version {version!r}, e.g. {[m[:16] for m in missing[:3]]}. "
+                "The policy does not describe this corpus.")
+        repeated = {k: n for k, n in excl_hits.items() if n != 1}
+        if repeated:
+            raise SystemExit(
+                f"REFUSING: deferred row(s) appear more than once: "
+                f"{[(k[:16], n) for k, n in list(repeated.items())[:3]]}")
     if not per_lang:
         raise SystemExit(f"REFUSING: no rows permit {require_use!r} at version "
                          f"{version!r}; nothing to train on")
@@ -220,18 +269,39 @@ def load_mix(cli, temperature: float, seed: int,
         mix += [pool[i % len(pool)] for i in range(n)]
     rng.shuffle(mix)
 
+    by_trigger: dict[str, int] = {}
+    for k in excl_hits:
+        t = (exclusions or {}).get(k, {}).get("trigger", "unspecified")
+        by_trigger[t] = by_trigger.get(t, 0) + 1
+
     provenance = {
         "manifest_version": version,
         "require_allowed_use": require_use,
         "manifests": sources,
+        "eligible_rows_before_exclusions": target + len(excl_hits),
         "eligible_rows": target,
         "rejected": rejected,
         "other_versions_present_but_unused": other_versions,
+        "complete_key": comp_key,
+        "complete_raw_sha256": comp_raw_sha,
+        "adoption_key": adopt_key,
+        "exclusions": {
+            "list_id": exclusions_id,
+            "policy_sha256": exclusions_sha256,
+            "declared": len(excl_keys),
+            "removed_from_eligible_pool": len(excl_hits),
+            "by_trigger": by_trigger,
+            "applied": "before temperature sampling",
+        },
     }
     print(f"  manifests   {len(sources)} at version {version}; "
           f"eligible rows {target}; rejected "
           f"{rejected['not_permitted']} not permitted, "
           f"{rejected['wrong_split']} wrong split")
+    if excl_keys:
+        print(f"  deferred    {len(excl_hits)} row(s) removed from the eligible "
+              f"pool BEFORE sampling ({by_trigger}); "
+              f"{target + len(excl_hits)} -> {target}")
     return mix, provenance
 
 
@@ -539,12 +609,22 @@ class CheckpointStatus:
         return max(self.confirmed) if self.confirmed else None
 
 
-def load_exclusions(ref: str) -> dict[str, dict]:
-    """Load a reviewed exclusion list: checksum -> {reason, category, decided}.
+def load_exclusions(ref: str, expect: int | None = None
+                    ) -> tuple[dict[str, dict], dict, str]:
+    """Load an exclusion list. Returns (by_checksum, doc, raw_sha256).
 
     An exclusion is a recorded decision about a specific row, not a runtime
     convenience. It carries a category so a data defect and a deferred
     model-limit incompatibility are never conflated in the record.
+
+    Two kinds are accepted and they are NOT interchangeable:
+
+    * `human_review`   -- a person listened and classified each row.
+    * `policy_deferral` -- nobody listened; rows are set aside for one
+      experiment. Such a list may not call any row defective and may not
+      exclude anything permanently, because no evidence for either exists.
+      Enforced here so a policy record can never be quietly upgraded into a
+      finding about the data.
     """
     if ref.startswith("s3://"):
         b, k = s3_uri_parts(ref)
@@ -553,11 +633,37 @@ def load_exclusions(ref: str) -> dict[str, dict]:
         raw = Path(ref).read_bytes()
     doc = json.loads(raw)
     out = {e["audio_checksum_sha256"]: e for e in doc["exclusions"]}
+    kind = doc.get("decision_type", "human_review")
     print(f"  exclusions  {len(out)} row(s) from {doc.get('list_id', ref)} "
-          f"({doc.get('status')})")
+          f"({doc.get('status')}, {kind})")
     if doc.get("status") != "approved":
         raise SystemExit(f"REFUSING: exclusion list {doc.get('list_id')} is not approved")
-    return out
+    if len(out) != len(doc["exclusions"]):
+        raise SystemExit("REFUSING: duplicate checksums in the exclusion list")
+
+    if kind == "policy_deferral":
+        if doc.get("human_review_performed") is not False:
+            raise SystemExit(
+                "REFUSING: a policy_deferral must record "
+                "human_review_performed=false; it is the claim that makes the "
+                "rest of the record honest")
+        bad = [e["audio_checksum_sha256"][:16] for e in doc["exclusions"]
+               if e.get("defect") is not False
+               or e.get("action") != "defer_pending_review"]
+        if bad:
+            raise SystemExit(
+                f"REFUSING: {len(bad)} entr(y/ies) in a policy_deferral claim a "
+                f"defect or a permanent action, e.g. {bad[:3]}. Nobody listened "
+                "to these rows, so nothing about their content is known.")
+        if doc.get("scope", {}).get("promotion_permitted") is not False:
+            raise SystemExit("REFUSING: a policy_deferral must forbid promotion")
+    elif kind != "human_review":
+        raise SystemExit(f"REFUSING: unknown decision_type {kind!r}")
+
+    if expect is not None and len(out) != expect:
+        raise SystemExit(f"REFUSING: expected exactly {expect} excluded row(s), "
+                         f"the list declares {len(out)}")
+    return out, doc, hashlib.sha256(raw).hexdigest()
 
 
 def make_upload_callback(run_prefix: str, status: "CheckpointStatus | None" = None):
@@ -744,6 +850,9 @@ def main() -> int:
                     help="a row must declare this in allowed_use to be eligible")
     ap.add_argument("--exclusions", default=None,
                     help="path or s3:// URI of a reviewed exclusion list")
+    ap.add_argument("--expect-excluded", type=int, default=None,
+                    help="require exactly this many rows to be excluded; the run "
+                         "refuses if the list or the removal count differs")
     ap.add_argument("--descent-gate-step", type=int, default=100,
                     help="abort if the smoothed loss is not descending by this step; 0 disables")
     ap.add_argument("--batch-size", type=int, default=2)
@@ -778,10 +887,26 @@ def main() -> int:
 
     cli = s3()
     print(f"base model  {a.base_model}")
+    # Loaded BEFORE the mix: the exclusion set is an input to sampling, not a
+    # filter applied to its output.
+    excluded, excl_doc, excl_sha = ({}, {}, None)
+    if a.exclusions:
+        excluded, excl_doc, excl_sha = load_exclusions(a.exclusions,
+                                                       expect=a.expect_excluded)
+    elif a.expect_excluded:
+        raise SystemExit("REFUSING: --expect-excluded given without --exclusions")
+
     print("building mix...")
     mix, mix_provenance = load_mix(cli, a.temperature, a.seed, a.languages,
                                    version=a.manifest_version,
-                                   require_use=a.require_allowed_use)
+                                   require_use=a.require_allowed_use,
+                                   exclusions=excluded,
+                                   exclusions_sha256=excl_sha,
+                                   exclusions_id=excl_doc.get("list_id"))
+    removed = mix_provenance["exclusions"]["removed_from_eligible_pool"]
+    if a.expect_excluded is not None and removed != a.expect_excluded:
+        raise SystemExit(f"REFUSING: expected exactly {a.expect_excluded} row(s) "
+                         f"removed from the eligible pool, removed {removed}")
     if a.smoke:
         mix = mix[:6]
     mixinfo = report_mix(mix)
@@ -818,7 +943,6 @@ def main() -> int:
     from pipeline.label_length import label_lengths
 
     max_labels = model.config.max_target_positions
-    excluded = load_exclusions(a.exclusions) if a.exclusions else {}
     over = []
     for rec in mix:
         _raw, eff = label_lengths(processor.tokenizer, rec["text_normalized"],
@@ -842,14 +966,49 @@ def main() -> int:
             "exclusion list\n  with a recorded reason, or re-segment them at "
             "ingest. Do not truncate labels.")
 
-    if excluded:
-        before = len(mix)
-        mix = [r for r in mix if r["audio_checksum_sha256"] not in excluded]
-        print(f"  exclusions  {before - len(mix)} row(s) removed per "
-              f"{a.exclusions}")
-        mixinfo = report_mix(mix)
-        fingerprint = manifest_fingerprint(mix)
-        print(f"  dataset fingerprint {fingerprint[:16]} (after exclusions)")
+    # Nothing is dropped here. Exclusions were applied to the eligible pool, so
+    # the mix is already final and the fingerprint printed above describes the
+    # data that will actually be trained on. This block only VERIFIES that no
+    # over-limit row survived -- a non-empty `over` at this point would mean the
+    # policy and the tokenizer disagree about which rows exceed the limit.
+    survivors = [r for r in mix if r["audio_checksum_sha256"] in excluded]
+    if survivors:
+        raise SystemExit(f"REFUSING: {len(survivors)} excluded row(s) are still in "
+                         "the mix after pool filtering")
+    if over:
+        raise SystemExit(f"REFUSING: {len(over)} row(s) exceed the {max_labels}-token "
+                         "decoder limit after exclusions were applied")
+    print(f"  label check {len(mix)} rows, 0 over the {max_labels}-token limit")
+
+    # Flat scalars, not a nested blob. manifest_provenance is JSON-encoded into a
+    # single MLflow param and long values can be truncated at the server; the
+    # facts a reader most needs -- what was removed, under which policy, and
+    # whether anything over the limit survived -- must each be their own param.
+    xp = mix_provenance["exclusions"]
+    deferral_evidence = {
+        "exclusions_list_id": xp["list_id"],
+        "exclusions_decision_type": excl_doc.get("decision_type"),
+        "exclusions_policy_sha256": xp["policy_sha256"],
+        "exclusions_human_review_performed": excl_doc.get("human_review_performed"),
+        "exclusions_declared": xp["declared"],
+        "exclusions_removed": xp["removed_from_eligible_pool"],
+        "exclusions_over_decoder_limit":
+            xp["by_trigger"].get("over_decoder_limit", 0),
+        "exclusions_extreme_token_rate":
+            xp["by_trigger"].get("extreme_token_rate_under_limit", 0),
+        "exclusions_applied": "before_temperature_sampling",
+        "eligible_rows_before_exclusions":
+            mix_provenance["eligible_rows_before_exclusions"],
+        "eligible_rows_after_exclusions": mix_provenance["eligible_rows"],
+        "sampled_rows": len(mix),
+        "over_limit_rows_remaining": len(over),
+        "decoder_label_limit": max_labels,
+        "v2_complete_raw_sha256": mix_provenance["complete_raw_sha256"],
+        "adoption_key": mix_provenance["adoption_key"],
+        "promotion_permitted": bool(excl_doc.get("scope", {})
+                                    .get("promotion_permitted", False)),
+        "artifacts_scope": "candidates_only",
+    }
 
     # UNCONDITIONAL. An earlier edit left this inside `if excluded:`, so a run
     # without an exclusion list never cleared the forced decoder tokens -- the
@@ -873,6 +1032,7 @@ def main() -> int:
         "max_steps": a.max_steps, "temperature_sampling": a.temperature,
         "seed": a.seed, "device": device, "bf16": use_bf16,
         "dataset_fingerprint": fingerprint,
+        **deferral_evidence,
         "trainable_params": trainable, "total_params": total,
         "mix": mixinfo, "lang_tokens": LANG_TOKEN,
         # exactly which manifests, at which version, with which hashes
@@ -967,6 +1127,7 @@ def main() -> int:
     import math as _math
     (a.out / "run.json").write_text(json.dumps({
         "mlflow_run_id": run.info.run_id, "dataset_fingerprint": fingerprint,
+        "deferral": deferral_evidence,
         "params": params, "train_loss": result.training_loss,
         "loss_is_finite": bool(_math.isfinite(result.training_loss)),
         "steps": result.global_step,
