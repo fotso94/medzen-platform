@@ -59,6 +59,27 @@ def s3():
     return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
 
 
+_MODEL_PATH: str | None = None
+
+
+def pinned_model_path() -> str:
+    """Resolve MODEL@MODEL_REVISION to a local snapshot directory.
+
+    mlx_whisper.transcribe() takes no `revision` argument, so passing the bare
+    repo name would silently load whatever `main` points at while the output
+    still claimed the pinned SHA — worse than not pinning, because the record
+    would lie. Resolving the snapshot ourselves makes the pin real.
+    """
+    global _MODEL_PATH
+    if _MODEL_PATH is None:
+        from huggingface_hub import snapshot_download
+        _MODEL_PATH = snapshot_download(MODEL, revision=MODEL_REVISION)
+        if MODEL_REVISION[:8] not in _MODEL_PATH:
+            print(f"  WARNING: resolved path does not contain the revision: {_MODEL_PATH}")
+        print(f"  model    resolved to {_MODEL_PATH}")
+    return _MODEL_PATH
+
+
 def load_eval(cli, language: str, task: str, version: str = "v1") -> list[dict]:
     key = f"eval/{language}/{task}/{version}/manifest.jsonl"
     body = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read().decode()
@@ -120,7 +141,7 @@ def transcribe_all(rows, cli, decode, language) -> list[dict]:
         audio, _ = sf.read(io.BytesIO(blob), dtype="float32", always_2d=False)
         if audio.ndim > 1:
             audio = audio.mean(axis=1)
-        kw = {"path_or_hf_repo": MODEL, "fp16": True}
+        kw = {"path_or_hf_repo": pinned_model_path(), "fp16": True}
         if lang_arg:
             kw["language"] = lang_arg
         t = time.time()
@@ -138,7 +159,8 @@ def transcribe_all(rows, cli, decode, language) -> list[dict]:
             "latency_s": round(lat, 3),
             "rtf": round(lat / max(rec["duration_s"], 1e-6), 3),
         })
-        if i % 20 == 0:
+        step = 5 if len(rows) <= 40 else 20
+        if i % step == 0 or i == len(rows):
             print(f"      {i}/{len(rows)}  {time.time()-t0:.0f}s", flush=True)
     return out
 
@@ -233,6 +255,13 @@ def main() -> int:
     if a.compare_decode:
         if not (a.language and a.task):
             print("--compare-decode needs --language and --task"); return 2
+        out = ROOT / "results" / "baseline" / f"decode_compare_{a.language}_{a.task}.json"
+        if out.exists() and not a.force:
+            print(f"REFUSING: {out.relative_to(ROOT)} already exists.")
+            print("A decode comparison is the evidence behind a registry entry;")
+            print("silently replacing it would orphan the recorded chosen_by_run.")
+            print("Use --force to replace it.")
+            return 1
         rows = []
         for d in DECODES:
             r = run_one(cli, a.language, a.task, d,
@@ -242,9 +271,11 @@ def main() -> int:
                 print(f"    -> {d:<9} WER {r['wer']:.3f} "
                       f"[{r['wer_ci95'][0]:.3f}-{r['wer_ci95'][1]:.3f}] CER {r['cer']:.3f}\n",
                       flush=True)
-        out = ROOT / "results" / "baseline" / f"decode_compare_{a.language}_{a.task}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(rows, indent=2) + "\n")
+        out.write_text(json.dumps({
+            "model": MODEL, "model_revision": MODEL_REVISION,
+            "language": a.language, "task": a.task, "results": rows,
+        }, indent=2) + "\n")
         if rows:
             best = min(rows, key=lambda x: x["wer"])
             print("\n  DECODE COMPARISON  " + f"{a.language}/{a.task}")
