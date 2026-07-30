@@ -167,3 +167,54 @@ def test_base_model_revision_is_pinned_and_passed():
     m = re.search(r'BASE_REVISION = os\.environ\.get\("BASE_REVISION", "([0-9a-f]{40})"\)', src)
     assert m, "base revision must default to a 40-char commit SHA"
     assert src.count("revision=rev") >= 2, "revision must reach model AND processor"
+
+
+# --------------------------------------------------------------------------- #
+# final/ must not carry nested checkpoints
+# --------------------------------------------------------------------------- #
+def test_final_upload_excludes_nested_checkpoints(tmp_path):
+    """The adapter is saved into the Trainer's own output_dir, so an unfiltered
+    sync copies every retained checkpoint inside final/. Observed in the B4
+    preflight: final/ contained a full duplicate of checkpoint-3. At 600 steps
+    with --save-steps 100 that is over a gigabyte of redundant upload, and it
+    makes final/ ambiguous for anything loading the adapter.
+    """
+    from unittest.mock import MagicMock, patch
+    from pipeline.train_asr import sync_up
+
+    out = tmp_path / "asr-lora"
+    (out / "checkpoint-3").mkdir(parents=True)
+    (out / "adapter_model.safetensors").write_text("w")
+    (out / "run.json").write_text("{}")
+    (out / "checkpoint-3" / "optimizer.pt").write_text("o")
+
+    cli = MagicMock()
+    with patch("pipeline.train_asr.s3", return_value=cli):
+        sync_up(out, "s3://b/candidates/asr/RID/final", skip_checkpoints=True)
+    keys = sorted(c.args[2] for c in cli.upload_file.call_args_list)
+    assert not [k for k in keys if "checkpoint-" in k], f"leaked checkpoints: {keys}"
+    assert "candidates/asr/RID/final/adapter_model.safetensors" in keys
+    assert "candidates/asr/RID/final/run.json" in keys
+
+
+def test_checkpoint_upload_still_complete(tmp_path):
+    """A checkpoint must upload in full -- a partial one cannot be resumed."""
+    from unittest.mock import MagicMock, patch
+    from pipeline.train_asr import sync_up
+
+    ck = tmp_path / "checkpoint-3"
+    (ck / "sub").mkdir(parents=True)
+    (ck / "optimizer.pt").write_text("o")
+    (ck / "sub" / "extra.bin").write_text("e")
+
+    cli = MagicMock()
+    with patch("pipeline.train_asr.s3", return_value=cli):
+        sync_up(ck, "s3://b/candidates/asr/RID/checkpoint-3")
+    keys = sorted(c.args[2] for c in cli.upload_file.call_args_list)
+    assert len(keys) == 2, keys
+
+
+def test_final_sync_call_uses_the_exclusion():
+    src = TRAIN.read_text()
+    assert "sync_up(a.out, dest, skip_checkpoints=True)" in src, \
+        "the final upload must exclude nested checkpoints"

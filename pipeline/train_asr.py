@@ -199,15 +199,27 @@ def s3_uri_parts(uri: str) -> tuple[str, str]:
     return b, k.rstrip("/")
 
 
-def sync_up(local: Path, uri: str) -> None:
+def sync_up(local: Path, uri: str, skip_checkpoints: bool = False) -> None:
     """Upload a checkpoint directory. Runs on the SAVE step, not at the end:
     a spot reclaim gives ~2 minutes' notice, so anything only written at the
-    end of training is lost."""
+    end of training is lost.
+
+    skip_checkpoints excludes nested checkpoint-N/ directories. The final
+    adapter is saved into the Trainer's own output_dir, so an unfiltered sync
+    copies every retained checkpoint inside final/ -- a duplicate of data
+    already uploaded under its own prefix, and an ambiguous directory for
+    anything loading the adapter. At 600 steps with --save-steps 100 that is
+    over a gigabyte of redundant upload.
+    """
     cli = s3()
     bucket, prefix = s3_uri_parts(uri)
     for f in local.rglob("*"):
-        if f.is_file():
-            cli.upload_file(str(f), bucket, f"{prefix}/{f.relative_to(local)}")
+        if not f.is_file():
+            continue
+        rel = f.relative_to(local)
+        if skip_checkpoints and any(p.startswith("checkpoint-") for p in rel.parts[:-1]):
+            continue
+        cli.upload_file(str(f), bucket, f"{prefix}/{rel}")
 
 
 def sync_down(uri: str, local: Path) -> Path:
@@ -426,7 +438,9 @@ def main() -> int:
         # boto with the shared session, NOT `aws --profile`: on EC2 the profile
         # does not exist and the CLI would fail after a completed run.
         dest = f"s3://{BUCKET}/candidates/asr/{run.info.run_id}/final"
-        sync_up(a.out, dest)
+        # checkpoints already live under .../checkpoint-N/; final/ holds only
+        # the adapter and processor a loader actually needs
+        sync_up(a.out, dest, skip_checkpoints=True)
         mlflow.set_tag("artifact_s3", dest)
         print(f"  pushed {dest}")
 
