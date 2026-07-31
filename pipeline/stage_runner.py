@@ -8,6 +8,7 @@ evidence.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import math
@@ -107,13 +108,23 @@ def put_immutable(cli, key: str, body: bytes,
 
 def upload_tree(cli, local: Path, prefix: str,
                 skip_nested_checkpoints: bool = False) -> dict:
-    """Upload one previously empty artifact tree and verify every object."""
+    """Conditionally upload one artifact tree and hash every readback.
+
+    ``upload_file`` has no conditional-create contract.  A successful return
+    plus a matching length can therefore accept bytes another writer replaced
+    between upload and ``head_object``.  These LoRA artifacts are comfortably
+    below PutObject's 5 GiB limit, so every object is created with
+    ``IfNoneMatch='*'`` and then streamed back through SHA-256.
+    """
     prefix = prefix.rstrip("/") + "/"
     _require_empty(cli, prefix)
     files: dict[str, dict] = {}
     for path in sorted(Path(local).rglob("*")):
         if not path.is_file():
             continue
+        if path.is_symlink():
+            raise SystemExit(
+                f"REFUSING: artifact tree contains symlink {path}")
         rel = path.relative_to(local).as_posix()
         if skip_nested_checkpoints and any(
                 part.startswith("checkpoint-")
@@ -121,15 +132,30 @@ def upload_tree(cli, local: Path, prefix: str,
             continue
         key = prefix + rel
         digest = sha256_file(path)
-        cli.upload_file(
-            str(path), BUCKET, key,
-            ExtraArgs={"ServerSideEncryption": "aws:kms"})
-        head = cli.head_object(Bucket=BUCKET, Key=key)
-        if head["ContentLength"] != path.stat().st_size:
+        size = path.stat().st_size
+        with path.open("rb") as source:
+            cli.put_object(
+                Bucket=BUCKET, Key=key, Body=source,
+                ContentLength=size, IfNoneMatch="*",
+                ChecksumSHA256=base64.b64encode(
+                    bytes.fromhex(digest)).decode(),
+                ServerSideEncryption="aws:kms")
+        remote = cli.get_object(Bucket=BUCKET, Key=key)
+        body = remote["Body"]
+        readback = hashlib.sha256()
+        readback_bytes = 0
+        while True:
+            chunk = body.read(8 * 1024 * 1024)
+            if not chunk:
+                break
+            readback.update(chunk)
+            readback_bytes += len(chunk)
+        if readback_bytes != size or readback.hexdigest() != digest:
             raise SystemExit(
-                f"REFUSING: uploaded {key} has {head['ContentLength']} bytes, "
-                f"expected {path.stat().st_size}")
-        files[rel] = {"sha256": digest, "bytes": path.stat().st_size}
+                f"REFUSING: uploaded {key} readback is "
+                f"{readback_bytes} bytes/{readback.hexdigest()[:16]}, "
+                f"expected {size} bytes/{digest[:16]}")
+        files[rel] = {"sha256": digest, "bytes": size}
     if not files:
         raise SystemExit(f"REFUSING: no artifact files found under {local}")
     tree_sha = _sha(json.dumps(

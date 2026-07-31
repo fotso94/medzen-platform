@@ -36,6 +36,7 @@ class EC2StageConfig:
     account_id: str = "558069890522"
     ecr_repository: str = "medzen-trainer"
     ami_id: str = "ami-01b08a3e47b323a73"
+    ami_owner: str = "898082745236"
     subnet_id: str = "subnet-00232b25bc1ac407a"
     security_group_id: str = "sg-0ec6a550611714d0c"
     instance_profile: str = "medzen-trainer-profile"
@@ -110,6 +111,8 @@ class EC2StageAdapter:
         self.ec2 = session.client("ec2", region_name=self.config.region)
         self.ecr = session.client("ecr", region_name=self.config.region)
         self.s3 = session.client("s3", region_name=self.config.region)
+        self.sts = session.client("sts", region_name=self.config.region)
+        self.iam = session.client("iam", region_name=self.config.region)
 
     # Services consumed by pipeline.campaign.
     def run_base_and_preflight(self, descriptor: dict) -> dict:
@@ -145,6 +148,20 @@ class EC2StageAdapter:
             raise StageLaunchError(
                 f"REFUSING: ECR does not contain authorised digest {digest}")
         try:
+            described = self.ecr.describe_images(
+                repositoryName=self.config.ecr_repository,
+                imageIds=[{"imageDigest": digest}])
+        except Exception as exc:  # noqa: BLE001
+            raise StageLaunchError(
+                f"REFUSING: cannot verify ECR tags for {digest}: "
+                f"{type(exc).__name__}") from exc
+        details = described.get("imageDetails") or []
+        tags = details[0].get("imageTags") if len(details) == 1 else []
+        if descriptor["git_sha"] not in (tags or []):
+            raise StageLaunchError(
+                f"REFUSING: ECR digest {digest} is not tagged with authorised "
+                f"commit {descriptor['git_sha']}")
+        try:
             scan = self.ecr.describe_image_scan_findings(
                 repositoryName=self.config.ecr_repository,
                 imageId={"imageDigest": digest})
@@ -161,7 +178,6 @@ class EC2StageAdapter:
         out = self.ec2.describe_instances(Filters=[
             {"Name": "instance-state-name",
              "Values": ["pending", "running", "stopping", "shutting-down"]},
-            {"Name": "instance-type", "Values": [self.config.instance_type]},
             {"Name": "tag:Project", "Values": ["MedZen"]},
             {"Name": "tag:Phase", "Values": ["B4"]},
         ])
@@ -171,8 +187,57 @@ class EC2StageAdapter:
         ]
         if active:
             raise StageLaunchError(
-                f"REFUSING: active MedZen B4 GPU instance(s) {active}; stages "
+                f"REFUSING: active MedZen B4 instance(s) {active}; stages "
                 "are sequential and an orphan must be resolved first")
+
+    def preflight_campaign(self, git_sha: str, image_digest: str) -> dict:
+        """Read-only proof that the direct-EC2 boundary is launchable."""
+        identity = self.sts.get_caller_identity()
+        if identity.get("Account") != self.config.account_id:
+            raise StageLaunchError(
+                f"REFUSING: caller account {identity.get('Account')!r} is not "
+                f"{self.config.account_id}")
+        images = self.ec2.describe_images(
+            ImageIds=[self.config.ami_id]).get("Images") or []
+        if len(images) != 1:
+            raise StageLaunchError("REFUSING: trainer AMI is absent")
+        ami = images[0]
+        if (ami.get("State"), ami.get("Architecture"),
+                ami.get("OwnerId")) != (
+                "available", "x86_64", self.config.ami_owner):
+            raise StageLaunchError(
+                "REFUSING: trainer AMI state, architecture, or owner changed")
+        subnet = self.ec2.describe_subnets(
+            SubnetIds=[self.config.subnet_id])["Subnets"][0]
+        groups = self.ec2.describe_security_groups(
+            GroupIds=[self.config.security_group_id])["SecurityGroups"]
+        if len(groups) != 1 or groups[0].get("VpcId") != subnet.get("VpcId"):
+            raise StageLaunchError(
+                "REFUSING: trainer subnet and security group VPC differ")
+        profile = self.iam.get_instance_profile(
+            InstanceProfileName=self.config.instance_profile)
+        if not profile.get("InstanceProfile", {}).get("Roles"):
+            raise StageLaunchError(
+                "REFUSING: trainer instance profile has no role")
+        self._require_image({
+            "git_sha": git_sha,
+            "image_digest": image_digest,
+        })
+        self._require_no_active_gpu()
+        return {
+            "caller_account": identity["Account"],
+            "ami_id": ami["ImageId"],
+            "ami_state": ami["State"],
+            "subnet_id": subnet["SubnetId"],
+            "availability_zone": subnet["AvailabilityZone"],
+            "security_group_id": groups[0]["GroupId"],
+            "instance_profile": self.config.instance_profile,
+            "image_digest": image_digest,
+            "git_sha": git_sha,
+            "active_b4_instances": 0,
+            "eks_involved": False,
+            "spot_involved": False,
+        }
 
     def _require_empty_prefix(self, prefix: str) -> None:
         try:
@@ -291,6 +356,10 @@ class EC2StageAdapter:
             ImageId=self.config.ami_id,
             InstanceType=self.config.instance_type,
             MinCount=1, MaxCount=1,
+            ClientToken=hashlib.sha256(
+                ("medzen-b4-stage/"
+                 + stage_descriptor.descriptor_hash(descriptor)).encode()
+            ).hexdigest(),
             SubnetId=self.config.subnet_id,
             SecurityGroupIds=[self.config.security_group_id],
             IamInstanceProfile={"Name": self.config.instance_profile},
@@ -352,11 +421,6 @@ class EC2StageAdapter:
                 identity_problems.append(
                     f"container {field}={container.get(field)!r}, expected "
                     f"{descriptor[field]!r}")
-        if identity_problems:
-            raise StageLaunchError(
-                "REFUSING: terminated instance returned a result for another "
-                "stage:\n  " + "\n  ".join(identity_problems))
-
         final = {
             **container,
             "instance_id": instance_id,
@@ -372,6 +436,7 @@ class EC2StageAdapter:
             "lifecycle": "on-demand-direct-ec2",
             "eks_involved": False,
             "spot_involved": False,
+            "identity_problems": identity_problems,
         }
         self._put_immutable(prefix + "stage-result.json", _json_bytes(final))
         return final

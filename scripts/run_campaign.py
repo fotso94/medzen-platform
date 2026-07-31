@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline import campaign                                     # noqa: E402
+from pipeline import budget, campaign                             # noqa: E402
 from pipeline.campaign_tracking import CampaignTracker            # noqa: E402
 from pipeline.ec2_stage_adapter import EC2StageAdapter             # noqa: E402
 from pipeline.generation import config_fingerprint                # noqa: E402
@@ -47,6 +47,16 @@ def current_git_sha() -> str:
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
         capture_output=True, text=True).stdout.strip()
+
+
+def require_clean_tree() -> None:
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=ROOT, check=True,
+        capture_output=True, text=True).stdout.strip()
+    if dirty:
+        raise SystemExit(
+            "REFUSING: worktree is not clean; an image and bundle cannot "
+            "truthfully claim only the checked-out commit")
 
 
 def file_sha(path: Path) -> str:
@@ -104,12 +114,17 @@ def build_services(cli, args, *, preview: bool = False,
         complete_raw = cli.get_object(
             Bucket=BUCKET,
             Key="curated/_versions/v2/COMPLETE.json")["Body"].read()
-        bindings = RB.recompute(cli)
+        policy = json.loads((ROOT / POLICY).read_bytes())
+        bound_audit = (
+            ROOT / policy["bindings"]["audit_path"]).resolve()
+        bindings = RB.recompute(cli, audit_path=bound_audit)
         problems = [
             p for p in RB.verify(bindings)
             if not p.startswith("uncommitted changes")
         ]
-        policy = json.loads((ROOT / POLICY).read_bytes())
+        if bindings["audit_sha256"] != policy["bindings"]["audit_sha256"]:
+            problems.append(
+                "corrected audit bytes differ from the policy binding")
         return {
             **doc,
             "current_complete_raw_sha256":
@@ -163,6 +178,69 @@ def build_services(cli, args, *, preview: bool = False,
         stage_descriptors=pins, register_model=None)
 
 
+def validate_execution_inputs(args) -> tuple[object, object, dict]:
+    """Perform the complete read-only proof used before ``--confirm``."""
+    if args.bundle_tar_sha256 == "0" * 64:
+        raise SystemExit(
+            "REFUSING: --bundle-tar-sha256 is required for validation")
+    if args.image_digest == "sha256:" + "0" * 64:
+        raise SystemExit("REFUSING: --image-digest is required for validation")
+    git_sha = args.git_sha or current_git_sha()
+    if git_sha != current_git_sha():
+        raise SystemExit(
+            "REFUSING: --git-sha differs from the checked-out commit")
+    require_clean_tree()
+
+    sess = aws_session()
+    cli = sess.client("s3", region_name="eu-central-1")
+    sv = build_services(cli=cli, args=args, preview=True)
+    campaign.require_ready(sv)
+    policy, adoption = campaign.verify_governance(sv)
+
+    bundle_key = f"candidates/bootstrap/{git_sha}/BUNDLE.json"
+    bundle = json.loads(cli.get_object(
+        Bucket=BUCKET, Key=bundle_key)["Body"].read())
+    if (bundle.get("git_sha"), bundle.get("tar_sha256")) != (
+            git_sha, args.bundle_tar_sha256):
+        raise SystemExit(
+            "REFUSING: published commit-scoped bundle differs from the "
+            "authorised git/tar pins")
+
+    infra = EC2StageAdapter(sess).preflight_campaign(
+        git_sha, args.image_digest)
+    ledger, _ = budget.load(cli)
+    unresolved = budget.unresolved(ledger)
+    if unresolved:
+        raise SystemExit(
+            f"REFUSING: {len(unresolved)} budget reservation(s) are "
+            f"unresolved: {unresolved}")
+    gpu_worst_case = (
+        budget.worst_case_usd("base_and_preflight")
+        + 3 * budget.worst_case_usd("sweep_run")
+        + budget.worst_case_usd("final_run"))
+    committed = budget.committed_usd(ledger)
+    if committed + gpu_worst_case > budget.CEILING_USD:
+        raise SystemExit(
+            f"REFUSING: ${committed:.4f} already committed plus "
+            f"${gpu_worst_case:.4f} GPU worst case exceeds the "
+            f"${budget.CEILING_USD:.2f} ceiling")
+    return sess, cli, {
+        "git_sha": git_sha,
+        "bundle_key": bundle_key,
+        "bundle_tar_sha256": args.bundle_tar_sha256,
+        "policy_sha256": policy["policy_sha256"],
+        "adoption_key": args.adoption_key,
+        "dataset_fingerprint": adoption["dataset_fingerprint"],
+        "eligible_rows": adoption["eligible_rows"],
+        "image_digest": args.image_digest,
+        "infra": infra,
+        "budget_committed_usd": committed,
+        "gpu_worst_case_usd": round(gpu_worst_case, 4),
+        "budget_ceiling_usd": budget.CEILING_USD,
+        "writes_performed": 0,
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--campaign-run", required=True)
@@ -176,6 +254,10 @@ def main() -> int:
     ap.add_argument("--confirm", action="store_true",
                     help="required. Without it this prints what WOULD run and "
                          "exits without touching anything.")
+    ap.add_argument(
+        "--validate-inputs", action="store_true",
+        help="perform all AWS/governance preflight reads, but reserve, write "
+             "and launch nothing")
     a = ap.parse_args()
     if a.mlflow_db is None:
         safe_run = "".join(
@@ -201,26 +283,22 @@ def main() -> int:
     for prob in r["problems"]:
         print(f"  - {prob}")
 
-    if not a.confirm:
+    if not a.confirm and not a.validate_inputs:
         print("\nDRY RUN — nothing reserved, launched or written. "
-              "Pass --confirm to execute.")
+              "Pass --validate-inputs for complete read-only AWS validation "
+              "or --confirm to execute.")
         return 0
     if not r["ready"]:
         print("\nREFUSING: --confirm given, but the campaign is not "
               "production-ready. Nothing was read, written or reserved.")
         return 2
 
-    if a.bundle_tar_sha256 == "0" * 64:
-        print("REFUSING: --bundle-tar-sha256 is required for execution")
-        return 2
-    if a.image_digest == "sha256:" + "0" * 64:
-        print("REFUSING: --image-digest is required for execution")
-        return 2
-    if a.git_sha and a.git_sha != current_git_sha():
-        print("REFUSING: --git-sha differs from the checked-out commit")
-        return 2
-    sess = aws_session()
-    cli = sess.client("s3", region_name="eu-central-1")
+    sess, cli, validation = validate_execution_inputs(a)
+    print("READ-ONLY INPUT VALIDATION PASSED")
+    print(json.dumps(validation, indent=2, sort_keys=True))
+    if not a.confirm:
+        print("VALIDATION ONLY — 0 writes, 0 reservations, 0 launches.")
+        return 0
     sv = build_services(cli=cli, args=a, session=sess)
     campaign.require_ready(sv)
     out = campaign.run_campaign(sv, a.campaign_run, a.attempt)

@@ -13,6 +13,7 @@ launcher that skipped a step would be a second set of controls; there isn't one.
 """
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -177,7 +178,10 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
             "base_and_preflight" if stage == "base_and_preflight"
             else "sweep_run" if stage == "sweep" else "final_run"],
         input_prefix=f"curated/_versions/v2/",
-        output_prefix=f"candidates/evaluations/{campaign_run}/attempt-{attempt}/{stage}/",
+        output_prefix=(
+            f"candidates/evaluations/{campaign_run}/attempt-{attempt}/"
+            + (f"sweep-lr-{lr:.0e}/" if stage == "sweep"
+               else f"{stage}/")),
         mlflow_parent_run_id=(
             getattr(sv.tracker, "parent_run_id", None)
             or p["mlflow_parent_run_id"]),
@@ -224,11 +228,54 @@ def _start_child(sv: Services, stage_key: str, stage: str,
 
 def _run_stage(sv: Services, stage_key: str, descriptor: dict,
                fn: Callable[[], dict]) -> dict:
-    """Mark a child failed if its EC2 lifecycle raises at any boundary."""
+    """Run one EC2 lifecycle and mark an operator-side failure."""
     try:
-        result = fn()
-        stage_descriptor.verify_result(descriptor, result)
-        return result
+        return fn()
+    except BaseException as exc:
+        sv.tracker.fail_stage(stage_key, f"{type(exc).__name__}: {exc}")
+        raise
+
+
+def _reconcile_then_verify(
+        sv: Services, stage_key: str, descriptor: dict, result: dict,
+        budget_stage: str, budget_attempt: str) -> dict:
+    """Account for a proven-terminated instance before semantic refusal.
+
+    Descriptor identity, exit status, and artifact gates can fail after an
+    instance has genuinely terminated.  Leaving the reservation at its
+    watchdog ceiling in those cases is false accounting.  Conversely, a
+    container's claim that it terminated is not enough: only the lifecycle
+    fields supplied by the direct-EC2 adapter authorise reconciliation.
+    """
+    seconds = result.get("actual_seconds")
+    lifecycle_problems = []
+    if result.get("aws_final_state") != "terminated":
+        lifecycle_problems.append(
+            f"AWS final state is {result.get('aws_final_state')!r}, "
+            "not 'terminated'")
+    if not result.get("instance_id"):
+        lifecycle_problems.append("AWS instance ID is absent")
+    if not result.get("terminated_utc"):
+        lifecycle_problems.append("AWS termination timestamp is absent")
+    if (isinstance(seconds, bool)
+            or not isinstance(seconds, (int, float))
+            or not math.isfinite(float(seconds))
+            or float(seconds) < 0):
+        lifecycle_problems.append(
+            f"AWS-observed runtime is invalid: {seconds!r}")
+    if lifecycle_problems:
+        reason = (
+            "REFUSING: instance termination is not proven, so the "
+            "worst-case reservation remains held:\n  "
+            + "\n  ".join(lifecycle_problems))
+        sv.tracker.fail_stage(stage_key, reason)
+        raise CampaignError(reason)
+
+    budget.reconcile(
+        sv.s3, budget_stage, budget_attempt, float(seconds),
+        instance_id=result["instance_id"])
+    try:
+        return stage_descriptor.verify_result(descriptor, result)
     except BaseException as exc:
         sv.tracker.fail_stage(stage_key, f"{type(exc).__name__}: {exc}")
         raise
@@ -301,46 +348,18 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     trace.add("readiness", ready=True)
 
     # ---- 1. governance BEFORE anything costs money ------------------------
-    pol = sv.verify_policy()
-    if pol.get("human_review_performed") is not False:
-        raise CampaignError("REFUSING: policy does not record "
-                            "human_review_performed=false")
+    pol, adopt = verify_governance(sv)
     trace.add("verify-policy", policy_sha256=pol["policy_sha256"],
               rows=pol["rows"])
-
-    adopt = sv.verify_adoption()
-    problems = []
-    if adopt.get("status") != "approved":
-        problems.append(f"adoption status is {adopt.get('status')!r}")
-    if adopt.get("deferral_policy_sha256") != pol["policy_sha256"]:
-        problems.append("adoption binds a different deferral policy; approval "
-                        "does not transfer between policies")
-    if adopt.get("complete_raw_sha256") != adopt.get("current_complete_raw_sha256"):
-        problems.append(
-            f"COMPLETE.json now hashes "
-            f"{str(adopt.get('current_complete_raw_sha256'))[:16]} but the "
-            f"adoption approved {str(adopt.get('complete_raw_sha256'))[:16]}; "
-            "the corpus changed after it was adopted")
-    if adopt.get("manifests_verified") is not True:
-        problems.append("manifest versions/hashes were not verified against "
-                        "the completion record")
-    if adopt.get("exclusion_checksums_sha256") != pol.get("exclusion_checksums_sha256"):
-        problems.append("the adopted exclusion checksum set is not the policy's")
-    if adopt.get("dataset_fingerprint") != EXPECTED_FINGERPRINT:
-        problems.append(
-            f"dataset fingerprint {str(adopt.get('dataset_fingerprint'))[:16]} "
-            f"is not the corrected {EXPECTED_FINGERPRINT[:16]}")
-    if adopt.get("eligible_rows") != EXPECTED_ELIGIBLE_ROWS:
-        problems.append(f"eligible rows {adopt.get('eligible_rows')} != "
-                        f"{EXPECTED_ELIGIBLE_ROWS}")
-    if problems:
-        raise CampaignError("REFUSING: adoption verification failed, so "
-                            "nothing has been reserved:\n  "
-                            + "\n  ".join(problems))
     trace.add("verify-adoption",
               complete_raw_sha256=adopt["complete_raw_sha256"],
               dataset_fingerprint=adopt["dataset_fingerprint"],
               eligible_rows=adopt["eligible_rows"])
+
+    # Persist the parent snapshot before reserving money. A tracking failure
+    # here is provably pre-launch and must not leave a reservation.
+    _sync(sv, campaign_run, "parent", trace, attempt=attempt,
+          policy_sha256=pol["policy_sha256"])
 
     # ---- 2. reserve the worst case BEFORE the first instance --------------
     # base evaluation and preflight SHARE one GPU instance: both need the
@@ -351,8 +370,6 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
               reservation_id=res["reservation_id"],
               worst_case_usd=res["worst_case_usd"])
 
-    _sync(sv, campaign_run, "parent", trace, attempt=attempt, policy_sha256=pol["policy_sha256"])
-
     # ---- 3. ONE instance: base arm, then preflight ------------------------
     base_stage_key = "base_and_preflight"
     base_child = _start_child(sv, base_stage_key, base_stage_key)
@@ -362,10 +379,21 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         mlflow_child_run_id=base_child)
     r0 = _run_stage(
         sv, base_stage_key, d0, lambda: sv.run_base_and_preflight(d0))
-    budget.reconcile(sv.s3, "base_and_preflight", attempt,
-                     r0["actual_seconds"], instance_id=r0["instance_id"])
+    _reconcile_then_verify(
+        sv, base_stage_key, d0, r0, "base_and_preflight", attempt)
     base = r0["base"]
     orchestrate.validate_metric_map(base["wer"], "base WER")
+    expected_base_key = (
+        d0["output_prefix"].rstrip("/") + "/evaluations/base.json")
+    if (base.get("artifact_key") != expected_base_key
+            or len(str(base.get("artifact_sha256"))) != 64
+            or len(str(base.get("base_arm_key"))) != 64):
+        sv.tracker.fail_stage(
+            base_stage_key,
+            "base artifact identity is absent or outside the authorised stage")
+        raise CampaignError(
+            "REFUSING: base artifact identity is absent or outside the "
+            "authorised base-and-preflight prefix")
     # The lifecycle is already proven. Reconcile the actual AWS time even when
     # the semantic preflight below fails; leaving the worst-case reservation
     # unresolved would falsely imply the terminated instance may still exist.
@@ -411,8 +439,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
             mlflow_child_run_id=sweep_child, base_result=base)
         r = _run_stage(
             sv, sweep_stage_key, d, lambda d=d, lr=lr: sv.run_sweep(d, lr))
-        budget.reconcile(sv.s3, "sweep_run", f"{attempt}-{tag}",
-                         r["actual_seconds"], instance_id=r["instance_id"])
+        _reconcile_then_verify(
+            sv, sweep_stage_key, d, r, "sweep_run", f"{attempt}-{tag}")
         gate = orchestrate.apply_checkpoint_controls(
             orchestrate.evaluate_gates(
                 r["wer"], base["wer"], r["eos_rate"], r["cap_hit_rate"]),
@@ -457,8 +485,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     rfin = _run_stage(
         sv, final_stage_key, df,
         lambda: sv.run_final(df, sel["selected_lr"]))
-    budget.reconcile(sv.s3, "final_run", f"{attempt}-final",
-                     rfin["actual_seconds"], instance_id=rfin["instance_id"])
+    _reconcile_then_verify(
+        sv, final_stage_key, df, rfin, "final_run", f"{attempt}-final")
     trace.add("final-run", instance_id=rfin["instance_id"],
               lr=sel["selected_lr"], resumed=False,
               steps_completed=rfin.get("steps_completed"),
@@ -538,6 +566,45 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         "trace": trace.steps,
         "trace_names": trace.names,
     }
+
+
+def verify_governance(sv: Services) -> tuple[dict, dict]:
+    """Read-only policy/adoption proof shared by validation and execution."""
+    pol = sv.verify_policy()
+    if pol.get("human_review_performed") is not False:
+        raise CampaignError("REFUSING: policy does not record "
+                            "human_review_performed=false")
+
+    adopt = sv.verify_adoption()
+    problems = []
+    if adopt.get("status") != "approved":
+        problems.append(f"adoption status is {adopt.get('status')!r}")
+    if adopt.get("deferral_policy_sha256") != pol["policy_sha256"]:
+        problems.append("adoption binds a different deferral policy; approval "
+                        "does not transfer between policies")
+    if adopt.get("complete_raw_sha256") != adopt.get("current_complete_raw_sha256"):
+        problems.append(
+            f"COMPLETE.json now hashes "
+            f"{str(adopt.get('current_complete_raw_sha256'))[:16]} but the "
+            f"adoption approved {str(adopt.get('complete_raw_sha256'))[:16]}; "
+            "the corpus changed after it was adopted")
+    if adopt.get("manifests_verified") is not True:
+        problems.append("manifest versions/hashes were not verified against "
+                        "the completion record")
+    if adopt.get("exclusion_checksums_sha256") != pol.get("exclusion_checksums_sha256"):
+        problems.append("the adopted exclusion checksum set is not the policy's")
+    if adopt.get("dataset_fingerprint") != EXPECTED_FINGERPRINT:
+        problems.append(
+            f"dataset fingerprint {str(adopt.get('dataset_fingerprint'))[:16]} "
+            f"is not the corrected {EXPECTED_FINGERPRINT[:16]}")
+    if adopt.get("eligible_rows") != EXPECTED_ELIGIBLE_ROWS:
+        problems.append(f"eligible rows {adopt.get('eligible_rows')} != "
+                        f"{EXPECTED_ELIGIBLE_ROWS}")
+    if problems:
+        raise CampaignError("REFUSING: adoption verification failed, so "
+                            "nothing has been reserved:\n  "
+                            + "\n  ".join(problems))
+    return pol, adopt
 
 
 def run_campaign(sv: Services, campaign_run: str,

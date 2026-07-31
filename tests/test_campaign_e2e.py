@@ -150,6 +150,7 @@ def stage_result(descriptor, **kw):
         "terminated_utc": "2026-07-31T09:10:00Z",
         "actual_seconds": 600, "exit_status": 0,
         "root_volume_deleted": True,
+        "aws_final_state": "terminated",
         **kw,
     }
 
@@ -184,10 +185,11 @@ def make_services(s3, db, **over):
     def run_base_and_preflight(d):
         calls.append("run_base_and_preflight")
         return stage_result(
-            d, base={"wer": base_metrics(), "base_arm_key": "k" * 64,
+            d, base={"wer": base_metrics(), "base_arm_key": "a" * 64,
                      "artifact_sha256": "c" * 64,
                      "artifact_key":
-                         "candidates/evaluations/camp/base.json"},
+                         d["output_prefix"].rstrip("/")
+                         + "/evaluations/base.json"},
             preflight={"passed": True, "saved_adapter_sha256": "9" * 64,
                        "reloaded_adapter_sha256": "9" * 64})
 
@@ -266,6 +268,27 @@ def test_exactly_five_gpu_stage_calls(db):
     assert calls.count("run_base_and_preflight") == 1
     assert sum(1 for c in calls if c.startswith("run_sweep")) == 3
     assert sum(1 for c in calls if c.startswith("run_final")) == 1
+
+
+def test_each_sweep_learning_rate_has_a_distinct_write_once_prefix(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+    base = {
+        "base_arm_key": "a" * 64,
+        "artifact_key": "candidates/evaluations/camp-prefix/base.json",
+        "artifact_sha256": "b" * 64,
+    }
+    descriptors = [
+        campaign.make_descriptor(
+            sv, "camp-prefix", "1", "sweep", lr, 100,
+            f"reservation-{index}", base_result=base)
+        for index, lr in enumerate(orchestrate.LR_CANDIDATES)
+    ]
+    assert [d["output_prefix"] for d in descriptors] == [
+        "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-1e-04/",
+        "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-3e-04/",
+        "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-5e-04/",
+    ]
 
 
 def test_one_reservation_per_stage_lifecycle(db):
@@ -446,6 +469,8 @@ def test_a_result_echoing_the_wrong_descriptor_is_refused(db):
     sv.run_sweep = tampered
     with pytest.raises(SystemExit, match="the instance ran something else"):
         campaign.run_campaign(sv, "camp-f6b")
+    assert budget.unresolved(budget.load(s3)[0]) == [], \
+        "a terminated instance must reconcile before semantic refusal"
 
 
 @pytest.mark.parametrize("field,value", [
@@ -462,17 +487,29 @@ def test_unproven_cleanup_or_failure_is_refused(db, field, value):
         r[field] = value
         return r
     sv.run_base_and_preflight = bad
-    with pytest.raises(SystemExit, match="does not match what was"):
+    expected = (
+        "termination is not proven"
+        if field in ("instance_id", "terminated_utc")
+        else "does not match what was")
+    with pytest.raises(SystemExit, match=expected):
         campaign.run_campaign(sv, "camp-f6c")
 
 
 def test_reconciliation_only_after_confirmed_termination(db):
-    """The reconcile call sits AFTER verify_result, which requires
-    terminated_utc and root_volume_deleted."""
-    src = (ROOT / "pipeline/campaign.py").read_text()
-    i_verify = src.index("stage_descriptor.verify_result(descriptor, result)")
-    i_recon = src.index('budget.reconcile(sv.s3, "base_and_preflight"')
-    assert i_verify < i_recon
+    """An unproven termination keeps its conservative reservation."""
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+    ok = sv.run_base_and_preflight
+
+    def unproven(d):
+        result = ok(d)
+        result["aws_final_state"] = "running"
+        return result
+
+    sv.run_base_and_preflight = unproven
+    with pytest.raises(SystemExit, match="termination is not proven"):
+        campaign.run_campaign(sv, "camp-unproven")
+    assert len(budget.unresolved(budget.load(s3)[0])) == 1
 
 
 def test_no_automatic_relaunch_after_a_failure(db):
@@ -629,10 +666,14 @@ def test_there_is_exactly_one_launch_entrypoint():
 def test_launcher_defaults_to_a_dry_run():
     src = (ROOT / "scripts/run_campaign.py").read_text()
     assert '"--confirm", action="store_true"' in src
+    assert '"--validate-inputs", action="store_true"' in src
     assert "DRY RUN" in src
-    i_confirm = src.index("if not a.confirm:")
+    i_confirm = src.index("if not a.confirm and not a.validate_inputs:")
     i_run = src.index("campaign.run_campaign(")
     assert i_confirm < i_run, "the dry-run check must precede execution"
+    assert "require_clean_tree()" in src
+    assert "preflight_campaign(" in src
+    assert "writes_performed" in src
 
 
 def test_launcher_never_wires_a_registration_hook():

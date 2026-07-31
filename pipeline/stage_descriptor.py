@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 
 STAGES = ("base_and_preflight", "sweep", "final")
 
@@ -34,6 +35,11 @@ REQUIRED = (
 HEX64 = ("git_sha_len_40",)          # handled explicitly below
 
 
+def _lower_hex(value, size: int) -> bool:
+    text = str(value)
+    return len(text) == size and all(c in "0123456789abcdef" for c in text)
+
+
 def build(**kw) -> dict:
     """Assemble and validate. Refuses anything incomplete or contradictory."""
     missing = [k for k in REQUIRED if k not in kw]
@@ -47,17 +53,24 @@ def build(**kw) -> dict:
 
     d = dict(kw)
     problems = []
+    for field, size in (("campaign_run", 80), ("attempt", 64)):
+        value = str(d[field])
+        if (len(value) > size
+                or re.fullmatch(r"[a-z0-9][a-z0-9-]*", value) is None):
+            problems.append(
+                f"{field} must be a lowercase path-safe identifier")
     if d["stage"] not in STAGES:
         problems.append(f"stage {d['stage']!r} is not one of {STAGES}")
-    if len(str(d["git_sha"])) != 40:
-        problems.append("git_sha must be the full 40 characters")
-    if not str(d["image_digest"]).startswith("sha256:"):
+    if not _lower_hex(d["git_sha"], 40):
+        problems.append("git_sha must be 40 lowercase hex characters")
+    image = str(d["image_digest"])
+    if not image.startswith("sha256:") or not _lower_hex(image[7:], 64):
         problems.append("image_digest must be sha256:<64 hex>")
     for f in ("bundle_tar_sha256", "policy_sha256", "dataset_fingerprint",
               "base_manifest_sha256", "validation_manifest_sha256",
               "generation_config_fingerprint", "evaluator_sha256"):
-        if len(str(d[f])) != 64:
-            problems.append(f"{f} must be 64 hex characters")
+        if not _lower_hex(d[f], 64):
+            problems.append(f"{f} must be 64 lowercase hex characters")
     if d["purpose"] != "training_system_validation":
         problems.append("purpose must be training_system_validation")
     if d["promotable"] is not False:
@@ -75,12 +88,20 @@ def build(**kw) -> dict:
                 "responsible for producing")
     else:
         for f in ("base_arm_key", "base_artifact_sha256"):
-            if len(str(d[f])) != 64:
-                problems.append(f"{f} must be 64 hex characters")
+            if not _lower_hex(d[f], 64):
+                problems.append(f"{f} must be 64 lowercase hex characters")
         if not str(d["base_artifact_key"]).startswith("candidates/"):
             problems.append("base_artifact_key must be under candidates/")
     if not str(d["output_prefix"]).startswith("candidates/"):
         problems.append("output_prefix must be under candidates/")
+    authorised_root = (
+        f"candidates/evaluations/{d['campaign_run']}/"
+        f"attempt-{d['attempt']}/")
+    if (not str(d["output_prefix"]).startswith(authorised_root)
+            or ".." in str(d["output_prefix"])
+            or "//" in str(d["output_prefix"])):
+        problems.append(
+            f"output_prefix must be confined under {authorised_root}")
     if problems:
         raise SystemExit("REFUSING: invalid stage descriptor —\n  "
                          + "\n  ".join(problems))

@@ -17,7 +17,8 @@ from pipeline import orchestrate, stage_descriptor
 from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
-from pipeline.stage_runner import _training_command, require_runtime_provenance
+from pipeline.stage_runner import (
+    _training_command, require_runtime_provenance, upload_tree)
 
 
 def descriptor(stage="sweep", **over):
@@ -69,6 +70,20 @@ def test_user_data_runs_one_digest_pinned_direct_ec2_container():
     assert "shutdown -h now" in text
     assert "eks" not in text.lower()
     assert "spot" not in text.lower()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("git_sha", "G" * 40),
+    ("image_digest", "sha256:" + "z" * 64),
+    ("campaign_run", "../escape"),
+    ("attempt", "1/other"),
+    ("output_prefix", "candidates/evaluations/other/attempt-1/sweep/"),
+])
+def test_descriptor_refuses_malformed_identity_or_path_escape(field, value):
+    values = descriptor()
+    values[field] = value
+    with pytest.raises(SystemExit, match="REFUSING"):
+        stage_descriptor.build(**values)
 
 
 def test_runtime_provenance_must_match_every_descriptor_pin(monkeypatch):
@@ -228,13 +243,18 @@ class Body:
     def __init__(self, value):
         self.value = value
 
-    def read(self):
-        return self.value
+    def read(self, amount=None):
+        if amount is None:
+            value, self.value = self.value, b""
+            return value
+        value, self.value = self.value[:amount], self.value[amount:]
+        return value
 
 
 class FakeS3:
     def __init__(self):
         self.objects = {}
+        self.puts = []
 
     def list_objects_v2(self, Bucket, Prefix, MaxKeys=None):
         keys = sorted(k for k in self.objects if k.startswith(Prefix))
@@ -246,11 +266,26 @@ class FakeS3:
     def put_object(self, Bucket, Key, Body, **kwargs):
         if kwargs.get("IfNoneMatch") == "*" and Key in self.objects:
             raise AssertionError("overwrite")
-        self.objects[Key] = Body
+        self.objects[Key] = Body.read() if hasattr(Body, "read") else Body
+        self.puts.append((Key, kwargs))
         return {}
 
     def get_object(self, Bucket, Key):
         return {"Body": Body(self.objects[Key])}
+
+
+def test_artifact_tree_uses_conditional_writes_and_sha256_readback(tmp_path):
+    (tmp_path / "adapter.safetensors").write_bytes(b"adapter-bytes")
+    cli = FakeS3()
+    manifest = upload_tree(cli, tmp_path, "candidates/test/artifact")
+    assert manifest["files"]["adapter.safetensors"]["sha256"] == \
+        hashlib.sha256(b"adapter-bytes").hexdigest()
+    upload = next(
+        kwargs for key, kwargs in cli.puts
+        if key.endswith("/adapter.safetensors"))
+    assert upload["IfNoneMatch"] == "*"
+    assert upload["ChecksumSHA256"]
+    assert upload["ServerSideEncryption"] == "aws:kms"
 
 
 class FakeECR:
@@ -260,6 +295,12 @@ class FakeECR:
 
     def describe_image_scan_findings(self, **kwargs):
         return {"imageScanStatus": {"status": "COMPLETE"}}
+
+    def describe_images(self, repositoryName, imageIds):
+        return {"imageDetails": [{
+            "imageDigest": imageIds[0]["imageDigest"],
+            "imageTags": ["a" * 40],
+        }]}
 
 
 class FakeEC2:
@@ -281,6 +322,23 @@ class FakeEC2:
             "BlockDeviceMappings": [{
                 "Ebs": {"VolumeId": "vol-1"}}],
         }]}]}
+
+    def describe_images(self, ImageIds):
+        return {"Images": [{
+            "ImageId": ImageIds[0], "State": "available",
+            "Architecture": "x86_64", "OwnerId": "898082745236",
+        }]}
+
+    def describe_subnets(self, SubnetIds):
+        return {"Subnets": [{
+            "SubnetId": SubnetIds[0], "VpcId": "vpc-1",
+            "AvailabilityZone": "eu-central-1a",
+        }]}
+
+    def describe_security_groups(self, GroupIds):
+        return {"SecurityGroups": [{
+            "GroupId": GroupIds[0], "VpcId": "vpc-1",
+        }]}
 
     def run_instances(self, **kwargs):
         self.launched.append(kwargs)
@@ -326,9 +384,18 @@ class FakeSession:
         self.s3 = FakeS3()
         self.ecr = FakeECR()
         self.ec2 = FakeEC2(self.s3, tamper=tamper, active=active)
+        self.sts = type("STS", (), {
+            "get_caller_identity": lambda self: {
+                "Account": "558069890522"}})()
+        self.iam = type("IAM", (), {
+            "get_instance_profile": lambda self, **kw: {
+                "InstanceProfile": {"Roles": [{"RoleName": "trainer"}]}}})()
 
     def client(self, name, region_name=None):
-        return {"s3": self.s3, "ecr": self.ecr, "ec2": self.ec2}[name]
+        return {
+            "s3": self.s3, "ecr": self.ecr, "ec2": self.ec2,
+            "sts": self.sts, "iam": self.iam,
+        }[name]
 
 
 def test_ec2_adapter_observes_termination_and_volume_deletion():
@@ -345,24 +412,41 @@ def test_ec2_adapter_observes_termination_and_volume_deletion():
                for k in session.s3.objects)
     launch = session.ec2.launched[0]
     assert launch["MinCount"] == launch["MaxCount"] == 1
+    assert len(launch["ClientToken"]) == 64
     assert launch["InstanceInitiatedShutdownBehavior"] == "terminate"
     assert launch["MetadataOptions"]["HttpTokens"] == "required"
     assert launch["BlockDeviceMappings"][0]["Ebs"]["DeleteOnTermination"] is True
     assert launch["BlockDeviceMappings"][0]["DeviceName"] == "/dev/xvda"
 
 
-def test_ec2_adapter_refuses_a_container_result_for_another_descriptor():
+def test_direct_ec2_preflight_verifies_infrastructure_without_mutation():
+    session = FakeSession()
+    d = descriptor()
+    result = EC2StageAdapter(session).preflight_campaign(
+        d["git_sha"], d["image_digest"])
+    assert result["active_b4_instances"] == 0
+    assert result["availability_zone"] == "eu-central-1a"
+    assert result["eks_involved"] is False
+    assert session.s3.objects == {}
+    assert session.ec2.launched == []
+
+
+def test_ec2_adapter_returns_terminated_lifecycle_for_semantic_reconciliation():
     session = FakeSession(tamper=True)
-    with pytest.raises(StageLaunchError, match="another stage"):
-        EC2StageAdapter(
-            session,
-            EC2StageConfig(poll_seconds=0, termination_grace_seconds=1),
-        ).run(descriptor())
+    d = descriptor()
+    result = EC2StageAdapter(
+        session,
+        EC2StageConfig(poll_seconds=0, termination_grace_seconds=1),
+    ).run(d)
+    assert result["aws_final_state"] == "terminated"
+    assert result["identity_problems"]
+    with pytest.raises(SystemExit, match="instance ran something else"):
+        stage_descriptor.verify_result(d, result)
 
 
 def test_orphan_gpu_refuses_before_any_s3_mutation():
     session = FakeSession(active=True)
-    with pytest.raises(StageLaunchError, match="active MedZen B4 GPU"):
+    with pytest.raises(StageLaunchError, match="active MedZen B4 instance"):
         EC2StageAdapter(session).run(descriptor())
     assert session.s3.objects == {}
     assert session.ec2.launched == []

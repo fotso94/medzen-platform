@@ -23,15 +23,22 @@ finish() {
   rc=$?
   trap - EXIT
   printf '%s\n' "$rc" >/run/medzen-stage-exit
-  aws s3 cp "$LOG" "s3://$BUCKET/$OUTPUT_PREFIX/live.log" \
-    --region "$REGION" --only-show-errors || true
-  aws s3 cp /run/medzen-stage-exit \
-    "s3://$BUCKET/$OUTPUT_PREFIX/container-exit-code" \
-    --region "$REGION" --only-show-errors || true
+  aws s3api put-object --bucket "$BUCKET" \
+    --key "${OUTPUT_PREFIX}live.log" --body "fileb://$LOG" \
+    --if-none-match '*' --server-side-encryption aws:kms \
+    --region "$REGION" >/dev/null || true
+  aws s3api put-object --bucket "$BUCKET" \
+    --key "${OUTPUT_PREFIX}container-exit-code" \
+    --body fileb:///run/medzen-stage-exit --if-none-match '*' \
+    --server-side-encryption aws:kms \
+    --region "$REGION" >/dev/null || true
   if [ -s "$OUT/container-result.json" ]; then
-    aws s3 cp "$OUT/container-result.json" \
-      "s3://$BUCKET/$OUTPUT_PREFIX/container-result.json" \
-      --region "$REGION" --only-show-errors || true
+    aws s3api put-object --bucket "$BUCKET" \
+      --key "${OUTPUT_PREFIX}container-result.json" \
+      --body "fileb://$OUT/container-result.json" --if-none-match '*' \
+      --server-side-encryption aws:kms \
+      --content-type application/json \
+      --region "$REGION" >/dev/null || true
   fi
   sync
   shutdown -h now || poweroff || true
