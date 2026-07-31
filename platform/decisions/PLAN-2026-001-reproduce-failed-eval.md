@@ -162,16 +162,24 @@ checksum; the evaluator emits no transcript anywhere.
 
 ## What will be reported afterwards
 
-| Check | Expected |
+| Check | External comparison target |
 |---|---|
-| Base WER / CER | ≈ **0.5133 / 0.3780** |
-| Candidate WER / CER | ≈ **7.2231 / 4.2184** |
+| Base WER / CER | **0.5133 / 0.3780** |
+| Candidate WER / CER | **7.2231 / 4.2184** |
+
+**These are targets, not values this evaluator is guaranteed to reproduce.**
+The external run's evaluator code, library versions and text normalization were
+never recorded. WER is highly sensitive to normalization -- punctuation, casing
+and number handling alone move it by several points -- so a difference of a few
+percent would say the two harnesses differ, not that the finding is wrong. What
+must reproduce is the *shape*: base near 0.5 and candidate catastrophically
+above 1.0, with the candidate's generated lengths far exceeding the base's.
 | EOS rate, cap-hit rate | measured, both arms |
 | Prompt / generated / total tokens | measured, both arms |
 | Stopping reasons | `eos` vs `max_new_tokens` vs `other` |
 
-The base figure to match is **0.5133**, not the 0.5382 the coverage audit
-previously reported bare, nor the 0.5257 selected decode policy. Four numbers
+The nearest comparable base figure is **0.5133** -- not the 0.5382 the coverage
+audit previously reported bare, nor the 0.5257 selected decode policy. Four numbers
 circulate for these same 44 clips and they differ by runtime, model and decode
 policy rather than by model quality:
 
@@ -182,8 +190,9 @@ policy rather than by model quality:
 | 0.5257 | en_token (selected policy) | mlx_whisper | `49e6aa28` |
 | **0.5133** | **language=en forced** | **transformers/torch** | **`06f233fe`** |
 
-Only the last shares this run's runtime and model revision. **Do not difference
-figures across rows.**
+Only the last shares this run's runtime and model revision, which is why it is
+the comparison target. Even so its normalization is unrecorded, so agreement is
+expected to be approximate. **Do not difference figures across rows.**
 
 If the numbers agree, the new evidence is bound to `EVAL-2026-001` and the
 MLflow provenance. **If they materially differ, the run stops and is

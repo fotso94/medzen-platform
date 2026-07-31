@@ -61,7 +61,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 BUCKET = "medzen-speech"
-PROFILE = "medzen"
 REGION = "eu-central-1"
 ROOT = Path(__file__).resolve().parent.parent
 BASE_MODEL = "openai/whisper-large-v3"
@@ -143,8 +142,16 @@ def require_provenance() -> dict[str, str]:
 
 
 def s3():
+    """A client that works on the instance AND on a laptop.
+
+    profile_name=PROFILE was hardcoded, which is fine locally and wrong on EC2:
+    there is no ~/.aws/credentials there, so boto3 raises ProfileNotFound and
+    never reaches the instance role. Passing nothing lets the default chain do
+    its job -- it honours AWS_PROFILE when the environment sets it, and falls
+    through to the instance profile when it does not.
+    """
     import boto3
-    return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
+    return boto3.Session(region_name=REGION).client("s3")
 
 
 def sha256_bytes(b: bytes) -> str:

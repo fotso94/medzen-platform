@@ -90,10 +90,23 @@ esac
 DIGEST_HEX="${DIGEST#sha256:}"
 [ ${#DIGEST_HEX} -eq 64 ] || die "digest hex must be 64 chars, got ${#DIGEST_HEX}" 40
 case "$DIGEST_HEX" in *[!0-9a-f]*) die "digest not lowercase hex" 40 ;; esac
-[ ${#CODE_SHA} -eq 40 ] || die "GIT_SHA must be 40 chars, got '${CODE_SHA}'" 44
-[ ${#CODE_TAR} -eq 64 ] || die "TAR_SHA256 must be 64 chars" 45
-[ ${#ADAPTER_HASH} -eq 64 ] || die "ADAPTER_SHA256 must be 64 chars" 46
+# Length alone is not validation: a 64-character string of the wrong alphabet,
+# or an uppercase digest, would pass a length check and then fail deep inside
+# a comparison where the message is far less clear.
+hexcheck() {                      # hexcheck NAME VALUE LEN EXITCODE
+  [ ${#2} -eq "$3" ] || die "$1 must be $3 chars, got ${#2}" "$4"
+  case "$2" in
+    *[!0-9a-f]*) die "$1 must be lowercase hex, got '$2'" "$4" ;;
+  esac
+}
+hexcheck GIT_SHA        "$CODE_SHA"     40 44
+hexcheck TAR_SHA256     "$CODE_TAR"     64 45
+hexcheck ADAPTER_SHA256 "$ADAPTER_HASH" 64 46
 [ -n "$ADAPTER" ] || die "ADAPTER_URI is empty" 47
+case "$ADAPTER" in
+  s3://medzen-speech/candidates/*) ;;
+  *) die "ADAPTER_URI must be under s3://medzen-speech/candidates/, got '$ADAPTER'" 48 ;;
+esac
 echo "image $IMAGE"
 echo "code  $CODE_SHA tar $CODE_TAR"
 echo "run   $RUN_ID -> $S3"

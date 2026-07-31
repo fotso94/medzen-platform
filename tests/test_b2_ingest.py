@@ -138,7 +138,11 @@ def test_watchdog_terminates_the_whole_process_group():
     pgid = os.getpgid(p.pid)
 
     os.killpg(pgid, 15)                      # TERM to the group
-    deadline = time.monotonic() + 10
+    # Generous, because this asserts that the grandchild DIES, not how fast.
+    # Under emulation (amd64 image on arm64) process teardown is an order of
+    # magnitude slower and a 10-second deadline failed there -- a timing
+    # artifact reported as an orphan leak.
+    deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         try:
             os.kill(child_pid, 0)
@@ -301,25 +305,37 @@ def test_chosen_by_run_is_a_stable_durable_reference():
     assert len(sha) == 64 and all(c in "0123456789abcdef" for c in sha)
 
 
-def test_language_generation_is_idempotent_and_preserves_earned_state():
+def test_language_generation_is_idempotent_and_preserves_earned_state(tmp_path):
     """status, decode_strategy, tts approval and llm engine are results of
-    experiments and reviews. Regeneration must never discard them."""
+    experiments and reviews. Regeneration must never discard them.
+
+    Runs against a COPY of the repository. The generator writes into
+    registry/languages/, so pointing it at the real tree made this test mutate
+    the source -- which fails outright on a read-only checkout and, worse,
+    meant a green run had just rewritten the files it was checking."""
     import hashlib
-    gen = ROOT / "scripts" / "generate_languages.py"
+    import shutil
+
+    work = tmp_path / "repo"
+    for sub in ("scripts", "registry"):
+        shutil.copytree(ROOT / sub, work / sub)
+    gen = work / "scripts" / "generate_languages.py"
+    reg = work / "registry" / "languages"
 
     def fingerprint():
         h = hashlib.sha256()
-        for f in sorted(REG.glob("*.yaml")):
+        for f in sorted(reg.glob("*.yaml")):
             h.update(f.read_bytes())
         return h.hexdigest()
 
     before = fingerprint()
     for _ in range(2):
-        r = subprocess.run([sys.executable, str(gen)], capture_output=True, text=True)
+        r = subprocess.run([sys.executable, str(gen)], capture_output=True,
+                           text=True, cwd=work)
         assert r.returncode == 0, r.stdout + r.stderr
         assert fingerprint() == before, "generation is not idempotent"
 
-    ds = yaml.safe_load((REG / "pidgin.yaml").read_text())["asr"]["decode_strategy"]
+    ds = yaml.safe_load((reg / "pidgin.yaml").read_text())["asr"]["decode_strategy"]
     assert ds["mode"] == "en_token", "regeneration clobbered the experiment result"
     assert ds["provisional"] is True
 

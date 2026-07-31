@@ -253,12 +253,16 @@ def main() -> int:
                  "runtime": "transformers/torch",
                  "model": "openai/whisper-large-v3",
                  "model_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
-                 "normalization_version": "unrecorded by the external run",
+                 "normalization_version": "UNRECORDED by the external run",
                  "artifact": "EXTERNAL -- not produced in this repository",
-                 "note": ("the base arm of the failed-candidate evaluation. This "
-                          "is the figure the reproduction must match, because it "
-                          "is the only one produced on the same runtime and model "
-                          "revision as the candidate.")},
+                 "note": ("base arm of the failed-candidate evaluation, and the "
+                          "nearest comparable figure because it shares this "
+                          "runtime and model revision. It is a COMPARISON "
+                          "TARGET, not a value the in-repo evaluator is "
+                          "guaranteed to match: the external evaluator code, "
+                          "library versions and normalization were not "
+                          "recorded, and normalization alone moves WER by "
+                          "several points.")},
             ],
         },
         "languages": report,

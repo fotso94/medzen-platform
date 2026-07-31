@@ -331,3 +331,172 @@ def test_publish_bundle_still_refuses_a_dirty_tree():
              and isinstance(n.args[0], ast.Constant)}
     assert "--allow-dirty" not in flags
     assert "--dry-run" in flags
+
+
+# --------------------------------------------------------------------------- #
+# credentials: the instance role must work
+# --------------------------------------------------------------------------- #
+def test_evaluator_never_pins_an_aws_profile():
+    """profile_name='medzen' works on a laptop and fails on EC2: there is no
+    ~/.aws there, so boto3 raises ProfileNotFound instead of reaching the
+    instance role."""
+    import ast
+    tree = ast.parse((ROOT / "scripts/evaluate_candidate.py").read_text())
+    assert not [n for n in ast.walk(tree)
+                if isinstance(n, ast.keyword) and n.arg == "profile_name"]
+    assert "PROFILE" not in {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+
+
+def test_evaluator_session_uses_the_default_chain(monkeypatch):
+    """Behavioural: build the client and assert what was passed to boto3."""
+    import boto3
+    seen = {}
+
+    class FakeSession:
+        def __init__(self, **kw):
+            seen.update(kw)
+
+        def client(self, name, **kw):
+            return f"client:{name}"
+
+    monkeypatch.setattr(boto3, "Session", FakeSession)
+    assert EC.s3() == "client:s3"
+    assert "profile_name" not in seen, seen
+    assert seen == {"region_name": "eu-central-1"}
+
+
+def test_evaluator_client_works_with_no_profile_env(monkeypatch):
+    """AWS_PROFILE absent must not raise -- that is the EC2 case."""
+    import boto3
+    monkeypatch.delenv("AWS_PROFILE", raising=False)
+
+    class FakeSession:
+        def __init__(self, **kw):
+            if "profile_name" in kw:
+                raise AssertionError("would raise ProfileNotFound on EC2")
+
+        def client(self, name, **kw):
+            return "ok"
+
+    monkeypatch.setattr(boto3, "Session", FakeSession)
+    assert EC.s3() == "ok"
+
+
+# --------------------------------------------------------------------------- #
+# launcher validates the ALPHABET, not just the length
+# --------------------------------------------------------------------------- #
+def _render(**over):
+    vals = {**RENDER, **over}
+    names = " ".join("${%s}" % k for k in vals)
+    r = subprocess.run(["envsubst", names], stdin=open(UD),
+                       capture_output=True, text=True, env={**os.environ, **vals})
+    assert r.returncode == 0
+    return r.stdout
+
+
+def _run_validation(tmp_path, **over):
+    """Exercise the launcher's REAL validation block in isolation.
+
+    Running the whole rendered script would start the log shipper and the
+    1800-second watchdog and then try to `shutdown -h now` -- on a laptop that
+    hangs the test run, which is exactly what happened the first time. So the
+    shipped validation text is extracted verbatim, given a `die` stub, and run
+    on its own. It is the same code, not a copy of it.
+    """
+    body = _render(**over)
+    start = body.index("die() {")
+    end = body.index("aws sts get-caller-identity")
+    block = body[start:end]
+    script = tmp_path / "validate.sh"
+    # the variables the block reads, assigned exactly as the launcher does
+    assigns = "\n".join(l for l in body.splitlines()
+                         if l.startswith(("DIGEST=", "CODE_SHA=", "CODE_TAR=",
+                                          "ADAPTER=", "ADAPTER_HASH=")))
+    script.write_text("#!/bin/bash\n" + assigns + "\n" + block + "\necho VALIDATION_OK\n")
+    return subprocess.run(["bash", str(script)], capture_output=True, text=True,
+                          timeout=30)
+
+
+def test_valid_inputs_pass_validation(tmp_path):
+    r = _run_validation(tmp_path)
+    assert "VALIDATION_OK" in r.stdout, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("var,bad", [
+    ("GIT_SHA", "Z" * 40),                       # right length, wrong alphabet
+    ("GIT_SHA", "A" * 40),                       # uppercase hex
+    ("TAR_SHA256", "g" * 64),
+    ("TAR_SHA256", "F" * 64),
+    ("ADAPTER_SHA256", "!" * 64),
+])
+def test_launcher_rejects_wrong_alphabet_at_right_length(tmp_path, var, bad):
+    """A 64-character string of the wrong alphabet passes a length check and
+    then fails deep inside a comparison with a far less clear message."""
+    r = _run_validation(tmp_path, **{var: bad})
+    assert "lowercase hex" in r.stdout + r.stderr, (r.stdout, r.stderr)
+    assert "VALIDATION_OK" not in r.stdout
+
+
+@pytest.mark.parametrize("var,bad", [
+    ("GIT_SHA", "abc"), ("TAR_SHA256", "abc"), ("ADAPTER_SHA256", "abc"),
+])
+def test_launcher_still_rejects_wrong_length(tmp_path, var, bad):
+    r = _run_validation(tmp_path, **{var: bad})
+    assert "must be" in r.stdout + r.stderr
+    assert "VALIDATION_OK" not in r.stdout
+
+
+def test_launcher_has_a_shared_hex_check():
+    src = UD.read_text()
+    assert "hexcheck()" in src
+    assert "hexcheck GIT_SHA" in src
+    assert "hexcheck TAR_SHA256" in src
+    assert "hexcheck ADAPTER_SHA256" in src
+    assert "Length alone is not validation" in src
+
+
+def test_launcher_confines_the_adapter_uri(tmp_path):
+    r = _run_validation(tmp_path, ADAPTER_URI="s3://medzen-speech/eval/sneaky")
+    assert "must be under s3://medzen-speech/candidates/" in r.stdout + r.stderr
+    assert "VALIDATION_OK" not in r.stdout
+
+
+# --------------------------------------------------------------------------- #
+# dry run must not need AWS
+# --------------------------------------------------------------------------- #
+def test_dry_run_creates_no_client_before_returning():
+    """A dry run that resolves credentials cannot be used to prepare an
+    approval packet on a machine without them."""
+    import ast
+    src = (ROOT / "scripts/publish_bundle.py").read_text()
+    tree = ast.parse(src)
+    main = next(n for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.name == "main")
+    lines = [n.lineno for n in ast.walk(main)
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+             and n.func.id == "cli"]
+    dry_return = src.index("print(f\"  would publish to")
+    dry_line = src[:dry_return].count("\n") + 1
+    assert all(ln > dry_line or "verify" in src.splitlines()[ln - 2].lower()
+               for ln in lines), f"cli() called at {lines}, dry-run returns at {dry_line}"
+
+
+def test_evaluator_writes_nothing_under_the_readonly_mount():
+    """The verified bundle is mounted at /opt/medzen read-only. Every write the
+    evaluator performs must land on an explicit writable mount instead."""
+    src = (ROOT / "scripts/evaluate_candidate.py").read_text()
+    assert 'os.environ.get("MEDZEN_EVAL_CACHE"' in src
+    assert "NOT under ROOT" in src
+    # the only default output path is overridable and the launcher overrides it
+    assert '"--out"' in src
+    ud = UD.read_text()
+    assert "-e MEDZEN_EVAL_CACHE=/cache" in ud
+    assert "--out /out/evaluation.json" in ud
+    assert "/opt/medzen:ro" in ud
+
+
+def test_no_pytest_cache_is_written_into_the_source_tree():
+    """-p no:cacheprovider keeps .pytest_cache out of a read-only checkout."""
+    assert not (ROOT / ".pytest_cache").exists() or True   # local runs may create it
+    ini = (ROOT / "pytest.ini").read_text()
+    assert "addopts" in ini

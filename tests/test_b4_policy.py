@@ -148,17 +148,17 @@ def test_label_guard_uses_the_shared_prefix_aware_function():
     assert "max_labels = model.config.max_target_positions" in src
 
 
-def test_exclusion_list_must_be_approved():
+def test_exclusion_list_must_be_approved(tmp_path):
+    """tmp_path, not the repo: a test that writes into the source tree cannot
+    run against a read-only checkout, which is how the verified bundle is
+    mounted on the evaluation instance."""
     import pipeline.train_asr as T
     doc = {"list_id": "X", "status": "draft", "exclusions": []}
-    p = ROOT / "tests" / "_tmp_excl.json"
+    p = tmp_path / "excl.json"
     p.write_text(json.dumps(doc))
-    try:
-        with pytest.raises(SystemExit) as e:
-            T.load_exclusions(str(p))
-        assert "not approved" in str(e.value)
-    finally:
-        p.unlink()
+    with pytest.raises(SystemExit) as e:
+        T.load_exclusions(str(p))
+    assert "not approved" in str(e.value)
 
 
 def test_exclusion_entries_carry_a_category_and_reason():

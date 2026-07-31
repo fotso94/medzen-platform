@@ -67,11 +67,14 @@ def main() -> int:
     # with that commit would be a false record. Commit first.
     a = ap.parse_args()
 
-    c = cli()
+    # NOT before the dry-run path: creating a client imports boto3 and resolves
+    # credentials, so a dry run would need AWS access it does not use. The
+    # client is built only where it is actually needed.
     head = git("rev-parse", "HEAD")            # always the full 40 chars
     assert len(head) == 40, f"expected a 40-char SHA, got {head!r}"
 
     if a.verify:
+        c = cli()
         key = f"{PREFIX}/{head}/BUNDLE.json"
         try:
             man = json.loads(c.get_object(Bucket=BUCKET, Key=key)["Body"].read())
@@ -154,6 +157,7 @@ def main() -> int:
             print(f"TAR_SHA256={manifest['tar_sha256']}")
             print(f"  would publish to s3://{BUCKET}/{base}/")
             return 0
+        c = cli()
         c.upload_file(str(bundle), BUCKET, f"{base}/medzen_code.tgz")
         print(f"  uploaded {base}/medzen_code.tgz ({bundle.stat().st_size} bytes)")
         # BUNDLE.json last: its presence means the pair is complete and matched
