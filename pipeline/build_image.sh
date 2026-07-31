@@ -19,7 +19,11 @@ set -o pipefail
 exec > >(tee /var/log/medzen-build.log) 2>&1
 set -x
 
-RUN_ID="build-$(date +%s)"
+RUN_ID="${BUILD_RUN_ID:-}"
+case "$RUN_ID" in
+  ""|*[!0-9A-Za-z._-]*)
+    echo "FATAL: BUILD_RUN_ID is required and must be path-safe"; exit 30 ;;
+esac
 S3="s3://medzen-speech/candidates/build/$RUN_ID"
 ACCOUNT=558069890522
 REGISTRY="$ACCOUNT.dkr.ecr.eu-central-1.amazonaws.com"

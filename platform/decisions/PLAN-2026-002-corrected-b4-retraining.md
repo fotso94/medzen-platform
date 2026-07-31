@@ -237,7 +237,7 @@ refusal is the mechanism working, not an obstacle to route around.
 | New | built from the final corrected commit, tagged with the full 40-char SHA |
 | Base | `python:3.12-slim-trixie@sha256:cab2dbf5…` |
 | Deps | `torch 2.13.0+cu130`, `transformers 5.14.1`, `peft 0.20.0` — image-locked |
-| Build | `publish_bundle.py` → verified bundle → `builder_userdata.sh` on c6i.2xlarge; `TAR_SHA256` from user-data, never S3 |
+| Build | `publish_bundle.py` → verified bundle → `builder_userdata.sh` on c6i.2xlarge; AL2023 x86_64 `ami-0352a6b853b4367b3` (AWS public parameter version 182); `TAR_SHA256` from user-data, never S3 |
 | Scan | ECR scan-on-push must reach **COMPLETE**; gate at CRITICAL 0 / HIGH 0 / MEDIUM 0 / LOW 0 |
 | Exceptions | per-CVE, package-version-pinned, severity-matched. Allowlist `review_by` **2026-10-28** — valid at execution; a run after that date fails the gate until renewed |
 | Provenance | digest read back from ECR; baked `MEDZEN_GIT_SHA` read from the image config blob and matched to the commit |

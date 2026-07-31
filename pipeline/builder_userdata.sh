@@ -2,8 +2,9 @@
 # EC2 user-data for the image builder. TRUSTED CODE: everything it executes
 # from S3 is verified here first.
 #
-#   GIT_SHA=<40 hex> TAR_SHA256=<64 hex> SCAN_MAX_HIGH=0 WATCHDOG=3600 \
-#     envsubst '${GIT_SHA} ${TAR_SHA256} ${SCAN_MAX_CRITICAL} ${SCAN_MAX_HIGH} ${WATCHDOG}' \
+#   GIT_SHA=<40 hex> TAR_SHA256=<64 hex> BUILD_RUN_ID=<path-safe id> \
+#     SCAN_MAX_HIGH=0 WATCHDOG=1800 \
+#     envsubst '${GIT_SHA} ${TAR_SHA256} ${BUILD_RUN_ID} ${SCAN_MAX_CRITICAL} ${SCAN_MAX_HIGH} ${WATCHDOG}' \
 #       < this > /tmp/ud.sh
 #   bash -n /tmp/ud.sh && aws ec2 run-instances --user-data file:///tmp/ud.sh ...
 #
@@ -35,8 +36,11 @@ unset AWS_PROFILE
 
 GIT_SHA="${GIT_SHA}"
 TAR_SHA256="${TAR_SHA256}"
-BOOT_ID="boot-$(date +%s)"
-BOOT_S3="s3://medzen-speech/candidates/build/$BOOT_ID"
+BUILD_RUN_ID="${BUILD_RUN_ID}"
+WATCHDOG="${WATCHDOG}"
+SCAN_MAX_CRITICAL="${SCAN_MAX_CRITICAL}"
+SCAN_MAX_HIGH="${SCAN_MAX_HIGH}"
+BOOT_S3="s3://medzen-speech/candidates/build/$BUILD_RUN_ID"
 
 # Ship the boot log ALWAYS, not only on failure. The archive-hash check is the
 # security control this whole wrapper exists for, so a successful run that
@@ -61,6 +65,9 @@ die() {
 [ ${#TAR_SHA256} -eq 64 ] || die "TAR_SHA256 must be 64 chars, got '${TAR_SHA256}'"
 case "$GIT_SHA" in *[!0-9a-f]*) die "GIT_SHA not lowercase hex" ;; esac
 case "$TAR_SHA256" in *[!0-9a-f]*) die "TAR_SHA256 not lowercase hex" ;; esac
+case "$BUILD_RUN_ID" in
+  ""|*[!0-9A-Za-z._-]*) die "BUILD_RUN_ID contains unsafe characters" ;;
+esac
 
 B="s3://medzen-speech/candidates/bootstrap/$GIT_SHA"
 rm -rf /opt/boot || die "cannot clear /opt/boot"
@@ -127,12 +134,13 @@ VERIFY_AND_EXTRACT
 
 # Record the verification evidence in S3 before handing control to bundle code,
 # so it exists even if the build itself never finishes.
-echo "BOOTSTRAP EVIDENCE: git_sha=$GIT_SHA archive_sha256=$ACTUAL boot_id=$BOOT_ID"
+echo "BOOTSTRAP EVIDENCE: git_sha=$GIT_SHA archive_sha256=$ACTUAL build_run_id=$BUILD_RUN_ID"
 kill $BOOT_SHIPPER 2>/dev/null || true
 ship_boot_log
 echo "executing verified build_image.sh"
 
 GIT_SHA="$GIT_SHA" \
+BUILD_RUN_ID="$BUILD_RUN_ID" \
 WATCHDOG="${WATCHDOG:-3600}" \
 SCAN_MAX_CRITICAL="${SCAN_MAX_CRITICAL:-0}" \
 SCAN_MAX_HIGH="${SCAN_MAX_HIGH:-0}" \
