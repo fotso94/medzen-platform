@@ -38,7 +38,7 @@ def descriptor(stage="sweep", **over):
         "image_digest": "sha256:" + "c" * 64,
         "policy_sha256": "d" * 64,
         "adoption_key":
-            "curated/_versions/v2/ADOPTION-B4-CORRECTED.json",
+            "curated/_versions/v2/ADOPTION-B4-SCOPED.json",
         "dataset_fingerprint": language_scope.EXPECTED_DATASET_FINGERPRINT,
         "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
         "training_languages": (
@@ -91,7 +91,7 @@ def test_user_data_runs_one_digest_pinned_direct_ec2_container():
 
 def test_trainer_image_contains_runtime_governance_records():
     dockerfile = (ROOT / "pipeline/Dockerfile.trainer").read_text()
-    assert "DQ-2026-003-policy-deferral-corrected.json" in dockerfile
+    assert "DQ-2026-004-policy-deferral-scoped.json" in dockerfile
     assert "B4-SCOPE-2026-001-language-deferral.json" in dockerfile
     assert "VAL-2026-001-frozen-validation-sets.json" in dockerfile
 

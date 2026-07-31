@@ -32,7 +32,7 @@ from pipeline.validation_runner import (ValidationRuntime, adapter_sha256,
 ROOT = Path(__file__).resolve().parent.parent
 BUCKET = os.environ.get("MEDZEN_BUCKET", "medzen-speech")
 REGION = os.environ.get("AWS_REGION", "eu-central-1")
-POLICY = ROOT / "platform/decisions/DQ-2026-003-policy-deferral-corrected.json"
+POLICY = language_scope.POLICY_PATH
 
 
 def _s3():

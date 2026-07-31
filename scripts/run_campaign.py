@@ -28,10 +28,10 @@ from pipeline.ec2_stage_adapter import EC2StageAdapter             # noqa: E402
 from pipeline.generation import config_fingerprint                # noqa: E402
 from pipeline.validation_runner import frozen_validation          # noqa: E402
 
-BUCKET = "medzen-speech"
-POLICY = "platform/decisions/DQ-2026-003-policy-deferral-corrected.json"
-ADOPTION_KEY = "curated/_versions/v2/ADOPTION-B4-CORRECTED.json"
 ROOT = Path(__file__).resolve().parent.parent
+BUCKET = "medzen-speech"
+POLICY = str(language_scope.POLICY_PATH.relative_to(ROOT))
+ADOPTION_KEY = language_scope.ADOPTION_KEY
 
 
 def aws_session():

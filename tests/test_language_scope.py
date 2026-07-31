@@ -14,6 +14,13 @@ def test_scope_record_hash_and_language_partition_are_exact():
     assert digest == hashlib.sha256(
         language_scope.DECISION.read_bytes()).hexdigest()
     assert digest == language_scope.LANGUAGE_SCOPE_SHA256
+    assert doc["revision"] == 2
+    assert language_scope.ADOPTION_KEY == (
+        "curated/_versions/v2/ADOPTION-B4-SCOPED.json")
+    assert language_scope.POLICY_PATH.name == (
+        "DQ-2026-004-policy-deferral-scoped.json")
+    assert hashlib.sha256(language_scope.POLICY_PATH.read_bytes()).hexdigest() == (
+        language_scope.POLICY_SHA256)
     assert language_scope.DEFERRED_LANGUAGES == ("amharic", "ewe")
     assert not (set(language_scope.TRAINING_LANGUAGES)
                 & set(language_scope.DEFERRED_LANGUAGES))
@@ -44,6 +51,21 @@ def test_scope_fingerprint_and_counts_are_pinned():
     assert language_scope.EXPECTED_POLICY_ROWS_TOTAL == 19
     assert language_scope.EXPECTED_POLICY_ROWS_APPLICABLE == 15
     assert budget.LEDGER_KEY == "candidates/budget/b4-scoped/ledger.json"
+
+
+def test_scoped_policy_is_unreviewed_and_preserves_the_same_exclusion_set():
+    scoped = json.loads(language_scope.POLICY_PATH.read_bytes())
+    prior = json.loads((Path(__file__).resolve().parent.parent
+                        / "platform/decisions/"
+                        / "DQ-2026-003-policy-deferral-corrected.json").read_bytes())
+    assert scoped["status"] == "approved"
+    assert scoped["decision_type"] == "policy_deferral"
+    assert scoped["human_review_performed"] is False
+    assert scoped["counts"] == prior["counts"]
+    projection = lambda doc: sorted(
+        (row["audio_checksum_sha256"], row["trigger"], row["action"])
+        for row in doc["exclusions"])
+    assert projection(scoped) == projection(prior)
 
 
 def test_smaller_language_decisions_keep_three_and_defer_ewe():

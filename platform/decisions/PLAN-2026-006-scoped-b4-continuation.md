@@ -9,7 +9,7 @@
 
 Continue B4 with the approved reversible scope in
 `B4-SCOPE-2026-001-language-deferral.json` (SHA-256
-`3ff90e5bc80a28aa615efcf50750144e43275c169ea5a11fb28990fff3c0393e`).
+`8edeb442f4635a65a29482301ed1e88fb756b319acce6abf36c1fd502214d355`).
 Amharic and Ewe are absent from training, validation, learning-rate selection,
 final checkpoint gates and MLflow campaign parameters. Their data and all prior
 artifacts remain intact for a later continuous-training campaign.
@@ -22,8 +22,12 @@ at LR 3e-4; the LR that fixes Ewe causes other retained languages to fail.
 ## Immutable inputs
 
 - Adopted source corpus: v2, adoption
-  `curated/_versions/v2/ADOPTION-B4-CORRECTED.json`.
-- Row policy: `DQ-2026-003-policy-deferral-corrected.json`, 19 total rows.
+  `curated/_versions/v2/ADOPTION-B4-SCOPED.json`.
+- Row policy: `DQ-2026-004-policy-deferral-scoped.json`, 19 total rows,
+  bound to the current resource-safe audit verifier.
+- The replayed audit found the exact same 5 over-limit rows and 14 rate
+  outliers as the prior corrected audit. The new immutable policy/adoption
+  chain preserves the old records and avoids weakening verifier identity.
 - Applicable policy rows in the scoped mix: 15; four Amharic policy rows are
   recorded as out of scope rather than deleted or reclassified.
 - Active training languages: Acholi, Akan, Fula, Hausa, Igbo, Lingala,

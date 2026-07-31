@@ -15,6 +15,10 @@ ROOT = Path(__file__).resolve().parent.parent
 DECISION = (
     ROOT / "platform/decisions/B4-SCOPE-2026-001-language-deferral.json"
 )
+EXPECTED_POLICY_RELATIVE = (
+    "platform/decisions/DQ-2026-004-policy-deferral-scoped.json"
+)
+EXPECTED_ADOPTION_KEY = "curated/_versions/v2/ADOPTION-B4-SCOPED.json"
 
 
 def _ordered_strings(value, name: str) -> tuple[str, ...]:
@@ -35,6 +39,8 @@ def load() -> tuple[dict, str]:
         problems.append("record type is not B4-LANGUAGE-SCOPE-DECISION")
     if doc.get("id") != "B4-SCOPE-2026-001":
         problems.append("decision id is not B4-SCOPE-2026-001")
+    if doc.get("revision") != 2:
+        problems.append("decision revision is not 2")
     if doc.get("status") != "approved":
         problems.append(f"status is {doc.get('status')!r}, not 'approved'")
     if doc.get("scope", {}).get("promotable") is not False:
@@ -70,6 +76,18 @@ def load() -> tuple[dict, str]:
             f"deferred languages are {deferred}, expected ('amharic', 'ewe')")
 
     binding = doc.get("training_mix_binding") or {}
+    if binding.get("adoption_key") != EXPECTED_ADOPTION_KEY:
+        problems.append("training mix does not bind the scoped adoption key")
+    if binding.get("deferral_policy") != EXPECTED_POLICY_RELATIVE:
+        problems.append("training mix does not bind the scoped deferral policy")
+    policy_path = ROOT / EXPECTED_POLICY_RELATIVE
+    try:
+        policy_sha = hashlib.sha256(policy_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        problems.append(f"scoped deferral policy is unreadable: {exc}")
+    else:
+        if binding.get("deferral_policy_sha256") != policy_sha:
+            problems.append("scoped deferral policy bytes differ from the decision")
     fingerprint = str(binding.get("dataset_fingerprint", ""))
     if (len(fingerprint) != 64
             or any(c not in "0123456789abcdef" for c in fingerprint)):
@@ -120,3 +138,6 @@ EXPECTED_POLICY_ROWS_TOTAL = SCOPE["training_mix_binding"][
     "deferral_policy_rows_total"]
 EXPECTED_POLICY_ROWS_APPLICABLE = SCOPE["training_mix_binding"][
     "deferral_policy_rows_applicable"]
+POLICY_PATH = ROOT / SCOPE["training_mix_binding"]["deferral_policy"]
+POLICY_SHA256 = SCOPE["training_mix_binding"]["deferral_policy_sha256"]
+ADOPTION_KEY = SCOPE["training_mix_binding"]["adoption_key"]
