@@ -9,6 +9,7 @@ reading it.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -551,6 +552,8 @@ def test_published_adoption_binds_what_it_approved():
     assert adopt["scope"]["eval_permitted"] is False
 
 
+@pytest.mark.skipif(shutil.which("git") is None,
+                    reason="needs the git binary; the slim runtime image has none")
 def test_porcelain_first_path_is_not_truncated(tmp_path, monkeypatch):
     """`.strip()` on porcelain output eats the leading status space, shifting
     line[3:] by one and turning 'pipeline/x' into 'ipeline/x'. A mangled path
