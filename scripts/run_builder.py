@@ -27,6 +27,7 @@ def main() -> int:
     ap.add_argument("--git-sha", required=True)
     ap.add_argument("--tar-sha256", required=True)
     ap.add_argument("--attempt", default="attempt-1")
+    ap.add_argument("--diagnostic-budget", action="store_true")
     ap.add_argument("--confirm", action="store_true")
     a = ap.parse_args()
     if git("status", "--porcelain"):
@@ -34,13 +35,18 @@ def main() -> int:
     if git("rev-parse", "HEAD") != a.git_sha:
         raise SystemExit("REFUSING: --git-sha differs from local HEAD")
     if not a.confirm:
+        if a.diagnostic_budget:
+            from pipeline import diagnostic_budget
+            max_cost = diagnostic_budget.worst_case_usd("builder")
+        else:
+            max_cost = 0.17
         print(json.dumps({
             "ready_to_build": True,
             "would_create": "one c6i.2xlarge direct-EC2 builder",
             "git_sha": a.git_sha,
             "tar_sha256": a.tar_sha256,
             "attempt": a.attempt,
-            "max_cost_usd": 0.17,
+            "max_cost_usd": max_cost,
             "gpu_instances": 0,
             "eks_involved": False,
             "spot_involved": False,
@@ -49,7 +55,13 @@ def main() -> int:
         return 0
     session = boto3.Session(
         profile_name="medzen", region_name="eu-central-1")
-    result = EC2Builder(session).run(
+    budget_module = None
+    if a.diagnostic_budget:
+        from pipeline import diagnostic_budget
+        budget_module = diagnostic_budget
+    result = EC2Builder(
+        session, **({"budget_module": budget_module}
+                    if budget_module is not None else {})).run(
         a.git_sha, a.tar_sha256, a.attempt)
     print(json.dumps(result, indent=2))
     return 0

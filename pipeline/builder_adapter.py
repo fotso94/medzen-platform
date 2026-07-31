@@ -78,8 +78,10 @@ def render_user_data(git_sha: str, tar_sha256: str, run_id: str,
 
 
 class EC2Builder:
-    def __init__(self, session: Any, config: BuilderConfig | None = None):
+    def __init__(self, session: Any, config: BuilderConfig | None = None,
+                 budget_module=budget):
         self.cfg = config or BuilderConfig()
+        self.budget = budget_module
         self.ec2 = session.client("ec2", region_name=self.cfg.region)
         self.ecr = session.client("ecr", region_name=self.cfg.region)
         self.s3 = session.client("s3", region_name=self.cfg.region)
@@ -217,11 +219,11 @@ class EC2Builder:
                                          for c in value):
                 raise BuilderError(f"REFUSING: malformed {label}")
         run_id = build_run_id(git_sha, attempt)
-        watchdog_s = budget.WATCHDOG_S["builder"]
+        watchdog_s = self.budget.WATCHDOG_S["builder"]
         user_data, user_data_sha = render_user_data(
             git_sha, tar_sha256, run_id, watchdog_s)
         self._preflight(git_sha, tar_sha256, run_id)
-        reservation = budget.reserve(self.s3, "builder", attempt)
+        reservation = self.budget.reserve(self.s3, "builder", attempt)
 
         tags = [
             {"Key": "Name", "Value": f"medzen-{run_id}"},
@@ -286,7 +288,7 @@ class EC2Builder:
                 if m.get("Ebs", {}).get("VolumeId")), None)
         deleted = self._volume_deleted(volume_id)
         seconds = max(0.0, (terminated_at - launched_at).total_seconds())
-        reconciled = budget.reconcile(
+        reconciled = self.budget.reconcile(
             self.s3, "builder", attempt, seconds, instance_id)
         if not deleted:
             raise BuilderError(

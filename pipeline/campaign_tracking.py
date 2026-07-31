@@ -70,6 +70,29 @@ def _numeric_metrics(result: dict) -> dict[str, float]:
     for name in ("macro_wer", "min_eos_rate", "max_cap_hit_rate",
                  "worst_language_regression"):
         add(f"val_{name}", gate.get(name))
+    for arm_name, arm in (result.get("arms") or {}).items():
+        safe_arm = str(arm_name).replace("-", "_")
+        for language, measured in (arm.get("per_language") or {}).items():
+            teacher = measured.get("teacher_forced") or {}
+            generated = measured.get("generation") or {}
+            add(f"diag_{safe_arm}_{language}_total_nll",
+                teacher.get("total_nll_per_token"))
+            add(f"diag_{safe_arm}_{language}_content_nll",
+                teacher.get("content_nll_per_token"))
+            add(f"diag_{safe_arm}_{language}_eos_nll_mean",
+                (teacher.get("eos_nll") or {}).get("mean"))
+            add(f"diag_{safe_arm}_{language}_eos_probability_mean",
+                (teacher.get("eos_probability") or {}).get("mean"))
+            add(f"diag_{safe_arm}_{language}_eos_rank_median",
+                (teacher.get("eos_rank") or {}).get("median"))
+            add(f"diag_{safe_arm}_{language}_eos_rate",
+                generated.get("eos_rate"))
+            add(f"diag_{safe_arm}_{language}_cap_hit_rate",
+                generated.get("cap_hit_rate"))
+            add(f"diag_{safe_arm}_{language}_unique_token_ratio_mean",
+                (generated.get("unique_token_ratio") or {}).get("mean"))
+            add(f"diag_{safe_arm}_{language}_repeated_bigram_rate_mean",
+                (generated.get("repeated_bigram_rate") or {}).get("mean"))
     return metrics
 
 
@@ -201,4 +224,3 @@ class CampaignTracker:
                                 reason[:5000])
         self.client.set_terminated(
             self.parent_run_id, status="FINISHED" if passed else "FAILED")
-

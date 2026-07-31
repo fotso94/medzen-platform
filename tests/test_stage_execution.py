@@ -14,12 +14,16 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pipeline import orchestrate, stage_descriptor
+from pipeline import diagnostic_budget
 from pipeline import stage_runner
 from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
 from pipeline.stage_runner import (
-    _training_command, require_runtime_provenance, upload_tree)
+    _training_command, download_artifact_tree, require_runtime_provenance,
+    upload_tree)
+from pipeline.termination_diagnostic import (
+    aggregate_rows, generated_row, repeated_ngram_rate, teacher_forced_row)
 from pipeline.validation_runner import ValidationRuntime
 
 
@@ -49,6 +53,7 @@ def descriptor(stage="sweep", **over):
         "reservation_id": "r1",
         "watchdog_s": 60,
         "input_prefix": "curated/_versions/v2/",
+        "input_artifact_sha256": None,
         "output_prefix": "candidates/evaluations/b4-test/attempt-1/"
                          + stage + "/",
         "mlflow_parent_run_id": "parent",
@@ -147,6 +152,142 @@ def test_descriptor_refuses_malformed_identity_or_path_escape(field, value):
     values[field] = value
     with pytest.raises(SystemExit, match="REFUSING"):
         stage_descriptor.build(**values)
+
+
+def test_diagnostic_descriptor_pins_retained_tree_and_trains_zero_steps():
+    d = descriptor(
+        stage="diagnostic", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/old/attempt-5/sweep-lr-1e-04/"
+            "asr/checkpoint-100/"),
+        input_artifact_sha256="5" * 64)
+    assert d["input_artifact_sha256"] == "5" * 64
+    for bad in ({"max_steps": 1}, {"input_artifact_sha256": None},
+                {"input_prefix": "curated/_versions/v2/"}):
+        values = dict(d)
+        values.update(bad)
+        with pytest.raises(SystemExit, match="REFUSING"):
+            stage_descriptor.build(**values)
+
+
+def test_diagnostic_budget_is_fresh_and_covers_builder_plus_one_gpu():
+    assert diagnostic_budget.LEDGER_KEY == (
+        "candidates/budget/b4-amharic-termination-diagnostic/ledger.json")
+    total = (diagnostic_budget.worst_case_usd("builder")
+             + diagnostic_budget.worst_case_usd("diagnostic"))
+    assert total <= diagnostic_budget.CEILING_USD
+    assert diagnostic_budget.WATCHDOG_S["diagnostic"] == 3300
+
+
+def test_retained_adapter_download_verifies_every_bound_byte(tmp_path):
+    files = {
+        "adapter_config.json": {"sha256": hashlib.sha256(b"{}").hexdigest(),
+                                "bytes": 2},
+        "adapter_model.safetensors": {
+            "sha256": hashlib.sha256(b"weights").hexdigest(), "bytes": 7},
+    }
+    tree = hashlib.sha256(json.dumps(
+        files, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    prefix = (
+        "candidates/evaluations/old/attempt-5/sweep-lr-1e-04/"
+        "asr/checkpoint-100/")
+    manifest = json.dumps({
+        "prefix": "s3://medzen-speech/" + prefix,
+        "files": files, "tree_sha256": tree,
+    }).encode()
+
+    class Body:
+        def __init__(self, value): self.value = value
+        def read(self): return self.value
+
+    class S3:
+        values = {
+            prefix + "ARTIFACT.json": manifest,
+            prefix + "adapter_config.json": b"{}",
+            prefix + "adapter_model.safetensors": b"weights",
+        }
+        def get_object(self, Bucket, Key):
+            return {"Body": Body(self.values[Key])}
+
+    d = descriptor(
+        stage="diagnostic", max_steps=0,
+        input_prefix=prefix, input_artifact_sha256=tree)
+    got = download_artifact_tree(S3(), d, tmp_path / "adapter")
+    assert got["tree_sha256"] == tree
+    assert got["adapter_sha256"] == files["adapter_model.safetensors"]["sha256"]
+
+
+def test_aggregate_diagnostic_metrics_are_numeric_and_have_no_row_payload():
+    rows = [{
+        "target_tokens": 5, "content_tokens": 1,
+        "total_nll_sum": 2.5, "content_nll_sum": 0.4,
+        "eos_nll": 0.2, "eos_probability": 0.8, "eos_rank": 1,
+        "generated_tokens": 3, "eos_emitted": True,
+        "hit_length_cap": False, "unique_token_ratio": 1.0,
+        "repeated_bigram_rate": 0.0, "repeated_trigram_rate": 0.0,
+        "unexpected_control_tokens": 0,
+    }, {
+        "target_tokens": 6, "content_tokens": 2,
+        "total_nll_sum": 6.0, "content_nll_sum": 2.0,
+        "eos_nll": 2.0, "eos_probability": 0.1, "eos_rank": 8,
+        "generated_tokens": 440, "eos_emitted": False,
+        "hit_length_cap": True, "unique_token_ratio": 0.2,
+        "repeated_bigram_rate": 0.7, "repeated_trigram_rate": 0.6,
+        "unexpected_control_tokens": 2,
+    }]
+    out = aggregate_rows(rows)
+    assert out["generation"]["eos_rate"] == 0.5
+    assert out["generation"]["cap_hit_rate"] == 0.5
+    assert out["teacher_forced"]["eos_rank"]["max"] == 8
+    assert "per_utterance" not in json.dumps(out)
+    assert repeated_ngram_rate([1, 2, 1, 2], 2) == pytest.approx(1 / 3)
+
+
+def test_teacher_forced_and_generation_contract_on_tiny_runtime():
+    torch = pytest.importorskip("torch")
+    from types import SimpleNamespace
+
+    class Padded(dict):
+        def __getattr__(self, key): return self[key]
+
+    class Tokenizer:
+        prefix_tokens = [10, 11, 12, 13]
+        all_special_ids = [2, 10, 11, 12, 13]
+        def set_prefix_tokens(self, **kw): pass
+        def convert_tokens_to_ids(self, token):
+            return 10 if token == "<|startoftranscript|>" else 2
+        def __call__(self, text):
+            return SimpleNamespace(input_ids=[10, 11, 12, 13, 5, 2])
+        def pad(self, values, return_tensors=None):
+            ids = torch.tensor([v["input_ids"] for v in values])
+            return Padded(input_ids=ids, attention_mask=torch.ones_like(ids))
+
+    class Processor:
+        tokenizer = Tokenizer()
+        def feature_extractor(self, audio, sampling_rate, return_tensors=None):
+            return SimpleNamespace(input_features=torch.zeros(1, 4, 8))
+
+    class Model:
+        dtype = torch.float32
+        config = SimpleNamespace(decoder_start_token_id=10)
+        def __call__(self, **batch):
+            target = batch["labels"]
+            logits = torch.zeros(1, target.shape[1], 20)
+            for pos, token in enumerate(target[0].tolist()):
+                logits[0, pos, token] = 8
+            return SimpleNamespace(logits=logits)
+        def generate(self, features, **kw):
+            return SimpleNamespace(sequences=torch.tensor([[10, 11, 12, 13, 5, 2]]))
+
+    teacher = teacher_forced_row(
+        Model(), Processor(), {"text_normalized": "private"},
+        [0.0], 16000, "acholi", "cpu")
+    generated = generated_row(
+        Model(), Processor(), [0.0], 16000, "acholi", "cpu")
+    assert teacher["eos_rank"] == 1
+    assert teacher["content_tokens"] == 1
+    assert generated["eos_emitted"] is True
+    assert generated["unexpected_control_tokens"] == 0
 
 
 def test_runtime_provenance_must_match_every_descriptor_pin(monkeypatch):

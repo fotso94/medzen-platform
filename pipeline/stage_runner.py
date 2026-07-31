@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import gc
 import hashlib
 import json
 import math
@@ -164,6 +165,58 @@ def upload_tree(cli, local: Path, prefix: str,
                 "tree_sha256": tree_sha}
     put_immutable(cli, prefix + "ARTIFACT.json", _json_bytes(manifest))
     return manifest
+
+
+def download_artifact_tree(cli, descriptor: dict, destination: Path) -> dict:
+    """Download exactly the immutable adapter tree pinned by the descriptor."""
+    prefix = str(descriptor["input_prefix"]).rstrip("/") + "/"
+    raw = cli.get_object(
+        Bucket=BUCKET, Key=prefix + "ARTIFACT.json")["Body"].read()
+    manifest = json.loads(raw)
+    if manifest.get("prefix") != f"s3://{BUCKET}/{prefix}":
+        raise SystemExit("REFUSING: adapter manifest prefix differs")
+    files = manifest.get("files")
+    if not isinstance(files, dict) or not files:
+        raise SystemExit("REFUSING: adapter manifest has no files")
+    computed_tree = _sha(json.dumps(
+        files, sort_keys=True, separators=(",", ":")).encode())
+    authorised_tree = descriptor["input_artifact_sha256"]
+    if (manifest.get("tree_sha256") != computed_tree
+            or computed_tree != authorised_tree):
+        raise SystemExit(
+            "REFUSING: adapter tree hash differs from the descriptor")
+    if "adapter_model.safetensors" not in files:
+        raise SystemExit("REFUSING: adapter tree has no model weights")
+    destination.mkdir(parents=True, exist_ok=False)
+    total = 0
+    for rel, expected in sorted(files.items()):
+        path = Path(rel)
+        if (path.is_absolute() or ".." in path.parts
+                or path.as_posix() != rel):
+            raise SystemExit("REFUSING: unsafe path in adapter manifest")
+        want_sha = expected.get("sha256")
+        want_bytes = expected.get("bytes")
+        if (not isinstance(want_bytes, int) or want_bytes < 0
+                or not isinstance(want_sha, str) or len(want_sha) != 64):
+            raise SystemExit("REFUSING: malformed adapter file binding")
+        body = cli.get_object(
+            Bucket=BUCKET, Key=prefix + rel)["Body"].read()
+        if len(body) != want_bytes or _sha(body) != want_sha:
+            raise SystemExit(
+                f"REFUSING: retained adapter file {rel} differs from manifest")
+        total += len(body)
+        if total > 1_000_000_000:
+            raise SystemExit("REFUSING: adapter artifact exceeds 1 GB boundary")
+        local = destination / path
+        local.parent.mkdir(parents=True, exist_ok=True)
+        local.write_bytes(body)
+    return {
+        "manifest_sha256": _sha(raw),
+        "tree_sha256": computed_tree,
+        "files": len(files),
+        "bytes": total,
+        "adapter_sha256": files["adapter_model.safetensors"]["sha256"],
+    }
 
 
 def load_base_result(cli, descriptor: dict) -> dict:
@@ -490,6 +543,113 @@ def run_final(cli, descriptor: dict, work: Path) -> dict:
     }
 
 
+def run_diagnostic(cli, descriptor: dict, work: Path) -> dict:
+    """Compare base and retained 1e-4 adapter without optimisation or writes."""
+    import peft
+    import torch
+    import transformers
+    from peft import PeftModel
+    from pipeline.termination_diagnostic import (
+        diagnose_model, prompt_contract_sha256)
+
+    base_doc = load_base_result(cli, descriptor)
+    adapter_dir = work / "retained-adapter"
+    retained = download_artifact_tree(cli, descriptor, adapter_dir)
+    if adapter_sha256(adapter_dir) != retained["adapter_sha256"]:
+        raise SystemExit("REFUSING: downloaded adapter identity changed")
+
+    runtime = ValidationRuntime(cli, descriptor, work / "validation")
+    runtime.ensure_prepared()
+    base = runtime._fresh_base()
+    base_metrics = diagnose_model(runtime, base, "base")
+    del base
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    base = runtime._fresh_base()
+    candidate = PeftModel.from_pretrained(
+        base, str(adapter_dir), is_trainable=False).to(
+            runtime.device).eval()
+    candidate_metrics = diagnose_model(runtime, candidate, "retained-1e-4")
+
+    tokenizer_files = {}
+    for path in sorted(runtime.base_dir.rglob("*")):
+        if (path.is_file() and any(part in path.name for part in (
+                "tokenizer", "vocab", "merges", "normalizer",
+                "preprocessor", "special_tokens"))):
+            tokenizer_files[path.relative_to(runtime.base_dir).as_posix()] = {
+                "sha256": sha256_file(path), "bytes": path.stat().st_size}
+    if not tokenizer_files:
+        raise SystemExit("REFUSING: no tokenizer files found in pinned base")
+    tokenizer_sha = _sha(json.dumps(
+        tokenizer_files, sort_keys=True, separators=(",", ":")).encode())
+    record = {
+        "record": "B4-TERMINATION-DIAGNOSTIC",
+        "recorded_utc": time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "purpose": descriptor["purpose"],
+        "promotable": False,
+        "training_steps": 0,
+        "stage_descriptor_sha256":
+            stage_descriptor.descriptor_hash(descriptor),
+        "provenance": {
+            "git_sha": descriptor["git_sha"],
+            "bundle_tar_sha256": descriptor["bundle_tar_sha256"],
+            "image_digest": descriptor["image_digest"],
+            "policy_sha256": descriptor["policy_sha256"],
+            "dataset_fingerprint": descriptor["dataset_fingerprint"],
+            "base_manifest_sha256": runtime.base_manifest_sha,
+            "base_artifact_key": descriptor["base_artifact_key"],
+            "base_artifact_sha256": descriptor["base_artifact_sha256"],
+            "base_arm_key": descriptor["base_arm_key"],
+            "validation_record_sha256": runtime.frozen_sha,
+            "validation_manifests": {
+                language: runtime.frozen["sets"][language]["manifest_sha256"]
+                for language in orchestrate.VALIDATION_LANGUAGES
+            },
+            "retained_adapter_prefix": descriptor["input_prefix"],
+            "retained_adapter_tree_sha256": retained["tree_sha256"],
+            "retained_adapter_manifest_sha256": retained["manifest_sha256"],
+            "retained_adapter_sha256": retained["adapter_sha256"],
+            "tokenizer_files_sha256": tokenizer_sha,
+            "prompt_contract_sha256": prompt_contract_sha256(runtime),
+            "generation_config_fingerprint":
+                descriptor["generation_config_fingerprint"],
+            "evaluator_sha256": descriptor["evaluator_sha256"],
+            "torch": torch.__version__,
+            "transformers": transformers.__version__,
+            "peft": peft.__version__,
+            "device": runtime.device,
+        },
+        "metric_definitions": {
+            "content_targets": (
+                "targets after language/task/no-timestamps and before EOS"),
+            "eos_rank": "one plus logits strictly greater than EOS",
+            "repeated_ngram_rate": (
+                "repeated generated pre-EOS ngrams divided by all such ngrams"),
+            "unexpected_control_tokens": (
+                "special tokens generated after prompt and before terminal EOS"),
+            "all_languages_weighted": "weighted by validation rows",
+        },
+        "arms": {"base": base_metrics, "retained_1e_4": candidate_metrics},
+        "content_policy": (
+            "aggregate numeric metrics only; no transcript, token sequence, "
+            "row identifier, speaker, session, or audio is persisted"),
+    }
+    local = work / "termination-diagnostic.json"
+    local.write_bytes(_json_bytes(record))
+    key = (descriptor["output_prefix"].rstrip("/")
+           + "/evaluations/termination-diagnostic.json")
+    artifact_sha = put_immutable(cli, key, local.read_bytes())
+    return {
+        "diagnostic_artifact_key": key,
+        "diagnostic_artifact_sha256": artifact_sha,
+        "retained_adapter_sha256": retained["adapter_sha256"],
+        "training_steps": 0,
+        "arms": record["arms"],
+    }
+
+
 def execute(descriptor: dict, out: Path) -> dict:
     stage_descriptor.build(**descriptor)
     require_runtime_provenance(descriptor)
@@ -504,6 +664,8 @@ def execute(descriptor: dict, out: Path) -> dict:
         payload = run_sweep(cli, descriptor, work)
     elif descriptor["stage"] == "final":
         payload = run_final(cli, descriptor, work)
+    elif descriptor["stage"] == "diagnostic":
+        payload = run_diagnostic(cli, descriptor, work)
     else:  # stage_descriptor already refuses; keeps type checkers honest
         raise SystemExit(f"REFUSING: unknown stage {descriptor['stage']}")
     result = {

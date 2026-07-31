@@ -178,6 +178,7 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
             "base_and_preflight" if stage == "base_and_preflight"
             else "sweep_run" if stage == "sweep" else "final_run"],
         input_prefix=f"curated/_versions/v2/",
+        input_artifact_sha256=None,
         output_prefix=(
             f"candidates/evaluations/{campaign_run}/attempt-{attempt}/"
             + (f"sweep-lr-{lr:.0e}/" if stage == "sweep"

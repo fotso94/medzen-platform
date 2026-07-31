@@ -131,6 +131,18 @@ BAKED=$(docker run --rm --entrypoint printenv "$REPO:$TAG" MEDZEN_GIT_SHA 2>/dev
   echo "FATAL: image reports MEDZEN_GIT_SHA=$BAKED, expected $GIT_SHA"; exit 37; }
 echo "IMAGE PROVENANCE: MEDZEN_GIT_SHA=$BAKED baked in"
 
+# Execute the complete committed suite inside the image before it can be
+# pushed.  The source bundle is mounted read-only, matching the GPU stage, and
+# /tmp is the only writable test scratch space.  This also makes the build
+# self-verifying when a developer's local Docker daemon is unavailable.
+echo "running pinned-image suite against read-only verified source"
+docker run --rm --read-only \
+  --tmpfs /tmp:rw,noexec,nosuid,size=4g \
+  -v "$SRC:/work:ro" -w /work \
+  --entrypoint pytest "$REPO:$TAG" tests/ -q -rsw \
+  || { echo "FATAL: pinned-image test suite"; exit 38; }
+echo "PINNED-IMAGE TEST SUITE PASSED"
+
 docker image inspect "$REPO:$TAG" --format '{{.Size}}' | \
   awk '{printf "image size: %.2f GB\n", $1/1e9}'
 
