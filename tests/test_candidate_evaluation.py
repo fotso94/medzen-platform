@@ -98,6 +98,18 @@ def test_cap_hit_is_defined_by_eos_absence_not_by_arithmetic():
     assert "444" not in s, "no arithmetic coincidence may be encoded as fact"
 
 
+def test_repo_no_longer_claims_whisper_returns_the_prompt_by_default():
+    """Whisper's default tensor return has the prompt AND EOS sliced off --
+    _postprocess_outputs does seek_outputs[:, start_idx:]. Any doc still
+    claiming otherwise would send the next reader down the same path."""
+    s = EVAL.read_text()
+    assert "does NOT behave like the generic one" in s
+    assert "seek_outputs[:, start_idx:]" in s
+    assert "returns a sequence that INCLUDES the decoder prompt" not in s
+    rca = (ROOT / "platform/evidence/RCA-2026-001-generation-collapse.md").read_text()
+    assert "includes* the decoder prompt" not in rca
+
+
 def test_alignment_is_now_a_hard_gate_in_the_training_path():
     """The gap that let this through: length was checked, alignment was not."""
     src = TRAIN.read_text()
@@ -192,10 +204,13 @@ def test_every_arm_starts_from_identical_unmodified_base_weights():
 
 
 def test_generation_settings_are_pinned_in_one_place():
+    """Two call sites now exist -- the one-clip preflight and the scoring loop
+    -- so the guarantee is that both build kwargs from the SAME function."""
     s = EVAL.read_text()
     assert "GEN = {" in s
-    assert "kw = dict(GEN, language=lang_token, task=TASK)" in s
-    assert s.count("model.generate(") == 1, "one decode call, shared by both arms"
+    assert "def gen_kwargs(" in s
+    assert s.count("model.generate(feats, **gen_kwargs(lang_token))") == 2
+    assert "kw = dict(GEN" not in s, "no call site may assemble its own kwargs"
 
 
 def test_language_and_task_are_forced_for_both_arms():

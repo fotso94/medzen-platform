@@ -2,7 +2,8 @@
 
 **Run** `23868bab2d8448759fc1b9ed26156952` · **Adapter** `17e1b7381b7b3fdb…`
 **Status** rejected, candidates-only · **Decision** `EVAL-2026-001-b4-candidate-failed.json`
-**Revision** 2 (2026-07-31) — corrected after independent review; see *Corrections*.
+**Revision** 3 (2026-07-31) — corrected again after the reproduction attempt
+measured the runtime directly; see *Corrections*.
 
 > **Confidence.** The duplicated start-of-transcript token is a **confirmed
 > trainer defect**, sufficient on its own to invalidate the run, and it is the
@@ -20,12 +21,23 @@ and the run recorded itself accurately. The resulting adapter then scored
 The tell is not the error rate. It is the **output length**: a median of 52.5
 tokens against the base's 14, and a maximum of 444 against 71.
 
-An earlier revision of this report read 444 as `444 generated + 4 prefix = 448 =
-max_target_positions` and treated the exact match as proof. **That arithmetic is
-withdrawn.** `generate()` returns a sequence that *includes* the decoder prompt,
-while `max_new_tokens` *excludes* it, so 444 is equally consistent with 4 prompt
-+ 440 generated. The external evaluator's token accounting is unknown, and a
-coincidence that survives only under one of two readings is not evidence.
+An earlier revision read 444 as `444 generated + 4 prefix = 448 =
+max_target_positions` and treated the exact match as proof. **That arithmetic
+remains withdrawn**, and the reason given for withdrawing it was itself wrong.
+
+Revision 2 said `generate()` returns a sequence *including* the decoder prompt.
+Measured against the pinned stack, Whisper does the opposite:
+`WhisperGenerationMixin._postprocess_outputs` returns
+`seek_outputs[:, start_idx:]` with `start_idx = decoder_input_ids.shape[-1]`,
+so the default tensor return has the prompt **and EOS** sliced off. The generic
+`generate()` rule does not apply to Whisper, which overrides it.
+
+The arithmetic stays withdrawn on firmer ground: the external evaluator's
+transformers version and accounting are unknown, so neither reading can be
+attributed to it. Our own evaluator now requests
+`return_dict_in_generate=True` with `force_unique_generate_call=True` and reads
+`output.sequences`, which retains prompt and EOS, and refuses prompt-stripped
+output rather than accepting numbers it cannot support.
 
 What the lengths *do* support: the candidate generates far past the base and at
 least one row reached a generation limit. Whether `<|endoftext|>` was emitted —
@@ -172,7 +184,8 @@ correctly aligned per-language base-loss distribution is measured:
 
 | Claim (rev 1) | Status |
 |---|---|
-| `444 + 4 = 448` proves the cap was hit | **withdrawn** — prompt/generated accounting was unverified |
+| `444 + 4 = 448` proves the cap was hit | **withdrawn** — external accounting unknown |
+| Whisper's default return includes the decoder prompt (rev 2) | **corrected** — it slices prompt and EOS off; measured on the pinned stack |
 | All four prefix tokens were wrongly trained as content | **corrected** — only the retained SOT is erroneous |
 | Loss "should" start at 1–3; abort above 6 | **demoted** to uncalibrated warning |
 | Duplicated SOT is *the* cause | **qualified** — confirmed defect and strongest explanation; sole-cause proof needs a corrected A/B run |

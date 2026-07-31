@@ -28,14 +28,23 @@ Termination behaviour, because the failure that motivated this tool was a
 termination failure rather than a quality failure. A WER number alone says
 "bad" without saying "runaway".
 
-Token accounting is kept explicit and separate, because getting it wrong is
-easy: `generate()` returns a sequence that INCLUDES the decoder prompt, while
-`max_new_tokens` excludes it. An earlier draft of this file called the whole
-returned length `n_new` and compared it against `max_new_tokens`, which would
-have overstated generated length by the prompt size and mislabelled rows as
-cap hits. So prompt, generated and total are recorded separately, and a cap hit
-is defined by what actually happened: EOS absent AND generated tokens reaching
-the limit.
+Token accounting is explicit, and the contract that makes it possible is
+REQUESTED rather than assumed.
+
+Whisper's `generate()` does NOT behave like the generic one. Its default tensor
+return has the decoder prompt sliced off -- `WhisperGenerationMixin.
+_postprocess_outputs` does `seek_outputs[:, start_idx:]` where `start_idx =
+decoder_input_ids.shape[-1]` -- and EOS is dropped with it. A previous version
+of this file asserted the opposite and refused every decode; the version before
+that measured length correctly by accident while being unable to see EOS at
+all. Neither could report termination behaviour, which is the whole point.
+
+So this asks for the structured contract instead: `return_dict_in_generate=True`
+with `force_unique_generate_call=True`, and reads `output.sequences`, which
+retains both the four-token prompt and EOS. The prompt must be there exactly;
+prompt-stripped output is refused in this mode rather than silently accepted,
+because accepting it would put EOS and cap-hit numbers back out of reach
+without saying so.
 
     python scripts/evaluate_candidate.py --language pidgin --task tts \
         --lang-token en \
@@ -296,6 +305,38 @@ def expected_prompt(processor, lang_token: str, task: str,
     return list(tk.prefix_tokens)
 
 
+def gen_kwargs(lang_token: str) -> dict:
+    """The one generation configuration, used identically by every arm.
+
+    Language and task are always forced: left to auto-detect, two arms could
+    decode as different languages and the difference would be attributed to the
+    adapter. The structured flags are what make prompt and EOS observable at
+    all -- see the module docstring.
+    """
+    return dict(GEN, language=lang_token, task=TASK,
+                return_dict_in_generate=True,
+                force_unique_generate_call=True)
+
+
+def extract_sequence(out) -> list[int]:
+    """Pull the single sequence out of a structured generate() result.
+
+    Refuses a bare tensor. In this mode a plain tensor means the prompt and EOS
+    were stripped, so silently accepting it would produce EOS and cap-hit
+    numbers that cannot be true.
+    """
+    seqs = getattr(out, "sequences", None)
+    if seqs is None:
+        raise SystemExit(
+            f"REFUSING: generate() returned {type(out).__name__} with no "
+            "`sequences`. This evaluation requires "
+            "return_dict_in_generate=True; a bare tensor has the decoder "
+            "prompt and EOS sliced off, so termination cannot be measured.")
+    if len(seqs) != 1:
+        raise SystemExit(f"REFUSING: expected exactly 1 sequence, got {len(seqs)}")
+    return seqs[0].tolist()
+
+
 def split_prompt(ids: list[int], prompt: list[int]) -> int:
     """Assert the sequence starts with the expected prompt; return its length.
 
@@ -309,6 +350,73 @@ def split_prompt(ids: list[int], prompt: list[int]) -> int:
             f"configuration requires the prompt {prompt}. The decode did not "
             "run under the configuration this evaluation claims.")
     return len(prompt)
+
+
+SEGMENT_LIMIT_S = 30.0          # Whisper's single-segment boundary
+
+
+def require_short_form(rows: list[dict]) -> float:
+    """force_unique_generate_call is only meaningful for short-form audio.
+
+    Above 30 s Whisper chunks internally and returns per-segment results, so a
+    single forced call would either fail or silently describe one segment as if
+    it were the whole clip. Durations come from the manifest -- no audio is
+    inspected and nothing about content is exposed.
+    """
+    longest = max(r["duration_s"] for r in rows)
+    if longest >= SEGMENT_LIMIT_S:
+        over = sum(1 for r in rows if r["duration_s"] >= SEGMENT_LIMIT_S)
+        raise SystemExit(
+            f"REFUSING: {over} clip(s) reach or exceed Whisper's "
+            f"{SEGMENT_LIMIT_S:.0f}s segment boundary (longest "
+            f"{longest:.2f}s). force_unique_generate_call would describe one "
+            "segment as the whole clip. Segment-aware accounting is required "
+            "for long-form audio and is not implemented here.")
+    return longest
+
+
+def preflight_contract(model, processor, audio, sr, device, lang_token,
+                       prompt: list[int]) -> dict:
+    """Decode ONE clip and prove the contract holds on the real stack.
+
+    A 44-clip run that discovers a contract mismatch on clip 1 has burned an
+    instance to learn something one decode could have told it -- which is
+    exactly what the previous launch did. This runs first, and if prompt and
+    EOS are not observable it exits WITHOUT producing metrics.
+    """
+    import torch
+
+    feats = processor.feature_extractor(
+        audio, sampling_rate=sr, return_tensors="pt").input_features.to(device)
+    if model.dtype != feats.dtype:
+        feats = feats.to(model.dtype)
+    with torch.no_grad():
+        out = model.generate(feats, **gen_kwargs(lang_token))
+
+    observed_type = type(out).__name__
+    ids = extract_sequence(out)              # refuses a bare tensor
+    n_prompt = split_prompt(ids, prompt)     # refuses a wrong prompt
+    eot = processor.tokenizer.convert_tokens_to_ids(EOT_TOKEN)
+    eos_seen = eot in ids[n_prompt:]
+
+    info = {
+        "output_type": observed_type,
+        "expected_prompt_ids": prompt,
+        "observed_prompt_ids": ids[:len(prompt)],
+        "sequence_len": len(ids),
+        "generated_tokens": len(ids) - n_prompt,
+        "eos_emitted": eos_seen,
+    }
+    print(f"preflight  {observed_type}: prompt {ids[:len(prompt)]} ok, "
+          f"{len(ids) - n_prompt} generated, EOS={eos_seen}")
+    if not eos_seen:
+        # Not fatal by itself -- a genuine runaway also lacks EOS -- but on a
+        # healthy BASE model a missing EOS means EOS is invisible, not absent,
+        # and cap-hit classification would then be meaningless for every row.
+        print("preflight  WARNING: base decode emitted no EOS; termination "
+              "measurements will be unreliable if this is a contract problem "
+              "rather than genuine runaway")
+    return info
 
 
 def score_arm(model, processor, rows, audios, language: str, device: str,
@@ -329,19 +437,14 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
             audio, sampling_rate=sr, return_tensors="pt").input_features.to(device)
         if model.dtype != feats.dtype:
             feats = feats.to(model.dtype)
-        # Language and task are ALWAYS forced, identically for both arms. Left
-        # to auto-detect, the two arms could silently decode as different
-        # languages and the difference would be attributed to the adapter.
-        kw = dict(GEN, language=lang_token, task=TASK)
         t0 = time.perf_counter()
         with torch.no_grad():
-            out = model.generate(feats, **kw)
+            out = model.generate(feats, **gen_kwargs(lang_token))
         dt = time.perf_counter() - t0
 
-        ids = out[0].tolist()
-        # The returned sequence INCLUDES the decoder prompt; max_new_tokens does
-        # not. Counting the whole thing as "new" overstates generated length by
-        # the prompt size and mislabels rows as cap hits.
+        ids = extract_sequence(out)
+        # With the structured contract the sequence carries prompt + generated
+        # + EOS, so each is countable rather than inferred.
         n_total = len(ids)
         n_prompt = split_prompt(ids, prompt)
         n_gen = n_total - n_prompt
@@ -383,6 +486,7 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
     lats = [p["latency_s"] for p in per]
     return {
         "rows": len(rows),
+        "generation_flags": {k: v for k, v in gen_kwargs(lang_token).items()},
         "wer": round(w, 4), "cer": round(c, 4),
         "wer_ci95": [round(lo, 4), round(hi, 4)],
         "wer_median_utt": round(statistics.median(
@@ -479,8 +583,15 @@ def main() -> int:
     print(f"prompt     {prompt} "
           f"({processor.tokenizer.convert_ids_to_tokens(prompt)})")
 
-    print("scoring    base ...")
+    longest = require_short_form(rows)
+    print(f"short-form OK: longest clip {longest:.2f}s < {SEGMENT_LIMIT_S:.0f}s")
+
     model = fresh_base()
+    print("preflight  validating the generation contract on one clip ...")
+    contract = preflight_contract(model, processor, audios[0][0], audios[0][1],
+                                  device, a.lang_token, prompt)
+
+    print("scoring    base ...")
     arms = {"base": score_arm(model, processor, rows, audios, a.language, device,
                               a.lang_token, prompt)}
     b = arms["base"]
@@ -564,6 +675,10 @@ def main() -> int:
         "base_manifest_revision": base_manifest["revision"],
         "base_files_verified": len(base_manifest["files"]),
         "device": device, "torch": torch.__version__,
+        "transformers_version": transformers.__version__,
+        "generation_contract": contract,
+        "longest_clip_s": round(longest, 2),
+        "segment_limit_s": SEGMENT_LIMIT_S,
         "purpose": "DIAGNOSTIC_ONLY",
         "purpose_note": (
             "The Pidgin set shares both speakers and sessions with training and "

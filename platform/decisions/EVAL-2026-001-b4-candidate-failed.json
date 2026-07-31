@@ -103,7 +103,7 @@
     "evaluation-coverage audit for all 14 trained languages"
   ],
   "content_policy": "checksums, hashes and aggregate metrics only; no transcript, speaker, session or content excerpt appears in this file",
-  "revision": 2,
+  "revision": 3,
   "revised_utc": "2026-07-31T00:00:00Z",
   "revision_note": "Revision 2 after independent review. The duplicated start-of-transcript token is a CONFIRMED trainer defect, sufficient to invalidate the run and the strongest explanation for the collapse; sole-cause proof requires a corrected controlled A/B run that has not been performed.",
   "corrections": [
@@ -126,6 +126,11 @@
       "claim": "mask the prefix with -100 as an alternative fix",
       "status": "REJECTED",
       "why": "without separately constructing decoder_input_ids the shift would propagate masked values into the decoder inputs in place of the language/task prompt."
+    },
+    {
+      "claim": "generate() returns a sequence INCLUDING the decoder prompt while max_new_tokens excludes it (given as the reason for withdrawing the 444 arithmetic in revision 2)",
+      "status": "CORRECTED",
+      "why": "measured on the pinned stack: WhisperGenerationMixin._postprocess_outputs returns seek_outputs[:, start_idx:] with start_idx = decoder_input_ids.shape[-1], so the default tensor return has the prompt AND EOS sliced off. The generic generate() rule does not apply to Whisper. The 444 arithmetic stays withdrawn because the external evaluator's version and accounting are unknown, not because of the prompt-inclusion claim."
     }
   ],
   "additional_defects_found_by_review": [

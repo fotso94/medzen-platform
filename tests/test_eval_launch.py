@@ -606,3 +606,148 @@ def test_output_directory_is_created_before_writing():
     i_mkdir = src.index("out.parent.mkdir(parents=True, exist_ok=True)")
     i_write = src.index("out.write_text(json.dumps(rec")
     assert i_mkdir < i_write
+
+
+# --------------------------------------------------------------------------- #
+# structured generation contract — behavioural
+# --------------------------------------------------------------------------- #
+SOT_, EN_, TR_, NT_, EOT_ = 50258, 50259, 50360, 50364, 50257
+PROMPT_ = [SOT_, EN_, TR_, NT_]
+MAXNEW = EC.GEN["max_new_tokens"]
+
+
+class FakeSeq:
+    """Stands in for a GenerateEncoderDecoderOutput: has .sequences."""
+
+    def __init__(self, ids):
+        import torch
+        self.sequences = torch.tensor([ids])
+
+
+def test_gen_kwargs_requests_the_structured_contract():
+    kw = EC.gen_kwargs("en")
+    assert kw["return_dict_in_generate"] is True
+    assert kw["force_unique_generate_call"] is True
+    assert kw["task"] == "transcribe" and kw["language"] == "en"
+    assert kw["max_new_tokens"] == MAXNEW
+    assert kw["num_beams"] == 1 and kw["do_sample"] is False
+
+
+def test_both_arms_get_identical_generation_flags():
+    """Same function, same argument -> byte-identical kwargs."""
+    assert EC.gen_kwargs("en") == EC.gen_kwargs("en")
+    base, cand = EC.gen_kwargs("en"), EC.gen_kwargs("en")
+    assert base == cand
+
+
+def test_structured_result_sequence_is_extracted():
+    ids = PROMPT_ + [1000, 1001, EOT_]
+    assert EC.extract_sequence(FakeSeq(ids)) == ids
+
+
+def test_bare_tensor_is_refused_not_silently_accepted():
+    """A plain tensor in this mode means prompt and EOS were stripped, so EOS
+    and cap-hit numbers could not be true."""
+    import torch
+    with pytest.raises(SystemExit) as e:
+        EC.extract_sequence(torch.tensor([[1000, 1001]]))
+    assert "no `sequences`" in str(e.value)
+    assert "return_dict_in_generate=True" in str(e.value)
+
+
+def test_unexpected_contract_object_is_refused():
+    class Weird:
+        pass
+    with pytest.raises(SystemExit, match="no `sequences`"):
+        EC.extract_sequence(Weird())
+
+
+def test_multiple_sequences_are_refused():
+    import torch
+
+    class Multi:
+        sequences = torch.tensor([[1, 2], [3, 4]])
+    with pytest.raises(SystemExit, match="expected exactly 1 sequence"):
+        EC.extract_sequence(Multi())
+
+
+def _account(ids):
+    """The evaluator's accounting rules, applied to a sequence."""
+    n_prompt = EC.split_prompt(ids, PROMPT_)
+    n_total = len(ids)
+    n_gen = n_total - n_prompt
+    eos_pos = ids.index(EOT_, n_prompt) if EOT_ in ids[n_prompt:] else None
+    eos = eos_pos is not None
+    cap = (not eos) and n_gen >= MAXNEW
+    return dict(prompt=n_prompt, generated=n_gen, total=n_total,
+                eos=eos, eos_pos=eos_pos, cap=cap,
+                stop="eos" if eos else "max_new_tokens" if cap else "other")
+
+
+def test_exact_prompt_content_and_eos():
+    ids = PROMPT_ + [1000, 1001, 1002, EOT_]
+    a = _account(ids)
+    assert a["prompt"] == 4
+    assert a["generated"] == 4            # 3 content + EOS
+    assert a["total"] == 8
+    assert a["eos"] is True and a["eos_pos"] == 7
+    assert a["cap"] is False and a["stop"] == "eos"
+
+
+def test_full_budget_without_eos_is_a_cap_hit():
+    ids = PROMPT_ + [2000 + i for i in range(MAXNEW)]
+    a = _account(ids)
+    assert a["prompt"] == 4
+    assert a["generated"] == MAXNEW
+    assert a["eos"] is False
+    assert a["cap"] is True and a["stop"] == "max_new_tokens"
+
+
+def test_short_output_without_eos_is_not_a_cap_hit():
+    ids = PROMPT_ + [2000, 2001]
+    a = _account(ids)
+    assert a["eos"] is False and a["cap"] is False and a["stop"] == "other"
+
+
+def test_eos_inside_the_prompt_region_is_not_counted():
+    """EOS is only meaningful after the prompt."""
+    ids = PROMPT_ + [1000, EOT_]
+    a = _account(ids)
+    assert a["eos_pos"] == 5 and a["eos"] is True
+
+
+def test_wrong_prompt_refuses():
+    wrong = [SOT_, 50325, TR_, NT_] + [1000, EOT_]      # yo, not en
+    with pytest.raises(SystemExit) as e:
+        EC.split_prompt(wrong, PROMPT_)
+    assert "run under the configuration this evaluation claims" in str(e.value)
+
+
+def test_prompt_stripped_sequence_refuses_in_this_mode():
+    """Exactly what the failed run hit: content tokens at position 0."""
+    stripped = [805, 6555, 295, 10411, EOT_]
+    with pytest.raises(SystemExit) as e:
+        EC.split_prompt(stripped, PROMPT_)
+    assert "sequence begins" in str(e.value)
+
+
+# --------------------------------------------------------------------------- #
+# short-form guard
+# --------------------------------------------------------------------------- #
+def test_short_form_accepted_and_longest_returned():
+    rows = [{"duration_s": 4.92}, {"duration_s": 28.18}, {"duration_s": 9.1}]
+    assert EC.require_short_form(rows) == 28.18
+
+
+def test_long_form_clip_refuses_the_forced_single_call():
+    rows = [{"duration_s": 9.1}, {"duration_s": 30.0}]
+    with pytest.raises(SystemExit) as e:
+        EC.require_short_form(rows)
+    assert "segment boundary" in str(e.value)
+    assert "one segment as the whole clip" in str(e.value)
+
+
+def test_frozen_pidgin_set_is_short_form():
+    """The set this run scores: max 28.18s, verified from manifest metadata."""
+    assert EC.SEGMENT_LIMIT_S == 30.0
+    assert 28.18 < EC.SEGMENT_LIMIT_S

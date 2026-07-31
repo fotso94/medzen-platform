@@ -1,0 +1,72 @@
+{
+  "record": "FAILED_EVALUATION_RUN",
+  "id": "EVALRUN-2026-001-prompt-contract-refusal",
+  "recorded_utc": "2026-07-31T07:38:49Z",
+  "status": "FAILED \u2014 refused before completing the first base decode",
+  "artifacts_preserved": true,
+  "note": "The failed run's S3 prefix is preserved unchanged. Nothing under it was overwritten or deleted.",
+  "run": {
+    "run_id": "eval-1785482688-2919224de849",
+    "s3_prefix": "s3://medzen-speech/candidates/evaluations/eval-1785482688-2919224de849/",
+    "instance_id": "i-0ea50cefbd8c7e49b",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand",
+    "az": "eu-central-1a",
+    "launched_utc": "2026-07-31T07:24:12Z",
+    "exit_code": 1,
+    "runtime_minutes_approx": 3.5,
+    "cost_usd_approx": 0.06,
+    "purpose": "DIAGNOSTIC_ONLY"
+  },
+  "pins": {
+    "image_digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+    "code_git_sha": "2919224de8498131853d3ba3b1d6292641900f67",
+    "bundle_tar_sha256": "97b32a27b0182942bd686663577f44310829bfbff09789bbe13b7c80bf283812",
+    "user_data_sha256": "bf7ede86a48560a86b1e4d10dce937608b243403b6be1dcf0fb880263c051e50",
+    "adapter_sha256": "17e1b7381b7b3fdb362ecb692d72b92a2dc295d7ee79ff6367a8d6a9c7cd3195"
+  },
+  "verified_before_failure": {
+    "bundle_archive_hash": "matched the hash supplied in user-data",
+    "bundle_manifest": "121 files, all hashes matched",
+    "image_digest_after_pull": "VERIFIED",
+    "kms_round_trip": "OK",
+    "eval_write_deny": "INTACT (exercised, not assumed)",
+    "cuda": "device=cuda on an NVIDIA L4",
+    "libraries": {
+      "torch": "2.13.0+cu130",
+      "transformers": "5.14.1",
+      "peft": "0.20.0"
+    },
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "base_files_verified": 11,
+    "eval_manifest_sha256": "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+    "audio": "44 clips, 7.875 min, every checksum verified",
+    "expected_prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ]
+  },
+  "failure": {
+    "where": "first base-arm decode, before any row was scored",
+    "message": "REFUSING: sequence begins [805, 6555, 295, 10411] but the pinned configuration requires the prompt [50258, 50259, 50360, 50364].",
+    "observed_prompt_ids": "[805, 6555, 295, 10411] (content tokens, not the prompt)",
+    "cause": "The evaluator asserted that generate() returns a sequence beginning with the decoder prompt. Whisper does the opposite: WhisperGenerationMixin._postprocess_outputs returns seek_outputs[:, start_idx:] with start_idx = decoder_input_ids.shape[-1], so the default tensor return has the prompt AND EOS sliced off. The generic generate() rule does not apply to Whisper, which overrides it.",
+    "assessment": "The guard behaved correctly from an incorrect premise: it refused rather than emitting numbers it could not support. No result was fabricated.",
+    "evaluation_json_produced": false,
+    "rows_scored": 0,
+    "candidate_arm_reached": false,
+    "candidate_scoring_performed": false
+  },
+  "cleanup_verified": {
+    "instance_state": "terminated",
+    "root_volume": "vol-0fba4a8fbc460bb02 \u2014 DescribeVolumes returns InvalidVolume.NotFound (deleted)",
+    "gpu_instances_running": 0,
+    "unattached_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0
+  },
+  "not_done": "no training, registration, promotion, deployment, MLflow change, checkpoint sweep or B5 start; no replacement instance was launched",
+  "content_policy": "hashes, counts and token IDs only; no transcript, audio or speaker information. The four observed token IDs are recorded as evidence of the contract mismatch and are not decoded anywhere."
+}
