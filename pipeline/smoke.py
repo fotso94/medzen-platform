@@ -53,14 +53,51 @@ ADAPTER_MIN_LOGIT_DELTA = 1e-3
 ADAPTER_MIN_WEIGHT_NORM = 1e-6
 
 
-def adapter_effect_verdict(logits_on, logits_off, weight_norms: dict) -> dict:
-    """Prove the adapter changes inference, not just the object graph."""
+def adapter_effect_verdict(logits_on, logits_off, weight_norms: dict,
+                           checkpoint_sha256: str | None = None,
+                           tested_artifact_sha256: str | None = None) -> dict:
+    """Prove the adapter changes inference, not just the object graph.
+
+    Also refuses non-finite logits or norms: a NaN would make every comparison
+    below False and report the adapter as inert, or -- worse -- make `abs().max()`
+    itself NaN and slip past the threshold check.
+    """
+    import math
+
     import torch
+
+    reasons = []
+    if not bool(torch.isfinite(logits_on).all()) or \
+            not bool(torch.isfinite(logits_off).all()):
+        reasons.append("non-finite logits; the comparison below is meaningless")
+    nonfinite_norms = {k: v for k, v in weight_norms.items()
+                       if not math.isfinite(float(v))}
+    if nonfinite_norms:
+        reasons.append(f"non-finite adapter tensor norms: {sorted(nonfinite_norms)}")
+    if reasons:
+        return {"max_abs_logit_delta": None,
+                "required_delta": ADAPTER_MIN_LOGIT_DELTA,
+                "adapter_tensors_checked": len(weight_norms),
+                "adapter_tensors_nonzero": None,
+                "passed": False, "reasons": reasons}
+
+    # The adapter under test must be the SAVED checkpoint, not the in-memory
+    # model before serialization -- those can differ, and the artifact is what
+    # a later run would load.
+    if checkpoint_sha256 is not None and tested_artifact_sha256 is not None \
+            and checkpoint_sha256 != tested_artifact_sha256:
+        return {"passed": False, "reasons": [
+            f"tested artifact {str(tested_artifact_sha256)[:16]} is not the "
+            f"saved checkpoint {checkpoint_sha256[:16]}; the effect was "
+            "measured on something other than what will be loaded later"],
+            "max_abs_logit_delta": None,
+            "required_delta": ADAPTER_MIN_LOGIT_DELTA,
+            "adapter_tensors_checked": len(weight_norms),
+            "adapter_tensors_nonzero": None}
 
     delta = float((logits_on - logits_off).abs().max().item())
     nonzero = {k: float(v) for k, v in weight_norms.items()
                if float(v) > ADAPTER_MIN_WEIGHT_NORM}
-    reasons = []
     if delta < ADAPTER_MIN_LOGIT_DELTA:
         reasons.append(
             f"enabling the adapter changed logits by at most {delta:.2e}, "
@@ -76,6 +113,11 @@ def adapter_effect_verdict(logits_on, logits_off, weight_norms: dict) -> dict:
         "required_delta": ADAPTER_MIN_LOGIT_DELTA,
         "adapter_tensors_checked": len(weight_norms),
         "adapter_tensors_nonzero": len(nonzero),
+        "checkpoint_sha256": checkpoint_sha256,
+        "tested_artifact_sha256": tested_artifact_sha256,
+        "tested_the_saved_checkpoint": (
+            checkpoint_sha256 is not None
+            and checkpoint_sha256 == tested_artifact_sha256),
         "passed": not reasons,
         "reasons": reasons,
     }

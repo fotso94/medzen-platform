@@ -25,6 +25,44 @@ FINAL_RUN_RESUMES_SWEEP = False      # decided in advance; see plan section 5
 SEED = 0
 
 
+def validate_metric_map(m: dict, name: str, lo: float | None = 0.0,
+                        hi: float | None = None) -> dict[str, float]:
+    """Every metric map must be exactly the nine frozen languages, all finite.
+
+    A gate that silently accepts NaN, or an absent language, is a gate that
+    passes whatever it cannot see. NaN comparisons are always False, so a NaN
+    WER would slip past `> cap` and be reported as no regression at all.
+    """
+    import math
+
+    if not isinstance(m, dict):
+        raise SystemExit(f"REFUSING: {name} is {type(m).__name__}, not a mapping")
+    keys = set(m)
+    want = set(VALIDATION_LANGUAGES)
+    missing, extra = sorted(want - keys), sorted(keys - want)
+    problems = []
+    if missing:
+        problems.append(f"missing {missing}")
+    if extra:
+        problems.append(f"unexpected {extra}")
+    for lang in sorted(want & keys):
+        v = m[lang]
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            problems.append(f"{lang}={v!r} is not numeric")
+            continue
+        if math.isnan(v):
+            problems.append(f"{lang} is NaN")
+        elif math.isinf(v):
+            problems.append(f"{lang} is infinite")
+        elif lo is not None and v < lo:
+            problems.append(f"{lang}={v} is below {lo}")
+        elif hi is not None and v > hi:
+            problems.append(f"{lang}={v} is above {hi}")
+    if problems:
+        raise SystemExit(f"REFUSING: {name} is unusable — " + "; ".join(problems))
+    return {l: float(m[l]) for l in VALIDATION_LANGUAGES}
+
+
 def macro_wer(per_language: dict[str, float]) -> float:
     """Unweighted mean across the nine languages.
 
@@ -53,6 +91,14 @@ def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
                    eos_rate: dict[str, float], cap_hit_rate: dict[str, float]
                    ) -> dict:
     """All FOUR gates. Every one is hard; none is advisory."""
+    # Validate BEFORE gating. WER/CER are unbounded above but never negative;
+    # rates must lie in [0, 1].
+    candidate_wer = validate_metric_map(candidate_wer, "candidate WER")
+    base_wer = validate_metric_map(base_wer, "base WER")
+    eos_rate = validate_metric_map(eos_rate, "EOS rate", lo=0.0, hi=1.0)
+    cap_hit_rate = validate_metric_map(cap_hit_rate, "cap-hit rate",
+                                       lo=0.0, hi=1.0)
+
     failures = []
 
     bad_eos = {l: r for l, r in eos_rate.items() if r < REQUIRED_EOS_RATE}

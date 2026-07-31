@@ -238,23 +238,26 @@ def test_every_arm_starts_from_identical_unmodified_base_weights():
                    for n in ast.walk(ast.parse(s)))
 
 
-def test_generation_settings_are_pinned_in_one_place():
-    """Two call sites now exist -- the one-clip preflight and the scoring loop
-    -- so the guarantee is that both build kwargs from the SAME function."""
+def test_generation_settings_live_in_one_module_only():
+    """The evaluator must not carry its own copy of the decode settings -- an
+    evaluator that could drift from the trainer defeats the whole point."""
     s = EVAL.read_text()
-    assert "GEN = {" in s
-    assert "def gen_kwargs(" in s
-    assert s.count("model.generate(feats, **gen_kwargs(lang_token))") == 2
-    assert "kw = dict(GEN" not in s, "no call site may assemble its own kwargs"
+    assert "from pipeline.generation import" in s
+    for owned_elsewhere in ("GEN = {", "def gen_kwargs(", "def split_prompt(",
+                            "def extract_sequence(", "def expected_prompt(",
+                            "def require_short_form(", "SEGMENT_LIMIT_S = "):
+        assert owned_elsewhere not in s, f"redefined locally: {owned_elsewhere}"
+    assert s.count("model.generate(feats, **generation_kwargs(lang_token))") == 2
 
 
 def test_language_and_task_are_forced_for_both_arms():
-    """Auto-detection could decode the arms as different languages and the
-    difference would be blamed on the adapter."""
-    s = EVAL.read_text()
-    assert '"--lang-token", required=True' in s
-    assert 'TASK = "transcribe"' in s
-    assert "task=TASK" in s
+    """Behavioural: the shared config always forces both."""
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT))
+    from pipeline.generation import TASK, generation_kwargs
+    kw = generation_kwargs("en")
+    assert kw["language"] == "en" and kw["task"] == TASK == "transcribe"
+    assert '"--lang-token", required=True' in EVAL.read_text()
 
 
 def test_evaluator_never_emits_transcripts():
@@ -282,12 +285,21 @@ def test_prompt_and_generated_tokens_are_counted_separately():
     max_new_tokens excludes it. Conflating them overstates generated length by
     the prompt size and mislabels rows as cap hits."""
     s = EVAL.read_text()
-    assert "n_prompt = split_prompt(ids, prompt)" in s
-    assert "n_gen = n_total - n_prompt" in s
-    assert 'cap_hit = (not eos_emitted) and n_gen >= GEN["max_new_tokens"]' in s
+    assert "acct = account(ids, prompt, eot)" in s
+    assert 'n_gen = acct["generated_tokens"]' in s
     assert '"prompt_tokens": n_prompt' in s
     assert '"eos_position": eos_pos' in s
     assert '"stop_reason"' in s
+    # cap-hit is defined once, in the shared accounting rule
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT))
+    from pipeline import generation as _G
+    full = [50258, 50259, 50360, 50364] + [7] * _G.MAX_NEW_TOKENS
+    a = _G.account(full, [50258, 50259, 50360, 50364], 50257)
+    assert a["hit_length_cap"] is True and a["eos_emitted"] is False
+    short = [50258, 50259, 50360, 50364, 7, 50257]
+    b = _G.account(short, [50258, 50259, 50360, 50364], 50257)
+    assert b["hit_length_cap"] is False and b["eos_emitted"] is True
 
 
 def test_base_is_verified_against_the_pinned_manifest_every_run():
@@ -312,13 +324,15 @@ def test_base_files_are_fetched_only_when_missing():
 def test_prompt_is_constructed_not_guessed():
     """Counting leading special tokens would absorb any control token the model
     emitted first -- hiding the degenerate behaviour under investigation."""
-    s = EVAL.read_text()
-    assert "def expected_prompt(" in s
-    assert "tk.prefix_tokens" in s
-    assert "all_special_ids" not in s, "no heuristic prompt detection may remain"
-    assert "def split_prompt(" in s
-    assert "ids[:len(prompt)] != prompt" in s
-    assert "run under the configuration this evaluation claims" in s
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT))
+    from pipeline import generation as _G
+    src = (ROOT / "pipeline/generation.py").read_text()
+    assert "tk.prefix_tokens" in src
+    assert "all_special_ids" not in src, "no heuristic prompt detection may remain"
+    with pytest.raises(SystemExit, match="run under the configuration"):
+        _G.split_prompt([1, 2, 3, 4], [50258, 50259, 50360, 50364])
+    assert _G.split_prompt([9, 8], [9, 8]) == 2
 
 
 def test_adapter_arm_names_cannot_collide():

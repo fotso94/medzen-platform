@@ -35,6 +35,11 @@ EC = importlib.util.module_from_spec(spec)
 sys.modules["evaluate_candidate"] = EC
 spec.loader.exec_module(EC)
 
+# The generation contract now lives in ONE module. These tests target it there;
+# the evaluator is tested for what is genuinely its own (provenance, caching,
+# arm construction).
+from pipeline import generation as G                               # noqa: E402
+
 GOOD = {
     "MEDZEN_IMAGE_DIGEST": "sha256:" + "f" * 64,
     "MEDZEN_CODE_GIT_SHA": "a" * 40,
@@ -128,7 +133,7 @@ PROMPT = [SOT, EN, TRANSCRIBE, NOTS]
 
 def test_exact_prompt_is_accepted():
     ids = PROMPT + [1000, 1001, EOT]
-    assert EC.split_prompt(ids, PROMPT) == 4
+    assert G.split_prompt(ids, PROMPT) == 4
 
 
 def test_prompt_mismatch_refuses():
@@ -136,13 +141,13 @@ def test_prompt_mismatch_refuses():
     scored as though it had."""
     wrong = [SOT, 50325, TRANSCRIBE, NOTS] + [1000, EOT]      # yo, not en
     with pytest.raises(SystemExit) as e:
-        EC.split_prompt(wrong, PROMPT)
+        G.split_prompt(wrong, PROMPT)
     assert "run under the configuration this evaluation claims" in str(e.value)
 
 
 def test_truncated_sequence_refuses():
     with pytest.raises(SystemExit):
-        EC.split_prompt([SOT, EN], PROMPT)
+        G.split_prompt([SOT, EN], PROMPT)
 
 
 def test_extra_control_token_counts_as_GENERATED_not_prompt():
@@ -150,7 +155,7 @@ def test_extra_control_token_counts_as_GENERATED_not_prompt():
     Counting a leading special token as prompt -- which the old heuristic did --
     would shorten the measured output and hide exactly that behaviour."""
     ids = PROMPT + [NOTS, 1000, 1001, EOT]     # model re-emitted <|notimestamps|>
-    n_prompt = EC.split_prompt(ids, PROMPT)
+    n_prompt = G.split_prompt(ids, PROMPT)
     assert n_prompt == 4
     generated = len(ids) - n_prompt
     assert generated == 4, "the stray control token is generated output"
@@ -160,7 +165,7 @@ def test_extra_control_token_counts_as_GENERATED_not_prompt():
 def test_a_second_startoftranscript_is_generated_output():
     """The precise signature of the training defect."""
     ids = PROMPT + [SOT, 1000, EOT]
-    assert EC.split_prompt(ids, PROMPT) == 4
+    assert G.split_prompt(ids, PROMPT) == 4
     assert len(ids) - 4 == 3
 
 
@@ -613,7 +618,7 @@ def test_output_directory_is_created_before_writing():
 # --------------------------------------------------------------------------- #
 SOT_, EN_, TR_, NT_, EOT_ = 50258, 50259, 50360, 50364, 50257
 PROMPT_ = [SOT_, EN_, TR_, NT_]
-MAXNEW = EC.GEN["max_new_tokens"]
+MAXNEW = G.GENERATION["max_new_tokens"]
 
 
 class FakeSeq:
@@ -625,7 +630,7 @@ class FakeSeq:
 
 
 def test_gen_kwargs_requests_the_structured_contract():
-    kw = EC.gen_kwargs("en")
+    kw = G.generation_kwargs("en")
     assert kw["return_dict_in_generate"] is True
     assert kw["force_unique_generate_call"] is True
     assert kw["task"] == "transcribe" and kw["language"] == "en"
@@ -635,14 +640,14 @@ def test_gen_kwargs_requests_the_structured_contract():
 
 def test_both_arms_get_identical_generation_flags():
     """Same function, same argument -> byte-identical kwargs."""
-    assert EC.gen_kwargs("en") == EC.gen_kwargs("en")
-    base, cand = EC.gen_kwargs("en"), EC.gen_kwargs("en")
+    assert G.generation_kwargs("en") == G.generation_kwargs("en")
+    base, cand = G.generation_kwargs("en"), G.generation_kwargs("en")
     assert base == cand
 
 
 def test_structured_result_sequence_is_extracted():
     ids = PROMPT_ + [1000, 1001, EOT_]
-    assert EC.extract_sequence(FakeSeq(ids)) == ids
+    assert G.extract_sequence(FakeSeq(ids)) == ids
 
 
 def test_bare_tensor_is_refused_not_silently_accepted():
@@ -650,7 +655,7 @@ def test_bare_tensor_is_refused_not_silently_accepted():
     and cap-hit numbers could not be true."""
     import torch
     with pytest.raises(SystemExit) as e:
-        EC.extract_sequence(torch.tensor([[1000, 1001]]))
+        G.extract_sequence(torch.tensor([[1000, 1001]]))
     assert "no `sequences`" in str(e.value)
     assert "return_dict_in_generate=True" in str(e.value)
 
@@ -659,7 +664,7 @@ def test_unexpected_contract_object_is_refused():
     class Weird:
         pass
     with pytest.raises(SystemExit, match="no `sequences`"):
-        EC.extract_sequence(Weird())
+        G.extract_sequence(Weird())
 
 
 def test_multiple_sequences_are_refused():
@@ -668,12 +673,12 @@ def test_multiple_sequences_are_refused():
     class Multi:
         sequences = torch.tensor([[1, 2], [3, 4]])
     with pytest.raises(SystemExit, match="expected exactly 1 sequence"):
-        EC.extract_sequence(Multi())
+        G.extract_sequence(Multi())
 
 
 def _account(ids):
     """The evaluator's accounting rules, applied to a sequence."""
-    n_prompt = EC.split_prompt(ids, PROMPT_)
+    n_prompt = G.split_prompt(ids, PROMPT_)
     n_total = len(ids)
     n_gen = n_total - n_prompt
     eos_pos = ids.index(EOT_, n_prompt) if EOT_ in ids[n_prompt:] else None
@@ -719,7 +724,7 @@ def test_eos_inside_the_prompt_region_is_not_counted():
 def test_wrong_prompt_refuses():
     wrong = [SOT_, 50325, TR_, NT_] + [1000, EOT_]      # yo, not en
     with pytest.raises(SystemExit) as e:
-        EC.split_prompt(wrong, PROMPT_)
+        G.split_prompt(wrong, PROMPT_)
     assert "run under the configuration this evaluation claims" in str(e.value)
 
 
@@ -727,7 +732,7 @@ def test_prompt_stripped_sequence_refuses_in_this_mode():
     """Exactly what the failed run hit: content tokens at position 0."""
     stripped = [805, 6555, 295, 10411, EOT_]
     with pytest.raises(SystemExit) as e:
-        EC.split_prompt(stripped, PROMPT_)
+        G.split_prompt(stripped, PROMPT_)
     assert "sequence begins" in str(e.value)
 
 
@@ -736,18 +741,18 @@ def test_prompt_stripped_sequence_refuses_in_this_mode():
 # --------------------------------------------------------------------------- #
 def test_short_form_accepted_and_longest_returned():
     rows = [{"duration_s": 4.92}, {"duration_s": 28.18}, {"duration_s": 9.1}]
-    assert EC.require_short_form(rows) == 28.18
+    assert G.require_short_form(rows) == 28.18
 
 
 def test_long_form_clip_refuses_the_forced_single_call():
     rows = [{"duration_s": 9.1}, {"duration_s": 30.0}]
     with pytest.raises(SystemExit) as e:
-        EC.require_short_form(rows)
+        G.require_short_form(rows)
     assert "segment boundary" in str(e.value)
     assert "one segment as the whole clip" in str(e.value)
 
 
 def test_frozen_pidgin_set_is_short_form():
     """The set this run scores: max 28.18s, verified from manifest metadata."""
-    assert EC.SEGMENT_LIMIT_S == 30.0
-    assert 28.18 < EC.SEGMENT_LIMIT_S
+    assert G.SEGMENT_LIMIT_S == 30.0
+    assert 28.18 < G.SEGMENT_LIMIT_S

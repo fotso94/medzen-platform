@@ -361,46 +361,126 @@ def test_worst_case_is_the_watchdog_not_the_expectation():
         budget.RATES["g6.xlarge"] * budget.WATCHDOG_S["final_run"] / 3600)
 
 
-def test_empty_ledger_permits_the_first_stage():
-    v = budget.Ledger().check("builder")
-    assert v["permitted"] and v["already_spent_usd"] == 0.0
+class FakeS3:
+    def __init__(self):
+        self.objects = {}
+
+    def _etag(self, k):
+        import hashlib
+        return '"' + hashlib.md5(self.objects[k]).hexdigest() + '"'
+
+    def get_object(self, Bucket, Key):
+        from botocore.exceptions import ClientError
+        if Key not in self.objects:
+            raise ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
+        body = self.objects[Key]
+
+        class B:
+            def read(self_inner):
+                return body
+        return {"Body": B(), "ETag": self._etag(Key)}
+
+    def put_object(self, Bucket, Key, Body, ContentType=None,
+                   IfNoneMatch=None, IfMatch=None):
+        from botocore.exceptions import ClientError
+        if IfNoneMatch == "*" and Key in self.objects:
+            raise ClientError({"Error": {"Code": "PreconditionFailed"}}, "PutObject")
+        if IfMatch is not None and Key in self.objects and self._etag(Key) != IfMatch:
+            raise ClientError({"Error": {"Code": "PreconditionFailed"}}, "PutObject")
+        self.objects[Key] = Body
+        return {"ETag": self._etag(Key)}
 
 
-def test_ledger_refuses_when_worst_case_would_breach_the_ceiling():
-    led = budget.Ledger()
-    led.record("final_run", seconds=10800)          # ~$3.02
-    led.record("sweep_run", seconds=2700)           # ~$0.76
-    led.record("sweep_run", seconds=2700)
-    led.record("sweep_run", seconds=2700)           # ~$5.29 total
+def test_reservation_is_durable_before_launch():
+    """The worst case is committed BEFORE the instance exists."""
+    s3 = FakeS3()
+    r = budget.reserve(s3, "final_run", "1")
+    assert r["state"] == "reserved"
+    assert r["worst_case_usd"] == budget.worst_case_usd("final_run")
+    ledger, _ = budget.load(s3)
+    assert budget.committed_usd(ledger) == r["worst_case_usd"]
+
+
+def test_reservation_ids_are_idempotent():
+    """A retry after an ambiguous failure re-reserves the same slot."""
+    s3 = FakeS3()
+    a = budget.reserve(s3, "sweep_run", "attempt-1")
+    b = budget.reserve(s3, "sweep_run", "attempt-1")
+    assert b["already_held"] is True
+    assert a["reservation_id"] == b["reservation_id"]
+    ledger, _ = budget.load(s3)
+    assert len(ledger["reservations"]) == 1
+
+
+def test_crash_after_launch_leaves_the_worst_case_counted():
+    s3 = FakeS3()
+    budget.reserve(s3, "final_run", "crashed")
+    ledger, _ = budget.load(s3)
+    assert budget.committed_usd(ledger) == budget.worst_case_usd("final_run")
+    assert budget.unresolved(ledger)
+
+
+def test_reconciliation_replaces_worst_case_with_actual():
+    s3 = FakeS3()
+    budget.reserve(s3, "final_run", "1")
+    before = budget.committed_usd(budget.load(s3)[0])
+    budget.reconcile(s3, "final_run", "1", actual_seconds=600)
+    ledger, _ = budget.load(s3)
+    after = budget.committed_usd(ledger)
+    assert after < before
+    assert budget.unresolved(ledger) == []
+
+
+def test_an_unresolved_reservation_blocks_the_next_reservation():
+    s3 = FakeS3()
+    budget.reserve(s3, "sweep_run", "orphan")
+    with pytest.raises(SystemExit, match="still unresolved"):
+        budget.reserve(s3, "final_run", "next")
+
+
+def test_ceiling_refuses_the_reservation_that_would_breach_it():
+    s3 = FakeS3()
+    for i, stage in enumerate(["final_run", "sweep_run", "sweep_run", "sweep_run"]):
+        budget.reserve(s3, stage, f"a{i}")
+        budget.reconcile(s3, stage, f"a{i}",
+                         actual_seconds=budget.WATCHDOG_S[stage])
     with pytest.raises(SystemExit) as e:
-        led.check("final_run")
+        budget.reserve(s3, "final_run", "one-too-many")
     assert "over the $6.00 ceiling" in str(e.value)
     assert "cannot afford to fail" in str(e.value)
 
 
-def test_four_sequential_full_length_runs_are_refused():
+def test_four_sequential_full_length_final_runs_are_refused():
     """The exact case a per-instance watchdog cannot catch."""
-    led = budget.Ledger()
+    s3 = FakeS3()
     launched = 0
-    for _ in range(4):
+    for i in range(4):
         try:
-            led.check("final_run")
+            budget.reserve(s3, "final_run", f"r{i}")
         except SystemExit:
             break
-        led.record("final_run", seconds=budget.WATCHDOG_S["final_run"])
+        budget.reconcile(s3, "final_run", f"r{i}",
+                         actual_seconds=budget.WATCHDOG_S["final_run"])
         launched += 1
     assert launched < 4, "a $6 ceiling must not permit 4 x $3 runs"
 
 
-def test_spend_and_remaining_track_each_other():
-    led = budget.Ledger()
-    led.record("builder", seconds=600)
-    assert led.spent_usd > 0
-    assert led.remaining_usd == pytest.approx(budget.CEILING_USD - led.spent_usd)
+def test_reconciling_without_a_reservation_refuses():
+    with pytest.raises(SystemExit, match="an instance ran without one"):
+        budget.reconcile(FakeS3(), "final_run", "never-reserved", 100)
+
+
+def test_concurrent_writer_is_refused_by_the_conditional_write():
+    s3 = FakeS3()
+    budget.reserve(s3, "sweep_run", "a")
+    budget.reconcile(s3, "sweep_run", "a", 100)
+    ledger, stale_etag = budget.load(s3)
+    budget.reserve(s3, "sweep_run", "b")            # someone else moves first
+    with pytest.raises(SystemExit, match="ledger changed under this operation"):
+        budget._put(s3, ledger, stale_etag)
 
 
 def test_unreadable_ledger_is_not_treated_as_empty():
-    """Behavioural: a non-404 error must refuse, not reset spend to zero."""
     from botocore.exceptions import ClientError
 
     class DeniedS3:
@@ -409,33 +489,20 @@ def test_unreadable_ledger_is_not_treated_as_empty():
 
     with pytest.raises(SystemExit) as e:
         budget.load(DeniedS3())
-    assert "cannot read the spend ledger" in str(e.value)
     assert "restart the budget at zero" in str(e.value)
 
 
 def test_missing_ledger_is_an_empty_one():
-    """A genuine 404 IS absence -- the first run has no ledger yet."""
-    from botocore.exceptions import ClientError
-
-    class MissingS3:
-        def get_object(self, Bucket, Key):
-            raise ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
-
-    led = budget.load(MissingS3())
-    assert led.entries == [] and led.spent_usd == 0.0
+    s3 = FakeS3()
+    ledger, etag = budget.load(s3)
+    assert ledger["reservations"] == {} and etag is None
+    assert budget.remaining_usd(ledger) == budget.CEILING_USD
 
 
-def test_local_mirror_ahead_of_s3_refuses(tmp_path):
-    class FakeS3:
-        def get_object(self, Bucket, Key):
-            class B:
-                def read(self_inner):
-                    return b""
-            return {"Body": B()}
-    mirror = tmp_path / "ledger.jsonl"
-    mirror.write_text(json.dumps({"stage": "final_run", "usd": 3.0}) + "\n")
-    with pytest.raises(SystemExit, match="Spend may be unrecorded"):
-        budget.load(FakeS3(), local_mirror=mirror)
+def test_reservation_is_verified_by_readback():
+    src = (ROOT / "pipeline/budget.py").read_text()
+    assert "read-back differs from what was" in src
+    assert "back, _ = load(cli)" in src
 
 
 # --------------------------------------------------------------------------- #
@@ -565,3 +632,60 @@ def test_allowlist_review_by_is_still_in_the_future():
     review_by = datetime.date.fromisoformat(allow["review_by"])
     assert review_by > datetime.date(2026, 7, 31), \
         f"allowlist review_by {review_by} must be renewed before building"
+
+
+# --------------------------------------------------------------------------- #
+# validation-input hardening  (item 4)
+# --------------------------------------------------------------------------- #
+def test_nan_wer_cannot_pass_a_gate():
+    """NaN comparisons are always False, so a NaN would slip past `> cap` and
+    be reported as no regression at all."""
+    bad = wers(shona=float("nan"))
+    with pytest.raises(SystemExit, match="shona is NaN"):
+        orchestrate.evaluate_gates(bad, wers(), perfect(), zeros())
+
+
+def test_infinite_metric_is_refused():
+    with pytest.raises(SystemExit, match="is infinite"):
+        orchestrate.evaluate_gates(wers(oromo=float("inf")), wers(),
+                                   perfect(), zeros())
+
+
+def test_missing_language_cannot_pass():
+    partial = {l: 0.9 for l in LANGS if l != "shona"}
+    with pytest.raises(SystemExit, match="missing \\['shona'\\]"):
+        orchestrate.evaluate_gates(partial, wers(), perfect(), zeros())
+
+
+def test_extra_language_is_refused():
+    extra = dict(wers(), klingon=0.5)
+    with pytest.raises(SystemExit, match="unexpected \\['klingon'\\]"):
+        orchestrate.evaluate_gates(extra, wers(), perfect(), zeros())
+
+
+def test_non_numeric_metric_is_refused():
+    with pytest.raises(SystemExit, match="not numeric"):
+        orchestrate.evaluate_gates(wers(fula="0.9"), wers(), perfect(), zeros())
+
+
+def test_boolean_is_not_accepted_as_numeric():
+    with pytest.raises(SystemExit, match="not numeric"):
+        orchestrate.evaluate_gates(wers(ewe=True), wers(), perfect(), zeros())
+
+
+def test_negative_wer_is_refused():
+    with pytest.raises(SystemExit, match="below 0.0"):
+        orchestrate.evaluate_gates(wers(akan=-0.1), wers(), perfect(), zeros())
+
+
+@pytest.mark.parametrize("bad", [1.5, -0.01])
+def test_rates_outside_zero_one_are_refused(bad):
+    with pytest.raises(SystemExit):
+        orchestrate.evaluate_gates(wers(), wers(), perfect(shona=bad), zeros())
+    with pytest.raises(SystemExit):
+        orchestrate.evaluate_gates(wers(), wers(), perfect(), zeros(shona=bad))
+
+
+def test_a_non_mapping_is_refused():
+    with pytest.raises(SystemExit, match="not a mapping"):
+        orchestrate.evaluate_gates([0.9] * 9, wers(), perfect(), zeros())

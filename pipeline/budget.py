@@ -1,143 +1,192 @@
-"""A durable spend ledger, checked before every instance launch.
+"""Worst-case spend RESERVED before launch, reconciled after termination.
 
-A per-instance watchdog bounds ONE instance. It says nothing about the fourth
-instance in a sequence, or about a stage relaunched after a failure, and a plan
-that budgets $6 while enforcing only "4 hours each" is not enforcing $6 -- four
-sequential 4-hour g6.xlarge runs are $16.
+Recording spend after a stage finishes cannot bound anything: the process that
+would do the recording is the one that dies. A crash between `run-instances`
+and the ledger write leaves an instance burning money that no ledger knows
+about, and the next pre-launch check happily authorises another.
 
-So the ceiling is enforced where it can actually bind: a ledger that survives
-the process, appended to before and after every stage, and a pre-launch check
-that refuses when the WORST CASE of the next stage would exceed the ceiling.
-Worst case, not expected case: a stage that hangs until its watchdog fires
-costs its full watchdog, and a check against the expected cost would authorise
-a launch that cannot afford to fail.
+So the worst case is reserved BEFORE the instance exists and only reduced to
+actual once termination is confirmed. A crash after launch leaves the full
+worst case counted, which is the conservative direction: the budget shrinks by
+more than was really spent until someone reconciles it.
 
-The ledger lives in S3 so it outlives any single machine, with a local mirror
-so a network failure cannot silently reset the accounting to zero.
+Writes are conditional. Two operators running this concurrently would otherwise
+read-modify-write over each other and both see room for one more instance.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import time
-from dataclasses import dataclass, field
 from pathlib import Path
 
 BUCKET = "medzen-speech"
-LEDGER_KEY = "candidates/budget/b4-corrected-ledger.jsonl"
+CAMPAIGN = "b4-corrected"
+LEDGER_KEY = f"candidates/budget/{CAMPAIGN}/ledger.json"
 
-# eu-central-1 on-demand, USD/hour.
 RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
-
-# Per-stage watchdogs. Each is the worst case that stage can cost.
-WATCHDOG_S = {
-    "builder": 1800,          # last build took 8 min
-    "base_eval": 1800,        # 385 clips, one arm
-    "sweep_run": 2700,        # 100 steps + validation
-    "final_run": 10800,       # 600 steps + 6 checkpoint evaluations
-}
-STAGE_INSTANCE = {
-    "builder": "c6i.2xlarge",
-    "base_eval": "g6.xlarge",
-    "sweep_run": "g6.xlarge",
-    "final_run": "g6.xlarge",
-}
-
+WATCHDOG_S = {"builder": 1800, "base_eval": 1800,
+              "sweep_run": 2700, "final_run": 10800}
+STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_eval": "g6.xlarge",
+                  "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
 CEILING_USD = 6.00
 
 
 def worst_case_usd(stage: str) -> float:
-    """What this stage costs if it runs to its watchdog and then dies."""
     if stage not in WATCHDOG_S:
         raise ValueError(f"unknown stage {stage!r}")
-    return RATES[STAGE_INSTANCE[stage]] * WATCHDOG_S[stage] / 3600.0
+    return round(RATES[STAGE_INSTANCE[stage]] * WATCHDOG_S[stage] / 3600.0, 4)
 
 
-@dataclass
-class Ledger:
-    entries: list[dict] = field(default_factory=list)
-
-    @property
-    def spent_usd(self) -> float:
-        return round(sum(e.get("usd", 0.0) for e in self.entries), 4)
-
-    @property
-    def remaining_usd(self) -> float:
-        return round(CEILING_USD - self.spent_usd, 4)
-
-    def check(self, stage: str) -> dict:
-        """Refuse when the worst case of `stage` would breach the ceiling."""
-        wc = worst_case_usd(stage)
-        ok = (self.spent_usd + wc) <= CEILING_USD
-        verdict = {
-            "stage": stage, "instance": STAGE_INSTANCE[stage],
-            "watchdog_s": WATCHDOG_S[stage],
-            "worst_case_usd": round(wc, 4),
-            "already_spent_usd": self.spent_usd,
-            "remaining_usd": self.remaining_usd,
-            "would_total_usd": round(self.spent_usd + wc, 4),
-            "ceiling_usd": CEILING_USD,
-            "permitted": ok,
-        }
-        if not ok:
-            raise SystemExit(
-                f"REFUSING to launch {stage}: worst case ${wc:.2f} on top of "
-                f"${self.spent_usd:.2f} already spent would reach "
-                f"${self.spent_usd + wc:.2f}, over the ${CEILING_USD:.2f} "
-                "ceiling. This is the worst case deliberately -- a stage that "
-                "hangs until its watchdog fires costs this much, and a launch "
-                "that cannot afford to fail must not start.")
-        return verdict
-
-    def record(self, stage: str, seconds: float, instance: str | None = None,
-               note: str = "") -> dict:
-        inst = instance or STAGE_INSTANCE[stage]
-        usd = round(RATES[inst] * seconds / 3600.0, 4)
-        e = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-             "stage": stage, "instance": inst, "seconds": round(seconds, 1),
-             "usd": usd, "note": note}
-        self.entries.append(e)
-        return e
+def reservation_id(stage: str, attempt: str) -> str:
+    """Idempotent: the same stage and attempt always yield the same id, so a
+    retry after an ambiguous failure re-reserves the same slot instead of
+    double-counting it."""
+    return hashlib.sha256(f"{CAMPAIGN}/{stage}/{attempt}".encode()).hexdigest()[:24]
 
 
-def load(cli, local_mirror: Path | None = None) -> Ledger:
-    """Read the ledger. A missing object is an empty ledger; an UNREADABLE one
-    is not -- that would reset the accounting to zero exactly when something is
-    wrong."""
+def _empty() -> dict:
+    return {"campaign": CAMPAIGN, "ceiling_usd": CEILING_USD, "reservations": {}}
+
+
+def committed_usd(ledger: dict) -> float:
+    """Reserved-but-unreconciled counts at WORST CASE; reconciled at actual."""
+    total = 0.0
+    for r in ledger["reservations"].values():
+        if r["state"] == "cancelled":
+            continue
+        total += r["actual_usd"] if r["state"] == "reconciled" else r["worst_case_usd"]
+    return round(total, 4)
+
+
+def remaining_usd(ledger: dict) -> float:
+    return round(CEILING_USD - committed_usd(ledger), 4)
+
+
+def unresolved(ledger: dict) -> list[str]:
+    return [k for k, r in ledger["reservations"].items() if r["state"] == "reserved"]
+
+
+# --------------------------------------------------------------------------- #
+# durable IO, conditional
+# --------------------------------------------------------------------------- #
+def load(cli) -> tuple[dict, str | None]:
+    """Return (ledger, etag). An unreadable ledger REFUSES -- it is not empty."""
     from botocore.exceptions import ClientError
     try:
-        raw = cli.get_object(Bucket=BUCKET, Key=LEDGER_KEY)["Body"].read()
+        o = cli.get_object(Bucket=BUCKET, Key=LEDGER_KEY)
+        return json.loads(o["Body"].read()), o.get("ETag")
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code")
-        if code not in ("NoSuchKey", "404", "NotFound"):
+        if code in ("NoSuchKey", "404", "NotFound"):
+            return _empty(), None
+        raise SystemExit(
+            f"REFUSING: cannot read the spend ledger ({code}). An unreadable "
+            "ledger is not an empty one, and proceeding would restart the "
+            "budget at zero.")
+
+
+def _put(cli, ledger: dict, etag: str | None) -> None:
+    """Conditional write, then READ BACK. A put that returns 200 has not been
+    verified; the reservation only counts once it can be read."""
+    from botocore.exceptions import ClientError
+    body = (json.dumps(ledger, indent=2, sort_keys=True) + "\n").encode()
+    kw = {"Bucket": BUCKET, "Key": LEDGER_KEY, "Body": body,
+          "ContentType": "application/json"}
+    kw["IfMatch"] = etag if etag else None
+    if etag is None:
+        kw.pop("IfMatch")
+        kw["IfNoneMatch"] = "*"
+    try:
+        cli.put_object(**kw)
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code in ("PreconditionFailed", "ConditionalRequestConflict"):
             raise SystemExit(
-                f"REFUSING: cannot read the spend ledger ({code}). An "
-                "unreadable ledger is not an empty one, and proceeding would "
-                "restart the budget at zero.")
-        raw = b""
-    led = Ledger([json.loads(l) for l in raw.decode().splitlines() if l.strip()])
-    if local_mirror and local_mirror.exists():
-        mirror = [json.loads(l) for l in
-                  local_mirror.read_text().splitlines() if l.strip()]
-        if len(mirror) > len(led.entries):
-            raise SystemExit(
-                f"REFUSING: local ledger mirror has {len(mirror)} entries but "
-                f"S3 has {len(led.entries)}. Spend may be unrecorded; "
-                "reconcile before launching anything.")
-    return led
+                "REFUSING: the ledger changed under this operation. Another "
+                "operator is running, and two concurrent read-modify-writes "
+                "would each see room for one more instance.")
+        raise
+    back, _ = load(cli)
+    if back != ledger:
+        raise SystemExit("REFUSING: ledger read-back differs from what was "
+                         "written; the reservation is not durable.")
 
 
-def append(cli, entry: dict, local_mirror: Path | None = None) -> None:
-    """Append durably: S3 first, then the mirror.
+def reserve(cli, stage: str, attempt: str) -> dict:
+    """Reserve the worst case BEFORE launching. Refuses if it would breach the
+    ceiling, or if any earlier reservation is still unresolved."""
+    ledger, etag = load(cli)
+    rid = reservation_id(stage, attempt)
 
-    Read-modify-write is not atomic, so this is not safe against concurrent
-    writers -- which is why the orchestrator runs stages strictly sequentially
-    and never launches two instances at once.
-    """
-    led = load(cli)
-    led.entries.append(entry)
-    body = "".join(json.dumps(e) + "\n" for e in led.entries).encode()
-    cli.put_object(Bucket=BUCKET, Key=LEDGER_KEY, Body=body,
-                   ContentType="application/x-ndjson")
-    if local_mirror:
-        local_mirror.parent.mkdir(parents=True, exist_ok=True)
-        local_mirror.write_bytes(body)
+    existing = ledger["reservations"].get(rid)
+    if existing:
+        # Idempotent: the same stage+attempt is the same slot.
+        return {"reservation_id": rid, "already_held": True, **existing}
+
+    stale = unresolved(ledger)
+    if stale:
+        raise SystemExit(
+            f"REFUSING: {len(stale)} reservation(s) are still unresolved "
+            f"({stale[:3]}). An unresolved reservation means an instance may "
+            "still be running or may have died without reconciliation; "
+            "launching another would spend against a budget nobody has "
+            "verified.")
+
+    wc = worst_case_usd(stage)
+    if committed_usd(ledger) + wc > CEILING_USD:
+        raise SystemExit(
+            f"REFUSING to launch {stage}: worst case ${wc:.2f} on top of "
+            f"${committed_usd(ledger):.2f} committed would reach "
+            f"${committed_usd(ledger) + wc:.2f}, over the ${CEILING_USD:.2f} "
+            "ceiling. A launch that cannot afford to fail must not start.")
+
+    ledger["reservations"][rid] = {
+        "stage": stage, "attempt": attempt,
+        "instance_type": STAGE_INSTANCE[stage],
+        "watchdog_s": WATCHDOG_S[stage],
+        "worst_case_usd": wc, "actual_usd": None,
+        "state": "reserved",
+        "reserved_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    _put(cli, ledger, etag)
+    return {"reservation_id": rid, "already_held": False,
+            **ledger["reservations"][rid],
+            "committed_after": committed_usd(ledger),
+            "remaining_after": remaining_usd(ledger)}
+
+
+def reconcile(cli, stage: str, attempt: str, actual_seconds: float,
+              instance_id: str | None = None) -> dict:
+    """After confirmed termination, replace the worst case with the actual."""
+    ledger, etag = load(cli)
+    rid = reservation_id(stage, attempt)
+    r = ledger["reservations"].get(rid)
+    if r is None:
+        raise SystemExit(f"REFUSING: no reservation {rid} for {stage}/{attempt}; "
+                         "an instance ran without one.")
+    if r["state"] == "reconciled":
+        return {"reservation_id": rid, **r}
+    actual = round(RATES[r["instance_type"]] * actual_seconds / 3600.0, 4)
+    r.update({"state": "reconciled", "actual_seconds": round(actual_seconds, 1),
+              "actual_usd": actual, "instance_id": instance_id,
+              "reconciled_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+    _put(cli, ledger, etag)
+    return {"reservation_id": rid, **r,
+            "committed_after": committed_usd(ledger),
+            "remaining_after": remaining_usd(ledger)}
+
+
+def cancel(cli, stage: str, attempt: str, why: str) -> dict:
+    """Release a reservation for an instance that provably never launched."""
+    ledger, etag = load(cli)
+    rid = reservation_id(stage, attempt)
+    r = ledger["reservations"].get(rid)
+    if r is None:
+        raise SystemExit(f"REFUSING: no reservation {rid} to cancel")
+    if r["state"] == "reconciled":
+        raise SystemExit("REFUSING: cannot cancel a reconciled reservation")
+    r.update({"state": "cancelled", "cancel_reason": why,
+              "cancelled_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+    _put(cli, ledger, etag)
+    return {"reservation_id": rid, **r}
