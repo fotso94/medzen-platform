@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import json
 import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -141,6 +142,13 @@ def main() -> int:
             **audit_language_rows(tokenizer, language, rows),
         }
 
+    root = Path(__file__).resolve().parent.parent
+    git_sha = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    git_dirty = bool(subprocess.run(
+        ["git", "-C", str(root), "status", "--porcelain"],
+        capture_output=True, text=True, check=True).stdout.strip())
     record = {
         "record": "VAL-2026-001-LABEL-CONTRACT-AUDIT",
         "recorded_utc":
@@ -158,6 +166,12 @@ def main() -> int:
         "frozen_validation_record_sha256": frozen_sha,
         "model_label_limit": MODEL_LABEL_LIMIT,
         "generation_cap": MAX_NEW_TOKENS,
+        "verifier": {
+            "path": "scripts/audit_validation_label_contract.py",
+            "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            "git_sha": git_sha,
+            "git_dirty": git_dirty,
+        },
         "per_language": per_language,
         "totals": {
             "rows": sum(v["rows"] for v in per_language.values()),
