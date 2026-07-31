@@ -302,3 +302,32 @@ def test_eval_write_denial_is_exercised_not_assumed(rendered):
     assert "A3 guardrail breached" in code
     assert "EVAL DENY INTACT" in code
     assert "failed for the WRONG reason" in code
+
+
+# --------------------------------------------------------------------------- #
+# publishing the bundle
+# --------------------------------------------------------------------------- #
+def test_publish_bundle_has_a_dry_run_that_uploads_nothing():
+    """An approval packet must quote the TAR hash BEFORE anything is written.
+    The archive is byte-reproducible, so the dry-run hash is the hash a later
+    publish produces."""
+    src = (ROOT / "scripts/publish_bundle.py").read_text()
+    assert '"--dry-run", action="store_true"' in src
+    assert "DRY RUN — nothing uploaded" in src
+    i_dry = src.index("if a.dry_run:")
+    i_upload = src.index("c.upload_file(str(bundle)")
+    assert i_dry < i_upload, "the dry-run must return before any upload"
+
+
+def test_publish_bundle_still_refuses_a_dirty_tree():
+    """The comment explains that --allow-dirty deliberately does not exist, so
+    check the parser's actual arguments rather than the file's text."""
+    import ast
+    src = (ROOT / "scripts/publish_bundle.py").read_text()
+    assert "REFUSING: working tree is dirty" in src
+    flags = {n.args[0].value for n in ast.walk(ast.parse(src))
+             if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+             and n.func.attr == "add_argument" and n.args
+             and isinstance(n.args[0], ast.Constant)}
+    assert "--allow-dirty" not in flags
+    assert "--dry-run" in flags

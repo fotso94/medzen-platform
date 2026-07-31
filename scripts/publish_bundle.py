@@ -56,6 +56,12 @@ def sha256_bytes(b: bytes) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--verify", action="store_true")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="build the archive and print GIT_SHA/TAR_SHA256 WITHOUT "
+                         "uploading. The archive is byte-reproducible, so the "
+                         "hash printed here is the hash a later publish will "
+                         "produce -- which lets an approval packet quote it "
+                         "before anything is written to S3.")
     # There is deliberately no --allow-dirty. A bundle that does not correspond
     # to a commit cannot be verified by anything downstream, and an image tagged
     # with that commit would be a false record. Commit first.
@@ -142,6 +148,12 @@ def main() -> int:
         # verified a moment earlier, and two concurrent publishes race.
         base = f"{PREFIX}/{sha}"
         manifest["tar_sha256"] = sha256_bytes(bundle.read_bytes())
+        if a.dry_run:
+            print(f"\nDRY RUN — nothing uploaded")
+            print(f"GIT_SHA={sha}")
+            print(f"TAR_SHA256={manifest['tar_sha256']}")
+            print(f"  would publish to s3://{BUCKET}/{base}/")
+            return 0
         c.upload_file(str(bundle), BUCKET, f"{base}/medzen_code.tgz")
         print(f"  uploaded {base}/medzen_code.tgz ({bundle.stat().st_size} bytes)")
         # BUNDLE.json last: its presence means the pair is complete and matched
