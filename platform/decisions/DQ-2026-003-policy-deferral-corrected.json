@@ -4,7 +4,9 @@
   "decision_type": "policy_deferral",
   "human_review_performed": false,
   "authorized_by_role": "platform-owner",
-  "authorized_utc": "2026-07-31T08:19:27Z",
+  "authorized_utc": "2026-07-31T08:28:00Z",
+  "authorization_note": "Approved as an Option B experiment-scoped deferral policy only. The 19 unreviewed anomalies must be excluded from this non-promotable run. This approval does NOT classify any row as defective or valid, and does NOT constitute human listening or data-quality review.",
+  "authorization_provenance": "generated at the timestamp above from the instruction recorded in authorization_note. No authorization metadata from any earlier generation of this policy is retained.",
   "statement": "All 19 flagged rows are deferred from this experiment by policy. No human has listened to any of them, so none is classified as defective, valid, or decoder-incompatible -- only as unreviewed. Deferral is a decision about this run, not about the data.",
   "scope": {
     "experiment": "b4-whisper-large-v3-lora",
@@ -69,7 +71,7 @@
     "tokenizer_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
     "tokenizer_cache_manifest_sha256": "81d105ee60c26d88817edf6e4ad4e8e946c6a3a0e96710156096c1fed1b65c51",
     "deferred_checksums_sha256": "5685a80bf6971587deabbf7ec8f5acd70bdb72e64d9a497d79edb8a30a993d62",
-    "policy_repo_git_commit": "23d487aa0681e9cbfe8b808a19e9998d73c5c89c"
+    "policy_repo_git_commit": "90ec0516c1d775fe67a7d5f492da98793c25c555"
   },
   "content_policy": "checksums and numeric metrics only; no transcript, speaker, session, filepath or content excerpt appears in this file",
   "exclusions": [

@@ -1,0 +1,195 @@
+"""Deterministic ordering, gating and selection for the Option B run.
+
+Pure decision logic, deliberately free of AWS and torch so every rule here is
+testable without spending anything. The launcher calls into it; it never calls
+out to a cloud.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+
+# The nine speaker/session-disjoint sets, frozen in VAL-2026-001.
+VALIDATION_LANGUAGES = ("acholi", "akan", "amharic", "ewe", "fula", "lingala",
+                        "luganda", "oromo", "shona")
+
+# Gates. FOUR of them -- an earlier draft said "both gates" and named two.
+MAX_LANGUAGE_REGRESSION = 0.05      # absolute WER, vs the in-run base arm
+REQUIRED_EOS_RATE = 1.0
+REQUIRED_CAP_HIT_RATE = 0.0
+
+LR_CANDIDATES = (1e-4, 3e-4, 5e-4)   # 1e-3 excluded: the failed run's value
+SWEEP_STEPS = 100
+SWEEP_COMPARISON_CHECKPOINT = 100
+FINAL_RUN_RESUMES_SWEEP = False      # decided in advance; see plan section 5
+SEED = 0
+
+
+def macro_wer(per_language: dict[str, float]) -> float:
+    """Unweighted mean across the nine languages.
+
+    Unweighted so shona's 15 rows count as much as akan's 72. Weighting by rows
+    would let the two largest sets decide the verdict.
+    """
+    missing = set(VALIDATION_LANGUAGES) - set(per_language)
+    if missing:
+        raise SystemExit(f"REFUSING: no result for {sorted(missing)}; a macro "
+                         "average over a subset is not the macro average")
+    return sum(per_language[l] for l in VALIDATION_LANGUAGES) / len(VALIDATION_LANGUAGES)
+
+
+def worst_regression(candidate: dict[str, float], base: dict[str, float]
+                     ) -> tuple[str, float]:
+    """The language that fared worst against the in-run base arm."""
+    worst, val = None, float("-inf")
+    for l in VALIDATION_LANGUAGES:
+        d = candidate[l] - base[l]
+        if d > val:
+            worst, val = l, d
+    return worst, val
+
+
+def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
+                   eos_rate: dict[str, float], cap_hit_rate: dict[str, float]
+                   ) -> dict:
+    """All FOUR gates. Every one is hard; none is advisory."""
+    failures = []
+
+    bad_eos = {l: r for l, r in eos_rate.items() if r < REQUIRED_EOS_RATE}
+    if bad_eos:
+        failures.append(f"EOS rate below {REQUIRED_EOS_RATE} for {bad_eos}")
+
+    bad_cap = {l: r for l, r in cap_hit_rate.items() if r > REQUIRED_CAP_HIT_RATE}
+    if bad_cap:
+        failures.append(f"cap-hit rate above {REQUIRED_CAP_HIT_RATE} for {bad_cap}")
+
+    lang, reg = worst_regression(candidate_wer, base_wer)
+    if reg > MAX_LANGUAGE_REGRESSION:
+        failures.append(
+            f"{lang} regressed {reg:+.4f} WER against the base arm, over the "
+            f"{MAX_LANGUAGE_REGRESSION} cap -- an aggregate improvement must "
+            "not hide one language collapsing")
+
+    cand_macro, base_macro = macro_wer(candidate_wer), macro_wer(base_wer)
+    if cand_macro > base_macro:
+        failures.append(f"macro WER {cand_macro:.4f} is worse than the base "
+                        f"macro {base_macro:.4f}")
+
+    return {
+        "macro_wer": round(cand_macro, 6),
+        "base_macro_wer": round(base_macro, 6),
+        "worst_language": lang,
+        "worst_language_regression": round(reg, 6),
+        "min_eos_rate": min(eos_rate.values()) if eos_rate else None,
+        "max_cap_hit_rate": max(cap_hit_rate.values()) if cap_hit_rate else None,
+        "gates": {"eos_rate": not bad_eos, "cap_hit_rate": not bad_cap,
+                  "per_language_regression": reg <= MAX_LANGUAGE_REGRESSION,
+                  "macro_not_worse": cand_macro <= base_macro},
+        "passed": not failures,
+        "failures": failures,
+    }
+
+
+def select_lr(results: list[dict]) -> dict:
+    """Pick the learning rate. Deterministic, including under ties.
+
+    `results`: [{"lr": float, "gate": <evaluate_gates output>}, ...]
+
+    Ties are not hypothetical -- macro WER is stored rounded, so two candidates
+    can genuinely present the same value. Without a stated rule the winner
+    would depend on dict ordering, which is not a decision anyone made.
+    """
+    eligible = [r for r in results if r["gate"]["passed"]]
+    if not eligible:
+        raise SystemExit(
+            "REFUSING: no learning rate passed all four gates. Selecting the "
+            "least-bad of a failing set would produce a candidate that no gate "
+            "endorsed.\n  " + "\n  ".join(
+                f"lr={r['lr']:.0e}: {'; '.join(r['gate']['failures'])}"
+                for r in results))
+    # 1) lowest macro WER  2) smallest worst-language regression  3) lower LR
+    ranked = sorted(eligible, key=lambda r: (r["gate"]["macro_wer"],
+                                             r["gate"]["worst_language_regression"],
+                                             r["lr"]))
+    best = ranked[0]
+    tied = [r for r in ranked
+            if r["gate"]["macro_wer"] == best["gate"]["macro_wer"]]
+    return {
+        "selected_lr": best["lr"],
+        "macro_wer": best["gate"]["macro_wer"],
+        "worst_language_regression": best["gate"]["worst_language_regression"],
+        "candidates_evaluated": len(results),
+        "candidates_passing_all_four_gates": len(eligible),
+        "tie_broken": len(tied) > 1,
+        "tie_break_rule": ("lowest macro WER, then smallest worst-language "
+                           "regression, then lower learning rate"),
+        "ranking": [{"lr": r["lr"], "macro_wer": r["gate"]["macro_wer"],
+                     "worst_regression": r["gate"]["worst_language_regression"]}
+                    for r in ranked],
+        "final_run_resumes_this_checkpoint": FINAL_RUN_RESUMES_SWEEP,
+        "final_run_note": ("the final run starts FROM SCRATCH at the selected "
+                           "learning rate; resuming would give the winner a "
+                           f"{SWEEP_STEPS}-step head start no other candidate "
+                           "had"),
+    }
+
+
+# --------------------------------------------------------------------------- #
+# base arm reuse
+# --------------------------------------------------------------------------- #
+def base_arm_key(image_digest: str, gen_fingerprint: str, evaluator_sha: str,
+                 manifest_hashes: dict[str, str], normalization: dict[str, str]
+                 ) -> str:
+    """Identity of a base evaluation. Reuse is valid only for an exact match.
+
+    The base arm is evaluated ONCE, before the sweep, and reused across all
+    four runs -- but only while every input that could move its numbers is
+    identical. Anything else and it is a different measurement wearing the same
+    name.
+    """
+    payload = {"image_digest": image_digest, "generation": gen_fingerprint,
+               "evaluator_sha256": evaluator_sha,
+               "manifests": dict(sorted(manifest_hashes.items())),
+               "normalization": dict(sorted(normalization.items()))}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def may_reuse_base(stored: dict, current_key: str) -> bool:
+    if stored.get("base_arm_key") != current_key:
+        raise SystemExit(
+            "REFUSING to reuse the base evaluation: its identity key does not "
+            "match the current configuration. Image digest, generation config, "
+            "evaluator hash, manifests or normalization changed, so the stored "
+            "numbers describe a different measurement.")
+    return True
+
+
+# --------------------------------------------------------------------------- #
+# artifact prefixes
+# --------------------------------------------------------------------------- #
+def evaluation_prefix(training_run_id: str, step: int | str) -> str:
+    if not training_run_id or "/" in training_run_id:
+        raise ValueError(f"bad training_run_id {training_run_id!r}")
+    return f"candidates/evaluations/{training_run_id}/checkpoint-{step}/"
+
+
+def require_absent(cli, bucket: str, prefix: str) -> None:
+    """Fail closed: an occupied prefix is never written to.
+
+    An empty listing is required, and a listing that ERRORS is not an empty
+    one -- treating an API failure as absence is how the first evaluation
+    launch nearly overwrote a record it could not read.
+    """
+    from botocore.exceptions import ClientError
+    try:
+        page = cli.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=1)
+    except ClientError as e:
+        raise SystemExit(
+            f"REFUSING: cannot determine whether {prefix} is empty "
+            f"({e.response.get('Error', {}).get('Code')}). An error is not an "
+            "absence.")
+    if page.get("KeyCount", 0) > 0:
+        raise SystemExit(
+            f"REFUSING: s3://{bucket}/{prefix} already contains objects. "
+            "Checkpoint and evaluation prefixes are write-once; overwriting "
+            "would destroy the evidence for a run that already happened.")

@@ -273,6 +273,16 @@ for sev, cve, pkg in sorted(waived):
     print(f"  {sev:<9} {cve:<18} {pkg} {w['package_version']}  "
           f"(reachable={str(w.get('reachable')).lower()}, expires {w['expires']})")
 
+# Emitted so the image record can report RAW and UNWAIVED counts separately.
+# A waived CVE is still in the image; a record showing zero because everything
+# has a waiver would hide an exception the day it expires.
+with open("/tmp/waived.json", "w") as fh:
+    json.dump([{"cve": cve, "severity": sev, "package": pkg,
+                "package_version": waivers[cve]["package_version"],
+                "expires": waivers[cve]["expires"],
+                "reachable": waivers[cve].get("reachable")}
+               for sev, cve, pkg in sorted(waived)], fh)
+
 # Entries that match nothing in this scan are stale and must be pruned. Leaving
 # them is how an allowlist quietly becomes a list of things nobody checks.
 matched = {c for _, c, _ in waived} | {c for _, c, _, _ in invalid}
@@ -327,14 +337,80 @@ import json, subprocess, sys
 tag, digest, repo, scan_rc = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
 size = subprocess.run(["docker", "image", "inspect", f"{repo}:{tag}", "--format", "{{.Size}}"],
                       capture_output=True, text=True).stdout.strip()
+def attr(f, k):
+    return next((a["value"] for a in f.get("attributes", []) if a["key"] == k), None)
+
 try:
     d = json.load(open("/tmp/scan.json"))
     fi = d.get("imageScanFindings", {})
-    scan = {"status": d.get("imageScanStatus", {}).get("status"),
-            "severity_counts": fi.get("findingSeverityCounts")
-                               or fi.get("enhancedFindingSeverityCounts") or {}}
+    raw = fi.get("findingSeverityCounts") or \
+        fi.get("enhancedFindingSeverityCounts") or {}
+    findings = [{"cve": f["name"], "severity": f["severity"],
+                 "package": attr(f, "package_name"),
+                 "package_version": attr(f, "package_version")}
+                for f in fi.get("findings", [])]
+    try:
+        waived = json.load(open("/tmp/waived.json"))
+    except Exception:
+        waived = []
+    wset = {(w["cve"], w.get("package"), w.get("package_version"))
+            for w in waived}
+    unwaived = [f for f in findings
+                if (f["cve"], f["package"], f["package_version"]) not in wset]
+    unwaived_counts = {}
+    for f in unwaived:
+        unwaived_counts[f["severity"]] = unwaived_counts.get(f["severity"], 0) + 1
+    scan = {
+        "status": d.get("imageScanStatus", {}).get("status"),
+        # RAW counts, exactly as the scanner reported them. These are NEVER
+        # reduced to zero because a finding has a waiver -- a waived CVE is
+        # still present in the image, and a record that hides it would let an
+        # expiring exception pass unnoticed.
+        "raw_severity_counts": raw,
+        "raw_total_findings": len(findings),
+        "waived_findings": len(waived),
+        "waived_detail": waived,
+        # What the gate actually requires to be empty.
+        "unwaived_severity_counts": unwaived_counts,
+        "unwaived_total": len(unwaived),
+        "unwaived_detail": unwaived,
+        "gate_requires": "zero unwaived findings at any gated severity",
+        "note": ("waivers are exact CVE + package + package_version matches "
+                 "with an unexpired review_by; raw counts above are the "
+                 "scanner's, not the gate's"),
+        # kept for backward compatibility with earlier records
+        "severity_counts": raw,
+    }
 except Exception as e:
     scan = {"error": f"{type(e).__name__}: {e}"}
+
+# ---- dependency provenance ------------------------------------------------
+def sh(*cmd):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r.stdout.strip() if r.returncode == 0 else None
+
+import hashlib, pathlib as _pl
+req = _pl.Path("/opt/boot/src/requirements.txt")
+freeze = sh("docker", "run", "--rm", "--entrypoint", "python",
+            f"{repo}:{tag}", "-m", "pip", "freeze")
+vers = sh("docker", "run", "--rm", "--entrypoint", "python", f"{repo}:{tag}",
+          "-c", ("import json,torch,transformers,peft;"
+                 "print(json.dumps({'torch':torch.__version__,"
+                 "'cuda_build':torch.version.cuda,"
+                 "'transformers':transformers.__version__,"
+                 "'peft':peft.__version__}))"))
+base_digest = sh("bash", "-c",
+                 "grep -oE 'python:3[^ ]*@sha256:[0-9a-f]{64}' "
+                 "/opt/boot/src/pipeline/Dockerfile.trainer | head -1")
+deps = {
+    "requirements_sha256": (hashlib.sha256(req.read_bytes()).hexdigest()
+                            if req.exists() else None),
+    "base_image": base_digest,
+    "runtime_versions": json.loads(vers) if vers else None,
+    "installed_packages": (freeze.splitlines() if freeze else None),
+    "installed_package_count": (len(freeze.splitlines()) if freeze else None),
+    "inventory_source": "pip freeze inside the built image",
+}
 print(json.dumps({
     "repository": "medzen-trainer",
     "tag": tag,
@@ -342,6 +418,7 @@ print(json.dumps({
     "digest": digest,
     "image_bytes": int(size) if size.isdigit() else None,
     "scan": scan,
+    "dependencies": deps,
     "adoptable": scan_rc == 0,
     "pin": f"{repo}@{digest}",
 }, indent=2))

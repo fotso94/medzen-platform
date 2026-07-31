@@ -903,7 +903,7 @@ def main() -> int:
 
     import mlflow
     import torch
-    from peft import LoraConfig, get_peft_model
+    from peft import LoraConfig, TaskType, get_peft_model
     from transformers import (Seq2SeqTrainer, Seq2SeqTrainingArguments,
                               WhisperForConditionalGeneration, WhisperProcessor)
 
@@ -969,7 +969,12 @@ def main() -> int:
     # dynamically: a run must train on a reviewed, explicitly listed set, or
     # refuse. Silently shrinking the corpus at runtime is how two runs quoting
     # the same fingerprint end up having trained on different data.
+    from pipeline.generation import config_fingerprint
     from pipeline.label_length import decoder_start_id, label_lengths
+
+    GEN_FINGERPRINT = config_fingerprint()
+    print(f"  generation  config fingerprint {GEN_FINGERPRINT[:16]} "
+          "(shared by training, smoke and evaluation)")
 
     # One definition, cross-checked between tokenizer and model. If these ever
     # disagree the run stops here rather than training on a shifted objective.
@@ -1052,8 +1057,13 @@ def main() -> int:
     model.config.forced_decoder_ids = None
     model.config.suppress_tokens = []
 
+    # task_type was unset, so PEFT fell back to a generic wrapper rather than
+    # the seq2seq one. Whisper is an encoder-decoder model; naming that lets
+    # PEFT wire label shifting and generation the way the architecture needs,
+    # instead of leaving it to whatever the default happens to do.
     peft_cfg = LoraConfig(r=a.rank, lora_alpha=a.rank * 2, lora_dropout=0.05,
-                          bias="none", target_modules=["q_proj", "v_proj"])
+                          bias="none", target_modules=["q_proj", "v_proj"],
+                          task_type=TaskType.SEQ_2_SEQ_LM)
     model = get_peft_model(model, peft_cfg)
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
@@ -1063,6 +1073,8 @@ def main() -> int:
     params = {
         "base_model": a.base_model, "base_revision": rev,
         "lora_rank": a.rank, "lora_target": "q_proj,v_proj",
+        "lora_task_type": str(TaskType.SEQ_2_SEQ_LM),
+        "generation_config_fingerprint": GEN_FINGERPRINT,
         "lr": a.lr, "batch_size": a.batch_size, "grad_accum": a.grad_accum,
         "max_steps": a.max_steps, "temperature_sampling": a.temperature,
         "seed": a.seed, "device": device, "bf16": use_bf16,
