@@ -1,0 +1,158 @@
+{
+  "record": "DIAG-2026-002-AMHARIC-DECODE-COMPATIBILITY",
+  "recorded_utc": "2026-07-31T20:28:14Z",
+  "status": "COMPLETED_NO_VIABLE_DECODE_STRATEGY",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "training_steps": 0,
+  "campaign_run": "b4-amharic-decode-80756890fc17",
+  "attempt": "1",
+  "execution": {
+    "instance_id": "i-0874900ade14fbaae",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand direct EC2",
+    "eks_involved": false,
+    "spot_involved": false,
+    "launched_utc": "2026-07-31T18:44:49Z",
+    "container_runtime_seconds": 5102.7,
+    "aws_observed_seconds": 6103.9,
+    "actual_usd": 1.7064,
+    "exit_status": 0,
+    "root_volume_id": "vol-0a2f0a021d3e3fee3",
+    "root_volume_deleted": true
+  },
+  "executed_provenance": {
+    "git_sha": "80756890fc17b16a88a2616813f90d15c33c975d",
+    "bundle_tar_sha256": "203310f6b0fcf042a543d658754006310d5dd5a6e2b60bf9359672fdd90c79a6",
+    "image_digest": "sha256:d1ab55356c473f2d342523d0a7274a39068644f41566e822bced01681c1e5ec3",
+    "stage_descriptor_sha256": "51f6f8c7d6fe87fd3ea5794363864dd2a4df6b311206aadb9b337305cb63472d",
+    "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "amharic_manifest_sha256": "7935560ca958dfb8aff1985829108cc2a5fde9b1cf49c0690d96299b3800643a",
+    "retained_adapter_sha256": "b9abbbd9c9e7a38b2ca62370308a04991fa32ea089a450bf6f715fe519467eac",
+    "retained_adapter_tree_sha256": "5e8ddd18291911c776974fd09cdb291f1bf79da200de657b1159da2b7021ac94",
+    "strategy_fingerprint": "ee98427d30b9495ec70978447af22b9079e264d28d4c812877a83e0eca1fabb0",
+    "transformers": "5.14.1",
+    "torch": "2.13.0+cu130",
+    "peft": "0.20.0",
+    "device": "cuda"
+  },
+  "artifacts": {
+    "decode_key": "s3://medzen-speech/candidates/evaluations/b4-amharic-decode-80756890fc17/attempt-1/decode_compatibility/evaluations/decode-compatibility.json",
+    "decode_sha256": "e00f8a97bb4d0a17d16a5cc730404321a2cc4f29e912ce5767d735b235b18d9a",
+    "container_result_sha256": "72dc7afd0ae7dbb94175e35126b717ce72841d7aafb37681ffdf4484dd2a9497",
+    "stage_result_sha256": "37fba671bbdde67942aebc8d48bdbb85d7593c6e422c65f2748ee81316c10f4a",
+    "mlflow_db_key": "s3://medzen-speech/mlflow/snapshots/b4-amharic-decode-80756890fc17/attempt-1/amharic-decode-compatibility/mlflow.db",
+    "mlflow_db_sha256": "7acc86a8ca55fe9b67a5ecb96c9bf4fe750f5661c5e925455b114eecd097a4d5",
+    "mlflow_runs_finished": 2,
+    "registered_models": 0
+  },
+  "strategies": {
+    "greedy_v1": {
+      "base": {
+        "wer": 1.0565,
+        "cer": 1.0978,
+        "eos_rate": 0.0,
+        "cap_hit_rate": 1.0,
+        "eos_rows": 0,
+        "cap_hit_rows": 25,
+        "repeated_bigram_rate_mean": 0.990706,
+        "median_latency_seconds": 10.3599
+      },
+      "retained_1e_4": {
+        "wer": 1.2383,
+        "cer": 1.2291,
+        "eos_rate": 0.12,
+        "cap_hit_rate": 0.88,
+        "eos_rows": 3,
+        "cap_hit_rows": 22,
+        "repeated_bigram_rate_mean": 0.885428,
+        "median_latency_seconds": 16.7827
+      },
+      "passed": false
+    },
+    "whisper_fallback_v1": {
+      "base": {
+        "wer": 1.1584,
+        "cer": 1.0346,
+        "eos_rate": 0.4,
+        "cap_hit_rate": 0.6,
+        "eos_rows": 10,
+        "cap_hit_rows": 15,
+        "repeated_bigram_rate_mean": 0.678341,
+        "median_latency_seconds": 64.227
+      },
+      "retained_1e_4": {
+        "wer": 1.2562,
+        "cer": 1.3033,
+        "eos_rate": 0.8,
+        "cap_hit_rate": 0.2,
+        "eos_rows": 20,
+        "cap_hit_rows": 5,
+        "repeated_bigram_rate_mean": 0.419422,
+        "median_latency_seconds": 91.3496
+      },
+      "passed": false
+    },
+    "beam5_v1": {
+      "base": {
+        "wer": 1.6997,
+        "cer": 1.1706,
+        "eos_rate": 0.32,
+        "cap_hit_rate": 0.68,
+        "eos_rows": 8,
+        "cap_hit_rows": 17,
+        "repeated_bigram_rate_mean": 0.967569,
+        "median_latency_seconds": 17.0084
+      },
+      "retained_1e_4": {
+        "wer": 1.6226,
+        "cer": 1.2536,
+        "eos_rate": 0.2,
+        "cap_hit_rate": 0.8,
+        "eos_rows": 5,
+        "cap_hit_rows": 20,
+        "repeated_bigram_rate_mean": 0.926737,
+        "median_latency_seconds": 23.0546
+      },
+      "passed": false
+    }
+  },
+  "selection": {
+    "selected_strategy": null,
+    "training_authorised": false,
+    "reason": "No strategy satisfied EOS=1.0, cap-hit=0.0 and the predeclared adapter/base WER limits for both arms."
+  },
+  "conclusion": {
+    "confirmed": "Whisper fallback materially reduces repetition and improves termination, especially for the retained adapter, but still leaves 5 of 25 adapter rows and 15 of 25 base rows at the token cap and does not improve adapter WER.",
+    "ruled_out": [
+      "greedy decoding as the sole cause",
+      "beam search as a viable correction",
+      "the predeclared Whisper fallback contract as a complete correction"
+    ],
+    "not_claimed": "No tested decode contract is safe enough for training authorization, model selection, promotion or deployment.",
+    "next_branch": "Investigate Amharic data/model compatibility and exposure-bias risk under a new predeclared plan. Do not launch another sweep, weaken the Amharic gate or drop Amharic."
+  },
+  "operator_recovery": {
+    "required": true,
+    "reason": "The desktop observer lost DNS after the container completed; AWS execution and immutable container artifacts were unaffected.",
+    "recovery_git_sha": "1d3a379cf93320a3018f3add297628dfa8f3aa5c",
+    "no_instance_launched_or_terminated_by_recovery": true,
+    "mlflow_original_error_preserved": true
+  },
+  "content_policy": "aggregate numeric metrics only; no transcript, token sequence, row identifier, checksum, speaker, session or audio persisted",
+  "cleanup": {
+    "active_medzen_b4_instances": 0,
+    "active_gpu_instances": 0,
+    "unattached_medzen_b4_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0,
+    "all_reservations_reconciled": true,
+    "campaign_actual_usd": 1.7539,
+    "campaign_ceiling_usd": 2.25
+  },
+  "base_v5_status": {
+    "b4_complete": false,
+    "b5_blocked": true
+  }
+}

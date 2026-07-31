@@ -1,6 +1,6 @@
 # PLAN-2026-004 - B4 Amharic decode compatibility experiment
 
-**Status: PREPARED, NOT EXECUTED.**
+**Status: COMPLETED — NO VIABLE STRATEGY; TRAINING NOT AUTHORISED.**
 
 This is a no-training, non-promotable experiment. It may identify the decode
 contract that a future corrected B4 run must use, but it cannot select a model,
@@ -94,3 +94,28 @@ B4 remains incomplete. Even a successful decode strategy still requires the
 Base v5 multilingual training mix, successful final run, Spot interruption and
 resume proof, adapter merge, CTranslate2 `int8_float16`, full A5 gates and
 reproducible tracking. B5 remains blocked.
+
+## Outcome
+
+Executed once as campaign `b4-amharic-decode-80756890fc17`, attempt 1. The
+container completed successfully on one direct on-demand `g6.xlarge`; no EKS,
+Spot or training was involved. All three predeclared strategies failed the
+hard viability rule, so `selected_strategy` is null and
+`training_authorised=false`.
+
+The Whisper fallback was directionally useful but insufficient. For the
+retained adapter it improved EOS from 3/25 to 20/25 and reduced cap hits from
+22/25 to 5/25, while WER worsened from 1.2383 to 1.2562. The untouched base
+still capped on 15/25. Beam search was worse. The complete aggregate-only
+record is `platform/evidence/DIAG-2026-002-amharic-decode-compatibility.json`.
+
+The operator desktop lost network connectivity after the container had
+persisted its result. AWS execution was unaffected. Recovery was limited to
+an already-terminated, identity-matched instance: root-volume deletion was
+proved, the original MLflow observer error was preserved, both bound runs were
+finished, and an immutable snapshot was written. No recovery launch or
+termination occurred. Campaign spend was $1.7539 against a $2.25 ceiling.
+
+Per the predeclared branch, another sweep is prohibited. The next work is a
+new Amharic data/model-compatibility and exposure-bias investigation. It must
+not weaken the gate, drop Amharic, select this adapter, or unblock B5.

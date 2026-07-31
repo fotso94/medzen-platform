@@ -252,6 +252,43 @@ def test_decode_selection_requires_termination_and_non_regression():
     assert out["promotable"] is False
 
 
+def test_completed_decode_evidence_blocks_training_and_contains_no_private_rows():
+    evidence = json.loads((
+        ROOT / "platform/evidence/DIAG-2026-002-amharic-decode-compatibility.json"
+    ).read_text())
+    assert evidence["status"] == "COMPLETED_NO_VIABLE_DECODE_STRATEGY"
+    assert evidence["training_steps"] == 0
+    assert evidence["selection"] == {
+        "selected_strategy": None,
+        "training_authorised": False,
+        "reason": (
+            "No strategy satisfied EOS=1.0, cap-hit=0.0 and the predeclared "
+            "adapter/base WER limits for both arms."),
+    }
+    assert all(not strategy["passed"]
+               for strategy in evidence["strategies"].values())
+    assert evidence["cleanup"]["active_gpu_instances"] == 0
+    assert evidence["base_v5_status"]["b5_blocked"] is True
+    forbidden = {
+        "transcript", "token_sequence", "audio_checksum", "row_id",
+        "speaker", "session", "audio",
+    }
+
+    def keys(value):
+        if isinstance(value, dict):
+            yield from value
+            for nested in value.values():
+                yield from keys(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                yield from keys(nested)
+
+    assert forbidden.isdisjoint(keys(evidence))
+    plan = (ROOT / "platform/decisions/PLAN-2026-004-amharic-decode-compatibility.md").read_text()
+    assert "COMPLETED — NO VIABLE STRATEGY" in plan
+    assert "another sweep is prohibited" in plan
+
+
 def test_decode_score_reduces_private_row_to_aggregate_only():
     torch = pytest.importorskip("torch")
     from types import SimpleNamespace
