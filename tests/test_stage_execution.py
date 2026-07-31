@@ -289,6 +289,23 @@ def test_completed_decode_evidence_blocks_training_and_contains_no_private_rows(
     assert "another sweep is prohibited" in plan
 
 
+def test_amharic_compatibility_preaudit_keeps_next_phase_read_only():
+    evidence = json.loads((
+        ROOT / "platform/evidence/COMPAT-2026-001-amharic-preaudit.json"
+    ).read_text())
+    findings = evidence["aggregate_findings"]
+    assert findings["training_pool"]["raw_rows"] == 275
+    assert findings["training_pool"]["experiment_eligible_rows"] == 271
+    assert findings["token_density_context"]["ratio_to_next_highest"] == \
+        pytest.approx(2.3287)
+    assert evidence["constraints"]["no_training_authorised"] is True
+    assert evidence["constraints"]["human_listening_still_required"] is True
+    plan = (ROOT / "platform/decisions/PLAN-2026-005-amharic-data-model-compatibility.md").read_text()
+    assert "PHASE A IS READ-ONLY" in plan
+    assert "No sweep, checkpoint selection" in plan
+    assert "B5 remains blocked" in plan
+
+
 def test_decode_score_reduces_private_row_to_aggregate_only():
     torch = pytest.importorskip("torch")
     from types import SimpleNamespace
