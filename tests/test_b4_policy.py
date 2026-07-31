@@ -454,6 +454,41 @@ def test_excluded_rows_never_reach_the_sampling_weights():
     assert all(r["audio_checksum_sha256"] != "a" * 64 for r in mix)
 
 
+def test_language_scope_requires_only_applicable_policy_rows():
+    """Deferred-language policy rows stay adopted but need not appear in a
+    mix whose manifest scope deliberately excludes that language."""
+    import pipeline.train_asr as T
+
+    acholi = "curated/acholi/asr/ach_asr/v2/manifest.jsonl"
+    amharic = "curated/amharic/asr/amh_asr/v2/manifest.jsonl"
+    rows = {
+        acholi: [_row("a" * 64), _row("b" * 64)],
+        amharic: [_row("c" * 64)],
+    }
+    comp = _completion(rows)
+    cli = _cli_with_completion(
+        rows, comp, adoption=_adoption(comp, policy="p" * 64))
+    exclusions = {
+        "a" * 64: {"language": "acholi", "trigger": "t"},
+        "c" * 64: {"language": "amharic", "trigger": "t"},
+    }
+    with patch.object(T, "list_manifests", lambda c: list(rows)):
+        mix, prov = T.load_mix(
+            cli, 0.5, 0, ["acholi"], version="v2",
+            exclusions=exclusions, exclusions_sha256="p" * 64)
+    assert [row["audio_checksum_sha256"] for row in mix] == ["b" * 64]
+    assert prov["exclusions"] == {
+        "list_id": None,
+        "policy_sha256": "p" * 64,
+        "policy_declared": 2,
+        "declared": 1,
+        "out_of_scope_declared": 1,
+        "removed_from_eligible_pool": 1,
+        "by_trigger": {"t": 1},
+        "applied": "before temperature sampling",
+    }
+
+
 def test_deferred_row_absent_from_the_pool_is_refused():
     """A policy naming a row this corpus does not contain describes something
     else; silently removing nothing would still report success."""

@@ -18,7 +18,8 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import budget, campaign, mlflow_sync, orchestrate   # noqa: E402
+from pipeline import (budget, campaign, language_scope, mlflow_sync,
+                      orchestrate)  # noqa: E402
 
 LANGS = orchestrate.VALIDATION_LANGUAGES
 POLICY_SHA = "a" * 64
@@ -101,6 +102,7 @@ def db(tmp_path):
 PINS = {
     "git_sha": "c" * 40, "bundle_tar_sha256": "d" * 64,
     "policy_sha256": POLICY_SHA, "adoption_key": "curated/_versions/v2/ADOPTION.json",
+    "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
     "base_manifest_sha256": "e" * 64, "validation_manifest_sha256": "f" * 64,
     "generation_config_fingerprint": "0" * 64, "evaluator_sha256": "1" * 64,
     "mlflow_parent_run_id": "parent-1",
@@ -179,8 +181,20 @@ def make_services(s3, db, **over):
                 "current_complete_raw_sha256": "b" * 64,
                 "manifests_verified": True,
                 "exclusion_checksums_sha256": EXCL_SHA,
-                "dataset_fingerprint": campaign.EXPECTED_FINGERPRINT,
-                "eligible_rows": campaign.EXPECTED_ELIGIBLE_ROWS}
+                "dataset_fingerprint": campaign.ADOPTED_FINGERPRINT,
+                "eligible_rows": campaign.ADOPTED_ELIGIBLE_ROWS}
+
+    def verify_language_scope():
+        calls.append("verify_language_scope")
+        return {
+            "status": "approved",
+            "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
+            "training_languages": list(language_scope.TRAINING_LANGUAGES),
+            "validation_languages": list(language_scope.VALIDATION_LANGUAGES),
+            "deferred_languages": list(language_scope.DEFERRED_LANGUAGES),
+            "dataset_fingerprint": campaign.EXPECTED_FINGERPRINT,
+            "eligible_rows": campaign.EXPECTED_ELIGIBLE_ROWS,
+        }
 
     def run_base_and_preflight(d):
         calls.append("run_base_and_preflight")
@@ -209,6 +223,7 @@ def make_services(s3, db, **over):
 
     sv = campaign.Services(
         s3=s3, verify_policy=verify_policy, verify_adoption=verify_adoption,
+        verify_language_scope=verify_language_scope,
         run_base_and_preflight=run_base_and_preflight, run_sweep=run_sweep,
         run_final=run_final, mlflow_db=db, tracker=FakeTracker(),
         launcher=object(),
@@ -228,8 +243,9 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
 
     names = out["trace_names"]
     order = [n for n in names if not n.startswith("mlflow-sync")]
-    assert order[:5] == ["readiness", "verify-policy", "verify-adoption",
-                         "budget-reserve", "base-and-preflight"]
+    assert order[:6] == ["readiness", "verify-policy", "verify-adoption",
+                         "verify-language-scope", "budget-reserve",
+                         "base-and-preflight"]
 
     # the required sequence, each strictly before the next
     def idx(pred):

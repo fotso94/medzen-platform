@@ -13,7 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import diagnostic_budget, mlflow_sync, stage_descriptor  # noqa: E402
+from pipeline import (diagnostic_budget, language_scope, mlflow_sync,
+                      stage_descriptor)  # noqa: E402
 from pipeline.campaign_tracking import CampaignTracker          # noqa: E402
 from pipeline.ec2_stage_adapter import EC2StageAdapter           # noqa: E402
 from pipeline.generation import config_fingerprint               # noqa: E402
@@ -217,6 +218,9 @@ def make_descriptor(args, tracker: CampaignTracker) -> dict:
         bundle_tar_sha256=args.bundle_tar_sha256,
         image_digest=args.image_digest, policy_sha256=sha(POLICY.read_bytes()),
         adoption_key=ADOPTION_KEY, dataset_fingerprint=DATASET_FINGERPRINT,
+        language_scope_sha256=language_scope.LANGUAGE_SCOPE_SHA256,
+        training_languages=[],
+        validation_languages=list(language_scope.VALIDATION_LANGUAGES),
         base_manifest_sha256=BASE_MANIFEST_SHA,
         validation_manifest_sha256=frozen_sha,
         base_arm_key=BASE_ARM_KEY, base_artifact_key=BASE_ARTIFACT_KEY,

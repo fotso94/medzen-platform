@@ -21,15 +21,19 @@ import time
 from pathlib import Path
 
 BUCKET = "medzen-speech"
-CAMPAIGN = "b4-corrected"
+# A new dataset fingerprint is a new cost decision.  Keep the reconciled
+# b4-corrected ledger immutable and account the language-scoped continuation
+# under a fresh ceiling rather than pretending the earlier spend never
+# happened or making a clean scoped run impossible under the old ledger.
+CAMPAIGN = "b4-scoped"
 LEDGER_KEY = f"candidates/budget/{CAMPAIGN}/ledger.json"
 
 RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
 # STAGE TOPOLOGY — five GPU instances plus one builder.
 #
 #   builder             c6i.2xlarge   image build
-#   base_and_preflight  g6.xlarge     base arm on 9 sets, THEN overfit+smoke
-#   sweep_run x3        g6.xlarge     100 steps + 9-set evaluation, each
+#   base_and_preflight  g6.xlarge     base arm on 7 sets, THEN overfit+smoke
+#   sweep_run x3        g6.xlarge     100 steps + 7-set evaluation, each
 #   final_run           g6.xlarge     600 steps with interleaved checkpoints
 #
 # Base evaluation and preflight share ONE instance: both need the pinned base

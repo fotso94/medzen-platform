@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from pipeline import orchestrate, smoke, stage_descriptor
+from pipeline import language_scope, orchestrate, smoke, stage_descriptor
 from pipeline.generation import (EOT_TOKEN, account, expected_prompt,
                                  extract_sequence, generation_kwargs)
 from pipeline.label_length import decoder_start_id
@@ -241,7 +241,9 @@ def _training_command(descriptor: dict, out: Path, *, lr: float,
         sys.executable, "-m", "pipeline.train_asr",
         "--manifest-version", "v2",
         "--exclusions", str(POLICY),
-        "--expect-excluded", "19",
+        "--expect-excluded", str(language_scope.EXPECTED_POLICY_ROWS_TOTAL),
+        "--expect-applied-exclusions",
+        str(language_scope.EXPECTED_POLICY_ROWS_APPLICABLE),
         "--adoption-key", descriptor["adoption_key"],
         "--max-steps", str(max_steps),
         "--save-steps", "100" if not fixed_batch else str(max_steps),
@@ -253,6 +255,7 @@ def _training_command(descriptor: dict, out: Path, *, lr: float,
         "--seed", str(descriptor["seed"]),
         "--lr", str(lr),
         "--out", str(out),
+        "--languages", *descriptor["training_languages"],
     ]
     if fixed_batch:
         cmd.append("--fixed-batch")
@@ -284,6 +287,27 @@ def run_training(descriptor: dict, out: Path, *, lr: float,
         raise SystemExit(
             f"REFUSING: trainer exited {completed.returncode}")
     record = json.loads((out / "run.json").read_bytes())
+    if record.get("dataset_fingerprint") != descriptor["dataset_fingerprint"]:
+        raise SystemExit(
+            "REFUSING: trainer dataset fingerprint "
+            f"{str(record.get('dataset_fingerprint'))[:16]} differs from "
+            f"descriptor {descriptor['dataset_fingerprint'][:16]}")
+    mix_record = ((record.get("params") or {}).get("mix") or {})
+    trained_languages = set(mix_record.get("per_language", {}))
+    if trained_languages != set(descriptor["training_languages"]):
+        raise SystemExit(
+            f"REFUSING: trainer used languages {sorted(trained_languages)}, "
+            "descriptor authorises "
+            f"{sorted(descriptor['training_languages'])}")
+    if mix_record.get("rows") != language_scope.EXPECTED_SAMPLED_ROWS:
+        raise SystemExit(
+            f"REFUSING: trainer sampled {mix_record.get('rows')} rows, "
+            f"scope authorises {language_scope.EXPECTED_SAMPLED_ROWS}")
+    eligible = (record.get("manifest_provenance") or {}).get("eligible_rows")
+    if eligible != language_scope.EXPECTED_ELIGIBLE_ROWS:
+        raise SystemExit(
+            f"REFUSING: trainer found {eligible} eligible rows, scope "
+            f"authorises {language_scope.EXPECTED_ELIGIBLE_ROWS}")
     expected_step = stop_at_step or max_steps
     if record.get("steps") != expected_step:
         raise SystemExit(

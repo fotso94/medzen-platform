@@ -9,9 +9,13 @@ from __future__ import annotations
 import hashlib
 import json
 
-# The nine speaker/session-disjoint sets, frozen in VAL-2026-001.
-VALIDATION_LANGUAGES = ("acholi", "akan", "amharic", "ewe", "fula", "lingala",
-                        "luganda", "oromo", "shona")
+from pipeline import language_scope
+
+# VAL-2026-001 preserves all nine frozen sets.  B4-SCOPE-2026-001 authorises
+# seven of them for the current campaign and defers Amharic and Ewe without
+# deleting either set.
+ALL_VALIDATION_LANGUAGES = language_scope.ALL_VALIDATION_LANGUAGES
+VALIDATION_LANGUAGES = language_scope.VALIDATION_LANGUAGES
 
 # Gates. FOUR of them -- an earlier draft said "both gates" and named two.
 MAX_LANGUAGE_REGRESSION = 0.05      # absolute WER, vs the in-run base arm
@@ -27,7 +31,7 @@ SEED = 0
 
 def validate_metric_map(m: dict, name: str, lo: float | None = 0.0,
                         hi: float | None = None) -> dict[str, float]:
-    """Every metric map must be exactly the nine frozen languages, all finite.
+    """Every metric map must be exactly the active frozen languages, all finite.
 
     A gate that silently accepts NaN, or an absent language, is a gate that
     passes whatever it cannot see. NaN comparisons are always False, so a NaN
@@ -64,7 +68,7 @@ def validate_metric_map(m: dict, name: str, lo: float | None = 0.0,
 
 
 def macro_wer(per_language: dict[str, float]) -> float:
-    """Unweighted mean across the nine languages.
+    """Unweighted mean across the active validation languages.
 
     Unweighted so shona's 15 rows count as much as akan's 72. Weighting by rows
     would let the two largest sets decide the verdict.

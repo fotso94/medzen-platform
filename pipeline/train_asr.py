@@ -126,7 +126,27 @@ def load_mix(cli, temperature: float, seed: int,
     rejected = {"wrong_split": 0, "not_permitted": 0}
     seen: dict[str, str] = {}
     duplicates: list[str] = []
-    excl_keys = set(exclusions or {})
+    declared_excl_keys = set(exclusions or {})
+    selected_languages = set(languages or ())
+    malformed_scope_rows = [
+        sha for sha, row in (exclusions or {}).items()
+        if selected_languages and not row.get("language")
+    ]
+    if malformed_scope_rows:
+        raise SystemExit(
+            "REFUSING: a language-scoped run cannot determine whether "
+            f"{len(malformed_scope_rows)} policy row(s) apply because their "
+            "language is absent")
+    out_of_scope_excl_keys = {
+        sha for sha, row in (exclusions or {}).items()
+        if selected_languages and row.get("language") not in selected_languages
+    }
+    # The policy remains intact and fully adopted.  A language-scoped run only
+    # requires the policy rows that can occur in its selected manifests.  Rows
+    # belonging to deliberately deferred languages are recorded below as
+    # out-of-scope; requiring them to be found would make it impossible to
+    # exclude a whole language without weakening or rewriting the policy.
+    excl_keys = declared_excl_keys - out_of_scope_excl_keys
     excl_hits: dict[str, int] = {}
 
     # A version is only usable if its migration COMPLETED. The completion record
@@ -296,7 +316,9 @@ def load_mix(cli, temperature: float, seed: int,
         "exclusions": {
             "list_id": exclusions_id,
             "policy_sha256": exclusions_sha256,
+            "policy_declared": len(declared_excl_keys),
             "declared": len(excl_keys),
+            "out_of_scope_declared": len(out_of_scope_excl_keys),
             "removed_from_eligible_pool": len(excl_hits),
             "by_trigger": by_trigger,
             "applied": "before temperature sampling",
@@ -941,8 +963,12 @@ def main() -> int:
     ap.add_argument("--exclusions", default=None,
                     help="path or s3:// URI of a reviewed exclusion list")
     ap.add_argument("--expect-excluded", type=int, default=None,
-                    help="require exactly this many rows to be excluded; the run "
-                         "refuses if the list or the removal count differs")
+                    help="require the policy document to contain exactly this "
+                         "many rows")
+    ap.add_argument(
+        "--expect-applied-exclusions", type=int, default=None,
+        help="require exactly this many policy rows to apply to the selected "
+             "language scope and be removed from its eligible pool")
     ap.add_argument("--adoption-key", default=None,
                     help="immutable adoption object for this experiment; "
                          "defaults to ADOPTION.json for legacy runs")
@@ -1004,8 +1030,10 @@ def main() -> int:
     if a.exclusions:
         excluded, excl_doc, excl_sha = load_exclusions(a.exclusions,
                                                        expect=a.expect_excluded)
-    elif a.expect_excluded:
-        raise SystemExit("REFUSING: --expect-excluded given without --exclusions")
+    elif a.expect_excluded or a.expect_applied_exclusions:
+        raise SystemExit(
+            "REFUSING: an expected exclusion count was given without "
+            "--exclusions")
 
     print("building mix...")
     mix, mix_provenance = load_mix(cli, a.temperature, a.seed, a.languages,
@@ -1016,8 +1044,11 @@ def main() -> int:
                                    exclusions_id=excl_doc.get("list_id"),
                                    adoption_key=a.adoption_key)
     removed = mix_provenance["exclusions"]["removed_from_eligible_pool"]
-    if a.expect_excluded is not None and removed != a.expect_excluded:
-        raise SystemExit(f"REFUSING: expected exactly {a.expect_excluded} row(s) "
+    expected_applied = (
+        a.expect_applied_exclusions
+        if a.expect_applied_exclusions is not None else a.expect_excluded)
+    if expected_applied is not None and removed != expected_applied:
+        raise SystemExit(f"REFUSING: expected exactly {expected_applied} row(s) "
                          f"removed from the eligible pool, removed {removed}")
     if a.smoke:
         mix = mix[:6]
@@ -1113,6 +1144,9 @@ def main() -> int:
         "exclusions_decision_type": excl_doc.get("decision_type"),
         "exclusions_policy_sha256": xp["policy_sha256"],
         "exclusions_human_review_performed": excl_doc.get("human_review_performed"),
+        "exclusions_policy_declared": xp["policy_declared"],
+        "exclusions_applicable_to_scope": xp["declared"],
+        "exclusions_out_of_scope": xp["out_of_scope_declared"],
         "exclusions_declared": xp["declared"],
         "exclusions_removed": xp["removed_from_eligible_pool"],
         "exclusions_over_decoder_limit":

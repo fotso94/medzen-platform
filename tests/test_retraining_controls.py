@@ -168,7 +168,7 @@ def test_macro_average_is_unweighted_and_requires_every_language():
         orchestrate.macro_wer(part)
     d = {l: 0.0 for l in LANGS}
     d["shona"] = 0.9
-    assert orchestrate.macro_wer(d) == pytest.approx(0.9 / 9)
+    assert orchestrate.macro_wer(d) == pytest.approx(0.9 / len(LANGS))
 
 
 # --------------------------------------------------------------------------- #
@@ -697,7 +697,7 @@ def test_non_numeric_metric_is_refused():
 
 def test_boolean_is_not_accepted_as_numeric():
     with pytest.raises(SystemExit, match="not numeric"):
-        orchestrate.evaluate_gates(wers(ewe=True), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(wers(fula=True), wers(), perfect(), zeros())
 
 
 def test_negative_wer_is_refused():

@@ -8,7 +8,7 @@ four gates, deterministic selection, write-once prefixes, immutable MLflow
 snapshots, zero registration -- lives in that one function, so there is no
 second path where a control could be skipped.
 
-    python scripts/run_campaign.py --campaign-run b4-corrected-<sha12> --confirm
+    python scripts/run_campaign.py --campaign-run b4-scoped-<sha12> --confirm
 """
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline import budget, campaign                             # noqa: E402
+from pipeline import budget, campaign, language_scope             # noqa: E402
 from pipeline.campaign_tracking import CampaignTracker            # noqa: E402
 from pipeline.ec2_stage_adapter import EC2StageAdapter             # noqa: E402
 from pipeline.generation import config_fingerprint                # noqa: E402
@@ -139,6 +139,23 @@ def build_services(cli, args, *, preview: bool = False,
                 policy["bindings"]["deferred_checksums_sha256"],
         }
 
+    def verify_language_scope() -> dict:
+        doc, digest = language_scope.load()
+        binding = doc["training_mix_binding"]
+        return {
+            "status": doc["status"],
+            "language_scope_sha256": digest,
+            "training_languages": doc["languages"]["active_training"],
+            "validation_languages": doc["languages"]["active_validation"],
+            "deferred_languages": doc["languages"]["deferred"],
+            "dataset_fingerprint": binding["dataset_fingerprint"],
+            "eligible_rows":
+                binding["eligible_rows_after_policy_exclusions"],
+            "sampled_rows": binding["sampled_rows"],
+            "applicable_policy_rows":
+                binding["deferral_policy_rows_applicable"],
+        }
+
     frozen, frozen_sha = frozen_validation()
     git_sha = args.git_sha or current_git_sha()
     policy_sha = file_sha(ROOT / POLICY)
@@ -147,12 +164,14 @@ def build_services(cli, args, *, preview: bool = False,
         "bundle_tar_sha256": args.bundle_tar_sha256,
         "policy_sha256": policy_sha,
         "adoption_key": args.adoption_key,
+        "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
         "base_manifest_sha256":
             "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
         "validation_manifest_sha256": frozen_sha,
         "validation_manifest_hashes": {
             language: value["manifest_sha256"]
             for language, value in frozen["sets"].items()
+            if language in language_scope.VALIDATION_LANGUAGES
         },
         "generation_config_fingerprint": config_fingerprint(),
         "evaluator_sha256": evaluator_sha(),
@@ -170,6 +189,7 @@ def build_services(cli, args, *, preview: bool = False,
         launcher = EC2StageAdapter(session)
     return campaign.Services(
         s3=cli, verify_policy=verify_policy, verify_adoption=verify_adoption,
+        verify_language_scope=verify_language_scope,
         run_base_and_preflight=launcher.run_base_and_preflight,
         run_sweep=launcher.run_sweep,
         run_final=launcher.run_final,
@@ -195,7 +215,7 @@ def validate_execution_inputs(args) -> tuple[object, object, dict]:
     cli = sess.client("s3", region_name="eu-central-1")
     sv = build_services(cli=cli, args=args, preview=True)
     campaign.require_ready(sv)
-    policy, adoption = campaign.verify_governance(sv)
+    policy, adoption, scope = campaign.verify_governance(sv)
 
     bundle_key = f"candidates/bootstrap/{git_sha}/BUNDLE.json"
     bundle = json.loads(cli.get_object(
@@ -232,6 +252,12 @@ def validate_execution_inputs(args) -> tuple[object, object, dict]:
         "adoption_key": args.adoption_key,
         "dataset_fingerprint": adoption["dataset_fingerprint"],
         "eligible_rows": adoption["eligible_rows"],
+        "language_scope_sha256": scope["language_scope_sha256"],
+        "training_languages": scope["training_languages"],
+        "validation_languages": scope["validation_languages"],
+        "deferred_languages": scope["deferred_languages"],
+        "scoped_dataset_fingerprint": scope["dataset_fingerprint"],
+        "scoped_eligible_rows": scope["eligible_rows"],
         "image_digest": args.image_digest,
         "infra": infra,
         "budget_committed_usd": committed,
@@ -259,6 +285,10 @@ def main() -> int:
         help="perform all AWS/governance preflight reads, but reserve, write "
              "and launch nothing")
     a = ap.parse_args()
+    if not a.campaign_run.startswith("b4-scoped-"):
+        raise SystemExit(
+            "REFUSING: the language-scoped dataset must use a fresh "
+            "b4-scoped-<commit> campaign namespace")
     if a.mlflow_db is None:
         safe_run = "".join(
             c if c.isalnum() or c in "-_" else "_"
@@ -269,6 +299,10 @@ def main() -> int:
     print(f"campaign      {a.campaign_run} attempt {a.attempt}")
     print(f"generation    {config_fingerprint()}")
     print(f"policy        {POLICY}")
+    print("train scope   " + ",".join(language_scope.TRAINING_LANGUAGES))
+    print("validation    " + ",".join(language_scope.VALIDATION_LANGUAGES))
+    print("deferred      " + ",".join(language_scope.DEFERRED_LANGUAGES))
+    print(f"scope hash    {language_scope.LANGUAGE_SCOPE_SHA256}")
     print("topology      5 GPU instances: 1 base+preflight, 3 sweeps, 1 final")
     print("ordering      verify-policy -> verify-adoption -> reserve -> "
           "run_base_and_preflight -> 3x run_sweep -> select -> run_final "

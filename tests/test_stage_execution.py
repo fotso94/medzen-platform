@@ -13,7 +13,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import orchestrate, stage_descriptor
+from pipeline import language_scope, orchestrate, stage_descriptor
 from pipeline import decode_budget, diagnostic_budget
 from pipeline import stage_runner
 from pipeline.campaign_tracking import CampaignTracker
@@ -39,7 +39,12 @@ def descriptor(stage="sweep", **over):
         "policy_sha256": "d" * 64,
         "adoption_key":
             "curated/_versions/v2/ADOPTION-B4-CORRECTED.json",
-        "dataset_fingerprint": "e" * 64,
+        "dataset_fingerprint": language_scope.EXPECTED_DATASET_FINGERPRINT,
+        "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
+        "training_languages": (
+            [] if stage in ("diagnostic", "decode_compatibility")
+            else list(language_scope.TRAINING_LANGUAGES)),
+        "validation_languages": list(language_scope.VALIDATION_LANGUAGES),
         "base_manifest_sha256": "f" * 64,
         "validation_manifest_sha256": "0" * 64,
         "base_arm_key": None if is_base else "1" * 64,
@@ -87,6 +92,7 @@ def test_user_data_runs_one_digest_pinned_direct_ec2_container():
 def test_trainer_image_contains_runtime_governance_records():
     dockerfile = (ROOT / "pipeline/Dockerfile.trainer").read_text()
     assert "DQ-2026-003-policy-deferral-corrected.json" in dockerfile
+    assert "B4-SCOPE-2026-001-language-deferral.json" in dockerfile
     assert "VAL-2026-001-frozen-validation-sets.json" in dockerfile
 
 
@@ -154,6 +160,15 @@ def test_descriptor_refuses_malformed_identity_or_path_escape(field, value):
     values = descriptor()
     values[field] = value
     with pytest.raises(SystemExit, match="REFUSING"):
+        stage_descriptor.build(**values)
+
+
+@pytest.mark.parametrize("field", ["training_languages", "validation_languages"])
+@pytest.mark.parametrize("language", ["amharic", "ewe"])
+def test_descriptor_refuses_every_deferred_language(field, language):
+    values = descriptor()
+    values[field] = [*values[field], language]
+    with pytest.raises(SystemExit, match="deferred B4 language"):
         stage_descriptor.build(**values)
 
 
@@ -606,6 +621,13 @@ def test_final_segment_keeps_600_step_schedule_while_pausing_at_300():
     assert cmd[cmd.index("--max-steps") + 1] == "600"
     assert cmd[cmd.index("--stop-at-step") + 1] == "300"
     assert cmd[cmd.index("--resume") + 1].endswith("checkpoint-200")
+    assert cmd[cmd.index("--expect-excluded") + 1] == "19"
+    assert cmd[cmd.index("--expect-applied-exclusions") + 1] == "15"
+    language_start = cmd.index("--languages") + 1
+    language_end = cmd.index("--stop-at-step")
+    assert tuple(cmd[language_start:language_end]) == \
+        language_scope.TRAINING_LANGUAGES
+    assert "amharic" not in cmd and "ewe" not in cmd
 
 
 def test_saved_adapter_smoke_is_a_hard_gate():

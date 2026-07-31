@@ -1,0 +1,186 @@
+{
+  "record": "B4-LANGUAGE-SCOPE-DECISION",
+  "id": "B4-SCOPE-2026-001",
+  "status": "approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-07-31T21:14:57Z",
+  "authorization_note": "For the current B4 training-system validation campaign, remove Amharic completely and investigate the smaller Acholi, Oromo, Ewe and Luganda issues. Retain the smaller languages when their issue is automatically resolved without weakening a gate; otherwise defer them for later continuous training.",
+  "interpretation": "Removal is a reversible experiment-scope deferral. No registry entry, manifest, audio object, transcript, prior evidence, model artifact or historical MLflow record is deleted or rewritten.",
+  "scope": {
+    "experiment": "b4-whisper-large-v3-lora-corrected",
+    "purpose": "training_system_validation",
+    "promotable": false,
+    "applies_to": [
+      "training mix",
+      "base validation",
+      "sweep validation",
+      "learning-rate selection",
+      "final-run checkpoint gates",
+      "B4 evidence and MLflow parameters"
+    ],
+    "does_not_apply_to": [
+      "stored source data",
+      "language registry",
+      "historical immutable artifacts",
+      "future continuous-training campaigns"
+    ]
+  },
+  "languages": {
+    "original_training": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "shona",
+      "swahili",
+      "yoruba"
+    ],
+    "active_training": [
+      "acholi",
+      "akan",
+      "fula",
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "shona",
+      "swahili",
+      "yoruba"
+    ],
+    "original_validation": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "lingala",
+      "luganda",
+      "oromo",
+      "shona"
+    ],
+    "active_validation": [
+      "acholi",
+      "akan",
+      "fula",
+      "lingala",
+      "luganda",
+      "oromo",
+      "shona"
+    ],
+    "deferred": [
+      "amharic",
+      "ewe"
+    ]
+  },
+  "training_mix_binding": {
+    "manifest_version": "v2",
+    "require_allowed_use": "asr_train",
+    "temperature": 0.5,
+    "seed": 0,
+    "deferral_policy": "platform/decisions/DQ-2026-003-policy-deferral-corrected.json",
+    "deferral_policy_rows_total": 19,
+    "deferral_policy_rows_applicable": 15,
+    "deferral_policy_rows_out_of_scope": 4,
+    "eligible_rows_before_policy_exclusions": 3824,
+    "eligible_rows_after_policy_exclusions": 3809,
+    "sampled_rows": 3808,
+    "dataset_fingerprint": "d71be0710c8d28d9cc82511adb863f125526127cbbd7d06a0d28b74781f6d733",
+    "sampled_rows_per_language": {
+      "acholi": 398,
+      "akan": 272,
+      "fula": 408,
+      "hausa": 289,
+      "igbo": 289,
+      "lingala": 291,
+      "luganda": 404,
+      "oromo": 294,
+      "pidgin": 286,
+      "shona": 302,
+      "swahili": 288,
+      "yoruba": 287
+    }
+  },
+  "immutable_scope_evidence": {
+    "base": {
+      "artifact_sha256": "1803830091c19166290372256d24ed5aa0e6bc5864b62d33b79e4d3af1403a48"
+    },
+    "lr_1e_4": {
+      "artifact_sha256": "1c4e206932f97259e934e8c153639656aef035097df8a958d83cd9b3dfaff82b"
+    },
+    "lr_3e_4": {
+      "artifact_sha256": "c9fabae160b0811ce26e8deae7a2355b676ac9655af5a998b3be8dbaa151f9de"
+    },
+    "lr_5e_4": {
+      "artifact_sha256": "b806347b0540219f5f00ab28dbf2d214d42dca772095d1e2f40f7b4b674d0db2"
+    },
+    "source_campaign": "b4-corrected-18691a5",
+    "source_attempt": "5",
+    "use": "scope diagnosis only; no old adapter is authorised for reuse because its training mix contained both deferred languages"
+  },
+  "smaller_language_findings": {
+    "acholi": {
+      "decision": "retain",
+      "reason": "The LR 3e-4 sweep automatically resolves the smaller termination problem without weakening any gate.",
+      "base": {"wer": 1.3468, "eos_rate": 0.9077, "cap_hit_rate": 0.0923},
+      "lr_3e_4": {"wer": 0.8385, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    },
+    "oromo": {
+      "decision": "retain",
+      "reason": "All three corrected sweep configurations terminate fully and improve WER; LR 3e-4 passes.",
+      "base": {"wer": 1.1749, "eos_rate": 0.9429, "cap_hit_rate": 0.0571},
+      "lr_3e_4": {"wer": 0.8925, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    },
+    "ewe": {
+      "decision": "defer",
+      "reason": "Ewe still fails the strict termination gate at LR 3e-4, the only configuration compatible with every other retained validation language. LR 5e-4 fixes Ewe but causes retained Acholi and Fula termination failures.",
+      "base": {"wer": 0.9813, "eos_rate": 0.9706, "cap_hit_rate": 0.0294},
+      "lr_3e_4": {"wer": 0.9116, "eos_rate": 0.9412, "cap_hit_rate": 0.0588}
+    },
+    "luganda": {
+      "decision": "retain",
+      "reason": "All three corrected sweep configurations terminate fully and improve WER; LR 3e-4 passes.",
+      "base": {"wer": 1.0659, "eos_rate": 0.9811, "cap_hit_rate": 0.0189},
+      "lr_3e_4": {"wer": 0.9429, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    }
+  },
+  "retained_scope_evidence": {
+    "compatible_learning_rate": 0.0003,
+    "interpretation": "The old LR 3e-4 result proves only that this scope is coherent enough to justify a fresh run. It cannot be selected as the final candidate because it was trained on the superseded 14-language mix.",
+    "base_macro_wer": 1.072043,
+    "candidate_macro_wer": 0.896271,
+    "candidate_min_eos_rate": 1.0,
+    "candidate_max_cap_hit_rate": 0.0,
+    "per_language_regression_gate": "pass",
+    "macro_not_worse_gate": "pass"
+  },
+  "reentry_requirements": {
+    "amharic": [
+      "qualified Amharic review of the four deferred training rows and a stratified sample",
+      "licensed evaluation set from a different source/domain",
+      "a fresh scope decision and fresh dataset fingerprint"
+    ],
+    "ewe": [
+      "root-cause analysis for its non-termination under LR 3e-4",
+      "a configuration that passes the same strict gates without causing another retained language to fail",
+      "a fresh scope decision and fresh dataset fingerprint"
+    ]
+  },
+  "hard_controls": {
+    "gate_weakening_permitted": false,
+    "reuse_old_adapter_permitted": false,
+    "model_registration_permitted": false,
+    "promotion_permitted": false,
+    "deferred_languages_must_be_absent_from_training": true,
+    "deferred_languages_must_be_absent_from_validation_and_selection": true
+  },
+  "content_policy": "aggregate metrics, counts and hashes only; no transcript, audio, speaker, session or private row content"
+}

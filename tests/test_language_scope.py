@@ -1,0 +1,58 @@
+"""The approved B4 scope is enforced without deleting deferred data."""
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+from pipeline import budget, language_scope, orchestrate
+from pipeline.validation_runner import FROZEN, frozen_validation
+
+
+def test_scope_record_hash_and_language_partition_are_exact():
+    doc, digest = language_scope.load()
+    assert digest == hashlib.sha256(
+        language_scope.DECISION.read_bytes()).hexdigest()
+    assert digest == language_scope.LANGUAGE_SCOPE_SHA256
+    assert language_scope.DEFERRED_LANGUAGES == ("amharic", "ewe")
+    assert not (set(language_scope.TRAINING_LANGUAGES)
+                & set(language_scope.DEFERRED_LANGUAGES))
+    assert not (set(language_scope.VALIDATION_LANGUAGES)
+                & set(language_scope.DEFERRED_LANGUAGES))
+    assert (set(language_scope.TRAINING_LANGUAGES)
+            | set(language_scope.DEFERRED_LANGUAGES)
+            == set(language_scope.ALL_TRAINING_LANGUAGES))
+    assert doc["hard_controls"]["reuse_old_adapter_permitted"] is False
+
+
+def test_frozen_evidence_is_preserved_but_campaign_uses_only_active_sets():
+    frozen, _ = frozen_validation()
+    assert tuple(frozen["sets"]) == language_scope.ALL_VALIDATION_LANGUAGES
+    assert tuple(json.loads(FROZEN.read_bytes())["sets"]) == (
+        "acholi", "akan", "amharic", "ewe", "fula", "lingala",
+        "luganda", "oromo", "shona")
+    assert orchestrate.VALIDATION_LANGUAGES == (
+        "acholi", "akan", "fula", "lingala", "luganda", "oromo",
+        "shona")
+
+
+def test_scope_fingerprint_and_counts_are_pinned():
+    assert language_scope.EXPECTED_DATASET_FINGERPRINT == (
+        "d71be0710c8d28d9cc82511adb863f125526127cbbd7d06a0d28b74781f6d733")
+    assert language_scope.EXPECTED_ELIGIBLE_ROWS == 3809
+    assert language_scope.EXPECTED_SAMPLED_ROWS == 3808
+    assert language_scope.EXPECTED_POLICY_ROWS_TOTAL == 19
+    assert language_scope.EXPECTED_POLICY_ROWS_APPLICABLE == 15
+    assert budget.LEDGER_KEY == "candidates/budget/b4-scoped/ledger.json"
+
+
+def test_smaller_language_decisions_keep_three_and_defer_ewe():
+    doc = json.loads(language_scope.DECISION.read_bytes())
+    findings = doc["smaller_language_findings"]
+    assert {language: findings[language]["decision"] for language in findings} == {
+        "acholi": "retain", "oromo": "retain", "ewe": "defer",
+        "luganda": "retain"}
+    retained = doc["retained_scope_evidence"]
+    assert retained["compatible_learning_rate"] == 3e-4
+    assert retained["candidate_min_eos_rate"] == 1.0
+    assert retained["candidate_max_cap_hit_rate"] == 0.0

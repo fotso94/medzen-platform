@@ -1,4 +1,4 @@
-"""Nine-language in-process validation for the corrected B4 campaign.
+"""Language-scoped in-process validation for the corrected B4 campaign.
 
 Base and candidate arms use the same verified weights, runtime, generation
 contract, manifests, normalizers, and scoring function.  Reports contain
@@ -33,9 +33,10 @@ def sha256_file(path: Path) -> str:
 def frozen_validation() -> tuple[dict, str]:
     raw = FROZEN.read_bytes()
     doc = json.loads(raw)
-    if tuple(doc["sets"]) != orchestrate.VALIDATION_LANGUAGES:
+    if tuple(doc["sets"]) != orchestrate.ALL_VALIDATION_LANGUAGES:
         raise SystemExit(
-            "REFUSING: VAL-2026-001 languages/order differ from the campaign")
+            "REFUSING: VAL-2026-001 no longer contains the complete frozen "
+            "language set in its recorded order")
     if doc.get("total_rows") != sum(s["rows"] for s in doc["sets"].values()):
         raise SystemExit("REFUSING: VAL-2026-001 row total is inconsistent")
     return doc, hashlib.sha256(raw).hexdigest()
@@ -66,14 +67,20 @@ class ValidationRuntime:
             "cuda" if torch.cuda.is_available()
             else "mps" if torch.backends.mps.is_available() else "cpu")
         require_cuda(self.device)
-        self.languages = languages or orchestrate.VALIDATION_LANGUAGES
+        authorised = tuple(descriptor.get(
+            "validation_languages", orchestrate.VALIDATION_LANGUAGES))
+        self.languages = tuple(languages or authorised)
         if (not self.languages
                 or len(set(self.languages)) != len(self.languages)
-                or any(language not in orchestrate.VALIDATION_LANGUAGES
+                or any(language not in orchestrate.ALL_VALIDATION_LANGUAGES
                        for language in self.languages)):
             raise SystemExit(
                 "REFUSING: validation language subset is empty, duplicated, "
                 "or outside VAL-2026-001")
+        if self.languages != authorised:
+            raise SystemExit(
+                f"REFUSING: runtime validation languages {self.languages} "
+                f"differ from descriptor-authorised {authorised}")
         self.frozen, self.frozen_sha = frozen_validation()
         if self.frozen_sha != descriptor["validation_manifest_sha256"]:
             raise SystemExit(
@@ -147,7 +154,7 @@ class ValidationRuntime:
         from scripts.evaluate_candidate import score_arm
 
         per_language = {}
-        for language in orchestrate.VALIDATION_LANGUAGES:
+        for language in self.languages:
             rows, audios = self._loaded[language]
             token = LANG_TOKEN[language]
             prompt = expected_prompt(self.processor, token)
@@ -156,23 +163,22 @@ class ValidationRuntime:
                 self.device, token, prompt)
         return per_language
 
-    @staticmethod
-    def summary(per_language: dict) -> dict:
+    def summary(self, per_language: dict) -> dict:
         return {
             "wer": {l: per_language[l]["wer"]
-                    for l in orchestrate.VALIDATION_LANGUAGES},
+                    for l in self.languages},
             "cer": {l: per_language[l]["cer"]
-                    for l in orchestrate.VALIDATION_LANGUAGES},
+                    for l in self.languages},
             "eos_rate": {l: per_language[l]["eos_rate"]
-                         for l in orchestrate.VALIDATION_LANGUAGES},
+                         for l in self.languages},
             "cap_hit_rate": {l: per_language[l]["cap_hit_rate"]
-                             for l in orchestrate.VALIDATION_LANGUAGES},
+                             for l in self.languages},
             "generated_tokens_median": {
                 l: per_language[l]["generated_tokens"]["median"]
-                for l in orchestrate.VALIDATION_LANGUAGES},
+                for l in self.languages},
             "generated_tokens_max": {
                 l: per_language[l]["generated_tokens"]["max"]
-                for l in orchestrate.VALIDATION_LANGUAGES},
+                for l in self.languages},
         }
 
     def _record(self, arm: str, per_language: dict,
@@ -195,11 +201,15 @@ class ValidationRuntime:
             "code_git_sha": self.descriptor["git_sha"],
             "image_digest": self.descriptor["image_digest"],
             "code_tar_sha256": self.descriptor["bundle_tar_sha256"],
+            "language_scope_sha256":
+                self.descriptor["language_scope_sha256"],
+            "training_languages": self.descriptor["training_languages"],
+            "validation_languages": list(self.languages),
             "base_manifest_sha256": self.base_manifest_sha,
             "validation_record_sha256": self.frozen_sha,
             "validation_manifests": {
                 l: self.frozen["sets"][l]["manifest_sha256"]
-                for l in orchestrate.VALIDATION_LANGUAGES
+                for l in self.languages
             },
             "adapter_sha256": adapter_sha,
             "device": self.device,
@@ -219,7 +229,7 @@ class ValidationRuntime:
 
         self.ensure_prepared()
         model = self._fresh_base()
-        first_language = orchestrate.VALIDATION_LANGUAGES[0]
+        first_language = self.languages[0]
         _, audios = self._loaded[first_language]
         prompt = expected_prompt(self.processor, LANG_TOKEN[first_language])
         preflight = preflight_contract(
@@ -235,11 +245,11 @@ class ValidationRuntime:
 
         normalization = {
             l: per_language[l]["normalization_version"]
-            for l in orchestrate.VALIDATION_LANGUAGES
+            for l in self.languages
         }
         manifests = {
             l: self.frozen["sets"][l]["manifest_sha256"]
-            for l in orchestrate.VALIDATION_LANGUAGES
+            for l in self.languages
         }
         return {
             **self.summary(per_language),

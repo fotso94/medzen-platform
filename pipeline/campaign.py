@@ -18,14 +18,18 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from pipeline import budget, mlflow_sync, orchestrate, stage_descriptor
+from pipeline import (budget, language_scope, mlflow_sync, orchestrate,
+                      stage_descriptor)
 
 FINAL_CHECKPOINTS = (100, 200, 300, 400, 500, 600)
 
-# The corrected corpus. Anything else is a different experiment.
-EXPECTED_FINGERPRINT = \
+# The adopted source corpus remains immutable.  B4-SCOPE-2026-001 derives a
+# smaller, deterministic training mix from it without deleting source data.
+ADOPTED_FINGERPRINT = \
     "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275"
-EXPECTED_ELIGIBLE_ROWS = 4601
+ADOPTED_ELIGIBLE_ROWS = 4601
+EXPECTED_FINGERPRINT = language_scope.EXPECTED_DATASET_FINGERPRINT
+EXPECTED_ELIGIBLE_ROWS = language_scope.EXPECTED_ELIGIBLE_ROWS
 
 
 class CampaignError(SystemExit):
@@ -57,6 +61,7 @@ class Services:
     s3: Any
     verify_policy: Callable[[], dict]
     verify_adoption: Callable[[], dict]
+    verify_language_scope: Callable[[], dict]
     # STAGE-SHAPED. Each is one complete g6.xlarge lifecycle: launch, run,
     # verify, terminate, prove cleanup. The operator never orchestrates
     # individual operations, because "evaluate_base" and "train" as separate
@@ -73,6 +78,7 @@ class Services:
     register_model: Callable[..., Any] | None = None   # must stay None
 
     SERVICE_FIELDS = ("verify_policy", "verify_adoption",
+                      "verify_language_scope",
                       "run_base_and_preflight", "run_sweep", "run_final")
 
 
@@ -164,6 +170,9 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         image_digest=sv.image_digest,
         policy_sha256=p["policy_sha256"], adoption_key=p["adoption_key"],
         dataset_fingerprint=EXPECTED_FINGERPRINT,
+        language_scope_sha256=p["language_scope_sha256"],
+        training_languages=list(language_scope.TRAINING_LANGUAGES),
+        validation_languages=list(language_scope.VALIDATION_LANGUAGES),
         base_manifest_sha256=p["base_manifest_sha256"],
         validation_manifest_sha256=p["validation_manifest_sha256"],
         base_arm_key=(base_result or {}).get("base_arm_key"),
@@ -203,6 +212,10 @@ def _tracking_params(sv: Services, stage: str,
         "image_digest": sv.image_digest,
         "code_tar_sha256": p["bundle_tar_sha256"],
         "dataset_fingerprint": EXPECTED_FINGERPRINT,
+        "language_scope_sha256": p["language_scope_sha256"],
+        "training_languages": ",".join(language_scope.TRAINING_LANGUAGES),
+        "validation_languages": ",".join(language_scope.VALIDATION_LANGUAGES),
+        "deferred_languages": ",".join(language_scope.DEFERRED_LANGUAGES),
         "policy_sha256": p["policy_sha256"],
         "adoption_key": p["adoption_key"],
         "base_manifest_sha256": p["base_manifest_sha256"],
@@ -349,13 +362,20 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     trace.add("readiness", ready=True)
 
     # ---- 1. governance BEFORE anything costs money ------------------------
-    pol, adopt = verify_governance(sv)
+    pol, adopt, scope = verify_governance(sv)
     trace.add("verify-policy", policy_sha256=pol["policy_sha256"],
               rows=pol["rows"])
     trace.add("verify-adoption",
               complete_raw_sha256=adopt["complete_raw_sha256"],
               dataset_fingerprint=adopt["dataset_fingerprint"],
               eligible_rows=adopt["eligible_rows"])
+    trace.add("verify-language-scope",
+              language_scope_sha256=scope["language_scope_sha256"],
+              training_languages=list(language_scope.TRAINING_LANGUAGES),
+              validation_languages=list(language_scope.VALIDATION_LANGUAGES),
+              deferred_languages=list(language_scope.DEFERRED_LANGUAGES),
+              dataset_fingerprint=EXPECTED_FINGERPRINT,
+              eligible_rows=EXPECTED_ELIGIBLE_ROWS)
 
     # Persist the parent snapshot before reserving money. A tracking failure
     # here is provably pre-launch and must not leave a reservation.
@@ -569,14 +589,15 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     }
 
 
-def verify_governance(sv: Services) -> tuple[dict, dict]:
-    """Read-only policy/adoption proof shared by validation and execution."""
+def verify_governance(sv: Services) -> tuple[dict, dict, dict]:
+    """Read-only policy/adoption/scope proof shared by both launch paths."""
     pol = sv.verify_policy()
     if pol.get("human_review_performed") is not False:
         raise CampaignError("REFUSING: policy does not record "
                             "human_review_performed=false")
 
     adopt = sv.verify_adoption()
+    scope = sv.verify_language_scope()
     problems = []
     if adopt.get("status") != "approved":
         problems.append(f"adoption status is {adopt.get('status')!r}")
@@ -594,18 +615,36 @@ def verify_governance(sv: Services) -> tuple[dict, dict]:
                         "the completion record")
     if adopt.get("exclusion_checksums_sha256") != pol.get("exclusion_checksums_sha256"):
         problems.append("the adopted exclusion checksum set is not the policy's")
-    if adopt.get("dataset_fingerprint") != EXPECTED_FINGERPRINT:
+    if adopt.get("dataset_fingerprint") != ADOPTED_FINGERPRINT:
         problems.append(
             f"dataset fingerprint {str(adopt.get('dataset_fingerprint'))[:16]} "
-            f"is not the corrected {EXPECTED_FINGERPRINT[:16]}")
-    if adopt.get("eligible_rows") != EXPECTED_ELIGIBLE_ROWS:
+            f"is not the adopted source {ADOPTED_FINGERPRINT[:16]}")
+    if adopt.get("eligible_rows") != ADOPTED_ELIGIBLE_ROWS:
         problems.append(f"eligible rows {adopt.get('eligible_rows')} != "
-                        f"{EXPECTED_ELIGIBLE_ROWS}")
+                        f"adopted source {ADOPTED_ELIGIBLE_ROWS}")
+    if scope.get("status") != "approved":
+        problems.append(f"language scope status is {scope.get('status')!r}")
+    if scope.get("language_scope_sha256") != \
+            language_scope.LANGUAGE_SCOPE_SHA256:
+        problems.append("language-scope bytes differ from the authorised pin")
+    if tuple(scope.get("training_languages") or ()) != \
+            language_scope.TRAINING_LANGUAGES:
+        problems.append("language-scope training languages differ")
+    if tuple(scope.get("validation_languages") or ()) != \
+            language_scope.VALIDATION_LANGUAGES:
+        problems.append("language-scope validation languages differ")
+    if tuple(scope.get("deferred_languages") or ()) != \
+            language_scope.DEFERRED_LANGUAGES:
+        problems.append("language-scope deferred languages differ")
+    if scope.get("dataset_fingerprint") != EXPECTED_FINGERPRINT:
+        problems.append("language-scope dataset fingerprint differs")
+    if scope.get("eligible_rows") != EXPECTED_ELIGIBLE_ROWS:
+        problems.append("language-scope eligible-row count differs")
     if problems:
         raise CampaignError("REFUSING: adoption verification failed, so "
                             "nothing has been reserved:\n  "
                             + "\n  ".join(problems))
-    return pol, adopt
+    return pol, adopt, scope
 
 
 def run_campaign(sv: Services, campaign_run: str,

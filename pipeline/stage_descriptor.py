@@ -14,6 +14,8 @@ import hashlib
 import json
 import re
 
+from pipeline import language_scope
+
 STAGES = ("base_and_preflight", "sweep", "final", "diagnostic",
           "decode_compatibility")
 
@@ -23,6 +25,7 @@ REQUIRED = (
     "campaign_run", "attempt", "stage",
     "git_sha", "bundle_tar_sha256", "image_digest",
     "policy_sha256", "adoption_key", "dataset_fingerprint",
+    "language_scope_sha256", "training_languages", "validation_languages",
     "base_manifest_sha256", "validation_manifest_sha256",
     "base_arm_key", "base_artifact_key", "base_artifact_sha256",
     "generation_config_fingerprint", "evaluator_sha256",
@@ -68,10 +71,36 @@ def build(**kw) -> dict:
     if not image.startswith("sha256:") or not _lower_hex(image[7:], 64):
         problems.append("image_digest must be sha256:<64 hex>")
     for f in ("bundle_tar_sha256", "policy_sha256", "dataset_fingerprint",
+              "language_scope_sha256",
               "base_manifest_sha256", "validation_manifest_sha256",
               "generation_config_fingerprint", "evaluator_sha256"):
         if not _lower_hex(d[f], 64):
             problems.append(f"{f} must be 64 lowercase hex characters")
+    if d["language_scope_sha256"] != language_scope.LANGUAGE_SCOPE_SHA256:
+        problems.append(
+            "language_scope_sha256 differs from the approved B4 scope record")
+    for field in ("training_languages", "validation_languages"):
+        value = d[field]
+        if (not isinstance(value, list)
+                or len(set(value)) != len(value)
+                or any(not isinstance(language, str) or not language
+                       for language in value)):
+            problems.append(f"{field} must be a unique string list")
+    deferred = set(language_scope.DEFERRED_LANGUAGES)
+    for field in ("training_languages", "validation_languages"):
+        present = sorted(deferred & set(d[field]))
+        if present:
+            problems.append(
+                f"{field} contains deferred B4 language(s) {present}")
+    if d["stage"] in ("base_and_preflight", "sweep", "final"):
+        if tuple(d["training_languages"]) != language_scope.TRAINING_LANGUAGES:
+            problems.append(
+                "training_languages differ from the approved B4 active scope")
+        if tuple(d["validation_languages"]) != language_scope.VALIDATION_LANGUAGES:
+            problems.append(
+                "validation_languages differ from the approved B4 active scope")
+    elif d["training_languages"]:
+        problems.append("a zero-training diagnostic cannot name training languages")
     if d["purpose"] != "training_system_validation":
         problems.append("purpose must be training_system_validation")
     if d["promotable"] is not False:
