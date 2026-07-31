@@ -122,6 +122,12 @@ def test_publish_bundle_uses_a_per_commit_path():
     assert s.index('f"{base}/medzen_code.tgz"') < s.index('f"{base}/BUNDLE.json"')
 
 
+def test_publish_bundle_carries_pre_push_test_inputs():
+    source = PUBLISH.read_text()
+    assert '"tests"' in source
+    assert '"pytest.ini"' in source
+
+
 def test_publish_bundle_conditionally_creates_or_exactly_reuses_objects():
     s = PUBLISH.read_text()
     assert 'IfNoneMatch="*"' in s

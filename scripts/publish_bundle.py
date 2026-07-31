@@ -36,7 +36,11 @@ BUCKET = "medzen-speech"
 PROFILE = "medzen"
 REGION = "eu-central-1"
 PREFIX = "candidates/bootstrap"   # per-commit subpath: PREFIX/<full 40-char sha>/
-PATHS = ["pipeline", "scripts", "registry", "schemas", "platform", "requirements.txt"]
+# Tests and pytest.ini are execution inputs for the builder's pre-push
+# pinned-image gate.  They are part of the verified bundle but the Dockerfile
+# does not COPY them into the runtime image.
+PATHS = ["pipeline", "scripts", "registry", "schemas", "platform", "tests",
+         "pytest.ini", "requirements.txt"]
 
 ROOT = Path(__file__).resolve().parent.parent
 
