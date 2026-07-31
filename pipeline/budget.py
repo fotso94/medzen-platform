@@ -35,20 +35,23 @@ RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
 # Base evaluation and preflight share ONE instance: both need the pinned base
 # loaded and preflight builds a fresh LoRA on it. One instance, one
 # reservation, reconciled once when both have finished.
-WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2700,
-              "sweep_run": 2700, "final_run": 6600}
+WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2400,
+              "sweep_run": 2400, "final_run": 6600}
 STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
                   "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
 MAX_GPU_INSTANCES = 5
 MAX_INSTANCES = 6
 
 # The ceiling must cover the whole sequence hanging to its watchdogs:
-#   0.17 + 0.755 + 3x0.755 + 1.845 = 5.03
+#   0.17 + 0.671 + 3x0.671 + 1.845 = 4.70
 # An earlier table used a 10800s final watchdog, which made the worst-case
 # sequence $6.21 -- over its own $6 ceiling.  After three fail-closed campaign
 # attempts, the final watchdog is 6600s: still 20 minutes beyond the
-# predeclared ~90-minute expected run while keeping a clean retry within the
-# unchanged $6 campaign ceiling.
+# predeclared ~90-minute expected run.  After attempt 4, observed
+# base+preflight work still left 11 minutes inside a 2400s boundary; sweeps do
+# fewer optimisation steps against the same validation surface.  Reserving
+# those two stage types at 2400s keeps a clean retry within the unchanged $6
+# campaign ceiling without removing any work or gate.
 CEILING_USD = 6.00
 
 

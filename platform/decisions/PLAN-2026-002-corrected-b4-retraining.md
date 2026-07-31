@@ -293,7 +293,7 @@ never overwrite each other's results.
 | Any language regresses > +0.05 WER vs the in-run base | stop |
 | Non-finite loss or gradient | stop |
 | Cumulative spend > **$6.00** | stop |
-| Watchdog: 45 min base/sweep, 2 h final | terminate |
+| Watchdog: 40 min base/sweep, 110 min final | terminate |
 
 ## 13 · AWS resources that would be created
 

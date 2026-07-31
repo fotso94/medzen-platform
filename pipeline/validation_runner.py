@@ -81,6 +81,20 @@ class ValidationRuntime:
         self.base_manifest = None
         self.base_manifest_sha = None
 
+    def ensure_prepared(self) -> None:
+        """Populate the verified model/processor/input cache exactly once.
+
+        Adapter smoke checks can run before the full base evaluation.  They
+        must not assume that a previous evaluation happened to populate this
+        cache as a side effect.
+        """
+        if not self._loaded:
+            self.prepare()
+        if self.processor is None or not self._loaded:
+            raise SystemExit(
+                "REFUSING: validation inputs were not prepared for the "
+                "saved-adapter smoke test")
+
     def prepare(self) -> None:
         from scripts.evaluate_candidate import ensure_base, load_audio, load_eval_pinned
 
@@ -193,8 +207,7 @@ class ValidationRuntime:
         from pipeline import orchestrate
         from scripts.evaluate_candidate import preflight_contract
 
-        if not self._loaded:
-            self.prepare()
+        self.ensure_prepared()
         model = self._fresh_base()
         first_language = orchestrate.VALIDATION_LANGUAGES[0]
         _, audios = self._loaded[first_language]
@@ -233,8 +246,7 @@ class ValidationRuntime:
                          expected_adapter_sha256: str | None = None) -> dict:
         from peft import PeftModel
 
-        if not self._loaded:
-            self.prepare()
+        self.ensure_prepared()
         got = adapter_sha256(adapter_dir)
         if expected_adapter_sha256 is not None and got != expected_adapter_sha256:
             raise SystemExit(

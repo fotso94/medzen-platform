@@ -6,6 +6,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from botocore.exceptions import ClientError
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -139,3 +141,30 @@ def test_builder_reconciles_only_after_termination_and_volume_deletion(
     assert launch["MetadataOptions"]["HttpTokens"] == "required"
     assert launch["BlockDeviceMappings"][0]["Ebs"][
         "DeleteOnTermination"] is True
+
+
+def test_builder_retries_ec2_post_launch_eventual_consistency():
+    class EventuallyVisibleEC2:
+        def __init__(self):
+            self.calls = 0
+
+        def describe_instances(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                raise ClientError(
+                    {"Error": {"Code": "InvalidInstanceID.NotFound"}},
+                    "DescribeInstances")
+            return {"Reservations": [{"Instances": [{
+                "State": {"Name": "pending"},
+                "BlockDeviceMappings": [{
+                    "Ebs": {"VolumeId": "vol-eventually-visible"}}],
+            }]}]}
+
+    git_sha = "a" * 40
+    session = FakeSession(git_sha)
+    builder = EC2Builder(
+        session, BuilderConfig(poll_seconds=0, termination_grace_seconds=1))
+    builder.ec2 = EventuallyVisibleEC2()
+    assert builder._wait_volume_id(
+        "i-eventually-visible", timeout_s=1) == "vol-eventually-visible"
+    assert builder.ec2.calls == 2

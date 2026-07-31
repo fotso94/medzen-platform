@@ -20,6 +20,7 @@ from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
 from pipeline.stage_runner import (
     _training_command, require_runtime_provenance, upload_tree)
+from pipeline.validation_runner import ValidationRuntime
 
 
 def descriptor(stage="sweep", **over):
@@ -114,6 +115,24 @@ def test_base_stage_runs_training_preflight_before_full_evaluation(
     assert calls.index("run_training") < calls.index("evaluate_base")
     assert result["preflight"]["passed"] is True
     assert result["base"]["artifact_key"].endswith("/evaluations/base.json")
+
+
+def test_saved_adapter_smoke_prepares_its_own_validation_cache():
+    runtime = object.__new__(ValidationRuntime)
+    runtime._loaded = {}
+    runtime.processor = None
+    calls = []
+
+    def prepare():
+        calls.append("prepare")
+        runtime.processor = object()
+        runtime._loaded = {"acholi": ([{"checksum": "x"}], [("audio", 16000)])}
+
+    runtime.prepare = prepare
+    runtime.ensure_prepared()
+    runtime.ensure_prepared()
+    assert calls == ["prepare"]
+    assert "acholi" in runtime._loaded
 
 
 @pytest.mark.parametrize("field,value", [

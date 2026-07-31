@@ -271,6 +271,10 @@ def verify_saved_adapter(runtime: ValidationRuntime, adapter_dir: Path,
     import torch
     from peft import PeftModel
 
+    # This gate deliberately runs before the expensive full base evaluation.
+    # Prepare its own verified input instead of relying on evaluation to have
+    # populated ValidationRuntime's cache as an incidental side effect.
+    runtime.ensure_prepared()
     saved_sha = adapter_sha256(adapter_dir)
     base = runtime._fresh_base()
     model = PeftModel.from_pretrained(

@@ -166,9 +166,21 @@ class EC2Builder:
     def _wait_volume_id(self, instance_id: str, timeout_s: int = 120
                         ) -> str:
         """Capture the root volume before termination removes the mapping."""
+        from botocore.exceptions import ClientError
+
         deadline = time.monotonic() + timeout_s
         while time.monotonic() < deadline:
-            out = self.ec2.describe_instances(InstanceIds=[instance_id])
+            try:
+                out = self.ec2.describe_instances(InstanceIds=[instance_id])
+            except ClientError as exc:
+                # EC2 is eventually consistent immediately after
+                # run_instances: the returned instance ID can briefly be
+                # absent from DescribeInstances in the same region.
+                if exc.response.get("Error", {}).get("Code") != \
+                        "InvalidInstanceID.NotFound":
+                    raise
+                time.sleep(self.cfg.poll_seconds)
+                continue
             instance = out["Reservations"][0]["Instances"][0]
             for mapping in instance.get("BlockDeviceMappings", []):
                 volume_id = mapping.get("Ebs", {}).get("VolumeId")
