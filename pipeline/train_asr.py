@@ -415,6 +415,10 @@ def prepare_manual_forward_batch(model, batch: dict, device: str) -> dict:
     the actual input layer instead of guessing from the requested AMP mode.
     Labels remain integer tensors.
     """
+    # Trainer/Accelerate normally performs this move inside ``train()``.  This
+    # probe deliberately runs before ``train()``, so it must establish both
+    # sides of the device boundary itself.
+    model.to(device)
     prepared = {name: value.to(device) for name, value in batch.items()}
     try:
         base = (model.get_base_model()

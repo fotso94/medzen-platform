@@ -365,8 +365,11 @@ def test_require_raises_with_the_numbers_attached():
 # budget enforcement
 # --------------------------------------------------------------------------- #
 def test_worst_case_is_the_watchdog_not_the_expectation():
-    assert budget.worst_case_usd("final_run") == pytest.approx(
-        budget.RATES["g6.xlarge"] * budget.WATCHDOG_S["final_run"] / 3600)
+    expected = round(
+        budget.RATES["g6.xlarge"] * budget.WATCHDOG_S["final_run"] / 3600,
+        4,
+    )
+    assert budget.worst_case_usd("final_run") == expected
 
 
 class FakeS3:
@@ -448,7 +451,14 @@ def test_an_unresolved_reservation_blocks_the_next_reservation():
 
 def test_ceiling_refuses_the_reservation_that_would_breach_it():
     s3 = FakeS3()
-    for i, stage in enumerate(["final_run", "sweep_run", "sweep_run", "sweep_run"]):
+    completed = [
+        "final_run",
+        "sweep_run",
+        "sweep_run",
+        "sweep_run",
+        "base_and_preflight",
+    ]
+    for i, stage in enumerate(completed):
         budget.reserve(s3, stage, f"a{i}")
         budget.reconcile(s3, stage, f"a{i}",
                          actual_seconds=budget.WATCHDOG_S[stage])

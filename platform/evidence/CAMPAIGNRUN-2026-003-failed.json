@@ -1,0 +1,62 @@
+{
+  "record": "CAMPAIGNRUN-2026-003-FAILED",
+  "campaign_run": "b4-corrected-18691a5",
+  "attempt": "3",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "status": "FAILED_CLOSED_DURING_FIXED_BATCH_L0",
+  "git_sha": "075c8e1e7f94d6cc8dd381ea9a25f7588798c0a9",
+  "bundle_tar_sha256": "c621349cf056bb80141273957d8b2cd2dbff8b13cf5f6ea19b80b72d01e09715",
+  "image_digest": "sha256:8220f7c609f3c2f742496ad7bb61aa4502ee99eb5fef14b015a8bfa5c3013d3b",
+  "policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61",
+  "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+  "instance": {
+    "instance_id": "i-0cf908b01d32eb1e2",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "availability_zone": "eu-central-1a",
+    "launched_utc": "2026-07-31T12:21:04Z",
+    "terminated_utc": "2026-07-31T12:31:28Z",
+    "actual_seconds": 624.7,
+    "actual_usd": 0.1746,
+    "root_volume_id": "vol-080fe17eb0daf17e5",
+    "root_volume_deleted_verified_after_termination": true,
+    "eks_involved": false,
+    "spot_involved": false
+  },
+  "passed_before_failure": [
+    "caller, bundle, policy, adoption, dataset fingerprint, image and infrastructure read-only validation",
+    "digest-pinned image pull and baked git-sha verification",
+    "CUDA available on NVIDIA L4",
+    "pinned dependency and import gates",
+    "19 policy exclusions applied before sampling: 4620 eligible rows became 4601",
+    "base manifest verified over 11 model files",
+    "label audit verified 4601 rows and zero rows over the 448-token limit",
+    "LoRA r32 attached to q_proj and v_proj with 15.7M trainable parameters"
+  ],
+  "failure": {
+    "boundary": "fixed-batch L0 training preflight",
+    "exception": "RuntimeError: Input type (torch.cuda.HalfTensor) and weight type (torch.HalfTensor) should be the same",
+    "cause": "attempt 2's correction moved and converted input_features, but the manual probe still ran before Trainer/Accelerate moved the model from CPU to CUDA",
+    "effect": "the stage exited 1 before the first optimisation step; fail-fast ordering prevented another 385-row base evaluation",
+    "correction": "the manual probe now explicitly moves the model to the selected device before moving/casting its input batch"
+  },
+  "artifacts": {
+    "stage_prefix": "s3://medzen-speech/candidates/evaluations/b4-corrected-18691a5/attempt-3/base_and_preflight/",
+    "live_log_sha256": "c04aab188a5caf96856592772c124e2e4a453f86e882699a8bfb2b4881a713d9",
+    "stage_result_sha256": "4c9d6305c8499b2951f69ef3f2e93e70c1d500596177bd47d536ea32b4b76b1f",
+    "container_exit_code": 1,
+    "base_evaluation_produced": false,
+    "training_steps": 0,
+    "sweeps_launched": 0,
+    "adapter_produced": false,
+    "registered_models": 0
+  },
+  "budget": {
+    "attempt_actual_usd": 0.1746,
+    "campaign_committed_usd_after_reconciliation": 1.0396,
+    "unresolved_reservations": 0,
+    "control": "final watchdog reduced from 7200 to 6600 seconds; this remains 20 minutes above the predeclared 90-minute expectation and keeps a complete clean retry below the unchanged 6 USD hard ceiling"
+  },
+  "retry_rule": "Attempts 1 through 3 remain immutable. The device-placement correction requires a new commit, bundle, image digest and attempt-4 namespace."
+}

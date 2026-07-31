@@ -192,9 +192,14 @@ def test_manual_fixed_batch_matches_whisper_input_layer_dtype():
     class TinyWhisper(torch.nn.Module):
         def __init__(self):
             super().__init__()
+            self.moved_to = None
             self.model = SimpleNamespace(
                 encoder=SimpleNamespace(
                     conv1=torch.nn.Conv1d(2, 2, 1).half()))
+
+        def to(self, device):
+            self.moved_to = str(device)
+            return super().to(device)
 
         def forward(self, input_features, labels):
             value = self.model.encoder.conv1(input_features).float().mean()
@@ -208,6 +213,7 @@ def test_manual_fixed_batch_matches_whisper_input_layer_dtype():
     with pytest.raises(RuntimeError, match="Input type.*bias type"):
         model(**raw)
     prepared = prepare_manual_forward_batch(model, raw, "cpu")
+    assert model.moved_to == "cpu"
     assert prepared["input_features"].dtype == model.model.encoder.conv1.weight.dtype
     assert prepared["labels"].dtype == torch.long
     assert torch.isfinite(model(**prepared).loss)
