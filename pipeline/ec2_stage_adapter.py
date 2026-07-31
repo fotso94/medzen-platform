@@ -309,6 +309,27 @@ class EC2StageAdapter:
                     "the watchdog and operator termination request")
             time.sleep(self.config.poll_seconds)
 
+    def _wait_volume_id(self, instance_id: str, timeout_s: int = 120
+                        ) -> str | None:
+        """Capture the root volume while the instance still exposes it.
+
+        ``run_instances`` may return before block-device mappings exist, and a
+        terminated instance can drop them. Waiting only until termination made
+        a genuinely deleted root volume look unproven.
+        """
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            out = self.ec2.describe_instances(InstanceIds=[instance_id])
+            instance = out["Reservations"][0]["Instances"][0]
+            for mapping in instance.get("BlockDeviceMappings", []):
+                volume_id = mapping.get("Ebs", {}).get("VolumeId")
+                if volume_id:
+                    return volume_id
+            if instance["State"]["Name"] == "terminated":
+                return None
+            time.sleep(self.config.poll_seconds)
+        return None
+
     def _volume_deleted(self, volume_id: str | None) -> bool:
         if not volume_id:
             return False
@@ -397,6 +418,8 @@ class EC2StageAdapter:
             if mapping.get("Ebs", {}).get("VolumeId"):
                 volume_id = mapping["Ebs"]["VolumeId"]
                 break
+        if volume_id is None:
+            volume_id = self._wait_volume_id(instance_id)
 
         deadline = (
             time.monotonic() + descriptor["watchdog_s"]

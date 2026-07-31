@@ -63,6 +63,13 @@ COPY pipeline ./pipeline
 COPY scripts ./scripts
 COPY registry ./registry
 COPY schemas ./schemas
+# Runtime governance is executable input, not documentation.  The stage
+# runner refuses without these exact records, so they must be baked beside the
+# code whose commit/digest the descriptor authorises.
+COPY platform/decisions/DQ-2026-003-policy-deferral-corrected.json \
+     ./platform/decisions/DQ-2026-003-policy-deferral-corrected.json
+COPY platform/evidence/VAL-2026-001-frozen-validation-sets.json \
+     ./platform/evidence/VAL-2026-001-frozen-validation-sets.json
 
 # Python-dependency audit. ECR basic scanning covers OS packages only, so
 # without this nothing looks at torch, transformers, or the Flask/gunicorn tail

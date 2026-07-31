@@ -24,18 +24,18 @@ finish() {
   trap - EXIT
   printf '%s\n' "$rc" >/run/medzen-stage-exit
   aws s3api put-object --bucket "$BUCKET" \
-    --key "${OUTPUT_PREFIX}live.log" --body "fileb://$LOG" \
+    --key "${OUTPUT_PREFIX}live.log" --body "$LOG" \
     --if-none-match '*' --server-side-encryption aws:kms \
     --region "$REGION" >/dev/null || true
   aws s3api put-object --bucket "$BUCKET" \
     --key "${OUTPUT_PREFIX}container-exit-code" \
-    --body fileb:///run/medzen-stage-exit --if-none-match '*' \
+    --body /run/medzen-stage-exit --if-none-match '*' \
     --server-side-encryption aws:kms \
     --region "$REGION" >/dev/null || true
   if [ -s "$OUT/container-result.json" ]; then
     aws s3api put-object --bucket "$BUCKET" \
       --key "${OUTPUT_PREFIX}container-result.json" \
-      --body "fileb://$OUT/container-result.json" --if-none-match '*' \
+      --body "$OUT/container-result.json" --if-none-match '*' \
       --server-side-encryption aws:kms \
       --content-type application/json \
       --region "$REGION" >/dev/null || true

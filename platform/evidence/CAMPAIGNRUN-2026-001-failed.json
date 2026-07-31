@@ -1,0 +1,64 @@
+{
+  "record": "CAMPAIGNRUN-2026-001-FAILED",
+  "campaign_run": "b4-corrected-18691a5",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "status": "FAILED_CLOSED_BEFORE_MODEL_LOAD",
+  "git_sha": "18691a5fab97df4a450e1b07395ff59ce0bf02d7",
+  "bundle_tar_sha256": "de67fecbd41d988d60881a903ccafbd02afaebc76db3fb0cc05786a53bc0a984",
+  "image_digest": "sha256:b1cc775e91411af77305a840e17d63c20625566d51307b53f6b669d34c340bf6",
+  "policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61",
+  "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+  "instance": {
+    "instance_id": "i-050a5f26a8e11ee9b",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "availability_zone": "eu-central-1a",
+    "launched_utc": "2026-07-31T10:58:47Z",
+    "terminated_utc": "2026-07-31T11:08:25Z",
+    "actual_seconds": 578.6,
+    "actual_usd": 0.1618,
+    "root_volume_id": "vol-0d804c153b37499c4",
+    "root_volume_deleted_verified_after_termination": true,
+    "eks_involved": false,
+    "spot_involved": false
+  },
+  "passed_before_failure": [
+    "caller, bundle, policy, adoption, dataset fingerprint, image and infrastructure read-only validation",
+    "digest-pinned image pull",
+    "CUDA available on NVIDIA L4",
+    "pinned dependency and import gates"
+  ],
+  "failures": [
+    {
+      "boundary": "runtime governance packaging",
+      "cause": "pipeline/Dockerfile.trainer did not copy platform/evidence/VAL-2026-001-frozen-validation-sets.json into the image",
+      "effect": "ValidationRuntime raised FileNotFoundError before loading the base model or any audio"
+    },
+    {
+      "boundary": "instance evidence upload",
+      "cause": "stage_userdata.sh passed fileb:// values to aws s3api put-object --body, but this AWS CLI requires a filesystem path",
+      "effect": "the instance could not publish live.log, container-exit-code or container-result.json"
+    },
+    {
+      "boundary": "root-volume identity capture",
+      "cause": "run_instances returned before a block-device mapping existed and the adapter did not poll for the volume ID",
+      "effect": "the durable stage result could not itself prove deletion, although a subsequent AWS lookup confirmed the volume no longer exists"
+    }
+  ],
+  "artifacts": {
+    "stage_prefix": "s3://medzen-speech/candidates/evaluations/b4-corrected-18691a5/attempt-1/base_and_preflight/",
+    "stage_objects": [
+      "descriptor.json",
+      "stage-result.json"
+    ],
+    "mlflow_snapshot_prefix": "s3://medzen-speech/mlflow/snapshots/b4-corrected-18691a5/attempt-1/parent/",
+    "base_evaluation_produced": false,
+    "adapter_produced": false,
+    "training_steps": 0,
+    "sweeps_launched": 0,
+    "registered_models": 0
+  },
+  "retry_rule": "Attempt 1 remains immutable. Fixes require a new commit, bundle, image digest and attempt-2 namespace."
+}

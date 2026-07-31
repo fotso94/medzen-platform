@@ -70,6 +70,14 @@ def test_user_data_runs_one_digest_pinned_direct_ec2_container():
     assert "shutdown -h now" in text
     assert "eks" not in text.lower()
     assert "spot" not in text.lower()
+    assert "--if-none-match '*'" in text
+    assert "fileb://" not in text
+
+
+def test_trainer_image_contains_runtime_governance_records():
+    dockerfile = (ROOT / "pipeline/Dockerfile.trainer").read_text()
+    assert "DQ-2026-003-policy-deferral-corrected.json" in dockerfile
+    assert "VAL-2026-001-frozen-validation-sets.json" in dockerfile
 
 
 @pytest.mark.parametrize("field,value", [
@@ -366,7 +374,6 @@ class FakeEC2:
         return {"Instances": [{
             "InstanceId": "i-stage",
             "LaunchTime": datetime.now(timezone.utc),
-            "BlockDeviceMappings": [{"Ebs": {"VolumeId": "vol-1"}}],
         }]}
 
     def describe_volumes(self, VolumeIds):
@@ -404,6 +411,7 @@ def test_ec2_adapter_observes_termination_and_volume_deletion():
     result = EC2StageAdapter(session, cfg).run(descriptor())
     assert result["instance_id"] == "i-stage"
     assert result["aws_final_state"] == "terminated"
+    assert result["root_volume_id"] == "vol-1"
     assert result["root_volume_deleted"] is True
     assert result["lifecycle"] == "on-demand-direct-ec2"
     assert result["eks_involved"] is False and result["spot_involved"] is False
