@@ -1,7 +1,7 @@
 # PLAN-2026-005 — Amharic data/model compatibility investigation
 
-**Status: PREPARED; PHASE A IS READ-ONLY; NO TRAINING OR GPU LAUNCH IS
-AUTHORISED.**
+**Status: PHASE A COMPLETE; HUMAN REVIEW AND INDEPENDENT-SOURCE GATES OPEN;
+NO TRAINING OR GPU LAUNCH IS AUTHORISED.**
 
 PLAN-2026-004 completed successfully but selected no decode strategy. Greedy,
 Whisper fallback and five-beam decoding all failed the predeclared termination
@@ -96,3 +96,22 @@ already-frozen fallback contract.
 This plan exits only with (a) an aggregate Phase A evidence record, (b) the
 qualified human-review outcome, and (c) a frozen independent-source evaluation
 contract. It does not complete B4. B5 remains blocked.
+
+## Phase A outcome
+
+The read-only audit completed as
+`platform/evidence/COMPAT-2026-002-amharic-aggregate-audit.json`. It streamed
+271 eligible training and 25 evaluation audio objects, persisted no private
+content, and created or modified no AWS resource.
+
+The manifests, checksums, split, speaker/session disjointness, normalization,
+audio format, durations and basic signal properties all passed. Evaluation is
+modestly more token-dense (18.119 versus 16.713 effective tokens/second) but
+remains within the eligible training range. Both sets require about three
+Whisper tokens per Ethiopic letter, which confirms tokenizer fragmentation
+pressure without establishing a bad transcript or model defect.
+
+Phase A therefore does not authorize a model experiment. The open work is now
+human rather than computational: qualified Amharic review and an independent,
+licensed, frozen evaluation source. No additional AWS compute is justified
+until those gates close.

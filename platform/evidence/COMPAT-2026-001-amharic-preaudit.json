@@ -19,7 +19,8 @@
       "licence_status": "sharealike_review"
     },
     "training_pool": {
-      "raw_rows": 275,
+      "source_manifest_rows": 300,
+      "train_split_rows_before_deferral": 275,
       "experiment_deferred_rows": 4,
       "experiment_eligible_rows": 271,
       "human_reviewed_deferred_rows": 0,

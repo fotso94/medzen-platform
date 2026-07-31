@@ -294,16 +294,61 @@ def test_amharic_compatibility_preaudit_keeps_next_phase_read_only():
         ROOT / "platform/evidence/COMPAT-2026-001-amharic-preaudit.json"
     ).read_text())
     findings = evidence["aggregate_findings"]
-    assert findings["training_pool"]["raw_rows"] == 275
+    assert findings["training_pool"]["source_manifest_rows"] == 300
+    assert findings["training_pool"][
+        "train_split_rows_before_deferral"] == 275
     assert findings["training_pool"]["experiment_eligible_rows"] == 271
     assert findings["token_density_context"]["ratio_to_next_highest"] == \
         pytest.approx(2.3287)
     assert evidence["constraints"]["no_training_authorised"] is True
     assert evidence["constraints"]["human_listening_still_required"] is True
     plan = (ROOT / "platform/decisions/PLAN-2026-005-amharic-data-model-compatibility.md").read_text()
-    assert "PHASE A IS READ-ONLY" in plan
+    assert "PHASE A COMPLETE" in plan
     assert "No sweep, checkpoint selection" in plan
     assert "B5 remains blocked" in plan
+
+    phase_a = json.loads((
+        ROOT / "platform/evidence/COMPAT-2026-002-amharic-aggregate-audit.json"
+    ).read_text())
+    assert phase_a["counts"] == {
+        "source_manifest_rows": 300,
+        "source_train_split_rows_before_deferral": 275,
+        "source_test_split_rows": 25,
+        "train_policy_deferred_rows": 4,
+        "train_eligible_rows": 271,
+        "eval_rows": 25,
+    }
+    assert phase_a["split_integrity"] == {
+        "eligible_train_eval_audio_checksum_overlap": 0,
+        "eligible_train_eval_speaker_overlap": 0,
+        "eligible_train_eval_session_overlap": 0,
+        "frozen_eval_equals_source_test_checksum_set": True,
+    }
+    for split in ("train", "eval"):
+        assert phase_a["audio_integrity"][split]["decode_failures"] == 0
+        assert phase_a["audio_integrity"][split]["checksum_mismatches"] == 0
+        assert phase_a["audio_integrity"][split][
+            "declared_format_mismatches"] == 0
+    assert phase_a["aws_effect"]["resources_created"] == 0
+    assert phase_a["aws_effect"]["resources_modified"] == 0
+
+
+def test_amharic_aggregate_audit_helpers_emit_distributions_not_rows():
+    from scripts import audit_amharic_compatibility as audit
+
+    assert audit.s3_parts("s3://bucket/private/key.wav") == (
+        "bucket", "private/key.wav")
+    with pytest.raises(ValueError):
+        audit.s3_parts("https://example.invalid/private.wav")
+    distribution = audit.quantiles([1, 2, 3, 4])
+    assert distribution == {
+        "count": 4, "min": 1.0, "p25": 1.75, "median": 2.5,
+        "p75": 3.25, "max": 4.0, "mean": 2.5,
+    }
+    scripts = audit.script_counts("አማርኛ Amharic 12")
+    assert scripts["ethiopic"] == 4
+    assert scripts["latin"] == 7
+    assert scripts["digits"] == 2
 
 
 def test_decode_score_reduces_private_row_to_aggregate_only():
