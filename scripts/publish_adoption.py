@@ -155,8 +155,21 @@ def main() -> int:
             f"holds {comp_sha[:16]}")
 
     # ---- the corpus must still hash as the policy recorded -----------------
-    b = RB.recompute(cli)
+    try:
+        bound_audit = (ROOT / policy["bindings"]["audit_path"]).resolve()
+    except KeyError:
+        raise SystemExit(
+            "REFUSING: policy does not bind an audit_path")
+    try:
+        bound_audit.relative_to(ROOT)
+    except ValueError:
+        raise SystemExit(
+            "REFUSING: policy audit_path escapes the repository")
+    b = RB.recompute(cli, audit_path=bound_audit)
     problems = [p for p in RB.verify(b) if not p.startswith("uncommitted changes")]
+    if b["audit_sha256"] != policy["bindings"]["audit_sha256"]:
+        problems.append(
+            "the audit bytes no longer match the audit sha256 bound by policy")
     stray = [p for p in b["repo_dirty_paths"]
              if p not in {"platform/decisions/DQ-2026-001-label-review.json"}]
     if stray:

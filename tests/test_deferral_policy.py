@@ -196,6 +196,8 @@ def test_publisher_binds_raw_bytes_and_the_policy():
     assert "hashlib.sha256(comp_raw).hexdigest()" in src
     assert '"deferral_policy_sha256": policy_sha' in src
     assert '"deferral_policy_key": a.policy_key' in src
+    assert 'policy["bindings"]["audit_path"]' in src
+    assert "RB.recompute(cli, audit_path=bound_audit)" in src
     assert 'policy.get("decision_type") != "policy_deferral"' in src
     assert 'policy.get("human_review_performed") is not False' in src
 
