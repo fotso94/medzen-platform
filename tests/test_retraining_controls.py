@@ -260,7 +260,9 @@ def test_adapter_with_a_real_effect_passes():
     torch = pytest.importorskip("torch")
     on = torch.tensor([[1.0, 2.0, 3.0]])
     off = torch.tensor([[1.0, 2.0, 2.5]])
-    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 0.3})
+    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 0.3},
+                                     checkpoint_sha256="d" * 64,
+                                     tested_artifact_sha256="d" * 64)
     assert v["passed"] and v["max_abs_logit_delta"] == pytest.approx(0.5)
 
 
@@ -269,7 +271,9 @@ def test_inert_adapter_is_refused_even_though_it_is_present():
     changes nothing. It would produce base numbers that look like a fix."""
     torch = pytest.importorskip("torch")
     x = torch.tensor([[1.0, 2.0, 3.0]])
-    v = smoke.adapter_effect_verdict(x, x.clone(), {"lora_B": 0.0})
+    v = smoke.adapter_effect_verdict(x, x.clone(), {"lora_B": 0.0},
+                                     checkpoint_sha256="d" * 64,
+                                     tested_artifact_sha256="d" * 64)
     assert not v["passed"]
     joined = " ".join(v["reasons"])
     assert "inert" in joined and "zero B matrix" in joined
@@ -278,7 +282,9 @@ def test_inert_adapter_is_refused_even_though_it_is_present():
 def test_bit_identical_logits_are_refused():
     torch = pytest.importorskip("torch")
     x = torch.tensor([[1.0, 2.0]])
-    v = smoke.adapter_effect_verdict(x, x, {"lora_B": 5.0})
+    v = smoke.adapter_effect_verdict(x, x, {"lora_B": 5.0},
+                                     checkpoint_sha256="d" * 64,
+                                     tested_artifact_sha256="d" * 64)
     assert not v["passed"]
     assert any("bit-identical" in r for r in v["reasons"])
 
@@ -287,7 +293,9 @@ def test_effect_below_threshold_is_refused():
     torch = pytest.importorskip("torch")
     on = torch.tensor([[1.0]])
     off = torch.tensor([[1.0 + 1e-6]])
-    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 1.0})
+    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 1.0},
+                                     checkpoint_sha256="d" * 64,
+                                     tested_artifact_sha256="d" * 64)
     assert not v["passed"]
 
 
@@ -689,3 +697,67 @@ def test_rates_outside_zero_one_are_refused(bad):
 def test_a_non_mapping_is_refused():
     with pytest.raises(SystemExit, match="not a mapping"):
         orchestrate.evaluate_gates([0.9] * 9, wers(), perfect(), zeros())
+
+
+# --------------------------------------------------------------------------- #
+# saved-artifact verification is MANDATORY  (item 6)
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("saved,reloaded", [
+    (None, None), ("d" * 64, None), (None, "d" * 64),
+])
+def test_absent_artifact_hashes_are_refused(saved, reloaded):
+    """'we did not check' must not pass like 'we checked and it matched'."""
+    torch = pytest.importorskip("torch")
+    on, off = torch.tensor([[1.0]]), torch.tensor([[2.0]])
+    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 1.0},
+                                     checkpoint_sha256=saved,
+                                     tested_artifact_sha256=reloaded)
+    assert not v["passed"]
+    assert "both REQUIRED" in " ".join(v["reasons"])
+
+
+def test_mismatched_artifact_hashes_are_refused():
+    torch = pytest.importorskip("torch")
+    on, off = torch.tensor([[1.0]]), torch.tensor([[2.0]])
+    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 1.0},
+                                     checkpoint_sha256="a" * 64,
+                                     tested_artifact_sha256="b" * 64)
+    assert not v["passed"]
+    assert "is not the saved checkpoint" in " ".join(v["reasons"])
+
+
+def test_matching_hashes_record_that_the_saved_artifact_was_tested():
+    torch = pytest.importorskip("torch")
+    on, off = torch.tensor([[1.0]]), torch.tensor([[2.0]])
+    v = smoke.adapter_effect_verdict(on, off, {"lora_B": 1.0},
+                                     checkpoint_sha256="d" * 64,
+                                     tested_artifact_sha256="d" * 64)
+    assert v["passed"] and v["tested_the_saved_checkpoint"] is True
+
+
+# --------------------------------------------------------------------------- #
+# stage topology  (item 2)
+# --------------------------------------------------------------------------- #
+def test_worst_case_sequence_fits_under_the_ceiling():
+    """An earlier table used a 10800s final watchdog, making the worst-case
+    sequence $6.21 -- over its own $6 ceiling."""
+    total = (budget.worst_case_usd("builder")
+             + budget.worst_case_usd("base_and_preflight")
+             + 3 * budget.worst_case_usd("sweep_run")
+             + budget.worst_case_usd("final_run"))
+    assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
+
+
+def test_declared_instance_count_matches_the_topology():
+    gpu = ["base_and_preflight", "sweep_run", "sweep_run", "sweep_run",
+           "final_run"]
+    assert len(gpu) == budget.MAX_GPU_INSTANCES == 5
+    assert budget.MAX_INSTANCES == budget.MAX_GPU_INSTANCES + 1
+    assert all(budget.STAGE_INSTANCE[s] == "g6.xlarge" for s in set(gpu))
+    assert budget.STAGE_INSTANCE["builder"] == "c6i.2xlarge"
+
+
+def test_base_and_preflight_share_one_reservation():
+    assert "base_eval" not in budget.WATCHDOG_S
+    assert "preflight" not in budget.WATCHDOG_S
+    assert "base_and_preflight" in budget.WATCHDOG_S

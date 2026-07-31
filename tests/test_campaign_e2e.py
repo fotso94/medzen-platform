@@ -22,6 +22,7 @@ from pipeline import budget, campaign, mlflow_sync, orchestrate   # noqa: E402
 
 LANGS = orchestrate.VALIDATION_LANGUAGES
 POLICY_SHA = "a" * 64
+EXCL_SHA = "e" * 64
 
 
 class FakeS3:
@@ -58,9 +59,12 @@ class FakeS3:
         self.put_calls.append(Key)
         return {"ETag": self._etag(Key)}
 
-    def list_objects_v2(self, Bucket, Prefix, MaxKeys=None):
-        n = sum(1 for k in self.objects if k.startswith(Prefix))
-        return {"KeyCount": n}
+    def list_objects_v2(self, Bucket, Prefix, MaxKeys=None,
+                        ContinuationToken=None):
+        ks = sorted(k for k in self.objects if k.startswith(Prefix))
+        return {"KeyCount": len(ks),
+                "Contents": [{"Key": k} for k in ks],
+                "IsTruncated": False}
 
 
 def metrics(**over):
@@ -100,18 +104,25 @@ def make_services(s3, db, **over):
     def verify_policy():
         calls.append("verify_policy")
         return {"policy_sha256": POLICY_SHA, "rows": 19,
-                "human_review_performed": False}
+                "human_review_performed": False,
+                "exclusion_checksums_sha256": EXCL_SHA}
 
     def verify_adoption():
         calls.append("verify_adoption")
-        return {"deferral_policy_sha256": POLICY_SHA,
-                "complete_raw_sha256": "b" * 64}
+        return {"status": "approved",
+                "deferral_policy_sha256": POLICY_SHA,
+                "complete_raw_sha256": "b" * 64,
+                "current_complete_raw_sha256": "b" * 64,
+                "manifests_verified": True,
+                "exclusion_checksums_sha256": EXCL_SHA,
+                "dataset_fingerprint": campaign.EXPECTED_FINGERPRINT,
+                "eligible_rows": campaign.EXPECTED_ELIGIBLE_ROWS}
 
     def run_preflight():
         calls.append("preflight")
         return {"passed": True, "overfit": {"passed": True},
                 "adapter_effect": {"passed": True},
-                "generation_smoke": {"passed": True}}
+                "generation_smoke": {"passed": True}, "seconds": 120}
 
     def evaluate_base(campaign_run):
         calls.append("evaluate_base")
@@ -133,7 +144,10 @@ def make_services(s3, db, **over):
     sv = campaign.Services(
         s3=s3, verify_policy=verify_policy, verify_adoption=verify_adoption,
         run_preflight=run_preflight, evaluate_base=evaluate_base, train=train,
-        evaluate_checkpoint=evaluate_checkpoint, mlflow_db=db)
+        evaluate_checkpoint=evaluate_checkpoint, mlflow_db=db,
+        launcher=object(), image_digest="sha256:" + "f" * 64,
+        stage_descriptors={"base_and_preflight": {}, "sweep_run": {},
+                           "final_run": {}})
     for k, v in over.items():
         setattr(sv, k, v)
     return sv, calls
@@ -149,8 +163,8 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
 
     names = out["trace_names"]
     order = [n for n in names if not n.startswith("mlflow-sync")]
-    assert order[:6] == ["verify-policy", "verify-adoption", "budget-reserve",
-                         "base-eval", "preflight", "budget-reserve"]
+    assert order[:6] == ["readiness", "verify-policy", "verify-adoption",
+                         "budget-reserve", "base-eval", "preflight"]
 
     # the required sequence, each strictly before the next
     def idx(pred):
@@ -224,6 +238,7 @@ def test_bad_policy_stops_before_any_reservation(db):
     with pytest.raises(SystemExit, match="human_review_performed=false"):
         campaign.run_campaign(sv, "camp-f1")
     assert budget.load(s3)[0]["reservations"] == {}
+    assert s3.objects == {}, "no S3 mutation before governance passes"
     assert not any(c.startswith("train:") for c in calls)
 
 
@@ -232,7 +247,7 @@ def test_adoption_bound_to_a_different_policy_stops_before_spending(db):
     sv, calls = make_services(
         s3, db, verify_adoption=lambda: {"deferral_policy_sha256": "z" * 64,
                                          "complete_raw_sha256": "b" * 64})
-    with pytest.raises(SystemExit, match="different deferral policy"):
+    with pytest.raises(SystemExit, match="does not transfer between policies"):
         campaign.run_campaign(sv, "camp-f2")
     assert budget.load(s3)[0]["reservations"] == {}
     assert "evaluate_base" not in calls
@@ -349,7 +364,7 @@ def test_recovery_lists_every_completed_stage_after_interruption(db):
     with pytest.raises(RuntimeError):
         campaign.run_campaign(sv, "camp-r1")
 
-    rec = mlflow_sync.recover(s3, "camp-r1")
+    rec = mlflow_sync.recover(s3, "camp-r1", "1")
     assert rec["interrupted"] is True
     assert "parent" in rec["stage_names"] and "base_eval" in rec["stage_names"]
     assert rec["last_completed_stage"] == "final-checkpoint-200"
@@ -357,7 +372,7 @@ def test_recovery_lists_every_completed_stage_after_interruption(db):
 
 
 def test_recovery_of_an_unknown_campaign_is_empty_not_an_error():
-    rec = mlflow_sync.recover(FakeS3(), "never-ran")
+    rec = mlflow_sync.recover(FakeS3(), "never-ran", "1")
     assert rec["stages"] == [] and rec["last_completed_stage"] is None
 
 
@@ -372,14 +387,14 @@ def test_snapshot_is_a_consistent_backup_not_a_file_copy(db, tmp_path):
 
 def test_a_second_snapshot_of_the_same_stage_is_refused(db):
     s3 = FakeS3()
-    mlflow_sync.sync(s3, db, "camp-x", "parent")
+    mlflow_sync.sync(s3, db, "camp-x", "parent", attempt="1")
     with pytest.raises(SystemExit, match="write-once"):
-        mlflow_sync.sync(s3, db, "camp-x", "parent")
+        mlflow_sync.sync(s3, db, "camp-x", "parent", attempt="1")
 
 
 def test_sync_verifies_by_readback(db):
     s3 = FakeS3()
-    rec = mlflow_sync.sync(s3, db, "camp-y", "parent")
+    rec = mlflow_sync.sync(s3, db, "camp-y", "parent", attempt="1")
     stored = s3.objects[rec["key"].split("medzen-speech/", 1)[1]]
     assert hashlib.sha256(stored).hexdigest() == rec["sha256"]
 
@@ -458,3 +473,102 @@ def test_preflight_has_no_standalone_launch_path():
     src = (ROOT / "scripts/run_preflight.py").read_text()
     assert "no standalone launch path" in src
     assert "def run(" in src, "but it IS importable by the campaign"
+
+
+def test_recovery_orders_stages_completed_within_the_same_second(db):
+    """`utc` has second resolution; stages routinely finish inside one second.
+    Sorting on it alone returned an arbitrary last-completed stage."""
+    s3 = FakeS3()
+    for stage in ("parent", "base_eval", "preflight", "final-checkpoint-100"):
+        mlflow_sync.sync(s3, db, "camp-order", stage, attempt="1")
+    rec = mlflow_sync.recover(s3, "camp-order", "1")
+    assert rec["stage_names"] == ["parent", "base_eval", "preflight",
+                                  "final-checkpoint-100"]
+    assert rec["last_completed_stage"] == "final-checkpoint-100"
+    assert all(s["seq_ns"] > 0 for s in rec["stages"])
+
+
+def test_attempt_two_does_not_overwrite_attempt_one(db):
+    """A retry must preserve why the first attempt failed."""
+    s3 = FakeS3()
+    a1 = mlflow_sync.sync(s3, db, "camp-a", "parent", attempt="1")
+    a2 = mlflow_sync.sync(s3, db, "camp-a", "parent", attempt="2")
+    assert a1["key"] != a2["key"]
+    assert "attempt-1" in a1["key"] and "attempt-2" in a2["key"]
+    r1 = mlflow_sync.recover(s3, "camp-a", "1")
+    r2 = mlflow_sync.recover(s3, "camp-a", "2")
+    assert r1["stage_names"] == ["parent"] and r2["stage_names"] == ["parent"]
+    assert r1["last_snapshot_sha256"] and r2["last_snapshot_sha256"]
+
+
+def test_attempt_cannot_collide_with_a_stage_name(db):
+    """attempt-N is its own path segment, so 'parent' or 'base_eval' as an
+    attempt value cannot land on another stage's key."""
+    s3 = FakeS3()
+    k_parent = mlflow_sync.snapshot_key("c", "1", "parent")
+    k_weird = mlflow_sync.snapshot_key("c", "parent", "base_eval")
+    assert k_parent != k_weird
+    assert k_parent == "mlflow/snapshots/c/attempt-1/parent/mlflow.db"
+
+
+def test_recovery_reads_immutable_records_not_a_mutable_index(db):
+    """A lost index append must not erase a stage that really happened."""
+    s3 = FakeS3()
+    mlflow_sync.sync(s3, db, "camp-i", "parent", attempt="1")
+    assert not any(k.endswith("index.jsonl") for k in s3.objects)
+    assert any(k.endswith("/record.json") for k in s3.objects)
+    rec = mlflow_sync.recover(s3, "camp-i", "1")
+    assert rec["stage_names"] == ["parent"]
+
+
+def test_confirm_with_placeholder_services_mutates_nothing(db):
+    """The safety property: an incomplete wiring must not reserve or write."""
+    s3 = FakeS3()
+    sv, calls = make_services(s3, db)
+    sv.train = campaign.placeholder("training runs on the GPU instance")
+    with pytest.raises(SystemExit, match="not production-ready"):
+        campaign.run_campaign(sv, "camp-pl")
+    assert s3.objects == {}, "no S3 object written"
+    assert calls == [], "no service invoked"
+
+
+@pytest.mark.parametrize("field,value", [
+    ("mlflow_db", None), ("launcher", None), ("image_digest", None),
+    ("stage_descriptors", None),
+])
+def test_incomplete_wiring_refuses_before_any_mutation(db, field, value):
+    s3 = FakeS3()
+    sv, calls = make_services(s3, db)
+    setattr(sv, field, value)
+    with pytest.raises(SystemExit, match="not production-ready"):
+        campaign.run_campaign(sv, "camp-nr")
+    assert s3.objects == {} and calls == []
+
+
+def test_readiness_names_every_problem_at_once(db):
+    sv, _ = make_services(FakeS3(), db)
+    sv.train = campaign.placeholder("stub")
+    sv.launcher = None
+    r = campaign.readiness(sv)
+    assert r["ready"] is False
+    assert any("placeholder" in p for p in r["problems"])
+    assert any("launcher" in p for p in r["problems"])
+
+
+@pytest.mark.parametrize("bad", [
+    {"status": "draft"},
+    {"current_complete_raw_sha256": "z" * 64},
+    {"manifests_verified": False},
+    {"exclusion_checksums_sha256": "z" * 64},
+    {"dataset_fingerprint": "z" * 64},
+    {"eligible_rows": 4600},
+])
+def test_adoption_mismatch_stops_before_any_reservation(db, bad):
+    s3 = FakeS3()
+    sv, calls = make_services(s3, db)
+    good = sv.verify_adoption()
+    sv.verify_adoption = lambda: {**good, **bad}
+    with pytest.raises(SystemExit, match="adoption verification failed"):
+        campaign.run_campaign(sv, "camp-adopt")
+    assert budget.load(s3)[0]["reservations"] == {}
+    assert "evaluate_base" not in calls

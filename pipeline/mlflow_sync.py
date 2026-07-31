@@ -31,11 +31,34 @@ BUCKET = "medzen-speech"
 CAMPAIGN = "b4-corrected"
 
 
-def snapshot_key(campaign_run: str, stage: str) -> str:
-    """One immutable key per stage. Never `mlflow/db/<run>/mlflow.db`."""
-    if "/" in stage or "/" in campaign_run:
-        raise ValueError("stage and campaign_run must not contain '/'")
-    return f"mlflow/snapshots/{campaign_run}/{stage}/mlflow.db"
+def snapshot_prefix(campaign_run: str, attempt: str, stage: str) -> str:
+    """ATTEMPT is part of the namespace.
+
+    Retrying as attempt 2 must not overwrite attempt 1's evidence, and must not
+    collide with `parent`, `base_eval` or any checkpoint key from the first
+    try. Without this, a retry silently destroys the record of why the first
+    attempt failed.
+    """
+    for part, name in ((campaign_run, "campaign_run"), (attempt, "attempt"),
+                       (stage, "stage")):
+        if not part or "/" in str(part):
+            raise ValueError(f"{name} must be non-empty and contain no '/'")
+    return f"mlflow/snapshots/{campaign_run}/attempt-{attempt}/{stage}/"
+
+
+def snapshot_key(campaign_run: str, attempt: str, stage: str) -> str:
+    """One immutable key per (campaign, attempt, stage)."""
+    return snapshot_prefix(campaign_run, attempt, stage) + "mlflow.db"
+
+
+def record_key(campaign_run: str, attempt: str, stage: str) -> str:
+    """The immutable metadata written BESIDE every snapshot.
+
+    Recovery must not depend on a mutable index: an index that failed to append
+    would lose a stage that actually completed. Listing the immutable records
+    reconstructs the truth from the objects themselves.
+    """
+    return snapshot_prefix(campaign_run, attempt, stage) + "record.json"
 
 
 def consistent_snapshot(src: Path, dest: Path) -> None:
@@ -51,7 +74,7 @@ def consistent_snapshot(src: Path, dest: Path) -> None:
         con.close()
 
 
-def sync(cli, db: Path, campaign_run: str, stage: str,
+def sync(cli, db: Path, campaign_run: str, stage: str, attempt: str = "1",
          extra: dict | None = None) -> dict:
     """Snapshot, upload to an immutable key, verify by READ-BACK.
 
@@ -60,7 +83,7 @@ def sync(cli, db: Path, campaign_run: str, stage: str,
     """
     from botocore.exceptions import ClientError
 
-    key = snapshot_key(campaign_run, stage)
+    key = snapshot_key(campaign_run, attempt, stage)
     with tempfile.TemporaryDirectory() as td:
         snap = Path(td) / "snapshot.db"
         consistent_snapshot(db, snap)
@@ -88,39 +111,51 @@ def sync(cli, db: Path, campaign_run: str, stage: str,
             f"REFUSING: snapshot read-back hashes {got[:16]}, expected "
             f"{digest[:16]}. The snapshot is not durable.")
 
-    rec = {"campaign_run": campaign_run, "stage": stage,
+    rec = {"campaign_run": campaign_run, "attempt": attempt, "stage": stage,
            "key": f"s3://{BUCKET}/{key}", "sha256": digest,
            "bytes": len(body),
            "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+           # Ordering key. `utc` has second resolution, and stages routinely
+           # complete inside the same second -- sorting on it returned an
+           # arbitrary "last completed stage", which is the one thing recovery
+           # exists to answer.
+           "seq_ns": time.time_ns(),
            **(extra or {})}
-    idx = f"mlflow/snapshots/{campaign_run}/index.jsonl"
-    try:
-        prev = cli.get_object(Bucket=BUCKET, Key=idx)["Body"].read()
-    except ClientError:
-        prev = b""
-    cli.put_object(Bucket=BUCKET, Key=idx,
-                   Body=prev + (json.dumps(rec) + "\n").encode(),
-                   ContentType="application/x-ndjson")
+    # An IMMUTABLE record beside the snapshot. Recovery reads these by listing,
+    # so a lost index append cannot erase a stage that really happened.
+    cli.put_object(Bucket=BUCKET,
+                   Key=record_key(campaign_run, attempt, stage),
+                   Body=(json.dumps(rec, indent=2, sort_keys=True) + "\n").encode(),
+                   ContentType="application/json", IfNoneMatch="*")
     return rec
 
 
-def recover(cli, campaign_run: str) -> dict:
+def recover(cli, campaign_run: str, attempt: str = "1") -> dict:
     """What survived an interruption: every stage snapshot, in order.
 
     An interrupted campaign is not a lost one. The last completed stage is the
     last entry here, and the run's failure state is whatever the trainer wrote
     before it stopped -- both readable without the instance.
     """
-    from botocore.exceptions import ClientError
-    idx = f"mlflow/snapshots/{campaign_run}/index.jsonl"
-    try:
-        raw = cli.get_object(Bucket=BUCKET, Key=idx)["Body"].read()
-    except ClientError:
-        return {"campaign_run": campaign_run, "stages": [],
-                "last_completed_stage": None, "interrupted": True}
-    stages = [json.loads(l) for l in raw.decode().splitlines() if l.strip()]
+    prefix = f"mlflow/snapshots/{campaign_run}/attempt-{attempt}/"
+    keys = []
+    tok = None
+    while True:
+        kw = {"Bucket": BUCKET, "Prefix": prefix}
+        if tok:
+            kw["ContinuationToken"] = tok
+        page = cli.list_objects_v2(**kw)
+        keys += [o["Key"] for o in page.get("Contents", [])
+                 if o["Key"].endswith("/record.json")]
+        if not page.get("IsTruncated"):
+            break
+        tok = page.get("NextContinuationToken")
+    stages = sorted(
+        (json.loads(cli.get_object(Bucket=BUCKET, Key=k)["Body"].read())
+         for k in keys), key=lambda r: (r.get("seq_ns", 0), r["utc"]))
     return {
         "campaign_run": campaign_run,
+        "attempt": attempt,
         "stages": stages,
         "stage_names": [s["stage"] for s in stages],
         "last_completed_stage": stages[-1]["stage"] if stages else None,

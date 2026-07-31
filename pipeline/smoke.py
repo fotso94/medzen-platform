@@ -83,9 +83,19 @@ def adapter_effect_verdict(logits_on, logits_off, weight_norms: dict,
 
     # The adapter under test must be the SAVED checkpoint, not the in-memory
     # model before serialization -- those can differ, and the artifact is what
-    # a later run would load.
-    if checkpoint_sha256 is not None and tested_artifact_sha256 is not None \
-            and checkpoint_sha256 != tested_artifact_sha256:
+    # a later run would load. BOTH hashes are required: allowing either to be
+    # absent meant "we did not check" passed exactly like "we checked and it
+    # matched".
+    if checkpoint_sha256 is None or tested_artifact_sha256 is None:
+        return {"passed": False, "reasons": [
+            "saved-adapter and reloaded-adapter SHA-256 are both REQUIRED; "
+            f"got saved={checkpoint_sha256!r} reloaded={tested_artifact_sha256!r}. "
+            "The effect and EOS checks must run on the reloaded artifact."],
+            "max_abs_logit_delta": None,
+            "required_delta": ADAPTER_MIN_LOGIT_DELTA,
+            "adapter_tensors_checked": len(weight_norms),
+            "adapter_tensors_nonzero": None}
+    if checkpoint_sha256 != tested_artifact_sha256:
         return {"passed": False, "reasons": [
             f"tested artifact {str(tested_artifact_sha256)[:16]} is not the "
             f"saved checkpoint {checkpoint_sha256[:16]}; the effect was "

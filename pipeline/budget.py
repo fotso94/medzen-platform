@@ -25,10 +25,28 @@ CAMPAIGN = "b4-corrected"
 LEDGER_KEY = f"candidates/budget/{CAMPAIGN}/ledger.json"
 
 RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
-WATCHDOG_S = {"builder": 1800, "base_eval": 1800,
-              "sweep_run": 2700, "final_run": 10800}
-STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_eval": "g6.xlarge",
+# STAGE TOPOLOGY — five GPU instances plus one builder.
+#
+#   builder             c6i.2xlarge   image build
+#   base_and_preflight  g6.xlarge     base arm on 9 sets, THEN overfit+smoke
+#   sweep_run x3        g6.xlarge     100 steps + 9-set evaluation, each
+#   final_run           g6.xlarge     600 steps with interleaved checkpoints
+#
+# Base evaluation and preflight share ONE instance: both need the pinned base
+# loaded and preflight builds a fresh LoRA on it. One instance, one
+# reservation, reconciled once when both have finished.
+WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2700,
+              "sweep_run": 2700, "final_run": 7200}
+STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
                   "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
+MAX_GPU_INSTANCES = 5
+MAX_INSTANCES = 6
+
+# The ceiling must cover the whole sequence hanging to its watchdogs:
+#   0.17 + 0.755 + 3x0.755 + 2.013 = 5.20
+# An earlier table used a 10800s final watchdog, which made the worst-case
+# sequence $6.21 -- over its own $6 ceiling. The final watchdog is now 7200s,
+# which is still generous against ~90 minutes of expected work.
 CEILING_USD = 6.00
 
 

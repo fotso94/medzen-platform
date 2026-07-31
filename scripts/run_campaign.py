@@ -47,26 +47,22 @@ def build_services(cli) -> campaign.Services:
             Bucket=BUCKET,
             Key="curated/_versions/v2/ADOPTION.json")["Body"].read())
 
-    def run_preflight() -> dict:
-        raise SystemExit(
-            "REFUSING: the preflight requires a constructed model on a GPU "
-            "instance. scripts/run_preflight.run() is invoked from the trainer "
-            "container; this launcher must be executed there, not locally.")
-
-    def evaluate_base(campaign_run: str) -> dict:
-        raise SystemExit("REFUSING: base evaluation runs on the GPU instance")
-
-    def train(**kw) -> dict:
-        raise SystemExit("REFUSING: training runs on the GPU instance")
-
-    def evaluate_checkpoint(**kw) -> dict:
-        raise SystemExit("REFUSING: checkpoint evaluation runs on the GPU instance")
-
+    # NOT YET IMPLEMENTED. Marked as placeholders so readiness() can see them
+    # BEFORE any reservation or S3 write -- a callable that merely raises when
+    # invoked is discovered only after budget has been committed.
     return campaign.Services(
         s3=cli, verify_policy=verify_policy, verify_adoption=verify_adoption,
-        run_preflight=run_preflight, evaluate_base=evaluate_base,
-        train=train, evaluate_checkpoint=evaluate_checkpoint,
-        mlflow_db=None, register_model=None)
+        run_preflight=campaign.placeholder(
+            "run_preflight: the GPU-side service adapter is not implemented"),
+        evaluate_base=campaign.placeholder(
+            "evaluate_base: the GPU-side service adapter is not implemented"),
+        train=campaign.placeholder(
+            "train: the GPU-side service adapter is not implemented"),
+        evaluate_checkpoint=campaign.placeholder(
+            "evaluate_checkpoint: the GPU-side service adapter is not "
+            "implemented"),
+        mlflow_db=None, launcher=None, image_digest=None,
+        stage_descriptors=None, register_model=None)
 
 
 def main() -> int:
@@ -86,13 +82,26 @@ def main() -> int:
           "6x checkpoint -> cleanup")
     print("registration  disabled by construction (register_model is None)")
 
+    # Readiness is checked BEFORE the S3 client is even built, so --confirm on
+    # an incomplete wiring cannot read, write or reserve anything.
+    sv = build_services(cli=None)
+    r = campaign.readiness(sv)
+    print(f"readiness    {'READY' if r['ready'] else 'NOT READY'}")
+    for prob in r["problems"]:
+        print(f"  - {prob}")
+
     if not a.confirm:
         print("\nDRY RUN — nothing reserved, launched or written. "
               "Pass --confirm to execute.")
         return 0
+    if not r["ready"]:
+        print("\nREFUSING: --confirm given, but the campaign is not "
+              "production-ready. Nothing was read, written or reserved.")
+        return 2
 
     cli = s3()
-    out = campaign.run_campaign(build_services(cli), a.campaign_run, a.attempt)
+    sv.s3 = cli
+    out = campaign.run_campaign(sv, a.campaign_run, a.attempt)
     print(json.dumps({k: out[k] for k in
                       ("campaign_run", "selected_lr", "registered_models",
                        "promotable", "purpose", "trace_names")}, indent=2))
