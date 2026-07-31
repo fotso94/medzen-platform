@@ -497,7 +497,9 @@ def test_loader_requires_a_separate_adoption_record():
     """COMPLETE.json says a migration finished; ADOPTION.json says a human
     approved training from it. They are different decisions."""
     s = (ROOT / "pipeline/train_asr.py").read_text()
-    assert 'adopt_key = f"curated/_versions/{version}/ADOPTION.json"' in s
+    assert 'f"curated/_versions/{version}/ADOPTION.json"' in s
+    assert "adoption_key" in s, \
+        "a corrected experiment may name a new immutable adoption object"
     assert "no adoption record at" in s
     assert "A completed migration is not an approved one" in s
     assert 'adopt.get("status") != "approved"' in s

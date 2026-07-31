@@ -51,6 +51,14 @@ def main() -> int:
     ap.add_argument("--approved-by-role", required=True)
     ap.add_argument("--policy", required=True,
                     help="path to the deferral policy this adoption is granted with")
+    ap.add_argument(
+        "--adoption-key", default=None,
+        help="direct child key under curated/_versions/<version>/. Use a new "
+             "experiment-scoped key instead of replacing an earlier adoption")
+    ap.add_argument("--dataset-fingerprint", default=None,
+                    help="required 64-hex fingerprint for a corrected adoption")
+    ap.add_argument("--eligible-rows", type=int, default=None,
+                    help="eligible rows after the bound policy is applied")
     ap.add_argument("--upload", action="store_true",
                     help="without this the record is printed and not published")
     a = ap.parse_args()
@@ -59,7 +67,23 @@ def main() -> int:
 
     cli = client()
     comp_key = f"curated/_versions/{a.version}/COMPLETE.json"
-    adopt_key = f"curated/_versions/{a.version}/ADOPTION.json"
+    adopt_key = (
+        a.adoption_key
+        or f"curated/_versions/{a.version}/ADOPTION.json")
+    want_prefix = f"curated/_versions/{a.version}/"
+    if not adopt_key.startswith(want_prefix) or "/" in adopt_key[len(want_prefix):]:
+        raise SystemExit(
+            f"REFUSING: --adoption-key must be a direct child of {want_prefix}")
+    if (a.dataset_fingerprint is None) != (a.eligible_rows is None):
+        raise SystemExit(
+            "REFUSING: --dataset-fingerprint and --eligible-rows must be "
+            "supplied together")
+    if a.dataset_fingerprint is not None and (
+            len(a.dataset_fingerprint) != 64
+            or any(c not in "0123456789abcdef"
+                   for c in a.dataset_fingerprint)):
+        raise SystemExit(
+            "REFUSING: --dataset-fingerprint must be 64 lowercase hex")
 
     # ---- never overwrite an existing approval ------------------------------
     # Only a genuine 404 means "absent". AccessDenied, a throttle or a DNS
@@ -122,9 +146,10 @@ def main() -> int:
         "approved_by_role": a.approved_by_role,
         "statement": (
             f"Corpus version {a.version} is approved as a training input for the "
-            "b4-whisper-large-v3-lora experiment only, subject to the deferral "
+            "b4-whisper-large-v3-lora Option B experiment only, subject to the deferral "
             "policy bound below. This approves the CORPUS; it is not a review of "
-            "the 20 deferred rows, which remain unreviewed."),
+            f"the {policy['counts']['total']} deferred rows, which remain "
+            "unreviewed."),
         # What COMPLETE.json does and does not mean, recorded next to the thing
         # that supplies the missing half.
         "completion_vs_adoption": (
@@ -139,6 +164,8 @@ def main() -> int:
         "deferral_policy_human_review_performed": policy["human_review_performed"],
         "deferred_rows": policy["counts"]["total"],
         "deferred_checksums_sha256": policy["bindings"]["deferred_checksums_sha256"],
+        "dataset_fingerprint": a.dataset_fingerprint,
+        "eligible_rows": a.eligible_rows,
         "scope": {
             "experiment": "b4-whisper-large-v3-lora",
             "artifacts": "candidates/ only",

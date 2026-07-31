@@ -90,15 +90,15 @@
     "CPU/tokenizer alignment proof",
     "one-batch overfit and generation smoke test confirming EOS is emitted and no output reaches its limit",
     "pin generation configuration in one place",
-    "set LoRA task_type=SEQ_2_SEQ_LM",
+    "use the Whisper-compatible generic PEFT wrapper (task_type unset) and prove input_features forward/save/reload/generate on the pinned stack",
     "a small lower-learning-rate sweep rather than reusing 1e-3",
     "a speaker- and session-disjoint validation set plus a separate untouched final holdout, which with only two current speakers likely requires new Pidgin speakers",
     "evaluation-coverage audit for all 14 trained languages"
   ],
   "content_policy": "checksums, hashes and aggregate metrics only; no transcript, speaker, session or content excerpt appears in this file",
-  "revision": 4,
-  "revised_utc": "2026-07-31T08:05:19Z",
-  "revision_note": "Revision 4: the evaluation is now INDEPENDENTLY REPRODUCED by in-repo tooling on the pinned stack (EVALRUN-2026-002-reproduced). Termination failure is directly MEASURED rather than inferred: 13 of 44 candidate rows exhaust the generation budget without emitting EOS, against 0 of 44 for the base. The rejection stands and promotion, registration and B5 remain blocked. The duplicated start-of-transcript token remains a confirmed trainer defect and the strongest causal hypothesis; sole causality is still not claimed and requires a corrected controlled run.",
+  "revision": 5,
+  "revised_utc": "2026-07-31T09:31:00Z",
+  "revision_note": "Revision 5: a real tiny-Whisper runtime probe disproved the earlier SEQ_2_SEQ_LM recommendation on the pinned PEFT stack. PeftModelForSeq2SeqLM injects input_ids/inputs_embeds while Whisper consumes input_features, and the first forward raises. The corrected path deliberately uses generic PeftModel, which forwards input_features unchanged; Whisper itself performs decoder label shifting. Forward, optimisation, save, reload, enabled-vs-disabled effect, and structured generation are now exercised by a real-model test. The candidate rejection and root-cause finding are unchanged.",
   "corrections": [
     {
       "claim": "444 generated + 4 prefix = 448 proves the decoder cap was hit",
@@ -129,6 +129,11 @@
       "claim": "the evaluation figures are EXTERNAL and not independently reproduced",
       "status": "SUPERSEDED",
       "why": "reproduced on 2026-07-31 with in-repo tooling; base WER 0.5117 vs external 0.5133 and candidate WER 7.2262 vs external 7.2231. The external figures are retained separately as comparison targets."
+    },
+    {
+      "claim": "LoRA task_type must be SEQ_2_SEQ_LM for Whisper",
+      "status": "CORRECTED",
+      "why": "measured on the pinned transformers 5.14.1 / PEFT 0.20.0 stack: PeftModelForSeq2SeqLM.forward always supplies input_ids and inputs_embeds to the base, which is incompatible with WhisperForConditionalGeneration.forward(input_features=...). The generic PeftModel forwards input_features without alteration and Whisper performs its own decoder label shift. A synthetic real Whisper model now proves forward, optimisation, save/reload, adapter effect, and structured generation."
     }
   ],
   "additional_defects_found_by_review": [

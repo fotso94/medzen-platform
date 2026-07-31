@@ -580,9 +580,11 @@ def test_structured_flags_are_present_in_the_shared_config():
     assert kw["task"] == "transcribe" and kw["do_sample"] is False
 
 
-def test_lora_task_type_is_seq2seq():
+def test_lora_wrapper_preserves_whisper_input_features():
     src = (ROOT / "pipeline/train_asr.py").read_text()
-    assert "task_type=TaskType.SEQ_2_SEQ_LM" in src
+    assert "task_type=None" in src
+    assert "PeftModelForSeq2SeqLM.forward()" in src
+    assert "input_features" in src
     assert "lora_task_type" in src
 
 

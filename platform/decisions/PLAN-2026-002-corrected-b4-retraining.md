@@ -35,15 +35,15 @@ omitted image build, validation passes and any failure allowance.
 |---|---|---|
 | Image build | c6i.2xlarge @ $0.34/hr × ~12 min (last build: 8 min) | $0.07 |
 | ECR storage | ~6 GB × 1 month | $0.06 |
+| Base + bounded preflight | same g6.xlarge: nine-set base arm, one-batch overfit, saved-adapter smoke | $0.50 |
 | LR sweep — training | 3 × 100 steps @ ~5.4 s/it + 4 min startup ≈ 13 min each | $0.65 |
 | LR sweep — validation | 3 × 385 clips @ ~1 s ≈ 20 min total | $0.34 |
 | Final run — training | 600 steps ≈ 47 min + startup ≈ 55 min | $0.92 |
-| Final run — base arm | 385 clips once ≈ 7 min | $0.12 |
 | Final run — checkpoint eval | 6 checkpoints × 385 clips ≈ 39 min | $0.65 |
 | S3 storage | ~0.5 GB adapters + JSON, 1 month | $0.01 |
-| **Subtotal** | | **$2.82** |
+| **Subtotal** | | **$3.20** |
 | Failure allowance | one full re-run of the largest item | $0.92 |
-| **Itemised total** | | **$3.74** |
+| **Itemised total** | | **$4.12** |
 | **HARD CEILING** | enforced by watchdogs and instance count | **$6.00** |
 
 All GPU work on g6.xlarge on-demand at $1.0064/hr. Every instance carries
@@ -66,9 +66,9 @@ prerequisite-free. All of the following must be complete first:
 | T5 | Recomputed dataset fingerprint | **computed** — `ad8c63d157419cbd`, dry-run verified |
 | T6 | Nine validation manifests frozen | **done** — `VAL-2026-001` |
 | T7 | New trainer image from a post-fix commit | **not built** |
-| T8 | `generation_config` pinned in one place | **not implemented** |
-| T9 | LoRA `task_type=SEQ_2_SEQ_LM` | **not implemented** |
-| T10 | One-batch overfit + generation smoke harness | **not implemented** |
+| T8 | `generation_config` pinned in one place | **done** — `pipeline/generation.py` |
+| T9 | Whisper-compatible PEFT wrapper | **done** — generic `PeftModel`; a real-model test proves `SEQ_2_SEQ_LM` is incompatible with Whisper `input_features` on the pinned stack |
+| T10 | One-batch overfit + generation smoke harness | **implemented; container execution still pending** |
 
 **Governance**
 
@@ -292,7 +292,7 @@ never overwrite each other's results.
 | Any language regresses > +0.05 WER vs the in-run base | stop |
 | Non-finite loss or gradient | stop |
 | Cumulative spend > **$6.00** | stop |
-| Watchdog: 4 h per instance | terminate |
+| Watchdog: 45 min base/sweep, 2 h final | terminate |
 
 ## 13 · AWS resources that would be created
 
@@ -300,7 +300,7 @@ never overwrite each other's results.
 |---|---|---|
 | ECR image (new digest) | 1 | persistent |
 | EC2 c6i.2xlarge builder | 1 | ~12 min, self-terminating |
-| EC2 g6.xlarge on-demand | up to 4 sequential (3 sweep + 1 final) | ≤ 4 h each, self-terminating |
+| EC2 g6.xlarge on-demand | up to 5 sequential (1 base+preflight + 3 sweep + 1 final) | stage-specific watchdog, self-terminating |
 | EBS gp3 root, DeleteOnTermination | 1 per instance | with the instance |
 | S3 objects | bundle, adapters, evaluation JSONs, MLflow DB | persistent, `candidates/` only |
 | S3 `curated/_versions/v2/ADOPTION.json` + policy | 2 | persistent, one-time |

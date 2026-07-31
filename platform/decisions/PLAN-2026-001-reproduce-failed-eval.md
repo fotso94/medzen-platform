@@ -229,7 +229,10 @@ investigated — the prior decision is not rewritten as "reproduced".**
 - new reviewed deferral policy (19 rows, not 20), new adoption binding, new
   dataset fingerprint — see `label-audit-reaudit-2026-07-31.json`
 - generation-config pinning in one place
-- LoRA `task_type=SEQ_2_SEQ_LM`
+- Whisper-compatible PEFT wrapping: `task_type` unset on the pinned stack.
+  A real tiny-Whisper probe proved `SEQ_2_SEQ_LM` injects `input_ids` into an
+  `input_features` model and crashes the first forward; generic `PeftModel`
+  forwards Whisper inputs correctly.
 - checkpoint validation metrics logged to MLflow
 - a speaker/session-disjoint validation set **and** a separate untouched
   holdout. The coverage audit found 9 validation candidates and **zero**

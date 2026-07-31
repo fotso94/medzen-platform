@@ -22,6 +22,7 @@ REQUIRED = (
     "git_sha", "bundle_tar_sha256", "image_digest",
     "policy_sha256", "adoption_key", "dataset_fingerprint",
     "base_manifest_sha256", "validation_manifest_sha256",
+    "base_arm_key", "base_artifact_key", "base_artifact_sha256",
     "generation_config_fingerprint", "evaluator_sha256",
     "lr", "seed", "max_steps", "checkpoint_steps",
     "reservation_id", "watchdog_s",
@@ -53,8 +54,8 @@ def build(**kw) -> dict:
     if not str(d["image_digest"]).startswith("sha256:"):
         problems.append("image_digest must be sha256:<64 hex>")
     for f in ("bundle_tar_sha256", "policy_sha256", "dataset_fingerprint",
-              "base_manifest_sha256", "generation_config_fingerprint",
-              "evaluator_sha256"):
+              "base_manifest_sha256", "validation_manifest_sha256",
+              "generation_config_fingerprint", "evaluator_sha256"):
         if len(str(d[f])) != 64:
             problems.append(f"{f} must be 64 hex characters")
     if d["purpose"] != "training_system_validation":
@@ -65,6 +66,19 @@ def build(**kw) -> dict:
         problems.append("a sweep stage trains exactly 100 steps")
     if d["stage"] == "base_and_preflight" and d["lr"] is not None:
         problems.append("base_and_preflight has no learning rate")
+    if d["stage"] == "base_and_preflight":
+        if any(d[f] is not None for f in (
+                "base_arm_key", "base_artifact_key",
+                "base_artifact_sha256")):
+            problems.append(
+                "base_and_preflight cannot consume a base artifact it is "
+                "responsible for producing")
+    else:
+        for f in ("base_arm_key", "base_artifact_sha256"):
+            if len(str(d[f])) != 64:
+                problems.append(f"{f} must be 64 hex characters")
+        if not str(d["base_artifact_key"]).startswith("candidates/"):
+            problems.append("base_artifact_key must be under candidates/")
     if not str(d["output_prefix"]).startswith("candidates/"):
         problems.append("output_prefix must be under candidates/")
     if problems:

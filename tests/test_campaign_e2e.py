@@ -107,6 +107,37 @@ PINS = {
 }
 
 
+class FakeTracker:
+    """Records the real parent/child API without requiring MLflow in unit tests."""
+
+    parent_run_id = "parent-1"
+
+    def __init__(self):
+        self.children = {}
+        self.finished = []
+        self.failed = []
+        self.parent = None
+
+    def start_stage(self, stage_key, params):
+        if stage_key in self.children:
+            raise SystemExit("duplicate child")
+        rid = "child-" + hashlib.sha256(stage_key.encode()).hexdigest()[:16]
+        self.children[stage_key] = {"run_id": rid, "params": params}
+        return rid
+
+    def finish_stage(self, stage_key, result, extra_params=None):
+        self.finished.append((stage_key, result, extra_params or {}))
+
+    def fail_stage(self, stage_key, reason):
+        self.failed.append((stage_key, reason))
+
+    def log_parent_metrics(self, metrics, tags=None):
+        self.parent_metrics = (metrics, tags or {})
+
+    def finish_parent(self, passed, reason=None):
+        self.parent = (passed, reason)
+
+
 def stage_result(descriptor, **kw):
     """A well-formed stage result: lifecycle evidence plus the echoed hash."""
     from pipeline import stage_descriptor as SD
@@ -126,6 +157,7 @@ def stage_result(descriptor, **kw):
 def checkpoint(step, wer=None, sha=None):
     return {"step": step, "wer": wer or metrics(), "eos_rate": perfect(),
             "cap_hit_rate": zeros(),
+            "smoke": {"passed": True, "reasons": []},
             "artifact_sha256": sha or hashlib.sha256(
                 f"cp{step}".encode()).hexdigest()}
 
@@ -153,7 +185,9 @@ def make_services(s3, db, **over):
         calls.append("run_base_and_preflight")
         return stage_result(
             d, base={"wer": base_metrics(), "base_arm_key": "k" * 64,
-                     "artifact_sha256": "c" * 64},
+                     "artifact_sha256": "c" * 64,
+                     "artifact_key":
+                         "candidates/evaluations/camp/base.json"},
             preflight={"passed": True, "saved_adapter_sha256": "9" * 64,
                        "reloaded_adapter_sha256": "9" * 64})
 
@@ -161,6 +195,7 @@ def make_services(s3, db, **over):
         calls.append(f"run_sweep:{lr:.0e}")
         return stage_result(d, wer=metrics(), eos_rate=perfect(),
                             cap_hit_rate=zeros(),
+                            smoke={"passed": True, "reasons": []},
                             artifact_sha256=hashlib.sha256(
                                 f"sweep{lr}".encode()).hexdigest())
 
@@ -173,7 +208,8 @@ def make_services(s3, db, **over):
     sv = campaign.Services(
         s3=s3, verify_policy=verify_policy, verify_adoption=verify_adoption,
         run_base_and_preflight=run_base_and_preflight, run_sweep=run_sweep,
-        run_final=run_final, mlflow_db=db, launcher=object(),
+        run_final=run_final, mlflow_db=db, tracker=FakeTracker(),
+        launcher=object(),
         image_digest="sha256:" + "f" * 64, stage_descriptors=dict(PINS))
     for k, v in over.items():
         setattr(sv, k, v)
@@ -313,6 +349,8 @@ def test_failed_preflight_prevents_the_lr_sweep(db):
     with pytest.raises(SystemExit, match="no learning-rate sweep will start"):
         campaign.run_campaign(sv, "camp-f3")
     assert not any(c.startswith("run_sweep") for c in calls)
+    assert budget.unresolved(budget.load(s3)[0]) == [], \
+        "the terminated base instance must reconcile even when preflight fails"
 
 
 def test_all_candidates_failing_gates_prevents_the_final_run(db):
@@ -358,6 +396,8 @@ def test_a_container_that_trained_past_a_failed_gate_is_refused(db):
     sv.run_final = final_kept_going
     with pytest.raises(SystemExit, match="Training must STOP at a failing gate"):
         campaign.run_campaign(sv, "camp-f5b")
+    assert budget.unresolved(budget.load(s3)[0]) == [], \
+        "the terminated final instance must reconcile before semantic refusal"
 
 
 def test_a_failed_gate_with_too_many_steps_completed_is_refused(db):
@@ -430,7 +470,7 @@ def test_reconciliation_only_after_confirmed_termination(db):
     """The reconcile call sits AFTER verify_result, which requires
     terminated_utc and root_volume_deleted."""
     src = (ROOT / "pipeline/campaign.py").read_text()
-    i_verify = src.index("stage_descriptor.verify_result(d0, r0)")
+    i_verify = src.index("stage_descriptor.verify_result(descriptor, result)")
     i_recon = src.index('budget.reconcile(sv.s3, "base_and_preflight"')
     assert i_verify < i_recon
 
@@ -562,10 +602,16 @@ def test_every_new_module_has_a_production_caller():
     prod = list((ROOT / "pipeline").glob("*.py")) + \
         list((ROOT / "scripts").glob("*.py"))
     for mod in ("generation", "budget", "orchestrate", "smoke",
-                "mlflow_sync", "campaign"):
+                "mlflow_sync", "campaign", "campaign_tracking",
+                "ec2_stage_adapter", "validation_runner",
+                "stage_descriptor"):
         callers = [p.name for p in prod
                    if p.name != f"{mod}.py" and mod in _imports_of(p)]
         assert callers, f"{mod} has no production caller"
+
+    user_data = (ROOT / "pipeline/stage_userdata.sh").read_text()
+    assert "pipeline.stage_runner" in user_data, \
+        "the container stage runner is not on the EC2 execution path"
 
 
 def test_there_is_exactly_one_launch_entrypoint():
@@ -659,7 +705,8 @@ def test_confirm_with_placeholder_services_mutates_nothing(db):
 
 
 @pytest.mark.parametrize("field,value", [
-    ("mlflow_db", None), ("launcher", None), ("image_digest", None),
+    ("mlflow_db", None), ("tracker", None), ("launcher", None),
+    ("image_digest", None),
     ("stage_descriptors", None),
 ])
 def test_incomplete_wiring_refuses_before_any_mutation(db, field, value):

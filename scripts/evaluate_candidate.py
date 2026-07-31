@@ -242,22 +242,38 @@ def ensure_base(cli, dest: Path) -> tuple[dict, str]:
     return man, man_sha
 
 
-def load_eval(cli, language: str, task: str, version: str) -> tuple[list[dict], str]:
+def load_eval_pinned(cli, language: str, task: str, version: str,
+                     expected_sha256: str) -> tuple[list[dict], str]:
+    """Load one explicitly pinned set.
+
+    The diagnostic CLI below keeps its closed built-in pin table.  The B4
+    campaign instead supplies the nine hashes from VAL-2026-001 through the
+    immutable stage descriptor and calls this shared implementation.
+    """
     key = f"eval/{language}/{task}/{version}/manifest.jsonl"
     raw = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read()
     sha = sha256_bytes(raw)
-    want = EVAL_MANIFEST_SHA256.get((language, task, version))
-    if want is None:
+    want = expected_sha256
+    if not HEX64.match(str(want)):
         raise SystemExit(
-            f"REFUSING: no pinned hash for eval set {language}/{task}/{version}. "
-            "An evaluation set that is not pinned is not frozen, and a score "
-            "against it cannot be compared with anything later.")
+            f"REFUSING: malformed pinned hash for "
+            f"{language}/{task}/{version}")
     if sha != want:
         raise SystemExit(
             f"REFUSING: eval manifest {key} hashes {sha[:16]}, pinned as "
             f"{want[:16]}; the frozen set has changed.")
     rows = [json.loads(l) for l in raw.decode().splitlines() if l.strip()]
     return rows, sha
+
+
+def load_eval(cli, language: str, task: str, version: str) -> tuple[list[dict], str]:
+    want = EVAL_MANIFEST_SHA256.get((language, task, version))
+    if want is None:
+        raise SystemExit(
+            f"REFUSING: no pinned hash for eval set {language}/{task}/{version}. "
+            "An evaluation set that is not pinned is not frozen, and a score "
+            "against it cannot be compared with anything later.")
+    return load_eval_pinned(cli, language, task, version, want)
 
 
 def load_audio(cli, rec: dict, cache: Path):

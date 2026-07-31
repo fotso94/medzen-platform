@@ -65,6 +65,7 @@ class Services:
     run_sweep: Callable[[dict, float], dict]
     run_final: Callable[[dict, float], dict]
     mlflow_db: Any = None
+    tracker: Any = None                        # real parent/child MLflow runs
     launcher: Any = None                       # the EC2 adapter
     image_digest: str | None = None
     stage_descriptors: dict | None = None
@@ -92,6 +93,9 @@ def readiness(sv: Services) -> dict:
                 for f in missing))
     if sv.mlflow_db is None:
         problems.append("mlflow_db is absent; no run evidence could be recorded")
+    if sv.tracker is None:
+        problems.append("MLflow campaign tracker is absent; parent/child runs "
+                        "would be assertions rather than records")
     if sv.launcher is None:
         problems.append("no AWS launcher configured; stages have nowhere to run")
     if not sv.image_digest:
@@ -148,7 +152,9 @@ def _sync(sv: Services, campaign_run: str, stage: str, trace: Trace,
 
 def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
                     lr: float | None, max_steps: int,
-                    reservation_id: str) -> dict:
+                    reservation_id: str, mlflow_child_run_id: str | None = None,
+                    base_result: dict | None = None
+                    ) -> dict:
     """One descriptor per stage, built from the pins the campaign already holds."""
     p = sv.stage_descriptors or {}
     return stage_descriptor.build(
@@ -159,6 +165,9 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         dataset_fingerprint=EXPECTED_FINGERPRINT,
         base_manifest_sha256=p["base_manifest_sha256"],
         validation_manifest_sha256=p["validation_manifest_sha256"],
+        base_arm_key=(base_result or {}).get("base_arm_key"),
+        base_artifact_key=(base_result or {}).get("artifact_key"),
+        base_artifact_sha256=(base_result or {}).get("artifact_sha256"),
         generation_config_fingerprint=p["generation_config_fingerprint"],
         evaluator_sha256=p["evaluator_sha256"],
         lr=lr, seed=orchestrate.SEED, max_steps=max_steps,
@@ -169,10 +178,60 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
             else "sweep_run" if stage == "sweep" else "final_run"],
         input_prefix=f"curated/_versions/v2/",
         output_prefix=f"candidates/evaluations/{campaign_run}/attempt-{attempt}/{stage}/",
-        mlflow_parent_run_id=p["mlflow_parent_run_id"],
-        mlflow_child_run_id=f"{campaign_run}-{attempt}-{stage}"
-                            + (f"-lr{lr:.0e}" if lr else ""),
+        mlflow_parent_run_id=(
+            getattr(sv.tracker, "parent_run_id", None)
+            or p["mlflow_parent_run_id"]),
+        mlflow_child_run_id=(
+            mlflow_child_run_id
+            or f"{campaign_run}-{attempt}-{stage}"
+               + (f"-lr{lr:.0e}" if lr else "")),
         purpose="training_system_validation", promotable=False)
+
+
+def _tracking_params(sv: Services, stage: str,
+                     lr: float | None = None) -> dict:
+    """The immutable A5/PLAN-2026-002 identity set for every child run."""
+    p = sv.stage_descriptors or {}
+    params = {
+        "stage": stage,
+        "code_git_sha": p["git_sha"],
+        "image_digest": sv.image_digest,
+        "code_tar_sha256": p["bundle_tar_sha256"],
+        "dataset_fingerprint": EXPECTED_FINGERPRINT,
+        "policy_sha256": p["policy_sha256"],
+        "adoption_key": p["adoption_key"],
+        "base_manifest_sha256": p["base_manifest_sha256"],
+        "validation_manifest_sha256": p["validation_manifest_sha256"],
+        "generation_config_fingerprint":
+            p["generation_config_fingerprint"],
+        "evaluator_sha256": p["evaluator_sha256"],
+        "lr": lr,
+        "seed": orchestrate.SEED,
+        "purpose": "training_system_validation",
+        "promotable": False,
+    }
+    for lang, sha in sorted(
+            (p.get("validation_manifest_hashes") or {}).items()):
+        params[f"val_manifest_sha256_{lang}"] = sha
+    return params
+
+
+def _start_child(sv: Services, stage_key: str, stage: str,
+                 lr: float | None = None) -> str:
+    return sv.tracker.start_stage(
+        stage_key, _tracking_params(sv, stage, lr=lr))
+
+
+def _run_stage(sv: Services, stage_key: str, descriptor: dict,
+               fn: Callable[[], dict]) -> dict:
+    """Mark a child failed if its EC2 lifecycle raises at any boundary."""
+    try:
+        result = fn()
+        stage_descriptor.verify_result(descriptor, result)
+        return result
+    except BaseException as exc:
+        sv.tracker.fail_stage(stage_key, f"{type(exc).__name__}: {exc}")
+        raise
 
 
 def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
@@ -204,8 +263,10 @@ def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
             raise CampaignError(
                 f"REFUSING: checkpoint-{c['step']} produced no evaluation "
                 "artifact")
-        gate = orchestrate.evaluate_gates(c["wer"], base_wer, c["eos_rate"],
-                                          c["cap_hit_rate"])
+        gate = orchestrate.apply_checkpoint_controls(
+            orchestrate.evaluate_gates(
+                c["wer"], base_wer, c["eos_rate"], c["cap_hit_rate"]),
+            c.get("smoke"))
         out.append({**c, "gate": gate})
 
     failed = [c for c in out if not c["gate"]["passed"]]
@@ -230,7 +291,8 @@ def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
     return out
 
 
-def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
+def _run_campaign_impl(sv: Services, campaign_run: str,
+                       attempt: str = "1") -> dict:
     """The whole ordering, enforced. Returns the trace and the outcome."""
     trace = Trace()
 
@@ -292,14 +354,26 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
     _sync(sv, campaign_run, "parent", trace, attempt=attempt, policy_sha256=pol["policy_sha256"])
 
     # ---- 3. ONE instance: base arm, then preflight ------------------------
-    d0 = make_descriptor(sv, campaign_run, attempt, "base_and_preflight",
-                         lr=None, max_steps=0,
-                         reservation_id=res["reservation_id"])
-    r0 = sv.run_base_and_preflight(d0)
-    stage_descriptor.verify_result(d0, r0)
+    base_stage_key = "base_and_preflight"
+    base_child = _start_child(sv, base_stage_key, base_stage_key)
+    d0 = make_descriptor(
+        sv, campaign_run, attempt, base_stage_key,
+        lr=None, max_steps=0, reservation_id=res["reservation_id"],
+        mlflow_child_run_id=base_child)
+    r0 = _run_stage(
+        sv, base_stage_key, d0, lambda: sv.run_base_and_preflight(d0))
+    budget.reconcile(sv.s3, "base_and_preflight", attempt,
+                     r0["actual_seconds"], instance_id=r0["instance_id"])
     base = r0["base"]
     orchestrate.validate_metric_map(base["wer"], "base WER")
+    # The lifecycle is already proven. Reconcile the actual AWS time even when
+    # the semantic preflight below fails; leaving the worst-case reservation
+    # unresolved would falsely imply the terminated instance may still exist.
     if not r0["preflight"].get("passed"):
+        sv.tracker.fail_stage(
+            base_stage_key,
+            "preflight failed: "
+            + "; ".join(map(str, r0["preflight"].get("reasons") or [])))
         raise CampaignError(
             "REFUSING: training preflight failed; no learning-rate sweep will "
             f"start.\n  {r0['preflight'].get('reasons')}")
@@ -308,8 +382,16 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
               base_artifact_sha256=base["artifact_sha256"],
               preflight_passed=True,
               root_volume_deleted=r0["root_volume_deleted"])
-    budget.reconcile(sv.s3, "base_and_preflight", attempt,
-                     r0["actual_seconds"], instance_id=r0["instance_id"])
+    sv.tracker.finish_stage(
+        base_stage_key, r0,
+        extra_params={
+            "base_artifact_sha256": base["artifact_sha256"],
+            "base_arm_key": base["base_arm_key"],
+            "preflight_saved_adapter_sha256":
+                r0["preflight"].get("saved_adapter_sha256"),
+            "preflight_reloaded_adapter_sha256":
+                r0["preflight"].get("reloaded_adapter_sha256"),
+        })
     _sync(sv, campaign_run, "base_and_preflight", trace, attempt=attempt,
           artifact_sha256=base["artifact_sha256"])
 
@@ -320,19 +402,30 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
         rr = budget.reserve(sv.s3, "sweep_run", f"{attempt}-{tag}")
         trace.add("budget-reserve", stage="sweep_run", lr=lr,
                   reservation_id=rr["reservation_id"])
-        d = make_descriptor(sv, campaign_run, attempt, "sweep", lr=lr,
-                            max_steps=orchestrate.SWEEP_STEPS,
-                            reservation_id=rr["reservation_id"])
-        r = sv.run_sweep(d, lr)
-        stage_descriptor.verify_result(d, r)
-        gate = orchestrate.evaluate_gates(r["wer"], base["wer"],
-                                          r["eos_rate"], r["cap_hit_rate"])
+        sweep_stage_key = f"sweep-{tag}"
+        sweep_child = _start_child(sv, sweep_stage_key, "sweep", lr=lr)
+        d = make_descriptor(
+            sv, campaign_run, attempt, "sweep", lr=lr,
+            max_steps=orchestrate.SWEEP_STEPS,
+            reservation_id=rr["reservation_id"],
+            mlflow_child_run_id=sweep_child, base_result=base)
+        r = _run_stage(
+            sv, sweep_stage_key, d, lambda d=d, lr=lr: sv.run_sweep(d, lr))
+        budget.reconcile(sv.s3, "sweep_run", f"{attempt}-{tag}",
+                         r["actual_seconds"], instance_id=r["instance_id"])
+        gate = orchestrate.apply_checkpoint_controls(
+            orchestrate.evaluate_gates(
+                r["wer"], base["wer"], r["eos_rate"], r["cap_hit_rate"]),
+            r.get("smoke"))
+        r["gate"] = gate
         results.append({"lr": lr, "gate": gate})
         trace.add("sweep-run", lr=lr, instance_id=r["instance_id"],
                   macro_wer=gate["macro_wer"], passed=gate["passed"],
                   artifact_sha256=r["artifact_sha256"])
-        budget.reconcile(sv.s3, "sweep_run", f"{attempt}-{tag}",
-                         r["actual_seconds"], instance_id=r["instance_id"])
+        sv.tracker.finish_stage(
+            sweep_stage_key, r,
+            extra_params={"artifact_sha256": r["artifact_sha256"],
+                          "gates_passed": gate["passed"]})
         _sync(sv, campaign_run, f"sweep-{tag}", trace, attempt=attempt,
               artifact_sha256=r["artifact_sha256"])
 
@@ -342,6 +435,10 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
                               ("selected_lr", "macro_wer", "tie_broken")})
     _sync(sv, campaign_run, "selection", trace, attempt=attempt,
           selected_lr=sel["selected_lr"])
+    sv.tracker.log_parent_metrics(
+        {"selected_lr": sel["selected_lr"],
+         "selected_macro_wer": sel["macro_wer"]},
+        tags={"selection_tie_broken": str(sel["tie_broken"]).lower()})
 
     # ---- 6. ONE final instance, gates INTERLEAVED with training -----------
     if orchestrate.FINAL_RUN_RESUMES_SWEEP:
@@ -349,11 +446,19 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
     rf = budget.reserve(sv.s3, "final_run", f"{attempt}-final")
     trace.add("budget-reserve", stage="final_run",
               reservation_id=rf["reservation_id"])
-    df = make_descriptor(sv, campaign_run, attempt, "final",
-                         lr=sel["selected_lr"], max_steps=600,
-                         reservation_id=rf["reservation_id"])
-    rfin = sv.run_final(df, sel["selected_lr"])
-    stage_descriptor.verify_result(df, rfin)
+    final_stage_key = "final"
+    final_child = _start_child(
+        sv, final_stage_key, "final", lr=sel["selected_lr"])
+    df = make_descriptor(
+        sv, campaign_run, attempt, "final",
+        lr=sel["selected_lr"], max_steps=600,
+        reservation_id=rf["reservation_id"],
+        mlflow_child_run_id=final_child, base_result=base)
+    rfin = _run_stage(
+        sv, final_stage_key, df,
+        lambda: sv.run_final(df, sel["selected_lr"]))
+    budget.reconcile(sv.s3, "final_run", f"{attempt}-final",
+                     rfin["actual_seconds"], instance_id=rfin["instance_id"])
     trace.add("final-run", instance_id=rfin["instance_id"],
               lr=sel["selected_lr"], resumed=False,
               steps_completed=rfin.get("steps_completed"),
@@ -361,28 +466,67 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
     _sync(sv, campaign_run, "final-start", trace, attempt=attempt,
           instance=rfin["instance_id"])
 
-    checkpoints = verify_interleaving(rfin, base["wer"])
+    try:
+        checkpoints = verify_interleaving(rfin, base["wer"])
+    except BaseException as exc:
+        sv.tracker.fail_stage(
+            final_stage_key, f"{type(exc).__name__}: {exc}")
+        raise
     for c in checkpoints:
+        checkpoint_key = f"final-checkpoint-{c['step']}"
+        _start_child(sv, checkpoint_key, checkpoint_key,
+                     lr=sel["selected_lr"])
+        checkpoint_result = {
+            **rfin,
+            "wer": c["wer"],
+            "cer": c.get("cer", {}),
+            "eos_rate": c["eos_rate"],
+            "cap_hit_rate": c["cap_hit_rate"],
+            "generated_tokens_median":
+                c.get("generated_tokens_median", {}),
+            "generated_tokens_max": c.get("generated_tokens_max", {}),
+            "train_loss": c.get("train_loss"),
+            "grad_norm": c.get("grad_norm"),
+            "steps_completed": c["step"],
+            "gate": c["gate"],
+        }
+        sv.tracker.finish_stage(
+            checkpoint_key, checkpoint_result,
+            extra_params={"artifact_sha256": c["artifact_sha256"],
+                          "checkpoint_step": c["step"],
+                          "gates_passed": c["gate"]["passed"]})
         trace.add("checkpoint-eval", step=c["step"], passed=c["gate"]["passed"],
                   artifact_sha256=c["artifact_sha256"])
         _sync(sv, campaign_run, f"final-checkpoint-{c['step']}", trace,
               attempt=attempt, artifact_sha256=c["artifact_sha256"])
 
-    budget.reconcile(sv.s3, "final_run", f"{attempt}-final",
-                     rfin["actual_seconds"], instance_id=rfin["instance_id"])
-
     failed = [c for c in checkpoints if not c["gate"]["passed"]]
+    rfin["gate"] = {
+        "passed": not failed,
+        "macro_wer": checkpoints[-1]["gate"]["macro_wer"],
+        "min_eos_rate": checkpoints[-1]["gate"]["min_eos_rate"],
+        "max_cap_hit_rate": checkpoints[-1]["gate"]["max_cap_hit_rate"],
+        "worst_language_regression":
+            checkpoints[-1]["gate"]["worst_language_regression"],
+    }
+    sv.tracker.finish_stage(
+        final_stage_key, rfin,
+        extra_params={"selected_lr": sel["selected_lr"],
+                      "checkpoints_completed": len(checkpoints)})
     _sync(sv, campaign_run, "final-complete" if not failed else "final-failed",
           trace, attempt=attempt)
     ledger, _ = budget.load(sv.s3)
     trace.add("cleanup", unresolved_reservations=len(budget.unresolved(ledger)),
               gpu_instances_used=5)
     if failed:
+        sv.tracker.finish_parent(
+            False, f"checkpoint-{failed[0]['step']} failed")
         raise CampaignError(
             f"REFUSING: checkpoint-{failed[0]['step']} failed a gate and "
             "training stopped there:\n  "
             + "\n  ".join(failed[0]["gate"]["failures"]))
 
+    sv.tracker.finish_parent(True, "all interleaved gates passed")
     return {
         "campaign_run": campaign_run,
         "selected_lr": sel["selected_lr"],
@@ -394,3 +538,15 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
         "trace": trace.steps,
         "trace_names": trace.names,
     }
+
+
+def run_campaign(sv: Services, campaign_run: str,
+                 attempt: str = "1") -> dict:
+    """Run once; any refusal leaves an explicitly FAILED parent run."""
+    try:
+        return _run_campaign_impl(sv, campaign_run, attempt)
+    except BaseException as exc:
+        if sv.tracker is not None:
+            sv.tracker.finish_parent(
+                False, f"{type(exc).__name__}: {exc}")
+        raise

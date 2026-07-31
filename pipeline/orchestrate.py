@@ -136,6 +136,29 @@ def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
     }
 
 
+def apply_checkpoint_controls(gate: dict, smoke_result: dict | None) -> dict:
+    """Add the saved-artifact smoke as a hard checkpoint gate.
+
+    WER and EOS can look healthy when a LoRA is inert and the untouched base is
+    doing all the work.  This control proves the saved artifact was reloaded,
+    changes logits, has finite loss/gradients, and terminates.
+    """
+    out = {
+        **gate,
+        "gates": dict(gate.get("gates") or {}),
+        "failures": list(gate.get("failures") or []),
+    }
+    passed = bool(smoke_result and smoke_result.get("passed"))
+    out["gates"]["saved_adapter_smoke"] = passed
+    if not passed:
+        reasons = (smoke_result or {}).get(
+            "reasons", ["saved-adapter smoke result is absent"])
+        out["failures"].append(
+            "saved-adapter smoke failed: " + "; ".join(map(str, reasons)))
+    out["passed"] = bool(gate.get("passed")) and passed
+    return out
+
+
 def select_lr(results: list[dict]) -> dict:
     """Pick the learning rate. Deterministic, including under ties.
 

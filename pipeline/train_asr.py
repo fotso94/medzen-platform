@@ -90,7 +90,8 @@ def load_mix(cli, temperature: float, seed: int,
              require_use: str = "asr_train",
              exclusions: dict[str, dict] | None = None,
              exclusions_sha256: str | None = None,
-             exclusions_id: str | None = None) -> tuple[list[dict], dict]:
+             exclusions_id: str | None = None,
+             adoption_key: str | None = None) -> tuple[list[dict], dict]:
     """Build the training mix with temperature sampling. FAILS CLOSED.
 
     Three refusals, each of which was a real hole:
@@ -150,7 +151,14 @@ def load_mix(cli, temperature: float, seed: int,
     # re-serialisation (json.dumps of the parsed dict) would prove nothing: key
     # order, separators and float formatting all change the bytes, so the digest
     # would describe Python's output rather than the object in the bucket.
-    adopt_key = f"curated/_versions/{version}/ADOPTION.json"
+    adopt_key = (
+        adoption_key
+        or f"curated/_versions/{version}/ADOPTION.json")
+    expected_prefix = f"curated/_versions/{version}/"
+    if not adopt_key.startswith(expected_prefix) or "/" in adopt_key[len(expected_prefix):]:
+        raise SystemExit(
+            f"REFUSING: adoption key {adopt_key!r} is outside "
+            f"{expected_prefix} or is not a direct child")
     try:
         adopt = json.loads(cli.get_object(Bucket=BUCKET, Key=adopt_key)["Body"].read())
     except Exception as e:
@@ -867,6 +875,28 @@ def make_descent_gate(at_step: int, save_steps: int, max_steps: int,
     return DescentGate()
 
 
+def make_stop_at_step(stop_at_step: int):
+    """Pause a final run immediately after its durable checkpoint is saved.
+
+    ``max_steps`` remains the final 600-step horizon on every resumed segment,
+    so the optimizer and scheduler state are restored against one unchanged
+    schedule.  The stage runner evaluates the saved checkpoint before it is
+    allowed to resume toward the next boundary.
+    """
+    from transformers import TrainerCallback
+
+    class StopAtStep(TrainerCallback):
+        def on_save(self, args, state, control, **kw):
+            if state.global_step >= stop_at_step:
+                control.should_training_stop = True
+                print(
+                    f"  interleaved boundary checkpoint-{state.global_step}: "
+                    "training paused for evaluation", flush=True)
+            return control
+
+    return StopAtStep()
+
+
 # --------------------------------------------------------------------------- #
 def main() -> int:
     ap = argparse.ArgumentParser()
@@ -882,6 +912,9 @@ def main() -> int:
     ap.add_argument("--expect-excluded", type=int, default=None,
                     help="require exactly this many rows to be excluded; the run "
                          "refuses if the list or the removal count differs")
+    ap.add_argument("--adoption-key", default=None,
+                    help="immutable adoption object for this experiment; "
+                         "defaults to ADOPTION.json for legacy runs")
     ap.add_argument("--descent-gate-step", type=int, default=100,
                     help="abort if the smoothed loss is not descending by this step; 0 disables")
     ap.add_argument("--batch-size", type=int, default=2)
@@ -892,6 +925,12 @@ def main() -> int:
     ap.add_argument("--languages", nargs="*")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--save-steps", type=int, default=100)
+    ap.add_argument("--stop-at-step", type=int, default=None,
+                    help="pause immediately after saving this checkpoint; used "
+                         "by the final stage for interleaved evaluation")
+    ap.add_argument("--fixed-batch", action="store_true",
+                    help="repeat one deterministic batch for the bounded "
+                         "preflight only; never use for a candidate run")
     ap.add_argument("--resume",
                     help="local dir, s3:// checkpoint, or 'auto' with --resume-run")
     ap.add_argument("--resume-run", help="mlflow run id whose checkpoints to resume")
@@ -903,7 +942,7 @@ def main() -> int:
 
     import mlflow
     import torch
-    from peft import LoraConfig, TaskType, get_peft_model
+    from peft import LoraConfig, get_peft_model
     from transformers import (Seq2SeqTrainer, Seq2SeqTrainingArguments,
                               WhisperForConditionalGeneration, WhisperProcessor)
 
@@ -913,6 +952,18 @@ def main() -> int:
     if a.smoke:
         a.max_steps, a.save_steps, a.batch_size, a.grad_accum = 3, 3, 1, 1
         a.base_model = os.environ.get("SMOKE_MODEL", "openai/whisper-tiny")
+    if a.stop_at_step is not None:
+        if not (0 < a.stop_at_step <= a.max_steps):
+            raise SystemExit("REFUSING: --stop-at-step must be in "
+                             f"1..{a.max_steps}")
+        if a.stop_at_step % a.save_steps:
+            raise SystemExit(
+                "REFUSING: --stop-at-step must be a save boundary; otherwise "
+                "the run could pause without a resumable checkpoint")
+    if a.fixed_batch and a.max_steps > 200:
+        raise SystemExit(
+            "REFUSING: --fixed-batch is the bounded preflight and may not "
+            "exceed 200 steps")
 
     cli = s3()
     print(f"base model  {a.base_model}")
@@ -931,7 +982,8 @@ def main() -> int:
                                    require_use=a.require_allowed_use,
                                    exclusions=excluded,
                                    exclusions_sha256=excl_sha,
-                                   exclusions_id=excl_doc.get("list_id"))
+                                   exclusions_id=excl_doc.get("list_id"),
+                                   adoption_key=a.adoption_key)
     removed = mix_provenance["exclusions"]["removed_from_eligible_pool"]
     if a.expect_excluded is not None and removed != a.expect_excluded:
         raise SystemExit(f"REFUSING: expected exactly {a.expect_excluded} row(s) "
@@ -1057,13 +1109,18 @@ def main() -> int:
     model.config.forced_decoder_ids = None
     model.config.suppress_tokens = []
 
-    # task_type was unset, so PEFT fell back to a generic wrapper rather than
-    # the seq2seq one. Whisper is an encoder-decoder model; naming that lets
-    # PEFT wire label shifting and generation the way the architecture needs,
-    # instead of leaving it to whatever the default happens to do.
+    # IMPORTANT: leave task_type unset for Whisper on the pinned PEFT stack.
+    # PeftModelForSeq2SeqLM.forward() always calls the base with input_ids=...
+    # and inputs_embeds=..., while Whisper's encoder consumes input_features.
+    # Supplying TaskType.SEQ_2_SEQ_LM therefore passes both input_ids and
+    # input_features through incompatible paths and the first real batch raises
+    # "got multiple values for keyword argument input_ids".  The generic
+    # PeftModel forwards input_features unchanged; Whisper itself performs the
+    # decoder label shift.  A real tiny-Whisper save/reload test guards this
+    # boundary.
     peft_cfg = LoraConfig(r=a.rank, lora_alpha=a.rank * 2, lora_dropout=0.05,
                           bias="none", target_modules=["q_proj", "v_proj"],
-                          task_type=TaskType.SEQ_2_SEQ_LM)
+                          task_type=None)
     model = get_peft_model(model, peft_cfg)
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
@@ -1073,7 +1130,7 @@ def main() -> int:
     params = {
         "base_model": a.base_model, "base_revision": rev,
         "lora_rank": a.rank, "lora_target": "q_proj,v_proj",
-        "lora_task_type": str(TaskType.SEQ_2_SEQ_LM),
+        "lora_task_type": "WHISPER_GENERIC_INPUT_FEATURES",
         "generation_config_fingerprint": GEN_FINGERPRINT,
         "lr": a.lr, "batch_size": a.batch_size, "grad_accum": a.grad_accum,
         "max_steps": a.max_steps, "temperature_sampling": a.temperature,
@@ -1094,12 +1151,19 @@ def main() -> int:
                     tags={"phase": "B4", "smoke": str(a.smoke)})
     print(f"  mlflow run {run.info.run_id}")
 
-    ds = build_dataset(mix, cli, processor, ROOT / ".cache" / "audio")
+    training_mix = mix[:1] if a.fixed_batch else mix
+    if a.fixed_batch:
+        print("  fixed batch preflight: one deterministic row repeated")
+    train_cache = Path(os.environ.get(
+        "MEDZEN_TRAIN_CACHE", ROOT / ".cache" / "audio"))
+    ds = build_dataset(training_mix, cli, processor, train_cache)
     # The descent gate needs 2*GATE_WINDOW logged losses by its step. At the
     # default cadence (max_steps//20 = 30 for a 600-step run) the tenth loss does
     # not exist until step 300, so the gate would evaluate there while claiming
     # step 100. Tighten the cadence so the losses exist when the gate needs them.
     log_every = max(1, a.max_steps // 20)
+    if a.fixed_batch:
+        log_every = 1
     if a.descent_gate_step and a.descent_gate_step < a.max_steps:
         log_every = min(log_every, max(1, a.descent_gate_step // (2 * GATE_WINDOW)))
     print(f"  logging every {log_every} steps")
@@ -1123,9 +1187,20 @@ def main() -> int:
                                            status=ckpt_status))
         print(f"  descent gate at step {a.descent_gate_step} "
               f"(aborts from on_save so the checkpoint survives)")
+    if a.stop_at_step is not None and a.stop_at_step < a.max_steps:
+        callbacks.append(make_stop_at_step(a.stop_at_step))
+    data_collator = collate(processor, decoder_start_token_id=sot_id)
+    fixed_batch_l0 = None
+    if a.fixed_batch:
+        one = data_collator([ds[0]])
+        one = {k: v.to(device) for k, v in one.items()}
+        model.eval()
+        with torch.no_grad():
+            fixed_batch_l0 = float(model(**one).loss.detach())
+        model.train()
+        print(f"  fixed batch L0={fixed_batch_l0:.6f}")
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
-                             data_collator=collate(
-                                 processor, decoder_start_token_id=sot_id),
+                             data_collator=data_collator,
                              callbacks=callbacks)
 
     resume = a.resume
@@ -1182,12 +1257,23 @@ def main() -> int:
     print(f"  processor   saved clean from {src.path} "
           "(not the prefix-mutated training copy)")
     import math as _math
+    loss_history = [
+        {k: row[k] for k in ("step", "loss", "grad_norm", "learning_rate")
+         if k in row}
+        for row in trainer.state.log_history
+        if "loss" in row
+    ]
     (a.out / "run.json").write_text(json.dumps({
         "mlflow_run_id": run.info.run_id, "dataset_fingerprint": fingerprint,
         "deferral": deferral_evidence,
         "params": params, "train_loss": result.training_loss,
         "loss_is_finite": bool(_math.isfinite(result.training_loss)),
         "steps": result.global_step,
+        "max_steps": a.max_steps,
+        "stop_at_step": a.stop_at_step,
+        "fixed_batch": a.fixed_batch,
+        "fixed_batch_l0": fixed_batch_l0,
+        "loss_history": loss_history,
         "gpu_peak_mb": gpu_peak_mb, "gpu_name": gpu_name,
         "torch_version": torch.__version__, "cuda_version": torch.version.cuda,
         "device_used": device,
