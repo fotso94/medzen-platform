@@ -1,8 +1,9 @@
 # PLAN-2026-003 — B4 Amharic termination diagnostic
 
-**Status: PREPARED, NOT EXECUTED.**  
-**No new training, image build, EC2 launch, registration, promotion or B5
-transition is authorised by this record.**
+**Status: COMPLETED 2026-07-31.**
+**The bounded no-training diagnostic ran once on direct on-demand EC2. It
+registered and promoted nothing. B4 remains incomplete and B5 remains
+blocked.**
 
 ## Why the previous campaign stopped
 
@@ -89,3 +90,36 @@ successful multilingual training run, Spot interruption/resume proof, adapter
 merge, the declared English/French replay and code-switch mix, CTranslate2
 `int8_float16`, and the full A5 gate suite with reproducible provenance. B5
 remains blocked.
+
+## Execution outcome
+
+The approved stage completed as
+`b4-amharic-termination-e2aeb77e5ecc/attempt-1/diagnostic` on one direct
+on-demand `g6.xlarge`. It used code `e2aeb77e5ecc6a256aa7f79658e3e8a3cabe9a21`,
+image `sha256:e427452660d2ffac7e68df3a8e2f602f7835260ccbe3b942dae06f165d8d2526`
+and descriptor `32abbe906b51c495cabacc030ba512a733442c4ee7fc45e966c49aa487f27ee6`.
+The immutable aggregate artifact is
+`candidates/evaluations/b4-amharic-termination-e2aeb77e5ecc/attempt-1/diagnostic/evaluations/termination-diagnostic.json`
+with SHA-256 `4fb15697930dc3bab9a8d9f85fc9666ba170d4cfd29e83609ca8d1b8f353dbd5`.
+
+The diagnostic selected the plan's second decision branch. Untouched base
+Amharic generation terminated on 0/25 rows and hit the 440-token cap on 25/25;
+the retained 1e-4 adapter terminated on 3/25 and hit the cap on 22/25. Typical
+failed rows were almost entirely repeated n-grams. Yet the adapter improved
+Amharic content NLL from 1.779130 to 1.715294 and median EOS probability from
+0.008301914 to 0.035384879. The failure is therefore an Amharic-specific
+autoregressive decode collapse already present in the untouched base, not a
+missing EOS target, prompt mismatch, inert adapter or global training failure.
+
+The next action is a separately predeclared, aggregate-only, no-training
+Amharic/large-v3 decoding-compatibility investigation. The gate must not be
+weakened and Amharic must not be dropped. No further sweep is authorised by
+this completed plan.
+
+AWS-observed lifecycle was 3226.4 seconds and $0.902 for the GPU stage. The
+whole diagnostic campaign cost $1.0317 against its $1.50 ceiling. The instance
+terminated, its root volume was deleted, all budget entries reconciled, and an
+independent audit found no active MedZen instances, unattached volumes or
+active Spot requests. The linked MLflow snapshot contains two finished runs,
+163 latest aggregate metrics and zero registered models. See
+`platform/evidence/DIAG-2026-001-amharic-termination.json`.
