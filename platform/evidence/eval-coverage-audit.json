@@ -1,6 +1,6 @@
 {
   "record": "EVAL-COVERAGE-AUDIT",
-  "recorded_utc": "2026-07-31T06:03:40Z",
+  "recorded_utc": "2026-07-31T06:21:04Z",
   "read_only": true,
   "manifest_version": "v2",
   "require_allowed_use": "asr_train",
@@ -13,6 +13,56 @@
     "DIAGNOSTIC_ONLY": "shares speakers/sessions with training, or has already informed an investigation; may study behaviour, may not select or promote",
     "CONTAMINATED": "exact audio or text appears in training",
     "source_path_vs_purpose": "a manifest under eval/<lang>/tts/ is a source path. It can still be scored for ASR; the path never implies purpose"
+  },
+  "circulating_pidgin_figures": {
+    "warning": "FOUR numbers circulate for Pidgin on the same 44 clips. They differ by runtime, model and decode policy, not by model quality. Do not difference them.",
+    "eval_manifest_sha256": "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+    "figures": [
+      {
+        "wer": 0.5694,
+        "cer": 0.3655,
+        "decode_policy": "auto/native",
+        "runtime": "mlx_whisper",
+        "model": "mlx-community/whisper-large-v3-mlx",
+        "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+        "normalization_version": "pidgin-norm-v1",
+        "artifact": "results/baseline/decode_compare_pidgin_tts.json"
+      },
+      {
+        "wer": 0.5382,
+        "cer": 0.3452,
+        "decode_policy": "native",
+        "runtime": "mlx_whisper",
+        "model": "mlx-community/whisper-large-v3-mlx",
+        "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+        "normalization_version": "pidgin-norm-v1",
+        "artifact": "results/baseline/native/results.json",
+        "note": "what the coverage audit previously reported bare as 'the baseline'"
+      },
+      {
+        "wer": 0.5257,
+        "cer": 0.3759,
+        "decode_policy": "en_token",
+        "runtime": "mlx_whisper",
+        "model": "mlx-community/whisper-large-v3-mlx",
+        "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+        "normalization_version": "pidgin-norm-v1",
+        "artifact": "results/baseline/decode_compare_pidgin_tts.json",
+        "registry_artifact_sha256": "551827a900f0b937fdaf4cdfc88ac2e081c8b0c861d93663794cc9b2cbb1fd1c",
+        "note": "the SELECTED decode policy in registry/languages/pidgin.yaml, itself marked provisional on 44 read clips from 2 speakers"
+      },
+      {
+        "wer": 0.5133,
+        "cer": 0.378,
+        "decode_policy": "language=en forced",
+        "runtime": "transformers/torch",
+        "model": "openai/whisper-large-v3",
+        "model_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+        "normalization_version": "unrecorded by the external run",
+        "artifact": "EXTERNAL -- not produced in this repository",
+        "note": "the base arm of the failed-candidate evaluation. This is the figure the reproduction must match, because it is the only one produced on the same runtime and model revision as the candidate."
+      }
+    ]
   },
   "languages": {
     "acholi": {
@@ -41,8 +91,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 1.2362,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 1.2362,
+              "cer": 0.7771,
+              "rows": 65,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         },
         {
@@ -66,8 +130,22 @@
           "speaker_overlap_count": 4,
           "session_overlap_count": 4,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9206,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9206,
+              "cer": 0.3201,
+              "rows": 47,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -100,8 +178,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9689,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9689,
+              "cer": 0.4308,
+              "rows": 72,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "tonal-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         }
       ],
@@ -134,8 +226,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 1.0,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "am",
+              "wer": 1.0,
+              "cer": 1.0127,
+              "rows": 25,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         }
       ],
@@ -169,8 +275,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 1.0049,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 1.0049,
+              "cer": 0.4635,
+              "rows": 34,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "tonal-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         },
         {
@@ -194,8 +314,22 @@
           "speaker_overlap_count": 4,
           "session_overlap_count": 4,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9665,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9665,
+              "cer": 0.3842,
+              "rows": 45,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "tonal-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -229,8 +363,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9295,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9295,
+              "cer": 0.4019,
+              "rows": 51,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         },
         {
@@ -255,8 +403,22 @@
           "speaker_overlap_count": 8,
           "session_overlap_count": 8,
           "informed_an_investigation": false,
-          "baseline_wer": 1.0015,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 1.0015,
+              "cer": 0.4098,
+              "rows": 35,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -295,8 +457,22 @@
           "speaker_overlap_count": 5,
           "session_overlap_count": 5,
           "informed_an_investigation": false,
-          "baseline_wer": 0.8861,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "ha",
+              "wer": 0.8861,
+              "cer": 0.3239,
+              "rows": 44,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -335,8 +511,22 @@
           "speaker_overlap_count": 6,
           "session_overlap_count": 6,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9646,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9646,
+              "cer": 0.3569,
+              "rows": 44,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "tonal-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -369,8 +559,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9379,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "ln",
+              "wer": 0.9379,
+              "cer": 0.3371,
+              "rows": 35,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         }
       ],
@@ -404,8 +608,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9863,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9863,
+              "cer": 0.2912,
+              "rows": 53,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         },
         {
@@ -430,8 +648,22 @@
           "speaker_overlap_count": 5,
           "session_overlap_count": 5,
           "informed_an_investigation": false,
-          "baseline_wer": 0.9518,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.9518,
+              "cer": 0.3129,
+              "rows": 45,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -464,8 +696,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 1.1834,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 1.1834,
+              "cer": 0.7338,
+              "rows": 35,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         }
       ],
@@ -501,8 +747,46 @@
           "speaker_overlap_count": 2,
           "session_overlap_count": 2,
           "informed_an_investigation": true,
-          "baseline_wer": 0.5382,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": null,
+              "wer": 0.5382,
+              "cer": 0.3452,
+              "rows": 44,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "pidgin-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            },
+            {
+              "decode_policy": "en_token",
+              "decode_token": "en",
+              "wer": 0.5257,
+              "cer": 0.3759,
+              "rows": 44,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "pidgin-norm-v1",
+              "artifact": "results/baseline/decode_compare_pidgin_tts.json"
+            },
+            {
+              "decode_policy": "auto",
+              "decode_token": null,
+              "wer": 0.5694,
+              "cer": 0.3655,
+              "rows": 44,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "pidgin-norm-v1",
+              "artifact": "results/baseline/decode_compare_pidgin_tts.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -535,8 +819,22 @@
           "speaker_overlap_count": 0,
           "session_overlap_count": 0,
           "informed_an_investigation": false,
-          "baseline_wer": 1.1365,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "sn",
+              "wer": 1.1365,
+              "cer": 0.2552,
+              "rows": 15,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "VALIDATION_CANDIDATE"
         }
       ],
@@ -574,8 +872,22 @@
           "speaker_overlap_count": 4,
           "session_overlap_count": 4,
           "informed_an_investigation": false,
-          "baseline_wer": 0.3449,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "sw",
+              "wer": 0.3449,
+              "cer": 0.0814,
+              "rows": 45,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "generic-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],
@@ -613,8 +925,22 @@
           "speaker_overlap_count": 4,
           "session_overlap_count": 4,
           "informed_an_investigation": false,
-          "baseline_wer": 1.1846,
+          "baselines": [
+            {
+              "decode_policy": "native",
+              "decode_token": "yo",
+              "wer": 1.1846,
+              "cer": 0.5659,
+              "rows": 46,
+              "runtime": "mlx_whisper",
+              "model": "mlx-community/whisper-large-v3-mlx",
+              "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+              "normalization_version": "tonal-norm-v1",
+              "artifact": "results/baseline/native/results.json"
+            }
+          ],
           "baseline_linked": true,
+          "baseline_comparability": "each entry carries runtime, model revision, decode policy and normalization version. Figures from different arms are NOT interchangeable and must not be differenced.",
           "verdict": "DIAGNOSTIC_ONLY"
         }
       ],

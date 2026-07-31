@@ -36,6 +36,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 BUCKET = "medzen-speech"
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "results/baseline/native/results.json"
+DECODE_COMPARE = ROOT / "results/baseline/decode_compare_pidgin_tts.json"
+
+# A baseline WER is only comparable to another number produced the same way.
+# Pidgin alone has THREE circulating figures and they are not interchangeable:
+#
+#   0.5382  MLX native decode, whisper-large-v3-mlx@49e6aa28, pidgin-norm-v1
+#   0.5257  MLX en_token decode, same model -- the SELECTED decode policy
+#   0.5133  external torch run, openai/whisper-large-v3@06f233fe, language=en
+#
+# Quoting any of them as "the Pidgin baseline" without its runtime, revision,
+# decode policy and normalization version invites a comparison that measures
+# the harness rather than the model.
+ARM_FILES = {"native": ROOT / "results/baseline/native/results.json",
+             "en_token": DECODE_COMPARE,
+             "auto": DECODE_COMPARE}
 # Already used to diagnose the 23868bab failure, so it can never again be an
 # untouched holdout regardless of what its overlap numbers say.
 INFORMED_INVESTIGATION = {("pidgin", "tts")}
@@ -90,11 +105,27 @@ def main() -> int:
     print(f"training pool: {len(train)} languages, "
           f"{sum(len(v) for v in train.values())} rows at {a.version}")
 
-    # ---- baselines --------------------------------------------------------
-    base = {}
-    if BASELINE.exists():
-        for r in json.load(open(BASELINE)).get("results", []):
-            base[(r.get("language"), r.get("task"))] = r.get("wer")
+    # ---- baselines, each with the provenance that makes it comparable -----
+    base: dict[tuple, list[dict]] = {}
+    for arm, f in ARM_FILES.items():
+        if not f.exists():
+            continue
+        doc = json.load(open(f))
+        for r in doc.get("results", []):
+            if r.get("decode") and r["decode"] != arm:
+                continue
+            base.setdefault((r.get("language"), r.get("task")), []).append({
+                "decode_policy": r.get("decode", arm),
+                "decode_token": r.get("decode_token"),
+                "wer": r.get("wer"), "cer": r.get("cer"),
+                "rows": r.get("rows"),
+                "runtime": ("mlx_whisper" if "mlx" in str(r.get("model", ""))
+                            else "transformers"),
+                "model": r.get("model"),
+                "model_revision": r.get("model_revision"),
+                "normalization_version": r.get("normalization_version"),
+                "artifact": str(f.relative_to(ROOT)),
+            })
 
     # ---- eval manifests ---------------------------------------------------
     eval_keys = [k for k in list_keys(c, "eval/") if k.endswith("manifest.jsonl")]
@@ -141,8 +172,12 @@ def main() -> int:
                 "speaker_overlap_count": len(spk_ov),
                 "session_overlap_count": len(ses_ov),
                 "informed_an_investigation": informed,
-                "baseline_wer": base.get((lang, task)),
+                "baselines": base.get((lang, task), []),
                 "baseline_linked": (lang, task) in base,
+                "baseline_comparability": (
+                    "each entry carries runtime, model revision, decode policy "
+                    "and normalization version. Figures from different arms are "
+                    "NOT interchangeable and must not be differenced."),
                 "verdict": verdict,
             })
 
@@ -181,6 +216,50 @@ def main() -> int:
             "source_path_vs_purpose": ("a manifest under eval/<lang>/tts/ is a "
                                        "source path. It can still be scored for "
                                        "ASR; the path never implies purpose"),
+        },
+        "circulating_pidgin_figures": {
+            "warning": ("FOUR numbers circulate for Pidgin on the same 44 clips. "
+                        "They differ by runtime, model and decode policy, not by "
+                        "model quality. Do not difference them."),
+            "eval_manifest_sha256":
+                "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+            "figures": [
+                {"wer": 0.5694, "cer": 0.3655, "decode_policy": "auto/native",
+                 "runtime": "mlx_whisper",
+                 "model": "mlx-community/whisper-large-v3-mlx",
+                 "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+                 "normalization_version": "pidgin-norm-v1",
+                 "artifact": "results/baseline/decode_compare_pidgin_tts.json"},
+                {"wer": 0.5382, "cer": 0.3452, "decode_policy": "native",
+                 "runtime": "mlx_whisper",
+                 "model": "mlx-community/whisper-large-v3-mlx",
+                 "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+                 "normalization_version": "pidgin-norm-v1",
+                 "artifact": "results/baseline/native/results.json",
+                 "note": ("what the coverage audit previously reported bare as "
+                          "'the baseline'")},
+                {"wer": 0.5257, "cer": 0.3759, "decode_policy": "en_token",
+                 "runtime": "mlx_whisper",
+                 "model": "mlx-community/whisper-large-v3-mlx",
+                 "model_revision": "49e6aa286ad60c14352c404340ded53710378a11",
+                 "normalization_version": "pidgin-norm-v1",
+                 "artifact": "results/baseline/decode_compare_pidgin_tts.json",
+                 "registry_artifact_sha256":
+                     "551827a900f0b937fdaf4cdfc88ac2e081c8b0c861d93663794cc9b2cbb1fd1c",
+                 "note": ("the SELECTED decode policy in "
+                          "registry/languages/pidgin.yaml, itself marked "
+                          "provisional on 44 read clips from 2 speakers")},
+                {"wer": 0.5133, "cer": 0.3780, "decode_policy": "language=en forced",
+                 "runtime": "transformers/torch",
+                 "model": "openai/whisper-large-v3",
+                 "model_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+                 "normalization_version": "unrecorded by the external run",
+                 "artifact": "EXTERNAL -- not produced in this repository",
+                 "note": ("the base arm of the failed-candidate evaluation. This "
+                          "is the figure the reproduction must match, because it "
+                          "is the only one produced on the same runtime and model "
+                          "revision as the candidate.")},
+            ],
         },
         "languages": report,
         "content_policy": ("counts, checksum-derived overlaps and identifiers "

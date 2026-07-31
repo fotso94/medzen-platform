@@ -53,7 +53,7 @@ import hashlib
 import json
 import os
 import statistics
-import subprocess
+import re
 import sys
 import time
 from pathlib import Path
@@ -79,11 +79,67 @@ GEN = {
 TASK = "transcribe"          # pinned; never inferred from the eval set
 EOT_TOKEN = "<|endoftext|>"
 
+# Pinned artifact identities. These are not defaults to be overridden -- they
+# are what this reproduction is defined as running against. A run that cannot
+# match them is not this reproduction and must not produce a record that looks
+# like one.
+BASE_MANIFEST_SHA256 = \
+    "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1"
+EVAL_MANIFEST_SHA256 = {
+    ("pidgin", "tts", "v1"):
+        "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+}
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
 
-def _git_commit() -> str | None:
-    r = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
-                       capture_output=True, text=True)
-    return r.stdout.strip() or None
+# Provenance the launcher must supply. Read from the environment rather than
+# from git: the published bundle contains no .git, so `git rev-parse` inside it
+# returns nothing and a record built on it would silently claim no commit.
+REQUIRED_ENV = ("MEDZEN_IMAGE_DIGEST", "MEDZEN_CODE_GIT_SHA",
+                "MEDZEN_CODE_TAR_SHA256")
+
+
+def require_cuda(device: str) -> None:
+    """Refuse anything but CUDA.
+
+    The figures being reproduced were produced on CUDA. CPU and MPS differ in
+    kernel selection and reduction order, so a discrepancy introduced there
+    would be indistinguishable from a real disagreement about the candidate --
+    which is the one question this run exists to answer.
+    """
+    if device != "cuda":
+        raise SystemExit(
+            f"REFUSING: this reproduction requires CUDA, found device={device!r}. "
+            "A CPU or MPS result cannot be compared with the CUDA figures under "
+            "investigation.")
+
+
+def require_provenance() -> dict[str, str]:
+    """Every identity this run claims, supplied by the launcher and validated.
+
+    Absent or malformed values REFUSE. An evaluation whose own provenance is
+    unknown cannot support a conclusion about anything else, and a record with
+    empty provenance fields reads, later, exactly like one that was never
+    checked.
+    """
+    out, bad = {}, []
+    for name in REQUIRED_ENV:
+        v = (os.environ.get(name) or "").strip()
+        if not v:
+            bad.append(f"{name} is not set")
+            continue
+        if name == "MEDZEN_IMAGE_DIGEST":
+            if not v.startswith("sha256:") or not HEX64.match(v[7:]):
+                bad.append(f"{name}={v!r} is not sha256:<64 lowercase hex>")
+        elif name == "MEDZEN_CODE_GIT_SHA":
+            if not re.match(r"^[0-9a-f]{40}$", v):
+                bad.append(f"{name}={v!r} is not a 40-char commit sha")
+        elif not HEX64.match(v):
+            bad.append(f"{name}={v!r} is not 64 lowercase hex")
+        out[name] = v
+    if bad:
+        raise SystemExit("REFUSING — provenance is incomplete:\n  "
+                         + "\n  ".join(bad))
+    return out
 
 
 def s3():
@@ -136,6 +192,11 @@ def ensure_base(cli, dest: Path) -> tuple[dict, str]:
     man = json.loads(raw)
     man_sha = sha256_bytes(raw)
 
+    if man_sha != BASE_MANIFEST_SHA256:
+        raise SystemExit(
+            f"REFUSING: base MANIFEST.json hashes {man_sha[:16]}, this "
+            f"reproduction is pinned to {BASE_MANIFEST_SHA256[:16]}. The base "
+            "model is not the one the failed run trained from.")
     if man.get("repo") != BASE_MODEL or man.get("revision") != BASE_REVISION:
         raise SystemExit(
             f"REFUSING: manifest declares {man.get('repo')}@"
@@ -169,8 +230,19 @@ def ensure_base(cli, dest: Path) -> tuple[dict, str]:
 def load_eval(cli, language: str, task: str, version: str) -> tuple[list[dict], str]:
     key = f"eval/{language}/{task}/{version}/manifest.jsonl"
     raw = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+    sha = sha256_bytes(raw)
+    want = EVAL_MANIFEST_SHA256.get((language, task, version))
+    if want is None:
+        raise SystemExit(
+            f"REFUSING: no pinned hash for eval set {language}/{task}/{version}. "
+            "An evaluation set that is not pinned is not frozen, and a score "
+            "against it cannot be compared with anything later.")
+    if sha != want:
+        raise SystemExit(
+            f"REFUSING: eval manifest {key} hashes {sha[:16]}, pinned as "
+            f"{want[:16]}; the frozen set has changed.")
     rows = [json.loads(l) for l in raw.decode().splitlines() if l.strip()]
-    return rows, sha256_bytes(raw)
+    return rows, sha
 
 
 def load_audio(cli, rec: dict, cache: Path):
@@ -344,14 +416,28 @@ def main() -> int:
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
 
+    prov = require_provenance()
+
+    import peft
     import torch
+    import transformers
     from transformers import WhisperForConditionalGeneration, WhisperProcessor
+    libvers = {"torch": torch.__version__, "transformers": transformers.__version__,
+               "peft": peft.__version__}
+    print("provenance " + " ".join(f"{k.replace('MEDZEN_', '').lower()}="
+                                   f"{v[:20]}" for k, v in prov.items()))
+    print(f"libraries  {libvers}")
 
     device = a.device or ("cuda" if torch.cuda.is_available()
                           else "mps" if torch.backends.mps.is_available() else "cpu")
+    require_cuda(device)
     cli = s3()
-    work = ROOT / ".eval_cache"
-    work.mkdir(exist_ok=True)
+    # NOT under ROOT: the verified bundle is mounted read-only, so a cache
+    # inside it cannot be created and, if it could, would let the run write
+    # into the tree whose hashes it just checked.
+    work = Path(os.environ.get("MEDZEN_EVAL_CACHE", ROOT / ".eval_cache"))
+    work.mkdir(parents=True, exist_ok=True)
+    print(f"cache      {work}")
 
     rows, man_sha = load_eval(cli, a.language, a.task, a.eval_version)
     print(f"eval set   {a.language}/{a.task}/{a.eval_version}: {len(rows)} rows, "
@@ -393,12 +479,19 @@ def main() -> int:
 
     del model                                   # base arm is finished with it
 
-    if a.expect_adapter_sha256 and \
-            len(a.expect_adapter_sha256) != len(a.adapter):
+    # EXACTLY one expected hash per adapter. Optional hashes would mean the
+    # check silently does nothing whenever someone forgets it, which is the
+    # same as not having it.
+    if len(a.expect_adapter_sha256) != len(a.adapter):
         raise SystemExit(
             f"REFUSING: {len(a.expect_adapter_sha256)} expected hash(es) for "
-            f"{len(a.adapter)} adapter(s); they are matched positionally and an "
-            "off-by-one would check the wrong artifact")
+            f"{len(a.adapter)} adapter(s). Exactly one --expect-adapter-sha256 "
+            "is required per --adapter; they are matched positionally and an "
+            "off-by-one would check the wrong artifact.")
+    malformed = [h for h in a.expect_adapter_sha256 if not HEX64.match(h)]
+    if malformed:
+        raise SystemExit(f"REFUSING: malformed expected hash(es) "
+                         f"{[h[:16] for h in malformed]}; want 64 lowercase hex")
 
     adapters_meta = {}
     for i, uri in enumerate(a.adapter):
@@ -419,13 +512,12 @@ def main() -> int:
             files = {f.name: sha256_bytes(f.read_bytes())
                      for f in d.iterdir() if f.is_file()}
         got_sha = files.get("adapter_model.safetensors")
-        if a.expect_adapter_sha256:
-            want = a.expect_adapter_sha256[i]
-            if got_sha != want:
-                raise SystemExit(
-                    f"REFUSING: {uri} adapter_model.safetensors hashes "
-                    f"{str(got_sha)[:16]}, expected {want[:16]}. This is not "
-                    "the artifact this evaluation was authorised to score.")
+        want = a.expect_adapter_sha256[i]
+        if got_sha != want:
+            raise SystemExit(
+                f"REFUSING: {uri} adapter_model.safetensors hashes "
+                f"{str(got_sha)[:16]}, expected {want[:16]}. This is not "
+                "the artifact this evaluation was authorised to score.")
         if name in adapters_meta or name in arms:
             raise SystemExit(f"REFUSING: duplicate result key {name!r}; a second "
                              "arm would overwrite the first")
@@ -461,8 +553,15 @@ def main() -> int:
         "base_manifest_revision": base_manifest["revision"],
         "base_files_verified": len(base_manifest["files"]),
         "device": device, "torch": torch.__version__,
-        "image_digest": os.environ.get("MEDZEN_IMAGE_DIGEST"),
-        "code_git_commit": _git_commit(),
+        "purpose": "DIAGNOSTIC_ONLY",
+        "purpose_note": (
+            "The Pidgin set shares both speakers and sessions with training and "
+            "has informed this investigation. It can reproduce the failure. It "
+            "cannot select a checkpoint or support promotion."),
+        "image_digest": prov["MEDZEN_IMAGE_DIGEST"],
+        "code_git_commit": prov["MEDZEN_CODE_GIT_SHA"],
+        "code_tar_sha256": prov["MEDZEN_CODE_TAR_SHA256"],
+        "library_versions": libvers,
         "generation": {**GEN, "forced_language": a.lang_token, "task": TASK,
                        "note": ("language and task forced identically for every "
                                 "arm; max_new_tokens EXCLUDES the decoder prompt")},
