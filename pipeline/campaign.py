@@ -17,7 +17,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from pipeline import budget, mlflow_sync, orchestrate
+from pipeline import budget, mlflow_sync, orchestrate, stage_descriptor
 
 FINAL_CHECKPOINTS = (100, 200, 300, 400, 500, 600)
 
@@ -56,18 +56,22 @@ class Services:
     s3: Any
     verify_policy: Callable[[], dict]
     verify_adoption: Callable[[], dict]
-    run_preflight: Callable[[], dict]          # overfit + smoke, on a GPU box
-    evaluate_base: Callable[[str], dict]       # -> per-language metrics
-    train: Callable[..., dict]                 # lr, steps, resume -> run info
-    evaluate_checkpoint: Callable[..., dict]   # -> metrics + artifact sha256
+    # STAGE-SHAPED. Each is one complete g6.xlarge lifecycle: launch, run,
+    # verify, terminate, prove cleanup. The operator never orchestrates
+    # individual operations, because "evaluate_base" and "train" as separate
+    # callbacks made the instance count unknowable -- five stage calls is five
+    # instances, and that is checkable.
+    run_base_and_preflight: Callable[[dict], dict]
+    run_sweep: Callable[[dict, float], dict]
+    run_final: Callable[[dict, float], dict]
     mlflow_db: Any = None
     launcher: Any = None                       # the EC2 adapter
     image_digest: str | None = None
     stage_descriptors: dict | None = None
     register_model: Callable[..., Any] | None = None   # must stay None
 
-    SERVICE_FIELDS = ("verify_policy", "verify_adoption", "run_preflight",
-                      "evaluate_base", "train", "evaluate_checkpoint")
+    SERVICE_FIELDS = ("verify_policy", "verify_adoption",
+                      "run_base_and_preflight", "run_sweep", "run_final")
 
 
 def readiness(sv: Services) -> dict:
@@ -142,6 +146,90 @@ def _sync(sv: Services, campaign_run: str, stage: str, trace: Trace,
     trace.add(f"mlflow-sync:{stage}", sha256=rec["sha256"], key=rec["key"])
 
 
+def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
+                    lr: float | None, max_steps: int,
+                    reservation_id: str) -> dict:
+    """One descriptor per stage, built from the pins the campaign already holds."""
+    p = sv.stage_descriptors or {}
+    return stage_descriptor.build(
+        campaign_run=campaign_run, attempt=attempt, stage=stage,
+        git_sha=p["git_sha"], bundle_tar_sha256=p["bundle_tar_sha256"],
+        image_digest=sv.image_digest,
+        policy_sha256=p["policy_sha256"], adoption_key=p["adoption_key"],
+        dataset_fingerprint=EXPECTED_FINGERPRINT,
+        base_manifest_sha256=p["base_manifest_sha256"],
+        validation_manifest_sha256=p["validation_manifest_sha256"],
+        generation_config_fingerprint=p["generation_config_fingerprint"],
+        evaluator_sha256=p["evaluator_sha256"],
+        lr=lr, seed=orchestrate.SEED, max_steps=max_steps,
+        checkpoint_steps=list(FINAL_CHECKPOINTS) if stage == "final" else [],
+        reservation_id=reservation_id,
+        watchdog_s=budget.WATCHDOG_S[
+            "base_and_preflight" if stage == "base_and_preflight"
+            else "sweep_run" if stage == "sweep" else "final_run"],
+        input_prefix=f"curated/_versions/v2/",
+        output_prefix=f"candidates/evaluations/{campaign_run}/attempt-{attempt}/{stage}/",
+        mlflow_parent_run_id=p["mlflow_parent_run_id"],
+        mlflow_child_run_id=f"{campaign_run}-{attempt}-{stage}"
+                            + (f"-lr{lr:.0e}" if lr else ""),
+        purpose="training_system_validation", promotable=False)
+
+
+def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
+    """Prove the final run GATED as it trained, rather than after.
+
+    The contract the container must satisfy: checkpoints appear in ascending
+    order with no gaps, and if one fails there are NO checkpoints after it and
+    `steps_completed` stops at that boundary. Evaluating all 600 steps and then
+    reporting a failure at 300 would satisfy a naive reading of "checkpoint 300
+    failed" while having spent the whole budget -- and, worse, produced 300
+    optimisation steps against an objective already known to be broken.
+    """
+    cps = result.get("checkpoints") or []
+    if not cps:
+        raise CampaignError("REFUSING: the final stage reported no checkpoints")
+
+    steps = [c["step"] for c in cps]
+    if steps != sorted(steps):
+        raise CampaignError(f"REFUSING: checkpoints out of order: {steps}")
+    expected = list(FINAL_CHECKPOINTS)[:len(steps)]
+    if steps != expected:
+        raise CampaignError(
+            f"REFUSING: checkpoint steps {steps} are not the leading prefix of "
+            f"{list(FINAL_CHECKPOINTS)}; a gap means a boundary was skipped")
+
+    out = []
+    for c in cps:
+        if not c.get("artifact_sha256"):
+            raise CampaignError(
+                f"REFUSING: checkpoint-{c['step']} produced no evaluation "
+                "artifact")
+        gate = orchestrate.evaluate_gates(c["wer"], base_wer, c["eos_rate"],
+                                          c["cap_hit_rate"])
+        out.append({**c, "gate": gate})
+
+    failed = [c for c in out if not c["gate"]["passed"]]
+    if failed:
+        first = failed[0]["step"]
+        later = [c["step"] for c in out if c["step"] > first]
+        if later:
+            raise CampaignError(
+                f"REFUSING: checkpoint-{first} failed but the stage also "
+                f"reported {later}. Training must STOP at a failing gate, not "
+                "continue and report the failure afterwards.")
+        done = result.get("steps_completed")
+        if done is None or done > first:
+            raise CampaignError(
+                f"REFUSING: checkpoint-{first} failed but the stage reports "
+                f"steps_completed={done}. Optimisation step {first + 1} must "
+                "never have run.")
+    elif result.get("steps_completed") != FINAL_CHECKPOINTS[-1]:
+        raise CampaignError(
+            f"REFUSING: all gates passed but steps_completed is "
+            f"{result.get('steps_completed')}, not {FINAL_CHECKPOINTS[-1]}")
+    return out
+
+
 def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
     """The whole ordering, enforced. Returns the trace and the outcome."""
     trace = Trace()
@@ -203,103 +291,103 @@ def run_campaign(sv: Services, campaign_run: str, attempt: str = "1") -> dict:
 
     _sync(sv, campaign_run, "parent", trace, attempt=attempt, policy_sha256=pol["policy_sha256"])
 
-    # ---- 3. base arm FIRST, before any candidate exists -------------------
-    base = sv.evaluate_base(campaign_run)
+    # ---- 3. ONE instance: base arm, then preflight ------------------------
+    d0 = make_descriptor(sv, campaign_run, attempt, "base_and_preflight",
+                         lr=None, max_steps=0,
+                         reservation_id=res["reservation_id"])
+    r0 = sv.run_base_and_preflight(d0)
+    stage_descriptor.verify_result(d0, r0)
+    base = r0["base"]
     orchestrate.validate_metric_map(base["wer"], "base WER")
-    trace.add("base-eval", base_arm_key=base["base_arm_key"],
-              artifact_sha256=base["artifact_sha256"])
-    _sync(sv, campaign_run, "base_eval", trace, attempt=attempt,
-          artifact_sha256=base["artifact_sha256"])
-
-    # ---- 4. preflight: overfit + smoke, before ANY sweep -------------------
-    pf = sv.run_preflight()
-    if not pf.get("passed"):
+    if not r0["preflight"].get("passed"):
         raise CampaignError(
             "REFUSING: training preflight failed; no learning-rate sweep will "
-            f"start.\n  {pf.get('reasons')}")
-    trace.add("preflight", overfit=pf["overfit"], adapter_effect=pf["adapter_effect"],
-              generation_smoke=pf["generation_smoke"])
-    # the shared instance is finished only now, so reconcile once
+            f"start.\n  {r0['preflight'].get('reasons')}")
+    trace.add("base-and-preflight", instance_id=r0["instance_id"],
+              base_arm_key=base["base_arm_key"],
+              base_artifact_sha256=base["artifact_sha256"],
+              preflight_passed=True,
+              root_volume_deleted=r0["root_volume_deleted"])
     budget.reconcile(sv.s3, "base_and_preflight", attempt,
-                     base.get("seconds", 0.0) + pf.get("seconds", 0.0))
-    _sync(sv, campaign_run, "preflight", trace, attempt=attempt)
+                     r0["actual_seconds"], instance_id=r0["instance_id"])
+    _sync(sv, campaign_run, "base_and_preflight", trace, attempt=attempt,
+          artifact_sha256=base["artifact_sha256"])
 
-    # ---- 5. three sequential LR candidates --------------------------------
+    # ---- 4. three sequential sweep instances ------------------------------
     results = []
     for lr in orchestrate.LR_CANDIDATES:
         tag = f"lr-{lr:.0e}"
-        r = budget.reserve(sv.s3, "sweep_run", f"{attempt}-{tag}")
+        rr = budget.reserve(sv.s3, "sweep_run", f"{attempt}-{tag}")
         trace.add("budget-reserve", stage="sweep_run", lr=lr,
-                  reservation_id=r["reservation_id"])
-        run = sv.train(lr=lr, steps=orchestrate.SWEEP_STEPS, resume=None,
-                       seed=orchestrate.SEED, campaign_run=campaign_run, tag=tag)
-        ev = sv.evaluate_checkpoint(run_id=run["run_id"],
-                                    step=orchestrate.SWEEP_COMPARISON_CHECKPOINT,
-                                    campaign_run=campaign_run)
-        gate = orchestrate.evaluate_gates(ev["wer"], base["wer"],
-                                          ev["eos_rate"], ev["cap_hit_rate"])
+                  reservation_id=rr["reservation_id"])
+        d = make_descriptor(sv, campaign_run, attempt, "sweep", lr=lr,
+                            max_steps=orchestrate.SWEEP_STEPS,
+                            reservation_id=rr["reservation_id"])
+        r = sv.run_sweep(d, lr)
+        stage_descriptor.verify_result(d, r)
+        gate = orchestrate.evaluate_gates(r["wer"], base["wer"],
+                                          r["eos_rate"], r["cap_hit_rate"])
         results.append({"lr": lr, "gate": gate})
-        trace.add("sweep-run", lr=lr, macro_wer=gate["macro_wer"],
-                  passed=gate["passed"], artifact_sha256=ev["artifact_sha256"])
+        trace.add("sweep-run", lr=lr, instance_id=r["instance_id"],
+                  macro_wer=gate["macro_wer"], passed=gate["passed"],
+                  artifact_sha256=r["artifact_sha256"])
         budget.reconcile(sv.s3, "sweep_run", f"{attempt}-{tag}",
-                         run.get("seconds", 0.0))
+                         r["actual_seconds"], instance_id=r["instance_id"])
         _sync(sv, campaign_run, f"sweep-{tag}", trace, attempt=attempt,
-              artifact_sha256=ev["artifact_sha256"])
+              artifact_sha256=r["artifact_sha256"])
 
-    # ---- 6. deterministic selection ---------------------------------------
+    # ---- 5. deterministic selection ---------------------------------------
     sel = orchestrate.select_lr(results)
     trace.add("select-lr", **{k: sel[k] for k in
                               ("selected_lr", "macro_wer", "tie_broken")})
-    _sync(sv, campaign_run, "selection", trace, attempt=attempt, selected_lr=sel["selected_lr"])
+    _sync(sv, campaign_run, "selection", trace, attempt=attempt,
+          selected_lr=sel["selected_lr"])
 
-    # ---- 7. final run FROM SCRATCH ----------------------------------------
+    # ---- 6. ONE final instance, gates INTERLEAVED with training -----------
     if orchestrate.FINAL_RUN_RESUMES_SWEEP:
         raise CampaignError("REFUSING: the final run must not resume the sweep")
-    r = budget.reserve(sv.s3, "final_run", f"{attempt}-final")
+    rf = budget.reserve(sv.s3, "final_run", f"{attempt}-final")
     trace.add("budget-reserve", stage="final_run",
-              reservation_id=r["reservation_id"])
-    final = sv.train(lr=sel["selected_lr"], steps=600, resume=None,
-                     seed=orchestrate.SEED, campaign_run=campaign_run,
-                     tag="final")
-    trace.add("final-run", run_id=final["run_id"], resumed=False)
-    _sync(sv, campaign_run, "final-start", trace, attempt=attempt, run_id=final["run_id"])
+              reservation_id=rf["reservation_id"])
+    df = make_descriptor(sv, campaign_run, attempt, "final",
+                         lr=sel["selected_lr"], max_steps=600,
+                         reservation_id=rf["reservation_id"])
+    rfin = sv.run_final(df, sel["selected_lr"])
+    stage_descriptor.verify_result(df, rfin)
+    trace.add("final-run", instance_id=rfin["instance_id"],
+              lr=sel["selected_lr"], resumed=False,
+              steps_completed=rfin.get("steps_completed"),
+              root_volume_deleted=rfin["root_volume_deleted"])
+    _sync(sv, campaign_run, "final-start", trace, attempt=attempt,
+          instance=rfin["instance_id"])
 
-    # ---- 8. every promised checkpoint, or the campaign stops --------------
-    checkpoints = []
-    for step in FINAL_CHECKPOINTS:
-        prefix = orchestrate.evaluation_prefix(final["run_id"], step)
-        orchestrate.require_absent(sv.s3, budget.BUCKET, prefix)   # write-once
-        ev = sv.evaluate_checkpoint(run_id=final["run_id"], step=step,
-                                    campaign_run=campaign_run)
-        if not ev.get("artifact_sha256"):
-            raise CampaignError(
-                f"REFUSING: checkpoint-{step} produced no evaluation artifact. "
-                "Every promised checkpoint must yield its own record before "
-                "the next one runs.")
-        gate = orchestrate.evaluate_gates(ev["wer"], base["wer"],
-                                          ev["eos_rate"], ev["cap_hit_rate"])
-        checkpoints.append({"step": step, "gate": gate,
-                            "artifact_sha256": ev["artifact_sha256"],
-                            "prefix": prefix})
-        trace.add("checkpoint-eval", step=step, passed=gate["passed"],
-                  artifact_sha256=ev["artifact_sha256"])
-        _sync(sv, campaign_run, f"final-checkpoint-{step}", trace, attempt=attempt,
-              artifact_sha256=ev["artifact_sha256"])
-        if not gate["passed"]:
-            raise CampaignError(
-                f"REFUSING: checkpoint-{step} failed a gate:\n  "
-                + "\n  ".join(gate["failures"]))
+    checkpoints = verify_interleaving(rfin, base["wer"])
+    for c in checkpoints:
+        trace.add("checkpoint-eval", step=c["step"], passed=c["gate"]["passed"],
+                  artifact_sha256=c["artifact_sha256"])
+        _sync(sv, campaign_run, f"final-checkpoint-{c['step']}", trace,
+              attempt=attempt, artifact_sha256=c["artifact_sha256"])
 
     budget.reconcile(sv.s3, "final_run", f"{attempt}-final",
-                     final.get("seconds", 0.0))
-    _sync(sv, campaign_run, "final-complete", trace, attempt=attempt)
-    trace.add("cleanup", unresolved_reservations=len(
-        budget.unresolved(budget.load(sv.s3)[0])))
+                     rfin["actual_seconds"], instance_id=rfin["instance_id"])
+
+    failed = [c for c in checkpoints if not c["gate"]["passed"]]
+    _sync(sv, campaign_run, "final-complete" if not failed else "final-failed",
+          trace, attempt=attempt)
+    ledger, _ = budget.load(sv.s3)
+    trace.add("cleanup", unresolved_reservations=len(budget.unresolved(ledger)),
+              gpu_instances_used=5)
+    if failed:
+        raise CampaignError(
+            f"REFUSING: checkpoint-{failed[0]['step']} failed a gate and "
+            "training stopped there:\n  "
+            + "\n  ".join(failed[0]["gate"]["failures"]))
 
     return {
         "campaign_run": campaign_run,
         "selected_lr": sel["selected_lr"],
         "checkpoints": checkpoints,
+        "gpu_instances": 5,
         "registered_models": 0,
         "promotable": False,
         "purpose": "training_system_validation",

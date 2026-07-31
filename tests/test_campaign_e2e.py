@@ -98,6 +98,38 @@ def db(tmp_path):
     return p
 
 
+PINS = {
+    "git_sha": "c" * 40, "bundle_tar_sha256": "d" * 64,
+    "policy_sha256": POLICY_SHA, "adoption_key": "curated/_versions/v2/ADOPTION.json",
+    "base_manifest_sha256": "e" * 64, "validation_manifest_sha256": "f" * 64,
+    "generation_config_fingerprint": "0" * 64, "evaluator_sha256": "1" * 64,
+    "mlflow_parent_run_id": "parent-1",
+}
+
+
+def stage_result(descriptor, **kw):
+    """A well-formed stage result: lifecycle evidence plus the echoed hash."""
+    from pipeline import stage_descriptor as SD
+    return {
+        "stage_descriptor_sha256": SD.descriptor_hash(descriptor),
+        "campaign_run": descriptor["campaign_run"],
+        "attempt": descriptor["attempt"], "stage": descriptor["stage"],
+        "instance_id": kw.pop("instance_id", "i-" + descriptor["stage"][:8]),
+        "launched_utc": "2026-07-31T09:00:00Z",
+        "terminated_utc": "2026-07-31T09:10:00Z",
+        "actual_seconds": 600, "exit_status": 0,
+        "root_volume_deleted": True,
+        **kw,
+    }
+
+
+def checkpoint(step, wer=None, sha=None):
+    return {"step": step, "wer": wer or metrics(), "eos_rate": perfect(),
+            "cap_hit_rate": zeros(),
+            "artifact_sha256": sha or hashlib.sha256(
+                f"cp{step}".encode()).hexdigest()}
+
+
 def make_services(s3, db, **over):
     calls = []
 
@@ -109,8 +141,7 @@ def make_services(s3, db, **over):
 
     def verify_adoption():
         calls.append("verify_adoption")
-        return {"status": "approved",
-                "deferral_policy_sha256": POLICY_SHA,
+        return {"status": "approved", "deferral_policy_sha256": POLICY_SHA,
                 "complete_raw_sha256": "b" * 64,
                 "current_complete_raw_sha256": "b" * 64,
                 "manifests_verified": True,
@@ -118,36 +149,32 @@ def make_services(s3, db, **over):
                 "dataset_fingerprint": campaign.EXPECTED_FINGERPRINT,
                 "eligible_rows": campaign.EXPECTED_ELIGIBLE_ROWS}
 
-    def run_preflight():
-        calls.append("preflight")
-        return {"passed": True, "overfit": {"passed": True},
-                "adapter_effect": {"passed": True},
-                "generation_smoke": {"passed": True}, "seconds": 120}
+    def run_base_and_preflight(d):
+        calls.append("run_base_and_preflight")
+        return stage_result(
+            d, base={"wer": base_metrics(), "base_arm_key": "k" * 64,
+                     "artifact_sha256": "c" * 64},
+            preflight={"passed": True, "saved_adapter_sha256": "9" * 64,
+                       "reloaded_adapter_sha256": "9" * 64})
 
-    def evaluate_base(campaign_run):
-        calls.append("evaluate_base")
-        return {"wer": base_metrics(), "base_arm_key": "k" * 64,
-                "artifact_sha256": "c" * 64, "seconds": 300}
+    def run_sweep(d, lr):
+        calls.append(f"run_sweep:{lr:.0e}")
+        return stage_result(d, wer=metrics(), eos_rate=perfect(),
+                            cap_hit_rate=zeros(),
+                            artifact_sha256=hashlib.sha256(
+                                f"sweep{lr}".encode()).hexdigest())
 
-    def train(lr, steps, resume, seed, campaign_run, tag):
-        calls.append(f"train:{tag}")
-        assert resume is None, "the final run must start from scratch"
-        return {"run_id": f"run-{tag}", "seconds": 600}
-
-    def evaluate_checkpoint(run_id, step, campaign_run):
-        calls.append(f"eval:{run_id}:{step}")
-        return {"wer": metrics(), "eos_rate": perfect(),
-                "cap_hit_rate": zeros(),
-                "artifact_sha256": hashlib.sha256(
-                    f"{run_id}-{step}".encode()).hexdigest()}
+    def run_final(d, lr):
+        calls.append(f"run_final:{lr:.0e}")
+        return stage_result(
+            d, steps_completed=600,
+            checkpoints=[checkpoint(st) for st in campaign.FINAL_CHECKPOINTS])
 
     sv = campaign.Services(
         s3=s3, verify_policy=verify_policy, verify_adoption=verify_adoption,
-        run_preflight=run_preflight, evaluate_base=evaluate_base, train=train,
-        evaluate_checkpoint=evaluate_checkpoint, mlflow_db=db,
-        launcher=object(), image_digest="sha256:" + "f" * 64,
-        stage_descriptors={"base_and_preflight": {}, "sweep_run": {},
-                           "final_run": {}})
+        run_base_and_preflight=run_base_and_preflight, run_sweep=run_sweep,
+        run_final=run_final, mlflow_db=db, launcher=object(),
+        image_digest="sha256:" + "f" * 64, stage_descriptors=dict(PINS))
     for k, v in over.items():
         setattr(sv, k, v)
     return sv, calls
@@ -163,17 +190,16 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
 
     names = out["trace_names"]
     order = [n for n in names if not n.startswith("mlflow-sync")]
-    assert order[:6] == ["readiness", "verify-policy", "verify-adoption",
-                         "budget-reserve", "base-eval", "preflight"]
+    assert order[:5] == ["readiness", "verify-policy", "verify-adoption",
+                         "budget-reserve", "base-and-preflight"]
 
     # the required sequence, each strictly before the next
     def idx(pred):
         return next(i for i, n in enumerate(names) if pred(n))
     assert idx(lambda n: n == "verify-policy") < idx(lambda n: n == "verify-adoption")
     assert idx(lambda n: n == "verify-adoption") < idx(lambda n: n == "budget-reserve")
-    assert idx(lambda n: n == "budget-reserve") < idx(lambda n: n == "base-eval")
-    assert idx(lambda n: n == "base-eval") < idx(lambda n: n == "preflight")
-    assert idx(lambda n: n == "preflight") < idx(lambda n: n == "sweep-run")
+    assert idx(lambda n: n == "budget-reserve") < idx(lambda n: n == "base-and-preflight")
+    assert idx(lambda n: n == "base-and-preflight") < idx(lambda n: n == "sweep-run")
     assert idx(lambda n: n == "sweep-run") < idx(lambda n: n == "select-lr")
     assert idx(lambda n: n == "select-lr") < idx(lambda n: n == "final-run")
     assert idx(lambda n: n == "final-run") < idx(lambda n: n == "checkpoint-eval")
@@ -185,13 +211,34 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
     assert out["purpose"] == "training_system_validation"
 
 
-def test_base_arm_is_evaluated_before_any_training(db):
+def test_base_and_preflight_run_before_any_sweep(db):
     s3 = FakeS3()
     sv, calls = make_services(s3, db)
     campaign.run_campaign(sv, "camp-2")
-    assert calls.index("evaluate_base") < calls.index("preflight")
-    assert calls.index("evaluate_base") < min(
-        i for i, c in enumerate(calls) if c.startswith("train:"))
+    assert calls.index("run_base_and_preflight") < min(
+        i for i, c in enumerate(calls) if c.startswith("run_sweep"))
+
+
+def test_exactly_five_gpu_stage_calls(db):
+    """One base+preflight, three sweeps, one final -- the declared topology."""
+    s3 = FakeS3()
+    sv, calls = make_services(s3, db)
+    out = campaign.run_campaign(sv, "camp-2b")
+    gpu = [c for c in calls if c.startswith(("run_base_and_preflight",
+                                             "run_sweep", "run_final"))]
+    assert len(gpu) == 5 == out["gpu_instances"] == budget.MAX_GPU_INSTANCES
+    assert calls.count("run_base_and_preflight") == 1
+    assert sum(1 for c in calls if c.startswith("run_sweep")) == 3
+    assert sum(1 for c in calls if c.startswith("run_final")) == 1
+
+
+def test_one_reservation_per_stage_lifecycle(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+    campaign.run_campaign(sv, "camp-2c")
+    ledger, _ = budget.load(s3)
+    assert len(ledger["reservations"]) == 5
+    assert all(r["state"] == "reconciled" for r in ledger["reservations"].values())
 
 
 def test_every_checkpoint_produces_a_unique_artifact_and_snapshot(db):
@@ -200,8 +247,8 @@ def test_every_checkpoint_produces_a_unique_artifact_and_snapshot(db):
     out = campaign.run_campaign(sv, "camp-3")
     shas = [c["artifact_sha256"] for c in out["checkpoints"]]
     assert len(set(shas)) == len(campaign.FINAL_CHECKPOINTS)
-    prefixes = [c["prefix"] for c in out["checkpoints"]]
-    assert len(set(prefixes)) == len(prefixes)
+    steps = [c["step"] for c in out["checkpoints"]]
+    assert steps == list(campaign.FINAL_CHECKPOINTS)
     snaps = [k for k in s3.objects if k.startswith("mlflow/snapshots/camp-3/")]
     for step in campaign.FINAL_CHECKPOINTS:
         assert any(f"final-checkpoint-{step}/" in k for k in snaps)
@@ -255,67 +302,150 @@ def test_adoption_bound_to_a_different_policy_stops_before_spending(db):
 
 def test_failed_preflight_prevents_the_lr_sweep(db):
     s3 = FakeS3()
-    sv, calls = make_services(
-        s3, db, run_preflight=lambda: {"passed": False,
-                                       "reasons": ["no EOS emitted"]})
+    sv, calls = make_services(s3, db)
+    ok = sv.run_base_and_preflight
+
+    def bad(d):
+        r = ok(d)
+        r["preflight"] = {"passed": False, "reasons": ["no EOS emitted"]}
+        return r
+    sv.run_base_and_preflight = bad
     with pytest.raises(SystemExit, match="no learning-rate sweep will start"):
         campaign.run_campaign(sv, "camp-f3")
-    assert not any(c.startswith("train:") for c in calls)
+    assert not any(c.startswith("run_sweep") for c in calls)
 
 
 def test_all_candidates_failing_gates_prevents_the_final_run(db):
     s3 = FakeS3()
+    sv, calls = make_services(s3, db)
 
-    def bad_eval(run_id, step, campaign_run):
-        return {"wer": metrics(shona=0.99), "eos_rate": perfect(),
-                "cap_hit_rate": zeros(),
-                "artifact_sha256": hashlib.sha256(
-                    f"{run_id}{step}".encode()).hexdigest()}
-
-    sv, calls = make_services(s3, db, evaluate_checkpoint=bad_eval)
+    def bad(d, lr):
+        calls.append(f"run_sweep:{lr:.0e}")
+        return stage_result(d, wer=metrics(shona=0.99), eos_rate=perfect(),
+                            cap_hit_rate=zeros(), artifact_sha256="a" * 64)
+    sv.run_sweep = bad
     with pytest.raises(SystemExit, match="no learning rate passed all four"):
         campaign.run_campaign(sv, "camp-f4")
-    assert "train:final" not in calls
+    assert not any(c.startswith("run_final") for c in calls)
 
 
-def test_a_failing_checkpoint_stops_the_remaining_checkpoints(db):
+def test_checkpoint_300_failure_halts_optimisation_immediately(db):
+    """A conforming container stops training AT the boundary: it reports
+    checkpoints 100-300 only, and steps_completed == 300."""
     s3 = FakeS3()
-    seen = []
+    sv, _ = make_services(s3, db)
 
-    def eval_cp(run_id, step, campaign_run):
-        seen.append(step)
-        wer = metrics() if step < 300 else metrics(oromo=0.99)
-        return {"wer": wer, "eos_rate": perfect(), "cap_hit_rate": zeros(),
-                "artifact_sha256": hashlib.sha256(
-                    f"{run_id}{step}".encode()).hexdigest()}
-
-    sv, _ = make_services(s3, db, evaluate_checkpoint=eval_cp)
+    def final_stops(d, lr):
+        return stage_result(d, steps_completed=300, checkpoints=[
+            checkpoint(100), checkpoint(200),
+            checkpoint(300, wer=metrics(oromo=0.99))])
+    sv.run_final = final_stops
     with pytest.raises(SystemExit, match="checkpoint-300 failed a gate"):
         campaign.run_campaign(sv, "camp-f5")
-    assert 400 not in seen, "later checkpoints must not run after a failure"
+
+
+def test_a_container_that_trained_past_a_failed_gate_is_refused(db):
+    """Evaluating all 600 steps and reporting the 300 failure afterwards spends
+    the whole budget training against a broken objective."""
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+
+    def final_kept_going(d, lr):
+        return stage_result(d, steps_completed=600, checkpoints=[
+            checkpoint(100), checkpoint(200),
+            checkpoint(300, wer=metrics(oromo=0.99)),
+            checkpoint(400), checkpoint(500), checkpoint(600)])
+    sv.run_final = final_kept_going
+    with pytest.raises(SystemExit, match="Training must STOP at a failing gate"):
+        campaign.run_campaign(sv, "camp-f5b")
+
+
+def test_a_failed_gate_with_too_many_steps_completed_is_refused(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+
+    def sneaky(d, lr):
+        return stage_result(d, steps_completed=600, checkpoints=[
+            checkpoint(100), checkpoint(200),
+            checkpoint(300, wer=metrics(oromo=0.99))])
+    sv.run_final = sneaky
+    with pytest.raises(SystemExit, match="must\n *never have run|never have run"):
+        campaign.run_campaign(sv, "camp-f5c")
+
+
+def test_checkpoint_gaps_are_refused(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+    sv.run_final = lambda d, lr: stage_result(
+        d, steps_completed=600,
+        checkpoints=[checkpoint(100), checkpoint(300)])
+    with pytest.raises(SystemExit, match="leading prefix"):
+        campaign.run_campaign(sv, "camp-f5d")
 
 
 def test_a_checkpoint_without_an_artifact_stops_the_campaign(db):
     s3 = FakeS3()
-
-    def no_artifact(run_id, step, campaign_run):
-        base = {"wer": metrics(), "eos_rate": perfect(), "cap_hit_rate": zeros()}
-        if run_id == "run-final" and step == 200:
-            return {**base, "artifact_sha256": None}
-        return {**base, "artifact_sha256": hashlib.sha256(
-            f"{run_id}{step}".encode()).hexdigest()}
-
-    sv, _ = make_services(s3, db, evaluate_checkpoint=no_artifact)
+    sv, _ = make_services(s3, db)
+    cps = [checkpoint(st) for st in campaign.FINAL_CHECKPOINTS]
+    cps[1]["artifact_sha256"] = None
+    sv.run_final = lambda d, lr: stage_result(d, steps_completed=600,
+                                              checkpoints=cps)
     with pytest.raises(SystemExit, match="produced no evaluation artifact"):
         campaign.run_campaign(sv, "camp-f6")
 
 
-def test_an_occupied_checkpoint_prefix_stops_the_campaign(db):
+def test_a_result_echoing_the_wrong_descriptor_is_refused(db):
     s3 = FakeS3()
     sv, _ = make_services(s3, db)
-    s3.objects["candidates/evaluations/run-final/checkpoint-100/x.json"] = b"{}"
-    with pytest.raises(SystemExit, match="already contains objects"):
+    ok = sv.run_sweep
+
+    def tampered(d, lr):
+        r = ok(d, lr)
+        r["stage_descriptor_sha256"] = "0" * 64
+        return r
+    sv.run_sweep = tampered
+    with pytest.raises(SystemExit, match="the instance ran something else"):
+        campaign.run_campaign(sv, "camp-f6b")
+
+
+@pytest.mark.parametrize("field,value", [
+    ("root_volume_deleted", False), ("exit_status", 1),
+    ("instance_id", None), ("terminated_utc", None),
+])
+def test_unproven_cleanup_or_failure_is_refused(db, field, value):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+    ok = sv.run_base_and_preflight
+
+    def bad(d):
+        r = ok(d)
+        r[field] = value
+        return r
+    sv.run_base_and_preflight = bad
+    with pytest.raises(SystemExit, match="does not match what was"):
+        campaign.run_campaign(sv, "camp-f6c")
+
+
+def test_reconciliation_only_after_confirmed_termination(db):
+    """The reconcile call sits AFTER verify_result, which requires
+    terminated_utc and root_volume_deleted."""
+    src = (ROOT / "pipeline/campaign.py").read_text()
+    i_verify = src.index("stage_descriptor.verify_result(d0, r0)")
+    i_recon = src.index('budget.reconcile(sv.s3, "base_and_preflight"')
+    assert i_verify < i_recon
+
+
+def test_no_automatic_relaunch_after_a_failure(db):
+    """A failed stage must not be retried inside the campaign."""
+    s3 = FakeS3()
+    sv, calls = make_services(s3, db)
+    sv.run_sweep = lambda d, lr: (_ for _ in ()).throw(
+        RuntimeError("instance died"))
+    with pytest.raises(RuntimeError):
         campaign.run_campaign(sv, "camp-f7")
+    assert sum(1 for c in calls if c.startswith("run_sweep")) == 0
+    src = (ROOT / "pipeline/campaign.py").read_text()
+    assert "retry" not in src.lower() or "no automatic" in src.lower()
 
 
 def test_a_registration_hook_is_refused_outright(db):
@@ -353,21 +483,17 @@ def test_a_crash_after_launch_still_counts_the_worst_case(db):
 def test_recovery_lists_every_completed_stage_after_interruption(db):
     s3 = FakeS3()
 
-    def stop_at_300(run_id, step, campaign_run):
-        if run_id == "run-final" and step == 300:
-            raise RuntimeError("instance interrupted")
-        return {"wer": metrics(), "eos_rate": perfect(), "cap_hit_rate": zeros(),
-                "artifact_sha256": hashlib.sha256(
-                    f"{run_id}{step}".encode()).hexdigest()}
-
-    sv, _ = make_services(s3, db, evaluate_checkpoint=stop_at_300)
+    sv, _ = make_services(s3, db)
+    sv.run_final = lambda d, lr: (_ for _ in ()).throw(
+        RuntimeError("instance interrupted"))
     with pytest.raises(RuntimeError):
         campaign.run_campaign(sv, "camp-r1")
 
     rec = mlflow_sync.recover(s3, "camp-r1", "1")
     assert rec["interrupted"] is True
-    assert "parent" in rec["stage_names"] and "base_eval" in rec["stage_names"]
-    assert rec["last_completed_stage"] == "final-checkpoint-200"
+    assert "parent" in rec["stage_names"]
+    assert "base_and_preflight" in rec["stage_names"]
+    assert rec["last_completed_stage"] == "selection"
     assert len(rec["last_snapshot_sha256"]) == 64
 
 
@@ -525,7 +651,7 @@ def test_confirm_with_placeholder_services_mutates_nothing(db):
     """The safety property: an incomplete wiring must not reserve or write."""
     s3 = FakeS3()
     sv, calls = make_services(s3, db)
-    sv.train = campaign.placeholder("training runs on the GPU instance")
+    sv.run_sweep = campaign.placeholder("stage adapter not implemented")
     with pytest.raises(SystemExit, match="not production-ready"):
         campaign.run_campaign(sv, "camp-pl")
     assert s3.objects == {}, "no S3 object written"
@@ -547,7 +673,7 @@ def test_incomplete_wiring_refuses_before_any_mutation(db, field, value):
 
 def test_readiness_names_every_problem_at_once(db):
     sv, _ = make_services(FakeS3(), db)
-    sv.train = campaign.placeholder("stub")
+    sv.run_final = campaign.placeholder("stub")
     sv.launcher = None
     r = campaign.readiness(sv)
     assert r["ready"] is False

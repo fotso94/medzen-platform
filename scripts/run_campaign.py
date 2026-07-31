@@ -52,15 +52,13 @@ def build_services(cli) -> campaign.Services:
     # invoked is discovered only after budget has been committed.
     return campaign.Services(
         s3=cli, verify_policy=verify_policy, verify_adoption=verify_adoption,
-        run_preflight=campaign.placeholder(
-            "run_preflight: the GPU-side service adapter is not implemented"),
-        evaluate_base=campaign.placeholder(
-            "evaluate_base: the GPU-side service adapter is not implemented"),
-        train=campaign.placeholder(
-            "train: the GPU-side service adapter is not implemented"),
-        evaluate_checkpoint=campaign.placeholder(
-            "evaluate_checkpoint: the GPU-side service adapter is not "
+        run_base_and_preflight=campaign.placeholder(
+            "run_base_and_preflight: the direct-EC2 stage adapter is not "
             "implemented"),
+        run_sweep=campaign.placeholder(
+            "run_sweep: the direct-EC2 stage adapter is not implemented"),
+        run_final=campaign.placeholder(
+            "run_final: the direct-EC2 stage adapter is not implemented"),
         mlflow_db=None, launcher=None, image_digest=None,
         stage_descriptors=None, register_model=None)
 
@@ -77,9 +75,10 @@ def main() -> int:
     print(f"campaign      {a.campaign_run} attempt {a.attempt}")
     print(f"generation    {config_fingerprint()}")
     print(f"policy        {POLICY}")
-    print("ordering      verify-policy -> verify-adoption -> budget-reserve -> "
-          "base-eval -> preflight -> 3x sweep -> select -> final -> "
-          "6x checkpoint -> cleanup")
+    print("topology      5 GPU instances: 1 base+preflight, 3 sweeps, 1 final")
+    print("ordering      verify-policy -> verify-adoption -> reserve -> "
+          "run_base_and_preflight -> 3x run_sweep -> select -> run_final "
+          "(gates interleaved at 100..600) -> cleanup")
     print("registration  disabled by construction (register_model is None)")
 
     # Readiness is checked BEFORE the S3 client is even built, so --confirm on
