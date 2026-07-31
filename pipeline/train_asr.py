@@ -405,6 +405,33 @@ def collate(processor, decoder_start_token_id: int):
     return fn
 
 
+def prepare_manual_forward_batch(model, batch: dict, device: str) -> dict:
+    """Move a one-off batch to the model's device and feature dtype.
+
+    ``Seq2SeqTrainer`` owns mixed-precision autocast during ``train()``.  The
+    fixed-batch L0 probe runs before that loop, so simply moving its float32
+    log-mel features to CUDA leaves them incompatible with Whisper checkpoints
+    whose first convolution is stored as float16.  Bind the manual probe to
+    the actual input layer instead of guessing from the requested AMP mode.
+    Labels remain integer tensors.
+    """
+    prepared = {name: value.to(device) for name, value in batch.items()}
+    try:
+        base = (model.get_base_model()
+                if hasattr(model, "get_base_model") else model)
+        expected = base.model.encoder.conv1.weight
+    except (AttributeError, TypeError) as exc:
+        raise ValueError(
+            "REFUSING: cannot resolve Whisper encoder conv1 dtype for the "
+            "manual fixed-batch probe") from exc
+    features = prepared.get("input_features")
+    if features is None or not features.is_floating_point():
+        raise ValueError(
+            "REFUSING: fixed-batch probe needs floating input_features")
+    prepared["input_features"] = features.to(dtype=expected.dtype)
+    return prepared
+
+
 # --------------------------------------------------------------------------- #
 # spot recovery
 # --------------------------------------------------------------------------- #
@@ -1193,7 +1220,7 @@ def main() -> int:
     fixed_batch_l0 = None
     if a.fixed_batch:
         one = data_collator([ds[0]])
-        one = {k: v.to(device) for k, v in one.items()}
+        one = prepare_manual_forward_batch(model, one, device)
         model.eval()
         with torch.no_grad():
             fixed_batch_l0 = float(model(**one).loss.detach())

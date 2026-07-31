@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pipeline import orchestrate, stage_descriptor
+from pipeline import stage_runner
 from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
@@ -78,6 +79,41 @@ def test_trainer_image_contains_runtime_governance_records():
     dockerfile = (ROOT / "pipeline/Dockerfile.trainer").read_text()
     assert "DQ-2026-003-policy-deferral-corrected.json" in dockerfile
     assert "VAL-2026-001-frozen-validation-sets.json" in dockerfile
+
+
+def test_base_stage_runs_training_preflight_before_full_evaluation(
+        monkeypatch, tmp_path):
+    calls = []
+
+    class Runtime:
+        def __init__(self, cli, descriptor, work):
+            calls.append("runtime")
+
+        def evaluate_base(self, path):
+            calls.append("evaluate_base")
+            path.write_bytes(b"base")
+            return {"artifact_sha256": hashlib.sha256(b"base").hexdigest()}
+
+    monkeypatch.setattr(stage_runner, "ValidationRuntime", Runtime)
+    monkeypatch.setattr(
+        stage_runner, "run_training",
+        lambda *args, **kwargs: calls.append("run_training") or {"steps": 200})
+    monkeypatch.setattr(
+        stage_runner, "verify_saved_adapter",
+        lambda *args, **kwargs: calls.append("verify_adapter")
+        or {"passed": True})
+    monkeypatch.setattr(
+        stage_runner, "put_immutable",
+        lambda cli, key, body: hashlib.sha256(body).hexdigest())
+    monkeypatch.setattr(
+        stage_runner, "upload_tree",
+        lambda *args, **kwargs: {"tree_sha256": "a" * 64})
+
+    result = stage_runner.run_base_and_preflight(
+        object(), descriptor(stage="base_and_preflight"), tmp_path)
+    assert calls.index("run_training") < calls.index("evaluate_base")
+    assert result["preflight"]["passed"] is True
+    assert result["base"]["artifact_key"].endswith("/evaluations/base.json")
 
 
 @pytest.mark.parametrize("field,value", [

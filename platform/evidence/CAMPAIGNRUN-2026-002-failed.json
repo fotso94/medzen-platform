@@ -1,0 +1,99 @@
+{
+  "record": "CAMPAIGNRUN-2026-002-FAILED",
+  "campaign_run": "b4-corrected-18691a5",
+  "attempt": "2",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "status": "FAILED_CLOSED_DURING_FIXED_BATCH_L0",
+  "git_sha": "0b4ad63991f5f9791b1fd31677fbc7ce87445d19",
+  "bundle_tar_sha256": "664cf0bc84a0e60bb1d9af13739b48d0a667d5c9a5efc8a6d49ca25268bda793",
+  "image_digest": "sha256:5b5923bbce506414b56a78d557d9d0487c0feaee952dde353c70d04164ebf476",
+  "policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61",
+  "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+  "instance": {
+    "instance_id": "i-0a254a6101e76a2ed",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "availability_zone": "eu-central-1a",
+    "launched_utc": "2026-07-31T11:30:57Z",
+    "terminated_utc": "2026-07-31T11:58:36Z",
+    "actual_seconds": 1659.9,
+    "actual_usd": 0.464,
+    "root_volume_id": "vol-0eb80f4ce6c8a81a2",
+    "root_volume_deleted_verified_after_termination": true,
+    "eks_involved": false,
+    "spot_involved": false
+  },
+  "passed_before_failure": [
+    "caller, bundle, policy, adoption, dataset fingerprint, image and infrastructure read-only validation",
+    "digest-pinned image pull and baked git-sha verification",
+    "CUDA available on NVIDIA L4",
+    "pinned dependency and import gates",
+    "base manifest 6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1 verified over 11 files",
+    "structured generation preflight preserved the four-token prompt and emitted EOS",
+    "all 385 frozen validation rows were scored by the untouched base arm"
+  ],
+  "failure": {
+    "boundary": "fixed-batch L0 training preflight",
+    "exception": "RuntimeError: Input type (float) and bias type (c10::Half) should be the same",
+    "cause": "the manual L0 forward ran before Trainer's mixed-precision loop and moved float32 log-mel features to CUDA without converting them to the float16 dtype of Whisper encoder conv1",
+    "effect": "the stage exited 1 before the first optimisation step; no adapter, sweep, final checkpoint or model registry record was created",
+    "correction": "bind the manual batch input_features to the actual Whisper conv1 weight dtype and run the training preflight before the full base evaluation"
+  },
+  "base_evaluation": {
+    "artifact_key": "candidates/evaluations/b4-corrected-18691a5/attempt-2/base_and_preflight/evaluations/base.json",
+    "artifact_sha256": "e1d887bd77422cf5cad7db96c5a3d4b79e43e530ba16f5589f15f8a97535847f",
+    "rows": 385,
+    "languages": 9,
+    "wer": {
+      "acholi": 1.3468,
+      "akan": 0.9677,
+      "amharic": 1.0565,
+      "ewe": 0.9813,
+      "fula": 0.9244,
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749,
+      "shona": 1.1039
+    },
+    "eos_rate": {
+      "acholi": 0.9077,
+      "akan": 1.0,
+      "amharic": 0.0,
+      "ewe": 0.9706,
+      "fula": 1.0,
+      "lingala": 1.0,
+      "luganda": 0.9811,
+      "oromo": 0.9429,
+      "shona": 1.0
+    },
+    "cap_hit_rate": {
+      "acholi": 0.0923,
+      "akan": 0.0,
+      "amharic": 1.0,
+      "ewe": 0.0294,
+      "fula": 0.0,
+      "lingala": 0.0,
+      "luganda": 0.0189,
+      "oromo": 0.0571,
+      "shona": 0.0
+    },
+    "interpretation": "in-process comparison arm only; these validation sets are selection surfaces, not untouched holdouts and not promotion evidence"
+  },
+  "artifacts": {
+    "stage_prefix": "s3://medzen-speech/candidates/evaluations/b4-corrected-18691a5/attempt-2/base_and_preflight/",
+    "live_log_sha256": "23e7ec46b7bbca988ba6cee7f18753edf8743a25418adc8d9351de8c35db77c3",
+    "stage_result_sha256": "e2c79c1985fe43e17f416f8aa0242f7af92f746e868ff1b7e6a8916fb68f9f67",
+    "container_exit_code": 1,
+    "training_steps": 0,
+    "sweeps_launched": 0,
+    "adapter_produced": false,
+    "registered_models": 0
+  },
+  "budget": {
+    "attempt_actual_usd": 0.464,
+    "campaign_committed_usd_after_reconciliation": 0.8102,
+    "unresolved_reservations": 0
+  },
+  "retry_rule": "Attempts 1 and 2 remain immutable. The dtype and fail-fast-order corrections require a new commit, bundle, image digest and attempt-3 namespace."
+}

@@ -360,6 +360,17 @@ def _publish_evaluation(cli, descriptor: dict, local: Path, name: str) -> str:
 
 def run_base_and_preflight(cli, descriptor: dict, work: Path) -> dict:
     runtime = ValidationRuntime(cli, descriptor, work / "validation")
+    # Prove that the training path can execute one bounded, overfit-capable
+    # batch before spending ~20 minutes scoring the full base arm.  Attempt 2
+    # exposed a mixed-precision failure only after all 385 base rows had been
+    # decoded because these operations were reversed.
+    preflight_dir = work / "preflight-adapter"
+    train = run_training(
+        descriptor, preflight_dir, lr=1e-3, max_steps=200,
+        fixed_batch=True)
+    preflight = verify_saved_adapter(
+        runtime, preflight_dir, train, overfit_required=True)
+
     base_path = work / "base-evaluation.json"
     base = runtime.evaluate_base(base_path)
     base_key = (
@@ -370,12 +381,6 @@ def run_base_and_preflight(cli, descriptor: dict, work: Path) -> dict:
         raise SystemExit("REFUSING: base evaluation changed before publication")
     base["artifact_key"] = base_key
 
-    preflight_dir = work / "preflight-adapter"
-    train = run_training(
-        descriptor, preflight_dir, lr=1e-3, max_steps=200,
-        fixed_batch=True)
-    preflight = verify_saved_adapter(
-        runtime, preflight_dir, train, overfit_required=True)
     manifest = upload_tree(
         cli, preflight_dir,
         descriptor["output_prefix"].rstrip("/") + "/preflight-adapter",

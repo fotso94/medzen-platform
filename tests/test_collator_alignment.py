@@ -27,7 +27,8 @@ from transformers.models.whisper.modeling_whisper import (  # noqa: E402
     shift_tokens_right)
 
 from pipeline.label_length import SOT, decoder_start_id  # noqa: E402
-from pipeline.train_asr import collate  # noqa: E402
+from pipeline.train_asr import (collate,  # noqa: E402
+                                prepare_manual_forward_batch)
 
 # Real Whisper large-v3 ids.
 SOT_ID = 50258          # <|startoftranscript|>
@@ -177,6 +178,48 @@ def test_wrong_decoder_start_id_is_refused():
     instead of silently stripping nothing."""
     with pytest.raises(ValueError, match="do not begin with"):
         run_collate(batch_of(("en", 3)), start=EOT_ID)
+
+
+def test_manual_fixed_batch_matches_whisper_input_layer_dtype():
+    """Reproduces the real L4 failure without requiring a GPU.
+
+    The fixed-batch L0 forward happens before Trainer establishes its
+    mixed-precision context.  A float32 feature tensor against a float16
+    Whisper input convolution must be converted explicitly.
+    """
+    from types import SimpleNamespace
+
+    class TinyWhisper(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.model = SimpleNamespace(
+                encoder=SimpleNamespace(
+                    conv1=torch.nn.Conv1d(2, 2, 1).half()))
+
+        def forward(self, input_features, labels):
+            value = self.model.encoder.conv1(input_features).float().mean()
+            return SimpleNamespace(loss=value + labels.float().mean() * 0)
+
+    model = TinyWhisper()
+    raw = {
+        "input_features": torch.randn(1, 2, 4, dtype=torch.float32),
+        "labels": torch.tensor([[1, 2]], dtype=torch.long),
+    }
+    with pytest.raises(RuntimeError, match="Input type.*bias type"):
+        model(**raw)
+    prepared = prepare_manual_forward_batch(model, raw, "cpu")
+    assert prepared["input_features"].dtype == model.model.encoder.conv1.weight.dtype
+    assert prepared["labels"].dtype == torch.long
+    assert torch.isfinite(model(**prepared).loss)
+
+
+def test_manual_fixed_batch_refuses_non_whisper_shape():
+    with pytest.raises(ValueError, match="cannot resolve Whisper"):
+        prepare_manual_forward_batch(
+            torch.nn.Linear(2, 2),
+            {"input_features": torch.randn(1, 2),
+             "labels": torch.tensor([[1]])},
+            "cpu")
 
 
 # --------------------------------------------------------------------------- #
