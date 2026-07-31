@@ -364,9 +364,12 @@ def test_require_raises_with_the_numbers_attached():
 # --------------------------------------------------------------------------- #
 # budget enforcement
 # --------------------------------------------------------------------------- #
-def test_worst_case_is_the_watchdog_not_the_expectation():
+def test_worst_case_includes_watchdog_and_ec2_lifecycle():
     expected = round(
-        budget.RATES["g6.xlarge"] * budget.WATCHDOG_S["final_run"] / 3600,
+        budget.RATES["g6.xlarge"]
+        * (budget.WATCHDOG_S["final_run"]
+           + budget.EC2_LIFECYCLE_OVERHEAD_S)
+        / 3600,
         4,
     )
     assert budget.worst_case_usd("final_run") == expected
@@ -408,6 +411,10 @@ def test_reservation_is_durable_before_launch():
     r = budget.reserve(s3, "final_run", "1")
     assert r["state"] == "reserved"
     assert r["worst_case_usd"] == budget.worst_case_usd("final_run")
+    assert r["watchdog_s"] == budget.WATCHDOG_S["final_run"]
+    assert r["ec2_lifecycle_overhead_s"] == 600
+    assert r["reserved_seconds"] == (
+        r["watchdog_s"] + r["ec2_lifecycle_overhead_s"])
     ledger, _ = budget.load(s3)
     assert budget.committed_usd(ledger) == r["worst_case_usd"]
 
@@ -751,13 +758,13 @@ def test_matching_hashes_record_that_the_saved_artifact_was_tested():
 # stage topology  (item 2)
 # --------------------------------------------------------------------------- #
 def test_worst_case_sequence_fits_under_the_ceiling():
-    """An earlier table used a 10800s final watchdog, making the worst-case
-    sequence $6.21 -- over its own $6 ceiling."""
+    """The complete topology, including EC2 lifecycle overhead, fits."""
     total = (budget.worst_case_usd("builder")
              + budget.worst_case_usd("base_and_preflight")
              + 3 * budget.worst_case_usd("sweep_run")
              + budget.worst_case_usd("final_run"))
     assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
+    assert total == pytest.approx(5.5943, abs=0.0001)
 
 
 def test_declared_instance_count_matches_the_topology():

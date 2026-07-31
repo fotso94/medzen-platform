@@ -47,6 +47,18 @@ PROFILE = "medzen"
 REGION = "eu-central-1"
 BASE_MODEL = "openai/whisper-large-v3"
 BASE_REVISION = "06f233fe06e710322aca913c1bc4249a0d71fce1"
+TOKENIZER_CACHE_FILES = (
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "normalizer.json",
+    "preprocessor_config.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json",
+)
 
 # A row this far outside its own language's tokens-per-second distribution is
 # very unlikely to be a correct transcription of that clip.
@@ -73,14 +85,23 @@ def pinned_tokenizer(cli):
                      ["Body"].read())
     assert man["revision"] == BASE_REVISION, "cache holds a different revision"
     d = Path(tempfile.mkdtemp(prefix="tok-"))
-    for rel, meta in man["files"].items():
+    missing = sorted(set(TOKENIZER_CACHE_FILES) - set(man["files"]))
+    if missing:
+        raise SystemExit(
+            f"REFUSING: base manifest lacks tokenizer files {missing}")
+    # Do not fetch model.safetensors. A metadata audit needs ~4.5 MB of
+    # tokenizer/config files, not 3.1 GB of weights; downloading the weights
+    # made the audit itself a resource-risk boundary.
+    for rel in TOKENIZER_CACHE_FILES:
+        meta = man["files"][rel]
         body = cli.get_object(Bucket=BUCKET, Key=f"{prefix}/{rel}")["Body"].read()
         got = hashlib.sha256(body).hexdigest()
         if got != meta["sha256"]:
             raise SystemExit(f"REFUSING: {rel} sha256 {got[:12]} != {meta['sha256'][:12]}")
         (d / rel).write_bytes(body)
     print(f"tokenizer: {BASE_MODEL}@{BASE_REVISION[:12]} "
-          f"from the S3 cache, {len(man['files'])} files sha256-verified")
+          f"from the S3 cache, {len(TOKENIZER_CACHE_FILES)} tokenizer/config "
+          "files sha256-verified (model weights not downloaded)")
     return WhisperTokenizerFast.from_pretrained(str(d)), man
 
 
@@ -258,7 +279,8 @@ def main() -> int:
         "tokenizer": {"repo": BASE_MODEL, "revision": BASE_REVISION, "source": "s3_cache",
                       "cache_manifest_sha256": hashlib.sha256(
                           json.dumps(cache_man, sort_keys=True).encode()).hexdigest(),
-                      "files_sha256_verified": len(cache_man["files"])},
+                      "files_sha256_verified": len(TOKENIZER_CACHE_FILES),
+                      "model_weights_downloaded": False},
         "verifier": {"file": "scripts/audit_label_lengths.py",
                      "sha256": hashlib.sha256(verifier_src).hexdigest(),
                      "git_commit": git("rev-parse", "HEAD") or "unknown",

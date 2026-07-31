@@ -37,13 +37,21 @@ RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
 # reservation, reconciled once when both have finished.
 WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2400,
               "sweep_run": 2400, "final_run": 6600}
+# The watchdog starts inside the launched instance, while AWS billing starts
+# earlier and ends only after EC2 reaches `terminated`.  Attempt 5 measured
+# 540--570 seconds outside the container on every GPU stage.  Reserving only
+# WATCHDOG_S therefore understated the amount that a hung stage could bill.
+# Keep the watchdog unchanged, but reserve a conservative ten-minute EC2
+# lifecycle envelope for boot, image pull and termination on every instance.
+EC2_LIFECYCLE_OVERHEAD_S = 600
 STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
                   "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
 MAX_GPU_INSTANCES = 5
 MAX_INSTANCES = 6
 
-# The ceiling must cover the whole sequence hanging to its watchdogs:
-#   0.17 + 0.671 + 3x0.671 + 1.845 = 4.70
+# The ceiling must cover the whole sequence hanging to its watchdogs plus the
+# measured EC2 lifecycle envelope:
+#   0.227 + 0.839 + 3x0.839 + 2.013 = 5.595
 # An earlier table used a 10800s final watchdog, which made the worst-case
 # sequence $6.21 -- over its own $6 ceiling.  After three fail-closed campaign
 # attempts, the final watchdog is 6600s: still 20 minutes beyond the
@@ -58,7 +66,9 @@ CEILING_USD = 6.00
 def worst_case_usd(stage: str) -> float:
     if stage not in WATCHDOG_S:
         raise ValueError(f"unknown stage {stage!r}")
-    return round(RATES[STAGE_INSTANCE[stage]] * WATCHDOG_S[stage] / 3600.0, 4)
+    reserved_seconds = WATCHDOG_S[stage] + EC2_LIFECYCLE_OVERHEAD_S
+    return round(
+        RATES[STAGE_INSTANCE[stage]] * reserved_seconds / 3600.0, 4)
 
 
 def reservation_id(stage: str, attempt: str) -> str:
@@ -168,6 +178,8 @@ def reserve(cli, stage: str, attempt: str) -> dict:
         "stage": stage, "attempt": attempt,
         "instance_type": STAGE_INSTANCE[stage],
         "watchdog_s": WATCHDOG_S[stage],
+        "ec2_lifecycle_overhead_s": EC2_LIFECYCLE_OVERHEAD_S,
+        "reserved_seconds": WATCHDOG_S[stage] + EC2_LIFECYCLE_OVERHEAD_S,
         "worst_case_usd": wc, "actual_usd": None,
         "state": "reserved",
         "reserved_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

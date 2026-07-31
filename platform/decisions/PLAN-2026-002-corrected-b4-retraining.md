@@ -1,8 +1,10 @@
 # PLAN-2026-002 — Corrected B4 retraining · **Option B**
 
-**Status: EXECUTION BOUNDARY IMPLEMENTED; INPUTS NOT YET PUBLISHED.**
-Revision 3 (2026-07-31).
-Nothing published, adopted, built, launched, trained, registered or deployed.
+**Status: OPTION B EXECUTED; FAILED CLOSED AT SWEEP SELECTION.**
+Revision 4 (2026-07-31).
+The corrected infrastructure and training path ran, but no learning rate passed
+the predeclared termination and per-language gates. No final run, registration,
+promotion, deployment or B5 transition occurred.
 
 **Option B selected: training-system validation.** Option A data collection
 follows only after the corrected pipeline passes.
@@ -49,7 +51,11 @@ omitted image build, validation passes and any failure allowance.
 
 All GPU work on g6.xlarge on-demand at $1.0064/hr. Every instance carries
 `shutdown-behavior=terminate` and a watchdog; the ceiling assumes at most one
-GPU instance at a time.
+GPU instance at a time. Reservations now include both the in-instance watchdog
+and a **600-second EC2 lifecycle envelope** for boot, image pull and
+termination. Attempt 5 proved this distinction material: the three 2,400-second
+sweep watchdogs produced 2,648.5, 2,786.4 and 2,754.1 billed seconds. The
+revised full-topology reservation is **$5.5943 ≤ $6.00**.
 
 ## 2 · Prerequisites — technical and governance
 
@@ -295,6 +301,9 @@ never overwrite each other's results.
 | Cumulative spend > **$6.00** | stop |
 | Watchdog: 40 min base/sweep, 110 min final | terminate |
 
+The spend reservation is deliberately longer than these watchdogs: it adds ten
+minutes per instance for AWS lifecycle time outside the container.
+
 ## 13 · AWS resources that would be created
 
 | Resource | Count | Lifetime |
@@ -323,3 +332,19 @@ The retry uses the already-provisioned least-privilege
 access plus layer upload, `PutImage`, describe and scan permissions on
 `medzen-trainer`, while unrelated repositories and evaluation writes remain
 denied.
+
+### Attempt 5 outcome
+
+Attempt 5 ran the base/preflight stage and all three 100-step sweep stages on
+direct on-demand EC2. The preflight passed. All sweep checkpoints improved
+macro WER relative to the in-run base, but all failed the hard EOS/cap-hit
+gates and the Amharic per-language regression gate. The controller therefore
+selected no learning rate and did not launch the final stage. The MLflow parent
+is `FAILED`, all four completed children are `FINISHED`, the immutable
+`campaign-failed` snapshot records the terminal state, and registered model
+count is zero.
+
+The attempt used **$2.7790** across its four GPU stages; all instances
+terminated and their root volumes were deleted. Total reconciled campaign
+spend, including prior fail-closed attempts and the final image build, is
+**$4.1081 < $6.00**.
