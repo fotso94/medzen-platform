@@ -1,0 +1,203 @@
+{
+  "record": "CAMPAIGNRUN-2026-005-FAILED",
+  "campaign_run": "b4-corrected-18691a5",
+  "attempt": "5",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "status": "FAILED_CLOSED_NO_LEARNING_RATE_PASSED",
+  "executed_provenance": {
+    "git_sha": "ab6858a5dc7e44646849873ef595f7b4c078f37f",
+    "bundle_tar_sha256": "2deda241d246dd55728e25c8e68e0145576f8b20a4f44fb1a0274aca32cbe014",
+    "image_digest": "sha256:3a540141478cb99df7306dd8ed701b0fad0ca68ec620758b55be25a296a33189",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "validation_record_sha256": "3baf776fe8716eb5b6819c5581f2a9701a044e4ccf9a3a3f2c509189314cb8a6",
+    "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+    "deferral_policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61"
+  },
+  "base_and_preflight": {
+    "instance_id": "i-02caf8e112ddd4d86",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand direct EC2",
+    "eks_involved": false,
+    "spot_involved": false,
+    "exit_status": 0,
+    "actual_seconds": 1751.8,
+    "actual_usd": 0.4897,
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "62fb4b46dde89898428f653b264ff88e48d9fffdd9eeff289f612892d8249487",
+    "base_evaluation_sha256": "1803830091c19166290372256d24ed5aa0e6bc5864b62d33b79e4d3af1403a48",
+    "base_macro_wer": 1.060233,
+    "base_wer": {
+      "acholi": 1.3468,
+      "akan": 0.9677,
+      "amharic": 1.0565,
+      "ewe": 0.9813,
+      "fula": 0.9244,
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749,
+      "shona": 1.1039
+    },
+    "base_eos_rate": {
+      "acholi": 0.9077,
+      "akan": 1.0,
+      "amharic": 0.0,
+      "ewe": 0.9706,
+      "fula": 1.0,
+      "lingala": 1.0,
+      "luganda": 0.9811,
+      "oromo": 0.9429,
+      "shona": 1.0
+    },
+    "base_cap_hit_rate": {
+      "acholi": 0.0923,
+      "akan": 0.0,
+      "amharic": 1.0,
+      "ewe": 0.0294,
+      "fula": 0.0,
+      "lingala": 0.0,
+      "luganda": 0.0189,
+      "oromo": 0.0571,
+      "shona": 0.0
+    },
+    "preflight": {
+      "passed": true,
+      "steps": 200,
+      "fixed_batch_l0": 2.451171875,
+      "fixed_batch_l_final": 0.000026196576072834432,
+      "all_gradients_finite": true,
+      "lora_b_tensors_nonzero": "192/192",
+      "max_abs_logit_delta": 16.90625,
+      "generation_eos_emitted": true,
+      "saved_adapter_sha256": "943412b9d5557b4a6fe349ea865086c41ce478625aaf1e23c6db2c5936effc94",
+      "reloaded_adapter_sha256": "943412b9d5557b4a6fe349ea865086c41ce478625aaf1e23c6db2c5936effc94"
+    }
+  },
+  "sweeps": [
+    {
+      "lr": 0.0001,
+      "instance_id": "i-05b4591c893a7c390",
+      "exit_status": 0,
+      "steps": 100,
+      "actual_seconds": 2648.5,
+      "actual_usd": 0.7404,
+      "stage_descriptor_sha256": "e78c5e76cf515c660d02216af652867385b336fad04f09bcc902b3e34b2653c5",
+      "adapter_sha256": "b9abbbd9c9e7a38b2ca62370308a04991fa32ea089a450bf6f715fe519467eac",
+      "evaluation_sha256": "1c4e206932f97259e934e8c153639656aef035097df8a958d83cd9b3dfaff82b",
+      "saved_adapter_smoke": true,
+      "macro_wer": 0.979511,
+      "amharic_wer": 1.2383,
+      "amharic_wer_delta": 0.1818,
+      "amharic_eos_rate": 0.12,
+      "amharic_cap_hit_rate": 0.88,
+      "passed_all_gates": false
+    },
+    {
+      "lr": 0.0003,
+      "instance_id": "i-00198c64b5278247e",
+      "exit_status": 0,
+      "steps": 100,
+      "actual_seconds": 2786.4,
+      "actual_usd": 0.779,
+      "stage_descriptor_sha256": "1fba79e5def00d1998c949586e94a251d801c537f66a5c2f490cfa7ecbfaf8ac",
+      "adapter_sha256": "dc09f2758e92c471c918298d2b485737acaf9a8eaf74a2d76cd30556eb856128",
+      "evaluation_sha256": "c9fabae160b0811ce26e8deae7a2355b676ac9655af5a998b3be8dbaa151f9de",
+      "saved_adapter_smoke": true,
+      "macro_wer": 0.963367,
+      "amharic_wer": 1.4848,
+      "amharic_wer_delta": 0.4283,
+      "amharic_eos_rate": 0.0,
+      "amharic_cap_hit_rate": 1.0,
+      "passed_all_gates": false
+    },
+    {
+      "lr": 0.0005,
+      "instance_id": "i-082675ea0cd49dc05",
+      "exit_status": 0,
+      "steps": 100,
+      "actual_seconds": 2754.1,
+      "actual_usd": 0.7699,
+      "stage_descriptor_sha256": "ef2901d253d5d1d1f6a05eb3f10b312fcdff80261f14077b807644a5179c670c",
+      "adapter_sha256": "fe19fb4ba55d832fe2a6fe90e55416336d24538523fa9ec34b7bf19ead842ccc",
+      "evaluation_sha256": "b806347b0540219f5f00ab28dbf2d214d42dca772095d1e2f40f7b4b674d0db2",
+      "saved_adapter_smoke": true,
+      "macro_wer": 0.954267,
+      "amharic_wer": 1.6377,
+      "amharic_wer_delta": 0.5812,
+      "amharic_eos_rate": 0.0,
+      "amharic_cap_hit_rate": 1.0,
+      "passed_all_gates": false
+    }
+  ],
+  "selection": {
+    "selected_lr": null,
+    "reason": "no learning rate passed all four gates",
+    "final_run_launched": false,
+    "registered_models": 0,
+    "b5_transition": false
+  },
+  "mlflow": {
+    "parent_run_id": "700507016d974c17835bbfef67058bda",
+    "parent_status": "FAILED",
+    "campaign_passed": false,
+    "child_runs": {
+      "base_and_preflight": "0d685e4d97c843029f62b8a40764c624",
+      "sweep-lr-1e-04": "3f36ca024736444da0bbc6444830980d",
+      "sweep-lr-3e-04": "893cdb997b654ef38332f0e61ad52848",
+      "sweep-lr-5e-04": "22b0e4a55bbc4f9fa63a6c8bf785b03"
+    },
+    "completed_child_status": "FINISHED",
+    "terminal_snapshot": {
+      "key": "s3://medzen-speech/mlflow/snapshots/b4-corrected-18691a5/attempt-5/campaign-failed/mlflow.db",
+      "sha256": "2812d2c3a6744eb04301440bf7f98d21f40f9b44f95040041399aa203d85a081",
+      "readback_verified": true,
+      "registered_models": 0
+    }
+  },
+  "budget": {
+    "attempt_5_gpu_usd": 2.779,
+    "campaign_reconciled_usd": 4.1081,
+    "hard_ceiling_usd": 6.0,
+    "unresolved_reservations": 0,
+    "control_defect_found": "The old worst-case reservation covered only the in-instance watchdog. Sweep EC2 billed lifetimes exceeded the 2400-second watchdog reservation by 248.5, 386.4 and 354.1 seconds.",
+    "control_correction_git_sha": "93e8246b8049688e2d81111ed32005ce8df35137",
+    "corrected_full_topology_worst_case_usd": 5.5943
+  },
+  "cleanup": {
+    "active_b4_instances": 0,
+    "unattached_b4_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0,
+    "all_attempt_5_root_volumes_deleted": true
+  },
+  "post_run_label_contract_audit": {
+    "record": "VAL-2026-002-label-contract-audit.json",
+    "verifier_git_sha": "30ab07834f2beb6ef44ccf0a8b70150801548ee8",
+    "rows": 385,
+    "wrong_prefix_rows": 0,
+    "missing_eos_target_rows": 0,
+    "rows_over_model_label_limit": 0,
+    "rows_over_generation_cap": 0,
+    "amharic_reference_generated_tokens_max": 416,
+    "conclusion": "Amharic non-termination is not caused by an undersized 440-token evaluator budget or missing EOS labels."
+  },
+  "base_v5_b4_status": {
+    "complete": false,
+    "satisfied": [
+      "containerised trainer execution",
+      "candidate-scoped checkpoints and immutable provenance",
+      "MLflow parent/child tracking",
+      "bounded end-to-end smoke and saved-adapter reload",
+      "multilingual LoRA r32 q_proj/v_proj training"
+    ],
+    "not_satisfied": [
+      "a sweep configuration passing the declared validation gates",
+      "a final training run",
+      "the Base v5 30-40% English/French replay and code-switch mix",
+      "Spot interruption and resume proof",
+      "adapter merge and CTranslate2 int8_float16 conversion",
+      "full A5 gate evaluation",
+      "promotion-grade holdout evidence"
+    ]
+  }
+}
