@@ -179,6 +179,41 @@ def test_diagnostic_budget_is_fresh_and_covers_builder_plus_one_gpu():
     assert diagnostic_budget.WATCHDOG_S["diagnostic"] == 3300
 
 
+def test_no_training_diagnostic_verifies_immutable_governance_bindings():
+    from scripts import run_termination_diagnostic as launch
+
+    policy_raw = launch.POLICY.read_bytes()
+    policy = json.loads(policy_raw)
+    complete = b'{"record":"complete"}\n'
+    adoption = {
+        "status": "approved",
+        "deferral_policy_sha256": hashlib.sha256(policy_raw).hexdigest(),
+        "complete_raw_sha256": hashlib.sha256(complete).hexdigest(),
+        "deferred_checksums_sha256":
+            policy["bindings"]["deferred_checksums_sha256"],
+        "dataset_fingerprint": launch.DATASET_FINGERPRINT,
+        "eligible_rows": 4601,
+    }
+
+    class Body:
+        def __init__(self, value): self.value = value
+        def read(self): return self.value
+
+    class S3:
+        def __init__(self): self.complete = complete
+        def get_object(self, Bucket, Key):
+            value = (json.dumps(adoption).encode()
+                     if Key == launch.ADOPTION_KEY else self.complete)
+            return {"Body": Body(value)}
+
+    fake = S3()
+    result = launch.verify_diagnostic_governance(fake)
+    assert result["dataset_fingerprint"] == launch.DATASET_FINGERPRINT
+    fake.complete = b"changed"
+    with pytest.raises(SystemExit, match="governance binding failed"):
+        launch.verify_diagnostic_governance(fake)
+
+
 def test_retained_adapter_download_verifies_every_bound_byte(tmp_path):
     files = {
         "adapter_config.json": {"sha256": hashlib.sha256(b"{}").hexdigest(),

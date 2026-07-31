@@ -9,18 +9,15 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import (campaign, diagnostic_budget, mlflow_sync,  # noqa: E402
-                      stage_descriptor)
+from pipeline import diagnostic_budget, mlflow_sync, stage_descriptor  # noqa: E402
 from pipeline.campaign_tracking import CampaignTracker          # noqa: E402
 from pipeline.ec2_stage_adapter import EC2StageAdapter           # noqa: E402
 from pipeline.generation import config_fingerprint               # noqa: E402
 from pipeline.validation_runner import frozen_validation         # noqa: E402
-from scripts.run_campaign import build_services                  # noqa: E402
 
 BUCKET = "medzen-speech"
 REGION = "eu-central-1"
@@ -74,6 +71,62 @@ def session():
         region_name=REGION)
 
 
+def verify_diagnostic_governance(s3) -> dict:
+    """Verify immutable decision bindings relevant to a no-training stage.
+
+    The training campaign also proves that the *current* label-audit source
+    matches the source that produced its old audit.  This diagnostic never
+    opens the curated training pool, so making that later source-code change a
+    launch dependency would conflate training admission with read-only frozen
+    validation.  We still bind the approved policy, its historical audit
+    bytes, the raw completion record, the exclusion set, and fingerprint.
+    """
+    policy_raw = POLICY.read_bytes()
+    policy_sha = sha(policy_raw)
+    policy = json.loads(policy_raw)
+    adoption = json.loads(s3.get_object(
+        Bucket=BUCKET, Key=ADOPTION_KEY)["Body"].read())
+    complete_raw = s3.get_object(
+        Bucket=BUCKET, Key="curated/_versions/v2/COMPLETE.json")["Body"].read()
+    audit_rel = policy.get("bindings", {}).get("audit_path")
+    audit_path = (ROOT / str(audit_rel)).resolve()
+    evidence_root = (ROOT / "platform/evidence").resolve()
+    problems = []
+    if policy.get("status") != "approved" or policy.get("human_review_performed") is not False:
+        problems.append("local diagnostic policy is not the approved deferral")
+    if adoption.get("status") != "approved":
+        problems.append("adoption status is not approved")
+    if adoption.get("deferral_policy_sha256") != policy_sha:
+        problems.append("adoption binds a different deferral policy")
+    if adoption.get("complete_raw_sha256") != sha(complete_raw):
+        problems.append("adoption binds different COMPLETE bytes")
+    if adoption.get("deferred_checksums_sha256") != \
+            policy.get("bindings", {}).get("deferred_checksums_sha256"):
+        problems.append("adoption and policy exclusion sets differ")
+    if adoption.get("dataset_fingerprint") != DATASET_FINGERPRINT:
+        problems.append("adoption dataset fingerprint changed")
+    if adoption.get("eligible_rows") != 4601:
+        problems.append("adoption eligible row count changed")
+    if (evidence_root not in audit_path.parents
+            or not audit_path.is_file()
+            or sha(audit_path.read_bytes()) !=
+            policy.get("bindings", {}).get("audit_sha256")):
+        problems.append("policy's historical audit evidence differs")
+    if problems:
+        raise SystemExit(
+            "REFUSING: diagnostic governance binding failed:\n  "
+            + "\n  ".join(problems))
+    return {
+        "policy_sha256": policy_sha,
+        "audit_sha256": policy["bindings"]["audit_sha256"],
+        "complete_raw_sha256": sha(complete_raw),
+        "deferred_checksums_sha256":
+            adoption["deferred_checksums_sha256"],
+        "dataset_fingerprint": adoption["dataset_fingerprint"],
+        "eligible_rows": adoption["eligible_rows"],
+    }
+
+
 def validate_inputs(args) -> tuple[object, object, dict]:
     head = git("rev-parse", "HEAD")
     if git("status", "--porcelain"):
@@ -83,18 +136,7 @@ def validate_inputs(args) -> tuple[object, object, dict]:
     sess = session()
     s3 = sess.client("s3", region_name=REGION)
 
-    # Reuse the campaign's full policy/adoption verifier, but not its spent
-    # training ledger or launch sequence.
-    preview = SimpleNamespace(
-        adoption_key=ADOPTION_KEY, git_sha=args.git_sha,
-        bundle_tar_sha256=args.bundle_tar_sha256,
-        image_digest=args.image_digest, campaign_run=args.campaign_run,
-        attempt=args.attempt, mlflow_db="/nonexistent/preview.db")
-    services = build_services(s3, preview, preview=True)
-    policy, adoption = campaign.verify_governance(services)
-    if (adoption.get("dataset_fingerprint") != DATASET_FINGERPRINT
-            or adoption.get("eligible_rows") != 4601):
-        raise SystemExit("REFUSING: corrected adoption binding changed")
+    governance = verify_diagnostic_governance(s3)
 
     bundle_key = f"candidates/bootstrap/{args.git_sha}/BUNDLE.json"
     bundle = json.loads(s3.get_object(
@@ -142,8 +184,12 @@ def validate_inputs(args) -> tuple[object, object, dict]:
         "git_sha": args.git_sha,
         "bundle_tar_sha256": args.bundle_tar_sha256,
         "image_digest": args.image_digest,
-        "policy_sha256": policy["policy_sha256"],
-        "dataset_fingerprint": adoption["dataset_fingerprint"],
+        "policy_sha256": governance["policy_sha256"],
+        "policy_audit_sha256": governance["audit_sha256"],
+        "complete_raw_sha256": governance["complete_raw_sha256"],
+        "deferred_checksums_sha256":
+            governance["deferred_checksums_sha256"],
+        "dataset_fingerprint": governance["dataset_fingerprint"],
         "base_artifact_sha256": BASE_ARTIFACT_SHA,
         "adapter_tree_sha256": ADAPTER_TREE_SHA,
         "adapter_sha256": ADAPTER_SHA,
