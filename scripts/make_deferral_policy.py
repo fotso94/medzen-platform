@@ -65,6 +65,10 @@ def main() -> int:
                     help="required over-limit count; a change means the audit "
                          "moved and the policy must not be generated blindly")
     ap.add_argument("--expect-rate", type=int, default=14)
+    ap.add_argument("--authorization-note", default=None,
+                    help="the authorising instruction, recorded verbatim. "
+                         "Authorization metadata is regenerated from THIS run; "
+                         "nothing from an earlier generation is carried over.")
     a = ap.parse_args()
     if "@" in a.authorized_by_role:
         raise SystemExit("REFUSING: authorized-by-role must be a role, not an identity")
@@ -144,6 +148,11 @@ def main() -> int:
         "human_review_performed": False,
         "authorized_by_role": a.authorized_by_role,
         "authorized_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "authorization_note": a.authorization_note,
+        "authorization_provenance": (
+            "generated at the timestamp above from the instruction recorded in "
+            "authorization_note. No authorization metadata from any earlier "
+            "generation of this policy is retained."),
         "statement": (
             f"All {len(entries)} flagged rows are deferred from this experiment "
             "by policy. No human has listened to any of them, so none is "
