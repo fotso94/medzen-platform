@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Emit a POLICY deferral record for the 20 flagged rows. Not a review.
+"""Emit a POLICY deferral record for the flagged rows. Not a review.
 
-The distinction this file exists to preserve: nobody looked at these rows. Six
-exceed the decoder limit and fourteen are statistical token-rate outliers, and
-what any of them actually contain is unknown. A conservative policy defers all
-twenty from one experiment; it does not decide they are defective, because that
+The distinction this file exists to preserve: nobody looked at these rows. Some
+exceed the decoder limit and the rest are statistical token-rate outliers, and
+what any of them actually contain is unknown. A conservative policy defers them
+all from one experiment; it does not decide they are defective, because that
 decision requires a human listening to audio and none has.
+
+The counts are NOT hardcoded. --expect-over / --expect-rate must be stated by
+the caller and must match the audit, so a policy can never be regenerated
+silently against a corpus whose flagged set has moved -- which is exactly what
+happened when the corrected label-length calculation took the deferred set from
+20 rows to 19.
 
 So every entry here is classified `unreviewed_anomaly_deferred_by_policy` with
 `defect: false`, and the record carries `human_review_performed: false` at the
@@ -31,9 +37,6 @@ from pipeline import review_bindings as RB  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DRAFT = ROOT / "platform/decisions/DQ-2026-001-label-review.json"
-OUT = ROOT / "platform/decisions/DQ-2026-002-policy-deferral.json"
-
-LIST_ID = "DQ-2026-002-policy-deferral"
 CLASSIFICATION = "unreviewed_anomaly_deferred_by_policy"
 ACTION = "defer_pending_review"
 REASON = "policy_deferral_no_human_review"
@@ -54,6 +57,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--authorized-by-role", required=True,
                     help="ROLE authorising the policy (not an identity)")
+    ap.add_argument("--list-id", default="DQ-2026-002-policy-deferral")
+    ap.add_argument("--audit", default="platform/evidence/label-length-audit-v2.json",
+                    help="the audit this policy is derived from and bound to")
+    ap.add_argument("--out", default=None)
+    ap.add_argument("--expect-over", type=int, default=6,
+                    help="required over-limit count; a change means the audit "
+                         "moved and the policy must not be generated blindly")
+    ap.add_argument("--expect-rate", type=int, default=14)
     a = ap.parse_args()
     if "@" in a.authorized_by_role:
         raise SystemExit("REFUSING: authorized-by-role must be a role, not an identity")
@@ -72,13 +83,15 @@ def main() -> int:
                          "expected 'draft'")
 
     # ---- recompute every binding from its artefact -------------------------
+    out = ROOT / (a.out or f"platform/decisions/{a.list_id}.json")
+
     cli = client()
-    b = RB.recompute(cli)
+    b = RB.recompute(cli, audit_path=ROOT / a.audit)
     problems = [p for p in RB.verify(b)
                 if not p.startswith("uncommitted changes outside the review draft")]
     # This script writes exactly one file; nothing else may differ, or the
     # bindings would describe a tree that was never committed.
-    allowed_dirty = {str(OUT.relative_to(ROOT)), str(DRAFT.relative_to(ROOT))}
+    allowed_dirty = {str(out.relative_to(ROOT)), str(DRAFT.relative_to(ROOT))}
     stray = [p for p in b["repo_dirty_paths"] if p not in allowed_dirty]
     if stray:
         problems.append("uncommitted changes: " + ", ".join(stray[:8])
@@ -105,13 +118,15 @@ def main() -> int:
     if (n_over, n_rate) != (audit["rows_over_limit"], audit["rate_outliers_under_limit"]):
         raise SystemExit(f"REFUSING: derived {n_over}+{n_rate}, audit records "
                          f"{audit['rows_over_limit']}+{audit['rate_outliers_under_limit']}")
-    if (n_over, n_rate) != (6, 14):
-        raise SystemExit(f"REFUSING: expected 6 over-limit + 14 rate outliers, "
-                         f"got {n_over}+{n_rate}")
+    if (n_over, n_rate) != (a.expect_over, a.expect_rate):
+        raise SystemExit(f"REFUSING: expected {a.expect_over} over-limit + "
+                         f"{a.expect_rate} rate outliers, got {n_over}+{n_rate}")
     checksums = [e["audio_checksum_sha256"] for e in entries]
-    if len(set(checksums)) != 20:
+    want_total = a.expect_over + a.expect_rate
+    if len(set(checksums)) != want_total:
         raise SystemExit(f"REFUSING: {len(checksums)} entries but "
-                         f"{len(set(checksums))} unique checksums")
+                         f"{len(set(checksums))} unique checksums "
+                         f"(expected {want_total})")
     for e in entries:
         over = e["label_tokens_effective"] > audit["label_limit"]
         if over != (e["trigger"] == "over_decoder_limit"):
@@ -122,7 +137,7 @@ def main() -> int:
                   "human_reviewed": False})
 
     doc = {
-        "list_id": LIST_ID,
+        "list_id": a.list_id,
         "status": "approved",
         "decision_type": "policy_deferral",
         # The whole point of this record. Read it before anything else here.
@@ -130,10 +145,11 @@ def main() -> int:
         "authorized_by_role": a.authorized_by_role,
         "authorized_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "statement": (
-            "All 20 flagged rows are deferred from this experiment by policy. No "
-            "human has listened to any of them, so none is classified as "
-            "defective, valid, or decoder-incompatible -- only as unreviewed. "
-            "Deferral is a decision about this run, not about the data."),
+            f"All {len(entries)} flagged rows are deferred from this experiment "
+            "by policy. No human has listened to any of them, so none is "
+            "classified as defective, valid, or decoder-incompatible -- only as "
+            "unreviewed. Deferral is a decision about this run, not about the "
+            "data."),
         "scope": {
             "experiment": EXPERIMENT,
             "applies_to": "candidate training runs of this experiment only",
@@ -184,9 +200,9 @@ def main() -> int:
         "exclusions": sorted(entries, key=lambda e: e["audio_checksum_sha256"]),
     }
 
-    OUT.write_text(json.dumps(doc, indent=2) + "\n")
-    raw = OUT.read_bytes()
-    print(f"wrote {OUT.relative_to(ROOT)}")
+    out.write_text(json.dumps(doc, indent=2) + "\n")
+    raw = out.read_bytes()
+    print(f"wrote {out.relative_to(ROOT)}")
     print(f"  entries {len(entries)}  ({n_over} over-limit + {n_rate} rate outliers)")
     print(f"  human_review_performed=False  defects=0  action={ACTION}")
     print(f"  bound to audit {b['audit_sha256'][:16]} | "
