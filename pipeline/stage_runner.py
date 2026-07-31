@@ -650,6 +650,114 @@ def run_diagnostic(cli, descriptor: dict, work: Path) -> dict:
     }
 
 
+def run_decode_compatibility(cli, descriptor: dict, work: Path) -> dict:
+    """Compare three Amharic decode contracts without training or row output."""
+    import peft
+    import torch
+    import transformers
+    from peft import PeftModel
+    from pipeline.decode_compatibility import (
+        STRATEGIES, score_strategy, select_strategy, strategy_fingerprint)
+    from pipeline.termination_diagnostic import prompt_contract_sha256
+
+    load_base_result(cli, descriptor)
+    adapter_dir = work / "retained-adapter"
+    retained = download_artifact_tree(cli, descriptor, adapter_dir)
+    if adapter_sha256(adapter_dir) != retained["adapter_sha256"]:
+        raise SystemExit("REFUSING: downloaded adapter identity changed")
+
+    runtime = ValidationRuntime(
+        cli, descriptor, work / "validation", languages=("amharic",))
+    runtime.ensure_prepared()
+    rows, audios = runtime._loaded["amharic"]
+    token = LANG_TOKEN["amharic"]
+    prompt = expected_prompt(runtime.processor, token)
+
+    by_arm = {"base": {}, "retained_1e_4": {}}
+    base = runtime._fresh_base()
+    for strategy in STRATEGIES:
+        by_arm["base"][strategy] = score_strategy(
+            base, runtime.processor, rows, audios, "amharic",
+            runtime.device, token, prompt, strategy)
+    del base
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    base = runtime._fresh_base()
+    candidate = PeftModel.from_pretrained(
+        base, str(adapter_dir), is_trainable=False).to(
+            runtime.device).eval()
+    for strategy in STRATEGIES:
+        by_arm["retained_1e_4"][strategy] = score_strategy(
+            candidate, runtime.processor, rows, audios, "amharic",
+            runtime.device, token, prompt, strategy)
+
+    results = {
+        strategy: {
+            "base": by_arm["base"][strategy],
+            "retained_1e_4": by_arm["retained_1e_4"][strategy],
+        }
+        for strategy in STRATEGIES
+    }
+    selection = select_strategy(results)
+    record = {
+        "record": "B4-AMHARIC-DECODE-COMPATIBILITY",
+        "recorded_utc": time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "purpose": descriptor["purpose"],
+        "promotable": False,
+        "training_steps": 0,
+        "language": "amharic",
+        "rows": len(rows),
+        "stage_descriptor_sha256":
+            stage_descriptor.descriptor_hash(descriptor),
+        "provenance": {
+            "git_sha": descriptor["git_sha"],
+            "bundle_tar_sha256": descriptor["bundle_tar_sha256"],
+            "image_digest": descriptor["image_digest"],
+            "policy_sha256": descriptor["policy_sha256"],
+            "dataset_fingerprint": descriptor["dataset_fingerprint"],
+            "base_manifest_sha256": runtime.base_manifest_sha,
+            "base_artifact_key": descriptor["base_artifact_key"],
+            "base_artifact_sha256": descriptor["base_artifact_sha256"],
+            "base_arm_key": descriptor["base_arm_key"],
+            "validation_record_sha256": runtime.frozen_sha,
+            "amharic_manifest_sha256":
+                runtime.frozen["sets"]["amharic"]["manifest_sha256"],
+            "retained_adapter_prefix": descriptor["input_prefix"],
+            "retained_adapter_tree_sha256": retained["tree_sha256"],
+            "retained_adapter_manifest_sha256": retained["manifest_sha256"],
+            "retained_adapter_sha256": retained["adapter_sha256"],
+            "prompt_contract_sha256": prompt_contract_sha256(runtime),
+            "strategy_fingerprint": strategy_fingerprint(),
+            "evaluator_sha256": descriptor["evaluator_sha256"],
+            "torch": torch.__version__,
+            "transformers": transformers.__version__,
+            "peft": peft.__version__,
+            "device": runtime.device,
+        },
+        "strategies": results,
+        "selection": selection,
+        "content_policy": (
+            "aggregate numeric metrics only; no transcript, token sequence, "
+            "audio checksum, row identifier, speaker, session, or audio is "
+            "persisted"),
+    }
+    local = work / "decode-compatibility.json"
+    local.write_bytes(_json_bytes(record))
+    key = (descriptor["output_prefix"].rstrip("/")
+           + "/evaluations/decode-compatibility.json")
+    artifact_sha = put_immutable(cli, key, local.read_bytes())
+    return {
+        "decode_artifact_key": key,
+        "decode_artifact_sha256": artifact_sha,
+        "retained_adapter_sha256": retained["adapter_sha256"],
+        "training_steps": 0,
+        "strategies": record["strategies"],
+        "selection": record["selection"],
+    }
+
+
 def execute(descriptor: dict, out: Path) -> dict:
     stage_descriptor.build(**descriptor)
     require_runtime_provenance(descriptor)
@@ -666,6 +774,8 @@ def execute(descriptor: dict, out: Path) -> dict:
         payload = run_final(cli, descriptor, work)
     elif descriptor["stage"] == "diagnostic":
         payload = run_diagnostic(cli, descriptor, work)
+    elif descriptor["stage"] == "decode_compatibility":
+        payload = run_decode_compatibility(cli, descriptor, work)
     else:  # stage_descriptor already refuses; keeps type checkers honest
         raise SystemExit(f"REFUSING: unknown stage {descriptor['stage']}")
     result = {

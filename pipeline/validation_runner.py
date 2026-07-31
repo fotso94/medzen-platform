@@ -53,7 +53,8 @@ class ValidationRuntime:
     """Cache frozen inputs, then score base or one saved LoRA artifact."""
 
     def __init__(self, cli: Any, descriptor: dict, cache: Path,
-                 device: str | None = None):
+                 device: str | None = None,
+                 languages: tuple[str, ...] | None = None):
         import torch
         from scripts.evaluate_candidate import require_cuda
 
@@ -65,6 +66,14 @@ class ValidationRuntime:
             "cuda" if torch.cuda.is_available()
             else "mps" if torch.backends.mps.is_available() else "cpu")
         require_cuda(self.device)
+        self.languages = languages or orchestrate.VALIDATION_LANGUAGES
+        if (not self.languages
+                or len(set(self.languages)) != len(self.languages)
+                or any(language not in orchestrate.VALIDATION_LANGUAGES
+                       for language in self.languages)):
+            raise SystemExit(
+                "REFUSING: validation language subset is empty, duplicated, "
+                "or outside VAL-2026-001")
         self.frozen, self.frozen_sha = frozen_validation()
         if self.frozen_sha != descriptor["validation_manifest_sha256"]:
             raise SystemExit(
@@ -108,7 +117,8 @@ class ValidationRuntime:
 
         from transformers import WhisperProcessor
         self.processor = WhisperProcessor.from_pretrained(str(self.base_dir))
-        for language, info in self.frozen["sets"].items():
+        for language in self.languages:
+            info = self.frozen["sets"][language]
             parts = info["key"].split("/")
             task, version = parts[-3], parts[-2]
             rows, got = load_eval_pinned(

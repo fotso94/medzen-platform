@@ -28,8 +28,12 @@ def main() -> int:
     ap.add_argument("--tar-sha256", required=True)
     ap.add_argument("--attempt", default="attempt-1")
     ap.add_argument("--diagnostic-budget", action="store_true")
+    ap.add_argument("--decode-budget", action="store_true")
     ap.add_argument("--confirm", action="store_true")
     a = ap.parse_args()
+    if a.diagnostic_budget and a.decode_budget:
+        raise SystemExit(
+            "REFUSING: choose one builder budget namespace")
     if git("status", "--porcelain"):
         raise SystemExit("REFUSING: worktree is dirty")
     if git("rev-parse", "HEAD") != a.git_sha:
@@ -38,6 +42,9 @@ def main() -> int:
         if a.diagnostic_budget:
             from pipeline import diagnostic_budget
             max_cost = diagnostic_budget.worst_case_usd("builder")
+        elif a.decode_budget:
+            from pipeline import decode_budget
+            max_cost = decode_budget.worst_case_usd("builder")
         else:
             max_cost = 0.17
         print(json.dumps({
@@ -59,6 +66,9 @@ def main() -> int:
     if a.diagnostic_budget:
         from pipeline import diagnostic_budget
         budget_module = diagnostic_budget
+    elif a.decode_budget:
+        from pipeline import decode_budget
+        budget_module = decode_budget
     result = EC2Builder(
         session, **({"budget_module": budget_module}
                     if budget_module is not None else {})).run(

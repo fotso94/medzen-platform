@@ -93,6 +93,21 @@ def _numeric_metrics(result: dict) -> dict[str, float]:
                 (generated.get("unique_token_ratio") or {}).get("mean"))
             add(f"diag_{safe_arm}_{language}_repeated_bigram_rate_mean",
                 (generated.get("repeated_bigram_rate") or {}).get("mean"))
+    for strategy, arms in (result.get("strategies") or {}).items():
+        safe_strategy = str(strategy).replace("-", "_")
+        for arm_name, measured in (arms or {}).items():
+            safe_arm = str(arm_name).replace("-", "_")
+            prefix = f"decode_{safe_strategy}_{safe_arm}"
+            for source in ("wer", "cer", "eos_rate", "cap_hit_rate"):
+                add(f"{prefix}_{source}", measured.get(source))
+            add(f"{prefix}_generated_tokens_median",
+                (measured.get("generated_tokens") or {}).get("median"))
+            add(f"{prefix}_latency_median_s",
+                (measured.get("latency_s") or {}).get("median"))
+            add(f"{prefix}_unique_token_ratio_mean",
+                (measured.get("unique_token_ratio") or {}).get("mean"))
+            add(f"{prefix}_repeated_bigram_rate_mean",
+                (measured.get("repeated_bigram_rate") or {}).get("mean"))
     return metrics
 
 

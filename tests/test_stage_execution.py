@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pipeline import orchestrate, stage_descriptor
-from pipeline import diagnostic_budget
+from pipeline import decode_budget, diagnostic_budget
 from pipeline import stage_runner
 from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
@@ -24,6 +24,9 @@ from pipeline.stage_runner import (
     upload_tree)
 from pipeline.termination_diagnostic import (
     aggregate_rows, generated_row, repeated_ngram_rate, teacher_forced_row)
+from pipeline.decode_compatibility import (
+    STRATEGIES, score_strategy, select_strategy, strategy_fingerprint,
+    strategy_kwargs)
 from pipeline.validation_runner import ValidationRuntime
 
 
@@ -177,6 +180,163 @@ def test_diagnostic_budget_is_fresh_and_covers_builder_plus_one_gpu():
              + diagnostic_budget.worst_case_usd("diagnostic"))
     assert total <= diagnostic_budget.CEILING_USD
     assert diagnostic_budget.WATCHDOG_S["diagnostic"] == 3300
+
+
+def test_decode_descriptor_and_budget_are_separate_and_no_training():
+    d = descriptor(
+        stage="decode_compatibility", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/old/attempt-5/sweep-lr-1e-04/"
+            "asr/checkpoint-100/"),
+        input_artifact_sha256="5" * 64)
+    assert d["stage"] == "decode_compatibility"
+    assert d["max_steps"] == 0
+    assert decode_budget.LEDGER_KEY == (
+        "candidates/budget/b4-amharic-decode-compatibility/ledger.json")
+    total = (decode_budget.worst_case_usd("builder")
+             + decode_budget.worst_case_usd("decode_compatibility"))
+    assert total <= decode_budget.CEILING_USD
+    assert decode_budget.WATCHDOG_S["decode_compatibility"] == 5400
+
+
+def test_decode_strategies_are_frozen_and_exclude_repetition_constraints():
+    assert tuple(STRATEGIES) == (
+        "greedy_v1", "whisper_fallback_v1", "beam5_v1")
+    fallback = strategy_kwargs("whisper_fallback_v1", "am")
+    assert fallback["temperature"] == (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
+    assert fallback["compression_ratio_threshold"] == 1.35
+    assert fallback["logprob_threshold"] == -1.0
+    beam = strategy_kwargs("beam5_v1", "am")
+    assert beam["num_beams"] == 5
+    assert beam["early_stopping"] is True
+    assert "no_repeat_ngram_size" not in json.dumps(
+        {name: dict(value) for name, value in STRATEGIES.items()})
+    assert "repetition_penalty" not in json.dumps(
+        {name: dict(value) for name, value in STRATEGIES.items()})
+    assert len(strategy_fingerprint()) == 64
+
+
+def test_decode_selection_requires_termination_and_non_regression():
+    def measured(strategy, wer, eos=1.0, cap=0.0, latency=2.0,
+                 controls=0):
+        return {
+            "rows": 25, "strategy": strategy,
+            "wer": wer, "cer": wer, "eos_rate": eos,
+            "cap_hit_rate": cap,
+            "latency_s": {"median": latency},
+            "unexpected_control_tokens": {"total": controls},
+        }
+
+    results = {
+        "greedy_v1": {
+            "base": measured("greedy_v1", 1.05, eos=0.0, cap=1.0),
+            "retained_1e_4": measured(
+                "greedy_v1", 1.23, eos=0.12, cap=0.88),
+        },
+        "whisper_fallback_v1": {
+            "base": measured("whisper_fallback_v1", 1.10, latency=3.0),
+            "retained_1e_4": measured(
+                "whisper_fallback_v1", 1.12, latency=3.2),
+        },
+        "beam5_v1": {
+            "base": measured("beam5_v1", 1.00, latency=4.0),
+            "retained_1e_4": measured("beam5_v1", 1.08, latency=4.2),
+        },
+    }
+    out = select_strategy(results)
+    assert out["selected_strategy"] == "whisper_fallback_v1"
+    assert out["viability"]["greedy_v1"]["passed"] is False
+    assert out["viability"]["beam5_v1"]["checks"][
+        "candidate_vs_base_wer"] is False
+    assert out["training_authorised"] is False
+    assert out["promotable"] is False
+
+
+def test_decode_score_reduces_private_row_to_aggregate_only():
+    torch = pytest.importorskip("torch")
+    from types import SimpleNamespace
+
+    class Tokenizer:
+        all_special_ids = [2, 10, 11, 12, 13]
+        def convert_tokens_to_ids(self, token): return 2
+        def decode(self, ids, skip_special_tokens=True): return "hello"
+
+    class Processor:
+        tokenizer = Tokenizer()
+        def feature_extractor(self, audio, sampling_rate, return_tensors=None):
+            return SimpleNamespace(input_features=torch.zeros(1, 4, 8))
+
+    class Model:
+        dtype = torch.float32
+        def generate(self, features, **kwargs):
+            return SimpleNamespace(
+                sequences=torch.tensor([[10, 11, 12, 13, 5, 2]]))
+
+    result = score_strategy(
+        Model(), Processor(), [{
+            "text_normalized": "hello",
+            "audio_checksum_sha256": "a" * 64,
+        }], [([0.0], 16000)], "amharic", "cpu", "am",
+        [10, 11, 12, 13], "greedy_v1")
+    assert result["wer"] == 0.0
+    assert result["eos_rate"] == 1.0
+    assert result["cap_hit_rate"] == 0.0
+    serialised = json.dumps(result)
+    for forbidden in ("audio_checksum", "text_normalized", "per_utterance",
+                      "speaker", "session", "token_ids"):
+        assert forbidden not in serialised
+
+
+def test_stage_runner_dispatches_decode_compatibility_without_training(
+        monkeypatch, tmp_path):
+    d = descriptor(
+        stage="decode_compatibility", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/old/attempt-5/sweep-lr-1e-04/"
+            "asr/checkpoint-100/"),
+        input_artifact_sha256="5" * 64)
+    calls = []
+    monkeypatch.setattr(stage_runner, "require_runtime_provenance",
+                        lambda value: calls.append("provenance"))
+    monkeypatch.setattr(stage_runner, "require_environment",
+                        lambda: calls.append("environment"))
+    monkeypatch.setattr(stage_runner, "_s3", lambda: object())
+    monkeypatch.setenv("MEDZEN_STAGE_WORK", str(tmp_path / "stage"))
+    monkeypatch.setattr(
+        stage_runner, "run_decode_compatibility",
+        lambda cli, value, work: calls.append("decode") or {
+            "decode_artifact_key": "candidates/test/decode.json",
+            "decode_artifact_sha256": "a" * 64,
+            "training_steps": 0,
+            "strategies": {},
+            "selection": {"selected_strategy": None},
+        })
+    out = tmp_path / "result.json"
+    result = stage_runner.execute(d, out)
+    assert calls == ["provenance", "environment", "decode"]
+    assert result["stage"] == "decode_compatibility"
+    assert result["training_steps"] == 0
+    assert json.loads(out.read_bytes())["training_steps"] == 0
+
+
+def test_decode_launcher_dry_run_constructs_no_tracker_or_reservation(
+        monkeypatch):
+    from scripts import run_decode_compatibility as launch
+
+    monkeypatch.setattr(
+        launch, "validate_inputs",
+        lambda args: (object(), object(), {"writes_performed": 0}))
+    monkeypatch.setattr(
+        launch, "CampaignTracker",
+        lambda *args, **kwargs: pytest.fail("dry run constructed MLflow"))
+    monkeypatch.setattr(sys, "argv", [
+        "run_decode_compatibility.py",
+        "--campaign-run", "b4-test",
+        "--git-sha", "a" * 40,
+        "--bundle-tar-sha256", "b" * 64,
+        "--image-digest", "sha256:" + "c" * 64,
+    ])
+    assert launch.main() == 0
 
 
 def test_no_training_diagnostic_verifies_immutable_governance_bindings():
@@ -450,6 +610,17 @@ def test_real_tiny_whisper_lora_collate_save_reload_and_generate(tmp_path):
         batch["input_features"], max_new_tokens=2,
         return_dict_in_generate=True, force_unique_generate_call=True)
     assert extract_sequence(generated)[0] == cfg.decoder_start_token_id
+    fallback = reloaded.generate(
+        batch["input_features"], max_new_tokens=2,
+        return_dict_in_generate=True, force_unique_generate_call=True,
+        temperature=(0.0, 0.2), compression_ratio_threshold=1.35,
+        logprob_threshold=-1.0)
+    assert extract_sequence(fallback)[0] == cfg.decoder_start_token_id
+    beam = reloaded.generate(
+        batch["input_features"], max_new_tokens=2,
+        return_dict_in_generate=True, force_unique_generate_call=True,
+        num_beams=5, do_sample=False, early_stopping=True)
+    assert extract_sequence(beam)[0] == cfg.decoder_start_token_id
 
 
 def test_real_mlflow_parent_child_structure(tmp_path):
@@ -467,6 +638,18 @@ def test_real_mlflow_parent_child_structure(tmp_path):
         "actual_seconds": 12,
         "steps_completed": 100,
         "wer": {"acholi": 0.5},
+        "strategies": {
+            "beam5_v1": {
+                "base": {
+                    "wer": 1.0, "cer": 0.8, "eos_rate": 1.0,
+                    "cap_hit_rate": 0.0,
+                    "generated_tokens": {"median": 80},
+                    "latency_s": {"median": 2.5},
+                    "unique_token_ratio": {"mean": 0.7},
+                    "repeated_bigram_rate": {"mean": 0.1},
+                }
+            }
+        },
     })
     tracker.finish_parent(True, "ok")
     run = tracker.client.get_run(child)
@@ -475,6 +658,8 @@ def test_real_mlflow_parent_child_structure(tmp_path):
     assert run.data.tags["promotable"] == "false"
     assert run.data.params["code_git_sha"] == "a" * 40
     assert run.data.metrics["val_wer_acholi"] == 0.5
+    assert run.data.metrics["decode_beam5_v1_base_wer"] == 1.0
+    assert run.data.metrics["decode_beam5_v1_base_eos_rate"] == 1.0
     assert tracker.client.search_registered_models() == []
 
 

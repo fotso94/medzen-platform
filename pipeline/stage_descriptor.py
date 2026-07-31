@@ -14,7 +14,8 @@ import hashlib
 import json
 import re
 
-STAGES = ("base_and_preflight", "sweep", "final", "diagnostic")
+STAGES = ("base_and_preflight", "sweep", "final", "diagnostic",
+          "decode_compatibility")
 
 # Every field is required. A descriptor missing one is not a weaker
 # descriptor -- it is an unanswered question about what the instance will do.
@@ -92,24 +93,27 @@ def build(**kw) -> dict:
                 problems.append(f"{f} must be 64 lowercase hex characters")
         if not str(d["base_artifact_key"]).startswith("candidates/"):
             problems.append("base_artifact_key must be under candidates/")
-    if d["stage"] == "diagnostic":
+    if d["stage"] in ("diagnostic", "decode_compatibility"):
         if d["max_steps"] != 0 or d["checkpoint_steps"] != []:
-            problems.append("diagnostic performs zero training steps")
+            problems.append(
+                f"{d['stage']} performs zero training steps")
         if d["lr"] != 1e-4:
-            problems.append("diagnostic is bound to the retained 1e-4 adapter")
+            problems.append(
+                f"{d['stage']} is bound to the retained 1e-4 adapter")
         if not _lower_hex(d["input_artifact_sha256"], 64):
             problems.append(
-                "diagnostic input_artifact_sha256 must pin the adapter tree")
+                f"{d['stage']} input_artifact_sha256 must pin the adapter tree")
         input_prefix = str(d["input_prefix"])
         if (not input_prefix.startswith("candidates/evaluations/")
                 or "/asr/checkpoint-100" not in input_prefix
                 or ".." in input_prefix or "//" in input_prefix):
             problems.append(
-                "diagnostic input_prefix must be a confined checkpoint-100 "
+                f"{d['stage']} input_prefix must be a confined checkpoint-100 "
                 "artifact prefix")
     elif d["input_artifact_sha256"] is not None:
         problems.append(
-            "input_artifact_sha256 is only valid for the diagnostic stage")
+            "input_artifact_sha256 is only valid for a no-training "
+            "diagnostic stage")
     if not str(d["output_prefix"]).startswith("candidates/"):
         problems.append("output_prefix must be under candidates/")
     authorised_root = (
