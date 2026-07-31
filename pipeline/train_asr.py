@@ -353,7 +353,28 @@ def build_dataset(mix, cli, processor, cache: Path):
     return Ds()
 
 
-def collate(processor):
+def collate(processor, decoder_start_token_id: int):
+    """Batch features and labels, stripping exactly one start-of-transcript.
+
+    The previous version compared `labels[:, 0]` against
+    `tokenizer.bos_token_id`. In Whisper `bos_token` is <|endoftext|> (50257)
+    while labels begin with <|startoftranscript|> (50258), so the condition was
+    always false and NOTHING was ever stripped. HuggingFace then built
+    decoder_input_ids = shift_tokens_right(labels, decoder_start_token_id),
+    prepending a SECOND start-of-transcript and shifting every target one
+    position away from where it appears at inference. Run 23868bab trained that
+    way: loss fell, generation collapsed.
+
+    So the token is identified the way HuggingFace identifies it -- by
+    `model.config.decoder_start_token_id` -- and the batch must AGREE. A row
+    that does not begin with it is not a row this collator understands, and
+    guessing would reintroduce exactly the silent-mismatch failure above.
+
+    Only that one token is removed. The language, task and no-timestamps tokens
+    remain targets: predicting them is standard Whisper fine-tuning, not an
+    error. The trailing <|endoftext|> also remains -- it is what teaches the
+    model to stop, and its absence is what let generation run to the cap.
+    """
     import torch
 
     def fn(batch):
@@ -361,9 +382,17 @@ def collate(processor):
         lab = processor.tokenizer.pad(
             [{"input_ids": b["labels"]} for b in batch], return_tensors="pt")
         labels = lab["input_ids"].masked_fill(lab.attention_mask.ne(1), -100)
-        # the decoder re-adds BOS; drop it if the tokenizer already put one there
-        if (labels[:, 0] == processor.tokenizer.bos_token_id).all().item():
-            labels = labels[:, 1:]
+
+        first = labels[:, 0]
+        if not bool((first == decoder_start_token_id).all().item()):
+            bad = [int(x) for x in first.tolist() if x != decoder_start_token_id]
+            raise ValueError(
+                f"REFUSING: {len(bad)} label row(s) do not begin with "
+                f"decoder_start_token_id={decoder_start_token_id}; saw "
+                f"{sorted(set(bad))[:5]}. Labels must start with "
+                "<|startoftranscript|> so exactly one can be stripped before "
+                "the decoder re-adds it.")
+        labels = labels[:, 1:]
         return {"input_features": feats, "labels": labels}
     return fn
 
@@ -940,13 +969,19 @@ def main() -> int:
     # dynamically: a run must train on a reviewed, explicitly listed set, or
     # refuse. Silently shrinking the corpus at runtime is how two runs quoting
     # the same fingerprint end up having trained on different data.
-    from pipeline.label_length import label_lengths
+    from pipeline.label_length import decoder_start_id, label_lengths
+
+    # One definition, cross-checked between tokenizer and model. If these ever
+    # disagree the run stops here rather than training on a shifted objective.
+    sot_id = decoder_start_id(processor.tokenizer, model.config)
+    print(f"  decoder start token id {sot_id} "
+          f"(tokenizer and model.config agree)")
 
     max_labels = model.config.max_target_positions
     over = []
     for rec in mix:
         _raw, eff = label_lengths(processor.tokenizer, rec["text_normalized"],
-                                  rec["_lang"])
+                                  rec["_lang"], model.config)
         if eff > max_labels:
             over.append((rec, eff))
 
@@ -1077,7 +1112,8 @@ def main() -> int:
         print(f"  descent gate at step {a.descent_gate_step} "
               f"(aborts from on_save so the checkpoint survives)")
     trainer = Seq2SeqTrainer(model=model, args=args, train_dataset=ds,
-                             data_collator=collate(processor),
+                             data_collator=collate(
+                                 processor, decoder_start_token_id=sot_id),
                              callbacks=callbacks)
 
     resume = a.resume
@@ -1123,7 +1159,16 @@ def main() -> int:
 
     a.out.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(a.out)
-    processor.save_pretrained(a.out)
+    # NOT the processor that was used for training. Dataset.__getitem__ calls
+    # set_prefix_tokens() per row, mutating shared tokenizer state, so the
+    # in-memory processor ends the run pinned to whichever language happened to
+    # be sampled last -- run 23868bab saved one stuck at language="yo". A
+    # multilingual adapter shipped with a monolingual processor would decode
+    # every language as that one. Save a clean copy loaded from the pinned base.
+    clean = WhisperProcessor.from_pretrained(src.path, **src.kwargs)
+    clean.save_pretrained(a.out)
+    print(f"  processor   saved clean from {src.path} "
+          "(not the prefix-mutated training copy)")
     import math as _math
     (a.out / "run.json").write_text(json.dumps({
         "mlflow_run_id": run.info.run_id, "dataset_fingerprint": fingerprint,

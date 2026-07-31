@@ -143,7 +143,7 @@ def test_over_limit_rows_refuse_the_run_rather_than_being_dropped():
 def test_label_guard_uses_the_shared_prefix_aware_function():
     """A guard that measures differently from the audit is not a guard."""
     src = TRAIN.read_text()
-    assert "from pipeline.label_length import label_lengths" in src
+    assert "from pipeline.label_length import decoder_start_id, label_lengths" in src
     assert "label_lengths(processor.tokenizer" in src
     assert "max_labels = model.config.max_target_positions" in src
 

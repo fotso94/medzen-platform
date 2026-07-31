@@ -21,11 +21,18 @@ because it looks like diligence.
 
 WHAT IT RECORDS BEYOND THE HEADLINE
 
-Output LENGTH statistics, because the failure that motivated this tool was a
-termination failure, not a quality failure -- the model ran to the 448-token
-cap without emitting <|endoftext|>. A WER number alone would have said "bad"
-without saying "runaway", and the distinction is the whole diagnosis. Rows that
-hit the cap are counted explicitly.
+Termination behaviour, because the failure that motivated this tool was a
+termination failure rather than a quality failure. A WER number alone says
+"bad" without saying "runaway".
+
+Token accounting is kept explicit and separate, because getting it wrong is
+easy: `generate()` returns a sequence that INCLUDES the decoder prompt, while
+`max_new_tokens` excludes it. An earlier draft of this file called the whole
+returned length `n_new` and compared it against `max_new_tokens`, which would
+have overstated generated length by the prompt size and mislabelled rows as
+cap hits. So prompt, generated and total are recorded separately, and a cap hit
+is defined by what actually happened: EOS absent AND generated tokens reaching
+the limit.
 
     python scripts/evaluate_candidate.py --language pidgin --task tts \
         --adapter s3://medzen-speech/candidates/asr/<run>/final
@@ -37,7 +44,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -60,6 +69,14 @@ GEN = {
     "num_beams": 1,
     "do_sample": False,
 }
+TASK = "transcribe"          # pinned; never inferred from the eval set
+EOT_TOKEN = "<|endoftext|>"
+
+
+def _git_commit() -> str | None:
+    r = subprocess.run(["git", "-C", str(ROOT), "rev-parse", "HEAD"],
+                       capture_output=True, text=True)
+    return r.stdout.strip() or None
 
 
 def s3():
@@ -71,8 +88,14 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def fetch_prefix(cli, prefix: str, dest: Path) -> dict[str, str]:
-    """Download a prefix and return {relpath: sha256} of what arrived."""
+def fetch_prefix(cli, prefix: str, dest: Path, verify_only: bool = False
+                 ) -> dict[str, str]:
+    """Download a prefix (or re-verify an existing copy) and return
+    {relpath: sha256} of the bytes on disk.
+
+    A cache that is trusted because the directory exists is not a cache, it is
+    an assumption. Local files are re-hashed against the object in S3 on every
+    run; a mismatch refuses rather than scoring against unknown weights."""
     dest.mkdir(parents=True, exist_ok=True)
     got: dict[str, str] = {}
     tok = None
@@ -85,11 +108,22 @@ def fetch_prefix(cli, prefix: str, dest: Path) -> dict[str, str]:
             rel = o["Key"][len(prefix):].lstrip("/")
             if not rel or rel.endswith("/"):
                 continue
-            body = cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read()
             p = dest / rel
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_bytes(body)
-            got[rel] = sha256_bytes(body)
+            remote = sha256_bytes(
+                cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read())
+            if p.exists():
+                local = sha256_bytes(p.read_bytes())
+                if local != remote:
+                    raise SystemExit(
+                        f"REFUSING: cached {rel} hashes {local[:16]} but S3 holds "
+                        f"{remote[:16]}; the local copy is not the pinned artifact")
+            else:
+                if verify_only:
+                    raise SystemExit(f"REFUSING: {rel} missing from cache")
+                p.parent.mkdir(parents=True, exist_ok=True)
+                p.write_bytes(
+                    cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read())
+            got[rel] = remote
         if not page.get("IsTruncated"):
             break
         tok = page.get("NextContinuationToken")
@@ -113,21 +147,40 @@ def load_audio(cli, rec: dict, cache: Path):
     local = cache / f"{sha}.wav"
     if not local.exists():
         key = rec["audio_filepath"].split(f"{BUCKET}/", 1)[1]
-        body = cli.get_object(Bucket=BUCKET, Key=key)["Body"].read()
-        got = sha256_bytes(body)
-        if got != sha:
-            raise SystemExit(f"REFUSING: audio checksum mismatch for {sha[:16]} "
-                             f"(got {got[:16]}); the eval set is not what the "
-                             "manifest describes")
-        local.write_bytes(body)
+        local.write_bytes(cli.get_object(Bucket=BUCKET, Key=key)["Body"].read())
+    # EVERY run, not only on download. A cached clip that was truncated or
+    # replaced would otherwise move the score with the manifest hash unchanged.
+    got = sha256_bytes(local.read_bytes())
+    if got != sha:
+        raise SystemExit(f"REFUSING: audio checksum mismatch for {sha[:16]} "
+                         f"(got {got[:16]}); the eval set is not what the "
+                         "manifest describes")
     audio, sr = sf.read(local, dtype="float32", always_2d=False)
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
     return audio, sr
 
 
+def _prompt_len(processor, ids: list[int]) -> int:
+    """How many leading tokens are decoder prompt rather than generation.
+
+    Whisper's prompt is the run of special tokens at the head of the sequence:
+    <|startoftranscript|><|lang|><|transcribe|><|notimestamps|>. Counting it by
+    assumption ("it is always 4") would break silently the moment timestamps
+    or a different task are used, so it is measured.
+    """
+    special = set(processor.tokenizer.all_special_ids)
+    n = 0
+    for t in ids:
+        if t in special and n < 8:
+            n += 1
+        else:
+            break
+    return n
+
+
 def score_arm(model, processor, rows, audios, language: str, device: str,
-              lang_token: str | None) -> dict:
+              lang_token: str) -> dict:
     """Decode every row and score. Identical for base and candidate."""
     import jiwer
     import torch
@@ -137,26 +190,39 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
 
     norm = for_language(language)
     refs, hyps, per = [], [], []
-    n_cap = 0
+    n_cap = n_eos = 0
 
     for rec, (audio, sr) in zip(rows, audios):
         feats = processor.feature_extractor(
             audio, sampling_rate=sr, return_tensors="pt").input_features.to(device)
         if model.dtype != feats.dtype:
             feats = feats.to(model.dtype)
-        kw = dict(GEN)
-        if lang_token:
-            kw["language"] = lang_token
-            kw["task"] = "transcribe"
+        # Language and task are ALWAYS forced, identically for both arms. Left
+        # to auto-detect, the two arms could silently decode as different
+        # languages and the difference would be attributed to the adapter.
+        kw = dict(GEN, language=lang_token, task=TASK)
         t0 = time.perf_counter()
         with torch.no_grad():
             out = model.generate(feats, **kw)
         dt = time.perf_counter() - t0
 
         ids = out[0].tolist()
-        n_new = len(ids)
-        if n_new >= GEN["max_new_tokens"]:
+        # The returned sequence INCLUDES the decoder prompt; max_new_tokens does
+        # not. Counting the whole thing as "new" overstates generated length by
+        # the prompt size and mislabels rows as cap hits.
+        n_total = len(ids)
+        n_prompt = _prompt_len(processor, ids)
+        n_gen = n_total - n_prompt
+        eot = processor.tokenizer.convert_tokens_to_ids(EOT_TOKEN)
+        eos_pos = ids.index(eot, n_prompt) if eot in ids[n_prompt:] else None
+        eos_emitted = eos_pos is not None
+        # A cap hit is what actually happened, not an arithmetic coincidence:
+        # the model never stopped AND it ran out of budget.
+        cap_hit = (not eos_emitted) and n_gen >= GEN["max_new_tokens"]
+        if cap_hit:
             n_cap += 1
+        if eos_emitted:
+            n_eos += 1
         text = processor.tokenizer.decode(ids, skip_special_tokens=True)
 
         ref, hyp = norm(rec["text_normalized"]), norm(text)
@@ -165,8 +231,14 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
         # checksum and NUMBERS only -- never the text
         per.append({
             "audio_checksum_sha256": rec["audio_checksum_sha256"],
-            "output_tokens": n_new,
-            "hit_length_cap": bool(n_new >= GEN["max_new_tokens"]),
+            "prompt_tokens": n_prompt,
+            "generated_tokens": n_gen,
+            "total_tokens": n_total,
+            "eos_emitted": eos_emitted,
+            "eos_position": eos_pos,
+            "stop_reason": ("eos" if eos_emitted
+                            else "max_new_tokens" if cap_hit else "other"),
+            "hit_length_cap": cap_hit,
             "ref_words": len(ref.split()), "hyp_words": len(hyp.split()),
             "latency_s": round(dt, 4),
             "wer": round(jiwer.wer(ref, hyp), 4) if ref.strip() else None,
@@ -174,7 +246,8 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
 
     w, c = wer_cer(refs, hyps)
     lo, hi = bootstrap_ci(refs, hyps)
-    lens = [p["output_tokens"] for p in per]
+    gen = [p["generated_tokens"] for p in per]
+    tot = [p["total_tokens"] for p in per]
     lats = [p["latency_s"] for p in per]
     return {
         "rows": len(rows),
@@ -182,10 +255,17 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
         "wer_ci95": [round(lo, 4), round(hi, 4)],
         "wer_median_utt": round(statistics.median(
             [p["wer"] for p in per if p["wer"] is not None]), 4),
-        "output_tokens": {
-            "median": statistics.median(lens), "max": max(lens),
-            "mean": round(statistics.mean(lens), 2), "min": min(lens)},
+        "generated_tokens": {
+            "median": statistics.median(gen), "max": max(gen),
+            "mean": round(statistics.mean(gen), 2), "min": min(gen)},
+        "total_tokens": {"median": statistics.median(tot), "max": max(tot)},
+        "prompt_tokens": sorted({p["prompt_tokens"] for p in per}),
+        "eos_emitted_rows": n_eos,
+        "eos_rate": round(n_eos / len(per), 4) if per else None,
         "rows_hitting_length_cap": n_cap,
+        "cap_hit_rate": round(n_cap / len(per), 4) if per else None,
+        "stop_reasons": {r: sum(1 for p in per if p["stop_reason"] == r)
+                         for r in ("eos", "max_new_tokens", "other")},
         "latency_s": {"median": round(statistics.median(lats), 4),
                       "max": round(max(lats), 4)},
         "normalization_version": norm.version,
@@ -200,8 +280,11 @@ def main() -> int:
     ap.add_argument("--eval-version", default="v1")
     ap.add_argument("--adapter", action="append", default=[],
                     help="s3:// prefix or local dir of a LoRA adapter; repeatable")
-    ap.add_argument("--lang-token", default=None,
-                    help="Whisper language token to force for BOTH arms")
+    ap.add_argument("--lang-token", required=True,
+                    help="Whisper language token forced for BOTH arms (e.g. 'en'). "
+                         "Required: auto-detection could decode the two arms as "
+                         "different languages and blame the difference on the "
+                         "adapter.")
     ap.add_argument("--device", default=None)
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
@@ -219,53 +302,74 @@ def main() -> int:
     print(f"eval set   {a.language}/{a.task}/{a.eval_version}: {len(rows)} rows, "
           f"manifest {man_sha[:16]}")
 
+    # Verified on EVERY run, not skipped because a directory exists.
     base_dir = work / "base"
-    base_files = fetch_prefix(cli, BASE_PREFIX, base_dir) if not base_dir.exists() else {}
-    print(f"base model {BASE_MODEL}@{BASE_REVISION[:12]} on {device}")
+    base_files = fetch_prefix(cli, BASE_PREFIX, base_dir)
+    base_manifest_sha = sha256_bytes(
+        json.dumps(base_files, sort_keys=True).encode())
+    print(f"base model {BASE_MODEL}@{BASE_REVISION[:12]} on {device}: "
+          f"{len(base_files)} files verified, manifest {base_manifest_sha[:16]}")
 
     audios = [load_audio(cli, r, work / "audio") for r in rows]
     total_min = round(sum(len(x) / sr for x, sr in audios) / 60, 3)
     print(f"audio      {len(audios)} clips, {total_min} min, checksums verified")
 
     processor = WhisperProcessor.from_pretrained(str(base_dir))
-    model = WhisperForConditionalGeneration.from_pretrained(
-        str(base_dir), dtype=torch.float16 if device == "cuda" else torch.float32)
-    model.to(device).eval()
+    dtype = torch.float16 if device == "cuda" else torch.float32
+
+    def fresh_base():
+        """A NEW model from the verified files for every arm. Reusing one
+        object and calling unload() assumes the unwrap is perfect; reloading
+        removes the assumption, which matters most when comparing several
+        checkpoints whose only meaningful difference is their weights."""
+        m = WhisperForConditionalGeneration.from_pretrained(str(base_dir),
+                                                            dtype=dtype)
+        return m.to(device).eval()
 
     print("scoring    base ...")
+    model = fresh_base()
     arms = {"base": score_arm(model, processor, rows, audios, a.language, device,
                               a.lang_token)}
-    print(f"  base WER {arms['base']['wer']} CER {arms['base']['cer']} "
-          f"median tokens {arms['base']['output_tokens']['median']}")
+    b = arms["base"]
+    print(f"  base WER {b['wer']} CER {b['cer']} "
+          f"median gen {b['generated_tokens']['median']} "
+          f"EOS {b['eos_rate']} cap-hits {b['rows_hitting_length_cap']}")
+
+    del model                                   # base arm is finished with it
 
     adapters_meta = {}
     for uri in a.adapter:
-        name = uri.rstrip("/").rsplit("/", 1)[-1]
+        # Keyed by the FULL uri, not the last path segment: every run's final/
+        # and every run's checkpoint-100 share a basename, and a shared cache
+        # directory would score one adapter under another's name.
+        key = sha256_bytes(uri.encode())[:16]
+        name = f"{uri.rstrip('/').split('/')[-3]}-{uri.rstrip('/').rsplit('/', 1)[-1]}" \
+            if uri.count("/") >= 3 else uri.rstrip("/").rsplit("/", 1)[-1]
         if uri.startswith("s3://"):
             pref = uri[len("s3://"):].split("/", 1)[1]
-            d = work / "adapters" / name
+            d = work / "adapters" / key
             files = fetch_prefix(cli, pref, d)
         else:
             d = Path(uri)
-            files = {p.name: sha256_bytes(p.read_bytes())
-                     for p in d.iterdir() if p.is_file()}
+            files = {f.name: sha256_bytes(f.read_bytes())
+                     for f in d.iterdir() if f.is_file()}
         adapters_meta[name] = {
             "uri": uri,
+            "cache_key": key,
             "adapter_sha256": files.get("adapter_model.safetensors"),
-            "files": sorted(files),
+            "files": {k: v for k, v in sorted(files.items())},
         }
         from peft import PeftModel
-        # Wrap the SAME base object, then unload, so no arm sees a differently
-        # constructed model.
-        merged = PeftModel.from_pretrained(model, str(d))
-        merged.eval()
+        base = fresh_base()                     # identical unmodified weights
+        merged = PeftModel.from_pretrained(base, str(d)).eval()
         print(f"scoring    {name} ...")
         arms[name] = score_arm(merged, processor, rows, audios, a.language,
                                device, a.lang_token)
-        print(f"  {name} WER {arms[name]['wer']} CER {arms[name]['cer']} "
-              f"median tokens {arms[name]['output_tokens']['median']} "
-              f"cap-hits {arms[name]['rows_hitting_length_cap']}")
-        model = merged.unload()
+        r = arms[name]
+        print(f"  {name} WER {r['wer']} CER {r['cer']} "
+              f"median gen {r['generated_tokens']['median']} "
+              f"EOS {r['eos_rate']} cap-hits {r['rows_hitting_length_cap']}")
+        del merged, base
 
     rec = {
         "record": "CANDIDATE-EVALUATION",
@@ -274,8 +378,14 @@ def main() -> int:
         "eval_manifest_sha256": man_sha,
         "eval_rows": len(rows), "eval_minutes": total_min,
         "base_model": BASE_MODEL, "base_revision": BASE_REVISION,
+        "base_manifest_sha256": base_manifest_sha,
+        "base_files_verified": len(base_files),
         "device": device, "torch": torch.__version__,
-        "generation": {**GEN, "forced_language": a.lang_token},
+        "image_digest": os.environ.get("MEDZEN_IMAGE_DIGEST"),
+        "code_git_commit": _git_commit(),
+        "generation": {**GEN, "forced_language": a.lang_token, "task": TASK,
+                       "note": ("language and task forced identically for every "
+                                "arm; max_new_tokens EXCLUDES the decoder prompt")},
         "identical_decoding": ("both arms scored in one process with the same "
                                "generate kwargs, normalizer and jiwer calls"),
         "adapters": adapters_meta,

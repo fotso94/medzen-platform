@@ -24,10 +24,13 @@ def decision():
 
 
 # --------------------------------------------------------------------------- #
-# THE DEFECT — characterisation, not aspiration
+# THE DEFECT — historical record. The fix has landed.
 #
-# These assert what the code does TODAY. They will fail when the bug is fixed,
-# which is the point: the fix must be deliberate and must update them.
+# These document the shape of the defect so it stays findable. The proof that
+# the CORRECTED collator works is behavioural and lives in
+# tests/test_collator_alignment.py, which runs the real collator and
+# HuggingFace's own shift_tokens_right. Source-string assertions could never
+# have shown a fix works, only that a bug existed.
 # --------------------------------------------------------------------------- #
 WHISPER_SOT = 50258          # <|startoftranscript|>
 WHISPER_EOT = 50257          # <|endoftext|>, and ALSO whisper's bos_token_id
@@ -39,21 +42,39 @@ def test_whisper_bos_token_is_not_startoftranscript():
     assert WHISPER_SOT != WHISPER_EOT
 
 
-def test_collator_prefix_strip_is_currently_dead_code():
+def _reads_bos_token_id(path: Path) -> bool:
+    """AST, not text search: the docstrings deliberately DISCUSS bos_token_id,
+    and a grep would confuse explaining the trap with falling into it."""
+    import ast
+    return any(isinstance(n, ast.Attribute) and n.attr == "bos_token_id"
+               for n in ast.walk(ast.parse(path.read_text())))
+
+
+def test_the_dead_comparison_is_gone():
+    """What the defect was: `labels[:, 0] == tokenizer.bos_token_id` compared
+    50258 against 50257 and was therefore always false."""
     src = TRAIN.read_text()
-    assert "labels[:, 0] == processor.tokenizer.bos_token_id" in src, \
-        "if this changed, the fix landed -- update this test deliberately"
-    # the condition, simulated with the real ids
-    labels_first_token = WHISPER_SOT
-    bos_token_id = WHISPER_EOT
-    assert (labels_first_token == bos_token_id) is False, \
-        "the strip never fires, so the 4-token prefix stays in the labels"
+    assert "labels[:, 0] == processor.tokenizer.bos_token_id" not in src
+    assert not _reads_bos_token_id(TRAIN), "no code may identify SOT via bos"
+    assert "first == decoder_start_token_id" in src
 
 
-def test_labels_therefore_carry_the_full_prefix():
-    """Consequence: HF derives decoder_input_ids = shift_tokens_right(labels,
-    decoder_start_token_id=50258), duplicating SOT and shifting every text
-    token one position later than it appears at inference."""
+def test_the_same_mistake_is_gone_from_the_length_checker():
+    """pipeline/label_length.py carried an identical bos_token_id comparison,
+    so `effective` silently equalled `raw` for every row ever measured."""
+    ll = ROOT / "pipeline/label_length.py"
+    assert not _reads_bos_token_id(ll)
+    assert "def decoder_start_id(" in ll.read_text()
+
+
+def test_the_defect_duplicated_sot_and_shifted_every_target():
+    """What went wrong: HF derives decoder_input_ids = shift_tokens_right(
+    labels, decoder_start_token_id=50258). An unstripped SOT therefore appeared
+    twice and every target moved one position from where it sits at inference.
+
+    Note what was NOT wrong: the language, task and no-timestamps tokens are
+    legitimate Whisper training targets. An earlier draft called all four prefix
+    tokens wrongly-trained content; only the retained SOT was erroneous."""
     labels = [WHISPER_SOT, 50259, 50360, 50364, 675, 1913, WHISPER_EOT]
     decoder_input = [WHISPER_SOT] + labels[:-1]
     assert decoder_input[:2] == [WHISPER_SOT, WHISPER_SOT], "SOT duplicated"
@@ -62,21 +83,28 @@ def test_labels_therefore_carry_the_full_prefix():
     assert labels[0] == WHISPER_SOT and decoder_input[0] == WHISPER_SOT
 
 
-def test_max_output_length_matches_the_decoder_cap_exactly():
-    """444 observed + 4 prefix tokens = 448 = max_target_positions. The model
-    ran to the hard cap without emitting EOS: termination failure, not merely
-    bad quality."""
-    assert 444 + 4 == 448
+def test_cap_hit_is_defined_by_eos_absence_not_by_arithmetic():
+    """An earlier draft read the reported 444-token maximum as 444 + 4 prefix =
+    448 = max_target_positions. That was unfounded: generate() returns prompt
+    tokens INSIDE the sequence and max_new_tokens excludes them, so 444 is just
+    as consistent with 4 prompt + 440 new. The external evaluator's token
+    accounting is unknown, so the coincidence proves nothing.
+
+    A cap hit is therefore defined operationally: EOS absent AND generated
+    tokens reaching max_new_tokens."""
+    s = EVAL.read_text()
+    assert "eos_emitted" in s
+    assert "generated_tokens" in s and "prompt_tokens" in s
+    assert "444" not in s, "no arithmetic coincidence may be encoded as fact"
 
 
-def test_no_training_guard_examines_label_content():
-    """Length was checked; content and alignment were not. Recorded so the gap
-    is not rediscovered by another failed run."""
+def test_alignment_is_now_a_hard_gate_in_the_training_path():
+    """The gap that let this through: length was checked, alignment was not."""
     src = TRAIN.read_text()
-    assert "max_target_positions" in src, "length guard exists"
-    assert "label check" in src
-    # no alignment assertion exists yet
-    assert "decoder_input_ids" not in src
+    assert "max_target_positions" in src, "length guard still exists"
+    assert "decoder_start_id(processor.tokenizer, model.config)" in src, \
+        "tokenizer and model must be cross-checked before training"
+    assert "REFUSING:" in src and "do not begin with" in src
 
 
 # --------------------------------------------------------------------------- #
@@ -145,17 +173,38 @@ def test_both_arms_scored_in_one_process():
     """A candidate compared against a baseline from a different runtime cannot
     attribute the difference to the model."""
     s = EVAL.read_text()
-    assert "PeftModel.from_pretrained(model" in s, "wraps the SAME base object"
-    assert "model = merged.unload()" in s, "unwraps so arms stay comparable"
     assert 'arms = {"base"' in s
     assert "identical_decoding" in s
+    assert s.count("score_arm(") >= 3, "one scoring function, used by every arm"
+
+
+def test_every_arm_starts_from_identical_unmodified_base_weights():
+    """Reusing one object and calling unload() assumes the unwrap is perfect.
+    Reloading removes the assumption -- which matters most in a checkpoint
+    sweep, where weights are the only difference that should exist."""
+    s = EVAL.read_text()
+    assert "def fresh_base():" in s
+    assert "base = fresh_base()" in s
+    # the docstring explains why unload() is NOT used; no call may remain
+    import ast
+    assert not any(isinstance(n, ast.Attribute) and n.attr == "unload"
+                   for n in ast.walk(ast.parse(s)))
 
 
 def test_generation_settings_are_pinned_in_one_place():
     s = EVAL.read_text()
     assert "GEN = {" in s
-    assert "kw = dict(GEN)" in s
+    assert "kw = dict(GEN, language=lang_token, task=TASK)" in s
     assert s.count("model.generate(") == 1, "one decode call, shared by both arms"
+
+
+def test_language_and_task_are_forced_for_both_arms():
+    """Auto-detection could decode the arms as different languages and the
+    difference would be blamed on the adapter."""
+    s = EVAL.read_text()
+    assert '"--lang-token", required=True' in s
+    assert 'TASK = "transcribe"' in s
+    assert "task=TASK" in s
 
 
 def test_evaluator_never_emits_transcripts():
@@ -164,17 +213,70 @@ def test_evaluator_never_emits_transcripts():
     assert "no transcript is printed, logged or stored" in s
     # the per-utterance row is checksums and numbers
     assert '"audio_checksum_sha256": rec["audio_checksum_sha256"]' in s
-    for numeric_only in ('"output_tokens"', '"latency_s"', '"ref_words"'):
+    for numeric_only in ('"generated_tokens"', '"latency_s"', '"ref_words"'):
         assert numeric_only in s
 
 
 def test_evaluator_records_length_and_cap_hits():
-    """WER alone says 'bad'. Length and cap-hits say 'runaway', which is the
-    actual diagnosis."""
+    """WER alone says 'bad'. Length, EOS rate and cap-hits say 'runaway',
+    which is the actual diagnosis."""
     s = EVAL.read_text()
-    assert "rows_hitting_length_cap" in s
-    assert "hit_length_cap" in s
-    assert '"median": statistics.median(lens)' in s
+    assert "rows_hitting_length_cap" in s and "cap_hit_rate" in s
+    assert "eos_rate" in s and "eos_emitted_rows" in s
+    assert '"stop_reasons"' in s
+    assert '"median": statistics.median(gen)' in s
+
+
+def test_prompt_and_generated_tokens_are_counted_separately():
+    """generate() returns a sequence INCLUDING the decoder prompt, while
+    max_new_tokens excludes it. Conflating them overstates generated length by
+    the prompt size and mislabels rows as cap hits."""
+    s = EVAL.read_text()
+    assert "def _prompt_len(" in s
+    assert "n_gen = n_total - n_prompt" in s
+    assert 'cap_hit = (not eos_emitted) and n_gen >= GEN["max_new_tokens"]' in s
+    assert '"prompt_tokens": n_prompt' in s
+    assert '"eos_position": eos_pos' in s
+    assert '"stop_reason"' in s
+
+
+def test_prompt_length_is_measured_not_assumed():
+    s = EVAL.read_text()
+    assert "all_special_ids" in s
+    assert "would break silently" in s
+
+
+def test_base_cache_is_verified_every_run():
+    """A cache trusted because the directory exists is an assumption."""
+    s = EVAL.read_text()
+    assert "base_files = fetch_prefix(cli, BASE_PREFIX, base_dir)" in s
+    assert "if not base_dir.exists()" not in s
+    assert "is not the pinned artifact" in s
+    assert "base_manifest_sha256" in s
+
+
+def test_audio_is_verified_every_run_not_only_on_download():
+    s = EVAL.read_text()
+    assert "EVERY run, not only on download" in s
+    i_read = s.index("got = sha256_bytes(local.read_bytes())")
+    i_check = s.index("audio checksum mismatch")
+    assert i_read < i_check
+
+
+def test_adapter_caches_are_keyed_by_full_uri():
+    """Every run's final/ and every checkpoint-100 share a basename; a shared
+    cache directory would score one adapter under another's name."""
+    s = EVAL.read_text()
+    assert "key = sha256_bytes(uri.encode())[:16]" in s
+    assert 'd = work / "adapters" / key' in s
+
+
+def test_full_provenance_is_recorded():
+    s = EVAL.read_text()
+    for field in ("base_manifest_sha256", "eval_manifest_sha256",
+                  "adapter_sha256", "image_digest", "code_git_commit",
+                  '"generation"'):
+        assert field in s, field
 
 
 def test_evaluator_verifies_audio_checksums():

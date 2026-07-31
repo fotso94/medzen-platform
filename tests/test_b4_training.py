@@ -171,7 +171,11 @@ def test_base_model_revision_is_pinned_and_passed():
     # from_pretrained calls must go through it -- one bypassing it would load
     # unpinned weights while the run still reported the SHA.
     assert "src = base_model_source(a.base_model, rev, allow_hub=allow_hub)" in src
-    assert src.count("**src.kwargs") == 2, "revision must reach model AND processor"
+    # model, training processor, and the clean processor saved with the adapter.
+    # Every from_pretrained must go through src so none loads unpinned weights.
+    assert src.count("**src.kwargs") == 3, \
+        "revision must reach the model, the training processor and the saved one"
+    assert src.count("from_pretrained(src.path") == 3
     assert "from_pretrained(src.path" in src
     # only --smoke or a deliberate env override may reach the Hub
     assert 'allow_hub = bool(a.smoke or os.environ.get("MEDZEN_ALLOW_HUB"))' in src
