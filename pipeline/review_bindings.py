@@ -59,8 +59,8 @@ def dirty_paths() -> list[str]:
 
 def recompute(cli, version: str = "v2", audit_path: Path | None = None) -> dict:
     """Recompute every binding from its source artefact."""
-    audit = audit_path or AUDIT
-    audit_raw = audit.read_bytes()
+    audit_file = audit_path or AUDIT
+    audit_raw = audit_file.read_bytes()
     audit = json.loads(audit_raw)
 
     comp_raw = cli.get_object(Bucket=BUCKET, Key=COMPLETE_KEY)["Body"].read()
@@ -80,7 +80,7 @@ def recompute(cli, version: str = "v2", audit_path: Path | None = None) -> dict:
                                         Key=f"{tok_prefix}/MANIFEST.json")["Body"].read())
 
     return {
-        "audit_path": str(audit.relative_to(ROOT)),
+        "audit_path": str(audit_file.relative_to(ROOT)),
         "audit_sha256": sha256_bytes(audit_raw),
         "audit_verifier_git_commit": audit["verifier"]["git_commit"],
         "audit_verifier_git_dirty": audit["verifier"]["git_dirty"],
