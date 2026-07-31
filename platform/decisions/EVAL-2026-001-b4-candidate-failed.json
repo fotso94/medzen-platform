@@ -1,0 +1,109 @@
+{
+  "record": "FAILED_EVALUATION",
+  "decision_id": "EVAL-2026-001-b4-candidate-failed",
+  "status": "rejected",
+  "recorded_utc": "2026-07-31T00:00:00Z",
+  "statement": "The B4 candidate adapter failed controlled evaluation on the frozen 44-clip Pidgin set. It is rejected for promotion and remains candidates-only. This record does not alter the training-run evidence or the MLflow run, both of which remain accurate: the run did complete, and the loss did fall. What the loss did not do is predict inference quality.",
+
+  "candidate": {
+    "training_run_id": "23868bab2d8448759fc1b9ed26156952",
+    "training_run_record": "platform/evidence/training-run-23868bab2d84.json",
+    "adapter_sha256": "17e1b7381b7b3fdb362ecb692d72b92a2dc295d7ee79ff6367a8d6a9c7cd3195",
+    "adapter_uri": "s3://medzen-speech/candidates/asr/23868bab2d8448759fc1b9ed26156952/final/adapter_model.safetensors",
+    "image_digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+    "image_git_sha": "202b005190a70b5f155d02ca74fc91fbfd81638a",
+    "dataset_fingerprint": "77c7ce61edba96c806fa22a0d50792fc4976a3cebe01a3322493583d94cb9b7c",
+    "base_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1"
+  },
+
+  "evaluation": {
+    "provenance": "EXTERNAL. These figures were produced by a separate evaluation run and reported to this repository; they have NOT yet been independently reproduced by tooling in this repo. scripts/evaluate_candidate.py is being built for that purpose, and this record will be superseded by one carrying reproduced numbers.",
+    "eval_set": "frozen Pidgin set, 44 clips, 7.875 minutes",
+    "results": {
+      "base_wer": 0.5133,
+      "base_cer": 0.3780,
+      "candidate_wer": 7.2231,
+      "candidate_cer": 4.2184,
+      "base_median_output_tokens": 14,
+      "candidate_median_output_tokens": 52.5,
+      "base_max_output_tokens": 71,
+      "candidate_max_output_tokens": 444,
+      "base_median_latency_s": 0.38,
+      "candidate_median_latency_s": 1.16,
+      "second_pass_candidate_wer_approx": 7.19
+    },
+    "why_the_result_is_trusted": [
+      "the untouched base scored 0.5133, closely matching the previously recorded 0.5257 Pidgin baseline, which validates the evaluator rather than the candidate",
+      "two independent adapter passes agreed at approximately 7.19 and 7.22",
+      "adapter hash, base revision, audio checksums and eval manifest were verified",
+      "no transcripts or private content were printed"
+    ]
+  },
+
+  "root_cause": {
+    "summary": "Training labels retained the four-token Whisper prefix, so the model was trained one position out of alignment and was made to predict the prefix as if it were content. The guard intended to strip that prefix could never fire.",
+    "primary_defect": {
+      "location": "pipeline/train_asr.py, collate()",
+      "code": "if (labels[:, 0] == processor.tokenizer.bos_token_id).all().item(): labels = labels[:, 1:]",
+      "measured_evidence": {
+        "labels_first_token": 50258,
+        "labels_first_token_str": "<|startoftranscript|>",
+        "tokenizer_bos_token_id": 50257,
+        "tokenizer_bos_token_str": "<|endoftext|>",
+        "condition_evaluates_to": false,
+        "note": "In Whisper, bos_token IS <|endoftext|>, not <|startoftranscript|>. The comparison is therefore always false and the strip is dead code."
+      },
+      "consequence": "labels keep [<|startoftranscript|>, <|lang|>, <|transcribe|>, <|notimestamps|>]. HuggingFace then derives decoder_input_ids = shift_tokens_right(labels, decoder_start_token_id=50258), producing a DUPLICATED <|startoftranscript|> and shifting every real text token one position later than it appears at inference. Cross-entropy is computed over the four prefix positions, training the model to emit control tokens as output."
+    },
+    "corroborating_evidence": [
+      {
+        "observation": "candidate maximum output length 444 tokens",
+        "reading": "444 generated + 4 prefix = 448 = max_target_positions exactly. The model ran to the hard cap without emitting <|endoftext|>. This is termination failure, not merely poor quality."
+      },
+      {
+        "observation": "initial training loss 22.53, falling to 4.00",
+        "reading": "A correctly aligned Whisper LoRA fine-tune starts near 1-3. A cross-entropy of 22.5 means near-zero probability mass on the targets, which is what a one-position shift plus special-token targets produces. This was flagged as unexplained after the earlier 14-language run at 23.26 and is now explained: it was the defect announcing itself at step 0, and it was read as a curiosity rather than a symptom."
+      },
+      {
+        "observation": "loss fell steadily to 4.00 while inference collapsed",
+        "reading": "The model successfully learned the misaligned objective. Descent against a wrong target is not evidence of a right one, and the descent gate cannot distinguish the two."
+      }
+    ],
+    "secondary_factors": [
+      {
+        "factor": "model.config.forced_decoder_ids = None and model.config.suppress_tokens = []",
+        "assessment": "Set on model.config, but generation reads generation_config, where the pinned config carries forced_decoder_ids [[1, null], [2, 50360]], begin_suppress_tokens [220, 50257] and 88 suppress_tokens. The training-time intent and the generation-time behaviour were therefore set in two different places. NOT CONFIRMED as contributing to this failure; it is a correctness hazard found while diagnosing and must be settled before the next run."
+      },
+      {
+        "factor": "LoRA learning rate 1e-3 at rank 32",
+        "assessment": "High for Whisper LoRA, where 1e-4 to 5e-4 is typical. SUSPECTED aggravating factor only. It would amplify a bad objective but does not explain termination failure, and must not be treated as the cause."
+      },
+      {
+        "factor": "Pidgin trained via LANG_TOKEN mapping to a proxy token",
+        "assessment": "UNQUANTIFIED. Pidgin has no Whisper language token; the run mapped it to a proxy. Whether that mapping is sound is a separate open question and cannot be assessed until the label alignment is fixed."
+      }
+    ],
+    "what_the_existing_gates_did_not_catch": "Every guard in the training path checked provenance, licensing, exclusions, label LENGTH and loss DESCENT. None checked label CONTENT or decoder alignment, and none evaluated generation. A run can satisfy all of them while training on a mis-specified objective."
+  },
+
+  "consequences": {
+    "promotion": "blocked",
+    "registration": "blocked",
+    "b5": "paused",
+    "artifacts": "remain under candidates/; nothing merged, quantized, registered or deployed",
+    "iam_guardrails": "unchanged",
+    "deferred_rows": "the 20 rows remain excluded and unclassified; DQ-2026-001 stays draft",
+    "training_evidence": "platform/evidence/training-run-23868bab2d84.json is NOT amended. It recorded a completed run accurately and explicitly disclaimed any quality claim.",
+    "mlflow": "run 23868bab2d8448759fc1b9ed26156952 is not modified"
+  },
+
+  "required_before_retraining": [
+    "fix the label prefix handling and prove it with a test that fails against the current collator",
+    "decide and pin generation-time configuration in one place",
+    "reproduce these evaluation numbers with in-repo tooling",
+    "build a speaker-disjoint validation set, since the frozen Pidgin set has now informed diagnosis and can no longer serve as an untouched holdout",
+    "establish comparable baselines and eval coverage for the intended languages, with train/eval checksum and speaker-overlap checks"
+  ],
+
+  "content_policy": "checksums, hashes and aggregate metrics only; no transcript, speaker, session or content excerpt appears in this file"
+}
