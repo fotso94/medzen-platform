@@ -259,6 +259,10 @@ def load_audio(cli, rec: dict, cache: Path):
     import soundfile as sf
 
     sha = rec["audio_checksum_sha256"]
+    # The caller passes work/"audio", which nothing has created. Without this
+    # the very first clip fails with FileNotFoundError on any fresh cache --
+    # i.e. on every run of a disposable instance, which is all of them.
+    cache.mkdir(parents=True, exist_ok=True)
     local = cache / f"{sha}.wav"
     if not local.exists():
         key = rec["audio_filepath"].split(f"{BUCKET}/", 1)[1]
@@ -582,8 +586,17 @@ def main() -> int:
     out = Path(a.out) if a.out else (
         ROOT / f"platform/evidence/eval-{a.language}-{a.task}-"
                f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.json")
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(rec, indent=2) + "\n")
-    print(f"\nwrote {out.relative_to(ROOT)}")
+    # relative_to() RAISES when the target is outside ROOT, and the launcher
+    # writes to /out -- a separate mount by design. Raising here would fail the
+    # run AFTER the results were safely written, turning a successful
+    # evaluation into a non-zero exit.
+    try:
+        shown = out.relative_to(ROOT)
+    except ValueError:
+        shown = out.resolve()
+    print(f"\nwrote {shown}")
     return 0
 
 

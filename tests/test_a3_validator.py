@@ -107,18 +107,32 @@ def test_all_languages_start_unapproved():
      "no chosen_by_run"),
 ])
 def test_readiness_ladder_blocks_premature_promotion(mutate, expect, tmp_path):
-    src = REG / "acholi.yaml"      # still pending_experiment
-    backup = tmp_path / "acholi.yaml"
-    shutil.copy(src, backup)
-    try:
-        d = yaml.safe_load(src.read_text())
-        mutate(d)
-        src.write_text(yaml.dump(d, sort_keys=False))
-        rc, out = run_registry()
-        assert rc == 1, f"promotion should have been blocked\n{out}"
-        assert expect in out, f"expected '{expect}'\n{out}"
-    finally:
-        shutil.copy(backup, src)
+    """Runs against a COPY of the repository.
+
+    This previously mutated the real registry/languages/acholi.yaml and
+    restored it in a finally block. Two problems: it cannot run against a
+    read-only checkout, which is how the verified bundle is mounted on the
+    evaluation instance, and a crash between write and restore would leave the
+    working tree silently modified with a promotion-ready acholi.
+    """
+    work = tmp_path / "repo"
+    # schemas/ too: validate_registry.py resolves the JSON schema from its own
+    # location, so a copy without it fails for the wrong reason.
+    for sub in ("scripts", "registry", "schemas"):
+        shutil.copytree(ROOT / sub, work / sub)
+    target = work / "registry" / "languages" / "acholi.yaml"
+
+    d = yaml.safe_load(target.read_text())
+    mutate(d)
+    target.write_text(yaml.dump(d, sort_keys=False))
+
+    p = subprocess.run([sys.executable, str(work / "scripts" / "validate_registry.py")],
+                       capture_output=True, text=True, cwd=work)
+    rc, out = p.returncode, p.stdout + p.stderr
+    assert rc == 1, f"promotion should have been blocked\n{out}"
+    assert expect in out, f"expected '{expect}'\n{out}"
+    # the real registry is untouched
+    assert yaml.safe_load((REG / "acholi.yaml").read_text())["status"] != "production"
 
 
 def test_manifest_language_check_uses_registry():

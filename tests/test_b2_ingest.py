@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import pathlib
 import subprocess
 import sys
 import time
@@ -138,13 +139,28 @@ def test_watchdog_terminates_the_whole_process_group():
     pgid = os.getpgid(p.pid)
 
     os.killpg(pgid, 15)                      # TERM to the group
-    # Generous, because this asserts that the grandchild DIES, not how fast.
-    # Under emulation (amd64 image on arm64) process teardown is an order of
-    # magnitude slower and a 10-second deadline failed there -- a timing
-    # artifact reported as an orphan leak.
+
+    def is_zombie(pid: int) -> bool:
+        """A reaped-but-unwaited process still answers kill(pid, 0).
+
+        In a container PID 1 is pytest, not an init that reaps orphans, so a
+        grandchild that DID die stays a zombie and the liveness probe below
+        keeps succeeding. That is what made this test report an orphan leak in
+        the pinned image while passing natively -- the process was dead, and
+        nothing was there to bury it."""
+        try:
+            stat = pathlib.Path(f"/proc/{pid}/stat").read_text()
+        except OSError:
+            return False                      # no procfs (macOS) or already gone
+        return stat.rsplit(") ", 1)[-1].split()[0] == "Z"
+
+    # Generous, because this asserts the grandchild DIES, not how fast: under
+    # emulation teardown is an order of magnitude slower.
     deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         try:
+            if is_zombie(child_pid):
+                break                         # dead, merely unreaped
             os.kill(child_pid, 0)
             time.sleep(0.2)
         except OSError:

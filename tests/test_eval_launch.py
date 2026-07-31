@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -16,6 +17,17 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 UD = ROOT / "pipeline/eval_userdata.sh"
+
+# envsubst (gettext-base) is absent from the slim runtime image. ONLY the tests
+# that actually shell out to it are skipped there; every provenance,
+# credential-chain, prompt, CUDA and hash test still runs inside the pinned
+# image, because those are the ones that describe what the evaluator does.
+# Rendering happens on the operator's machine, where envsubst exists and these
+# are mandatory.
+needs_envsubst = pytest.mark.skipif(
+    shutil.which("envsubst") is None,
+    reason="envsubst not installed (gettext-base); rendering happens on the "
+           "operator machine, where this test is mandatory")
 
 spec = importlib.util.spec_from_file_location(
     "evaluate_candidate", ROOT / "scripts/evaluate_candidate.py")
@@ -197,6 +209,8 @@ RENDER = {
 
 @pytest.fixture(scope="module")
 def rendered(tmp_path_factory):
+    if shutil.which("envsubst") is None:
+        pytest.skip("envsubst not installed (gettext-base)")
     out = tmp_path_factory.mktemp("ud") / "ud.sh"
     names = " ".join("${%s}" % k for k in RENDER)
     r = subprocess.run(["envsubst", names], stdin=open(UD),
@@ -207,11 +221,13 @@ def rendered(tmp_path_factory):
     return out
 
 
+@needs_envsubst
 def test_rendered_userdata_is_valid_bash(rendered):
     r = subprocess.run(["bash", "-n", str(rendered)], capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
 
 
+@needs_envsubst
 def test_render_placeholders_are_all_substituted(rendered):
     code = "\n".join(l for l in rendered.read_text().splitlines()
                      if not l.lstrip().startswith("#"))
@@ -221,6 +237,7 @@ def test_render_placeholders_are_all_substituted(rendered):
     assert RENDER["GIT_SHA"] in code
 
 
+@needs_envsubst
 def test_runtime_variables_survive_rendering(rendered):
     """Bare envsubst would erase these and still produce valid bash."""
     code = rendered.read_text()
@@ -228,6 +245,7 @@ def test_runtime_variables_survive_rendering(rendered):
         assert v in code, v
 
 
+@needs_envsubst
 def test_run_id_carries_the_commit_at_runtime(rendered):
     """`${GIT_SHA:0:12}` is the substring form, which envsubst never
     substitutes -- it would have produced a run id with no commit in it."""
@@ -238,6 +256,7 @@ def test_run_id_carries_the_commit_at_runtime(rendered):
     assert "$CODE_SHA" in line
 
 
+@needs_envsubst
 def test_bundle_is_mounted_read_only_and_entrypoint_overridden(rendered):
     """Without --entrypoint this runs the image's baked 202b005 TRAINER."""
     code = rendered.read_text()
@@ -246,6 +265,7 @@ def test_bundle_is_mounted_read_only_and_entrypoint_overridden(rendered):
     assert "scripts/evaluate_candidate.py" in code
 
 
+@needs_envsubst
 def test_writable_mounts_are_separate_from_the_verified_tree(rendered):
     code = rendered.read_text()
     assert "-v /opt/medzen-eval-out:/out" in code
@@ -254,6 +274,7 @@ def test_writable_mounts_are_separate_from_the_verified_tree(rendered):
     assert "--out /out/evaluation.json" in code
 
 
+@needs_envsubst
 def test_archive_hash_comes_from_user_data_not_s3(rendered):
     code = rendered.read_text()
     assert 'ACTUAL=$(sha256sum medzen_code.tgz | cut -d\' \' -f1)' in code
@@ -263,16 +284,19 @@ def test_archive_hash_comes_from_user_data_not_s3(rendered):
     assert code.index("ARCHIVE HASH VERIFIED") < code.index("BUNDLE VERIFIED")
 
 
+@needs_envsubst
 def test_extraction_uses_the_data_filter(rendered):
     assert 'filter="data"' in rendered.read_text()
 
 
+@needs_envsubst
 def test_image_digest_is_verified_after_pull(rendered):
     code = rendered.read_text()
     assert '[ "$GOT" = "$DIGEST" ]' in code
     assert "DIGEST VERIFIED" in code
 
 
+@needs_envsubst
 def test_outputs_go_only_under_the_unique_evaluation_prefix(rendered):
     code = rendered.read_text()
     assert "candidates/evaluations/$RUN_ID" in code
@@ -283,6 +307,7 @@ def test_outputs_go_only_under_the_unique_evaluation_prefix(rendered):
         "the eval-deny probe is the one deliberate write elsewhere, and it must fail"
 
 
+@needs_envsubst
 def test_watchdog_trap_and_termination_are_preserved(rendered):
     code = rendered.read_text()
     assert 'WATCHDOG="1800"' in code
@@ -290,6 +315,7 @@ def test_watchdog_trap_and_termination_are_preserved(rendered):
     assert code.count("shutdown -h now") >= 2, "watchdog AND exit path"
 
 
+@needs_envsubst
 def test_it_does_not_train_sweep_promote_or_deploy(rendered):
     code = rendered.read_text()
     for forbidden in ("train_asr", "--max-steps", "checkpoint-", "publish_registry",
@@ -297,6 +323,7 @@ def test_it_does_not_train_sweep_promote_or_deploy(rendered):
         assert forbidden not in code, forbidden
 
 
+@needs_envsubst
 def test_eval_write_denial_is_exercised_not_assumed(rendered):
     code = rendered.read_text()
     assert "A3 guardrail breached" in code
@@ -417,6 +444,7 @@ def _run_validation(tmp_path, **over):
                           timeout=30)
 
 
+@needs_envsubst
 def test_valid_inputs_pass_validation(tmp_path):
     r = _run_validation(tmp_path)
     assert "VALIDATION_OK" in r.stdout, r.stdout + r.stderr
@@ -429,6 +457,7 @@ def test_valid_inputs_pass_validation(tmp_path):
     ("TAR_SHA256", "F" * 64),
     ("ADAPTER_SHA256", "!" * 64),
 ])
+@needs_envsubst
 def test_launcher_rejects_wrong_alphabet_at_right_length(tmp_path, var, bad):
     """A 64-character string of the wrong alphabet passes a length check and
     then fails deep inside a comparison with a far less clear message."""
@@ -440,6 +469,7 @@ def test_launcher_rejects_wrong_alphabet_at_right_length(tmp_path, var, bad):
 @pytest.mark.parametrize("var,bad", [
     ("GIT_SHA", "abc"), ("TAR_SHA256", "abc"), ("ADAPTER_SHA256", "abc"),
 ])
+@needs_envsubst
 def test_launcher_still_rejects_wrong_length(tmp_path, var, bad):
     r = _run_validation(tmp_path, **{var: bad})
     assert "must be" in r.stdout + r.stderr
@@ -455,6 +485,7 @@ def test_launcher_has_a_shared_hex_check():
     assert "Length alone is not validation" in src
 
 
+@needs_envsubst
 def test_launcher_confines_the_adapter_uri(tmp_path):
     r = _run_validation(tmp_path, ADAPTER_URI="s3://medzen-speech/eval/sneaky")
     assert "must be under s3://medzen-speech/candidates/" in r.stdout + r.stderr
@@ -495,8 +526,83 @@ def test_evaluator_writes_nothing_under_the_readonly_mount():
     assert "/opt/medzen:ro" in ud
 
 
-def test_no_pytest_cache_is_written_into_the_source_tree():
-    """-p no:cacheprovider keeps .pytest_cache out of a read-only checkout."""
-    assert not (ROOT / ".pytest_cache").exists() or True   # local runs may create it
+def test_pytest_cache_is_disabled_in_the_repository_config():
+    """The previous version of this test asserted `X or True`, which is
+    vacuously true and proved nothing. The real guarantee is the setting."""
     ini = (ROOT / "pytest.ini").read_text()
-    assert "addopts" in ini
+    addopts = next(l for l in ini.splitlines() if l.strip().startswith("addopts"))
+    assert "-p no:cacheprovider" in addopts, addopts
+
+
+# --------------------------------------------------------------------------- #
+# the two bugs that would have failed the real run
+# --------------------------------------------------------------------------- #
+def test_load_audio_creates_a_nonexistent_cache_directory(tmp_path, monkeypatch):
+    """The caller passes work/"audio", which nothing creates. Without an mkdir
+    the very first clip fails on any fresh cache -- i.e. every disposable
+    instance."""
+    import wave
+
+    raw = tmp_path / "src.wav"
+    with wave.open(str(raw), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(b"\x00\x00" * 1600)
+    body = raw.read_bytes()
+    sha = EC.sha256_bytes(body)
+
+    class FakeS3:
+        def get_object(self, Bucket, Key):
+            class B:
+                def read(self_inner):
+                    return body
+            return {"Body": B()}
+
+    cache = tmp_path / "audio"          # deliberately does NOT exist
+    assert not cache.exists()
+    rec = {"audio_checksum_sha256": sha,
+           "audio_filepath": "s3://medzen-speech/raw/x.wav"}
+    audio, sr = EC.load_audio(FakeS3(), rec, cache)
+    assert cache.is_dir()
+    assert sr == 16000 and len(audio) == 1600
+
+
+def test_load_audio_still_refuses_a_checksum_mismatch(tmp_path):
+    class FakeS3:
+        def get_object(self, Bucket, Key):
+            class B:
+                def read(self_inner):
+                    return b"not the audio"
+            return {"Body": B()}
+
+    rec = {"audio_checksum_sha256": "a" * 64,
+           "audio_filepath": "s3://medzen-speech/raw/x.wav"}
+    with pytest.raises(SystemExit, match="audio checksum mismatch"):
+        EC.load_audio(FakeS3(), rec, tmp_path / "fresh")
+
+
+def test_output_path_outside_the_repo_does_not_raise(tmp_path, capsys):
+    """The launcher writes to /out, a separate mount. relative_to() RAISES
+    there, which would have failed the run AFTER the results were written."""
+    out = tmp_path / "out" / "evaluation.json"
+    out.parent.mkdir(parents=True)
+    # the exact reporting logic from main()
+    out.write_text("{}")
+    try:
+        shown = out.relative_to(EC.ROOT)
+    except ValueError:
+        shown = out.resolve()
+    assert shown == out.resolve()
+
+    src = (ROOT / "scripts/evaluate_candidate.py").read_text()
+    assert "except ValueError:" in src
+    assert "shown = out.resolve()" in src
+    assert "out.relative_to(ROOT)\n    print" not in src, "must not print unguarded"
+
+
+def test_output_directory_is_created_before_writing():
+    src = (ROOT / "scripts/evaluate_candidate.py").read_text()
+    i_mkdir = src.index("out.parent.mkdir(parents=True, exist_ok=True)")
+    i_write = src.index("out.write_text(json.dumps(rec")
+    assert i_mkdir < i_write
