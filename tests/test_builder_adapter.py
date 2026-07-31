@@ -134,8 +134,8 @@ def test_builder_reconciles_only_after_termination_and_volume_deletion(
     launch = session.ec2.launches[0]
     assert launch["MinCount"] == launch["MaxCount"] == 1
     assert launch["InstanceType"] == "c6i.2xlarge"
+    assert launch["IamInstanceProfile"]["Name"] == "medzen-builder-profile"
     assert launch["InstanceInitiatedShutdownBehavior"] == "terminate"
     assert launch["MetadataOptions"]["HttpTokens"] == "required"
     assert launch["BlockDeviceMappings"][0]["Ebs"][
         "DeleteOnTermination"] is True
-

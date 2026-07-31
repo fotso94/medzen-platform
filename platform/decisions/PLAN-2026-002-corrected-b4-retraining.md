@@ -307,3 +307,19 @@ never overwrite each other's results.
 | S3 `curated/_versions/v2/ADOPTION-B4-CORRECTED.json` + experiment-scoped policy | 2 | persistent, conditional-create only |
 
 No EKS, no Spot, no load balancer, no EIP, no registry entry.
+
+## 14 · Execution log
+
+The first bounded image-build attempt at commit `c0338f0` stopped before ECR
+publication. The image compiled and passed the installed-Python dependency
+audit and bootstrap import gate, then ECR correctly denied upload because the
+launcher attached `medzen-trainer-profile`. That profile is the runtime
+download-only identity and carries an intentional deny on ECR writes. The
+builder self-terminated, no image tag was created, no tagged volume remained,
+and the budget ledger reconciled 305.1 seconds / **$0.0288** actual.
+
+The retry uses the already-provisioned least-privilege
+`medzen-builder-profile`. A live IAM simulation confirms authorization-token
+access plus layer upload, `PutImage`, describe and scan permissions on
+`medzen-trainer`, while unrelated repositories and evaluation writes remain
+denied.

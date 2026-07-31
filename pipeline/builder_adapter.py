@@ -37,7 +37,7 @@ class BuilderConfig:
     ami_owner: str = "137112412989"
     subnet_id: str = "subnet-00232b25bc1ac407a"
     security_group_id: str = "sg-0ec6a550611714d0c"
-    instance_profile: str = "medzen-trainer-profile"
+    instance_profile: str = "medzen-builder-profile"
     instance_type: str = "c6i.2xlarge"
     root_device_name: str = "/dev/xvda"
     root_gb: int = 50
@@ -163,6 +163,24 @@ class EC2Builder:
                     f"REFUSING: builder {instance_id} did not terminate")
             time.sleep(self.cfg.poll_seconds)
 
+    def _wait_volume_id(self, instance_id: str, timeout_s: int = 120
+                        ) -> str:
+        """Capture the root volume before termination removes the mapping."""
+        deadline = time.monotonic() + timeout_s
+        while time.monotonic() < deadline:
+            out = self.ec2.describe_instances(InstanceIds=[instance_id])
+            instance = out["Reservations"][0]["Instances"][0]
+            for mapping in instance.get("BlockDeviceMappings", []):
+                volume_id = mapping.get("Ebs", {}).get("VolumeId")
+                if volume_id:
+                    return volume_id
+            if instance["State"]["Name"] in (
+                    "shutting-down", "terminated"):
+                break
+            time.sleep(self.cfg.poll_seconds)
+        raise BuilderError(
+            f"REFUSING: root volume ID for {instance_id} was never observed")
+
     def _volume_deleted(self, volume_id: str | None) -> bool:
         if not volume_id:
             return False
@@ -245,6 +263,8 @@ class EC2Builder:
             m.get("Ebs", {}).get("VolumeId")
             for m in initial.get("BlockDeviceMappings", [])
             if m.get("Ebs", {}).get("VolumeId")), None)
+        if volume_id is None:
+            volume_id = self._wait_volume_id(instance_id)
         terminal, terminated_at = self._wait_terminated(
             instance_id, watchdog_s)
         if volume_id is None:
