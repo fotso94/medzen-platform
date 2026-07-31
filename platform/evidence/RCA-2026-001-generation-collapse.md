@@ -2,14 +2,20 @@
 
 **Run** `23868bab2d8448759fc1b9ed26156952` · **Adapter** `17e1b7381b7b3fdb…`
 **Status** rejected, candidates-only · **Decision** `EVAL-2026-001-b4-candidate-failed.json`
-**Revision** 3 (2026-07-31) — corrected again after the reproduction attempt
-measured the runtime directly; see *Corrections*.
+**Revision** 4 (2026-07-31) — the failure is now independently reproduced and
+termination is directly measured; see *Corrections*.
 
 > **Confidence.** The duplicated start-of-transcript token is a **confirmed
-> trainer defect**, sufficient on its own to invalidate the run, and it is the
-> **strongest available explanation** for the collapse. It is not yet *proven*
-> to be the sole cause: that requires a corrected controlled A/B run, which has
-> not been performed.
+> trainer defect**, sufficient on its own to invalidate the run, and the
+> **strongest causal hypothesis** for the collapse. Sole causality is **not
+> claimed** and cannot be until a corrected controlled run succeeds.
+
+> **Runaway termination is now MEASURED, not inferred.** On the frozen 44-clip
+> diagnostic set, **13 of 44 candidate rows (29.55%) exhausted the 440-token
+> generation budget without ever emitting `<|endoftext|>`**, against **0 of 44**
+> for the untouched base, which terminated on every row. Candidate median
+> generated length was 53 tokens against the base's 15; maximum 440 against 72.
+> Run `eval-1785483918-fd78a3c77e4b`, artifact sha256 `8ecca6c132d923ea…`.
 
 ## What happened
 
@@ -41,7 +47,8 @@ output rather than accepting numbers it cannot support.
 
 What the lengths *do* support: the candidate generates far past the base and at
 least one row reached a generation limit. Whether `<|endoftext|>` was emitted —
-the actual question — was not measured. `scripts/evaluate_candidate.py` now
+the actual question — was not measured **by the external run**. It has since
+been measured directly: see the Confidence note above. `scripts/evaluate_candidate.py` now
 records `prompt_tokens`, `generated_tokens`, `total_tokens`, `eos_emitted`, the
 EOS position and the stopping reason, and defines a cap hit operationally:
 **EOS absent AND generated tokens reaching `max_new_tokens`**. The termination
@@ -186,6 +193,8 @@ correctly aligned per-language base-loss distribution is measured:
 |---|---|
 | `444 + 4 = 448` proves the cap was hit | **withdrawn** — external accounting unknown |
 | Whisper's default return includes the decoder prompt (rev 2) | **corrected** — it slices prompt and EOS off; measured on the pinned stack |
+| Figures are external and unreproduced (rev 1–3) | **superseded** — reproduced in-repo: base 0.5117/0.3780, candidate 7.2262/4.4203 |
+| Termination failure inferred from a reported max length | **superseded** — measured: 13/44 candidate rows hit the cap with no EOS, base 0/44 |
 | All four prefix tokens were wrongly trained as content | **corrected** — only the retained SOT is erroneous |
 | Loss "should" start at 1–3; abort above 6 | **demoted** to uncalibrated warning |
 | Duplicated SOT is *the* cause | **qualified** — confirmed defect and strongest explanation; sole-cause proof needs a corrected A/B run |
@@ -193,6 +202,18 @@ correctly aligned per-language base-loss distribution is measured:
 
 Also found by review and now fixed: the same `bos_token_id` mistake in
 `label_length.py`, and a saved processor left pinned to `language="yo"`.
+
+## The CER difference is unexplained, and that is fine
+
+Reproduced candidate CER is 4.4203 against the external 4.2184 — a delta of
+0.20, while the three other figures agree to within 0.003. **The cause is
+unknown.** The external evaluator's code, library versions and text
+normalization were never recorded, so the difference cannot be attributed to
+normalization, to decoding, or to anything else without inventing a reason.
+
+It is also immaterial. The rejection rests on a candidate WER above 7 against a
+base near 0.51, and on 13 of 44 rows failing to terminate — neither of which a
+CER delta of 0.20 touches.
 
 ## What must not be concluded
 

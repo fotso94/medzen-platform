@@ -218,9 +218,11 @@ def main() -> int:
                                        "ASR; the path never implies purpose"),
         },
         "circulating_pidgin_figures": {
-            "warning": ("FOUR numbers circulate for Pidgin on the same 44 clips. "
-                        "They differ by runtime, model and decode policy, not by "
-                        "model quality. Do not difference them."),
+            "warning": ("FIVE numbers now circulate for Pidgin on the same 44 "
+                        "clips. They differ by runtime, model, decode policy "
+                        "and normalization, not by model quality. Do not "
+                        "difference them, and do not relabel any one of them "
+                        "as 'the Pidgin baseline'."),
             "eval_manifest_sha256":
                 "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
             "figures": [
@@ -263,6 +265,27 @@ def main() -> int:
                           "library versions and normalization were not "
                           "recorded, and normalization alone moves WER by "
                           "several points.")},
+                {"wer": 0.5117, "cer": 0.3780, "decode_policy": "language=en forced",
+                 "runtime": "transformers/torch",
+                 "model": "openai/whisper-large-v3",
+                 "model_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+                 "normalization_version": "pipeline.normalizers for_language('pidgin')",
+                 "artifact": ("s3://medzen-speech/candidates/evaluations/"
+                              "eval-1785483918-fd78a3c77e4b/evaluation.json"),
+                 "artifact_sha256": ("8ecca6c132d923eae31b1ce914d617d076eaa47c"
+                                     "8deb99fa10fc35886f4d1683"),
+                 "evaluator_commit": "fd78a3c77e4b04b094c5c8579a37945acc427e83",
+                 "generation_flags": {"max_new_tokens": 440, "num_beams": 1,
+                                      "do_sample": False,
+                                      "return_dict_in_generate": True,
+                                      "force_unique_generate_call": True},
+                 "eos_rate": 1.0, "cap_hit_rate": 0.0,
+                 "note": ("REPRODUCED IN-REPOSITORY, content-addressed. The "
+                          "base arm of the diagnostic reproduction. This is an "
+                          "in-repo result with fully recorded provenance -- it "
+                          "is NOT a promotion baseline, and it does not "
+                          "supersede the B3 MLX figures, which measured a "
+                          "different runtime and decode policy.")},
             ],
         },
         "languages": report,

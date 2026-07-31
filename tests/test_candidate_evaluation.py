@@ -146,12 +146,47 @@ def test_failure_record_links_the_run_without_altering_it(decision):
     assert tr["artifacts"]["adapter_sha256"] == cand["adapter_sha256"]
 
 
-def test_external_metrics_are_labelled_as_not_yet_reproduced(decision):
-    """Recording someone else's numbers as verified fact would be the same
-    class of error the evaluator exists to prevent."""
+def test_metrics_are_now_independently_reproduced(decision):
+    """Was: asserted the figures were EXTERNAL and unreproduced. They have
+    since been reproduced in-repo, so the assertion inverts -- deliberately."""
     prov = decision["evaluation"]["provenance"]
-    assert prov.startswith("EXTERNAL")
-    assert "NOT yet been independently reproduced" in prov
+    assert prov.startswith("INDEPENDENTLY REPRODUCED")
+    assert "fd78a3c77e4b04b094c5c8579a37945acc427e83" in prov
+
+    r = decision["reproduced_evaluation"]
+    assert r["exit_code"] == 0 and r["purpose"] == "DIAGNOSTIC_ONLY"
+    assert r["artifact_sha256"] == (
+        "8ecca6c132d923eae31b1ce914d617d076eaa47c8deb99fa10fc35886f4d1683")
+    assert r["base"]["wer"] == 0.5117 and r["base"]["cer"] == 0.3780
+    assert r["candidate"]["wer"] == 7.2262 and r["candidate"]["cer"] == 4.4203
+    assert r["base"]["eos_emitted"] == "44/44" and r["base"]["cap_hits"] == "0/44"
+    assert r["candidate"]["eos_emitted"] == "31/44"
+    assert r["candidate"]["cap_hits"] == "13/44"
+    assert r["candidate"]["generated_tokens_median"] == 53.0
+    assert r["candidate"]["generated_tokens_max"] == 440
+
+
+def test_external_figures_are_preserved_separately_as_targets(decision):
+    """Reproduction must not overwrite what it was compared against."""
+    ext = decision["evaluation"]["external_comparison_targets"]
+    assert ext["base_wer"] == 0.5133 and ext["candidate_wer"] == 7.2231
+    assert "TARGETS, not gates" in ext["note"]
+    assert "never recorded" in ext["note"]
+
+
+def test_cer_delta_is_not_attributed_to_a_cause_we_do_not_know(decision):
+    """The 0.20 CER gap has no established cause. Blaming normalization would
+    be inventing a reason for a number nobody can trace."""
+    note = decision["reproduced_evaluation"]["cer_delta_note"]
+    assert "NO established cause" in note
+    assert "cannot be attributed" in note
+    assert "immaterial to the rejection" in note
+
+
+def test_reproduction_does_not_unblock_anything(decision):
+    c = decision["consequences"]
+    assert c["promotion"] == "blocked" and c["registration"] == "blocked"
+    assert c["b5"] == "paused"
 
 
 def test_secondary_factors_are_not_overstated(decision):

@@ -15,9 +15,10 @@
     "base_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1"
   },
   "evaluation": {
-    "provenance": "EXTERNAL. These figures were produced by a separate evaluation run and reported to this repository; they have NOT yet been independently reproduced by tooling in this repo. scripts/evaluate_candidate.py is being built for that purpose, and this record will be superseded by one carrying reproduced numbers.",
+    "provenance": "INDEPENDENTLY REPRODUCED. Originally reported externally; reproduced on 2026-07-31 by scripts/evaluate_candidate.py at commit fd78a3c77e4b04b094c5c8579a37945acc427e83, on the pinned image sha256:fc6972a5..., CUDA on an NVIDIA L4, with every artifact hash verified in-run. See reproduced_evaluation below.",
     "eval_set": "frozen Pidgin set, 44 clips, 7.875 minutes",
-    "results": {
+    "external_comparison_targets": {
+      "note": "Preserved separately as comparison TARGETS, not gates. The external evaluator's code, library versions and normalization were never recorded.",
       "base_wer": 0.5133,
       "base_cer": 0.378,
       "candidate_wer": 7.2231,
@@ -26,16 +27,8 @@
       "candidate_median_output_tokens": 52.5,
       "base_max_output_tokens": 71,
       "candidate_max_output_tokens": 444,
-      "base_median_latency_s": 0.38,
-      "candidate_median_latency_s": 1.16,
       "second_pass_candidate_wer_approx": 7.19
-    },
-    "why_the_result_is_trusted": [
-      "the untouched base scored 0.5133, closely matching the previously recorded 0.5257 Pidgin baseline, which validates the evaluator rather than the candidate",
-      "two independent adapter passes agreed at approximately 7.19 and 7.22",
-      "adapter hash, base revision, audio checksums and eval manifest were verified",
-      "no transcripts or private content were printed"
-    ]
+    }
   },
   "root_cause": {
     "summary": "Training labels retained the start-of-transcript token, so HuggingFace prepended a second one and the model trained one position out of alignment with inference. The guard intended to strip it compared against bos_token_id and could never fire. CONFIRMED defect and the strongest explanation for the collapse; sole-cause proof requires a corrected A/B run.",
@@ -54,8 +47,8 @@
     },
     "corroborating_evidence": [
       {
-        "observation": "candidate median output 52.5 tokens against a base median of 14; maximum 444 against 71",
-        "reading": "The candidate generates far past the base. Whether EOS was emitted -- the question that distinguishes termination failure from poor quality -- was NOT measured, and the earlier reading of 444 as '444 + 4 prefix = 448' is withdrawn: generate() returns the prompt inside the sequence while max_new_tokens excludes it. The hardened evaluator records eos_emitted, prompt/generated/total tokens and the stop reason so this can be settled by measurement."
+        "observation": "MEASURED: candidate 13/44 rows (29.55%) exhaust the 440-token budget without emitting EOS; base 0/44. Candidate median generated 53 tokens vs base 15; maximum 440 vs 72.",
+        "reading": "Termination failure is now directly measured rather than inferred from a reported maximum length. The base terminates on every row; the candidate frequently cannot. This is the signature the duplicated start-of-transcript defect predicts."
       },
       {
         "observation": "initial training loss 22.53, falling to 4.00",
@@ -103,9 +96,9 @@
     "evaluation-coverage audit for all 14 trained languages"
   ],
   "content_policy": "checksums, hashes and aggregate metrics only; no transcript, speaker, session or content excerpt appears in this file",
-  "revision": 3,
-  "revised_utc": "2026-07-31T00:00:00Z",
-  "revision_note": "Revision 2 after independent review. The duplicated start-of-transcript token is a CONFIRMED trainer defect, sufficient to invalidate the run and the strongest explanation for the collapse; sole-cause proof requires a corrected controlled A/B run that has not been performed.",
+  "revision": 4,
+  "revised_utc": "2026-07-31T08:05:19Z",
+  "revision_note": "Revision 4: the evaluation is now INDEPENDENTLY REPRODUCED by in-repo tooling on the pinned stack (EVALRUN-2026-002-reproduced). Termination failure is directly MEASURED rather than inferred: 13 of 44 candidate rows exhaust the generation budget without emitting EOS, against 0 of 44 for the base. The rejection stands and promotion, registration and B5 remain blocked. The duplicated start-of-transcript token remains a confirmed trainer defect and the strongest causal hypothesis; sole causality is still not claimed and requires a corrected controlled run.",
   "corrections": [
     {
       "claim": "444 generated + 4 prefix = 448 proves the decoder cap was hit",
@@ -131,6 +124,11 @@
       "claim": "generate() returns a sequence INCLUDING the decoder prompt while max_new_tokens excludes it (given as the reason for withdrawing the 444 arithmetic in revision 2)",
       "status": "CORRECTED",
       "why": "measured on the pinned stack: WhisperGenerationMixin._postprocess_outputs returns seek_outputs[:, start_idx:] with start_idx = decoder_input_ids.shape[-1], so the default tensor return has the prompt AND EOS sliced off. The generic generate() rule does not apply to Whisper. The 444 arithmetic stays withdrawn because the external evaluator's version and accounting are unknown, not because of the prompt-inclusion claim."
+    },
+    {
+      "claim": "the evaluation figures are EXTERNAL and not independently reproduced",
+      "status": "SUPERSEDED",
+      "why": "reproduced on 2026-07-31 with in-repo tooling; base WER 0.5117 vs external 0.5133 and candidate WER 7.2262 vs external 7.2231. The external figures are retained separately as comparison targets."
     }
   ],
   "additional_defects_found_by_review": [
@@ -151,5 +149,39 @@
     "speaker_and_session_overlap": "YES -- shares both speakers and sessions",
     "verdict": "DIAGNOSTIC ONLY from 2026-07-31. Usable to study when the failed checkpoints degenerated. Must not select a checkpoint or support promotion, both because it is not speaker-disjoint and because it has now informed the investigation.",
     "note": "it is a /tts/ manifest being used to score ASR; source path and evaluation purpose are distinct and must be recorded separately"
+  },
+  "reproduced_evaluation": {
+    "run_id": "eval-1785483918-fd78a3c77e4b",
+    "record": "platform/evidence/EVALRUN-2026-002-reproduced.json",
+    "artifact": "s3://medzen-speech/candidates/evaluations/eval-1785483918-fd78a3c77e4b/evaluation.json",
+    "artifact_sha256": "8ecca6c132d923eae31b1ce914d617d076eaa47c8deb99fa10fc35886f4d1683",
+    "evaluator_commit": "fd78a3c77e4b04b094c5c8579a37945acc427e83",
+    "bundle_tar_sha256": "99574176ee227d146b92d9d7e05bbcf20804b015059155b21b2e86a898fda8bd",
+    "exit_code": 0,
+    "purpose": "DIAGNOSTIC_ONLY",
+    "eval_set": "eval/pidgin/tts/v1, 44 clips",
+    "base": {
+      "wer": 0.5117,
+      "cer": 0.378,
+      "eos_emitted": "44/44",
+      "cap_hits": "0/44",
+      "generated_tokens_median": 15.0,
+      "generated_tokens_max": 72
+    },
+    "candidate": {
+      "wer": 7.2262,
+      "cer": 4.4203,
+      "eos_emitted": "31/44",
+      "cap_hits": "13/44",
+      "generated_tokens_median": 53.0,
+      "generated_tokens_max": 440
+    },
+    "delta_vs_external": {
+      "base_wer": -0.0016,
+      "base_cer": 0.0,
+      "candidate_wer": 0.0031,
+      "candidate_cer": 0.2019
+    },
+    "cer_delta_note": "The 0.20 candidate CER difference has NO established cause. The external normalization and evaluator details are unrecorded, so it cannot be attributed to normalization or to anything else. It is immaterial to the rejection, which rests on a candidate WER above 7 against a base near 0.51 and on 13/44 rows exhausting the budget without EOS."
   }
 }

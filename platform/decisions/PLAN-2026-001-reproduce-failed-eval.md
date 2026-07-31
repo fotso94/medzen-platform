@@ -1,6 +1,32 @@
 # PLAN-2026-001 — Reproduce the failed-candidate evaluation
 
-**Status: PREPARED, NOT LAUNCHED.** Awaiting approval. Option **A** selected.
+**Status: COMPLETED (2026-07-31).** Option **A** was used: pinned image for the
+dependency set, approved-commit code injected through the verified bundle.
+
+| Attempt | Run | Commit | Result |
+|---|---|---|---|
+| 1 | `eval-1785482688-2919224de849` · `i-0ea50cefbd8c7e49b` | `2919224` | **FAILED**, exit 1 — refused before the first base decode completed; the evaluator wrongly assumed Whisper's `generate()` returns the decoder prompt |
+| 2 | `eval-1785483918-fd78a3c77e4b` · `i-07fd7054720c7acc0` | `fd78a3c` | **SUCCEEDED**, exit 0 |
+
+**Combined actual cost ≈ $0.19** (~3.5 min + ~8 min on g6.xlarge at $1.0064/hr),
+against a $1.02 combined ceiling. Both instances self-terminated; both root
+volumes deleted; no orphaned GPU, volume, EIP or Spot request.
+
+**Artifacts, both preserved and neither overwritten:**
+`candidates/evaluations/eval-1785482688-2919224de849/` (4 objects, failure
+evidence) and `candidates/evaluations/eval-1785483918-fd78a3c77e4b/` (5 objects,
+including `evaluation.json`, sha256 `8ecca6c132d923ea…`).
+
+**Outcome:** the failure shape reproduced. Base WER 0.5117 / CER 0.3780 with EOS
+on 44/44 rows and 0 cap hits; candidate WER 7.2262 / CER 4.4203 with EOS on
+31/44 and 13 cap hits. Records: `EVALRUN-2026-001-failed.json`,
+`EVALRUN-2026-002-reproduced.json`, `EVAL-2026-001` revision 4.
+
+---
+
+<details><summary>Original plan as approved (retained for the record)</summary>
+
+Option **A** selected.
 Purpose: reproduce base-vs-failed-candidate with in-repo tooling so
 `EVAL-2026-001` can move from EXTERNAL to independently reproduced — or not.
 
@@ -208,3 +234,5 @@ investigated — the prior decision is not rewritten as "reproduced".**
 - a speaker/session-disjoint validation set **and** a separate untouched
   holdout. The coverage audit found 9 validation candidates and **zero**
   holdouts; Pidgin has neither, with only 2 speakers shared across both sides.
+
+</details>
