@@ -82,7 +82,19 @@ def label_lengths(tokenizer, text: str, lang: str,
     ids = tokenizer(text).input_ids
     raw = len(ids)
     sot = decoder_start_id(tokenizer, model_config)
-    effective = raw - 1 if raw and ids[0] == sot else raw
+    # Fail closed HERE, not at the first training batch. A label that is empty
+    # or does not start with the decoder-start token is malformed, and the
+    # length it would report is meaningless -- which is precisely how the
+    # previous defect stayed invisible: `effective` silently equalled `raw`
+    # and every measurement looked plausible.
+    if not raw:
+        raise ValueError(f"empty tokenization for a {lang!r} row")
+    if ids[0] != sot:
+        raise ValueError(
+            f"{lang!r} row does not begin with decoder-start token {sot}; "
+            f"got {ids[0]}. The collator strips exactly one such token, so a "
+            "label without it would be truncated at the wrong place.")
+    effective = raw - 1
     return raw, effective
 
 

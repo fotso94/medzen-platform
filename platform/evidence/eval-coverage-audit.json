@@ -1,0 +1,627 @@
+{
+  "record": "EVAL-COVERAGE-AUDIT",
+  "recorded_utc": "2026-07-31T06:03:40Z",
+  "read_only": true,
+  "manifest_version": "v2",
+  "require_allowed_use": "asr_train",
+  "languages_trained": 14,
+  "languages_with_any_eval": 14,
+  "languages_with_validation_candidate": 9,
+  "languages_with_untouched_holdout": 0,
+  "definitions": {
+    "VALIDATION_CANDIDATE": "no exact overlap AND no shared speaker or session; could support checkpoint selection once frozen",
+    "DIAGNOSTIC_ONLY": "shares speakers/sessions with training, or has already informed an investigation; may study behaviour, may not select or promote",
+    "CONTAMINATED": "exact audio or text appears in training",
+    "source_path_vs_purpose": "a manifest under eval/<lang>/tts/ is a source path. It can still be scored for ASR; the path never implies purpose"
+  },
+  "languages": {
+    "acholi": {
+      "train_rows": 488,
+      "train_minutes": 128.23,
+      "train_source_tasks": [
+        "asr",
+        "tts"
+      ],
+      "train_speakers": 127,
+      "train_sessions": 127,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/acholi/asr/v1/manifest.jsonl",
+          "manifest_sha256": "db519db57317fc3dceeab548d4ff556b0d7b497535ade30d259cd8e4089a3e57",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 65,
+          "minutes": 22.18,
+          "speakers": 21,
+          "sessions": 21,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.2362,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        },
+        {
+          "key": "s3://medzen-speech/eval/acholi/tts/v1/manifest.jsonl",
+          "manifest_sha256": "a51dd5329af95b31101ebb5cc263770e774d2dc3f22668c526f39b9946bce7ab",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 47,
+          "minutes": 9.19,
+          "speakers": 4,
+          "sessions": 4,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "1",
+            "4",
+            "5",
+            "6"
+          ],
+          "speaker_overlap_count": 4,
+          "session_overlap_count": 4,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9206,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "akan": {
+      "train_rows": 228,
+      "train_minutes": 75.71,
+      "train_source_tasks": [
+        "asr"
+      ],
+      "train_speakers": 74,
+      "train_sessions": 74,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/akan/asr/v1/manifest.jsonl",
+          "manifest_sha256": "fc4fbe7dc085ddf0518cf39d582994da929caace239dca3f7b1f7be7db67a048",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 72,
+          "minutes": 23.81,
+          "speakers": 13,
+          "sessions": 13,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9689,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "amharic": {
+      "train_rows": 275,
+      "train_minutes": 83.78,
+      "train_source_tasks": [
+        "asr"
+      ],
+      "train_speakers": 65,
+      "train_sessions": 65,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/amharic/asr/v1/manifest.jsonl",
+          "manifest_sha256": "7935560ca958dfb8aff1985829108cc2a5fde9b1cf49c0690d96299b3800643a",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 25,
+          "minutes": 7.46,
+          "speakers": 11,
+          "sessions": 11,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.0,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "ewe": {
+      "train_rows": 521,
+      "train_minutes": 128.91,
+      "train_source_tasks": [
+        "asr",
+        "tts"
+      ],
+      "train_speakers": 153,
+      "train_sessions": 153,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/ewe/asr/v1/manifest.jsonl",
+          "manifest_sha256": "10dba432787cfef6432c8573ffee8f7d95a641fabb4c7b1227bc900f8522c702",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 34,
+          "minutes": 10.71,
+          "speakers": 26,
+          "sessions": 26,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.0049,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        },
+        {
+          "key": "s3://medzen-speech/eval/ewe/tts/v1/manifest.jsonl",
+          "manifest_sha256": "4c5c3f813ef3abc62343377c23f4404b87ca03d36b1d7a2f1884879423371e82",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 45,
+          "minutes": 7.39,
+          "speakers": 4,
+          "sessions": 4,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "AA",
+            "JO",
+            "SS",
+            "WW"
+          ],
+          "speaker_overlap_count": 4,
+          "session_overlap_count": 4,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9665,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "fula": {
+      "train_rows": 514,
+      "train_minutes": 123.3,
+      "train_source_tasks": [
+        "asr",
+        "tts"
+      ],
+      "train_speakers": 108,
+      "train_sessions": 108,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/fula/asr/v1/manifest.jsonl",
+          "manifest_sha256": "d9de2db6855f4e16e4722329df2a7d13faad0616b806d45e03c6d13e4ff0ac49",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 51,
+          "minutes": 16.51,
+          "speakers": 18,
+          "sessions": 18,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9295,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        },
+        {
+          "key": "s3://medzen-speech/eval/fula/tts/v1/manifest.jsonl",
+          "manifest_sha256": "6d78653d8d85be652150b1fd3d549e312aa154ea8d417b178b1e53f9985a9f03",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 35,
+          "minutes": 4.65,
+          "speakers": 8,
+          "sessions": 8,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "speaker_overlap_count": 8,
+          "session_overlap_count": 8,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.0015,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "hausa": {
+      "train_rows": 256,
+      "train_minutes": 57.51,
+      "train_source_tasks": [
+        "tts"
+      ],
+      "train_speakers": 5,
+      "train_sessions": 5,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/hausa/tts/v1/manifest.jsonl",
+          "manifest_sha256": "405f1cc0d943a7d7e3dbe0ac7ce668c66dc763dde560066bab7ebc3bfc85a405",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 44,
+          "minutes": 10.37,
+          "speakers": 5,
+          "sessions": 5,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "1",
+            "3",
+            "4",
+            "6",
+            "8"
+          ],
+          "speaker_overlap_count": 5,
+          "session_overlap_count": 5,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.8861,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": false,
+      "has_untouched_holdout": false
+    },
+    "igbo": {
+      "train_rows": 256,
+      "train_minutes": 50.66,
+      "train_source_tasks": [
+        "tts"
+      ],
+      "train_speakers": 6,
+      "train_sessions": 6,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/igbo/tts/v1/manifest.jsonl",
+          "manifest_sha256": "112e60bd9651a03feecf10590add0288ec19b32d160b6dee55226771e7d029de",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 44,
+          "minutes": 8.36,
+          "speakers": 6,
+          "sessions": 6,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "1",
+            "3",
+            "4",
+            "6",
+            "7"
+          ],
+          "speaker_overlap_count": 6,
+          "session_overlap_count": 6,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9646,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": false,
+      "has_untouched_holdout": false
+    },
+    "lingala": {
+      "train_rows": 265,
+      "train_minutes": 73.84,
+      "train_source_tasks": [
+        "asr"
+      ],
+      "train_speakers": 46,
+      "train_sessions": 46,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/lingala/asr/v1/manifest.jsonl",
+          "manifest_sha256": "a1e033bfd734a5b7838b4abfd058700b08f077a19d519bdb751ea94bbd8a8feb",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 35,
+          "minutes": 10.84,
+          "speakers": 8,
+          "sessions": 8,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9379,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "luganda": {
+      "train_rows": 502,
+      "train_minutes": 134.98,
+      "train_source_tasks": [
+        "asr",
+        "tts"
+      ],
+      "train_speakers": 147,
+      "train_sessions": 147,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/luganda/asr/v1/manifest.jsonl",
+          "manifest_sha256": "321865d723977bd79b9e320571b04da00a3f6da77558cbf916aa92837fc6d648",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 53,
+          "minutes": 18.72,
+          "speakers": 25,
+          "sessions": 25,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9863,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        },
+        {
+          "key": "s3://medzen-speech/eval/luganda/tts/v1/manifest.jsonl",
+          "manifest_sha256": "d4580af1ee1bb9bacaae9d0c21e29c0f8cbe8048edd9bc2fdb155190816b89dc",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 45,
+          "minutes": 7.13,
+          "speakers": 5,
+          "sessions": 5,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "2",
+            "3",
+            "4",
+            "5",
+            "8"
+          ],
+          "speaker_overlap_count": 5,
+          "session_overlap_count": 5,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.9518,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "oromo": {
+      "train_rows": 265,
+      "train_minutes": 81.82,
+      "train_source_tasks": [
+        "asr"
+      ],
+      "train_speakers": 65,
+      "train_sessions": 65,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/oromo/asr/v1/manifest.jsonl",
+          "manifest_sha256": "fe49f04d7b1f3600ffc5f601a37f0b9012cbb755f351da5ef7ed5572787797b0",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 35,
+          "minutes": 10.88,
+          "speakers": 11,
+          "sessions": 11,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.1834,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "pidgin": {
+      "train_rows": 256,
+      "train_minutes": 43.37,
+      "train_source_tasks": [
+        "tts"
+      ],
+      "train_speakers": 2,
+      "train_sessions": 2,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl",
+          "manifest_sha256": "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 44,
+          "minutes": 7.88,
+          "speakers": 2,
+          "sessions": 2,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "M2",
+            "M3"
+          ],
+          "speaker_overlap_count": 2,
+          "session_overlap_count": 2,
+          "informed_an_investigation": true,
+          "baseline_wer": 0.5382,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": false,
+      "has_untouched_holdout": false
+    },
+    "shona": {
+      "train_rows": 285,
+      "train_minutes": 94.22,
+      "train_source_tasks": [
+        "asr"
+      ],
+      "train_speakers": 53,
+      "train_sessions": 53,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/shona/asr/v1/manifest.jsonl",
+          "manifest_sha256": "53391b3f7ca111e548d319b86936396d06b4614fa496f1f23d450bd492a37dc1",
+          "source_path_task": "asr",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 15,
+          "minutes": 5.65,
+          "speakers": 9,
+          "sessions": 9,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [],
+          "speaker_overlap_count": 0,
+          "session_overlap_count": 0,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.1365,
+          "baseline_linked": true,
+          "verdict": "VALIDATION_CANDIDATE"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": true,
+      "has_untouched_holdout": false
+    },
+    "swahili": {
+      "train_rows": 255,
+      "train_minutes": 52.74,
+      "train_source_tasks": [
+        "tts"
+      ],
+      "train_speakers": 4,
+      "train_sessions": 4,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/swahili/tts/v1/manifest.jsonl",
+          "manifest_sha256": "12af97aeb11dd6192c36510cf0cc40484c5219e5b65eb3deb0188d741b2a6b98",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 45,
+          "minutes": 9.15,
+          "speakers": 4,
+          "sessions": 4,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "1",
+            "3",
+            "6",
+            "8"
+          ],
+          "speaker_overlap_count": 4,
+          "session_overlap_count": 4,
+          "informed_an_investigation": false,
+          "baseline_wer": 0.3449,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": false,
+      "has_untouched_holdout": false
+    },
+    "yoruba": {
+      "train_rows": 254,
+      "train_minutes": 46.31,
+      "train_source_tasks": [
+        "tts"
+      ],
+      "train_speakers": 5,
+      "train_sessions": 5,
+      "eval_sets": [
+        {
+          "key": "s3://medzen-speech/eval/yoruba/tts/v1/manifest.jsonl",
+          "manifest_sha256": "f54de4083824a5ac17d79839064845f4c09829ab8dbbdbe53e4e726f4f6526f6",
+          "source_path_task": "tts",
+          "usable_for": "ASR scoring (source path is not the purpose)",
+          "version": "v1",
+          "rows": 46,
+          "minutes": 7.38,
+          "speakers": 4,
+          "sessions": 4,
+          "exact_audio_overlap": 0,
+          "exact_text_overlap": 0,
+          "speaker_overlap": [
+            "3",
+            "5",
+            "6",
+            "8"
+          ],
+          "speaker_overlap_count": 4,
+          "session_overlap_count": 4,
+          "informed_an_investigation": false,
+          "baseline_wer": 1.1846,
+          "baseline_linked": true,
+          "verdict": "DIAGNOSTIC_ONLY"
+        }
+      ],
+      "has_any_eval": true,
+      "has_validation_candidate": false,
+      "has_untouched_holdout": false
+    }
+  },
+  "content_policy": "counts, checksum-derived overlaps and identifiers only; no transcript or audio content"
+}

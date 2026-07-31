@@ -1,0 +1,63 @@
+{
+  "record": "LABEL-AUDIT-REAUDIT",
+  "recorded_utc": "2026-07-31T06:03:40Z",
+  "read_only": true,
+  "uploaded": false,
+  "why": "pipeline/label_length.py carried the same bos_token_id defect as the collator, so `effective` silently equalled `raw` for every row ever measured. The deferral policy was built on those numbers.",
+  "scope": {
+    "manifest_version": "v2",
+    "split": "train",
+    "require_allowed_use": "asr_train",
+    "rows_skipped_not_permitted": 0
+  },
+  "comparison": {
+    "eligible_source_pool_rows": {
+      "old": 4620,
+      "new": 4620,
+      "changed": false
+    },
+    "rows_over_limit": {
+      "old": 6,
+      "new": 5,
+      "changed": true
+    },
+    "rate_outliers_under_limit": {
+      "old": 14,
+      "new": 14,
+      "changed": false
+    },
+    "deferred_total": {
+      "old": 20,
+      "new": 19,
+      "changed": true
+    },
+    "rate_outlier_set_identical": true,
+    "effective_equalled_raw_before": "20/20",
+    "effective_is_raw_minus_one_now": "19/19"
+  },
+  "material_change": {
+    "row": "d0ffd52881d0b074",
+    "language": "amharic",
+    "task": "asr",
+    "raw_tokens": 449,
+    "old_effective": 449,
+    "new_effective": 448,
+    "limit": 448,
+    "was": "over_decoder_limit",
+    "now": "within the limit",
+    "explanation": "raw 449 minus the one stripped start-of-transcript token is exactly 448, the decoder limit. It was never over. The defect inflated it by one token."
+  },
+  "metrics_changed": {
+    "rows_with_changed_tokens_per_s_or_z_score": 19,
+    "note": "tokens_per_s and z_score are derived from effective length, so every surviving row's reviewer-facing metrics moved"
+  },
+  "consequences": {
+    "DQ-2026-002_policy": "INVALIDATED for retraining. It defers 20 rows; the corrected audit finds 19. It must not be silently reused.",
+    "adoption": "curated/_versions/v2/ADOPTION.json binds the 20-row policy by sha256 and therefore also no longer describes a correct mix",
+    "dataset_fingerprint": "77c7ce61edba96c8 was computed over 4600 eligible rows; the corrected exclusion set leaves 4601, so the fingerprint WILL change",
+    "DQ-2026-001_review": "row d0ffd52881d0b074 is no longer decoder-incompatible. The draft's 20 entries no longer match the audit and the review scope must be re-derived.",
+    "required_before_retraining": "a new reviewed deferral policy, a new adoption binding and a recomputed dataset fingerprint"
+  },
+  "actions_taken": "none \u2014 this audit read S3 and wrote one local file",
+  "content_policy": "checksums and numeric metrics only"
+}

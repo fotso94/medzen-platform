@@ -232,7 +232,7 @@ def test_prompt_and_generated_tokens_are_counted_separately():
     max_new_tokens excludes it. Conflating them overstates generated length by
     the prompt size and mislabels rows as cap hits."""
     s = EVAL.read_text()
-    assert "def _prompt_len(" in s
+    assert "n_prompt = split_prompt(ids, prompt)" in s
     assert "n_gen = n_total - n_prompt" in s
     assert 'cap_hit = (not eos_emitted) and n_gen >= GEN["max_new_tokens"]' in s
     assert '"prompt_tokens": n_prompt' in s
@@ -240,19 +240,49 @@ def test_prompt_and_generated_tokens_are_counted_separately():
     assert '"stop_reason"' in s
 
 
-def test_prompt_length_is_measured_not_assumed():
+def test_base_is_verified_against_the_pinned_manifest_every_run():
+    """The manifest is the authority, and it is the same provenance definition
+    the training run recorded. Verifying against S3 object bytes instead would
+    re-download 3 GB on every evaluation to compare the model with itself."""
     s = EVAL.read_text()
-    assert "all_special_ids" in s
-    assert "would break silently" in s
-
-
-def test_base_cache_is_verified_every_run():
-    """A cache trusted because the directory exists is an assumption."""
-    s = EVAL.read_text()
-    assert "base_files = fetch_prefix(cli, BASE_PREFIX, base_dir)" in s
+    assert "def ensure_base(" in s
+    assert 'Key=f"{BASE_PREFIX}/MANIFEST.json"' in s
     assert "if not base_dir.exists()" not in s
-    assert "is not the pinned artifact" in s
-    assert "base_manifest_sha256" in s
+    assert 'man.get("repo") != BASE_MODEL or man.get("revision") != BASE_REVISION' in s
+    assert "these are not the pinned " in s
+    assert "man_sha = sha256_bytes(raw)" in s, "raw manifest bytes, not a re-encode"
+
+
+def test_base_files_are_fetched_only_when_missing():
+    s = EVAL.read_text()
+    assert "if not f.exists():" in s
+    assert "already local" in s
+
+
+def test_prompt_is_constructed_not_guessed():
+    """Counting leading special tokens would absorb any control token the model
+    emitted first -- hiding the degenerate behaviour under investigation."""
+    s = EVAL.read_text()
+    assert "def expected_prompt(" in s
+    assert "tk.prefix_tokens" in s
+    assert "all_special_ids" not in s, "no heuristic prompt detection may remain"
+    assert "def split_prompt(" in s
+    assert "ids[:len(prompt)] != prompt" in s
+    assert "run under the configuration this evaluation claims" in s
+
+
+def test_adapter_arm_names_cannot_collide():
+    s = EVAL.read_text()
+    assert 'name = f"{stem}@{key}"' in s
+    assert "duplicate result key" in s
+    assert "would overwrite the first" in s
+
+
+def test_expected_adapter_hash_is_enforced():
+    s = EVAL.read_text()
+    assert '"--expect-adapter-sha256"' in s
+    assert "the artifact this evaluation was authorised to score" in s
+    assert "matched positionally and an" in s, "count mismatch must refuse"
 
 
 def test_audio_is_verified_every_run_not_only_on_download():
@@ -293,8 +323,17 @@ def test_evaluator_reports_confidence_intervals():
 def test_evaluator_records_hashes():
     s = EVAL.read_text()
     assert "eval_manifest_sha256" in s
-    assert '"adapter_sha256": files.get("adapter_model.safetensors")' in s
+    assert '"adapter_sha256": got_sha' in s
+    assert "base_manifest_repo" in s and "base_manifest_revision" in s
     assert "BASE_REVISION" in s
+
+
+def test_documented_examples_pass_the_required_flag():
+    s = EVAL.read_text()
+    head = s[:s.index('"""', s.index('"""') + 3)]      # the module docstring
+    assert head.count("--lang-token en") >= 2, "every example must be runnable"
+    assert "FRESHLY LOADED" in head, "intro must not describe a reused object"
+    assert "SAME model object" not in head
 
 
 def test_evaluator_supports_a_checkpoint_sweep():

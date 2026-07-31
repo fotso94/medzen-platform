@@ -7,10 +7,13 @@ The B4 candidate was compared against a baseline produced months earlier by a
 different runtime (mlx_whisper) with its own decoding defaults. That comparison
 happened to hold up, but it could not have proved anything on its own: a
 difference between two arms is only attributable to the model if everything
-else is identical. So this evaluator loads the base once, scores it, then wraps
-the SAME model object in the adapter and scores again -- same audio, same
-generate kwargs, same normalizer, same jiwer calls, same process. There is no
-second code path for the candidate to be advantaged or disadvantaged by.
+else is identical. So every arm here is built from FRESHLY LOADED, checksum-
+verified base weights and scored by the same function -- same audio, same
+generate kwargs, same forced language and task, same normalizer, same jiwer
+calls, same process. Reusing one model object and unwrapping it between arms
+would have been cheaper, but it assumes the unwrap is perfect; reloading
+removes the assumption, which matters most in a checkpoint sweep where weights
+should be the only difference that exists.
 
 WHAT IT REFUSES TO DO
 
@@ -35,8 +38,12 @@ is defined by what actually happened: EOS absent AND generated tokens reaching
 the limit.
 
     python scripts/evaluate_candidate.py --language pidgin --task tts \
-        --adapter s3://medzen-speech/candidates/asr/<run>/final
+        --lang-token en \
+        --adapter s3://medzen-speech/candidates/asr/<run>/final \
+        --expect-adapter-sha256 <64 hex>
+
     python scripts/evaluate_candidate.py --language pidgin --task tts \
+        --lang-token en \
         --adapter s3://.../checkpoint-100 --adapter s3://.../checkpoint-200
 """
 from __future__ import annotations
@@ -88,14 +95,9 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
-def fetch_prefix(cli, prefix: str, dest: Path, verify_only: bool = False
-                 ) -> dict[str, str]:
-    """Download a prefix (or re-verify an existing copy) and return
-    {relpath: sha256} of the bytes on disk.
-
-    A cache that is trusted because the directory exists is not a cache, it is
-    an assumption. Local files are re-hashed against the object in S3 on every
-    run; a mismatch refuses rather than scoring against unknown weights."""
+def fetch_prefix(cli, prefix: str, dest: Path) -> dict[str, str]:
+    """Download every object under a prefix; return {relpath: sha256} of the
+    bytes on disk. Used for adapters, which are small."""
     dest.mkdir(parents=True, exist_ok=True)
     got: dict[str, str] = {}
     tok = None
@@ -108,26 +110,60 @@ def fetch_prefix(cli, prefix: str, dest: Path, verify_only: bool = False
             rel = o["Key"][len(prefix):].lstrip("/")
             if not rel or rel.endswith("/"):
                 continue
-            p = dest / rel
-            remote = sha256_bytes(
-                cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read())
-            if p.exists():
-                local = sha256_bytes(p.read_bytes())
-                if local != remote:
-                    raise SystemExit(
-                        f"REFUSING: cached {rel} hashes {local[:16]} but S3 holds "
-                        f"{remote[:16]}; the local copy is not the pinned artifact")
-            else:
-                if verify_only:
-                    raise SystemExit(f"REFUSING: {rel} missing from cache")
-                p.parent.mkdir(parents=True, exist_ok=True)
-                p.write_bytes(
-                    cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read())
-            got[rel] = remote
+            body = cli.get_object(Bucket=BUCKET, Key=o["Key"])["Body"].read()
+            f = dest / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(body)
+            got[rel] = sha256_bytes(body)
         if not page.get("IsTruncated"):
             break
         tok = page.get("NextContinuationToken")
     return got
+
+
+def ensure_base(cli, dest: Path) -> tuple[dict, str]:
+    """Verify the local base against the PINNED MANIFEST. Returns (manifest,
+    raw manifest sha256).
+
+    The manifest is the authority, so the check is against its declared
+    checksums rather than against S3 object bytes. That matters twice over:
+    it is the same provenance definition the training run recorded, and it
+    means a 3 GB model is not re-downloaded on every evaluation merely to be
+    compared with itself. Only genuinely missing files are fetched.
+    """
+    raw = cli.get_object(Bucket=BUCKET,
+                         Key=f"{BASE_PREFIX}/MANIFEST.json")["Body"].read()
+    man = json.loads(raw)
+    man_sha = sha256_bytes(raw)
+
+    if man.get("repo") != BASE_MODEL or man.get("revision") != BASE_REVISION:
+        raise SystemExit(
+            f"REFUSING: manifest declares {man.get('repo')}@"
+            f"{str(man.get('revision'))[:12]}, this evaluator is pinned to "
+            f"{BASE_MODEL}@{BASE_REVISION[:12]}")
+
+    dest.mkdir(parents=True, exist_ok=True)
+    fetched = 0
+    for rel, meta in man["files"].items():
+        f = dest / rel
+        if not f.exists():
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(cli.get_object(
+                Bucket=BUCKET, Key=f"{BASE_PREFIX}/{rel}")["Body"].read())
+            fetched += 1
+        got = sha256_bytes(f.read_bytes())
+        if got != meta["sha256"]:
+            raise SystemExit(
+                f"REFUSING: base file {rel} hashes {got[:16]}, manifest "
+                f"declares {meta['sha256'][:16]}; these are not the pinned "
+                "weights")
+    # MANIFEST.json itself is kept beside the files it describes.
+    (dest / "MANIFEST.json").write_bytes(raw)
+    print(f"base model {BASE_MODEL}@{BASE_REVISION[:12]}: "
+          f"{len(man['files'])} files verified against MANIFEST "
+          f"{man_sha[:16]} ({fetched} fetched, "
+          f"{len(man['files']) - fetched} already local)")
+    return man, man_sha
 
 
 def load_eval(cli, language: str, task: str, version: str) -> tuple[list[dict], str]:
@@ -161,26 +197,39 @@ def load_audio(cli, rec: dict, cache: Path):
     return audio, sr
 
 
-def _prompt_len(processor, ids: list[int]) -> int:
-    """How many leading tokens are decoder prompt rather than generation.
+def expected_prompt(processor, lang_token: str, task: str,
+                    timestamps: bool = False) -> list[int]:
+    """The exact decoder prompt this configuration must produce.
 
-    Whisper's prompt is the run of special tokens at the head of the sequence:
-    <|startoftranscript|><|lang|><|transcribe|><|notimestamps|>. Counting it by
-    assumption ("it is always 4") would break silently the moment timestamps
-    or a different task are used, so it is measured.
+    Built from the tokenizer's own prefix machinery -- the same call training
+    uses -- so the evaluator and the trainer cannot disagree about what a
+    prompt is. An earlier version counted "leading special tokens" instead,
+    which is a guess: it would absorb any control token the model emitted
+    first, hiding exactly the degenerate behaviour under investigation.
     """
-    special = set(processor.tokenizer.all_special_ids)
-    n = 0
-    for t in ids:
-        if t in special and n < 8:
-            n += 1
-        else:
-            break
-    return n
+    tk = processor.tokenizer
+    tk.set_prefix_tokens(language=lang_token, task=task,
+                         predict_timestamps=timestamps)
+    return list(tk.prefix_tokens)
+
+
+def split_prompt(ids: list[int], prompt: list[int]) -> int:
+    """Assert the sequence starts with the expected prompt; return its length.
+
+    Everything after it is generated output, INCLUDING any control token the
+    model chose to emit. Treating a stray control token as prompt is how a
+    runaway decode gets scored as a short one.
+    """
+    if ids[:len(prompt)] != prompt:
+        raise SystemExit(
+            f"REFUSING: sequence begins {ids[:len(prompt)]} but the pinned "
+            f"configuration requires the prompt {prompt}. The decode did not "
+            "run under the configuration this evaluation claims.")
+    return len(prompt)
 
 
 def score_arm(model, processor, rows, audios, language: str, device: str,
-              lang_token: str) -> dict:
+              lang_token: str, prompt: list[int]) -> dict:
     """Decode every row and score. Identical for base and candidate."""
     import jiwer
     import torch
@@ -211,7 +260,7 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
         # not. Counting the whole thing as "new" overstates generated length by
         # the prompt size and mislabels rows as cap hits.
         n_total = len(ids)
-        n_prompt = _prompt_len(processor, ids)
+        n_prompt = split_prompt(ids, prompt)
         n_gen = n_total - n_prompt
         eot = processor.tokenizer.convert_tokens_to_ids(EOT_TOKEN)
         eos_pos = ids.index(eot, n_prompt) if eot in ids[n_prompt:] else None
@@ -260,6 +309,7 @@ def score_arm(model, processor, rows, audios, language: str, device: str,
             "mean": round(statistics.mean(gen), 2), "min": min(gen)},
         "total_tokens": {"median": statistics.median(tot), "max": max(tot)},
         "prompt_tokens": sorted({p["prompt_tokens"] for p in per}),
+        "expected_prompt_ids": prompt,
         "eos_emitted_rows": n_eos,
         "eos_rate": round(n_eos / len(per), 4) if per else None,
         "rows_hitting_length_cap": n_cap,
@@ -280,6 +330,11 @@ def main() -> int:
     ap.add_argument("--eval-version", default="v1")
     ap.add_argument("--adapter", action="append", default=[],
                     help="s3:// prefix or local dir of a LoRA adapter; repeatable")
+    ap.add_argument("--expect-adapter-sha256", action="append", default=[],
+                    help="required sha256 of adapter_model.safetensors, "
+                         "positionally matched to --adapter. A mismatch refuses: "
+                         "scoring a different artifact under the name of the one "
+                         "being investigated is worse than not scoring at all.")
     ap.add_argument("--lang-token", required=True,
                     help="Whisper language token forced for BOTH arms (e.g. 'en'). "
                          "Required: auto-detection could decode the two arms as "
@@ -302,13 +357,10 @@ def main() -> int:
     print(f"eval set   {a.language}/{a.task}/{a.eval_version}: {len(rows)} rows, "
           f"manifest {man_sha[:16]}")
 
-    # Verified on EVERY run, not skipped because a directory exists.
+    # Verified on EVERY run against the manifest's declared checksums.
     base_dir = work / "base"
-    base_files = fetch_prefix(cli, BASE_PREFIX, base_dir)
-    base_manifest_sha = sha256_bytes(
-        json.dumps(base_files, sort_keys=True).encode())
-    print(f"base model {BASE_MODEL}@{BASE_REVISION[:12]} on {device}: "
-          f"{len(base_files)} files verified, manifest {base_manifest_sha[:16]}")
+    base_manifest, base_manifest_sha = ensure_base(cli, base_dir)
+    print(f"device     {device}")
 
     audios = [load_audio(cli, r, work / "audio") for r in rows]
     total_min = round(sum(len(x) / sr for x, sr in audios) / 60, 3)
@@ -326,10 +378,14 @@ def main() -> int:
                                                             dtype=dtype)
         return m.to(device).eval()
 
+    prompt = expected_prompt(processor, a.lang_token, TASK)
+    print(f"prompt     {prompt} "
+          f"({processor.tokenizer.convert_ids_to_tokens(prompt)})")
+
     print("scoring    base ...")
     model = fresh_base()
     arms = {"base": score_arm(model, processor, rows, audios, a.language, device,
-                              a.lang_token)}
+                              a.lang_token, prompt)}
     b = arms["base"]
     print(f"  base WER {b['wer']} CER {b['cer']} "
           f"median gen {b['generated_tokens']['median']} "
@@ -337,14 +393,23 @@ def main() -> int:
 
     del model                                   # base arm is finished with it
 
+    if a.expect_adapter_sha256 and \
+            len(a.expect_adapter_sha256) != len(a.adapter):
+        raise SystemExit(
+            f"REFUSING: {len(a.expect_adapter_sha256)} expected hash(es) for "
+            f"{len(a.adapter)} adapter(s); they are matched positionally and an "
+            "off-by-one would check the wrong artifact")
+
     adapters_meta = {}
-    for uri in a.adapter:
-        # Keyed by the FULL uri, not the last path segment: every run's final/
-        # and every run's checkpoint-100 share a basename, and a shared cache
-        # directory would score one adapter under another's name.
+    for i, uri in enumerate(a.adapter):
+        # Keyed by the FULL uri. Every run's final/ and every run's
+        # checkpoint-100 share a basename, so a name built from the last path
+        # segment would collide across runs and one arm would overwrite another
+        # in the results -- silently, and with a plausible-looking number.
         key = sha256_bytes(uri.encode())[:16]
-        name = f"{uri.rstrip('/').split('/')[-3]}-{uri.rstrip('/').rsplit('/', 1)[-1]}" \
-            if uri.count("/") >= 3 else uri.rstrip("/").rsplit("/", 1)[-1]
+        parts = [x for x in uri.rstrip("/").split("/") if x]
+        stem = "-".join(parts[-2:]) if len(parts) >= 2 else parts[-1]
+        name = f"{stem}@{key}"
         if uri.startswith("s3://"):
             pref = uri[len("s3://"):].split("/", 1)[1]
             d = work / "adapters" / key
@@ -353,10 +418,23 @@ def main() -> int:
             d = Path(uri)
             files = {f.name: sha256_bytes(f.read_bytes())
                      for f in d.iterdir() if f.is_file()}
+        got_sha = files.get("adapter_model.safetensors")
+        if a.expect_adapter_sha256:
+            want = a.expect_adapter_sha256[i]
+            if got_sha != want:
+                raise SystemExit(
+                    f"REFUSING: {uri} adapter_model.safetensors hashes "
+                    f"{str(got_sha)[:16]}, expected {want[:16]}. This is not "
+                    "the artifact this evaluation was authorised to score.")
+        if name in adapters_meta or name in arms:
+            raise SystemExit(f"REFUSING: duplicate result key {name!r}; a second "
+                             "arm would overwrite the first")
         adapters_meta[name] = {
             "uri": uri,
             "cache_key": key,
-            "adapter_sha256": files.get("adapter_model.safetensors"),
+            "adapter_sha256": got_sha,
+            "expected_sha256": (a.expect_adapter_sha256[i]
+                                if a.expect_adapter_sha256 else None),
             "files": {k: v for k, v in sorted(files.items())},
         }
         from peft import PeftModel
@@ -364,7 +442,7 @@ def main() -> int:
         merged = PeftModel.from_pretrained(base, str(d)).eval()
         print(f"scoring    {name} ...")
         arms[name] = score_arm(merged, processor, rows, audios, a.language,
-                               device, a.lang_token)
+                               device, a.lang_token, prompt)
         r = arms[name]
         print(f"  {name} WER {r['wer']} CER {r['cer']} "
               f"median gen {r['generated_tokens']['median']} "
@@ -379,7 +457,9 @@ def main() -> int:
         "eval_rows": len(rows), "eval_minutes": total_min,
         "base_model": BASE_MODEL, "base_revision": BASE_REVISION,
         "base_manifest_sha256": base_manifest_sha,
-        "base_files_verified": len(base_files),
+        "base_manifest_repo": base_manifest["repo"],
+        "base_manifest_revision": base_manifest["revision"],
+        "base_files_verified": len(base_manifest["files"]),
         "device": device, "torch": torch.__version__,
         "image_digest": os.environ.get("MEDZEN_IMAGE_DIGEST"),
         "code_git_commit": _git_commit(),
