@@ -170,8 +170,20 @@ def test_watchdog_terminates_the_whole_process_group():
         pytest.fail("grandchild survived group TERM — orphan leak")
 
     p.wait(timeout=10)
-    with pytest.raises(OSError):
-        os.kill(child_pid, 0)                # grandchild really is gone
+    # Exactly two acceptable outcomes, and nothing else:
+    #   ProcessLookupError -- the pid is gone; or
+    #   /proc state Z      -- dead but unreaped, because a container's PID 1 is
+    #                         pytest, not an init that buries orphans.
+    # If kill(pid, 0) succeeds and the process is NOT a zombie, it is genuinely
+    # still running and that is the orphan leak this test exists to catch.
+    try:
+        os.kill(child_pid, 0)
+    except ProcessLookupError:
+        pass                                  # gone
+    else:
+        assert is_zombie(child_pid), (
+            f"grandchild {child_pid} survived group TERM and is not a zombie "
+            "— orphan leak")
 
 
 def test_driver_uses_group_termination_not_bare_kill9():

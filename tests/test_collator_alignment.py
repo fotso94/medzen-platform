@@ -206,7 +206,9 @@ def test_label_lengths_now_actually_subtracts_the_prefix():
 # --------------------------------------------------------------------------- #
 # the double must match reality
 # --------------------------------------------------------------------------- #
+# net as well as slow: it downloads the pinned tokenizer from S3.
 @pytest.mark.slow
+@pytest.mark.net
 def test_double_matches_the_real_tokenizer():
     """Guards against the double drifting into agreement with a wrong impl."""
     boto3 = pytest.importorskip("boto3")

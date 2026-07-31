@@ -418,7 +418,10 @@ def test_seeder_revision_matches_trainer_pin():
 # --------------------------------------------------------------------------- #
 # training must work with NO Hub and NO network for the model
 # --------------------------------------------------------------------------- #
+# net as well as slow: it reads the base cache from S3. Marked slow only, it
+# would run in an "offline" suite the moment someone overrode the slow filter.
 @pytest.mark.slow
+@pytest.mark.net
 def test_real_cache_loads_offline_from_s3(tmp_path, monkeypatch):
     """End-to-end offline proof against the ACTUAL seeded cache.
 
