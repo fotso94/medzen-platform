@@ -1,6 +1,7 @@
 # PLAN-2026-002 — Corrected B4 retraining · **Option B**
 
-**Status: PREPARED, NOT EXECUTED.** Revision 2 (2026-07-31).
+**Status: EXECUTION BOUNDARY IMPLEMENTED; INPUTS NOT YET PUBLISHED.**
+Revision 3 (2026-07-31).
 Nothing published, adopted, built, launched, trained, registered or deployed.
 
 **Option B selected: training-system validation.** Option A data collection
@@ -61,30 +62,30 @@ prerequisite-free. All of the following must be complete first:
 |---|---|---|
 | T1 | Corrected collator + `label_length` | **done**, `89d9162` |
 | T2 | Corrected label audit | **done** — `ce0b9a29a39f5d4f`, 5+14 |
-| T3 | 19-row deferral policy generated | **done, unpublished** — `bb6f64d8ab244db7` |
+| T3 | 19-row deferral policy generated | **done, approved, unpublished** — `2c82a29a213bb284` |
 | T4 | New `ADOPTION.json` binding raw COMPLETE + new policy | **prepared, not published** |
 | T5 | Recomputed dataset fingerprint | **computed** — `ad8c63d157419cbd`, dry-run verified |
 | T6 | Nine validation manifests frozen | **done** — `VAL-2026-001` |
 | T7 | New trainer image from a post-fix commit | **not built** |
 | T8 | `generation_config` pinned in one place | **done** — `pipeline/generation.py` |
 | T9 | Whisper-compatible PEFT wrapper | **done** — generic `PeftModel`; a real-model test proves `SEQ_2_SEQ_LM` is incompatible with Whisper `input_features` on the pinned stack |
-| T10 | One-batch overfit + generation smoke harness | **implemented; container execution still pending** |
+| T10 | One-batch overfit + generation smoke harness | **implemented and exercised in the pinned dependency image with a real tiny Whisper model; the final rebuilt image remains pending** |
 
 **Governance**
 
 | # | Item | State |
 |---|---|---|
-| G1 | 19-row policy reviewed and approved | **awaiting review** |
-| G2 | Adoption approved and published | **blocked on G1** |
-| G3 | `DQ-2026-001` scope re-derived **by human review** | **awaiting a human** |
-| G4 | Execution approval for GPU spend | **awaiting** |
+| G1 | 19-row policy reviewed and approved | **done** — experiment-scoped approval by `platform-owner`; no row classified |
+| G2 | Adoption approved and published | **approved in scope; publication pending immutable read-back** |
+| G3 | `DQ-2026-001` scope re-derived by a human decision | **done** — `DQ-2026-001-scope-2026-07-31`; no listening or classification claimed |
+| G4 | Execution approval for GPU spend | **done** — platform owner explicitly authorised necessary local/AWS work in the B4 handoff |
 
-**G3 is not mechanical.** One row (`d0ffd52881d0b074`, amharic) is no longer
-decoder-incompatible, so the draft's 20 entries no longer match the audit. But
-*which* rows a human must listen to, and whether that row still warrants review
-on its token-rate alone, is a judgement about data — not an arithmetic
-adjustment. The draft stays **draft with all 20 entries unclassified** until a
-person decides.
+**G3 was not treated as mechanical.** The platform-owner decision keeps the 19
+mechanically flagged rows in the future listening scope and removes boundary
+row `d0ffd52881d0b074` from that scope because it is exactly at the corrected
+limit and absent from the corrected rate-outlier set. The decision explicitly
+does not endorse or classify that row. The original draft remains intact with
+all 20 entries unclassified.
 
 ## 3 · The 19-row deferral policy review packet
 
@@ -93,7 +94,7 @@ not published.**
 
 | | |
 |---|---|
-| Policy sha256 | `bb6f64d8ab244db71512aa4fad166ba505a07fc6959fef40491ead3d61774229` |
+| Policy sha256 | `2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61` |
 | Entries | **19** — 5 `over_decoder_limit` + 14 `extreme_token_rate_under_limit` |
 | `human_review_performed` | **false** |
 | Defects claimed | **0** — every row `unreviewed_anomaly_deferred_by_policy`, `defect: false`, `action: defer_pending_review` |
@@ -208,8 +209,8 @@ check that the failed 600-step run and its $0.88 could not deliver.
 | Artifact | Value | State |
 |---|---|---|
 | Corrected audit | `ce0b9a29a39f5d4fb25666fdbf6292fb377ca550847428bb7e27b5d3b8224148` | committed |
-| Policy `DQ-2026-003` | `bb6f64d8ab244db71512aa4fad166ba505a07fc6959fef40491ead3d61774229` | **unpublished** |
-| `ADOPTION.json` | binds raw COMPLETE `a4c0211eb83f3830…` + policy `bb6f64d8…` | **not published** |
+| Policy `DQ-2026-003` | `2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61` | **approved, unpublished** |
+| `ADOPTION-B4-CORRECTED.json` | binds raw COMPLETE `a4c0211eb83f3830…` + policy `2c82a29a…` | **approved in scope, not published** |
 | Dataset fingerprint | `ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275` | computed |
 
 **Dry run, nothing written:**
@@ -303,6 +304,6 @@ never overwrite each other's results.
 | EC2 g6.xlarge on-demand | up to 5 sequential (1 base+preflight + 3 sweep + 1 final) | stage-specific watchdog, self-terminating |
 | EBS gp3 root, DeleteOnTermination | 1 per instance | with the instance |
 | S3 objects | bundle, adapters, evaluation JSONs, MLflow DB | persistent, `candidates/` only |
-| S3 `curated/_versions/v2/ADOPTION.json` + policy | 2 | persistent, one-time |
+| S3 `curated/_versions/v2/ADOPTION-B4-CORRECTED.json` + experiment-scoped policy | 2 | persistent, conditional-create only |
 
 No EKS, no Spot, no load balancer, no EIP, no registry entry.

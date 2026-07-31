@@ -55,6 +55,12 @@ def main() -> int:
         "--adoption-key", default=None,
         help="direct child key under curated/_versions/<version>/. Use a new "
              "experiment-scoped key instead of replacing an earlier adoption")
+    ap.add_argument(
+        "--policy-key", default=None,
+        help="optional direct child key under curated/_versions/<version>/. "
+             "The exact policy bytes are conditionally created before the "
+             "adoption. An existing object is reusable only when its bytes "
+             "match exactly")
     ap.add_argument("--dataset-fingerprint", default=None,
                     help="required 64-hex fingerprint for a corrected adoption")
     ap.add_argument("--eligible-rows", type=int, default=None,
@@ -74,6 +80,11 @@ def main() -> int:
     if not adopt_key.startswith(want_prefix) or "/" in adopt_key[len(want_prefix):]:
         raise SystemExit(
             f"REFUSING: --adoption-key must be a direct child of {want_prefix}")
+    if a.policy_key and (
+            not a.policy_key.startswith(want_prefix)
+            or "/" in a.policy_key[len(want_prefix):]):
+        raise SystemExit(
+            f"REFUSING: --policy-key must be a direct child of {want_prefix}")
     if (a.dataset_fingerprint is None) != (a.eligible_rows is None):
         raise SystemExit(
             "REFUSING: --dataset-fingerprint and --eligible-rows must be "
@@ -110,6 +121,26 @@ def main() -> int:
     policy_raw = Path(a.policy).read_bytes()
     policy = json.loads(policy_raw)
     policy_sha = hashlib.sha256(policy_raw).hexdigest()
+
+    policy_preexisting = False
+    if a.policy_key:
+        try:
+            existing_policy = cli.get_object(
+                Bucket=BUCKET, Key=a.policy_key)["Body"].read()
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            status = e.response.get(
+                "ResponseMetadata", {}).get("HTTPStatusCode")
+            if code not in ("404", "NoSuchKey", "NotFound") and status != 404:
+                raise SystemExit(
+                    f"REFUSING: cannot determine whether {a.policy_key} exists "
+                    f"({code or status}). An error is not an absence.")
+        else:
+            if existing_policy != policy_raw:
+                raise SystemExit(
+                    f"REFUSING: s3://{BUCKET}/{a.policy_key} exists with "
+                    "different bytes")
+            policy_preexisting = True
 
     # ---- the policy must be the conservative deferral, not a review --------
     if policy.get("decision_type") != "policy_deferral":
@@ -160,6 +191,7 @@ def main() -> int:
         "complete_raw_sha256": comp_sha,
         "complete_manifests_total": len(comp.get("manifests") or {}),
         "deferral_policy_id": policy["list_id"],
+        "deferral_policy_key": a.policy_key,
         "deferral_policy_sha256": policy_sha,
         "deferral_policy_human_review_performed": policy["human_review_performed"],
         "deferred_rows": policy["counts"]["total"],
@@ -197,8 +229,48 @@ def main() -> int:
     print(json.dumps(doc, indent=2))
     print(f"\nADOPTION_SHA256={hashlib.sha256(body).hexdigest()}")
     if not a.upload:
+        if a.policy_key:
+            state = "already present with identical bytes" \
+                if policy_preexisting else "absent; would create conditionally"
+            print(f"policy object: s3://{BUCKET}/{a.policy_key} ({state})")
         print("\n(dry run — pass --upload to publish)")
         return 0
+
+    # S3 cannot atomically create two keys. Publish the dependency first, then
+    # the adoption that references it. If an earlier attempt created the exact
+    # policy but not the adoption, it is safe to resume. Different bytes always
+    # refuse.
+    if a.policy_key and not policy_preexisting:
+        try:
+            policy_put = cli.put_object(
+                Bucket=BUCKET, Key=a.policy_key, Body=policy_raw,
+                ContentType="application/json", IfNoneMatch="*")
+        except ParamValidationError:
+            raise SystemExit(
+                "REFUSING: this botocore does not support conditional writes "
+                "(If-None-Match).")
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code")
+            if code not in ("PreconditionFailed",
+                            "ConditionalRequestConflict"):
+                raise
+            back = cli.get_object(
+                Bucket=BUCKET, Key=a.policy_key)["Body"].read()
+            if back != policy_raw:
+                raise SystemExit(
+                    f"REFUSING: {a.policy_key} was concurrently created with "
+                    "different bytes")
+            policy_preexisting = True
+        else:
+            policy_preexisting = True
+            policy_vid = policy_put.get("VersionId")
+            back = cli.get_object(
+                Bucket=BUCKET, Key=a.policy_key)["Body"].read()
+            if back != policy_raw:
+                raise SystemExit(
+                    "REFUSING: policy read-back differs from what was written")
+            print(f"published s3://{BUCKET}/{a.policy_key}")
+            print(f"  VersionId {policy_vid}")
 
     # Conditional create. The head_object above can go stale between the check
     # and the write; If-None-Match makes S3 the arbiter, so a concurrent
@@ -226,16 +298,9 @@ def main() -> int:
     print(f"  VersionId {vid}")
     print(f"  bound COMPLETE raw {comp_sha[:16]} | policy {policy_sha[:16]}")
 
-    EVIDENCE.mkdir(parents=True, exist_ok=True)
-    ev = EVIDENCE / f"adoption-{a.version}.json"
-    ev.write_text(json.dumps({
-        "key": adopt_key, "version_id": vid,
-        "adoption_sha256": hashlib.sha256(body).hexdigest(),
-        "complete_raw_sha256": comp_sha, "deferral_policy_sha256": policy_sha,
-        "published_utc": doc["approved_utc"],
-        "object_lock": "not configured; versioning only",
-    }, indent=2) + "\n")
-    print(f"  evidence {ev.relative_to(ROOT)}")
+    # The S3 adoption is itself the durable record. Do not rewrite the historic
+    # local adoption-v2.json file: that evidence belongs to the earlier,
+    # 20-row adoption and must remain immutable.
     return 0
 
 

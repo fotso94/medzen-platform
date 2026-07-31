@@ -195,8 +195,23 @@ def test_publisher_binds_raw_bytes_and_the_policy():
     src = PUBLISH.read_text()
     assert "hashlib.sha256(comp_raw).hexdigest()" in src
     assert '"deferral_policy_sha256": policy_sha' in src
+    assert '"deferral_policy_key": a.policy_key' in src
     assert 'policy.get("decision_type") != "policy_deferral"' in src
     assert 'policy.get("human_review_performed") is not False' in src
+
+
+def test_publisher_conditionally_creates_or_exactly_reuses_policy():
+    src = PUBLISH.read_text()
+    assert 'Key=a.policy_key, Body=policy_raw' in src
+    assert "exists with " in src and "different bytes" in src
+    assert "policy read-back differs" in src
+    assert "safe to resume" in src
+
+
+def test_corrected_adoption_does_not_overwrite_historic_local_evidence():
+    src = PUBLISH.read_text()
+    assert 'EVIDENCE / f"adoption-{a.version}.json"' not in src
+    assert "historic" in src and "adoption-v2.json" in src
 
 
 def test_publisher_does_not_claim_worm():
