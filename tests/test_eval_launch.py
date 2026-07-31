@@ -347,7 +347,7 @@ def test_publish_bundle_has_a_dry_run_that_uploads_nothing():
     assert '"--dry-run", action="store_true"' in src
     assert "DRY RUN — nothing uploaded" in src
     i_dry = src.index("if a.dry_run:")
-    i_upload = src.index("c.upload_file(str(bundle)")
+    i_upload = src.index("bundle_vid = put_immutable(")
     assert i_dry < i_upload, "the dry-run must return before any upload"
 
 

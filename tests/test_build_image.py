@@ -122,6 +122,14 @@ def test_publish_bundle_uses_a_per_commit_path():
     assert s.index('f"{base}/medzen_code.tgz"') < s.index('f"{base}/BUNDLE.json"')
 
 
+def test_publish_bundle_conditionally_creates_or_exactly_reuses_objects():
+    s = PUBLISH.read_text()
+    assert 'IfNoneMatch="*"' in s
+    assert "already exists with " in s and "different bytes" in s
+    assert "was concurrently created" in s
+    assert "verified existing" in s
+
+
 # --------------------------------------------------------------------------- #
 # bootstrap trust: verification must precede execution of anything from S3
 # --------------------------------------------------------------------------- #

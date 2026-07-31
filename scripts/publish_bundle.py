@@ -30,6 +30,8 @@ import tempfile
 import time
 from pathlib import Path
 
+from botocore.exceptions import ClientError, ParamValidationError
+
 BUCKET = "medzen-speech"
 PROFILE = "medzen"
 REGION = "eu-central-1"
@@ -51,6 +53,43 @@ def cli():
 
 def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
+
+
+def put_immutable(c, key: str, body: bytes, content_type: str) -> str | None:
+    """Conditionally create *key*, or reuse it only when bytes are identical."""
+    try:
+        existing = c.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
+        if code not in ("404", "NoSuchKey", "NotFound") and status != 404:
+            raise SystemExit(
+                f"REFUSING: cannot determine whether {key} exists "
+                f"({code or status}). An error is not an absence.")
+    else:
+        if existing != body:
+            raise SystemExit(
+                f"REFUSING: s3://{BUCKET}/{key} already exists with "
+                "different bytes")
+        return None
+
+    try:
+        put = c.put_object(Bucket=BUCKET, Key=key, Body=body,
+                           ContentType=content_type, IfNoneMatch="*")
+    except ParamValidationError:
+        raise SystemExit(
+            "REFUSING: botocore does not support conditional S3 writes")
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code")
+        if code not in ("PreconditionFailed", "ConditionalRequestConflict"):
+            raise
+        existing = c.get_object(Bucket=BUCKET, Key=key)["Body"].read()
+        if existing != body:
+            raise SystemExit(
+                f"REFUSING: s3://{BUCKET}/{key} was concurrently created "
+                "with different bytes")
+        return None
+    return put.get("VersionId")
 
 
 def main() -> int:
@@ -158,12 +197,19 @@ def main() -> int:
             print(f"  would publish to s3://{BUCKET}/{base}/")
             return 0
         c = cli()
-        c.upload_file(str(bundle), BUCKET, f"{base}/medzen_code.tgz")
-        print(f"  uploaded {base}/medzen_code.tgz ({bundle.stat().st_size} bytes)")
+        bundle_key = f"{base}/medzen_code.tgz"
+        bundle_body = bundle.read_bytes()
+        bundle_vid = put_immutable(
+            c, bundle_key, bundle_body, "application/gzip")
+        state = "uploaded" if bundle_vid else "verified existing"
+        print(f"  {state} {bundle_key} ({len(bundle_body)} bytes)")
         # BUNDLE.json last: its presence means the pair is complete and matched
-        c.put_object(Bucket=BUCKET, Key=f"{base}/BUNDLE.json",
-                     Body=(json.dumps(manifest, indent=2) + "\n").encode())
-        print(f"  uploaded {base}/BUNDLE.json ({len(files)} files)")
+        manifest_key = f"{base}/BUNDLE.json"
+        manifest_body = (json.dumps(manifest, indent=2) + "\n").encode()
+        manifest_vid = put_immutable(
+            c, manifest_key, manifest_body, "application/json")
+        state = "uploaded" if manifest_vid else "verified existing"
+        print(f"  {state} {manifest_key} ({len(files)} files)")
 
         tar_sha = manifest["tar_sha256"]
 
