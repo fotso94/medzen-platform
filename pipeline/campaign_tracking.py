@@ -130,6 +130,56 @@ class CampaignTracker:
         self.parent_run_id = self._create_parent()
         self.children: dict[str, str] = {}
 
+    @classmethod
+    def recover_existing(
+            cls, db: Path, campaign_run: str, attempt: str,
+            parent_run_id: str, children: dict[str, str]
+            ) -> "CampaignTracker":
+        """Reopen the exact runs bound into an immutable stage descriptor.
+
+        This never creates a run.  It is for the case where an operator
+        observer disconnected after the container completed and must repair
+        the status of the already-bound parent and child runs.
+        """
+        import mlflow
+
+        tracker = cls.__new__(cls)
+        tracker.db = Path(db).resolve()
+        if not tracker.db.is_file():
+            raise SystemExit("REFUSING: recovery MLflow database is absent")
+        tracker.tracking_uri = f"sqlite:///{tracker.db}"
+        tracker.campaign_run = campaign_run
+        tracker.attempt = str(attempt)
+        mlflow.set_tracking_uri(tracker.tracking_uri)
+        tracker.client = mlflow.tracking.MlflowClient(
+            tracking_uri=tracker.tracking_uri)
+        tracker.parent_run_id = parent_run_id
+        tracker.children = dict(children)
+
+        expected = [(parent_run_id, None)] + list(children.items())
+        for first, second in expected:
+            run_id, stage_key = ((first, second) if second is None
+                                 else (second, first))
+            try:
+                run = tracker.client.get_run(run_id)
+            except Exception as exc:  # noqa: BLE001
+                raise SystemExit(
+                    f"REFUSING: bound MLflow run {run_id} is absent") from exc
+            tags = run.data.tags
+            if (tags.get("medzen.campaign_run") != campaign_run
+                    or tags.get("medzen.attempt") != str(attempt)):
+                raise SystemExit(
+                    f"REFUSING: MLflow run {run_id} belongs to another attempt")
+            if stage_key is None:
+                if tags.get("mlflow.parentRunId"):
+                    raise SystemExit(
+                        "REFUSING: bound MLflow parent is itself a child")
+            elif (tags.get("mlflow.parentRunId") != parent_run_id
+                  or tags.get("medzen.stage") != stage_key):
+                raise SystemExit(
+                    f"REFUSING: MLflow child {run_id} identity differs")
+        return tracker
+
     def _create_parent(self) -> str:
         tags = {
             "mlflow.runName": self.campaign_run,

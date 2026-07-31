@@ -287,6 +287,136 @@ class EC2StageAdapter:
             rc = int(result.get("exit_status", 1))
         return result, rc
 
+    def _final_result(
+            self, descriptor: dict, prefix: str, instance_id: str,
+            launch_time: datetime, observed_terminated: datetime,
+            terminal: dict, volume_id: str | None, deleted: bool,
+            user_data_sha: str) -> dict:
+        """Join container evidence to AWS-observed lifecycle evidence."""
+        container, rc = self._container_result(prefix)
+        identity_problems = []
+        expected_hash = stage_descriptor.descriptor_hash(descriptor)
+        if container.get("stage_descriptor_sha256") != expected_hash:
+            identity_problems.append(
+                "container descriptor hash does not match the authorised "
+                "descriptor")
+        for field in ("campaign_run", "attempt", "stage"):
+            if container.get(field) != descriptor[field]:
+                identity_problems.append(
+                    f"container {field}={container.get(field)!r}, expected "
+                    f"{descriptor[field]!r}")
+        actual_seconds = max(
+            0.0, (observed_terminated - launch_time).total_seconds())
+        return {
+            **container,
+            "instance_id": instance_id,
+            "launched_utc": _utc(launch_time),
+            "terminated_utc": _utc(observed_terminated),
+            "actual_seconds": round(actual_seconds, 1),
+            "exit_status": rc,
+            "root_volume_id": volume_id,
+            "root_volume_deleted": deleted,
+            "aws_final_state": terminal["State"]["Name"],
+            "user_data_sha256": user_data_sha,
+            "instance_type": self.config.instance_type,
+            "lifecycle": "on-demand-direct-ec2",
+            "eks_involved": False,
+            "spot_involved": False,
+            "identity_problems": identity_problems,
+        }
+
+    def recover_terminated(
+            self, descriptor: dict, instance_id: str,
+            volume_id: str | None = None) -> dict:
+        """Finish evidence publication after an operator observer disconnect.
+
+        Recovery cannot launch, stop, or terminate anything.  It accepts only
+        the exact descriptor already stored for an already-terminated,
+        identity-matched instance, proves root-volume deletion, and then
+        creates the missing immutable stage result.  If that result already
+        exists it is verified and returned without a write.
+        """
+        from botocore.exceptions import ClientError
+
+        stage_descriptor.build(**descriptor)
+        prefix = descriptor["output_prefix"].rstrip("/") + "/"
+        descriptor_key = prefix + "descriptor.json"
+        try:
+            stored_descriptor = self.s3.get_object(
+                Bucket=self.config.bucket, Key=descriptor_key)["Body"].read()
+        except Exception as exc:  # noqa: BLE001
+            raise StageLaunchError(
+                "REFUSING: recovery descriptor is absent or unreadable") from exc
+        if stored_descriptor != _descriptor_bytes(descriptor):
+            raise StageLaunchError(
+                "REFUSING: recovery descriptor differs from immutable S3 bytes")
+
+        result_key = prefix + "stage-result.json"
+        try:
+            raw = self.s3.get_object(
+                Bucket=self.config.bucket, Key=result_key)["Body"].read()
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") not in (
+                    "NoSuchKey", "404", "NotFound"):
+                raise StageLaunchError(
+                    "REFUSING: cannot establish whether stage-result exists") \
+                    from exc
+        except KeyError:
+            # Test double equivalent of S3 NoSuchKey.
+            pass
+        else:
+            existing = json.loads(raw)
+            if existing.get("instance_id") != instance_id:
+                raise StageLaunchError(
+                    "REFUSING: existing stage-result belongs to another instance")
+            stage_descriptor.verify_result(descriptor, existing)
+            return existing
+
+        out = self.ec2.describe_instances(InstanceIds=[instance_id])
+        reservations = out.get("Reservations") or []
+        instances = [
+            item for reservation in reservations
+            for item in reservation.get("Instances", [])]
+        if len(instances) != 1:
+            raise StageLaunchError(
+                "REFUSING: recovery instance is absent or ambiguous")
+        terminal = instances[0]
+        if terminal.get("State", {}).get("Name") != "terminated":
+            raise StageLaunchError(
+                "REFUSING: recovery is only valid after AWS reports terminated")
+        tags = {tag.get("Key"): tag.get("Value")
+                for tag in terminal.get("Tags", [])}
+        expected_tags = {
+            "Project": "MedZen", "Phase": "B4",
+            "Campaign": descriptor["campaign_run"],
+            "Attempt": str(descriptor["attempt"]),
+            "Stage": descriptor["stage"],
+            "ManagedBy": "medzen-b4-campaign",
+        }
+        if any(tags.get(key) != value
+               for key, value in expected_tags.items()):
+            raise StageLaunchError(
+                "REFUSING: recovery instance tags do not match the descriptor")
+        launch_time = terminal.get("LaunchTime")
+        if not isinstance(launch_time, datetime):
+            raise StageLaunchError(
+                "REFUSING: recovery instance has no AWS launch timestamp")
+        if volume_id is None:
+            for mapping in terminal.get("BlockDeviceMappings", []):
+                volume_id = mapping.get("Ebs", {}).get("VolumeId") or volume_id
+        deleted = self._volume_deleted(volume_id)
+        if not deleted:
+            raise StageLaunchError(
+                "REFUSING: recovery cannot prove root-volume deletion")
+        _, user_data_sha = render_user_data(descriptor, self.config)
+        final = self._final_result(
+            descriptor, prefix, instance_id, launch_time,
+            datetime.now(timezone.utc), terminal, volume_id, deleted,
+            user_data_sha)
+        stage_descriptor.verify_result(descriptor, final)
+        self._put_immutable(result_key, _json_bytes(final))
+        return final
+
     def _wait_terminated(self, instance_id: str, deadline: float
                          ) -> tuple[dict, datetime]:
         last: dict = {}
@@ -430,36 +560,9 @@ class EC2StageAdapter:
             for mapping in terminal.get("BlockDeviceMappings", []):
                 volume_id = mapping.get("Ebs", {}).get("VolumeId") or volume_id
         deleted = self._volume_deleted(volume_id)
-        actual_seconds = max(
-            0.0, (observed_terminated - launch_time).total_seconds())
-        container, rc = self._container_result(prefix)
-        identity_problems = []
-        expected_hash = stage_descriptor.descriptor_hash(descriptor)
-        if container.get("stage_descriptor_sha256") != expected_hash:
-            identity_problems.append(
-                "container descriptor hash does not match the authorised "
-                "descriptor")
-        for field in ("campaign_run", "attempt", "stage"):
-            if container.get(field) != descriptor[field]:
-                identity_problems.append(
-                    f"container {field}={container.get(field)!r}, expected "
-                    f"{descriptor[field]!r}")
-        final = {
-            **container,
-            "instance_id": instance_id,
-            "launched_utc": _utc(launch_time),
-            "terminated_utc": _utc(observed_terminated),
-            "actual_seconds": round(actual_seconds, 1),
-            "exit_status": rc,
-            "root_volume_id": volume_id,
-            "root_volume_deleted": deleted,
-            "aws_final_state": terminal["State"]["Name"],
-            "user_data_sha256": user_data_sha,
-            "instance_type": self.config.instance_type,
-            "lifecycle": "on-demand-direct-ec2",
-            "eks_involved": False,
-            "spot_involved": False,
-            "identity_problems": identity_problems,
-        }
+        final = self._final_result(
+            descriptor, prefix, instance_id, launch_time,
+            observed_terminated, terminal, volume_id, deleted,
+            user_data_sha)
         self._put_immutable(prefix + "stage-result.json", _json_bytes(final))
         return final

@@ -663,6 +663,35 @@ def test_real_mlflow_parent_child_structure(tmp_path):
     assert tracker.client.search_registered_models() == []
 
 
+def test_mlflow_recovery_reopens_exact_failed_runs_without_creating_new_runs(
+        tmp_path):
+    db = tmp_path / "mlflow.db"
+    original = CampaignTracker(db, "camp", "7")
+    child = original.start_stage("decode", {"training_steps": 0})
+    original.fail_stage("decode", "observer disconnected")
+    original.finish_parent(False, "observer disconnected")
+    before = original.client.search_runs([original.experiment_id])
+
+    recovered = CampaignTracker.recover_existing(
+        db, "camp", "7", original.parent_run_id, {"decode": child})
+
+    after = recovered.client.search_runs([original.experiment_id])
+    assert {run.info.run_id for run in after} == {
+        run.info.run_id for run in before}
+    assert recovered.parent_run_id == original.parent_run_id
+    assert recovered.children == {"decode": child}
+
+
+def test_mlflow_recovery_refuses_a_child_bound_to_another_stage(tmp_path):
+    db = tmp_path / "mlflow.db"
+    original = CampaignTracker(db, "camp", "7")
+    child = original.start_stage("decode", {"training_steps": 0})
+
+    with pytest.raises(SystemExit, match="identity differs"):
+        CampaignTracker.recover_existing(
+            db, "camp", "7", original.parent_run_id, {"other": child})
+
+
 class Body:
     def __init__(self, value):
         self.value = value
@@ -733,6 +762,7 @@ class FakeEC2:
         self.tamper = tamper
         self.active = active
         self.launched = []
+        self.recovery_state = "terminated"
 
     def describe_instances(self, Filters=None, InstanceIds=None):
         if Filters is not None:
@@ -742,7 +772,16 @@ class FakeEC2:
             return {"Reservations": [{"Instances": active}] if active else []}
         return {"Reservations": [{"Instances": [{
             "InstanceId": InstanceIds[0],
-            "State": {"Name": "terminated"},
+            "State": {"Name": self.recovery_state},
+            "LaunchTime": datetime(2026, 7, 31, tzinfo=timezone.utc),
+            "Tags": [
+                {"Key": "Project", "Value": "MedZen"},
+                {"Key": "Phase", "Value": "B4"},
+                {"Key": "Campaign", "Value": "b4-test"},
+                {"Key": "Attempt", "Value": "1"},
+                {"Key": "Stage", "Value": "sweep"},
+                {"Key": "ManagedBy", "Value": "medzen-b4-campaign"},
+            ],
             "BlockDeviceMappings": [{
                 "Ebs": {"VolumeId": "vol-1"}}],
         }]}]}
@@ -841,6 +880,51 @@ def test_ec2_adapter_observes_termination_and_volume_deletion():
     assert launch["MetadataOptions"]["HttpTokens"] == "required"
     assert launch["BlockDeviceMappings"][0]["Ebs"]["DeleteOnTermination"] is True
     assert launch["BlockDeviceMappings"][0]["DeviceName"] == "/dev/xvda"
+
+
+def test_ec2_adapter_recovers_terminated_stage_without_relaunch_or_overwrite():
+    session = FakeSession()
+    d = descriptor()
+    prefix = d["output_prefix"].rstrip("/") + "/"
+    session.s3.objects[prefix + "descriptor.json"] = json.dumps(
+        d, sort_keys=True, separators=(",", ":")).encode()
+    session.s3.objects[prefix + "container-result.json"] = json.dumps({
+        "stage_descriptor_sha256": stage_descriptor.descriptor_hash(d),
+        "campaign_run": d["campaign_run"],
+        "attempt": d["attempt"],
+        "stage": d["stage"],
+        "artifact_sha256": "5" * 64,
+    }).encode()
+    session.s3.objects[prefix + "container-exit-code"] = b"0\n"
+    adapter = EC2StageAdapter(
+        session,
+        EC2StageConfig(poll_seconds=0, termination_grace_seconds=1),
+    )
+
+    recovered = adapter.recover_terminated(d, "i-stage", "vol-1")
+    again = adapter.recover_terminated(d, "i-stage", "vol-1")
+
+    assert recovered == again
+    assert recovered["root_volume_deleted"] is True
+    assert session.ec2.launched == []
+    assert sum(key.endswith("/stage-result.json")
+               for key, _ in session.s3.puts) == 1
+
+
+def test_ec2_adapter_recovery_refuses_a_live_instance_without_writing_result():
+    session = FakeSession()
+    d = descriptor()
+    prefix = d["output_prefix"].rstrip("/") + "/"
+    session.s3.objects[prefix + "descriptor.json"] = json.dumps(
+        d, sort_keys=True, separators=(",", ":")).encode()
+    session.ec2.recovery_state = "running"
+
+    with pytest.raises(StageLaunchError, match="only valid after AWS reports"):
+        EC2StageAdapter(session).recover_terminated(
+            d, "i-stage", "vol-1")
+
+    assert session.ec2.launched == []
+    assert prefix + "stage-result.json" not in session.s3.objects
 
 
 def test_direct_ec2_preflight_verifies_infrastructure_without_mutation():
