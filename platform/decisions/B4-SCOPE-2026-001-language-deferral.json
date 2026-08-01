@@ -1,11 +1,11 @@
 {
   "record": "B4-LANGUAGE-SCOPE-DECISION",
   "id": "B4-SCOPE-2026-001",
-  "revision": 4,
+  "revision": 5,
   "status": "approved",
   "authorized_by_role": "platform-owner",
-  "authorized_utc": "2026-08-01T04:24:04Z",
-  "authorization_note": "For the current B4 training-system validation campaign, remove Amharic completely and defer any smaller language that still prevents progress without weakening a gate. After Acholi was deferred, the fresh 11-language 1e-4 confirmation failed closed only on Fula termination (3 of 51 rows without EOS). The owner explicitly approved deferring Fula and raising the cumulative B4 ceiling to $12. Oromo and Luganda remain active.",
+  "authorized_utc": "2026-08-01T13:18:37Z",
+  "authorization_note": "For the current B4 training-system validation campaign, remove Amharic completely and defer languages that still prevent progress without weakening a gate. After Fula was deferred, the fresh 10-language 1e-4 confirmation failed closed on Akan termination and WER regression plus Shona termination. The owner explicitly approved Option 2: defer Akan and Shona and proceed with the remaining eight-language training scope. Oromo and Luganda remain active. The cumulative B4 ceiling remains $12.",
   "interpretation": "Removal is a reversible experiment-scope deferral. No registry entry, manifest, audio object, transcript, prior evidence, model artifact or historical MLflow record is deleted or rewritten.",
   "scope": {
     "experiment": "b4-whisper-large-v3-lora-corrected",
@@ -32,57 +32,53 @@
       "lingala", "luganda", "oromo", "pidgin", "shona", "swahili", "yoruba"
     ],
     "active_training": [
-      "akan", "hausa", "igbo", "lingala", "luganda",
-      "oromo", "pidgin", "shona", "swahili", "yoruba"
+      "hausa", "igbo", "lingala", "luganda", "oromo",
+      "pidgin", "swahili", "yoruba"
     ],
     "original_validation": [
       "acholi", "akan", "amharic", "ewe", "fula", "lingala",
       "luganda", "oromo", "shona"
     ],
-    "active_validation": [
-      "akan", "lingala", "luganda", "oromo", "shona"
-    ],
-    "deferred": ["acholi", "amharic", "ewe", "fula"]
+    "active_validation": ["lingala", "luganda", "oromo"],
+    "deferred": ["acholi", "akan", "amharic", "ewe", "fula", "shona"]
   },
   "training_mix_binding": {
     "manifest_version": "v2",
     "require_allowed_use": "asr_train",
     "temperature": 0.5,
     "seed": 0,
-    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI-FULA.json",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED-8LANG.json",
     "deferral_policy": "platform/decisions/DQ-2026-004-policy-deferral-scoped.json",
     "deferral_policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
     "deferral_policy_exclusion_set_sha256": "8cad48a85005e49a85bbdfb08a713c009735a242c67827a08021c295b6ce7a3c",
     "label_audit": "platform/evidence/label-length-audit-v2-scoped-replay.json",
     "label_audit_sha256": "bc646cbc2f2505f0a52068dd5dbf39263df707840169a66759fdf145a2ddc189",
-    "governance_rebind_note": "The source corpus and 19-row policy remain byte-identical. A new immutable adoption key and a new scoped fingerprint make the Fula deferral explicit without overwriting any earlier scope or adoption.",
+    "governance_rebind_note": "The source corpus and 19-row policy remain byte-identical. A new immutable adoption key and a new scoped fingerprint make the Akan and Shona deferrals explicit without overwriting any earlier scope or adoption.",
     "deferral_policy_rows_total": 19,
-    "deferral_policy_rows_applicable": 13,
-    "deferral_policy_rows_out_of_scope": 6,
-    "eligible_rows_before_policy_exclusions": 2822,
-    "eligible_rows_after_policy_exclusions": 2809,
-    "sampled_rows": 2810,
-    "dataset_fingerprint": "65cb36952b8a565b0f0dc5e3a6fec97bac722fc5559cf6f70d57ce0985821559",
+    "deferral_policy_rows_applicable": 9,
+    "deferral_policy_rows_out_of_scope": 10,
+    "eligible_rows_before_policy_exclusions": 2309,
+    "eligible_rows_after_policy_exclusions": 2300,
+    "sampled_rows": 2298,
+    "dataset_fingerprint": "8fcef27d63635f837611c20c946d04a6ede6caf73320a0a3ee3e391e34e2f749",
     "sampled_rows_per_language": {
-      "akan": 255,
-      "hausa": 270,
-      "igbo": 270,
-      "lingala": 273,
-      "luganda": 378,
-      "oromo": 275,
-      "pidgin": 268,
-      "shona": 283,
-      "swahili": 269,
-      "yoruba": 269
+      "hausa": 273,
+      "igbo": 273,
+      "lingala": 276,
+      "luganda": 382,
+      "oromo": 278,
+      "pidgin": 271,
+      "swahili": 273,
+      "yoruba": 272
     }
   },
   "immutable_scope_evidence": {
-    "record": "platform/evidence/CAMPAIGNRUN-2026-008-failed.json",
-    "source_campaign": "b4-scoped-515d00214c87",
+    "record": "platform/evidence/CAMPAIGNRUN-2026-009-failed.json",
+    "source_campaign": "b4-scoped-5360cd98125e",
     "source_attempt": "1",
-    "base_artifact_sha256": "4d6cba6d9cb645b7b3ec9c83926477256a292ff18924b304c0742ac815a8b28f",
-    "lr_1e_4_artifact_sha256": "a6629a47854ed11de1b324e7b6a7fec9b15a711430d327fb7b28617d1182a6a1",
-    "use": "scope diagnosis and base-arm reuse analysis only; no adapter is authorised for reuse because every prior adapter was trained on a superseded language mix"
+    "base_artifact_sha256": "b5992a3dc89d059a8e6fa6e12b207bdb02e0c8066db9eb7adedaf817f5bf8be9",
+    "lr_1e_4_artifact_sha256": "c4ee00b3bbf510eeb9c4866092d5e8bac798f3a38952df6e4109dab5a5cb462f",
+    "use": "scope diagnosis only; no adapter is authorised for reuse because every prior adapter was trained on a superseded language mix"
   },
   "smaller_language_findings": {
     "acholi": {
@@ -112,16 +108,28 @@
       "reason": "The fresh 11-language 1e-4 confirmation failed the unchanged termination gate only on Fula: 3 of 51 rows exhausted all 440 generated tokens without EOS. The same rows terminated in the base arm, so this is a learned candidate regression rather than a malformed or oversized validation row.",
       "base": {"wer": 0.9244, "eos_rate": 1.0, "cap_hit_rate": 0.0},
       "lr_1e_4": {"wer": 0.89, "eos_rate": 0.9412, "cap_hit_rate": 0.0588}
+    },
+    "akan": {
+      "decision": "defer",
+      "reason": "The fresh 10-language 1e-4 confirmation produced four cap-hit rows and regressed WER by +0.1440 absolute against the in-run base. The owner explicitly approved Option 2 deferral rather than weakening either gate.",
+      "base": {"wer": 0.9677, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "lr_1e_4": {"wer": 1.1117, "eos_rate": 0.9444, "cap_hit_rate": 0.0556}
+    },
+    "shona": {
+      "decision": "defer",
+      "reason": "The fresh 10-language 1e-4 confirmation produced one cap-hit row. The same row terminated in the preceding scope, so this is a learned scope-sensitive regression; the owner explicitly approved Option 2 deferral.",
+      "base": {"wer": 1.1039, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "lr_1e_4": {"wer": 0.9644, "eos_rate": 0.9333, "cap_hit_rate": 0.0667}
     }
   },
   "retained_scope_evidence": {
     "compatible_learning_rate": 0.0001,
-    "interpretation": "The fresh attempt-1 result supports 1e-4 for the five retained validation languages, all of which passed the unchanged WER and termination gates. It cannot supply final weights because it was trained on the superseded 11-language mix; the 10-language mix requires fresh training.",
-    "base_macro_wer": 1.04662,
-    "candidate_macro_wer": 0.98846,
+    "interpretation": "The fresh 10-language result supports 1e-4 for Lingala, Luganda and Oromo, all of which passed the unchanged WER and termination gates. It cannot supply final weights because it was trained on the superseded 10-language mix; the eight-language mix requires fresh training.",
+    "base_macro_wer": 1.053833,
+    "candidate_macro_wer": 0.8844,
     "candidate_min_eos_rate": 1.0,
     "candidate_max_cap_hit_rate": 0.0,
-    "candidate_worst_language_regression": 0.0412,
+    "candidate_worst_language_regression": -0.0519,
     "per_language_regression_gate": "pass",
     "macro_not_worse_gate": "pass"
   },
@@ -144,6 +152,16 @@
     "fula": [
       "root-cause analysis of the three fresh-1e-4 cap-hit rows without exposing private content",
       "a fresh configuration that reaches EOS on every frozen Fula row under the unchanged gates",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "akan": [
+      "investigate stability under a native or empirically validated decode-token strategy instead of the approximate Yoruba token",
+      "a fresh configuration that reaches EOS on every frozen Akan row and stays within the +0.05 WER regression cap",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "shona": [
+      "root-cause analysis of the scope-sensitive cap-hit row without exposing private content",
+      "a fresh configuration that reaches EOS on every frozen Shona row under unchanged gates",
       "a fresh scope decision and dataset fingerprint"
     ]
   },

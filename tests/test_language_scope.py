@@ -14,15 +14,15 @@ def test_scope_record_hash_and_language_partition_are_exact():
     assert digest == hashlib.sha256(
         language_scope.DECISION.read_bytes()).hexdigest()
     assert digest == language_scope.LANGUAGE_SCOPE_SHA256
-    assert doc["revision"] == 4
+    assert doc["revision"] == 5
     assert language_scope.ADOPTION_KEY == (
-        "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI-FULA.json")
+        "curated/_versions/v2/ADOPTION-B4-SCOPED-8LANG.json")
     assert language_scope.POLICY_PATH.name == (
         "DQ-2026-004-policy-deferral-scoped.json")
     assert hashlib.sha256(language_scope.POLICY_PATH.read_bytes()).hexdigest() == (
         language_scope.POLICY_SHA256)
     assert language_scope.DEFERRED_LANGUAGES == (
-        "acholi", "amharic", "ewe", "fula")
+        "acholi", "akan", "amharic", "ewe", "fula", "shona")
     assert not (set(language_scope.TRAINING_LANGUAGES)
                 & set(language_scope.DEFERRED_LANGUAGES))
     assert not (set(language_scope.VALIDATION_LANGUAGES)
@@ -40,16 +40,16 @@ def test_frozen_evidence_is_preserved_but_campaign_uses_only_active_sets():
         "acholi", "akan", "amharic", "ewe", "fula", "lingala",
         "luganda", "oromo", "shona")
     assert orchestrate.VALIDATION_LANGUAGES == (
-        "akan", "lingala", "luganda", "oromo", "shona")
+        "lingala", "luganda", "oromo")
 
 
 def test_scope_fingerprint_and_counts_are_pinned():
     assert language_scope.EXPECTED_DATASET_FINGERPRINT == (
-        "65cb36952b8a565b0f0dc5e3a6fec97bac722fc5559cf6f70d57ce0985821559")
-    assert language_scope.EXPECTED_ELIGIBLE_ROWS == 2809
-    assert language_scope.EXPECTED_SAMPLED_ROWS == 2810
+        "8fcef27d63635f837611c20c946d04a6ede6caf73320a0a3ee3e391e34e2f749")
+    assert language_scope.EXPECTED_ELIGIBLE_ROWS == 2300
+    assert language_scope.EXPECTED_SAMPLED_ROWS == 2298
     assert language_scope.EXPECTED_POLICY_ROWS_TOTAL == 19
-    assert language_scope.EXPECTED_POLICY_ROWS_APPLICABLE == 13
+    assert language_scope.EXPECTED_POLICY_ROWS_APPLICABLE == 9
     assert budget.LEDGER_KEY == "candidates/budget/b4-scoped/ledger.json"
 
 
@@ -68,12 +68,13 @@ def test_scoped_policy_is_unreviewed_and_preserves_the_same_exclusion_set():
     assert projection(scoped) == projection(prior)
 
 
-def test_smaller_language_decisions_keep_oromo_and_luganda_and_defer_rest():
+def test_language_decisions_keep_oromo_and_luganda_and_defer_blockers():
     doc = json.loads(language_scope.DECISION.read_bytes())
     findings = doc["smaller_language_findings"]
     assert {language: findings[language]["decision"] for language in findings} == {
         "acholi": "defer", "oromo": "retain", "ewe": "defer",
-        "luganda": "retain", "fula": "defer"}
+        "luganda": "retain", "fula": "defer", "akan": "defer",
+        "shona": "defer"}
     retained = doc["retained_scope_evidence"]
     assert retained["compatible_learning_rate"] == 1e-4
     assert retained["candidate_min_eos_rate"] == 1.0

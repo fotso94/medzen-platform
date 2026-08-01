@@ -19,6 +19,7 @@ from pipeline import budget, orchestrate, smoke                    # noqa: E402
 from pipeline import generation as G                               # noqa: E402
 
 LANGS = orchestrate.VALIDATION_LANGUAGES
+TARGET = LANGS[-1]
 POLICY3 = ROOT / "platform/decisions/DQ-2026-003-policy-deferral-corrected.json"
 
 
@@ -125,7 +126,8 @@ def test_all_four_gates_pass_on_a_clean_result():
 
 
 def test_gate_eos_rate():
-    g = orchestrate.evaluate_gates(wers(), wers(), perfect(shona=0.99), zeros())
+    g = orchestrate.evaluate_gates(
+        wers(), wers(), perfect(**{TARGET: 0.99}), zeros())
     assert not g["passed"] and g["gates"]["eos_rate"] is False
     assert "EOS rate below" in " ".join(g["failures"])
 
@@ -136,22 +138,22 @@ def test_gate_cap_hit_rate():
 
 
 def test_gate_per_language_regression_catches_a_hidden_collapse():
-    """Eight languages improve a lot, one collapses. The macro average looks
+    """The other languages improve a lot, one collapses. The macro looks
     fine; the run must still fail."""
     base = wers(**{l: 0.90 for l in LANGS})
     cand = wers(**{l: 0.50 for l in LANGS})
-    cand["shona"] = 0.99                       # +0.09 regression
+    cand[TARGET] = 0.99                       # +0.09 regression
     g = orchestrate.evaluate_gates(cand, base, perfect(), zeros())
     assert g["macro_wer"] < g["base_macro_wer"], "aggregate looks like an improvement"
     assert not g["passed"]
     assert g["gates"]["per_language_regression"] is False
-    assert g["worst_language"] == "shona"
+    assert g["worst_language"] == TARGET
     assert "hide one language collapsing" in " ".join(g["failures"])
 
 
 def test_regression_exactly_at_the_cap_passes():
     base = wers()
-    cand = wers(shona=0.95)                     # exactly +0.05
+    cand = wers(**{TARGET: 0.95})                # exactly +0.05
     g = orchestrate.evaluate_gates(cand, base, perfect(), zeros())
     assert g["gates"]["per_language_regression"] is True
 
@@ -167,7 +169,7 @@ def test_macro_average_is_unweighted_and_requires_every_language():
     with pytest.raises(SystemExit, match="no result for"):
         orchestrate.macro_wer(part)
     d = {l: 0.0 for l in LANGS}
-    d["shona"] = 0.9
+    d[TARGET] = 0.9
     assert orchestrate.macro_wer(d) == pytest.approx(0.9 / len(LANGS))
 
 
@@ -689,8 +691,8 @@ def test_allowlist_review_by_is_still_in_the_future():
 def test_nan_wer_cannot_pass_a_gate():
     """NaN comparisons are always False, so a NaN would slip past `> cap` and
     be reported as no regression at all."""
-    bad = wers(shona=float("nan"))
-    with pytest.raises(SystemExit, match="shona is NaN"):
+    bad = wers(**{TARGET: float("nan")})
+    with pytest.raises(SystemExit, match=f"{TARGET} is NaN"):
         orchestrate.evaluate_gates(bad, wers(), perfect(), zeros())
 
 
@@ -701,8 +703,8 @@ def test_infinite_metric_is_refused():
 
 
 def test_missing_language_cannot_pass():
-    partial = {l: 0.9 for l in LANGS if l != "shona"}
-    with pytest.raises(SystemExit, match="missing \\['shona'\\]"):
+    partial = {l: 0.9 for l in LANGS if l != TARGET}
+    with pytest.raises(SystemExit, match=rf"missing \['{TARGET}'\]"):
         orchestrate.evaluate_gates(partial, wers(), perfect(), zeros())
 
 
@@ -714,25 +716,30 @@ def test_extra_language_is_refused():
 
 def test_non_numeric_metric_is_refused():
     with pytest.raises(SystemExit, match="not numeric"):
-        orchestrate.evaluate_gates(wers(akan="0.9"), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(
+            wers(**{TARGET: "0.9"}), wers(), perfect(), zeros())
 
 
 def test_boolean_is_not_accepted_as_numeric():
     with pytest.raises(SystemExit, match="not numeric"):
-        orchestrate.evaluate_gates(wers(akan=True), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(
+            wers(**{TARGET: True}), wers(), perfect(), zeros())
 
 
 def test_negative_wer_is_refused():
     with pytest.raises(SystemExit, match="below 0.0"):
-        orchestrate.evaluate_gates(wers(akan=-0.1), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(
+            wers(**{TARGET: -0.1}), wers(), perfect(), zeros())
 
 
 @pytest.mark.parametrize("bad", [1.5, -0.01])
 def test_rates_outside_zero_one_are_refused(bad):
     with pytest.raises(SystemExit):
-        orchestrate.evaluate_gates(wers(), wers(), perfect(shona=bad), zeros())
+        orchestrate.evaluate_gates(
+            wers(), wers(), perfect(**{TARGET: bad}), zeros())
     with pytest.raises(SystemExit):
-        orchestrate.evaluate_gates(wers(), wers(), perfect(), zeros(shona=bad))
+        orchestrate.evaluate_gates(
+            wers(), wers(), perfect(), zeros(**{TARGET: bad}))
 
 
 def test_a_non_mapping_is_refused():

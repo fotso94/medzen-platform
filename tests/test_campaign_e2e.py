@@ -415,7 +415,7 @@ def test_all_candidates_failing_gates_prevents_the_final_run(db):
 
     def bad(d, lr):
         calls.append(f"run_sweep:{lr:.0e}")
-        return stage_result(d, wer=metrics(shona=0.99), eos_rate=perfect(),
+        return stage_result(d, wer=metrics(oromo=0.99), eos_rate=perfect(),
                             cap_hit_rate=zeros(), artifact_sha256="a" * 64)
     sv.run_sweep = bad
     with pytest.raises(SystemExit, match="no learning rate passed all four"):
