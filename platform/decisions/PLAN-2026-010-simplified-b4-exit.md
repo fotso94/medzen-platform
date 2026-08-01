@@ -14,6 +14,25 @@ passing checkpoint under the predeclared rule, produce a merged CTranslate2
 checkpoint recovery using EC2 Spot. No model is registered and B5 remains
 blocked.
 
+## Attempt 1 outcome and prospective amendment
+
+Attempt `b4-scoped-simplified-ed2c333/1` failed closed at final checkpoint 100
+under the predeclared exact-zero termination rule. One of 35 Lingala rows,
+identified only by audio SHA-256 in `CAMPAIGNRUN-2026-011-failed.json`, omitted
+EOS and reached the 440-token cap. No step 101 ran; artifactization and Spot
+proof did not start. The independently trained sweep checkpoint used the same
+learning rate, seed, manifests and 600-step scheduler horizon and terminated on
+all rows. The two adapters had different hashes.
+
+Before a fresh attempt, B4-SCOPE-2026-002 revision 2 prospectively replaces the
+small-set exact-zero checkpoint-selection rule with a count rule applied
+symmetrically to Lingala, Luganda and Oromo. At most one unique checksum may
+fail termination per language and checkpoint. The same checksum recurring for
+one language at a later final checkpoint fails immediately and prevents the
+next optimization step. The Lingala holdout remains strict and post-conversion
+scoring may neither increase the failure count nor introduce a new checksum.
+Attempt-1 checkpoint 100 is not reusable.
+
 ## Ordered execution
 
 1. Preserve the prior failure record and checkpoint-selection implementation

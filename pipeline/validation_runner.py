@@ -50,6 +50,42 @@ def adapter_sha256(adapter_dir: Path) -> str:
     return sha256_file(path)
 
 
+def termination_failure_summary(per_language: dict,
+                                languages: tuple[str, ...]) -> dict:
+    """Return checksum-only termination evidence for every language.
+
+    One row can both omit EOS and hit the cap.  It is counted once in
+    ``checksums`` while the two component lists remain visible for diagnosis.
+    No transcript or audio content enters this summary.
+    """
+    result = {}
+    for language in languages:
+        rows = per_language[language].get("per_utterance") or []
+        eos_missing, cap_hits = set(), set()
+        for row in rows:
+            checksum = row.get("audio_checksum_sha256")
+            if (not isinstance(checksum, str) or len(checksum) != 64
+                    or any(c not in "0123456789abcdef" for c in checksum)):
+                raise SystemExit(
+                    "REFUSING: termination evidence has a malformed audio "
+                    f"checksum for {language}")
+            if row.get("eos_emitted") is not True:
+                eos_missing.add(checksum)
+            if row.get("hit_length_cap") is True:
+                cap_hits.add(checksum)
+        unique = eos_missing | cap_hits
+        result[language] = {
+            "rows": len(rows),
+            "count": len(unique),
+            "checksums": sorted(unique),
+            "eos_missing_count": len(eos_missing),
+            "eos_missing_checksums": sorted(eos_missing),
+            "cap_hit_count": len(cap_hits),
+            "cap_hit_checksums": sorted(cap_hits),
+        }
+    return result
+
+
 class ValidationRuntime:
     """Cache frozen inputs, then score base or one saved LoRA artifact."""
 
@@ -202,6 +238,8 @@ class ValidationRuntime:
             "generated_tokens_max": {
                 l: per_language[l]["generated_tokens"]["max"]
                 for l in self.languages},
+            "termination_failures": termination_failure_summary(
+                per_language, self.languages),
         }
 
     def _record(self, arm: str, per_language: dict,

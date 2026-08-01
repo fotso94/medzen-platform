@@ -68,6 +68,15 @@ def test_owner_scope_deviation_is_executable_and_keeps_lingala():
         "decision"] == "NOT_EVALUATED"
     assert len(gates["gates"]) == 25
     assert all(row["status"] != "PASSED" for row in gates["gates"])
+    assert decision["revision"] == 2
+    termination = decision["termination_gate_deviation"]
+    assert termination["applies_symmetrically_to"] == [
+        "lingala", "luganda", "oromo"]
+    assert termination[
+        "max_unique_failures_per_language_per_checkpoint"] == 1
+    assert termination[
+        "same_checksum_may_fail_at_multiple_final_checkpoints"] is False
+    assert termination["holdout_max_unique_failures"] == 0
 
 
 def test_scoped_policy_is_unreviewed_and_adds_only_the_holdout():

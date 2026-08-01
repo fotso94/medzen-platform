@@ -202,6 +202,7 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         language_scope_sha256=p["language_scope_sha256"],
         scope_deviation_sha256=scope_deviation.DECISION_SHA256,
         a5_gate_disposition_sha256=scope_deviation.A5_GATES_SHA256,
+        termination_gate=scope_deviation.TERMINATION_GATE,
         holdout_manifest_key=p["holdout_manifest_key"],
         holdout_manifest_sha256=p["holdout_manifest_sha256"],
         holdout_evidence_sha256=p["holdout_evidence_sha256"],
@@ -336,7 +337,8 @@ def _reconcile_then_verify(
         raise
 
 
-def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
+def verify_interleaving(result: dict, base_wer: dict,
+                        termination_gate: dict | None = None) -> list[dict]:
     """Prove the final run GATED as it trained, rather than after.
 
     The contract the container must satisfy: checkpoints appear in ascending
@@ -360,6 +362,8 @@ def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
             f"{list(FINAL_CHECKPOINTS)}; a gap means a boundary was skipped")
 
     out = []
+    prior_termination_failures = {
+        language: set() for language in orchestrate.VALIDATION_LANGUAGES}
     for c in cps:
         if not c.get("artifact_sha256"):
             raise CampaignError(
@@ -367,8 +371,13 @@ def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
                 "artifact")
         gate = orchestrate.apply_checkpoint_controls(
             orchestrate.evaluate_gates(
-                c["wer"], base_wer, c["eos_rate"], c["cap_hit_rate"]),
+                c["wer"], base_wer, c["eos_rate"], c["cap_hit_rate"],
+                c.get("termination_failures"), termination_gate),
             c.get("smoke"))
+        gate = orchestrate.apply_termination_recurrence(
+            gate, prior_termination_failures)
+        for language, evidence in c["termination_failures"].items():
+            prior_termination_failures[language].update(evidence["checksums"])
         out.append({**c, "gate": gate})
 
     failed = [c for c in out if not c["gate"]["passed"]]
@@ -530,7 +539,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
             sv, sweep_stage_key, d, r, "sweep_run", sweep_budget_attempt)
         gate = orchestrate.apply_checkpoint_controls(
             orchestrate.evaluate_gates(
-                r["wer"], base["wer"], r["eos_rate"], r["cap_hit_rate"]),
+                r["wer"], base["wer"], r["eos_rate"], r["cap_hit_rate"],
+                r.get("termination_failures"), d["termination_gate"]),
             r.get("smoke"))
         r["gate"] = gate
         results.append({"lr": lr, "gate": gate})
@@ -584,7 +594,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
           instance=rfin["instance_id"])
 
     try:
-        checkpoints = verify_interleaving(rfin, base["wer"])
+        checkpoints = verify_interleaving(
+            rfin, base["wer"], df["termination_gate"])
     except BaseException as exc:
         sv.tracker.fail_stage(
             final_stage_key, f"{type(exc).__name__}: {exc}")
@@ -599,6 +610,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
             "cer": c.get("cer", {}),
             "eos_rate": c["eos_rate"],
             "cap_hit_rate": c["cap_hit_rate"],
+            "termination_failures": c["termination_failures"],
             "generated_tokens_median":
                 c.get("generated_tokens_median", {}),
             "generated_tokens_max": c.get("generated_tokens_max", {}),

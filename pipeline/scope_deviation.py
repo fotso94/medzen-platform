@@ -34,7 +34,7 @@ def load() -> tuple[dict, str, dict, str]:
     if decision.get("record") != "B4-OWNER-APPROVED-SCOPE-DEVIATION":
         problems.append("scope-deviation record type differs")
     if (decision.get("id"), decision.get("revision"), decision.get("status")) \
-            != ("B4-SCOPE-2026-002", 1, "approved"):
+            != ("B4-SCOPE-2026-002", 2, "approved"):
         problems.append("scope-deviation identity/revision/status differs")
     scope = decision.get("language_scope") or {}
     if tuple(scope.get("active_training") or ()) != EXPECTED_TRAINING:
@@ -67,6 +67,32 @@ def load() -> tuple[dict, str, dict, str]:
     if budget.get("aggregate_committed_at_authorization_usd") != 16.8738:
         problems.append("historical aggregate spend is not $16.8738")
 
+    termination = decision.get("termination_gate_deviation") or {}
+    expected_termination = {
+        "decision": "OWNER_APPROVED_COUNT_TOLERANCE",
+        "applies_symmetrically_to": list(EXPECTED_SELECTION),
+        "selection_rows": {"lingala": 35, "luganda": 53, "oromo": 35},
+        "failure_definition": (
+            "A unique validation row whose structured generation output "
+            "either omits EOS or reaches the configured token cap. A row "
+            "satisfying both conditions is counted once, keyed only by "
+            "audio_checksum_sha256."),
+        "max_unique_failures_per_language_per_checkpoint": 1,
+        "same_checksum_may_fail_at_multiple_final_checkpoints": False,
+        "holdout_max_unique_failures": 0,
+        "post_conversion": {
+            "max_unique_failures_per_language": 1,
+            "new_or_different_failure_checksums_allowed": False,
+            "failure_count_increase_allowed": False,
+        },
+        "attempt_1_checkpoint_reusable": False,
+        "fresh_training_from_pinned_base_required": True,
+    }
+    for field, want in expected_termination.items():
+        if termination.get(field) != want:
+            problems.append(
+                f"termination-gate deviation {field} differs from approval")
+
     if gates.get("record") != "A5-B4-GATE-DISPOSITION":
         problems.append("A5 matrix record type differs")
     rows = gates.get("gates") or []
@@ -87,6 +113,7 @@ def load() -> tuple[dict, str, dict, str]:
 
 
 DECISION_DOC, DECISION_SHA256, A5_GATES, A5_GATES_SHA256 = load()
+TERMINATION_GATE = DECISION_DOC["termination_gate_deviation"]
 
 
 def gate_disposition() -> list[dict]:

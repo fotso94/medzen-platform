@@ -1,10 +1,11 @@
 {
   "record": "B4-OWNER-APPROVED-SCOPE-DEVIATION",
   "id": "B4-SCOPE-2026-002",
-  "revision": 1,
+  "revision": 2,
   "status": "approved",
   "authorized_by_role": "platform-owner",
   "authorized_utc": "2026-08-01T17:14:36Z",
+  "amended_utc": "2026-08-01T20:14:54Z",
   "supersedes_for_future_execution": [
     "platform/decisions/PLAN-2026-009-base-v5-b4-exit-preparation.md"
   ],
@@ -80,6 +81,27 @@
     "provisional": true,
     "promotable": false,
     "limitation": "Selection validation is not an untouched holdout. The selected checkpoint remains provisional and non-promotable until the post-selection holdout and post-conversion checks complete."
+  },
+  "termination_gate_deviation": {
+    "decision": "OWNER_APPROVED_COUNT_TOLERANCE",
+    "reason": "The frozen checkpoint-selection sets contain 35 Lingala, 53 Luganda and 35 Oromo rows. Two independently trained checkpoint-100 artifacts with identical learning rate, seed, manifests and 600-step scheduler horizon produced zero versus one Lingala termination failure and different adapter hashes. Requiring zero failures on every small selection set is therefore an unstable model-selection boundary; this amendment tolerates one unique row per language without representing it as perfect termination.",
+    "applies_symmetrically_to": ["lingala", "luganda", "oromo"],
+    "selection_rows": {"lingala": 35, "luganda": 53, "oromo": 35},
+    "failure_definition": "A unique validation row whose structured generation output either omits EOS or reaches the configured token cap. A row satisfying both conditions is counted once, keyed only by audio_checksum_sha256.",
+    "max_unique_failures_per_language_per_checkpoint": 1,
+    "same_checksum_may_fail_at_multiple_final_checkpoints": false,
+    "recurrence_action": "Fail at the first later checkpoint where a checksum already failed for that language; execute no subsequent optimization step.",
+    "checksum_reporting": "Every checkpoint reports sorted audio SHA-256 checksums and numeric termination flags only; no transcript or audio content is persisted.",
+    "holdout_max_unique_failures": 0,
+    "holdout_reason": "The untouched Lingala holdout is a separate post-selection approval surface and remains strict; it never selects a checkpoint.",
+    "post_conversion": {
+      "max_unique_failures_per_language": 1,
+      "new_or_different_failure_checksums_allowed": false,
+      "failure_count_increase_allowed": false
+    },
+    "attempt_1_checkpoint_reusable": false,
+    "fresh_training_from_pinned_base_required": true,
+    "not_a_quality_claim": "The tolerance is a model-selection control, not evidence that the population termination-failure rate is low and not permission to mark EOS or cap-hit gates as perfect."
   },
   "servable_artifact": {
     "required": true,

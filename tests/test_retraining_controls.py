@@ -15,7 +15,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import budget, orchestrate, smoke                    # noqa: E402
+from pipeline import budget, orchestrate, scope_deviation, smoke   # noqa: E402
 from pipeline import generation as G                               # noqa: E402
 
 LANGS = orchestrate.VALIDATION_LANGUAGES
@@ -39,6 +39,44 @@ def zeros(**over):
     d = {l: 0.0 for l in LANGS}
     d.update(over)
     return d
+
+
+ROWS = {"lingala": 35, "luganda": 53, "oromo": 35}
+
+
+def termination(eos_missing=None, cap_hits=None):
+    eos_missing = eos_missing or {}
+    cap_hits = cap_hits or {}
+    result = {}
+    for language in LANGS:
+        missing = [
+            __import__("hashlib").sha256(
+                f"{language}-eos-{i}".encode()).hexdigest()
+            for i in range(eos_missing.get(language, 0))
+        ]
+        n_caps = cap_hits.get(language, 0)
+        caps = list(missing[:n_caps])
+        caps.extend(
+            __import__("hashlib").sha256(
+                f"{language}-cap-{i}".encode()).hexdigest()
+            for i in range(len(caps), n_caps)
+        )
+        unique = sorted(set(missing) | set(caps))
+        result[language] = {
+            "rows": ROWS[language], "count": len(unique),
+            "checksums": unique,
+            "eos_missing_count": len(missing),
+            "eos_missing_checksums": sorted(missing),
+            "cap_hit_count": len(caps),
+            "cap_hit_checksums": sorted(caps),
+        }
+    return result
+
+
+def gated(candidate=None, base=None, eos=None, cap=None, failures=None):
+    return orchestrate.evaluate_gates(
+        candidate or wers(), base or wers(), eos or perfect(), cap or zeros(),
+        failures or termination(), scope_deviation.TERMINATION_GATE)
 
 
 # --------------------------------------------------------------------------- #
@@ -159,20 +197,36 @@ def test_compound_policy_uses_the_injected_campaign_s3_client(tmp_path):
 # all FOUR validation gates
 # --------------------------------------------------------------------------- #
 def test_all_four_gates_pass_on_a_clean_result():
-    g = orchestrate.evaluate_gates(wers(), wers(**{l: 0.95 for l in LANGS}),
-                                   perfect(), zeros())
+    g = gated(base=wers(**{l: 0.95 for l in LANGS}))
     assert g["passed"] and all(g["gates"].values())
 
 
-def test_gate_eos_rate():
-    g = orchestrate.evaluate_gates(
-        wers(), wers(), perfect(**{TARGET: 0.99}), zeros())
+def test_one_unique_termination_failure_is_tolerated():
+    one = termination(eos_missing={TARGET: 1}, cap_hits={TARGET: 1})
+    rows = ROWS[TARGET]
+    g = gated(
+        eos=perfect(**{TARGET: round((rows - 1) / rows, 4)}),
+        cap=zeros(**{TARGET: round(1 / rows, 4)}), failures=one)
+    assert g["passed"]
+    assert g["max_unique_termination_failures"] == 1
+    assert g["termination_failures"][TARGET]["count"] == 1
+
+
+def test_gate_rejects_two_unique_eos_failures():
+    two = termination(eos_missing={TARGET: 2})
+    rows = ROWS[TARGET]
+    g = gated(
+        eos=perfect(**{TARGET: round((rows - 2) / rows, 4)}), failures=two)
     assert not g["passed"] and g["gates"]["eos_rate"] is False
-    assert "EOS rate below" in " ".join(g["failures"])
+    assert "unique termination failures exceed 1" in " ".join(g["failures"])
 
 
-def test_gate_cap_hit_rate():
-    g = orchestrate.evaluate_gates(wers(), wers(), perfect(), zeros(oromo=0.01))
+def test_gate_rejects_two_unique_cap_hits():
+    two = termination(eos_missing={"oromo": 2}, cap_hits={"oromo": 2})
+    rows = ROWS["oromo"]
+    rate = round(2 / rows, 4)
+    g = gated(eos=perfect(oromo=round((rows - 2) / rows, 4)),
+              cap=zeros(oromo=rate), failures=two)
     assert not g["passed"] and g["gates"]["cap_hit_rate"] is False
 
 
@@ -182,7 +236,7 @@ def test_gate_per_language_regression_catches_a_hidden_collapse():
     base = wers(**{l: 0.90 for l in LANGS})
     cand = wers(**{l: 0.50 for l in LANGS})
     cand[TARGET] = 0.99                       # +0.09 regression
-    g = orchestrate.evaluate_gates(cand, base, perfect(), zeros())
+    g = gated(candidate=cand, base=base)
     assert g["macro_wer"] < g["base_macro_wer"], "aggregate looks like an improvement"
     assert not g["passed"]
     assert g["gates"]["per_language_regression"] is False
@@ -193,13 +247,12 @@ def test_gate_per_language_regression_catches_a_hidden_collapse():
 def test_regression_exactly_at_the_cap_passes():
     base = wers()
     cand = wers(**{TARGET: 0.95})                # exactly +0.05
-    g = orchestrate.evaluate_gates(cand, base, perfect(), zeros())
+    g = gated(candidate=cand, base=base)
     assert g["gates"]["per_language_regression"] is True
 
 
 def test_gate_macro_not_worse():
-    g = orchestrate.evaluate_gates(wers(**{l: 0.93 for l in LANGS}), wers(),
-                                   perfect(), zeros())
+    g = gated(candidate=wers(**{l: 0.93 for l in LANGS}))
     assert not g["passed"] and g["gates"]["macro_not_worse"] is False
 
 

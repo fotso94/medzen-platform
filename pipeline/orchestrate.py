@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 
-from pipeline import language_scope
+from pipeline import language_scope, scope_deviation
 
 # VAL-2026-001 preserves all nine frozen sets.  B4-SCOPE-2026-001 authorises
 # six of them for the current campaign and defers Acholi, Amharic and Ewe
@@ -19,8 +19,9 @@ VALIDATION_LANGUAGES = language_scope.VALIDATION_LANGUAGES
 
 # Gates. FOUR of them -- an earlier draft said "both gates" and named two.
 MAX_LANGUAGE_REGRESSION = 0.05      # absolute WER, vs the in-run base arm
-REQUIRED_EOS_RATE = 1.0
-REQUIRED_CAP_HIT_RATE = 0.0
+MAX_TERMINATION_FAILURES = int(
+    scope_deviation.TERMINATION_GATE[
+        "max_unique_failures_per_language_per_checkpoint"])
 
 # The corrected 12-language campaign already performed the declared
 # 1e-4/3e-4/5e-4 comparison under the final run's 600-step scheduler horizon.
@@ -105,9 +106,68 @@ def worst_regression(candidate: dict[str, float], base: dict[str, float]
     return worst, val
 
 
+def validate_termination_failures(
+        evidence: dict, eos_rate: dict[str, float], cap_hit_rate: dict[str, float],
+        termination_gate: dict) -> dict:
+    """Validate checksum-only row evidence before applying the count gate."""
+    if termination_gate != scope_deviation.TERMINATION_GATE:
+        raise SystemExit(
+            "REFUSING: termination gate differs from the owner-approved rule")
+    if not isinstance(evidence, dict) or set(evidence) != set(VALIDATION_LANGUAGES):
+        raise SystemExit(
+            "REFUSING: termination evidence must name exactly the active "
+            "validation languages")
+    cleaned = {}
+    for language in VALIDATION_LANGUAGES:
+        item = evidence.get(language)
+        if not isinstance(item, dict):
+            raise SystemExit(
+                f"REFUSING: termination evidence for {language} is not a mapping")
+        rows = item.get("rows")
+        if isinstance(rows, bool) or not isinstance(rows, int) or rows <= 0:
+            raise SystemExit(
+                f"REFUSING: termination evidence for {language} has invalid rows")
+
+        lists = {}
+        for field in ("checksums", "eos_missing_checksums", "cap_hit_checksums"):
+            value = item.get(field)
+            if (not isinstance(value, list) or value != sorted(set(value))
+                    or any(not isinstance(v, str) or len(v) != 64
+                           or any(c not in "0123456789abcdef" for c in v)
+                           for v in value)):
+                raise SystemExit(
+                    f"REFUSING: {language} {field} is not a sorted unique "
+                    "lowercase SHA-256 list")
+            lists[field] = value
+        union = sorted(set(lists["eos_missing_checksums"])
+                       | set(lists["cap_hit_checksums"]))
+        if lists["checksums"] != union:
+            raise SystemExit(
+                f"REFUSING: {language} termination checksums are not the "
+                "deduplicated EOS/cap union")
+        expected_counts = {
+            "count": len(union),
+            "eos_missing_count": len(lists["eos_missing_checksums"]),
+            "cap_hit_count": len(lists["cap_hit_checksums"]),
+        }
+        for field, want in expected_counts.items():
+            if item.get(field) != want:
+                raise SystemExit(
+                    f"REFUSING: {language} {field} differs from checksum evidence")
+        expected_eos = round((rows - expected_counts["eos_missing_count"]) / rows, 4)
+        expected_cap = round(expected_counts["cap_hit_count"] / rows, 4)
+        if eos_rate[language] != expected_eos or cap_hit_rate[language] != expected_cap:
+            raise SystemExit(
+                f"REFUSING: {language} termination rates do not reconcile "
+                "with checksum counts")
+        cleaned[language] = {**item}
+    return cleaned
+
+
 def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
-                   eos_rate: dict[str, float], cap_hit_rate: dict[str, float]
-                   ) -> dict:
+                   eos_rate: dict[str, float], cap_hit_rate: dict[str, float],
+                   termination_failures: dict | None = None,
+                   termination_gate: dict | None = None) -> dict:
     """All FOUR gates. Every one is hard; none is advisory."""
     # Validate BEFORE gating. WER/CER are unbounded above but never negative;
     # rates must lie in [0, 1].
@@ -116,16 +176,21 @@ def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
     eos_rate = validate_metric_map(eos_rate, "EOS rate", lo=0.0, hi=1.0)
     cap_hit_rate = validate_metric_map(cap_hit_rate, "cap-hit rate",
                                        lo=0.0, hi=1.0)
+    termination_failures = validate_termination_failures(
+        termination_failures, eos_rate, cap_hit_rate, termination_gate)
 
     failures = []
-
-    bad_eos = {l: r for l, r in eos_rate.items() if r < REQUIRED_EOS_RATE}
-    if bad_eos:
-        failures.append(f"EOS rate below {REQUIRED_EOS_RATE} for {bad_eos}")
-
-    bad_cap = {l: r for l, r in cap_hit_rate.items() if r > REQUIRED_CAP_HIT_RATE}
-    if bad_cap:
-        failures.append(f"cap-hit rate above {REQUIRED_CAP_HIT_RATE} for {bad_cap}")
+    limit = int(termination_gate[
+        "max_unique_failures_per_language_per_checkpoint"])
+    bad_termination = {
+        language: item["count"]
+        for language, item in termination_failures.items()
+        if item["count"] > limit
+    }
+    if bad_termination:
+        failures.append(
+            f"unique termination failures exceed {limit} for "
+            f"{bad_termination}")
 
     lang, reg = worst_regression(candidate_wer, base_wer)
     if reg > MAX_LANGUAGE_REGRESSION:
@@ -146,12 +211,41 @@ def evaluate_gates(candidate_wer: dict[str, float], base_wer: dict[str, float],
         "worst_language_regression": round(reg, 6),
         "min_eos_rate": min(eos_rate.values()) if eos_rate else None,
         "max_cap_hit_rate": max(cap_hit_rate.values()) if cap_hit_rate else None,
-        "gates": {"eos_rate": not bad_eos, "cap_hit_rate": not bad_cap,
+        "max_unique_termination_failures": max(
+            (v["count"] for v in termination_failures.values()), default=0),
+        "termination_failures": termination_failures,
+        "gates": {"termination_count": not bad_termination,
+                  "eos_rate": not bad_termination,
+                  "cap_hit_rate": not bad_termination,
                   "per_language_regression": reg <= MAX_LANGUAGE_REGRESSION,
                   "macro_not_worse": cand_macro <= base_macro},
         "passed": not failures,
         "failures": failures,
     }
+
+
+def apply_termination_recurrence(gate: dict, prior: dict[str, set[str]]) -> dict:
+    """Fail a later checkpoint if one checksum repeats for that language."""
+    out = {
+        **gate,
+        "gates": dict(gate.get("gates") or {}),
+        "failures": list(gate.get("failures") or []),
+    }
+    recurring = {}
+    for language in VALIDATION_LANGUAGES:
+        current = set(
+            gate["termination_failures"][language]["checksums"])
+        repeated = sorted(current & set(prior.get(language, set())))
+        if repeated:
+            recurring[language] = repeated
+    out["recurrent_termination_checksums"] = recurring
+    out["gates"]["termination_recurrence"] = not recurring
+    if recurring:
+        out["failures"].append(
+            "termination checksum recurred at an independent checkpoint: "
+            + json.dumps(recurring, sort_keys=True))
+    out["passed"] = bool(gate.get("passed")) and not recurring
+    return out
 
 
 def apply_checkpoint_controls(gate: dict, smoke_result: dict | None) -> dict:

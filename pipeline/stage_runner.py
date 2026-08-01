@@ -27,7 +27,8 @@ from pipeline.generation import (EOT_TOKEN, account, expected_prompt,
 from pipeline.label_length import decoder_start_id
 from pipeline.languages import LANG_TOKEN
 from pipeline.validation_runner import (ValidationRuntime, adapter_sha256,
-                                         sha256_file)
+                                         sha256_file,
+                                         termination_failure_summary)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -490,7 +491,8 @@ def run_sweep(cli, descriptor: dict, work: Path) -> dict:
     gate = orchestrate.apply_checkpoint_controls(
         orchestrate.evaluate_gates(
             result["wer"], base_wer,
-            result["eos_rate"], result["cap_hit_rate"]),
+            result["eos_rate"], result["cap_hit_rate"],
+            result["termination_failures"], descriptor["termination_gate"]),
         smoke_result)
     manifest = upload_tree(
         cli, adapter,
@@ -514,6 +516,8 @@ def run_final(cli, descriptor: dict, work: Path) -> dict:
     runtime = ValidationRuntime(cli, descriptor, work / "validation")
     checkpoints = []
     resume = None
+    prior_termination_failures = {
+        language: set() for language in descriptor["validation_languages"]}
     for step in descriptor["checkpoint_steps"]:
         train = run_training(
             descriptor, out, lr=float(descriptor["lr"]),
@@ -540,14 +544,21 @@ def run_final(cli, descriptor: dict, work: Path) -> dict:
         gate = orchestrate.apply_checkpoint_controls(
             orchestrate.evaluate_gates(
                 scored["wer"], base_wer,
-                scored["eos_rate"], scored["cap_hit_rate"]),
+                scored["eos_rate"], scored["cap_hit_rate"],
+                scored["termination_failures"],
+                descriptor["termination_gate"]),
             smoke_result)
+        gate = orchestrate.apply_termination_recurrence(
+            gate, prior_termination_failures)
+        for language, evidence in scored["termination_failures"].items():
+            prior_termination_failures[language].update(evidence["checksums"])
         finite = _finite_training(train)
         checkpoints.append({
             "step": step,
             **{k: scored[k] for k in (
                 "wer", "cer", "eos_rate", "cap_hit_rate",
-                "generated_tokens_median", "generated_tokens_max")},
+                "generated_tokens_median", "generated_tokens_max",
+                "termination_failures")},
             "artifact_sha256": eval_sha,
             "artifact_tree_sha256": tree["tree_sha256"],
             "adapter_sha256": scored["adapter_sha256"],
@@ -613,6 +624,81 @@ def _relative_gain_gate(candidate: dict, base: dict, languages: tuple[str, ...]
     ]
     return {"passed": not failures, "minimum_relative_gain": 0.15,
             "relative_wer_gain": gains, "failures": failures}
+
+
+def _termination_count_gate(evidence: dict, languages: tuple[str, ...],
+                            max_unique: int) -> dict:
+    """Apply a checksum-count gate without persisting any private content."""
+    failures = []
+    counts, checksums = {}, {}
+    for language in languages:
+        item = evidence.get(language) or {}
+        rows = item.get("checksums")
+        if not isinstance(rows, list) or rows != sorted(set(rows)):
+            raise SystemExit(
+                f"REFUSING: {language} termination checksums are malformed")
+        counts[language] = len(rows)
+        checksums[language] = rows
+        if len(rows) > max_unique:
+            failures.append(
+                f"{language} has {len(rows)} unique termination failures, "
+                f"over the {max_unique} limit")
+    return {
+        "passed": not failures,
+        "max_unique_failures_per_language": max_unique,
+        "counts": counts,
+        "checksums": checksums,
+        "failures": failures,
+    }
+
+
+def _post_conversion_termination_gate(before: dict, converted: dict,
+                                      languages: tuple[str, ...],
+                                      policy: dict) -> dict:
+    """Conversion may not create or move a known termination failure."""
+    max_unique = int(policy["max_unique_failures_per_language"])
+    result = _termination_count_gate(converted, languages, max_unique)
+    new_checksums, new_eos_missing, new_cap_hits, count_increases = {}, {}, {}, {}
+    for language in languages:
+        old_item = before.get(language) or {}
+        new_item = converted.get(language) or {}
+        old = set(old_item.get("checksums") or [])
+        new = set(new_item.get("checksums") or [])
+        introduced = sorted(new - old)
+        if introduced:
+            new_checksums[language] = introduced
+        eos_introduced = sorted(
+            set(new_item.get("eos_missing_checksums") or [])
+            - set(old_item.get("eos_missing_checksums") or []))
+        cap_introduced = sorted(
+            set(new_item.get("cap_hit_checksums") or [])
+            - set(old_item.get("cap_hit_checksums") or []))
+        if eos_introduced:
+            new_eos_missing[language] = eos_introduced
+        if cap_introduced:
+            new_cap_hits[language] = cap_introduced
+        if len(new) > len(old):
+            count_increases[language] = {"before": len(old), "after": len(new)}
+    if ((new_checksums or new_eos_missing or new_cap_hits)
+            and not policy["new_or_different_failure_checksums_allowed"]):
+        result["passed"] = False
+        result["failures"].append(
+            "conversion introduced different termination evidence: "
+            + json.dumps({
+                "unique": new_checksums,
+                "eos_missing": new_eos_missing,
+                "cap_hits": new_cap_hits,
+            }, sort_keys=True))
+    if count_increases and not policy["failure_count_increase_allowed"]:
+        result["passed"] = False
+        result["failures"].append(
+            "conversion increased termination-failure counts: "
+            + json.dumps(count_increases, sort_keys=True))
+    result["new_checksums"] = new_checksums
+    result["new_eos_missing_checksums"] = new_eos_missing
+    result["new_cap_hit_checksums"] = new_cap_hits
+    result["count_increases"] = count_increases
+    return result
 
 
 def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
@@ -703,6 +789,8 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
             l: per_language[l]["generated_tokens"]["max"]
             for l in runtime.languages},
         "per_language": per_language,
+        "termination_failures": termination_failure_summary(
+            per_language, runtime.languages),
         "compute_type": model.compute_type,
         "runtime": f"ctranslate2-{ctranslate2.__version__}",
         "termination_accounting": (
@@ -729,11 +817,15 @@ def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
         expected_adapter_sha256=retained["adapter_sha256"])
     holdout_gate = _relative_gain_gate(
         holdout_candidate["wer"], holdout_base["wer"], ("lingala",))
-    if (min(holdout_candidate["eos_rate"].values()) != 1.0
-            or max(holdout_candidate["cap_hit_rate"].values()) != 0.0):
+    holdout_termination_gate = _termination_count_gate(
+        holdout_candidate["termination_failures"], ("lingala",),
+        int(descriptor["termination_gate"]["holdout_max_unique_failures"]))
+    if not holdout_termination_gate["passed"]:
         holdout_gate["passed"] = False
         holdout_gate["failures"].append(
-            "Lingala holdout termination gate failed")
+            "Lingala holdout termination gate failed: "
+            + "; ".join(holdout_termination_gate["failures"]))
+    holdout_gate["termination"] = holdout_termination_gate
     if not holdout_gate["passed"]:
         raise SystemExit(
             "REFUSING: selected checkpoint failed post-selection Lingala holdout: "
@@ -770,12 +862,14 @@ def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
     converted_gate = _relative_gain_gate(
         converted["wer"], load_base_result(cli, descriptor)["summary"]["wer"],
         languages)
-    if min(converted["eos_rate"].values()) != 1.0:
+    converted_termination_gate = _post_conversion_termination_gate(
+        before["termination_failures"], converted["termination_failures"],
+        languages, descriptor["termination_gate"]["post_conversion"])
+    if not converted_termination_gate["passed"]:
         converted_gate["passed"] = False
-        converted_gate["failures"].append("converted EOS rate is below 100%")
-    if max(converted["cap_hit_rate"].values()) != 0.0:
-        converted_gate["passed"] = False
-        converted_gate["failures"].append("converted artifact has cap hits")
+        converted_gate["failures"].extend(
+            converted_termination_gate["failures"])
+    converted_gate["termination"] = converted_termination_gate
     if not converted_gate["passed"]:
         raise SystemExit(
             "REFUSING: converted artifact failed active quality gates: "

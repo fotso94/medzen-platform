@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from pipeline import (budget, campaign, language_scope, mlflow_sync,
-                      orchestrate)  # noqa: E402
+                      orchestrate, scope_deviation)  # noqa: E402
 
 LANGS = orchestrate.VALIDATION_LANGUAGES
 POLICY_SHA = "a" * 64
@@ -87,6 +87,30 @@ def perfect():
 
 def zeros():
     return {l: 0.0 for l in LANGS}
+
+
+def clean_termination():
+    row_counts = {"lingala": 35, "luganda": 53, "oromo": 35}
+    return {
+        language: {
+            "rows": row_counts[language], "count": 0, "checksums": [],
+            "eos_missing_count": 0, "eos_missing_checksums": [],
+            "cap_hit_count": 0, "cap_hit_checksums": [],
+        }
+        for language in LANGS
+    }
+
+
+def one_termination_failure(language="lingala", label="row-a"):
+    result = clean_termination()
+    checksum = hashlib.sha256(label.encode()).hexdigest()
+    result[language] = {
+        **result[language],
+        "count": 1, "checksums": [checksum],
+        "eos_missing_count": 1, "eos_missing_checksums": [checksum],
+        "cap_hit_count": 1, "cap_hit_checksums": [checksum],
+    }
+    return result
 
 
 @pytest.fixture
@@ -161,9 +185,20 @@ def stage_result(descriptor, **kw):
     }
 
 
-def checkpoint(step, wer=None, sha=None):
-    return {"step": step, "wer": wer or metrics(), "eos_rate": perfect(),
-            "cap_hit_rate": zeros(),
+def checkpoint(step, wer=None, sha=None, termination_failures=None):
+    termination_failures = termination_failures or clean_termination()
+    eos_rate = {
+        language: round(
+            (item["rows"] - item["eos_missing_count"]) / item["rows"], 4)
+        for language, item in termination_failures.items()
+    }
+    cap_hit_rate = {
+        language: round(item["cap_hit_count"] / item["rows"], 4)
+        for language, item in termination_failures.items()
+    }
+    return {"step": step, "wer": wer or metrics(), "eos_rate": eos_rate,
+            "cap_hit_rate": cap_hit_rate,
+            "termination_failures": termination_failures,
             "smoke": {"passed": True, "reasons": []},
             "artifact_sha256": sha or hashlib.sha256(
                 f"cp{step}".encode()).hexdigest(),
@@ -218,6 +253,7 @@ def make_services(s3, db, **over):
         calls.append(f"run_sweep:{lr:.0e}")
         return stage_result(d, wer=metrics(), eos_rate=perfect(),
                             cap_hit_rate=zeros(),
+                            termination_failures=clean_termination(),
                             smoke={"passed": True, "reasons": []},
                             artifact_sha256=hashlib.sha256(
                                 f"sweep{lr}".encode()).hexdigest())
@@ -460,7 +496,9 @@ def test_all_candidates_failing_gates_prevents_the_final_run(db):
     def bad(d, lr):
         calls.append(f"run_sweep:{lr:.0e}")
         return stage_result(d, wer=metrics(oromo=0.99), eos_rate=perfect(),
-                            cap_hit_rate=zeros(), artifact_sha256="a" * 64)
+                            cap_hit_rate=zeros(),
+                            termination_failures=clean_termination(),
+                            artifact_sha256="a" * 64)
     sv.run_sweep = bad
     with pytest.raises(SystemExit, match="no learning rate passed all four"):
         campaign.run_campaign(sv, "camp-f4")
@@ -566,6 +604,34 @@ def test_a_failed_gate_with_too_many_steps_completed_is_refused(db):
     sv.run_final = sneaky
     with pytest.raises(SystemExit, match="must\n *never have run|never have run"):
         campaign.run_campaign(sv, "camp-f5c")
+
+
+def test_one_failure_is_tolerated_but_same_checksum_recurrence_stops():
+    first = checkpoint(
+        100, termination_failures=one_termination_failure(label="same"))
+    second = checkpoint(
+        200, termination_failures=one_termination_failure(label="same"))
+    out = campaign.verify_interleaving(
+        {"checkpoints": [first, second], "steps_completed": 200},
+        base_metrics(), scope_deviation.TERMINATION_GATE)
+    assert out[0]["gate"]["passed"] is True
+    assert out[1]["gate"]["passed"] is False
+    assert out[1]["gate"]["recurrent_termination_checksums"] == {
+        "lingala": [hashlib.sha256(b"same").hexdigest()]}
+
+
+def test_different_single_failures_do_not_trigger_recurrence():
+    checkpoints = [
+        checkpoint(
+            step,
+            termination_failures=one_termination_failure(label=f"row-{step}"))
+        for step in campaign.FINAL_CHECKPOINTS
+    ]
+    out = campaign.verify_interleaving(
+        {"checkpoints": checkpoints, "steps_completed": 600},
+        base_metrics(), scope_deviation.TERMINATION_GATE)
+    assert all(c["gate"]["passed"] for c in out)
+    assert all(not c["gate"]["recurrent_termination_checksums"] for c in out)
 
 
 def test_checkpoint_gaps_are_refused(db):

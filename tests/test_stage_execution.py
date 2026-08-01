@@ -31,6 +31,18 @@ from pipeline.decode_compatibility import (
 from pipeline.validation_runner import ValidationRuntime
 
 
+def clean_termination_evidence():
+    row_counts = {"lingala": 35, "luganda": 53, "oromo": 35}
+    return {
+        language: {
+            "rows": row_counts[language], "count": 0, "checksums": [],
+            "eos_missing_count": 0, "eos_missing_checksums": [],
+            "cap_hit_count": 0, "cap_hit_checksums": [],
+        }
+        for language in orchestrate.VALIDATION_LANGUAGES
+    }
+
+
 def descriptor(stage="sweep", **over):
     is_base = stage == "base_and_preflight"
     is_zero_training = stage in (
@@ -46,6 +58,7 @@ def descriptor(stage="sweep", **over):
         "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
         "scope_deviation_sha256": scope_deviation.DECISION_SHA256,
         "a5_gate_disposition_sha256": scope_deviation.A5_GATES_SHA256,
+        "termination_gate": scope_deviation.TERMINATION_GATE,
         "holdout_manifest_key": "eval/lingala/asr/v2-holdout/manifest.jsonl",
         "holdout_manifest_sha256": "7" * 64,
         "holdout_evidence_sha256": "8" * 64,
@@ -178,6 +191,72 @@ def test_descriptor_refuses_malformed_identity_or_path_escape(field, value):
     values[field] = value
     with pytest.raises(SystemExit, match="REFUSING"):
         stage_descriptor.build(**values)
+
+
+def test_descriptor_pins_the_exact_owner_approved_termination_gate():
+    values = descriptor()
+    values["termination_gate"] = {
+        **scope_deviation.TERMINATION_GATE,
+        "max_unique_failures_per_language_per_checkpoint": 2,
+    }
+    with pytest.raises(SystemExit, match="termination_gate differs"):
+        stage_descriptor.build(**values)
+
+
+def test_checksum_summary_deduplicates_eos_and_cap_for_one_row():
+    from pipeline.validation_runner import termination_failure_summary
+    checksum = "a" * 64
+    per_language = {
+        language: {"per_utterance": [{
+            "audio_checksum_sha256": checksum,
+            "eos_emitted": language != "lingala",
+            "hit_length_cap": language == "lingala",
+        }]}
+        for language in orchestrate.VALIDATION_LANGUAGES
+    }
+    out = termination_failure_summary(
+        per_language, orchestrate.VALIDATION_LANGUAGES)
+    assert out["lingala"]["count"] == 1
+    assert out["lingala"]["eos_missing_count"] == 1
+    assert out["lingala"]["cap_hit_count"] == 1
+    assert out["lingala"]["checksums"] == [checksum]
+
+
+def test_holdout_stays_strict_and_conversion_cannot_move_a_failure():
+    checksum, other = "a" * 64, "b" * 64
+    before = clean_termination_evidence()
+    before["lingala"] = {
+        **before["lingala"], "count": 1, "checksums": [checksum],
+        "eos_missing_count": 1, "eos_missing_checksums": [checksum],
+        "cap_hit_count": 1, "cap_hit_checksums": [checksum],
+    }
+    strict = stage_runner._termination_count_gate(
+        before, ("lingala",), 0)
+    assert strict["passed"] is False
+
+    same = stage_runner._post_conversion_termination_gate(
+        before, before, orchestrate.VALIDATION_LANGUAGES,
+        scope_deviation.TERMINATION_GATE["post_conversion"])
+    assert same["passed"] is True
+    moved = json.loads(json.dumps(before))
+    moved["lingala"]["checksums"] = [other]
+    moved["lingala"]["eos_missing_checksums"] = [other]
+    moved["lingala"]["cap_hit_checksums"] = [other]
+    changed = stage_runner._post_conversion_termination_gate(
+        before, moved, orchestrate.VALIDATION_LANGUAGES,
+        scope_deviation.TERMINATION_GATE["post_conversion"])
+    assert changed["passed"] is False
+    assert changed["new_checksums"] == {"lingala": [other]}
+
+    eos_only = json.loads(json.dumps(before))
+    eos_only["lingala"]["cap_hit_count"] = 0
+    eos_only["lingala"]["cap_hit_checksums"] = []
+    worsened_same_row = stage_runner._post_conversion_termination_gate(
+        eos_only, before, orchestrate.VALIDATION_LANGUAGES,
+        scope_deviation.TERMINATION_GATE["post_conversion"])
+    assert worsened_same_row["passed"] is False
+    assert worsened_same_row["new_cap_hit_checksums"] == {
+        "lingala": [checksum]}
 
 
 @pytest.mark.parametrize("field", ["training_languages", "validation_languages"])
@@ -684,6 +763,7 @@ def test_real_sweep_path_passes_comparable_horizon_and_stop_to_trainer(
                 "cer": clean,
                 "eos_rate": ones,
                 "cap_hit_rate": zeros,
+                "termination_failures": clean_termination_evidence(),
                 "generated_tokens_median": zeros,
                 "generated_tokens_max": zeros,
                 "adapter_sha256": "5" * 64,
@@ -733,6 +813,7 @@ def test_saved_adapter_smoke_is_a_hard_gate():
         {l: 0.6 for l in orchestrate.VALIDATION_LANGUAGES},
         {l: 1.0 for l in orchestrate.VALIDATION_LANGUAGES},
         {l: 0.0 for l in orchestrate.VALIDATION_LANGUAGES},
+        clean_termination_evidence(), scope_deviation.TERMINATION_GATE,
     )
     out = orchestrate.apply_checkpoint_controls(
         clean, {"passed": False, "reasons": ["adapter inert"]})

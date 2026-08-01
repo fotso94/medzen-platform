@@ -28,6 +28,7 @@ REQUIRED = (
     "policy_sha256", "adoption_key", "dataset_fingerprint",
     "language_scope_sha256", "training_languages", "validation_languages",
     "scope_deviation_sha256", "a5_gate_disposition_sha256",
+    "termination_gate",
     "holdout_manifest_key", "holdout_manifest_sha256",
     "holdout_evidence_sha256",
     "base_manifest_sha256", "validation_manifest_sha256",
@@ -92,6 +93,9 @@ def build(**kw) -> dict:
     if d["a5_gate_disposition_sha256"] != scope_deviation.A5_GATES_SHA256:
         problems.append(
             "a5_gate_disposition_sha256 differs from the approved gate matrix")
+    if d["termination_gate"] != scope_deviation.TERMINATION_GATE:
+        problems.append(
+            "termination_gate differs from the owner-approved count rule")
     for field in ("training_languages", "validation_languages"):
         value = d[field]
         if (not isinstance(value, list)
