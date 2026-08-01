@@ -13,15 +13,23 @@ from botocore.exceptions import ClientError, ParamValidationError
 ROOT = Path(__file__).resolve().parent.parent
 BUCKET = "medzen-speech"
 KEY = "candidates/budget/b4-scoped/ledger.json"
-DECISION = ROOT / "platform/decisions/B4-BUDGET-2026-001-ceiling-extension.json"
+DEFAULT_DECISION = (
+    ROOT / "platform/decisions/B4-BUDGET-2026-002-ceiling-extension.json"
+)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--decision", type=Path, default=DEFAULT_DECISION)
     parser.add_argument("--confirm", action="store_true")
     args = parser.parse_args()
 
-    decision_bytes = DECISION.read_bytes()
+    decision_path = args.decision.resolve()
+    try:
+        decision_path.relative_to(ROOT)
+    except ValueError:
+        raise SystemExit("REFUSING: budget decision must be inside the repository")
+    decision_bytes = decision_path.read_bytes()
     decision = json.loads(decision_bytes)
     old = float(decision["previous_ceiling_usd"])
     new = float(decision["new_cumulative_ceiling_usd"])
@@ -59,12 +67,12 @@ def main() -> int:
         print("DRY RUN - pass --confirm to conditionally update the ledger")
         return 0
     if float(ledger["ceiling_usd"]) == new:
-        print("ALREADY APPLIED - verified existing $9 cumulative ceiling")
+        print(f"ALREADY APPLIED - verified existing ${new:.2f} cumulative ceiling")
         return 0
 
     ledger["ceiling_usd"] = new
     ledger["ceiling_extension"] = {
-        "decision": str(DECISION.relative_to(ROOT)),
+        "decision": str(decision_path.relative_to(ROOT)),
         "decision_sha256": decision_sha,
         "previous_ceiling_usd": old,
         "new_cumulative_ceiling_usd": new,
@@ -86,7 +94,8 @@ def main() -> int:
     readback = s3.get_object(Bucket=BUCKET, Key=KEY)["Body"].read()
     if readback != body:
         raise SystemExit("REFUSING: ledger readback differs after update")
-    print("APPLIED AND VERIFIED - cumulative ceiling is $9.00; prior spend preserved")
+    print(f"APPLIED AND VERIFIED - cumulative ceiling is ${new:.2f}; "
+          "prior spend preserved")
     return 0
 
 

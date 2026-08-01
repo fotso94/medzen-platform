@@ -19,7 +19,7 @@ EXPECTED_POLICY_RELATIVE = (
     "platform/decisions/DQ-2026-004-policy-deferral-scoped.json"
 )
 EXPECTED_ADOPTION_KEY = (
-    "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI.json"
+    "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI-FULA.json"
 )
 
 
@@ -41,8 +41,8 @@ def load() -> tuple[dict, str]:
         problems.append("record type is not B4-LANGUAGE-SCOPE-DECISION")
     if doc.get("id") != "B4-SCOPE-2026-001":
         problems.append("decision id is not B4-SCOPE-2026-001")
-    if doc.get("revision") != 3:
-        problems.append("decision revision is not 3")
+    if doc.get("revision") != 4:
+        problems.append("decision revision is not 4")
     if doc.get("status") != "approved":
         problems.append(f"status is {doc.get('status')!r}, not 'approved'")
     if doc.get("scope", {}).get("promotable") is not False:
@@ -73,10 +73,10 @@ def load() -> tuple[dict, str]:
             "the original validation scope")
     if not set(active_validation) <= set(active_training):
         problems.append("an active validation language is absent from training")
-    if deferred != ("acholi", "amharic", "ewe"):
+    if deferred != ("acholi", "amharic", "ewe", "fula"):
         problems.append(
             "deferred languages are "
-            f"{deferred}, expected ('acholi', 'amharic', 'ewe')")
+            f"{deferred}, expected ('acholi', 'amharic', 'ewe', 'fula')")
 
     binding = doc.get("training_mix_binding") or {}
     if binding.get("adoption_key") != EXPECTED_ADOPTION_KEY:

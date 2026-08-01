@@ -163,7 +163,7 @@ def test_gate_macro_not_worse():
 
 
 def test_macro_average_is_unweighted_and_requires_every_language():
-    part = {l: 0.5 for l in LANGS[:5]}
+    part = {l: 0.5 for l in LANGS[:-1]}
     with pytest.raises(SystemExit, match="no result for"):
         orchestrate.macro_wer(part)
     d = {l: 0.0 for l in LANGS}
@@ -477,22 +477,22 @@ def test_an_unresolved_reservation_blocks_the_next_reservation():
 
 def test_ceiling_refuses_the_reservation_that_would_breach_it():
     s3 = FakeS3()
-    completed = ["final_run"] * 4
+    completed = ["final_run"] * 6
     for i, stage in enumerate(completed):
         budget.reserve(s3, stage, f"a{i}")
         budget.reconcile(s3, stage, f"a{i}",
                          actual_seconds=budget.WATCHDOG_S[stage])
     with pytest.raises(SystemExit) as e:
         budget.reserve(s3, "final_run", "one-too-many")
-    assert "over the $9.00 ceiling" in str(e.value)
+    assert "over the $12.00 ceiling" in str(e.value)
     assert "cannot afford to fail" in str(e.value)
 
 
-def test_four_sequential_full_length_final_runs_are_refused():
+def test_seventh_sequential_full_length_final_run_is_refused():
     """The exact case a per-instance watchdog cannot catch."""
     s3 = FakeS3()
     launched = 0
-    for i in range(4):
+    for i in range(7):
         try:
             budget.reserve(s3, "final_run", f"r{i}")
         except SystemExit:
@@ -500,7 +500,7 @@ def test_four_sequential_full_length_final_runs_are_refused():
         budget.reconcile(s3, "final_run", f"r{i}",
                          actual_seconds=budget.WATCHDOG_S["final_run"])
         launched += 1
-    assert launched < 5, "a $9 ceiling must not permit 5 full final runs"
+    assert launched == 6, "a $12 ceiling must refuse the seventh full run"
 
 
 def test_budget_loader_refuses_a_stale_authorised_ceiling():
@@ -714,12 +714,12 @@ def test_extra_language_is_refused():
 
 def test_non_numeric_metric_is_refused():
     with pytest.raises(SystemExit, match="not numeric"):
-        orchestrate.evaluate_gates(wers(fula="0.9"), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(wers(akan="0.9"), wers(), perfect(), zeros())
 
 
 def test_boolean_is_not_accepted_as_numeric():
     with pytest.raises(SystemExit, match="not numeric"):
-        orchestrate.evaluate_gates(wers(fula=True), wers(), perfect(), zeros())
+        orchestrate.evaluate_gates(wers(akan=True), wers(), perfect(), zeros())
 
 
 def test_negative_wer_is_refused():

@@ -77,7 +77,11 @@ MAX_INSTANCES = 4
 # first scoped attempt reconciled at
 # $2.876 and failed closed on a scheduler-horizon mismatch.  The platform
 # owner explicitly authorised a $9 cumulative ceiling on 2026-07-31 so the
-# corrected full sweep.  That run reconciled at $5.1846 and found 1e-4 to be
+# corrected full sweep.  After the Fula-scoped confirmation failed closed at
+# $6.6415 cumulative spend, the owner authorised a $12 cumulative ceiling on
+# 2026-08-01 for a fresh 10-language campaign.  That run remains
+# non-promotable and every original quality gate remains unchanged.  The
+# earlier corrected run reconciled at $5.1846 and found 1e-4 to be
 # the only configuration compatible with the retained six-language validation
 # surface after Acholi is deferred.  The targeted continuation therefore uses
 # one fresh 1e-4 confirmation and one final run.  After an unreserved launch
@@ -85,7 +89,7 @@ MAX_INSTANCES = 4
 # The builder is reserved and reconciled first; if its actual cost leaves less
 # than the complete GPU worst case, the GPU campaign refuses before launch.
 # This remains an extension of the same durable ledger, never a spend reset.
-CEILING_USD = 9.00
+CEILING_USD = 12.00
 
 
 def worst_case_usd(stage: str) -> float:

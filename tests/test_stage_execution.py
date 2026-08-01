@@ -40,7 +40,7 @@ def descriptor(stage="sweep", **over):
         "image_digest": "sha256:" + "c" * 64,
         "policy_sha256": "d" * 64,
         "adoption_key":
-            "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI.json",
+            "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI-FULA.json",
         "dataset_fingerprint": language_scope.EXPECTED_DATASET_FINGERPRINT,
         "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
         "training_languages": (
@@ -627,7 +627,7 @@ def test_final_segment_keeps_600_step_schedule_while_pausing_at_300():
     assert cmd[cmd.index("--stop-at-step") + 1] == "300"
     assert cmd[cmd.index("--resume") + 1].endswith("checkpoint-200")
     assert cmd[cmd.index("--expect-excluded") + 1] == "19"
-    assert cmd[cmd.index("--expect-applied-exclusions") + 1] == "15"
+    assert cmd[cmd.index("--expect-applied-exclusions") + 1] == "13"
     language_start = cmd.index("--languages") + 1
     language_end = cmd.index("--stop-at-step")
     assert tuple(cmd[language_start:language_end]) == \
