@@ -264,6 +264,8 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
     assert names.count("checkpoint-eval") == len(campaign.FINAL_CHECKPOINTS)
     assert out["registered_models"] == 0 and out["promotable"] is False
     assert out["purpose"] == "training_system_validation"
+    assert out["selected_checkpoint"]["step"] == 100
+    assert out["stopped_on_failed_checkpoint"] is None
 
 
 def test_base_and_preflight_run_before_any_sweep(db):
@@ -430,7 +432,7 @@ def test_all_candidates_failing_gates_prevents_the_final_run(db):
     assert sv.tracker.parent[0] is False
 
 
-def test_checkpoint_300_failure_halts_optimisation_immediately(db):
+def test_checkpoint_300_failure_halts_and_selects_an_earlier_pass(db):
     """A conforming container stops training AT the boundary: it reports
     checkpoints 100-300 only, and steps_completed == 300."""
     s3 = FakeS3()
@@ -441,8 +443,56 @@ def test_checkpoint_300_failure_halts_optimisation_immediately(db):
             checkpoint(100), checkpoint(200),
             checkpoint(300, wer=metrics(oromo=0.99))])
     sv.run_final = final_stops
-    with pytest.raises(SystemExit, match="checkpoint-300 failed a gate"):
-        campaign.run_campaign(sv, "camp-f5")
+    out = campaign.run_campaign(sv, "camp-f5")
+    assert out["selected_checkpoint"]["step"] == 100
+    assert out["stopped_on_failed_checkpoint"] == 300
+    assert sv.tracker.parent == (
+        True,
+        "selected checkpoint-100 after the predeclared stop at checkpoint-300")
+    prefix = "mlflow/snapshots/camp-f5/attempt-1/final-selected/"
+    assert prefix + "mlflow.db" in s3.objects
+    record = json.loads(s3.objects[prefix + "record.json"])
+    assert record["selected_checkpoint_step"] == 100
+    assert record["stopped_on_failed_checkpoint"] == 300
+
+
+def test_first_checkpoint_failure_has_no_candidate_and_fails(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+
+    def final_stops(d, lr):
+        return stage_result(d, steps_completed=100, checkpoints=[
+            checkpoint(100, wer=metrics(oromo=0.99))])
+    sv.run_final = final_stops
+    with pytest.raises(SystemExit, match="no final checkpoint passed"):
+        campaign.run_campaign(sv, "camp-f5-first")
+    assert sv.tracker.parent[0] is False
+
+
+def test_lowest_macro_passing_checkpoint_is_selected_before_late_failure(db):
+    s3 = FakeS3()
+    sv, _ = make_services(s3, db)
+
+    def final_stops(d, lr):
+        return stage_result(d, steps_completed=600, checkpoints=[
+            checkpoint(100, wer=metrics(lingala=0.84)),
+            checkpoint(200, wer=metrics(lingala=0.78)),
+            checkpoint(300, wer=metrics(lingala=0.74)),
+            checkpoint(400, wer=metrics(lingala=0.71)),
+            checkpoint(500, wer=metrics(lingala=0.70)),
+            checkpoint(600, wer=metrics(lingala=0.99))])
+    sv.run_final = final_stops
+    out = campaign.run_campaign(sv, "camp-f5-late")
+    assert out["selected_checkpoint"]["step"] == 500
+    assert out["stopped_on_failed_checkpoint"] == 600
+
+
+def test_checkpoint_selection_tie_breaks_to_the_earlier_step():
+    checkpoints = [
+        {"step": 200, "gate": {"passed": True, "macro_wer": 0.7}},
+        {"step": 100, "gate": {"passed": True, "macro_wer": 0.7}},
+    ]
+    assert campaign.select_passing_checkpoint(checkpoints)["step"] == 100
 
 
 def test_a_container_that_trained_past_a_failed_gate_is_refused(db):

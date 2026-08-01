@@ -1,0 +1,180 @@
+{
+  "record": "CAMPAIGNRUN-2026-010-FAILED",
+  "status": "FAILED_CLOSED_LINGALA_LATE_HORIZON_REGRESSION",
+  "campaign_run": "b4-scoped-61940922cd4e",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "executed_provenance": {
+    "git_sha": "61940922cd4e5556ab7dd1d1f8527c5fed9fb116",
+    "bundle_tar_sha256": "eb93cbceec5914aba0a45da267bdcba703f0cb7388834e42e5da2363808035fb",
+    "image_digest": "sha256:856160b88225b0786a5e7ff794f895918579ea5e7d246fecbfac688252b67a5b",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED-8LANG.json",
+    "adoption_sha256": "22d16a4a504a5c5b36961f7cc5d7caf87cea2e42b9ff2e02cf79e17f3babac5e",
+    "language_scope_sha256": "922c51fde89455f879987a5c5e461f78f7e4d8682dab6c5d04b122c76f7596a7",
+    "dataset_fingerprint": "8fcef27d63635f837611c20c946d04a6ede6caf73320a0a3ee3e391e34e2f749",
+    "eligible_rows": 2300,
+    "sampled_rows": 2298,
+    "training_languages": [
+      "hausa", "igbo", "lingala", "luganda", "oromo",
+      "pidgin", "swahili", "yoruba"
+    ],
+    "validation_languages": ["lingala", "luganda", "oromo"],
+    "deferred_languages": [
+      "acholi", "akan", "amharic", "ewe", "fula", "shona"
+    ]
+  },
+  "image_verification": {
+    "builder_instance_id": "i-0cbd27dbc43cf39a6",
+    "actual_seconds": 517.8,
+    "actual_usd": 0.0489,
+    "root_volume_id": "vol-00382267c7c67b864",
+    "root_volume_deleted": true,
+    "ecr_scan_status": "COMPLETE",
+    "raw_findings": {"critical": 4, "high": 8, "medium": 3},
+    "unwaived_findings": 0
+  },
+  "base_and_preflight": {
+    "instance_id": "i-02bbf42a06d727b0a",
+    "actual_seconds": 928.3,
+    "actual_usd": 0.2595,
+    "root_volume_id": "vol-06e4e8a16735df647",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "40a1b04eb429994845ef5e07d4c7352aa83294bd508332a86b17bd4cd0b65343",
+    "stage_result_sha256": "62308c5f82d6137d69ebea15bdf163cde38d8737a7562b7fd6610d107ac93366",
+    "base_artifact_sha256": "ca93032fc4a1aa5cd3526ed5b8e60fe582e459949c3473062af8c91101d4c746",
+    "preflight_passed": true,
+    "adapter_tensors_nonzero": "192/192",
+    "saved_adapter_reload_hash_matched": true,
+    "overfit_loss": {"initial": 2.62109375, "final": 0.00011345318489475176},
+    "generation_eos_emitted": true,
+    "base_wer": {
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749
+    },
+    "base_eos_rate": {
+      "lingala": 1.0,
+      "luganda": 0.9811,
+      "oromo": 0.9429
+    },
+    "base_cap_hit_rate": {
+      "lingala": 0.0,
+      "luganda": 0.0189,
+      "oromo": 0.0571
+    }
+  },
+  "sweep": {
+    "learning_rate": 0.0001,
+    "steps_completed": 100,
+    "instance_id": "i-00358e00d5d3811e0",
+    "actual_seconds": 1521.7,
+    "actual_usd": 0.4254,
+    "root_volume_id": "vol-048694c51fa350ed9",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "89dee78d5596a215b867aac74e407138efb20917ba55d6d339c1addcbbc23461",
+    "stage_result_sha256": "5ab6867c2aa4e1154b8a70dd63b9c386200fa7b1bcc56bbfe5b83f49c0fdf78d",
+    "evaluation_sha256": "f255d156eb2ce45974354c272be52729c775d11eeb60fa4d6822704e028a35ab",
+    "gate_passed": true,
+    "macro_wer": 0.876467,
+    "min_eos_rate": 1.0,
+    "max_cap_hit_rate": 0.0,
+    "selected_for_fresh_final": true,
+    "sweep_checkpoint_reused": false
+  },
+  "final": {
+    "instance_id": "i-0ecc6d13417cdb0cd",
+    "actual_seconds": 5581.0,
+    "actual_usd": 1.5602,
+    "root_volume_id": "vol-06f077ca21e369728",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "f0068830493a6f07815758ec3b202bd74cff3ffb8865ba3341e9d7b65ad32f55",
+    "container_result_sha256": "50f0788c7394134fe13f654a419a676314d864293109cb2cc4f5b498369cb4b5",
+    "stage_result_sha256": "dac77799f310a821489a2b75a62fde3fb3d6eb178322fdc9692318212bc1729c",
+    "fresh_from_base": true,
+    "steps_completed": 600,
+    "later_steps_after_failed_gate_executed": false,
+    "checkpoint_metrics": [
+      {"step": 100, "macro_wer": 0.874, "lingala_wer": 0.8525, "luganda_wer": 0.9043, "oromo_wer": 0.8652, "min_eos_rate": 1.0, "max_cap_hit_rate": 0.0, "passed": true, "artifact_sha256": "a7b150e22e0f07af44b79f0ca3c31778bc56c5d6dc88996754614b562fa1fc28"},
+      {"step": 200, "macro_wer": 0.780567, "lingala_wer": 0.7772, "luganda_wer": 0.7966, "oromo_wer": 0.7679, "min_eos_rate": 1.0, "max_cap_hit_rate": 0.0, "passed": true, "artifact_sha256": "1d0f403a2d9b3113b2cd5c551e670e2f77a106ff1eff2524deb4877f7f10e874"},
+      {"step": 300, "macro_wer": 0.7275, "lingala_wer": 0.7447, "luganda_wer": 0.7339, "oromo_wer": 0.7039, "min_eos_rate": 1.0, "max_cap_hit_rate": 0.0, "passed": true, "artifact_sha256": "d04c179ef9b5fdf5000e5578e7afea6fe5bb81a6f8752241ad6e9732f0e3bb53"},
+      {"step": 400, "macro_wer": 0.706267, "lingala_wer": 0.7141, "luganda_wer": 0.705, "oromo_wer": 0.6997, "min_eos_rate": 1.0, "max_cap_hit_rate": 0.0, "passed": true, "artifact_sha256": "136b0a149d49bb2f33b42f3af6b0f3b3599f31b8a4d0f943f94e76fb8f982673"},
+      {"step": 500, "macro_wer": 0.686033, "lingala_wer": 0.7091, "luganda_wer": 0.6801, "oromo_wer": 0.6689, "min_eos_rate": 1.0, "max_cap_hit_rate": 0.0, "passed": true, "artifact_sha256": "73f3eecc6934e34eb29c44a757df48fedd28c0c053dd0101128cc08ba6a54e4d"},
+      {"step": 600, "macro_wer": 0.823667, "lingala_wer": 1.1109, "luganda_wer": 0.6929, "oromo_wer": 0.6672, "min_eos_rate": 0.9714, "max_cap_hit_rate": 0.0286, "passed": false, "artifact_sha256": "4a8970bbf7e76f65b6b901526d417a8cfcdc118b53737757d72589e0d9867ad1"}
+    ]
+  },
+  "failure": {
+    "first_failed_checkpoint": 600,
+    "failed_language": "lingala",
+    "reasons": [
+      "Lingala EOS rate was 0.9714 instead of the required 1.0",
+      "one of 35 Lingala rows exhausted all 440 generated tokens",
+      "Lingala WER regressed by 0.1902 absolute against its same-run base, over the 0.05 cap"
+    ],
+    "aggregate_improvement_did_not_override_slice_failure": true,
+    "checkpoint_500_diagnostic": {
+      "macro_relative_wer_improvement_percent": 34.9,
+      "lingala_relative_wer_improvement_percent": 22.98,
+      "luganda_relative_wer_improvement_percent": 36.19,
+      "oromo_relative_wer_improvement_percent": 43.07,
+      "all_termination_gates_passed": true,
+      "classification": "last safe diagnostic checkpoint; not selected, registered, promoted or production-authorised"
+    },
+    "interpretation": "The deterministic checkpoint trajectory improves every retained language through step 500 and then degrades Lingala only during steps 501-600. Together with prior scheduler-sensitivity evidence, this supports a late-horizon/overtraining diagnosis more strongly than a malformed-language or simple row-count diagnosis. Sole causality is not claimed without a fresh predeclared confirmation.",
+    "remove_lingala": false,
+    "gate_weakening_permitted": false
+  },
+  "mlflow": {
+    "parent_run_id": "5576b6bed2184923a2f62f605564d796",
+    "parent_status": "FAILED",
+    "terminal_snapshot_key": "mlflow/snapshots/b4-scoped-61940922cd4e/attempt-1/campaign-failed/mlflow.db",
+    "terminal_snapshot_sha256": "abc60d8a0cedfe384e0cd913dc1a9b066951bb5fab7d0926e47f88bdc048d3ca",
+    "immutable_stage_records": 13,
+    "last_completed_stage": "campaign-failed",
+    "registered_models": 0
+  },
+  "budget": {
+    "ledger_key": "candidates/budget/b4-scoped/ledger.json",
+    "hard_ceiling_usd": 12.0,
+    "campaign_gpu_actual_usd": 2.2451,
+    "builder_actual_usd": 0.0489,
+    "cumulative_committed_usd": 9.9801,
+    "remaining_usd": 2.0199,
+    "unresolved_reservations": 0,
+    "another_final_worst_case_usd": 2.1805,
+    "another_final_currently_authorised": false
+  },
+  "cleanup": {
+    "all_campaign_instances_terminated": true,
+    "all_campaign_root_volumes_deleted": true,
+    "active_b4_instances": 0,
+    "available_orphan_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0,
+    "eks_used": false,
+    "spot_used": false
+  },
+  "base_v5_b4_status": {
+    "complete": false,
+    "satisfied": [
+      "plain-Docker trainer on direct EC2",
+      "LoRA r32 q_proj/v_proj training",
+      "S3 checkpoints at every 100-step boundary",
+      "interleaved fail-closed checkpoint evaluation",
+      "saved-adapter reload and generation smoke",
+      "immutable MLflow parent/child tracking and artifact provenance"
+    ],
+    "not_satisfied": [
+      "30-40 percent English/French replay",
+      "code-switch training and evaluation slices",
+      "Spot interruption and checkpoint-resume proof",
+      "adapter merge and CTranslate2 int8_float16 conversion",
+      "full Base-v5 A5 gate table",
+      "promotion-grade independent holdout and human-review evidence"
+    ],
+    "b5_allowed": false
+  },
+  "next_action": "Do not rerun the same non-promotable eight-language campaign or remove Lingala. Preserve checkpoint 500 as diagnostic evidence only. Prepare a fresh Base-v5 B4 work packet that adds rights-cleared English/French replay and a code-switch slice, predeclares a shorter or early-stopped horizon using this trajectory, proves Spot resume, and obtains a separately authorised budget before any AWS launch."
+}

@@ -1,7 +1,8 @@
 # PLAN-2026-008 - Akan/Shona-deferred B4 continuation
 
-**Status: APPROVED, PREPARED, NOT YET EXECUTED.** Revision 1,
-2026-08-01.
+**Status: EXECUTED, FAILED CLOSED AT CHECKPOINT 600.** Revision 2,
+2026-08-01. The immutable outcome record is
+`platform/evidence/CAMPAIGNRUN-2026-010-failed.json`.
 
 ## Authorization and purpose
 
@@ -46,6 +47,26 @@ Execution uses direct on-demand EC2 in `eu-central-1`, not EKS and not Spot:
 
 No earlier adapter is reusable. No least-bad selection or gate weakening is
 permitted. Expected registered models: zero.
+
+## Executed outcome
+
+The base-plus-preflight stage and the fresh `1e-4` confirmation passed. The
+fresh final run then passed every unchanged gate at checkpoints 100, 200, 300,
+400 and 500. Checkpoint 500 improved macro WER by 34.9% relative to the in-run
+base, with EOS rate 1.0 and cap-hit rate 0.0 for Lingala, Luganda and Oromo.
+
+Checkpoint 600 failed closed. Lingala WER rose to 1.1109 against its 0.9207
+base, one of 35 Lingala rows exhausted the 440-token budget, and EOS rate fell
+to 0.9714. Luganda and Oromo remained healthy, and the macro still improved,
+but the per-language and termination gates correctly prevented the aggregate
+from hiding the Lingala regression. No checkpoint was selected, registered,
+promoted or deployed. Checkpoint 500 remains diagnostic evidence only.
+
+The trajectory supports a late-horizon/overtraining diagnosis more strongly
+than removing Lingala: all three retained languages improved monotonically
+through step 500 and only Lingala degraded in steps 501-600. A future run must
+predeclare its corrected stopping rule and cannot reuse this candidate as a
+promotion artifact.
 
 ## Budget and cleanup
 

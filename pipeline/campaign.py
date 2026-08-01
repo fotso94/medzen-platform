@@ -362,6 +362,26 @@ def verify_interleaving(result: dict, base_wer: dict) -> list[dict]:
     return out
 
 
+def select_passing_checkpoint(checkpoints: list[dict]) -> dict:
+    """Select only among checkpoints that passed every hard gate.
+
+    Validation checkpoints are a model-selection surface. A later boundary
+    can correctly stop training without erasing an earlier, fully passing
+    artifact. This rule is intentionally deterministic and conservative:
+    lowest macro WER wins, with the earlier step winning an exact tie.
+
+    This does *not* make the selected artifact promotable. A separate untouched
+    holdout and the remaining Base-v5 gates still have to judge it.
+    """
+    passing = [c for c in checkpoints if (c.get("gate") or {}).get("passed")]
+    if not passing:
+        raise CampaignError(
+            "REFUSING: no final checkpoint passed every hard gate")
+    return min(
+        passing,
+        key=lambda c: (float(c["gate"]["macro_wer"]), int(c["step"])))
+
+
 def _run_campaign_impl(sv: Services, campaign_run: str,
                        attempt: str = "1") -> dict:
     """The whole ordering, enforced. Returns the trace and the outcome."""
@@ -567,35 +587,52 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
               attempt=attempt, artifact_sha256=c["artifact_sha256"])
 
     failed = [c for c in checkpoints if not c["gate"]["passed"]]
+    try:
+        selected_checkpoint = select_passing_checkpoint(checkpoints)
+    except BaseException as exc:
+        sv.tracker.fail_stage(
+            final_stage_key, f"{type(exc).__name__}: {exc}")
+        sv.tracker.finish_parent(False, str(exc))
+        _sync(sv, campaign_run, "final-failed", trace, attempt=attempt,
+              reason=str(exc))
+        raise
     rfin["gate"] = {
-        "passed": not failed,
-        "macro_wer": checkpoints[-1]["gate"]["macro_wer"],
-        "min_eos_rate": checkpoints[-1]["gate"]["min_eos_rate"],
-        "max_cap_hit_rate": checkpoints[-1]["gate"]["max_cap_hit_rate"],
+        "passed": True,
+        "macro_wer": selected_checkpoint["gate"]["macro_wer"],
+        "min_eos_rate": selected_checkpoint["gate"]["min_eos_rate"],
+        "max_cap_hit_rate": selected_checkpoint["gate"]["max_cap_hit_rate"],
         "worst_language_regression":
-            checkpoints[-1]["gate"]["worst_language_regression"],
+            selected_checkpoint["gate"]["worst_language_regression"],
     }
     sv.tracker.finish_stage(
         final_stage_key, rfin,
         extra_params={"selected_lr": sel["selected_lr"],
-                      "checkpoints_completed": len(checkpoints)})
-    _sync(sv, campaign_run, "final-complete" if not failed else "final-failed",
-          trace, attempt=attempt)
+                      "checkpoints_completed": len(checkpoints),
+                      "selected_checkpoint_step":
+                          selected_checkpoint["step"],
+                      "stopped_on_failed_checkpoint":
+                          failed[0]["step"] if failed else ""})
+    terminal_stage = "final-selected" if failed else "final-complete"
+    _sync(
+        sv, campaign_run, terminal_stage, trace, attempt=attempt,
+        selected_checkpoint_step=selected_checkpoint["step"],
+        selected_artifact_sha256=selected_checkpoint["artifact_sha256"],
+        stopped_on_failed_checkpoint=failed[0]["step"] if failed else None)
     ledger, _ = budget.load(sv.s3)
     trace.add("cleanup", unresolved_reservations=len(budget.unresolved(ledger)),
               gpu_instances_used=2 + len(orchestrate.LR_CANDIDATES))
-    if failed:
-        sv.tracker.finish_parent(
-            False, f"checkpoint-{failed[0]['step']} failed")
-        raise CampaignError(
-            f"REFUSING: checkpoint-{failed[0]['step']} failed a gate and "
-            "training stopped there:\n  "
-            + "\n  ".join(failed[0]["gate"]["failures"]))
-
-    sv.tracker.finish_parent(True, "all interleaved gates passed")
+    outcome = (
+        f"selected checkpoint-{selected_checkpoint['step']} after the "
+        f"predeclared stop at checkpoint-{failed[0]['step']}"
+        if failed else
+        f"selected checkpoint-{selected_checkpoint['step']}; all "
+        "interleaved gates passed")
+    sv.tracker.finish_parent(True, outcome)
     return {
         "campaign_run": campaign_run,
         "selected_lr": sel["selected_lr"],
+        "selected_checkpoint": selected_checkpoint,
+        "stopped_on_failed_checkpoint": failed[0]["step"] if failed else None,
         "checkpoints": checkpoints,
         "gpu_instances": 2 + len(orchestrate.LR_CANDIDATES),
         "registered_models": 0,
