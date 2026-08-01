@@ -320,6 +320,19 @@ def test_one_reservation_per_stage_lifecycle(db):
     assert all(r["state"] == "reconciled" for r in ledger["reservations"].values())
 
 
+def test_two_campaigns_with_attempt_one_get_distinct_budget_lifecycles(db):
+    s3 = FakeS3()
+    first, _ = make_services(s3, db)
+    campaign.run_campaign(first, "camp-budget-a", attempt="1")
+    second, _ = make_services(s3, db)
+    campaign.run_campaign(second, "camp-budget-b", attempt="1")
+    ledger, _ = budget.load(s3)
+    assert len(ledger["reservations"]) == 2 * budget.MAX_GPU_INSTANCES
+    attempts = {r["attempt"] for r in ledger["reservations"].values()}
+    assert any(a.startswith("camp-budget-a-1") for a in attempts)
+    assert any(a.startswith("camp-budget-b-1") for a in attempts)
+
+
 def test_every_checkpoint_produces_a_unique_artifact_and_snapshot(db):
     s3 = FakeS3()
     sv, _ = make_services(s3, db)

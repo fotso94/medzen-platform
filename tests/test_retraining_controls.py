@@ -430,6 +430,16 @@ def test_reservation_ids_are_idempotent():
     assert len(ledger["reservations"]) == 1
 
 
+def test_reconciled_reservation_cannot_authorise_a_new_lifecycle():
+    s3 = FakeS3()
+    budget.reserve(s3, "sweep_run", "campaign-a-attempt-1")
+    budget.reconcile(
+        s3, "sweep_run", "campaign-a-attempt-1", 60,
+        instance_id="i-old")
+    with pytest.raises(SystemExit, match="completed reservation"):
+        budget.reserve(s3, "sweep_run", "campaign-a-attempt-1")
+
+
 def test_crash_after_launch_leaves_the_worst_case_counted():
     s3 = FakeS3()
     budget.reserve(s3, "final_run", "crashed")
@@ -768,7 +778,7 @@ def test_worst_case_sequence_fits_under_the_ceiling():
              * budget.worst_case_usd("sweep_run")
              + budget.worst_case_usd("final_run"))
     assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
-    assert total == pytest.approx(3.9169, abs=0.0001)
+    assert total == pytest.approx(3.6931, abs=0.0001)
 
 
 def test_declared_instance_count_matches_the_topology():

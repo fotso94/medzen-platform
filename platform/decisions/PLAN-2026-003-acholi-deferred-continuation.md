@@ -1,6 +1,6 @@
 # PLAN-2026-003 — Acholi-deferred B4 continuation
 
-**Status: APPROVED, PREPARED, NOT YET EXECUTED.**  Revision 1,
+**Status: APPROVED, PREPARED, NOT YET EXECUTED.**  Revision 2,
 2026-08-01.  This plan continues the same non-promotable B4
 training-system validation after campaign `b4-scoped-047353961340` attempt 2
 failed closed with no compatible learning rate across the former seven-set
@@ -69,14 +69,24 @@ the approved $9.00 ceiling.  Reservations are sequential and fail closed:
 | Stage | Worst-case reservation |
 |---|---:|
 | builder | $0.2267 |
-| base and preflight | $0.8387 |
-| one sweep | $0.8387 |
+| base and preflight | $0.7268 |
+| one sweep | $0.7268 |
 | final | $2.0128 |
 
 The builder is reserved, terminated and reconciled before the GPU topology is
-authorised.  The complete GPU worst case is $3.6902.  If the reconciled builder
-cost leaves less than $3.6902, validation refuses before launching a GPU.  A
+authorised.  A fail-closed launch exposed a collision in the old reservation
+identity: it was terminated before training and its 472.1-second lifecycle was
+retroactively recorded rather than hidden.  Reservation IDs now include the
+campaign namespace and a terminal reservation can never be reused.  The
+complete corrected GPU worst case is $3.4664.  If the reconciled builder cost
+leaves less than $3.4664, validation refuses before launching a GPU.  A
 launch that cannot afford its own worst case remains prohibited.
+
+The base and sweep in-instance watchdogs are 2,000 seconds.  This is supported
+by measured corrected-run lifecycles: base plus preflight used 1,354.8 seconds
+including boot and termination, while the 1e-4 sweep used 2,130 seconds
+including the separately reserved 600-second lifecycle envelope.  The change
+does not remove training, validation, smoke, cleanup or any quality gate.
 
 ## Outcome contract
 

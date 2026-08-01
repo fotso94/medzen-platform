@@ -39,8 +39,8 @@ RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
 # Base evaluation and preflight share ONE instance: both need the pinned base
 # loaded and preflight builds a fresh LoRA on it. One instance, one
 # reservation, reconciled once when both have finished.
-WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2400,
-              "sweep_run": 2400, "final_run": 6600}
+WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2000,
+              "sweep_run": 2000, "final_run": 6600}
 # The watchdog starts inside the launched instance, while AWS billing starts
 # earlier and ends only after EC2 reaches `terminated`.  Attempt 5 measured
 # 540--570 seconds outside the container on every GPU stage.  Reserving only
@@ -61,15 +61,19 @@ MAX_INSTANCES = 4
 # attempts, the final watchdog is 6600s: still 20 minutes beyond the
 # predeclared ~90-minute expected run.  After attempt 4, observed
 # base+preflight work still left 11 minutes inside a 2400s boundary; sweeps do
-# fewer optimisation steps against the same validation surface.  Reserving
-# those two stage types at 2400s kept the first scoped attempt within its $6
-# ceiling without removing any work or gate.  That attempt reconciled at
+# fewer optimisation steps against the same validation surface.  The last
+# corrected base lifecycle reconciled at 1354.8 seconds INCLUDING boot and
+# termination, and the 1e-4 sweep at 2130 seconds including the separately
+# reserved 600-second lifecycle envelope.  A 2000-second in-instance watchdog
+# therefore retains measured margin without removing any work or gate.  The
+# first scoped attempt reconciled at
 # $2.876 and failed closed on a scheduler-horizon mismatch.  The platform
 # owner explicitly authorised a $9 cumulative ceiling on 2026-07-31 so the
 # corrected full sweep.  That run reconciled at $5.1846 and found 1e-4 to be
 # the only configuration compatible with the retained six-language validation
 # surface after Acholi is deferred.  The targeted continuation therefore uses
-# one fresh 1e-4 confirmation and one final run.  Its GPU worst case is $3.6902.
+# one fresh 1e-4 confirmation and one final run.  After an unreserved launch
+# was terminated and reconciled, its complete GPU worst case is $3.4664.
 # The builder is reserved and reconciled first; if its actual cost leaves less
 # than the complete GPU worst case, the GPU campaign refuses before launch.
 # This remains an extension of the same durable ledger, never a spend reset.
@@ -173,8 +177,16 @@ def reserve(cli, stage: str, attempt: str) -> dict:
 
     existing = ledger["reservations"].get(rid)
     if existing:
-        # Idempotent: the same stage+attempt is the same slot.
-        return {"reservation_id": rid, "already_held": True, **existing}
+        # Idempotency is valid only while the SAME lifecycle is still covered
+        # by its worst-case hold. A reconciled or cancelled slot is terminal:
+        # reusing it would launch a new instance while the ledger continued to
+        # count the old actual (or zero), which is an unreserved launch.
+        if existing["state"] == "reserved":
+            return {"reservation_id": rid, "already_held": True, **existing}
+        raise SystemExit(
+            f"REFUSING: reservation {rid} for {stage}/{attempt} is already "
+            f"{existing['state']}. A completed reservation cannot authorise "
+            "a new instance; use a campaign-scoped unique attempt key.")
 
     stale = unresolved(ledger)
     if stale:

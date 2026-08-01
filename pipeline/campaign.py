@@ -389,7 +389,11 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     # base evaluation and preflight SHARE one GPU instance: both need the
     # pinned base loaded, and preflight builds a fresh LoRA on top of it.
     # One instance, one reservation, one lifecycle.
-    res = budget.reserve(sv.s3, "base_and_preflight", f"{attempt}")
+    # Attempt "1" is common to every campaign but the budget ledger spans all
+    # b4-scoped campaigns. Bind every reservation to the campaign namespace so
+    # a later campaign cannot mistake an earlier reconciled slot for its own.
+    budget_attempt = f"{campaign_run}-{attempt}"
+    res = budget.reserve(sv.s3, "base_and_preflight", budget_attempt)
     trace.add("budget-reserve", stage="base_and_preflight",
               reservation_id=res["reservation_id"],
               worst_case_usd=res["worst_case_usd"])
@@ -404,7 +408,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     r0 = _run_stage(
         sv, base_stage_key, d0, lambda: sv.run_base_and_preflight(d0))
     _reconcile_then_verify(
-        sv, base_stage_key, d0, r0, "base_and_preflight", attempt)
+        sv, base_stage_key, d0, r0, "base_and_preflight", budget_attempt)
     base = r0["base"]
     orchestrate.validate_metric_map(base["wer"], "base WER")
     expected_base_key = (
@@ -451,7 +455,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     results = []
     for lr in orchestrate.LR_CANDIDATES:
         tag = f"lr-{lr:.0e}"
-        rr = budget.reserve(sv.s3, "sweep_run", f"{attempt}-{tag}")
+        sweep_budget_attempt = f"{budget_attempt}-{tag}"
+        rr = budget.reserve(sv.s3, "sweep_run", sweep_budget_attempt)
         trace.add("budget-reserve", stage="sweep_run", lr=lr,
                   reservation_id=rr["reservation_id"])
         sweep_stage_key = f"sweep-{tag}"
@@ -464,7 +469,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         r = _run_stage(
             sv, sweep_stage_key, d, lambda d=d, lr=lr: sv.run_sweep(d, lr))
         _reconcile_then_verify(
-            sv, sweep_stage_key, d, r, "sweep_run", f"{attempt}-{tag}")
+            sv, sweep_stage_key, d, r, "sweep_run", sweep_budget_attempt)
         gate = orchestrate.apply_checkpoint_controls(
             orchestrate.evaluate_gates(
                 r["wer"], base["wer"], r["eos_rate"], r["cap_hit_rate"]),
@@ -495,7 +500,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     # ---- 6. ONE final instance, gates INTERLEAVED with training -----------
     if orchestrate.FINAL_RUN_RESUMES_SWEEP:
         raise CampaignError("REFUSING: the final run must not resume the sweep")
-    rf = budget.reserve(sv.s3, "final_run", f"{attempt}-final")
+    final_budget_attempt = f"{budget_attempt}-final"
+    rf = budget.reserve(sv.s3, "final_run", final_budget_attempt)
     trace.add("budget-reserve", stage="final_run",
               reservation_id=rf["reservation_id"])
     final_stage_key = "final"
@@ -511,7 +517,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         sv, final_stage_key, df,
         lambda: sv.run_final(df, sel["selected_lr"]))
     _reconcile_then_verify(
-        sv, final_stage_key, df, rfin, "final_run", f"{attempt}-final")
+        sv, final_stage_key, df, rfin, "final_run", final_budget_attempt)
     trace.add("final-run", instance_id=rfin["instance_id"],
               lr=sel["selected_lr"], resumed=False,
               steps_completed=rfin.get("steps_completed"),
