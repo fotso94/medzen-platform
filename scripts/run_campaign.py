@@ -112,7 +112,8 @@ def build_services(cli, args, *, preview: bool = False,
         from pipeline.train_asr import load_exclusions
         rows, doc, sha = load_exclusions(
             str(ROOT / POLICY),
-            expect=language_scope.EXPECTED_POLICY_ROWS_TOTAL)
+            expect=language_scope.EXPECTED_POLICY_ROWS_TOTAL,
+            client=cli)
         return {"policy_sha256": sha, "rows": len(rows),
                 "human_review_performed": doc.get("human_review_performed"),
                 "exclusion_checksums_sha256":

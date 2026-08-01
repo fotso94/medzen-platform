@@ -116,6 +116,45 @@ def test_old_twenty_row_policy_is_the_wrong_count_now(tmp_path):
     assert len(out) == 19
 
 
+def test_compound_policy_uses_the_injected_campaign_s3_client(tmp_path):
+    """The holdout read must not open a second, differently-authenticated
+    default AWS session during campaign governance verification."""
+    from pipeline.train_asr import load_exclusions
+
+    policy = ROOT / "platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json"
+    doc = json.loads(policy.read_bytes())
+    manifest = b"\n".join(
+        json.dumps({
+            "audio_checksum_sha256": f"{index:064x}",
+            "primary_language": "lingala",
+        }).encode()
+        for index in range(doc["holdout_exclusion"]["rows"])
+    ) + b"\n"
+
+    class Body:
+        def read(self):
+            return manifest
+
+    class Client:
+        calls = []
+
+        def get_object(self, *, Bucket, Key):
+            self.calls.append((Bucket, Key))
+            return {"Body": Body()}
+
+    # Bind the fixture bytes to the test-only copy of the policy.
+    doc["holdout_exclusion"]["manifest_sha256"] = __import__(
+        "hashlib").sha256(manifest).hexdigest()
+    copy = tmp_path / "compound-policy.json"
+    copy.write_text(json.dumps(doc))
+    client = Client()
+    rows, _, _ = load_exclusions(
+        str(copy), expect=96, client=client)
+    assert len(rows) == 96
+    assert client.calls == [
+        ("medzen-speech", doc["holdout_exclusion"]["manifest_key"])]
+
+
 # --------------------------------------------------------------------------- #
 # all FOUR validation gates
 # --------------------------------------------------------------------------- #

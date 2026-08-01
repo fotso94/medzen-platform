@@ -699,7 +699,7 @@ class CheckpointStatus:
         return max(self.confirmed) if self.confirmed else None
 
 
-def load_exclusions(ref: str, expect: int | None = None
+def load_exclusions(ref: str, expect: int | None = None, *, client=None
                     ) -> tuple[dict[str, dict], dict, str]:
     """Load an exclusion list. Returns (by_checksum, doc, raw_sha256).
 
@@ -716,9 +716,13 @@ def load_exclusions(ref: str, expect: int | None = None
       Enforced here so a policy record can never be quietly upgraded into a
       finding about the data.
     """
+    # Governance verification and training must use the caller's already
+    # authenticated S3 client.  Falling back to a new default-session client
+    # can silently select different credentials from the campaign session.
+    storage = client or s3()
     if ref.startswith("s3://"):
         b, k = s3_uri_parts(ref)
-        raw = s3().get_object(Bucket=b, Key=k)["Body"].read()
+        raw = storage.get_object(Bucket=b, Key=k)["Body"].read()
     else:
         raw = Path(ref).read_bytes()
     doc = json.loads(raw)
@@ -742,7 +746,7 @@ def load_exclusions(ref: str, expect: int | None = None
         entries.extend(inherited_entries)
     holdout = doc.get("holdout_exclusion")
     if holdout:
-        body = s3().get_object(
+        body = storage.get_object(
             Bucket=BUCKET, Key=holdout["manifest_key"])["Body"].read()
         if hashlib.sha256(body).hexdigest() != holdout.get("manifest_sha256"):
             raise SystemExit("REFUSING: holdout manifest bytes changed")
@@ -1070,8 +1074,8 @@ def main() -> int:
     # filter applied to its output.
     excluded, excl_doc, excl_sha = ({}, {}, None)
     if a.exclusions:
-        excluded, excl_doc, excl_sha = load_exclusions(a.exclusions,
-                                                       expect=a.expect_excluded)
+        excluded, excl_doc, excl_sha = load_exclusions(
+            a.exclusions, expect=a.expect_excluded, client=cli)
     elif a.expect_excluded or a.expect_applied_exclusions:
         raise SystemExit(
             "REFUSING: an expected exclusion count was given without "
