@@ -45,9 +45,14 @@ WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2000,
 # earlier and ends only after EC2 reaches `terminated`.  Attempt 5 measured
 # 540--570 seconds outside the container on every GPU stage.  Reserving only
 # WATCHDOG_S therefore understated the amount that a hung stage could bill.
-# Keep the watchdog unchanged, but reserve a conservative ten-minute EC2
-# lifecycle envelope for boot, image pull and termination on every instance.
-EC2_LIFECYCLE_OVERHEAD_S = 600
+# Keep the watchdog unchanged, but cover BOTH operator-side termination grace
+# windows. EC2StageAdapter first waits ``watchdog + 600s``; if the instance
+# has still not terminated it sends an explicit termination request and waits
+# one more 600s grace window. Reserving only one window made the scoped 1e-4
+# sweep's 2,903.6-second billed lifecycle exceed its 2,600-second so-called
+# worst case even though the container itself finished inside the watchdog.
+# A worst-case hold must cover the executable boundary, not the common path.
+EC2_LIFECYCLE_OVERHEAD_S = 1200
 STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
                   "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
 MAX_GPU_INSTANCES = 3
@@ -55,7 +60,10 @@ MAX_INSTANCES = 4
 
 # The ceiling must cover the whole sequence hanging to its watchdogs plus the
 # measured EC2 lifecycle envelope:
-#   0.227 + 0.839 + 0.839 + 2.013 = 3.917
+# The lifecycle envelope is now 1,200 seconds (two termination grace windows)
+# because the 2026-08-01 scoped sweep demonstrated that the second window is
+# billable. Historical tables below describe decisions at their time;
+# ``worst_case_usd`` is the executable source of truth for a future launch.
 # An earlier table used a 10800s final watchdog, which made the worst-case
 # sequence $6.21 -- over its own $6 ceiling.  After three fail-closed campaign
 # attempts, the final watchdog is 6600s: still 20 minutes beyond the

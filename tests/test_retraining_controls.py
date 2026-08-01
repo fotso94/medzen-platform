@@ -412,11 +412,20 @@ def test_reservation_is_durable_before_launch():
     assert r["state"] == "reserved"
     assert r["worst_case_usd"] == budget.worst_case_usd("final_run")
     assert r["watchdog_s"] == budget.WATCHDOG_S["final_run"]
-    assert r["ec2_lifecycle_overhead_s"] == 600
+    assert r["ec2_lifecycle_overhead_s"] == \
+        budget.EC2_LIFECYCLE_OVERHEAD_S
     assert r["reserved_seconds"] == (
         r["watchdog_s"] + r["ec2_lifecycle_overhead_s"])
     ledger, _ = budget.load(s3)
     assert budget.committed_usd(ledger) == r["worst_case_usd"]
+
+
+def test_reservation_covers_both_operator_termination_grace_windows():
+    """The adapter can bill one grace before and one after forced terminate."""
+    from pipeline.ec2_stage_adapter import EC2StageConfig
+
+    grace = EC2StageConfig().termination_grace_seconds
+    assert budget.EC2_LIFECYCLE_OVERHEAD_S >= 2 * grace
 
 
 def test_reservation_ids_are_idempotent():
@@ -778,7 +787,7 @@ def test_worst_case_sequence_fits_under_the_ceiling():
              * budget.worst_case_usd("sweep_run")
              + budget.worst_case_usd("final_run"))
     assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
-    assert total == pytest.approx(3.6931, abs=0.0001)
+    assert total == pytest.approx(4.2530, abs=0.0001)
 
 
 def test_declared_instance_count_matches_the_topology():

@@ -1,6 +1,6 @@
 # PLAN-2026-003 — Acholi-deferred B4 continuation
 
-**Status: APPROVED, PREPARED, NOT YET EXECUTED.**  Revision 2,
+**Status: EXECUTED, FAILED CLOSED BEFORE FINAL.**  Revision 3,
 2026-08-01.  This plan continues the same non-promotable B4
 training-system validation after campaign `b4-scoped-047353961340` attempt 2
 failed closed with no compatible learning rate across the former seven-set
@@ -43,6 +43,15 @@ answer a new question.  Because the training mix changes when Acholi is
 removed, the old 1e-4 adapter is not reused: a fresh 100-step 1e-4 confirmation
 is mandatory before any final run.
 
+That confirmation was executed as campaign `b4-scoped-515d00214c87`, attempt
+1.  The premise above did not survive the required fresh test: the new
+11-language mix caused three of 51 Fula rows to exhaust the 440-token budget
+without EOS.  Fula EOS was 0.9412 and cap-hit rate 0.0588.  All other retained
+validation languages passed termination, and every WER gate passed.  The final
+run was therefore correctly withheld.  Metrics obtained by filtering an old
+run are useful evidence but cannot predict the behaviour of a newly sampled
+training mix.
+
 ## Execution topology and gates
 
 The work is direct on-demand EC2, never EKS and never Spot, with at most one GPU
@@ -78,8 +87,9 @@ authorised.  A fail-closed launch exposed a collision in the old reservation
 identity: it was terminated before training and its 472.1-second lifecycle was
 retroactively recorded rather than hidden.  Reservation IDs now include the
 campaign namespace and a terminal reservation can never be reused.  The
-complete corrected GPU worst case is $3.4664.  If the reconciled builder cost
-leaves less than $3.4664, validation refuses before launching a GPU.  A
+complete corrected GPU worst case at revision 2 was $3.4664.  If the
+reconciled builder cost leaves less than the executable worst case, validation
+refuses before launching a GPU.  A
 launch that cannot afford its own worst case remains prohibited.
 
 The base and sweep in-instance watchdogs are 2,000 seconds.  This is supported
@@ -87,6 +97,16 @@ by measured corrected-run lifecycles: base plus preflight used 1,354.8 seconds
 including boot and termination, while the 1e-4 sweep used 2,130 seconds
 including the separately reserved 600-second lifecycle envelope.  The change
 does not remove training, validation, smoke, cleanup or any quality gate.
+
+The fresh sweep exposed a separate accounting defect: its container finished
+in 1,535.2 seconds, but AWS did not report termination until 2,903.6 billed
+seconds after launch.  The old reservation covered only one 600-second
+termination grace window (2,600 seconds total), while the adapter can wait a
+second 600-second window after forcing termination.  Future reservations now
+cover both windows (`watchdog + 1,200 seconds`).  The run remained within the
+$9 ceiling.  Under that corrected rule, the three-stage GPU sequence is
+$3.9697 and the builder plus GPU sequence is $4.2530.  No estimate lower than
+a reachable billed lifecycle may be called worst case.
 
 ## Outcome contract
 
