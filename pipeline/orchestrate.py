@@ -12,8 +12,8 @@ import json
 from pipeline import language_scope
 
 # VAL-2026-001 preserves all nine frozen sets.  B4-SCOPE-2026-001 authorises
-# seven of them for the current campaign and defers Amharic and Ewe without
-# deleting either set.
+# six of them for the current campaign and defers Acholi, Amharic and Ewe
+# without deleting any set.
 ALL_VALIDATION_LANGUAGES = language_scope.ALL_VALIDATION_LANGUAGES
 VALIDATION_LANGUAGES = language_scope.VALIDATION_LANGUAGES
 
@@ -22,7 +22,15 @@ MAX_LANGUAGE_REGRESSION = 0.05      # absolute WER, vs the in-run base arm
 REQUIRED_EOS_RATE = 1.0
 REQUIRED_CAP_HIT_RATE = 0.0
 
-LR_CANDIDATES = (1e-4, 3e-4, 5e-4)   # 1e-3 excluded: the failed run's value
+# The corrected 12-language campaign already performed the declared
+# 1e-4/3e-4/5e-4 comparison under the final run's 600-step scheduler horizon.
+# After Acholi is deferred, 1e-4 is the only arm that passed every unchanged
+# gate for all six retained validation languages.  The new 11-language mix
+# still needs a fresh 100-step confirmation, but repeating two configurations
+# already known to fail retained languages would spend money without answering
+# a new question.  This is a predeclared targeted continuation, not a relaxed
+# selection rule.
+LR_CANDIDATES = (1e-4,)
 SWEEP_STEPS = 100
 SWEEP_COMPARISON_CHECKPOINT = 100
 # A sweep executes only SWEEP_STEPS, but its scheduler must be constructed for

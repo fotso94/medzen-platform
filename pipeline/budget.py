@@ -29,11 +29,11 @@ CAMPAIGN = "b4-scoped"
 LEDGER_KEY = f"candidates/budget/{CAMPAIGN}/ledger.json"
 
 RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
-# STAGE TOPOLOGY — five GPU instances plus one builder.
+# STAGE TOPOLOGY — three GPU instances plus one builder.
 #
 #   builder             c6i.2xlarge   image build
-#   base_and_preflight  g6.xlarge     base arm on 7 sets, THEN overfit+smoke
-#   sweep_run x3        g6.xlarge     100 steps + 7-set evaluation, each
+#   base_and_preflight  g6.xlarge     base arm on 6 sets, THEN overfit+smoke
+#   sweep_run x1        g6.xlarge     100 steps + 6-set evaluation
 #   final_run           g6.xlarge     600 steps with interleaved checkpoints
 #
 # Base evaluation and preflight share ONE instance: both need the pinned base
@@ -50,12 +50,12 @@ WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2400,
 EC2_LIFECYCLE_OVERHEAD_S = 600
 STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
                   "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
-MAX_GPU_INSTANCES = 5
-MAX_INSTANCES = 6
+MAX_GPU_INSTANCES = 3
+MAX_INSTANCES = 4
 
 # The ceiling must cover the whole sequence hanging to its watchdogs plus the
 # measured EC2 lifecycle envelope:
-#   0.227 + 0.839 + 3x0.839 + 2.013 = 5.595
+#   0.227 + 0.839 + 0.839 + 2.013 = 3.917
 # An earlier table used a 10800s final watchdog, which made the worst-case
 # sequence $6.21 -- over its own $6 ceiling.  After three fail-closed campaign
 # attempts, the final watchdog is 6600s: still 20 minutes beyond the
@@ -66,8 +66,13 @@ MAX_INSTANCES = 6
 # ceiling without removing any work or gate.  That attempt reconciled at
 # $2.876 and failed closed on a scheduler-horizon mismatch.  The platform
 # owner explicitly authorised a $9 cumulative ceiling on 2026-07-31 so the
-# corrected, full-topology retry can afford its complete $5.5943 worst case.
-# This is an extension of the same durable ledger, never a spend reset.
+# corrected full sweep.  That run reconciled at $5.1846 and found 1e-4 to be
+# the only configuration compatible with the retained six-language validation
+# surface after Acholi is deferred.  The targeted continuation therefore uses
+# one fresh 1e-4 confirmation and one final run.  Its GPU worst case is $3.6902.
+# The builder is reserved and reconciled first; if its actual cost leaves less
+# than the complete GPU worst case, the GPU campaign refuses before launch.
+# This remains an extension of the same durable ledger, never a spend reset.
 CEILING_USD = 9.00
 
 

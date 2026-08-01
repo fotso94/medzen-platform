@@ -764,16 +764,16 @@ def test_worst_case_sequence_fits_under_the_ceiling():
     """The complete topology, including EC2 lifecycle overhead, fits."""
     total = (budget.worst_case_usd("builder")
              + budget.worst_case_usd("base_and_preflight")
-             + 3 * budget.worst_case_usd("sweep_run")
+             + len(orchestrate.LR_CANDIDATES)
+             * budget.worst_case_usd("sweep_run")
              + budget.worst_case_usd("final_run"))
     assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
-    assert total == pytest.approx(5.5943, abs=0.0001)
+    assert total == pytest.approx(3.9169, abs=0.0001)
 
 
 def test_declared_instance_count_matches_the_topology():
-    gpu = ["base_and_preflight", "sweep_run", "sweep_run", "sweep_run",
-           "final_run"]
-    assert len(gpu) == budget.MAX_GPU_INSTANCES == 5
+    gpu = ["base_and_preflight", "sweep_run", "final_run"]
+    assert len(gpu) == budget.MAX_GPU_INSTANCES == 3
     assert budget.MAX_INSTANCES == budget.MAX_GPU_INSTANCES + 1
     assert all(budget.STAGE_INSTANCE[s] == "g6.xlarge" for s in set(gpu))
     assert budget.STAGE_INSTANCE["builder"] == "c6i.2xlarge"

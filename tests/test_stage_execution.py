@@ -40,7 +40,7 @@ def descriptor(stage="sweep", **over):
         "image_digest": "sha256:" + "c" * 64,
         "policy_sha256": "d" * 64,
         "adoption_key":
-            "curated/_versions/v2/ADOPTION-B4-SCOPED.json",
+            "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI.json",
         "dataset_fingerprint": language_scope.EXPECTED_DATASET_FINGERPRINT,
         "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
         "training_languages": (

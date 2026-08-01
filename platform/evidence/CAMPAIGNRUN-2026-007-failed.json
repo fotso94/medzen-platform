@@ -1,0 +1,144 @@
+{
+  "record": "CAMPAIGNRUN-2026-007-FAILED",
+  "status": "FAILED_CLOSED_NO_LEARNING_RATE_PASSED",
+  "campaign_run": "b4-scoped-047353961340",
+  "attempt": "2",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "executed_provenance": {
+    "git_sha": "047353961340c4259105caaf64021c90625d36e1",
+    "bundle_tar_sha256": "66b3e82831ba6e10da4b56cd21b95d20e7a8d8399c2d0195cfc4dd46b29608f7",
+    "image_digest": "sha256:58b71e77e6bbc06e9df8649a6f50f9fb13362f26d4b48e90c5908f4080443dfc",
+    "policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED.json",
+    "language_scope_sha256": "8edeb442f4635a65a29482301ed1e88fb756b319acce6abf36c1fd502214d355",
+    "dataset_fingerprint": "d71be0710c8d28d9cc82511adb863f125526127cbbd7d06a0d28b74781f6d733",
+    "eligible_rows": 3809,
+    "sampled_rows": 3808,
+    "scheduler_horizon_steps": 600,
+    "sweep_stop_at_step": 100
+  },
+  "language_scope": {
+    "training": [
+      "acholi", "akan", "fula", "hausa", "igbo", "lingala",
+      "luganda", "oromo", "pidgin", "shona", "swahili", "yoruba"
+    ],
+    "validation": [
+      "acholi", "akan", "fula", "lingala", "luganda", "oromo", "shona"
+    ],
+    "deferred": ["amharic", "ewe"]
+  },
+  "base_and_preflight": {
+    "instance_id": "i-0b495d27b431d4bf7",
+    "actual_seconds": 1354.8,
+    "actual_usd": 0.3787,
+    "root_volume_id": "vol-0b94eb3321984a858",
+    "root_volume_deleted": true,
+    "preflight_passed": true,
+    "lora_b_tensors_nonzero": "192/192",
+    "saved_adapter_reload_hash_matched": true,
+    "generation_eos_emitted": true,
+    "finite_gradients": true,
+    "descriptor_sha256": "87e3c212e90431a9cf9e88a1558e24be9e99a216bb9601bcd3cb9c4cb0b4877f",
+    "stage_result_sha256": "489b7724c3d1cfc4277576084a90193d63b4870f131bba2be3a57e661e3e2ba4",
+    "base_artifact_sha256": "04bf2c535b6947dbbb3aaec62708de9220f6bf22c7559badd4af2c1aa2144828",
+    "base_arm_key": "29023ae23f441bb322e32e1762bd612ed9719af753357aba79f482ae419ee722",
+    "base_wer": {
+      "acholi": 1.3468,
+      "akan": 0.9677,
+      "fula": 0.9244,
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749,
+      "shona": 1.1039
+    }
+  },
+  "sweeps": [
+    {
+      "lr": 0.0001,
+      "instance_id": "i-00a72b349cb651b70",
+      "actual_seconds": 2130.0,
+      "actual_usd": 0.5955,
+      "root_volume_id": "vol-07eac7be0d00435df",
+      "root_volume_deleted": true,
+      "descriptor_sha256": "64eac1654f9ed8e6b39204c7b50ce54f2408fd010f4dc4833d70e72f7e0470a2",
+      "stage_result_sha256": "1be933234f04221ee83069e492ff908d371ec118cbf8a1b1e4909694a3b3f693",
+      "evaluation_sha256": "26c0526b9fbc09d529fdf22394eadc4a2156d957660f20472d7988c4cad038de",
+      "saved_adapter_smoke_passed": true,
+      "macro_wer": 0.935657,
+      "passed_all_gates": false,
+      "only_failure": "Acholi EOS rate 0.9846 and cap-hit rate 0.0154",
+      "remaining_six_languages_pass_if_acholi_is_excluded": true,
+      "remaining_six_macro_wer": 0.949783,
+      "remaining_six_base_macro_wer": 1.02625,
+      "remaining_six_worst_wer_delta": -0.0145
+    },
+    {
+      "lr": 0.0003,
+      "instance_id": "i-0e5e8be7f5ebaeac2",
+      "actual_seconds": 2296.9,
+      "actual_usd": 0.6421,
+      "root_volume_id": "vol-00997b7b53b1977df",
+      "root_volume_deleted": true,
+      "descriptor_sha256": "2fb67418dfeb7b8d9f0518d5707847d79d86baf151bbfe8d73bbe5aeaa962089",
+      "stage_result_sha256": "a26edb2eece8ff9d4a6baaf485b4449ae6690560cad6622b31563a35582da071",
+      "evaluation_sha256": "a1f27630ebd18765b7c26f15668670793e5db4e0fea65daf2c289d93cafacf09",
+      "saved_adapter_smoke_passed": true,
+      "macro_wer": 0.873657,
+      "passed_all_gates": false,
+      "termination_failures": ["acholi", "akan", "fula", "luganda"]
+    },
+    {
+      "lr": 0.0005,
+      "instance_id": "i-019dfc22ca25eca57",
+      "actual_seconds": 2296.1,
+      "actual_usd": 0.6419,
+      "root_volume_id": "vol-05e9c078c487aca17",
+      "root_volume_deleted": true,
+      "descriptor_sha256": "31d6370813d4109e66f0e09130205582391d03df3a0aef710eb0712a8dc67b66",
+      "stage_result_sha256": "84d359602c2fbe9839eaad410d3ad83b818a5cb5f57d9349ec481a29f3bf038c",
+      "evaluation_sha256": "ce5e27a3b088736d47474ad0be83629431a23348cb96683fa2846c7d68cd7fdc",
+      "saved_adapter_smoke_passed": true,
+      "macro_wer": 0.903114,
+      "passed_all_gates": false,
+      "termination_failures": ["akan", "fula", "lingala", "luganda"],
+      "wer_regression_failure": "lingala +0.0986 absolute"
+    }
+  ],
+  "selection": {
+    "selected_lr": null,
+    "reason": "no learning rate passed every unchanged hard gate",
+    "least_bad_selection_performed": false,
+    "final_run_launched": false,
+    "registered_models": 0,
+    "promoted_models": 0,
+    "b5_transition": false
+  },
+  "scope_conclusion": {
+    "acholi": "defer for later continuous training; it is the sole blocker in the otherwise passing 1e-4 arm",
+    "oromo": "retain; all three corrected-horizon arms terminate and improve WER",
+    "luganda": "retain; the corrected 1e-4 arm terminates and improves WER",
+    "ewe": "remain deferred",
+    "amharic": "remain deferred",
+    "gate_weakening": false,
+    "source_data_deleted": false
+  },
+  "budget": {
+    "attempt_2_gpu_usd": 2.2582,
+    "campaign_committed_usd_after_reconciliation": 5.1846,
+    "hard_ceiling_usd": 9.0,
+    "remaining_usd": 3.8154,
+    "unresolved_reservations": 0
+  },
+  "cleanup": {
+    "all_four_gpu_instances_terminated": true,
+    "all_four_root_volumes_deleted": true,
+    "active_b4_gpu_instances": 0,
+    "unattached_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0,
+    "eks_used": false,
+    "spot_used": false
+  },
+  "next_run_rule": "A new 11-language mix requires a new scope revision, scoped fingerprint, immutable adoption key, commit, bundle and image. The old adapter may not be reused. A fresh 1e-4 confirmation is required before any final run."
+}

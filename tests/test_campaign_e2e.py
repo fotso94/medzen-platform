@@ -259,7 +259,7 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
     assert idx(lambda n: n == "final-run") < idx(lambda n: n == "checkpoint-eval")
     assert idx(lambda n: n == "checkpoint-eval") < idx(lambda n: n == "cleanup")
 
-    assert names.count("sweep-run") == 3
+    assert names.count("sweep-run") == len(orchestrate.LR_CANDIDATES)
     assert names.count("checkpoint-eval") == len(campaign.FINAL_CHECKPOINTS)
     assert out["registered_models"] == 0 and out["promotable"] is False
     assert out["purpose"] == "training_system_validation"
@@ -273,16 +273,18 @@ def test_base_and_preflight_run_before_any_sweep(db):
         i for i, c in enumerate(calls) if c.startswith("run_sweep"))
 
 
-def test_exactly_five_gpu_stage_calls(db):
-    """One base+preflight, three sweeps, one final -- the declared topology."""
+def test_exactly_declared_gpu_stage_calls(db):
+    """One base+preflight, declared sweeps, one final."""
     s3 = FakeS3()
     sv, calls = make_services(s3, db)
     out = campaign.run_campaign(sv, "camp-2b")
     gpu = [c for c in calls if c.startswith(("run_base_and_preflight",
                                              "run_sweep", "run_final"))]
-    assert len(gpu) == 5 == out["gpu_instances"] == budget.MAX_GPU_INSTANCES
+    assert (len(gpu) == 2 + len(orchestrate.LR_CANDIDATES)
+            == out["gpu_instances"] == budget.MAX_GPU_INSTANCES)
     assert calls.count("run_base_and_preflight") == 1
-    assert sum(1 for c in calls if c.startswith("run_sweep")) == 3
+    assert sum(1 for c in calls if c.startswith("run_sweep")) == len(
+        orchestrate.LR_CANDIDATES)
     assert sum(1 for c in calls if c.startswith("run_final")) == 1
 
 
@@ -303,8 +305,6 @@ def test_each_sweep_learning_rate_has_a_distinct_write_once_prefix(db):
     ]
     assert [d["output_prefix"] for d in descriptors] == [
         "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-1e-04/",
-        "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-3e-04/",
-        "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-5e-04/",
     ]
     assert all(d["max_steps"] == 600 for d in descriptors)
     assert all(d["checkpoint_steps"] == [100] for d in descriptors)
@@ -315,7 +315,7 @@ def test_one_reservation_per_stage_lifecycle(db):
     sv, _ = make_services(s3, db)
     campaign.run_campaign(sv, "camp-2c")
     ledger, _ = budget.load(s3)
-    assert len(ledger["reservations"]) == 5
+    assert len(ledger["reservations"]) == budget.MAX_GPU_INSTANCES
     assert all(r["state"] == "reconciled" for r in ledger["reservations"].values())
 
 

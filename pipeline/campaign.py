@@ -1,7 +1,7 @@
 """THE entrypoint for the Option B campaign. There is no other launch path.
 
 Every control lives on this path: policy and adoption verification, budget
-reservation, base arm first, overfit and smoke, three sequential LR runs, all
+reservation, base arm first, overfit and smoke, the predeclared LR runs, all
 four gates, deterministic selection, a final run from scratch, write-once
 prefixes, immutable MLflow snapshots, and zero model registration.
 
@@ -447,7 +447,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
     _sync(sv, campaign_run, "base_and_preflight", trace, attempt=attempt,
           artifact_sha256=base["artifact_sha256"])
 
-    # ---- 4. three sequential sweep instances ------------------------------
+    # ---- 4. predeclared sequential sweep instances ------------------------
     results = []
     for lr in orchestrate.LR_CANDIDATES:
         tag = f"lr-{lr:.0e}"
@@ -570,7 +570,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
           trace, attempt=attempt)
     ledger, _ = budget.load(sv.s3)
     trace.add("cleanup", unresolved_reservations=len(budget.unresolved(ledger)),
-              gpu_instances_used=5)
+              gpu_instances_used=2 + len(orchestrate.LR_CANDIDATES))
     if failed:
         sv.tracker.finish_parent(
             False, f"checkpoint-{failed[0]['step']} failed")
@@ -584,7 +584,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         "campaign_run": campaign_run,
         "selected_lr": sel["selected_lr"],
         "checkpoints": checkpoints,
-        "gpu_instances": 5,
+        "gpu_instances": 2 + len(orchestrate.LR_CANDIDATES),
         "registered_models": 0,
         "promotable": False,
         "purpose": "training_system_validation",

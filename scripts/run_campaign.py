@@ -236,7 +236,8 @@ def validate_execution_inputs(args) -> tuple[object, object, dict]:
             f"unresolved: {unresolved}")
     gpu_worst_case = (
         budget.worst_case_usd("base_and_preflight")
-        + 3 * budget.worst_case_usd("sweep_run")
+        + len(orchestrate.LR_CANDIDATES)
+        * budget.worst_case_usd("sweep_run")
         + budget.worst_case_usd("final_run"))
     committed = budget.committed_usd(ledger)
     if committed + gpu_worst_case > budget.CEILING_USD:
@@ -303,9 +304,12 @@ def main() -> int:
     print("validation    " + ",".join(language_scope.VALIDATION_LANGUAGES))
     print("deferred      " + ",".join(language_scope.DEFERRED_LANGUAGES))
     print(f"scope hash    {language_scope.LANGUAGE_SCOPE_SHA256}")
-    print("topology      5 GPU instances: 1 base+preflight, 3 sweeps, 1 final")
+    n_sweeps = len(orchestrate.LR_CANDIDATES)
+    print(f"topology      {n_sweeps + 2} GPU instances: "
+          f"1 base+preflight, {n_sweeps} sweep(s), 1 final")
     print("ordering      verify-policy -> verify-adoption -> reserve -> "
-          "run_base_and_preflight -> 3x run_sweep -> select -> run_final "
+          f"run_base_and_preflight -> {n_sweeps}x run_sweep -> select -> "
+          "run_final "
           "(gates interleaved at 100..600) -> cleanup")
     print("registration  disabled by construction (register_model is None)")
 
