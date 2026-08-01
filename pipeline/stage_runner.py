@@ -799,6 +799,32 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
     }
 
 
+def _save_processor_for_ctranslate2(processor, merged_dir: Path) -> None:
+    """Persist every processor file required by the CT2 Whisper converter.
+
+    ``WhisperProcessor.save_pretrained`` in the pinned Transformers runtime
+    did not emit ``preprocessor_config.json`` for the merged directory.  The
+    converter requires that file while loading the model, before ``--copy_files``
+    is applied.  Save both components explicitly and then fail locally if the
+    exact converter inputs are still absent.
+    """
+    merged_dir.mkdir(parents=True, exist_ok=True)
+    processor.save_pretrained(merged_dir)
+    feature_extractor = getattr(processor, "feature_extractor", None)
+    tokenizer = getattr(processor, "tokenizer", None)
+    if feature_extractor is None or tokenizer is None:
+        raise SystemExit(
+            "REFUSING: Whisper processor lacks a feature extractor or tokenizer")
+    feature_extractor.save_pretrained(merged_dir)
+    tokenizer.save_pretrained(merged_dir)
+    required = ("preprocessor_config.json", "tokenizer.json")
+    missing = [name for name in required if not (merged_dir / name).is_file()]
+    if missing:
+        raise SystemExit(
+            "REFUSING: merged model lacks CT2 processor file(s): "
+            + ", ".join(missing))
+
+
 def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
     """Holdout, merge, conversion, and scoring of the actual servable bytes."""
     import torch
@@ -839,7 +865,7 @@ def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
     merged = peft_model.merge_and_unload(safe_merge=True)
     merged_dir = work / "merged-transformers"
     merged.save_pretrained(merged_dir, safe_serialization=True)
-    selection.processor.save_pretrained(merged_dir)
+    _save_processor_for_ctranslate2(selection.processor, merged_dir)
     del peft_model, merged, base
     gc.collect()
     torch.cuda.empty_cache()

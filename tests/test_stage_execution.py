@@ -21,8 +21,8 @@ from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
 from pipeline.stage_runner import (
-    _training_command, download_artifact_tree, require_runtime_provenance,
-    upload_tree)
+    _save_processor_for_ctranslate2, _training_command,
+    download_artifact_tree, require_runtime_provenance, upload_tree)
 from pipeline.termination_diagnostic import (
     aggregate_rows, generated_row, repeated_ngram_rate, teacher_forced_row)
 from pipeline.decode_compatibility import (
@@ -1038,6 +1038,49 @@ def test_artifact_tree_uses_conditional_writes_and_sha256_readback(tmp_path):
     assert upload["IfNoneMatch"] == "*"
     assert upload["ChecksumSHA256"]
     assert upload["ServerSideEncryption"] == "aws:kms"
+
+
+def test_ct2_export_saves_feature_extractor_and_tokenizer_explicitly(tmp_path):
+    calls = []
+
+    class Component:
+        def __init__(self, filename):
+            self.filename = filename
+
+        def save_pretrained(self, target):
+            calls.append(self.filename)
+            (Path(target) / self.filename).write_text("{}")
+
+    class Processor:
+        feature_extractor = Component("preprocessor_config.json")
+        tokenizer = Component("tokenizer.json")
+
+        def save_pretrained(self, target):
+            # Reproduce the pinned runtime defect: the composite save omits
+            # preprocessor_config.json.
+            calls.append("processor")
+
+    _save_processor_for_ctranslate2(Processor(), tmp_path)
+
+    assert calls == ["processor", "preprocessor_config.json", "tokenizer.json"]
+    assert (tmp_path / "preprocessor_config.json").is_file()
+    assert (tmp_path / "tokenizer.json").is_file()
+
+
+def test_ct2_export_refuses_when_required_processor_file_stays_absent(tmp_path):
+    class NoWrite:
+        def save_pretrained(self, target):
+            pass
+
+    class Processor:
+        feature_extractor = NoWrite()
+        tokenizer = NoWrite()
+
+        def save_pretrained(self, target):
+            pass
+
+    with pytest.raises(SystemExit, match="preprocessor_config.json"):
+        _save_processor_for_ctranslate2(Processor(), tmp_path)
 
 
 class FakeECR:
