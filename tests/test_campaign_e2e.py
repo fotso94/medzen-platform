@@ -700,7 +700,8 @@ def test_launcher_dry_run_executes_and_reports_the_dynamic_topology():
     """Exercise main(): a missing topology import must fail before AWS does."""
     out = subprocess.run(
         [sys.executable, str(ROOT / "scripts/run_campaign.py"),
-         "--campaign-run", "b4-scoped-dry-run"],
+         "--campaign-run", "b4-scoped-dry-run",
+         "--git-sha", "a" * 40],
         cwd=ROOT, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr
     assert "topology      3 GPU instances" in out.stdout
