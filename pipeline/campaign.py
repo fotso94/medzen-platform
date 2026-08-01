@@ -76,6 +76,11 @@ class Services:
     image_digest: str | None = None
     stage_descriptors: dict | None = None
     register_model: Callable[..., Any] | None = None   # must stay None
+    # Set only after the immutable parent snapshot has been read back.  The
+    # exception wrapper uses this to distinguish a pre-governance refusal
+    # (which must perform zero S3 I/O) from a campaign that started and now
+    # needs a durable terminal-status snapshot.
+    parent_snapshot_written: bool = False
 
     SERVICE_FIELDS = ("verify_policy", "verify_adoption",
                       "verify_language_scope",
@@ -154,6 +159,8 @@ def _sync(sv: Services, campaign_run: str, stage: str, trace: Trace,
         return
     rec = mlflow_sync.sync(sv.s3, sv.mlflow_db, campaign_run, stage,
                            attempt=attempt, extra=extra)
+    if stage == "parent":
+        sv.parent_snapshot_written = True
     trace.add(f"mlflow-sync:{stage}", sha256=rec["sha256"], key=rec["key"])
 
 
@@ -666,4 +673,18 @@ def run_campaign(sv: Services, campaign_run: str,
         if sv.tracker is not None:
             sv.tracker.finish_parent(
                 False, f"{type(exc).__name__}: {exc}")
+        # The parent status change happens after the last successful stage
+        # snapshot.  Persist it under a new immutable key; otherwise recovery
+        # sees the parent as RUNNING even though the live DB correctly says
+        # FAILED.  Do not do this for readiness/governance refusals: those
+        # occur before the parent snapshot and are required to perform zero
+        # S3 reads or writes.
+        if sv.parent_snapshot_written and sv.mlflow_db is not None:
+            mlflow_sync.sync(
+                sv.s3, sv.mlflow_db, campaign_run, "campaign-failed",
+                attempt=attempt,
+                extra={
+                    "reason": f"{type(exc).__name__}: {exc}",
+                    "registered_models": 0,
+                })
         raise

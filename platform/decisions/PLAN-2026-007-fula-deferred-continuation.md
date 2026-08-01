@@ -1,7 +1,6 @@
 # PLAN-2026-007 — Fula-deferred B4 continuation
 
-**Status: APPROVED, PREPARED, NOT YET EXECUTED.** Revision 1,
-2026-08-01.
+**Status: EXECUTED, FAILED CLOSED.** Revision 2, 2026-08-01.
 
 ## Authorization and purpose
 
@@ -68,3 +67,22 @@ deletion.
 Every stage must leave immutable S3 results and MLflow snapshots, then prove
 instance termination, root-volume deletion, no active Spot request, and no
 orphan B4 resource. A failure is reported before any relaunch.
+
+## Execution outcome
+
+The approved campaign ran as `b4-scoped-5360cd98125e/attempt-1` and is
+recorded in `CAMPAIGNRUN-2026-009-FAILED`. The pinned image suite passed, the
+base/preflight stage passed, and the fresh `1e-4` adapter was structurally
+valid, reloadable and finite. Its macro WER improved from 1.04662 to 0.94586.
+
+The candidate nevertheless failed closed. Four of 72 Akan rows and one of 15
+Shona rows exhausted the 440-token generation budget without EOS. Akan WER
+also regressed by +0.1440 absolute, above the +0.05 per-language cap. The same
+five rows terminated normally in the immediately preceding 11-language
+campaign, proving a scope-sensitive learned regression rather than malformed
+validation rows. No learning rate was selected and no final stage launched.
+
+Both GPU instances terminated and both root volumes were deleted. The budget
+ledger reconciled to $7.6861 committed against the $12 ceiling with zero
+unresolved reservations. MLflow has a write-once terminal failure snapshot and
+zero registered models. B5 remains blocked.

@@ -153,14 +153,16 @@ def recover(cli, campaign_run: str, attempt: str = "1") -> dict:
     stages = sorted(
         (json.loads(cli.get_object(Bucket=BUCKET, Key=k)["Body"].read())
          for k in keys), key=lambda r: (r.get("seq_ns", 0), r["utc"]))
+    last = stages[-1]["stage"] if stages else None
+    terminal = last in {"campaign-failed", "final-complete", "final-failed"}
     return {
         "campaign_run": campaign_run,
         "attempt": attempt,
         "stages": stages,
         "stage_names": [s["stage"] for s in stages],
-        "last_completed_stage": stages[-1]["stage"] if stages else None,
+        "last_completed_stage": last,
         "last_snapshot_sha256": stages[-1]["sha256"] if stages else None,
-        "interrupted": True,
+        "interrupted": not terminal,
     }
 
 

@@ -421,6 +421,13 @@ def test_all_candidates_failing_gates_prevents_the_final_run(db):
     with pytest.raises(SystemExit, match="no learning rate passed all four"):
         campaign.run_campaign(sv, "camp-f4")
     assert not any(c.startswith("run_final") for c in calls)
+    failed_prefix = "mlflow/snapshots/camp-f4/attempt-1/campaign-failed/"
+    assert failed_prefix + "mlflow.db" in s3.objects
+    assert failed_prefix + "record.json" in s3.objects
+    record = json.loads(s3.objects[failed_prefix + "record.json"])
+    assert record["registered_models"] == 0
+    assert "no learning rate passed all four" in record["reason"]
+    assert sv.tracker.parent[0] is False
 
 
 def test_checkpoint_300_failure_halts_optimisation_immediately(db):
@@ -600,10 +607,11 @@ def test_recovery_lists_every_completed_stage_after_interruption(db):
         campaign.run_campaign(sv, "camp-r1")
 
     rec = mlflow_sync.recover(s3, "camp-r1", "1")
-    assert rec["interrupted"] is True
+    assert rec["interrupted"] is False
     assert "parent" in rec["stage_names"]
     assert "base_and_preflight" in rec["stage_names"]
-    assert rec["last_completed_stage"] == "selection"
+    assert "selection" in rec["stage_names"]
+    assert rec["last_completed_stage"] == "campaign-failed"
     assert len(rec["last_snapshot_sha256"]) == 64
 
 

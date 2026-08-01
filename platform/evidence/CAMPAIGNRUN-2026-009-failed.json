@@ -1,0 +1,155 @@
+{
+  "record": "CAMPAIGNRUN-2026-009-FAILED",
+  "status": "FAILED_CLOSED_SCOPE_SENSITIVE_TERMINATION_AND_AKAN_REGRESSION",
+  "campaign_run": "b4-scoped-5360cd98125e",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "executed_provenance": {
+    "git_sha": "5360cd98125e10fdef526f83682f30fb846e9796",
+    "bundle_tar_sha256": "fbd62da8e29fcc0df76e279a6c92b782f245653789b06a31a8bbe87b3033d386",
+    "image_digest": "sha256:e6d89241bb52e6b18ab0c6dddc739f91134e5c46c5a8c33cb681a040781257ee",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "validation_record_sha256": "3baf776fe8716eb5b6819c5581f2a9701a044e4ccf9a3a3f2c509189314cb8a6",
+    "policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI-FULA.json",
+    "adoption_sha256": "d98b4beecfc3fe08a138ceb5bf32024cbe134a6e709f622a5ddccce58c4f4a99",
+    "language_scope_sha256": "fa568ec4a424107056f8402edababca59080ab774791ad6926bc80e6a7fd6bc7",
+    "dataset_fingerprint": "65cb36952b8a565b0f0dc5e3a6fec97bac722fc5559cf6f70d57ce0985821559",
+    "eligible_rows": 2809,
+    "sampled_rows": 2810,
+    "training_languages": [
+      "akan", "hausa", "igbo", "lingala", "luganda", "oromo",
+      "pidgin", "shona", "swahili", "yoruba"
+    ],
+    "validation_languages": [
+      "akan", "lingala", "luganda", "oromo", "shona"
+    ],
+    "deferred_languages": ["acholi", "amharic", "ewe", "fula"]
+  },
+  "image_verification": {
+    "builder_instance_id": "i-0f93669bf7dd64d72",
+    "actual_seconds": 563.7,
+    "actual_usd": 0.0532,
+    "root_volume_deleted": true,
+    "pinned_container_suite": "628 passed, 42 skipped, 7 deselected",
+    "ecr_scan_status": "COMPLETE",
+    "unwaived_findings": 0
+  },
+  "base_and_preflight": {
+    "instance_id": "i-09894618b48de37ae",
+    "actual_seconds": 1164.4,
+    "actual_usd": 0.3255,
+    "root_volume_id": "vol-0f6254c6593969761",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "51d788eb8d57aa48c9bfca43702d33d615c15983878748a86d8ac14e88176d1e",
+    "stage_result_sha256": "d7f89a0826f9d35a793457bcd2dc83b695b5cc55cad327cefc722bb5b1ee0c3f",
+    "base_artifact_sha256": "b5992a3dc89d059a8e6fa6e12b207bdb02e0c8066db9eb7adedaf817f5bf8be9",
+    "preflight_passed": true,
+    "adapter_tensors_nonzero": "192/192",
+    "saved_adapter_reload_hash_matched": true,
+    "generation_eos_emitted": true,
+    "finite_gradients": true,
+    "base_wer": {
+      "akan": 0.9677,
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749,
+      "shona": 1.1039
+    }
+  },
+  "sweep": {
+    "lr": 0.0001,
+    "steps_completed": 100,
+    "instance_id": "i-08472286c3a2b53a1",
+    "actual_seconds": 2382.1,
+    "actual_usd": 0.6659,
+    "container_runtime_seconds": 1393.5,
+    "root_volume_id": "vol-0e5131ff273eed37b",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "fc3a25bd5a269509fea5dc18a51978f2d6e34d5a545b9ef8ac4bb0fda3b2a506",
+    "stage_result_sha256": "1f5816dce4e06fd045bea76cbaf9a3799834ed42a2012185caead59129c3eaa3",
+    "evaluation_sha256": "c4ee00b3bbf510eeb9c4866092d5e8bac798f3a38952df6e4109dab5a5cb462f",
+    "adapter_sha256": "bd893eee5d27c87a75bb95bc7c0838fe0b85b7e21b4d282a6a4cb09649489969",
+    "saved_adapter_smoke_passed": true,
+    "train_loss_at_100": 13.213670857747395,
+    "grad_norm": 8.855793952941895,
+    "gradients_finite": true,
+    "macro_wer": 0.94586,
+    "base_macro_wer": 1.04662,
+    "macro_wer_gate_passed": true,
+    "per_language_regression_gate_passed": false,
+    "termination_gates_passed": false,
+    "per_language": {
+      "akan": {"wer": 1.1117, "eos_rate": 0.9444, "cap_hit_rate": 0.0556},
+      "lingala": {"wer": 0.8688, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "luganda": {"wer": 0.8987, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "oromo": {"wer": 0.8857, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "shona": {"wer": 0.9644, "eos_rate": 0.9333, "cap_hit_rate": 0.0667}
+    },
+    "failures": [
+      "four of 72 Akan rows reached 440 generated tokens without EOS",
+      "one of 15 Shona rows reached 440 generated tokens without EOS",
+      "Akan WER regressed by 0.1440 absolute against the in-run base, exceeding the 0.05 cap"
+    ]
+  },
+  "scope_sensitivity_check": {
+    "content_policy": "audio checksums were compared in memory; no transcript, audio or per-row identifier is persisted in this record",
+    "affected_rows": 5,
+    "same_rows_terminated_in_campaign": "b4-scoped-515d00214c87",
+    "same_rows_previously_emitted_eos": 5,
+    "same_rows_previous_generated_token_range": [66, 88],
+    "same_rows_current_generated_tokens": 440,
+    "conclusion": "the rows are not malformed; removing Fula changed the deterministic training mix and induced a learned, scope-sensitive termination regression"
+  },
+  "language_prompt_note": {
+    "akan_whisper_token": "yo",
+    "classification": "approximate regional-neighbour mapping because Whisper has no Akan token",
+    "conclusion": "this is a documented modelling compromise, not a newly introduced string-mapping bug, but it makes Akan especially unsuitable for silent gate weakening"
+  },
+  "selection": {
+    "selected_lr": null,
+    "reason": "the only authorised 1e-4 confirmation failed termination and per-language regression gates",
+    "least_bad_selection_performed": false,
+    "final_run_launched": false,
+    "registered_models": 0,
+    "promoted_models": 0,
+    "b5_transition": false
+  },
+  "mlflow": {
+    "parent_run_id": "f35f081fb559482c911b7e7be2a48a55",
+    "parent_status": "FAILED",
+    "base_snapshot_sha256": "bc69f510ea23d9a3ee9c047558a1526fda9fd64476b3ddcf22e625f2940b9456",
+    "sweep_snapshot_sha256": "47edcc8e96550d1406cfc78c0b966d4b71f944c0642c540431920fcc1186f4fc",
+    "terminal_failure_snapshot_sha256": "bebbecfa368eb7b703f0ebe1843ea4e753319ed2afedd54756405b86e1084bfb",
+    "terminal_failure_snapshot_key": "mlflow/snapshots/b4-scoped-5360cd98125e/attempt-1/campaign-failed/mlflow.db",
+    "registered_models": 0
+  },
+  "budget": {
+    "hard_ceiling_usd": 12.0,
+    "committed_usd_after_reconciliation": 7.6861,
+    "remaining_usd": 4.3139,
+    "unresolved_reservations": 0
+  },
+  "cleanup": {
+    "all_campaign_instances_terminated": true,
+    "all_campaign_root_volumes_deleted": true,
+    "active_b4_instances": 0,
+    "unattached_medzen_volumes": 0,
+    "active_spot_requests": 0,
+    "eks_used": false,
+    "spot_used": false
+  },
+  "base_v5_gap": {
+    "required_by_b4": [
+      "30-40 percent English/French replay",
+      "a code-switch training slice",
+      "Spot interruption and checkpoint-resume proof",
+      "adapter merge and CTranslate2 int8_float16 conversion",
+      "the full A5 gate suite"
+    ],
+    "present_in_this_campaign": false,
+    "conclusion": "passing this non-promotable validation would not by itself complete B4 or authorise B5"
+  },
+  "next_decision_required": "Do not relaunch or silently defer Akan/Shona. The evidence supports either an explicit additional scope decision or, preferably, implementing and adopting the Base-v5 English/French replay plus code-switch mix before another multilingual run."
+}
