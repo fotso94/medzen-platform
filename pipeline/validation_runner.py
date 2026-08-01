@@ -55,7 +55,9 @@ class ValidationRuntime:
 
     def __init__(self, cli: Any, descriptor: dict, cache: Path,
                  device: str | None = None,
-                 languages: tuple[str, ...] | None = None):
+                 languages: tuple[str, ...] | None = None,
+                 manifest_set: dict[str, dict] | None = None,
+                 validation_record_sha256: str | None = None):
         import torch
         from scripts.evaluate_candidate import require_cuda
 
@@ -70,19 +72,40 @@ class ValidationRuntime:
         authorised = tuple(descriptor.get(
             "validation_languages", orchestrate.VALIDATION_LANGUAGES))
         self.languages = tuple(languages or authorised)
-        if (not self.languages
-                or len(set(self.languages)) != len(self.languages)
+        custom_holdout = manifest_set is not None
+        if (not self.languages or len(set(self.languages)) != len(self.languages)
                 or any(language not in orchestrate.ALL_VALIDATION_LANGUAGES
                        for language in self.languages)):
             raise SystemExit(
                 "REFUSING: validation language subset is empty, duplicated, "
                 "or outside VAL-2026-001")
-        if self.languages != authorised:
+        if self.languages != authorised and not (
+                custom_holdout and descriptor.get("stage") == "artifactize"
+                and self.languages == ("lingala",)):
             raise SystemExit(
                 f"REFUSING: runtime validation languages {self.languages} "
                 f"differ from descriptor-authorised {authorised}")
-        self.frozen, self.frozen_sha = frozen_validation()
-        if self.frozen_sha != descriptor["validation_manifest_sha256"]:
+        if custom_holdout:
+            if set(manifest_set) != {"lingala"}:
+                raise SystemExit(
+                    "REFUSING: the post-selection holdout must contain only Lingala")
+            info = manifest_set["lingala"]
+            if (info.get("key") != descriptor.get("holdout_manifest_key")
+                    or info.get("manifest_sha256") !=
+                    descriptor.get("holdout_manifest_sha256")):
+                raise SystemExit(
+                    "REFUSING: holdout manifest differs from the descriptor")
+            if validation_record_sha256 != descriptor.get(
+                    "holdout_evidence_sha256"):
+                raise SystemExit(
+                    "REFUSING: holdout evidence hash differs from the descriptor")
+            self.frozen = {"sets": manifest_set,
+                           "total_rows": sum(i["rows"] for i in manifest_set.values())}
+            self.frozen_sha = validation_record_sha256
+        else:
+            self.frozen, self.frozen_sha = frozen_validation()
+        if (not custom_holdout
+                and self.frozen_sha != descriptor["validation_manifest_sha256"]):
             raise SystemExit(
                 f"REFUSING: VAL-2026-001 hashes {self.frozen_sha[:16]}, "
                 "descriptor authorises "

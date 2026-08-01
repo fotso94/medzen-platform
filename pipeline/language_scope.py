@@ -16,10 +16,10 @@ DECISION = (
     ROOT / "platform/decisions/B4-SCOPE-2026-001-language-deferral.json"
 )
 EXPECTED_POLICY_RELATIVE = (
-    "platform/decisions/DQ-2026-004-policy-deferral-scoped.json"
+    "platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json"
 )
 EXPECTED_ADOPTION_KEY = (
-    "curated/_versions/v2/ADOPTION-B4-SCOPED-8LANG.json"
+    "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG.json"
 )
 
 
@@ -41,8 +41,8 @@ def load() -> tuple[dict, str]:
         problems.append("record type is not B4-LANGUAGE-SCOPE-DECISION")
     if doc.get("id") != "B4-SCOPE-2026-001":
         problems.append("decision id is not B4-SCOPE-2026-001")
-    if doc.get("revision") != 5:
-        problems.append("decision revision is not 5")
+    if doc.get("revision") != 6:
+        problems.append("decision revision is not 6")
     if doc.get("status") != "approved":
         problems.append(f"status is {doc.get('status')!r}, not 'approved'")
     if doc.get("scope", {}).get("promotable") is not False:
@@ -118,7 +118,8 @@ def load() -> tuple[dict, str]:
             problems.append(f"{field} must be false")
     for field in (
             "deferred_languages_must_be_absent_from_training",
-            "deferred_languages_must_be_absent_from_validation_and_selection"):
+            "deferred_languages_must_be_absent_from_validation_and_selection",
+            "post_selection_holdout_must_not_select_checkpoint"):
         if controls.get(field) is not True:
             problems.append(f"{field} must be true")
     if problems:
@@ -143,6 +144,7 @@ EXPECTED_POLICY_ROWS_TOTAL = SCOPE["training_mix_binding"][
     "deferral_policy_rows_total"]
 EXPECTED_POLICY_ROWS_APPLICABLE = SCOPE["training_mix_binding"][
     "deferral_policy_rows_applicable"]
+HOLDOUT = SCOPE["training_mix_binding"]["post_selection_holdout"]
 POLICY_PATH = ROOT / SCOPE["training_mix_binding"]["deferral_policy"]
 POLICY_SHA256 = SCOPE["training_mix_binding"]["deferral_policy_sha256"]
 ADOPTION_KEY = SCOPE["training_mix_binding"]["adoption_key"]

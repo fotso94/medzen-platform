@@ -19,17 +19,16 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from pipeline import (budget, language_scope, mlflow_sync, orchestrate,
-                      stage_descriptor)
+                      scope_deviation, stage_descriptor)
 
 FINAL_CHECKPOINTS = (100, 200, 300, 400, 500, 600)
 
 # The adopted source corpus remains immutable.  B4-SCOPE-2026-001 derives a
 # smaller, deterministic training mix from it without deleting source data.
-ADOPTED_FINGERPRINT = \
-    "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275"
-ADOPTED_ELIGIBLE_ROWS = 4601
 EXPECTED_FINGERPRINT = language_scope.EXPECTED_DATASET_FINGERPRINT
 EXPECTED_ELIGIBLE_ROWS = language_scope.EXPECTED_ELIGIBLE_ROWS
+ADOPTED_FINGERPRINT = EXPECTED_FINGERPRINT
+ADOPTED_ELIGIBLE_ROWS = EXPECTED_ELIGIBLE_ROWS
 
 
 class CampaignError(SystemExit):
@@ -70,6 +69,9 @@ class Services:
     run_base_and_preflight: Callable[[dict], dict]
     run_sweep: Callable[[dict, float], dict]
     run_final: Callable[[dict, float], dict]
+    run_artifactize: Callable[[dict], dict]
+    run_spot_checkpoint: Callable[[dict, float], dict]
+    run_spot_resume: Callable[[dict, float], dict]
     mlflow_db: Any = None
     tracker: Any = None                        # real parent/child MLflow runs
     launcher: Any = None                       # the EC2 adapter
@@ -84,7 +86,9 @@ class Services:
 
     SERVICE_FIELDS = ("verify_policy", "verify_adoption",
                       "verify_language_scope",
-                      "run_base_and_preflight", "run_sweep", "run_final")
+                      "run_base_and_preflight", "run_sweep", "run_final",
+                      "run_artifactize", "run_spot_checkpoint",
+                      "run_spot_resume")
 
 
 def readiness(sv: Services) -> dict:
@@ -157,17 +161,35 @@ def _sync(sv: Services, campaign_run: str, stage: str, trace: Trace,
     if sv.mlflow_db is None:
         trace.add(f"mlflow-sync:{stage}", skipped="no tracking db")
         return
-    rec = mlflow_sync.sync(sv.s3, sv.mlflow_db, campaign_run, stage,
-                           attempt=attempt, extra=extra)
+    ledger, _ = budget.load(sv.s3)
+    budget_record = {
+        "aggregate_budget_ledger_key": budget.LEDGER_KEY,
+        "aggregate_budget_ceiling_usd": budget.CEILING_USD,
+        "aggregate_budget_committed_usd": budget.committed_usd(ledger),
+        "aggregate_budget_remaining_usd": budget.remaining_usd(ledger),
+        "aggregate_budget_unresolved_reservations": len(
+            budget.unresolved(ledger)),
+    }
+    rec = mlflow_sync.sync(
+        sv.s3, sv.mlflow_db, campaign_run, stage,
+        attempt=attempt, extra={**extra, **budget_record})
     if stage == "parent":
         sv.parent_snapshot_written = True
-    trace.add(f"mlflow-sync:{stage}", sha256=rec["sha256"], key=rec["key"])
+    trace.add(
+        f"mlflow-sync:{stage}", sha256=rec["sha256"], key=rec["key"],
+        aggregate_committed_usd=budget_record[
+            "aggregate_budget_committed_usd"])
 
 
 def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
                     lr: float | None, max_steps: int,
                     reservation_id: str, mlflow_child_run_id: str | None = None,
-                    base_result: dict | None = None
+                    base_result: dict | None = None,
+                    input_prefix: str = "curated/_versions/v2/",
+                    input_artifact_sha256: str | None = None,
+                    input_evaluation_key: str | None = None,
+                    input_evaluation_sha256: str | None = None,
+                    checkpoint_steps: list[int] | None = None,
                     ) -> dict:
     """One descriptor per stage, built from the pins the campaign already holds."""
     p = sv.stage_descriptors or {}
@@ -178,6 +200,11 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         policy_sha256=p["policy_sha256"], adoption_key=p["adoption_key"],
         dataset_fingerprint=EXPECTED_FINGERPRINT,
         language_scope_sha256=p["language_scope_sha256"],
+        scope_deviation_sha256=scope_deviation.DECISION_SHA256,
+        a5_gate_disposition_sha256=scope_deviation.A5_GATES_SHA256,
+        holdout_manifest_key=p["holdout_manifest_key"],
+        holdout_manifest_sha256=p["holdout_manifest_sha256"],
+        holdout_evidence_sha256=p["holdout_evidence_sha256"],
         training_languages=list(language_scope.TRAINING_LANGUAGES),
         validation_languages=list(language_scope.VALIDATION_LANGUAGES),
         base_manifest_sha256=p["base_manifest_sha256"],
@@ -188,16 +215,18 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         generation_config_fingerprint=p["generation_config_fingerprint"],
         evaluator_sha256=p["evaluator_sha256"],
         lr=lr, seed=orchestrate.SEED, max_steps=max_steps,
-        checkpoint_steps=(
+        checkpoint_steps=(checkpoint_steps if checkpoint_steps is not None else
             list(FINAL_CHECKPOINTS) if stage == "final"
             else [orchestrate.SWEEP_COMPARISON_CHECKPOINT]
             if stage == "sweep" else []),
         reservation_id=reservation_id,
-        watchdog_s=budget.WATCHDOG_S[
-            "base_and_preflight" if stage == "base_and_preflight"
-            else "sweep_run" if stage == "sweep" else "final_run"],
-        input_prefix=f"curated/_versions/v2/",
-        input_artifact_sha256=None,
+        watchdog_s=budget.WATCHDOG_S[{
+            "sweep": "sweep_run", "final": "final_run",
+        }.get(stage, stage)],
+        input_prefix=input_prefix,
+        input_artifact_sha256=input_artifact_sha256,
+        input_evaluation_key=input_evaluation_key,
+        input_evaluation_sha256=input_evaluation_sha256,
         output_prefix=(
             f"candidates/evaluations/{campaign_run}/attempt-{attempt}/"
             + (f"sweep-lr-{lr:.0e}/" if stage == "sweep"
@@ -233,6 +262,8 @@ def _tracking_params(sv: Services, stage: str,
         "generation_config_fingerprint":
             p["generation_config_fingerprint"],
         "evaluator_sha256": p["evaluator_sha256"],
+        "scope_deviation_sha256": scope_deviation.DECISION_SHA256,
+        "a5_gate_disposition_sha256": scope_deviation.A5_GATES_SHA256,
         "lr": lr,
         "seed": orchestrate.SEED,
         "purpose": "training_system_validation",
@@ -618,9 +649,139 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         selected_checkpoint_step=selected_checkpoint["step"],
         selected_artifact_sha256=selected_checkpoint["artifact_sha256"],
         stopped_on_failed_checkpoint=failed[0]["step"] if failed else None)
+
+    # ---- 7. post-selection holdout, merge, conversion, converted scoring --
+    selected_step = int(selected_checkpoint["step"])
+    selected_prefix = (
+        df["output_prefix"].rstrip("/")
+        + f"/asr/checkpoint-{selected_step}")
+    selected_eval_key = (
+        df["output_prefix"].rstrip("/")
+        + f"/evaluations/checkpoint-{selected_step}.json")
+    artifact_budget_attempt = f"{budget_attempt}-artifactize"
+    ra = budget.reserve(sv.s3, "artifactize", artifact_budget_attempt)
+    trace.add("budget-reserve", stage="artifactize",
+              reservation_id=ra["reservation_id"],
+              worst_case_usd=ra["worst_case_usd"])
+    artifact_stage_key = "artifactize"
+    artifact_child = _start_child(
+        sv, artifact_stage_key, artifact_stage_key, lr=sel["selected_lr"])
+    da = make_descriptor(
+        sv, campaign_run, attempt, "artifactize", lr=sel["selected_lr"],
+        max_steps=0, reservation_id=ra["reservation_id"],
+        mlflow_child_run_id=artifact_child, base_result=base,
+        input_prefix=selected_prefix,
+        input_artifact_sha256=selected_checkpoint["artifact_tree_sha256"],
+        input_evaluation_key=selected_eval_key,
+        input_evaluation_sha256=selected_checkpoint["artifact_sha256"])
+    rart = _run_stage(
+        sv, artifact_stage_key, da, lambda: sv.run_artifactize(da))
+    _reconcile_then_verify(
+        sv, artifact_stage_key, da, rart, "artifactize",
+        artifact_budget_attempt)
+    if (not (rart.get("holdout") or {}).get("gate", {}).get("passed")
+            or not (rart.get("converted_gate") or {}).get("passed")):
+        sv.tracker.fail_stage(
+            artifact_stage_key,
+            "holdout or post-conversion active quality gate failed")
+        raise CampaignError(
+            "REFUSING: servable artifact did not pass holdout/conversion gates")
+    sv.tracker.finish_stage(
+        artifact_stage_key, rart,
+        extra_params={
+            "selected_checkpoint_step": selected_step,
+            "converted_tree_sha256": rart["converted_tree_sha256"],
+            "registered_models": 0})
+    trace.add(
+        "artifactize", instance_id=rart["instance_id"],
+        selected_checkpoint=selected_step,
+        converted_tree_sha256=rart["converted_tree_sha256"],
+        holdout_passed=True, conversion_passed=True)
+    _sync(
+        sv, campaign_run, "artifactize", trace, attempt=attempt,
+        converted_tree_sha256=rart["converted_tree_sha256"],
+        artifact_evaluation_sha256=rart["artifact_evaluation_sha256"])
+
+    # ---- 8. exact S3 checkpoint Spot interruption and replacement resume --
+    spot_checkpoint_attempt = f"{budget_attempt}-spot-checkpoint"
+    rc = budget.reserve(sv.s3, "spot_checkpoint", spot_checkpoint_attempt)
+    trace.add("budget-reserve", stage="spot_checkpoint",
+              reservation_id=rc["reservation_id"],
+              worst_case_usd=rc["worst_case_usd"])
+    spot_checkpoint_key = "spot_checkpoint"
+    spot_checkpoint_child = _start_child(
+        sv, spot_checkpoint_key, spot_checkpoint_key, lr=sel["selected_lr"])
+    dc = make_descriptor(
+        sv, campaign_run, attempt, "spot_checkpoint",
+        lr=sel["selected_lr"], max_steps=100,
+        checkpoint_steps=[100], reservation_id=rc["reservation_id"],
+        mlflow_child_run_id=spot_checkpoint_child, base_result=base)
+    rcheck = _run_stage(
+        sv, spot_checkpoint_key, dc,
+        lambda: sv.run_spot_checkpoint(dc, sel["selected_lr"]))
+    _reconcile_then_verify(
+        sv, spot_checkpoint_key, dc, rcheck, "spot_checkpoint",
+        spot_checkpoint_attempt)
+    if (not rcheck.get("operator_interrupted")
+            or not rcheck.get("checkpoint_tree_sha256")):
+        raise CampaignError(
+            "REFUSING: Spot interruption lacks a durable checkpoint proof")
+    sv.tracker.finish_stage(
+        spot_checkpoint_key, rcheck,
+        extra_params={
+            "checkpoint_tree_sha256": rcheck["checkpoint_tree_sha256"],
+            "operator_interrupted": True})
+    trace.add(
+        "spot-interrupted", instance_id=rcheck["instance_id"],
+        checkpoint_tree_sha256=rcheck["checkpoint_tree_sha256"])
+    _sync(sv, campaign_run, "spot-checkpoint", trace, attempt=attempt,
+          checkpoint_tree_sha256=rcheck["checkpoint_tree_sha256"])
+
+    spot_resume_attempt = f"{budget_attempt}-spot-resume"
+    rr = budget.reserve(sv.s3, "spot_resume", spot_resume_attempt)
+    trace.add("budget-reserve", stage="spot_resume",
+              reservation_id=rr["reservation_id"],
+              worst_case_usd=rr["worst_case_usd"])
+    spot_resume_key = "spot_resume"
+    spot_resume_child = _start_child(
+        sv, spot_resume_key, spot_resume_key, lr=sel["selected_lr"])
+    dr = make_descriptor(
+        sv, campaign_run, attempt, "spot_resume",
+        lr=sel["selected_lr"], max_steps=200,
+        checkpoint_steps=[100, 200], reservation_id=rr["reservation_id"],
+        mlflow_child_run_id=spot_resume_child, base_result=base,
+        input_prefix=rcheck["checkpoint_prefix"],
+        input_artifact_sha256=rcheck["checkpoint_tree_sha256"])
+    rresume = _run_stage(
+        sv, spot_resume_key, dr,
+        lambda: sv.run_spot_resume(dr, sel["selected_lr"]))
+    _reconcile_then_verify(
+        sv, spot_resume_key, dr, rresume, "spot_resume",
+        spot_resume_attempt)
+    if (rresume.get("exact_checkpoint_match") is not True
+            or rresume.get("resumed_from_tree_sha256") !=
+            rcheck["checkpoint_tree_sha256"]
+            or rresume.get("steps_completed") != 200):
+        raise CampaignError(
+            "REFUSING: replacement Spot instance did not resume the exact "
+            "authorised checkpoint")
+    sv.tracker.finish_stage(
+        spot_resume_key, rresume,
+        extra_params={
+            "resumed_from_tree_sha256":
+                rresume["resumed_from_tree_sha256"],
+            "steps_completed": 200})
+    trace.add(
+        "spot-resumed", instance_id=rresume["instance_id"],
+        exact_checkpoint_match=True, steps_completed=200)
+    _sync(sv, campaign_run, "spot-resume", trace, attempt=attempt,
+          resumed_from_tree_sha256=rresume["resumed_from_tree_sha256"])
+
     ledger, _ = budget.load(sv.s3)
     trace.add("cleanup", unresolved_reservations=len(budget.unresolved(ledger)),
-              gpu_instances_used=2 + len(orchestrate.LR_CANDIDATES))
+              gpu_instances_used=budget.MAX_GPU_INSTANCES,
+              aggregate_committed_usd=budget.committed_usd(ledger),
+              aggregate_ceiling_usd=budget.CEILING_USD)
     outcome = (
         f"selected checkpoint-{selected_checkpoint['step']} after the "
         f"predeclared stop at checkpoint-{failed[0]['step']}"
@@ -634,10 +795,23 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         "selected_checkpoint": selected_checkpoint,
         "stopped_on_failed_checkpoint": failed[0]["step"] if failed else None,
         "checkpoints": checkpoints,
-        "gpu_instances": 2 + len(orchestrate.LR_CANDIDATES),
+        "gpu_instances": budget.MAX_GPU_INSTANCES,
+        "servable_artifact": rart,
+        "spot_interruption": rcheck,
+        "spot_resume": rresume,
         "registered_models": 0,
         "promotable": False,
+        "b5_allowed": False,
         "purpose": "training_system_validation",
+        "scope_deviation_sha256": scope_deviation.DECISION_SHA256,
+        "a5_gate_disposition": scope_deviation.gate_disposition(),
+        "aggregate_budget": {
+            "ledger_key": budget.LEDGER_KEY,
+            "ceiling_usd": budget.CEILING_USD,
+            "committed_usd": budget.committed_usd(ledger),
+            "remaining_usd": budget.remaining_usd(ledger),
+            "unresolved_reservations": len(budget.unresolved(ledger)),
+        },
         "trace": trace.steps,
         "trace_names": trace.names,
     }
@@ -717,11 +891,21 @@ def run_campaign(sv: Services, campaign_run: str,
         # occur before the parent snapshot and are required to perform zero
         # S3 reads or writes.
         if sv.parent_snapshot_written and sv.mlflow_db is not None:
+            ledger, _ = budget.load(sv.s3)
             mlflow_sync.sync(
                 sv.s3, sv.mlflow_db, campaign_run, "campaign-failed",
                 attempt=attempt,
                 extra={
                     "reason": f"{type(exc).__name__}: {exc}",
                     "registered_models": 0,
+                    "b5_allowed": False,
+                    "aggregate_budget_ledger_key": budget.LEDGER_KEY,
+                    "aggregate_budget_ceiling_usd": budget.CEILING_USD,
+                    "aggregate_budget_committed_usd":
+                        budget.committed_usd(ledger),
+                    "aggregate_budget_remaining_usd":
+                        budget.remaining_usd(ledger),
+                    "aggregate_budget_unresolved_reservations": len(
+                        budget.unresolved(ledger)),
                 })
         raise

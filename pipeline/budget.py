@@ -21,26 +21,52 @@ import time
 from pathlib import Path
 
 BUCKET = "medzen-speech"
-# A new dataset fingerprint is a new cost decision.  Keep the reconciled
-# b4-corrected ledger immutable and account the language-scoped continuation
-# under a fresh ceiling rather than pretending the earlier spend never
-# happened or making a clean scoped run impossible under the old ledger.
-CAMPAIGN = "b4-scoped"
+# B4-BUDGET-2026-003 replaces per-campaign ceilings with one aggregate B4
+# ceiling while preserving every historical ledger byte-for-byte.  The
+# historical total below was re-derived from all four durable ledgers at
+# authorization time; future B4 lifecycles reserve and reconcile here.
+CAMPAIGN = "b4-aggregate"
 LEDGER_KEY = f"candidates/budget/{CAMPAIGN}/ledger.json"
+DECISION_PATH = (
+    Path(__file__).resolve().parent.parent
+    / "platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json"
+)
+HISTORICAL_SPEND_USD = 16.8738
+HISTORICAL_COMPONENTS = {
+    "b4-corrected": 4.1081,
+    "b4-amharic-termination-diagnostic": 1.0317,
+    "b4-amharic-decode-compatibility": 1.7539,
+    "b4-scoped": 9.9801,
+}
 
 RATES = {"g6.xlarge": 1.0064, "c6i.2xlarge": 0.34}
-# STAGE TOPOLOGY — three GPU instances plus one builder.
+# STAGE TOPOLOGY - eight sequential GPU lifecycles plus one builder.
 #
 #   builder             c6i.2xlarge   image build
-#   base_and_preflight  g6.xlarge     base arm on 6 sets, THEN overfit+smoke
-#   sweep_run x1        g6.xlarge     100 steps + 6-set evaluation
+#   base_and_preflight  g6.xlarge     base arm, THEN overfit+smoke
+#   sweep_run x1        g6.xlarge     100 steps + selection-set evaluation
 #   final_run           g6.xlarge     600 steps with interleaved checkpoints
+#   artifactize         g6.xlarge     holdout, merge, convert, converted eval
+#   spot_checkpoint     g6.xlarge     publish a durable exact checkpoint
+#   spot_resume         g6.xlarge     verify and resume that checkpoint
 #
 # Base evaluation and preflight share ONE instance: both need the pinned base
 # loaded and preflight builds a fresh LoRA on it. One instance, one
 # reservation, reconciled once when both have finished.
-WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2000,
-              "sweep_run": 2000, "final_run": 6600}
+WATCHDOG_S = {
+    "builder": 1800,
+    "base_and_preflight": 2000,
+    "sweep_run": 2000,
+    "final_run": 6600,
+    # Selected-adapter holdout, merge, CTranslate2 conversion and converted
+    # evaluation share one GPU lifecycle so every metric names one artifact.
+    "artifactize": 5400,
+    # The Spot proof is deliberately two lifecycles: the first publishes an
+    # exact checkpoint and is interrupted; the second verifies that identity
+    # before resuming. Each is independently reserved and reconciled.
+    "spot_checkpoint": 2400,
+    "spot_resume": 3000,
+}
 # The watchdog starts inside the launched instance, while AWS billing starts
 # earlier and ends only after EC2 reaches `terminated`.  Attempt 5 measured
 # 540--570 seconds outside the container on every GPU stage.  Reserving only
@@ -53,43 +79,23 @@ WATCHDOG_S = {"builder": 1800, "base_and_preflight": 2000,
 # worst case even though the container itself finished inside the watchdog.
 # A worst-case hold must cover the executable boundary, not the common path.
 EC2_LIFECYCLE_OVERHEAD_S = 1200
-STAGE_INSTANCE = {"builder": "c6i.2xlarge", "base_and_preflight": "g6.xlarge",
-                  "sweep_run": "g6.xlarge", "final_run": "g6.xlarge"}
-MAX_GPU_INSTANCES = 3
-MAX_INSTANCES = 4
+STAGE_INSTANCE = {
+    "builder": "c6i.2xlarge",
+    "base_and_preflight": "g6.xlarge",
+    "sweep_run": "g6.xlarge",
+    "final_run": "g6.xlarge",
+    "artifactize": "g6.xlarge",
+    "spot_checkpoint": "g6.xlarge",
+    "spot_resume": "g6.xlarge",
+}
+MAX_GPU_INSTANCES = 6
+MAX_INSTANCES = 7
 
-# The ceiling must cover the whole sequence hanging to its watchdogs plus the
-# measured EC2 lifecycle envelope:
-# The lifecycle envelope is now 1,200 seconds (two termination grace windows)
-# because the 2026-08-01 scoped sweep demonstrated that the second window is
-# billable. Historical tables below describe decisions at their time;
-# ``worst_case_usd`` is the executable source of truth for a future launch.
-# An earlier table used a 10800s final watchdog, which made the worst-case
-# sequence $6.21 -- over its own $6 ceiling.  After three fail-closed campaign
-# attempts, the final watchdog is 6600s: still 20 minutes beyond the
-# predeclared ~90-minute expected run.  After attempt 4, observed
-# base+preflight work still left 11 minutes inside a 2400s boundary; sweeps do
-# fewer optimisation steps against the same validation surface.  The last
-# corrected base lifecycle reconciled at 1354.8 seconds INCLUDING boot and
-# termination, and the 1e-4 sweep at 2130 seconds including the separately
-# reserved 600-second lifecycle envelope.  A 2000-second in-instance watchdog
-# therefore retains measured margin without removing any work or gate.  The
-# first scoped attempt reconciled at
-# $2.876 and failed closed on a scheduler-horizon mismatch.  The platform
-# owner explicitly authorised a $9 cumulative ceiling on 2026-07-31 so the
-# corrected full sweep.  After the Fula-scoped confirmation failed closed at
-# $6.6415 cumulative spend, the owner authorised a $12 cumulative ceiling on
-# 2026-08-01 for a fresh 10-language campaign.  That run remains
-# non-promotable and every original quality gate remains unchanged.  The
-# earlier corrected run reconciled at $5.1846 and found 1e-4 to be
-# the only configuration compatible with the retained six-language validation
-# surface after Acholi is deferred.  The targeted continuation therefore uses
-# one fresh 1e-4 confirmation and one final run.  After an unreserved launch
-# was terminated and reconciled, its complete GPU worst case is $3.4664.
-# The builder is reserved and reconciled first; if its actual cost leaves less
-# than the complete GPU worst case, the GPU campaign refuses before launch.
-# This remains an extension of the same durable ledger, never a spend reset.
-CEILING_USD = 12.00
+# The 1,200-second lifecycle envelope covers both operator-side termination
+# grace windows. ``worst_case_usd`` is the executable source of truth. The
+# $100 ceiling starts with $16.8738 already committed by the four immutable
+# historical ledgers; this module never rewrites or zeroes those ledgers.
+CEILING_USD = 100.00
 
 
 def worst_case_usd(stage: str) -> float:
@@ -108,12 +114,23 @@ def reservation_id(stage: str, attempt: str) -> str:
 
 
 def _empty() -> dict:
-    return {"campaign": CAMPAIGN, "ceiling_usd": CEILING_USD, "reservations": {}}
+    decision_raw = DECISION_PATH.read_bytes()
+    return {
+        "campaign": CAMPAIGN,
+        "ceiling_usd": CEILING_USD,
+        "historical_spend_usd": HISTORICAL_SPEND_USD,
+        "historical_components": HISTORICAL_COMPONENTS,
+        "historical_component_ledgers_immutable": True,
+        "decision": str(DECISION_PATH.relative_to(
+            Path(__file__).resolve().parent.parent)),
+        "decision_sha256": hashlib.sha256(decision_raw).hexdigest(),
+        "reservations": {},
+    }
 
 
 def committed_usd(ledger: dict) -> float:
     """Reserved-but-unreconciled counts at WORST CASE; reconciled at actual."""
-    total = 0.0
+    total = float(ledger["historical_spend_usd"])
     for r in ledger["reservations"].values():
         if r["state"] == "cancelled":
             continue
@@ -138,10 +155,18 @@ def load(cli) -> tuple[dict, str | None]:
     try:
         o = cli.get_object(Bucket=BUCKET, Key=LEDGER_KEY)
         ledger = json.loads(o["Body"].read())
+        expected = _empty()
         if (ledger.get("campaign") != CAMPAIGN
-                or ledger.get("ceiling_usd") != CEILING_USD):
+                or ledger.get("ceiling_usd") != CEILING_USD
+                or ledger.get("historical_spend_usd")
+                != HISTORICAL_SPEND_USD
+                or ledger.get("historical_components")
+                != HISTORICAL_COMPONENTS
+                or ledger.get("decision_sha256")
+                != expected["decision_sha256"]):
             raise SystemExit(
-                "REFUSING: campaign ledger identity or authorised ceiling "
+                "REFUSING: aggregate ledger identity, historical spend, "
+                "component totals, decision binding or authorised ceiling "
                 "differs from this executable")
         return ledger, o.get("ETag")
     except ClientError as e:

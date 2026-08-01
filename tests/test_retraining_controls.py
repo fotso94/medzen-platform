@@ -419,7 +419,8 @@ def test_reservation_is_durable_before_launch():
     assert r["reserved_seconds"] == (
         r["watchdog_s"] + r["ec2_lifecycle_overhead_s"])
     ledger, _ = budget.load(s3)
-    assert budget.committed_usd(ledger) == r["worst_case_usd"]
+    assert budget.committed_usd(ledger) == round(
+        budget.HISTORICAL_SPEND_USD + r["worst_case_usd"], 4)
 
 
 def test_reservation_covers_both_operator_termination_grace_windows():
@@ -455,7 +456,9 @@ def test_crash_after_launch_leaves_the_worst_case_counted():
     s3 = FakeS3()
     budget.reserve(s3, "final_run", "crashed")
     ledger, _ = budget.load(s3)
-    assert budget.committed_usd(ledger) == budget.worst_case_usd("final_run")
+    assert budget.committed_usd(ledger) == round(
+        budget.HISTORICAL_SPEND_USD
+        + budget.worst_case_usd("final_run"), 4)
     assert budget.unresolved(ledger)
 
 
@@ -479,22 +482,22 @@ def test_an_unresolved_reservation_blocks_the_next_reservation():
 
 def test_ceiling_refuses_the_reservation_that_would_breach_it():
     s3 = FakeS3()
-    completed = ["final_run"] * 6
+    completed = ["final_run"] * 44
     for i, stage in enumerate(completed):
         budget.reserve(s3, stage, f"a{i}")
         budget.reconcile(s3, stage, f"a{i}",
                          actual_seconds=budget.WATCHDOG_S[stage])
     with pytest.raises(SystemExit) as e:
         budget.reserve(s3, "final_run", "one-too-many")
-    assert "over the $12.00 ceiling" in str(e.value)
+    assert "over the $100.00 ceiling" in str(e.value)
     assert "cannot afford to fail" in str(e.value)
 
 
-def test_seventh_sequential_full_length_final_run_is_refused():
+def test_aggregate_ceiling_refuses_the_forty_fifth_full_final_run():
     """The exact case a per-instance watchdog cannot catch."""
     s3 = FakeS3()
     launched = 0
-    for i in range(7):
+    for i in range(50):
         try:
             budget.reserve(s3, "final_run", f"r{i}")
         except SystemExit:
@@ -502,7 +505,7 @@ def test_seventh_sequential_full_length_final_run_is_refused():
         budget.reconcile(s3, "final_run", f"r{i}",
                          actual_seconds=budget.WATCHDOG_S["final_run"])
         launched += 1
-    assert launched == 6, "a $12 ceiling must refuse the seventh full run"
+    assert launched == 44, "the aggregate $100 ceiling must remain finite"
 
 
 def test_budget_loader_refuses_a_stale_authorised_ceiling():
@@ -545,7 +548,8 @@ def test_missing_ledger_is_an_empty_one():
     s3 = FakeS3()
     ledger, etag = budget.load(s3)
     assert ledger["reservations"] == {} and etag is None
-    assert budget.remaining_usd(ledger) == budget.CEILING_USD
+    assert budget.committed_usd(ledger) == 16.8738
+    assert budget.remaining_usd(ledger) == 83.1262
 
 
 def test_reservation_is_verified_by_readback():
@@ -792,14 +796,23 @@ def test_worst_case_sequence_fits_under_the_ceiling():
              + budget.worst_case_usd("base_and_preflight")
              + len(orchestrate.LR_CANDIDATES)
              * budget.worst_case_usd("sweep_run")
-             + budget.worst_case_usd("final_run"))
+             + budget.worst_case_usd("final_run")
+             + budget.worst_case_usd("artifactize")
+             + budget.worst_case_usd("spot_checkpoint")
+             + budget.worst_case_usd("spot_resume"))
     assert total <= budget.CEILING_USD, f"worst case ${total} > ceiling"
-    assert total == pytest.approx(4.2530, abs=0.0001)
+    assert total == pytest.approx(sum(
+        budget.worst_case_usd(stage)
+        for stage in ("builder", "base_and_preflight", "sweep_run",
+                      "final_run", "artifactize", "spot_checkpoint",
+                      "spot_resume")), abs=0.0001)
 
 
 def test_declared_instance_count_matches_the_topology():
-    gpu = ["base_and_preflight", "sweep_run", "final_run"]
-    assert len(gpu) == budget.MAX_GPU_INSTANCES == 3
+    gpu = [
+        "base_and_preflight", "sweep_run", "final_run", "artifactize",
+        "spot_checkpoint", "spot_resume"]
+    assert len(gpu) == budget.MAX_GPU_INSTANCES == 6
     assert budget.MAX_INSTANCES == budget.MAX_GPU_INSTANCES + 1
     assert all(budget.STAGE_INSTANCE[s] == "g6.xlarge" for s in set(gpu))
     assert budget.STAGE_INSTANCE["builder"] == "c6i.2xlarge"

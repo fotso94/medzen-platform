@@ -722,13 +722,55 @@ def load_exclusions(ref: str, expect: int | None = None
     else:
         raw = Path(ref).read_bytes()
     doc = json.loads(raw)
-    out = {e["audio_checksum_sha256"]: e for e in doc["exclusions"]}
+    entries = list(doc.get("exclusions") or [])
+    inherited = doc.get("inherits_policy")
+    if inherited:
+        inherited_path = (ROOT / inherited["path"]).resolve()
+        try:
+            inherited_path.relative_to(ROOT)
+        except ValueError:
+            raise SystemExit("REFUSING: inherited policy escapes repository")
+        inherited_raw = inherited_path.read_bytes()
+        if hashlib.sha256(inherited_raw).hexdigest() != inherited.get("sha256"):
+            raise SystemExit("REFUSING: inherited policy bytes changed")
+        inherited_doc = json.loads(inherited_raw)
+        inherited_entries = inherited_doc.get("exclusions") or []
+        if (inherited_doc.get("status") != "approved"
+                or inherited_doc.get("decision_type") != "policy_deferral"
+                or len(inherited_entries) != inherited.get("rows")):
+            raise SystemExit("REFUSING: inherited policy is not the approved input")
+        entries.extend(inherited_entries)
+    holdout = doc.get("holdout_exclusion")
+    if holdout:
+        body = s3().get_object(
+            Bucket=BUCKET, Key=holdout["manifest_key"])["Body"].read()
+        if hashlib.sha256(body).hexdigest() != holdout.get("manifest_sha256"):
+            raise SystemExit("REFUSING: holdout manifest bytes changed")
+        holdout_rows = [json.loads(line) for line in body.splitlines()
+                        if line.strip()]
+        if len(holdout_rows) != holdout.get("rows"):
+            raise SystemExit("REFUSING: holdout manifest row count changed")
+        for row in holdout_rows:
+            if row.get("primary_language") != holdout.get("language"):
+                raise SystemExit("REFUSING: holdout contains another language")
+            entries.append({
+                "audio_checksum_sha256": row["audio_checksum_sha256"],
+                "language": holdout["language"],
+                "task": holdout["task"],
+                "trigger": holdout["trigger"],
+                "classification": "held_out_for_post_selection_evaluation",
+                "action": "defer_pending_review",
+                "defect": False,
+                "reason_code": "owner_approved_untouched_holdout",
+                "human_reviewed": False,
+            })
+    out = {e["audio_checksum_sha256"]: e for e in entries}
     kind = doc.get("decision_type", "human_review")
     print(f"  exclusions  {len(out)} row(s) from {doc.get('list_id', ref)} "
           f"({doc.get('status')}, {kind})")
     if doc.get("status") != "approved":
         raise SystemExit(f"REFUSING: exclusion list {doc.get('list_id')} is not approved")
-    if len(out) != len(doc["exclusions"]):
+    if len(out) != len(entries):
         raise SystemExit("REFUSING: duplicate checksums in the exclusion list")
 
     if kind == "policy_deferral":

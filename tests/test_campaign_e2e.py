@@ -106,6 +106,9 @@ PINS = {
     "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
     "base_manifest_sha256": "e" * 64, "validation_manifest_sha256": "f" * 64,
     "generation_config_fingerprint": "0" * 64, "evaluator_sha256": "1" * 64,
+    "holdout_manifest_key": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+    "holdout_manifest_sha256": "2" * 64,
+    "holdout_evidence_sha256": "3" * 64,
     "mlflow_parent_run_id": "parent-1",
 }
 
@@ -163,7 +166,9 @@ def checkpoint(step, wer=None, sha=None):
             "cap_hit_rate": zeros(),
             "smoke": {"passed": True, "reasons": []},
             "artifact_sha256": sha or hashlib.sha256(
-                f"cp{step}".encode()).hexdigest()}
+                f"cp{step}".encode()).hexdigest(),
+            "artifact_tree_sha256": hashlib.sha256(
+                f"cp-tree{step}".encode()).hexdigest()}
 
 
 def make_services(s3, db, **over):
@@ -171,7 +176,8 @@ def make_services(s3, db, **over):
 
     def verify_policy():
         calls.append("verify_policy")
-        return {"policy_sha256": POLICY_SHA, "rows": 19,
+        return {"policy_sha256": POLICY_SHA,
+                "rows": language_scope.EXPECTED_POLICY_ROWS_TOTAL,
                 "human_review_performed": False,
                 "exclusion_checksums_sha256": EXCL_SHA}
 
@@ -222,11 +228,39 @@ def make_services(s3, db, **over):
             d, steps_completed=600,
             checkpoints=[checkpoint(st) for st in campaign.FINAL_CHECKPOINTS])
 
+    def run_artifactize(d):
+        calls.append("run_artifactize")
+        return stage_result(
+            d, holdout={"gate": {"passed": True}},
+            converted_gate={"passed": True},
+            converted_tree_sha256="4" * 64,
+            artifact_evaluation_sha256="5" * 64)
+
+    def run_spot_checkpoint(d, lr):
+        calls.append(f"run_spot_checkpoint:{lr:.0e}")
+        return stage_result(
+            d, exit_status="INTERRUPTED_AFTER_DURABLE_CHECKPOINT",
+            operator_interrupted=True,
+            checkpoint_tree_sha256="6" * 64,
+            checkpoint_prefix=(d["output_prefix"].rstrip("/")
+                               + "/resume-checkpoint/checkpoint-100"),
+            spot_involved=True)
+
+    def run_spot_resume(d, lr):
+        calls.append(f"run_spot_resume:{lr:.0e}")
+        return stage_result(
+            d, exact_checkpoint_match=True,
+            resumed_from_tree_sha256=d["input_artifact_sha256"],
+            steps_completed=200, spot_involved=True)
+
     sv = campaign.Services(
         s3=s3, verify_policy=verify_policy, verify_adoption=verify_adoption,
         verify_language_scope=verify_language_scope,
         run_base_and_preflight=run_base_and_preflight, run_sweep=run_sweep,
-        run_final=run_final, mlflow_db=db, tracker=FakeTracker(),
+        run_final=run_final, run_artifactize=run_artifactize,
+        run_spot_checkpoint=run_spot_checkpoint,
+        run_spot_resume=run_spot_resume,
+        mlflow_db=db, tracker=FakeTracker(),
         launcher=object(),
         image_digest="sha256:" + "f" * 64, stage_descriptors=dict(PINS))
     for k, v in over.items():
@@ -258,7 +292,10 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
     assert idx(lambda n: n == "sweep-run") < idx(lambda n: n == "select-lr")
     assert idx(lambda n: n == "select-lr") < idx(lambda n: n == "final-run")
     assert idx(lambda n: n == "final-run") < idx(lambda n: n == "checkpoint-eval")
-    assert idx(lambda n: n == "checkpoint-eval") < idx(lambda n: n == "cleanup")
+    assert idx(lambda n: n == "checkpoint-eval") < idx(lambda n: n == "artifactize")
+    assert idx(lambda n: n == "artifactize") < idx(lambda n: n == "spot-interrupted")
+    assert idx(lambda n: n == "spot-interrupted") < idx(lambda n: n == "spot-resumed")
+    assert idx(lambda n: n == "spot-resumed") < idx(lambda n: n == "cleanup")
 
     assert names.count("sweep-run") == len(orchestrate.LR_CANDIDATES)
     assert names.count("checkpoint-eval") == len(campaign.FINAL_CHECKPOINTS)
@@ -266,6 +303,8 @@ def test_full_campaign_runs_every_stage_in_the_required_order(db):
     assert out["purpose"] == "training_system_validation"
     assert out["selected_checkpoint"]["step"] == 100
     assert out["stopped_on_failed_checkpoint"] is None
+    assert out["servable_artifact"]["converted_gate"]["passed"] is True
+    assert out["spot_resume"]["exact_checkpoint_match"] is True
 
 
 def test_base_and_preflight_run_before_any_sweep(db):
@@ -282,8 +321,11 @@ def test_exactly_declared_gpu_stage_calls(db):
     sv, calls = make_services(s3, db)
     out = campaign.run_campaign(sv, "camp-2b")
     gpu = [c for c in calls if c.startswith(("run_base_and_preflight",
-                                             "run_sweep", "run_final"))]
-    assert (len(gpu) == 2 + len(orchestrate.LR_CANDIDATES)
+                                             "run_sweep", "run_final",
+                                             "run_artifactize",
+                                             "run_spot_checkpoint",
+                                             "run_spot_resume"))]
+    assert (len(gpu) == 5 + len(orchestrate.LR_CANDIDATES)
             == out["gpu_instances"] == budget.MAX_GPU_INSTANCES)
     assert calls.count("run_base_and_preflight") == 1
     assert sum(1 for c in calls if c.startswith("run_sweep")) == len(
@@ -639,7 +681,8 @@ def test_a_crash_after_launch_still_counts_the_worst_case(db):
     s3 = FakeS3()
     budget.reserve(s3, "final_run", "crashed")
     ledger, _ = budget.load(s3)
-    assert budget.committed_usd(ledger) == budget.worst_case_usd("final_run")
+    assert budget.committed_usd(ledger) == pytest.approx(
+        budget.HISTORICAL_SPEND_USD + budget.worst_case_usd("final_run"))
     assert budget.unresolved(ledger) == [
         budget.reservation_id("final_run", "crashed")]
 
@@ -775,7 +818,7 @@ def test_launcher_dry_run_executes_and_reports_the_dynamic_topology():
          "--git-sha", "a" * 40],
         cwd=ROOT, capture_output=True, text=True)
     assert out.returncode == 0, out.stderr
-    assert "topology      3 GPU instances" in out.stdout
+    assert "topology      6 GPU instances" in out.stdout
     assert "1 sweep(s)" in out.stdout
     assert "DRY RUN" in out.stdout
 

@@ -68,10 +68,20 @@ COPY schemas ./schemas
 # code whose commit/digest the descriptor authorises.
 COPY platform/decisions/DQ-2026-004-policy-deferral-scoped.json \
      ./platform/decisions/DQ-2026-004-policy-deferral-scoped.json
+COPY platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json \
+     ./platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json
 COPY platform/decisions/B4-SCOPE-2026-001-language-deferral.json \
      ./platform/decisions/B4-SCOPE-2026-001-language-deferral.json
+COPY platform/decisions/B4-SCOPE-2026-002-simplified-exit.json \
+     ./platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
+COPY platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json \
+     ./platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json
+COPY platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json \
+     ./platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json
 COPY platform/evidence/VAL-2026-001-frozen-validation-sets.json \
      ./platform/evidence/VAL-2026-001-frozen-validation-sets.json
+COPY platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json \
+     ./platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json
 
 # Python-dependency audit. ECR basic scanning covers OS packages only, so
 # without this nothing looks at torch, transformers, or the Flask/gunicorn tail

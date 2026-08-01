@@ -94,6 +94,15 @@ class PreviewLauncher:
     def run_final(self, descriptor, lr):
         raise AssertionError("preview launcher must never execute")
 
+    def run_artifactize(self, descriptor):
+        raise AssertionError("preview launcher must never execute")
+
+    def run_spot_checkpoint(self, descriptor, lr):
+        raise AssertionError("preview launcher must never execute")
+
+    def run_spot_resume(self, descriptor, lr):
+        raise AssertionError("preview launcher must never execute")
+
 
 def build_services(cli, args, *, preview: bool = False,
                    session=None) -> campaign.Services:
@@ -101,7 +110,9 @@ def build_services(cli, args, *, preview: bool = False,
 
     def verify_policy() -> dict:
         from pipeline.train_asr import load_exclusions
-        rows, doc, sha = load_exclusions(str(ROOT / POLICY), expect=19)
+        rows, doc, sha = load_exclusions(
+            str(ROOT / POLICY),
+            expect=language_scope.EXPECTED_POLICY_ROWS_TOTAL)
         return {"policy_sha256": sha, "rows": len(rows),
                 "human_review_performed": doc.get("human_review_performed"),
                 "exclusion_checksums_sha256":
@@ -174,6 +185,10 @@ def build_services(cli, args, *, preview: bool = False,
             for language, value in frozen["sets"].items()
             if language in language_scope.VALIDATION_LANGUAGES
         },
+        "holdout_manifest_key": language_scope.HOLDOUT["manifest_key"],
+        "holdout_manifest_sha256": language_scope.HOLDOUT["manifest_sha256"],
+        "holdout_evidence_sha256": file_sha(
+            ROOT / "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json"),
         "generation_config_fingerprint": config_fingerprint(),
         "evaluator_sha256": evaluator_sha(),
         "mlflow_parent_run_id": "preview-parent",
@@ -194,6 +209,9 @@ def build_services(cli, args, *, preview: bool = False,
         run_base_and_preflight=launcher.run_base_and_preflight,
         run_sweep=launcher.run_sweep,
         run_final=launcher.run_final,
+        run_artifactize=launcher.run_artifactize,
+        run_spot_checkpoint=launcher.run_spot_checkpoint,
+        run_spot_resume=launcher.run_spot_resume,
         mlflow_db=db, tracker=tracker, launcher=launcher,
         image_digest=args.image_digest,
         stage_descriptors=pins, register_model=None)
@@ -240,6 +258,10 @@ def validate_execution_inputs(args) -> tuple[object, object, dict]:
         + len(orchestrate.LR_CANDIDATES)
         * budget.worst_case_usd("sweep_run")
         + budget.worst_case_usd("final_run"))
+    gpu_worst_case += (
+        budget.worst_case_usd("artifactize")
+        + budget.worst_case_usd("spot_checkpoint")
+        + budget.worst_case_usd("spot_resume"))
     committed = budget.committed_usd(ledger)
     if committed + gpu_worst_case > budget.CEILING_USD:
         raise SystemExit(
@@ -263,7 +285,17 @@ def validate_execution_inputs(args) -> tuple[object, object, dict]:
         "image_digest": args.image_digest,
         "infra": infra,
         "budget_committed_usd": committed,
+        "per_stage_worst_case_reservations_usd": {
+            "base_and_preflight": budget.worst_case_usd("base_and_preflight"),
+            "sweep_run_1e-4": budget.worst_case_usd("sweep_run"),
+            "final_run": budget.worst_case_usd("final_run"),
+            "artifactize": budget.worst_case_usd("artifactize"),
+            "spot_checkpoint": budget.worst_case_usd("spot_checkpoint"),
+            "spot_resume": budget.worst_case_usd("spot_resume"),
+        },
         "gpu_worst_case_usd": round(gpu_worst_case, 4),
+        "aggregate_if_all_gpu_stages_hit_worst_case_usd": round(
+            committed + gpu_worst_case, 4),
         "budget_ceiling_usd": budget.CEILING_USD,
         "writes_performed": 0,
     }
@@ -306,12 +338,13 @@ def main() -> int:
     print("deferred      " + ",".join(language_scope.DEFERRED_LANGUAGES))
     print(f"scope hash    {language_scope.LANGUAGE_SCOPE_SHA256}")
     n_sweeps = len(orchestrate.LR_CANDIDATES)
-    print(f"topology      {n_sweeps + 2} GPU instances: "
-          f"1 base+preflight, {n_sweeps} sweep(s), 1 final")
+    print(f"topology      {n_sweeps + 5} GPU instances: "
+          f"1 base+preflight, {n_sweeps} sweep(s), 1 final, "
+          "1 artifactize, 2 Spot proof")
     print("ordering      verify-policy -> verify-adoption -> reserve -> "
           f"run_base_and_preflight -> {n_sweeps}x run_sweep -> select -> "
-          "run_final "
-          "(gates interleaved at 100..600) -> cleanup")
+          "run_final (gates interleaved at 100..600) -> artifactize -> "
+          "Spot checkpoint/interruption -> Spot exact resume -> cleanup")
     print("registration  disabled by construction (register_model is None)")
 
     # Readiness is checked BEFORE the S3 client is even built, so --confirm on

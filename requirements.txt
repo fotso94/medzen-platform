@@ -34,5 +34,7 @@ transformers==5.14.1
 peft==0.20.0
 accelerate==1.14.0
 mlflow==3.14.0
+ctranslate2==4.8.1
+faster-whisper==1.2.1
 mlx-whisper==0.4.3 ; sys_platform == "darwin"   # Apple-silicon only; not installable on the Linux trainer
 jiwer==4.0.0

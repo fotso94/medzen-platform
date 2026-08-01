@@ -5,7 +5,9 @@ container result and self-terminates.  This adapter then verifies AWS-observed
 termination, proves the root volume was deleted, augments the result with that
 lifecycle evidence, and publishes an immutable ``stage-result.json``.
 
-No EKS, Spot, Auto Scaling group, launch template, or model registry is used.
+No EKS, Auto Scaling group, launch template, or model registry is used.  The
+two explicit resume-proof stages use one-time EC2 Spot; every training and
+artifact stage remains direct on-demand EC2.
 """
 from __future__ import annotations
 
@@ -128,6 +130,21 @@ class EC2StageAdapter:
             raise StageLaunchError("REFUSING: final LR differs from descriptor")
         return self.run(descriptor)
 
+    def run_artifactize(self, descriptor: dict) -> dict:
+        return self.run(descriptor)
+
+    def run_spot_checkpoint(self, descriptor: dict, lr: float) -> dict:
+        if descriptor["lr"] != lr:
+            raise StageLaunchError(
+                "REFUSING: Spot checkpoint LR differs from descriptor")
+        return self.run(descriptor)
+
+    def run_spot_resume(self, descriptor: dict, lr: float) -> dict:
+        if descriptor["lr"] != lr:
+            raise StageLaunchError(
+                "REFUSING: Spot resume LR differs from descriptor")
+        return self.run(descriptor)
+
     def _require_image(self, descriptor: dict) -> None:
         digest = descriptor["image_digest"]
         try:
@@ -236,7 +253,7 @@ class EC2StageAdapter:
             "git_sha": git_sha,
             "active_b4_instances": 0,
             "eks_involved": False,
-            "spot_involved": False,
+            "spot_involved": True,
         }
 
     def _require_empty_prefix(self, prefix: str) -> None:
@@ -319,9 +336,11 @@ class EC2StageAdapter:
             "aws_final_state": terminal["State"]["Name"],
             "user_data_sha256": user_data_sha,
             "instance_type": self.config.instance_type,
-            "lifecycle": "on-demand-direct-ec2",
+            "lifecycle": (
+                "spot-direct-ec2" if descriptor["stage"].startswith("spot_")
+                else "on-demand-direct-ec2"),
             "eks_involved": False,
-            "spot_involved": False,
+            "spot_involved": descriptor["stage"].startswith("spot_"),
             "identity_problems": identity_problems,
         }
 
@@ -503,7 +522,7 @@ class EC2StageAdapter:
             {"Key": "ManagedBy", "Value": "medzen-b4-campaign"},
             {"Key": "Promotable", "Value": "false"},
         ]
-        launched = self.ec2.run_instances(
+        launch_args = dict(
             ImageId=self.config.ami_id,
             InstanceType=self.config.instance_type,
             MinCount=1, MaxCount=1,
@@ -536,6 +555,15 @@ class EC2StageAdapter:
                 {"ResourceType": "volume", "Tags": tags},
             ],
         )
+        if descriptor["stage"].startswith("spot_"):
+            launch_args["InstanceMarketOptions"] = {
+                "MarketType": "spot",
+                "SpotOptions": {
+                    "SpotInstanceType": "one-time",
+                    "InstanceInterruptionBehavior": "terminate",
+                },
+            }
+        launched = self.ec2.run_instances(**launch_args)
         instances = launched.get("Instances") or []
         if len(instances) != 1:
             raise StageLaunchError(
@@ -554,6 +582,76 @@ class EC2StageAdapter:
         deadline = (
             time.monotonic() + descriptor["watchdog_s"]
             + self.config.termination_grace_seconds)
+        if descriptor["stage"] == "spot_checkpoint":
+            marker_key = prefix + "spot-checkpoint-ready.json"
+            marker = None
+            while time.monotonic() < deadline:
+                try:
+                    raw = self.s3.get_object(
+                        Bucket=self.config.bucket, Key=marker_key)["Body"].read()
+                except Exception:  # noqa: BLE001 - absence while training is normal
+                    state = self.ec2.describe_instances(
+                        InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
+                    if state["State"]["Name"] in ("shutting-down", "terminated"):
+                        raise StageLaunchError(
+                            "REFUSING: Spot checkpoint instance ended before marker")
+                    time.sleep(self.config.poll_seconds)
+                    continue
+                marker = json.loads(raw)
+                if (marker.get("stage_descriptor_sha256") !=
+                        stage_descriptor.descriptor_hash(descriptor)
+                        or marker.get("checkpoint_step") != 100
+                        or not str(marker.get("checkpoint_prefix", "")).startswith(
+                            prefix + "resume-checkpoint/checkpoint-100")
+                        or len(str(marker.get("checkpoint_tree_sha256", ""))) != 64):
+                    raise StageLaunchError(
+                        "REFUSING: Spot checkpoint marker differs from descriptor")
+                artifact_raw = self.s3.get_object(
+                    Bucket=self.config.bucket,
+                    Key=marker["checkpoint_prefix"].rstrip("/")
+                    + "/ARTIFACT.json")["Body"].read()
+                artifact = json.loads(artifact_raw)
+                if artifact.get("tree_sha256") != marker["checkpoint_tree_sha256"]:
+                    raise StageLaunchError(
+                        "REFUSING: Spot checkpoint tree differs from marker")
+                break
+            if marker is None:
+                raise StageLaunchError(
+                    "REFUSING: Spot checkpoint was not durable before watchdog")
+            # Deliberate operator-side interruption after durable readback.
+            self.ec2.terminate_instances(InstanceIds=[instance_id])
+            terminal, observed_terminated = self._wait_terminated(
+                instance_id,
+                time.monotonic() + self.config.termination_grace_seconds)
+            deleted = self._volume_deleted(volume_id)
+            actual_seconds = max(
+                0.0, (observed_terminated - launch_time).total_seconds())
+            final = {
+                **marker,
+                "campaign_run": descriptor["campaign_run"],
+                "attempt": descriptor["attempt"],
+                "stage": descriptor["stage"],
+                "instance_id": instance_id,
+                "launched_utc": _utc(launch_time),
+                "terminated_utc": _utc(observed_terminated),
+                "actual_seconds": round(actual_seconds, 1),
+                "exit_status": "INTERRUPTED_AFTER_DURABLE_CHECKPOINT",
+                "root_volume_id": volume_id,
+                "root_volume_deleted": deleted,
+                "aws_final_state": terminal["State"]["Name"],
+                "user_data_sha256": user_data_sha,
+                "instance_type": self.config.instance_type,
+                "lifecycle": "spot-direct-ec2",
+                "eks_involved": False,
+                "spot_involved": True,
+                "operator_interrupted": True,
+                "interruption_reason": (
+                    "operator terminated one-time Spot instance only after "
+                    "checkpoint marker and ARTIFACT readback matched"),
+            }
+            stage_descriptor.verify_result(descriptor, final)
+            self._put_immutable(prefix + "stage-result.json", _json_bytes(final))
+            return final
         terminal, observed_terminated = self._wait_terminated(
             instance_id, deadline)
         if volume_id is None:

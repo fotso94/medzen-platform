@@ -1,0 +1,111 @@
+{
+  "record": "B4-OWNER-APPROVED-SCOPE-DEVIATION",
+  "id": "B4-SCOPE-2026-002",
+  "revision": 1,
+  "status": "approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T17:14:36Z",
+  "supersedes_for_future_execution": [
+    "platform/decisions/PLAN-2026-009-base-v5-b4-exit-preparation.md"
+  ],
+  "precedence": "Where this decision conflicts with MedZen Speech Platform Base v5, this owner-approved decision controls B4. Every conflict remains visible below and is never represented as a passing gate.",
+  "objective": "Reach a working eight-language training path and a verified servable ASR artifact without silently dropping unavailable-data requirements.",
+  "budget": {
+    "aggregate_ceiling_usd": 100.0,
+    "aggregate_committed_at_authorization_usd": 16.8738,
+    "displayed_owner_total_usd": 16.87,
+    "ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+    "component_ledgers": [
+      "candidates/budget/b4-corrected/ledger.json",
+      "candidates/budget/b4-amharic-termination-diagnostic/ledger.json",
+      "candidates/budget/b4-amharic-decode-compatibility/ledger.json",
+      "candidates/budget/b4-scoped/ledger.json"
+    ],
+    "component_committed_usd": {
+      "b4-corrected": 4.1081,
+      "b4-amharic-termination-diagnostic": 1.0317,
+      "b4-amharic-decode-compatibility": 1.7539,
+      "b4-scoped": 9.9801
+    },
+    "unresolved_reservations_at_authorization": 0,
+    "spend_reset_permitted": false,
+    "reserve_before_launch_required": true,
+    "worst_case_reservation_required": true,
+    "reconcile_after_aws_observed_termination_required": true,
+    "every_campaign_record_must_report_aggregate_spend": true
+  },
+  "data_scope_deviations": {
+    "code_switch": {
+      "base_v5_requirement": "A real code-switch training and evaluation slice is included and gated.",
+      "decision": "NOT_EVALUATED",
+      "reason": "No licensed code-switch data exists in the adopted corpus.",
+      "future_gap": "B4-GAP-CODE-SWITCH-001",
+      "silent_pass_forbidden": true
+    },
+    "english_french_replay": {
+      "base_v5_requirement": "Use 30-40 percent English/French replay and gate replay regression.",
+      "decision": "NOT_EVALUATED",
+      "reason": "The adopted v2 corpus has zero English and zero French rows and the owner chose to defer acquiring them.",
+      "consequence": "The artifact is not protected against English/French forgetting. Any English/French-facing promotion remains blocked until replay and regression evaluation are added.",
+      "reversible": true,
+      "silent_pass_forbidden": true
+    }
+  },
+  "language_scope": {
+    "active_training": [
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "swahili",
+      "yoruba"
+    ],
+    "checkpoint_selection": ["lingala", "luganda", "oromo"],
+    "deferred": ["acholi", "akan", "amharic", "ewe", "fula", "shona"],
+    "no_further_language_deferral_before_fresh_campaign": true,
+    "lingala": {
+      "decision": "retain",
+      "evidence": "Checkpoint 500 passed all gates: WER 0.7091 versus base 0.9207, EOS rate 1.0, cap-hit rate 0.0. Checkpoint 600 alone failed.",
+      "selection_rule": "Use the existing frozen Lingala/Luganda/Oromo sets only for checkpoint selection.",
+      "holdout_rule": "After checkpoint selection, evaluate the selected artifact and same-run base on a larger Lingala set whose speakers and sessions are disjoint from training and selection; prefer a different source/domain when available.",
+      "holdout_must_not_influence_selection": true,
+      "per_language_outcome": "If Lingala fails the untouched holdout while Luganda and Oromo pass, Lingala may be deferred only at the later per-language approval stage. Luganda and Oromo may continue; Lingala remains pinned to the base or previous approved artifact."
+    }
+  },
+  "checkpoint_selection": {
+    "declared_before_launch": true,
+    "rule": "Among checkpoints that pass every active hard gate, select the lowest macro WER; an exact tie selects the earlier step. A later hard-gate failure stops training at that boundary but does not erase an earlier passing checkpoint.",
+    "provisional": true,
+    "promotable": false,
+    "limitation": "Selection validation is not an untouched holdout. The selected checkpoint remains provisional and non-promotable until the post-selection holdout and post-conversion checks complete."
+  },
+  "servable_artifact": {
+    "required": true,
+    "steps": [
+      "merge the selected LoRA adapter into the pinned base model",
+      "convert the merged model to CTranslate2 int8_float16",
+      "evaluate the converted artifact on the same frozen selection validation and report conversion deltas",
+      "prove interruption and resume from the exact S3 checkpoint using EC2 Spot"
+    ],
+    "artifact_is_not_registered": true,
+    "b5_allowed": false
+  },
+  "revised_b4_exit": [
+    "checkpoint-selection rule verified locally and in the pinned read-only container",
+    "merged CTranslate2 int8_float16 artifact produced and evaluated after conversion",
+    "exact-S3-checkpoint Spot interruption/resume proof completed",
+    "one fresh gated campaign completed under the aggregate budget with the selection rule declared in advance",
+    "every unmeasurable A5 gate recorded individually as DEFERRED or NOT_EVALUATED"
+  ],
+  "hard_controls": {
+    "model_registration_permitted": false,
+    "promotion_permitted": false,
+    "b5_permitted": false,
+    "eks_permitted": false,
+    "silent_gate_drop_permitted": false,
+    "checkpoint_500_from_the_failed_campaign_reusable": false,
+    "fresh_training_from_pinned_base_required": true
+  }
+}

@@ -14,6 +14,7 @@ import hashlib
 import json
 import math
 import os
+import statistics
 import subprocess
 import sys
 import time
@@ -568,6 +569,304 @@ def run_final(cli, descriptor: dict, work: Path) -> dict:
     }
 
 
+def _load_selected_evaluation(cli, descriptor: dict) -> dict:
+    raw = cli.get_object(
+        Bucket=BUCKET, Key=descriptor["input_evaluation_key"])["Body"].read()
+    if _sha(raw) != descriptor["input_evaluation_sha256"]:
+        raise SystemExit(
+            "REFUSING: selected checkpoint evaluation differs from descriptor")
+    doc = json.loads(raw)
+    if doc.get("arm") != "candidate":
+        raise SystemExit("REFUSING: selected checkpoint evaluation is not candidate")
+    return doc
+
+
+def _lingala_holdout_runtime(cli, descriptor: dict, cache: Path
+                             ) -> ValidationRuntime:
+    evidence_path = (
+        ROOT / "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json")
+    raw = evidence_path.read_bytes()
+    if _sha(raw) != descriptor["holdout_evidence_sha256"]:
+        raise SystemExit("REFUSING: Lingala holdout evidence hash changed")
+    evidence = json.loads(raw)
+    info = {
+        "key": evidence["holdout_manifest_key"],
+        "manifest_sha256": evidence["holdout_manifest_sha256"],
+        "rows": evidence["rows"],
+        "minutes": evidence["minutes"],
+    }
+    return ValidationRuntime(
+        cli, descriptor, cache, languages=("lingala",),
+        manifest_set={"lingala": info}, validation_record_sha256=_sha(raw))
+
+
+def _relative_gain_gate(candidate: dict, base: dict, languages: tuple[str, ...]
+                        ) -> dict:
+    gains = {
+        language: ((float(base[language]) - float(candidate[language]))
+                   / float(base[language]))
+        for language in languages
+    }
+    failures = [
+        f"{language} relative WER gain {gain:.2%} is below 15%"
+        for language, gain in gains.items() if gain < 0.15
+    ]
+    return {"passed": not failures, "minimum_relative_gain": 0.15,
+            "relative_wer_gain": gains, "failures": failures}
+
+
+def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
+    """Score the converted bytes directly, including termination accounting.
+
+    CTranslate2 removes the terminal end token from Whisper results.  With
+    greedy single-segment decoding and no other stop callback, a sequence below
+    ``max_length`` therefore terminated on EOS; reaching the bound is the cap.
+    This convention is recorded rather than pretending the removed token was
+    observed.
+    """
+    import ctranslate2
+    import jiwer
+    from pipeline.normalizers import for_language
+    from scripts.run_baseline import bootstrap_ci, wer_cer
+
+    runtime.ensure_prepared()
+    model = ctranslate2.models.Whisper(
+        str(model_dir), device="cuda", compute_type="int8_float16")
+    per_language = {}
+    for language in runtime.languages:
+        rows, audios = runtime._loaded[language]
+        prompt = expected_prompt(runtime.processor, LANG_TOKEN[language])
+        norm = for_language(language)
+        refs, hyps, per = [], [], []
+        for rec, (audio, sr) in zip(rows, audios):
+            inputs = runtime.processor.feature_extractor(
+                audio, sampling_rate=sr, return_tensors="np")
+            features = ctranslate2.StorageView.from_array(inputs.input_features)
+            t0 = time.perf_counter()
+            generated = model.generate(
+                features, [prompt], beam_size=1,
+                max_length=440, sampling_topk=1,
+                sampling_temperature=1, suppress_tokens=[-1])
+            latency = time.perf_counter() - t0
+            if len(generated) != 1 or len(generated[0].sequences_ids) != 1:
+                raise SystemExit(
+                    "REFUSING: CTranslate2 returned an ambiguous hypothesis set")
+            ids = list(generated[0].sequences_ids[0])
+            if ids[:len(prompt)] == prompt:
+                ids = ids[len(prompt):]
+            if len(ids) > 440:
+                raise SystemExit(
+                    "REFUSING: CTranslate2 exceeded the authorised token cap")
+            cap_hit = len(ids) >= 440
+            eos = not cap_hit
+            text = runtime.processor.tokenizer.decode(
+                ids, skip_special_tokens=True)
+            ref, hyp = norm(rec["text_normalized"]), norm(text)
+            refs.append(ref)
+            hyps.append(hyp)
+            per.append({
+                "audio_checksum_sha256": rec["audio_checksum_sha256"],
+                "prompt_tokens": len(prompt),
+                "generated_tokens": len(ids),
+                "total_tokens": len(prompt) + len(ids),
+                "eos_emitted": eos,
+                "hit_length_cap": cap_hit,
+                "stop_reason": "max_length" if cap_hit else "eos_removed_by_runtime",
+                "ref_words": len(ref.split()), "hyp_words": len(hyp.split()),
+                "latency_s": round(latency, 4),
+                "wer": round(jiwer.wer(ref, hyp), 4) if ref.strip() else None,
+            })
+        wer, cer = wer_cer(refs, hyps)
+        lo, hi = bootstrap_ci(refs, hyps)
+        lengths = [row["generated_tokens"] for row in per]
+        per_language[language] = {
+            "rows": len(rows), "wer": round(wer, 4), "cer": round(cer, 4),
+            "wer_ci95": [round(lo, 4), round(hi, 4)],
+            "eos_rate": round(sum(r["eos_emitted"] for r in per) / len(per), 4),
+            "cap_hit_rate": round(sum(r["hit_length_cap"] for r in per) / len(per), 4),
+            "generated_tokens": {
+                "median": statistics.median(lengths), "max": max(lengths),
+                "mean": round(statistics.mean(lengths), 2), "min": min(lengths)},
+            "normalization_version": norm.version,
+            "per_utterance": per,
+        }
+    return {
+        "wer": {l: per_language[l]["wer"] for l in runtime.languages},
+        "cer": {l: per_language[l]["cer"] for l in runtime.languages},
+        "eos_rate": {l: per_language[l]["eos_rate"] for l in runtime.languages},
+        "cap_hit_rate": {
+            l: per_language[l]["cap_hit_rate"] for l in runtime.languages},
+        "generated_tokens_median": {
+            l: per_language[l]["generated_tokens"]["median"]
+            for l in runtime.languages},
+        "generated_tokens_max": {
+            l: per_language[l]["generated_tokens"]["max"]
+            for l in runtime.languages},
+        "per_language": per_language,
+        "compute_type": model.compute_type,
+        "runtime": f"ctranslate2-{ctranslate2.__version__}",
+        "termination_accounting": (
+            "Whisper generate removes terminal EOS; greedy output shorter than "
+            "max_length=440 is EOS termination, length 440 is a cap hit"),
+    }
+
+
+def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
+    """Holdout, merge, conversion, and scoring of the actual servable bytes."""
+    import torch
+    from peft import PeftModel
+
+    selected_eval = _load_selected_evaluation(cli, descriptor)
+    adapter_dir = work / "selected-adapter"
+    retained = download_artifact_tree(cli, descriptor, adapter_dir)
+
+    holdout = _lingala_holdout_runtime(cli, descriptor, work / "holdout")
+    holdout_base_path = work / "holdout-base.json"
+    holdout_candidate_path = work / "holdout-candidate.json"
+    holdout_base = holdout.evaluate_base(holdout_base_path)
+    holdout_candidate = holdout.evaluate_adapter(
+        adapter_dir, holdout_candidate_path,
+        expected_adapter_sha256=retained["adapter_sha256"])
+    holdout_gate = _relative_gain_gate(
+        holdout_candidate["wer"], holdout_base["wer"], ("lingala",))
+    if (min(holdout_candidate["eos_rate"].values()) != 1.0
+            or max(holdout_candidate["cap_hit_rate"].values()) != 0.0):
+        holdout_gate["passed"] = False
+        holdout_gate["failures"].append(
+            "Lingala holdout termination gate failed")
+    if not holdout_gate["passed"]:
+        raise SystemExit(
+            "REFUSING: selected checkpoint failed post-selection Lingala holdout: "
+            + "; ".join(holdout_gate["failures"]))
+
+    selection = ValidationRuntime(cli, descriptor, work / "selection")
+    selection.ensure_prepared()
+    base = selection._fresh_base()
+    peft_model = PeftModel.from_pretrained(
+        base, str(adapter_dir), is_trainable=False).to(selection.device).eval()
+    merged = peft_model.merge_and_unload(safe_merge=True)
+    merged_dir = work / "merged-transformers"
+    merged.save_pretrained(merged_dir, safe_serialization=True)
+    selection.processor.save_pretrained(merged_dir)
+    del peft_model, merged, base
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    converted_dir = work / "ctranslate2-int8-float16"
+    completed = subprocess.run([
+        "ct2-transformers-converter", "--model", str(merged_dir),
+        "--output_dir", str(converted_dir), "--quantization", "int8_float16",
+        "--copy_files", "tokenizer.json", "preprocessor_config.json",
+    ], check=False)
+    if completed.returncode:
+        raise SystemExit(
+            f"REFUSING: CTranslate2 converter exited {completed.returncode}")
+    if not (converted_dir / "model.bin").is_file():
+        raise SystemExit("REFUSING: converted artifact has no model.bin")
+
+    converted = _score_ctranslate2(selection, converted_dir)
+    before = selected_eval["summary"]
+    languages = tuple(descriptor["validation_languages"])
+    converted_gate = _relative_gain_gate(
+        converted["wer"], load_base_result(cli, descriptor)["summary"]["wer"],
+        languages)
+    if min(converted["eos_rate"].values()) != 1.0:
+        converted_gate["passed"] = False
+        converted_gate["failures"].append("converted EOS rate is below 100%")
+    if max(converted["cap_hit_rate"].values()) != 0.0:
+        converted_gate["passed"] = False
+        converted_gate["failures"].append("converted artifact has cap hits")
+    if not converted_gate["passed"]:
+        raise SystemExit(
+            "REFUSING: converted artifact failed active quality gates: "
+            + "; ".join(converted_gate["failures"]))
+    deltas = {
+        metric: {language: round(
+            float(converted[metric][language])
+            - float(before[metric][language]), 6)
+            for language in languages}
+        for metric in ("wer", "cer", "eos_rate", "cap_hit_rate")
+    }
+    merged_manifest = upload_tree(
+        cli, merged_dir, descriptor["output_prefix"].rstrip("/") + "/merged")
+    converted_manifest = upload_tree(
+        cli, converted_dir,
+        descriptor["output_prefix"].rstrip("/") + "/ctranslate2-int8-float16")
+    record = {
+        "record": "B4-SERVABLE-ARTIFACT-EVALUATION",
+        "promotable": False, "registered_models": 0, "b5_allowed": False,
+        "selected_input_tree_sha256": retained["tree_sha256"],
+        "selected_evaluation_sha256": descriptor["input_evaluation_sha256"],
+        "holdout": {"base": holdout_base, "candidate": holdout_candidate,
+                    "gate": holdout_gate},
+        "pre_conversion": before, "post_conversion": converted,
+        "conversion_delta": deltas, "converted_gate": converted_gate,
+        "merged_tree_sha256": merged_manifest["tree_sha256"],
+        "converted_tree_sha256": converted_manifest["tree_sha256"],
+    }
+    record_key = descriptor["output_prefix"].rstrip("/") + "/artifact-evaluation.json"
+    record_sha = put_immutable(cli, record_key, _json_bytes(record))
+    return {**record, "artifact_evaluation_key": record_key,
+            "artifact_evaluation_sha256": record_sha}
+
+
+def run_spot_checkpoint(cli, descriptor: dict, work: Path) -> dict:
+    """Publish checkpoint-100, then wait for the operator to interrupt Spot."""
+    out = work / "spot-checkpoint"
+    train = run_training(
+        descriptor, out, lr=float(descriptor["lr"]), max_steps=100)
+    checkpoint = out / "checkpoint-100"
+    if not checkpoint.is_dir():
+        raise SystemExit("REFUSING: Spot proof produced no checkpoint-100")
+    manifest = upload_tree(
+        cli, checkpoint,
+        descriptor["output_prefix"].rstrip("/") + "/resume-checkpoint/checkpoint-100")
+    marker = {
+        "record": "B4-SPOT-CHECKPOINT-READY", "checkpoint_step": 100,
+        "checkpoint_tree_sha256": manifest["tree_sha256"],
+        "checkpoint_prefix": (
+            descriptor["output_prefix"].rstrip("/")
+            + "/resume-checkpoint/checkpoint-100"),
+        "stage_descriptor_sha256": stage_descriptor.descriptor_hash(descriptor),
+        "training_steps": train["steps"],
+    }
+    marker_key = descriptor["output_prefix"].rstrip("/") + "/spot-checkpoint-ready.json"
+    marker_sha = put_immutable(cli, marker_key, _json_bytes(marker))
+    if os.environ.get("MEDZEN_TEST_SPOT_NO_WAIT") == "1":
+        return {**marker, "marker_key": marker_key, "marker_sha256": marker_sha}
+    print("SPOT CHECKPOINT DURABLE; waiting for operator interruption", flush=True)
+    while True:
+        time.sleep(30)
+
+
+def run_spot_resume(cli, descriptor: dict, work: Path) -> dict:
+    resume = work / "resume-checkpoint-100"
+    retained = download_artifact_tree(cli, descriptor, resume)
+    state = json.loads((resume / "trainer_state.json").read_bytes())
+    if state.get("global_step") != 100:
+        raise SystemExit(
+            "REFUSING: authorised Spot checkpoint is not at step 100")
+    out = work / "spot-resumed"
+    train = run_training(
+        descriptor, out, lr=float(descriptor["lr"]), max_steps=200,
+        resume=resume)
+    checkpoint = out / "checkpoint-200"
+    if train.get("steps") != 200 or not checkpoint.is_dir():
+        raise SystemExit(
+            "REFUSING: resumed Spot run did not reach checkpoint-200")
+    manifest = upload_tree(
+        cli, checkpoint,
+        descriptor["output_prefix"].rstrip("/") + "/resumed/checkpoint-200")
+    return {
+        "resumed_from_step": 100, "steps_completed": 200,
+        "resumed_from_tree_sha256": retained["tree_sha256"],
+        "resumed_checkpoint_tree_sha256": manifest["tree_sha256"],
+        "exact_checkpoint_match": (
+            retained["tree_sha256"] == descriptor["input_artifact_sha256"]),
+        "training_finite": _finite_training(train),
+    }
+
+
 def run_diagnostic(cli, descriptor: dict, work: Path) -> dict:
     """Compare base and retained 1e-4 adapter without optimisation or writes."""
     import peft
@@ -797,6 +1096,12 @@ def execute(descriptor: dict, out: Path) -> dict:
         payload = run_sweep(cli, descriptor, work)
     elif descriptor["stage"] == "final":
         payload = run_final(cli, descriptor, work)
+    elif descriptor["stage"] == "artifactize":
+        payload = run_artifactize(cli, descriptor, work)
+    elif descriptor["stage"] == "spot_checkpoint":
+        payload = run_spot_checkpoint(cli, descriptor, work)
+    elif descriptor["stage"] == "spot_resume":
+        payload = run_spot_resume(cli, descriptor, work)
     elif descriptor["stage"] == "diagnostic":
         payload = run_diagnostic(cli, descriptor, work)
     elif descriptor["stage"] == "decode_compatibility":

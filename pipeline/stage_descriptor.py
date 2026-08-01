@@ -14,9 +14,10 @@ import hashlib
 import json
 import re
 
-from pipeline import language_scope
+from pipeline import language_scope, scope_deviation
 
-STAGES = ("base_and_preflight", "sweep", "final", "diagnostic",
+STAGES = ("base_and_preflight", "sweep", "final", "artifactize",
+          "spot_checkpoint", "spot_resume", "diagnostic",
           "decode_compatibility")
 
 # Every field is required. A descriptor missing one is not a weaker
@@ -26,12 +27,16 @@ REQUIRED = (
     "git_sha", "bundle_tar_sha256", "image_digest",
     "policy_sha256", "adoption_key", "dataset_fingerprint",
     "language_scope_sha256", "training_languages", "validation_languages",
+    "scope_deviation_sha256", "a5_gate_disposition_sha256",
+    "holdout_manifest_key", "holdout_manifest_sha256",
+    "holdout_evidence_sha256",
     "base_manifest_sha256", "validation_manifest_sha256",
     "base_arm_key", "base_artifact_key", "base_artifact_sha256",
     "generation_config_fingerprint", "evaluator_sha256",
     "lr", "seed", "max_steps", "checkpoint_steps",
     "reservation_id", "watchdog_s",
-    "input_prefix", "input_artifact_sha256", "output_prefix",
+    "input_prefix", "input_artifact_sha256",
+    "input_evaluation_key", "input_evaluation_sha256", "output_prefix",
     "mlflow_parent_run_id", "mlflow_child_run_id",
     "purpose", "promotable",
 )
@@ -71,7 +76,9 @@ def build(**kw) -> dict:
     if not image.startswith("sha256:") or not _lower_hex(image[7:], 64):
         problems.append("image_digest must be sha256:<64 hex>")
     for f in ("bundle_tar_sha256", "policy_sha256", "dataset_fingerprint",
-              "language_scope_sha256",
+              "language_scope_sha256", "scope_deviation_sha256",
+              "a5_gate_disposition_sha256", "holdout_manifest_sha256",
+              "holdout_evidence_sha256",
               "base_manifest_sha256", "validation_manifest_sha256",
               "generation_config_fingerprint", "evaluator_sha256"):
         if not _lower_hex(d[f], 64):
@@ -79,6 +86,12 @@ def build(**kw) -> dict:
     if d["language_scope_sha256"] != language_scope.LANGUAGE_SCOPE_SHA256:
         problems.append(
             "language_scope_sha256 differs from the approved B4 scope record")
+    if d["scope_deviation_sha256"] != scope_deviation.DECISION_SHA256:
+        problems.append(
+            "scope_deviation_sha256 differs from the owner-approved decision")
+    if d["a5_gate_disposition_sha256"] != scope_deviation.A5_GATES_SHA256:
+        problems.append(
+            "a5_gate_disposition_sha256 differs from the approved gate matrix")
     for field in ("training_languages", "validation_languages"):
         value = d[field]
         if (not isinstance(value, list)
@@ -92,7 +105,8 @@ def build(**kw) -> dict:
         if present:
             problems.append(
                 f"{field} contains deferred B4 language(s) {present}")
-    if d["stage"] in ("base_and_preflight", "sweep", "final"):
+    if d["stage"] in ("base_and_preflight", "sweep", "final",
+                      "artifactize", "spot_checkpoint", "spot_resume"):
         if tuple(d["training_languages"]) != language_scope.TRAINING_LANGUAGES:
             problems.append(
                 "training_languages differ from the approved B4 active scope")
@@ -105,6 +119,9 @@ def build(**kw) -> dict:
         problems.append("purpose must be training_system_validation")
     if d["promotable"] is not False:
         problems.append("promotable must be False; Option B is non-promotable")
+    if not str(d["holdout_manifest_key"]).startswith(
+            "eval/lingala/asr/v2-holdout/"):
+        problems.append("holdout_manifest_key must bind the frozen Lingala holdout")
     if d["stage"] == "sweep":
         if d["max_steps"] != 600:
             problems.append(
@@ -118,6 +135,17 @@ def build(**kw) -> dict:
         if d["checkpoint_steps"] != [100, 200, 300, 400, 500, 600]:
             problems.append(
                 "the final run must gate checkpoints 100 through 600")
+    if d["stage"] == "artifactize":
+        if d["max_steps"] != 0 or d["checkpoint_steps"] != []:
+            problems.append("artifactize performs zero training steps")
+    if d["stage"] == "spot_checkpoint":
+        if d["max_steps"] != 100 or d["checkpoint_steps"] != [100]:
+            problems.append(
+                "spot_checkpoint must stop after publishing checkpoint-100")
+    if d["stage"] == "spot_resume":
+        if d["max_steps"] != 200 or d["checkpoint_steps"] != [100, 200]:
+            problems.append(
+                "spot_resume must resume checkpoint-100 and reach checkpoint-200")
     if d["stage"] == "base_and_preflight" and d["lr"] is not None:
         problems.append("base_and_preflight has no learning rate")
     if d["stage"] == "base_and_preflight":
@@ -150,10 +178,30 @@ def build(**kw) -> dict:
             problems.append(
                 f"{d['stage']} input_prefix must be a confined checkpoint-100 "
                 "artifact prefix")
+    elif d["stage"] in ("artifactize", "spot_resume"):
+        if not _lower_hex(d["input_artifact_sha256"], 64):
+            problems.append(
+                f"{d['stage']} input_artifact_sha256 must pin the input tree")
+        input_prefix = str(d["input_prefix"])
+        authorised_input = (
+            input_prefix.startswith("candidates/evaluations/")
+            and ".." not in input_prefix and "//" not in input_prefix)
+        if not authorised_input:
+            problems.append(
+                f"{d['stage']} input_prefix must be a confined evaluation artifact")
     elif d["input_artifact_sha256"] is not None:
         problems.append(
-            "input_artifact_sha256 is only valid for a no-training "
-            "diagnostic stage")
+            "input_artifact_sha256 is not valid for this stage")
+    if d["stage"] == "artifactize":
+        if (not str(d["input_evaluation_key"]).startswith(
+                "candidates/evaluations/")
+                or not _lower_hex(d["input_evaluation_sha256"], 64)):
+            problems.append(
+                "artifactize must pin the selected checkpoint evaluation")
+    elif (d["input_evaluation_key"] is not None
+          or d["input_evaluation_sha256"] is not None):
+        problems.append(
+            "input evaluation binding is valid only for artifactize")
     if not str(d["output_prefix"]).startswith("candidates/"):
         problems.append("output_prefix must be under candidates/")
     authorised_root = (
@@ -199,7 +247,13 @@ def verify_result(descriptor: dict, result: dict) -> dict:
             problems.append(f"result is missing {f}")
     if result.get("root_volume_deleted") is not True:
         problems.append("root volume deletion is not confirmed")
-    if result.get("exit_status") != 0:
+    interrupted_ok = (
+        descriptor["stage"] == "spot_checkpoint"
+        and result.get("operator_interrupted") is True
+        and result.get("exit_status") == "INTERRUPTED_AFTER_DURABLE_CHECKPOINT"
+        and result.get("checkpoint_tree_sha256")
+        and result.get("root_volume_deleted") is True)
+    if result.get("exit_status") != 0 and not interrupted_ok:
         problems.append(f"exit status {result.get('exit_status')}")
     if problems:
         raise SystemExit("REFUSING: stage result does not match what was "

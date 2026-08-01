@@ -13,7 +13,8 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pipeline import language_scope, orchestrate, stage_descriptor
+from pipeline import (language_scope, orchestrate, scope_deviation,
+                      stage_descriptor)
 from pipeline import decode_budget, diagnostic_budget
 from pipeline import stage_runner
 from pipeline.campaign_tracking import CampaignTracker
@@ -33,7 +34,8 @@ from pipeline.validation_runner import ValidationRuntime
 def descriptor(stage="sweep", **over):
     is_base = stage == "base_and_preflight"
     is_zero_training = stage in (
-        "base_and_preflight", "diagnostic", "decode_compatibility")
+        "base_and_preflight", "artifactize", "diagnostic",
+        "decode_compatibility")
     values = {
         "campaign_run": "b4-test", "attempt": "1", "stage": stage,
         "git_sha": "a" * 40, "bundle_tar_sha256": "b" * 64,
@@ -42,6 +44,11 @@ def descriptor(stage="sweep", **over):
         "adoption_key": language_scope.ADOPTION_KEY,
         "dataset_fingerprint": language_scope.EXPECTED_DATASET_FINGERPRINT,
         "language_scope_sha256": language_scope.LANGUAGE_SCOPE_SHA256,
+        "scope_deviation_sha256": scope_deviation.DECISION_SHA256,
+        "a5_gate_disposition_sha256": scope_deviation.A5_GATES_SHA256,
+        "holdout_manifest_key": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+        "holdout_manifest_sha256": "7" * 64,
+        "holdout_evidence_sha256": "8" * 64,
         "training_languages": (
             [] if stage in ("diagnostic", "decode_compatibility")
             else list(language_scope.TRAINING_LANGUAGES)),
@@ -57,15 +64,21 @@ def descriptor(stage="sweep", **over):
         "evaluator_sha256": "4" * 64,
         "lr": None if is_base else 1e-4,
         "seed": 0,
-        "max_steps": 0 if is_zero_training else 600,
+        "max_steps": (0 if is_zero_training else 100
+                      if stage == "spot_checkpoint" else 200
+                      if stage == "spot_resume" else 600),
         "checkpoint_steps": (
             [100] if stage == "sweep"
+            else [100] if stage == "spot_checkpoint"
+            else [100, 200] if stage == "spot_resume"
             else [100, 200, 300, 400, 500, 600]
             if stage == "final" else []),
         "reservation_id": "r1",
         "watchdog_s": 60,
         "input_prefix": "curated/_versions/v2/",
         "input_artifact_sha256": None,
+        "input_evaluation_key": None,
+        "input_evaluation_sha256": None,
         "output_prefix": "candidates/evaluations/b4-test/attempt-1/"
                          + stage + "/",
         "mlflow_parent_run_id": "parent",
@@ -625,7 +638,8 @@ def test_final_segment_keeps_600_step_schedule_while_pausing_at_300():
     assert cmd[cmd.index("--max-steps") + 1] == "600"
     assert cmd[cmd.index("--stop-at-step") + 1] == "300"
     assert cmd[cmd.index("--resume") + 1].endswith("checkpoint-200")
-    assert cmd[cmd.index("--expect-excluded") + 1] == "19"
+    assert cmd[cmd.index("--expect-excluded") + 1] == str(
+        language_scope.EXPECTED_POLICY_ROWS_TOTAL)
     assert cmd[cmd.index("--expect-applied-exclusions") + 1] == str(
         language_scope.EXPECTED_POLICY_ROWS_APPLICABLE)
     language_start = cmd.index("--languages") + 1
@@ -966,6 +980,7 @@ class FakeEC2:
         self.tamper = tamper
         self.active = active
         self.launched = []
+        self.terminated = []
         self.recovery_state = "terminated"
 
     def describe_instances(self, Filters=None, InstanceIds=None):
@@ -1030,6 +1045,27 @@ class FakeEC2:
         self.s3.objects[prefix + "container-result.json"] = (
             json.dumps(result).encode())
         self.s3.objects[prefix + "container-exit-code"] = b"0\n"
+        if d["stage"] == "spot_checkpoint":
+            checkpoint_prefix = (
+                prefix + "resume-checkpoint/checkpoint-100")
+            artifact = {
+                "prefix": "s3://medzen-speech/" + checkpoint_prefix + "/",
+                "files": {"adapter_model.safetensors": {
+                    "sha256": "7" * 64, "bytes": 1}},
+                "tree_sha256": "6" * 64,
+            }
+            marker = {
+                "record": "B4-SPOT-CHECKPOINT-READY",
+                "checkpoint_step": 100,
+                "checkpoint_tree_sha256": "6" * 64,
+                "checkpoint_prefix": checkpoint_prefix,
+                "stage_descriptor_sha256": stage_descriptor.descriptor_hash(d),
+                "training_steps": 100,
+            }
+            self.s3.objects[checkpoint_prefix + "/ARTIFACT.json"] = (
+                json.dumps(artifact).encode())
+            self.s3.objects[prefix + "spot-checkpoint-ready.json"] = (
+                json.dumps(marker).encode())
         return {"Instances": [{
             "InstanceId": "i-stage",
             "LaunchTime": datetime.now(timezone.utc),
@@ -1042,7 +1078,8 @@ class FakeEC2:
             "DescribeVolumes")
 
     def terminate_instances(self, InstanceIds):
-        raise AssertionError("watchdog fallback was not expected")
+        self.terminated.extend(InstanceIds)
+        return {"TerminatingInstances": []}
 
 
 class FakeSession:
@@ -1075,6 +1112,34 @@ def test_ec2_adapter_observes_termination_and_volume_deletion():
     assert result["lifecycle"] == "on-demand-direct-ec2"
     assert result["eks_involved"] is False and result["spot_involved"] is False
     stage_descriptor.verify_result(descriptor(), result)
+
+
+def test_artifact_descriptor_pins_both_selected_tree_and_evaluation():
+    d = descriptor(
+        stage="artifactize", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/b4-test/attempt-1/final/asr/checkpoint-500"),
+        input_artifact_sha256="9" * 64,
+        input_evaluation_key=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "evaluations/checkpoint-500.json"),
+        input_evaluation_sha256="a" * 64)
+    assert d["input_artifact_sha256"] == "9" * 64
+    assert d["input_evaluation_sha256"] == "a" * 64
+
+
+def test_spot_checkpoint_is_interrupted_only_after_durable_marker():
+    session = FakeSession()
+    cfg = EC2StageConfig(poll_seconds=0, termination_grace_seconds=1)
+    d = descriptor(stage="spot_checkpoint")
+    result = EC2StageAdapter(session, cfg).run(d)
+    launch = session.ec2.launched[-1]
+    assert launch["InstanceMarketOptions"]["MarketType"] == "spot"
+    assert result["operator_interrupted"] is True
+    assert result["checkpoint_tree_sha256"] == "6" * 64
+    assert result["root_volume_deleted"] is True
+    assert session.ec2.terminated == ["i-stage"]
+    stage_descriptor.verify_result(d, result)
     assert any(k.endswith("/stage-result.json")
                for k in session.s3.objects)
     launch = session.ec2.launched[0]

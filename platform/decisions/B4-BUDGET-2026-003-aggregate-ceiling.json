@@ -1,0 +1,50 @@
+{
+  "record": "B4-AGGREGATE-BUDGET-DECISION",
+  "id": "B4-BUDGET-2026-003",
+  "revision": 1,
+  "status": "approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T17:14:36Z",
+  "authorization": "Set a new aggregate ceiling of $100 across every B4 ledger and future B4 namespace without resetting prior spend.",
+  "aggregate_ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+  "aggregate_ceiling_usd": 100.0,
+  "historical_committed_usd": 16.8738,
+  "component_ledgers": [
+    {
+      "campaign": "b4-corrected",
+      "key": "candidates/budget/b4-corrected/ledger.json",
+      "committed_usd": 4.1081,
+      "unresolved_reservations": 0
+    },
+    {
+      "campaign": "b4-amharic-termination-diagnostic",
+      "key": "candidates/budget/b4-amharic-termination-diagnostic/ledger.json",
+      "committed_usd": 1.0317,
+      "unresolved_reservations": 0
+    },
+    {
+      "campaign": "b4-amharic-decode-compatibility",
+      "key": "candidates/budget/b4-amharic-decode-compatibility/ledger.json",
+      "committed_usd": 1.7539,
+      "unresolved_reservations": 0
+    },
+    {
+      "campaign": "b4-scoped",
+      "key": "candidates/budget/b4-scoped/ledger.json",
+      "committed_usd": 9.9801,
+      "unresolved_reservations": 0
+    }
+  ],
+  "component_total_check_usd": 16.8738,
+  "remaining_at_authorization_usd": 83.1262,
+  "controls": {
+    "historical_ledgers_remain_immutable": true,
+    "spend_reset_permitted": false,
+    "future_b4_reservations_use_aggregate_ledger": true,
+    "reserve_before_launch": true,
+    "reserve_worst_case": true,
+    "reconcile_only_after_aws_observed_termination": true,
+    "unresolved_reservation_blocks_next_launch": true,
+    "campaign_records_include_aggregate_snapshot": true
+  }
+}
