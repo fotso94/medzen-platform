@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 
@@ -693,6 +694,18 @@ def test_launcher_defaults_to_a_dry_run():
     assert "require_clean_tree()" in src
     assert "preflight_campaign(" in src
     assert "writes_performed" in src
+
+
+def test_launcher_dry_run_executes_and_reports_the_dynamic_topology():
+    """Exercise main(): a missing topology import must fail before AWS does."""
+    out = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/run_campaign.py"),
+         "--campaign-run", "b4-scoped-dry-run"],
+        cwd=ROOT, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert "topology      3 GPU instances" in out.stdout
+    assert "1 sweep(s)" in out.stdout
+    assert "DRY RUN" in out.stdout
 
 
 def test_launcher_never_wires_a_registration_hook():

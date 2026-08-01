@@ -22,7 +22,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pipeline import budget, campaign, language_scope             # noqa: E402
+from pipeline import (budget, campaign, language_scope,           # noqa: E402
+                      orchestrate)
 from pipeline.campaign_tracking import CampaignTracker            # noqa: E402
 from pipeline.ec2_stage_adapter import EC2StageAdapter             # noqa: E402
 from pipeline.generation import config_fingerprint                # noqa: E402

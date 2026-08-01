@@ -779,6 +779,23 @@ def test_declared_instance_count_matches_the_topology():
     assert budget.STAGE_INSTANCE["builder"] == "c6i.2xlarge"
 
 
+def test_builder_dry_run_reports_the_real_budget_reservation(monkeypatch,
+                                                             capsys):
+    from scripts import run_builder
+
+    git_sha = "a" * 40
+    monkeypatch.setattr(
+        run_builder, "git",
+        lambda *args: "" if args[0] == "status" else git_sha)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["run_builder.py", "--git-sha", git_sha,
+         "--tar-sha256", "b" * 64])
+    assert run_builder.main() == 0
+    doc, _ = json.JSONDecoder().raw_decode(capsys.readouterr().out)
+    assert doc["max_cost_usd"] == budget.worst_case_usd("builder")
+
+
 def test_base_and_preflight_share_one_reservation():
     assert "base_eval" not in budget.WATCHDOG_S
     assert "preflight" not in budget.WATCHDOG_S

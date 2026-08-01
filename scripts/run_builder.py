@@ -46,7 +46,8 @@ def main() -> int:
             from pipeline import decode_budget
             max_cost = decode_budget.worst_case_usd("builder")
         else:
-            max_cost = 0.17
+            from pipeline import budget
+            max_cost = budget.worst_case_usd("builder")
         print(json.dumps({
             "ready_to_build": True,
             "would_create": "one c6i.2xlarge direct-EC2 builder",
