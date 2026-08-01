@@ -474,9 +474,10 @@ def run_sweep(cli, descriptor: dict, work: Path) -> dict:
     base_doc = load_base_result(cli, descriptor)
     base_wer = base_doc["summary"]["wer"]
     adapter = work / "sweep-adapter"
+    comparison_step = descriptor["checkpoint_steps"][0]
     train = run_training(
         descriptor, adapter, lr=float(descriptor["lr"]),
-        max_steps=descriptor["max_steps"])
+        max_steps=descriptor["max_steps"], stop_at_step=comparison_step)
     runtime = ValidationRuntime(cli, descriptor, work / "validation")
     smoke_result = verify_saved_adapter(runtime, adapter, train)
     eval_path = work / "sweep-evaluation.json"

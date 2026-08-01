@@ -167,9 +167,19 @@ per-language baseline distribution is measured.
 | Seed | `0`, identical for all three |
 | Data order | identical — same seed, same fingerprint, same temperature 0.5 |
 | Everything else | identical: rank 32, batch 2, grad-accum 8, same image, same policy |
-| Steps | 100 |
-| Comparison point | **checkpoint-100 exactly**, evaluated on all nine sets |
-| Selection | lowest macro-average `val_wer` among candidates passing both hard gates |
+| Steps actually executed | 100 |
+| Scheduler horizon | **600**, identical to the final run |
+| Comparison point | **checkpoint-100 exactly**, evaluated on all seven active sets |
+| Selection | lowest macro-average `val_wer` among candidates passing all four hard gates |
+
+The sweep must invoke the trainer with `max_steps=600` and
+`stop_at_step=100`.  A 100-step scheduler horizon is not equivalent: it
+decays the learning rate to zero at the comparison point, while the final
+600-step schedule is still near its peak.  Campaign
+`b4-scoped-8350784791a6` attempt 1 exposed this mismatch when the nominal
+1e-4 sweep passed but the from-scratch final checkpoint-100 failed Lingala.
+That attempt is preserved as failed evidence; it is not a basis for removing
+Lingala or weakening a gate.
 
 **Decision, recorded before execution: the final run STARTS FROM SCRATCH at the
 selected learning rate. The 100-step sweep checkpoint is NOT resumed.** Resuming

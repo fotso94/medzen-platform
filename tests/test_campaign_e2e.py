@@ -296,7 +296,8 @@ def test_each_sweep_learning_rate_has_a_distinct_write_once_prefix(db):
     }
     descriptors = [
         campaign.make_descriptor(
-            sv, "camp-prefix", "1", "sweep", lr, 100,
+            sv, "camp-prefix", "1", "sweep", lr,
+            orchestrate.TRAINING_SCHEDULE_HORIZON,
             f"reservation-{index}", base_result=base)
         for index, lr in enumerate(orchestrate.LR_CANDIDATES)
     ]
@@ -305,6 +306,8 @@ def test_each_sweep_learning_rate_has_a_distinct_write_once_prefix(db):
         "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-3e-04/",
         "candidates/evaluations/camp-prefix/attempt-1/sweep-lr-5e-04/",
     ]
+    assert all(d["max_steps"] == 600 for d in descriptors)
+    assert all(d["checkpoint_steps"] == [100] for d in descriptors)
 
 
 def test_one_reservation_per_stage_lifecycle(db):

@@ -25,6 +25,12 @@ REQUIRED_CAP_HIT_RATE = 0.0
 LR_CANDIDATES = (1e-4, 3e-4, 5e-4)   # 1e-3 excluded: the failed run's value
 SWEEP_STEPS = 100
 SWEEP_COMPARISON_CHECKPOINT = 100
+# A sweep executes only SWEEP_STEPS, but its scheduler must be constructed for
+# the same horizon as the final run.  Attempt b4-scoped-8350784791a6 proved
+# that max_steps=100 in the sweep and max_steps=600 in the final produce
+# different first-100-step learning-rate histories, so the selected sweep was
+# not predictive of final checkpoint-100.
+TRAINING_SCHEDULE_HORIZON = 600
 FINAL_RUN_RESUMES_SWEEP = False      # decided in advance; see plan section 5
 SEED = 0
 

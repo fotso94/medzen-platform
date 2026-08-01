@@ -32,6 +32,8 @@ from pipeline.validation_runner import ValidationRuntime
 
 def descriptor(stage="sweep", **over):
     is_base = stage == "base_and_preflight"
+    is_zero_training = stage in (
+        "base_and_preflight", "diagnostic", "decode_compatibility")
     values = {
         "campaign_run": "b4-test", "attempt": "1", "stage": stage,
         "git_sha": "a" * 40, "bundle_tar_sha256": "b" * 64,
@@ -56,8 +58,11 @@ def descriptor(stage="sweep", **over):
         "evaluator_sha256": "4" * 64,
         "lr": None if is_base else 1e-4,
         "seed": 0,
-        "max_steps": 0 if is_base else 100,
-        "checkpoint_steps": [],
+        "max_steps": 0 if is_zero_training else 600,
+        "checkpoint_steps": (
+            [100] if stage == "sweep"
+            else [100, 200, 300, 400, 500, 600]
+            if stage == "final" else []),
         "reservation_id": "r1",
         "watchdog_s": 60,
         "input_prefix": "curated/_versions/v2/",
@@ -628,6 +633,84 @@ def test_final_segment_keeps_600_step_schedule_while_pausing_at_300():
     assert tuple(cmd[language_start:language_end]) == \
         language_scope.TRAINING_LANGUAGES
     assert "amharic" not in cmd and "ewe" not in cmd
+
+
+def test_sweep_uses_final_schedule_horizon_but_stops_at_100():
+    d = descriptor(stage="sweep")
+    cmd = _training_command(
+        d, Path("/cache/sweep"), lr=1e-4,
+        max_steps=d["max_steps"], stop_at_step=d["checkpoint_steps"][0])
+    assert cmd[cmd.index("--max-steps") + 1] == "600"
+    assert cmd[cmd.index("--stop-at-step") + 1] == "100"
+    assert d["checkpoint_steps"] == [100]
+
+
+def test_real_sweep_path_passes_comparable_horizon_and_stop_to_trainer(
+        monkeypatch, tmp_path):
+    d = descriptor(stage="sweep")
+    seen = {}
+
+    def fake_training(desc, out, **kw):
+        seen.update(kw)
+        return {
+            "steps": 100,
+            "loss_history": [{"loss": 1.0, "grad_norm": 2.0}],
+        }
+
+    class Runtime:
+        def __init__(self, cli, desc, work):
+            pass
+
+        def evaluate_adapter(self, adapter, out):
+            clean = {lang: 0.5 for lang in orchestrate.VALIDATION_LANGUAGES}
+            zeros = {lang: 0.0 for lang in orchestrate.VALIDATION_LANGUAGES}
+            ones = {lang: 1.0 for lang in orchestrate.VALIDATION_LANGUAGES}
+            return {
+                "wer": clean,
+                "cer": clean,
+                "eos_rate": ones,
+                "cap_hit_rate": zeros,
+                "generated_tokens_median": zeros,
+                "generated_tokens_max": zeros,
+                "adapter_sha256": "5" * 64,
+                "artifact_sha256": "6" * 64,
+            }
+
+    monkeypatch.setattr(stage_runner, "load_base_result", lambda *a: {
+        "summary": {
+            "wer": {
+                lang: 1.0 for lang in orchestrate.VALIDATION_LANGUAGES
+            }
+        }
+    })
+    monkeypatch.setattr(stage_runner, "run_training", fake_training)
+    monkeypatch.setattr(stage_runner, "ValidationRuntime", Runtime)
+    monkeypatch.setattr(
+        stage_runner, "verify_saved_adapter",
+        lambda *a, **kw: {"passed": True, "reasons": []})
+    monkeypatch.setattr(
+        stage_runner, "_publish_evaluation", lambda *a: "6" * 64)
+    monkeypatch.setattr(
+        stage_runner, "upload_tree",
+        lambda *a, **kw: {"tree_sha256": "7" * 64})
+
+    result = stage_runner.run_sweep(object(), d, tmp_path)
+    assert seen["max_steps"] == 600
+    assert seen["stop_at_step"] == 100
+    assert result["steps_completed"] == 100
+    assert result["gate"]["passed"] is True
+
+
+@pytest.mark.parametrize("bad", [
+    {"max_steps": 100},
+    {"checkpoint_steps": []},
+    {"checkpoint_steps": [200]},
+])
+def test_sweep_descriptor_refuses_non_comparable_schedule(bad):
+    values = descriptor(stage="sweep")
+    values.update(bad)
+    with pytest.raises(SystemExit, match="REFUSING"):
+        stage_descriptor.build(**values)
 
 
 def test_saved_adapter_smoke_is_a_hard_gate():

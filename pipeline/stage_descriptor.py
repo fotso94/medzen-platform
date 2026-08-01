@@ -105,8 +105,19 @@ def build(**kw) -> dict:
         problems.append("purpose must be training_system_validation")
     if d["promotable"] is not False:
         problems.append("promotable must be False; Option B is non-promotable")
-    if d["stage"] == "sweep" and d["max_steps"] != 100:
-        problems.append("a sweep stage trains exactly 100 steps")
+    if d["stage"] == "sweep":
+        if d["max_steps"] != 600:
+            problems.append(
+                "a sweep must use the final run's 600-step scheduler horizon")
+        if d["checkpoint_steps"] != [100]:
+            problems.append(
+                "a sweep must stop and compare exactly at checkpoint-100")
+    if d["stage"] == "final":
+        if d["max_steps"] != 600:
+            problems.append("the final run has a 600-step scheduler horizon")
+        if d["checkpoint_steps"] != [100, 200, 300, 400, 500, 600]:
+            problems.append(
+                "the final run must gate checkpoints 100 through 600")
     if d["stage"] == "base_and_preflight" and d["lr"] is not None:
         problems.append("base_and_preflight has no learning rate")
     if d["stage"] == "base_and_preflight":

@@ -1,0 +1,139 @@
+{
+  "record": "CAMPAIGNRUN-2026-006-FAILED",
+  "status": "FAILED_CLOSED_SCHEDULER_HORIZON_MISMATCH",
+  "campaign_run": "b4-scoped-8350784791a6",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "language_scope": {
+    "training": [
+      "acholi",
+      "akan",
+      "fula",
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "shona",
+      "swahili",
+      "yoruba"
+    ],
+    "validation": [
+      "acholi",
+      "akan",
+      "fula",
+      "lingala",
+      "luganda",
+      "oromo",
+      "shona"
+    ],
+    "deferred": [
+      "amharic",
+      "ewe"
+    ],
+    "language_scope_sha256": "8edeb442f4635a65a29482301ed1e88fb756b319acce6abf36c1fd502214d355"
+  },
+  "executed_provenance": {
+    "git_sha": "8350784791a6d344331d3ba300dd62474a8ce581",
+    "bundle_tar_sha256": "d14a7d86aa19e10b7ebbebb397c559a7d818f2a2452771adfae86ece6c7ea02c",
+    "image_digest": "sha256:509fbb2c3988977dd8e5759b012a9f4f6113e616b64998839228dc2b8311992a",
+    "policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "dataset_fingerprint": "d71be0710c8d28d9cc82511adb863f125526127cbbd7d06a0d28b74781f6d733",
+    "generation_config_fingerprint": "0a07baf6782b03974f51b7e2067703e8d4b3a800c9fb84a6542fbc446b243b1e",
+    "base_artifact_sha256": "8f06c356d013ddf4a7809f878c8a4a379bc0af7f5453dc026a5471c533443638"
+  },
+  "sweeps": {
+    "1e-4": {
+      "gate_passed": true,
+      "scheduler_horizon_steps": 100,
+      "comparison_step": 100,
+      "macro_wer": 0.942643,
+      "min_eos_rate": 1.0,
+      "max_cap_hit_rate": 0.0
+    },
+    "3e-4": {
+      "gate_passed": false,
+      "scheduler_horizon_steps": 100,
+      "comparison_step": 100,
+      "macro_wer": 0.922129,
+      "failure_language": "lingala"
+    },
+    "5e-4": {
+      "gate_passed": false,
+      "scheduler_horizon_steps": 100,
+      "comparison_step": 100,
+      "macro_wer": 0.866043,
+      "failure_languages": [
+        "fula",
+        "lingala",
+        "luganda"
+      ]
+    }
+  },
+  "selection": {
+    "selected_lr": 0.0001,
+    "selected_from_passing_arms": true,
+    "valid_for_600_step_final_schedule": false
+  },
+  "final": {
+    "instance_id": "i-0999ddf851010e322",
+    "steps_completed": 100,
+    "later_steps_executed": false,
+    "gate_passed": false,
+    "scheduler_horizon_steps": 600,
+    "macro_wer": 0.976371,
+    "lingala_wer": 1.2238,
+    "lingala_base_wer": 0.9207,
+    "lingala_wer_regression": 0.3031,
+    "lingala_eos_rate": 0.9429,
+    "lingala_cap_hit_rate": 0.0571,
+    "container_result_key": "candidates/evaluations/b4-scoped-8350784791a6/attempt-1/final/container-result.json",
+    "container_result_sha256": "27d1423a97013f02ba50028cd2abff30f39f93441daf4d3eeb016e5246a55b85",
+    "stage_result_key": "candidates/evaluations/b4-scoped-8350784791a6/attempt-1/final/stage-result.json",
+    "stage_result_sha256": "30b74f86679ee5b5bccf9baf9cd7d0ff3ea2060a74c95708bd4d3efbcfe905b7"
+  },
+  "root_cause": {
+    "confirmed": true,
+    "summary": "The sweep and final checkpoint-100 used different scheduler horizons. The 100-step sweeps decayed learning rate across 100 steps; the final run constructed a 600-step schedule and was still near peak learning rate at step 100.",
+    "effect": "The selected 1e-4 sweep did not reproduce the final run's first 100 optimization steps, so the selection was not predictive.",
+    "not_a_language_scope_decision": true
+  },
+  "required_correction": {
+    "sweep_scheduler_horizon_steps": 600,
+    "sweep_stop_at_step": 100,
+    "final_scheduler_horizon_steps": 600,
+    "final_checkpoint_steps": [
+      100,
+      200,
+      300,
+      400,
+      500,
+      600
+    ],
+    "gates_unchanged": true,
+    "remove_lingala": false
+  },
+  "mlflow": {
+    "snapshot_prefix": "mlflow/snapshots/b4-scoped-8350784791a6/attempt-1/",
+    "final_failed_snapshot_present": true,
+    "registered_models": 0
+  },
+  "budget": {
+    "ledger_key": "candidates/budget/b4-scoped/ledger.json",
+    "hard_ceiling_usd": 6.0,
+    "actual_usd_after_attempt": 2.876,
+    "ceiling_exceeded": false
+  },
+  "cleanup": {
+    "all_five_gpu_instances_terminated": true,
+    "all_five_root_volumes_deleted": true,
+    "active_b4_gpu_instances": 0,
+    "spot_used": false,
+    "eks_used": false
+  },
+  "model_registered": false,
+  "model_promoted": false,
+  "b5_allowed": false
+}

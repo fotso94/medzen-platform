@@ -181,7 +181,10 @@ def make_descriptor(sv: Services, campaign_run: str, attempt: str, stage: str,
         generation_config_fingerprint=p["generation_config_fingerprint"],
         evaluator_sha256=p["evaluator_sha256"],
         lr=lr, seed=orchestrate.SEED, max_steps=max_steps,
-        checkpoint_steps=list(FINAL_CHECKPOINTS) if stage == "final" else [],
+        checkpoint_steps=(
+            list(FINAL_CHECKPOINTS) if stage == "final"
+            else [orchestrate.SWEEP_COMPARISON_CHECKPOINT]
+            if stage == "sweep" else []),
         reservation_id=reservation_id,
         watchdog_s=budget.WATCHDOG_S[
             "base_and_preflight" if stage == "base_and_preflight"
@@ -455,7 +458,7 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         sweep_child = _start_child(sv, sweep_stage_key, "sweep", lr=lr)
         d = make_descriptor(
             sv, campaign_run, attempt, "sweep", lr=lr,
-            max_steps=orchestrate.SWEEP_STEPS,
+            max_steps=orchestrate.TRAINING_SCHEDULE_HORIZON,
             reservation_id=rr["reservation_id"],
             mlflow_child_run_id=sweep_child, base_result=base)
         r = _run_stage(
@@ -500,7 +503,8 @@ def _run_campaign_impl(sv: Services, campaign_run: str,
         sv, final_stage_key, "final", lr=sel["selected_lr"])
     df = make_descriptor(
         sv, campaign_run, attempt, "final",
-        lr=sel["selected_lr"], max_steps=600,
+        lr=sel["selected_lr"],
+        max_steps=orchestrate.TRAINING_SCHEDULE_HORIZON,
         reservation_id=rf["reservation_id"],
         mlflow_child_run_id=final_child, base_result=base)
     rfin = _run_stage(
