@@ -14,9 +14,9 @@ def test_scope_record_hash_and_language_partition_are_exact():
     assert digest == hashlib.sha256(
         language_scope.DECISION.read_bytes()).hexdigest()
     assert digest == language_scope.LANGUAGE_SCOPE_SHA256
-    assert doc["revision"] == 6
+    assert doc["revision"] == 7
     assert language_scope.ADOPTION_KEY == (
-        "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG.json")
+        "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R2.json")
     assert language_scope.POLICY_PATH.name == (
         "DQ-2026-005-policy-with-lingala-holdout.json")
     assert hashlib.sha256(language_scope.POLICY_PATH.read_bytes()).hexdigest() == (

@@ -1,11 +1,11 @@
 {
   "record": "B4-LANGUAGE-SCOPE-DECISION",
   "id": "B4-SCOPE-2026-001",
-  "revision": 6,
+  "revision": 7,
   "status": "approved",
   "authorized_by_role": "platform-owner",
   "authorized_utc": "2026-08-01T13:18:37Z",
-  "authorization_note": "The owner retained the same eight training languages and Lingala/Luganda/Oromo selection surface, prohibited any further pre-campaign language deferral, and required a larger post-selection Lingala holdout. Revision 6 removes the 77 holdout rows from the eligible training pool and binds the simplified B4 execution to the new aggregate $100 ceiling. No source row or prior artifact is deleted.",
+  "authorization_note": "The owner retained the same eight training languages and Lingala/Luganda/Oromo selection surface, prohibited any further pre-campaign language deferral, and required a larger post-selection Lingala holdout. Revision 6 removes the 77 holdout rows from the eligible training pool and binds the simplified B4 execution to the new aggregate $100 ceiling. Revision 7 supersedes only the immutable adoption key after the authenticated-client preflight fix changed the executable commit; no scope, source row or prior artifact is deleted.",
   "interpretation": "Removal is a reversible experiment-scope deferral. No registry entry, manifest, audio object, transcript, prior evidence, model artifact or historical MLflow record is deleted or rewritten.",
   "scope": {
     "experiment": "b4-whisper-large-v3-lora-corrected",
@@ -47,7 +47,7 @@
     "require_allowed_use": "asr_train",
     "temperature": 0.5,
     "seed": 0,
-    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG.json",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R2.json",
     "deferral_policy": "platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json",
     "deferral_policy_sha256": "6e7fc5281223ec68aefc9caaf60d03c665e529a14ce83eabd8630c7a0fd6e803",
     "deferral_policy_exclusion_set_sha256": "549f4718e626e5801ab59234548c8de93c37764a7c6f4614140a6ac6847242d1",

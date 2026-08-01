@@ -19,7 +19,7 @@ EXPECTED_POLICY_RELATIVE = (
     "platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json"
 )
 EXPECTED_ADOPTION_KEY = (
-    "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG.json"
+    "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R2.json"
 )
 
 
@@ -41,8 +41,8 @@ def load() -> tuple[dict, str]:
         problems.append("record type is not B4-LANGUAGE-SCOPE-DECISION")
     if doc.get("id") != "B4-SCOPE-2026-001":
         problems.append("decision id is not B4-SCOPE-2026-001")
-    if doc.get("revision") != 6:
-        problems.append("decision revision is not 6")
+    if doc.get("revision") != 7:
+        problems.append("decision revision is not 7")
     if doc.get("status") != "approved":
         problems.append(f"status is {doc.get('status')!r}, not 'approved'")
     if doc.get("scope", {}).get("promotable") is not False:
