@@ -1,6 +1,6 @@
 # PLAN-2026-006 — Language-scoped B4 continuation
 
-**Status:** PREPARED, NOT EXECUTED  
+**Status:** ATTEMPT 1 FAILED CLOSED; CORRECTED RETRY AUTHORISED
 **Purpose:** training-system validation  
 **Promotable:** no  
 **Model registration:** prohibited
@@ -71,10 +71,20 @@ This scoped dataset is a new experiment identity and therefore uses the fresh
 `candidates/budget/b4-scoped/ledger.json` ledger. The earlier
 `b4-corrected` ledger and its reconciled spend remain untouched.
 
-The ceiling is **$6.00** for one builder plus at most five sequential direct-EC2
-GPU stages (one base+preflight, three sweeps, one final). No EKS and no Spot are
-involved. Every root volume is DeleteOnTermination and every GPU stage has a
-watchdog plus an AWS lifecycle allowance.
+Attempt 1 reconciled at **$2.876** under its original **$6.00** ceiling and
+failed closed because the sweeps and final run used different scheduler
+horizons. The platform owner authorised extending the same cumulative ledger
+to **$9.00** on 2026-07-31. Spend is not reset: the corrected full topology
+reserves at most another **$5.5943**, so the cumulative worst case is
+**$8.4703 <= $9.00**.
+
+The correction binds every sweep and final checkpoint to the same 600-step
+scheduler horizon; each sweep stops at step 100, while the final run may
+continue through steps 100--600 only while every interleaved gate passes. The
+complete retry still uses one builder plus at most five sequential direct-EC2
+GPU stages (one base+preflight, three sweeps, one final). No EKS and no Spot
+are involved. Every root volume is DeleteOnTermination and every GPU stage has
+a watchdog plus an AWS lifecycle allowance.
 
 ## Terminal interpretation
 

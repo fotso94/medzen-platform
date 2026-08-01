@@ -458,20 +458,14 @@ def test_an_unresolved_reservation_blocks_the_next_reservation():
 
 def test_ceiling_refuses_the_reservation_that_would_breach_it():
     s3 = FakeS3()
-    completed = [
-        "final_run",
-        "sweep_run",
-        "sweep_run",
-        "sweep_run",
-        "base_and_preflight",
-    ]
+    completed = ["final_run"] * 4
     for i, stage in enumerate(completed):
         budget.reserve(s3, stage, f"a{i}")
         budget.reconcile(s3, stage, f"a{i}",
                          actual_seconds=budget.WATCHDOG_S[stage])
     with pytest.raises(SystemExit) as e:
         budget.reserve(s3, "final_run", "one-too-many")
-    assert "over the $6.00 ceiling" in str(e.value)
+    assert "over the $9.00 ceiling" in str(e.value)
     assert "cannot afford to fail" in str(e.value)
 
 
@@ -487,7 +481,16 @@ def test_four_sequential_full_length_final_runs_are_refused():
         budget.reconcile(s3, "final_run", f"r{i}",
                          actual_seconds=budget.WATCHDOG_S["final_run"])
         launched += 1
-    assert launched < 4, "a $6 ceiling must not permit 4 x $3 runs"
+    assert launched < 5, "a $9 ceiling must not permit 5 full final runs"
+
+
+def test_budget_loader_refuses_a_stale_authorised_ceiling():
+    s3 = FakeS3()
+    stale = budget._empty()
+    stale["ceiling_usd"] = 6.0
+    s3.objects[budget.LEDGER_KEY] = json.dumps(stale).encode()
+    with pytest.raises(SystemExit, match="authorised ceiling"):
+        budget.load(s3)
 
 
 def test_reconciling_without_a_reservation_refuses():

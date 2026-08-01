@@ -62,9 +62,13 @@ MAX_INSTANCES = 6
 # predeclared ~90-minute expected run.  After attempt 4, observed
 # base+preflight work still left 11 minutes inside a 2400s boundary; sweeps do
 # fewer optimisation steps against the same validation surface.  Reserving
-# those two stage types at 2400s keeps a clean retry within the unchanged $6
-# campaign ceiling without removing any work or gate.
-CEILING_USD = 6.00
+# those two stage types at 2400s kept the first scoped attempt within its $6
+# ceiling without removing any work or gate.  That attempt reconciled at
+# $2.876 and failed closed on a scheduler-horizon mismatch.  The platform
+# owner explicitly authorised a $9 cumulative ceiling on 2026-07-31 so the
+# corrected, full-topology retry can afford its complete $5.5943 worst case.
+# This is an extension of the same durable ledger, never a spend reset.
+CEILING_USD = 9.00
 
 
 def worst_case_usd(stage: str) -> float:
@@ -112,7 +116,13 @@ def load(cli) -> tuple[dict, str | None]:
     from botocore.exceptions import ClientError
     try:
         o = cli.get_object(Bucket=BUCKET, Key=LEDGER_KEY)
-        return json.loads(o["Body"].read()), o.get("ETag")
+        ledger = json.loads(o["Body"].read())
+        if (ledger.get("campaign") != CAMPAIGN
+                or ledger.get("ceiling_usd") != CEILING_USD):
+            raise SystemExit(
+                "REFUSING: campaign ledger identity or authorised ceiling "
+                "differs from this executable")
+        return ledger, o.get("ETag")
     except ClientError as e:
         code = e.response.get("Error", {}).get("Code")
         if code in ("NoSuchKey", "404", "NotFound"):
