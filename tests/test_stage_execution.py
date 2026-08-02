@@ -22,7 +22,8 @@ from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
 from pipeline.stage_runner import (
     _save_processor_for_ctranslate2, _training_command,
-    download_artifact_tree, require_runtime_provenance, upload_tree)
+    download_artifact_tree, require_ctranslate2_cuda_runtime,
+    require_runtime_provenance, upload_tree)
 from pipeline.termination_diagnostic import (
     aggregate_rows, generated_row, repeated_ngram_rate, teacher_forced_row)
 from pipeline.decode_compatibility import (
@@ -1081,6 +1082,29 @@ def test_ct2_export_refuses_when_required_processor_file_stays_absent(tmp_path):
 
     with pytest.raises(SystemExit, match="preprocessor_config.json"):
         _save_processor_for_ctranslate2(Processor(), tmp_path)
+
+
+def test_ct2_cuda_runtime_requires_every_dynamic_library():
+    loaded = []
+
+    def loader(name):
+        loaded.append(name)
+        if name == "libcublas.so.12":
+            raise OSError("not found")
+
+    with pytest.raises(SystemExit, match=r"libcublas\.so\.12: not found"):
+        require_ctranslate2_cuda_runtime(loader)
+    assert loaded == [
+        "libcudart.so.12", "libcublas.so.12",
+        "libcublasLt.so.12", "libcudnn.so.9",
+    ]
+
+
+def test_ct2_cuda_runtime_accepts_complete_library_set():
+    loaded = []
+    required = require_ctranslate2_cuda_runtime(
+        lambda name: loaded.append(name))
+    assert tuple(loaded) == required
 
 
 class FakeECR:

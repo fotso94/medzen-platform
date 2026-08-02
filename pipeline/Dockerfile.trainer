@@ -34,7 +34,8 @@ ENV PYTHONUNBUFFERED=1 \
     HF_HUB_DISABLE_XET=1 \
     HF_HUB_OFFLINE=1 \
     MEDZEN_BUCKET=medzen-speech \
-    AWS_DEFAULT_REGION=eu-central-1
+    AWS_DEFAULT_REGION=eu-central-1 \
+    LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/usr/local/lib/python3.12/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
 
 # HF_HUB_OFFLINE=1 above is a hard guarantee, not a preference: the base
 # checkpoint comes from the S3 cache with per-file sha256 verification, so any
@@ -58,6 +59,12 @@ RUN pip install --no-cache-dir "pip==26.2"
 
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
+
+# CTranslate2 uses dynamic loading, so importing the Python extension is not a
+# runtime proof.  Load the exact CUDA-12 SONAMEs during the build and fail the
+# image before publication when either dependency is absent.  cuDNN keeps the
+# same major SONAME across the co-installed CUDA userspaces and is verified too.
+RUN python -c 'import ctypes; [ctypes.CDLL(n) for n in ("libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libcudnn.so.9")]; print("CT2 CUDA RUNTIME LIBRARIES OK")'
 
 COPY pipeline ./pipeline
 COPY scripts ./scripts

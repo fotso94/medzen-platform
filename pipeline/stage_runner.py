@@ -89,6 +89,36 @@ def require_environment() -> None:
     print(f"CUDA device: {torch.cuda.get_device_name(0)}", flush=True)
 
 
+def require_ctranslate2_cuda_runtime(loader=None) -> tuple[str, ...]:
+    """Prove the complete GPU runtime that the CT2 wheel loads dynamically.
+
+    A successful ``import ctranslate2`` is insufficient: the wheel delays
+    loading cuBLAS/cuDNN until the first GPU generation.  This preflight is run
+    before holdout scoring so an image/runtime mismatch fails cheaply and
+    cannot be mistaken for a model-quality failure.
+    """
+    if loader is None:
+        import ctypes
+        loader = ctypes.CDLL
+    required = (
+        "libcudart.so.12",
+        "libcublas.so.12",
+        "libcublasLt.so.12",
+        "libcudnn.so.9",
+    )
+    failures = []
+    for library in required:
+        try:
+            loader(library)
+        except OSError as exc:
+            failures.append(f"{library}: {exc}")
+    if failures:
+        raise SystemExit(
+            "REFUSING: CTranslate2 CUDA runtime is incomplete: "
+            + "; ".join(failures))
+    return required
+
+
 def _require_empty(cli, prefix: str) -> None:
     page = cli.list_objects_v2(Bucket=BUCKET, Prefix=prefix, MaxKeys=1)
     if page.get("KeyCount", 0):
@@ -829,6 +859,8 @@ def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
     """Holdout, merge, conversion, and scoring of the actual servable bytes."""
     import torch
     from peft import PeftModel
+
+    require_ctranslate2_cuda_runtime()
 
     selected_eval = _load_selected_evaluation(cli, descriptor)
     adapter_dir = work / "selected-adapter"

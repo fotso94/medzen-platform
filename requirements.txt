@@ -36,5 +36,12 @@ accelerate==1.14.0
 mlflow==3.14.0
 ctranslate2==4.8.1
 faster-whisper==1.2.1
+# CTranslate2 4.8.1's Linux GPU wheel dynamically loads the CUDA 12 ABI even
+# though the training stack above is PyTorch cu130.  Keep both userspaces in
+# the image: their SONAMEs differ, and the host driver is backwards compatible.
+# Without these exact runtime libraries conversion succeeds but the first CT2
+# decode fails with "libcublas.so.12 is not found".
+nvidia-cuda-runtime-cu12==12.8.90
+nvidia-cublas-cu12==12.8.4.1
 mlx-whisper==0.4.3 ; sys_platform == "darwin"   # Apple-silicon only; not installable on the Linux trainer
 jiwer==4.0.0

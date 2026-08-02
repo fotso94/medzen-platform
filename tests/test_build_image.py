@@ -21,6 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 BUILD = ROOT / "pipeline" / "build_image.sh"
 DOCKERFILE = ROOT / "pipeline" / "Dockerfile.trainer"
 PUBLISH = ROOT / "scripts" / "publish_bundle.py"
+REQUIREMENTS = ROOT / "requirements.txt"
 
 
 def test_build_script_is_valid_bash():
@@ -76,6 +77,26 @@ def test_base_image_is_pinned_by_digest():
     s = DOCKERFILE.read_text()
     m = re.search(r"^FROM \S+@sha256:([0-9a-f]{64})\s*$", s, re.M)
     assert m, "the base image must be pinned by digest, not by a moving tag"
+
+
+def test_ctranslate2_cuda12_runtime_is_pinned_and_build_verified():
+    """CT2 4.8 loads CUDA 12 libraries only at its first GPU decode.
+
+    The cu130 PyTorch import gate therefore cannot prove the servable runtime.
+    Keep the two CUDA-12 components immutable and make the image build load
+    every SONAME that the speech path needs.
+    """
+    req = REQUIREMENTS.read_text()
+    assert "nvidia-cuda-runtime-cu12==12.8.90" in req
+    assert "nvidia-cublas-cu12==12.8.4.1" in req
+    docker = DOCKERFILE.read_text()
+    for library in (
+            "libcudart.so.12", "libcublas.so.12",
+            "libcublasLt.so.12", "libcudnn.so.9"):
+        assert library in docker
+    assert "nvidia/cuda_runtime/lib" in docker
+    assert "nvidia/cublas/lib" in docker
+    assert "nvidia/cudnn/lib" in docker
 
 
 def test_scan_must_reach_complete_or_the_build_fails():
