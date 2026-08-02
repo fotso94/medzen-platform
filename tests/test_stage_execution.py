@@ -1623,6 +1623,7 @@ def test_direct_ec2_preflight_verifies_infrastructure_without_mutation():
     assert result["active_b4_instances"] == 0
     assert result["availability_zone"] == "eu-central-1a"
     assert result["eks_involved"] is False
+    assert result["spot_involved"] is False
     assert session.s3.objects == {}
     assert session.ec2.launched == []
 

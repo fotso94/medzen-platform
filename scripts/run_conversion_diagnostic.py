@@ -327,6 +327,9 @@ def execute(args) -> dict:
             passed,
             "converted artifact passed every active gate" if passed else
             "conversion diagnostic completed without a servable candidate")
+        final_ledger, _ = budget.load(s3)
+        final_committed = budget.committed_usd(final_ledger)
+        final_unresolved = budget.unresolved(final_ledger)
         snapshot = mlflow_sync.sync(
             s3, db, args.campaign_run, STAGE_KEY,
             attempt=args.attempt, extra={
@@ -335,8 +338,7 @@ def execute(args) -> dict:
                 "selected_precision": result.get("selected_precision"),
                 "active_gates_passed": passed,
                 "training_steps": 0,
-                "aggregate_committed_usd":
-                    budget.committed_usd(budget.load(s3)[0]),
+                "aggregate_committed_usd": final_committed,
             })
     except BaseException as exc:
         tracker.fail_stage(STAGE_KEY, str(exc))
@@ -344,6 +346,12 @@ def execute(args) -> dict:
         raise
     return {
         **packet,
+        # The validation packet is assembled before reservation. Override
+        # its budget fields with the reconciled ledger so the final report
+        # cannot mislabel the pre-launch total as the post-run total.
+        "aggregate_committed_usd": final_committed,
+        "aggregate_remaining_usd": budget.remaining_usd(final_ledger),
+        "unresolved_reservations": len(final_unresolved),
         "reservation_id": reservation["reservation_id"],
         "instance_id": result["instance_id"],
         "root_volume_deleted": result["root_volume_deleted"],

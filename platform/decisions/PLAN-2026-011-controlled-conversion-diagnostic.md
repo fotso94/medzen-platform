@@ -1,6 +1,6 @@
 # PLAN-2026-011 — controlled conversion diagnostic
 
-Status: **OWNER APPROVED — PREPARED, NOT YET EXECUTED**  
+Status: **EXECUTED — PASSED ALL ACTIVE GATES**
 Authorized: 2026-08-02  
 Controls: `B4-SCOPE-2026-002` revision 3 and the unchanged
 `A5-2026-001` gate matrix.
@@ -48,3 +48,20 @@ This diagnostic does not weaken a threshold, prove quantization causality,
 register a model, permit promotion or unblock B5.  Spot interruption/resume is
 allowed only after a converted artifact passes every active selection and
 holdout gate.
+
+## Executed outcome
+
+Attempt 5 executed from checkpoint 400 with zero training steps. Merged
+PyTorch float16 and CTranslate2 float16 passed all active selection gates.
+CTranslate2 `int8_float16` failed the unchanged Lingala gain gate, isolating
+the loss to that quantized serving arm rather than merge or CTranslate2 export.
+The predeclared fallback selected CTranslate2 float16.
+
+On the untouched 77-row Lingala holdout, the selected artifact scored WER
+0.5996 against 0.7558 for the same-precision CTranslate2 base, a 20.67%
+relative gain. Both arms emitted EOS on every row and had zero cap hits. The
+float16 artifact was published under the immutable attempt-5 prefix. It
+remains non-promotable, no model was registered, and B5 remains blocked.
+
+The durable completion record is
+`platform/evidence/CAMPAIGNRUN-2026-013-passed.json`.

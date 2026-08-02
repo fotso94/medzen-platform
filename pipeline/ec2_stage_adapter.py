@@ -253,7 +253,11 @@ class EC2StageAdapter:
             "git_sha": git_sha,
             "active_b4_instances": 0,
             "eks_involved": False,
-            "spot_involved": True,
+            # Preflight describes the next ordinary stage launch. Spot is
+            # selected only by a descriptor whose stage starts with
+            # ``spot_``; reporting it here made an on-demand artifact run
+            # appear to have used Spot after the fact.
+            "spot_involved": False,
         }
 
     def _require_empty_prefix(self, prefix: str) -> None:
