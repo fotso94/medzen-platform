@@ -160,7 +160,29 @@ def require_resume_result(result: dict, checkpoint: dict) -> None:
             "authorised checkpoint to step 200")
 
 
-def validate_inputs(args, descriptor: dict | None = None):
+def completed_checkpoint(s3, args, local_descriptor: dict) -> dict:
+    """Recover only a fully terminated, immutable first Spot lifecycle."""
+    prefix = (
+        f"candidates/evaluations/{args.campaign_run}/"
+        f"attempt-{args.attempt}/spot_checkpoint/")
+    remote_descriptor = json.loads(s3.get_object(
+        Bucket=BUCKET, Key=prefix + "descriptor.json")["Body"].read())
+    if remote_descriptor != local_descriptor:
+        raise SystemExit(
+            "REFUSING: local and durable checkpoint descriptors differ")
+    result = json.loads(s3.get_object(
+        Bucket=BUCKET, Key=prefix + "stage-result.json")["Body"].read())
+    stage_descriptor.verify_result(remote_descriptor, result)
+    require_checkpoint_result(result)
+    if (result.get("aws_final_state") != "terminated"
+            or result.get("lifecycle") != "spot-direct-ec2"):
+        raise SystemExit(
+            "REFUSING: completed checkpoint lifecycle is not terminated Spot")
+    return result
+
+
+def validate_inputs(args, descriptor: dict | None = None,
+                    *, resume_completed: bool = False):
     if (args.campaign_run, str(args.attempt)) != (CAMPAIGN_RUN, ATTEMPT):
         raise SystemExit("REFUSING: Spot proof is bound to campaign attempt 6")
     if git("rev-parse", "HEAD") != args.git_sha:
@@ -194,11 +216,17 @@ def validate_inputs(args, descriptor: dict | None = None):
         prefix = (
             f"candidates/evaluations/{args.campaign_run}/"
             f"attempt-{args.attempt}/{stage}/")
-        if s3.list_objects_v2(
-                Bucket=BUCKET, Prefix=prefix, MaxKeys=1).get("KeyCount", 0):
+        occupied = s3.list_objects_v2(
+            Bucket=BUCKET, Prefix=prefix, MaxKeys=1).get("KeyCount", 0)
+        if stage == "spot_checkpoint" and resume_completed:
+            if not occupied or descriptor is None:
+                raise SystemExit(
+                    "REFUSING: no completed checkpoint lifecycle to recover")
+            completed_checkpoint(s3, args, descriptor)
+        elif occupied:
             raise SystemExit(f"REFUSING: output prefix {prefix} is occupied")
     pins = dict(preview.stage_descriptors)
-    if descriptor is not None:
+    if descriptor is not None and not resume_completed:
         expected = checkpoint_descriptor(
             args, pins, source, descriptor["mlflow_parent_run_id"],
             descriptor["mlflow_child_run_id"])
@@ -268,7 +296,8 @@ def execute(args) -> dict:
         raise SystemExit("REFUSING: prepare the Spot proof first")
     prepared = json.loads(checkpoint_path.read_bytes())
     sess, s3, source, pins, packet = validate_inputs(
-        args, descriptor=prepared)
+        args, descriptor=prepared,
+        resume_completed=args.resume_completed_checkpoint)
     tracker = CampaignTracker.recover_existing(
         db, args.campaign_run, args.attempt,
         prepared["mlflow_parent_run_id"],
@@ -277,22 +306,38 @@ def execute(args) -> dict:
 
     checkpoint_attempt = (
         f"{args.campaign_run}-{args.attempt}-spot-checkpoint")
-    held = budget.reserve(s3, "spot_checkpoint", checkpoint_attempt)
-    if held["reservation_id"] != prepared["reservation_id"]:
-        raise SystemExit("REFUSING: checkpoint reservation identity changed")
-    checkpoint = launcher.run_spot_checkpoint(prepared, LR)
-    checkpoint_cost = budget.reconcile(
-        s3, "spot_checkpoint", checkpoint_attempt,
-        checkpoint["actual_seconds"], checkpoint.get("instance_id"))
-    stage_descriptor.verify_result(prepared, checkpoint)
-    require_checkpoint_result(checkpoint)
-    tracker.finish_stage("spot_checkpoint", checkpoint, {
-        "checkpoint_tree_sha256": checkpoint["checkpoint_tree_sha256"],
-        "operator_interrupted": True,
-    })
-    checkpoint_snapshot = _sync(
-        s3, db, args, "spot-checkpoint",
-        checkpoint_tree_sha256=checkpoint["checkpoint_tree_sha256"])
+    if args.resume_completed_checkpoint:
+        checkpoint = completed_checkpoint(s3, args, prepared)
+        ledger, _ = budget.load(s3)
+        existing = ledger["reservations"].get(prepared["reservation_id"])
+        if (not existing or existing.get("state") != "reconciled"
+                or existing.get("instance_id") != checkpoint["instance_id"]):
+            raise SystemExit(
+                "REFUSING: completed checkpoint budget is not reconciled")
+        checkpoint_cost = {"actual_usd": existing["actual_usd"]}
+        snapshot_record = json.loads(s3.get_object(
+            Bucket=BUCKET,
+            Key=mlflow_sync.record_key(
+                args.campaign_run, args.attempt,
+                "spot-checkpoint"))["Body"].read())
+        checkpoint_snapshot = snapshot_record
+    else:
+        held = budget.reserve(s3, "spot_checkpoint", checkpoint_attempt)
+        if held["reservation_id"] != prepared["reservation_id"]:
+            raise SystemExit("REFUSING: checkpoint reservation identity changed")
+        checkpoint = launcher.run_spot_checkpoint(prepared, LR)
+        checkpoint_cost = budget.reconcile(
+            s3, "spot_checkpoint", checkpoint_attempt,
+            checkpoint["actual_seconds"], checkpoint.get("instance_id"))
+        stage_descriptor.verify_result(prepared, checkpoint)
+        require_checkpoint_result(checkpoint)
+        tracker.finish_stage("spot_checkpoint", checkpoint, {
+            "checkpoint_tree_sha256": checkpoint["checkpoint_tree_sha256"],
+            "operator_interrupted": True,
+        })
+        checkpoint_snapshot = _sync(
+            s3, db, args, "spot-checkpoint",
+            checkpoint_tree_sha256=checkpoint["checkpoint_tree_sha256"])
 
     resume_child = tracker.start_stage(
         "spot_resume", campaign._tracking_params(
@@ -364,6 +409,10 @@ def main() -> int:
     ap.add_argument("--mlflow-db", required=True)
     ap.add_argument("--checkpoint-descriptor", required=True)
     ap.add_argument("--resume-descriptor", required=True)
+    ap.add_argument(
+        "--resume-completed-checkpoint", action="store_true",
+        help="recover the immutable terminated first lifecycle and run only "
+             "the replacement resume lifecycle")
     ap.add_argument("--confirm", action="store_true")
     args = ap.parse_args()
     result = execute(args) if args.confirm else prepare(args)

@@ -171,6 +171,11 @@ class CampaignTracker:
                 raise SystemExit(
                     f"REFUSING: MLflow run {run_id} belongs to another attempt")
             if stage_key is None:
+                # Recovery is also used between sequential lifecycles.  A
+                # later child must remain in the exact experiment that owns
+                # the recovered parent; without this field start_stage()
+                # fails before any next-stage reservation or launch.
+                tracker.experiment_id = run.info.experiment_id
                 if tags.get("mlflow.parentRunId"):
                     raise SystemExit(
                         "REFUSING: bound MLflow parent is itself a child")

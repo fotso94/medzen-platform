@@ -992,6 +992,23 @@ def test_mlflow_recovery_refuses_a_child_bound_to_another_stage(tmp_path):
             db, "camp", "7", original.parent_run_id, {"other": child})
 
 
+def test_mlflow_recovery_can_add_the_next_sequential_child(tmp_path):
+    db = tmp_path / "mlflow.db"
+    original = CampaignTracker(db, "camp", "7")
+    first = original.start_stage("spot_checkpoint", {"training_steps": 100})
+
+    recovered = CampaignTracker.recover_existing(
+        db, "camp", "7", original.parent_run_id,
+        {"spot_checkpoint": first})
+    second = recovered.start_stage("spot_resume", {"training_steps": 200})
+
+    run = recovered.client.get_run(second)
+    assert recovered.experiment_id == original.experiment_id
+    assert run.info.experiment_id == original.experiment_id
+    assert run.data.tags["mlflow.parentRunId"] == original.parent_run_id
+    assert recovered.children["spot_resume"] == second
+
+
 class Body:
     def __init__(self, value):
         self.value = value
