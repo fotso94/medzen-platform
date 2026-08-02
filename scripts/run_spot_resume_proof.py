@@ -276,7 +276,8 @@ def validate_inputs(args, descriptor: dict | None = None,
         elif occupied:
             raise SystemExit(f"REFUSING: output prefix {prefix} is occupied")
     pins = dict(preview.stage_descriptors)
-    if descriptor is not None and not resume_completed:
+    if (descriptor is not None and not resume_completed
+            and not recover_completed):
         expected = checkpoint_descriptor(
             args, pins, source, descriptor["mlflow_parent_run_id"],
             descriptor["mlflow_child_run_id"])
