@@ -1418,7 +1418,11 @@ def test_spot_proof_requires_exact_tree_before_resume_is_accepted():
         "resumed_from_tree_sha256": "a" * 64,
         "resumed_from_step": 100,
         "steps_completed": 200,
-        "training_finite": True,
+        "training_finite": {
+            "passed": True, "reasons": [], "train_loss": 1.0,
+            "grad_norm": 2.0, "losses_logged": 20,
+            "gradients_logged": 20,
+        },
         "root_volume_deleted": True,
     }
     proof.require_resume_result(valid, checkpoint)
@@ -1436,11 +1440,25 @@ def test_spot_proof_refuses_non_finite_or_incomplete_resume():
         "resumed_from_tree_sha256": "a" * 64,
         "resumed_from_step": 100,
         "steps_completed": 200,
-        "training_finite": True,
+        "training_finite": {
+            "passed": True, "reasons": [], "train_loss": 1.0,
+            "grad_norm": 2.0, "losses_logged": 20,
+            "gradients_logged": 20,
+        },
         "root_volume_deleted": True,
     }
     for change in (
             {"steps_completed": 199}, {"training_finite": False},
+            {"training_finite": {
+                "passed": True, "reasons": [], "train_loss": float("nan"),
+                "grad_norm": 2.0, "losses_logged": 20,
+                "gradients_logged": 20,
+            }},
+            {"training_finite": {
+                "passed": True, "reasons": ["nonfinite gradient"],
+                "train_loss": 1.0, "grad_norm": 2.0,
+                "losses_logged": 20, "gradients_logged": 20,
+            }},
             {"root_volume_deleted": False}):
         with pytest.raises(SystemExit, match="exact authorised checkpoint"):
             proof.require_resume_result({**valid, **change}, checkpoint)
