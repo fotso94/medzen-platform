@@ -1,6 +1,23 @@
 # PLAN-2026-012 — exact S3 checkpoint Spot resume proof
 
-Status: **OWNER APPROVED — PREPARED, NOT YET EXECUTED**
+Status: **EXECUTED — PASSED**
+
+Completion evidence:
+`platform/evidence/CAMPAIGNRUN-2026-014-passed.json`
+
+The first Spot lifecycle published and read back the complete step-100 tree
+before deliberate operator interruption. A different Spot instance restored
+that exact tree and continued from step 101 through step 200 with finite loss
+and gradients. Both instances terminated and both root volumes were proved
+deleted. The two lifecycles cost $0.3200 and $0.3233; aggregate B4 spend after
+reconciliation is $22.5288 of $100 with no unresolved reservation.
+
+Two operator-observer defects were repaired without repeating GPU work. The
+first recovery initially lacked the MLflow experiment identity. The final
+validator initially expected a boolean where the container correctly emitted
+a structured finite-training record. Closure reused the immutable terminated
+stage results, created no AWS resource, and wrote the missing write-once MLflow
+snapshot. Registered models remain zero and B5 remains blocked.
 
 ## Authority and prerequisite
 
