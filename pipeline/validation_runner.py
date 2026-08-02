@@ -348,3 +348,27 @@ class ValidationRuntime:
             "artifact_path": str(out),
             "artifact_sha256": sha256_file(out),
         }
+
+    def evaluate_model(self, model, out: Path, *, arm: str) -> dict:
+        """Score an already-constructed model without changing its identity.
+
+        The conversion diagnostic uses this for the merged float16 model.  It
+        deliberately does not reload an adapter: the point of this arm is to
+        isolate merge loss from CTranslate2 export and quantization effects.
+        """
+        if arm != "merged_pytorch_float16":
+            raise SystemExit(
+                f"REFUSING: unsupported direct-model validation arm {arm!r}")
+        self.ensure_prepared()
+        per_language = self._score(model)
+        record = self._record(arm, per_language)
+        out = Path(out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(
+            (json.dumps(record, indent=2, sort_keys=True) + "\n").encode())
+        return {
+            **self.summary(per_language),
+            "per_language": per_language,
+            "artifact_path": str(out),
+            "artifact_sha256": sha256_file(out),
+        }

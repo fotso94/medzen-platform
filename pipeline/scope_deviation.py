@@ -34,7 +34,7 @@ def load() -> tuple[dict, str, dict, str]:
     if decision.get("record") != "B4-OWNER-APPROVED-SCOPE-DEVIATION":
         problems.append("scope-deviation record type differs")
     if (decision.get("id"), decision.get("revision"), decision.get("status")) \
-            != ("B4-SCOPE-2026-002", 2, "approved"):
+            != ("B4-SCOPE-2026-002", 3, "approved"):
         problems.append("scope-deviation identity/revision/status differs")
     scope = decision.get("language_scope") or {}
     if tuple(scope.get("active_training") or ()) != EXPECTED_TRAINING:
@@ -92,6 +92,34 @@ def load() -> tuple[dict, str, dict, str]:
         if termination.get(field) != want:
             problems.append(
                 f"termination-gate deviation {field} differs from approval")
+
+    diagnostic = (decision.get("servable_artifact") or {}).get(
+        "conversion_diagnostic") or {}
+    expected_diagnostic = {
+        "authorized": True,
+        "training_steps": 0,
+        "selected_checkpoint": 400,
+        "arms_in_fixed_order": [
+            "merged_pytorch_float16",
+            "ctranslate2_float16",
+            "ctranslate2_int8_float16",
+        ],
+        "selection_must_not_read_holdout": True,
+        "holdout_evaluated_once_after_precision_selection": True,
+        "holdout_arm": "selected_converted_precision_only",
+        "holdout_base_must_use_same_ctranslate2_precision": True,
+        "immediate_write_once_evidence_required": True,
+        "minimum_relative_wer_gain": 0.15,
+        "termination_gate_unchanged": True,
+        "precision_preference": ["int8_float16", "float16"],
+        "promotable": False,
+        "registered_models": 0,
+        "b5_allowed": False,
+    }
+    for field, want in expected_diagnostic.items():
+        if diagnostic.get(field) != want:
+            problems.append(
+                f"conversion diagnostic {field} differs from approval")
 
     if gates.get("record") != "A5-B4-GATE-DISPOSITION":
         problems.append("A5 matrix record type differs")

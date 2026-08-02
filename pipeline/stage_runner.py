@@ -21,7 +21,8 @@ import time
 from pathlib import Path
 from typing import Any
 
-from pipeline import language_scope, orchestrate, smoke, stage_descriptor
+from pipeline import (language_scope, orchestrate, scope_deviation, smoke,
+                      stage_descriptor)
 from pipeline.generation import (EOT_TOKEN, account, expected_prompt,
                                  extract_sequence, generation_kwargs)
 from pipeline.label_length import decoder_start_id
@@ -731,7 +732,115 @@ def _post_conversion_termination_gate(before: dict, converted: dict,
     return result
 
 
-def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
+def _tree_stats(local: Path) -> dict:
+    """Hash a local artifact tree without publishing it."""
+    files = {}
+    for path in sorted(Path(local).rglob("*")):
+        if path.is_file():
+            rel = path.relative_to(local).as_posix()
+            files[rel] = {
+                "sha256": sha256_file(path),
+                "bytes": path.stat().st_size,
+            }
+    if not files:
+        raise SystemExit(f"REFUSING: no artifact files found under {local}")
+    return {
+        "files": len(files),
+        "bytes": sum(item["bytes"] for item in files.values()),
+        "tree_sha256": _sha(json.dumps(
+            files, sort_keys=True, separators=(",", ":")).encode()),
+    }
+
+
+def _persist_gate_evidence(cli, descriptor: dict, ordinal: int, name: str,
+                           payload: dict) -> dict:
+    """Write one measured arm/gate immediately and verify its readback."""
+    forbidden = {
+        "text", "text_normalized", "transcript", "audio_filepath",
+        "speaker", "session", "signed_url",
+    }
+
+    def keys(value):
+        if isinstance(value, dict):
+            for key, nested in value.items():
+                yield str(key).lower()
+                yield from keys(nested)
+        elif isinstance(value, list):
+            for nested in value:
+                yield from keys(nested)
+
+    present = sorted(forbidden & set(keys(payload)))
+    if present:
+        raise SystemExit(
+            "REFUSING: conversion evidence contains private field(s): "
+            + ", ".join(present))
+    record = {
+        "record": "B4-CONVERSION-DIAGNOSTIC-EVIDENCE",
+        "recorded_utc": time.strftime(
+            "%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "phase": name,
+        "stage_descriptor_sha256":
+            stage_descriptor.descriptor_hash(descriptor),
+        "provenance": {
+            "git_sha": descriptor["git_sha"],
+            "bundle_tar_sha256": descriptor["bundle_tar_sha256"],
+            "image_digest": descriptor["image_digest"],
+            "input_artifact_sha256": descriptor["input_artifact_sha256"],
+            "input_evaluation_sha256": descriptor["input_evaluation_sha256"],
+            "scope_deviation_sha256": descriptor["scope_deviation_sha256"],
+        },
+        "promotable": False,
+        "registered_models": 0,
+        "b5_allowed": False,
+        "content_policy": (
+            "aggregate metrics and checksum-only numeric row measurements; "
+            "no transcript, audio, speaker, session or signed URL"),
+        "payload": payload,
+    }
+    key = (descriptor["output_prefix"].rstrip("/")
+           + f"/evidence/{ordinal:02d}-{name}.json")
+    digest = put_immutable(cli, key, _json_bytes(record))
+    return {"key": key, "sha256": digest}
+
+
+def _convert_ctranslate2(source_dir: Path, output_dir: Path,
+                         quantization: str) -> dict:
+    if quantization not in ("float16", "int8_float16"):
+        raise SystemExit(
+            f"REFUSING: unsupported CTranslate2 precision {quantization!r}")
+    if output_dir.exists():
+        raise SystemExit(
+            f"REFUSING: CTranslate2 output already exists at {output_dir}")
+    missing = [
+        name for name in ("tokenizer.json", "preprocessor_config.json")
+        if not (source_dir / name).is_file()
+    ]
+    if missing:
+        raise SystemExit(
+            "REFUSING: CTranslate2 source lacks processor file(s): "
+            + ", ".join(missing))
+    started = time.perf_counter()
+    completed = subprocess.run([
+        "ct2-transformers-converter", "--model", str(source_dir),
+        "--output_dir", str(output_dir), "--quantization", quantization,
+        "--copy_files", "tokenizer.json", "preprocessor_config.json",
+    ], check=False)
+    if completed.returncode:
+        raise SystemExit(
+            f"REFUSING: CTranslate2 {quantization} converter exited "
+            f"{completed.returncode}")
+    if not (output_dir / "model.bin").is_file():
+        raise SystemExit(
+            f"REFUSING: CTranslate2 {quantization} artifact has no model.bin")
+    return {
+        "quantization": quantization,
+        "conversion_seconds": round(time.perf_counter() - started, 3),
+        **_tree_stats(output_dir),
+    }
+
+
+def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path,
+                       compute_type: str) -> dict:
     """Score the converted bytes directly, including termination accounting.
 
     CTranslate2 removes the terminal end token from Whisper results.  With
@@ -746,8 +855,16 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
     from scripts.run_baseline import bootstrap_ci, wer_cer
 
     runtime.ensure_prepared()
+    if compute_type not in ("float16", "int8_float16"):
+        raise SystemExit(
+            f"REFUSING: unsupported CTranslate2 compute type {compute_type!r}")
+    scoring_started = time.perf_counter()
     model = ctranslate2.models.Whisper(
-        str(model_dir), device="cuda", compute_type="int8_float16")
+        str(model_dir), device="cuda", compute_type=compute_type)
+    if model.compute_type != compute_type:
+        raise SystemExit(
+            "REFUSING: CTranslate2 loaded compute type "
+            f"{model.compute_type!r}, requested {compute_type!r}")
     per_language = {}
     for language in runtime.languages:
         rows, audios = runtime._loaded[language]
@@ -795,6 +912,7 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
         wer, cer = wer_cer(refs, hyps)
         lo, hi = bootstrap_ci(refs, hyps)
         lengths = [row["generated_tokens"] for row in per]
+        latencies = [row["latency_s"] for row in per]
         per_language[language] = {
             "rows": len(rows), "wer": round(wer, 4), "cer": round(cer, 4),
             "wer_ci95": [round(lo, 4), round(hi, 4)],
@@ -803,6 +921,11 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
             "generated_tokens": {
                 "median": statistics.median(lengths), "max": max(lengths),
                 "mean": round(statistics.mean(lengths), 2), "min": min(lengths)},
+            "latency_s": {
+                "median": round(statistics.median(latencies), 4),
+                "max": round(max(latencies), 4),
+                "total": round(sum(latencies), 4),
+            },
             "normalization_version": norm.version,
             "per_utterance": per,
         }
@@ -821,12 +944,34 @@ def _score_ctranslate2(runtime: ValidationRuntime, model_dir: Path) -> dict:
         "per_language": per_language,
         "termination_failures": termination_failure_summary(
             per_language, runtime.languages),
+        "requested_compute_type": compute_type,
         "compute_type": model.compute_type,
         "runtime": f"ctranslate2-{ctranslate2.__version__}",
+        "device": "cuda",
+        "scoring_seconds": round(time.perf_counter() - scoring_started, 3),
+        "artifact": _tree_stats(model_dir),
+        "serving_execution": {
+            "loaded_on_authorized_gpu": True,
+            "completed_all_rows_without_oom": True,
+            "rows": sum(len(runtime._loaded[l][0]) for l in runtime.languages),
+        },
         "termination_accounting": (
             "Whisper generate removes terminal EOS; greedy output shorter than "
             "max_length=440 is EOS termination, length 440 is a cap hit"),
     }
+
+
+def _arm_gate(candidate: dict, selected_before: dict, base: dict,
+              languages: tuple[str, ...], policy: dict) -> dict:
+    gate = _relative_gain_gate(candidate["wer"], base["wer"], languages)
+    termination = _post_conversion_termination_gate(
+        selected_before["termination_failures"],
+        candidate["termination_failures"], languages, policy)
+    if not termination["passed"]:
+        gate["passed"] = False
+        gate["failures"].extend(termination["failures"])
+    gate["termination"] = termination
+    return gate
 
 
 def _save_processor_for_ctranslate2(processor, merged_dir: Path) -> None:
@@ -856,82 +1001,193 @@ def _save_processor_for_ctranslate2(processor, merged_dir: Path) -> None:
 
 
 def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
-    """Holdout, merge, conversion, and scoring of the actual servable bytes."""
+    """Diagnose merge/export/quantization, then gate the selected CT2 bytes.
+
+    Precision is chosen only on the frozen selection surface.  The untouched
+    Lingala holdout is opened once, afterwards, and compares the selected
+    serving precision with a same-precision CTranslate2 base.
+    """
     import torch
     from peft import PeftModel
 
     require_ctranslate2_cuda_runtime()
+    diagnostic_policy = scope_deviation.DECISION_DOC["servable_artifact"][
+        "conversion_diagnostic"]
+    if diagnostic_policy["arms_in_fixed_order"] != [
+            "merged_pytorch_float16", "ctranslate2_float16",
+            "ctranslate2_int8_float16"]:
+        raise SystemExit("REFUSING: conversion diagnostic arm order changed")
 
     selected_eval = _load_selected_evaluation(cli, descriptor)
+    before = selected_eval["summary"]
+    base_result = load_base_result(cli, descriptor)["summary"]
+    languages = tuple(descriptor["validation_languages"])
     adapter_dir = work / "selected-adapter"
     retained = download_artifact_tree(cli, descriptor, adapter_dir)
-
-    holdout = _lingala_holdout_runtime(cli, descriptor, work / "holdout")
-    holdout_base_path = work / "holdout-base.json"
-    holdout_candidate_path = work / "holdout-candidate.json"
-    holdout_base = holdout.evaluate_base(holdout_base_path)
-    holdout_candidate = holdout.evaluate_adapter(
-        adapter_dir, holdout_candidate_path,
-        expected_adapter_sha256=retained["adapter_sha256"])
-    holdout_gate = _relative_gain_gate(
-        holdout_candidate["wer"], holdout_base["wer"], ("lingala",))
-    holdout_termination_gate = _termination_count_gate(
-        holdout_candidate["termination_failures"], ("lingala",),
-        int(descriptor["termination_gate"]["holdout_max_unique_failures"]))
-    if not holdout_termination_gate["passed"]:
-        holdout_gate["passed"] = False
-        holdout_gate["failures"].append(
-            "Lingala holdout termination gate failed: "
-            + "; ".join(holdout_termination_gate["failures"]))
-    holdout_gate["termination"] = holdout_termination_gate
-    if not holdout_gate["passed"]:
+    selected_step = int(diagnostic_policy["selected_checkpoint"])
+    if (not str(descriptor["input_prefix"]).rstrip("/").endswith(
+            f"/asr/checkpoint-{selected_step}")
+            or not str(descriptor["input_evaluation_key"]).endswith(
+                f"/evaluations/checkpoint-{selected_step}.json")):
         raise SystemExit(
-            "REFUSING: selected checkpoint failed post-selection Lingala holdout: "
-            + "; ".join(holdout_gate["failures"]))
+            "REFUSING: conversion diagnostic input is not the "
+            f"owner-approved checkpoint-{selected_step}")
 
+    # The selection surface is prepared before any holdout runtime exists.
     selection = ValidationRuntime(cli, descriptor, work / "selection")
     selection.ensure_prepared()
     base = selection._fresh_base()
     peft_model = PeftModel.from_pretrained(
         base, str(adapter_dir), is_trainable=False).to(selection.device).eval()
     merged = peft_model.merge_and_unload(safe_merge=True)
+    if getattr(merged, "dtype", None) != torch.float16:
+        raise SystemExit(
+            "REFUSING: merged PyTorch diagnostic arm is not float16")
+    merged_path = work / "merged-pytorch-float16.json"
+    merged_metrics = selection.evaluate_model(
+        merged, merged_path, arm="merged_pytorch_float16")
     merged_dir = work / "merged-transformers"
     merged.save_pretrained(merged_dir, safe_serialization=True)
     _save_processor_for_ctranslate2(selection.processor, merged_dir)
+    merged_stats = _tree_stats(merged_dir)
+    merged_gate = _arm_gate(
+        merged_metrics, before, base_result, languages,
+        descriptor["termination_gate"]["post_conversion"])
+    evidence = {
+        "merged_pytorch_float16": _persist_gate_evidence(
+            cli, descriptor, 1, "merged-pytorch-float16", {
+                "arm": "merged_pytorch_float16",
+                "metrics": merged_metrics,
+                "gate": merged_gate,
+                "artifact": merged_stats,
+            })
+    }
     del peft_model, merged, base
     gc.collect()
     torch.cuda.empty_cache()
 
-    converted_dir = work / "ctranslate2-int8-float16"
-    completed = subprocess.run([
-        "ct2-transformers-converter", "--model", str(merged_dir),
-        "--output_dir", str(converted_dir), "--quantization", "int8_float16",
-        "--copy_files", "tokenizer.json", "preprocessor_config.json",
-    ], check=False)
-    if completed.returncode:
-        raise SystemExit(
-            f"REFUSING: CTranslate2 converter exited {completed.returncode}")
-    if not (converted_dir / "model.bin").is_file():
-        raise SystemExit("REFUSING: converted artifact has no model.bin")
+    converted_dirs: dict[str, Path] = {}
+    arms: dict[str, dict] = {
+        "merged_pytorch_float16": {
+            "metrics": merged_metrics, "gate": merged_gate,
+            "artifact": merged_stats,
+        }
+    }
+    for ordinal, precision in ((2, "float16"), (3, "int8_float16")):
+        arm = f"ctranslate2_{precision.replace('-', '_')}"
+        converted_dir = work / f"ctranslate2-{precision.replace('_', '-')}"
+        conversion = _convert_ctranslate2(
+            merged_dir, converted_dir, precision)
+        converted = _score_ctranslate2(
+            selection, converted_dir, precision)
+        gate = _arm_gate(
+            converted, before, base_result, languages,
+            descriptor["termination_gate"]["post_conversion"])
+        arms[arm] = {
+            "metrics": converted, "gate": gate,
+            "artifact": conversion,
+        }
+        converted_dirs[precision] = converted_dir
+        evidence[arm] = _persist_gate_evidence(
+            cli, descriptor, ordinal,
+            arm.replace("_", "-"), {
+                "arm": arm, "metrics": converted, "gate": gate,
+                "artifact": conversion,
+            })
+        gc.collect()
+        torch.cuda.empty_cache()
 
-    converted = _score_ctranslate2(selection, converted_dir)
-    before = selected_eval["summary"]
-    languages = tuple(descriptor["validation_languages"])
-    converted_gate = _relative_gain_gate(
-        converted["wer"], load_base_result(cli, descriptor)["summary"]["wer"],
-        languages)
-    converted_termination_gate = _post_conversion_termination_gate(
-        before["termination_failures"], converted["termination_failures"],
-        languages, descriptor["termination_gate"]["post_conversion"])
-    if not converted_termination_gate["passed"]:
-        converted_gate["passed"] = False
-        converted_gate["failures"].extend(
-            converted_termination_gate["failures"])
-    converted_gate["termination"] = converted_termination_gate
-    if not converted_gate["passed"]:
-        raise SystemExit(
-            "REFUSING: converted artifact failed active quality gates: "
-            + "; ".join(converted_gate["failures"]))
+    selected_precision = next((
+        precision for precision in diagnostic_policy["precision_preference"]
+        if arms[f"ctranslate2_{precision}"]["gate"]["passed"]
+    ), None)
+    selection_record = {
+        "rule": "prefer int8_float16; fall back to float16 only after the "
+                "same active selection gates pass",
+        "holdout_consulted": False,
+        "selected_precision": selected_precision,
+        "int8_float16_passed": arms[
+            "ctranslate2_int8_float16"]["gate"]["passed"],
+        "float16_passed": arms["ctranslate2_float16"]["gate"]["passed"],
+        "merged_pytorch_float16_passed": merged_gate["passed"],
+    }
+    evidence["precision_selection"] = _persist_gate_evidence(
+        cli, descriptor, 4, "precision-selection", selection_record)
+
+    if selected_precision is None:
+        return {
+            "record": "B4-CONVERSION-DIAGNOSTIC-NO-CANDIDATE",
+            "promotable": False, "registered_models": 0,
+            "b5_allowed": False, "training_steps": 0,
+            "selected_input_tree_sha256": retained["tree_sha256"],
+            "selected_evaluation_sha256":
+                descriptor["input_evaluation_sha256"],
+            "precision_arms": arms, "evidence": evidence,
+            "precision_selection": selection_record,
+            "holdout": {
+                "status": "NOT_EVALUATED_NO_PRECISION_PASSED_SELECTION",
+                "gate": {"passed": False, "failures": [
+                    "no CTranslate2 precision passed selection gates"]},
+            },
+            "converted_gate": {"passed": False, "failures": [
+                "no CTranslate2 precision passed selection gates"]},
+            "servable_artifact_published": False,
+        }
+
+    # Only now may the untouched holdout be opened.  Both arms use the same
+    # CTranslate2 precision so runtime/quantization cannot bias the comparison.
+    holdout = _lingala_holdout_runtime(cli, descriptor, work / "holdout")
+    holdout.ensure_prepared()
+    base_converted_dir = work / (
+        "ctranslate2-base-" + selected_precision.replace("_", "-"))
+    base_conversion = _convert_ctranslate2(
+        holdout.base_dir, base_converted_dir, selected_precision)
+    holdout_base = _score_ctranslate2(
+        holdout, base_converted_dir, selected_precision)
+    holdout_candidate = _score_ctranslate2(
+        holdout, converted_dirs[selected_precision], selected_precision)
+    holdout_gate = _relative_gain_gate(
+        holdout_candidate["wer"], holdout_base["wer"], ("lingala",))
+    holdout_termination = _termination_count_gate(
+        holdout_candidate["termination_failures"], ("lingala",),
+        int(descriptor["termination_gate"]["holdout_max_unique_failures"]))
+    if not holdout_termination["passed"]:
+        holdout_gate["passed"] = False
+        holdout_gate["failures"].append(
+            "Lingala holdout termination gate failed: "
+            + "; ".join(holdout_termination["failures"]))
+    holdout_gate["termination"] = holdout_termination
+    holdout_record = {
+        "precision": selected_precision,
+        "selection_was_completed_before_holdout": True,
+        "base": holdout_base,
+        "candidate": holdout_candidate,
+        "base_artifact": base_conversion,
+        "candidate_artifact": arms[
+            f"ctranslate2_{selected_precision}"]["artifact"],
+        "gate": holdout_gate,
+    }
+    evidence["selected_precision_holdout"] = _persist_gate_evidence(
+        cli, descriptor, 5, "selected-precision-holdout", holdout_record)
+
+    selected_arm = arms[f"ctranslate2_{selected_precision}"]
+    if not holdout_gate["passed"]:
+        return {
+            "record": "B4-CONVERSION-DIAGNOSTIC-HOLDOUT-FAILED",
+            "promotable": False, "registered_models": 0,
+            "b5_allowed": False, "training_steps": 0,
+            "selected_input_tree_sha256": retained["tree_sha256"],
+            "selected_evaluation_sha256":
+                descriptor["input_evaluation_sha256"],
+            "precision_arms": arms, "evidence": evidence,
+            "precision_selection": selection_record,
+            "holdout": holdout_record,
+            "converted_gate": selected_arm["gate"],
+            "selected_precision": selected_precision,
+            "servable_artifact_published": False,
+        }
+
+    converted = selected_arm["metrics"]
     deltas = {
         metric: {language: round(
             float(converted[metric][language])
@@ -941,20 +1197,27 @@ def run_artifactize(cli, descriptor: dict, work: Path) -> dict:
     }
     merged_manifest = upload_tree(
         cli, merged_dir, descriptor["output_prefix"].rstrip("/") + "/merged")
+    selected_suffix = selected_precision.replace("_", "-")
     converted_manifest = upload_tree(
-        cli, converted_dir,
-        descriptor["output_prefix"].rstrip("/") + "/ctranslate2-int8-float16")
+        cli, converted_dirs[selected_precision],
+        descriptor["output_prefix"].rstrip("/")
+        + f"/ctranslate2-{selected_suffix}")
     record = {
         "record": "B4-SERVABLE-ARTIFACT-EVALUATION",
         "promotable": False, "registered_models": 0, "b5_allowed": False,
+        "training_steps": 0,
         "selected_input_tree_sha256": retained["tree_sha256"],
         "selected_evaluation_sha256": descriptor["input_evaluation_sha256"],
-        "holdout": {"base": holdout_base, "candidate": holdout_candidate,
-                    "gate": holdout_gate},
+        "precision_arms": arms, "evidence": evidence,
+        "precision_selection": selection_record,
+        "selected_precision": selected_precision,
+        "holdout": holdout_record,
         "pre_conversion": before, "post_conversion": converted,
-        "conversion_delta": deltas, "converted_gate": converted_gate,
+        "conversion_delta": deltas,
+        "converted_gate": selected_arm["gate"],
         "merged_tree_sha256": merged_manifest["tree_sha256"],
         "converted_tree_sha256": converted_manifest["tree_sha256"],
+        "servable_artifact_published": True,
     }
     record_key = descriptor["output_prefix"].rstrip("/") + "/artifact-evaluation.json"
     record_sha = put_immutable(cli, record_key, _json_bytes(record))

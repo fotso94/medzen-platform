@@ -1,11 +1,12 @@
 {
   "record": "B4-OWNER-APPROVED-SCOPE-DEVIATION",
   "id": "B4-SCOPE-2026-002",
-  "revision": 2,
+  "revision": 3,
   "status": "approved",
   "authorized_by_role": "platform-owner",
   "authorized_utc": "2026-08-01T17:14:36Z",
-  "amended_utc": "2026-08-01T20:14:54Z",
+  "amended_utc": "2026-08-02T01:57:45Z",
+  "revision_note": "Revision 3 prospectively authorizes one controlled conversion diagnostic on the already-selected checkpoint. It preserves every quality and termination threshold, compares merged PyTorch float16, CTranslate2 float16 and CTranslate2 int8_float16 before using the untouched holdout, and requires every arm and gate to be written immutably as soon as it is measured. int8_float16 remains preferred. CTranslate2 float16 is an authorized non-promotable B4 fallback only if int8_float16 fails and float16 passes the same active quality, termination and executable L4 serving checks. This decision does not assert that quantization caused attempt 4's failure.",
   "supersedes_for_future_execution": [
     "platform/decisions/PLAN-2026-009-base-v5-b4-exit-preparation.md"
   ],
@@ -105,10 +106,41 @@
   },
   "servable_artifact": {
     "required": true,
+    "conversion_diagnostic": {
+      "authorized": true,
+      "training_steps": 0,
+      "selected_checkpoint": 400,
+      "selected_checkpoint_must_be_hash_pinned": true,
+      "arms_in_fixed_order": [
+        "merged_pytorch_float16",
+        "ctranslate2_float16",
+        "ctranslate2_int8_float16"
+      ],
+      "same_selection_manifests_prompts_decoding_and_gates_required": true,
+      "selection_must_not_read_holdout": true,
+      "holdout_evaluated_once_after_precision_selection": true,
+      "holdout_arm": "selected_converted_precision_only",
+      "holdout_base_must_use_same_ctranslate2_precision": true,
+      "immediate_write_once_evidence_required": true,
+      "evidence_content": "aggregate metrics and checksum-only numeric per-row measurements; no transcript, audio, speaker, session or signed URL",
+      "minimum_relative_wer_gain": 0.15,
+      "termination_gate_unchanged": true,
+      "precision_preference": [
+        "int8_float16",
+        "float16"
+      ],
+      "float16_fallback_rule": "Allowed only when CTranslate2 int8_float16 fails an active gate, CTranslate2 float16 passes every identical selection and strict post-selection holdout gate, the artifact loads and completes scoring on the authorized g6.xlarge L4 without OOM, and model bytes plus per-language latency are durably reported.",
+      "if_no_ctranslate2_precision_passes": "Refuse without publishing a servable artifact; investigate merge/export/runtime or retrain without changing a gate.",
+      "causality_rule": "Attempt 4 proves only that the complete int8_float16 serving path failed. Quantization, merge, export and runtime/decoding effects remain separate hypotheses until the three arms are compared.",
+      "promotable": false,
+      "registered_models": 0,
+      "b5_allowed": false
+    },
     "steps": [
       "merge the selected LoRA adapter into the pinned base model",
-      "convert the merged model to CTranslate2 int8_float16",
-      "evaluate the converted artifact on the same frozen selection validation and report conversion deltas",
+      "score the merged PyTorch float16 model, CTranslate2 float16 and CTranslate2 int8_float16 on the same frozen selection validation and report arm-to-arm deltas",
+      "prefer CTranslate2 int8_float16 when it passes; otherwise allow the owner-approved non-promotable CTranslate2 float16 fallback only under the fixed diagnostic rule",
+      "evaluate only the selected converted precision on the untouched Lingala holdout against a same-precision CTranslate2 base",
       "prove interruption and resume from the exact S3 checkpoint using EC2 Spot"
     ],
     "artifact_is_not_registered": true,
@@ -116,7 +148,7 @@
   },
   "revised_b4_exit": [
     "checkpoint-selection rule verified locally and in the pinned read-only container",
-    "merged CTranslate2 int8_float16 artifact produced and evaluated after conversion",
+    "merged CTranslate2 artifact produced at the predeclared selected precision and evaluated after conversion with all three diagnostic arms durably preserved",
     "exact-S3-checkpoint Spot interruption/resume proof completed",
     "one fresh gated campaign completed under the aggregate budget with the selection rule declared in advance",
     "every unmeasurable A5 gate recorded individually as DEFERRED or NOT_EVALUATED"

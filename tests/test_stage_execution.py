@@ -21,7 +21,7 @@ from pipeline.campaign_tracking import CampaignTracker
 from pipeline.ec2_stage_adapter import (
     EC2StageAdapter, EC2StageConfig, StageLaunchError, render_user_data)
 from pipeline.stage_runner import (
-    _save_processor_for_ctranslate2, _training_command,
+    _persist_gate_evidence, _save_processor_for_ctranslate2, _training_command,
     download_artifact_tree, require_ctranslate2_cuda_runtime,
     require_runtime_provenance, upload_tree)
 from pipeline.termination_diagnostic import (
@@ -1105,6 +1105,277 @@ def test_ct2_cuda_runtime_accepts_complete_library_set():
     required = require_ctranslate2_cuda_runtime(
         lambda name: loaded.append(name))
     assert tuple(loaded) == required
+
+
+def test_conversion_evidence_is_write_once_and_refuses_private_fields():
+    cli = FakeS3()
+    d = descriptor(
+        stage="artifactize", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "asr/checkpoint-400"),
+        input_artifact_sha256="9" * 64,
+        input_evaluation_key=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "evaluations/checkpoint-400.json"),
+        input_evaluation_sha256="a" * 64)
+    ref = _persist_gate_evidence(
+        cli, d, 1, "arm", {"wer": {"lingala": 0.7}})
+    assert ref["key"].endswith("/evidence/01-arm.json")
+    assert len(ref["sha256"]) == 64
+    with pytest.raises(SystemExit, match="private field"):
+        _persist_gate_evidence(
+            cli, d, 2, "bad", {"transcript": "must not persist"})
+
+
+def _diagnostic_metrics(value: float, languages=None):
+    langs = tuple(languages or orchestrate.VALIDATION_LANGUAGES)
+    failures = {
+        language: {
+            "rows": 1, "count": 0, "checksums": [],
+            "eos_missing_count": 0, "eos_missing_checksums": [],
+            "cap_hit_count": 0, "cap_hit_checksums": [],
+        }
+        for language in langs
+    }
+    return {
+        "wer": {language: value for language in langs},
+        "cer": {language: value for language in langs},
+        "eos_rate": {language: 1.0 for language in langs},
+        "cap_hit_rate": {language: 0.0 for language in langs},
+        "generated_tokens_median": {language: 10 for language in langs},
+        "generated_tokens_max": {language: 20 for language in langs},
+        "termination_failures": failures,
+        "per_language": {},
+    }
+
+
+def test_artifactize_selects_precision_before_opening_holdout(
+        monkeypatch, tmp_path):
+    import peft
+
+    events = []
+    d = descriptor(
+        stage="artifactize", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "asr/checkpoint-400"),
+        input_artifact_sha256="9" * 64,
+        input_evaluation_key=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "evaluations/checkpoint-400.json"),
+        input_evaluation_sha256="a" * 64)
+    before = _diagnostic_metrics(0.70)
+    base_result = _diagnostic_metrics(1.0)
+
+    class Merged:
+        dtype = __import__("torch").float16
+        def save_pretrained(self, target, safe_serialization=True):
+            Path(target).mkdir(parents=True)
+            (Path(target) / "model.safetensors").write_bytes(b"merged")
+
+    class Peft:
+        def to(self, device): return self
+        def eval(self): return self
+        def merge_and_unload(self, safe_merge=True): return Merged()
+
+    class Selection:
+        device = "cpu"
+        processor = object()
+        def __init__(self, *args, **kwargs): pass
+        def ensure_prepared(self): events.append("selection-prepared")
+        def _fresh_base(self): return object()
+        def evaluate_model(self, model, out, arm):
+            events.append("merged-score")
+            return _diagnostic_metrics(0.72)
+
+    class Holdout:
+        languages = ("lingala",)
+        base_dir = tmp_path / "base"
+        _loaded = {"lingala": ([{}], [([], 16000)])}
+        def ensure_prepared(self): events.append("holdout-prepared")
+
+    (tmp_path / "base").mkdir()
+    for name in ("tokenizer.json", "preprocessor_config.json"):
+        (tmp_path / "base" / name).write_text("{}")
+
+    monkeypatch.setattr(stage_runner, "require_ctranslate2_cuda_runtime",
+                        lambda: ())
+    monkeypatch.setattr(stage_runner, "_load_selected_evaluation",
+                        lambda cli, value: {"summary": before})
+    monkeypatch.setattr(stage_runner, "load_base_result",
+                        lambda cli, value: {"summary": base_result})
+    monkeypatch.setattr(
+        stage_runner, "download_artifact_tree",
+        lambda cli, value, target: (
+            target.mkdir(), {
+                "tree_sha256": "9" * 64,
+                "adapter_sha256": "8" * 64,
+            })[1])
+    monkeypatch.setattr(stage_runner, "ValidationRuntime", Selection)
+    monkeypatch.setattr(
+        stage_runner, "_lingala_holdout_runtime",
+        lambda *args: events.append("holdout-open") or Holdout())
+    monkeypatch.setattr(peft.PeftModel, "from_pretrained",
+                        lambda *args, **kwargs: Peft())
+
+    def save_processor(processor, target):
+        for name in ("tokenizer.json", "preprocessor_config.json"):
+            (Path(target) / name).write_text("{}")
+    monkeypatch.setattr(
+        stage_runner, "_save_processor_for_ctranslate2", save_processor)
+
+    def convert(source, target, precision):
+        events.append(f"convert-{precision}")
+        Path(target).mkdir()
+        (Path(target) / "model.bin").write_bytes(precision.encode())
+        return {"quantization": precision, "tree_sha256": "7" * 64,
+                "files": 1, "bytes": len(precision),
+                "conversion_seconds": 1.0}
+    monkeypatch.setattr(stage_runner, "_convert_ctranslate2", convert)
+
+    calls = {"float16": 0, "int8_float16": 0}
+    def score(runtime, model_dir, precision):
+        calls[precision] += 1
+        events.append(f"score-{precision}-{calls[precision]}")
+        if isinstance(runtime, Holdout):
+            return _diagnostic_metrics(
+                1.0 if "base" in Path(model_dir).name else 0.8,
+                ("lingala",))
+        return _diagnostic_metrics(0.74 if precision == "float16" else 0.90)
+    monkeypatch.setattr(stage_runner, "_score_ctranslate2", score)
+
+    def persist(cli, value, ordinal, name, payload):
+        events.append(f"persist-{name}")
+        return {"key": name, "sha256": str(ordinal) * 64}
+    monkeypatch.setattr(stage_runner, "_persist_gate_evidence", persist)
+    monkeypatch.setattr(
+        stage_runner, "upload_tree",
+        lambda cli, local, prefix: {"tree_sha256": "6" * 64})
+    monkeypatch.setattr(stage_runner, "put_immutable",
+                        lambda cli, key, body: hashlib.sha256(body).hexdigest())
+
+    (tmp_path / "work").mkdir()
+    result = stage_runner.run_artifactize(object(), d, tmp_path / "work")
+    assert result["selected_precision"] == "float16"
+    assert result["converted_gate"]["passed"] is True
+    assert result["holdout"]["gate"]["passed"] is True
+    assert result["servable_artifact_published"] is True
+    assert events.index("persist-precision-selection") < events.index(
+        "holdout-open")
+    assert events.index("score-int8_float16-1") < events.index("holdout-open")
+    assert calls == {"float16": 3, "int8_float16": 1}
+
+
+def test_artifactize_never_opens_holdout_when_no_ct2_arm_passes(
+        monkeypatch, tmp_path):
+    import peft
+
+    d = descriptor(
+        stage="artifactize", max_steps=0, checkpoint_steps=[],
+        input_prefix=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "asr/checkpoint-400"),
+        input_artifact_sha256="9" * 64,
+        input_evaluation_key=(
+            "candidates/evaluations/b4-test/attempt-1/final/"
+            "evaluations/checkpoint-400.json"),
+        input_evaluation_sha256="a" * 64)
+    before, base_result = _diagnostic_metrics(0.70), _diagnostic_metrics(1.0)
+
+    class Merged:
+        dtype = __import__("torch").float16
+        def save_pretrained(self, target, safe_serialization=True):
+            Path(target).mkdir(parents=True)
+            (Path(target) / "model.safetensors").write_bytes(b"merged")
+    class Peft:
+        def to(self, device): return self
+        def eval(self): return self
+        def merge_and_unload(self, safe_merge=True): return Merged()
+    class Selection:
+        device = "cpu"
+        processor = object()
+        def __init__(self, *args, **kwargs): pass
+        def ensure_prepared(self): pass
+        def _fresh_base(self): return object()
+        def evaluate_model(self, model, out, arm):
+            return _diagnostic_metrics(0.72)
+
+    monkeypatch.setattr(stage_runner, "require_ctranslate2_cuda_runtime",
+                        lambda: ())
+    monkeypatch.setattr(stage_runner, "_load_selected_evaluation",
+                        lambda cli, value: {"summary": before})
+    monkeypatch.setattr(stage_runner, "load_base_result",
+                        lambda cli, value: {"summary": base_result})
+    monkeypatch.setattr(
+        stage_runner, "download_artifact_tree",
+        lambda cli, value, target: (
+            target.mkdir(), {"tree_sha256": "9" * 64,
+                             "adapter_sha256": "8" * 64})[1])
+    monkeypatch.setattr(stage_runner, "ValidationRuntime", Selection)
+    monkeypatch.setattr(
+        stage_runner, "_lingala_holdout_runtime",
+        lambda *args: pytest.fail("holdout opened before a precision passed"))
+    monkeypatch.setattr(peft.PeftModel, "from_pretrained",
+                        lambda *args, **kwargs: Peft())
+    monkeypatch.setattr(
+        stage_runner, "_save_processor_for_ctranslate2",
+        lambda processor, target: [
+            (Path(target) / name).write_text("{}")
+            for name in ("tokenizer.json", "preprocessor_config.json")])
+    def convert(source, target, precision):
+        Path(target).mkdir()
+        (Path(target) / "model.bin").write_bytes(b"x")
+        return {"quantization": precision, "tree_sha256": "7" * 64,
+                "files": 1, "bytes": 1, "conversion_seconds": 1.0}
+    monkeypatch.setattr(stage_runner, "_convert_ctranslate2", convert)
+    monkeypatch.setattr(stage_runner, "_score_ctranslate2",
+                        lambda *args: _diagnostic_metrics(0.90))
+    monkeypatch.setattr(
+        stage_runner, "_persist_gate_evidence",
+        lambda *args: {"key": "evidence", "sha256": "5" * 64})
+
+    (tmp_path / "work").mkdir()
+    result = stage_runner.run_artifactize(object(), d, tmp_path / "work")
+    assert result["precision_selection"]["selected_precision"] is None
+    assert result["holdout"]["status"].startswith("NOT_EVALUATED")
+    assert result["servable_artifact_published"] is False
+
+
+def test_conversion_launcher_descriptor_reuses_only_checkpoint_400():
+    from types import SimpleNamespace
+    from scripts import run_conversion_diagnostic as launch
+
+    args = SimpleNamespace(
+        campaign_run="b4-scoped-count-tolerance-61145b7",
+        attempt="5", git_sha="a" * 40,
+        bundle_tar_sha256="b" * 64,
+        image_digest="sha256:" + "c" * 64,
+    )
+    pins = {
+        "policy_sha256": hashlib.sha256(
+            language_scope.POLICY_PATH.read_bytes()).hexdigest(),
+        "base_arm_key": "1" * 64,
+        "base_artifact_key": "candidates/source/base.json",
+        "base_artifact_sha256": "2" * 64,
+        "input_prefix": (
+            "candidates/evaluations/b4-scoped-count-tolerance-61145b7/"
+            "attempt-1/final/asr/checkpoint-400"),
+        "input_artifact_sha256": "3" * 64,
+        "input_evaluation_key": (
+            "candidates/evaluations/b4-scoped-count-tolerance-61145b7/"
+            "attempt-1/final/evaluations/checkpoint-400.json"),
+        "input_evaluation_sha256": "4" * 64,
+    }
+    d = launch.make_descriptor(
+        args, pins, parent_run_id="parent", child_run_id="child")
+    assert d["stage"] == "artifactize"
+    assert d["max_steps"] == 0 and d["checkpoint_steps"] == []
+    assert d["attempt"] == "5"
+    assert d["input_prefix"].endswith("/asr/checkpoint-400")
+    assert d["input_evaluation_key"].endswith(
+        "/evaluations/checkpoint-400.json")
+    assert d["scope_deviation_sha256"] == scope_deviation.DECISION_SHA256
 
 
 class FakeECR:

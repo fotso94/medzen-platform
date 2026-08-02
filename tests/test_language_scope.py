@@ -68,7 +68,7 @@ def test_owner_scope_deviation_is_executable_and_keeps_lingala():
         "decision"] == "NOT_EVALUATED"
     assert len(gates["gates"]) == 25
     assert all(row["status"] != "PASSED" for row in gates["gates"])
-    assert decision["revision"] == 2
+    assert decision["revision"] == 3
     termination = decision["termination_gate_deviation"]
     assert termination["applies_symmetrically_to"] == [
         "lingala", "luganda", "oromo"]
@@ -77,6 +77,16 @@ def test_owner_scope_deviation_is_executable_and_keeps_lingala():
     assert termination[
         "same_checksum_may_fail_at_multiple_final_checkpoints"] is False
     assert termination["holdout_max_unique_failures"] == 0
+    diagnostic = decision["servable_artifact"]["conversion_diagnostic"]
+    assert diagnostic["arms_in_fixed_order"] == [
+        "merged_pytorch_float16",
+        "ctranslate2_float16",
+        "ctranslate2_int8_float16",
+    ]
+    assert diagnostic["selection_must_not_read_holdout"] is True
+    assert diagnostic["holdout_base_must_use_same_ctranslate2_precision"] is True
+    assert diagnostic["precision_preference"] == ["int8_float16", "float16"]
+    assert diagnostic["minimum_relative_wer_gain"] == 0.15
 
 
 def test_scoped_policy_is_unreviewed_and_adds_only_the_holdout():
