@@ -1378,6 +1378,57 @@ def test_conversion_launcher_descriptor_reuses_only_checkpoint_400():
     assert d["scope_deviation_sha256"] == scope_deviation.DECISION_SHA256
 
 
+def test_spot_proof_requires_durable_operator_interruption():
+    from scripts import run_spot_resume_proof as proof
+
+    valid = {
+        "operator_interrupted": True,
+        "checkpoint_tree_sha256": "a" * 64,
+        "checkpoint_step": 100,
+        "root_volume_deleted": True,
+    }
+    proof.require_checkpoint_result(valid)
+    with pytest.raises(SystemExit, match="durable checkpoint proof"):
+        proof.require_checkpoint_result({**valid, "operator_interrupted": False})
+
+
+def test_spot_proof_requires_exact_tree_before_resume_is_accepted():
+    from scripts import run_spot_resume_proof as proof
+
+    checkpoint = {"checkpoint_tree_sha256": "a" * 64}
+    valid = {
+        "exact_checkpoint_match": True,
+        "resumed_from_tree_sha256": "a" * 64,
+        "resumed_from_step": 100,
+        "steps_completed": 200,
+        "training_finite": True,
+        "root_volume_deleted": True,
+    }
+    proof.require_resume_result(valid, checkpoint)
+    with pytest.raises(SystemExit, match="exact authorised checkpoint"):
+        proof.require_resume_result(
+            {**valid, "resumed_from_tree_sha256": "b" * 64}, checkpoint)
+
+
+def test_spot_proof_refuses_non_finite_or_incomplete_resume():
+    from scripts import run_spot_resume_proof as proof
+
+    checkpoint = {"checkpoint_tree_sha256": "a" * 64}
+    valid = {
+        "exact_checkpoint_match": True,
+        "resumed_from_tree_sha256": "a" * 64,
+        "resumed_from_step": 100,
+        "steps_completed": 200,
+        "training_finite": True,
+        "root_volume_deleted": True,
+    }
+    for change in (
+            {"steps_completed": 199}, {"training_finite": False},
+            {"root_volume_deleted": False}):
+        with pytest.raises(SystemExit, match="exact authorised checkpoint"):
+            proof.require_resume_result({**valid, **change}, checkpoint)
+
+
 class FakeECR:
     def batch_get_image(self, repositoryName, imageIds, **kwargs):
         return {"images": [{"imageId": {
