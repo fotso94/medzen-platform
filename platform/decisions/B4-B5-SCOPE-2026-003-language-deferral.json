@@ -1,0 +1,247 @@
+{
+  "record": "B4-B5-LANGUAGE-SCOPE-DEFERRAL",
+  "id": "B4-B5-SCOPE-2026-003",
+  "revision": 1,
+  "status": "owner_approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-03T21:56:32Z",
+  "decision": "Defer Lingala, Luganda and Oromo alongside the six already-deferred languages. No language remains in active training or active validation. This is a scheduling decision caused by insufficient training data and is not a quality judgement on the completed B4/B5 work.",
+  "precedence": {
+    "mode": "supersede_by_reference_for_future_scope_only",
+    "historical_records_remain_immutable": true,
+    "superseded_future_scope_sources": [
+      {
+        "path": "platform/decisions/B4-SCOPE-2026-001-language-deferral.json",
+        "sha256": "5484fab6c73be03d7cd33b55417eb03621dcd342ad4a086fd1f90ef5d62b0657"
+      },
+      {
+        "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+        "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+      }
+    ],
+    "not_amended_or_reinterpreted": [
+      "platform/decisions/B4-SCOPE-2026-001-language-deferral.json",
+      "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+      "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json",
+      "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "all B4 evidence records"
+    ]
+  },
+  "language_scope": {
+    "original_training": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "shona",
+      "swahili",
+      "yoruba"
+    ],
+    "active_training": [],
+    "original_validation": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "lingala",
+      "luganda",
+      "oromo",
+      "shona"
+    ],
+    "active_validation": [],
+    "deferred": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "shona",
+      "lingala",
+      "luganda",
+      "oromo"
+    ],
+    "inactive_not_evaluated": [
+      "hausa",
+      "igbo",
+      "pidgin",
+      "swahili",
+      "yoruba"
+    ],
+    "partition_rule": "Deferred and inactive_not_evaluated are disjoint and together exactly cover original_training; every original_validation language is deferred.",
+    "registry_entries_must_remain_discoverable": true,
+    "registry_source_deletion_permitted": false
+  },
+  "per_language_deferral": {
+    "acholi": {
+      "reason": "Acholi remains deferred after the historical small-data campaign exposed a termination failure. No new training is scheduled while the platform is completed and the available training surface remains too small for the absolute WER target.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "akan": {
+      "reason": "Akan remains deferred after the historical small-data campaign showed cap failures and WER regression. No new training is scheduled while the platform is completed and materially more data is acquired.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "amharic": {
+      "reason": "Amharic remains deferred because historical data-review and independent-evaluation gaps are unresolved and the current training surface is insufficient for a promotion-grade absolute WER result.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "ewe": {
+      "reason": "Ewe remains deferred after historical non-termination evidence on the limited training surface. No new training is scheduled while the platform is completed and materially more data is acquired.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "fula": {
+      "reason": "Fula remains deferred after historical cap-hit evidence on the limited training surface. No new training is scheduled while the platform is completed and materially more data is acquired.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "shona": {
+      "reason": "Shona remains deferred after historical scope-sensitive cap-hit evidence on the limited training surface. No new training is scheduled while the platform is completed and materially more data is acquired.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make the predeclared absolute WER gate reachable before authorizing a new campaign."
+    },
+    "lingala": {
+      "reason": "Approximately 1.6 hours of training data is insufficient against the hundreds of hours ordinarily needed to approach absolute_wer_max 0.20. The completed work showed meaningful relative improvement but is not scheduled for another training run now.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make absolute_wer_max 0.20 reachable before authorizing a new campaign."
+    },
+    "luganda": {
+      "reason": "Approximately 1.6 hours of training data is insufficient against the hundreds of hours ordinarily needed to approach absolute_wer_max 0.20. The completed work showed meaningful relative improvement but is not scheduled for another training run now.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make absolute_wer_max 0.20 reachable before authorizing a new campaign."
+    },
+    "oromo": {
+      "reason": "Approximately 1.6 hours of training data is insufficient against the hundreds of hours ordinarily needed to approach absolute_wer_max 0.20. The completed work showed meaningful relative improvement but is not scheduled for another training run now.",
+      "reactivation_condition": "Adopt a frozen evaluation set and materially more licensed training data sufficient to make absolute_wer_max 0.20 reachable before authorizing a new campaign."
+    }
+  },
+  "preserved_quality_yardsticks": {
+    "lingala_untouched_holdout": {
+      "rows": 77,
+      "candidate_wer": 0.5996,
+      "same_precision_base_wer": 0.7558,
+      "relative_gain": 0.2067,
+      "evidence": {
+        "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+        "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+      }
+    },
+    "selection_set_ctranslate2_float16": {
+      "lingala_wer": 0.7284,
+      "luganda_wer": 0.7002,
+      "oromo_wer": 0.6997,
+      "evidence": {
+        "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+        "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+      }
+    },
+    "zero_shot_base": {
+      "lingala_wer": 0.9207,
+      "luganda_wer": 1.0659,
+      "oromo_wer": 1.1749,
+      "evidence": {
+        "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+        "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+      }
+    },
+    "interpretation": "These are preserved yardsticks for future work, not promotion approval and not a reason to change absolute_wer_max 0.20."
+  },
+  "factory_capabilities": {
+    "status": "PROVEN_REUSABLE_REGARDLESS_OF_CURRENT_LANGUAGE_SCOPE",
+    "capabilities": [
+      "LoRA training",
+      "interleaved checkpoint gating",
+      "best-passing-checkpoint selection",
+      "exact Spot checkpoint resume",
+      "adapter merge",
+      "CTranslate2 conversion",
+      "post-selection holdout discipline",
+      "budget control",
+      "immutable evidence"
+    ]
+  },
+  "serving_resource_deviation": {
+    "float16_precision_deviation": "OPEN_NOT_WITHDRAWN",
+    "serving_resource_record": "OPEN_NOT_WITHDRAWN",
+    "peak_l4_gpu_memory": "NOT_MEASURED",
+    "artifact_size_is_gpu_memory_proxy": false,
+    "future_requirement": "Measure serving-resource headroom on a future production candidate before B6 concurrency sizing."
+  },
+  "b5_1_closure": {
+    "status": "CLOSED",
+    "aws_packet": "2026-001A",
+    "attachment_record": {
+      "path": "platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json",
+      "sha256": "3e64e252720bde333dcfb69ff4f28f26ee37679cac57796e464f4a3c12ecf743",
+      "status": "VERIFIED_COMPLETE"
+    },
+    "blocked_gate_report": {
+      "path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "overall": "BLOCKED",
+      "regeneration_for_this_decision_permitted": false
+    },
+    "git_identity_after_history_migration": {
+      "pre_rewrite_commit": "e03e7830d84ba422d8c418c61a0c0a0259d88339",
+      "published_master_commit": "68a09590611e6f768ee4dd0c1b185456132eacdc",
+      "commit_map": {
+        "path": "platform/evidence/GIT-HISTORY-COMMIT-MAP-2026-001.txt",
+        "sha256": "a963c746bb53f8e6e556e11f46265969707343006698c233cda48a61ad36e3a6"
+      },
+      "citation_rule": "Use published master commit 68a09590611e6f768ee4dd0c1b185456132eacdc and reference the commit map whenever the historical pre-rewrite identity is mentioned."
+    }
+  },
+  "historical_hash_lock": {
+    "platform/decisions/B4-SCOPE-2026-001-language-deferral.json": "5484fab6c73be03d7cd33b55417eb03621dcd342ad4a086fd1f90ef5d62b0657",
+    "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c",
+    "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json": "576a20823221e27744f389a925af5faf4cfca7488efcdcbbcfd1216bf7cdc208",
+    "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json": "3e64e252720bde333dcfb69ff4f28f26ee37679cac57796e464f4a3c12ecf743"
+  },
+  "executable_binding": {
+    "source": "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json",
+    "language_scope_sha256_rule": "pipeline/language_scope.py must expose the SHA-256 of this record's exact bytes as LANGUAGE_SCOPE_SHA256.",
+    "active_training_must_equal": [],
+    "active_validation_must_equal": [],
+    "deferred_must_equal": [
+      "acholi",
+      "akan",
+      "amharic",
+      "ewe",
+      "fula",
+      "shona",
+      "lingala",
+      "luganda",
+      "oromo"
+    ],
+    "inactive_not_evaluated_must_equal": [
+      "hausa",
+      "igbo",
+      "pidgin",
+      "swahili",
+      "yoruba"
+    ],
+    "empty_scope_action": "Refuse construction of base_and_preflight, sweep, final, artifactize, spot_checkpoint and spot_resume descriptors with an error naming the empty active scope.",
+    "generated_registry_source": "registry/sources.yaml",
+    "generated_registry_command": "python scripts/generate_languages.py"
+  },
+  "constraints": {
+    "training_runs_authorized": false,
+    "aws_resource_creation_authorized": false,
+    "aws_packet_2026_001b_approved": false,
+    "historical_gate_report_regeneration_authorized": false,
+    "model_registration_authorized": false,
+    "approved_artifact_publication_authorized": false,
+    "production_ssm_change_authorized": false,
+    "deployment_authorized": false,
+    "deferred_language_approved_version_must_remain_null": true
+  },
+  "next_platform_only_work": {
+    "authorized_by_this_record": false,
+    "b1_terraform": "Complete S3 zone policies, KMS, IAM/Pod Identity, EKS and the missing SSM publish path.",
+    "b6_serving": "In a separately authorized deployment, use zero-shot Whisper large-v3 as v0 to prove the ASR pod, model-loader init container, SHA-256 verification, smoke inference, startup probes and streaming contract without representing a fine-tune as production-ready.",
+    "b7_ci_cd": "Implement four pipelines against the private GitHub remote; Model and Infrastructure pipelines retain manual approval gates, and branch protection remains unavailable on the current plan."
+  }
+}
