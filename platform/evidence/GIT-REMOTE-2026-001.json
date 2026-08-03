@@ -1,0 +1,59 @@
+{
+  "record": "GIT_REMOTE_BOOTSTRAP",
+  "id": "GIT-REMOTE-2026-001",
+  "status": "CURRENT_TREE_BACKED_UP_FULL_HISTORY_MIGRATION_REQUIRED",
+  "verified_utc": "2026-08-03T21:15:25Z",
+  "repository": {
+    "provider": "GitHub",
+    "owner": "fotso94",
+    "name": "medzen-platform",
+    "url": "https://github.com/fotso94/medzen-platform",
+    "clone_url": "https://github.com/fotso94/medzen-platform.git",
+    "visibility": "private",
+    "public": false,
+    "local_remote_name": "origin"
+  },
+  "local_history": {
+    "branch": "master",
+    "head_before_remote_hygiene": "88f3bc7b5b8e485edb3d50693389bdc5760b3792",
+    "head_after_remote_hygiene": "65d47ac3765159ebd3e23b6dfb0e2b6b1d4dd634",
+    "commit_count_after_remote_hygiene": 139,
+    "normal_master_push_completed": false
+  },
+  "initial_push_refusal": {
+    "provider": "GitHub pre-receive hook",
+    "reason": "A committed Terraform provider binary exceeded GitHub's 100 MB per-file limit.",
+    "path": "infra/.terraform/providers/registry.terraform.io/hashicorp/aws/5.100.0/darwin_arm64/terraform-provider-aws_v5.100.0_x5",
+    "blob_sha1": "7cdb6eb56e757ae73907892e99c771c1de6e1c1c",
+    "blob_bytes": 679887218,
+    "introduced_by_commit": "4037be6",
+    "other_historical_blobs_at_or_above_50_mb": 0
+  },
+  "current_tree_hygiene": {
+    "commit": "65d47ac3765159ebd3e23b6dfb0e2b6b1d4dd634",
+    "terraform_working_directory_tracked": false,
+    "terraform_state_tracked": false,
+    "local_provider_file_preserved": true,
+    "local_state_file_preserved": true,
+    "gitignore_updated": true
+  },
+  "off_device_safety_snapshot": {
+    "remote_ref": "refs/heads/safety-snapshot-2026-08-03",
+    "commit": "faf35c561fe1438d080600c94da5282a32ec1ed7",
+    "parentless": true,
+    "tree_sha1": "9054b9612729c406a11e5847bf67cdfa69fcc052",
+    "tree_is_byte_identical_to_local_commit": "65d47ac3765159ebd3e23b6dfb0e2b6b1d4dd634",
+    "remote_ref_verified": true,
+    "contains_b5_engine": true,
+    "contains_b5_blocked_report": true,
+    "contains_b5_mlflow_attachment_receipt": true,
+    "contains_historical_commit_graph": false
+  },
+  "branch_protection": {
+    "requested_for_safety_snapshot": true,
+    "applied": false,
+    "provider_response": "HTTP 403: Upgrade to GitHub Pro or make this repository public to enable this feature.",
+    "repository_kept_private": true
+  },
+  "required_next_decision": "Owner authorization is required before rewriting governed commit identities to remove infra/.terraform from all historical commits."
+}
