@@ -1,0 +1,76 @@
+{
+  "record": "B5_AWS_CHANGE_AUTHORIZATION",
+  "id": "B5-AWS-AUTH-2026-001A",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_utc": "2026-08-03T20:54:17Z",
+  "authorization_source": "Owner message: Approve B5 AWS packet 2026-001A only and proceed.",
+  "authorized_by_role": "platform-owner",
+  "packet": {
+    "path": "platform/decisions/B5-AWS-CHANGE-PACKET-2026-001.md",
+    "sha256": "c361abebac8491c1e41994309bb317c6681937206b13be1f1b7be82df3b765da",
+    "approved_part": "2026-001A",
+    "unapproved_part": "2026-001B"
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit": "e03e7830d84ba422d8c418c61a0c0a0259d88339",
+    "commit_count": 136,
+    "clean_worktree_before_record": true,
+    "configured_remotes": 0
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "verified_caller": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "approved_operations": [
+    "mlflow_blocked_report_attachment"
+  ],
+  "source_snapshot": {
+    "bucket": "medzen-speech",
+    "key": "mlflow/snapshots/b4-scoped-count-tolerance-61145b7/attempt-5/conversion-diagnostic/mlflow.db",
+    "version_id": "MJxldbvfXM3MlXOQWWEU5.b1MU1VUGgL",
+    "bytes": 790528,
+    "sha256": "ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545",
+    "must_remain_unchanged": true
+  },
+  "gate_report": {
+    "path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+    "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "outcome": "BLOCKED",
+    "target_mlflow_run_id": "94639149aa074000a1f0215ccebade8b"
+  },
+  "approved_writes": [
+    "s3://medzen-speech/mlflow/artifacts/94639149aa074000a1f0215ccebade8b/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+    "s3://medzen-speech/mlflow/snapshots/b4-scoped-count-tolerance-61145b7/attempt-5/b5-blocked-gate-report/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30/mlflow.db"
+  ],
+  "write_controls": {
+    "if_none_match": "*",
+    "server_side_encryption": "aws:kms",
+    "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "content_addressed": true,
+    "overwrite_permitted": false
+  },
+  "prohibited_operations": [
+    "kms_or_iam_resource_creation_from_packet_2026_001B",
+    "model_registration",
+    "model_version_creation",
+    "mlflow_stage_transition",
+    "approved_asr_write",
+    "language_artifact_change",
+    "language_approved_version_change",
+    "production_ssm_change",
+    "deployment",
+    "b6_transition"
+  ],
+  "required_postconditions": {
+    "registered_models": 0,
+    "model_versions": 0,
+    "approved_asr_writes": 0,
+    "production_ssm_writes": 0,
+    "deployments": 0,
+    "b6_status": "BLOCKED"
+  }
+}
