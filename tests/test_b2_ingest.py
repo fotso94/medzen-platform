@@ -347,6 +347,12 @@ def test_language_generation_is_idempotent_and_preserves_earned_state(tmp_path):
     work = tmp_path / "repo"
     for sub in ("scripts", "registry"):
         shutil.copytree(ROOT / sub, work / sub)
+    decision_dir = work / "platform" / "decisions"
+    decision_dir.mkdir(parents=True)
+    shutil.copy2(
+        ROOT / "platform/decisions/"
+        "B4-B5-SCOPE-2026-003-language-deferral.json",
+        decision_dir / "B4-B5-SCOPE-2026-003-language-deferral.json")
     gen = work / "scripts" / "generate_languages.py"
     reg = work / "registry" / "languages"
 

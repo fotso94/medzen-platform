@@ -19,15 +19,15 @@ candidate_evidence:
     sha256: a4c13469a4b8c4cd3f9ddf44f99017fcabbe19fbcde59be0e54be7e901c10aad
 
 promotion_languages:
-  measured: [lingala, luganda, oromo]
+  measured: []
   not_evaluated: [hausa, igbo, pidgin, swahili, yoruba]
-  deferred: [acholi, akan, amharic, ewe, fula, shona]
+  deferred: [acholi, akan, amharic, ewe, fula, shona, lingala, luganda, oromo]
   not_applicable: [wolof]
 
 decision_references:
   active_and_deferred_scope:
-    path: platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
-    sha256: cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c
+    path: platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
+    sha256: 31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc
   unevaluated_gate_matrix:
     path: platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json
     sha256: c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd

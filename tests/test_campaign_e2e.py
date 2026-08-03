@@ -22,9 +22,28 @@ sys.path.insert(0, str(ROOT))
 from pipeline import (budget, campaign, language_scope, mlflow_sync,
                       orchestrate, scope_deviation)  # noqa: E402
 
-LANGS = orchestrate.VALIDATION_LANGUAGES
+HISTORICAL_TRAINING = (
+    "hausa", "igbo", "lingala", "luganda", "oromo",
+    "pidgin", "swahili", "yoruba",
+)
+HISTORICAL_VALIDATION = ("lingala", "luganda", "oromo")
+HISTORICAL_DEFERRED = ("acholi", "akan", "amharic", "ewe", "fula", "shona")
+LANGS = HISTORICAL_VALIDATION
 POLICY_SHA = "a" * 64
 EXCL_SHA = "e" * 64
+
+
+@pytest.fixture(autouse=True)
+def historical_factory_scope(monkeypatch):
+    """Exercise proven B4 factory behavior without reopening live scope."""
+    monkeypatch.setattr(
+        language_scope, "TRAINING_LANGUAGES", HISTORICAL_TRAINING)
+    monkeypatch.setattr(
+        language_scope, "VALIDATION_LANGUAGES", HISTORICAL_VALIDATION)
+    monkeypatch.setattr(
+        language_scope, "DEFERRED_LANGUAGES", HISTORICAL_DEFERRED)
+    monkeypatch.setattr(
+        orchestrate, "VALIDATION_LANGUAGES", HISTORICAL_VALIDATION)
 
 
 class FakeS3:

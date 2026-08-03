@@ -19,6 +19,10 @@ from pipeline import language_scope, scope_deviation
 STAGES = ("base_and_preflight", "sweep", "final", "artifactize",
           "spot_checkpoint", "spot_resume", "diagnostic",
           "decode_compatibility")
+TRAINING_STAGES = (
+    "base_and_preflight", "sweep", "final", "artifactize",
+    "spot_checkpoint", "spot_resume",
+)
 
 # Every field is required. A descriptor missing one is not a weaker
 # descriptor -- it is an unanswered question about what the instance will do.
@@ -52,6 +56,14 @@ def _lower_hex(value, size: int) -> bool:
 
 def build(**kw) -> dict:
     """Assemble and validate. Refuses anything incomplete or contradictory."""
+    if (kw.get("stage") in TRAINING_STAGES
+            and (not language_scope.TRAINING_LANGUAGES
+                 or not language_scope.VALIDATION_LANGUAGES)):
+        raise SystemExit(
+            "REFUSING: active language scope is empty; training-stage "
+            f"descriptor {kw.get('stage')!r} is disabled "
+            f"(active_training={list(language_scope.TRAINING_LANGUAGES)}, "
+            f"active_validation={list(language_scope.VALIDATION_LANGUAGES)})")
     missing = [k for k in REQUIRED if k not in kw]
     if missing:
         raise SystemExit(f"REFUSING: stage descriptor is missing {missing}")

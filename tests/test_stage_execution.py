@@ -31,6 +31,26 @@ from pipeline.decode_compatibility import (
     strategy_kwargs)
 from pipeline.validation_runner import ValidationRuntime
 
+HISTORICAL_TRAINING = (
+    "hausa", "igbo", "lingala", "luganda", "oromo",
+    "pidgin", "swahili", "yoruba",
+)
+HISTORICAL_VALIDATION = ("lingala", "luganda", "oromo")
+HISTORICAL_DEFERRED = ("acholi", "akan", "amharic", "ewe", "fula", "shona")
+
+
+@pytest.fixture(autouse=True)
+def historical_factory_scope(monkeypatch):
+    """Exercise proven B4 factory behavior without reopening live scope."""
+    monkeypatch.setattr(
+        language_scope, "TRAINING_LANGUAGES", HISTORICAL_TRAINING)
+    monkeypatch.setattr(
+        language_scope, "VALIDATION_LANGUAGES", HISTORICAL_VALIDATION)
+    monkeypatch.setattr(
+        language_scope, "DEFERRED_LANGUAGES", HISTORICAL_DEFERRED)
+    monkeypatch.setattr(
+        orchestrate, "VALIDATION_LANGUAGES", HISTORICAL_VALIDATION)
+
 
 def clean_termination_evidence():
     row_counts = {"lingala": 35, "luganda": 53, "oromo": 35}
@@ -124,6 +144,10 @@ def test_trainer_image_contains_runtime_governance_records():
     dockerfile = (ROOT / "pipeline/Dockerfile.trainer").read_text()
     assert "DQ-2026-004-policy-deferral-scoped.json" in dockerfile
     assert "B4-SCOPE-2026-001-language-deferral.json" in dockerfile
+    assert "B4-B5-SCOPE-2026-003-language-deferral.json" in dockerfile
+    assert "B5-AUTH-2026-001-refusal-engineering.json" in dockerfile
+    assert "B5-MLFLOW-ATTACHMENT-2026-001A.json" in dockerfile
+    assert "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json" in dockerfile
     assert "VAL-2026-001-frozen-validation-sets.json" in dockerfile
 
 

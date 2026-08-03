@@ -11,6 +11,10 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
+HISTORICAL_REPORT = (
+    ROOT / "platform/evidence/b5/gate-reports/"
+    "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json"
+)
 sys.path.insert(0, str(ROOT))
 
 from pipeline.b5_gates import (
@@ -56,12 +60,22 @@ def report() -> dict:
     return evaluate_current_artifact()
 
 
+@pytest.fixture(scope="module")
+def historical_report() -> dict:
+    raw = HISTORICAL_REPORT.read_bytes()
+    assert hashlib.sha256(raw).hexdigest() == (
+        "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30")
+    return json.loads(raw)
+
+
 def test_exactly_five_gate_states_are_supported(report):
     assert {state.value for state in GateState} == {
         "PASS", "FAIL", "NOT_EVALUATED", "DEFERRED", "NOT_APPLICABLE"}
     observed = set(report["gate_state_counts"])
     assert observed == {state.value for state in GateState}
-    assert all(report["gate_state_counts"][state.value] > 0 for state in GateState)
+    assert report["gate_state_counts"]["FAIL"] == 0
+    assert report["gate_state_counts"]["DEFERRED"] > 0
+    assert report["gate_state_counts"]["NOT_EVALUATED"] > 0
 
 
 def test_unknown_state_fails_closed():
@@ -120,16 +134,18 @@ def test_git_commit_resolves_without_git_binary(monkeypatch):
 
 
 @pytest.mark.parametrize("language", ["lingala", "luganda", "oromo"])
-def test_absolute_wer_failure_cannot_be_overridden_by_relative_gain(report, language):
-    gates = _gates(report, language)
+def test_preserved_absolute_wer_failure_cannot_be_overridden_by_relative_gain(
+        historical_report, language):
+    gates = _gates(historical_report, language)
     assert gates["asr.relative_wer_gain"]["state"] == "PASS"
     assert gates["asr.absolute_wer"]["state"] == "FAIL"
     assert gates["asr.absolute_wer"]["threshold"]["value"] == 0.20
-    assert report["languages"][language]["state"] == "FAIL"
+    assert historical_report["languages"][language]["state"] == "FAIL"
 
 
-def test_untouched_lingala_holdout_is_also_absolute_wer_fail(report):
-    gates = _gates(report, "lingala")
+def test_preserved_untouched_lingala_holdout_is_absolute_wer_fail(
+        historical_report):
+    gates = _gates(historical_report, "lingala")
     assert gates["asr.untouched_holdout.relative_wer_gain"]["state"] == "PASS"
     assert gates["asr.untouched_holdout.absolute_wer"]["state"] == "FAIL"
     assert gates["termination.untouched_lingala_holdout"]["state"] == "PASS"
@@ -142,14 +158,18 @@ def test_unevaluated_languages_are_neither_fail_nor_pass(report, language):
         "NOT_EVALUATED")
 
 
-@pytest.mark.parametrize("language", ["acholi", "akan", "amharic", "ewe", "fula", "shona"])
+@pytest.mark.parametrize("language", [
+    "acholi", "akan", "amharic", "ewe", "fula", "shona",
+    "lingala", "luganda", "oromo",
+])
 def test_deferred_languages_keep_reason_and_decision_reference(report, language):
     row = _gates(report, language)["promotion_scope"]
     assert report["languages"][language]["state"] == "DEFERRED"
     assert row["state"] == "DEFERRED"
     assert "deferred" in row["reason"].lower()
+    assert "reactivation condition" in row["reason"].lower()
     assert row["evidence"][0]["path"].endswith(
-        "B4-SCOPE-2026-002-simplified-exit.json")
+        "B4-B5-SCOPE-2026-003-language-deferral.json")
 
 
 def test_global_replay_and_code_switch_are_not_evaluated(report):
@@ -173,8 +193,9 @@ def test_no_current_production_is_not_applicable_only_when_proven(report, langua
 
 def test_decode_strategy_fails_closed_without_unique_b4_evidence(report):
     for language in ("lingala", "luganda", "oromo"):
-        assert _gates(report, language)["decode_strategy"]["state"] == (
-            "NOT_EVALUATED")
+        assert report["languages"][language]["state"] == "DEFERRED"
+        assert _gates(report, language)["promotion_scope"]["state"] == (
+            "DEFERRED")
     approvals = yaml.safe_load((ROOT / "registry/decode-approvals/v1.yaml").read_text())
     assert approvals["languages"]["pidgin"]["promotion_state"] == "NOT_EVALUATED"
     assert approvals["languages"]["pidgin"][
@@ -235,6 +256,26 @@ def test_generated_language_yaml_is_regenerated_from_sources():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_generated_scope_keeps_nine_deferred_and_five_not_evaluated():
+    deferred = {
+        "acholi", "akan", "amharic", "ewe", "fula", "shona",
+        "lingala", "luganda", "oromo",
+    }
+    not_evaluated = {"hausa", "igbo", "pidgin", "swahili", "yoruba"}
+    for language in deferred | not_evaluated:
+        doc = yaml.safe_load(
+            (ROOT / f"registry/languages/{language}.yaml").read_text())
+        want = "DEFERRED" if language in deferred else "NOT_EVALUATED"
+        assert doc["b4_b5_scope"]["promotion_state"] == want
+    sources = yaml.safe_load((ROOT / "registry/sources.yaml").read_text())
+    assert set(sources["scope"]) == {
+        "swahili", "hausa", "yoruba", "amharic", "oromo", "igbo",
+        "lingala", "shona", "wolof", "fula", "pidgin", "akan", "ewe",
+        "luganda", "acholi", "english", "french",
+    }
+    assert set(sources["scope"]) <= set(sources["languages"])
+
+
 def test_artifact_and_approved_version_remain_unchanged_and_empty():
     for path in (ROOT / "registry/languages").glob("*.yaml"):
         lang = yaml.safe_load(path.read_text())
@@ -243,8 +284,13 @@ def test_artifact_and_approved_version_remain_unchanged_and_empty():
 
 
 def test_deterministic_gate_report_hash_is_identical_twice(tmp_path):
-    first = write_content_addressed_report(evaluate_current_artifact(), tmp_path)
-    second = write_content_addressed_report(evaluate_current_artifact(), tmp_path)
+    synthetic = {
+        "schema_version": "writer-test-only",
+        "overall": "BLOCKED",
+        "reason": "Tests content addressing without regenerating B5.1 evidence.",
+    }
+    first = write_content_addressed_report(synthetic, tmp_path)
+    second = write_content_addressed_report(synthetic, tmp_path)
     assert first["sha256"] == second["sha256"]
     assert first["created"] is True and second["created"] is False
     assert Path(first["path"]).read_bytes() == Path(second["path"]).read_bytes()

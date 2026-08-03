@@ -8,6 +8,7 @@
     "alias",
     "iso_code",
     "status",
+    "b4_b5_scope",
     "asr",
     "llm",
     "tts",
@@ -41,6 +42,39 @@
         "suspended"
       ],
       "description": "declared = named only. in_development = data/training under way. gated = passed gates, awaiting approval. production = live. suspended = pulled."
+    },
+    "b4_b5_scope": {
+      "type": "object",
+      "required": [
+        "decision_ref",
+        "decision_sha256",
+        "training_state",
+        "validation_state",
+        "promotion_state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "decision_ref": {
+          "type": "string",
+          "const": "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json"
+        },
+        "decision_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "training_state": {
+          "type": "string",
+          "enum": ["ACTIVE", "INACTIVE", "DEFERRED", "NOT_APPLICABLE"]
+        },
+        "validation_state": {
+          "type": "string",
+          "enum": ["ACTIVE", "INACTIVE", "DEFERRED", "NOT_APPLICABLE"]
+        },
+        "promotion_state": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "NOT_EVALUATED", "DEFERRED", "NOT_APPLICABLE"]
+        }
+      }
     },
     "asr": {
       "type": "object",

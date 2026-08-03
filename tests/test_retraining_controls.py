@@ -18,9 +18,16 @@ sys.path.insert(0, str(ROOT))
 from pipeline import budget, orchestrate, scope_deviation, smoke   # noqa: E402
 from pipeline import generation as G                               # noqa: E402
 
-LANGS = orchestrate.VALIDATION_LANGUAGES
+# These tests exercise the already-proven historical three-language factory
+# controls. The live schedule is deliberately empty under B4-B5-SCOPE-2026-003.
+LANGS = ("lingala", "luganda", "oromo")
 TARGET = LANGS[-1]
 POLICY3 = ROOT / "platform/decisions/DQ-2026-003-policy-deferral-corrected.json"
+
+
+@pytest.fixture(autouse=True)
+def historical_validation_surface(monkeypatch):
+    monkeypatch.setattr(orchestrate, "VALIDATION_LANGUAGES", LANGS)
 
 
 def wers(**over):

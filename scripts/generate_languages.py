@@ -8,7 +8,7 @@ matrix, so a language cannot claim a capability no dataset provides.
     python scripts/generate_languages.py [--check]
 """
 from __future__ import annotations
-import argparse, sys
+import argparse, hashlib, sys
 from pathlib import Path
 import yaml
 
@@ -78,7 +78,36 @@ def decode_strategy_for(alias: str, approvals: dict) -> dict:
     }
 
 
-def build(alias: str, e: dict, ds: dict, approvals: dict) -> dict:
+def scope_for(alias: str, current: dict) -> dict:
+    """Resolve generated current-scope metadata from the versioned source."""
+    active_training = set(current["active_training"])
+    active_validation = set(current["active_validation"])
+    deferred = set(current["deferred"])
+    inactive = set(current["inactive_not_evaluated"])
+    not_applicable = set(current["promotion_not_applicable"])
+    if alias in deferred:
+        training_state = validation_state = promotion_state = "DEFERRED"
+    elif alias in inactive:
+        training_state = validation_state = "INACTIVE"
+        promotion_state = "NOT_EVALUATED"
+    elif alias in not_applicable:
+        training_state = validation_state = "NOT_APPLICABLE"
+        promotion_state = "NOT_APPLICABLE"
+    else:
+        training_state = "ACTIVE" if alias in active_training else "INACTIVE"
+        validation_state = "ACTIVE" if alias in active_validation else "INACTIVE"
+        promotion_state = "NOT_EVALUATED"
+    return {
+        "decision_ref": current["decision_ref"],
+        "decision_sha256": current["decision_sha256"],
+        "training_state": training_state,
+        "validation_state": validation_state,
+        "promotion_state": promotion_state,
+    }
+
+
+def build(alias: str, e: dict, ds: dict, approvals: dict,
+          current_scope: dict) -> dict:
     asr_srcs, tts_srcs = e.get("asr", []), e.get("tts", [])
     all_srcs = sorted(set(asr_srcs) | set(tts_srcs))
     lic = {s: licence_for(s, ds) for s in all_srcs}
@@ -88,6 +117,7 @@ def build(alias: str, e: dict, ds: dict, approvals: dict) -> dict:
         "iso_code": e["iso"],
         "display_name": e.get("name", alias.title()),
         "status": "declared",
+        "b4_b5_scope": scope_for(alias, current_scope),
         "capabilities": {
             "asr": {"available": bool(asr_srcs), "sources": asr_srcs},
             "tts": {"available": bool(tts_srcs), "sources": tts_srcs},
@@ -144,6 +174,41 @@ def main() -> int:
     a = ap.parse_args()
     src = yaml.safe_load(SRC.read_text())
     ds, langs, scope = src["datasets"], src["languages"], src["scope"]
+    current_scope = src.get("b4_b5_scope") or {}
+    required_scope_fields = {
+        "decision_ref", "decision_sha256", "active_training",
+        "active_validation", "deferred", "inactive_not_evaluated",
+        "promotion_not_applicable",
+    }
+    if set(current_scope) != required_scope_fields:
+        raise SystemExit("REFUSING: b4_b5_scope fields are incomplete or unknown")
+    decision_path = ROOT / current_scope["decision_ref"]
+    try:
+        decision_sha = hashlib.sha256(decision_path.read_bytes()).hexdigest()
+    except OSError as exc:
+        raise SystemExit(f"REFUSING: scope decision is unreadable: {exc}")
+    if decision_sha != current_scope["decision_sha256"]:
+        raise SystemExit("REFUSING: generated scope decision hash differs")
+    scope_groups = []
+    for field in (
+            "active_training", "active_validation", "deferred",
+            "inactive_not_evaluated", "promotion_not_applicable"):
+        value = current_scope[field]
+        if (not isinstance(value, list)
+                or any(not isinstance(alias, str) or not alias for alias in value)
+                or len(set(value)) != len(value)):
+            raise SystemExit(f"REFUSING: b4_b5_scope {field} is malformed")
+        if field not in {"active_training", "active_validation"}:
+            scope_groups.append(set(value))
+    if current_scope["active_training"] or current_scope["active_validation"]:
+        raise SystemExit("REFUSING: current active training/validation is not empty")
+    flattened: set[str] = set()
+    for group in scope_groups:
+        if flattened & group:
+            raise SystemExit("REFUSING: b4_b5_scope disposition groups overlap")
+        flattened |= group
+    if flattened != set(scope):
+        raise SystemExit("REFUSING: b4_b5_scope does not cover registry scope")
     approvals = yaml.safe_load(DECODE_APPROVALS.read_text()) or {}
     if approvals.get("version") != "decode-approval-v1":
         raise SystemExit("REFUSING: unknown decode approval source version")
@@ -154,7 +219,7 @@ def main() -> int:
             print(f"FAIL scope names '{alias}' which is not in languages", file=sys.stderr)
             return 1
         files[OUT / f"{alias}.yaml"] = BANNER + yaml.dump(
-            build(alias, langs[alias], ds, approvals), sort_keys=False,
+            build(alias, langs[alias], ds, approvals, current_scope), sort_keys=False,
             allow_unicode=True, width=88)
         g = GATES / f"{alias}-v1.yaml"
         if not g.exists() or args_regen(g):

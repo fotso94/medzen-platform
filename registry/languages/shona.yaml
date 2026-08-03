@@ -4,6 +4,12 @@ alias: shona
 iso_code: sna
 display_name: Shona
 status: declared
+b4_b5_scope:
+  decision_ref: platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
+  decision_sha256: 31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc
+  training_state: DEFERRED
+  validation_state: DEFERRED
+  promotion_state: DEFERRED
 capabilities:
   asr:
     available: true

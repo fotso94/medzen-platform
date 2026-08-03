@@ -81,6 +81,14 @@ COPY platform/decisions/B4-SCOPE-2026-001-language-deferral.json \
      ./platform/decisions/B4-SCOPE-2026-001-language-deferral.json
 COPY platform/decisions/B4-SCOPE-2026-002-simplified-exit.json \
      ./platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
+COPY platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json \
+     ./platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
+COPY platform/decisions/B5-AUTH-2026-001-refusal-engineering.json \
+     ./platform/decisions/B5-AUTH-2026-001-refusal-engineering.json
+COPY platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json \
+     ./platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json
+COPY platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json \
+     ./platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json
 COPY platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json \
      ./platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json
 COPY platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json \

@@ -149,3 +149,32 @@ scope:
   # the general-speech replay languages that keep the multilingual mix honest.
   - english
   - french
+
+# CURRENT B4/B5 SCHEDULING AND PROMOTION DISPOSITION. No entry above is
+# removed when a language is deferred. Generated registry files surface this
+# state, while the owner decision remains the executable authority.
+b4_b5_scope:
+  decision_ref: platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
+  decision_sha256: 31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc
+  active_training: []
+  active_validation: []
+  deferred:
+    - acholi
+    - akan
+    - amharic
+    - ewe
+    - fula
+    - shona
+    - lingala
+    - luganda
+    - oromo
+  inactive_not_evaluated:
+    - hausa
+    - igbo
+    - pidgin
+    - swahili
+    - yoruba
+  promotion_not_applicable:
+    - wolof
+    - english
+    - french
