@@ -13,6 +13,8 @@ SCHEMA_VERSION = "medzen-signed-promotion-manifest-v1"
 CANONICALIZATION = "medzen-canonical-json-v1"
 SIGNING_ALGORITHM = "RSASSA_PSS_SHA_256"
 MESSAGE_TYPE = "DIGEST"
+PROMOTION_SIGNATURE_PURPOSE = "B5_PROMOTION"
+DRY_RUN_SIGNATURE_PURPOSE = "B5_DRY_RUN_NON_PROMOTABLE"
 
 REQUIRED_BINDINGS = (
     "artifact.tree_sha256",
@@ -81,11 +83,20 @@ def validate_manifest(manifest: dict[str, Any], *, require_pass: bool = True) ->
         raise FailClosedError("unknown manifest canonicalization")
     for binding in REQUIRED_BINDINGS:
         _path_value(manifest, binding)
-    if require_pass and manifest.get("decision", {}).get("outcome") != "PASS":
-        raise FailClosedError("promotion manifest must bind a signed PASS decision")
-    if manifest.get("artifact", {}).get("destination_prefix", "").startswith(
-            "s3://medzen-speech/approved/asr/") is False:
-        raise FailClosedError("promotion destination must be under approved/asr/")
+    outcome = manifest.get("decision", {}).get("outcome")
+    destination = manifest.get("artifact", {}).get("destination_prefix", "")
+    if require_pass:
+        if outcome != "PASS":
+            raise FailClosedError("promotion manifest must bind a signed PASS decision")
+        if not destination.startswith("s3://medzen-speech/approved/asr/"):
+            raise FailClosedError("promotion destination must be under approved/asr/")
+        _validate_production_bindings(manifest)
+    else:
+        if outcome != "BLOCKED":
+            raise FailClosedError("dry-run manifest must remain BLOCKED")
+        if not destination.startswith(
+                "s3://medzen-speech/candidates/b5-dry-run/"):
+            raise FailClosedError("dry-run destination must be under candidates/b5-dry-run/")
     frozen = manifest["evaluations"]["frozen_manifests"]
     if not isinstance(frozen, list) or not frozen:
         raise FailClosedError("at least one frozen evaluation manifest is required")
@@ -93,6 +104,31 @@ def validate_manifest(manifest: dict[str, Any], *, require_pass: bool = True) ->
         if not isinstance(row, dict) or not row.get("path") or not row.get("sha256"):
             raise FailClosedError(f"frozen evaluation binding {index} is incomplete")
     _validate_json_domain(manifest)
+
+
+def _validate_production_bindings(manifest: dict[str, Any]) -> None:
+    hashes = (
+        "artifact.tree_sha256", "artifact.adapter_sha256",
+        "artifact.adapter_tree_sha256", "dataset.fingerprint",
+        "dataset.adoption_record.sha256", "evaluations.gate_report.sha256",
+        "evaluations.lingala_holdout.sha256", "provenance.bundle_sha256",
+        "provenance.spot_resume_evidence.sha256",
+    )
+    for binding in hashes:
+        value = _path_value(manifest, binding)
+        if (not isinstance(value, str) or len(value) != 64
+                or any(c not in "0123456789abcdef" for c in value)):
+            raise FailClosedError(f"manifest binding {binding} is not SHA-256")
+    image = _path_value(manifest, "provenance.container_image_digest")
+    if not isinstance(image, str) or not image.startswith("sha256:"):
+        raise FailClosedError("container image digest is malformed")
+    for binding in ("artifact.base_model_revision", "artifact.tokenizer_revision",
+                    "artifact.processor_revision"):
+        if not isinstance(_path_value(manifest, binding), str):
+            raise FailClosedError(f"manifest binding {binding} is not an exact revision")
+    decode = _path_value(manifest, "decode.configuration")
+    if not isinstance(decode, dict) or decode.get("state") == "NOT_EVALUATED":
+        raise FailClosedError("decode configuration is not promotion-grade")
 
 
 def canonical_manifest_bytes(manifest: dict[str, Any], *, require_pass: bool = True) -> bytes:
@@ -106,11 +142,11 @@ def manifest_digest(manifest: dict[str, Any], *, require_pass: bool = True) -> b
         manifest, require_pass=require_pass)).digest()
 
 
-def sign_manifest(kms_client: Any, manifest: dict[str, Any], key_arn: str) -> dict:
-    """Call real KMS Sign; callers provide either boto3 KMS or a strict test fake."""
+def _sign(kms_client: Any, manifest: dict[str, Any], key_arn: str, *,
+          require_pass: bool, purpose: str) -> dict:
     if not key_arn.startswith("arn:aws:kms:"):
         raise FailClosedError("signing requires the exact asymmetric KMS key ARN")
-    digest = manifest_digest(manifest)
+    digest = manifest_digest(manifest, require_pass=require_pass)
     response = kms_client.sign(
         KeyId=key_arn, Message=digest, MessageType=MESSAGE_TYPE,
         SigningAlgorithm=SIGNING_ALGORITHM)
@@ -121,6 +157,7 @@ def sign_manifest(kms_client: Any, manifest: dict[str, Any], key_arn: str) -> di
     if not isinstance(signature, (bytes, bytearray)) or not signature:
         raise FailClosedError("KMS returned no signature bytes")
     return {
+        "purpose": purpose,
         "key_arn": key_arn,
         "signing_algorithm": SIGNING_ALGORITHM,
         "message_type": MESSAGE_TYPE,
@@ -131,7 +168,23 @@ def sign_manifest(kms_client: Any, manifest: dict[str, Any], key_arn: str) -> di
     }
 
 
-def verify_manifest(kms_client: Any, manifest: dict[str, Any], envelope: dict) -> bool:
+def sign_manifest(kms_client: Any, manifest: dict[str, Any], key_arn: str) -> dict:
+    """Call real KMS Sign for a promotion-grade signed PASS manifest."""
+    return _sign(kms_client, manifest, key_arn, require_pass=True,
+                 purpose=PROMOTION_SIGNATURE_PURPOSE)
+
+
+def sign_dry_run_manifest(kms_client: Any, manifest: dict[str, Any],
+                          key_arn: str) -> dict:
+    """Sign only a BLOCKED candidate-prefix manifest for path testing."""
+    return _sign(kms_client, manifest, key_arn, require_pass=False,
+                 purpose=DRY_RUN_SIGNATURE_PURPOSE)
+
+
+def _verify(kms_client: Any, manifest: dict[str, Any], envelope: dict, *,
+            require_pass: bool, purpose: str) -> bool:
+    if envelope.get("purpose") != purpose:
+        return False
     key_arn = envelope.get("key_arn")
     if not isinstance(key_arn, str) or not key_arn.startswith("arn:aws:kms:"):
         return False
@@ -143,7 +196,10 @@ def verify_manifest(kms_client: Any, manifest: dict[str, Any], envelope: dict) -
         return False
     if envelope.get("signature_encoding") != "base64":
         return False
-    digest = manifest_digest(manifest)
+    try:
+        digest = manifest_digest(manifest, require_pass=require_pass)
+    except FailClosedError:
+        return False
     if envelope.get("manifest_sha256") != digest.hex():
         return False
     try:
@@ -154,6 +210,103 @@ def verify_manifest(kms_client: Any, manifest: dict[str, Any], envelope: dict) -
     except Exception:
         return False
     return response.get("KeyId") == key_arn and response.get("SignatureValid") is True
+
+
+def verify_manifest(kms_client: Any, manifest: dict[str, Any], envelope: dict) -> bool:
+    return _verify(kms_client, manifest, envelope, require_pass=True,
+                   purpose=PROMOTION_SIGNATURE_PURPOSE)
+
+
+def verify_dry_run_manifest(kms_client: Any, manifest: dict[str, Any],
+                            envelope: dict) -> bool:
+    return _verify(kms_client, manifest, envelope, require_pass=False,
+                   purpose=DRY_RUN_SIGNATURE_PURPOSE)
+
+
+def build_current_artifact_dry_run_manifest(report: dict[str, Any],
+                                            report_path: Path,
+                                            root: Path) -> dict[str, Any]:
+    """Bind the current refusal, including evidence gaps, without promotion."""
+    if report.get("overall") != "BLOCKED":
+        raise FailClosedError("current-artifact dry-run requires a BLOCKED report")
+    report_sha = sha256_file(report_path)
+    if report_path.stem != report_sha:
+        raise FailClosedError("gate report filename is not its content address")
+    candidate = report["candidate"]
+    conversion = json.loads((root / "platform/evidence/CAMPAIGNRUN-2026-013-passed.json").read_bytes())
+    source = json.loads((root / "platform/evidence/CAMPAIGNRUN-2026-012-failed.json").read_bytes())
+    auth = json.loads((root / "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json").read_bytes())
+    mlflow = json.loads((root / "platform/evidence/B5-MLFLOW-RUN-RESOLUTION-2026-001.json").read_bytes())
+    val_path = root / "platform/evidence/VAL-2026-001-frozen-validation-sets.json"
+    holdout_path = root / "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json"
+    spot_path = root / "platform/evidence/CAMPAIGNRUN-2026-014-passed.json"
+    scope_path = root / "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json"
+    missing_adoption_hash = {
+        "state": "NOT_EVALUATED",
+        "reason": "Exact adoption-object body SHA-256 is absent from immutable B4 evidence.",
+    }
+    def evidence_path(path: Path) -> str:
+        try:
+            return str(path.relative_to(root))
+        except ValueError:
+            return str(path)
+
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "canonicalization": CANONICALIZATION,
+        "decision": {
+            "outcome": "BLOCKED",
+            "purpose": DRY_RUN_SIGNATURE_PURPOSE,
+            "gate_report_sha256": report_sha,
+        },
+        "artifact": {
+            "tree_sha256": candidate["artifact_tree_sha256"],
+            "base_model_revision": "openai/whisper-large-v3@06f233fe06e710322aca913c1bc4249a0d71fce1",
+            "tokenizer_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+            "processor_revision": {
+                "state": "NOT_EVALUATED",
+                "reason": "An exact processor revision is not separately bound by B4 evidence.",
+            },
+            "precision": candidate["precision"],
+            "selected_checkpoint": candidate["selected_checkpoint"],
+            "adapter_sha256": source["source_training"]["adapter_sha256"],
+            "adapter_tree_sha256": candidate["adapter_tree_sha256"],
+            "destination_prefix": (
+                "s3://medzen-speech/candidates/b5-dry-run/"
+                f"{candidate['artifact_tree_sha256']}/"),
+        },
+        "dataset": {
+            "fingerprint": "eed56700ceadd37ac1513e49cd1798a6cddc20b46c90d2a9b2ed6b439685769e",
+            "adoption_record": {
+                "path": "s3://medzen-speech/curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R3.json",
+                "sha256": missing_adoption_hash,
+            },
+        },
+        "evaluations": {
+            "frozen_manifests": [{"path": evidence_path(val_path),
+                                   "sha256": sha256_file(val_path)}],
+            "gate_report": {"path": evidence_path(report_path),
+                            "sha256": report_sha},
+            "lingala_holdout": {"path": evidence_path(holdout_path),
+                                "sha256": sha256_file(holdout_path)},
+        },
+        "provenance": {
+            "git_commit": report["engine"]["git_commit"],
+            "bundle_sha256": conversion["executed_provenance"]["bundle_tar_sha256"],
+            "container_image_digest": conversion["executed_provenance"]["image_digest"],
+            "spot_resume_evidence": {"path": evidence_path(spot_path),
+                                     "sha256": sha256_file(spot_path)},
+        },
+        "decode": {"configuration": {
+            "state": "NOT_EVALUATED",
+            "reason": "No promotion-grade decode configuration is uniquely supported by B4 evidence.",
+        }},
+        "scope": {"deviations": [{"path": evidence_path(scope_path),
+                                    "sha256": sha256_file(scope_path)}]},
+        "mlflow": {"run_id": mlflow["attachment_rule"]["target_run_id"]},
+        "approval": {"identity": f"{auth['id']}/{auth['authorized_by_role']}",
+                     "timestamp_utc": auth["authorized_utc"]},
+    }
 
 
 def write_dry_run_manifest(manifest: dict[str, Any], directory: Path) -> dict:

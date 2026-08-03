@@ -30,14 +30,19 @@ from pipeline.b5_gates import (
 )
 from pipeline.b5_promotion import (
     CANONICALIZATION,
+    DRY_RUN_SIGNATURE_PURPOSE,
     SCHEMA_VERSION,
     SIGNING_ALGORITHM,
     attach_blocked_report_to_mlflow,
+    build_current_artifact_dry_run_manifest,
     canonical_manifest_bytes,
     promotion_preflight,
     sign_manifest,
+    sign_dry_run_manifest,
     ssm_dry_run_plan,
     verify_manifest,
+    verify_dry_run_manifest,
+    write_dry_run_manifest,
 )
 
 
@@ -305,6 +310,28 @@ def test_manifest_canonicalization_is_deterministic_and_complete():
         canonical_manifest_bytes(floats)
 
 
+def _blocked_dry_run_manifest() -> dict:
+    manifest = _complete_manifest()
+    manifest["decision"] = {
+        "outcome": "BLOCKED", "purpose": DRY_RUN_SIGNATURE_PURPOSE}
+    manifest["artifact"]["destination_prefix"] = (
+        "s3://medzen-speech/candidates/b5-dry-run/test/")
+    return manifest
+
+
+def test_dry_run_manifest_is_content_addressed_and_never_targets_approved(tmp_path):
+    manifest = _blocked_dry_run_manifest()
+    first = write_dry_run_manifest(manifest, tmp_path)
+    second = write_dry_run_manifest(manifest, tmp_path)
+    assert first["sha256"] == second["sha256"]
+    assert json.loads(Path(first["path"]).read_bytes())["decision"][
+        "outcome"] == "BLOCKED"
+    bad = _blocked_dry_run_manifest()
+    bad["artifact"]["destination_prefix"] = "s3://medzen-speech/approved/asr/v1/"
+    with pytest.raises(FailClosedError, match="dry-run destination"):
+        write_dry_run_manifest(bad, tmp_path)
+
+
 class _FakeKms:
     def __init__(self, keys: set[str]):
         self.keys = keys
@@ -346,6 +373,30 @@ def test_kms_sign_verify_contract_tamper_and_wrong_key_refuse():
         envelope, canonicalization="unknown")) is False
     assert verify_manifest(kms, manifest, dict(
         envelope, signature_encoding="hex")) is False
+
+
+def test_dry_run_signature_cannot_verify_as_production_signature():
+    key = "arn:aws:kms:eu-central-1:558069890522:key/11111111-1111-1111-1111-111111111111"
+    kms = _FakeKms({key})
+    manifest = _blocked_dry_run_manifest()
+    envelope = sign_dry_run_manifest(kms, manifest, key)
+    assert verify_dry_run_manifest(kms, manifest, envelope) is True
+    assert verify_manifest(kms, manifest, envelope) is False
+    with pytest.raises(FailClosedError, match="signed PASS"):
+        sign_manifest(kms, manifest, key)
+
+
+def test_current_artifact_dry_run_binds_known_gaps_and_stays_blocked(report, tmp_path):
+    receipt = write_content_addressed_report(report, tmp_path)
+    manifest = build_current_artifact_dry_run_manifest(
+        report, Path(receipt["path"]), ROOT)
+    assert manifest["decision"]["outcome"] == "BLOCKED"
+    assert manifest["artifact"]["processor_revision"]["state"] == "NOT_EVALUATED"
+    assert manifest["decode"]["configuration"]["state"] == "NOT_EVALUATED"
+    assert manifest["dataset"]["adoption_record"]["sha256"]["state"] == (
+        "NOT_EVALUATED")
+    with pytest.raises(FailClosedError, match="signed PASS"):
+        canonical_manifest_bytes(manifest)
 
 
 def test_current_blocked_report_never_authorizes_publication(report):
