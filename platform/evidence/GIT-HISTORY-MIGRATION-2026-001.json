@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0",
+  "record_id": "GIT-HISTORY-MIGRATION-2026-001",
+  "status": "LOCAL_REWRITE_VERIFIED_REMOTE_PUSH_PENDING",
+  "recorded_at_utc": "2026-08-03T21:31:43Z",
+  "authorization": {
+    "decision_id": "GIT-REMOTE-2026-001A",
+    "path": "platform/decisions/GIT-REMOTE-2026-001A-authorization.json",
+    "owner_words": "Approve GIT-REMOTE-2026-001 option A and proceed"
+  },
+  "scope": {
+    "included_ref": "refs/heads/master",
+    "removed_path_glob": "infra/.terraform/**",
+    "preserved_path_note": "infra/.terraform.lock.hcl is not within the removed directory and remains tracked.",
+    "remote_safety_ref_rewritten": false
+  },
+  "recovery_bundle": {
+    "path": "/Users/stephanefotso/Documents/medzen-platform/.git-history-backups/medzen-platform-pre-rewrite-35221faf5eebbc846deb647f4411be636bdd1f99.bundle",
+    "bytes": 143803308,
+    "sha256": "8da32dab2b04e2b6c1b7dcd8e3b06d378b61f641c2da370d37d713e80767d43c",
+    "verified_complete_history": true,
+    "contained_ref": {
+      "ref": "refs/heads/master",
+      "commit": "35221faf5eebbc846deb647f4411be636bdd1f99"
+    },
+    "retention": "LOCAL_RECOVERY_ARTIFACT_DO_NOT_DELETE_OR_COMMIT"
+  },
+  "filter": {
+    "tool": "git-filter-repo",
+    "package_version": "2.47.0",
+    "tool_revision": "a40bce548d2c",
+    "dry_run_completed": true,
+    "command": ".venv/bin/git-filter-repo --force --path infra/.terraform/ --invert-paths --refs master",
+    "first_changed_commit": "4037be6de5859fe1205b08fd47c9d11c63c4bd04"
+  },
+  "rewrite": {
+    "pre_rewrite": {
+      "head": "35221faf5eebbc846deb647f4411be636bdd1f99",
+      "tree": "0562f26d896827571b48470fc8da29631eea8011",
+      "commit_count": 141
+    },
+    "post_rewrite_before_receipt": {
+      "head": "cb008063c5e82ea420b410ecb61e2ae3e078e8c9",
+      "tree": "0562f26d896827571b48470fc8da29631eea8011",
+      "commit_count": 141
+    },
+    "commit_map_rows": 141,
+    "changed_commit_ids": 136,
+    "unchanged_commit_ids": 5,
+    "complete_commit_map": {
+      "path": "platform/evidence/GIT-HISTORY-COMMIT-MAP-2026-001.txt",
+      "sha256": "a963c746bb53f8e6e556e11f46265969707343006698c233cda48a61ad36e3a6"
+    },
+    "ref_map": {
+      "path": "platform/evidence/GIT-HISTORY-REF-MAP-2026-001.txt",
+      "sha256": "d779b645d74b3a0d4ff88cda317c9127de08f247041ea6f74fc595fac933f9f1"
+    }
+  },
+  "governance_commit_mappings": {
+    "d4a9f954f1a293e2f39ee1823452a9f0c036a3cd": "ec774e7c64935086f0f95e2255163e66c4c787ef",
+    "bc9c77f8faaed4dff32d7afc84f80ffb339910a4": "074f0fea845afc329bd343e39905e91ecf158b9a",
+    "4eeaab758d272696f39534c909d9f77a6ac52baf": "67b0c69d750415e6ff8b3de470fe767d0085a100",
+    "4cdef17529039303dd46df93cef12c8d29272cb4": "c630b99728d07d5bc415eb9c432d9943e0a29f1f",
+    "e03e7830d84ba422d8c418c61a0c0a0259d88339": "68a09590611e6f768ee4dd0c1b185456132eacdc",
+    "f5d4d954d22a83e13db2363bb6d2ab58770eb547": "64ddd255b753408ee0ebfec7d1bb2f9dab68208f",
+    "88f3bc7b5b8e485edb3d50693389bdc5760b3792": "2eef142eab462a436faadb05cc5b36291584529c",
+    "65d47ac3765159ebd3e23b6dfb0e2b6b1d4dd634": "0fc25128410d7e745666d3eea0cb3004d733a1cf",
+    "ac400461111b0237ec3cd57bf4ad81a11497a4fe": "558d85268c92f702f4159ad16a247a0d76f353a1",
+    "35221faf5eebbc846deb647f4411be636bdd1f99": "cb008063c5e82ea420b410ecb61e2ae3e078e8c9"
+  },
+  "history_verification": {
+    "reachable_infra_dot_terraform_paths": 0,
+    "reachable_terraform_state_paths": 0,
+    "tracked_infra_dot_terraform_paths": 0,
+    "out_of_scope_tree_differences_across_mapped_commits": 0,
+    "largest_reachable_blob_bytes": 107817,
+    "largest_reachable_blob_path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+    "github_100mb_limit_exceeded": false,
+    "local_ignored_provider_binary_preserved": true,
+    "local_ignored_terraform_state_preserved": true
+  },
+  "verification": {
+    "canonical_pytest": {
+      "passed": 748,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "duration_seconds": 13.42
+    },
+    "terraform_validate": "PASS",
+    "deterministic_b5_refusal": {
+      "runs": 2,
+      "byte_identical": true,
+      "sha256": "990c14b6e9e2171f6d65aafdaab6366a81ae8ad3e24818344400e73cc1941a20",
+      "bytes": 107817,
+      "overall": "BLOCKED",
+      "exit_code_each_run": 1,
+      "note": "This is a local post-rewrite diagnostic bound to rewritten commit identities. It was not attached to MLflow and does not replace the preserved immutable historical report."
+    }
+  },
+  "preserved_b5_outcome": {
+    "historical_gate_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "overall": "BLOCKED",
+    "models_registered": 0,
+    "approved_artifacts_written": 0,
+    "production_ssm_alias_changes": 0,
+    "deployments": 0,
+    "b6": "BLOCKED",
+    "aws_packet_2026_001b_executed": false
+  },
+  "remote_pre_push_verification": {
+    "repository": "https://github.com/fotso94/medzen-platform",
+    "visibility": "private",
+    "safety_ref": "refs/heads/safety-snapshot-2026-08-03",
+    "safety_commit": "faf35c561fe1438d080600c94da5282a32ec1ed7",
+    "master_present_before_sanitized_push": false
+  }
+}
