@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "decision_id": "GIT-REMOTE-2026-001A",
+  "decision": "APPROVE_OPTION_A",
+  "status": "OWNER_APPROVED",
+  "recorded_at_utc": "2026-08-03T21:23:08Z",
+  "owner_authorization": {
+    "verbatim": "Approve GIT-REMOTE-2026-001 option A and proceed",
+    "interpretation": "Approve the recoverable history rewrite described as option A in GIT-REMOTE-2026-001."
+  },
+  "governing_decision": {
+    "path": "platform/decisions/GIT-REMOTE-2026-001-history-migration.md",
+    "sha256": "0ae61dcc86ac4d6dc7e9ff3c034e9ef0586e3d05a68af71b81f35160b3c0075d"
+  },
+  "pre_authorization_repository": {
+    "branch": "master",
+    "head": "ac400461111b0237ec3cd57bf4ad81a11497a4fe",
+    "commit_count": 140,
+    "worktree_clean": true,
+    "origin": "https://github.com/fotso94/medzen-platform.git",
+    "remote_visibility": "private",
+    "remote_safety_ref": "refs/heads/safety-snapshot-2026-08-03",
+    "remote_safety_commit": "faf35c561fe1438d080600c94da5282a32ec1ed7"
+  },
+  "authorized_operations": [
+    "Create and verify a local full-history Git recovery bundle before rewriting.",
+    "Remove infra/.terraform/** from every commit reachable from local master using git-filter-repo.",
+    "Record the complete old-to-new commit map and a content-addressed migration receipt.",
+    "Verify the sanitized history, rerun canonical tests and reproduce the deterministic B5 refusal outcome.",
+    "Push sanitized master to the existing private GitHub repository and make master the default branch.",
+    "Verify the result through remote-ref inspection and a fresh clone."
+  ],
+  "prohibited_operations": [
+    "Make the GitHub repository public.",
+    "Rewrite or delete refs/heads/safety-snapshot-2026-08-03.",
+    "Delete the pre-rewrite recovery bundle.",
+    "Intentionally alter historical file contents outside infra/.terraform/**.",
+    "Expose GitHub credentials in command output, repository content or evidence.",
+    "Execute AWS packet 2026-001B or modify AWS, production SSM, registered models, approved artifacts or deployments."
+  ],
+  "governance_referenced_commits_before_rewrite": [
+    "d4a9f954f1a293e2f39ee1823452a9f0c036a3cd",
+    "bc9c77f8faaed4dff32d7afc84f80ffb339910a4",
+    "4eeaab758d272696f39534c909d9f77a6ac52baf",
+    "4cdef17529039303dd46df93cef12c8d29272cb4",
+    "e03e7830d84ba422d8c418c61a0c0a0259d88339",
+    "f5d4d954d22a83e13db2363bb6d2ab58770eb547",
+    "88f3bc7b5b8e485edb3d50693389bdc5760b3792",
+    "65d47ac3765159ebd3e23b6dfb0e2b6b1d4dd634",
+    "ac400461111b0237ec3cd57bf4ad81a11497a4fe"
+  ]
+}

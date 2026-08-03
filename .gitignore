@@ -15,3 +15,6 @@ artifacts/
 *.tfstate.*
 *.tfplan
 crash.log
+
+# Recoverable local Git history-migration bundles; never publish them in Git.
+.git-history-backups/
