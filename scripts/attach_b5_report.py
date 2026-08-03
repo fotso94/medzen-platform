@@ -9,6 +9,7 @@ copy and uploaded to a new create-only snapshot key.
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import sys
@@ -23,6 +24,9 @@ from pipeline.mlflow_sync import consistent_snapshot  # noqa: E402
 BUCKET = "medzen-speech"
 REGION = "eu-central-1"
 PROFILE = "medzen"
+SSE_KMS_KEY_ARN = (
+    "arn:aws:kms:eu-central-1:558069890522:"
+    "key/9c336116-c648-4548-95c6-1b926478ae57")
 
 
 def _load(path: Path) -> dict:
@@ -106,10 +110,14 @@ def _put_create_or_same(client, key: str, body: bytes, content_type: str,
                         tagging: str) -> str:
     from botocore.exceptions import ClientError
     digest = hashlib.sha256(body).hexdigest()
+    checksum = base64.b64encode(hashlib.sha256(body).digest()).decode("ascii")
     try:
         result = client.put_object(
             Bucket=BUCKET, Key=key, Body=body, ContentType=content_type,
-            IfNoneMatch="*", Tagging=tagging)
+            IfNoneMatch="*", Tagging=tagging,
+            ServerSideEncryption="aws:kms", SSEKMSKeyId=SSE_KMS_KEY_ARN,
+            ChecksumAlgorithm="SHA256", ChecksumSHA256=checksum,
+            Metadata={"medzen-sha256": digest})
         return result.get("VersionId", "")
     except ClientError as exc:
         if exc.response.get("Error", {}).get("Code") not in {

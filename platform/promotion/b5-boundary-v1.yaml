@@ -6,6 +6,7 @@ account_id: "558069890522"
 promotion_role:
   name: medzen-b5-promotion-role
   policy_template: platform/iam/medzen-b5-promotion-role.template.json
+  dry_run_policy_template: platform/iam/medzen-b5-promotion-dry-run-role.template.json
   trust_template: platform/iam/medzen-b5-promotion-trust.template.json
   trusted_principal: PENDING_SEPARATE_AWS_PACKET_APPROVAL
   candidate_read_prefix: candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/
@@ -55,6 +56,7 @@ dry_run:
   candidate_namespace: candidates/b5-dry-run/
   approved_asr_must_remain_unchanged: true
   production_ssm_must_remain_unchanged: true
+  role_has_approved_asr_write_permission: false
   publication_transport: >-
     Verified create-only PutObject with If-None-Match:*; server-side CopyObject
     is not used because S3 cannot combine CopyObject with the bucket-enforced

@@ -44,6 +44,7 @@ from pipeline.b5_promotion import (
     verify_dry_run_manifest,
     write_dry_run_manifest,
 )
+from scripts.attach_b5_report import SSE_KMS_KEY_ARN, _put_create_or_same
 
 
 def _gates(report: dict, language: str) -> dict[str, dict]:
@@ -446,6 +447,21 @@ def test_promotion_role_is_confined_and_requires_complete_pass_tags():
     assert any("medzen-builder-role" in principal for principal in principals)
 
 
+def test_dry_run_role_cannot_write_approved_and_requires_create_only_header():
+    policy = json.loads((
+        ROOT / "platform/iam/medzen-b5-promotion-dry-run-role.template.json").read_text())
+    allow = _statement(policy, "WriteOnlyCreateOnlyBlockedDryRunObjects")
+    assert allow["Resource"] == (
+        "arn:aws:s3:::medzen-speech/candidates/b5-dry-run/*")
+    conditions = allow["Condition"]["StringEquals"]
+    assert conditions["s3:if-none-match"] == "*"
+    assert conditions["s3:RequestObjectTag/medzen-gate"] == "BLOCKED"
+    serialized = json.dumps(policy)
+    assert "approved/asr" not in serialized
+    deny = _statement(policy, "DenyWritesOutsideDryRunPrefix")
+    assert deny["NotResource"].endswith("/candidates/b5-dry-run/*")
+
+
 def test_bucket_boundary_enforces_create_only_complete_signed_writes():
     policy = json.loads((
         ROOT / "platform/promotion/approved-bucket-policy.template.json").read_text())
@@ -518,6 +534,29 @@ def test_mlflow_report_attachment_does_not_register_a_model(report, tmp_path):
     assert attached["registered_models_before"] == 0
     assert attached["registered_models_after"] == 0
     assert len(client.attachments) == 1
+
+
+class _FakeS3:
+    def __init__(self):
+        self.request = None
+
+    def put_object(self, **kwargs):
+        self.request = kwargs
+        return {"VersionId": "version-1"}
+
+
+def test_mlflow_attachment_write_is_create_only_and_pins_sse_kms():
+    client = _FakeS3()
+    version = _put_create_or_same(
+        client, "mlflow/artifacts/run/report.json", b"{}", "application/json",
+        "medzen-gate=BLOCKED")
+    assert version == "version-1"
+    assert client.request["IfNoneMatch"] == "*"
+    assert client.request["ServerSideEncryption"] == "aws:kms"
+    assert client.request["SSEKMSKeyId"] == SSE_KMS_KEY_ARN
+    assert client.request["ChecksumAlgorithm"] == "SHA256"
+    assert client.request["Metadata"]["medzen-sha256"] == hashlib.sha256(
+        b"{}").hexdigest()
 
 
 def test_ssm_dry_run_cannot_alter_production_serving_state():

@@ -7,12 +7,7 @@
       "Principal": {
         "AWS": "__OWNER_APPROVED_PROMOTION_PIPELINE_PRINCIPAL_ARN__"
       },
-      "Action": "sts:AssumeRole",
-      "Condition": {
-        "StringEquals": {
-          "aws:SourceAccount": "558069890522"
-        }
-      }
+      "Action": "sts:AssumeRole"
     },
     {
       "Sid": "DenyTrainerBuilderAndRuntimeAssumption",
