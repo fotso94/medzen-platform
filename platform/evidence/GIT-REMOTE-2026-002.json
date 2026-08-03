@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0",
+  "record_id": "GIT-REMOTE-2026-002",
+  "status": "SANITIZED_MASTER_PUBLISHED_AND_VERIFIED",
+  "verified_at_utc": "2026-08-03T21:35:37Z",
+  "authorization": "GIT-REMOTE-2026-001A",
+  "supersedes_operational_status_in": "platform/evidence/GIT-REMOTE-2026-001.json",
+  "repository": {
+    "provider": "GitHub",
+    "owner": "fotso94",
+    "name": "medzen-platform",
+    "url": "https://github.com/fotso94/medzen-platform",
+    "visibility": "private",
+    "public": false,
+    "default_branch": "master"
+  },
+  "published_master": {
+    "first_verified_head": "6fbba1b64f156a77158062e27ac3db20c7db49ac",
+    "tree": "8a214b8327661b2760e1bbd8b033962904be35fa",
+    "commit_count": 142,
+    "local_remote_name": "origin",
+    "local_upstream": "origin/master",
+    "force_push_used": false
+  },
+  "retained_safety_snapshot": {
+    "ref": "refs/heads/safety-snapshot-2026-08-03",
+    "commit": "faf35c561fe1438d080600c94da5282a32ec1ed7",
+    "rewritten": false,
+    "deleted": false,
+    "remote_ref_verified_after_master_push": true
+  },
+  "fresh_clone_verification": {
+    "source_branch": "master",
+    "head_matches_published_master": true,
+    "tree_matches_local_master": true,
+    "commit_count_matches": true,
+    "worktree_clean": true,
+    "tracked_infra_dot_terraform_paths": 0,
+    "reachable_infra_dot_terraform_paths": 0,
+    "reachable_terraform_state_paths": 0,
+    "largest_reachable_blob_bytes": 107817,
+    "largest_reachable_blob_path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json"
+  },
+  "recovery_and_mapping": {
+    "migration_receipt": "platform/evidence/GIT-HISTORY-MIGRATION-2026-001.json",
+    "commit_map": "platform/evidence/GIT-HISTORY-COMMIT-MAP-2026-001.txt",
+    "pre_rewrite_bundle_sha256": "8da32dab2b04e2b6c1b7dcd8e3b06d378b61f641c2da370d37d713e80767d43c"
+  },
+  "branch_protection": {
+    "applied": false,
+    "reason": "GitHub returned HTTP 403 because private-repository branch protection is unavailable on the current account plan.",
+    "repository_kept_private": true
+  },
+  "b5_governance": {
+    "historical_blocked_report_preserved": true,
+    "model_registration_changes": 0,
+    "approved_artifact_publications": 0,
+    "production_ssm_alias_changes": 0,
+    "deployments": 0,
+    "b6": "BLOCKED",
+    "aws_packet_2026_001b_executed": false
+  }
+}
