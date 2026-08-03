@@ -1,0 +1,165 @@
+{
+  "record": "B4-OWNER-APPROVED-SCOPE-DEVIATION",
+  "id": "B4-SCOPE-2026-002",
+  "revision": 3,
+  "status": "approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T17:14:36Z",
+  "amended_utc": "2026-08-02T01:57:45Z",
+  "revision_note": "Revision 3 prospectively authorizes one controlled conversion diagnostic on the already-selected checkpoint. It preserves every quality and termination threshold, compares merged PyTorch float16, CTranslate2 float16 and CTranslate2 int8_float16 before using the untouched holdout, and requires every arm and gate to be written immutably as soon as it is measured. int8_float16 remains preferred. CTranslate2 float16 is an authorized non-promotable B4 fallback only if int8_float16 fails and float16 passes the same active quality, termination and executable L4 serving checks. This decision does not assert that quantization caused attempt 4's failure.",
+  "supersedes_for_future_execution": [
+    "platform/decisions/PLAN-2026-009-base-v5-b4-exit-preparation.md"
+  ],
+  "precedence": "Where this decision conflicts with MedZen Speech Platform Base v5, this owner-approved decision controls B4. Every conflict remains visible below and is never represented as a passing gate.",
+  "objective": "Reach a working eight-language training path and a verified servable ASR artifact without silently dropping unavailable-data requirements.",
+  "budget": {
+    "aggregate_ceiling_usd": 100.0,
+    "aggregate_committed_at_authorization_usd": 16.8738,
+    "displayed_owner_total_usd": 16.87,
+    "ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+    "component_ledgers": [
+      "candidates/budget/b4-corrected/ledger.json",
+      "candidates/budget/b4-amharic-termination-diagnostic/ledger.json",
+      "candidates/budget/b4-amharic-decode-compatibility/ledger.json",
+      "candidates/budget/b4-scoped/ledger.json"
+    ],
+    "component_committed_usd": {
+      "b4-corrected": 4.1081,
+      "b4-amharic-termination-diagnostic": 1.0317,
+      "b4-amharic-decode-compatibility": 1.7539,
+      "b4-scoped": 9.9801
+    },
+    "unresolved_reservations_at_authorization": 0,
+    "spend_reset_permitted": false,
+    "reserve_before_launch_required": true,
+    "worst_case_reservation_required": true,
+    "reconcile_after_aws_observed_termination_required": true,
+    "every_campaign_record_must_report_aggregate_spend": true
+  },
+  "data_scope_deviations": {
+    "code_switch": {
+      "base_v5_requirement": "A real code-switch training and evaluation slice is included and gated.",
+      "decision": "NOT_EVALUATED",
+      "reason": "No licensed code-switch data exists in the adopted corpus.",
+      "future_gap": "B4-GAP-CODE-SWITCH-001",
+      "silent_pass_forbidden": true
+    },
+    "english_french_replay": {
+      "base_v5_requirement": "Use 30-40 percent English/French replay and gate replay regression.",
+      "decision": "NOT_EVALUATED",
+      "reason": "The adopted v2 corpus has zero English and zero French rows and the owner chose to defer acquiring them.",
+      "consequence": "The artifact is not protected against English/French forgetting. Any English/French-facing promotion remains blocked until replay and regression evaluation are added.",
+      "reversible": true,
+      "silent_pass_forbidden": true
+    }
+  },
+  "language_scope": {
+    "active_training": [
+      "hausa",
+      "igbo",
+      "lingala",
+      "luganda",
+      "oromo",
+      "pidgin",
+      "swahili",
+      "yoruba"
+    ],
+    "checkpoint_selection": ["lingala", "luganda", "oromo"],
+    "deferred": ["acholi", "akan", "amharic", "ewe", "fula", "shona"],
+    "no_further_language_deferral_before_fresh_campaign": true,
+    "lingala": {
+      "decision": "retain",
+      "evidence": "Checkpoint 500 passed all gates: WER 0.7091 versus base 0.9207, EOS rate 1.0, cap-hit rate 0.0. Checkpoint 600 alone failed.",
+      "selection_rule": "Use the existing frozen Lingala/Luganda/Oromo sets only for checkpoint selection.",
+      "holdout_rule": "After checkpoint selection, evaluate the selected artifact and same-run base on a larger Lingala set whose speakers and sessions are disjoint from training and selection; prefer a different source/domain when available.",
+      "holdout_must_not_influence_selection": true,
+      "per_language_outcome": "If Lingala fails the untouched holdout while Luganda and Oromo pass, Lingala may be deferred only at the later per-language approval stage. Luganda and Oromo may continue; Lingala remains pinned to the base or previous approved artifact."
+    }
+  },
+  "checkpoint_selection": {
+    "declared_before_launch": true,
+    "rule": "Among checkpoints that pass every active hard gate, select the lowest macro WER; an exact tie selects the earlier step. A later hard-gate failure stops training at that boundary but does not erase an earlier passing checkpoint.",
+    "provisional": true,
+    "promotable": false,
+    "limitation": "Selection validation is not an untouched holdout. The selected checkpoint remains provisional and non-promotable until the post-selection holdout and post-conversion checks complete."
+  },
+  "termination_gate_deviation": {
+    "decision": "OWNER_APPROVED_COUNT_TOLERANCE",
+    "reason": "The frozen checkpoint-selection sets contain 35 Lingala, 53 Luganda and 35 Oromo rows. Two independently trained checkpoint-100 artifacts with identical learning rate, seed, manifests and 600-step scheduler horizon produced zero versus one Lingala termination failure and different adapter hashes. Requiring zero failures on every small selection set is therefore an unstable model-selection boundary; this amendment tolerates one unique row per language without representing it as perfect termination.",
+    "applies_symmetrically_to": ["lingala", "luganda", "oromo"],
+    "selection_rows": {"lingala": 35, "luganda": 53, "oromo": 35},
+    "failure_definition": "A unique validation row whose structured generation output either omits EOS or reaches the configured token cap. A row satisfying both conditions is counted once, keyed only by audio_checksum_sha256.",
+    "max_unique_failures_per_language_per_checkpoint": 1,
+    "same_checksum_may_fail_at_multiple_final_checkpoints": false,
+    "recurrence_action": "Fail at the first later checkpoint where a checksum already failed for that language; execute no subsequent optimization step.",
+    "checksum_reporting": "Every checkpoint reports sorted audio SHA-256 checksums and numeric termination flags only; no transcript or audio content is persisted.",
+    "holdout_max_unique_failures": 0,
+    "holdout_reason": "The untouched Lingala holdout is a separate post-selection approval surface and remains strict; it never selects a checkpoint.",
+    "post_conversion": {
+      "max_unique_failures_per_language": 1,
+      "new_or_different_failure_checksums_allowed": false,
+      "failure_count_increase_allowed": false
+    },
+    "attempt_1_checkpoint_reusable": false,
+    "fresh_training_from_pinned_base_required": true,
+    "not_a_quality_claim": "The tolerance is a model-selection control, not evidence that the population termination-failure rate is low and not permission to mark EOS or cap-hit gates as perfect."
+  },
+  "servable_artifact": {
+    "required": true,
+    "conversion_diagnostic": {
+      "authorized": true,
+      "training_steps": 0,
+      "selected_checkpoint": 400,
+      "selected_checkpoint_must_be_hash_pinned": true,
+      "arms_in_fixed_order": [
+        "merged_pytorch_float16",
+        "ctranslate2_float16",
+        "ctranslate2_int8_float16"
+      ],
+      "same_selection_manifests_prompts_decoding_and_gates_required": true,
+      "selection_must_not_read_holdout": true,
+      "holdout_evaluated_once_after_precision_selection": true,
+      "holdout_arm": "selected_converted_precision_only",
+      "holdout_base_must_use_same_ctranslate2_precision": true,
+      "immediate_write_once_evidence_required": true,
+      "evidence_content": "aggregate metrics and checksum-only numeric per-row measurements; no transcript, audio, speaker, session or signed URL",
+      "minimum_relative_wer_gain": 0.15,
+      "termination_gate_unchanged": true,
+      "precision_preference": [
+        "int8_float16",
+        "float16"
+      ],
+      "float16_fallback_rule": "Allowed only when CTranslate2 int8_float16 fails an active gate, CTranslate2 float16 passes every identical selection and strict post-selection holdout gate, the artifact loads and completes scoring on the authorized g6.xlarge L4 without OOM, and model bytes plus per-language latency are durably reported.",
+      "if_no_ctranslate2_precision_passes": "Refuse without publishing a servable artifact; investigate merge/export/runtime or retrain without changing a gate.",
+      "causality_rule": "Attempt 4 proves only that the complete int8_float16 serving path failed. Quantization, merge, export and runtime/decoding effects remain separate hypotheses until the three arms are compared.",
+      "promotable": false,
+      "registered_models": 0,
+      "b5_allowed": false
+    },
+    "steps": [
+      "merge the selected LoRA adapter into the pinned base model",
+      "score the merged PyTorch float16 model, CTranslate2 float16 and CTranslate2 int8_float16 on the same frozen selection validation and report arm-to-arm deltas",
+      "prefer CTranslate2 int8_float16 when it passes; otherwise allow the owner-approved non-promotable CTranslate2 float16 fallback only under the fixed diagnostic rule",
+      "evaluate only the selected converted precision on the untouched Lingala holdout against a same-precision CTranslate2 base",
+      "prove interruption and resume from the exact S3 checkpoint using EC2 Spot"
+    ],
+    "artifact_is_not_registered": true,
+    "b5_allowed": false
+  },
+  "revised_b4_exit": [
+    "checkpoint-selection rule verified locally and in the pinned read-only container",
+    "merged CTranslate2 artifact produced at the predeclared selected precision and evaluated after conversion with all three diagnostic arms durably preserved",
+    "exact-S3-checkpoint Spot interruption/resume proof completed",
+    "one fresh gated campaign completed under the aggregate budget with the selection rule declared in advance",
+    "every unmeasurable A5 gate recorded individually as DEFERRED or NOT_EVALUATED"
+  ],
+  "hard_controls": {
+    "model_registration_permitted": false,
+    "promotion_permitted": false,
+    "b5_permitted": false,
+    "eks_permitted": false,
+    "silent_gate_drop_permitted": false,
+    "checkpoint_500_from_the_failed_campaign_reusable": false,
+    "fresh_training_from_pinned_base_required": true
+  }
+}

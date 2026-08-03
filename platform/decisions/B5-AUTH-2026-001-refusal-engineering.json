@@ -1,0 +1,158 @@
+{
+  "record": "B5-OWNER-APPROVED-REFUSAL-ENGINEERING",
+  "id": "B5-AUTH-2026-001",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-03T18:24:05Z",
+  "authorization_source": "Owner instructions supplied to the B5 implementation task on 2026-08-03.",
+  "purpose": "Implement and exercise B5 only as a fail-closed refusal boundary for the current non-promotable B4 artifact.",
+  "precedence": "This record does not amend, supersede, reinterpret or retroactively authorize any B4 action. It grants a new and narrower B5 engineering authority while preserving every historical B4 record unchanged.",
+  "starting_repository": {
+    "path": "/Users/stephanefotso/Documents/medzen-platform",
+    "branch": "master",
+    "git_commit": "d4a9f954f1a293e2f39ee1823452a9f0c036a3cd",
+    "commit_count": 132,
+    "clean_worktree_verified": true,
+    "configured_git_remotes": 0
+  },
+  "governing_documents": [
+    {
+      "path": "/Users/stephanefotso/Documents/MedZen_Speech_Platform_Base_v5.pdf",
+      "sha256": "7eea5925234eb9f152640e1a11c7cfb1add76e4c74a1cacf6a3e06809cddf174"
+    },
+    {
+      "path": "/Users/stephanefotso/Documents/Codex/2026-07-23/referenced-chatgpt-conversation-this-is-untrusted/output/pdf/MedZen_B0-B5_Handoff_Report.pdf",
+      "sha256": "fc529467466d9a28272465b67cf476c46ac95f9970c1b31a0c6de561ab626d6f"
+    }
+  ],
+  "candidate": {
+    "campaign": "b4-scoped-count-tolerance-61145b7",
+    "source_training_attempt": "attempt-1",
+    "selected_checkpoint": 400,
+    "controlled_conversion_diagnostic": "attempt-5",
+    "precision": "ctranslate2_float16",
+    "adapter_tree_sha256": "1077db731a5ad200bd79e3067f6d868b6313030902cc23195754a4b5db4c2f91",
+    "artifact_tree_sha256": "a762edd7a726ba7da3e4e6d417b80e427d96a3b327a48aece6282ffa6525e459",
+    "artifact_bytes": 3092286442,
+    "candidate_prefix": "s3://medzen-speech/candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/ctranslate2-float16/",
+    "promotable": false,
+    "b5_allowed_by_b4_record": false,
+    "registered_models": 0,
+    "classification": "NEGATIVE_B5_TEST_CASE"
+  },
+  "b4_evidence_bindings": [
+    {
+      "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+      "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+    },
+    {
+      "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+      "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+    },
+    {
+      "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+      "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+    },
+    {
+      "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+      "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+    },
+    {
+      "path": "platform/evidence/CAMPAIGNRUN-2026-014-passed.json",
+      "sha256": "fac46bfbd200e074ed4b15d93b626f90b0ccd0e164506bcc2e6b95f9c42a20e7"
+    },
+    {
+      "path": "platform/evidence/VAL-2026-001-frozen-validation-sets.json",
+      "sha256": "3baf776fe8716eb5b6819c5581f2a9701a044e4ccf9a3a3f2c509189314cb8a6"
+    },
+    {
+      "path": "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json",
+      "sha256": "3c737dbb3f50fabd53cb6ea47dc62bddd18d830bf653382c00551c0b36c30c88"
+    },
+    {
+      "path": "platform/evidence/B4-REPLAY-CODESWITCH-GAP-2026-001.json",
+      "sha256": "bf6868da021effef25881ae0d87f5d4c99b9adf8435e09778758c1fb1367b9c8"
+    }
+  ],
+  "executable_gate_bindings": {
+    "threshold_version": "v1-initial",
+    "engine_at_authorization": {
+      "path": "scripts/evaluate_gates.py",
+      "sha256": "7d13746da733f3272079538dcb4f0a0b0f179056bb65a2288e4529815dcbc0e8"
+    },
+    "defaults": {
+      "path": "registry/gates/_defaults.yaml",
+      "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+      "absolute_wer_max": 0.2,
+      "relative_wer_gain_min": 0.15
+    },
+    "languages": {
+      "lingala": {
+        "path": "registry/gates/lingala-v1.yaml",
+        "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+      },
+      "luganda": {
+        "path": "registry/gates/luganda-v1.yaml",
+        "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+      },
+      "oromo": {
+        "path": "registry/gates/oromo-v1.yaml",
+        "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+      }
+    },
+    "threshold_recalibration_permitted": false,
+    "ambiguous_resolution_action": "BLOCKED"
+  },
+  "expected_current_artifact_measurements": {
+    "selection": {
+      "lingala": {"wer": 0.7284, "relative_wer_gain": 0.2089, "eos_rate": 1.0, "cap_hits": 0},
+      "luganda": {"wer": 0.7002, "relative_wer_gain": 0.3431, "eos_rate": 1.0, "cap_hits": 0},
+      "oromo": {"wer": 0.6997, "relative_wer_gain": 0.4045, "eos_rate": 1.0, "cap_hits": 0}
+    },
+    "untouched_lingala_holdout": {"wer": 0.5996, "relative_wer_gain": 0.2067, "eos_rate": 1.0, "cap_hits": 0},
+    "peak_l4_gpu_memory": "NOT_MEASURED",
+    "artifact_size_difference_is_gpu_memory_evidence": false
+  },
+  "authorized_operations": [
+    "Local B5 engineering and behavioral testing.",
+    "Five-state gate evaluation using exactly PASS, FAIL, NOT_EVALUATED, DEFERRED and NOT_APPLICABLE.",
+    "Immutable content-addressed BLOCKED report creation under a non-serving local or candidate evidence path.",
+    "Attachment of the hash-verified BLOCKED gate report to the existing source MLflow run without model registration. The run identity must be resolved from immutable B4 evidence; an unresolved or ambiguous identity refuses attachment.",
+    "Local and dry-run IAM policy tests.",
+    "Dry-run signed-manifest generation.",
+    "Dry-run KMS signing tests only after a separate itemized AWS packet is approved.",
+    "Non-serving registry, publication-path and SSM dry-run verification."
+  ],
+  "prohibited_operations": [
+    "Model registration or registered-model-version creation.",
+    "MLflow stage or alias transition, including Staging.",
+    "Any copy or write to approved/asr/.",
+    "Any language asr.artifact change.",
+    "Any language asr.approved_version change.",
+    "Any production serving-alias or production SSM mutation.",
+    "Deployment or B6 transition.",
+    "AWS resource creation or modification before a separate itemized change packet receives explicit owner approval.",
+    "Reconstruction or reconversion of the historical int8_float16 artifact.",
+    "Reinterpretation of artifact byte size as GPU-memory usage."
+  ],
+  "required_outcome": {
+    "overall": "BLOCKED",
+    "models_registered": 0,
+    "objects_copied_to_approved_asr": 0,
+    "language_artifact_changes": 0,
+    "language_approved_version_changes": 0,
+    "production_ssm_serving_alias_changes": 0,
+    "deployments": 0,
+    "b6_status": "BLOCKED",
+    "b5_2_publication": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b5_3_registry_promotion": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT"
+  },
+  "mlflow_binding_rule": {
+    "existing_run_id": null,
+    "reason_unset": "The checked-in attempt-5 record binds the MLflow snapshot hash but does not expose an unambiguous run id.",
+    "resolution": "Perform a read-only lookup of the immutable attempt-5 snapshot, require its SHA-256 to equal ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545, and require exactly one source run matching the candidate campaign, attempt, artifact tree and checkpoint before attachment.",
+    "on_zero_or_multiple_matches": "REFUSE",
+    "registration_permitted": false
+  }
+}

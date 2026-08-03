@@ -1,0 +1,63 @@
+version: b5-promotion-boundary-v1
+status: design-only-pending-aws-approval
+region: eu-central-1
+account_id: "558069890522"
+
+promotion_role:
+  name: medzen-b5-promotion-role
+  policy_template: platform/iam/medzen-b5-promotion-role.template.json
+  dry_run_policy_template: platform/iam/medzen-b5-promotion-dry-run-role.template.json
+  trust_template: platform/iam/medzen-b5-promotion-trust.template.json
+  trusted_principal: PENDING_SEPARATE_AWS_PACKET_APPROVAL
+  candidate_read_prefix: candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/
+  approved_write_prefix: approved/asr/
+  immutable_create_required: true
+  overwrite_allowed: false
+  delete_allowed: false
+  trainer_or_builder_may_assume: false
+
+signing_key:
+  existing_symmetric_sse_key_may_sign: false
+  key_arn: PENDING_AWS_PACKET_APPROVAL
+  key_reference: >-
+    The exact immutable KMS key ARN. KMS asymmetric keys do not expose key
+    versions; every signature envelope retains this ARN and the archived
+    public-key SHA-256.
+  alias: alias/medzen-b5-promotion-signing-v1
+  key_spec: RSA_3072
+  key_usage: SIGN_VERIFY
+  signing_algorithm: RSASSA_PSS_SHA_256
+  message_type: DIGEST
+  digest: SHA-256
+  signature_encoding: base64-of-raw-kms-signature-bytes
+  public_key_encoding: DER-X.509-SubjectPublicKeyInfo
+  public_key_sha256: PENDING_KEY_CREATION
+  kms_sign_principal: arn:aws:iam::558069890522:role/medzen-b5-promotion-role
+  verification:
+    - kms:Verify with the exact manifest-bound key ARN
+    - offline verification with the archived DER public key
+  rotation: >-
+    Asymmetric KMS keys do not support automatic or on-demand rotation. Create
+    a new asymmetric key, move the alias for new signatures, and retain the old
+    key ARN and archived public key for verification of historical manifests.
+  revocation: >-
+    Disable the compromised key immediately, deny new Sign calls, retain the
+    public key for historical verification, record the revocation time, and
+    require a new owner approval before a replacement key signs anything.
+
+canonicalization:
+  name: medzen-canonical-json-v1
+  format: UTF-8 JSON, sorted object keys, no insignificant whitespace, ensure_ascii=true
+  prohibited_values: [floating_point, NaN, Infinity]
+  trailing_newline: false
+
+dry_run:
+  local_manifest_only_until_aws_packet_approved: true
+  candidate_namespace: candidates/b5-dry-run/
+  approved_asr_must_remain_unchanged: true
+  production_ssm_must_remain_unchanged: true
+  role_has_approved_asr_write_permission: false
+  publication_transport: >-
+    Verified create-only PutObject with If-None-Match:*; server-side CopyObject
+    is not used because S3 cannot combine CopyObject with the bucket-enforced
+    conditional-write contract.

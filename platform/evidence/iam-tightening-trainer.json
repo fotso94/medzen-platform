@@ -1,0 +1,51 @@
+{
+  "record": "IAM-TIGHTENING",
+  "applied_utc": "2026-07-30T19:16:37Z",
+  "role": "medzen-trainer-role",
+  "terraform": {
+    "add": 0,
+    "change": 1,
+    "destroy": 0,
+    "resource": "aws_iam_role_policy.trainer",
+    "post_apply_replan": "No changes. Infrastructure matches configuration."
+  },
+  "change": "s3:PutObject removed from raw/* and curated/*; explicit Deny added on PutObject+DeleteObject for both. Training writes only candidates/* and mlflow/*, and never wrote to either path.",
+  "why": "curated/* holds the 18 manifests, COMPLETE.json, ADOPTION.json and the deferral policy -- the objects the loader verifies against. Write access made those checks self-referential. raw/* holds the source audio a run reports having trained on.",
+  "scope_note": "The builder role was NOT changed. An earlier edit added the same raw deny to it; that was reverted so the applied plan matched exactly the single update authorised.",
+  "verified_by": "aws iam simulate-principal-policy against the deployed role",
+  "simulation": {
+    "reads_allowed": {
+      "raw/*": "allowed",
+      "curated/_versions/v2/ADOPTION.json": "allowed",
+      "curated/_versions/v2/COMPLETE.json": "allowed",
+      "curated/_versions/v2/DEFERRAL-DQ-2026-002.json": "allowed",
+      "curated/<lang>/<task>/<cfg>/v2/manifest.jsonl": "allowed"
+    },
+    "writes_denied": {
+      "raw/* PutObject": "explicitDeny",
+      "raw/* DeleteObject": "explicitDeny",
+      "curated/_versions/v2/ADOPTION.json PutObject": "explicitDeny",
+      "curated/_versions/v2/COMPLETE.json PutObject": "explicitDeny",
+      "curated/_versions/v2/DEFERRAL-DQ-2026-002.json PutObject": "explicitDeny",
+      "curated manifest DeleteObject": "explicitDeny"
+    },
+    "writes_still_allowed": {
+      "candidates/* PutObject": "allowed",
+      "mlflow/* PutObject": "allowed"
+    },
+    "pre_existing_denies_intact": {
+      "eval/* PutObject": "explicitDeny",
+      "models/* PutObject": "explicitDeny",
+      "ecr:PutImage medzen-trainer": "explicitDeny",
+      "ecr:BatchGetImage medzen-trainer": "allowed"
+    },
+    "kms_unaffected": {
+      "key": "9c336116-c648-4548-95c6-1b926478ae57",
+      "kms:Decrypt": "allowed",
+      "kms:GenerateDataKey": "allowed",
+      "note": "checked explicitly: S3 grants are inert without the key, and an S3-only simulation is what hid the original KMS gap"
+    }
+  },
+  "image_rebuild_required": false,
+  "image_digest_unchanged": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a"
+}

@@ -1,0 +1,47 @@
+# Pinned 2026-07-29 against a verified-working environment (Python 3.13.3).
+# pyarrow 25 + macOS/arm64: NEVER break out of a remote Parquet iterator
+# (Apache Arrow #45214). The WaxalNLP adapter downloads shards and reads
+# locally for exactly this reason.
+datasets==5.0.1
+pyarrow==24.0.0   # downgraded from 25 by an mlflow/datasets transitive dep; B2 verified on both
+huggingface-hub==1.25.1
+hf-xet==1.5.2
+fsspec==2026.6.0
+aiohttp==3.14.3
+filelock==3.32.0
+numpy==2.4.6
+soundfile==0.14.0
+librosa==0.11.0
+boto3==1.43.58
+PyYAML==6.0.3
+jsonschema==4.26.0
+pytest==9.1.1
+
+# --- B4 training stack. Pinned 2026-07-30 against a verified-working env.
+# torch 2.13 + transformers 5.14 + peft 0.20 is the combination the smoke test
+# passed on; the EC2 DLAMI ships torch 2.7, so the trainer pins explicitly
+# rather than inheriting whatever the image happens to have.
+#
+# The trainer MUST uninstall the DLAMI's torchvision/torchaudio before
+# installing this file. They are compiled against torch 2.7, so under the
+# pinned torch they import but register no ops ("torchvision::nms does not
+# exist"); transformers touches torchvision.io while lazily loading Bloom,
+# which peft imports at module scope, so every peft import dies. Nothing here
+# uses either package -- absent is safe, stale-and-broken is not. They are
+# deliberately NOT listed below: adding a pin would reinstall what must go.
+torch==2.13.0
+transformers==5.14.1
+peft==0.20.0
+accelerate==1.14.0
+mlflow==3.14.0
+ctranslate2==4.8.1
+faster-whisper==1.2.1
+# CTranslate2 4.8.1's Linux GPU wheel dynamically loads the CUDA 12 ABI even
+# though the training stack above is PyTorch cu130.  Keep both userspaces in
+# the image: their SONAMEs differ, and the host driver is backwards compatible.
+# Without these exact runtime libraries conversion succeeds but the first CT2
+# decode fails with "libcublas.so.12 is not found".
+nvidia-cuda-runtime-cu12==12.8.90
+nvidia-cublas-cu12==12.8.4.1
+mlx-whisper==0.4.3 ; sys_platform == "darwin"   # Apple-silicon only; not installable on the Linux trainer
+jiwer==4.0.0

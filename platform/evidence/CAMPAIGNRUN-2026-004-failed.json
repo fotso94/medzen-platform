@@ -1,0 +1,78 @@
+{
+  "record": "CAMPAIGNRUN-2026-004-FAILED",
+  "campaign_run": "b4-corrected-18691a5",
+  "attempt": "4",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "status": "FAILED_CLOSED_DURING_SAVED_ADAPTER_SMOKE",
+  "git_sha": "7586ac96511aa2f028c27987ac8c4a98093e6d5d",
+  "bundle_tar_sha256": "6b7bf4886eb099a8b6994d0a74054ff04aaa0d6dc7290399cee901d12e6cd01b",
+  "image_digest": "sha256:d5e29c588a644b8dea14894ea18fb2ac5a734097abb5dfdefec9146e6febbe25",
+  "policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61",
+  "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+  "stage_descriptor_sha256": "46cc1cd451d4195bc78757047bd00cc221cde00a0c19aa2ea8e2e103afc3c355",
+  "instance": {
+    "instance_id": "i-08058638961b97a6c",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "availability_zone": "eu-central-1a",
+    "launched_utc": "2026-07-31T12:52:06Z",
+    "terminated_observed_utc": "2026-07-31T13:03:48Z",
+    "actual_seconds": 701.0,
+    "actual_usd": 0.196,
+    "root_volume_id": "vol-00f51642696bf9a44",
+    "root_volume_deleted_verified_after_termination": true,
+    "eks_involved": false,
+    "spot_involved": false
+  },
+  "passed_before_failure": [
+    "caller, bundle, policy, adoption, dataset fingerprint, image and infrastructure read-only validation",
+    "digest-pinned image pull and baked git-sha verification",
+    "CUDA available on NVIDIA L4",
+    "pinned dependency and import gates",
+    "19 policy exclusions applied before sampling: 4620 eligible rows became 4601",
+    "base manifest verified over 11 model files",
+    "label audit verified 4601 rows and zero rows over the 448-token limit",
+    "LoRA r32 attached to q_proj and v_proj with 15.7M trainable parameters",
+    "fixed-batch L0 forward completed on CUDA at loss 2.451172",
+    "all 200 fixed-batch optimisation steps completed with finite gradients",
+    "final fixed-batch train loss was 0.08233",
+    "adapter bytes and clean processor were saved",
+    "saved adapter bytes reloaded into a fresh base model"
+  ],
+  "failure": {
+    "boundary": "saved-adapter smoke test before full base evaluation",
+    "exception": "KeyError: 'acholi'",
+    "cause": "the fail-fast reorder correctly moved adapter verification before the full base evaluation, but verify_saved_adapter still relied on ValidationRuntime._loaded having been populated as an incidental side effect of that later evaluation",
+    "effect": "the stage exited 1 before generation smoke and before the 385-row base evaluation; no sweep or final stage was launched",
+    "correction": "ValidationRuntime now exposes an idempotent fail-closed ensure_prepared boundary, and every saved-adapter smoke prepares its own verified processor and frozen input cache before selecting a row"
+  },
+  "artifacts": {
+    "stage_prefix": "s3://medzen-speech/candidates/evaluations/b4-corrected-18691a5/attempt-4/base_and_preflight/",
+    "descriptor_sha256": "46cc1cd451d4195bc78757047bd00cc221cde00a0c19aa2ea8e2e103afc3c355",
+    "live_log_sha256": "3ec9f39cc969bb457515d11478fa4185ce7f46d2f5b6c2604da6f93cf85591e0",
+    "container_exit_code_sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "container_exit_code": 1,
+    "stage_result_produced": false,
+    "base_evaluation_produced": false,
+    "training_steps": 200,
+    "sweeps_launched": 0,
+    "adapter_published": false,
+    "registered_models": 0,
+    "mlflow_parent_run_id": "cafa9bcc192845ebb9f5d933ffe65148",
+    "mlflow_child_run_id": "be45a8be7dfd4f83b3a05b9a746611ed"
+  },
+  "budget": {
+    "attempt_actual_usd": 0.196,
+    "campaign_committed_usd_after_reconciliation": 1.2801,
+    "unresolved_reservations": 0,
+    "control": "base-and-preflight and sweep watchdogs reduced from 2700 to 2400 seconds after measured work left at least 11 minutes of margin; no work or evaluation gate was removed, the final watchdog remains 6600 seconds, and a complete retry remains below the unchanged 6 USD hard ceiling"
+  },
+  "cleanup": {
+    "active_b4_instances": 0,
+    "unattached_b4_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0
+  },
+  "retry_rule": "Attempts 1 through 4 remain immutable. The validation-cache correction requires a new commit, bundle, image digest and attempt-5 namespace."
+}

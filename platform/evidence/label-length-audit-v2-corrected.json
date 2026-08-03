@@ -1,0 +1,507 @@
+{
+  "recorded_utc": "2026-07-31T08:17:21Z",
+  "content_policy": "rows identified by audio_checksum_sha256 only; no transcript text, speaker_id or session_id recorded",
+  "method": {
+    "function": "pipeline.label_length.label_lengths",
+    "applies": "LANG_TOKEN mapping, set_prefix_tokens(language, task='transcribe'), and the collator's BOS rule -- identical to training",
+    "reported": "raw (as tokenised) and effective (what the model receives)",
+    "reconciliation": "an earlier audit omitted set_prefix_tokens and reported 534 for the row that crashed training at 536"
+  },
+  "tokenizer": {
+    "repo": "openai/whisper-large-v3",
+    "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "source": "s3_cache",
+    "cache_manifest_sha256": "81d105ee60c26d88817edf6e4ad4e8e946c6a3a0e96710156096c1fed1b65c51",
+    "files_sha256_verified": 11
+  },
+  "verifier": {
+    "file": "scripts/audit_label_lengths.py",
+    "sha256": "9fb410189f4f90b0e68836b5bce117c7d3d1a91a9cc55f5b5d9b16709cb44247",
+    "git_commit": "308722a779045bc4ee8a7b650635bdd91e816e95",
+    "git_dirty": false
+  },
+  "manifests": {
+    "acholi/asr/ach_asr": {
+      "key": "curated/acholi/asr/ach_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "b2bb8b3c59cd8eba10a66087ebf9804ec5dae87c9714189525cc7979899a2657",
+      "matches_completion_record": true
+    },
+    "acholi/tts/ach_tts": {
+      "key": "curated/acholi/tts/ach_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "7bb10a6139c760e5b3f23734532ee783651a7b694c78d901c70bfd2180eb1ac8",
+      "matches_completion_record": true
+    },
+    "akan/asr/aka_asr": {
+      "key": "curated/akan/asr/aka_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "8b58719f7cbfc24f255f51272458460f20ac41bbcec2394bb8e56a128029bdbc",
+      "matches_completion_record": true
+    },
+    "amharic/asr/amh_asr": {
+      "key": "curated/amharic/asr/amh_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "d560df103e211e0331aca105dd118bb2d287141f1de4be1f62ff5f8ef7dab606",
+      "matches_completion_record": true
+    },
+    "ewe/asr/ewe_asr": {
+      "key": "curated/ewe/asr/ewe_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "0d1057e7829050bf5ca96b7cd45adbc9938e16d1b99ecc8ba140fb35bd244bb3",
+      "matches_completion_record": true
+    },
+    "ewe/tts/ewe_tts": {
+      "key": "curated/ewe/tts/ewe_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "b41d5e6c53cefc1598e1b6e3e9c8f43294b22c884fefe6da445a8f03e242296a",
+      "matches_completion_record": true
+    },
+    "fula/asr/ful_asr": {
+      "key": "curated/fula/asr/ful_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "f68d19cd30acad8d1e8555a62a7363e2594e08c15aa2771c7370a44b18d8285e",
+      "matches_completion_record": true
+    },
+    "fula/tts/ful_tts": {
+      "key": "curated/fula/tts/ful_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "68379610b81452b5e7a3358cdf35e57e4bfabb43e75c4aa9a31aec29a7955626",
+      "matches_completion_record": true
+    },
+    "hausa/tts/hau_tts": {
+      "key": "curated/hausa/tts/hau_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "e08bfdca6f3e6f896649ded745e31f1363b7c3be38ce336302e03c5043f02c2e",
+      "matches_completion_record": true
+    },
+    "igbo/tts/ibo_tts": {
+      "key": "curated/igbo/tts/ibo_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "4fb09ccbad084d39426540e34e3036e986bd1be4bb61524275201a628afa338a",
+      "matches_completion_record": true
+    },
+    "lingala/asr/lin_asr": {
+      "key": "curated/lingala/asr/lin_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "44eb68ab534a8fe60d150a5df055d183da89dda8fdd7dbf57ea919c8627143a6",
+      "matches_completion_record": true
+    },
+    "luganda/asr/lug_asr": {
+      "key": "curated/luganda/asr/lug_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "ca841a56d57673d8c7e626a1ff31806ed741ed016f9b94b346905fcfda7ff6f6",
+      "matches_completion_record": true
+    },
+    "luganda/tts/lug_tts": {
+      "key": "curated/luganda/tts/lug_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "55716b9569362a4022c5e47fec423c7a44a77f22e0bfc60d4f40383a33a40b2d",
+      "matches_completion_record": true
+    },
+    "oromo/asr/orm_asr": {
+      "key": "curated/oromo/asr/orm_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "acde45ab3af9a3ef876a8d05706ff69df968105418cd2e8f5b2a38aa3c7f7dc0",
+      "matches_completion_record": true
+    },
+    "pidgin/tts/pcm_tts": {
+      "key": "curated/pidgin/tts/pcm_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "d7bc99fd485dbf450d04882b32cc23a95cba7015ed0febeb322512f93543677b",
+      "matches_completion_record": true
+    },
+    "shona/asr/sna_asr": {
+      "key": "curated/shona/asr/sna_asr/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "042ea1fc44f442df818ed75f9cc6201da09e2abc1bb4ed56efb3f2a2fac6da67",
+      "matches_completion_record": true
+    },
+    "swahili/tts/swa_tts": {
+      "key": "curated/swahili/tts/swa_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "4844dafeecc41313a6ea0d2131cc18d340d25371e51a34016ea0cd987d446cac",
+      "matches_completion_record": true
+    },
+    "yoruba/tts/yor_tts": {
+      "key": "curated/yoruba/tts/yor_tts/v2/manifest.jsonl",
+      "version": "v2",
+      "manifest_sha256": "7ffc102e8a19771809adc40094ec54503efd27dac6db0ec01cf5150679031508",
+      "matches_completion_record": true
+    }
+  },
+  "scope": {
+    "manifest_version": "v2",
+    "split": "train",
+    "require_allowed_use": "asr_train",
+    "rows_skipped_not_permitted": 0
+  },
+  "label_limit": 448,
+  "eligible_source_pool_rows": 4620,
+  "pool_note": "This is the ELIGIBLE SOURCE POOL at this version/split/allowed_use. The training mix is temperature-sampled from it and is a different number -- 4,619 for seed 0 at temperature 0.5 -- because per-language targets are rounded.",
+  "completion_record": {
+    "key": "curated/_versions/v2/COMPLETE.json",
+    "adopted": false,
+    "decision_id": "LIC-2026-001-waxalnlp-tts-asr-train"
+  },
+  "rows_over_limit": 5,
+  "rate_outliers_under_limit": 14,
+  "z_threshold": 4.0,
+  "z_meaning": "REVIEW TRIGGER only. A z-score says a row is unusual for its language; it does not establish misalignment. No row here has been listened to, so every classification is UNREVIEWED.",
+  "per_language_tokens_per_s": {
+    "acholi": {
+      "mean_tokens_per_s": 3.358,
+      "stdev": 0.608,
+      "max_tokens_per_s": 5.088,
+      "rows": 488
+    },
+    "akan": {
+      "mean_tokens_per_s": 4.896,
+      "stdev": 1.081,
+      "max_tokens_per_s": 7.776,
+      "rows": 228
+    },
+    "amharic": {
+      "mean_tokens_per_s": 16.806,
+      "stdev": 3.087,
+      "max_tokens_per_s": 26.256,
+      "rows": 275
+    },
+    "ewe": {
+      "mean_tokens_per_s": 4.849,
+      "stdev": 1.165,
+      "max_tokens_per_s": 8.595,
+      "rows": 521
+    },
+    "fula": {
+      "mean_tokens_per_s": 5.791,
+      "stdev": 2.162,
+      "max_tokens_per_s": 27.042,
+      "rows": 514
+    },
+    "hausa": {
+      "mean_tokens_per_s": 2.742,
+      "stdev": 1.087,
+      "max_tokens_per_s": 5.544,
+      "rows": 256
+    },
+    "igbo": {
+      "mean_tokens_per_s": 3.179,
+      "stdev": 1.008,
+      "max_tokens_per_s": 6.244,
+      "rows": 256
+    },
+    "lingala": {
+      "mean_tokens_per_s": 7.217,
+      "stdev": 13.316,
+      "max_tokens_per_s": 68.452,
+      "rows": 265
+    },
+    "luganda": {
+      "mean_tokens_per_s": 4.334,
+      "stdev": 1.062,
+      "max_tokens_per_s": 8.799,
+      "rows": 502
+    },
+    "oromo": {
+      "mean_tokens_per_s": 5.524,
+      "stdev": 1.023,
+      "max_tokens_per_s": 8.829,
+      "rows": 265
+    },
+    "pidgin": {
+      "mean_tokens_per_s": 2.239,
+      "stdev": 1.506,
+      "max_tokens_per_s": 15.241,
+      "rows": 256
+    },
+    "shona": {
+      "mean_tokens_per_s": 4.802,
+      "stdev": 8.716,
+      "max_tokens_per_s": 101.19,
+      "rows": 285
+    },
+    "swahili": {
+      "mean_tokens_per_s": 4.009,
+      "stdev": 0.681,
+      "max_tokens_per_s": 5.734,
+      "rows": 255
+    },
+    "yoruba": {
+      "mean_tokens_per_s": 3.695,
+      "stdev": 1.62,
+      "max_tokens_per_s": 9.524,
+      "rows": 254
+    }
+  },
+  "over_limit_rows": [
+    {
+      "audio_checksum_sha256": "7cbd42c9f5dcfe6f40a936d672fe64dcb5003a1160a976bc9d596a6ed7856ebc",
+      "language": "amharic",
+      "task": "asr",
+      "label_tokens_raw": 465,
+      "label_tokens_effective": 464,
+      "duration_s": 20.304,
+      "tokens_per_s": 22.853,
+      "language_mean_tokens_per_s": 16.806,
+      "z_score": 1.96,
+      "over_limit": true,
+      "review_trigger": null,
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "b6dd0c4b4dbcb95514d9545b1527513cf4ad4a7d37fea44bc39738b4ffec69a2",
+      "language": "amharic",
+      "task": "asr",
+      "label_tokens_raw": 462,
+      "label_tokens_effective": 461,
+      "duration_s": 17.664,
+      "tokens_per_s": 26.098,
+      "language_mean_tokens_per_s": 16.806,
+      "z_score": 3.01,
+      "over_limit": true,
+      "review_trigger": null,
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "89edbeef09855cd1304b1a0829cf25240a80292d46b5169f60eb3a40fb777be1",
+      "language": "amharic",
+      "task": "asr",
+      "label_tokens_raw": 536,
+      "label_tokens_effective": 535,
+      "duration_s": 20.376,
+      "tokens_per_s": 26.256,
+      "language_mean_tokens_per_s": 16.806,
+      "z_score": 3.06,
+      "over_limit": true,
+      "review_trigger": null,
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "f2f4ad40987f93d9194286b9da87d4539194b8514c2568a13be95472249a12e7",
+      "language": "amharic",
+      "task": "asr",
+      "label_tokens_raw": 462,
+      "label_tokens_effective": 461,
+      "duration_s": 26.856,
+      "tokens_per_s": 17.166,
+      "language_mean_tokens_per_s": 16.806,
+      "z_score": 0.12,
+      "over_limit": true,
+      "review_trigger": null,
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "b2a913404cd73d5707e59f6130e0613a49199341de6b8051620691f947a4a6e0",
+      "language": "fula",
+      "task": "tts",
+      "label_tokens_raw": 620,
+      "label_tokens_effective": 619,
+      "duration_s": 27.5,
+      "tokens_per_s": 22.509,
+      "language_mean_tokens_per_s": 5.791,
+      "z_score": 7.73,
+      "over_limit": true,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    }
+  ],
+  "rate_outlier_rows": [
+    {
+      "audio_checksum_sha256": "604ab2eed6511e88c0446a09a715b48788c2bd7554e3e09c8a8220600015b702",
+      "language": "fula",
+      "task": "tts",
+      "label_tokens_raw": 241,
+      "label_tokens_effective": 240,
+      "duration_s": 8.875,
+      "tokens_per_s": 27.042,
+      "language_mean_tokens_per_s": 5.791,
+      "z_score": 9.83,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "8edc8a6e6c05c216f9731a79e397d0842259df6a919d0fec702853753434e89b",
+      "language": "lingala",
+      "task": "asr",
+      "label_tokens_raw": 63,
+      "label_tokens_effective": 62,
+      "duration_s": 1.008,
+      "tokens_per_s": 61.508,
+      "language_mean_tokens_per_s": 7.217,
+      "z_score": 4.08,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "6ab1d73bcccf52654637d225c9e7ad490857791b6e344e66c736628f19d90ad0",
+      "language": "lingala",
+      "task": "asr",
+      "label_tokens_raw": 70,
+      "label_tokens_effective": 69,
+      "duration_s": 1.008,
+      "tokens_per_s": 68.452,
+      "language_mean_tokens_per_s": 7.217,
+      "z_score": 4.6,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "beee80a29713242609a12ef536e7949af57abd0126bf926592a273107951d419",
+      "language": "lingala",
+      "task": "asr",
+      "label_tokens_raw": 63,
+      "label_tokens_effective": 62,
+      "duration_s": 1.008,
+      "tokens_per_s": 61.508,
+      "language_mean_tokens_per_s": 7.217,
+      "z_score": 4.08,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "ea22075a7e147ea035349546974bdb97ce4dcaba08d210fe3b024f0a0f37598a",
+      "language": "lingala",
+      "task": "asr",
+      "label_tokens_raw": 64,
+      "label_tokens_effective": 63,
+      "duration_s": 1.008,
+      "tokens_per_s": 62.5,
+      "language_mean_tokens_per_s": 7.217,
+      "z_score": 4.15,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "990d49afe2cef6891530e7f247d30168682eeac48f65ee41fa8fd29e66d8febb",
+      "language": "luganda",
+      "task": "asr",
+      "label_tokens_raw": 52,
+      "label_tokens_effective": 51,
+      "duration_s": 5.796,
+      "tokens_per_s": 8.799,
+      "language_mean_tokens_per_s": 4.334,
+      "z_score": 4.2,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "ba72b0bb91dd4efd3ca057d61b7328e638d9f6eaf1c506077b16f86b86ba7178",
+      "language": "pidgin",
+      "task": "tts",
+      "label_tokens_raw": 85,
+      "label_tokens_effective": 84,
+      "duration_s": 8.448,
+      "tokens_per_s": 9.943,
+      "language_mean_tokens_per_s": 2.239,
+      "z_score": 5.12,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "c5e71c268b2c71f24d18052cec8ed4dd1c71764f4b9cff342fd8f18b16067818",
+      "language": "pidgin",
+      "task": "tts",
+      "label_tokens_raw": 109,
+      "label_tokens_effective": 108,
+      "duration_s": 9.0,
+      "tokens_per_s": 12.0,
+      "language_mean_tokens_per_s": 2.239,
+      "z_score": 6.48,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "c3623f24ac2ff5799270872807b4a364eddae16d9ce2a4cc1e373d0c4092711b",
+      "language": "pidgin",
+      "task": "tts",
+      "label_tokens_raw": 140,
+      "label_tokens_effective": 139,
+      "duration_s": 9.12,
+      "tokens_per_s": 15.241,
+      "language_mean_tokens_per_s": 2.239,
+      "z_score": 8.63,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "bc5a60acc569a9b589a011aa31c7929db9c217b813da8a6f0706597b067eabd2",
+      "language": "pidgin",
+      "task": "tts",
+      "label_tokens_raw": 123,
+      "label_tokens_effective": 122,
+      "duration_s": 11.904,
+      "tokens_per_s": 10.249,
+      "language_mean_tokens_per_s": 2.239,
+      "z_score": 5.32,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "b8c46727d0392d91ae9b58fac25f218f5a7b82e1d8a7fad2433ff1ec8db69b74",
+      "language": "shona",
+      "task": "asr",
+      "label_tokens_raw": 103,
+      "label_tokens_effective": 102,
+      "duration_s": 1.008,
+      "tokens_per_s": 101.19,
+      "language_mean_tokens_per_s": 4.802,
+      "z_score": 11.06,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "a3caab7b5674d96cd5e20874c3086968a2e35e088d3108c97ab63085c5eb3676",
+      "language": "shona",
+      "task": "asr",
+      "label_tokens_raw": 75,
+      "label_tokens_effective": 74,
+      "duration_s": 1.008,
+      "tokens_per_s": 73.413,
+      "language_mean_tokens_per_s": 4.802,
+      "z_score": 7.87,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "2abe62dc74eee695d7d4287487b6f322cd234070b3a37d1b4f52c885fe3aac05",
+      "language": "shona",
+      "task": "asr",
+      "label_tokens_raw": 68,
+      "label_tokens_effective": 67,
+      "duration_s": 1.008,
+      "tokens_per_s": 66.468,
+      "language_mean_tokens_per_s": 4.802,
+      "z_score": 7.08,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    },
+    {
+      "audio_checksum_sha256": "0c1c6d1e7449fa7c778920a91aed85c0c3bdc6fc3c57bd246f7c63efbfc3dc9e",
+      "language": "shona",
+      "task": "asr",
+      "label_tokens_raw": 64,
+      "label_tokens_effective": 63,
+      "duration_s": 1.008,
+      "tokens_per_s": 62.5,
+      "language_mean_tokens_per_s": 4.802,
+      "z_score": 6.62,
+      "over_limit": false,
+      "review_trigger": "token rate far outside this language's distribution",
+      "classification": "UNREVIEWED"
+    }
+  ]
+}

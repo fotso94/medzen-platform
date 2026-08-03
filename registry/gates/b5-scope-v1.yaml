@@ -1,0 +1,51 @@
+version: b5-refusal-scope-v1
+authorization:
+  path: platform/decisions/B5-AUTH-2026-001-refusal-engineering.json
+candidate_evidence:
+  conversion:
+    path: platform/evidence/CAMPAIGNRUN-2026-013-passed.json
+    sha256: e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8
+  source_training_and_baseline:
+    path: platform/evidence/CAMPAIGNRUN-2026-012-failed.json
+    sha256: cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102
+  spot_resume:
+    path: platform/evidence/CAMPAIGNRUN-2026-014-passed.json
+    sha256: fac46bfbd200e074ed4b15d93b626f90b0ccd0e164506bcc2e6b95f9c42a20e7
+  lingala_holdout:
+    path: platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json
+    sha256: 3c737dbb3f50fabd53cb6ea47dc62bddd18d830bf653382c00551c0b36c30c88
+  mlflow_resolution:
+    path: platform/evidence/B5-MLFLOW-RUN-RESOLUTION-2026-001.json
+    sha256: a4c13469a4b8c4cd3f9ddf44f99017fcabbe19fbcde59be0e54be7e901c10aad
+
+promotion_languages:
+  measured: [lingala, luganda, oromo]
+  not_evaluated: [hausa, igbo, pidgin, swahili, yoruba]
+  deferred: [acholi, akan, amharic, ewe, fula, shona]
+  not_applicable: [wolof]
+
+decision_references:
+  active_and_deferred_scope:
+    path: platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
+    sha256: cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c
+  unevaluated_gate_matrix:
+    path: platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json
+    sha256: c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd
+  replay_and_code_switch_gap:
+    path: platform/evidence/B4-REPLAY-CODESWITCH-GAP-2026-001.json
+    sha256: bf6868da021effef25881ae0d87f5d4c99b9adf8435e09778758c1fb1367b9c8
+
+global_required_gates:
+  english_french_replay_regression:
+    state: NOT_EVALUATED
+    reason: English and French replay data and promotion-grade regression evidence are absent.
+    decision_ref: replay_and_code_switch_gap
+  code_switch_evaluation:
+    state: NOT_EVALUATED
+    reason: No licensed, frozen promotion-grade code-switch evaluation exists.
+    decision_ref: replay_and_code_switch_gap
+  peak_l4_gpu_memory:
+    state: NOT_EVALUATED
+    reason: Peak L4 GPU memory is NOT_MEASURED; artifact bytes are only on-disk size evidence.
+    required_for_current_refusal: false
+    required_before_future_b6: true

@@ -1,0 +1,66 @@
+{
+  "record": "VAL-2026-002-LABEL-CONTRACT-AUDIT",
+  "recorded_utc": "2026-07-31T16:29:57Z",
+  "status": "PASS",
+  "purpose": "determine whether the frozen validation references themselves exceed the Whisper label limit or the evaluator generation cap",
+  "content_policy": "aggregate token lengths and manifest hashes only; no transcript, audio, checksum, speaker, session or per-row result persisted",
+  "verifier": {
+    "path": "scripts/audit_validation_label_contract.py",
+    "git_sha": "30ab07834f2beb6ef44ccf0a8b70150801548ee8",
+    "git_dirty": false,
+    "sha256": "388e73ef0e651782920f23d10d5af215e2c7c3f6fc941489e135d78efdbb1df7",
+    "full_generated_record_sha256": "d823cd848a9b78391a4b11af5e469585df3e975a04de6634102f19760fbd906c"
+  },
+  "tokenizer": {
+    "repo": "openai/whisper-large-v3",
+    "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "source": "sha256-verified S3 base cache",
+    "cache_files_verified": 10,
+    "model_weights_downloaded": false
+  },
+  "frozen_validation_record_sha256": "3baf776fe8716eb5b6819c5581f2a9701a044e4ccf9a3a3f2c509189314cb8a6",
+  "model_label_limit": 448,
+  "generation_cap": 440,
+  "totals": {
+    "rows": 385,
+    "wrong_prefix_rows": 0,
+    "missing_eos_target_rows": 0,
+    "rows_over_model_label_limit": 0,
+    "rows_over_generation_cap": 0
+  },
+  "amharic": {
+    "manifest_sha256": "7935560ca958dfb8aff1985829108cc2a5fde9b1cf49c0690d96299b3800643a",
+    "rows": 25,
+    "whisper_language_token": "am",
+    "duration_s": {
+      "min": 15.144,
+      "median": 17.544,
+      "max": 24.216
+    },
+    "effective_model_label_tokens": {
+      "min": 247,
+      "median": 329,
+      "max": 419
+    },
+    "reference_generated_tokens_including_eos": {
+      "min": 244,
+      "median": 326,
+      "max": 416
+    },
+    "wrong_prefix_rows": 0,
+    "missing_eos_target_rows": 0,
+    "rows_over_model_label_limit": 0,
+    "rows_over_generation_cap": 0
+  },
+  "other_language_reference_generated_token_maxima": {
+    "acholi": 107,
+    "akan": 148,
+    "ewe": 169,
+    "fula": 167,
+    "lingala": 128,
+    "luganda": 118,
+    "oromo": 140,
+    "shona": 124
+  },
+  "conclusion": "The frozen targets fit both limits and retain the exact prefix and EOS target. Attempt 5's Amharic cap hits are genuine decode non-termination, not an evaluation cap that is too small."
+}

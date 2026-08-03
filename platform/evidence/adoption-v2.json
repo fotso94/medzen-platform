@@ -1,0 +1,9 @@
+{
+  "key": "curated/_versions/v2/ADOPTION.json",
+  "version_id": "tIYBwyaAfq3T6lmSzCpVhlWhnl2ZItW_",
+  "adoption_sha256": "683f7d5049ffe01538c516f68967833d9f21687feaf710dc40def6dc231cf347",
+  "complete_raw_sha256": "a4c0211eb83f3830f210f34363676964dfb1ce744999d07dc2d27c3ec4b0f681",
+  "deferral_policy_sha256": "f921e2a4cdf3f9bae3e93d01cbbad00913fd730c19d67898a9fdd4571f03226c",
+  "published_utc": "2026-07-30T18:27:10Z",
+  "object_lock": "not configured; versioning only"
+}

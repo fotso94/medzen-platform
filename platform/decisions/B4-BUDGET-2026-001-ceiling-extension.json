@@ -1,0 +1,26 @@
+{
+  "record": "B4-BUDGET-CEILING-EXTENSION",
+  "id": "B4-BUDGET-2026-001",
+  "status": "approved",
+  "campaign": "b4-scoped",
+  "ledger_key": "candidates/budget/b4-scoped/ledger.json",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T01:39:50Z",
+  "authorization": "Approved go ahead",
+  "previous_ceiling_usd": 6.0,
+  "new_cumulative_ceiling_usd": 9.0,
+  "reconciled_spend_at_authorization_usd": 2.876,
+  "corrected_retry_worst_case_usd": 5.5943,
+  "cumulative_worst_case_usd": 8.4703,
+  "spend_reset_permitted": false,
+  "reason": "The first language-scoped attempt failed closed on a confirmed sweep/final scheduler-horizon mismatch. The corrected complete retry must remain able to reach every unchanged gate without silently exhausting the original ceiling.",
+  "scope_controls": {
+    "amharic_deferred": true,
+    "ewe_deferred": true,
+    "gate_weakening_permitted": false,
+    "eks_permitted": false,
+    "spot_permitted": false,
+    "model_registration_permitted": false,
+    "promotion_permitted": false
+  }
+}

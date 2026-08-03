@@ -1,0 +1,39 @@
+{
+  "record": "B4_IMAGE_BUILD_ATTEMPT",
+  "id": "BUILDRUN-2026-001-failed",
+  "status": "FAILED_CLOSED",
+  "build_run_id": "b4-image-c0338f0791c4-attempt-1",
+  "code_git_sha": "c0338f0791c4e40164e4aa68403a65e36c0fe8a1",
+  "code_tar_sha256": "79a13607665674b9872a3c100b14e22c0ba43abda576463d63d154568d42240d",
+  "instance_id": "i-0c51a9fdaca54f794",
+  "instance_type": "c6i.2xlarge",
+  "lifecycle": "on-demand-direct-ec2",
+  "exit_code": 17,
+  "failure": "ECR InitiateLayerUpload was explicitly denied because the launcher attached the download-only medzen-trainer-profile instead of medzen-builder-profile.",
+  "checks_passed": [
+    "bundle archive SHA-256 matched the independently supplied hash",
+    "all 145 bundled file hashes and the complete file set matched",
+    "KMS write round trip",
+    "evaluation-prefix write deny",
+    "installed Python dependency audit",
+    "pinned runtime bootstrap and import gate",
+    "baked MEDZEN_GIT_SHA before attempted push"
+  ],
+  "artifacts": {
+    "prefix": "s3://medzen-speech/candidates/build/b4-image-c0338f0791c4-attempt-1/",
+    "build_log_present": true,
+    "exit_code_present": true,
+    "image_json_present": false,
+    "ecr_tag_created": false
+  },
+  "cleanup": {
+    "instance_state": "terminated",
+    "tagged_volumes_remaining": 0,
+    "active_builder_instances": 0,
+    "budget_state": "reconciled",
+    "actual_seconds": 305.1,
+    "actual_usd": 0.0288
+  },
+  "promotion_or_training_effect": "none; no image was published and no GPU, training, registration, promotion or deployment occurred",
+  "content_policy": "infrastructure identifiers, hashes and numeric status only; no audio, transcript, patient or credential data"
+}

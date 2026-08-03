@@ -1,0 +1,12 @@
+inherits: _defaults.yaml
+language: igbo
+version: v1-initial
+rationale: |
+  Tonal language with diacritics. CER is the primary metric — WER punishes a
+  single tone mark as a whole-word error. Text MUST be NFC-normalised before
+  scoring, and results reported both diacritized and tone-stripped so
+  recognition errors are distinguishable from tone-marking errors.
+overrides:
+  asr:
+    absolute_wer_max: 0.30
+    absolute_cer_max: 0.10

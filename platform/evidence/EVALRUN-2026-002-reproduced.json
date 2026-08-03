@@ -1,0 +1,152 @@
+{
+  "record": "EVALUATION_RUN",
+  "id": "EVALRUN-2026-002-reproduced",
+  "recorded_utc": "2026-07-31T08:04:45Z",
+  "status": "SUCCEEDED",
+  "purpose": "DIAGNOSTIC_ONLY",
+  "purpose_note": "The Pidgin set shares speakers and sessions with training and has informed this investigation. This run reproduces the failure. It cannot select a checkpoint, validate a fix, or support promotion.",
+  "run": {
+    "run_id": "eval-1785483918-fd78a3c77e4b",
+    "s3_prefix": "s3://medzen-speech/candidates/evaluations/eval-1785483918-fd78a3c77e4b/",
+    "instance_id": "i-07fd7054720c7acc0",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand",
+    "az": "eu-central-1a",
+    "launched_utc": "2026-07-31T07:44:43Z",
+    "exit_code": 0,
+    "runtime_minutes_approx": 8,
+    "cost_usd_approx": 0.13
+  },
+  "artifact": {
+    "evaluation_json": "s3://medzen-speech/candidates/evaluations/eval-1785483918-fd78a3c77e4b/evaluation.json",
+    "sha256": "8ecca6c132d923eae31b1ce914d617d076eaa47c8deb99fa10fc35886f4d1683"
+  },
+  "pins": {
+    "evaluator_commit": "fd78a3c77e4b04b094c5c8579a37945acc427e83",
+    "bundle_tar_sha256": "99574176ee227d146b92d9d7e05bbcf20804b015059155b21b2e86a898fda8bd",
+    "bundle_files": 122,
+    "image_digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+    "user_data_sha256": "39d0242e2f2446a7daa2f8dd3daad0447391fe5f82cf3b0e1b3d75fd280e72e6",
+    "base_model": "openai/whisper-large-v3@06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "eval_manifest_sha256": "3f642616b691745ad80904d1436826ca3c27355ab81bcaa133febd2ad1178739",
+    "adapter_sha256": "17e1b7381b7b3fdb362ecb692d72b92a2dc295d7ee79ff6367a8d6a9c7cd3195",
+    "adapter_expected_hash_matched": true
+  },
+  "runtime": {
+    "device": "cuda",
+    "gpu": "NVIDIA L4",
+    "torch": "2.13.0+cu130",
+    "transformers": "5.14.1",
+    "peft": "0.20.0"
+  },
+  "generation_contract": {
+    "output_type": "GenerateEncoderDecoderOutput",
+    "expected_prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "observed_prompt_ids": [
+      50258,
+      50259,
+      50360,
+      50364
+    ],
+    "prompt_ids_match": true,
+    "flags": {
+      "max_new_tokens": 440,
+      "num_beams": 1,
+      "do_sample": false,
+      "task": "transcribe",
+      "language": "en",
+      "return_dict_in_generate": true,
+      "force_unique_generate_call": true
+    },
+    "identical_across_arms": true,
+    "preflight": "one base clip validated the contract before scoring: structured type, exact prompt, 9 generated tokens, EOS present",
+    "short_form": {
+      "longest_clip_s": 28.18,
+      "segment_limit_s": 30.0,
+      "clips_at_or_over_limit": 0
+    }
+  },
+  "results": {
+    "eval_set": "eval/pidgin/tts/v1 \u2014 44 clips, 7.875 min, all checksums verified",
+    "base": {
+      "wer": 0.5117,
+      "cer": 0.378,
+      "wer_ci95": [
+        0.3789,
+        0.6454
+      ],
+      "generated_tokens_median": 15.0,
+      "generated_tokens_max": 72,
+      "eos_emitted_rows": 44,
+      "eos_rate": 1.0,
+      "cap_hits": 0,
+      "cap_hit_rate": 0.0,
+      "stop_reasons": {
+        "eos": 44,
+        "max_new_tokens": 0,
+        "other": 0
+      }
+    },
+    "candidate": {
+      "wer": 7.2262,
+      "cer": 4.4203,
+      "wer_ci95": [
+        4.736,
+        10.6825
+      ],
+      "generated_tokens_median": 53.0,
+      "generated_tokens_max": 440,
+      "eos_emitted_rows": 31,
+      "eos_rate": 0.7045,
+      "cap_hits": 13,
+      "cap_hit_rate": 0.2955,
+      "stop_reasons": {
+        "eos": 31,
+        "max_new_tokens": 13,
+        "other": 0
+      }
+    }
+  },
+  "external_comparison_targets": {
+    "note": "Targets, not gates. The external evaluator's code, library versions and text normalization were never recorded, so exact agreement was never expected.",
+    "base_wer": 0.5133,
+    "base_cer": 0.378,
+    "candidate_wer": 7.2231,
+    "candidate_cer": 4.2184,
+    "deltas": {
+      "base_wer": -0.0016,
+      "base_cer": 0.0,
+      "candidate_wer": 0.0031,
+      "candidate_cer": 0.2019
+    },
+    "assessment": "Three of four agree to within 0.003. The CER delta of 0.20 has no established cause -- the external normalization and evaluator are unrecorded -- and it does not affect the conclusion, which rests on a candidate WER above 7 against a base near 0.51."
+  },
+  "guardrails_exercised": {
+    "kms_round_trip": "OK",
+    "eval_write_deny": "INTACT",
+    "image_digest_after_pull": "VERIFIED",
+    "bundle_archive_hash": "VERIFIED against user-data",
+    "bundle_manifest": "122 files, all hashes matched"
+  },
+  "cleanup_verified": {
+    "instance_state": "terminated",
+    "root_volume": "vol-0d3aa95066c9801da \u2014 InvalidVolume.NotFound (deleted)",
+    "gpu_instances_running": 0,
+    "unattached_volumes": 0,
+    "unassociated_eips": 0,
+    "active_spot_requests": 0
+  },
+  "related": {
+    "failed_first_attempt": "EVALRUN-2026-001-failed.json (eval-1785482688-2919224de849) \u2014 preserved, not overwritten or deleted",
+    "decision": "EVAL-2026-001-b4-candidate-failed.json",
+    "rca": "RCA-2026-001-generation-collapse.md"
+  },
+  "not_done": "no training, registration, promotion, deployment, MLflow change, checkpoint sweep, or B5 start",
+  "content_policy": "hashes, counts and aggregate metrics only; no transcript, audio, speaker or session information"
+}

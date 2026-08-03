@@ -1,0 +1,109 @@
+{
+  "record": "CAMPAIGNRUN-2026-011-FAILED",
+  "status": "FAILED_CLOSED_CHECKPOINT_100_TERMINATION_GATE",
+  "campaign_run": "b4-scoped-simplified-ed2c333",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "executed_provenance": {
+    "git_sha": "ed2c3331d747c89df4a4538dff1cf9a02507c1c5",
+    "bundle_tar_sha256": "df55907d646967c1fc526cb1c93041f38e004ffc4409e4990b0ffd06cb4fc9b6",
+    "image_digest": "sha256:15528f786cbf6ede12d74b3c18eeb0a2e88d4cdfda0676cf6772e8c1d7c7fcc8",
+    "policy_sha256": "6e7fc5281223ec68aefc9caaf60d03c665e529a14ce83eabd8630c7a0fd6e803",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R2.json",
+    "dataset_fingerprint": "eed56700ceadd37ac1513e49cd1798a6cddc20b46c90d2a9b2ed6b439685769e",
+    "eligible_rows": 2223,
+    "training_languages": ["hausa", "igbo", "lingala", "luganda", "oromo", "pidgin", "swahili", "yoruba"],
+    "validation_languages": ["lingala", "luganda", "oromo"]
+  },
+  "base_and_preflight": {
+    "instance_id": "i-091d72be93b793a4a",
+    "actual_seconds": 958.3,
+    "actual_usd": 0.2679,
+    "root_volume_id": "vol-022639d923a85d754",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "f2152fb7c272d83c0f5277da758bb76bea4baeeb11f9bca4e90ab4f5ca31c4cb",
+    "stage_result_sha256": "715ada69d62e17d76970aa028e596dcd4baeb16a02428348d21d2de1bf025505",
+    "container_result_sha256": "b24977e6f332a606cb77f1d612a2275fcd59c92ce23dedf5f30739e6f77beb20",
+    "base_artifact_sha256": "a6efe0f03f8a92c6e8fe4e3d1577c0b1eacffc20e3f9d4f73bd7bec9a4a99c98",
+    "base_wer": {"lingala": 0.9207, "luganda": 1.0659, "oromo": 1.1749},
+    "preflight_passed": true,
+    "saved_reloaded_adapter_sha256": "5d296aeba556ba2c298faf65a3dab64f5231f26e8d315fdc5cb0457c5193973e"
+  },
+  "sweep": {
+    "instance_id": "i-004c2c5510c29f95c",
+    "actual_seconds": 1552.1,
+    "actual_usd": 0.4339,
+    "root_volume_id": "vol-04e4cb7f75d814bab",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "7ef73198c4421f529d649839708103548f5c82e86165a839b94e7c8e6b9c693b",
+    "stage_result_sha256": "71f80944b2245f17082959562bb4b746f3958f9f89bd111dcabe43a2195c2aae",
+    "container_result_sha256": "e320bfca91d48a454abac8262c348daff090974cdc57e9886013f721e63cefa8",
+    "learning_rate": 0.0001,
+    "seed": 0,
+    "scheduler_horizon_steps": 600,
+    "checkpoint_step": 100,
+    "wer": {"lingala": 0.8454, "luganda": 0.9260, "oromo": 0.8908},
+    "eos_rate": {"lingala": 1.0, "luganda": 1.0, "oromo": 1.0},
+    "cap_hit_rate": {"lingala": 0.0, "luganda": 0.0, "oromo": 0.0},
+    "gate_passed_under_attempt_1_rule": true
+  },
+  "final": {
+    "instance_id": "i-0a834fbfe9cfb394a",
+    "actual_seconds": 1581.9,
+    "actual_usd": 0.4422,
+    "root_volume_id": "vol-04990e688705c320f",
+    "root_volume_deleted": true,
+    "stage_descriptor_sha256": "b5ae2143f6e007cf15249982e1e140885fe890e94ff0edfb0238d403680b69d0",
+    "stage_result_sha256": "4b023398a0c89d045857ec34c337745f0e03e25456e78fbcee35b994260b4cb3",
+    "container_result_sha256": "a2d14caa6b6125a5e72f9bfa66f6abec1af24f4f53101d726c3cfc542805cee0",
+    "checkpoint_evaluation_sha256": "c318606ad78060d57b763d665a2f6fb092b9c72990ede3b38f196995f11e9af5",
+    "steps_completed": 100,
+    "step_101_executed": false,
+    "checkpoint_100": {
+      "wer": {"lingala": 0.9390, "luganda": 0.9309, "oromo": 0.8899},
+      "eos_rate": {"lingala": 0.9714, "luganda": 1.0, "oromo": 1.0},
+      "cap_hit_rate": {"lingala": 0.0286, "luganda": 0.0, "oromo": 0.0},
+      "termination_failure_checksums": {
+        "lingala": ["bfd966f947a3904d5bbae2f10116a106eab12bf99fd8fa8969913f1c2284b13e"],
+        "luganda": [],
+        "oromo": []
+      },
+      "failure_count_is_unique_row_count": true,
+      "lingala_failure_was_both_missing_eos_and_cap_hit": true,
+      "gate_passed_under_attempt_1_rule": false
+    }
+  },
+  "failure": {
+    "reason": "Attempt 1 required EOS rate 1.0 and cap-hit rate 0.0 at every checkpoint. One of 35 Lingala rows omitted EOS and exhausted the 440-token cap.",
+    "same_learning_rate_seed_manifests_and_scheduler_horizon_as_passing_sweep": true,
+    "sweep_and_final_adapter_hashes_differed": true,
+    "interpretation": "The exact-zero selection boundary is unstable under independently trained GPU artifacts. This does not prove the row is harmless. The owner approved a prospective count-based rule with checksum recurrence detection for a fresh attempt.",
+    "attempt_1_checkpoint_reusable": false,
+    "lingala_removed": false,
+    "after_the_fact_gate_change_permitted": false
+  },
+  "mlflow": {
+    "terminal_snapshot_key": "mlflow/snapshots/b4-scoped-simplified-ed2c333/attempt-1/campaign-failed/mlflow.db",
+    "terminal_snapshot_sha256": "459b18737f135e59fae885aca011ea49a6ecd294bca338c7cbac10ec579d51a1",
+    "parent_status": "FAILED",
+    "registered_models": 0
+  },
+  "budget": {
+    "ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+    "hard_ceiling_usd": 100.0,
+    "aggregate_committed_usd": 18.1258,
+    "remaining_usd": 81.8742,
+    "unresolved_reservations": 0
+  },
+  "cleanup": {
+    "all_campaign_instances_terminated": true,
+    "all_campaign_root_volumes_deleted": true,
+    "active_b4_instances": 0,
+    "artifactize_started": false,
+    "spot_checkpoint_started": false,
+    "spot_resume_started": false,
+    "eks_used": false
+  },
+  "b5_allowed": false
+}

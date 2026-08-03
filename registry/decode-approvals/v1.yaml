@@ -1,0 +1,50 @@
+version: decode-approval-v1
+status: versioned-source-of-truth
+rule: >-
+  A promotion-approved decode strategy must bind the exact strategy, prompt and
+  token configuration, greedy or beam settings, token cap, normalization,
+  frozen evaluation, selecting run, and artifact, code and container provenance.
+  Missing or ambiguous evidence remains NOT_EVALUATED and must not be invented.
+
+languages:
+  lingala:
+    promotion_state: NOT_EVALUATED
+    reason: B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.
+    decision_ref: platform/decisions/B5-AUTH-2026-001-refusal-engineering.json
+  luganda:
+    promotion_state: NOT_EVALUATED
+    reason: B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.
+    decision_ref: platform/decisions/B5-AUTH-2026-001-refusal-engineering.json
+  oromo:
+    promotion_state: NOT_EVALUATED
+    reason: B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.
+    decision_ref: platform/decisions/B5-AUTH-2026-001-refusal-engineering.json
+  pidgin:
+    promotion_state: NOT_EVALUATED
+    reason: Existing 44-row, two-speaker evidence is explicitly provisional and lacks the complete promotion binding.
+    decision_ref: s3://medzen-speech/evidence/decode/pidgin_tts_en_token_vs_auto_551827a900f0.json
+    historical_provisional_configuration:
+      mode: en_token
+      provisional: true
+      chosen_by_run: s3://medzen-speech/evidence/decode/pidgin_tts_en_token_vs_auto_551827a900f0.json
+      frozen_eval: s3://medzen-speech/eval/pidgin/tts/v1/manifest.jsonl
+      candidates_compared: [en_token, auto, native]
+      evidence:
+        runner_up: auto
+        wer_winner: 0.5257
+        wer_runner_up: 0.5694
+        observed_diff: -0.0437
+        paired_ci95: [-0.1397, 0.0485]
+        p_winner_better: 0.81
+        n_utterances: 44
+        n_speakers: 2
+        distinguishable: false
+        confirm_on: >-
+          A larger Pidgin set with spontaneous (not read) speech, many speakers,
+          and labelled code-switch spans. The present evidence is 44 read clips
+          from 2 Nigerian speakers; it cannot support a claim about Cameroon
+          Pidgin or about code-switched utterances, which are the actual target.
+        artifact_sha256: 551827a900f0b937fdaf4cdfc88ac2e081c8b0c861d93663794cc9b2cbb1fd1c
+        superseded_by: >-
+          An MLflow run id once the tracking server is stood up in B4; until then
+          the content-addressed S3 artifact is the citable record.

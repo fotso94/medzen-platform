@@ -1,0 +1,116 @@
+{
+  "record": "DIAG-2026-001-AMHARIC-TERMINATION",
+  "recorded_utc": "2026-07-31T18:13:49Z",
+  "status": "COMPLETED_DIAGNOSTIC_CONFIRMED_AMHARIC_REPETITION_COLLAPSE",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "training_steps": 0,
+  "campaign_run": "b4-amharic-termination-e2aeb77e5ecc",
+  "attempt": "1",
+  "execution": {
+    "instance_id": "i-045b9ce8e4a6bc725",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand direct EC2",
+    "eks_involved": false,
+    "spot_involved": false,
+    "container_runtime_seconds": 2655.0,
+    "aws_observed_seconds": 3226.4,
+    "actual_usd": 0.902,
+    "exit_status": 0,
+    "root_volume_id": "vol-037ff791dbd78dc1b",
+    "root_volume_deleted": true
+  },
+  "executed_provenance": {
+    "git_sha": "e2aeb77e5ecc6a256aa7f79658e3e8a3cabe9a21",
+    "bundle_tar_sha256": "a93bc88ab6e52a06e829eb1281fd0640755f566bc141f6d4909a0332391a7478",
+    "image_digest": "sha256:e427452660d2ffac7e68df3a8e2f602f7835260ccbe3b942dae06f165d8d2526",
+    "stage_descriptor_sha256": "32abbe906b51c495cabacc030ba512a733442c4ee7fc45e966c49aa487f27ee6",
+    "dataset_fingerprint": "ad8c63d157419cbdbadc1d6a2cf8790c0766d76b848152dbd1be4a1373288275",
+    "base_artifact_sha256": "1803830091c19166290372256d24ed5aa0e6bc5864b62d33b79e4d3af1403a48",
+    "retained_adapter_sha256": "b9abbbd9c9e7a38b2ca62370308a04991fa32ea089a450bf6f715fe519467eac",
+    "retained_adapter_tree_sha256": "5e8ddd18291911c776974fd09cdb291f1bf79da200de657b1159da2b7021ac94",
+    "transformers": "5.14.1",
+    "torch": "2.13.0+cu130",
+    "device": "cuda"
+  },
+  "artifacts": {
+    "diagnostic_key": "s3://medzen-speech/candidates/evaluations/b4-amharic-termination-e2aeb77e5ecc/attempt-1/diagnostic/evaluations/termination-diagnostic.json",
+    "diagnostic_sha256": "4fb15697930dc3bab9a8d9f85fc9666ba170d4cfd29e83609ca8d1b8f353dbd5",
+    "container_result_sha256": "528ff6e415f024281110304261b880f828ea9e1480466bdd3a13ad58a9b1adcf",
+    "mlflow_db_key": "s3://medzen-speech/mlflow/snapshots/b4-amharic-termination-e2aeb77e5ecc/attempt-1/termination-diagnostic/mlflow.db",
+    "mlflow_db_sha256": "0b4eabaf78b40f96f6a6a1a5797f3c55e3be6cb01d641ae0e4d4f8320de9034f",
+    "mlflow_runs_finished": 2,
+    "mlflow_latest_metrics": 163,
+    "registered_models": 0
+  },
+  "amharic": {
+    "rows": 25,
+    "base": {
+      "content_nll_per_token": 1.77913,
+      "eos_nll_mean": 5.055686,
+      "eos_probability_mean": 0.011281008,
+      "eos_probability_median": 0.008301914,
+      "eos_rank_median": 3.0,
+      "eos_rate": 0.0,
+      "cap_hit_rate": 1.0,
+      "generated_tokens_median": 440.0,
+      "unique_token_ratio_median": 0.006818,
+      "repeated_bigram_rate_median": 0.990888,
+      "repeated_trigram_rate_median": 0.990868,
+      "unexpected_control_tokens": 0
+    },
+    "retained_1e_4": {
+      "content_nll_per_token": 1.715294,
+      "eos_nll_mean": 3.447525,
+      "eos_probability_mean": 0.042264163,
+      "eos_probability_median": 0.035384879,
+      "eos_rank_median": 3.0,
+      "eos_rate": 0.12,
+      "cap_hit_rate": 0.88,
+      "generated_tokens_median": 440.0,
+      "unique_token_ratio_median": 0.009091,
+      "repeated_bigram_rate_median": 0.98861,
+      "repeated_trigram_rate_median": 0.986301,
+      "unexpected_control_tokens": 0
+    }
+  },
+  "all_languages_weighted": {
+    "rows": 385,
+    "base": {
+      "content_nll_per_token": 2.534755,
+      "eos_rate": 0.909091,
+      "cap_hit_rate": 0.090909
+    },
+    "retained_1e_4": {
+      "content_nll_per_token": 1.912532,
+      "eos_rate": 0.935065,
+      "cap_hit_rate": 0.064935
+    }
+  },
+  "conclusion": {
+    "confirmed": "Amharic greedy short-form generation is repetition-dominated in both the untouched base and retained 1e-4 adapter. The retained adapter improves teacher-forced content and EOS likelihood and terminates 3 of 25 rows, but does not clear the termination gate.",
+    "ruled_out": [
+      "missing EOS targets",
+      "an evaluator budget too short for the references",
+      "duplicated SOT in the corrected collator",
+      "an inert or mismatched retained adapter",
+      "a prompt or unexpected-control-token mismatch",
+      "a global nine-language training collapse"
+    ],
+    "not_claimed": "The diagnostic does not establish that training caused the Amharic collapse because the untouched base fails all 25 Amharic rows under the same decode contract.",
+    "next_branch": "Investigate the frozen Amharic slice and large-v3 decoding compatibility with a separately predeclared, aggregate-only, no-training diagnostic. Do not weaken the gate, drop Amharic, select a checkpoint, or start another sweep yet."
+  },
+  "content_policy": "aggregate numeric metrics only; no transcript, token sequence, row identifier, speaker, session or audio persisted",
+  "cleanup": {
+    "active_medzen_instances": 0,
+    "unattached_volumes": 0,
+    "active_spot_requests": 0,
+    "all_reservations_reconciled": true,
+    "campaign_actual_usd": 1.0317,
+    "campaign_ceiling_usd": 1.5
+  },
+  "base_v5_status": {
+    "b4_complete": false,
+    "b5_blocked": true
+  }
+}

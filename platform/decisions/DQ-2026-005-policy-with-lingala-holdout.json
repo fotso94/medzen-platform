@@ -1,0 +1,84 @@
+{
+  "list_id": "DQ-2026-005-policy-with-lingala-holdout",
+  "status": "approved",
+  "decision_type": "policy_deferral",
+  "human_review_performed": false,
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T17:14:36Z",
+  "authorization_note": "Keep Lingala and add a larger post-selection holdout from different speakers and sessions. The holdout must never be used to choose the checkpoint.",
+  "statement": "This compound policy preserves all 19 prior row deferrals and additionally removes 77 deterministic Lingala holdout rows from the eligible training pool. Holdout rows are not defective and are not pending content review; they are withheld solely to measure post-selection generalization.",
+  "scope": {
+    "experiment": "b4-whisper-large-v3-lora-simplified-exit",
+    "applies_to": "fresh B4 training runs under B4-SCOPE-2026-002 only",
+    "artifacts": "candidates/ only",
+    "promotion_permitted": false,
+    "distribution_permitted": false,
+    "reuse_requires": "a new owner-approved data/scope decision",
+    "expires_with": "b4-whisper-large-v3-lora-simplified-exit"
+  },
+  "counts": {
+    "total": 96,
+    "inherited_label_anomalies": 19,
+    "post_selection_holdout": 77,
+    "defects": 0,
+    "excluded_as_defective": 0
+  },
+  "inherits_policy": {
+    "path": "platform/decisions/DQ-2026-004-policy-deferral-scoped.json",
+    "sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "rows": 19
+  },
+  "holdout_exclusion": {
+    "record": "B4-HOLDOUT-2026-001",
+    "manifest_key": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+    "manifest_sha256": "82c2a242c504ddd9f73772e34e7d8d2a7733370154b7033945546a12078b706c",
+    "language": "lingala",
+    "task": "asr",
+    "rows": 77,
+    "trigger": "post_selection_holdout",
+    "selection_use_forbidden": true
+  },
+  "bindings": {
+    "audit_path": "platform/evidence/label-length-audit-v2-scoped-replay.json",
+    "audit_sha256": "bc646cbc2f2505f0a52068dd5dbf39263df707840169a66759fdf145a2ddc189",
+    "audit_verifier_git_commit": "56d0970087f12eb3d3a630f5252fcb4b67109568",
+    "audit_verifier_file_sha256": "ca516925f889a2dbd181f14c4b4160f6b52bfd656bc83a65705831a50adc028b",
+    "audit_label_limit": 448,
+    "audit_scope": {
+      "manifest_version": "v2",
+      "split": "train",
+      "require_allowed_use": "asr_train",
+      "rows_skipped_not_permitted": 0
+    },
+    "eligible_source_pool_rows": 4620,
+    "v2_complete_key": "curated/_versions/v2/COMPLETE.json",
+    "v2_complete_raw_sha256": "a4c0211eb83f3830f210f34363676964dfb1ce744999d07dc2d27c3ec4b0f681",
+    "manifests": {
+      "acholi/asr/ach_asr": "b2bb8b3c59cd8eba10a66087ebf9804ec5dae87c9714189525cc7979899a2657",
+      "acholi/tts/ach_tts": "7bb10a6139c760e5b3f23734532ee783651a7b694c78d901c70bfd2180eb1ac8",
+      "akan/asr/aka_asr": "8b58719f7cbfc24f255f51272458460f20ac41bbcec2394bb8e56a128029bdbc",
+      "amharic/asr/amh_asr": "d560df103e211e0331aca105dd118bb2d287141f1de4be1f62ff5f8ef7dab606",
+      "ewe/asr/ewe_asr": "0d1057e7829050bf5ca96b7cd45adbc9938e16d1b99ecc8ba140fb35bd244bb3",
+      "ewe/tts/ewe_tts": "b41d5e6c53cefc1598e1b6e3e9c8f43294b22c884fefe6da445a8f03e242296a",
+      "fula/asr/ful_asr": "f68d19cd30acad8d1e8555a62a7363e2594e08c15aa2771c7370a44b18d8285e",
+      "fula/tts/ful_tts": "68379610b81452b5e7a3358cdf35e57e4bfabb43e75c4aa9a31aec29a7955626",
+      "hausa/tts/hau_tts": "e08bfdca6f3e6f896649ded745e31f1363b7c3be38ce336302e03c5043f02c2e",
+      "igbo/tts/ibo_tts": "4fb09ccbad084d39426540e34e3036e986bd1be4bb61524275201a628afa338a",
+      "lingala/asr/lin_asr": "44eb68ab534a8fe60d150a5df055d183da89dda8fdd7dbf57ea919c8627143a6",
+      "luganda/asr/lug_asr": "ca841a56d57673d8c7e626a1ff31806ed741ed016f9b94b346905fcfda7ff6f6",
+      "luganda/tts/lug_tts": "55716b9569362a4022c5e47fec423c7a44a77f22e0bfc60d4f40383a33a40b2d",
+      "oromo/asr/orm_asr": "acde45ab3af9a3ef876a8d05706ff69df968105418cd2e8f5b2a38aa3c7f7dc0",
+      "pidgin/tts/pcm_tts": "d7bc99fd485dbf450d04882b32cc23a95cba7015ed0febeb322512f93543677b",
+      "shona/asr/sna_asr": "042ea1fc44f442df818ed75f9cc6201da09e2abc1bb4ed56efb3f2a2fac6da67",
+      "swahili/tts/swa_tts": "4844dafeecc41313a6ea0d2131cc18d340d25371e51a34016ea0cd987d446cac",
+      "yoruba/tts/yor_tts": "7ffc102e8a19771809adc40094ec54503efd27dac6db0ec01cf5150679031508"
+    },
+    "manifests_total": 18,
+    "tokenizer_repo": "openai/whisper-large-v3",
+    "tokenizer_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "tokenizer_cache_manifest_sha256": "81d105ee60c26d88817edf6e4ad4e8e946c6a3a0e96710156096c1fed1b65c51",
+    "deferred_checksums_sha256": "549f4718e626e5801ab59234548c8de93c37764a7c6f4614140a6ac6847242d1"
+  },
+  "content_policy": "Only aggregate counts, object keys and hashes appear here. The inherited policy carries checksum-only anomaly rows; holdout rows are expanded from the hash-bound S3 manifest at runtime.",
+  "exclusions": []
+}

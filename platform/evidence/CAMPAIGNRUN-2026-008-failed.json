@@ -1,0 +1,138 @@
+{
+  "record": "CAMPAIGNRUN-2026-008-FAILED",
+  "status": "FAILED_CLOSED_FULA_TERMINATION_GATE",
+  "campaign_run": "b4-scoped-515d00214c87",
+  "attempt": "1",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "executed_provenance": {
+    "git_sha": "515d00214c87b075255d25a7eaff71f8a5a908a8",
+    "bundle_tar_sha256": "1e287798b3c23356b5c4506d86cd4090743fd28530f52f3424da5acd53d436f5",
+    "image_digest": "sha256:13e36e3b377a2d209c9058881f7a7665308aa6a5cd43ea6d6d30ebdf3a983c11",
+    "policy_sha256": "c71f4c7491470ab403f6f3aa2b98fdb434c513312f0b3e678779e07e3026698f",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SCOPED-NO-ACHOLI.json",
+    "adoption_sha256": "0e40b2d3a3dfac77ce45116257a7376e1ed95a0e78439b5ebbfdefabed6ae0be",
+    "language_scope_sha256": "e4679b253b227ccc565fcd2edf79b9c965060321deef61864a5cf1a9dd345cc5",
+    "dataset_fingerprint": "a58b1d300980c467ff2aed3c21ada1d067d3ab4fc8d854b22ad9a43704afeb7d",
+    "eligible_rows": 3321,
+    "sampled_rows": 3320,
+    "training_languages": [
+      "akan", "fula", "hausa", "igbo", "lingala", "luganda",
+      "oromo", "pidgin", "shona", "swahili", "yoruba"
+    ],
+    "validation_languages": [
+      "akan", "fula", "lingala", "luganda", "oromo", "shona"
+    ],
+    "deferred_languages": ["acholi", "amharic", "ewe"]
+  },
+  "base_and_preflight": {
+    "instance_id": "i-0a459d680ee3d3543",
+    "actual_seconds": 1217.8,
+    "actual_usd": 0.3404,
+    "root_volume_id": "vol-0f01b07952fc40af0",
+    "root_volume_deleted": true,
+    "container_runtime_seconds": 641.2,
+    "preflight_passed": true,
+    "adapter_tensors_nonzero": "192/192",
+    "saved_adapter_reload_hash_matched": true,
+    "generation_eos_emitted": true,
+    "finite_gradients": true,
+    "stage_result_sha256": "d79ee1a4d92df1c9177d90186920a0c1853c37026407b47be18214a7363a5b4f",
+    "base_artifact_sha256": "4d6cba6d9cb645b7b3ec9c83926477256a292ff18924b304c0742ac815a8b28f",
+    "base_arm_key": "953a2032f1067d3a17fc64c2a2203dc2d20da0098d5f20f1cda4b9eac3dfe712",
+    "base_wer": {
+      "akan": 0.9677,
+      "fula": 0.9244,
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749,
+      "shona": 1.1039
+    },
+    "base_termination_observation": {
+      "luganda_eos_rate": 0.9811,
+      "luganda_cap_hit_rate": 0.0189,
+      "oromo_eos_rate": 0.9429,
+      "oromo_cap_hit_rate": 0.0571,
+      "note": "The base arm is the comparison reference. The candidate hard gate still required EOS 1.0 and cap-hit 0.0."
+    }
+  },
+  "sweep": {
+    "lr": 0.0001,
+    "steps_completed": 100,
+    "instance_id": "i-081dd2787bdb0d522",
+    "actual_seconds": 2903.6,
+    "actual_usd": 0.8117,
+    "container_runtime_seconds": 1535.2,
+    "root_volume_id": "vol-0794b717316ecc732",
+    "root_volume_deleted": true,
+    "stage_result_sha256": "ae320ee0aacf05a34d2443cdda18baa20ae565ece819b55d37dd4da5f67a31f7",
+    "evaluation_sha256": "bedbb0ab4fd49501089b284eb44763619f42a4416bd1d2b3395cb8a2abf849a6",
+    "adapter_sha256": "a6629a47854ed11de1b324e7b6a7fec9b15a711430d327fb7b28617d1182a6a1",
+    "saved_adapter_smoke_passed": true,
+    "train_loss_at_100": 13.403849283854166,
+    "gradients_finite": true,
+    "macro_wer": 0.97205,
+    "base_macro_wer": 1.02625,
+    "wer_gates_passed": true,
+    "termination_gates_passed": false,
+    "per_language": {
+      "akan": {"wer": 1.0089, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "fula": {"wer": 0.89, "eos_rate": 0.9412, "cap_hit_rate": 0.0588},
+      "lingala": {"wer": 0.8861, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "luganda": {"wer": 1.008, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "oromo": {"wer": 0.9206, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "shona": {"wer": 1.1187, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    },
+    "fula_failure_analysis": {
+      "rows": 51,
+      "rows_without_eos": 3,
+      "generated_tokens_on_each_failure": 440,
+      "reference_word_counts": [33, 38, 50],
+      "full_set_reference_words_median": 33,
+      "full_set_reference_words_max": 79,
+      "base_generated_tokens_for_same_rows": [71, 79, 94],
+      "base_emitted_eos_for_same_rows": true,
+      "conclusion": "ordinary-sized rows; scope-sensitive learned termination regression, not a decoder-length or malformed-manifest explanation"
+    }
+  },
+  "selection": {
+    "selected_lr": null,
+    "reason": "the only authorised fresh learning-rate confirmation failed Fula EOS and cap-hit gates",
+    "least_bad_selection_performed": false,
+    "final_run_launched": false,
+    "registered_models": 0,
+    "promoted_models": 0,
+    "b5_transition": false
+  },
+  "mlflow": {
+    "base_snapshot_sha256": "96e0b36aa8fccecc3234168f514a3afbdbb26e73770368a76fcf29e811844368",
+    "sweep_snapshot_sha256": "ad2897b3f677a468eaa4a3900243ab312ae9a1867986a9e0df418638faeaa988",
+    "base_snapshot_record_sha256": "99568d469e6623765307d0f5532758be03361f6b362d6b941ae5143e892103a6",
+    "sweep_snapshot_record_sha256": "73031197859cdd77f6773e84735aeb7788daed167e6d2787aa029938606f3626",
+    "registered_models": 0
+  },
+  "budget": {
+    "builder_usd": 0.0489,
+    "base_usd": 0.3404,
+    "sweep_usd": 0.8117,
+    "this_continuation_actual_usd": 1.201,
+    "campaign_committed_usd_after_reconciliation": 6.6415,
+    "hard_ceiling_usd": 9.0,
+    "remaining_usd": 2.3585,
+    "corrected_future_gpu_sequence_worst_case_usd": 3.9697,
+    "corrected_future_builder_plus_gpu_worst_case_usd": 4.253,
+    "unresolved_reservations": 0,
+    "reservation_defect": "sweep actual lifecycle 2903.6s exceeded the old 2600s hold because the executable can use two 600s termination grace windows",
+    "corrective_rule": "future holds cover watchdog plus both termination grace windows"
+  },
+  "cleanup": {
+    "both_gpu_instances_terminated": true,
+    "both_root_volumes_deleted": true,
+    "active_b4_instances": 0,
+    "unattached_volumes": 0,
+    "active_spot_requests": 0,
+    "eks_used": false,
+    "spot_used": false
+  },
+  "next_decision_required": "Fula was not part of the owner's prior deferral instruction. Do not remove it or relaunch without an explicit scope decision. Any new scope requires a new fingerprint, immutable adoption, commit, bundle and image."
+}

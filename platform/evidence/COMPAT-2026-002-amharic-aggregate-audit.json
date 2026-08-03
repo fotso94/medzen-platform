@@ -1,0 +1,168 @@
+{
+  "record": "COMPAT-2026-002-AMHARIC-AGGREGATE-AUDIT",
+  "recorded_utc": "2026-07-31T20:40:55Z",
+  "status": "COMPLETED_NO_MECHANICAL_DATA_DEFECT_FOUND",
+  "purpose": "training_system_validation",
+  "promotable": false,
+  "training_steps": 0,
+  "pins": {
+    "train_manifest_sha256": "d560df103e211e0331aca105dd118bb2d287141f1de4be1f62ff5f8ef7dab606",
+    "eval_manifest_sha256": "7935560ca958dfb8aff1985829108cc2a5fde9b1cf49c0690d96299b3800643a",
+    "policy_sha256": "2c82a29a213bb28400dcf1ad742c3a98dbe4061cd28e776c7ae9216865cf3a61",
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-CORRECTED.json",
+    "base_manifest_sha256": "6a1987d462fc3330bb9eeeb488726bd7a16fd7d67f5aa08f0907eaa59d0913f1",
+    "tokenizer_repo": "openai/whisper-large-v3",
+    "tokenizer_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "transformers": "5.14.1"
+  },
+  "counts": {
+    "source_manifest_rows": 300,
+    "source_train_split_rows_before_deferral": 275,
+    "source_test_split_rows": 25,
+    "train_policy_deferred_rows": 4,
+    "train_eligible_rows": 271,
+    "eval_rows": 25
+  },
+  "split_integrity": {
+    "eligible_train_eval_audio_checksum_overlap": 0,
+    "eligible_train_eval_speaker_overlap": 0,
+    "eligible_train_eval_session_overlap": 0,
+    "frozen_eval_equals_source_test_checksum_set": true
+  },
+  "train": {
+    "rows": 271,
+    "minutes": 82.3584,
+    "speakers": 65,
+    "sessions": 65,
+    "largest_speaker_row_share": 0.169742,
+    "duration_s": {
+      "min": 13.656,
+      "p25": 16.056,
+      "median": 17.736,
+      "p75": 19.62,
+      "max": 28.536,
+      "mean": 18.234332
+    },
+    "effective_label_tokens": {
+      "min": 90,
+      "p25": 261,
+      "median": 304,
+      "p75": 352.5,
+      "max": 448,
+      "mean": 303.715867
+    },
+    "effective_tokens_per_s": {
+      "min": 5.630631,
+      "p25": 14.811225,
+      "median": 16.928946,
+      "p75": 18.823812,
+      "max": 24.897593,
+      "mean": 16.713086
+    },
+    "effective_tokens_per_letter": {
+      "median": 3.021429,
+      "mean": 3.016081
+    },
+    "unicode_letter_share": {
+      "ethiopic": 0.997327,
+      "latin": 0.00216,
+      "digits": 0.000513,
+      "other_letters": 0.0
+    },
+    "normalized_mismatch_rows": 0,
+    "empty_after_normalization_rows": 0
+  },
+  "eval": {
+    "rows": 25,
+    "minutes": 7.4552,
+    "speakers": 11,
+    "sessions": 11,
+    "largest_speaker_row_share": 0.16,
+    "duration_s": {
+      "min": 15.144,
+      "p25": 16.056,
+      "median": 17.544,
+      "p75": 18.816,
+      "max": 24.216,
+      "mean": 17.89248
+    },
+    "effective_label_tokens": {
+      "min": 247,
+      "p25": 288,
+      "median": 329,
+      "p75": 346,
+      "max": 419,
+      "mean": 323.64
+    },
+    "effective_tokens_per_s": {
+      "min": 15.155269,
+      "p25": 16.946993,
+      "median": 17.895997,
+      "p75": 19.262104,
+      "max": 21.866841,
+      "mean": 18.119213
+    },
+    "effective_tokens_per_letter": {
+      "median": 3.020408,
+      "mean": 3.02008
+    },
+    "unicode_letter_share": {
+      "ethiopic": 0.999254,
+      "latin": 0.0,
+      "digits": 0.000746,
+      "other_letters": 0.0
+    },
+    "normalized_mismatch_rows": 0,
+    "empty_after_normalization_rows": 0
+  },
+  "audio_integrity": {
+    "train": {
+      "rows": 271,
+      "decode_failures": 0,
+      "checksum_mismatches": 0,
+      "declared_format_mismatches": 0,
+      "duration_error_max_s": 0.0,
+      "rms_dbfs_min_median_max": [-36.481232, -22.597683, -13.519021],
+      "near_silence_fraction_min_median_max": [0.087632, 0.272934, 0.56114],
+      "clipping_fraction_max": 0.000016,
+      "dc_offset_abs_max": 0.000104
+    },
+    "eval": {
+      "rows": 25,
+      "decode_failures": 0,
+      "checksum_mismatches": 0,
+      "declared_format_mismatches": 0,
+      "duration_error_max_s": 0.0,
+      "rms_dbfs_min_median_max": [-34.217536, -21.91865, -14.888577],
+      "near_silence_fraction_min_median_max": [0.10039, 0.218975, 0.314968],
+      "clipping_fraction_max": 0.000004,
+      "dc_offset_abs_max": 0.000046
+    }
+  },
+  "interpretation": {
+    "confirmed": [
+      "The frozen evaluation is the source manifest's 25-row test split and has no checksum, speaker or session overlap with eligible training.",
+      "Every checked audio object decodes, matches its checksum, sample rate, channel count and duration declaration, with negligible clipping and DC offset.",
+      "Current normalization reproduces every stored normalized label and emits no empty label.",
+      "Amharic is heavily fragmented by the pinned tokenizer at roughly 3 effective tokens per Ethiopic letter; evaluation is modestly more token-dense than training but remains inside the eligible training range."
+    ],
+    "not_established": [
+      "semantic transcription correctness",
+      "spoken-language correctness",
+      "word/audio alignment correctness",
+      "independent-domain generalization",
+      "a safe decode or training configuration"
+    ],
+    "next_gate": "Qualified Amharic review and an independently sourced frozen evaluation set are required before any further model or optimizer experiment."
+  },
+  "aws_effect": {
+    "resources_created": 0,
+    "resources_modified": 0,
+    "read_only_audio_objects_streamed": 296
+  },
+  "content_policy": "aggregate values only; no URI, checksum, transcript, token sequence, speaker/session ID or audio persisted or printed",
+  "base_v5_status": {
+    "b4_complete": false,
+    "b5_blocked": true
+  }
+}

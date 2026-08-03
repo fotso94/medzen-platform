@@ -1,0 +1,119 @@
+# medzen-trainer — the validated B4 environment, baked.
+#
+# Why this image exists: the EC2 venv path installs ~4 GB from PyPI on every
+# start. That is paid again after every Spot interruption, which erodes exactly
+# the saving Spot is bought for. Here it is paid once, at build time.
+#
+# No CUDA base image. The torch wheels carry their own CUDA runtime, so a slim
+# Python base plus the host's driver (via nvidia-container-toolkit) is enough,
+# and it avoids stacking a second CUDA userspace that could disagree with the
+# one torch expects — which is the class of breakage that cost preflight
+# attempts 4 and 5 on the DLAMI.
+#
+# The base Whisper checkpoint is deliberately NOT baked in: it is cached in S3
+# under models/base/ and fetched at run time, so the image stays ~3 GB smaller
+# and the model can be re-pinned without a rebuild.
+#
+#   docker buildx build --platform linux/amd64 -f pipeline/Dockerfile.trainer .
+# Pinned by DIGEST, not tag: a tag moves with every patch release, so the same
+# Dockerfile would silently produce different images over time and the ECR scan
+# findings would not describe what was reviewed. Refresh deliberately:
+#   docker manifest inspect --verbose python:3.12-slim-trixie
+#
+# Debian 13 (trixie), NOT bookworm. The bookworm base carried 3 CRITICAL and 5
+# HIGH CVEs in perl-base 5.36.0-7+deb12u3, every one marked NO FIX AVAILABLE in
+# Debian 12, so no apt upgrade could clear them. perl-base is Essential and
+# cannot be removed without breaking dpkg. Trixie ships perl-base 5.40.1-6 and
+# util-linux 2.41-5, which is the only remediation that does not mean waiving a
+# CRITICAL finding on an image that will process consented health speech.
+FROM python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HUB_DISABLE_XET=1 \
+    HF_HUB_OFFLINE=1 \
+    MEDZEN_BUCKET=medzen-speech \
+    AWS_DEFAULT_REGION=eu-central-1 \
+    LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/usr/local/lib/python3.12/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
+
+# HF_HUB_OFFLINE=1 above is a hard guarantee, not a preference: the base
+# checkpoint comes from the S3 cache with per-file sha256 verification, so any
+# attempt to reach the Hub at training time is a bug and must fail loudly
+# rather than quietly downloading 3 GB of unverified weights.
+
+# libsndfile is what soundfile/librosa read our 16 kHz mono wav through.
+# ffmpeg is deliberately omitted: the curated corpus is wav end to end
+# (verified by verify_corpus.py), and it would add ~100 MB for nothing.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libsndfile1 ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/medzen
+
+# Requirements first: this layer is the expensive one and must not be
+# invalidated by a source change.
+# pip itself is a dependency with advisories: the base ships 25.0.1, which
+# pip-audit flags for 6 issues fixed by 26.x. Upgrade before installing anything.
+RUN pip install --no-cache-dir "pip==26.2"
+
+COPY requirements.txt ./
+RUN pip install -r requirements.txt
+
+# CTranslate2 uses dynamic loading, so importing the Python extension is not a
+# runtime proof.  Load the exact CUDA-12 SONAMEs during the build and fail the
+# image before publication when either dependency is absent.  cuDNN keeps the
+# same major SONAME across the co-installed CUDA userspaces and is verified too.
+RUN python -c 'import ctypes; [ctypes.CDLL(n) for n in ("libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libcudnn.so.9")]; print("CT2 CUDA RUNTIME LIBRARIES OK")'
+
+COPY pipeline ./pipeline
+COPY scripts ./scripts
+COPY registry ./registry
+COPY schemas ./schemas
+# Runtime governance is executable input, not documentation.  The stage
+# runner refuses without these exact records, so they must be baked beside the
+# code whose commit/digest the descriptor authorises.
+COPY platform/decisions/DQ-2026-004-policy-deferral-scoped.json \
+     ./platform/decisions/DQ-2026-004-policy-deferral-scoped.json
+COPY platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json \
+     ./platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json
+COPY platform/decisions/B4-SCOPE-2026-001-language-deferral.json \
+     ./platform/decisions/B4-SCOPE-2026-001-language-deferral.json
+COPY platform/decisions/B4-SCOPE-2026-002-simplified-exit.json \
+     ./platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
+COPY platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json \
+     ./platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json
+COPY platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json \
+     ./platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json
+COPY platform/evidence/VAL-2026-001-frozen-validation-sets.json \
+     ./platform/evidence/VAL-2026-001-frozen-validation-sets.json
+COPY platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json \
+     ./platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json
+
+# Python-dependency audit. ECR basic scanning covers OS packages only, so
+# without this nothing looks at torch, transformers, or the Flask/gunicorn tail
+# mlflow installs. Runs BEFORE the verify gate deliberately: the audit removes
+# the tooling it installed, and the gate below then proves the environment
+# survived that cleanup.
+RUN bash pipeline/audit_python_deps.sh
+
+# The SAME gates the EC2 venv path runs — stale packages absent, pip check,
+# torch pin, import gate — executed at build time so a broken environment can
+# never reach ECR. MODE=verify skips venv creation and installation; the
+# checks themselves are shared with the EC2 path, so they cannot drift.
+RUN MODE=verify bash pipeline/bootstrap_trainer.sh /opt/medzen
+
+# The source commit is BAKED IN, not passed at run time: an image that is told
+# its own provenance can be told the wrong thing. The digest cannot be baked --
+# it is computed after the push -- so it is passed at run time, and the launcher
+# verifies the pulled digest against the pin before starting the container.
+#
+# Placed AFTER the pip layers deliberately: this value changes every commit, and
+# above them it would invalidate the ~4 GB requirements layer on every build.
+ARG GIT_SHA=unknown
+ENV MEDZEN_GIT_SHA=$GIT_SHA
+
+# Re-run at container start too. Build-time success proves the image was built
+# correctly; start-time success proves it still is on this host, with this
+# driver, and costs ~15s against a multi-hour training run.
+ENTRYPOINT ["bash", "/opt/medzen/pipeline/container_entrypoint.sh"]

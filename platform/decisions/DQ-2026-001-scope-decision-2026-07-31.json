@@ -1,0 +1,31 @@
+{
+  "record": "REVIEW_SCOPE_DECISION",
+  "id": "DQ-2026-001-scope-2026-07-31",
+  "recorded_utc": "2026-07-31T08:29:28Z",
+  "applies_to": "DQ-2026-001-label-review",
+  "decided_by_role": "platform-owner",
+  "decision_type": "human scope decision (not a classification)",
+  "statement": "Keep the 19 mechanically flagged rows pending future review. The boundary row d0ffd52881d0b074 does not exceed the corrected 448-token limit and is not in the corrected rate-outlier set, so it is OUTSIDE the Option B listening scope. This is NOT a quality endorsement of that row.",
+  "in_scope": {
+    "count": 19,
+    "composition": "5 over_decoder_limit + 14 extreme_token_rate_under_limit",
+    "status": "pending future human review",
+    "derived_from_audit": "platform/evidence/label-length-audit-v2-corrected.json",
+    "audit_sha256": "ce0b9a29a39f5d4fb25666fdbf6292fb377ca550847428bb7e27b5d3b8224148"
+  },
+  "out_of_scope": {
+    "audio_checksum_sha256_prefix": "d0ffd52881d0b074",
+    "language": "amharic",
+    "task": "asr",
+    "why": "raw 449 tokens minus the one stripped start-of-transcript token is exactly 448 -- the decoder limit, not above it. The bos_token_id defect inflated every row by one token and this row sat on the boundary. It is also absent from the corrected rate-outlier set.",
+    "explicitly_not": "a quality endorsement. The row is untested and unlistened-to, exactly like every other row in the corpus that was never flagged."
+  },
+  "draft_state": {
+    "status": "draft",
+    "entries": 20,
+    "classified": 0,
+    "note": "The draft is NOT edited by this decision. It still lists the original 20 entries and all remain unclassified. This record narrows what a future reviewer must listen to; it does not classify anything, and no row has been listened to."
+  },
+  "relationship_to_policy": "DQ-2026-003 defers 19 rows from the Option B run by policy. That deferral and this scope decision are different things: one excludes rows from a training run, the other says which rows a human must eventually hear. Neither is a data-quality finding.",
+  "content_policy": "checksums and counts only; no transcript, audio or speaker data"
+}

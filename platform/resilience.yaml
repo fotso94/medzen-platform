@@ -1,0 +1,109 @@
+# A6 — Streaming and resilience. Consumed by platform/lib/resilience.py.
+#
+# Design rule behind every number here: a clinical answer must never be lost
+# because a dependency was slow. Degrade the delivery, never the content.
+
+backpressure:
+  # Bounded queues per streaming session. Unbounded queues turn a slow client
+  # into an OOM kill, which drops the session entirely.
+  queues:
+    partial_transcripts: {max: 4,  overflow: drop_oldest}
+    audio_chunks:        {max: 8,  overflow: pause_upstream}
+    final_results:       {max: 16, overflow: block}   # NEVER dropped
+  rule: |
+    Partials are advisory — dropping the second-newest costs nothing. Audio
+    chunks pause TTS synthesis rather than buffer without limit. Final
+    transcripts and answers are never dropped; if that queue fills, the
+    session errors loudly instead of silently losing a clinical answer.
+
+cancellation:
+  propagate_within_ms: 250
+  targets: [asr, llm, tts]
+  triggers: [client_disconnect, explicit_cancel, barge_in]
+  rule: |
+    An abandoned turn must stop billing Fish and stop occupying the GPU within
+    250 ms. Barge-in is a cancel, not a queue — the user talking over the
+    assistant means the previous answer is dead.
+
+timeouts:
+  # Per component. NEVER inherited from a parent deadline: an inherited
+  # timeout makes the slowest dependency define everyone's failure mode.
+  asr:
+    partial_stall_ms: 1500        # no new partial -> restart segment
+    final_ms: 15000
+  llm:
+    first_token_ms: 5000
+    total_ms: 30000
+  tts:
+    first_byte_ms: 2000           # Fish is external; fail fast to fallback
+    chunk_gap_ms: 3000
+    total_ms: 60000
+  rag:
+    query_ms: 800
+
+retries:
+  max_attempts: 1                 # one retry, not three
+  backoff: {base_ms: 200, jitter_ms: 150}
+  idempotent_only: true
+  rule: |
+    TTS synthesis is keyed by content hash, so retrying is free and safe.
+    LLM generation is NOT idempotent — a retry can produce different clinical
+    text and double the bill. Retry transport failures only, never a
+    completed-but-unwanted generation.
+
+circuit_breakers:
+  defaults:
+    failure_threshold: 5          # consecutive failures -> open
+    timeout_threshold: 3          # timeouts in the window -> open
+    window_s: 30
+    open_duration_s: 15           # then half-open, single probe
+    half_open_max_calls: 1
+  per_provider:
+    fish:    {failure_threshold: 5, open_duration_s: 15}
+    bedrock: {failure_threshold: 5, open_duration_s: 20}
+    asr:     {failure_threshold: 3, open_duration_s: 10}
+  observability:
+    export_state_as_metric: true
+    include_in_readyz: true
+    rule: An open breaker must be visible in /readyz and as a CloudWatch metric.
+          A silent breaker looks identical to a healthy service with no traffic.
+
+fallback_chains:
+  tts:
+    chain:
+      - {provider: fish,        condition: registry_provider}
+      - {provider: self_hosted, condition: registry_approved}   # qwen3_tts|piper|kokoro
+      - {provider: text_only,   condition: always}
+    terminal: text_only
+    rule: |
+      text_only is a SUCCESS path, not an error. The response returns
+      tts_backend="text_only" with reply_audio_url=null and the client renders
+      text. A valid clinical answer is never discarded because audio failed.
+
+  llm:
+    chain:
+      - {provider: registry_engine, condition: always}   # bedrock | vllm_qwen3
+      - {provider: bedrock,         condition: engine_is_not_bedrock}
+    terminal: null
+    rule: |
+      There is no safe textual fallback for understanding. If the LLM layer is
+      down the turn fails with a controlled error — inventing a response is the
+      one thing worse than failing.
+
+  asr:
+    chain:
+      - {provider: primary, condition: always}
+    terminal: null
+    rule: No fallback. A wrong transcript is more dangerous than no transcript.
+
+degradation_order:
+  # Applied under load or partial outage, in this order.
+  steps:
+    - {shed: tts,       effect: text-only responses}
+    - {shed: rag_depth, effect: fewer retrieved chunks, citations still required}
+    - {shed: streaming, effect: file-mode responses only}
+  never_shed: [safety_gate, emergency_detection]
+  rule: |
+    Emergency detection runs pre-LLM on the transcript and has NO shed path and
+    NO circuit breaker. If it cannot run, the turn fails closed with an
+    escalation message — it never proceeds unchecked.

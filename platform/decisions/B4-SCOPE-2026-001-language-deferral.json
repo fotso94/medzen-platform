@@ -1,0 +1,185 @@
+{
+  "record": "B4-LANGUAGE-SCOPE-DECISION",
+  "id": "B4-SCOPE-2026-001",
+  "revision": 7,
+  "status": "approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T13:18:37Z",
+  "authorization_note": "The owner retained the same eight training languages and Lingala/Luganda/Oromo selection surface, prohibited any further pre-campaign language deferral, and required a larger post-selection Lingala holdout. Revision 6 removes the 77 holdout rows from the eligible training pool and binds the simplified B4 execution to the new aggregate $100 ceiling. Revision 7 supersedes only the immutable adoption key after the authenticated-client preflight fix changed the executable commit; no scope, source row or prior artifact is deleted.",
+  "interpretation": "Removal is a reversible experiment-scope deferral. No registry entry, manifest, audio object, transcript, prior evidence, model artifact or historical MLflow record is deleted or rewritten.",
+  "scope": {
+    "experiment": "b4-whisper-large-v3-lora-corrected",
+    "purpose": "training_system_validation",
+    "promotable": false,
+    "applies_to": [
+      "training mix",
+      "base validation",
+      "sweep validation",
+      "learning-rate selection",
+      "final-run checkpoint gates",
+      "B4 evidence and MLflow parameters"
+    ],
+    "does_not_apply_to": [
+      "stored source data",
+      "language registry",
+      "historical immutable artifacts",
+      "future continuous-training campaigns"
+    ]
+  },
+  "languages": {
+    "original_training": [
+      "acholi", "akan", "amharic", "ewe", "fula", "hausa", "igbo",
+      "lingala", "luganda", "oromo", "pidgin", "shona", "swahili", "yoruba"
+    ],
+    "active_training": [
+      "hausa", "igbo", "lingala", "luganda", "oromo",
+      "pidgin", "swahili", "yoruba"
+    ],
+    "original_validation": [
+      "acholi", "akan", "amharic", "ewe", "fula", "lingala",
+      "luganda", "oromo", "shona"
+    ],
+    "active_validation": ["lingala", "luganda", "oromo"],
+    "deferred": ["acholi", "akan", "amharic", "ewe", "fula", "shona"]
+  },
+  "training_mix_binding": {
+    "manifest_version": "v2",
+    "require_allowed_use": "asr_train",
+    "temperature": 0.5,
+    "seed": 0,
+    "adoption_key": "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R2.json",
+    "deferral_policy": "platform/decisions/DQ-2026-005-policy-with-lingala-holdout.json",
+    "deferral_policy_sha256": "6e7fc5281223ec68aefc9caaf60d03c665e529a14ce83eabd8630c7a0fd6e803",
+    "deferral_policy_exclusion_set_sha256": "549f4718e626e5801ab59234548c8de93c37764a7c6f4614140a6ac6847242d1",
+    "label_audit": "platform/evidence/label-length-audit-v2-scoped-replay.json",
+    "label_audit_sha256": "bc646cbc2f2505f0a52068dd5dbf39263df707840169a66759fdf145a2ddc189",
+    "governance_rebind_note": "The source manifests remain byte-identical. The new compound policy preserves the prior 19 deferrals and withholds 77 Lingala rows for post-selection evaluation. A new immutable adoption key and fingerprint prevent the holdout from silently entering training.",
+    "deferral_policy_rows_total": 96,
+    "deferral_policy_rows_applicable": 86,
+    "deferral_policy_rows_out_of_scope": 10,
+    "eligible_rows_before_policy_exclusions": 2309,
+    "eligible_rows_after_policy_exclusions": 2223,
+    "sampled_rows": 2221,
+    "dataset_fingerprint": "eed56700ceadd37ac1513e49cd1798a6cddc20b46c90d2a9b2ed6b439685769e",
+    "sampled_rows_per_language": {
+      "hausa": 269,
+      "igbo": 269,
+      "lingala": 228,
+      "luganda": 377,
+      "oromo": 274,
+      "pidgin": 267,
+      "swahili": 269,
+      "yoruba": 268
+    },
+    "post_selection_holdout": {
+      "record": "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json",
+      "manifest_key": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+      "manifest_sha256": "82c2a242c504ddd9f73772e34e7d8d2a7733370154b7033945546a12078b706c",
+      "rows": 77,
+      "selection_use_forbidden": true
+    }
+  },
+  "immutable_scope_evidence": {
+    "record": "platform/evidence/CAMPAIGNRUN-2026-009-failed.json",
+    "source_campaign": "b4-scoped-5360cd98125e",
+    "source_attempt": "1",
+    "base_artifact_sha256": "b5992a3dc89d059a8e6fa6e12b207bdb02e0c8066db9eb7adedaf817f5bf8be9",
+    "lr_1e_4_artifact_sha256": "c4ee00b3bbf510eeb9c4866092d5e8bac798f3a38952df6e4109dab5a5cb462f",
+    "use": "scope diagnosis only; no adapter is authorised for reuse because every prior adapter was trained on a superseded language mix"
+  },
+  "smaller_language_findings": {
+    "acholi": {
+      "decision": "defer",
+      "reason": "With the corrected 600-step scheduler horizon, 1e-4 is the only arm that passes every unchanged hard gate for the other six retained validation languages. Acholi alone fails termination in that arm: one of 65 rows hits the generation cap.",
+      "base": {"wer": 1.3468, "eos_rate": 0.9077, "cap_hit_rate": 0.0923},
+      "lr_1e_4": {"wer": 0.8509, "eos_rate": 0.9846, "cap_hit_rate": 0.0154}
+    },
+    "oromo": {
+      "decision": "retain",
+      "reason": "All three corrected scheduler-horizon arms terminate fully and improve WER.",
+      "base": {"wer": 1.1749, "eos_rate": 0.9429, "cap_hit_rate": 0.0571},
+      "lr_1e_4": {"wer": 0.9292, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    },
+    "ewe": {
+      "decision": "defer",
+      "reason": "Ewe remains outside the campaign under revision 2 evidence; no gate was weakened and no new Ewe data was evaluated in the corrected scoped attempt."
+    },
+    "luganda": {
+      "decision": "retain",
+      "reason": "The corrected 1e-4 arm terminates fully and improves WER. Failures at higher learning rates do not block the predeclared viable lower-rate continuation.",
+      "base": {"wer": 1.0659, "eos_rate": 0.9811, "cap_hit_rate": 0.0189},
+      "lr_1e_4": {"wer": 1.0, "eos_rate": 1.0, "cap_hit_rate": 0.0}
+    },
+    "fula": {
+      "decision": "defer",
+      "reason": "The fresh 11-language 1e-4 confirmation failed the unchanged termination gate only on Fula: 3 of 51 rows exhausted all 440 generated tokens without EOS. The same rows terminated in the base arm, so this is a learned candidate regression rather than a malformed or oversized validation row.",
+      "base": {"wer": 0.9244, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "lr_1e_4": {"wer": 0.89, "eos_rate": 0.9412, "cap_hit_rate": 0.0588}
+    },
+    "akan": {
+      "decision": "defer",
+      "reason": "The fresh 10-language 1e-4 confirmation produced four cap-hit rows and regressed WER by +0.1440 absolute against the in-run base. The owner explicitly approved Option 2 deferral rather than weakening either gate.",
+      "base": {"wer": 0.9677, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "lr_1e_4": {"wer": 1.1117, "eos_rate": 0.9444, "cap_hit_rate": 0.0556}
+    },
+    "shona": {
+      "decision": "defer",
+      "reason": "The fresh 10-language 1e-4 confirmation produced one cap-hit row. The same row terminated in the preceding scope, so this is a learned scope-sensitive regression; the owner explicitly approved Option 2 deferral.",
+      "base": {"wer": 1.1039, "eos_rate": 1.0, "cap_hit_rate": 0.0},
+      "lr_1e_4": {"wer": 0.9644, "eos_rate": 0.9333, "cap_hit_rate": 0.0667}
+    }
+  },
+  "retained_scope_evidence": {
+    "compatible_learning_rate": 0.0001,
+    "interpretation": "The fresh 10-language result supports 1e-4 for Lingala, Luganda and Oromo, all of which passed the unchanged WER and termination gates. It cannot supply final weights because it was trained on the superseded 10-language mix; the eight-language mix requires fresh training.",
+    "base_macro_wer": 1.053833,
+    "candidate_macro_wer": 0.8844,
+    "candidate_min_eos_rate": 1.0,
+    "candidate_max_cap_hit_rate": 0.0,
+    "candidate_worst_language_regression": -0.0519,
+    "per_language_regression_gate": "pass",
+    "macro_not_worse_gate": "pass"
+  },
+  "reentry_requirements": {
+    "acholi": [
+      "root-cause analysis of the single corrected-1e-4 cap-hit row without exposing private content",
+      "a fresh configuration that reaches EOS on every frozen Acholi row under the unchanged gates",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "amharic": [
+      "qualified Amharic review of the four deferred training rows and a stratified sample",
+      "licensed evaluation set from a different source/domain",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "ewe": [
+      "root-cause analysis for its non-termination under the prior compatible configuration",
+      "a configuration that passes the same strict gates without causing another retained language to fail",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "fula": [
+      "root-cause analysis of the three fresh-1e-4 cap-hit rows without exposing private content",
+      "a fresh configuration that reaches EOS on every frozen Fula row under the unchanged gates",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "akan": [
+      "investigate stability under a native or empirically validated decode-token strategy instead of the approximate Yoruba token",
+      "a fresh configuration that reaches EOS on every frozen Akan row and stays within the +0.05 WER regression cap",
+      "a fresh scope decision and dataset fingerprint"
+    ],
+    "shona": [
+      "root-cause analysis of the scope-sensitive cap-hit row without exposing private content",
+      "a fresh configuration that reaches EOS on every frozen Shona row under unchanged gates",
+      "a fresh scope decision and dataset fingerprint"
+    ]
+  },
+  "hard_controls": {
+    "gate_weakening_permitted": false,
+    "reuse_old_adapter_permitted": false,
+    "model_registration_permitted": false,
+    "promotion_permitted": false,
+    "post_selection_holdout_must_not_select_checkpoint": true,
+    "deferred_languages_must_be_absent_from_training": true,
+    "deferred_languages_must_be_absent_from_validation_and_selection": true
+  },
+  "content_policy": "aggregate metrics, counts and hashes only; no transcript, audio, speaker, session or private row content"
+}

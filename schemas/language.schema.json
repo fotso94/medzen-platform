@@ -1,0 +1,407 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medzen/schemas/language-v2.json",
+  "title": "MedZen language registry entry (A4)",
+  "description": "One file per language in registry/languages/. Git-reviewed, published to SSM on merge. This is the ONLY path from a trained model to production traffic.",
+  "type": "object",
+  "required": [
+    "alias",
+    "iso_code",
+    "status",
+    "asr",
+    "llm",
+    "tts",
+    "thresholds_ref",
+    "fallback_language",
+    "provenance",
+    "capabilities"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "alias": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "What callers send as `language`"
+    },
+    "iso_code": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 8
+    },
+    "display_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "declared",
+        "in_development",
+        "gated",
+        "production",
+        "suspended"
+      ],
+      "description": "declared = named only. in_development = data/training under way. gated = passed gates, awaiting approval. production = live. suspended = pulled."
+    },
+    "asr": {
+      "type": "object",
+      "required": [
+        "artifact",
+        "approved_version",
+        "decode_strategy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "artifact": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^s3://"
+        },
+        "approved_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "decode_strategy": {
+          "type": "object",
+          "required": [
+            "mode",
+            "chosen_by_run",
+            "frozen_eval"
+          ],
+          "additionalProperties": false,
+          "description": "CORRECTION 3 \u2014 never hard-coded. Chosen by the B3 experiment and re-run at every ASR promotion.",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": [
+                "pending_experiment",
+                "en_token",
+                "auto",
+                "learned"
+              ]
+            },
+            "chosen_by_run": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "mlflow://experiment/run \u2014 evidence for the choice"
+            },
+            "frozen_eval": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "pattern": "^s3://"
+            },
+            "candidates_compared": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "provisional": {
+              "type": "boolean",
+              "description": "True when the winning arm is NOT statistically distinguishable from the runner-up. A provisional strategy may be used, but MUST NOT be cited as settled and blocks status=production."
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "description": "Paired-bootstrap result behind the choice. An unpaired ranking is not evidence.",
+              "properties": {
+                "runner_up": {
+                  "type": "string"
+                },
+                "wer_winner": {
+                  "type": "number"
+                },
+                "wer_runner_up": {
+                  "type": "number"
+                },
+                "observed_diff": {
+                  "type": "number"
+                },
+                "paired_ci95": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "p_winner_better": {
+                  "type": "number"
+                },
+                "n_utterances": {
+                  "type": "integer"
+                },
+                "n_speakers": {
+                  "type": "integer"
+                },
+                "distinguishable": {
+                  "type": "boolean"
+                },
+                "confirm_on": {
+                  "type": "string",
+                  "description": "What must be measured before this stops being provisional."
+                },
+                "artifact_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$",
+                  "description": "Checksum of the evidence artifact, so a silent edit is detectable."
+                },
+                "superseded_by": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "llm": {
+      "type": "object",
+      "required": [
+        "engine",
+        "policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "engine": {
+          "type": "string",
+          "enum": [
+            "bedrock",
+            "vllm_qwen3"
+          ]
+        },
+        "policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "qwen_trigger_rounds_failed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "A5: 2 consecutive failed native-review rounds authorises training"
+        }
+      }
+    },
+    "tts": {
+      "type": "object",
+      "required": [
+        "provider",
+        "voice_id",
+        "approved"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "fish",
+            "qwen3_tts",
+            "kokoro",
+            "piper"
+          ]
+        },
+        "voice_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "approved": {
+          "type": "boolean"
+        },
+        "consent_record": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Contract reference. Required when approved=true."
+        },
+        "adaptation_seed": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fallback_provider": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "fish",
+            "qwen3_tts",
+            "kokoro",
+            "piper",
+            null
+          ]
+        }
+      }
+    },
+    "thresholds_ref": {
+      "type": "string",
+      "pattern": "^gates/"
+    },
+    "fallback_language": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "required": [
+        "data_sources",
+        "licence_status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "data_sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "licence_status": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "One entry per data source. Values gate commercial use.",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "commercial_ok",
+              "research_only_nc",
+              "sharealike_review",
+              "pending_written_terms",
+              "own_consented"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "required": [
+        "asr",
+        "tts"
+      ],
+      "additionalProperties": false,
+      "description": "Derived from registry/sources.yaml. available=false means NO dataset provides that capability today \u2014 the platform must refuse it, not guess.",
+      "properties": {
+        "asr": {
+          "type": "object",
+          "required": [
+            "available",
+            "sources"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "tts": {
+          "type": "object",
+          "required": [
+            "available",
+            "sources"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "iso_review": {
+      "type": "boolean",
+      "description": "Source card's ISO code is suspect; confirm before it reaches an API contract."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "production"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "asr": {
+            "properties": {
+              "artifact": {
+                "type": "string"
+              },
+              "approved_version": {
+                "type": "string"
+              },
+              "decode_strategy": {
+                "properties": {
+                  "mode": {
+                    "not": {
+                      "const": "pending_experiment"
+                    }
+                  },
+                  "chosen_by_run": {
+                    "type": "string"
+                  },
+                  "frozen_eval": {
+                    "type": "string"
+                  },
+                  "provisional": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          },
+          "tts": {
+            "properties": {
+              "approved": {
+                "const": true
+              }
+            }
+          },
+          "capabilities": {
+            "properties": {
+              "asr": {
+                "properties": {
+                  "available": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "description": "A language in production MUST have a real artifact, an evidence-backed decode strategy, and an approved voice."
+      }
+    }
+  ]
+}

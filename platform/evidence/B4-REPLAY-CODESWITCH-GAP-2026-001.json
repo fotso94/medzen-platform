@@ -1,0 +1,23 @@
+{
+  "record": "B4-REPLAY-CODESWITCH-GAP-AUDIT",
+  "id": "B4-REPLAY-CODESWITCH-GAP-2026-001",
+  "status": "VERIFIED_GAP",
+  "audited_utc": "2026-08-01T15:58:00Z",
+  "method": "Read every manifest named by the immutable v2 completion record and count language metadata only. No audio, transcript text, speaker identifier, session identifier or per-row checksum was persisted by this audit.",
+  "source_completion_record": "platform/evidence/v2-COMPLETE.json",
+  "source_completion_record_sha256": "a4c0211eb83f3830f210f34363676964dfb1ce744999d07dc2d27c3ec4b0f681",
+  "manifest_count": 18,
+  "rows_audited": 5400,
+  "counts": {
+    "primary_language_english": 0,
+    "primary_language_french": 0,
+    "primary_language_mixed": 0,
+    "rows_with_multilingual_segments": 0
+  },
+  "base_v5_requirements": {
+    "english_french_replay_percent": "30-40",
+    "code_switch_slice_required": true
+  },
+  "conclusion": "The adopted source corpus cannot satisfy Base-v5 B4 English/French replay or code-switch requirements by resampling. Rights-cleared English, French and real code-switched speech must be adapted into new immutable manifests, split without speaker/session leakage, audited and separately adopted before a Base-v5-compliant training launch.",
+  "writes_to_data_or_aws": 0
+}

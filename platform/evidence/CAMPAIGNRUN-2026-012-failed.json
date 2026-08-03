@@ -1,0 +1,133 @@
+{
+  "record": "CAMPAIGNRUN-2026-012-FAILED",
+  "status": "FAILED_CLOSED_POST_CONVERSION_LINGALA_GATE",
+  "campaign_run": "b4-scoped-count-tolerance-61145b7",
+  "attempt": "4",
+  "purpose": "training_system_validation_and_servable_artifact_proof",
+  "promotable": false,
+  "source_training": {
+    "attempt": "1",
+    "training_relaunched": false,
+    "selected_checkpoint": 400,
+    "selection_reason": "lowest macro WER among checkpoints that passed every predeclared selection gate before checkpoint 500 failed",
+    "base_wer": {
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749
+    },
+    "selected_checkpoint_wer": {
+      "lingala": 0.7314,
+      "luganda": 0.7018,
+      "oromo": 0.7014
+    },
+    "selected_checkpoint_termination_failures": {
+      "lingala": [],
+      "luganda": [],
+      "oromo": []
+    },
+    "artifact_tree_sha256": "1077db731a5ad200bd79e3067f6d868b6313030902cc23195754a4b5db4c2f91",
+    "adapter_sha256": "d1d9e7fc9ad6e95703bf0219d8b2b442f9b6658bf8d0a83bc4b7da83fe577e6f",
+    "evaluation_sha256": "11feb45059742dc792768ece2ca1e6bd90a2c1a93c1926614f3847cceb474979"
+  },
+  "superseded_artifact_attempts": [
+    {
+      "attempt": "2",
+      "status": "FAILED_CLOSED_MISSING_PREPROCESSOR_CONFIG",
+      "instance_id": "i-02355171bcc992df2",
+      "actual_seconds": 989.6,
+      "actual_usd": 0.2766,
+      "cleanup_verified": true,
+      "mlflow_snapshot_sha256": "49d8f4af531394493c82ee93a34f545a7c20c11fffe37374b3753fcb8fd3fa5e"
+    },
+    {
+      "attempt": "3",
+      "status": "FAILED_CLOSED_MISSING_CTRANSLATE2_CUDA12_RUNTIME",
+      "instance_id": "i-09dd682c654bd7a79",
+      "actual_seconds": 1004.5,
+      "actual_usd": 0.2808,
+      "cleanup_verified": true,
+      "failure": "CTranslate2 conversion completed, but the first converted GPU decode refused because libcublas.so.12 was absent.",
+      "live_log_sha256": "b34345c41617ff9668d420b466153d55c0ac873b83e8b89032a1c0ba8e5cf391",
+      "mlflow_snapshot_sha256": "7451be09aa25b94123f7185598511bbc9fff55b54e0d8c1a41a0ad24067823b7"
+    }
+  ],
+  "executed_provenance": {
+    "git_sha": "f4d91d1bdf6de6f6526528affa0ac3627313d05a",
+    "bundle_tar_sha256": "37379a2d1496aeee6dbcb81eaef59fd76b68fc8fbc540588a97e2884f27efea1",
+    "image_digest": "sha256:cb08831211dfe1ec5da9835062ff88bf46ff38d09d7af0983427492e94ff3f8b",
+    "policy_adoption_key": "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R3.json",
+    "image_test_result": "646 passed, 42 skipped, 7 deselected, 0 failed",
+    "image_scan": {
+      "status": "COMPLETE",
+      "raw_findings": 15,
+      "unwaived_findings": 0,
+      "waived_findings": 15,
+      "waiver_review_by": "2026-10-28"
+    },
+    "ctranslate2_runtime": {
+      "version": "4.8.1",
+      "cuda12_runtime": "12.8.90",
+      "cublas12": "12.8.4.1",
+      "build_time_dynamic_library_gate_passed": true,
+      "gpu_generation_reached": true
+    }
+  },
+  "artifactize": {
+    "instance_id": "i-0d268de6b90956b64",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "launched_utc": "2026-08-02T00:31:12Z",
+    "terminated_utc": "2026-08-02T00:49:43Z",
+    "actual_seconds": 1111.2,
+    "actual_usd": 0.3106,
+    "root_volume_id": "vol-0e2c8364028c65442",
+    "root_volume_deleted": true,
+    "exit_status": 1,
+    "live_log_sha256": "7dc9cde044a5d53791018d642fbdcb50a6e897b28dacd131cb5f2c79631b172b",
+    "stage_result_sha256": "87d9cae5afbd3d20ee281db031d3d48e2be793315b6c756750857b4d5cb8ff5b",
+    "mlflow_snapshot_sha256": "d7022f6ef63063a50caa3318b1bb9edc1727e0e826f6f93f9b21bada1618af36",
+    "mlflow_record_body_sha256": "dfe07f1e8308a72e10ae3d2c8194f46d49f50a8f1db331b552c1f13357c454a7",
+    "holdout": {
+      "gate_was_reached_and_did_not_refuse": true,
+      "metrics_durable": false,
+      "qualification": "Control flow can prove that the strict Lingala holdout gate did not refuse before conversion. No container result was written after the later failure, so its numeric metrics are not claimed."
+    },
+    "conversion": {
+      "merged_model_saved": true,
+      "ctranslate2_conversion_completed": true,
+      "converted_gpu_scoring_completed_far_enough_to_apply_quality_gate": true,
+      "servable_artifact_published": false,
+      "artifact_evaluation_published": false
+    }
+  },
+  "failure": {
+    "gate": "per-language minimum relative WER gain versus same-run base after CTranslate2 int8_float16 conversion",
+    "minimum_relative_gain": 0.15,
+    "language": "lingala",
+    "observed_relative_gain_reported_by_gate": 0.0399,
+    "message": "lingala relative WER gain 3.99% is below 15%",
+    "other_converted_language_metrics_durable": false,
+    "interpretation": "The CUDA/runtime defect is fixed. The actual converted bytes did not retain the required Lingala quality gain, so there is no verified servable candidate. The gate must not be weakened after observing this result."
+  },
+  "downstream": {
+    "spot_checkpoint_started": false,
+    "spot_resume_started": false,
+    "registered_models": 0,
+    "b5_allowed": false
+  },
+  "budget": {
+    "ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+    "hard_ceiling_usd": 100.0,
+    "aggregate_committed_usd": 21.2463,
+    "remaining_usd": 78.7537,
+    "unresolved_reservations": 0
+  },
+  "cleanup": {
+    "active_b4_instances": 0,
+    "unattached_project_volumes": 0,
+    "active_project_spot_requests": 0,
+    "attempt_4_instance_terminated": true,
+    "attempt_4_root_volume_deleted": true,
+    "eks_used": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "record": "B4-BUDGET-CEILING-EXTENSION",
+  "id": "B4-BUDGET-2026-002",
+  "status": "approved",
+  "campaign": "b4-scoped",
+  "ledger_key": "candidates/budget/b4-scoped/ledger.json",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-01T10:54:04Z",
+  "authorization": "Approved: defer Fula and raise the B4 ceiling from $9 to $12",
+  "previous_ceiling_usd": 9.0,
+  "new_cumulative_ceiling_usd": 12.0,
+  "reconciled_spend_at_authorization_usd": 6.6415,
+  "corrected_retry_worst_case_usd": 4.253,
+  "cumulative_worst_case_usd": 10.8945,
+  "remaining_contingency_at_worst_case_usd": 1.1055,
+  "spend_reset_permitted": false,
+  "reason": "The fresh 11-language confirmation failed closed only on Fula termination. The owner approved deferring Fula and funding a fresh 10-language non-promotable campaign under unchanged gates.",
+  "scope_controls": {
+    "acholi_deferred": true,
+    "amharic_deferred": true,
+    "ewe_deferred": true,
+    "fula_deferred": true,
+    "oromo_retained": true,
+    "luganda_retained": true,
+    "gate_weakening_permitted": false,
+    "eks_permitted": false,
+    "spot_permitted": false,
+    "model_registration_permitted": false,
+    "promotion_permitted": false
+  }
+}

@@ -1,0 +1,172 @@
+{
+  "policy": [
+    "CVE exceptions for the medzen-trainer image OS layer. Reviewed, expiring, and",
+    "scoped to specific CVE IDs -- NOT a raised threshold. SCAN_MAX_CRITICAL and",
+    "SCAN_MAX_HIGH remain 0, so any finding not named here fails the build.",
+    "",
+    "Why exceptions are needed at all: every finding below is fix_available=false.",
+    "The perl CVE set is byte-identical between Debian 12 (perl 5.36.0-7+deb12u3)",
+    "and Debian 13 (perl 5.40.1-6), so these are unfixed UPSTREAM perl issues that",
+    "no Debian base can clear. perl-base and util-linux are Essential: yes and",
+    "cannot be removed without breaking dpkg. glibc cannot be removed at all --",
+    "PyTorch ships manylinux/glibc wheels and there are no musl builds, so Alpine",
+    "is not an option. CRITICAL=0 is therefore not currently reachable for any",
+    "PyTorch-capable base image under ECR basic scanning.",
+    "",
+    "An entry stops applying the moment a fix exists: the justification is",
+    "'nothing to upgrade to', so if fixed_in_version appears, the build fails and",
+    "the image must be rebuilt rather than waived. Entries also expire, forcing",
+    "re-review rather than silent permanence.",
+    "",
+    "Scope: the OFFLINE TRAINING PLANE only. This image has no inbound network, is",
+    "not internet-reachable, processes only our own S3 corpus, and holds no",
+    "production credentials (the trainer role explicitly denies secretsmanager and",
+    "bedrock). It is not the basis for waiving anything in a serving image.",
+    "",
+    "Each entry pins package_version as well as package. A waiver is written",
+    "against a specific package build, so bumping the base image invalidates every",
+    "waiver and forces re-review rather than silently carrying them forward.",
+    "Severity is compared too: a CVE re-rated upward must not stay waived under a",
+    "justification written when it was lower."
+  ],
+  "review_by": "2026-10-28",
+  "base_image": "python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464",
+  "recorded_from_scan": "sha256:20befc204e8ff2be49f59fc44a21d44298b4eb464b6919fc7a36a7a7b425ffdc",
+  "entries": [
+    {
+      "cve": "CVE-2026-5450",
+      "package": "glibc",
+      "severity": "CRITICAL",
+      "reachable": true,
+      "expires": "2026-10-28",
+      "justification": "glibc is unavoidable: PyTorch publishes only manylinux/glibc wheels, so no glibc-free base can run this trainer. No fix is available in Debian 13. Reachable by every process by definition, but the container accepts no untrusted input: it reads our own corpus from S3 and a checkpoint verified by sha256 against a manifest, over no inbound network.",
+      "package_version": "2.41-12+deb13u3"
+    },
+    {
+      "cve": "CVE-2026-5928",
+      "package": "glibc",
+      "severity": "HIGH",
+      "reachable": true,
+      "expires": "2026-10-28",
+      "justification": "Same as CVE-2026-5450: glibc cannot be removed or upgraded past this finding, and the container has no untrusted input path.",
+      "package_version": "2.41-12+deb13u3"
+    },
+    {
+      "cve": "CVE-2026-11822",
+      "package": "sqlite3",
+      "severity": "HIGH",
+      "reachable": true,
+      "expires": "2026-10-28",
+      "justification": "REACHABLE BY OUR CODE, unlike perl: MLflow uses SQLite as its tracking backend. The database is created and written solely by our own trainer with its own run metadata (parameters, metrics, tags); no external or user-supplied data reaches it, and it is never served to a client. Moving MLflow to Postgres would remove the dependency but adds an RDS instance and rework that B5 was not designed around. Reassess at review.",
+      "package_version": "3.46.1-7+deb13u1"
+    },
+    {
+      "cve": "CVE-2026-11824",
+      "package": "sqlite3",
+      "severity": "HIGH",
+      "reachable": true,
+      "expires": "2026-10-28",
+      "justification": "Same as CVE-2026-11822: MLflow's SQLite backend, written only by our own trainer with its own metadata.",
+      "package_version": "3.46.1-7+deb13u1"
+    },
+    {
+      "cve": "CVE-2026-13221",
+      "package": "perl",
+      "severity": "CRITICAL",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is NEVER INVOKED by this image. Nothing in pipeline/ or scripts/ shells out to perl; it is present only because perl-base is Essential: yes in Debian and cannot be removed without breaking dpkg. Identical CVE in Debian 12's 5.36.0 and Debian 13's 5.40.1, so unfixed upstream.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-57433",
+      "package": "perl",
+      "severity": "CRITICAL",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-12087",
+      "package": "perl",
+      "severity": "CRITICAL",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-57432",
+      "package": "perl",
+      "severity": "HIGH",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-48959",
+      "package": "perl",
+      "severity": "HIGH",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-48961",
+      "package": "perl",
+      "severity": "HIGH",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-48962",
+      "package": "perl",
+      "severity": "HIGH",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-7017",
+      "package": "perl",
+      "severity": "HIGH",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-7010",
+      "package": "perl",
+      "severity": "MEDIUM",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2025-15649",
+      "package": "perl",
+      "severity": "MEDIUM",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "perl is never invoked; present only as Essential perl-base. Unfixed upstream in both Debian 12 and 13.",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-13595",
+      "package": "util-linux",
+      "severity": "MEDIUM",
+      "reachable": false,
+      "expires": "2026-10-28",
+      "justification": "util-linux is Essential: yes and cannot be removed. The trainer invokes none of its utilities; no fix available in Debian 13.",
+      "package_version": "2.41-5"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+inherits: _defaults.yaml
+language: swahili
+version: v1-initial
+rationale: Platform defaults; revisit once a baseline exists.
+overrides: {}

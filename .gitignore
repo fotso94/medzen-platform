@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.DS_Store
+mlflow.db
+mlruns/
+.cache/
+artifacts/
+
+# Terraform working directories and local runtime state are generated locally.
+# Keep the dependency lockfile, but never commit provider binaries or state.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log

@@ -1,0 +1,115 @@
+{
+  "version": "v2",
+  "from_version": "v1",
+  "decision_id": "LIC-2026-001-waxalnlp-tts-asr-train",
+  "decision_sha256": "0f27248676a5b75243e6287463a9fad9ced8eba7911e6a14dab3624680688b89",
+  "completed_utc": "2026-07-30T17:05:47Z",
+  "totals": {
+    "rows": 5400,
+    "changed": 2305,
+    "unchanged": 3095,
+    "configs_changed": 9
+  },
+  "manifests": {
+    "acholi/asr/ach_asr": {
+      "key": "curated/acholi/asr/ach_asr/v2/manifest.jsonl",
+      "sha256": "b2bb8b3c59cd8eba10a66087ebf9804ec5dae87c9714189525cc7979899a2657",
+      "rows": 300
+    },
+    "acholi/tts/ach_tts": {
+      "key": "curated/acholi/tts/ach_tts/v2/manifest.jsonl",
+      "sha256": "7bb10a6139c760e5b3f23734532ee783651a7b694c78d901c70bfd2180eb1ac8",
+      "rows": 300
+    },
+    "akan/asr/aka_asr": {
+      "key": "curated/akan/asr/aka_asr/v2/manifest.jsonl",
+      "sha256": "8b58719f7cbfc24f255f51272458460f20ac41bbcec2394bb8e56a128029bdbc",
+      "rows": 300
+    },
+    "amharic/asr/amh_asr": {
+      "key": "curated/amharic/asr/amh_asr/v2/manifest.jsonl",
+      "sha256": "d560df103e211e0331aca105dd118bb2d287141f1de4be1f62ff5f8ef7dab606",
+      "rows": 300
+    },
+    "ewe/asr/ewe_asr": {
+      "key": "curated/ewe/asr/ewe_asr/v2/manifest.jsonl",
+      "sha256": "0d1057e7829050bf5ca96b7cd45adbc9938e16d1b99ecc8ba140fb35bd244bb3",
+      "rows": 300
+    },
+    "ewe/tts/ewe_tts": {
+      "key": "curated/ewe/tts/ewe_tts/v2/manifest.jsonl",
+      "sha256": "b41d5e6c53cefc1598e1b6e3e9c8f43294b22c884fefe6da445a8f03e242296a",
+      "rows": 300
+    },
+    "fula/asr/ful_asr": {
+      "key": "curated/fula/asr/ful_asr/v2/manifest.jsonl",
+      "sha256": "f68d19cd30acad8d1e8555a62a7363e2594e08c15aa2771c7370a44b18d8285e",
+      "rows": 300
+    },
+    "fula/tts/ful_tts": {
+      "key": "curated/fula/tts/ful_tts/v2/manifest.jsonl",
+      "sha256": "68379610b81452b5e7a3358cdf35e57e4bfabb43e75c4aa9a31aec29a7955626",
+      "rows": 300
+    },
+    "hausa/tts/hau_tts": {
+      "key": "curated/hausa/tts/hau_tts/v2/manifest.jsonl",
+      "sha256": "e08bfdca6f3e6f896649ded745e31f1363b7c3be38ce336302e03c5043f02c2e",
+      "rows": 300
+    },
+    "igbo/tts/ibo_tts": {
+      "key": "curated/igbo/tts/ibo_tts/v2/manifest.jsonl",
+      "sha256": "4fb09ccbad084d39426540e34e3036e986bd1be4bb61524275201a628afa338a",
+      "rows": 300
+    },
+    "lingala/asr/lin_asr": {
+      "key": "curated/lingala/asr/lin_asr/v2/manifest.jsonl",
+      "sha256": "44eb68ab534a8fe60d150a5df055d183da89dda8fdd7dbf57ea919c8627143a6",
+      "rows": 300
+    },
+    "luganda/asr/lug_asr": {
+      "key": "curated/luganda/asr/lug_asr/v2/manifest.jsonl",
+      "sha256": "ca841a56d57673d8c7e626a1ff31806ed741ed016f9b94b346905fcfda7ff6f6",
+      "rows": 300
+    },
+    "luganda/tts/lug_tts": {
+      "key": "curated/luganda/tts/lug_tts/v2/manifest.jsonl",
+      "sha256": "55716b9569362a4022c5e47fec423c7a44a77f22e0bfc60d4f40383a33a40b2d",
+      "rows": 300
+    },
+    "oromo/asr/orm_asr": {
+      "key": "curated/oromo/asr/orm_asr/v2/manifest.jsonl",
+      "sha256": "acde45ab3af9a3ef876a8d05706ff69df968105418cd2e8f5b2a38aa3c7f7dc0",
+      "rows": 300
+    },
+    "pidgin/tts/pcm_tts": {
+      "key": "curated/pidgin/tts/pcm_tts/v2/manifest.jsonl",
+      "sha256": "d7bc99fd485dbf450d04882b32cc23a95cba7015ed0febeb322512f93543677b",
+      "rows": 300
+    },
+    "shona/asr/sna_asr": {
+      "key": "curated/shona/asr/sna_asr/v2/manifest.jsonl",
+      "sha256": "042ea1fc44f442df818ed75f9cc6201da09e2abc1bb4ed56efb3f2a2fac6da67",
+      "rows": 300
+    },
+    "swahili/tts/swa_tts": {
+      "key": "curated/swahili/tts/swa_tts/v2/manifest.jsonl",
+      "sha256": "4844dafeecc41313a6ea0d2131cc18d340d25371e51a34016ea0cd987d446cac",
+      "rows": 300
+    },
+    "yoruba/tts/yor_tts": {
+      "key": "curated/yoruba/tts/yor_tts/v2/manifest.jsonl",
+      "sha256": "7ffc102e8a19771809adc40094ec54503efd27dac6db0ec01cf5150679031508",
+      "rows": 300
+    }
+  },
+  "loader_contract": "A loader MUST refuse this version unless this record exists, adopted is true, and every manifest hash listed here matches the object it names.",
+  "adopted": false,
+  "adoption_status": "UNADOPTED MIGRATION CANDIDATE",
+  "process_deviation": {
+    "what": "v2 was published to S3 before adoption was approved.",
+    "how": "The instruction 'do not publish v2 manifests' was in force. A later instruction asked for the audit to be scoped to v2, and that was treated as implicit authorisation to publish. It was not: an explicit prohibition should have been lifted explicitly, or the conflict raised before acting.",
+    "impact": "The objects exist and are immutable. They are NOT adopted, the loader refuses any version whose completion record does not carry adopted=true, and no training has used them.",
+    "remediation": "Left in place rather than deleted -- deleting would destroy the evidence of what was written. Adoption remains a separate, reviewed decision.",
+    "recorded_utc": "2026-07-30T17:18:21Z"
+  }
+}

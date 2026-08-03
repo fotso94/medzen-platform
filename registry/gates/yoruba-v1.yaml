@@ -1,0 +1,11 @@
+inherits: _defaults.yaml
+language: yoruba
+version: v1-initial
+rationale: |
+  Tonal language with diacritics. CER is the primary metric —
+  WER punishes a single tone mark as a whole-word error. NFC-normalise
+  before scoring; report diacritized AND tone-stripped.
+overrides:
+  asr:
+    absolute_wer_max: 0.30
+    absolute_cer_max: 0.10

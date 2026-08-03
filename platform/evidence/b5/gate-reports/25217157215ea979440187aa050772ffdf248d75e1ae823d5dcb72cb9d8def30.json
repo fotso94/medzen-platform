@@ -1,0 +1,2723 @@
+{
+  "authorization": {
+    "path": "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json",
+    "sha256": "576a20823221e27744f389a925af5faf4cfca7488efcdcbbcfd1216bf7cdc208"
+  },
+  "b5_completion": {
+    "b5_1_engineering_and_report": "COMPLETE_PENDING_MLFLOW_ATTACHMENT",
+    "b5_2_artifact_publication": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b5_3_registry_promotion": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b6": "BLOCKED"
+  },
+  "candidate": {
+    "adapter_tree_sha256": "1077db731a5ad200bd79e3067f6d868b6313030902cc23195754a4b5db4c2f91",
+    "artifact_bytes": 3092286442,
+    "artifact_tree_sha256": "a762edd7a726ba7da3e4e6d417b80e427d96a3b327a48aece6282ffa6525e459",
+    "b5_allowed_by_b4_record": false,
+    "campaign": "b4-scoped-count-tolerance-61145b7",
+    "candidate_prefix": "s3://medzen-speech/candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/ctranslate2-float16/",
+    "classification": "NEGATIVE_B5_TEST_CASE",
+    "controlled_conversion_diagnostic": "attempt-5",
+    "precision": "ctranslate2_float16",
+    "promotable": false,
+    "registered_models": 0,
+    "selected_checkpoint": 400,
+    "source_training_attempt": "attempt-1"
+  },
+  "content_address": "sha256 of the exact canonical JSON report bytes; filename is <sha256>.json",
+  "engine": {
+    "entrypoint": {
+      "path": "scripts/evaluate_gates.py",
+      "sha256": "847a82bf22fc06afce7bfe234724ab9d73265cd654c7ecb68475ef81677ab859"
+    },
+    "git_commit": "4eeaab758d272696f39534c909d9f77a6ac52baf",
+    "implementation": {
+      "path": "pipeline/b5_gates.py",
+      "sha256": "235ac4f16aa6a95a8c51f07e227bb6e1e07753c342759befbeec04946eb8479c"
+    }
+  },
+  "engine_errors": [],
+  "evaluation_purpose": "REFUSAL_ONLY_NEGATIVE_TEST_CASE",
+  "gate_state_counts": {
+    "DEFERRED": 6,
+    "FAIL": 4,
+    "NOT_APPLICABLE": 16,
+    "NOT_EVALUATED": 31,
+    "PASS": 11
+  },
+  "global_gates": [
+    {
+      "evidence": [
+        {
+          "path": "platform/evidence/B4-REPLAY-CODESWITCH-GAP-2026-001.json",
+          "sha256": "bf6868da021effef25881ae0d87f5d4c99b9adf8435e09778758c1fb1367b9c8"
+        }
+      ],
+      "gate": "code_switch_evaluation",
+      "reason": "No licensed, frozen promotion-grade code-switch evaluation exists.",
+      "required": true,
+      "state": "NOT_EVALUATED"
+    },
+    {
+      "evidence": [
+        {
+          "path": "platform/evidence/B4-REPLAY-CODESWITCH-GAP-2026-001.json",
+          "sha256": "bf6868da021effef25881ae0d87f5d4c99b9adf8435e09778758c1fb1367b9c8"
+        }
+      ],
+      "gate": "english_french_replay_regression",
+      "reason": "English and French replay data and promotion-grade regression evidence are absent.",
+      "required": true,
+      "state": "NOT_EVALUATED"
+    },
+    {
+      "evidence": [
+        {
+          "path": "registry/gates/b5-scope-v1.yaml",
+          "sha256": "35ff06b850022404efd83625154a70f67bc855f612ac9a87341400d9a0175791"
+        }
+      ],
+      "gate": "peak_l4_gpu_memory",
+      "reason": "Peak L4 GPU memory is NOT_MEASURED; artifact bytes are only on-disk size evidence.",
+      "required": false,
+      "state": "NOT_EVALUATED"
+    }
+  ],
+  "languages": {
+    "acholi": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/acholi-v1.yaml",
+              "sha256": "41592212429dc315e521e9438b3c9237fa34f187c26c5e622eae3fe26bdc9504"
+            },
+            {
+              "path": "registry/languages/acholi.yaml",
+              "sha256": "3d2789edf28fc209f8f9f4365ae1d0b29c68f7e9c672874c6878c1c6cbe9bb4e"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/acholi-v1.yaml",
+            "sha256": "41592212429dc315e521e9438b3c9237fa34f187c26c5e622eae3fe26bdc9504"
+          },
+          {
+            "path": "registry/languages/acholi.yaml",
+            "sha256": "3d2789edf28fc209f8f9f4365ae1d0b29c68f7e9c672874c6878c1c6cbe9bb4e"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "akan": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/akan-v1.yaml",
+              "sha256": "625e233c05585563ab1d367b0b82f854ef087e88f1bd56381f5daab250c094fb"
+            },
+            {
+              "path": "registry/languages/akan.yaml",
+              "sha256": "7a425402530d34542f006e4e6cb37a23a579dbae2ab0930d83eb289d71069f9c"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": 0.1,
+          "absolute_wer_max": 0.3,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/akan-v1.yaml",
+            "sha256": "625e233c05585563ab1d367b0b82f854ef087e88f1bd56381f5daab250c094fb"
+          },
+          {
+            "path": "registry/languages/akan.yaml",
+            "sha256": "7a425402530d34542f006e4e6cb37a23a579dbae2ab0930d83eb289d71069f9c"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "625e233c05585563ab1d367b0b82f854ef087e88f1bd56381f5daab250c094fb",
+            "source": "registry/gates/akan-v1.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "625e233c05585563ab1d367b0b82f854ef087e88f1bd56381f5daab250c094fb",
+            "source": "registry/gates/akan-v1.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "amharic": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/amharic-v1.yaml",
+              "sha256": "736c8da9813b0cf2b35f96192a37fd284afa7b42c1019a6499d2a40a1bff3265"
+            },
+            {
+              "path": "registry/languages/amharic.yaml",
+              "sha256": "5fccf2c7ce0f3bb3221a4ed3377f8b5015f9b26fb47cd67f95b6761de5463241"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/amharic-v1.yaml",
+            "sha256": "736c8da9813b0cf2b35f96192a37fd284afa7b42c1019a6499d2a40a1bff3265"
+          },
+          {
+            "path": "registry/languages/amharic.yaml",
+            "sha256": "5fccf2c7ce0f3bb3221a4ed3377f8b5015f9b26fb47cd67f95b6761de5463241"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "ewe": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/ewe-v1.yaml",
+              "sha256": "8e70c6c94bc0ed45dc901277ef56663068c80fac26da0ab4af1b8e0d6a49a369"
+            },
+            {
+              "path": "registry/languages/ewe.yaml",
+              "sha256": "a66d99845975179cc30b8b1b5dda8a28898a860fac73ea85dcdf0f42c3684d4a"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": 0.1,
+          "absolute_wer_max": 0.3,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/ewe-v1.yaml",
+            "sha256": "8e70c6c94bc0ed45dc901277ef56663068c80fac26da0ab4af1b8e0d6a49a369"
+          },
+          {
+            "path": "registry/languages/ewe.yaml",
+            "sha256": "a66d99845975179cc30b8b1b5dda8a28898a860fac73ea85dcdf0f42c3684d4a"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "8e70c6c94bc0ed45dc901277ef56663068c80fac26da0ab4af1b8e0d6a49a369",
+            "source": "registry/gates/ewe-v1.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "8e70c6c94bc0ed45dc901277ef56663068c80fac26da0ab4af1b8e0d6a49a369",
+            "source": "registry/gates/ewe-v1.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "fula": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/fula-v1.yaml",
+              "sha256": "f2d61a90ef62e92d9b58f15115f6561de58402cf1fa04a60e81836c59420e980"
+            },
+            {
+              "path": "registry/languages/fula.yaml",
+              "sha256": "ceb68c6876c098cb68fad4bfc61a375b6bf2561eea9acdea9df342a88491157e"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/fula-v1.yaml",
+            "sha256": "f2d61a90ef62e92d9b58f15115f6561de58402cf1fa04a60e81836c59420e980"
+          },
+          {
+            "path": "registry/languages/fula.yaml",
+            "sha256": "ceb68c6876c098cb68fad4bfc61a375b6bf2561eea9acdea9df342a88491157e"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "hausa": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+              "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+            }
+          ],
+          "gate": "promotion_quality_evidence",
+          "reason": "Promotion-grade candidate measurements are absent; the language is unapproved, not failed or passed.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/hausa-v1.yaml",
+              "sha256": "5a77af3ee04f958f1e7e221352a424653ba2b73dc6c7342622883164b7716a45"
+            },
+            {
+              "path": "registry/languages/hausa.yaml",
+              "sha256": "b94ef5e1260432a631067ac04320cd84e379e0139e2c25372e1190785c347e17"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "No versioned promotion-grade decode approval exists.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/hausa-v1.yaml",
+              "sha256": "5a77af3ee04f958f1e7e221352a424653ba2b73dc6c7342622883164b7716a45"
+            },
+            {
+              "path": "registry/languages/hausa.yaml",
+              "sha256": "b94ef5e1260432a631067ac04320cd84e379e0139e2c25372e1190785c347e17"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_EVALUATED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/hausa-v1.yaml",
+            "sha256": "5a77af3ee04f958f1e7e221352a424653ba2b73dc6c7342622883164b7716a45"
+          },
+          {
+            "path": "registry/languages/hausa.yaml",
+            "sha256": "b94ef5e1260432a631067ac04320cd84e379e0139e2c25372e1190785c347e17"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "igbo": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+              "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+            }
+          ],
+          "gate": "promotion_quality_evidence",
+          "reason": "Promotion-grade candidate measurements are absent; the language is unapproved, not failed or passed.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/igbo-v1.yaml",
+              "sha256": "5c78b47bf9d2bc9ff83bb5d0ab876fa3ab3744f08c561652d4fc056d76367cd8"
+            },
+            {
+              "path": "registry/languages/igbo.yaml",
+              "sha256": "6585bb0008175c6d7952d3083301418b2a65d373b26ab6850b93fc49f9e3eb83"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "No versioned promotion-grade decode approval exists.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/igbo-v1.yaml",
+              "sha256": "5c78b47bf9d2bc9ff83bb5d0ab876fa3ab3744f08c561652d4fc056d76367cd8"
+            },
+            {
+              "path": "registry/languages/igbo.yaml",
+              "sha256": "6585bb0008175c6d7952d3083301418b2a65d373b26ab6850b93fc49f9e3eb83"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_EVALUATED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": 0.1,
+          "absolute_wer_max": 0.3,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/igbo-v1.yaml",
+            "sha256": "5c78b47bf9d2bc9ff83bb5d0ab876fa3ab3744f08c561652d4fc056d76367cd8"
+          },
+          {
+            "path": "registry/languages/igbo.yaml",
+            "sha256": "6585bb0008175c6d7952d3083301418b2a65d373b26ab6850b93fc49f9e3eb83"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "5c78b47bf9d2bc9ff83bb5d0ab876fa3ab3744f08c561652d4fc056d76367cd8",
+            "source": "registry/gates/igbo-v1.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "5c78b47bf9d2bc9ff83bb5d0ab876fa3ab3744f08c561652d4fc056d76367cd8",
+            "source": "registry/gates/igbo-v1.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "lingala": {
+      "gates": [
+        {
+          "comparison": {
+            "candidate_wer": 0.7284,
+            "current_production": "ABSENT",
+            "frozen_baseline_wer": 0.9207
+          },
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.relative_wer_gain",
+          "measurement": 0.20886282176604748,
+          "reason": "Measured 0.208863 satisfies the predeclared >= 0.150000 threshold.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.15
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.absolute_wer",
+          "measurement": 0.7284,
+          "reason": "Measured 0.728400 violates the predeclared <= 0.200000 threshold.",
+          "required": true,
+          "state": "FAIL",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.2
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.slice_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.general_replay_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.named_entity_wer",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.code_switch_wer_ratio",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 1.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.code_switch_span_langid",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.85
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            }
+          ],
+          "gate": "termination.checkpoint_selection",
+          "measurement": {
+            "checkpoints": 1,
+            "unique_failure_checksums": []
+          },
+          "reason": "Every checkpoint is within the one-unique-failure tolerance and no checksum recurs.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<= per language per checkpoint",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            }
+          ],
+          "gate": "termination.post_conversion",
+          "measurement": {
+            "cap_hit_rate": 0.0,
+            "converted": [],
+            "eos_rate": 1.0,
+            "selected": []
+          },
+          "reason": "Post-conversion failures remain within tolerance with no new checksum or count increase.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<=",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "comparison": {
+            "candidate_wer": 0.5996,
+            "current_production": "ABSENT",
+            "frozen_baseline_wer": 0.7558
+          },
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.untouched_holdout.relative_wer_gain",
+          "measurement": 0.20666843080179942,
+          "reason": "Measured 0.206668 satisfies the predeclared >= 0.150000 threshold.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.15
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "asr.untouched_holdout.absolute_wer",
+          "measurement": 0.5996,
+          "reason": "Measured 0.599600 violates the predeclared <= 0.200000 threshold.",
+          "required": true,
+          "state": "FAIL",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.2
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            }
+          ],
+          "gate": "termination.untouched_lingala_holdout",
+          "measurement": {
+            "unique_failure_checksums": []
+          },
+          "reason": "Untouched holdout has 0 unique termination failures; maximum is 0.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<=",
+            "value": 0
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/lingala-v1.yaml",
+              "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+            },
+            {
+              "path": "registry/languages/lingala.yaml",
+              "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "FAIL",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/lingala-v1.yaml",
+            "sha256": "f9ebd295571d1cf90be38ad8d261e407206f7a4c1c081cfbc96f188c78cb5d16"
+          },
+          {
+            "path": "registry/languages/lingala.yaml",
+            "sha256": "80b2cb6035260148007efe2abdbc9fcd960506559ed245970e51757672437769"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "luganda": {
+      "gates": [
+        {
+          "comparison": {
+            "candidate_wer": 0.7002,
+            "current_production": "ABSENT",
+            "frozen_baseline_wer": 1.0659
+          },
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.relative_wer_gain",
+          "measurement": 0.3430903461863214,
+          "reason": "Measured 0.343090 satisfies the predeclared >= 0.150000 threshold.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.15
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.absolute_wer",
+          "measurement": 0.7002,
+          "reason": "Measured 0.700200 violates the predeclared <= 0.200000 threshold.",
+          "required": true,
+          "state": "FAIL",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.2
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.slice_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.general_replay_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.named_entity_wer",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.code_switch_wer_ratio",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 1.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "asr.code_switch_span_langid",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.85
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            }
+          ],
+          "gate": "termination.checkpoint_selection",
+          "measurement": {
+            "checkpoints": 1,
+            "unique_failure_checksums": []
+          },
+          "reason": "Every checkpoint is within the one-unique-failure tolerance and no checksum recurs.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<= per language per checkpoint",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            }
+          ],
+          "gate": "termination.post_conversion",
+          "measurement": {
+            "cap_hit_rate": 0.0,
+            "converted": [],
+            "eos_rate": 1.0,
+            "selected": []
+          },
+          "reason": "Post-conversion failures remain within tolerance with no new checksum or count increase.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<=",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/luganda-v1.yaml",
+              "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+            },
+            {
+              "path": "registry/languages/luganda.yaml",
+              "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "FAIL",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/luganda-v1.yaml",
+            "sha256": "1257a02de95338c1eeb4133b01286ee289279300cc479d51f141ef344d566461"
+          },
+          {
+            "path": "registry/languages/luganda.yaml",
+            "sha256": "20705f83397d0fa935a01a401fb6e71fa839e87915a2366ae188bbefad144b7b"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "oromo": {
+      "gates": [
+        {
+          "comparison": {
+            "candidate_wer": 0.6997,
+            "current_production": "ABSENT",
+            "frozen_baseline_wer": 1.1749
+          },
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.relative_wer_gain",
+          "measurement": 0.4044599540386416,
+          "reason": "Measured 0.404460 satisfies the predeclared >= 0.150000 threshold.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.15
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.absolute_wer",
+          "measurement": 0.6997,
+          "reason": "Measured 0.699700 violates the predeclared <= 0.200000 threshold.",
+          "required": true,
+          "state": "FAIL",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.2
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.slice_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.general_replay_regression",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.02
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.named_entity_wer",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 0.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.code_switch_wer_ratio",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": "<=",
+            "value": 1.25
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "asr.code_switch_span_langid",
+          "reason": "Required measurement is absent; absence never becomes PASS.",
+          "required": true,
+          "state": "NOT_EVALUATED",
+          "threshold": {
+            "operator": ">=",
+            "value": 0.85
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            }
+          ],
+          "gate": "termination.checkpoint_selection",
+          "measurement": {
+            "checkpoints": 1,
+            "unique_failure_checksums": []
+          },
+          "reason": "Every checkpoint is within the one-unique-failure tolerance and no checksum recurs.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<= per language per checkpoint",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_termination-v1.yaml",
+              "sha256": "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+            },
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+              "sha256": "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+            },
+            {
+              "path": "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+              "sha256": "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+            }
+          ],
+          "gate": "termination.post_conversion",
+          "measurement": {
+            "cap_hit_rate": 0.0,
+            "converted": [],
+            "eos_rate": 1.0,
+            "selected": []
+          },
+          "reason": "Post-conversion failures remain within tolerance with no new checksum or count increase.",
+          "required": true,
+          "state": "PASS",
+          "threshold": {
+            "operator": "<=",
+            "value": 1
+          }
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "B4 evidence does not uniquely identify a promotion-grade decode strategy and all required provenance.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/oromo-v1.yaml",
+              "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+            },
+            {
+              "path": "registry/languages/oromo.yaml",
+              "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "FAIL",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/oromo-v1.yaml",
+            "sha256": "c0a90a2b8513830ee98f453d58e77d0233c905710be5c84be44b095082c76126"
+          },
+          {
+            "path": "registry/languages/oromo.yaml",
+            "sha256": "8dc3051124801ef7c32776a8972b51428bffe2df172c968036e507a1516329bc"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "pidgin": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+              "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+            }
+          ],
+          "gate": "promotion_quality_evidence",
+          "reason": "Promotion-grade candidate measurements are absent; the language is unapproved, not failed or passed.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/pidgin-v1.yaml",
+              "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b"
+            },
+            {
+              "path": "registry/languages/pidgin.yaml",
+              "sha256": "ee5d865f3d26386e324c38bee3ff271d5799798f54404d0630d1825a245591b5"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "Existing 44-row, two-speaker evidence is explicitly provisional and lacks the complete promotion binding.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/pidgin-v1.yaml",
+              "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b"
+            },
+            {
+              "path": "registry/languages/pidgin.yaml",
+              "sha256": "ee5d865f3d26386e324c38bee3ff271d5799798f54404d0630d1825a245591b5"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_EVALUATED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.2,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/pidgin-v1.yaml",
+            "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b"
+          },
+          {
+            "path": "registry/languages/pidgin.yaml",
+            "sha256": "ee5d865f3d26386e324c38bee3ff271d5799798f54404d0630d1825a245591b5"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b",
+            "source": "registry/gates/pidgin-v1.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b",
+            "source": "registry/gates/pidgin-v1.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "b3bf902a9f4856163ffcc6442f14579f28d2d9ac1b6465ccef86b71854bbe66b",
+            "source": "registry/gates/pidgin-v1.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "shona": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+              "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "Language is deferred by the owner-approved B4 scope decision; the reason and decision remain attached.",
+          "required": true,
+          "state": "DEFERRED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/shona-v1.yaml",
+              "sha256": "b4339c7029092e115af80ca8a2a737b0e92224d7b4ad8e97f3e03214680b31cc"
+            },
+            {
+              "path": "registry/languages/shona.yaml",
+              "sha256": "05b764d562babcfe3dd3158bb56282961b3759c54e3bedaf9d1181ee9c9dd4e4"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "DEFERRED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/shona-v1.yaml",
+            "sha256": "b4339c7029092e115af80ca8a2a737b0e92224d7b4ad8e97f3e03214680b31cc"
+          },
+          {
+            "path": "registry/languages/shona.yaml",
+            "sha256": "05b764d562babcfe3dd3158bb56282961b3759c54e3bedaf9d1181ee9c9dd4e4"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "swahili": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+              "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+            }
+          ],
+          "gate": "promotion_quality_evidence",
+          "reason": "Promotion-grade candidate measurements are absent; the language is unapproved, not failed or passed.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/swahili-v1.yaml",
+              "sha256": "fdf417e5f9a4b000453b78cc3574fe187040169a0a5ae52b615f8c635866eb20"
+            },
+            {
+              "path": "registry/languages/swahili.yaml",
+              "sha256": "a7fdad231a5adc7b8a118766319715923f89f03f5dbec388a338c8ff99dc69bc"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "No versioned promotion-grade decode approval exists.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/swahili-v1.yaml",
+              "sha256": "fdf417e5f9a4b000453b78cc3574fe187040169a0a5ae52b615f8c635866eb20"
+            },
+            {
+              "path": "registry/languages/swahili.yaml",
+              "sha256": "a7fdad231a5adc7b8a118766319715923f89f03f5dbec388a338c8ff99dc69bc"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_EVALUATED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/swahili-v1.yaml",
+            "sha256": "fdf417e5f9a4b000453b78cc3574fe187040169a0a5ae52b615f8c635866eb20"
+          },
+          {
+            "path": "registry/languages/swahili.yaml",
+            "sha256": "a7fdad231a5adc7b8a118766319715923f89f03f5dbec388a338c8ff99dc69bc"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "wolof": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/wolof-v1.yaml",
+              "sha256": "9d04cb74efbd4fe0e7db2baef3e2391a6d1633f9bad91c17dbae15728b250cf0"
+            },
+            {
+              "path": "registry/languages/wolof.yaml",
+              "sha256": "001111d33210a7744af7169708b47e1794bc3c8a72a0dcc19ead65187d7a2c2c"
+            }
+          ],
+          "gate": "promotion_scope",
+          "reason": "This registry language has no ASR capability and is outside this ASR artifact promotion.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/wolof-v1.yaml",
+              "sha256": "9d04cb74efbd4fe0e7db2baef3e2391a6d1633f9bad91c17dbae15728b250cf0"
+            },
+            {
+              "path": "registry/languages/wolof.yaml",
+              "sha256": "001111d33210a7744af7169708b47e1794bc3c8a72a0dcc19ead65187d7a2c2c"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_APPLICABLE",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": null,
+          "absolute_wer_max": 0.2,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/wolof-v1.yaml",
+            "sha256": "9d04cb74efbd4fe0e7db2baef3e2391a6d1633f9bad91c17dbae15728b250cf0"
+          },
+          {
+            "path": "registry/languages/wolof.yaml",
+            "sha256": "001111d33210a7744af7169708b47e1794bc3c8a72a0dcc19ead65187d7a2c2c"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    },
+    "yoruba": {
+      "gates": [
+        {
+          "evidence": [
+            {
+              "path": "platform/decisions/A5-2026-001-simplified-b4-gate-matrix.json",
+              "sha256": "c61f33763abe66e29ca93f7eda176dbddf34ecad8caeb87af13dc7b3d4332bdd"
+            }
+          ],
+          "gate": "promotion_quality_evidence",
+          "reason": "Promotion-grade candidate measurements are absent; the language is unapproved, not failed or passed.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/decode-approvals/v1.yaml",
+              "sha256": "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+            },
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/yoruba-v1.yaml",
+              "sha256": "88b959c3e569094d4a781638cf4604d6a750a4ae43f64760f52ff859c07760fd"
+            },
+            {
+              "path": "registry/languages/yoruba.yaml",
+              "sha256": "99c8ed98dcd590dfadd1c23c850f1ef24cfe6bebb7244971d6c9496bfb2a7cf0"
+            }
+          ],
+          "gate": "decode_strategy",
+          "reason": "No versioned promotion-grade decode approval exists.",
+          "required": true,
+          "state": "NOT_EVALUATED"
+        },
+        {
+          "evidence": [
+            {
+              "path": "registry/gates/_defaults.yaml",
+              "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+            },
+            {
+              "path": "registry/gates/yoruba-v1.yaml",
+              "sha256": "88b959c3e569094d4a781638cf4604d6a750a4ae43f64760f52ff859c07760fd"
+            },
+            {
+              "path": "registry/languages/yoruba.yaml",
+              "sha256": "99c8ed98dcd590dfadd1c23c850f1ef24cfe6bebb7244971d6c9496bfb2a7cf0"
+            }
+          ],
+          "gate": "current_production_comparison",
+          "reason": "The generated language registry proves both artifact and approved_version are null.",
+          "required": true,
+          "state": "NOT_APPLICABLE"
+        }
+      ],
+      "state": "NOT_EVALUATED",
+      "threshold_resolution": {
+        "asr": {
+          "absolute_cer_max": 0.1,
+          "absolute_wer_max": 0.3,
+          "code_switch_span_langid_min": 0.85,
+          "code_switch_wer_ratio_max": 1.25,
+          "general_replay_regression_max": 0.02,
+          "named_entity_never_worse_than_previous": true,
+          "named_entity_wer_max": 0.25,
+          "relative_wer_gain_min": 0.15,
+          "slice_regression_max": 0.02
+        },
+        "files": [
+          {
+            "path": "registry/gates/_defaults.yaml",
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9"
+          },
+          {
+            "path": "registry/gates/yoruba-v1.yaml",
+            "sha256": "88b959c3e569094d4a781638cf4604d6a750a4ae43f64760f52ff859c07760fd"
+          },
+          {
+            "path": "registry/languages/yoruba.yaml",
+            "sha256": "99c8ed98dcd590dfadd1c23c850f1ef24cfe6bebb7244971d6c9496bfb2a7cf0"
+          }
+        ],
+        "value_sources": {
+          "asr.absolute_cer_max": {
+            "sha256": "88b959c3e569094d4a781638cf4604d6a750a4ae43f64760f52ff859c07760fd",
+            "source": "registry/gates/yoruba-v1.yaml"
+          },
+          "asr.absolute_wer_max": {
+            "sha256": "88b959c3e569094d4a781638cf4604d6a750a4ae43f64760f52ff859c07760fd",
+            "source": "registry/gates/yoruba-v1.yaml"
+          },
+          "asr.code_switch_span_langid_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.code_switch_wer_ratio_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.general_replay_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_never_worse_than_previous": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.named_entity_wer_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.relative_wer_gain_min": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          },
+          "asr.slice_regression_max": {
+            "sha256": "bfaf512becb10ae27e1d91a5a67d9725d41fe3a554f53a71a6bf6d8aaf85aea9",
+            "source": "registry/gates/_defaults.yaml"
+          }
+        },
+        "version": "v1-initial"
+      }
+    }
+  },
+  "mlflow_attachment": {
+    "model_versions_before": 0,
+    "registered_models_before": 0,
+    "registration_permitted": false,
+    "resolution_evidence": {
+      "path": "platform/evidence/B5-MLFLOW-RUN-RESOLUTION-2026-001.json",
+      "sha256": "a4c13469a4b8c4cd3f9ddf44f99017fcabbe19fbcde59be0e54be7e901c10aad"
+    },
+    "state": "PENDING_EXPLICIT_AWS_WRITE_APPROVAL",
+    "target_run_id": "94639149aa074000a1f0215ccebade8b"
+  },
+  "overall": "BLOCKED",
+  "overall_reason": "The artifact violates the inherited absolute WER maximum and also lacks other required promotion evidence. Relative gain cannot override an absolute quality failure.",
+  "schema_version": "medzen-b5-gate-report-v1",
+  "serving_resource_observations": {
+    "artifact_byte_difference": 1535958060,
+    "artifact_byte_difference_is_gpu_memory_savings": false,
+    "ctranslate2_float16": {
+      "artifact_bytes_on_disk": 3092286442,
+      "lingala_relative_wer_gain": 0.2089,
+      "median_latency_seconds": 0.9252,
+      "p95_latency_seconds": 1.3476
+    },
+    "ctranslate2_int8_float16": {
+      "artifact_bytes_on_disk": 1556328382,
+      "lingala_relative_wer_gain": 0.0399,
+      "median_latency_seconds": 0.7972,
+      "p95_latency_seconds": 1.0939
+    },
+    "evidence": [
+      {
+        "binding": "owner instruction plus immutable attempt-5 artifact evaluation",
+        "path": "s3://medzen-speech/candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/artifact-evaluation.json",
+        "sha256": "a2e2d5b39ad22788f6e0eccdb6a71a2efa5ed83cc0bd18c19562a400253fb7a8"
+      }
+    ],
+    "float16_production_resource_deviation_complete": false,
+    "peak_l4_gpu_memory": "NOT_MEASURED"
+  },
+  "side_effects": {
+    "b5_2_publication": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b5_3_registry_promotion": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b6_status": "BLOCKED",
+    "deployments": 0,
+    "language_approved_version_changes": 0,
+    "language_artifact_changes": 0,
+    "models_registered": 0,
+    "objects_copied_to_approved_asr": 0,
+    "overall": "BLOCKED",
+    "production_ssm_serving_alias_changes": 0
+  },
+  "source_hashes": [
+    [
+      "pipeline/b5_gates.py",
+      "235ac4f16aa6a95a8c51f07e227bb6e1e07753c342759befbeec04946eb8479c"
+    ],
+    [
+      "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json",
+      "576a20823221e27744f389a925af5faf4cfca7488efcdcbbcfd1216bf7cdc208"
+    ],
+    [
+      "platform/evidence/B5-MLFLOW-RUN-RESOLUTION-2026-001.json",
+      "a4c13469a4b8c4cd3f9ddf44f99017fcabbe19fbcde59be0e54be7e901c10aad"
+    ],
+    [
+      "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+      "cfd64c9c6c7138a42830d42f97cd3e6a48bd9945619e40a15bd75f7415854102"
+    ],
+    [
+      "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+      "e376bba6e3944f9cea0a3c4a81d162ff4e308d4836438b316dfebc36837beae8"
+    ],
+    [
+      "registry/decode-approvals/v1.yaml",
+      "1fae87b78c9518eccc14c9dbe6eeed5b861ecdf81f5fae63e935b8766f0b1b09"
+    ],
+    [
+      "registry/gates/_termination-v1.yaml",
+      "130694a6cecdc69154190b85a7705d59f4f3ea7a5b78b83eae5130a06e379341"
+    ],
+    [
+      "registry/gates/b5-scope-v1.yaml",
+      "35ff06b850022404efd83625154a70f67bc855f612ac9a87341400d9a0175791"
+    ],
+    [
+      "scripts/evaluate_gates.py",
+      "847a82bf22fc06afce7bfe234724ab9d73265cd654c7ecb68475ef81677ab859"
+    ]
+  ]
+}

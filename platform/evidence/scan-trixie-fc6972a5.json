@@ -1,0 +1,125 @@
+{
+  "scanner": "aws-ecr-basic",
+  "authoritative": true,
+  "note": "ECR basic scanning covers OS packages only; the Python dependency set is covered by pipeline/audit_python_deps.sh",
+  "recorded_utc": "2026-07-30T18:41:25Z",
+  "scan_status": "COMPLETE",
+  "scan_completed_utc": "2026-07-30T14:37:38-04:00",
+  "vulnerability_db_updated_utc": "2026-07-30T14:37:38-04:00",
+  "repository": "medzen-trainer",
+  "image_digest": "sha256:fc6972a5143a943ed4fcbbc6121eb1c0e43ff83065c75df07f1284ba60c94e8a",
+  "image_tag": "202b005190a70b5f155d02ca74fc91fbfd81638a",
+  "baked_git_sha": "202b005190a70b5f155d02ca74fc91fbfd81638a",
+  "baked_git_sha_verified_from": "image config blob Env, read back from ECR",
+  "severity_counts": {
+    "HIGH": 8,
+    "MEDIUM": 3,
+    "CRITICAL": 4
+  },
+  "total_findings": 15,
+  "gate": {
+    "limits": {
+      "CRITICAL": 0,
+      "HIGH": 0,
+      "MEDIUM": 0,
+      "LOW": 0
+    },
+    "waived_by_named_exception": 15,
+    "unwaived_above_threshold": 0,
+    "allowlist_entries": 15,
+    "allowlist_review_by": "2026-10-28",
+    "result": "adoptable"
+  },
+  "findings": [
+    {
+      "cve": "CVE-2026-12087",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-13221",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-5450",
+      "severity": "CRITICAL",
+      "package": "glibc",
+      "package_version": "2.41-12+deb13u3"
+    },
+    {
+      "cve": "CVE-2026-57433",
+      "severity": "CRITICAL",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-11822",
+      "severity": "HIGH",
+      "package": "sqlite3",
+      "package_version": "3.46.1-7+deb13u1"
+    },
+    {
+      "cve": "CVE-2026-11824",
+      "severity": "HIGH",
+      "package": "sqlite3",
+      "package_version": "3.46.1-7+deb13u1"
+    },
+    {
+      "cve": "CVE-2026-48959",
+      "severity": "HIGH",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-48961",
+      "severity": "HIGH",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-48962",
+      "severity": "HIGH",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-57432",
+      "severity": "HIGH",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-5928",
+      "severity": "HIGH",
+      "package": "glibc",
+      "package_version": "2.41-12+deb13u3"
+    },
+    {
+      "cve": "CVE-2026-7017",
+      "severity": "HIGH",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2025-15649",
+      "severity": "MEDIUM",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    },
+    {
+      "cve": "CVE-2026-13595",
+      "severity": "MEDIUM",
+      "package": "util-linux",
+      "package_version": "2.41-5"
+    },
+    {
+      "cve": "CVE-2026-7010",
+      "severity": "MEDIUM",
+      "package": "perl",
+      "package_version": "5.40.1-6"
+    }
+  ]
+}

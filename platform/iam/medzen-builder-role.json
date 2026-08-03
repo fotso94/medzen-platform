@@ -1,0 +1,145 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/candidates/bootstrap/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "candidates/bootstrap/*"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/candidates/build/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech"
+      ],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "candidates/build/*"
+          ]
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": [
+        "*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload",
+        "ecr:PutImage",
+        "ecr:BatchGetImage",
+        "ecr:DescribeImages",
+        "ecr:DescribeImageScanFindings"
+      ],
+      "Resource": [
+        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer"
+      ]
+    },
+    {
+      "Sid": "SseKmsFor9C336116C648",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey",
+        "kms:GenerateDataKey"
+      ],
+      "Resource": [
+        "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+      ]
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "ecr:*"
+      ],
+      "Resource": [
+        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-tts-gateway"
+      ],
+      "Sid": "UnrelatedProjectSRepositoryExplicitlyOutO"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/curated/*"
+      ],
+      "Sid": "TheBuildPlaneHasNoBusinessWritingCorpusD"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "secretsmanager:*"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Sid": "ImageBuildsNeverHoldProductionCredentials"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "bedrock:*"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Sid": "A1Invariant2TheBuildPlaneHasNoProducti"
+    },
+    {
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/eval/*"
+      ],
+      "Sid": "A3EvalSetsAreWriteDeniedToEveryOffline"
+    }
+  ]
+}

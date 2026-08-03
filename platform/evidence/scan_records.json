@@ -1,0 +1,307 @@
+{
+  "note": [
+    "Scan provenance for the medzen-trainer image. ECR basic scanning is the",
+    "AUTHORITATIVE gate: it guards the registry we deploy from. Docker Scout is",
+    "recorded because it disagreed materially, and that disagreement is itself",
+    "evidence that 'clean' is scanner-dependent.",
+    "",
+    "ECR basic scanning covers OS packages ONLY. The 163 installed Python",
+    "packages are covered separately by pipeline/audit_python_deps.sh."
+  ],
+  "recorded_utc": "2026-07-30T12:37:35Z",
+  "ecr_scans": [
+    {
+      "scanner": "aws-ecr-basic",
+      "authoritative": true,
+      "scan_completed_utc": "2026-07-30T12:06:04+00:00",
+      "vulnerability_db_updated_utc": "2026-07-30T12:06:04+00:00",
+      "image_digest": "sha256:763319fd83022654772648abafb6856e78297637ef154b202059e0e736446530",
+      "image_tag": "2aa5323bc88d0264dec632294c41501d6bcd233c",
+      "base_image": "python:3.12-slim-bookworm@sha256:72d3d75f2639ab82b34b29390ad3d6e0827c775befee94edda8e9976818f488d",
+      "severity_counts": {
+        "HIGH": 5,
+        "MEDIUM": 3,
+        "CRITICAL": 3
+      },
+      "findings_by_package": {
+        "perl": 10,
+        "util-linux": 1
+      },
+      "total_findings": 11,
+      "all_findings_unfixed": true,
+      "findings": [
+        {
+          "cve": "CVE-2026-12087",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-13221",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-57433",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48959",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48961",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48962",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-57432",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-7017",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2025-15649",
+          "severity": "MEDIUM",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-13595",
+          "severity": "MEDIUM",
+          "package": "util-linux",
+          "package_version": "2.38.1-5+deb12u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-7010",
+          "severity": "MEDIUM",
+          "package": "perl",
+          "package_version": "5.36.0-7+deb12u3",
+          "fixed_in_version": null
+        }
+      ]
+    },
+    {
+      "scanner": "aws-ecr-basic",
+      "authoritative": true,
+      "scan_completed_utc": "2026-07-30T12:26:15+00:00",
+      "vulnerability_db_updated_utc": "2026-07-30T12:26:15+00:00",
+      "image_digest": "sha256:20befc204e8ff2be49f59fc44a21d44298b4eb464b6919fc7a36a7a7b425ffdc",
+      "image_tag": "d44cd40b6d578386295299b814b848dab823a2c6",
+      "base_image": "python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464",
+      "severity_counts": {
+        "HIGH": 8,
+        "MEDIUM": 3,
+        "CRITICAL": 4
+      },
+      "findings_by_package": {
+        "util-linux": 1,
+        "glibc": 2,
+        "perl": 10,
+        "sqlite3": 2
+      },
+      "total_findings": 15,
+      "all_findings_unfixed": true,
+      "findings": [
+        {
+          "cve": "CVE-2026-12087",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-13221",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-5450",
+          "severity": "CRITICAL",
+          "package": "glibc",
+          "package_version": "2.41-12+deb13u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-57433",
+          "severity": "CRITICAL",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-11822",
+          "severity": "HIGH",
+          "package": "sqlite3",
+          "package_version": "3.46.1-7+deb13u1",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-11824",
+          "severity": "HIGH",
+          "package": "sqlite3",
+          "package_version": "3.46.1-7+deb13u1",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48959",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48961",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-48962",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-57432",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-5928",
+          "severity": "HIGH",
+          "package": "glibc",
+          "package_version": "2.41-12+deb13u3",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-7017",
+          "severity": "HIGH",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2025-15649",
+          "severity": "MEDIUM",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-13595",
+          "severity": "MEDIUM",
+          "package": "util-linux",
+          "package_version": "2.41-5",
+          "fixed_in_version": null
+        },
+        {
+          "cve": "CVE-2026-7010",
+          "severity": "MEDIUM",
+          "package": "perl",
+          "package_version": "5.40.1-6",
+          "fixed_in_version": null
+        }
+      ]
+    }
+  ],
+  "docker_scout_base_comparison": {
+    "scanner": "docker-scout",
+    "authoritative": false,
+    "purpose": "cheap pre-filter for candidate bases; NOT the gate",
+    "recorded_utc": "2026-07-30T12:37:35Z",
+    "results": [
+      {
+        "base": "python:3.12-slim-trixie",
+        "python": "3.12.13",
+        "shell": true,
+        "critical": 1,
+        "high": 2,
+        "packages": [
+          "perl"
+        ]
+      },
+      {
+        "base": "python:3.13-slim-trixie",
+        "python": "3.13.x",
+        "shell": true,
+        "critical": 1,
+        "high": 2,
+        "packages": [
+          "perl"
+        ]
+      },
+      {
+        "base": "python:3.12-slim-bookworm",
+        "python": "3.12.x",
+        "shell": true,
+        "critical": 1,
+        "high": 2,
+        "packages": [
+          "perl"
+        ]
+      },
+      {
+        "base": "gcr.io/distroless/python3-debian12",
+        "python": "3.11.2",
+        "shell": false,
+        "critical": 0,
+        "high": 0,
+        "rejected_because": "no shell, so the shared bash gates cannot run; Python 3.11, not the validated 3.12"
+      },
+      {
+        "base": "cgr.dev/chainguard/python:latest",
+        "python": "3.14.6",
+        "shell": false,
+        "critical": 0,
+        "high": 0,
+        "rejected_because": "no shell; torch 2.13.0 likely publishes no cp314 wheels"
+      }
+    ],
+    "divergence_note": "ECR reported 15 findings for python:3.12-slim-trixie (perl, glibc, sqlite3, util-linux); Scout reported 3 (perl only), and did not report the glibc CRITICAL."
+  },
+  "python_dependency_audit": {
+    "scanner": "pip-audit",
+    "version": "2.10.1",
+    "authoritative_for": "python packages (ECR basic scanning does not cover them)",
+    "target": "exported pip freeze --all of the installed environment",
+    "isolation": "own venv without --system-site-packages; freeze proven byte-identical before and after",
+    "packages_audited": 163,
+    "result": "No known vulnerabilities found",
+    "image_digest": "sha256:20befc204e8ff2be49f59fc44a21d44298b4eb464b6919fc7a36a7a7b425ffdc"
+  }
+}

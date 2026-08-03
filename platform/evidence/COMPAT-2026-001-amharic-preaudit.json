@@ -1,0 +1,75 @@
+{
+  "record": "COMPAT-2026-001-AMHARIC-PREAUDIT",
+  "recorded_utc": "2026-07-31T20:31:00Z",
+  "status": "READ_ONLY_EXISTING_EVIDENCE_REVIEWED",
+  "purpose": "choose the next safe B4 investigation after decode failure",
+  "inputs": [
+    "VAL-2026-001-frozen-validation-sets.json",
+    "VAL-2026-002-label-contract-audit.json",
+    "label-length-audit-v2-corrected.json",
+    "DQ-2026-003-policy-deferral-corrected.json",
+    "DIAG-2026-001-amharic-termination.json",
+    "DIAG-2026-002-amharic-decode-compatibility.json"
+  ],
+  "aggregate_findings": {
+    "source_diversity": {
+      "training_sources": 1,
+      "source": "waxalnlp/digital_umuganda",
+      "source_revision": "e0a62aaebc61bd5bb8cac17a08d1b42c65551dd2",
+      "licence_status": "sharealike_review"
+    },
+    "training_pool": {
+      "source_manifest_rows": 300,
+      "train_split_rows_before_deferral": 275,
+      "experiment_deferred_rows": 4,
+      "experiment_eligible_rows": 271,
+      "human_reviewed_deferred_rows": 0,
+      "mean_effective_whisper_tokens_per_second": 16.806,
+      "max_effective_whisper_tokens_per_second": 26.256
+    },
+    "token_density_context": {
+      "amharic_mean_tokens_per_second": 16.806,
+      "next_highest_language_mean_tokens_per_second": 7.217,
+      "ratio_to_next_highest": 2.3287,
+      "interpretation": "Amharic's Ethiopic-script targets are much more fragmented by the pinned Whisper tokenizer; this is an observed compatibility pressure, not proof of bad labels."
+    },
+    "frozen_validation": {
+      "rows": 25,
+      "minutes": 7.46,
+      "speakers": 11,
+      "sessions": 11,
+      "duration_seconds_min_median_max": [15.144, 17.544, 24.216],
+      "effective_label_tokens_min_median_max": [247, 329, 419],
+      "reference_generated_tokens_including_eos_min_median_max": [244, 326, 416],
+      "wrong_prefix_rows": 0,
+      "missing_eos_target_rows": 0,
+      "rows_over_generation_cap": 0
+    },
+    "cross_runtime_base_quality": {
+      "mlx_whisper_native_wer": 1.0,
+      "transformers_greedy_wer": 1.0565,
+      "interpretation": "Two runtimes both score the untouched large-v3 base poorly on this slice, so a Transformers-only defect is not established."
+    },
+    "best_tested_decode_direction": {
+      "strategy": "whisper_fallback_v1",
+      "retained_adapter_eos_rate": 0.8,
+      "retained_adapter_cap_hit_rate": 0.2,
+      "retained_adapter_wer": 1.2562,
+      "passed": false
+    }
+  },
+  "constraints": {
+    "no_training_authorised": true,
+    "no_model_selection_or_promotion": true,
+    "no_gate_weakening": true,
+    "amharic_must_remain_in_scope": true,
+    "human_listening_still_required": true
+  },
+  "next_evidence_needed": [
+    "qualified Amharic review of the four deferred training rows and a stratified sample of eligible train/eval rows",
+    "aggregate script and audio-signal integrity comparison between eligible training and frozen validation",
+    "an independent Amharic evaluation source not derived from digital_umuganda",
+    "a no-training base-model cross-check on that independent source before any optimizer experiment"
+  ],
+  "content_policy": "existing aggregate records only; no manifest row, transcript, token sequence, checksum or audio inspected or emitted"
+}

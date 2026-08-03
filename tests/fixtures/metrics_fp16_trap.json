@@ -1,0 +1,6 @@
+{"asr": {"wer": 0.150, "baseline_wer": 0.260,
+         "slices": {"douala": 0.15}, "baseline_slices": {"douala": 0.20},
+         "general_replay_wer": 0.100, "baseline_general_replay_wer": 0.100,
+         "named_entity_wer": 0.18, "code_switch_wer": 0.17,
+         "monolingual_avg_wer": 0.15, "code_switch_span_langid": 0.92,
+         "artifact_is_quantized": false}}

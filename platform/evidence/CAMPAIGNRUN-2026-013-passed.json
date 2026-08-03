@@ -1,0 +1,113 @@
+{
+  "record": "CAMPAIGNRUN-2026-013-PASSED",
+  "status": "PASSED_CONTROLLED_CONVERSION_DIAGNOSTIC",
+  "campaign_run": "b4-scoped-count-tolerance-61145b7",
+  "attempt": "5",
+  "purpose": "training_system_validation_and_servable_artifact_proof",
+  "promotable": false,
+  "source": {
+    "training_steps": 0,
+    "selected_checkpoint": 400,
+    "adapter_tree_sha256": "1077db731a5ad200bd79e3067f6d868b6313030902cc23195754a4b5db4c2f91",
+    "evaluation_sha256": "11feb45059742dc792768ece2ca1e6bd90a2c1a93c1926614f3847cceb474979"
+  },
+  "executed_provenance": {
+    "git_sha": "f45fcaa0779b77095dcc01fb9ca0b0bf2c25af39",
+    "bundle_tar_sha256": "ee92bf469c7c26bf3483a09113f6e93dfa7e0eff4ccf9c1a6da41713deb99765",
+    "image_digest": "sha256:b6060d239952dc1747b0f8ee80285670c5cc026cf2f00eab6fc5f1df73eaf237",
+    "stage_descriptor_sha256": "a1633b0fd233520f06d7bd3c07829eeeeaedae5a2e3fce99f98c3f950377f099",
+    "scope_deviation_sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c",
+    "artifact_evaluation_sha256": "a2e2d5b39ad22788f6e0eccdb6a71a2efa5ed83cc0bd18c19562a400253fb7a8",
+    "mlflow_snapshot_sha256": "ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545"
+  },
+  "selection_arms": {
+    "merged_pytorch_float16": {
+      "passed": true,
+      "artifact_bytes": 3091070310,
+      "artifact_tree_sha256": "15203846f61ce28848ea10334476b22e45460651cd7b5a8f56b9917b3044a863",
+      "wer": {"lingala": 0.7274, "luganda": 0.7034, "oromo": 0.7005},
+      "relative_wer_gain": {"lingala": 0.2099, "luganda": 0.3401, "oromo": 0.4038},
+      "eos_rate": {"lingala": 1.0, "luganda": 1.0, "oromo": 1.0},
+      "cap_hit_rate": {"lingala": 0.0, "luganda": 0.0, "oromo": 0.0}
+    },
+    "ctranslate2_float16": {
+      "passed": true,
+      "artifact_bytes": 3092286442,
+      "artifact_tree_sha256": "a762edd7a726ba7da3e4e6d417b80e427d96a3b327a48aece6282ffa6525e459",
+      "wer": {"lingala": 0.7284, "luganda": 0.7002, "oromo": 0.6997},
+      "relative_wer_gain": {"lingala": 0.2089, "luganda": 0.3431, "oromo": 0.4045},
+      "eos_rate": {"lingala": 1.0, "luganda": 1.0, "oromo": 1.0},
+      "cap_hit_rate": {"lingala": 0.0, "luganda": 0.0, "oromo": 0.0}
+    },
+    "ctranslate2_int8_float16": {
+      "passed": false,
+      "failure": "Lingala relative WER gain 3.99% was below the unchanged 15% gate",
+      "artifact_bytes": 1556328382,
+      "artifact_tree_sha256": "f0580fd9779455c86285ad398935eeab81cf56afb9668fa07f069ba35ebc6f15",
+      "wer": {"lingala": 0.8840, "luganda": 0.7170, "oromo": 0.7082},
+      "relative_wer_gain": {"lingala": 0.0399, "luganda": 0.3273, "oromo": 0.3972},
+      "eos_rate": {"lingala": 1.0, "luganda": 1.0, "oromo": 1.0},
+      "cap_hit_rate": {"lingala": 0.0, "luganda": 0.0, "oromo": 0.0}
+    }
+  },
+  "precision_selection": {
+    "selected": "float16",
+    "rule": "prefer int8_float16 when it passes; otherwise use float16 only after the same active gates pass",
+    "holdout_opened_only_after_selection": true
+  },
+  "untouched_lingala_holdout": {
+    "rows": 77,
+    "candidate_wer": 0.5996,
+    "same_precision_base_wer": 0.7558,
+    "relative_wer_gain": 0.2067,
+    "candidate_cer": 0.2302,
+    "same_precision_base_cer": 0.2782,
+    "candidate_eos_rate": 1.0,
+    "same_precision_base_eos_rate": 1.0,
+    "candidate_cap_hit_rate": 0.0,
+    "same_precision_base_cap_hit_rate": 0.0,
+    "gate_passed": true
+  },
+  "artifact": {
+    "published": true,
+    "precision": "float16",
+    "tree_sha256": "a762edd7a726ba7da3e4e6d417b80e427d96a3b327a48aece6282ffa6525e459",
+    "bytes": 3092286442,
+    "output_prefix": "candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/ctranslate2-float16/",
+    "registered_models": 0,
+    "b5_allowed": false
+  },
+  "aws_execution": {
+    "instance_id": "i-006dbce9665f55c72",
+    "instance_type": "g6.xlarge",
+    "lifecycle": "on-demand-direct-ec2",
+    "eks_used": false,
+    "spot_used": false,
+    "container_exit_status": 0,
+    "container_runtime_seconds": 1065.9,
+    "aws_observed_seconds": 1672.9,
+    "actual_usd": 0.4677,
+    "instance_terminated": true,
+    "root_volume_id": "vol-09ac285127c6f5c4b",
+    "root_volume_deleted": true
+  },
+  "budget": {
+    "ledger_key": "candidates/budget/b4-aggregate/ledger.json",
+    "hard_ceiling_usd": 100.0,
+    "aggregate_committed_usd": 21.7716,
+    "remaining_usd": 78.2284,
+    "unresolved_reservations": 0
+  },
+  "cleanup": {
+    "active_b4_instances": 0,
+    "unattached_volumes": 0,
+    "unassociated_elastic_ips": 0,
+    "active_spot_requests": 0
+  },
+  "downstream": {
+    "spot_checkpoint_started": false,
+    "spot_resume_started": false,
+    "registered_models": 0,
+    "b5_allowed": false
+  }
+}

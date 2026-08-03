@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AccountRootAdminOnly",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::558069890522:root"},
+      "Action": ["kms:DescribeKey", "kms:GetKeyPolicy", "kms:PutKeyPolicy", "kms:EnableKey", "kms:DisableKey", "kms:ScheduleKeyDeletion", "kms:CancelKeyDeletion", "kms:CreateAlias", "kms:UpdateAlias", "kms:DeleteAlias"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "PromotionRoleMaySignAndVerifyOnly",
+      "Effect": "Allow",
+      "Principal": {"AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"},
+      "Action": ["kms:Sign", "kms:Verify", "kms:GetPublicKey", "kms:DescribeKey"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:SigningAlgorithm": "RSASSA_PSS_SHA_256",
+          "kms:MessageType": "DIGEST"
+        }
+      }
+    }
+  ]
+}
