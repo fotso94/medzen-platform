@@ -1,0 +1,54 @@
+{
+  "record": "B5-MLFLOW-SOURCE-RUN-RESOLUTION",
+  "id": "B5-MLFLOW-2026-001",
+  "status": "VERIFIED_READ_ONLY",
+  "verified_utc": "2026-08-03T18:44:34Z",
+  "aws_account": "558069890522",
+  "region": "eu-central-1",
+  "snapshot": {
+    "bucket": "medzen-speech",
+    "key": "mlflow/snapshots/b4-scoped-count-tolerance-61145b7/attempt-5/conversion-diagnostic/mlflow.db",
+    "version_id": "MJxldbvfXM3MlXOQWWEU5.b1MU1VUGgL",
+    "bytes": 790528,
+    "sha256_expected": "ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545",
+    "sha256_actual": "ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545",
+    "sse": "aws:kms",
+    "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "original_object_unchanged": true
+  },
+  "resolved_runs": {
+    "parent_run_id": "698aa562af914d3e93b521197c664fdf",
+    "source_child_run_id": "94639149aa074000a1f0215ccebade8b",
+    "source_child_stage": "conversion-diagnostic",
+    "matches": 1
+  },
+  "source_child_bindings": {
+    "campaign_run": "b4-scoped-count-tolerance-61145b7",
+    "attempt": "5",
+    "source_checkpoint": "400",
+    "source_adapter_tree_sha256": "1077db731a5ad200bd79e3067f6d868b6313030902cc23195754a4b5db4c2f91",
+    "selected_precision": "float16",
+    "artifact_evaluation_sha256": "a2e2d5b39ad22788f6e0eccdb6a71a2efa5ed83cc0bd18c19562a400253fb7a8",
+    "code_git_sha": "f45fcaa0779b77095dcc01fb9ca0b0bf2c25af39",
+    "code_tar_sha256": "ee92bf469c7c26bf3483a09113f6e93dfa7e0eff4ccf9c1a6da41713deb99765",
+    "image_digest": "sha256:b6060d239952dc1747b0f8ee80285670c5cc026cf2f00eab6fc5f1df73eaf237",
+    "scope_deviation_sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c",
+    "promotable": "false",
+    "registered_models": "0",
+    "training_steps": "0",
+    "run_status": "FINISHED"
+  },
+  "registry_state": {
+    "registered_models": 0,
+    "model_versions": 0
+  },
+  "attachment_rule": {
+    "target_run_id": "94639149aa074000a1f0215ccebade8b",
+    "report_must_be_blocked": true,
+    "report_hash_must_match_filename": true,
+    "new_snapshot_must_use_create_only_key": true,
+    "model_registration_forbidden": true,
+    "stage_transition_forbidden": true
+  },
+  "writes_performed": 0
+}

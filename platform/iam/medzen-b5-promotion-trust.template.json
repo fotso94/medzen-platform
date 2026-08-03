@@ -1,0 +1,31 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OwnerApprovedPromotionPipelineOnly",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "__OWNER_APPROVED_PROMOTION_PIPELINE_PRINCIPAL_ARN__"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "558069890522"
+        }
+      }
+    },
+    {
+      "Sid": "DenyTrainerBuilderAndRuntimeAssumption",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::558069890522:role/medzen-trainer-role",
+          "arn:aws:iam::558069890522:role/medzen-builder-role",
+          "arn:aws:iam::558069890522:role/medzen-asr-role",
+          "arn:aws:iam::558069890522:role/medzen-loader-role"
+        ]
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyTrainerAndBuilderApprovedWrites",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::558069890522:role/medzen-trainer-role",
+          "arn:aws:iam::558069890522:role/medzen-builder-role"
+        ]
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectTagging",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::medzen-speech/approved/*"
+    },
+    {
+      "Sid": "DenyRuntimeApprovedWrites",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::558069890522:role/medzen-asr-role",
+          "arn:aws:iam::558069890522:role/medzen-loader-role"
+        ]
+      },
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectTagging",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion"
+      ],
+      "Resource": "arn:aws:s3:::medzen-speech/approved/*"
+    },
+    {
+      "Sid": "DenyPromotionWritesWithoutCreateOnlyPrecondition",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:if-none-match": "*"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPromotionWritesWithoutPassTag",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:RequestObjectTag/medzen-gate": "PASS"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPromotionWritesWithoutCompleteManifestTag",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:RequestObjectTag/medzen-manifest-state": "complete"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPromotionWritesWithoutContentAddressTag",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:RequestObjectTag/medzen-content-addressed": "true"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPromotionWritesWithoutPinnedSseKms",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption": "aws:kms"
+        }
+      }
+    },
+    {
+      "Sid": "DenyPromotionWritesUsingUnexpectedEncryptionKey",
+      "Effect": "Deny",
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"
+      },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::medzen-speech/approved/asr/*",
+      "Condition": {
+        "StringNotEquals": {
+          "s3:x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+        }
+      }
+    }
+  ]
+}

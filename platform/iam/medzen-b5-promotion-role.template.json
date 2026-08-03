@@ -1,0 +1,75 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadExactCurrentCandidateArtifactAndEvidence",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+      "Resource": [
+        "arn:aws:s3:::medzen-speech/candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/*",
+        "arn:aws:s3:::medzen-speech/candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-1/final/evaluations/checkpoint-400.json",
+        "arn:aws:s3:::medzen-speech/curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R3.json"
+      ]
+    },
+    {
+      "Sid": "ListOnlyExactCandidateAndEvidencePrefixes",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket"],
+      "Resource": ["arn:aws:s3:::medzen-speech"],
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-5/artifactize/*",
+            "candidates/evaluations/b4-scoped-count-tolerance-61145b7/attempt-1/final/evaluations/checkpoint-400.json",
+            "curated/_versions/v2/ADOPTION-B4-SIMPLIFIED-8LANG-R3.json"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "WriteOnlyCompleteSignedApprovedAsrObjects",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "Resource": ["arn:aws:s3:::medzen-speech/approved/asr/*"],
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-server-side-encryption": "aws:kms",
+          "s3:x-amz-server-side-encryption-aws-kms-key-id": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+          "s3:RequestObjectTag/medzen-gate": "PASS",
+          "s3:RequestObjectTag/medzen-manifest-state": "complete",
+          "s3:RequestObjectTag/medzen-content-addressed": "true"
+        }
+      }
+    },
+    {
+      "Sid": "DenyWritesOutsideApprovedAsr",
+      "Effect": "Deny",
+      "Action": ["s3:PutObject", "s3:PutObjectTagging"],
+      "NotResource": ["arn:aws:s3:::medzen-speech/approved/asr/*"]
+    },
+    {
+      "Sid": "DenyApprovedDeletionAclAndOverwriteOperations",
+      "Effect": "Deny",
+      "Action": ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:PutObjectAcl"],
+      "Resource": ["arn:aws:s3:::medzen-speech/approved/asr/*"]
+    },
+    {
+      "Sid": "UseDedicatedSigningKeyOnly",
+      "Effect": "Allow",
+      "Action": ["kms:Sign", "kms:Verify", "kms:GetPublicKey", "kms:DescribeKey"],
+      "Resource": ["__PROMOTION_SIGNING_KEY_ARN__"],
+      "Condition": {
+        "StringEquals": {
+          "kms:SigningAlgorithm": "RSASSA_PSS_SHA_256",
+          "kms:MessageType": "DIGEST"
+        }
+      }
+    },
+    {
+      "Sid": "UseDataKeyOnlyForApprovedObjectEncryption",
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"],
+      "Resource": ["arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"]
+    }
+  ]
+}

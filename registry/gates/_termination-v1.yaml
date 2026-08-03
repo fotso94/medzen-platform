@@ -1,0 +1,25 @@
+version: b4-owner-approved-termination-v1
+status: owner-approved
+decision:
+  path: platform/decisions/B4-SCOPE-2026-002-simplified-exit.json
+  sha256: cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c
+
+checkpoint_selection:
+  languages: [lingala, luganda, oromo]
+  max_unique_failures_per_language_per_checkpoint: 1
+  failure_definition: missing_eos_or_token_cap
+  both_conditions_count_once: true
+  identity_key: audio_checksum_sha256
+  repeated_checksum_at_later_checkpoint: fail_immediately
+  subsequent_optimization_after_recurrence: forbidden
+
+untouched_lingala_holdout:
+  language: lingala
+  max_unique_failures: 0
+  may_influence_checkpoint_selection: false
+
+post_conversion:
+  languages: [lingala, luganda, oromo]
+  max_unique_failures_per_language: 1
+  new_or_different_failure_checksum_allowed: false
+  failure_count_increase_allowed: false
