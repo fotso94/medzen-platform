@@ -1,0 +1,101 @@
+{
+  "record": "B5_MLFLOW_BLOCKED_REPORT_ATTACHMENT",
+  "id": "B5-MLFLOW-ATTACHMENT-2026-001A",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "executed_utc": "2026-08-03T20:55:51Z",
+  "verified_utc": "2026-08-03T20:58:28Z",
+  "authorization": {
+    "path": "platform/decisions/B5-AWS-AUTH-2026-001A.json",
+    "sha256": "8992127a755eb4a431925ff2461b46e24eb234196b3aa93bf9d3c86c52ad42b7",
+    "approved_packet_part": "2026-001A",
+    "packet_2026_001B_executed": false
+  },
+  "aws_execution": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen"
+  },
+  "source_snapshot": {
+    "uri": "s3://medzen-speech/mlflow/snapshots/b4-scoped-count-tolerance-61145b7/attempt-5/conversion-diagnostic/mlflow.db",
+    "version_id": "MJxldbvfXM3MlXOQWWEU5.b1MU1VUGgL",
+    "bytes": 790528,
+    "sha256_verified_before_write": "ee107190414512919a230059cc4be4d0d3c7275e3838ae17214ed65d43d98545",
+    "sse": "aws:kms",
+    "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "exact_version_still_present_after_write": true,
+    "overwritten": false
+  },
+  "report_object": {
+    "uri": "s3://medzen-speech/mlflow/artifacts/94639149aa074000a1f0215ccebade8b/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+    "version_id": "7ifuyjo5X9tcUgV1mKIikSMfF33sG8uL",
+    "bytes": 107817,
+    "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "checksum_sha256_base64": "JSFxVyFeqXlEAYeqBQdy/98kjXXhroI9Xctyy52N7zA=",
+    "downloaded_bytes_match_local_report": true,
+    "sse": "aws:kms",
+    "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "metadata": {
+      "medzen-sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30"
+    },
+    "tags": {
+      "medzen-content-addressed": "true",
+      "medzen-gate": "BLOCKED",
+      "medzen-model-registration": "false"
+    },
+    "created_with_if_none_match": "*"
+  },
+  "new_snapshot": {
+    "uri": "s3://medzen-speech/mlflow/snapshots/b4-scoped-count-tolerance-61145b7/attempt-5/b5-blocked-gate-report/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30/mlflow.db",
+    "version_id": "Gu5XguEVJtnXp0blxd4NpSX3rO1r5CAt",
+    "bytes": 790528,
+    "sha256": "0a11900eec9c1f54db48a14c8ac55e62d756c7fcccbd697be9ad4cda722a5c0d",
+    "checksum_sha256_base64": "ChGQDuycH1TbSKFMisVeYtdWx/zMvWl76a1M2nIqXA0=",
+    "downloaded_sha256_verified": true,
+    "sse": "aws:kms",
+    "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "metadata": {
+      "medzen-sha256": "0a11900eec9c1f54db48a14c8ac55e62d756c7fcccbd697be9ad4cda722a5c0d"
+    },
+    "tags": {
+      "medzen-content-addressed": "true",
+      "medzen-gate": "BLOCKED",
+      "medzen-model-registration": "false"
+    },
+    "created_with_if_none_match": "*"
+  },
+  "mlflow_verification": {
+    "target_run_id": "94639149aa074000a1f0215ccebade8b",
+    "run_status": "FINISHED",
+    "run_lifecycle_stage": "active",
+    "attached_tags": {
+      "b5.gate_outcome": "BLOCKED",
+      "b5.gate_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "b5.gate_report_uri": "s3://medzen-speech/mlflow/artifacts/94639149aa074000a1f0215ccebade8b/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "b5.model_registration_permitted": "false"
+    },
+    "registered_models_before": 0,
+    "registered_models_after": 0,
+    "model_versions_before": 0,
+    "model_versions_after": 0,
+    "stage_transitions": 0
+  },
+  "prohibited_side_effect_verification": {
+    "approved_asr_writes": 0,
+    "language_artifact_changes": 0,
+    "language_approved_version_changes": 0,
+    "production_ssm_writes": 0,
+    "deployments": 0,
+    "kms_keys_created": 0,
+    "iam_roles_created": 0,
+    "packet_2026_001B_operations": 0
+  },
+  "completion": {
+    "b5_1_engineering_and_report": "COMPLETE_BLOCKED_REPORT_ATTACHED",
+    "b5_2_artifact_publication": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b5_3_registry_promotion": "BLOCKED_NOT_APPLICABLE_FOR_CURRENT_ARTIFACT",
+    "b6": "BLOCKED"
+  },
+  "temporary_verification_directory_removed": true
+}
