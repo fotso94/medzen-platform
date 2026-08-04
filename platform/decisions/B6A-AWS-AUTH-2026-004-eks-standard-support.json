@@ -1,0 +1,83 @@
+{
+  "record": "B6A_EKS_STANDARD_SUPPORT_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-004",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-04T22:27:32Z",
+  "authorization_source": "Owner reply 'Approved go ahead' to the explicit request to approve B6A AWS change packet 2026-004.",
+  "interpretation": "Authorization applies only to packet 2026-004. It does not authorize packet 2026-003A or any deployment operation.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "81df0b684d48c52639043f10e697d39d5036aad6",
+    "git_tree": "46589ba887459c99251db9a5b75d95bea84ef4d8",
+    "commit_count": 156,
+    "worktree_clean": true,
+    "remote_branch_commit": "81df0b684d48c52639043f10e697d39d5036aad6"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-004-eks-standard-support.md",
+    "sha256": "d2341bcca95051b822b020b47780bd46595ccf6de02a097fb3fdeedfba854257"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech"
+  },
+  "verified_preconditions": {
+    "cluster_status": "ACTIVE",
+    "kubernetes_version": "1.36",
+    "support_type": "EXTENDED",
+    "cluster_health_issues": 0,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 2,
+      "desired": 2,
+      "maximum": 4,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    },
+    "registry_parameter_count": 0
+  },
+  "authorized_operations": [
+    "refresh_live_terraform_state",
+    "create_and_machine_check_a_saved_plan",
+    "update_aws_eks_cluster_this_in_place_from_EXTENDED_to_STANDARD_only",
+    "verify_cluster_nodegroup_and_registry_postconditions",
+    "create_local_immutable_completion_evidence"
+  ],
+  "hard_apply_preconditions": {
+    "terraform_backend_identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "allowed_resource_actions": {
+      "aws_eks_cluster.this": [
+        "update"
+      ]
+    },
+    "creates": 0,
+    "deletes": 0,
+    "replacements": 0,
+    "output_changes": 0
+  },
+  "prohibited_operations": [
+    "kubernetes_version_or_addon_change",
+    "nodegroup_image_or_scaling_change",
+    "network_change",
+    "gpu_scale_up",
+    "ssm_parameter_change",
+    "kms_iam_ecr_or_s3_change",
+    "container_or_model_publication",
+    "kubernetes_workload_change",
+    "model_registration_training_or_promotion",
+    "language_registry_change",
+    "b4_or_b5_evidence_change",
+    "any_B6A_AWS_CHANGE_PACKET_2026_003A_operation"
+  ]
+}
