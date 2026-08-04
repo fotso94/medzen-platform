@@ -1,0 +1,183 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Docker Scout",
+          "informationUri": "https://docker.com/products/docker-scout",
+          "name": "docker scout",
+          "rules": [
+            {
+              "id": "CVE-2026-42504",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-42504"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-42504?s=golang&n=stdlib&t=golang&vr=%3E%3D1.26.0-0%2C%3C1.26.4",
+              "help": {
+                "text": "Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.\n",
+                "markdown": "> Decoding a maliciously-crafted MIME header containing many invalid encoded-words can consume excessive CPU.\n\n|                |                          |\n|----------------|--------------------------|\n| Package        | pkg:golang/stdlib@1.26.3 |\n| Affected range | >=1.26.0-0,<1.26.4       |\n| Fixed version  | 1.26.4                   |\n"
+              },
+              "properties": {
+                "affected_version": ">=1.26.0-0,<1.26.4",
+                "cvssV3_severity": "HIGH",
+                "fixed_version": "1.26.4",
+                "purls": [
+                  "pkg:golang/stdlib@1.26.3"
+                ],
+                "security-severity": "7.5",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "GHSA-hrxh-6v49-42gf",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "GHSA-hrxh-6v49-42gf: Uncaught Exception"
+              },
+              "helpUri": "https://scout.docker.com/v/GHSA-hrxh-6v49-42gf?s=github&n=grpc&ns=google.golang.org&t=golang&vr=%3C1.82.1",
+              "help": {
+                "text": "Multiple security vulnerabilities have been identified and addressed in grpc-go affecting the xDS RBAC authorization engine (internal/xds/rbac) and the HTTP/2 transport server implementation (internal/transport). These vulnerabilities could result in:\n\n- Authorization Bypass (Fail-Open) when translating xDS RBAC policies containing `Metadata` or `RequestedServerName` fields.\n- Denial of Service (High CPU Consumption) due to an HTTP/2 Rapid Reset mitigation bypass during client-initiated stream resets.\n- Denial of Service (Server Panic) when parsing crafted xDS RBAC policies containing `NOT` rules around unsupported fields.\n\n\n### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\n#### xDS RBAC Authorization Bypass via `Metadata` & `RequestedServerName` matchers\n\n- Affected Component: xDS RBAC \n- Impact: When building policy matchers for gRPC RBAC from xDS configurations, unsupported `permission` and `principal` rules (specifically `Metadata` and `RequestedServerName`) were silently ignored and treated as no-ops.\n  - If an authorization policy relied purely on these matchers for access control, treating those rules as no-ops effectively removed the restrictions.\n- If these unsupported rules were nested inside logical `NOT` rules (`Permission_NotRule` / `Principal_NotId`) or multi-condition `OR/AND` rules, silently dropping them changed the boolean logic flow of the authorization engine.\n\nAs a result, policy evaluation decisions could fail open, allowing unauthorized clients to access protected gRPC services or resources.\n\n#### HTTP/2 Rapid Reset Mitigation Bypass / Denial of Service via Stream Aborts\n\n- Affected Component: HTTP/2 transport\n- Impact: Earlier mitigations in grpc-go for HTTP/2 Rapid Reset only applied threshold checks to items that directly resulted in control frames being written back to the wire, such as `SETTINGS` ACKs or server-initiated `RST_STREAM`s.\n\nWhen a client initiated a rapid flood of stream creation (`HEADERS`) immediately followed by stream termination `RST_STREAM`, items queued up in the control buffer without counting against the transport response frame threshold. An attacker can repeatedly trigger this flood sequence to bypass reader blocking, resulting in high CPU usage, and Denial of Service (DoS).\n\n#### Denial of Service (Panic) in xDS RBAC Engine via Unsupported Fields inside NOT Rules\n\n- Affected Component: xDS RBAC \n- Impact: The xDS RBAC policy translators recursively generate matchers for nested rules. When a `NOT` rule wrapped an unsupported or unhandled field (such as `SourcedMetadata`), the recursive step returned an empty matcher. This could result in a runtime panic when the RBAC engine attempts to authorize an incoming request.\n\nAn attacker or misconfigured/malicious xDS management server delivering an LDS/RDS update containing a `NOT` rule around an unhandled field causes the gRPC server process to crash immediately (CWE-248 / Denial of Service).\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nAll three issues have been fixed in `master` and will be released in 1.82.1 shortly.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nIf upgrading grpc-go immediately is not possible, apply the following workarounds based on your deployment architecture:\n\n* For xDS RBAC Vulnerabilities & Panics: Ensure that upstream xDS management servers do not push RBAC policies containing `Metadata`, `RequestedServerName`, or `NOT` rules wrapping unsupported fields (such as `SourcedMetadata`) to grpc-go servers.\n* For HTTP/2 Rapid Reset DOS: Configure upstream reverse proxies or load balancers (such as Envoy) with strict HTTP/2 `max_concurrent_streams` limits and active rate limiting on `RST_STREAM` frequency per connection.\n\n### Severity\n\n  | Vulnerability | Qualitative Severity | Approximate CVSS v3.1 Score | Primary Impact |\n  | :--- | :--- | :--- | :--- |\n  | **xDS RBAC Authorization Bypass** | **High** | `8.2` | Unauthorized Access / Fail-Open |\n  | **HTTP/2 Rapid Reset DOS Bypass** | **High** | `7.5` | High CPU Consumption / Denial of Service |\n  | **xDS RBAC Engine Server Panic** | **Medium** | `5.9` | Process Crash / Denial of Service |\n",
+                "markdown": "> Multiple security vulnerabilities have been identified and addressed in grpc-go affecting the xDS RBAC authorization engine (internal/xds/rbac) and the HTTP/2 transport server implementation (internal/transport). These vulnerabilities could result in:\n\n- Authorization Bypass (Fail-Open) when translating xDS RBAC policies containing `Metadata` or `RequestedServerName` fields.\n- Denial of Service (High CPU Consumption) due to an HTTP/2 Rapid Reset mitigation bypass during client-initiated stream resets.\n- Denial of Service (Server Panic) when parsing crafted xDS RBAC policies containing `NOT` rules around unsupported fields.\n\n\n### Impact\n_What kind of vulnerability is it? Who is impacted?_\n\n#### xDS RBAC Authorization Bypass via `Metadata` & `RequestedServerName` matchers\n\n- Affected Component: xDS RBAC \n- Impact: When building policy matchers for gRPC RBAC from xDS configurations, unsupported `permission` and `principal` rules (specifically `Metadata` and `RequestedServerName`) were silently ignored and treated as no-ops.\n  - If an authorization policy relied purely on these matchers for access control, treating those rules as no-ops effectively removed the restrictions.\n- If these unsupported rules were nested inside logical `NOT` rules (`Permission_NotRule` / `Principal_NotId`) or multi-condition `OR/AND` rules, silently dropping them changed the boolean logic flow of the authorization engine.\n\nAs a result, policy evaluation decisions could fail open, allowing unauthorized clients to access protected gRPC services or resources.\n\n#### HTTP/2 Rapid Reset Mitigation Bypass / Denial of Service via Stream Aborts\n\n- Affected Component: HTTP/2 transport\n- Impact: Earlier mitigations in grpc-go for HTTP/2 Rapid Reset only applied threshold checks to items that directly resulted in control frames being written back to the wire, such as `SETTINGS` ACKs or server-initiated `RST_STREAM`s.\n\nWhen a client initiated a rapid flood of stream creation (`HEADERS`) immediately followed by stream termination `RST_STREAM`, items queued up in the control buffer without counting against the transport response frame threshold. An attacker can repeatedly trigger this flood sequence to bypass reader blocking, resulting in high CPU usage, and Denial of Service (DoS).\n\n#### Denial of Service (Panic) in xDS RBAC Engine via Unsupported Fields inside NOT Rules\n\n- Affected Component: xDS RBAC \n- Impact: The xDS RBAC policy translators recursively generate matchers for nested rules. When a `NOT` rule wrapped an unsupported or unhandled field (such as `SourcedMetadata`), the recursive step returned an empty matcher. This could result in a runtime panic when the RBAC engine attempts to authorize an incoming request.\n\nAn attacker or misconfigured/malicious xDS management server delivering an LDS/RDS update containing a `NOT` rule around an unhandled field causes the gRPC server process to crash immediately (CWE-248 / Denial of Service).\n\n### Patches\n_Has the problem been patched? What versions should users upgrade to?_\n\nAll three issues have been fixed in `master` and will be released in 1.82.1 shortly.\n\n### Workarounds\n_Is there a way for users to fix or remediate the vulnerability without upgrading?_\n\nIf upgrading grpc-go immediately is not possible, apply the following workarounds based on your deployment architecture:\n\n* For xDS RBAC Vulnerabilities & Panics: Ensure that upstream xDS management servers do not push RBAC policies containing `Metadata`, `RequestedServerName`, or `NOT` rules wrapping unsupported fields (such as `SourcedMetadata`) to grpc-go servers.\n* For HTTP/2 Rapid Reset DOS: Configure upstream reverse proxies or load balancers (such as Envoy) with strict HTTP/2 `max_concurrent_streams` limits and active rate limiting on `RST_STREAM` frequency per connection.\n\n### Severity\n\n  | Vulnerability | Qualitative Severity | Approximate CVSS v3.1 Score | Primary Impact |\n  | :--- | :--- | :--- | :--- |\n  | **xDS RBAC Authorization Bypass** | **High** | `8.2` | Unauthorized Access / Fail-Open |\n  | **HTTP/2 Rapid Reset DOS Bypass** | **High** | `7.5` | High CPU Consumption / Denial of Service |\n  | **xDS RBAC Engine Server Panic** | **Medium** | `5.9` | Process Crash / Denial of Service |\n\n|                |                                                                 |\n|----------------|-----------------------------------------------------------------|\n| Package        | pkg:golang/google.golang.org/grpc@1.80.0                        |\n| Affected range | <1.82.1                                                         |\n| Fixed version  | 1.82.1                                                          |\n| CVSS Score     |                                                             8.8 |\n| CVSS Vector    | CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:H/SC:N/SI:N/SA:N |\n"
+              },
+              "properties": {
+                "affected_version": "<1.82.1",
+                "cvssV3": 8.8,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:H/SC:N/SI:N/SA:N",
+                "fixed_version": "1.82.1",
+                "purls": [
+                  "pkg:golang/google.golang.org/grpc@1.80.0"
+                ],
+                "security-severity": "8.8",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-39821",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-39821"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-39821?s=golang&n=net&ns=golang.org%2Fx&t=golang&vr=%3C0.55.0",
+              "help": {
+                "text": "The ToASCII and ToUnicode functions incorrectly accept Punycode-encoded labels that decode to an ASCII-only label. For example, ToUnicode(\"xn--example-.com\") incorrectly returns the name \"example.com\" rather than an error.\n\nThis behavior can lead to privilege escalation in programs using the idna package. For example, a program which performs privilege checks on the ASCII hostname may reject \"example.com\" but permit \"xn--example-.com\". If that program subsequently converts the ASCII hostname to Unicode, it will inadvertently permits access to the Unicode name \"example.com\".\n",
+                "markdown": "> The ToASCII and ToUnicode functions incorrectly accept Punycode-encoded labels that decode to an ASCII-only label. For example, ToUnicode(\"xn--example-.com\") incorrectly returns the name \"example.com\" rather than an error.\n\nThis behavior can lead to privilege escalation in programs using the idna package. For example, a program which performs privilege checks on the ASCII hostname may reject \"example.com\" but permit \"xn--example-.com\". If that program subsequently converts the ASCII hostname to Unicode, it will inadvertently permits access to the Unicode name \"example.com\".\n\n|                |                                    |\n|----------------|------------------------------------|\n| Package        | pkg:golang/golang.org/x/net@0.53.0 |\n| Affected range | <0.55.0                            |\n| Fixed version  | 0.55.0                             |\n"
+              },
+              "properties": {
+                "affected_version": "<0.55.0",
+                "cvssV3_severity": "CRITICAL",
+                "fixed_version": "0.55.0",
+                "purls": [
+                  "pkg:golang/golang.org/x/net@0.53.0"
+                ],
+                "security-severity": "9.6",
+                "tags": [
+                  "CRITICAL"
+                ]
+              }
+            }
+          ],
+          "version": "1.18.3"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2026-42504",
+          "ruleIndex": 0,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-42504            \n  Severity        : HIGH                      \n  Package         : pkg:golang/stdlib@1.26.3  \n  Affected range  : >=1.26.0-0,<1.26.4        \n  Fixed version   : 1.26.4                    \n  EPSS Score      : 0.005600                  \n  EPSS Percentile : 0.434590                  \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/nvidia-cdi-hook"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "GHSA-hrxh-6v49-42gf",
+          "ruleIndex": 1,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability  : GHSA-hrxh-6v49-42gf                                              \n  Severity       : HIGH                                                             \n  Package        : pkg:golang/google.golang.org/grpc@1.80.0                         \n  Affected range : <1.82.1                                                          \n  Fixed version  : 1.82.1                                                           \n  CVSS Score     : 8.8                                                              \n  CVSS Vector    : CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:H/VA:H/SC:N/SI:N/SA:N  \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/compute-domain-kubelet-plugin"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/gpu-kubelet-plugin"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-39821",
+          "ruleIndex": 2,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-39821                      \n  Severity        : CRITICAL                            \n  Package         : pkg:golang/golang.org/x/net@0.53.0  \n  Affected range  : <0.55.0                             \n  Fixed version   : 0.55.0                              \n  EPSS Score      : 0.006550                            \n  EPSS Percentile : 0.478590                            \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/compute-domain-controller"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/compute-domain-daemon"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/compute-domain-kubelet-plugin"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/gpu-kubelet-plugin"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/webhook"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

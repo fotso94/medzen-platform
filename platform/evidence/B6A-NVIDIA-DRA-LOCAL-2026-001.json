@@ -1,0 +1,105 @@
+{
+  "record": "B6A_NVIDIA_DRA_LOCAL_SECURITY_REBUILD",
+  "id": "B6A-NVIDIA-DRA-LOCAL-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_LOCAL_ONLY",
+  "completed_utc": "2026-08-04T22:13:34Z",
+  "purpose": "Remove the three fixable critical/high findings from the NVIDIA DRA component without using a serving-plane waiver and without pushing or deploying the image.",
+  "upstream_image": {
+    "reference": "nvcr.io/nvidia/dra-driver-nvidia-gpu:v0.4.1",
+    "linux_amd64_digest": "sha256:a1f7731e18385b1441f7172a8941224dfac0f364f6f6a3043869c68d5adb170d",
+    "reported_image_provenance_commit": "d5891068bf92407b17825c29f462da9643457b04",
+    "scan": {
+      "path": "platform/evidence/B6A-NVIDIA-DRA-UPSTREAM-SCAN-2026-001.sarif.json",
+      "sha256": "b256938960f63ff8f01d9e6ef86db17028cb39abadd694aa9672bc004f9fb017",
+      "critical": 1,
+      "high": 2,
+      "findings": [
+        {
+          "id": "CVE-2026-39821",
+          "package": "golang.org/x/net",
+          "observed": "0.53.0",
+          "fixed": "0.55.0"
+        },
+        {
+          "id": "GHSA-hrxh-6v49-42gf",
+          "package": "google.golang.org/grpc",
+          "observed": "1.80.0",
+          "fixed": "1.82.1"
+        },
+        {
+          "id": "CVE-2026-42504",
+          "package": "Go standard library in nvidia-cdi-hook",
+          "observed": "1.26.3",
+          "fixed": "1.26.4"
+        }
+      ]
+    }
+  },
+  "rebuild_sources": {
+    "dra_repository": "https://github.com/NVIDIA/k8s-dra-driver.git",
+    "dra_release_tag": "v0.4.1",
+    "dra_commit": "764900e7833798a1528bd52a2af3e1b2d5f7a616",
+    "published_image_commit_differs_from_release_tag_commit": true,
+    "container_toolkit_repository": "https://github.com/NVIDIA/nvidia-container-toolkit.git",
+    "container_toolkit_release_tag": "v1.19.1",
+    "container_toolkit_commit": "09ceee5dde66ba9ce25c7cc69b1ebd5e6e3266fa",
+    "go_builder_index_digest": "sha256:f96cc555eb8db430159a3aa6797cd5bae561945b7b0fe7d0e284c63a3b291609",
+    "go_builder_linux_amd64_digest": "sha256:f92b729f5f76b045df75ee1cb324ea68658bbc82feecd286c6ce08bf339fd74d",
+    "go_version": "1.26.4"
+  },
+  "recipe": {
+    "script": "scripts/build_b6a_nvidia_dra.sh",
+    "script_sha256": "d216bce514bf9a96e7cf1e02c65093df29762d16b93ea9c3de6d228099102558",
+    "patch": "platform/dependencies/nvidia-dra-v0.4.1/medzen-security.patch",
+    "patch_sha256": "aa7cab24c9d978d532ce46d771d2a5542a222b4f90495102ca8f1f53d78305bd",
+    "dependency_updates": {
+      "golang.org/x/net": "0.55.0",
+      "google.golang.org/grpc": "1.82.1"
+    },
+    "runtime_base_digests_pinned": true,
+    "push_operation_present": false,
+    "aws_or_kubernetes_operation_present": false
+  },
+  "rebuilt_cdi_helper": {
+    "version": "v1.19.1-medzen.1",
+    "commit_label": "09ceee5dde66ba9ce25c7cc69b1ebd5e6e3266fa+medzen-go1.26.4",
+    "sha256": "ebbe5839a703c5aa16796bdbadbea68439831f832660de49fc5c0fb70863c5b6",
+    "bytes": 6718968
+  },
+  "local_image": {
+    "tag": "medzen-nvidia-dra:v0.4.1-medzen.2",
+    "platform": "linux/amd64",
+    "image_id": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "config_digest": "sha256:a28ccd3388c2f30e4a09f0f85a4a82e2a396130d7cdc85d515afdcc838d89c96",
+    "bytes": 90223329,
+    "dra_version": "v0.4.1-medzen.2",
+    "dra_commit_label": "764900e7833798a1528bd52a2af3e1b2d5f7a616+medzen-security-2"
+  },
+  "verification": {
+    "upstream_go_test_mod_vendor_all": "PASS",
+    "gpu_kubelet_plugin_version_smoke": "PASS",
+    "nvidia_cdi_hook_version_smoke": "PASS",
+    "independent_recipe_rebuild_same_image_id": true,
+    "docker_scout_version": "1.18.3",
+    "scan_path": "platform/evidence/B6A-NVIDIA-DRA-SCAN-2026-001.sarif.json",
+    "scan_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+    "packages_indexed": 112,
+    "critical": 0,
+    "high": 0
+  },
+  "waiver": {
+    "used": false,
+    "reason": "All three reported critical/high findings had fixed versions and were removed in the local rebuild. The B4 offline trainer waiver was not extended to this privileged serving component."
+  },
+  "remaining_boundaries": {
+    "ecr_repository_created": false,
+    "image_pushed": false,
+    "chart_or_manifest_published": false,
+    "kubernetes_mutation": false,
+    "gpu_scaled": false,
+    "runtime_gpu_compatibility_tested": false,
+    "deployment_authorized": false,
+    "next_requirement": "After separate owner approval, create an immutable scan-on-push KMS-encrypted ECR repository, push this exact recipe output, bind the ECR digest in the deployment manifest, re-scan in ECR, then perform the bounded B6A test."
+  }
+}
