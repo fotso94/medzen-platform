@@ -101,8 +101,34 @@ def validate_manifest(manifest: Mapping[str, Any], manifest_uri: str) -> dict[st
             or re.fullmatch(r"sha256:[0-9a-f]{64}", str(
                 provenance.get("container_image_digest", ""))) is None
             or provenance.get("converter") != "ct2-transformers-converter@4.8.1"
-            or not str(provenance.get("converted_at_utc", "")).endswith("Z")):
+            or not str(provenance.get("converted_at_utc", "")).endswith("Z")
+            or re.fullmatch(r"[0-9a-f]{64}", str(
+                provenance.get("source_tree_sha256", ""))) is None
+            or not isinstance(provenance.get("source_bytes"), int)
+            or isinstance(provenance.get("source_bytes"), bool)
+            or provenance["source_bytes"] <= 0
+            or not isinstance(provenance.get("source_files"), Mapping)
+            or not {"config.json", "model.safetensors",
+                    "preprocessor_config.json", "tokenizer.json"} <= set(
+                        provenance["source_files"])):
         raise LoaderRefusal("conversion provenance is incomplete")
+    normalized_source: dict[str, dict[str, Any]] = {}
+    source_total = 0
+    for raw, binding in sorted(provenance["source_files"].items()):
+        if not isinstance(raw, str) or not isinstance(binding, Mapping):
+            raise LoaderRefusal("conversion source binding is malformed")
+        _safe_relative_path(raw)
+        digest, size = binding.get("sha256"), binding.get("bytes")
+        if (not isinstance(digest, str)
+                or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+                or not isinstance(size, int) or isinstance(size, bool) or size < 0):
+            raise LoaderRefusal("conversion source binding is malformed")
+        normalized_source[raw] = {"sha256": digest, "bytes": size}
+        source_total += size
+    if (source_total != provenance["source_bytes"]
+            or _sha256_bytes(_canonical(normalized_source))
+            != provenance["source_tree_sha256"]):
+        raise LoaderRefusal("conversion source provenance hash mismatch")
 
     bucket, key = parse_s3_uri(manifest_uri)
     if bucket != BUCKET or not key.startswith(ALLOWED_PREFIX) or not key.endswith(

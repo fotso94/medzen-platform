@@ -35,6 +35,16 @@ def fixture():
         name: {"sha256": hashlib.sha256(body).hexdigest(), "bytes": len(body)}
         for name, body in sorted(data.items())
     }
+    source_data = {
+        "config.json": b"{}",
+        "model.safetensors": b"m",
+        "preprocessor_config.json": b"{}",
+        "tokenizer.json": b"{}",
+    }
+    source_files = {
+        name: {"sha256": hashlib.sha256(body).hexdigest(), "bytes": len(body)}
+        for name, body in sorted(source_data.items())
+    }
     tree = hashlib.sha256(canonical(files)).hexdigest()
     prefix = f"s3://medzen-speech/b6a/asr/v0/{tree}/"
     manifest = {
@@ -77,6 +87,10 @@ def fixture():
             "container_image_digest": "sha256:" + "b" * 64,
             "converter": "ct2-transformers-converter@4.8.1",
             "converted_at_utc": "2026-08-04T00:00:00Z",
+            "source_tree_sha256": hashlib.sha256(
+                canonical(source_files)).hexdigest(),
+            "source_bytes": sum(len(body) for body in source_data.values()),
+            "source_files": source_files,
         },
     }
     manifest_uri = prefix + "MANIFEST.json"

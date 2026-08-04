@@ -94,12 +94,28 @@
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["git_commit", "container_image_digest", "converter", "converted_at_utc"],
+      "required": ["git_commit", "container_image_digest", "converter", "converted_at_utc", "source_tree_sha256", "source_bytes", "source_files"],
       "properties": {
         "git_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "container_image_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "converter": {"const": "ct2-transformers-converter@4.8.1"},
-        "converted_at_utc": {"type": "string", "format": "date-time"}
+        "converted_at_utc": {"type": "string", "format": "date-time"},
+        "source_tree_sha256": {"$ref": "#/$defs/sha256"},
+        "source_bytes": {"type": "integer", "minimum": 1},
+        "source_files": {
+          "type": "object",
+          "minProperties": 4,
+          "required": ["config.json", "model.safetensors", "preprocessor_config.json", "tokenizer.json"],
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sha256", "bytes"],
+            "properties": {
+              "sha256": {"$ref": "#/$defs/sha256"},
+              "bytes": {"type": "integer", "minimum": 0}
+            }
+          }
+        }
       }
     }
   },
