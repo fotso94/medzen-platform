@@ -68,3 +68,16 @@ variable "github_repo" {
   default     = "REPLACE/medzen-platform"
   description = "owner/repo for the GitHub Actions OIDC trust policy"
 }
+
+variable "registry_publisher_principal_arn" {
+  type        = string
+  description = "Exact same-account principal allowed to assume the dedicated registry publisher role."
+
+  validation {
+    condition = can(regex(
+      "^arn:aws:iam::[0-9]{12}:(user|role)/[A-Za-z0-9+=,.@_/-]+$",
+      var.registry_publisher_principal_arn,
+    ))
+    error_message = "registry_publisher_principal_arn must be an exact IAM user or role ARN."
+  }
+}

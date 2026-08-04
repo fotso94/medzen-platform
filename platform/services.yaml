@@ -24,6 +24,9 @@ meta:
   kms:
     data: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57        # alias/medzen-data
     audio_cache: arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda # alias/medzen-audio
+    # Parameter Store is a control-plane data use, so it reuses the data key.
+    # The generated role grants constrain decrypt to SSM and this exact path.
+    registry: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57
   registry_ssm_prefix: /medzen/registry     # existing app config lives under
                                            # /medzen-health-pro/* and /medzen/tts/* — no collision
 
