@@ -1,0 +1,70 @@
+{
+  "record": "B6A_B1_REGISTRY_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-002",
+  "revision": 1,
+  "status": "owner-approved-conditional",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-04T20:39:51Z",
+  "authorization_source": "Owner message: Go ahead with your recommendations next move and report while you implementing it.",
+  "approved_recommendation_context": "Generate and review the B1 packet 2026-002 Terraform plan using the explicit medzen profile; apply only if the plan is limited to the packet's itemized IAM changes and proves no unrelated change.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "e0bada17ceffc1f0245f449381ea89803f358258",
+    "git_tree": "e1717eb0194922c1ba29289601cd4ebfaa43f341",
+    "commit_count": 152,
+    "worktree_clean": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-002-b1-registry.md",
+    "sha256": "3ed41b2c89d3bef1bcc500593c29f2e5980af6f6f8efe0bdd6ad2e57b8ffc870"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "approved_operations": [
+    "fail_closed_local_terraform_identity_wrapper",
+    "remote_state_and_live_state_refresh",
+    "saved_terraform_plan_generation_and_inspection",
+    "create_medzen_registry_publisher_role_only_if_plan_is_exact",
+    "attach_medzen_registry_publisher_access_policy_only_if_plan_is_exact",
+    "update_only_the_three_packet_named_runtime_inline_policies_for_registry_kms_decrypt_only_if_plan_is_exact",
+    "post_apply_policy_and_zero_parameter_verification"
+  ],
+  "hard_apply_preconditions": {
+    "terraform_backend_identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "destroy_actions": 0,
+    "replacement_actions": 0,
+    "network_resource_changes": 0,
+    "eks_or_nodegroup_changes": 0,
+    "ssm_parameter_changes": 0,
+    "kms_key_changes": 0,
+    "allowed_resource_addresses": [
+      "aws_iam_role.registry_publisher",
+      "aws_iam_role_policy.registry_publisher",
+      "aws_iam_role_policy.pod[\"speech-orchestrator\"]",
+      "aws_iam_role_policy.pod[\"llm-gateway\"]",
+      "aws_iam_role_policy.pod[\"tts-gateway\"]"
+    ]
+  },
+  "prohibited_operations": [
+    "ssm_parameter_create_update_or_delete",
+    "kms_key_or_alias_change",
+    "eks_upgrade_policy_change",
+    "cluster_nodegroup_addon_or_network_change",
+    "gpu_scale_up",
+    "container_or_model_artifact_publication",
+    "approved_asr_write",
+    "model_registration_or_stage_transition",
+    "language_artifact_or_approved_version_change",
+    "production_serving_alias_change",
+    "b6a_deployment"
+  ],
+  "separate_future_packets_required": [
+    "EKS supportType STANDARD change",
+    "B6A AWS change packet 2026-003 deployment"
+  ]
+}
