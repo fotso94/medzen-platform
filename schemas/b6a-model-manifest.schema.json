@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medzen.example/schemas/b6a-model-manifest-v1.json",
+  "title": "MedZen B6A zero-shot ASR platform-test manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "classification",
+    "serving_label",
+    "artifact",
+    "decode_configuration",
+    "quality_disclosure",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "classification": {"const": "PLATFORM_PROOF_ONLY"},
+    "serving_label": {"const": "v0"},
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "s3_prefix",
+        "tree_sha256",
+        "files",
+        "model_id",
+        "base_model_revision",
+        "tokenizer_revision",
+        "processor_revision",
+        "precision",
+        "fine_tuned",
+        "adapter_sha256"
+      ],
+      "properties": {
+        "s3_prefix": {"type": "string", "pattern": "^s3://medzen-speech/b6a/asr/v0/"},
+        "tree_sha256": {"$ref": "#/$defs/sha256"},
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sha256", "bytes"],
+            "properties": {
+              "sha256": {"$ref": "#/$defs/sha256"},
+              "bytes": {"type": "integer", "minimum": 0}
+            }
+          }
+        },
+        "model_id": {"const": "openai/whisper-large-v3"},
+        "base_model_revision": {"const": "06f233fe06e710322aca913c1bc4249a0d71fce1"},
+        "tokenizer_revision": {"const": "06f233fe06e710322aca913c1bc4249a0d71fce1"},
+        "processor_revision": {"const": "06f233fe06e710322aca913c1bc4249a0d71fce1"},
+        "precision": {"const": "CTranslate2_float16"},
+        "fine_tuned": {"const": false},
+        "adapter_sha256": {"type": "null"}
+      }
+    },
+    "decode_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purpose", "task", "beam_size", "best_of", "temperature", "condition_on_previous_text", "word_timestamps"],
+      "properties": {
+        "purpose": {"const": "B6A_PLATFORM_TEST_ONLY_NOT_PROMOTION_GRADE"},
+        "task": {"const": "transcribe"},
+        "beam_size": {"const": 1},
+        "best_of": {"const": 1},
+        "temperature": {"const": 0.0},
+        "condition_on_previous_text": {"const": false},
+        "word_timestamps": {"const": false}
+      }
+    },
+    "quality_disclosure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["production_approved", "quality_gate_outcome", "absolute_wer_max", "zero_shot_base_wer"],
+      "properties": {
+        "production_approved": {"const": false},
+        "quality_gate_outcome": {"const": "FAIL"},
+        "absolute_wer_max": {"const": 0.2},
+        "zero_shot_base_wer": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["lingala", "luganda", "oromo"],
+          "properties": {
+            "lingala": {"const": 0.9207},
+            "luganda": {"const": 1.0659},
+            "oromo": {"const": 1.1749}
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_commit", "container_image_digest", "converter", "converted_at_utc"],
+      "properties": {
+        "git_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "container_image_digest": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "converter": {"const": "ct2-transformers-converter@4.8.1"},
+        "converted_at_utc": {"type": "string", "format": "date-time"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -189,7 +189,10 @@ init_containers:
     image_repo: medzen-model-loader
     resources:
       requests: {cpu: "500m", memory: "2Gi"}
-      limits:   {cpu: "2",    memory: "4Gi"}
+      # The smoke inference must exercise the same float16 GPU path that the
+      # main container will serve. Init and app containers run sequentially,
+      # so this does not require a second GPU.
+      limits:   {cpu: "2",    memory: "4Gi", "nvidia.com/gpu": 1}
     pod_identity:
       role_name: medzen-loader-role
       permissions:
