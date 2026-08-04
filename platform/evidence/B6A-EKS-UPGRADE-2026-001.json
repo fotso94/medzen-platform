@@ -1,0 +1,311 @@
+{
+  "record_id": "B6A-EKS-UPGRADE-2026-001",
+  "record_version": 1,
+  "recorded_at_utc": "2026-08-04T01:51:14Z",
+  "status": "VERIFIED_COMPLETE",
+  "purpose": "Immutable execution receipt for the owner-authorized EKS extended-support exit performed before B6A platform-proof engineering.",
+  "authorization": {
+    "b6a_authorization": {
+      "path": "platform/decisions/B6A-AUTH-2026-001-platform-proof.json",
+      "sha256": "825a85a284f45a3d679f603707524ff7e82aee8b688bbb04b5ea1a387eb2730b"
+    },
+    "aws_change_packet": {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-001-eks-upgrade.md",
+      "sha256": "1ffe8045c8260ca1e75db433a0b3733a1b8bc5d99980ec233ce4bc5f0c6ae4a9"
+    },
+    "budget_record": {
+      "path": "platform/decisions/B6A-BUDGET-2026-001-aggregate-300.json",
+      "sha256": "d50334d650d90fc7623172bff9a051040a95192736b247e3cad3f3d235e8d91d"
+    },
+    "authorization_commit": "5c2421538aaa655f8c8337626a9a8411e2f15729"
+  },
+  "scope": {
+    "aws_account_id": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "start_version": "1.31",
+    "target_version": "1.36",
+    "started_at": "2026-08-03T19:44:43.417000-04:00",
+    "final_change_started_at": "2026-08-03T21:49:47.813000-04:00",
+    "method": "Sequential EKS-managed minor-version upgrades with a health check before every next version.",
+    "terraform_apply_performed": false,
+    "reason_no_terraform_apply": "The configured Terraform state backend returned AccessDenied to the medzen operator, so no speculative or untracked Terraform apply was attempted. The desired EKS version was reconciled in source to 1.36 only."
+  },
+  "updates": [
+    {
+      "target": "control_plane",
+      "from": "1.31",
+      "to": "1.32",
+      "update_id": "936f7ecf-0b0e-3d49-ba92-991cf8503679",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/cpu",
+      "from": "1.31",
+      "to": "1.32",
+      "update_id": "796488f2-81da-335e-95c7-b4e458784370",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/gpu",
+      "from": "1.31",
+      "to": "1.32",
+      "update_id": "2494d211-01f7-3e3d-9ad1-9239ee6febbe",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/kube-proxy",
+      "kubernetes_version": "1.32",
+      "to": "v1.32.13-eksbuild.20",
+      "update_id": "63c7b0c6-8301-35d7-979c-582eb03c9ab7",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "control_plane",
+      "from": "1.32",
+      "to": "1.33",
+      "update_id": "81a5f95a-cba8-3d85-bb9d-344a7ee893ed",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/cpu",
+      "from": "1.32",
+      "to": "1.33",
+      "update_id": "10efc6f8-0e86-3ebc-a172-26c611e76151",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/gpu",
+      "from": "1.32",
+      "to": "1.33",
+      "update_id": "8a363b79-3da1-3fde-8e0e-e9bd07adc765",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/coredns",
+      "kubernetes_version": "1.33",
+      "to": "v1.12.4-eksbuild.18",
+      "update_id": "b51a39ff-e45f-37ae-9ac2-f37ab2493376",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/kube-proxy",
+      "kubernetes_version": "1.33",
+      "to": "v1.33.10-eksbuild.17",
+      "update_id": "48d19c20-3b3e-328b-a332-877e7174108b",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "control_plane",
+      "from": "1.33",
+      "to": "1.34",
+      "update_id": "de00b50e-4d31-3d87-9b4b-bee6ed464525",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/cpu",
+      "from": "1.33",
+      "to": "1.34",
+      "update_id": "46a87a1d-ea12-36a0-b60a-83442b417ef3",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/gpu",
+      "from": "1.33",
+      "to": "1.34",
+      "update_id": "814c1468-e883-3bed-9ce4-8d821ade4c7b",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/kube-proxy",
+      "kubernetes_version": "1.34",
+      "to": "v1.34.6-eksbuild.17",
+      "update_id": "07bf4772-f535-3313-a7da-4596454dd453",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "control_plane",
+      "from": "1.34",
+      "to": "1.35",
+      "update_id": "da37db8e-ad4f-3104-b698-0aa5c095943c",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/cpu",
+      "from": "1.34",
+      "to": "1.35",
+      "update_id": "4009589d-61ac-3205-a1e7-f4bf9b1416d9",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/gpu",
+      "from": "1.34",
+      "to": "1.35",
+      "update_id": "9e6d453e-4f88-374f-8969-d9c7e123406d",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/coredns",
+      "kubernetes_version": "1.35",
+      "to": "v1.13.2-eksbuild.11",
+      "update_id": "ed2eeef5-f60a-353b-ab96-19a2031179fa",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/kube-proxy",
+      "kubernetes_version": "1.35",
+      "to": "v1.35.3-eksbuild.17",
+      "update_id": "4bc0fe47-de35-3a54-aea7-188ffc89f573",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "control_plane",
+      "from": "1.35",
+      "to": "1.36",
+      "update_id": "1e4057b3-c423-3d15-b099-9b0109f9f2ee",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/cpu",
+      "from": "1.35",
+      "to": "1.36",
+      "update_id": "d4c30c8a-7ebc-3eca-949e-beb9ceebf190",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "nodegroup/gpu",
+      "from": "1.35",
+      "to": "1.36",
+      "update_id": "bd9a31bb-acec-3dc6-8c6f-49126cec84ec",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/coredns",
+      "kubernetes_version": "1.36",
+      "to": "v1.14.3-eksbuild.3",
+      "update_id": "6f377338-26dd-32b3-ae9d-170a595f968b",
+      "status": "Successful",
+      "errors": []
+    },
+    {
+      "target": "addon/kube-proxy",
+      "kubernetes_version": "1.36",
+      "to": "v1.36.0-eksbuild.13",
+      "update_id": "4c58002e-46f9-3193-a6a5-080f3fbe5ab7",
+      "status": "Successful",
+      "errors": []
+    }
+  ],
+  "final_state": {
+    "cluster": {
+      "version": "1.36",
+      "platform_version": "eks.8",
+      "status": "ACTIVE",
+      "support_policy": "EXTENDED",
+      "support_tier_now": "STANDARD",
+      "support_tier_reason": "Kubernetes 1.36 is within its standard-support window; the configured EXTENDED policy is only a fallback when standard support ends."
+    },
+    "cpu_nodegroup": {
+      "version": "1.36",
+      "release_version": "1.36.2-20260728",
+      "status": "ACTIVE",
+      "health_issues": [],
+      "min_size": 2,
+      "max_size": 4,
+      "desired_size": 2,
+      "ready_nodes_observed": 2
+    },
+    "gpu_nodegroup": {
+      "version": "1.36",
+      "release_version": "1.36.2-20260728",
+      "status": "ACTIVE",
+      "health_issues": [],
+      "min_size": 0,
+      "max_size": 1,
+      "desired_size": 0,
+      "ready_nodes_observed": 0
+    },
+    "addons": {
+      "coredns": {
+        "version": "v1.14.3-eksbuild.3",
+        "status": "ACTIVE",
+        "health_issues": []
+      },
+      "vpc-cni": {
+        "version": "v1.22.3-eksbuild.1",
+        "status": "ACTIVE",
+        "health_issues": []
+      },
+      "kube-proxy": {
+        "version": "v1.36.0-eksbuild.13",
+        "status": "ACTIVE",
+        "health_issues": []
+      },
+      "eks-pod-identity-agent": {
+        "version": "v1.3.10-eksbuild.3",
+        "status": "ACTIVE",
+        "health_issues": []
+      }
+    },
+    "kube_system_pods_ready": true,
+    "medzen_application_workloads_deployed": false,
+    "registry_parameters_under_medzen_registry": 0
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "historical_b4_committed_spend_usd": 22.5288,
+    "upgrade_reservation_usd": 25.0,
+    "exact_incremental_aws_charge": "NOT_YET_RECONCILED",
+    "reservation_disposition": "REMAINS_RESERVED_UNTIL_AWS_BILLING_DATA_IS_AVAILABLE",
+    "gpu_instances_started": 0,
+    "note": "Managed CPU rollouts temporarily used replacement capacity; exact billed compute, storage and network amounts must come from AWS billing data rather than an estimate."
+  },
+  "preserved_controls": {
+    "training_runs_started": 0,
+    "models_registered": 0,
+    "approved_artifacts_written": 0,
+    "production_ssm_alias_changes": 0,
+    "deployments": 0,
+    "b5_blocked_gate_report": {
+      "path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "unchanged": true
+    },
+    "b5_mlflow_attachment": {
+      "path": "platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json",
+      "sha256": "3e64e252720bde333dcfb69ff4f28f26ee37679cac57796e464f4a3c12ecf743",
+      "unchanged": true
+    },
+    "b4_scope_record": {
+      "path": "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+      "sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c",
+      "unchanged": true
+    }
+  },
+  "result": {
+    "eks_extended_support_exit": "COMPLETE",
+    "b6a_deployment": "NOT_STARTED",
+    "b6a_next_gate": "Complete B1 SSM publication-path engineering and prepare a separate owner-approved deployment packet before any runtime deployment or GPU scale-up."
+  }
+}
