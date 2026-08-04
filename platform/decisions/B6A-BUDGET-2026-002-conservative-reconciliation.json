@@ -1,0 +1,63 @@
+{
+  "record": "B6A_PLATFORM_BUDGET_CONSERVATIVE_RECONCILIATION",
+  "id": "B6A-BUDGET-2026-002",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-04T21:43:32Z",
+  "authorization_source": "Owner message: Go ahead with your recommendations next move and report while you implementing it.",
+  "decision": "Close packet 2026-001's unresolved reservation by recognizing its full 25 USD ceiling as committed for budget-control purposes, without claiming that AWS billed exactly 25 USD. Reserve 15 USD for packet 2026-003; the reservation is not deployment authorization.",
+  "supersedes_prospectively": {
+    "path": "platform/decisions/B6A-BUDGET-2026-001-aggregate-300.json",
+    "sha256": "d50334d650d90fc7623172bff9a051040a95192736b247e3cad3f3d235e8d91d",
+    "historical_record_edited": false
+  },
+  "upgrade_evidence": {
+    "path": "platform/evidence/B6A-EKS-UPGRADE-2026-001.json",
+    "sha256": "02fe67223984190161c1e2938d0d5c15b1c67939371bb8f882fb15fb290b76b2",
+    "status": "VERIFIED_COMPLETE",
+    "exact_incremental_aws_charge": "NOT_YET_RECONCILED",
+    "accounting_treatment": "FULL_RESERVATION_RECOGNIZED_AS_COMMITTED_GUARDRAIL"
+  },
+  "budget_usd": {
+    "aggregate_ceiling": 300.0,
+    "historical_b4_committed": 22.5288,
+    "b6a_eks_upgrade_conservative_committed": 25.0,
+    "committed_total": 47.5288,
+    "packet_2026_003_reserved": 15.0,
+    "committed_plus_reserved": 62.5288,
+    "remaining_after_reservation": 237.4712
+  },
+  "reservation_state": {
+    "packet_2026_001": "CLOSED_CONSERVATIVELY",
+    "packet_2026_002": "COMPLETED_EXPECTED_DIRECT_COST_ZERO",
+    "packet_2026_003": "RESERVED_NOT_AUTHORIZED",
+    "packet_2026_004": "PREPARED_NOT_AUTHORIZED_EXPECTED_DIRECT_COST_ZERO",
+    "unresolved_prior_reservations": 0,
+    "active_billable_reservations": 1
+  },
+  "packet_2026_003_limits": {
+    "maximum_reservation_usd": 15.0,
+    "maximum_gpu_window_hours": 2,
+    "gpu_instance": "g6.xlarge",
+    "gpu_desired_before_and_after": 0,
+    "stop_and_scale_down_at_deadline": true,
+    "separate_owner_approval_still_required": true
+  },
+  "future_reconciliation": {
+    "required": true,
+    "rule": "When attributable billing data is available, write a new prospective record. Do not edit this record or claim a lower committed amount retroactively.",
+    "possible_effect": "A proven lower actual charge may restore future headroom in the new record; a higher actual charge must be recognized and reduce headroom."
+  },
+  "controls": {
+    "historical_records_immutable": true,
+    "spend_reset_permitted": false,
+    "reservation_is_aws_authorization": false,
+    "one_active_billable_packet_at_a_time": true,
+    "gpu_default_desired_size": 0,
+    "training_authorized": false,
+    "model_promotion_authorized": false,
+    "approved_asr_publication_authorized": false,
+    "production_ssm_publication_authorized": false
+  }
+}

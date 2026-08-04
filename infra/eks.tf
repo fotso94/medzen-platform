@@ -30,6 +30,13 @@ resource "aws_eks_cluster" "this" {
   version  = var.eks_version
   role_arn = aws_iam_role.cluster.arn
 
+  # Keep the cluster on the normal support track. AWS will automatically move
+  # a cluster to the next supported minor when standard support ends, so every
+  # application release must remain compatible with that documented behavior.
+  upgrade_policy {
+    support_type = "STANDARD"
+  }
+
   vpc_config {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
