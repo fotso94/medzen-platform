@@ -57,13 +57,20 @@ def test_completion_records_only_the_standard_support_change():
     assert evidence["post_apply_verification"]["eks"]["support_type"] == "STANDARD"
 
 
-def test_packet_003a_remains_separately_blocked():
+def test_packet_003a_remains_separately_gated():
     evidence = _load(EVIDENCE)
 
     assert evidence["authorization_boundary"]["packet_2026_003a_authorized"] is False
-    assert not list(
-        (ROOT / "platform/decisions").glob("B6A-AWS-AUTH-2026-003A*")
-    )
     assert all(value == 0 for value in evidence["explicit_non_events"].values())
     assert evidence["post_apply_verification"]["gpu_nodegroup"]["desired"] == 0
     assert evidence["post_apply_verification"]["registry_parameter_count"] == 0
+
+    later_authorizations = list(
+        (ROOT / "platform/decisions").glob("B6A-AWS-AUTH-2026-003A*")
+    )
+    if later_authorizations:
+        assert len(later_authorizations) == 1
+        later = _load(later_authorizations[0])
+        assert later["id"] == "B6A-AWS-AUTH-2026-003A"
+        assert later["authorized_utc"] > evidence["completed_utc"]
+        assert "only to packet 2026-003A" in later["interpretation"]

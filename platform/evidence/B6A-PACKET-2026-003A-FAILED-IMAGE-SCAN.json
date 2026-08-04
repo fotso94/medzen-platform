@@ -1,0 +1,184 @@
+{
+  "record": "B6A_ZERO_SHOT_PLATFORM_PROOF_FAILED_CLOSED_EVIDENCE",
+  "id": "B6A-PACKET-2026-003A-FAILED-IMAGE-SCAN",
+  "revision": 1,
+  "status": "FAILED_CLOSED",
+  "completed_utc": "2026-08-04T23:06:44Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003A-deployment.json",
+    "sha256": "e63e6b4d96e507620e59a5047dca132122cc456f76481e860197d5a1ae41887e",
+    "git_commit": "7f0f9f9226400c268c4f026796ab891a3d16400b"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003A-deployment.md",
+    "sha256": "95fd8d6161e895729cbe1c075331f73467f4444607cea306f43d25b338e0441c"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "preconditions": {
+    "repository_commit": "304622490b37ab43c24948a4226775004c074afa",
+    "cluster": "medzen-speech",
+    "kubernetes_version": "1.36",
+    "support_type": "STANDARD",
+    "cluster_nodegroup_and_addon_health_issues": 0,
+    "gpu_desired": 0,
+    "runtime_ecr_images": 0,
+    "s3_target_objects": 0,
+    "registry_parameters": 0,
+    "namespace_exists": false,
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_bytes": 3090835702,
+    "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850"
+  },
+  "local_security_reverification": {
+    "nvidia_dra_rebuild": {
+      "image_id": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "matched_authorized_id": true,
+      "upstream_tests": "PASS",
+      "version_smokes": "PASS",
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0
+    },
+    "model_loader": {
+      "image_id": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0
+    },
+    "asr_runtime": {
+      "image_id": "sha256:35e348b9d44fa180de28dd80d68f1d100412b791b585d669c2dcbdc013cbcdc7",
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0
+    }
+  },
+  "aws_changes_before_stop": {
+    "terraform_source_commit": "0d97459e237e16e16f0fd255a2c7a8df97c71dca",
+    "ecr_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6a-003a-ecr.tfplan",
+      "sha256": "0f03354714927d8a418ad57fd8cf36f5c179a8826ba4fafc7a154bf248dac350",
+      "bytes": 41666,
+      "machine_guard": "PASS_EXACT_B6A_PACKET_2026_003A_ECR_PHASE",
+      "summary": {
+        "add": 1,
+        "change": 0,
+        "destroy": 0
+      }
+    },
+    "ecr_repository": {
+      "name": "medzen-nvidia-dra",
+      "created_utc": "2026-08-04T22:47:37.925Z",
+      "image_tag_mutability": "IMMUTABLE",
+      "scan_on_push_repository_flag": true,
+      "encryption": "KMS",
+      "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "lifecycle_policy_exists": false,
+      "images_pushed": 0
+    },
+    "model_loader_ecr": {
+      "repository": "medzen-model-loader",
+      "tag": "b6a-003a-4e386a0488fc",
+      "pushed_utc": "2026-08-04T23:01:07.889Z",
+      "oci_index_digest": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "linux_amd64_manifest_digest": "sha256:1a408f1aa15d9ea7090bb2dac7feffbb459df7c3a84ae307eed75b9c52844856",
+      "attestation_manifest_digest": "sha256:bb552bccb810e78a3b3d7d3f9c27a438209410acf329fa2e4186eb904c194b3a",
+      "compressed_image_bytes": 1504569202,
+      "retained_as_failure_evidence": true
+    }
+  },
+  "scan_behavior": {
+    "registry_scan_type": "BASIC",
+    "registry_scan_rules": [],
+    "repository_flag_note": "The repository-level scan-on-push flag remained true, but the current registry-level Basic Scanning configuration had no matching rules. No top-level scan record was created.",
+    "oci_index_scan_attempt": "UNSUPPORTED_IMAGE_TYPE",
+    "oci_index_media_type": "application/vnd.oci.image.index.v1+json",
+    "linux_amd64_child_scan": {
+      "status": "COMPLETE",
+      "completed_utc": "2026-08-04T23:01:40Z",
+      "critical": 1,
+      "high": 3,
+      "medium": 3,
+      "hard_gate": "FAIL"
+    }
+  },
+  "critical_and_high_findings": [
+    {
+      "id": "CVE-2026-5450",
+      "severity": "CRITICAL",
+      "package": "glibc",
+      "observed_version": "2.41-12+deb13u3"
+    },
+    {
+      "id": "CVE-2026-5928",
+      "severity": "HIGH",
+      "package": "glibc",
+      "observed_version": "2.41-12+deb13u3"
+    },
+    {
+      "id": "CVE-2026-11822",
+      "severity": "HIGH",
+      "package": "sqlite3",
+      "observed_version": "3.46.1-7+deb13u1"
+    },
+    {
+      "id": "CVE-2026-11824",
+      "severity": "HIGH",
+      "package": "sqlite3",
+      "observed_version": "3.46.1-7+deb13u1"
+    }
+  ],
+  "stop_decision": {
+    "trigger": "PUSH_SCAN_CRITICAL_OR_HIGH_FINDING",
+    "packet_rule": "Any failed scan stops the test.",
+    "sequence_stopped_before_next_image": true,
+    "security_waiver_used": false,
+    "deployment_attempted": false,
+    "gpu_window_opened": false,
+    "success_label_used": false,
+    "result": "B6A_PLATFORM_PROOF_BLOCKED_IMAGE_SCAN"
+  },
+  "post_stop_verification": {
+    "terraform_residual_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6a-003a-stopped.tfplan",
+      "sha256": "8e299702b43585f4e39ca4c52e33a3e7d20da64e639fb1bd7ca2aacc46bf37c5",
+      "bytes": 51709,
+      "result": "NO_CHANGES"
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    },
+    "asr_runtime_images_pushed": 0,
+    "nvidia_dra_images_pushed": 0,
+    "artifact_objects_uploaded": 0,
+    "b6a_iam_roles_created": 0,
+    "b6a_pod_identity_associations_created": 0,
+    "b6a_namespaces_created": 0,
+    "b6a_kubernetes_resources_created": 0,
+    "production_registry_parameters": 0,
+    "approved_asr_writes": 0,
+    "registered_models_or_versions": 0,
+    "language_artifact_or_approved_version_changes": 0,
+    "b5_blocked_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30"
+  },
+  "budget": {
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "exact_ecr_scan_and_storage_cost": "NOT_YET_RECONCILED",
+    "packet_reservation_usd": 15.0,
+    "reservation_state": "REMAINS_OPEN_PENDING_BILLING_RECONCILIATION"
+  },
+  "remediation_boundary": {
+    "current_packet_may_resume": false,
+    "reason": "A clean rebuild changes the packet-bound model-loader image identity and therefore requires a new versioned packet.",
+    "observed_runtime_base": "python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464",
+    "required_next_work": "Select and pin a base with fixed glibc and SQLite packages, rebuild both runtime images deterministically, run local and ECR scans, bind new digests in packet 2026-003B, and obtain separate owner approval before any further AWS write.",
+    "new_packet_required": "B6A-AWS-CHANGE-PACKET-2026-003B",
+    "new_owner_approval_required": true
+  }
+}
