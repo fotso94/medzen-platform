@@ -1,0 +1,95 @@
+{
+  "record": "B6A_B1_REGISTRY_AWS_APPLY_EVIDENCE",
+  "id": "B6A-B1-REGISTRY-2026-002",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "completed_utc": "2026-08-04T21:37:46Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-002-b1-registry.json",
+    "git_commit": "5a2bd23ec8214bdd5f6d3051fd692b820e6886b6"
+  },
+  "change_packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-002-b1-registry.md",
+    "sha256": "3ed41b2c89d3bef1bcc500593c29f2e5980af6f6f8efe0bdd6ad2e57b8ffc870"
+  },
+  "execution_identity": {
+    "required_profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "diagnosis": "The earlier Terraform 403 was caused by the default credential chain resolving to account 894565489253 and user ai_user. The explicit medzen profile resolves to the owner-approved account and can read both the S3 backend and DynamoDB lock table.",
+    "control": "scripts/terraform_medzen.sh refuses every account or caller other than the bound values before running Terraform."
+  },
+  "reviewed_plan": {
+    "path_at_execution": "/private/tmp/medzen-b1-002.tfplan",
+    "sha256": "df0f1e219fc9e728f766e68ab0603d9ecf238a086807c7ecd0af8ad7210c5f9f",
+    "bytes": 50917,
+    "machine_guard": "PASS_EXACT_B1_PACKET_2026_002",
+    "summary": {
+      "add": 2,
+      "change": 3,
+      "destroy": 0,
+      "replacement": 0
+    },
+    "resource_actions": {
+      "aws_iam_role.registry_publisher": "create",
+      "aws_iam_role_policy.registry_publisher": "create",
+      "aws_iam_role_policy.pod[\"speech-orchestrator\"]": "update",
+      "aws_iam_role_policy.pod[\"llm-gateway\"]": "update",
+      "aws_iam_role_policy.pod[\"tts-gateway\"]": "update"
+    }
+  },
+  "apply_result": {
+    "summary": "Apply complete: Resources: 2 added, 3 changed, 0 destroyed.",
+    "publisher_role_arn": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "publisher_role_max_session_seconds": 3600,
+    "publisher_role_created_utc": "2026-08-04T20:49:15Z"
+  },
+  "post_apply_verification": {
+    "residual_plan": {
+      "path_at_execution": "/private/tmp/medzen-b1-002-post.tfplan",
+      "sha256": "9aeb71d2c579b1324cfff898e650d824b139be6768af7e1952e9f6cedef3eaa5",
+      "bytes": 51703,
+      "result": "NO_CHANGES"
+    },
+    "policy_simulation": {
+      "publisher_get_inside_registry": "allowed",
+      "publisher_put_inside_registry": "allowed",
+      "publisher_put_outside_registry": "explicitDeny",
+      "publisher_delete_inside_registry": "explicitDeny",
+      "speech_orchestrator_get_inside_registry": "allowed",
+      "speech_orchestrator_put_inside_registry": "implicitDeny",
+      "llm_gateway_get_inside_registry": "allowed",
+      "llm_gateway_put_inside_registry": "implicitDeny",
+      "tts_gateway_get_inside_registry": "allowed",
+      "tts_gateway_put_inside_registry": "implicitDeny",
+      "trainer_get_inside_registry": "implicitDeny",
+      "trainer_put_inside_registry": "implicitDeny"
+    },
+    "registry_parameter_count": 0,
+    "eks": {
+      "cluster": "medzen-speech",
+      "status": "ACTIVE",
+      "version": "1.36",
+      "support_type": "EXTENDED",
+      "unchanged_by_this_packet": true
+    },
+    "gpu_nodegroup": {
+      "name": "gpu",
+      "status": "ACTIVE",
+      "desired": 0,
+      "minimum": 0,
+      "maximum": 1,
+      "unchanged_by_this_packet": true
+    }
+  },
+  "explicit_non_events": {
+    "ssm_parameters_created_updated_or_deleted": 0,
+    "kms_keys_or_aliases_changed": 0,
+    "eks_or_nodegroup_changes": 0,
+    "gpu_instances_started": 0,
+    "containers_or_models_published": 0,
+    "production_serving_alias_changes": 0,
+    "deployments": 0
+  },
+  "conclusion": "B1 registry IAM publication boundary is implemented and verified. It does not itself publish a registry value and does not authorize B6A deployment or packet 2026-003."
+}

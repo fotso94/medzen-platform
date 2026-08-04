@@ -43,7 +43,8 @@ variable "eks_version" {
   type = string
   # Live upgrade is performed one minor at a time under
   # B6A-AWS-CHANGE-PACKET-2026-001. This is the intended reconciled end state;
-  # do not apply while the remote Terraform state is unreadable.
+  # local operations must use scripts/terraform_medzen.sh so backend and
+  # provider calls resolve to the same owner-approved account.
   default = "1.36"
 }
 

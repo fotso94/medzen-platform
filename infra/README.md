@@ -25,17 +25,22 @@ Two other things deliberately left alone:
 ```bash
 ./bootstrap.sh                 # once, after approval: state bucket + lock table
 # uncomment the backend "s3" block in providers.tf
-terraform init -migrate-state
-terraform plan -out=medzen.tfplan
-terraform apply medzen.tfplan  # ~15-20 min, mostly the EKS control plane
+AWS_PROFILE=medzen ../scripts/terraform_medzen.sh init -migrate-state
+AWS_PROFILE=medzen ../scripts/terraform_medzen.sh plan -out=medzen.tfplan
+AWS_PROFILE=medzen ../scripts/terraform_medzen.sh apply medzen.tfplan
 ```
+
+The local wrapper refuses unless both the explicit profile and resolved caller
+are the approved MedZen identity. This matters because Terraform's S3 backend
+does not inherit the provider block's `profile` variable; an unrelated default
+AWS identity otherwise fails with a misleading state-object `403`.
 
 ## Plan safety check
 
 Run this before any apply. It must print NONE twice.
 
 ```bash
-terraform show -json medzen.tfplan | python3 -c "
+AWS_PROFILE=medzen ../scripts/terraform_medzen.sh show -json medzen.tfplan | python3 -c "
 import json,sys
 rc = json.load(sys.stdin)['resource_changes']
 d = [r['address'] for r in rc if 'delete' in r['change']['actions']]
@@ -56,7 +61,7 @@ Created at `desired_size = 0`. Quota `L-DB2E81BA` is CASE_OPENED as of
 already correct when capacity lands. Then it is a one-line change:
 
 ```bash
-terraform apply -var gpu_desired_size=1
+AWS_PROFILE=medzen ../scripts/terraform_medzen.sh apply -var gpu_desired_size=1
 ```
 
 `lifecycle.ignore_changes` on `desired_size` means a later autoscaler cannot
