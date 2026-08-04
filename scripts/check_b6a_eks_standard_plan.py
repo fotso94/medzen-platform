@@ -14,6 +14,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_ACTIONS = {"aws_eks_cluster.this": ("update",)}
+EXPECTED_BEFORE_UPGRADE_POLICY = [{"support_type": "EXTENDED"}]
+EXPECTED_AFTER_UPGRADE_POLICY = [{"support_type": "STANDARD"}]
 
 
 def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
@@ -35,6 +37,41 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         )
     if outputs:
         raise ValueError(f"unexpected output changes: {outputs}")
+
+    cluster_changes = [
+        resource
+        for resource in plan.get("resource_changes", [])
+        if resource.get("address") == "aws_eks_cluster.this"
+    ]
+    if len(cluster_changes) != 1:
+        raise ValueError("expected exactly one aws_eks_cluster.this change record")
+    change = cluster_changes[0].get("change", {})
+    before = change.get("before")
+    after = change.get("after")
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        raise ValueError("cluster before/after snapshots are required")
+    if before.get("upgrade_policy") != EXPECTED_BEFORE_UPGRADE_POLICY:
+        raise ValueError(
+            "support policy must start at "
+            f"{EXPECTED_BEFORE_UPGRADE_POLICY}, got {before.get('upgrade_policy')}"
+        )
+    if after.get("upgrade_policy") != EXPECTED_AFTER_UPGRADE_POLICY:
+        raise ValueError(
+            "support policy must end at "
+            f"{EXPECTED_AFTER_UPGRADE_POLICY}, got {after.get('upgrade_policy')}"
+        )
+    before_unchanged = {
+        key: value for key, value in before.items() if key != "upgrade_policy"
+    }
+    after_unchanged = {
+        key: value for key, value in after.items() if key != "upgrade_policy"
+    }
+    if before_unchanged != after_unchanged:
+        raise ValueError("cluster attributes outside upgrade_policy changed")
+    if change.get("after_unknown"):
+        raise ValueError(
+            f"cluster after-state contains unknown values: {change['after_unknown']}"
+        )
     return {
         "status": "PASS_EXACT_B6A_PACKET_2026_004",
         "add": 0,
@@ -43,6 +80,12 @@ def validate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "changed_resources": [
             {"address": "aws_eks_cluster.this", "actions": ["update"]}
         ],
+        "field_transition": {
+            "upgrade_policy.support_type": {
+                "before": "EXTENDED",
+                "after": "STANDARD",
+            }
+        },
     }
 
 
