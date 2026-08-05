@@ -47,10 +47,10 @@ resource "aws_ecr_registry_scanning_configuration" "b6a_runtime" {
   }
 }
 
-# Prepared for packet 2026-003B but not authorized. Packet 2026-005 is planned
-# with an exact -target for only the registry scanning configuration. These
-# three identity resources may be planned/applied only after 2026-005 is closed
-# and 003B is separately approved.
+# Identity resources originally prepared for packet 2026-003B remain unapplied.
+# Packet 2026-005 is closed and the images passed 003C-A, but these resources
+# may still be applied only through a freshly planned, separately owner-approved
+# 003C-B deployment packet.
 resource "aws_iam_role" "b6a_asr" {
   name                 = "medzen-b6a-asr-role"
   max_session_duration = 3600

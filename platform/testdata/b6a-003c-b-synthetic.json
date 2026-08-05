@@ -1,0 +1,36 @@
+{
+  "record": "B6A_003C_B_SYNTHETIC_NO_PHI_AUDIO_BINDING",
+  "classification": "SYNTHETIC_PLATFORM_TEST_ONLY",
+  "phrase": "This is a synthetic MedZen platform test. No patient data is present.",
+  "contains_patient_data": false,
+  "contains_clinical_content": false,
+  "derived_from_training_evaluation_customer_or_production_audio": false,
+  "generator": {
+    "macos_product_version": "26.6",
+    "architecture": "arm64",
+    "voice": "Samantha",
+    "voice_locale": "en_US",
+    "words_per_minute": 145,
+    "ffmpeg": "7.1.1",
+    "target_codec": "pcm_s16le",
+    "target_sample_rate_hz": 16000,
+    "target_channels": 1,
+    "metadata_removed": true,
+    "independent_generation_count": 2,
+    "independent_generations_byte_identical": true
+  },
+  "wav": {
+    "path": "platform/testdata/b6a-003c-b-synthetic.wav",
+    "sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "bytes": 155962,
+    "duration_seconds": 4.8724375
+  },
+  "permitted_use": "One internal file-mode B6A transcription under a separately approved 003C-B packet.",
+  "prohibited_use": [
+    "Training or evaluation",
+    "Quality-gate evidence",
+    "Production traffic",
+    "Public endpoint testing",
+    "Any claim about language quality"
+  ]
+}

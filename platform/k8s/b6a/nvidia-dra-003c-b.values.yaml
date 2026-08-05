@@ -1,0 +1,28 @@
+# Packet 2026-003C-B review values. Rendering is local-only until a separate
+# owner approval. The chart's tagged output must pass through
+# scripts/lock_b6a_003c_b_dra_render.py before it can be considered deployable.
+namespaceOverride: nvidia-dra-driver
+allowDefaultNamespace: false
+resourceApiVersion: resource.k8s.io/v1
+gpuResourcesEnabledOverride: true
+image:
+  repository: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra
+  tag: v0.4.1-medzen.2-7fb313758a20
+  pullPolicy: IfNotPresent
+resources:
+  gpus:
+    enabled: true
+  computeDomains:
+    enabled: false
+webhook:
+  enabled: false
+logVerbosity: "2"
+kubeletPlugin:
+  nodeSelector:
+    workload: gpu
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+  affinity: null
