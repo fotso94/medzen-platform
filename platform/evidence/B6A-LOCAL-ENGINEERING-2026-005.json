@@ -1,0 +1,127 @@
+{
+  "record": "B6A_003C_C_STABLE_DRA_READINESS_LOCAL_ENGINEERING_RESULT",
+  "id": "B6A-LOCAL-ENGINEERING-2026-005",
+  "revision": 1,
+  "status": "LOCAL_REMEDIATION_COMPLETE_GPU_RETRY_NOT_AUTHORIZED",
+  "completed_utc": "2026-08-05T05:17:52Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-B-FAILED-DRA-READINESS.json",
+    "sha256": "d73ed0643f611ec2e823c86a971bdd43a531e4a142f3242afc7d07fdbe772fcf",
+    "outcome": "FAILED_CLOSED_EXECUTION",
+    "edited": false
+  },
+  "design": {
+    "path": "platform/decisions/B6A-DESIGN-2026-005-dra-stable-readiness.json",
+    "sha256": "345a77f21d9a6924a7c321ee27c4647f5d63a61f67a77b739a2d88ee0e62d282",
+    "status": "local-remediation-only-new-packet-required"
+  },
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "implementation_commit": "09a382db8002ee46d0c2cc56d561fde053d0aa98",
+    "implementation_tree": "1986df0bb2d371841ec348d4e104c8659f214994",
+    "commit_count": 180,
+    "remote_branch_commit": "09a382db8002ee46d0c2cc56d561fde053d0aa98",
+    "private_remote_backup": true
+  },
+  "source_bindings": {
+    "scripts/b6a_003c_c_cleanup.sh": "d4724549dd2d89859a7674c7d132695062e89420227fb49ac5484495aea681af",
+    "scripts/b6a_003c_c_deadline.py": "04cd8ca52a89ee9282302237bf5813319d4bc695e1f2ffe160c0efe64cc317fe",
+    "scripts/run_b6a_003c_c_gpu_window.sh": "99fd0648a86b364a7bb2f3d103be40de11106c716b6dac151dcfd7461310ddd1",
+    "scripts/run_b6a_003c_c_proof.py": "c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3",
+    "tests/test_b6a_003c_c_deadline.py": "3972db3baa3f02056b27f40e5e39c1305b23e979ab9ade3605858987b5124793",
+    "tests/test_b6a_003c_c_proof.py": "841e3f8baa08eb85d95811c23c5ccce39aba3f045cb68b9a731533396c6445d2"
+  },
+  "stable_readiness": {
+    "maximum_wait_seconds": 300,
+    "poll_seconds": 2,
+    "required_consecutive_identical_reads": 3,
+    "required_daemonset_desired": 1,
+    "required_daemonset_ready": 1,
+    "required_daemonset_available": 1,
+    "required_pod_count": 1,
+    "required_pod_phase": "Running",
+    "required_pod_ready": true,
+    "required_dra_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "required_device_class": "gpu.nvidia.com",
+    "required_resource_slice_driver": "gpu.nvidia.com",
+    "resource_slice_node_must_equal_dra_pod_node": true,
+    "minimum_devices": 1,
+    "workload_applied_before_stable_readiness": false
+  },
+  "diagnostic_receipt": {
+    "written_on_success": true,
+    "written_on_refusal_before_cleanup": true,
+    "schema": "B6A_003C_C_NO_PHI_V1",
+    "fields": [
+      "status",
+      "stage",
+      "error",
+      "reason",
+      "last_dra_observation"
+    ],
+    "audio_or_transcript_permitted": false,
+    "logs_permitted": false,
+    "credentials_permitted": false
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_before_b6a_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_created": false,
+    "prior_attempt_conservative_billed_seconds": 60,
+    "future_retry_maximum_seconds": 7140,
+    "conservative_cumulative_maximum_seconds": 7200,
+    "recorded_gpu_hourly_rate_usd": 1.0064,
+    "prior_attempt_minimum_estimated_gpu_cost_usd": 0.0168,
+    "future_retry_maximum_estimated_gpu_cost_usd": 1.996,
+    "conservative_cumulative_maximum_gpu_cost_usd": 2.0128,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "retained_verified_state": {
+    "artifact_objects": 6,
+    "artifact_bytes": 3090838860,
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_reupload_required": false,
+    "dedicated_asr_role": "arn:aws:iam::558069890522:role/medzen-b6a-asr-role",
+    "pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "identity_reapply_required": false,
+    "nvidia_dra_installed": true,
+    "nvidia_dra_reapply_required": false,
+    "gpu_desired": 0,
+    "gpu_instances": 0,
+    "gpu_nodes": 0,
+    "b6a_pods": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0
+  },
+  "validation": {
+    "canonical_pytest_passed": 987,
+    "canonical_pytest_failed": 0,
+    "canonical_pytest_skipped": 0,
+    "canonical_pytest_deselected": 7,
+    "canonical_pytest_warnings": 1,
+    "warning": "Existing Starlette TestClient deprecation only",
+    "focused_remediation_passed": 23,
+    "focused_remediation_failed": 0,
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "execution_boundary": {
+    "artifact_reupload_attempted": false,
+    "terraform_or_iam_reapply_attempted": false,
+    "dra_reapply_attempted": false,
+    "workload_apply_attempted": false,
+    "deadline_creation_attempted": false,
+    "gpu_retry_attempted": false,
+    "approved_asr_write_attempted": false,
+    "production_ssm_change_attempted": false,
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "next_boundary": "Prepare and separately approve B6A AWS change packet 2026-003C-C before any new deadline or GPU retry."
+}
