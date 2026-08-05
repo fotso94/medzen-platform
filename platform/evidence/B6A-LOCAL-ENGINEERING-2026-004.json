@@ -1,0 +1,181 @@
+{
+  "record": "B6A_003C_B_LOCAL_DEPLOYMENT_SAFETY_ENGINEERING_RESULT",
+  "id": "B6A-LOCAL-ENGINEERING-2026-004",
+  "revision": 1,
+  "status": "LOCAL_DEPLOYMENT_CONTROLS_COMPLETE_AWS_DEPLOYMENT_NOT_AUTHORIZED",
+  "completed_utc": "2026-08-05T04:29:17Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-DESIGN-2026-004-deployment-safety.json",
+    "sha256": "5e38adaa695859671d73403eef08e0948d6d4c3ae653235df14ddd63e4029aee",
+    "scope": "local preparation, read-only verification, tests, commit and private-remote push only"
+  },
+  "immutable_scan_evidence": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-A-SCAN-RESULT.json",
+    "sha256": "1b1ed84205fe9a71c3b21b2a2658814855fd5fdcf6af00c5590bb4205e8dc70b",
+    "outcome": "PASS_SCAN_ONLY",
+    "edited": false
+  },
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "implementation_commit": "4a7d4ae98612620b1674eb4eb1c64d328d1c0713",
+    "implementation_tree": "d04b5aa784b5f5d15ad088049775feedbdce4a51",
+    "commit_count": 176,
+    "remote_branch_commit": "4a7d4ae98612620b1674eb4eb1c64d328d1c0713",
+    "private_remote_backup": true
+  },
+  "deployable_image_identity": {
+    "convention": "OCI indexes are not deployment or scan subjects; pin the scan-passed linux/amd64 child. NVIDIA DRA is a single Docker manifest and is pinned directly.",
+    "model_loader_child": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "asr_runtime_child": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "nvidia_dra_single_manifest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "all_critical": 0,
+    "all_high": 0,
+    "security_waiver_used": false
+  },
+  "rendered_manifests": {
+    "workload": {
+      "path": "platform/k8s/b6a/asr-platform-proof-003c-b.rendered.yaml",
+      "sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+      "bytes": 4705,
+      "public_endpoint": false,
+      "replicas": 1
+    },
+    "nvidia_dra": {
+      "path": "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
+      "sha256": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+      "bytes": 8817,
+      "helm_chart": "dra-driver-nvidia-gpu-0.4.1.tgz",
+      "helm_chart_sha256": "e7c3bf452849d99f3952b1b2f6593ba851828e6752b7608b07d1c976d974daa4",
+      "helm_chart_bytes": 20196,
+      "compute_domain_enabled": false,
+      "device_classes": [
+        "gpu.nvidia.com"
+      ],
+      "daemonset_node_selector": "workload=gpu",
+      "resourceslice_policy_bound_to_actual_daemonset_service_account": true
+    },
+    "values": {
+      "path": "platform/k8s/b6a/nvidia-dra-003c-b.values.yaml",
+      "sha256": "006e20411938406c6d135698c1987e0a9bca2e5a83b4451feaf7913c93fd9172"
+    }
+  },
+  "artifact": {
+    "local_verification": "PASS_NOT_PUBLISHED",
+    "local_root": "artifacts/b6a/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "future_s3_prefix": "s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/",
+    "tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+    "artifact_bytes": 3090835702,
+    "publish_bytes": 3090838860,
+    "object_count_including_manifest": 6,
+    "manifest_uploaded_last_by_future_publisher": true,
+    "s3_versioning_required": "Enabled",
+    "sse_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "approved_prefix_used": false
+  },
+  "synthetic_input": {
+    "binding_path": "platform/testdata/b6a-003c-b-synthetic.json",
+    "binding_sha256": "a40ec8cbf24b7ae749b8c800f8d6025913ecccf225dee4c2c1c538e39992a6d0",
+    "wav_path": "platform/testdata/b6a-003c-b-synthetic.wav",
+    "wav_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "wav_bytes": 155962,
+    "duration_seconds": 4.8724375,
+    "contains_phi": false,
+    "derived_from_project_audio": false,
+    "independent_generations_byte_identical": true
+  },
+  "execution_safety": {
+    "exact_gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "independent_aws_deadline_action": "medzen-b6a-003c-b-deadline-scale-zero",
+    "maximum_gpu_window_seconds": 7200,
+    "deadline_armed_and_read_back_before_scale_up": true,
+    "process_exit_cleanup_installed_before_deadline_or_scale_up": true,
+    "deadline_disarmed_only_after_eks_asg_nodes_pods_and_replicas_are_zero": true,
+    "deadline_retained_when_cleanup_proof_is_incomplete": true,
+    "peak_l4_memory_measurement": "TIMESTAMPED_NVIDIA_SMI_FROM_BEFORE_WORKLOAD_START_THROUGH_INFERENCE",
+    "peak_l4_memory_not_inferred_from_disk_bytes": true,
+    "live_pod_image_digests_reverified": true,
+    "loopback_port_forward_only": true,
+    "phi_safe_log_refusal": true
+  },
+  "control_source_bindings": {
+    "scripts/b6a_003c_b_cleanup.sh": "e5b396f34267dde6fce22ca98340e359a2037e0ce1004aa163cb6819726acf42",
+    "scripts/b6a_003c_b_deadline.py": "5c04b94a24f87dc9d22bf11a6bd172a94cb8f12feffd7d9654d04c237869f029",
+    "scripts/check_b6a_003c_b_identity_plan.py": "fcdd31a2349d27f57ee14fda6306ea59090e67941029517d876271fdfa172813",
+    "scripts/generate_b6a_003c_b_synthetic_audio.sh": "197799f61f8e451a466f3400976750f65f8b29b7d2b09b0c7b9ff0cc324c59c1",
+    "scripts/lock_b6a_003c_b_dra_render.py": "9432f9b80c7a1ed08c3fd87b26196bb017432d4094c1d46133d93d9234eeebf3",
+    "scripts/render_b6a_003c_b.py": "b566e0001ac9e4fbb95dcc3c7dc3bedefeefd1d56096ebd9f3c36775d22ace3a",
+    "scripts/run_b6a_003c_b_gpu_window.sh": "dfa6e3a7509bdf214ab4a86e1159936fb2129cc3f7135f0336d0016aa123a7a6",
+    "scripts/run_b6a_003c_b_proof.py": "55666a23df6c1bd48e20ae45a8c7e7ce61b708fba5af40812671706eb1133b42",
+    "scripts/upload_b6a_003c_b_artifact.py": "1eee1c57ec57828ac9352c40def33e482f514433d0c5725931640f9813bf5671"
+  },
+  "terraform": {
+    "read_only_full_plan": "3_ADD_0_CHANGE_0_DESTROY_NO_UNRELATED_DRIFT",
+    "preparation_saved_plan_path": "/private/tmp/medzen-b6a-003c-b-identity.tfplan",
+    "preparation_saved_plan_sha256": "9bcd404528b70b800e70d573ea7c3f7217e73dd034653a068d3edd43dfa33a87",
+    "preparation_saved_plan_bytes": 46581,
+    "guard_status": "PASS_EXACT_B6A_PACKET_2026_003C_B_IDENTITY_PHASE",
+    "resources": [
+      "aws_eks_pod_identity_association.b6a_asr",
+      "aws_iam_role.b6a_asr",
+      "aws_iam_role_policy.b6a_asr"
+    ],
+    "preparation_plan_executable_after_packet_approval": false,
+    "reason": "A fresh saved plan at the approved packet commit must pass the same exact guard before apply.",
+    "apply_attempted": false
+  },
+  "live_read_only_snapshot": {
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1",
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_instances": 0,
+    "scheduled_actions": 0,
+    "b6a_target_objects": 0,
+    "approved_asr_objects": 0,
+    "registry_ssm_parameters": 0
+  },
+  "validation": {
+    "canonical_pytest_passed": 961,
+    "canonical_pytest_failed": 0,
+    "canonical_pytest_skipped": 0,
+    "canonical_pytest_deselected": 7,
+    "canonical_pytest_warnings": 1,
+    "warning": "Existing Starlette TestClient deprecation only",
+    "focused_b6a_safety_passed": 42,
+    "focused_b6a_safety_failed": 0,
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_created": false,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "storage_cost": "NOT_YET_RECONCILED"
+  },
+  "prohibited_state_preserved": {
+    "aws_mutation_attempted_during_local_preparation": false,
+    "artifact_upload_attempted": false,
+    "dra_install_attempted": false,
+    "kubernetes_apply_attempted": false,
+    "gpu_scale_up_attempted": false,
+    "approved_asr_write_attempted": false,
+    "model_registration_attempted": false,
+    "language_serving_field_change_attempted": false,
+    "production_ssm_change_attempted": false,
+    "b5_blocked_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b5_outcome": "BLOCKED",
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "next_boundary": "Create, commit and present B6A AWS change packet 2026-003C-B. A new exact owner approval is required before any packet operation."
+}
