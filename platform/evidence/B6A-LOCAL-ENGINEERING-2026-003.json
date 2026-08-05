@@ -1,0 +1,176 @@
+{
+  "record": "B6A_ASR_RUNTIME_HARDENING_LOCAL_ENGINEERING_EVIDENCE",
+  "id": "B6A-LOCAL-ENGINEERING-2026-003",
+  "revision": 1,
+  "status": "LOCAL_ENGINEERING_COMPLETE_AWS_SCAN_NOT_AUTHORIZED",
+  "completed_utc": "2026-08-05T03:22:21Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-DESIGN-2026-003-runtime-image-hardening.json",
+    "sha256": "ea5321b9d5f884a3345eb395a21924ba06532f054cd56ffad4ee4374ea1fd404",
+    "git_commit": "7956480ea5fb70b9335de4097f48669158a3371a"
+  },
+  "historical_bindings": [
+    {
+      "path": "platform/evidence/B6A-PACKET-2026-003B-FAILED-IMAGE-SCAN.json",
+      "sha256": "385b77b3e9aac7e9393ef10c912ae926e5527f3d92a47d1be24c3b19a5f4e4a9",
+      "edited": false,
+      "meaning": "Packet 003B failed closed and cannot resume."
+    },
+    {
+      "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-002.json",
+      "sha256": "f2a9b96d0e3967e2f0f808fa8629a10135ac5262f37b81a1240e7f2a814b6183",
+      "edited": false,
+      "meaning": "The Alpine model-loader remediation and passed ECR identity remain reusable."
+    },
+    {
+      "path": "platform/evidence/B6A-ECR-SCAN-RULES-2026-005.json",
+      "sha256": "6b8aa6552f0243e9ff3a3f309ef96bc93fdf034108a5552c44ac7f0581e01bf2",
+      "edited": false,
+      "meaning": "The regional automatic ECR scanning configuration remains verified complete."
+    }
+  ],
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "asr_image_source_commit": "89f94d330de24478d0084cdf9010f7ac7a968303",
+    "asr_image_source_tree": "cbd6676383cfc0cfa355578571991abca72d32be",
+    "verification_harness_commit": "922777950d5c2ece44103c29b160cf31136cc6ec",
+    "verification_harness_tree": "00f2fdd0c9db85e6c22ffe87414661b328b652c9",
+    "commit_count_before_this_record": 170,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "worktree_clean_before_this_record": true
+  },
+  "source_bindings": {
+    "services/asr-runtime/Dockerfile": "8fb857617447668e7fe1e2f1037967648c23b2c855604bed730c234cd226b6ec",
+    "services/asr-runtime/requirements.txt": "0ecd777febf7b407781425486ad3054dc2a3c771fee7faf699eb704a4644b236",
+    "scripts/check_b6a_003c_local_image.sh": "6d76030ec1acfb3d981faff7b896b632bf28d2ff7b015ba828d5f4024c222e6d",
+    "platform/standards/runtime-image-hardening-v1.md": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791"
+  },
+  "root_cause_and_remediation": {
+    "prior_failure": "The former final image installed python3.12-venv, which introduced python3-pip-whl and the four authoritative ECR HIGH findings.",
+    "cuda_base_inheritance_claim_corrected": true,
+    "remediation": "A named builder installs the serving dependencies and removes pip, setuptools and wheel. A fresh runtime stage receives only the completed virtual environment and service code.",
+    "final_stage_runtime_packages": [
+      "ca-certificates",
+      "libsndfile1",
+      "python3.12"
+    ],
+    "security_waiver_used": false
+  },
+  "accepted_asr_runtime_image": {
+    "local_tag": "medzen-asr-runtime:b6a-003c-89f94d3",
+    "source_revision_label": "89f94d330de24478d0084cdf9010f7ac7a968303",
+    "source_repository_label": "https://github.com/fotso94/medzen-platform.git",
+    "base": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124d86c58d491f2f10b4c16e19a28694d1436bd0d3f6f8b12c706f534bc",
+    "oci_index_digest": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+    "linux_amd64_manifest_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "attestation_manifest_digest": "sha256:433f23bc04fe3cd3c792f1d4cc5ca4a487f646d4625f2afb33d1a4bb07713bad",
+    "config_digest": "sha256:6c72dc9a0d40ca76872f6e142d170e28d073caa14e91ada32989370993f22670",
+    "architecture": "amd64",
+    "user": "10001:10001",
+    "local_size_bytes": 3105391446,
+    "prior_failed_local_size_bytes": 3111673226,
+    "on_disk_byte_difference": 6281780,
+    "gpu_memory_claim": "NOT_MEASURED_AND_NOT_INFERRED_FROM_DISK_SIZE"
+  },
+  "determinism": {
+    "repeat_local_tag": "medzen-asr-runtime:b6a-003c-repeat-89f94d3",
+    "repeat_linux_amd64_manifest_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "repeat_config_digest": "sha256:6c72dc9a0d40ca76872f6e142d170e28d073caa14e91ada32989370993f22670",
+    "rootfs_layers_and_size_identical": true,
+    "repeat_oci_index_digest": "sha256:e13db34ee471fa11debc0ba84f4a28f37a61008f8beff4e85bb035b94b37e349",
+    "repeat_attestation_manifest_digest": "sha256:13e26730a10fe639c05e6c15cb55f659f5c0cf0f0e57832fdfa4a7369f8b92af",
+    "index_difference_reason": "Build-provenance attestations include run-specific metadata; the deployable child, config, rootfs layers and size are identical."
+  },
+  "local_gates": {
+    "forbidden_os_packages_absent": [
+      "python3-pip-whl",
+      "python3-setuptools-whl",
+      "python3.12-venv"
+    ],
+    "pip_executables_absent": true,
+    "pip_module_absent": true,
+    "ctranslate2_import": "PASS",
+    "faster_whisper_import": "PASS",
+    "cuda_cudnn_dynamic_link_smoke": "PASS",
+    "docker_scout": {
+      "packages": 185,
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "authoritative_for_deployment": false
+    },
+    "fail_closed_checker": "PASS_B6A_003C_LOCAL_IMAGE"
+  },
+  "nvidia_dra_reverification": {
+    "local_tag": "medzen-nvidia-dra:v0.4.1-medzen.2",
+    "proposed_ecr_tag": "v0.4.1-medzen.2-7fb313758a20",
+    "digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "config_digest": "sha256:a28ccd3388c2f30e4a09f0f85a4a82e2a396130d7cdc85d515afdcc838d89c96",
+    "architecture": "amd64",
+    "local_size_bytes": 90223329,
+    "docker_scout_packages": 112,
+    "docker_scout_critical": 0,
+    "docker_scout_high": 0,
+    "authoritative_ecr_scan_pending": true
+  },
+  "repository_validation": {
+    "pytest_passed": 909,
+    "pytest_failed": 0,
+    "pytest_skipped": 0,
+    "pytest_deselected": 7,
+    "pytest_warnings": 1,
+    "warning": "Starlette TestClient deprecation only",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "live_read_only_preparation": {
+    "checked_utc": "2026-08-05T03:22:21Z",
+    "identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "ecr_scan_type": "BASIC",
+    "scan_frequency": "SCAN_ON_PUSH",
+    "exact_scan_filters": [
+      "medzen-model-loader",
+      "medzen-nvidia-dra",
+      "medzen-asr-runtime"
+    ],
+    "repositories_immutable": true,
+    "repositories_kms_encrypted": true,
+    "model_loader_passed_ecr_child": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "model_loader_scan": "COMPLETE_0_CRITICAL_0_HIGH",
+    "new_asr_tag_present_in_ecr": false,
+    "nvidia_dra_ecr_images": 0,
+    "gpu_nodegroup": {
+      "name": "gpu",
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    }
+  },
+  "rejected_local_build_audit": {
+    "event": "An initial local build used an unverified fabricated full source-revision label.",
+    "response": "The image was rejected before any push, and the bound local tag was overwritten by a fresh build using the Git-verified full commit.",
+    "aws_or_registry_exposure": false,
+    "accepted_identity_is_exactly_bound_above": true
+  },
+  "execution_boundary": {
+    "aws_mutations": 0,
+    "ecr_pushes": 0,
+    "artifact_uploads": 0,
+    "iam_or_kubernetes_changes": 0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "approved_asr_writes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0,
+    "b5_blocked_report_changed": false,
+    "b6a_complete": false
+  },
+  "conclusion": "The ASR runtime remediation and reusable hardening controls are locally complete. Local scanning cannot override the prior ECR discrepancy. The exact ASR and NVIDIA DRA identities require a separately approved scan-only packet before either is pushed; deployment remains unauthorized."
+}
