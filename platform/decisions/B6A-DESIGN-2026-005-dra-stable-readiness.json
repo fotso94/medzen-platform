@@ -1,0 +1,61 @@
+{
+  "record": "B6A_DRA_STABLE_READINESS_REMEDIATION_DESIGN",
+  "id": "B6A-DESIGN-2026-005",
+  "revision": 1,
+  "status": "local-remediation-only-new-packet-required",
+  "created_utc": "2026-08-05T05:08:48Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-B-FAILED-DRA-READINESS.json",
+    "sha256": "d73ed0643f611ec2e823c86a971bdd43a531e4a142f3242afc7d07fdbe772fcf",
+    "outcome": "FAILED_CLOSED_EXECUTION",
+    "historical_record_edited": false
+  },
+  "problem": [
+    "Packet 003C-B waited for DaemonSet rollout but read DRA Pod and ResourceSlice state only once immediately afterward.",
+    "The proof refused before the workload, but its top-level handler emitted only the exception class and no stage or safe reason.",
+    "Immediate cleanup correctly removed the GPU node, making the transient failed assertion unrecoverable."
+  ],
+  "required_changes": {
+    "stable_dra_readiness": [
+      "Poll for exactly one Running and Ready DRA Pod with the exact scanned digest.",
+      "Require gpu.nvidia.com and at least one matching gpu.nvidia.com ResourceSlice on the same GPU node with at least one device.",
+      "Require the same Pod UID, node and ResourceSlice fingerprint across three consecutive two-second reads.",
+      "Use a five-minute maximum and refuse without applying the ASR workload when stable readiness is absent."
+    ],
+    "diagnostic_receipt": [
+      "Write a local no-PHI refusal receipt before returning failure to the cleanup trap.",
+      "Bind an explicit stage, exception type, safe reason and last DRA observation.",
+      "Never include DRA logs, audio, transcript text, credentials or patient data in the receipt."
+    ],
+    "budget": [
+      "Treat the first attempt as a conservative 60 billable seconds even though termination was initiated after 43 observed seconds.",
+      "Limit a future retry to 7140 seconds so the conservative cumulative B6A GPU allowance does not exceed 7200 seconds.",
+      "Use the existing 15 USD reservation; create no second reservation."
+    ]
+  },
+  "retained_inputs": {
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_objects_already_published": 6,
+    "artifact_reupload_permitted": false,
+    "identity_already_applied": true,
+    "identity_reapply_permitted": false,
+    "nvidia_dra_already_installed": true,
+    "nvidia_dra_reapply_permitted": false,
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "allowed_local_operations": [
+    "Add versioned 003C-C readiness proof deadline cleanup and window scripts",
+    "Add behavioral tests and dry-run simulations",
+    "Prepare local engineering evidence and a new 003C-C packet",
+    "Commit and push to the existing private branch"
+  ],
+  "prohibited_operations": [
+    "Any GPU scale-up or retry",
+    "Any artifact IAM DRA workload SSM approved-ASR or production-serving mutation",
+    "Any image rebuild scan substitution or waiver",
+    "Any claim that the 003C-B refusal was an ASR model or quality result",
+    "Any claim that B6A B6.1 or full B6 is complete"
+  ],
+  "required_next_authorization": "A committed 2026-003C-C packet must be separately approved before arming a new deadline or scaling GPU capacity."
+}
