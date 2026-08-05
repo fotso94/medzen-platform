@@ -1,0 +1,81 @@
+{
+  "record": "B6A_SCAN_ONLY_IMAGE_QUALIFICATION_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-003C-A",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-05T03:30:32Z",
+  "authorization_source": "Owner reply 'Approved Go Ahead' to the immediately preceding request for the exact approval phrase 'Approve B6A AWS change packet 2026-003C-A only.'",
+  "interpretation": "Authorization applies only to the two-image automatic ECR scan qualification in packet 2026-003C-A. It does not authorize deployment, an artifact upload, IAM or cluster changes, a GPU window, a waiver, model promotion, B6A completion, B6.1 or full B6.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "19a0249bb53c1a4180352d0b04d07d4900ba66a4",
+    "git_tree": "d81d3664a0ced1ad82940b6b73d8f396fcd081db",
+    "commit_count": 171,
+    "worktree_clean": true,
+    "remote_branch_commit": "19a0249bb53c1a4180352d0b04d07d4900ba66a4"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-A-scan-only.md",
+    "sha256": "7564c60289494fa14cba706ebbc8a15199402b8e3d6da1cd74e32b11b431f236",
+    "status_at_approval": "BLOCKED — NOT AUTHORIZED"
+  },
+  "local_engineering": {
+    "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-003.json",
+    "sha256": "a2b1b6c7a739c0859f6d71463b829c4db0d4cc3023f797989e995f6ea6095784",
+    "status": "LOCAL_ENGINEERING_COMPLETE_AWS_SCAN_NOT_AUTHORIZED"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "ecr_registry": "558069890522.dkr.ecr.eu-central-1.amazonaws.com"
+  },
+  "bound_images": {
+    "asr_runtime": {
+      "local_tag": "medzen-asr-runtime:b6a-003c-89f94d3",
+      "oci_index": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "linux_amd64_manifest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+      "ecr_repository": "medzen-asr-runtime",
+      "ecr_tag": "b6a-003c-89f94d3"
+    },
+    "nvidia_dra": {
+      "local_tag": "medzen-nvidia-dra:v0.4.1-medzen.2",
+      "manifest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "ecr_repository": "medzen-nvidia-dra",
+      "ecr_tag": "v0.4.1-medzen.2-7fb313758a20"
+    },
+    "model_loader": {
+      "action": "read_only_reuse_no_push",
+      "passed_ecr_child": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5"
+    }
+  },
+  "authorized_operations": [
+    "reverify_exact_live_and_local_preconditions",
+    "authenticate_to_the_exact_private_ecr_registry",
+    "tag_and_push_only_the_bound_asr_runtime_identity",
+    "tag_and_push_only_the_bound_nvidia_dra_identity",
+    "wait_for_and_record_both_automatic_scan_on_push_results",
+    "retain_both_images_and_create_immutable_scan_result_evidence"
+  ],
+  "independent_scan_interpretation": "A critical or high finding in one completed scan does not prevent collection of the other image's automatic scan result because no deployment is authorized. Identity, repository, push, configuration or scanner-execution failure stops immediately.",
+  "prohibited_operations": [
+    "manual_ecr_start_image_scan",
+    "image_rebuild_substitution_or_security_waiver",
+    "artifact_or_other_s3_write",
+    "iam_pod_identity_terraform_state_eks_kubernetes_ssm_or_kms_change",
+    "nvidia_dra_installation_or_workload_deployment",
+    "gpu_scale_up_or_gpu_window",
+    "approved_asr_write_model_registration_or_language_serving_field_change",
+    "production_ssm_change",
+    "image_deletion",
+    "claiming_deployment_B6A_completion_B6_1_or_full_B6"
+  ],
+  "deterministic_outcomes": [
+    "PASS_SCAN_ONLY",
+    "BLOCKED_IMAGE_SCAN",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "next_boundary": "Only PASS_SCAN_ONLY permits preparation of a separately owner-approved 2026-003C-B deployment packet."
+}
