@@ -1,0 +1,174 @@
+{
+  "record": "B6A_003C_B_BOUNDED_PLATFORM_PROOF_FAILURE",
+  "id": "B6A-PACKET-2026-003C-B-FAILED-DRA-READINESS",
+  "revision": 1,
+  "status": "VERIFIED_FAILED_CLOSED",
+  "outcome": "FAILED_CLOSED_EXECUTION",
+  "failure_stage": "DRA_READINESS_PREREQUISITE_BEFORE_WORKLOAD",
+  "completed_utc": "2026-08-05T05:08:48Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-B-deployment.json",
+    "sha256": "38fb353b0d7fe71d6fa9f1a5d6f00246e0ecc61f0f45b85abb36f562cd41d997",
+    "git_commit": "37fba7570124a4d3b6a9ef6e32afe475ab8ebbf7"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-B-deployment.md",
+    "sha256": "89c821ec375581da9553bce2031e918ae0ceffc6a879c360d98eb1a60874d981"
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "37fba7570124a4d3b6a9ef6e32afe475ab8ebbf7",
+    "git_tree": "1e423b347aa96b4ad83c4a699f317c7b85f374ba",
+    "commit_count": 178,
+    "worktree_clean": true,
+    "remote_branch_commit": "37fba7570124a4d3b6a9ef6e32afe475ab8ebbf7"
+  },
+  "preconditions": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "eks_version": "1.36",
+    "eks_support_type": "STANDARD",
+    "gpu_initial_minimum": 0,
+    "gpu_initial_desired": 0,
+    "gpu_initial_maximum": 1,
+    "gpu_initial_instances": 0,
+    "initial_scheduled_actions": 0,
+    "model_loader_scan": "COMPLETE_ZERO_FINDINGS",
+    "asr_runtime_scan": "COMPLETE_ZERO_FINDINGS",
+    "nvidia_dra_scan": "COMPLETE_ZERO_FINDINGS",
+    "artifact_prefix_initial_objects": 0,
+    "approved_asr_initial_objects": 0,
+    "production_registry_parameters": 0
+  },
+  "completed_operations": {
+    "artifact_publication": {
+      "status": "PUBLISHED_NONAPPROVED_AND_VERIFIED",
+      "receipt_sha256": "efe3562de652fe97318283a0de0edbd4880328508b4b5e4c95771e56112d511b",
+      "prefix": "s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/",
+      "tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+      "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+      "objects": 6,
+      "bytes": 3090838860,
+      "manifest_uploaded_last": true,
+      "version_ids": {
+        "config.json": "se2oSCQaVHqTFVKDxamBFQLdwlbhylLh",
+        "model.bin": "YHvSqK_qnpatMjyNVK3gk4xe7DPuC4j3",
+        "preprocessor_config.json": "Clj1CGL2DuUuUXX.hUFnjr.42Qi6Wjw1",
+        "tokenizer.json": "CEfzucht0IQ85IRxBThAbIrA6neHoQRs",
+        "vocabulary.json": "0H6sUMO8riDh0zpyZ6mD4uLlf3y1IkH8",
+        "MANIFEST.json": "athCW6WP81QxTpMQ5Y2P5uwQyNTpcS_t"
+      }
+    },
+    "identity": {
+      "fresh_saved_plan_sha256": "a701d385e199eb7b4d39710ab092910cf494dcd6b8d196b2673e3cf95193b4ea",
+      "fresh_saved_plan_bytes": 46599,
+      "guard": "PASS_EXACT_B6A_PACKET_2026_003C_B_IDENTITY_PHASE",
+      "apply": "3_ADDED_0_CHANGED_0_DESTROYED",
+      "resources": [
+        "aws_iam_role.b6a_asr",
+        "aws_iam_role_policy.b6a_asr",
+        "aws_eks_pod_identity_association.b6a_asr"
+      ],
+      "post_apply_full_plan": "NO_CHANGES"
+    },
+    "nvidia_dra": {
+      "installed_while_gpu_zero": true,
+      "render_sha256": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+      "image_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "device_class": "gpu.nvidia.com",
+      "compute_domain_installed": false,
+      "legacy_device_plugin_installed": false,
+      "resources_retained_after_cleanup": true
+    }
+  },
+  "gpu_window": {
+    "deadline_receipt_sha256": "ece98c3c398dc38ea0559e4701235bd8df44761eeef6978c31e6aa7af6916959",
+    "deadline_action": "medzen-b6a-003c-b-deadline-scale-zero",
+    "deadline_armed_utc": "2026-08-05T04:56:27Z",
+    "deadline_utc": "2026-08-05T06:56:27Z",
+    "deadline_read_back_exactly": true,
+    "instance_id": "i-0d9643edae1acf26c",
+    "instance_type": "g6.xlarge",
+    "instance_launch_utc": "2026-08-05T04:56:45Z",
+    "termination_initiated_utc": "2026-08-05T04:57:28Z",
+    "observed_seconds_before_termination_initiated": 43,
+    "billing_minimum_seconds": 60,
+    "recorded_hourly_rate_usd": 1.0064,
+    "conservative_minimum_estimated_gpu_cost_usd": 0.0168,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "observed_refusal": {
+    "gpu_daemonset_rollout_command": "SUCCESS",
+    "dra_pod_scheduled_utc": "2026-08-05T04:57:19Z",
+    "dra_init_image_pulled_utc": "2026-08-05T04:57:23Z",
+    "dra_main_container_started_utc": "2026-08-05T04:57:27Z",
+    "proof_process_output": {
+      "status": "REFUSED",
+      "error": "ProofRefusal"
+    },
+    "dra_main_container_stopped_utc": "2026-08-05T04:57:28Z",
+    "asr_workload_apply_attempted": false,
+    "medzen_namespace_created": false,
+    "proof_receipt_created": false,
+    "transcription_attempted": false,
+    "peak_l4_memory": "NOT_MEASURED",
+    "security_waiver_used": false
+  },
+  "cause_assessment": {
+    "confirmed": [
+      "The proof refused within one second of the DRA main container starting and before the ASR workload or sampler started.",
+      "The execution code checks DRA Pod and ResourceSlice state once immediately after DaemonSet rollout instead of waiting for stable DRA readiness as required by the packet.",
+      "The refusal handler emitted only the exception class and discarded the safe stage/reason, preventing exact post-cleanup attribution.",
+      "Mandatory cleanup removed the short-lived GPU Pod and node before DRA logs or transient ResourceSlice state were persisted."
+    ],
+    "most_likely_cause": "DRA_POD_OR_RESOURCE_SLICE_READINESS_RACE",
+    "confidence": "HIGH_BUT_NOT_CONCLUSIVE",
+    "not_proven": "The exact single failed assertion is not recoverable from packet 003C-B because no diagnostic receipt was written.",
+    "not_a_security_scan_failure": true,
+    "not_a_model_quality_result": true,
+    "not_an_asr_runtime_result": true
+  },
+  "cleanup_verification": {
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_desired": 0,
+    "asg_instances": 0,
+    "gpu_nodes": 0,
+    "b6a_pods": 0,
+    "asr_deployments": 0,
+    "scheduled_actions": 0,
+    "deadline_disarmed_after_zero_proof": true,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0
+  },
+  "retained_nonserving_state": {
+    "artifact_objects": 6,
+    "artifact_bytes": 3090838860,
+    "dedicated_asr_role": "arn:aws:iam::558069890522:role/medzen-b6a-asr-role",
+    "pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "nvidia_dra_installed": true,
+    "nvidia_dra_pods_at_gpu_zero": 0,
+    "model_registered": false,
+    "production_serving_state_changed": false
+  },
+  "required_remediation_before_retry": [
+    "Poll for one ready exact-digest DRA Pod, gpu.nvidia.com DeviceClass and a matching ResourceSlice instead of reading each once.",
+    "Require stable DRA readiness across multiple reads before starting nvidia-smi or applying the workload.",
+    "Persist a no-PHI diagnostic refusal receipt containing an explicit stage and safe reason before cleanup.",
+    "Preserve immediate cleanup and the independent AWS deadline unchanged.",
+    "Create and separately approve a new packet; packet 2026-003C-B may not resume."
+  ],
+  "project_state": {
+    "b5_outcome": "BLOCKED",
+    "b5_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b6a_outcome": "FAILED_CLOSED_EXECUTION",
+    "b6a_complete": false,
+    "b6_complete": false,
+    "b6_status": "BLOCKED"
+  },
+  "next_boundary": "Local remediation and a new versioned packet may be prepared. No retry or GPU scale-up is authorized by packet 2026-003C-B."
+}
