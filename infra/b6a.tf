@@ -1,6 +1,7 @@
-# B6A is a temporary, non-serving platform proof. Packet 2026-003A stopped at
-# the model-loader ECR scan gate, so only its evidence-retained DRA repository
-# remains active in Terraform. No B6A runtime identity is declared or created.
+# B6A is a temporary, non-serving platform proof. The three exact images passed
+# packet 2026-003C-A, but no runtime identity or workload has been deployed.
+# The evidence-retained DRA repository and live ECR scan rule are active; the
+# identity resources below are declared locally but remain unapplied.
 
 resource "aws_ecr_repository" "b6a_nvidia_dra" {
   name                 = "medzen-nvidia-dra"
