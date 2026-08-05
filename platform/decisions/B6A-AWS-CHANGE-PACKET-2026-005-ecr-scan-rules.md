@@ -47,12 +47,12 @@ The Terraform saved plan must be accepted by
 
 No replacement, deletion or output change is allowed.
 
-The read-only preparation plan generated on `2026-08-05` satisfies that
-guard with `1 add / 0 change / 0 destroy`:
+The read-only, exactly targeted preparation plan generated on `2026-08-05`
+satisfies that guard with `1 add / 0 change / 0 destroy`:
 
-- Preparation path: `/private/tmp/medzen-b6a-005.tfplan`
-- Bytes: `52,171`
-- SHA-256: `bb4c4a1ccebb547147b7077fb5e721795efc382dbc17d894c70f5cd7bad8ddd7`
+- Preparation path: `/private/tmp/medzen-b6a-005-targeted.tfplan`
+- Bytes: `41,642`
+- SHA-256: `46dbe8b5650982212ae7d5a04aa3710aed220c9671cf6ca6603e96d6320ff60f`
 
 This saved plan has **not** been applied. It must be regenerated after the
 packet is committed and approved, and the regenerated plan must independently
@@ -64,13 +64,19 @@ pass the same exact guard before any apply.
    `558069890522` and region `eu-central-1`.
 2. Capture the live registry scan configuration. It is expected to be
    `BASIC` with an empty rule list; any difference stops the packet.
-3. Produce and save a Terraform plan.
+3. Produce and save a Terraform plan with the exact target
+   `aws_ecr_registry_scanning_configuration.b6a_runtime`. This narrowly scoped
+   target is required because packet 003B identity resources are prepared in
+   source but remain separately unauthorized.
 4. Run the machine guard and record the saved-plan SHA-256 and byte count.
 5. Apply that exact saved plan once.
 6. Read the live configuration back and require exactly the three filters
    above at `SCAN_ON_PUSH`.
 7. Run a residual Terraform plan and require `NO_CHANGES`.
 8. Commit an immutable execution receipt before packet 2026-003B is eligible.
+
+The target flag authorizes no other targeted or partial apply. A plan that
+contains any 003B identity resource fails the packet-005 machine guard.
 
 ## Explicitly prohibited
 

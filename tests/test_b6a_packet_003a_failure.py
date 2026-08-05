@@ -70,5 +70,11 @@ def test_failed_packet_cannot_resume_without_a_new_owner_approved_revision():
 
     active_terraform = (ROOT / "infra/b6a.tf").read_text()
     assert 'resource "aws_ecr_repository" "b6a_nvidia_dra"' in active_terraform
-    assert 'resource "aws_iam_role" "b6a_asr"' not in active_terraform
-    assert 'resource "aws_eks_pod_identity_association" "b6a_asr"' not in active_terraform
+    # The identity source may be prepared prospectively only because 003B is a
+    # new blocked packet. Its presence must never reinterpret 003A as resumable.
+    assert 'resource "aws_iam_role" "b6a_asr"' in active_terraform
+    packet_003b = (
+        ROOT / "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003B-deployment.md"
+    ).read_text()
+    assert "BLOCKED — NOT AUTHORIZED" in packet_003b
+    assert "Packet 2026-003A" in packet_003b and "cannot resume" in packet_003b
