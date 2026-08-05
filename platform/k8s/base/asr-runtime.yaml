@@ -39,7 +39,7 @@ spec:
             name: asr-runtime-config
         startupProbe:
           httpGet:
-            path: /healthz
+            path: /readyz
             port: 8081
           periodSeconds: 10
           failureThreshold: 30
@@ -75,7 +75,6 @@ spec:
           limits:
             cpu: '2'
             memory: 4Gi
-            nvidia.com/gpu: '1'
         envFrom:
         - configMapRef:
             name: asr-runtime-config

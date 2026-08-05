@@ -1,0 +1,74 @@
+{
+  "record": "B6A_RUNTIME_VERIFICATION_RESPONSIBILITY_DECISION",
+  "id": "B6A-DESIGN-2026-002",
+  "revision": 1,
+  "status": "owner-approved-local-engineering-only",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-05T00:49:00Z",
+  "authorization_source": "Owner message: follow Claude plan with Codex corrections and report while implementing it.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "1ca36b06da9982db0a7ec66b350476825bc2f3e2",
+    "commit_count": 161,
+    "worktree_clean": true,
+    "remote_tracking_state": "matched origin/codex/b6a-platform-proof"
+  },
+  "supersedes_by_reference_only": [
+    {
+      "path": "platform/decisions/B6A-AUTH-2026-001-platform-proof.json",
+      "sha256": "825a85a284f45a3d679f603707524ff7e82aee8b688bbb04b5ea1a387eb2730b",
+      "preserved_interpretation": "B6A remains a non-serving platform proof and is not B6.1 or full B6."
+    },
+    {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003A-deployment.md",
+      "sha256": "95fd8d6161e895729cbe1c075331f73467f4444607cea306f43d25b338e0441c",
+      "preserved_interpretation": "Packet 003A is closed and cannot resume."
+    },
+    {
+      "path": "platform/evidence/B6A-PACKET-2026-003A-FAILED-IMAGE-SCAN.json",
+      "sha256": "e7bac17f17eacefdfe418a91041f694764e68b004485712d4abc358836cecb68",
+      "preserved_interpretation": "The failed-closed image-scan evidence remains immutable."
+    }
+  ],
+  "design_change": {
+    "previous_boundary": "The model-loader init container downloaded, verified and GPU-smoke-tested the artifact before the ASR container started.",
+    "new_model_loader_responsibility": [
+      "Download only the exact authorized manifest and artifact objects.",
+      "Verify manifest SHA-256, every artifact file size and SHA-256, and the canonical artifact-tree SHA-256.",
+      "Write one atomic schema-v2 artifact-verification marker and exit zero.",
+      "Request no GPU and contain no inference, CTranslate2, CUDA, AV, ONNX or NumPy dependency."
+    ],
+    "new_asr_runtime_responsibility": [
+      "Refuse any missing, malformed, wrong-version or incomplete artifact-verification marker.",
+      "Load the exact CTranslate2 float16 model on the serving CUDA path.",
+      "Run one bounded inference with the bound decode configuration before setting ready=true.",
+      "Keep /readyz false when model load or smoke inference fails."
+    ],
+    "probe_contract": "Kubernetes startupProbe polls /readyz. The probe does not execute inference; it observes the one-time ASR initialization result.",
+    "reason": "This removes duplicate GPU model initialization and the unnecessary serving attack surface from the loader while preserving fail-closed artifact and runtime proof."
+  },
+  "image_security_direction": {
+    "model_loader": "Use a pinned musl-based Python image, remove the unused SQLite extension and package, and require zero critical/high findings after the final dependency build.",
+    "asr_runtime": "Use a pinned CUDA/cuDNN serving base with OS security updates and no duplicate pip-installed CUDA libraries; require zero critical/high findings from local and ECR scans.",
+    "waiver": "No B4 or serving vulnerability waiver is extended or created by this decision."
+  },
+  "allowed_operations": [
+    "Local service, container, Kubernetes-template and architecture-source engineering",
+    "Local deterministic builds, package inspection, unit and behavioral tests",
+    "Local Docker Scout and other read-only vulnerability scans",
+    "Preparation of a separate ECR registry-scanning change packet",
+    "Preparation of B6A AWS change packet 2026-003B"
+  ],
+  "prohibited_operations": [
+    "Any AWS mutation under this design decision",
+    "Any ECR push",
+    "Any artifact upload",
+    "Any IAM or Kubernetes mutation",
+    "Any GPU scale-up or deployment",
+    "Any security waiver",
+    "Any write to approved/asr/ or production SSM",
+    "Any model registration, language approval or B5 evidence change",
+    "Any claim that B6A, B6.1 or full B6 is complete"
+  ],
+  "required_next_authorization": "A new itemized packet and explicit owner approval are required before changing registry scanning configuration or executing any B6A packet 2026-003B AWS operation."
+}

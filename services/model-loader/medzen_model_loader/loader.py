@@ -5,10 +5,8 @@ import json
 import os
 import re
 import shutil
-import tempfile
-import wave
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
 from urllib.parse import urlparse
 
 
@@ -192,35 +190,8 @@ def _stream_object_to_path(s3_client: Any, bucket: str, key: str, path: Path,
         raise LoaderRefusal(f"artifact object hash/size mismatch: {key}")
 
 
-def default_smoke_inference(model_dir: Path) -> dict[str, Any]:
-    """Run one offline inference on generated silence; output content is ignored."""
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError as exc:
-        raise LoaderRefusal("faster-whisper is absent from the loader image") from exc
-    device = os.environ.get("MEDZEN_INFERENCE_DEVICE", "cuda")
-    compute_type = "float16" if device == "cuda" else "int8"
-    with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
-        with wave.open(handle.name, "wb") as wav:
-            wav.setnchannels(1)
-            wav.setsampwidth(2)
-            wav.setframerate(16000)
-            wav.writeframes(b"\x00\x00" * 16000)
-        model = WhisperModel(str(model_dir), device=device,
-                             compute_type=compute_type, local_files_only=True)
-        segments, info = model.transcribe(
-            handle.name, task="transcribe", beam_size=1, best_of=1,
-            temperature=0.0, condition_on_previous_text=False,
-            word_timestamps=False, vad_filter=False)
-        list(segments)
-    return {"passed": True, "device": device, "compute_type": compute_type,
-            "language_detected": bool(getattr(info, "language", None))}
-
-
 def load_artifact(s3_client: Any, manifest_uri: str, manifest_sha256: str,
-                  destination: Path,
-                  smoke_inference: Callable[[Path], Mapping[str, Any]] =
-                  default_smoke_inference) -> dict[str, Any]:
+                  destination: Path) -> dict[str, Any]:
     if (not isinstance(manifest_sha256, str) or len(manifest_sha256) != 64
             or any(c not in "0123456789abcdef" for c in manifest_sha256)):
         raise LoaderRefusal("exact manifest SHA-256 is required")
@@ -247,12 +218,9 @@ def load_artifact(s3_client: Any, manifest_uri: str, manifest_sha256: str,
             _stream_object_to_path(
                 s3_client, validated["bucket"],
                 validated["artifact_key_prefix"] + rel, path, expected)
-        smoke = dict(smoke_inference(staging))
-        if smoke.get("passed") is not True:
-            raise LoaderRefusal("model smoke inference did not pass")
         marker = {
-            "schema_version": 1,
-            "ready": True,
+            "schema_version": 2,
+            "artifact_verified": True,
             "classification": "PLATFORM_PROOF_ONLY",
             "serving_label": "v0",
             "manifest_uri": manifest_uri,
@@ -265,7 +233,11 @@ def load_artifact(s3_client: Any, manifest_uri: str, manifest_sha256: str,
             "production_approved": False,
             "quality_gate_outcome": "FAIL",
             "decode_configuration": manifest["decode_configuration"],
-            "smoke_inference": smoke,
+            "verification": {
+                "manifest_sha256": True,
+                "artifact_file_hashes": True,
+                "artifact_tree_sha256": True,
+            },
         }
         for child in sorted(staging.iterdir()):
             child.replace(destination / child.name)
@@ -295,6 +267,6 @@ def main() -> int:
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "error": type(exc).__name__}))
         return 1
-    print(json.dumps({"status": "READY", "serving_label": marker["serving_label"],
+    print(json.dumps({"status": "VERIFIED", "serving_label": marker["serving_label"],
                       "artifact_tree_sha256": marker["artifact_tree_sha256"]}))
     return 0

@@ -67,15 +67,18 @@ def test_b6a_manifest_is_internal_gpu_only_and_fail_closed_before_push():
         "name": "gpu",
         "resourceClaimTemplateName": "asr-runtime-b6a-gpu",
     }]
-    for container in deployment["initContainers"] + deployment["containers"]:
-        assert container["resources"]["claims"] == [{"name": "gpu"}]
+    loader = deployment["initContainers"][0]
+    runtime = deployment["containers"][0]
+    assert "claims" not in loader["resources"]
+    assert runtime["resources"]["claims"] == [{"name": "gpu"}]
+    for container in (loader, runtime):
         assert "nvidia.com/gpu" not in container["resources"].get("limits", {})
         assert container["securityContext"]["readOnlyRootFilesystem"] is True
         assert "OWNER_APPROVAL_REQUIRED_ECR_DIGEST" in container["image"]
     assert not any(item["kind"] in {"Ingress", "Gateway"} for item in objects)
 
 
-def test_b6a_dra_claim_is_one_gpu_shared_by_loader_and_runtime():
+def test_b6a_dra_claim_is_one_gpu_requested_only_by_runtime():
     claim = next(
         item for item in _objects() if item["kind"] == "ResourceClaimTemplate"
     )
@@ -85,6 +88,14 @@ def test_b6a_dra_claim_is_one_gpu_shared_by_loader_and_runtime():
         "name": "gpu",
         "exactly": {"deviceClassName": "gpu.nvidia.com", "count": 1},
     }]
+
+
+def test_startup_probe_polls_readiness_after_runtime_owned_smoke():
+    deployment = next(
+        item for item in _objects() if item["kind"] == "Deployment"
+    )["spec"]["template"]["spec"]
+    runtime = deployment["containers"][0]
+    assert runtime["startupProbe"]["httpGet"]["path"] == "/readyz"
 
 
 def test_b6a_config_binds_exact_manifest_and_never_uses_production_registry():

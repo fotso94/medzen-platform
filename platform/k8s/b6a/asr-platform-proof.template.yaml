@@ -90,8 +90,6 @@ spec:
           resources:
             requests: {cpu: 500m, memory: 2Gi}
             limits: {cpu: "2", memory: 4Gi}
-            claims:
-              - {name: gpu}
           securityContext: &containerSecurity
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}
@@ -114,7 +112,9 @@ spec:
               - {name: gpu}
           securityContext: *containerSecurity
           startupProbe:
-            httpGet: {path: /healthz, port: http}
+            # The probe only polls readiness. ASR initialization performs the
+            # one bounded GPU smoke before /readyz can return success.
+            httpGet: {path: /readyz, port: http}
             periodSeconds: 10
             failureThreshold: 30
           readinessProbe:

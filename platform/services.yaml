@@ -86,7 +86,9 @@ services:
   asr-runtime:
     role: Speech to text. Serves ONE multilingual Whisper artifact for all
           languages; per-language approval lives in the registry, not in
-          separate deployments.
+          separate deployments. It loads the verifier-approved artifact and
+          runs one bounded inference on the serving path before reporting
+          ready.
     node_pool: gpu
     public: false
     image_repo: medzen-asr-runtime
@@ -101,7 +103,7 @@ services:
     probes:
       # 5-minute budget: 6-8 GB image + 30-60s model load. Web-app defaults
       # crash-loop this pod and the cause is not obvious from the events.
-      startup:  {path: /healthz, port: 8081, period: 10, failure_threshold: 30}
+      startup:  {path: /readyz, port: 8081, period: 10, failure_threshold: 30}
       liveness: {path: /healthz, port: 8081, period: 30, failure_threshold: 3}
       readiness: {path: /readyz, port: 8081, period: 10, failure_threshold: 3}
     init_container: model-loader
@@ -183,16 +185,14 @@ services:
 # --------------------------------------------------------------------------
 init_containers:
   model-loader:
-    role: Download the approved artifact, verify SHA-256, run an inference
-          smoke test, exit 0. A failure leaves the pod unready rather than
-          half-loaded serving wrong weights.
+    role: Download the authorized artifact, verify the manifest, every file
+          SHA-256 and the artifact-tree SHA-256, write an atomic verification
+          marker, then exit 0. It performs no inference and requests no GPU.
+          A failure prevents the main container from starting.
     image_repo: medzen-model-loader
     resources:
       requests: {cpu: "500m", memory: "2Gi"}
-      # The smoke inference must exercise the same float16 GPU path that the
-      # main container will serve. Init and app containers run sequentially,
-      # so this does not require a second GPU.
-      limits:   {cpu: "2",    memory: "4Gi", "nvidia.com/gpu": 1}
+      limits:   {cpu: "2",    memory: "4Gi"}
     pod_identity:
       role_name: medzen-loader-role
       permissions:

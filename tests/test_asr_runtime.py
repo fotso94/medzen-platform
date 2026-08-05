@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import types
 import uuid
 from pathlib import Path
 
@@ -17,6 +18,7 @@ sys.path.insert(0, str(ASR_ROOT))
 from medzen_asr_runtime.app import create_app  # noqa: E402
 from medzen_asr_runtime.backend import (  # noqa: E402
     BackendRefusal,
+    FasterWhisperBackend,
     Transcript,
     load_ready_marker,
 )
@@ -169,7 +171,8 @@ def test_websocket_cancel_or_barge_in_returns_clean_cancellation(event):
 
 def test_ready_marker_refuses_missing_disclosure_or_pin(tmp_path):
     marker = {
-        "ready": True,
+        "schema_version": 2,
+        "artifact_verified": True,
         "classification": "PLATFORM_PROOF_ONLY",
         "serving_label": "v0",
         "production_approved": False,
@@ -177,10 +180,19 @@ def test_ready_marker_refuses_missing_disclosure_or_pin(tmp_path):
         "manifest_sha256": "a" * 64,
         "artifact_tree_sha256": "b" * 64,
         "precision": "CTranslate2_float16",
-        "smoke_inference": {"passed": True},
+        "decode_configuration": {
+            "task": "transcribe", "beam_size": 1, "best_of": 1,
+            "temperature": 0.0, "condition_on_previous_text": False,
+            "word_timestamps": False,
+        },
+        "verification": {
+            "manifest_sha256": True,
+            "artifact_file_hashes": True,
+            "artifact_tree_sha256": True,
+        },
     }
     (tmp_path / ".medzen-ready.json").write_text(json.dumps(marker))
-    assert load_ready_marker(tmp_path, "a" * 64)["ready"] is True
+    assert load_ready_marker(tmp_path, "a" * 64)["artifact_verified"] is True
     marker["production_approved"] = True
     (tmp_path / ".medzen-ready.json").write_text(json.dumps(marker))
     with pytest.raises(BackendRefusal, match="production-approved"):
@@ -191,6 +203,93 @@ def test_ready_marker_refuses_missing_disclosure_or_pin(tmp_path):
         load_ready_marker(tmp_path, "c" * 64)
 
 
+def test_runtime_runs_one_real_serving_path_smoke_before_ready(tmp_path, monkeypatch):
+    marker = {
+        "schema_version": 2,
+        "artifact_verified": True,
+        "classification": "PLATFORM_PROOF_ONLY",
+        "serving_label": "v0",
+        "production_approved": False,
+        "quality_gate_outcome": "FAIL",
+        "manifest_sha256": "a" * 64,
+        "artifact_tree_sha256": "b" * 64,
+        "precision": "CTranslate2_float16",
+        "decode_configuration": {
+            "task": "transcribe", "beam_size": 1, "best_of": 1,
+            "temperature": 0.0, "condition_on_previous_text": False,
+            "word_timestamps": False,
+        },
+        "verification": {
+            "manifest_sha256": True,
+            "artifact_file_hashes": True,
+            "artifact_tree_sha256": True,
+        },
+    }
+    (tmp_path / ".medzen-ready.json").write_text(json.dumps(marker))
+
+    calls = []
+
+    class WhisperModel:
+        def __init__(self, path, **kwargs):
+            calls.append(("load", path, kwargs))
+
+        def transcribe(self, path, **kwargs):
+            calls.append(("transcribe", Path(path).read_bytes(), kwargs))
+            return iter(()), types.SimpleNamespace(language="ln")
+
+    monkeypatch.setitem(
+        sys.modules, "faster_whisper",
+        types.SimpleNamespace(WhisperModel=WhisperModel),
+    )
+    monkeypatch.setenv("MEDZEN_INFERENCE_DEVICE", "cuda")
+    backend = FasterWhisperBackend(tmp_path, "a" * 64)
+    assert backend.ready is True
+    assert backend.startup_smoke == {
+        "passed": True,
+        "device": "cuda",
+        "compute_type": "float16",
+        "language_detected": True,
+    }
+    assert [call[0] for call in calls] == ["load", "transcribe"]
+    assert calls[1][2]["beam_size"] == 1
+    assert calls[1][2]["vad_filter"] is False
+
+
+def test_runtime_never_becomes_ready_when_startup_smoke_refuses(
+        tmp_path, monkeypatch):
+    marker = {
+        "schema_version": 2, "artifact_verified": True,
+        "classification": "PLATFORM_PROOF_ONLY", "serving_label": "v0",
+        "production_approved": False, "quality_gate_outcome": "FAIL",
+        "manifest_sha256": "a" * 64, "artifact_tree_sha256": "b" * 64,
+        "precision": "CTranslate2_float16",
+        "decode_configuration": {
+            "task": "transcribe", "beam_size": 1, "best_of": 1,
+            "temperature": 0.0, "condition_on_previous_text": False,
+            "word_timestamps": False,
+        },
+        "verification": {
+            "manifest_sha256": True, "artifact_file_hashes": True,
+            "artifact_tree_sha256": True,
+        },
+    }
+    (tmp_path / ".medzen-ready.json").write_text(json.dumps(marker))
+
+    class WhisperModel:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def transcribe(self, *_args, **_kwargs):
+            raise RuntimeError("smoke refused")
+
+    monkeypatch.setitem(
+        sys.modules, "faster_whisper",
+        types.SimpleNamespace(WhisperModel=WhisperModel),
+    )
+    with pytest.raises(RuntimeError, match="smoke refused"):
+        FasterWhisperBackend(tmp_path, "a" * 64)
+
+
 def test_runtime_dockerfiles_keep_weights_out_and_run_nonroot():
     for service in ("model-loader", "asr-runtime"):
         source = (ROOT / f"services/{service}/Dockerfile").read_text()
@@ -198,3 +297,20 @@ def test_runtime_dockerfiles_keep_weights_out_and_run_nonroot():
         assert "COPY artifacts" not in source
         assert "COPY .cache" not in source
         assert "HF_HUB_OFFLINE=1" in source
+
+
+def test_loader_image_has_no_inference_or_cuda_dependency():
+    requirements = "\n".join(
+        line for line in (
+            ROOT / "services/model-loader/requirements.txt"
+        ).read_text().splitlines()
+        if line and not line.startswith("#")
+    )
+    dockerfile = (ROOT / "services/model-loader/Dockerfile").read_text()
+    for forbidden in (
+        "faster-whisper", "ctranslate2", "onnxruntime", "numpy", "nvidia-"
+    ):
+        assert forbidden not in requirements.lower()
+    assert "python:3.12-alpine3.22@sha256:" in dockerfile
+    assert "sqlite-libs" in dockerfile
+    assert "libcudart" not in dockerfile

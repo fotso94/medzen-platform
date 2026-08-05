@@ -1,6 +1,6 @@
 # B6A internal ASR runtime. The zero-shot model is mounted at /models by the
 # model-loader init container; no model weights are baked into this image.
-FROM python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc
 
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -9,21 +9,23 @@ ENV PYTHONUNBUFFERED=1 \
     HF_HUB_DISABLE_XET=1 \
     MODEL_DIR=/models \
     MEDZEN_INFERENCE_DEVICE=cuda \
-    LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cuda_runtime/lib:/usr/local/lib/python3.12/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
+    PATH=/opt/venv/bin:$PATH
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates libsndfile1 \
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates libsndfile1 python3.12 python3.12-venv \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --create-home medzen
 
 WORKDIR /opt/medzen
-RUN pip install --no-cache-dir "pip==26.2"
+RUN python3.12 -m venv /opt/venv \
+    && pip install --no-cache-dir "pip==26.2"
 COPY services/asr-runtime/requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt \
     && python -c 'import ctypes; [ctypes.CDLL(n) for n in ("libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libcudnn.so.9")]' \
     && python -m pip uninstall -y pip setuptools wheel \
-    && apt-get purge -y --allow-remove-essential perl-base \
-    && rm -rf /var/lib/apt/lists/* /root/.cache
+    && rm -rf /root/.cache
 COPY services/asr-runtime/medzen_asr_runtime ./medzen_asr_runtime
 
 USER 10001:10001

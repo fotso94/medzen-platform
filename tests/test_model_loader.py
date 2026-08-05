@@ -116,22 +116,20 @@ class S3:
         return {"Body": BytesIO(self.objects[Key])}
 
 
-def test_loader_verifies_tree_objects_smoke_and_writes_ready_marker(tmp_path):
+def test_loader_verifies_tree_objects_and_writes_atomic_marker(tmp_path):
     manifest, uri, raw, objects = fixture()
-    smoke_paths = []
-
-    def smoke(path):
-        smoke_paths.append(path)
-        assert (path / "model.bin").read_bytes() == b"ct2-model"
-        return {"passed": True, "device": "test", "compute_type": "test"}
-
     marker = load_artifact(
-        S3(objects), uri, hashlib.sha256(raw).hexdigest(), tmp_path, smoke)
-    assert marker["ready"] is True
+        S3(objects), uri, hashlib.sha256(raw).hexdigest(), tmp_path)
+    assert marker["schema_version"] == 2
+    assert marker["artifact_verified"] is True
+    assert marker["verification"] == {
+        "manifest_sha256": True,
+        "artifact_file_hashes": True,
+        "artifact_tree_sha256": True,
+    }
     assert marker["production_approved"] is False
     assert marker["quality_gate_outcome"] == "FAIL"
     assert marker["artifact_tree_sha256"] == manifest["artifact"]["tree_sha256"]
-    assert smoke_paths[0].name == ".loading"
     assert not (tmp_path / ".loading").exists()
     assert (tmp_path / ".medzen-ready.json").exists()
     assert (tmp_path / "model.bin").read_bytes() == b"ct2-model"
@@ -141,7 +139,7 @@ def test_loader_refuses_manifest_hash_mismatch_before_artifact_download(tmp_path
     _, uri, _, objects = fixture()
     s3 = S3(objects)
     with pytest.raises(LoaderRefusal, match="manifest SHA-256 mismatch"):
-        load_artifact(s3, uri, "0" * 64, tmp_path, lambda _: {"passed": True})
+        load_artifact(s3, uri, "0" * 64, tmp_path)
     assert s3.requests == [uri.removeprefix("s3://medzen-speech/")]
     assert not (tmp_path / ".medzen-ready.json").exists()
 
@@ -152,8 +150,7 @@ def test_loader_refuses_object_mismatch_and_removes_partial_staging(tmp_path):
     object_key = next(key for key in objects if key.endswith("model.bin"))
     objects[object_key] = b"tampered"
     with pytest.raises(LoaderRefusal, match="hash/size mismatch"):
-        load_artifact(S3(objects), uri, hashlib.sha256(raw).hexdigest(),
-                      tmp_path, lambda _: {"passed": True})
+        load_artifact(S3(objects), uri, hashlib.sha256(raw).hexdigest(), tmp_path)
     assert list(tmp_path.iterdir()) == []
 
 

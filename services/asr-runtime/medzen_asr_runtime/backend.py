@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 import unicodedata
+import wave
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,8 +31,10 @@ def load_ready_marker(model_dir: Path, expected_manifest_sha256: str) -> dict[st
         marker = json.loads(marker_path.read_bytes())
     except (OSError, json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise BackendRefusal("verified model-loader ready marker is absent") from exc
-    if marker.get("ready") is not True:
-        raise BackendRefusal("model-loader marker is not ready")
+    if marker.get("schema_version") != 2:
+        raise BackendRefusal("model-loader marker schema is not supported")
+    if marker.get("artifact_verified") is not True:
+        raise BackendRefusal("model-loader has not verified the artifact")
     if marker.get("classification") != "PLATFORM_PROOF_ONLY":
         raise BackendRefusal("model is not classified as a platform proof")
     if marker.get("serving_label") != "v0":
@@ -47,16 +51,18 @@ def load_ready_marker(model_dir: Path, expected_manifest_sha256: str) -> dict[st
         raise BackendRefusal("model artifact tree identity is malformed")
     if marker.get("precision") != "CTranslate2_float16":
         raise BackendRefusal("B6A runtime requires CTranslate2 float16")
-    if not isinstance(marker.get("smoke_inference"), dict) or marker[
-            "smoke_inference"].get("passed") is not True:
-        raise BackendRefusal("model-loader smoke inference is not proven")
+    if marker.get("verification") != {
+        "manifest_sha256": True,
+        "artifact_file_hashes": True,
+        "artifact_tree_sha256": True,
+    }:
+        raise BackendRefusal("model-loader verification proof is incomplete")
     return marker
 
 
 class FasterWhisperBackend:
-    ready = True
-
     def __init__(self, model_dir: Path, expected_manifest_sha256: str):
+        self.ready = False
         self.marker = load_ready_marker(model_dir, expected_manifest_sha256)
         try:
             from faster_whisper import WhisperModel
@@ -67,6 +73,7 @@ class FasterWhisperBackend:
         self.model = WhisperModel(
             str(model_dir), device=device, compute_type=compute_type,
             local_files_only=True)
+        self.startup_smoke = self._run_startup_smoke(device, compute_type)
         self.model_versions = {
             "asr": "v0",
             "registry_snapshot": (
@@ -74,6 +81,36 @@ class FasterWhisperBackend:
             "llm": None,
             "rag": None,
             "tts": None,
+        }
+        self.ready = True
+
+    def _run_startup_smoke(self, device: str, compute_type: str) -> dict[str, Any]:
+        """Exercise the loaded serving model once before readiness is allowed."""
+        decode = self.marker["decode_configuration"]
+        with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
+            with wave.open(handle.name, "wb") as wav:
+                wav.setnchannels(1)
+                wav.setsampwidth(2)
+                wav.setframerate(16000)
+                wav.writeframes(b"\x00\x00" * 16000)
+            segments, info = self.model.transcribe(
+                handle.name,
+                task=decode["task"],
+                beam_size=decode["beam_size"],
+                best_of=decode["best_of"],
+                temperature=decode["temperature"],
+                condition_on_previous_text=decode[
+                    "condition_on_previous_text"
+                ],
+                word_timestamps=decode["word_timestamps"],
+                vad_filter=False,
+            )
+            list(segments)
+        return {
+            "passed": True,
+            "device": device,
+            "compute_type": compute_type,
+            "language_detected": bool(getattr(info, "language", None)),
         }
 
     def transcribe(self, audio_path: Path, language_hint: str | None) -> Transcript:
