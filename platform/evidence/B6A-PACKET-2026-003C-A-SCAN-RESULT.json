@@ -1,0 +1,178 @@
+{
+  "record": "B6A_SCAN_ONLY_IMAGE_QUALIFICATION_RESULT",
+  "id": "B6A-PACKET-2026-003C-A-SCAN-RESULT",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "outcome": "PASS_SCAN_ONLY",
+  "completed_utc": "2026-08-05T03:39:39Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-A-scan-only.json",
+    "sha256": "369052d9d4b1d15e7ac879def016da318fe7c39ea5ff0954ce38455ca87eb8cc",
+    "git_commit": "181049fc004ecbee7884c525141b5d29abf67b6c"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-A-scan-only.md",
+    "sha256": "7564c60289494fa14cba706ebbc8a15199402b8e3d6da1cd74e32b11b431f236"
+  },
+  "local_engineering": {
+    "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-003.json",
+    "sha256": "a2b1b6c7a739c0859f6d71463b829c4db0d4cc3023f797989e995f6ea6095784"
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "181049fc004ecbee7884c525141b5d29abf67b6c",
+    "git_tree": "e5affd7656476b4d3f026380247de49098aa0048",
+    "commit_count": 172,
+    "worktree_clean": true,
+    "remote_branch_commit": "181049fc004ecbee7884c525141b5d29abf67b6c"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "preconditions": {
+    "regional_ecr_scan_type": "BASIC",
+    "regional_ecr_scan_frequency": "SCAN_ON_PUSH",
+    "regional_ecr_filters_exact": [
+      "medzen-model-loader",
+      "medzen-nvidia-dra",
+      "medzen-asr-runtime"
+    ],
+    "all_three_repositories_tag_immutable": true,
+    "all_three_repositories_scan_on_push": true,
+    "all_three_repositories_kms_encrypted": true,
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "asr_target_tag_absent": true,
+    "nvidia_dra_target_tag_absent": true,
+    "gpu_status": "ACTIVE",
+    "gpu_minimum": 0,
+    "gpu_desired": 0,
+    "gpu_maximum": 1,
+    "gpu_health_issues": 0
+  },
+  "local_reverification": {
+    "asr_runtime": {
+      "oci_index": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "source_revision": "89f94d330de24478d0084cdf9010f7ac7a968303",
+      "final_build_tools_absent": true,
+      "import_and_cuda_link_smoke": "PASS",
+      "docker_scout_packages": 185,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0
+    },
+    "nvidia_dra": {
+      "manifest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "architecture": "amd64",
+      "docker_scout_packages": 112,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0
+    }
+  },
+  "retained_model_loader": {
+    "action": "READ_ONLY_REUSE_NO_PUSH",
+    "repository": "medzen-model-loader",
+    "linux_amd64_manifest_digest": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "automatic_scan_status": "COMPLETE",
+    "scan_completed_utc": "2026-08-05T02:43:42Z",
+    "critical": 0,
+    "high": 0,
+    "findings": []
+  },
+  "automatic_scan_subjects": {
+    "asr_runtime": {
+      "repository": "medzen-asr-runtime",
+      "tag": "b6a-003c-89f94d3",
+      "pushed_utc": "2026-08-05T03:37:12.930Z",
+      "oci_index_digest": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "linux_amd64_manifest_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+      "attestation_manifest_digest": "sha256:433f23bc04fe3cd3c792f1d4cc5ca4a487f646d4625f2afb33d1a4bb07713bad",
+      "ecr_image_size_bytes": 3105387622,
+      "automatic_scan_on_push": true,
+      "manual_scan_invoked": false,
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-05T03:38:10Z",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "undefined": 0,
+      "findings": [],
+      "gate": "PASS"
+    },
+    "nvidia_dra": {
+      "repository": "medzen-nvidia-dra",
+      "tag": "v0.4.1-medzen.2-7fb313758a20",
+      "pushed_utc": "2026-08-05T03:37:37.921Z",
+      "manifest_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "ecr_image_size_bytes": 90215576,
+      "automatic_scan_on_push": true,
+      "manual_scan_invoked": false,
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-05T03:37:49Z",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "undefined": 0,
+      "findings": [],
+      "gate": "PASS"
+    }
+  },
+  "post_execution_verification": {
+    "gpu_status": "ACTIVE",
+    "gpu_minimum": 0,
+    "gpu_desired": 0,
+    "gpu_maximum": 1,
+    "gpu_health_issues": 0,
+    "b6a_artifact_target_objects": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0,
+    "artifact_upload_attempted": false,
+    "iam_or_terraform_change_attempted": false,
+    "nvidia_dra_install_attempted": false,
+    "kubernetes_change_attempted": false,
+    "deployment_attempted": false,
+    "gpu_window_opened": false,
+    "security_waiver_used": false,
+    "image_deletion_attempted": false
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_before_existing_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_created": false,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "ecr_storage_and_scan_cost": "NOT_YET_RECONCILED"
+  },
+  "validation": {
+    "pytest_passed": 919,
+    "pytest_failed": 0,
+    "pytest_skipped": 0,
+    "pytest_deselected": 7,
+    "pytest_warnings": 1,
+    "warning": "Starlette TestClient deprecation only",
+    "environmental_retry": "An initial sandboxed run had one S3 name-resolution failure in an existing read-only evidence test. The canonical network-enabled rerun completed with 919 passed and zero failed.",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "preserved_project_state": {
+    "b5_blocked_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b5_outcome": "BLOCKED",
+    "models_registered": 0,
+    "language_artifact_or_approved_version_changes": 0,
+    "production_ssm_changes": 0,
+    "b6a_deployment_complete": false,
+    "b6_status": "BLOCKED"
+  },
+  "next_boundary": {
+    "deployment_authorized": false,
+    "permitted_next_work": "Prepare a separately versioned B6A AWS change packet 2026-003C-B that binds these scan-passed ECR digests and retains the non-promotion, two-hour GPU, budget, failure and cleanup controls.",
+    "separate_owner_approval_required": true
+  },
+  "conclusion": "Packet 2026-003C-A completed as PASS_SCAN_ONLY. Both exact images passed AWS automatic scan-on-push with zero critical and zero high findings. No artifact, identity, cluster, Kubernetes, SSM, approved-model or GPU operation occurred. B6A deployment remains unauthorized and incomplete."
+}
