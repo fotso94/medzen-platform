@@ -47,6 +47,19 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "waxalnlp":
         from .adapters.waxalnlp import WaxalNLPAdapter
         return WaxalNLPAdapter(language, task=task, version=version)
+    # green-bucket-aggregation-2026-08 sources (see registry/data_sources/)
+    if source == "meta_omnilingual":
+        from .adapters.meta_omnilingual import MetaOmnilingualAdapter
+        return MetaOmnilingualAdapter(language, task=task, version=version)
+    if source == "fleurs":
+        from .adapters.fleurs import FleursAdapter
+        return FleursAdapter(language, task=task, version=version)
+    if source == "common_voice":
+        from .adapters.common_voice import CommonVoiceAdapter
+        return CommonVoiceAdapter(language, task=task, version=version)
+    if source == "kallaama":
+        from .adapters.kallaama import KallaamaAdapter
+        return KallaamaAdapter(language, task=task, version=version)
     raise SystemExit(f"unknown source '{source}'")
 
 
