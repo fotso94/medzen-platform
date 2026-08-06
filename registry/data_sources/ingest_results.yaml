@@ -1,0 +1,36 @@
+# Green-bucket ingest results — realized hours (authoritative, from S3 manifests)
+# Campaign green-bucket-aggregation-2026-08. Tallied 2026-08-06 by summing
+# duration_s over each manifest. Prior entire corpus was 22.89 h.
+#
+# Version isolation: training -> curated/{lang}/asr/{config}/gb1/, eval ->
+# eval/{lang}/asr/fleurs-v1/. B4's v1 data is untouched.
+
+summary:
+  training_hours: 853.74
+  eval_hours: 44.15
+  grand_total_hours: 897.89
+  multiple_of_prior_corpus: 39
+  training_clips: 166372
+  eval_clips: 11155
+
+training:            # curated/{lang}/asr/{config}/gb1/ (tier in parens)
+  amharic:  {clips: 38002, hours: 189.54, source: waxal,      tier: sharealike}
+  oromo:    {clips: 38136, hours: 189.48, source: waxal,      tier: sharealike}
+  fula:     {clips: 29029, hours: 147.08, source: waxal+meta, tier: mixed}      # ful_asr(SA)+fula_omni(perm)
+  ewe:      {clips: 15048, hours:  79.40, source: waxal,      tier: permissive}
+  shona:    {clips: 13653, hours:  75.68, source: waxal,      tier: sharealike}
+  lingala:  {clips: 13966, hours:  68.00, source: waxal,      tier: sharealike}
+  akan:     {clips: 10790, hours:  59.98, source: waxal+meta, tier: permissive} # aka_asr+akan_omni
+  luganda:  {clips:  4242, hours:  24.83, source: waxal,      tier: sharealike}
+  acholi:   {clips:  3506, hours:  19.75, source: waxal,      tier: sharealike}
+
+eval:                # eval/{lang}/asr/fleurs-v1/  (13 langs, ~12 h each nominal)
+  total_clips: 11155
+  total_hours: 44.15
+  languages: [swahili, hausa, yoruba, amharic, oromo, igbo, lingala, shona,
+              wolof, fula, luganda, english, french]
+
+# Languages with EVAL but NO training data yet (need the deferred sources):
+gaps:
+  common_voice_pending: [swahili, hausa, yoruba, igbo]   # + luganda/amharic top-up
+  kallaama_pending:      [wolof, fula]                    # wolof has no other training source
