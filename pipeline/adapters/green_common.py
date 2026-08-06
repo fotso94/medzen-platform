@@ -67,9 +67,9 @@ def list_shards(repo: str, revision: str, glob: str,
 # --------------------------------------------------------------------------- #
 BATCH_ROWS = 64
 TEXT_KEYS = ("text", "sentence", "transcription", "raw_transcription",
-             "transcript", "normalized_text")
+             "raw_text", "transcript", "normalized_text")
 SPK_KEYS = ("speaker_id", "client_id", "speaker", "spk_id")
-ID_KEYS = ("id", "path", "audio_id", "file", "filename")
+ID_KEYS = ("segment_id", "id", "path", "audio_id", "file", "filename")
 GENDER_KEYS = ("gender", "sex")
 
 
