@@ -197,7 +197,8 @@ def main() -> int:
     # ---- eval immutability guard ------------------------------------------
     # An eval set is a measurement instrument. Silently replacing one makes
     # every previously reported number incomparable and unreproducible.
-    if cli and not a.force_eval and prefix_exists(cli, eval_prefix + "/"):
+    if (cli and not a.no_eval_split and not a.force_eval
+            and prefix_exists(cli, eval_prefix + "/")):
         print(f"\nREFUSING: s3://{DATA_BUCKET}/{eval_prefix}/ already exists.")
         print("An eval version is frozen once written. Use a new --version, or")
         print("--force-eval only if you accept invalidating prior results.")
