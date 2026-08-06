@@ -154,7 +154,14 @@ def read_parquet_audio_shards(
                     sf.write(buf, arr, TARGET_SR, format="WAV", subtype="PCM_16")
                     wav = buf.getvalue()
 
-                    stem = str(row.get(ikey) or src.rsplit(".", 1)[0]).replace("/", "_")
+                    # Natural ids repeat across speakers/splits (Meta segment_id
+                    # is "s01","s02".. per speaker; FLEURS id restarts per split),
+                    # which would silently overwrite audio in S3. Append a content
+                    # hash so the stem is globally unique per distinct audio (true
+                    # byte-duplicates collapse to one key, which is correct).
+                    natural = str(row.get(ikey) or src.rsplit(".", 1)[0]).replace("/", "_")
+                    wav_sha = hashlib.sha256(wav).hexdigest()
+                    stem = f"{natural}_{wav_sha[:12]}"
                     rp = spill / f"{stem}.raw"
                     wp = spill / f"{stem}.wav"
                     rp.write_bytes(blob)
@@ -165,7 +172,7 @@ def read_parquet_audio_shards(
                         "spk_raw": (row.get(skey) if skey else None),
                         "gender_raw": (row.get(gkey) if gkey else None),
                         "raw_sha256": hashlib.sha256(blob).hexdigest(),
-                        "wav_sha256": hashlib.sha256(wav).hexdigest(),
+                        "wav_sha256": wav_sha,
                         "split": split,
                     }
                     produced += 1

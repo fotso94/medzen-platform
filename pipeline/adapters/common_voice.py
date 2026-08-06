@@ -102,7 +102,8 @@ class CommonVoiceAdapter:
                 wav = buf.getvalue()
                 raw = audio.get("bytes") or wav
                 src = str(row.get("path") or f"{self.code}_{produced:07d}")
-                stem = src.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+                stem = (src.rsplit("/", 1)[-1].rsplit(".", 1)[0]
+                        + "_" + hashlib.sha256(wav).hexdigest()[:12])
                 ext = (src.rsplit(".", 1)[-1] if "." in src else "mp3").lower()
                 spk = str(row.get("client_id") or f"{self.code}_unknown").strip()
                 rp = spill / f"{stem}.raw"; wp = spill / f"{stem}.wav"

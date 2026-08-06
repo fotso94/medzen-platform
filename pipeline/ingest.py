@@ -176,6 +176,11 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force-eval", action="store_true",
                     help="allow replacing an existing frozen eval version")
+    ap.add_argument("--no-eval-split", action="store_true",
+                    help="all rows -> curated/ (train); carve no eval split. Use "
+                         "when eval is supplied by a separate source (e.g. FLEURS), "
+                         "so multiple training sources per language do not collide "
+                         "on the shared eval/ prefix.")
     a = ap.parse_args()
 
     adapter = build_adapter(a.source, a.language, a.task, a.version)
@@ -203,7 +208,21 @@ def main() -> int:
         print("no usable rows produced"); return 1
     rows = [it["record"] for it in items]
     print(f"\nbuilt {len(rows)} records")
-    assign_splits(rows)
+    eval_only = getattr(adapter, "tier", None) == "eval_only"
+    if eval_only:
+        # A whole-source frozen benchmark (e.g. FLEURS): every row is held out,
+        # nothing enters training. No speaker/text split is carved, and only an
+        # eval/ manifest is written (never curated/).
+        for r in rows:
+            r["split"] = "test"
+        print(f"  eval-only source -> all {len(rows)} rows frozen under {eval_prefix}/")
+    elif a.no_eval_split:
+        for r in rows:
+            r["split"] = "train"
+        print(f"  all-train: {len(rows)} rows -> {cur_prefix}/ "
+              f"(no eval split; eval comes from a separate source)")
+    else:
+        assign_splits(rows)
 
     with tempfile.TemporaryDirectory() as td:
         mpath = Path(td) / "manifest.jsonl"
@@ -225,6 +244,14 @@ def main() -> int:
 
         print(f"\nuploading audio...")
         upload_all(cli, items)
+
+        if eval_only:
+            body = ("\n".join(json.dumps(r) for r in rows) + "\n").encode()
+            cli.put_object(Bucket=DATA_BUCKET, Key=f"{eval_prefix}/manifest.jsonl",
+                           Body=body, ContentType="application/x-ndjson")
+            print(f"  wrote s3://{DATA_BUCKET}/{eval_prefix}/manifest.jsonl "
+                  f"({len(rows)} rows, FROZEN eval — no curated/ written)")
+            return 0
 
         cli.put_object(Bucket=DATA_BUCKET, Key=f"{cur_prefix}/manifest.jsonl",
                        Body=mpath.read_bytes(), ContentType="application/x-ndjson")
