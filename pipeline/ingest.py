@@ -34,7 +34,14 @@ REGION = "eu-central-1"
 
 def s3_client():
     import boto3
-    return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
+    from botocore.config import Config
+    # Adaptive retries with a high attempt cap: high-throughput uploads to one
+    # prefix hit S3 SlowDown (503); the default 4 retries exhaust and the run
+    # dies mid-upload. Adaptive mode backs off and client-side rate-limits.
+    cfg = Config(retries={"max_attempts": 12, "mode": "adaptive"},
+                 max_pool_connections=32)
+    return boto3.Session(profile_name=PROFILE,
+                         region_name=REGION).client("s3", config=cfg)
 
 
 def prefix_exists(cli, prefix: str) -> bool:
@@ -145,7 +152,7 @@ def assign_splits(rows: list[dict], test_frac: float = 0.15) -> None:
     print(f"  split by SPEAKER: {len(speakers) - len(held)} train / {len(held)} test")
 
 
-def upload_all(cli, items: list[dict], workers: int = 16) -> None:
+def upload_all(cli, items: list[dict], workers: int = 8) -> None:
     def put(it):
         rec = it["record"]
         raw_key = rec["raw_filepath"].split(f"{DATA_BUCKET}/", 1)[1]
