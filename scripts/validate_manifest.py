@@ -104,7 +104,7 @@ def registry_languages(path: Path | None) -> set[str] | None:
     import yaml
     codes = {"mixed"}
     for f in path.glob("*.yaml"):
-        d = yaml.safe_load(f.read_text()) or {}
+        d = yaml.safe_load(f.read_text(encoding="utf-8", errors="replace")) or {}
         for k in ("alias", "iso_code"):
             if d.get(k):
                 codes.add(str(d[k]))
