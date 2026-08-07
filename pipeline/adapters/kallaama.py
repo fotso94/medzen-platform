@@ -86,10 +86,29 @@ class KallaamaAdapter:
         spill = pathlib.Path(sd.name)
         self._spill_dir = sd
         tsv = self._segments_tsv()
-        produced = 0
+
+        # Group segments by source recording. Kallaama recordings are long radio
+        # files (20+ min), so each is read from disk ONCE and all its segments are
+        # cut from the in-memory array — never re-read per segment.
+        by_wav: dict[str, list[dict]] = {}
         with tsv.open() as fh:
-            reader = csv.DictReader(fh, delimiter="\t")
-            for r in reader:
+            for r in csv.DictReader(fh, delimiter="\t"):
+                by_wav.setdefault(r["wav_path"], []).append(r)
+
+        produced = 0
+        for wav_path in sorted(by_wav):
+            if limit and produced >= limit:
+                return
+            wav_src = pathlib.Path(wav_path)
+            if not wav_src.is_absolute():
+                wav_src = tsv.parent / wav_src
+            try:
+                full, sr = sf.read(str(wav_src), dtype="float32", always_2d=False)
+            except Exception:
+                continue
+            if getattr(full, "ndim", 1) > 1:
+                full = full.mean(axis=1)
+            for r in by_wav[wav_path]:
                 if limit and produced >= limit:
                     return
                 text = (r.get("text") or "").strip()
@@ -97,24 +116,8 @@ class KallaamaAdapter:
                     start, end = float(r["start_s"]), float(r["end_s"])
                 except (KeyError, ValueError):
                     continue
-                dur = end - start
-                if not (MIN_S <= dur <= MAX_S) or len(text) <= 3:
+                if not (MIN_S <= (end - start) <= MAX_S) or len(text) <= 3:
                     continue
-                wav_src = pathlib.Path(r["wav_path"])
-                if not wav_src.is_absolute():
-                    wav_src = tsv.parent / wav_src
-                try:
-                    arr, sr = sf.read(str(wav_src), dtype="float32",
-                                      start=int(start * 1), always_2d=False)
-                except Exception:
-                    continue
-                # segment by sample offsets read from the full file
-                try:
-                    full, sr = sf.read(str(wav_src), dtype="float32", always_2d=False)
-                except Exception:
-                    continue
-                if getattr(full, "ndim", 1) > 1:
-                    full = full.mean(axis=1)
                 seg = full[int(start * sr):int(end * sr)]
                 if sr != TARGET_SR:
                     seg = librosa.resample(seg, orig_sr=sr, target_sr=TARGET_SR)

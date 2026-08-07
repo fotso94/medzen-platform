@@ -27,13 +27,17 @@ from typing import Iterator
 from . import green_common as gc
 from .base import TARGET_SR, SourceSpec, build_record, usable
 
-REPO = "mozilla-foundation/common_voice_17_0"
-REVISION = "11dc88355e899d1bf2df74f01b904a8544a17b33"   # pinned 2026-08-05
+# The official mozilla-foundation/common_voice_17_0 HF repo is now EMPTY (data
+# removed). fsicoli/common_voice_17_0 is a CC0 community mirror carrying the same
+# CV 17.0 audio+transcripts (tar+tsv, loaded via its script). Verified 2026-08-06.
+REPO = "fsicoli/common_voice_17_0"
+REVISION = "8262c16bf297c87a9cd88c51997c4758ed7a8ba2"   # pinned 2026-08-06
 LICENSE_POLICY = "cc0"                      # CC0 -> permissive
 
-# language -> CV locale code (in-scope, present in 17.0)
+# language -> CV locale code (present in this mirror; amharic absent here and
+# already covered by WAXAL with ~190 h, so it is not sourced from CV)
 CODES = {"swahili": "sw", "hausa": "ha", "yoruba": "yo",
-         "igbo": "ig", "luganda": "lg", "amharic": "am"}
+         "igbo": "ig", "luganda": "lg"}
 SPLITS = ("train", "validation")
 
 
