@@ -40,8 +40,12 @@ def s3_client():
     # dies mid-upload. Adaptive mode backs off and client-side rate-limits.
     cfg = Config(retries={"max_attempts": 12, "mode": "adaptive"},
                  max_pool_connections=32)
-    return boto3.Session(profile_name=PROFILE,
-                         region_name=REGION).client("s3", config=cfg)
+    # MEDZEN_PROFILE="" (e.g. on an EC2 instance role) -> default credential
+    # chain; otherwise the named profile (local dev default: "medzen").
+    prof = os.environ.get("MEDZEN_PROFILE", PROFILE)
+    sess = (boto3.Session(profile_name=prof, region_name=REGION) if prof
+            else boto3.Session(region_name=REGION))
+    return sess.client("s3", config=cfg)
 
 
 def prefix_exists(cli, prefix: str) -> bool:
