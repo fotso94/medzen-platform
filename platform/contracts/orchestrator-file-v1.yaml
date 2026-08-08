@@ -1,0 +1,78 @@
+contract_id: MEDZEN-ORCHESTRATOR-FILE-CONTRACT-2026-001
+version: medzen.orchestrator.file.v1
+status: b6_3_local_file_mode_contract
+parent_contract:
+  id: MEDZEN-SPEECH-CONTRACT-2026-001
+  version: medzen.speech.v1
+  sha256: e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d
+compatibility:
+  parent_contract_is_unchanged: true
+  reply_citations_are_an_additive_response_extension: true
+
+scope:
+  service: speech-orchestrator
+  mode: local_file_only
+  audio: generated_non_speech_fixture_only
+  content: synthetic_non_clinical_only
+  aws_access: prohibited
+  network_providers: prohibited
+  streaming: deferred_to_b6_4
+  audio_reply: deferred_to_b6_5
+
+endpoint:
+  method: POST
+  path: /v1/conversations/speech
+  authentication: opaque_bearer_token_against_hash_only_local_fixture
+  contract_header: {name: X-MedZen-Contract-Version, value: medzen.speech.v1}
+  request:
+    content_type: multipart/form-data
+    content_length: required_and_bounded_for_b6_3_local_file_mode
+    maximum_audio_bytes: 26214400
+    required: [audio]
+    optional: [request_id, language_hint, response_audio]
+    audio_media_types: [audio/wav, audio/x-wav]
+  response:
+    required: [request_id, session_id, language, transcript, reply, model_versions, latency_ms]
+    reply_required: [text, citations, citation_binding_sha256, audio_url, tts_backend]
+    tts_backend: text_only
+    audio_url: null
+    model_versions_required: [asr, registry_snapshot, llm, rag, tts]
+
+registry:
+  adapter_operations: [get_parameter, get_parameters_by_path]
+  local_fixture_shape: AWS_SSM_Parameter_Name_Type_Value_Version
+  root: /medzen/registry/test/b6/<snapshot-sha256>
+  parameters: [_manifest, index, routes/<language-alias>]
+  values: canonical_json_inside_kms_intended_SecureString
+  future_swap: B6.5A replaces only the parameter-store adapter
+  fail_closed_on:
+    - missing_manifest_index_or_route
+    - malformed_or_noncanonical_value
+    - missing_or_unexpected_parameter
+    - parameter_value_hash_mismatch
+    - snapshot_content_hash_mismatch
+    - ambiguous_language_code
+    - unsafe_backend_or_model_route
+
+flow:
+  - authenticate_before_reading_the_multipart_body
+  - validate_contract_and_assign_request_identity
+  - resolve_checksum_bound_registry_route
+  - local_synthetic_asr
+  - mandatory_emergency_check_before_rag_or_llm
+  - deterministic_local_rag_with_citations
+  - local_fake_llm_with_exact_citation_binding
+  - assemble_text_only_reply_with_every_model_version
+
+logging:
+  allowed: [request_id, hashed_session_id, event_type, language, model_versions, latency_ms, status_code, error_code]
+  forbidden: [authorization, client_key, audio, audio_bytes, multipart_body, transcript, reply_text, citation_excerpt, person_name, patient_id]
+
+errors:
+  AUTH_REQUIRED: {status: 401, retryable: false}
+  AUTH_INVALID: {status: 403, retryable: false}
+  CONTRACT_VERSION_UNSUPPORTED: {status: 426, retryable: false}
+  INVALID_REQUEST: {status: [400, 415, 422], retryable: false}
+  PAYLOAD_TOO_LARGE: {status: 413, retryable: false}
+  UNSUPPORTED_AUDIO_TYPE: {status: 415, retryable: false}
+  DEPENDENCY_UNAVAILABLE: {status: 503, retryable: true}

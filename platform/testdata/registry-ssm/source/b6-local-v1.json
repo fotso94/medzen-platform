@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "classification": "B6_3_LOCAL_SYNTHETIC_ONLY",
+  "index": {
+    "schema_version": 1,
+    "default_language": "english",
+    "languages": [
+      {
+        "alias": "english",
+        "codes": ["en", "eng"],
+        "route_parameter": "routes/english"
+      }
+    ]
+  },
+  "routes": {
+    "english": {
+      "schema_version": 1,
+      "classification": "B6_3_LOCAL_SYNTHETIC_ONLY",
+      "language": {
+        "alias": "english",
+        "response_code": "en",
+        "accepted_codes": ["en", "eng"]
+      },
+      "contract_version": "medzen.speech.v1",
+      "asr": {
+        "backend": "local_synthetic_fixture",
+        "model_version": "v0-local-synthetic-asr",
+        "fixture_sha256": "$B6_ORCHESTRATOR_AUDIO_SHA256"
+      },
+      "rag": {
+        "alias": "current",
+        "snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+        "query_language": "en"
+      },
+      "llm": {
+        "model_version": "fake-bedrock-local-v1",
+        "policy_id": "english-medzen-v1"
+      },
+      "tts": {
+        "backend": "text_only",
+        "model_version": null
+      }
+    }
+  }
+}

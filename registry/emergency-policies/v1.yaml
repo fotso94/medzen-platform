@@ -1,0 +1,14 @@
+version: medzen.emergency.policy.v1
+classification: B6_3_LOCAL_SYNTHETIC_ONLY
+policy_id: synthetic-emergency-check-v1
+matching:
+  mode: normalized_exact_phrase
+  normalized_exact_phrases:
+    - synthetic emergency control test
+response:
+  text: Synthetic emergency control activated. Contact local emergency services now.
+  tts_backend: text_only
+rules:
+  - runs_after_asr_and_before_rag_or_llm
+  - cannot_be_shed_or_bypassed
+  - local_synthetic_test_only_not_a_clinical_policy

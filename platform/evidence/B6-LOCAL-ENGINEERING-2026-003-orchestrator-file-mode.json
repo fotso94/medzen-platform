@@ -1,0 +1,118 @@
+{
+  "record": "B6_3_ORCHESTRATOR_LOCAL_FILE_MODE_EXIT",
+  "id": "B6-LOCAL-ENGINEERING-2026-003",
+  "revision": 1,
+  "status": "VERIFIED_LOCAL_COMPLETE",
+  "recorded_utc": "2026-08-08T23:38:36Z",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "995ae92cea8fc5377a2b749fed86ec545af18cae",
+    "pull_request_5_state": "MERGED"
+  },
+  "authorization": {
+    "id": "B6-ORCHESTRATOR-2026-001",
+    "path": "platform/decisions/B6-ORCHESTRATOR-2026-001-local-file-mode.json",
+    "sha256": "aec098d03ae720ab038cbeb436bcb859f7f2b6e67ccc1eb68e458db659c32907",
+    "scope": "LOCAL_ONLY"
+  },
+  "outcome": {
+    "b6_stage": "B6.3",
+    "exit": "LOCAL_FILE_MODE_COMPLETE_PENDING_INDEPENDENT_PR_REVIEW",
+    "synthetic_file_request": "PASS",
+    "authentication": "PASS",
+    "request_and_session_identity": "PASS",
+    "registry_routing": "PASS_CONTENT_ADDRESSED_LOCAL_SSM_SHAPE",
+    "pre_llm_emergency_check": "PASS",
+    "asr_to_rag_to_llm_flow": "PASS_LOCAL_SYNTHETIC",
+    "cited_reply": "PASS_THREE_BOUND_CITATIONS",
+    "tts_backend": "text_only",
+    "complete_model_and_registry_versions": "PASS",
+    "request_body_logged": false,
+    "audio_transcript_reply_or_citation_content_logged": false
+  },
+  "registry": {
+    "root": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "snapshot_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "parameter_count": 3,
+    "parameter_type": "SecureString",
+    "parameter_fields": ["Name", "Type", "Value", "Version"],
+    "operations": ["get_parameter", "get_parameters_by_path"],
+    "future_b6_5a_swap": "Replace the local parameter-store adapter with SSM; keep the same root, canonical values and RegistryRouter validation.",
+    "production_serving_path_present": false
+  },
+  "model_versions": {
+    "asr": "v0-local-synthetic-asr",
+    "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "llm": "fake-bedrock-local-v1",
+    "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "tts": null
+  },
+  "synthetic_boundaries": {
+    "audio_sha256": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+    "audio_contains_speech": false,
+    "audio_contains_phi": false,
+    "asr_is_real_model_inference": false,
+    "rag_classification": "SYNTHETIC_NON_CLINICAL",
+    "llm_provider": "fake_bedrock",
+    "llm_network_access": false,
+    "emergency_policy_is_clinically_approved": false,
+    "interpretation": "This proves orchestration and refusal behavior, not ASR quality, clinical-answer quality or production readiness."
+  },
+  "source_bindings": {
+    "platform/contracts/speech-v1.yaml": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "platform/contracts/orchestrator-file-v1.yaml": "5d44c360a046c2bd56d9ddc8caa275c133955e3aee9a8a553b9f016f4f70a65d",
+    "platform/contracts/schemas/orchestrator-file-v1/response.schema.json": "c14c4df63fcf140f0d458198ad84a7c521014cac8af35b4400278e1dd8f7df04",
+    "platform/contracts/fixtures/orchestrator-file-v1/request.json": "2cd60d74c1891e92d44ea91e49adc63b500734e688d5520444273bbf35b7a43b",
+    "platform/contracts/fixtures/orchestrator-file-v1/response.json": "01901ff74bafa574c793129c0c44fd44cb4fe98c9323fb52aa0e6377d90858a6",
+    "platform/testdata/registry-ssm/source/b6-local-v1.json": "a853365107b6e16e270ee75f9e830b99a1f848861321ee3cf69cfe59ddaf0f86",
+    "platform/testdata/registry-ssm/b6-local-v1.json": "31f3db63c2955b445d02f4a00cace3cdf9e8e49da797478716a3a2945db59b8a",
+    "platform/testdata/orchestrator/synthetic-file-request.wav": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+    "platform/testdata/orchestrator/asr-fixture.json": "78e6f3f5f3f276664d5a0b5ad959c94d31fae4ff7107209f78039fafbaec4336",
+    "platform/testdata/orchestrator/client-keys.json": "680563931eb86c3a31f084e946605d02c7f776f8489c3a47caefae64b8d2ba3e",
+    "registry/emergency-policies/v1.yaml": "c63d610c9d064b9aa6ec904ca8ab3471c754bf94e7246536888c41ea78a1f993",
+    "services/speech-orchestrator/medzen_speech_orchestrator/app.py": "a7e68feab4878917860255c547c727113c2a6adbb8abbc40620c66dbc1461e5c",
+    "services/speech-orchestrator/medzen_speech_orchestrator/auth.py": "05a7d9bed0edbd1e97f3dc08c6186b45f18c09d8dd6d189922b4c537d4e0dee8",
+    "services/speech-orchestrator/medzen_speech_orchestrator/emergency.py": "a049ffa4c9866da5446bb98d41e6f2e01b5260e888073d0fa66a2d5f75321ccf",
+    "services/speech-orchestrator/medzen_speech_orchestrator/local_dependencies.py": "fbc59c1d3263a9f96dffc54041e07bb3df8c729dacf5a843e7b533e57b5d317b",
+    "services/speech-orchestrator/medzen_speech_orchestrator/orchestrator.py": "2e8ca3075a3c3ebb66c58335efd220a34cfdb2451450679e9a5856d7e6f5bd43",
+    "services/speech-orchestrator/medzen_speech_orchestrator/registry.py": "ce122ccf545302791e41415f70ef47da993a9a2cc6bcc1002af30219b77f8fc0",
+    "services/speech-orchestrator/README.md": "7fe3ec4f7fa2c6e0c034aa5d683a17ca98649c66c5c9cf56fd2a1e37cc29adc9",
+    "scripts/generate_b6_orchestrator_fixtures.py": "943c5ef0f67426fbb3ad28124804068c0899c47237f0557383c8a106e4e46b92",
+    "tests/test_orchestrator_registry.py": "15a927d9ed4fc08f0fba0b76652b67a7a239b6dd1f5c7cb86b717e921197ce95",
+    "tests/test_speech_orchestrator.py": "2875eec6d7897a6d16142f9151535a83f99ad8ce0c5b689580bafd15e6d43cee",
+    "tests/test_b6_orchestrator_local_evidence.py": "37540387482ba3f6f7dc106dc1cdbe9c1a026650d541e9c2738871a95fe8ad81"
+  },
+  "validation": {
+    "focused_tests": {"passed": 24, "failed": 0, "skipped": 0, "deselected": 0},
+    "canonical_pytest": {"passed": 1161, "failed": 0, "skipped": 0, "deselected": 7, "warnings": 1},
+    "warning_interpretation": "Existing FastAPI TestClient dependency deprecation; no test failure.",
+    "python_compileall": "PASS",
+    "fixture_generation_check": "PASS",
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "generated_platform_files": "CURRENT_13_FILES",
+    "generated_language_files": "CURRENT_27_FILES",
+    "architecture_validation": "PASS_8_COMPONENTS_WITH_4_PREEXISTING_ORPHAN_POLICY_WARNINGS",
+    "git_diff_check": "PASS"
+  },
+  "aws_and_governance": {
+    "aws_calls": 0,
+    "aws_packets_authorized": 0,
+    "new_aws_resources": 0,
+    "iam_changes": 0,
+    "ssm_writes": 0,
+    "ecr_pushes": 0,
+    "kubernetes_actions": 0,
+    "cpu_or_gpu_scale_up": 0,
+    "real_bedrock_calls": 0,
+    "approved_artifact_writes": 0,
+    "production_serving_changes": 0
+  },
+  "remaining_boundaries": [
+    "Independent review and merge of the B6.3 pull request are required before B6.4.",
+    "B6.4 adds streaming, VAD, bounded queues, cancellation and backpressure; none are claimed here.",
+    "B6.5 builds the separate TTS gateway; this exit proves only the successful text-only fallback.",
+    "B6.5A requires a separate AWS packet before publishing the identical snapshot to SSM.",
+    "Real ASR, deployed service clients, EKS integration and failure drills remain later B6 work."
+  ]
+}
