@@ -1,0 +1,45 @@
+# Green-bucket ingest results — realized hours (authoritative, from S3 manifests)
+# Campaign green-bucket-aggregation-2026-08. Final tally 2026-08-07.
+# Prior entire corpus was 22.89 h.
+#
+# Version isolation: training -> curated/{lang}/asr/{config}/gb1/, eval ->
+# eval/{lang}/asr/fleurs-v1/. B4's v1 data is untouched.
+
+summary:
+  training_hours: 952.82
+  eval_hours: 44.15
+  grand_total_hours: 997.0
+  multiple_of_prior_corpus: 44
+  training_clips: 232256
+  training_languages: 11
+  eval_languages: 13
+
+training:            # curated/{lang}/asr/{config}/gb1/
+  amharic:  {clips: 38002, hours: 189.54, source: waxal,        tier: sharealike}
+  oromo:    {clips: 38136, hours: 189.48, source: waxal,        tier: sharealike}
+  fula:     {clips: 29029, hours: 147.08, source: waxal+meta,   tier: mixed}
+  swahili:  {clips: 58744, hours:  88.96, source: common_voice, tier: permissive}   # fsicoli CC0 mirror, via EC2
+  ewe:      {clips: 15048, hours:  79.40, source: waxal,        tier: permissive}
+  shona:    {clips: 13653, hours:  75.68, source: waxal,        tier: sharealike}
+  lingala:  {clips: 13966, hours:  68.00, source: waxal,        tier: sharealike}
+  akan:     {clips: 10790, hours:  59.98, source: waxal+meta,   tier: permissive}
+  luganda:  {clips:  4242, hours:  24.83, source: waxal,        tier: sharealike}
+  acholi:   {clips:  3506, hours:  19.75, source: waxal,        tier: sharealike}
+  wolof:    {clips:  7140, hours:  10.12, source: kallaama,     tier: permissive}
+
+eval:                # eval/{lang}/asr/fleurs-v1/ (13 langs, ~12 h each nominal)
+  total_hours: 44.15
+  languages: [swahili, hausa, yoruba, amharic, oromo, igbo, lingala, shona,
+              wolof, fula, luganda, english, french]
+
+# Not obtained this campaign:
+gaps:
+  common_voice_stub: [igbo, yoruba, hausa]   # fsicoli mirror carries only ~9 clips
+                                             # each for these; official Mozilla HF
+                                             # repo is empty. Need a real CV source
+                                             # or own collection.
+notes:
+  - "swahili ingested on a temporary EC2 c6i.xlarge (in-region, correct clock,
+     spill on disk not tmpfs); all cv-ingest AWS resources torn down after."
+  - "Kallaama fula dropped (marginal; WAXAL+Meta already give 147 h of fula)."
+  - "Cameroon Pidgin still deferred (Mozilla Data Collective signup failing)."

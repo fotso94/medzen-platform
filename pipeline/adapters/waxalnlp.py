@@ -23,8 +23,11 @@ from typing import Iterator
 from .base import TARGET_SR, SourceSpec, build_record, usable
 
 REPO = "google/WaxalNLP"
-# Pinned 2026-07-29. Bump deliberately, never automatically.
-REVISION = "e0a62aaebc61bd5bb8cac17a08d1b42c65551dd2"
+# Re-pinned 2026-08-06: HF garbage-collected the prior commit
+# e0a62aaebc61bd5bb8cac17a08d1b42c65551dd2 (RevisionNotFound). Repo structure
+# unchanged; shard layout verified identical at this sha. B4's v1 data was
+# ingested under the old sha and is untouched; green-bucket gb1 uses this one.
+REVISION = "e91442a8989b291485cb6f8a56c0a8743d36036a"
 
 PROVIDER_LICENCE = {
     "makerere": "sharealike_review",

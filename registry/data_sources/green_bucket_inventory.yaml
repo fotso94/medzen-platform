@@ -1,0 +1,231 @@
+# Green-bucket data-aggregation — license & access inventory
+# ---------------------------------------------------------------------------
+# Campaign: green-bucket-aggregation-2026-08
+# Purpose : expand ASR training/eval data for the MedZen African-language voice
+#           project beyond the current ~22.89 h, using only commercially-clean
+#           and owner-approved sources. This file is the SINGLE SOURCE OF TRUTH
+#           for what may be aggregated, under which licence, and into which tier.
+#
+# Verified this session (2026-08-05) against the live Hugging Face APIs using
+# account `fotso92`. Fields marked  verified: true  were confirmed against the
+# dataset itself; fields marked  verified: at_fetch  are documented values that
+# will be re-confirmed from the pinned artefact before bulk ingest (no guessing).
+#
+# TIERS  (drives physical/metadata isolation — see rule block at the bottom)
+#   permissive  : CC0 / CC-BY-4.0 / Apache-2.0. Commercial use OK, attribution only.
+#   sharealike  : CC-BY-SA-4.0. Commercial use permitted per OWNER LEGAL REVIEW
+#                 (approved 2026-08-05, recorded outside this repo). ShareAlike
+#                 obligations still apply to any redistributed derivative, so
+#                 this tier is stored and manifested SEPARATELY from permissive.
+#   eval_only   : evaluation/benchmark use only. NEVER placed in a training
+#                 manifest, regardless of licence (either NC-licensed, or a
+#                 clean set we deliberately reserve as a frozen test set).
+# ---------------------------------------------------------------------------
+
+meta:
+  campaign: green-bucket-aggregation-2026-08
+  prepared_by: data-engineering
+  hf_account: fotso92
+  verified_utc: "2026-08-05"
+  scope_note: >-
+    Cameroon Pidgin (Kamtok) is deliberately DEFERRED this phase: the only
+    current source (Common Voice 25.0) lives on the Mozilla Data Collective,
+    whose signup is failing server-side. Tracked as a later add-on.
+  isolation:
+    permissive_prefix: "curated/{lang}/{task}/{config}/{version}/   (tier=permissive)"
+    sharealike_prefix: "curated/{lang}/{task}/{config}/{version}/   (tier=sharealike)"
+    eval_prefix:       "eval/{lang}/{task}/{version}/               (IAM write-denied to trainers)"
+    principle: >-
+      Each config maps 1:1 to exactly one provider and therefore one tier, so a
+      manifest is inherently single-tier. Every row additionally carries a
+      `license_tier` field. A training-manifest builder MUST select by tier and
+      MUST NOT merge tiers into one manifest. eval_only never enters training.
+
+# ===========================================================================
+sources:
+
+  # -------------------------------------------------------------------------
+  meta_omnilingual:
+    repo: facebook/omnilingual-asr-corpus
+    kind: hf_dataset_parquet
+    revision: pin_at_fetch            # capture exact commit sha before ingest
+    license: cc-by-4.0
+    tier: permissive
+    commercial: true
+    attribution: "Meta Omnilingual ASR Corpus — CC-BY-4.0 (Meta AI, 2025)"
+    access:
+      hf_login: true
+      gated: false
+      license_accepted: true          # confirmed open for fotso92 this session
+      token_required: true
+      user_action: none               # already accessible
+    purpose: train
+    notes: >-
+      Underserved-language corpus (348 languages); it intentionally OMITS the
+      higher-resource languages, so it only overlaps our scope on Akan and Fula.
+      Those two are clean CC-BY-4.0 additions. Fula appears as several Fulfulde
+      varieties; fuh/fuv/fui are geographically closest to northern Cameroon.
+    languages:
+      akan:
+        configs: [fat_Latn]
+        clips: 1197
+        hours_est: "1-3"
+        verified: true
+      fula:
+        configs: [fuf_Latn, fuh_Latn, fuv_Latn, fui_Latn, fuc_Latn, fuq_Latn, fue_Latn]
+        clips: ~12000
+        hours_est: "15-25"
+        verified: true
+        note: "Fulfulde macrolanguage varieties; select all, tag dialect by code."
+
+  # -------------------------------------------------------------------------
+  # WAXAL is ONE repo whose licence varies BY PROVIDER, so per-config tiering
+  # is explicit here. An adapter already exists (pipeline/adapters/waxalnlp.py);
+  # this campaign only ADDS it to the inventory and uses its ASR configs.
+  waxalnlp:
+    repo: google/WaxalNLP
+    kind: hf_dataset_parquet
+    revision: e0a62aaebc61bd5bb8cac17a08d1b42c65551dd2   # pinned in adapter
+    license: [cc-by-4.0, cc-by-sa-4.0]   # per provider — see per-language tier
+    commercial: true
+    attribution: "WAXAL / WaxalNLP (Google Research + partners). Per-provider CC-BY-4.0 or CC-BY-SA-4.0."
+    access:
+      hf_login: true
+      gated: false
+      license_accepted: true
+      token_required: true
+      user_action: none
+    purpose: train
+    hours_note: >-
+      The HF datasets-server cannot index WAXAL (load-script dataset), so per-
+      config hours are 'at_fetch': read from the Parquet footers at ingest start,
+      before bulk download. Documented aggregate ~1,250 h ASR across 19 langs.
+    languages:
+      akan:    {config: aka_asr, provider: university_ghana, tier: permissive, hours_est: at_fetch, verified: config_only}
+      ewe:     {config: ewe_asr, provider: university_ghana, tier: permissive, hours_est: at_fetch, verified: config_only}
+      acholi:  {config: ach_asr, provider: makerere,          tier: sharealike, hours_est: at_fetch, verified: config_only}
+      luganda: {config: lug_asr, provider: makerere,          tier: sharealike, hours_est: at_fetch, verified: config_only}
+      fula:    {config: ful_asr, provider: digital_umuganda,  tier: sharealike, hours_est: at_fetch, verified: config_only}
+      lingala: {config: lin_asr, provider: digital_umuganda,  tier: sharealike, hours_est: at_fetch, verified: config_only}
+      amharic: {config: amh_asr, provider: digital_umuganda,  tier: sharealike, hours_est: at_fetch, verified: config_only}
+      oromo:   {config: orm_asr, provider: digital_umuganda,  tier: sharealike, hours_est: at_fetch, verified: config_only}
+      shona:   {config: sna_asr, provider: digital_umuganda,  tier: sharealike, hours_est: at_fetch, verified: config_only}
+
+  # -------------------------------------------------------------------------
+  kallaama:
+    repo: "OpenSLR 151 / Zenodo 10892569 (GitHub gauthelo/kallaama-speech-dataset)"
+    url: https://www.openslr.org/151/
+    kind: archive_download            # NOT on Hugging Face
+    revision: zenodo_10892569
+    license: cc-by-4.0
+    tier: permissive
+    commercial: true
+    attribution: "Kallaama (Lacuna Fund). Gauthier et al., 2024. CC-BY-4.0."
+    access:
+      hf_login: false
+      gated: false
+      license_accepted: n_a
+      token_required: false
+      user_action: none               # direct download, no account
+    purpose: train
+    domain: agriculture
+    notes: >-
+      Wolof + Pulaar(Fula) + Sereer, spontaneous agricultural radio speech.
+      Internal archive layout confirmed at fetch. Documented ~40-125 h total.
+    languages:
+      wolof: {code: wol, tier: permissive, hours_est: at_fetch, verified: at_fetch}
+      fula:  {code: fuf, tier: permissive, hours_est: at_fetch, verified: at_fetch, dialect: pulaar}
+
+  # -------------------------------------------------------------------------
+  fleurs:
+    repo: google/fleurs
+    kind: hf_dataset_parquet
+    revision: pin_at_fetch
+    license: cc-by-4.0
+    tier: eval_only                   # reserved as frozen evaluation, not training
+    commercial: true
+    attribution: "FLEURS (Google, 2022). CC-BY-4.0."
+    access:
+      hf_login: true
+      gated: false
+      license_accepted: n_a
+      token_required: true
+      user_action: none
+    purpose: eval
+    notes: >-
+      ~12 h per language, read speech. Used ONLY as a frozen benchmark so every
+      language has a clean held-out eval independent of its training data.
+      13 in-scope languages confirmed present this session.
+    languages:
+      swahili: {config: sw_ke, hours_est: "~12", verified: true}
+      hausa:   {config: ha_ng, hours_est: "~12", verified: true}
+      yoruba:  {config: yo_ng, hours_est: "~12", verified: true}
+      amharic: {config: am_et, hours_est: "~12", verified: true}
+      oromo:   {config: om_et, hours_est: "~12", verified: true}
+      igbo:    {config: ig_ng, hours_est: "~12", verified: true}
+      lingala: {config: ln_cd, hours_est: "~12", verified: true}
+      shona:   {config: sn_zw, hours_est: "~12", verified: true}
+      wolof:   {config: wo_sn, hours_est: "~12", verified: true}
+      fula:    {config: ff_sn, hours_est: "~12", verified: true}
+      luganda: {config: lg_ug, hours_est: "~12", verified: true}
+      english: {config: en_us, hours_est: "~12", verified: true}
+      french:  {config: fr_fr, hours_est: "~12", verified: true}
+    absent_in_scope: [akan, ewe, acholi, pidgin]
+
+  # -------------------------------------------------------------------------
+  common_voice:
+    repo: mozilla-foundation/common_voice_17_0   # HF, NOT gated (verified)
+    kind: hf_dataset_parquet
+    revision: pin_at_fetch
+    license: cc0-1.0
+    tier: permissive
+    commercial: true
+    attribution: "Mozilla Common Voice — CC0."
+    access:
+      hf_login: true
+      gated: false                    # verified: 13_0 and 17_0 are open
+      license_accepted: n_a
+      token_required: true
+      user_action: none
+    purpose: train
+    notes: >-
+      HF snapshot 17_0 (2024). Covers the mainstream languages below. Does NOT
+      contain Cameroon Pidgin (added in CV 25.0, Data Collective only). Per-
+      language validated hours confirmed at fetch from the config metadata.
+    languages:
+      swahili: {code: sw, hours_est: at_fetch, verified: at_fetch}
+      hausa:   {code: ha, hours_est: at_fetch, verified: at_fetch}
+      yoruba:  {code: yo, hours_est: at_fetch, verified: at_fetch}
+      igbo:    {code: ig, hours_est: at_fetch, verified: at_fetch}
+      luganda: {code: lg, hours_est: at_fetch, verified: at_fetch}
+      amharic: {code: am, hours_est: at_fetch, verified: at_fetch}
+
+  # -------------------------------------------------------------------------
+  afrispeech_200:
+    repo: intronhealth/afrispeech-200
+    kind: hf_dataset_parquet
+    revision: pin_at_fetch
+    license: cc-by-nc-sa-4.0
+    tier: eval_only                   # NON-COMMERCIAL — test set only, never train
+    commercial: false
+    attribution: "AfriSpeech-200 (Intron Health). CC-BY-NC-SA-4.0."
+    access:
+      hf_login: true
+      gated: at_fetch
+      license_accepted: at_fetch
+      token_required: true
+      user_action: possible_license_accept
+    purpose: eval
+    notes: >-
+      Pan-African ACCENTED ENGLISH, clinical + general domain. Retained strictly
+      as a frozen clinical-ASR benchmark for the medical use case. Its NC licence
+      forbids training a commercial model — eval only, enforced by tier.
+
+# ===========================================================================
+# DEFERRED (not aggregated this phase)
+deferred:
+  cameroon_pidgin:
+    reason: "Only source is Common Voice 25.0 on Mozilla Data Collective; signup failing server-side."
+    hours_known: "~10.77 (CV 25.0)"
+    alt_source: "Sheffield/Sussex spoken Kamtok corpus (~240k words) — academic licence, verify before use."
+    action_owner: user

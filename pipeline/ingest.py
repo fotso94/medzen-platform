@@ -34,7 +34,18 @@ REGION = "eu-central-1"
 
 def s3_client():
     import boto3
-    return boto3.Session(profile_name=PROFILE, region_name=REGION).client("s3")
+    from botocore.config import Config
+    # Adaptive retries with a high attempt cap: high-throughput uploads to one
+    # prefix hit S3 SlowDown (503); the default 4 retries exhaust and the run
+    # dies mid-upload. Adaptive mode backs off and client-side rate-limits.
+    cfg = Config(retries={"max_attempts": 12, "mode": "adaptive"},
+                 max_pool_connections=32)
+    # MEDZEN_PROFILE="" (e.g. on an EC2 instance role) -> default credential
+    # chain; otherwise the named profile (local dev default: "medzen").
+    prof = os.environ.get("MEDZEN_PROFILE", PROFILE)
+    sess = (boto3.Session(profile_name=prof, region_name=REGION) if prof
+            else boto3.Session(region_name=REGION))
+    return sess.client("s3", config=cfg)
 
 
 def prefix_exists(cli, prefix: str) -> bool:
@@ -47,6 +58,19 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "waxalnlp":
         from .adapters.waxalnlp import WaxalNLPAdapter
         return WaxalNLPAdapter(language, task=task, version=version)
+    # green-bucket-aggregation-2026-08 sources (see registry/data_sources/)
+    if source == "meta_omnilingual":
+        from .adapters.meta_omnilingual import MetaOmnilingualAdapter
+        return MetaOmnilingualAdapter(language, task=task, version=version)
+    if source == "fleurs":
+        from .adapters.fleurs import FleursAdapter
+        return FleursAdapter(language, task=task, version=version)
+    if source == "common_voice":
+        from .adapters.common_voice import CommonVoiceAdapter
+        return CommonVoiceAdapter(language, task=task, version=version)
+    if source == "kallaama":
+        from .adapters.kallaama import KallaamaAdapter
+        return KallaamaAdapter(language, task=task, version=version)
     raise SystemExit(f"unknown source '{source}'")
 
 
@@ -132,7 +156,7 @@ def assign_splits(rows: list[dict], test_frac: float = 0.15) -> None:
     print(f"  split by SPEAKER: {len(speakers) - len(held)} train / {len(held)} test")
 
 
-def upload_all(cli, items: list[dict], workers: int = 16) -> None:
+def upload_all(cli, items: list[dict], workers: int = 8) -> None:
     def put(it):
         rec = it["record"]
         raw_key = rec["raw_filepath"].split(f"{DATA_BUCKET}/", 1)[1]
@@ -163,6 +187,11 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force-eval", action="store_true",
                     help="allow replacing an existing frozen eval version")
+    ap.add_argument("--no-eval-split", action="store_true",
+                    help="all rows -> curated/ (train); carve no eval split. Use "
+                         "when eval is supplied by a separate source (e.g. FLEURS), "
+                         "so multiple training sources per language do not collide "
+                         "on the shared eval/ prefix.")
     a = ap.parse_args()
 
     adapter = build_adapter(a.source, a.language, a.task, a.version)
@@ -179,7 +208,8 @@ def main() -> int:
     # ---- eval immutability guard ------------------------------------------
     # An eval set is a measurement instrument. Silently replacing one makes
     # every previously reported number incomparable and unreproducible.
-    if cli and not a.force_eval and prefix_exists(cli, eval_prefix + "/"):
+    if (cli and not a.no_eval_split and not a.force_eval
+            and prefix_exists(cli, eval_prefix + "/")):
         print(f"\nREFUSING: s3://{DATA_BUCKET}/{eval_prefix}/ already exists.")
         print("An eval version is frozen once written. Use a new --version, or")
         print("--force-eval only if you accept invalidating prior results.")
@@ -190,7 +220,21 @@ def main() -> int:
         print("no usable rows produced"); return 1
     rows = [it["record"] for it in items]
     print(f"\nbuilt {len(rows)} records")
-    assign_splits(rows)
+    eval_only = getattr(adapter, "tier", None) == "eval_only"
+    if eval_only:
+        # A whole-source frozen benchmark (e.g. FLEURS): every row is held out,
+        # nothing enters training. No speaker/text split is carved, and only an
+        # eval/ manifest is written (never curated/).
+        for r in rows:
+            r["split"] = "test"
+        print(f"  eval-only source -> all {len(rows)} rows frozen under {eval_prefix}/")
+    elif a.no_eval_split:
+        for r in rows:
+            r["split"] = "train"
+        print(f"  all-train: {len(rows)} rows -> {cur_prefix}/ "
+              f"(no eval split; eval comes from a separate source)")
+    else:
+        assign_splits(rows)
 
     with tempfile.TemporaryDirectory() as td:
         mpath = Path(td) / "manifest.jsonl"
@@ -212,6 +256,14 @@ def main() -> int:
 
         print(f"\nuploading audio...")
         upload_all(cli, items)
+
+        if eval_only:
+            body = ("\n".join(json.dumps(r) for r in rows) + "\n").encode()
+            cli.put_object(Bucket=DATA_BUCKET, Key=f"{eval_prefix}/manifest.jsonl",
+                           Body=body, ContentType="application/x-ndjson")
+            print(f"  wrote s3://{DATA_BUCKET}/{eval_prefix}/manifest.jsonl "
+                  f"({len(rows)} rows, FROZEN eval — no curated/ written)")
+            return 0
 
         cli.put_object(Bucket=DATA_BUCKET, Key=f"{cur_prefix}/manifest.jsonl",
                        Body=mpath.read_bytes(), ContentType="application/x-ndjson")
