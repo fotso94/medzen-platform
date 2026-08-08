@@ -40,8 +40,12 @@ variable "audio_bucket" {
 }
 
 variable "eks_version" {
-  type    = string
-  default = "1.31"
+  type = string
+  # Live upgrade is performed one minor at a time under
+  # B6A-AWS-CHANGE-PACKET-2026-001. This is the intended reconciled end state;
+  # local operations must use scripts/terraform_medzen.sh so backend and
+  # provider calls resolve to the same owner-approved account.
+  default = "1.36"
 }
 
 variable "cpu_instance_type" {
@@ -64,4 +68,17 @@ variable "github_repo" {
   type        = string
   default     = "REPLACE/medzen-platform"
   description = "owner/repo for the GitHub Actions OIDC trust policy"
+}
+
+variable "registry_publisher_principal_arn" {
+  type        = string
+  description = "Exact same-account principal allowed to assume the dedicated registry publisher role."
+
+  validation {
+    condition = can(regex(
+      "^arn:aws:iam::[0-9]{12}:(user|role)/[A-Za-z0-9+=,.@_/-]+$",
+      var.registry_publisher_principal_arn,
+    ))
+    error_message = "registry_publisher_principal_arn must be an exact IAM user or role ARN."
+  }
 }

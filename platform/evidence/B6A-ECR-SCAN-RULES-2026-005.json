@@ -1,0 +1,136 @@
+{
+  "record": "B6A_ECR_SCAN_RULES_AWS_APPLY_EVIDENCE",
+  "id": "B6A-ECR-SCAN-RULES-2026-005",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "completed_utc": "2026-08-05T02:27:36Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-005-ecr-scan-rules.json",
+    "sha256": "d27778ed9b01ed14191f3e049fddf29dce4f9af2e14676a3671cbbc98ea3db4d",
+    "git_commit": "881b56b1730381efdccc6be829770733fcb6abdf"
+  },
+  "change_packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-005-ecr-scan-rules.md",
+    "sha256": "cc0ebbc6fbcb31f1c3ffde114b2d3d3b3182ce11255c89cbbef9dd04160e10ff"
+  },
+  "execution_identity": {
+    "required_profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "pre_apply_verification": {
+    "registry_id": "558069890522",
+    "scan_type": "BASIC",
+    "rules": []
+  },
+  "reviewed_plan": {
+    "path_at_execution": "/private/tmp/medzen-b6a-005-approved.tfplan",
+    "sha256": "80a01b4d4f5ae8a47d4b88851266bf661c3ff8d23e3dd29c4a4cfb05d0293535",
+    "bytes": 41641,
+    "machine_guard": "PASS_EXACT_B6A_PACKET_2026_005",
+    "summary": {
+      "add": 1,
+      "change": 0,
+      "destroy": 0,
+      "replacement": 0
+    },
+    "resource_actions": {
+      "aws_ecr_registry_scanning_configuration.b6a_runtime": "create"
+    },
+    "output_changes": 0,
+    "exact_configuration": {
+      "scan_type": "BASIC",
+      "scan_frequency": "SCAN_ON_PUSH",
+      "repository_filters": [
+        "medzen-asr-runtime",
+        "medzen-model-loader",
+        "medzen-nvidia-dra"
+      ],
+      "filter_type": "WILDCARD",
+      "filter_values_contain_wildcard_characters": false
+    }
+  },
+  "apply_result": {
+    "summary": "Apply complete: Resources: 1 added, 0 changed, 0 destroyed.",
+    "resource": "aws_ecr_registry_scanning_configuration.b6a_runtime",
+    "resource_id": "558069890522",
+    "method": "Applied the exact content-addressed saved plan once after the owner authorization was committed off-device and the exact-resource machine guard passed."
+  },
+  "post_apply_verification": {
+    "live_registry_configuration": {
+      "registry_id": "558069890522",
+      "scan_type": "BASIC",
+      "rules": [
+        {
+          "scan_frequency": "SCAN_ON_PUSH",
+          "repository_filters": [
+            "medzen-asr-runtime",
+            "medzen-model-loader",
+            "medzen-nvidia-dra"
+          ],
+          "filter_type": "WILDCARD"
+        }
+      ]
+    },
+    "residual_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6a-005-residual.tfplan",
+      "sha256": "8ef2c3bf035df3275277468d23eaac09b0206f7c1e6908ac0487b4eb9c7ea427",
+      "bytes": 41870,
+      "machine_guard": "PASS_EXACT_B6A_PACKET_2026_005_RESIDUAL_NO_CHANGES",
+      "result": "NO_CHANGES",
+      "summary": {
+        "add": 0,
+        "change": 0,
+        "destroy": 0
+      }
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    },
+    "packet_003b_role_exists": false,
+    "b6a_artifact_prefix_objects": 0,
+    "registry_parameter_count": 0,
+    "ecr_image_manifest_counts": {
+      "medzen-model-loader": 3,
+      "medzen-asr-runtime": 0,
+      "medzen-nvidia-dra": 0
+    },
+    "model_loader_existing_image_provenance": {
+      "all_three_manifests_predate_this_authorization": true,
+      "pushed_utc": "2026-08-04T23:01:07.889Z",
+      "source_evidence": {
+        "path": "platform/evidence/B6A-PACKET-2026-003A-FAILED-IMAGE-SCAN.json",
+        "sha256": "e7bac17f17eacefdfe418a91041f694764e68b004485712d4abc358836cecb68"
+      }
+    }
+  },
+  "explicit_non_events": {
+    "ecr_repositories_created_updated_or_deleted": 0,
+    "images_pushed_tagged_or_deleted": 0,
+    "image_scans_invoked": 0,
+    "s3_iam_kms_ssm_eks_or_kubernetes_changes": 0,
+    "gpu_instances_started": 0,
+    "artifacts_or_models_published": 0,
+    "security_waivers": 0,
+    "deployments": 0
+  },
+  "budget": {
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "compute_started": false,
+    "aggregate_ceiling_usd": 300.0,
+    "exact_ecr_control_plane_cost": "NO_INCREMENTAL_COMPUTE_OR_STORAGE_CREATED_BY_THIS_PACKET"
+  },
+  "authorization_boundary": {
+    "packet_2026_005_complete": true,
+    "packet_2026_003b_authorized": false,
+    "b6a_deployed": false,
+    "next_required_owner_action": "Review and explicitly approve B6A AWS change packet 2026-003B before any identity creation, image publication, artifact upload, Kubernetes mutation, or GPU scale-up."
+  },
+  "conclusion": "The exact regional ECR scan-on-push rules required by packet 2026-005 are verified live and have no targeted Terraform drift. Packet 2026-003B remains separately blocked and B6A has not been deployed."
+}

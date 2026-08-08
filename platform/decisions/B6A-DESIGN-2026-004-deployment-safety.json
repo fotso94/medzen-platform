@@ -1,0 +1,110 @@
+{
+  "record": "B6A_003C_B_LOCAL_PREPARATION_AND_DEPLOYMENT_SAFETY_DECISION",
+  "id": "B6A-DESIGN-2026-004",
+  "revision": 1,
+  "status": "owner-approved-local-preparation-only",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-05T03:59:08Z",
+  "authorization_source": "Owner message: Go ahead with Claude recommendations and your important corrections, report while you doing it.",
+  "interpretation": "Authorize local preparation, dry-run validation and packet drafting for B6A AWS change packet 2026-003C-B. No AWS mutation, artifact upload, Kubernetes apply, DRA installation or GPU scale-up is authorized by this record.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "75f69df067a4172d52ffd032c289dd497fe16610",
+    "git_tree": "84d07aa3ec6b4f87900b69af97ffa00d53bfcfce",
+    "commit_count": 173,
+    "worktree_clean": true,
+    "remote_branch_commit": "75f69df067a4172d52ffd032c289dd497fe16610"
+  },
+  "immutable_bindings": [
+    {
+      "path": "platform/evidence/B6A-PACKET-2026-003C-A-SCAN-RESULT.json",
+      "sha256": "1b1ed84205fe9a71c3b21b2a2658814855fd5fdcf6af00c5590bb4205e8dc70b",
+      "historical_record_edited": false,
+      "meaning": "All three serving-chain images have authoritative zero-critical zero-high results; 003C-A is scan-only and does not authorize deployment."
+    },
+    {
+      "path": "platform/decisions/B6A-BUDGET-2026-002-conservative-reconciliation.json",
+      "sha256": "331513c34f2a73a4c0037d4441160333e7b8ac93cba9b8aa79b908be56e8f75c",
+      "historical_record_edited": false,
+      "meaning": "The existing 15 USD reservation and two-hour maximum remain in force."
+    },
+    {
+      "path": "platform/standards/runtime-image-hardening-v1.md",
+      "sha256": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791",
+      "historical_record_edited": false,
+      "meaning": "Deployment references the scan-passed deployable manifest digest, not a mutable tag or OCI index."
+    }
+  ],
+  "exact_deployment_images": {
+    "model_loader": {
+      "repository": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader",
+      "kind": "OCI_INDEX_WITH_LINUX_AMD64_CHILD",
+      "deployable_digest": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5"
+    },
+    "asr_runtime": {
+      "repository": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime",
+      "kind": "OCI_INDEX_WITH_LINUX_AMD64_CHILD",
+      "deployable_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087"
+    },
+    "nvidia_dra": {
+      "repository": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra",
+      "kind": "SINGLE_DOCKER_MANIFEST_NO_CHILD",
+      "deployable_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+    }
+  },
+  "required_local_controls": {
+    "manifest_rendering": [
+      "Replace the model-loader and ASR placeholders only with their exact scan-passed linux/amd64 child manifests.",
+      "Rewrite every NVIDIA DRA image reference to the exact scan-passed single manifest digest.",
+      "Reject any remaining placeholder, image tag, OCI index reference, unexpected repository, public endpoint or legacy device plugin."
+    ],
+    "independent_deadline": [
+      "Before GPU scale-up, arm and read back one AWS Auto Scaling scheduled action against the exact EKS-managed GPU Auto Scaling group.",
+      "The action must execute no later than two hours after the window opens and set min=0, desired=0 and max=1.",
+      "Also install an immediate process EXIT cleanup path that scales the workload and EKS GPU desired size to zero.",
+      "Delete the scheduled action only after EKS desired size, Auto Scaling desired capacity, GPU nodes and B6A Pods are proven zero. If proof is incomplete, retain the deadline action and fail closed."
+    ],
+    "test_input": [
+      "Use only a locally generated synthetic spoken phrase that states it is a MedZen platform test and contains no patient or clinical content.",
+      "Bind the exact WAV SHA-256 and byte count before packet approval.",
+      "Do not use cached training, evaluation, customer, patient or production audio."
+    ],
+    "success_proof": [
+      "Manifest SHA-256, every artifact object hash and artifact-tree SHA-256 match.",
+      "The loader marker, CUDA model load, bounded startup smoke and /readyz all pass.",
+      "One internal-only file-mode transcription request returns the required platform-test disclosure and exact model identities.",
+      "Peak L4 GPU memory is measured with timestamped nvidia-smi sampling and is not inferred from artifact bytes.",
+      "Logs are checked for absence of audio bytes, transcript text, patient data and credentials.",
+      "Deployment, GPU node, B6A Pod and independent deadline control reach their required final states."
+    ]
+  },
+  "local_read_only_aws_findings": {
+    "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "gpu_asg_minimum": 0,
+    "gpu_asg_desired": 0,
+    "gpu_asg_maximum": 1,
+    "gpu_asg_instances": 0,
+    "existing_scheduled_actions": 0,
+    "required_schedule_and_eks_actions_simulated_allowed": true
+  },
+  "allowed_operations": [
+    "Local source and test changes for exact digest rendering, artifact upload validation, synthetic input binding, deadline arming, proof collection and cleanup",
+    "Read-only AWS verification and IAM policy simulation",
+    "Local Kubernetes and Helm rendering without apply",
+    "Read-only Terraform planning and exact plan guards",
+    "Preparation of immutable local evidence and packet 2026-003C-B",
+    "Local Git commits and push to the existing private repository"
+  ],
+  "prohibited_operations": [
+    "Any AWS mutation including S3 upload scheduled-action creation IAM apply EKS update or ECR change",
+    "Any Helm or kubectl apply",
+    "Any NVIDIA DRA installation",
+    "Any GPU scale-up or billable GPU window",
+    "Any training or use of cached training evaluation customer patient or production audio",
+    "Any security waiver image rebuild or digest substitution",
+    "Any approved-ASR write model registration language serving-field change or production SSM change",
+    "Any edit to historical B4 B5 or prior B6A evidence",
+    "Any claim that B6A B6.1 or full B6 is complete"
+  ],
+  "required_next_authorization": "The completed itemized 2026-003C-B packet must be committed, presented and separately approved before any artifact upload, identity apply, scheduled-action creation, DRA installation, workload apply or GPU scale-up."
+}

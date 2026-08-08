@@ -1,0 +1,192 @@
+{
+  "record": "B6A_003C_C_STABLE_READINESS_RETRY_RESULT",
+  "id": "B6A-PACKET-2026-003C-C-BLOCKED-GPU-MEMORY",
+  "revision": 1,
+  "status": "VERIFIED_BLOCKED_CLEANUP_COMPLETE",
+  "outcome": "BLOCKED_PLATFORM_PROOF",
+  "failure_stage": "ASR_PLATFORM_PROOF_GPU_MEMORY_MEASUREMENT",
+  "completed_utc": "2026-08-08T17:35:16Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-C-stable-readiness-retry.json",
+    "sha256": "d69fdfaae4a8086d36da75ca6a7328b322f3c0496763585b8dad0855283ecbff",
+    "git_commit": "fcd850e4ae69e4b707a92c19117d61bf27e0db2c"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-C-stable-readiness-retry.md",
+    "sha256": "9b1f21d6625ceef6ac402b9f119ebbefffebb6160d0aa5768340df1291b38406"
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "fcd850e4ae69e4b707a92c19117d61bf27e0db2c",
+    "git_tree": "2a14892de0b3b77bff32fa12dbb8af808390713f",
+    "commit_count": 183,
+    "worktree_clean": true,
+    "remote_branch_commit": "fcd850e4ae69e4b707a92c19117d61bf27e0db2c"
+  },
+  "source_bindings": {
+    "scripts/run_b6a_003c_c_gpu_window.sh": "99fd0648a86b364a7bb2f3d103be40de11106c716b6dac151dcfd7461310ddd1",
+    "scripts/run_b6a_003c_c_proof.py": "c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3",
+    "scripts/b6a_003c_c_deadline.py": "04cd8ca52a89ee9282302237bf5813319d4bc695e1f2ffe160c0efe64cc317fe",
+    "scripts/b6a_003c_c_cleanup.sh": "d4724549dd2d89859a7674c7d132695062e89420227fb49ac5484495aea681af",
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "preflight": {
+    "status": "PASS_ALL_PACKET_PRECONDITIONS",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "eks_version": "1.36",
+    "eks_support_type": "STANDARD",
+    "terraform_plan": "NO_CHANGES",
+    "terraform_plan_sha256": "0641742827e8b8ea9dcc7c699f523cf765e349f91c3c99e37cff0041e6a8d0f3",
+    "model_loader_scan": "COMPLETE_ZERO_FINDINGS",
+    "asr_runtime_scan": "COMPLETE_ZERO_FINDINGS",
+    "nvidia_dra_scan": "COMPLETE_ZERO_FINDINGS",
+    "artifact_versions": 6,
+    "artifact_bytes": 3090838860,
+    "artifact_versions_checksums_kms_and_no_delete_markers_verified": true,
+    "artifact_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "identity_and_pod_association_match": true,
+    "nvidia_dra_live_diff": "NO_CHANGES",
+    "gpu_initial_minimum": 0,
+    "gpu_initial_desired": 0,
+    "gpu_initial_maximum": 1,
+    "gpu_initial_instances": 0,
+    "gpu_initial_nodes": 0,
+    "gpu_initial_scheduled_actions": 0,
+    "approved_asr_initial_objects": 0,
+    "production_registry_initial_parameters": 0,
+    "active_billable_reservations": 1,
+    "existing_reservation_usd": 15.0
+  },
+  "owner_cpu_baseline_restoration_observed_during_preflight": {
+    "packet_operation": false,
+    "cloudtrail_event_id": "eba1e9b8-6f40-48e8-84cb-30469d9180bd",
+    "event_utc": "2026-08-08T16:59:49Z",
+    "actor": "arn:aws:iam::558069890522:user/s.fotso",
+    "mfa_authenticated": true,
+    "source": "AWS_CONSOLE",
+    "nodegroup": "cpu",
+    "scaling": {
+      "minimum": 2,
+      "desired": 2,
+      "maximum": 4
+    },
+    "interpretation": "The owner restored the Terraform-declared CPU platform baseline outside packet 003C-C. It was identified before the GPU write, completed successfully, introduced no GPU or unrelated instance, and was not changed by this execution."
+  },
+  "deadline": {
+    "receipt_sha256": "3389b40ecfed18800305b2405f163eef561ba4c3b8ac85901df9a80bca5eed09",
+    "action": "medzen-b6a-003c-c-deadline-scale-zero",
+    "armed_utc": "2026-08-08T17:17:04Z",
+    "deadline_utc": "2026-08-08T19:16:04Z",
+    "window_seconds": 7140,
+    "read_back_exactly": true,
+    "disarmed_after_complete_zero_proof": true
+  },
+  "gpu_window": {
+    "instance_id": "i-0eaeeec9150e42969",
+    "instance_type": "g6.xlarge",
+    "launch_utc": "2026-08-08T17:17:47.674Z",
+    "termination_selected_utc": "2026-08-08T17:21:21.546Z",
+    "asg_zero_completion_utc": "2026-08-08T17:28:07Z",
+    "observed_launch_to_termination_selection_seconds": 214,
+    "conservative_lifecycle_seconds": 620,
+    "recorded_hourly_rate_usd": 1.0064,
+    "conservative_estimated_gpu_cost_usd": 0.1733,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "proof": {
+    "receipt_sha256": "5ced2452585843ec7262fe27eadc9c2cc8b11ab487ac1ebe6fe7bcc81e9665c6",
+    "diagnostic_schema": "B6A_003C_C_NO_PHI_V1",
+    "stable_dra": {
+      "status": "DRA_STABLE_READY",
+      "consecutive_reads": 3,
+      "reads": 13,
+      "device_count": 1,
+      "driver_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "pod_uid": "8b25a2ac-423a-4fec-a83f-9aa08043b23e",
+      "node": "ip-172-31-7-53.eu-central-1.compute.internal",
+      "resource_slice": "00000-gpu.nvidia.com-ip-172-31-7-53.eu-central-1.compute.inp9z8"
+    },
+    "artifact_loader": "COMPLETED_EXIT_ZERO",
+    "asr_runtime": "RUNNING_AND_READY_BEFORE_REFUSAL",
+    "refusal_reason": "peak L4 GPU memory is NOT_MEASURED",
+    "peak_l4_gpu_memory": "NOT_MEASURED",
+    "security_waiver_used": false,
+    "transcription_evidence": {
+      "control_flow_observation": "The bound proof implementation reaches parse_memory_samples only after HTTP 200, response schema validation, live image validation and PHI-safe log validation complete in process.",
+      "durable_response_preserved": false,
+      "accepted_as_b6a_transcription_proof": false,
+      "reason": "The later memory refusal wrote only the no-PHI diagnostic receipt and did not preserve the response; B6A therefore does not claim a proven transcription."
+    }
+  },
+  "cause_assessment": {
+    "confirmed": [
+      "Stable DRA readiness passed and the prior readiness race is resolved.",
+      "The sampler produced at least one raw stdout line because the pre-startup non-empty baseline gate passed.",
+      "No captured line satisfied the four-field numeric memory parser, so peak memory remained NOT_MEASURED.",
+      "The pre-startup gate checks only for a non-empty raw line, not for a successfully parsed memory sample.",
+      "The refusal receipt did not preserve bounded sampler diagnostics, so the exact malformed line or command failure is not recoverable after cleanup."
+    ],
+    "exact_underlying_sampler_failure": "NOT_RECOVERABLE_FROM_003C_C",
+    "control_defect": "RAW_NONEMPTY_BASELINE_ACCEPTED_BEFORE_PARSED_SAMPLE_VALIDATION",
+    "not_a_dra_readiness_failure": true,
+    "not_an_image_scan_failure": true,
+    "not_a_model_quality_result": true
+  },
+  "cleanup_verification": {
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_desired": 0,
+    "asg_instances": 0,
+    "gpu_ec2_instances": 0,
+    "gpu_nodes": 0,
+    "b6a_pods": 0,
+    "asr_deployments": 0,
+    "dra_pods_at_gpu_zero": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0
+  },
+  "retained_nonserving_state": {
+    "artifact_objects": 6,
+    "artifact_bytes": 3090838860,
+    "dedicated_asr_role": "arn:aws:iam::558069890522:role/medzen-b6a-asr-role",
+    "pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "nvidia_dra_installed": true,
+    "model_registered": false,
+    "production_serving_state_changed": false,
+    "green_bucket_branch_or_data_changed": false
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_guardrail_before_active_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_created": false,
+    "prior_attempt_conservative_seconds": 60,
+    "this_attempt_conservative_seconds": 620,
+    "cumulative_conservative_gpu_seconds": 680,
+    "cumulative_conservative_gpu_cost_usd": 0.1901,
+    "remaining_original_two_hour_allowance_seconds": 6520,
+    "reservation_reconciliation": "PENDING_AWS_BILLING"
+  },
+  "project_state": {
+    "b5_outcome": "BLOCKED",
+    "b5_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b6a_outcome": "BLOCKED_PLATFORM_PROOF",
+    "b6a_complete": false,
+    "b6_complete": false,
+    "b6_status": "BLOCKED"
+  },
+  "required_remediation_before_any_retry": [
+    "Require at least one successfully parsed nvidia-smi memory sample before applying the workload.",
+    "Persist bounded no-PHI sampler status, safe stderr classification and parse diagnostics before cleanup.",
+    "Do not preserve raw logs, credentials, audio or transcript text.",
+    "Use a new versioned proof script and a separately approved packet with a maximum window no greater than the remaining 6520-second cumulative allowance."
+  ],
+  "next_boundary": "Packet 2026-003C-C is closed and cannot resume. Local remediation and a new versioned packet may be prepared, but no further AWS write or GPU scale-up is authorized."
+}

@@ -1,0 +1,193 @@
+{
+  "record_id": "B6A-LOCAL-ENGINEERING-2026-001",
+  "record_version": 1,
+  "recorded_at_utc": "2026-08-04T03:56:11Z",
+  "status": "VERIFIED_LOCAL_ENGINEERING_COMPLETE",
+  "classification": "PLATFORM_PROOF_ONLY",
+  "authorization": {
+    "record": "platform/decisions/B6A-AUTH-2026-001-platform-proof.json",
+    "sha256": "825a85a284f45a3d679f603707524ff7e82aee8b688bbb04b5ea1a387eb2730b",
+    "budget_record": "platform/decisions/B6A-BUDGET-2026-001-aggregate-300.json",
+    "budget_sha256": "d50334d650d90fc7623172bff9a051040a95192736b247e3cad3f3d235e8d91d"
+  },
+  "source": {
+    "branch": "codex/b6a-platform-proof",
+    "service_checkpoint_commit": "6f7471e815fb5ab3ab84308122d2c4f050889767",
+    "packager_checkpoint_commit": "33ffa4a72a545e6ea32163917d9735e7a3bab7b7",
+    "contract": {
+      "path": "platform/contracts/speech-v1.yaml",
+      "sha256": "c55e00be9d62ca103f2346750040c6626683bd3f648d5c529255c4b575e1f12a"
+    },
+    "tts_boundary": {
+      "path": "platform/decisions/B6A-TTS-2026-001-service-boundary.json",
+      "sha256": "028facaf50e6ba416bebec9cf38d589cc9c7cb3a53ac0f8465aad81c08896435"
+    }
+  },
+  "images": {
+    "model_loader": {
+      "local_reference": "medzen-model-loader:b6a-local",
+      "digest": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "platform": "linux/amd64",
+      "uncompressed_bytes": 1504572258,
+      "source_commit": "33ffa4a72a545e6ea32163917d9735e7a3bab7b7",
+      "dockerfile_sha256": "270cfb1962711c6d99f1aed3a5aaf3923b8edf82d344b2f56da57d9983f4154c",
+      "lock_sha256": "8503b401174d049a75b3a7c2e3465d38ff4d39118d7ca0847de62138ed3cbc3d",
+      "runtime_uid": 10001,
+      "pip_present": false,
+      "perl_present": false,
+      "docker_scout_high": 0,
+      "docker_scout_critical": 0
+    },
+    "asr_runtime": {
+      "local_reference": "medzen-asr-runtime:b6a-local",
+      "digest": "sha256:35e348b9d44fa180de28dd80d68f1d100412b791b585d669c2dcbdc013cbcdc7",
+      "platform": "linux/amd64",
+      "uncompressed_bytes": 1491679160,
+      "source_commit": "6f7471e815fb5ab3ab84308122d2c4f050889767",
+      "dockerfile_sha256": "f313f86a4dc5fd85fd7b628f45610de9ccc466fc70223c6eba88400aae5374a8",
+      "lock_sha256": "4071d5b0baaf32b0cfe7bafb049143325b9434e2dee5b02b917d3499a9c2affc",
+      "runtime_uid": 10001,
+      "pip_present": false,
+      "perl_present": false,
+      "docker_scout_high": 0,
+      "docker_scout_critical": 0
+    },
+    "converter": {
+      "local_reference": "medzen-b6a-converter:b6a-local",
+      "digest": "sha256:3da91fdf6d54668fb07e298b502163b9f95f3961130a0d8608d8c4ed0521a8cf",
+      "platform": "linux/amd64",
+      "uncompressed_bytes": 2935119305,
+      "source_commit": "33ffa4a72a545e6ea32163917d9735e7a3bab7b7",
+      "dockerfile_sha256": "3d89018a94abf6e83b8f5c7e40e33b9865232e0a32e8f02f80d064cd868b9f20",
+      "lock_sha256": "3d6541afbb76d88768eadc092c976eeffaa9d674e4fa9dd02d6493c19bd39c27",
+      "runtime_uid": 10001,
+      "pip_present": false,
+      "perl_present": false,
+      "docker_scout_high": 0,
+      "docker_scout_critical": 0
+    }
+  },
+  "zero_shot_v0_artifact": {
+    "local_directory": "artifacts/b6a/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "local_directory_is_gitignored": true,
+    "model": "openai/whisper-large-v3",
+    "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+    "precision": "CTranslate2_float16",
+    "fine_tuned": false,
+    "adapter_sha256": null,
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_bytes": 3090835702,
+    "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+    "prospective_s3_uri": "s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/MANIFEST.json",
+    "source_tree_sha256": "1901e6acb4f54268d0ac2d671b7203a63731d456cec244f66e21ba871a0fab86",
+    "source_bytes": 3091519764,
+    "quality_gate_outcome": "FAIL",
+    "production_approved": false,
+    "absolute_wer_max": 0.2,
+    "zero_shot_base_wer": {
+      "lingala": 0.9207,
+      "luganda": 1.0659,
+      "oromo": 1.1749
+    },
+    "determinism": {
+      "independent_conversions": 2,
+      "artifact_tree_hashes_equal": true,
+      "manifest_hashes_equal": true,
+      "recursive_byte_comparison_equal": true,
+      "duplicate_removed": true
+    },
+    "manifest_schema_valid": true,
+    "loader_validation_passed": true
+  },
+  "verification": {
+    "local_test_suite": {
+      "passed": 807,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1,
+      "warning_reason": "Test-only Starlette TestClient deprecation; no runtime failure."
+    },
+    "generated_output_check": "PASS_27_LANGUAGE_FILES_CURRENT",
+    "architecture_check": "PASS_8_COMPONENTS_3_PREEXISTING_ORPHAN_POLICY_WARNINGS",
+    "terraform_validate": "PASS",
+    "container_gpu_inference": "NOT_RUN_LOCAL_HOST_HAS_NO_L4",
+    "peak_l4_gpu_memory": "NOT_MEASURED"
+  },
+  "aws_read_only_preflight": {
+    "observed_at_utc": "2026-08-04T03:34:29Z",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster_version": "1.36",
+    "cluster_status": "ACTIVE",
+    "gpu_nodegroup": {
+      "instance_type": "g6.xlarge",
+      "capacity_type": "ON_DEMAND",
+      "min": 0,
+      "desired": 0,
+      "max": 1,
+      "health_issues": []
+    },
+    "ecr_model_loader_images": 0,
+    "ecr_asr_runtime_images": 0,
+    "ecr_repositories_immutable": true,
+    "ecr_scan_on_push": true,
+    "s3_target_prefix_objects": 0,
+    "s3_versioning": "Enabled",
+    "s3_default_encryption": "aws:kms",
+    "ssm_registry_parameters": 0,
+    "aws_writes_performed_by_this_record": 0
+  },
+  "gpu_allocation_preflight": {
+    "cluster_component_installed": false,
+    "workload_can_schedule_before_component_install": false,
+    "selected_design": "NVIDIA_DRA_ONE_SHARED_GPU_CLAIM",
+    "selection_basis": "AWS recommends NVIDIA DRA for new EKS managed-node-group deployments on Kubernetes 1.34 and later; the cluster is 1.36 and loader/runtime must share one GPU within one Pod.",
+    "reviewed_dra_chart": "0.4.1",
+    "reviewed_dra_linux_amd64_digest": "sha256:a1f7731e18385b1441f7172a8941224dfac0f364f6f6a3043869c68d5adb170d",
+    "reviewed_dra_scout_findings": {"critical": 1, "high": 2},
+    "reviewed_device_plugin_version": "v0.19.0",
+    "reviewed_device_plugin_scout_findings": {"critical": 2, "high": 12},
+    "deployment_image_gate": {"critical_max": 0, "high_max": 0},
+    "decision": "BLOCKED_PENDING_CLEAN_PINNED_GPU_COMPONENT_OR_SEPARATE_OWNER_SECURITY_EXCEPTION",
+    "aws_component_install_performed": false
+  },
+  "budget_reconciliation_attempt": {
+    "observed_at_utc": "2026-08-04T03:55:19Z",
+    "cost_explorer_window": "2026-08-03/2026-08-05",
+    "cost_explorer_data_estimated": true,
+    "august_4_groups_available": false,
+    "cluster_level_attribution_available": false,
+    "result": "NOT_RECONCILED_RESERVATION_REMAINS_OPEN",
+    "reason": "Current Cost Explorer data is estimated, delayed and shared-account service data is not attributable to the EKS upgrade packet."
+  },
+  "preserved_history": {
+    "b5_blocked_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b4_scope_2026_002_sha256": "cfcacb8840bade0add6a5578ba53a16f113855b7085ad60900104c5091de723c",
+    "registered_models": 0,
+    "approved_asr_writes": 0,
+    "language_artifact_changes": 0,
+    "language_approved_version_changes": 0,
+    "production_ssm_changes": 0,
+    "training_runs": 0
+  },
+  "open_limits": [
+    "No L4 GPU load, smoke inference or startup-readiness proof has run yet.",
+    "Peak L4 GPU memory remains NOT_MEASURED.",
+    "The ASR streaming slice buffers until end_of_speech; full orchestrator VAD, partial transcripts, backpressure and in-flight 250 ms cancellation remain later B6 work.",
+    "The MedZen speech TTS gateway remains unbuilt; the separate medzen-tts-gateway project remains out of scope.",
+    "B1 registry AWS packet 2026-002 remains unapproved and the Terraform backend is still unreadable.",
+    "The EKS-upgrade budget reservation remains unresolved until AWS billing data is available, so a new billable packet cannot become active yet.",
+    "The EKS AL2023 NVIDIA image supplies host drivers but no GPU allocation component is installed in the cluster; GPU pods cannot schedule until an owner-approved NVIDIA DRA driver or device plugin is installed.",
+    "The current official NVIDIA Kubernetes device-plugin v0.19.0 image scan reports 2 critical and 12 high vulnerabilities, so it does not satisfy the project's clean deployment-image gate and no exception has been authorized.",
+    "The AWS-recommended NVIDIA DRA driver v0.4.1 linux/amd64 image sha256:a1f7731e18385b1441f7172a8941224dfac0f364f6f6a3043869c68d5adb170d reports 1 critical and 2 high vulnerabilities, so it also fails the same clean-image gate."
+  ],
+  "result": {
+    "b6a_local_engineering": "COMPLETE",
+    "b6a_deployment": "BLOCKED_NOT_STARTED",
+    "deployment_packet": "B6A-AWS-CHANGE-PACKET-2026-003_BLOCKED_NOT_AUTHORIZED",
+    "b6a_full_platform_proof": "NOT_COMPLETE",
+    "b6_1": "NOT_CLAIMED",
+    "b5_promotion": "BLOCKED_UNCHANGED"
+  }
+}

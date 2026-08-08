@@ -1,0 +1,176 @@
+{
+  "record": "B6A_003C_D_STAGE_RECEIPTS_AND_SSM_SAMPLER_LOCAL_ENGINEERING_RESULT",
+  "id": "B6A-LOCAL-ENGINEERING-2026-006",
+  "revision": 1,
+  "status": "LOCAL_ENGINEERING_COMPLETE_IAM_REVIEW_AND_PACKET_APPROVAL_REQUIRED",
+  "completed_utc": "2026-08-08T18:15:00Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-C-BLOCKED-GPU-MEMORY.json",
+    "sha256": "d888d9d47d58787a4a804fc7f118bb1f94fc72d85d2196c0b8dd01a5bef0cf73",
+    "review_outcome": "PASS_WITH_CONCERNS",
+    "historical_record_edited": false
+  },
+  "design": {
+    "path": "platform/decisions/B6A-DESIGN-2026-006-stage-receipts-and-ssm-sampler.json",
+    "sha256": "8b64cee73972cd19582357a6c383be2d6340ea5ecd366a6fa1ba4be158923302",
+    "status": "local-engineering-complete-new-packet-and-independent-iam-review-required"
+  },
+  "supplemental_design": {
+    "path": "platform/decisions/B6A-DESIGN-2026-007-ssm-document-version-binding.json",
+    "sha256": "f0a5cdf9bba1f793f4e1e8f54f650410c131a63711d691f0d529f374eedea2fd",
+    "ssm_document": "AWS-RunShellScript",
+    "ssm_document_version": "1",
+    "mutable_default_reference_permitted": false
+  },
+  "least_privilege_refinement": {
+    "path": "platform/decisions/B6A-DESIGN-2026-008-node-ssm-least-privilege.json",
+    "sha256": "b6db236e5327ad233792053d85c50cebfa56d6052dbdadfc13a802af1f837fa1",
+    "parameter_store_permissions": 0,
+    "send_command_permissions_on_node_role": 0,
+    "s3_or_cloudwatch_permissions": 0,
+    "cpu_online_registration_required_before_gpu_window": true
+  },
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "implementation_commit": "94c23e3e24e28d4a440755635723715d9ce84851",
+    "implementation_tree": "249826273899b6cd66d7361fb3d0c39ce5c1bf58",
+    "commit_count": 187,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "remote_branch_commit": "94c23e3e24e28d4a440755635723715d9ce84851",
+    "private_remote_backup": true
+  },
+  "source_bindings": {
+    "pipeline/runtime_receipts.py": "9534f4c77242b7bf295e2b82943349326c8338d24baf01ac948ac89d9e353ef7",
+    "platform/runtime-receipt-policy-v1.yaml": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda",
+    "platform/iam/medzen-node-ssm-core.json": "ce0b898088de05b8c27c6be21aa038d5d8a4e354b84dd09c041d163631b8ac58",
+    "infra/eks.tf": "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b",
+    "scripts/b6a_003c_d_common.py": "c08146e90ffb9a5582fbef05592737a5f9e4591750f8d5ac799623542c796d1a",
+    "scripts/b6a_003c_d_bindings.py": "ff2d9e35738911b490f835c91a71fa283917493820a1d32fb33055a7437330e5",
+    "scripts/b6a_003c_d_deadline.py": "2422be3ca1e30615d4f46672e5a3f05ed180332b5ceebf7e4c914ad4994624ee",
+    "scripts/b6a_003c_d_cleanup.sh": "2b18978a3505fc0c01f2b83f84db3d246cc7b2bc657a0ff87782ad616c26ffeb",
+    "scripts/b6a_003c_d_ssm_sampler.sh": "04efd821527689c453571a277c7f2d8e673b377bdf00f1f01d1f46f2e3a19cb7",
+    "scripts/run_b6a_003c_d_sampler_self_test.py": "1a6fcb7a369db89a0b43781b296ef22e5e6bea605b036fc0937c3d8f2b3c48bb",
+    "scripts/run_b6a_003c_d_proof.py": "718851b9c97b8b9d5027ca6f364f68df569ff40ea4c0ed09b9a812fce0d1b1c3",
+    "scripts/run_b6a_003c_d_gpu_window.sh": "e456f65cbe200c726ba886c0bacb9d270b4d4fe70b85072e5d2c6c49fee8c51d",
+    "scripts/check_b6a_003c_d_iam_plan.py": "701365a1d75fb43d2f93fefe3af9b9f7f0989701a90d302b9249a17ce3251653"
+  },
+  "standing_receipt_rule": {
+    "schema": "MEDZEN_RUNTIME_STAGE_RECEIPT_V1",
+    "exclusive_write": true,
+    "atomic_hard_link_publish": true,
+    "file_fsync": true,
+    "directory_fsync": true,
+    "overwrite_refused": true,
+    "unknown_stage_or_status_refused": true,
+    "dependency_hashes_preserved": true,
+    "audio_transcript_logs_credentials_or_phi_permitted": false
+  },
+  "proof_separation": {
+    "transcription_receipt_before_sampler_start": true,
+    "transcription_text_persisted": false,
+    "transcription_response_and_text_hashes_persisted": true,
+    "memory_exercise": "loaded v0 model plus second synthetic inference",
+    "memory_failure_status": "INCOMPLETE_MEASUREMENT",
+    "memory_failure_voids_transcription": false,
+    "successful_transcription_survives_later_measurement_failure_tested": true
+  },
+  "ssm_sampler_self_test": {
+    "transport": "AWS-RunShellScript",
+    "exact_instance_from_kubernetes_provider_id": true,
+    "exact_dra_pod_uid_bound": true,
+    "exact_dra_child_digest_bound": true,
+    "execution_context": "ssm_to_gpu_node_crictl_exec_dra_gpus_chroot_driver_root",
+    "numeric_samples_required": 120,
+    "approximate_interval_seconds": 1,
+    "remote_s3_output": false,
+    "remote_cloudwatch_output": false,
+    "raw_output_persisted": false,
+    "failure_aborts_before_model_deploy": true,
+    "failure_receipt": "REFUSED"
+  },
+  "live_read_only_iam_snapshot": {
+    "verified_utc": "2026-08-08T17:52:00Z",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "node_role": "medzen-speech-node-role",
+    "node_role_ssm_core_present": false,
+    "ssm_managed_nodes": 0,
+    "operator_ssm_send_command": "ALLOWED",
+    "operator_ssm_get_command_invocation": "ALLOWED",
+    "operator_ssm_describe_instance_information": "ALLOWED",
+    "terraform_plan": {
+      "path": "/private/tmp/medzen-b6a-003c-d.tfplan",
+      "sha256": "fec1f4e6deae61fb6672431733cc7a30d0e483dc5a9570ed5c24e2ffa016bca9",
+      "disposable_local_plan_not_authorized_for_apply": true,
+      "creates": 1,
+      "updates": 0,
+      "deletes": 0,
+      "only_resource": "aws_iam_role_policy.node_ssm_core",
+      "plan_guard": "PASS_EXACTLY_ONE_IAM_CREATE"
+    },
+    "independent_iam_review_completed": false
+  },
+  "live_read_only_platform_snapshot": {
+    "verified_utc": "2026-08-08T18:14:00Z",
+    "eks_version": "1.36",
+    "eks_support_type": "STANDARD",
+    "eks_status": "ACTIVE",
+    "cpu_nodegroup": {
+      "minimum": 2,
+      "desired": 2,
+      "maximum": 4,
+      "ready_nodes": 2,
+      "non_kube_system_workloads": 0
+    },
+    "gpu_nodegroup": {
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    },
+    "gpu_scheduled_actions": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0,
+    "ssm_managed_nodes": 0
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_guardrail_before_active_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_created": false,
+    "conservative_prior_gpu_seconds": 680,
+    "confirmed_remaining_gpu_seconds": 6520,
+    "conservative_cumulative_maximum_seconds": 7200,
+    "gpu_desired_during_local_engineering": 0,
+    "gpu_cost_for_local_engineering_usd": 0.0
+  },
+  "validation": {
+    "focused_new_tests_passed": 24,
+    "focused_new_tests_failed": 0,
+    "canonical_pytest_passed": 1019,
+    "canonical_pytest_failed": 0,
+    "canonical_pytest_skipped": 0,
+    "canonical_pytest_deselected": 7,
+    "canonical_pytest_warnings": 1,
+    "warning": "Existing Starlette TestClient deprecation only",
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "execution_boundary": {
+    "terraform_apply_attempted": false,
+    "iam_change_attempted": false,
+    "ssm_command_attempted": false,
+    "deadline_creation_attempted": false,
+    "gpu_scale_up_attempted": false,
+    "workload_apply_attempted": false,
+    "artifact_or_image_change_attempted": false,
+    "approved_asr_write_attempted": false,
+    "production_ssm_change_attempted": false,
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "next_boundary": "Independent IAM review must produce a versioned PASS receipt. Then the exact committed 003C-D packet may be presented for owner approval; no IAM apply or GPU action is authorized before both conditions are met."
+}

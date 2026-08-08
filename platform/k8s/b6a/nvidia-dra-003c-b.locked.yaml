@@ -1,0 +1,281 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nvidia-dra-driver
+  labels:
+    medzen.io/change-packet: B6A-AWS-CHANGE-PACKET-2026-003C-B
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: medzen-nvidia-dra-dra-driver-nvidia-gpu-service-account-kubeletplugin
+  namespace: nvidia-dra-driver
+  labels:
+    helm.sh/chart: dra-driver-nvidia-gpu-0.4.1
+    app.kubernetes.io/version: 0.4.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dra-driver-nvidia-gpu
+    app.kubernetes.io/instance: medzen-nvidia-dra
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dra-driver-nvidia-gpu-clusterrole-kubeletplugin
+rules:
+- apiGroups:
+  - resource.k8s.io
+  resources:
+  - resourceclaims
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - resource.k8s.io
+  resources:
+  - resourceslices
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - delete
+- apiGroups:
+  - ''
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dra-driver-nvidia-gpu-clusterrole-binding-kubeletplugin
+subjects:
+- kind: ServiceAccount
+  name: medzen-nvidia-dra-dra-driver-nvidia-gpu-service-account-kubeletplugin
+  namespace: nvidia-dra-driver
+roleRef:
+  kind: ClusterRole
+  name: dra-driver-nvidia-gpu-clusterrole-kubeletplugin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dra-driver-nvidia-gpu-kubelet-plugin
+  namespace: nvidia-dra-driver
+  labels:
+    helm.sh/chart: dra-driver-nvidia-gpu-0.4.1
+    app.kubernetes.io/version: 0.4.1
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: dra-driver-nvidia-gpu
+    app.kubernetes.io/instance: medzen-nvidia-dra
+spec:
+  selector:
+    matchLabels:
+      dra-driver-nvidia-gpu-component: kubelet-plugin
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 100%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dra-driver-nvidia-gpu
+        app.kubernetes.io/instance: medzen-nvidia-dra
+        dra-driver-nvidia-gpu-component: kubelet-plugin
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccountName: medzen-nvidia-dra-dra-driver-nvidia-gpu-service-account-kubeletplugin
+      securityContext: {}
+      initContainers:
+      - name: init-container
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246
+        securityContext:
+          privileged: true
+        command:
+        - bash
+        - /usr/bin/kubelet-plugin-prestart.sh
+        env:
+        - name: NVIDIA_DRIVER_ROOT
+          value: /
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: void
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: /var/lib/kubelet/plugins_registry
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: /var/lib/kubelet/plugins
+        volumeMounts:
+        - name: driver-root-parent
+          mountPath: /driver-root-parent
+          readOnly: true
+      containers:
+      - name: gpus
+        securityContext:
+          privileged: true
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246
+        imagePullPolicy: IfNotPresent
+        command:
+        - bash
+        - -c
+        args:
+        - "# Conditionally mask the params file to prevent this container from\n# recreating any missing GPU device nodes. This is necessary, for\n# example, when running under nvkind to limit the set GPUs governed\n# by the plugin even though it has cgroup access to all of them.\nif [ \"${MASK_NVIDIA_DRIVER_PARAMS}\" = \"true\" ]; then\n  cp /proc/driver/nvidia/params /root/gpu-params\n  sed -i 's/^ModifyDeviceFiles: 1$/ModifyDeviceFiles: 0/' /root/gpu-params\n  mount --bind /root/gpu-params /proc/driver/nvidia/params\nfi\ngpu-kubelet-plugin -v $(LOG_VERBOSITY)"
+        resources: {}
+        startupProbe:
+          grpc:
+            port: 51516
+            service: liveness
+          failureThreshold: 600
+          periodSeconds: 1
+          timeoutSeconds: 10
+        livenessProbe:
+          grpc:
+            port: 51516
+            service: liveness
+          failureThreshold: 3
+          periodSeconds: 30
+          timeoutSeconds: 10
+        env:
+        - name: HTTP_ENDPOINT
+          value: :8080
+        - name: METRICS_PATH
+          value: /metrics
+        - name: LOG_VERBOSITY
+          value: '2'
+        - name: MASK_NVIDIA_DRIVER_PARAMS
+          value: ''
+        - name: NVIDIA_DRIVER_ROOT
+          value: /
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: void
+        - name: CDI_ROOT
+          value: /var/run/cdi
+        - name: NVIDIA_MIG_CONFIG_DEVICES
+          value: all
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SERVICE_ACCOUNT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        - name: IMAGE_NAME
+          value: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246
+        - name: KUBELET_REGISTRAR_DIRECTORY_PATH
+          value: /var/lib/kubelet/plugins_registry
+        - name: KUBELET_PLUGINS_DIRECTORY_PATH
+          value: /var/lib/kubelet/plugins
+        - name: HEALTHCHECK_PORT
+          value: '51516'
+        volumeMounts:
+        - name: plugins-registry
+          mountPath: /var/lib/kubelet/plugins_registry
+        - name: plugins
+          mountPath: /var/lib/kubelet/plugins
+          mountPropagation: Bidirectional
+        - name: cdi
+          mountPath: /var/run/cdi
+        - name: driver-root
+          mountPath: /driver-root
+          mountPropagation: HostToContainer
+      volumes:
+      - name: plugins-registry
+        hostPath:
+          path: /var/lib/kubelet/plugins_registry
+      - name: plugins
+        hostPath:
+          path: /var/lib/kubelet/plugins
+      - name: cdi
+        hostPath:
+          path: /var/run/cdi
+      - name: driver-root-parent
+        hostPath:
+          path: /
+          type: DirectoryOrCreate
+      - name: driver-root
+        hostPath:
+          path: /
+          type: DirectoryOrCreate
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Equal
+        value: 'true'
+---
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: gpu.nvidia.com
+spec:
+  selectors:
+  - cel:
+      expression: device.driver == 'gpu.nvidia.com' && device.attributes['gpu.nvidia.com'].type == 'gpu'
+  extendedResourceName: nvidia.com/gpu
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: resourceslices-policy-dra-driver-nvidia-gpu
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+    - apiGroups:
+      - resource.k8s.io
+      apiVersions:
+      - v1
+      - v1beta1
+      - v1beta2
+      operations:
+      - CREATE
+      - UPDATE
+      - DELETE
+      resources:
+      - resourceslices
+  matchConditions:
+  - name: isRestrictedUser
+    expression: request.userInfo.username == "system:serviceaccount:nvidia-dra-driver:medzen-nvidia-dra-dra-driver-nvidia-gpu-service-account-kubeletplugin"
+  variables:
+  - name: userNodeName
+    expression: request.userInfo.extra[?'authentication.kubernetes.io/node-name'][0].orValue('')
+  - name: objectNodeName
+    expression: '(request.operation == "DELETE" ? oldObject : object).spec.?nodeName.orValue("")'
+  - name: nodeSelectorValue
+    expression: '(request.operation == "DELETE" ? oldObject : object).spec.?nodeSelector.orValue(null)'
+  - name: allNodesValue
+    expression: '(request.operation == "DELETE" ? oldObject : object).spec.?allNodes.orValue(false)'
+  validations:
+  - expression: variables.userNodeName != ""
+    message: no node association found for user, this user must run in a pod on a node and ServiceAccountTokenPodNodeInfo must be enabled
+  - expression: variables.userNodeName == variables.objectNodeName || variables.allNodesValue == true || variables.nodeSelectorValue != null
+    messageExpression: '"this user running on node ''"+variables.userNodeName+"'' may not modify cluster or node resourceslices"'
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: resourceslices-policy-dra-driver-nvidia-gpu
+spec:
+  policyName: resourceslices-policy-dra-driver-nvidia-gpu
+  validationActions:
+  - Deny

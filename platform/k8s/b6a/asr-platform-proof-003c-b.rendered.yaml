@@ -1,0 +1,191 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medzen
+  labels:
+    medzen.io/milestone: b6a
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asr-runtime-b6a
+  namespace: medzen
+  labels:
+    medzen.io/classification: platform-proof-only
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asr-runtime-b6a-config
+  namespace: medzen
+data:
+  AWS_REGION: eu-central-1
+  MODEL_DESTINATION: /models
+  MODEL_DIR: /models
+  MEDZEN_INFERENCE_DEVICE: cuda
+  MODEL_MANIFEST_S3_URI: s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/MANIFEST.json
+  MODEL_MANIFEST_SHA256: c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: asr-runtime-b6a-gpu
+  namespace: medzen
+spec:
+  spec:
+    devices:
+      requests:
+      - name: gpu
+        exactly:
+          deviceClassName: gpu.nvidia.com
+          count: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asr-runtime-b6a
+  namespace: medzen
+  labels: &id001
+    app.kubernetes.io/name: asr-runtime-b6a
+    medzen.io/classification: platform-proof-only
+    medzen.io/serving-label: v0
+  annotations:
+    medzen.io/change-packet: B6A-AWS-CHANGE-PACKET-2026-003C-B
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: *id001
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      serviceAccountName: asr-runtime-b6a
+      restartPolicy: Always
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: 'true'
+        effect: NoSchedule
+      resourceClaims:
+      - name: gpu
+        resourceClaimTemplateName: asr-runtime-b6a-gpu
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+      - name: model-loader
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader@sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: asr-runtime-b6a-config
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: '2'
+            memory: 4Gi
+        securityContext: &id002
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: model
+          mountPath: /models
+        - name: temp
+          mountPath: /tmp
+      containers:
+      - name: asr-runtime
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime@sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: asr-runtime-b6a-config
+        ports:
+        - name: http
+          containerPort: 8081
+        resources:
+          requests:
+            cpu: '2'
+            memory: 8Gi
+          limits:
+            cpu: '4'
+            memory: 12Gi
+          claims:
+          - name: gpu
+        securityContext: *id002
+        startupProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 30
+          failureThreshold: 3
+        volumeMounts:
+        - name: model
+          mountPath: /models
+          readOnly: true
+        - name: temp
+          mountPath: /tmp
+      volumes:
+      - name: model
+        emptyDir:
+          sizeLimit: 8Gi
+      - name: temp
+        emptyDir:
+          sizeLimit: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: asr-runtime-b6a
+  namespace: medzen
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: asr-runtime-b6a
+    medzen.io/classification: platform-proof-only
+    medzen.io/serving-label: v0
+  ports:
+  - name: http
+    port: 8081
+    targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: asr-runtime-b6a-ingress-deny
+  namespace: medzen
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: asr-runtime-b6a
+      medzen.io/classification: platform-proof-only
+      medzen.io/serving-label: v0
+  policyTypes:
+  - Ingress
+  ingress: []

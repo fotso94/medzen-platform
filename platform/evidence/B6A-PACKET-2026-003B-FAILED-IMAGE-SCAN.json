@@ -1,0 +1,197 @@
+{
+  "record": "B6A_REMEDIATED_ZERO_SHOT_PLATFORM_PROOF_FAILED_CLOSED_EVIDENCE",
+  "id": "B6A-PACKET-2026-003B-FAILED-IMAGE-SCAN",
+  "revision": 1,
+  "status": "FAILED_CLOSED",
+  "completed_utc": "2026-08-05T02:53:54Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003B-deployment.json",
+    "sha256": "985593ee07e6aaa7cdffbb0702bbbfc3f8bcad87f0840a175dc3a2d865914eee",
+    "git_commit": "20be6500c8e54e62e8b9ca347d35661aad371634"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003B-deployment.md",
+    "sha256": "b06cf9130c99529e197f9df54fa278fa3a4b0ed39bf45c9f6b35d2c7a3499079"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "preconditions": {
+    "repository_commit": "19697530391178ce0c13c01ad940b423222b43db",
+    "packet_2026_005_evidence": {
+      "path": "platform/evidence/B6A-ECR-SCAN-RULES-2026-005.json",
+      "sha256": "6b8aa6552f0243e9ff3a3f309ef96bc93fdf034108a5552c44ac7f0581e01bf2",
+      "status": "VERIFIED_COMPLETE"
+    },
+    "cluster": "medzen-speech",
+    "kubernetes_version": "1.36",
+    "support_type": "STANDARD",
+    "cluster_health_issues": 0,
+    "gpu_desired": 0,
+    "b6a_namespace_exists": false,
+    "b6a_role_exists": false,
+    "s3_target_objects": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0,
+    "regional_ecr_scan_rules_exact": true
+  },
+  "local_security_and_identity_reverification": {
+    "model_loader": {
+      "oci_index": "sha256:ac6f694b2e420c908b5aba21fa5009a2e3051359624710161b55645c0dfbcdbc",
+      "matched_authorized_identity": true,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0,
+      "runtime_smoke": "PASS"
+    },
+    "asr_runtime": {
+      "oci_index": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "matched_authorized_identity": true,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0,
+      "import_and_cuda_link_smoke": "PASS"
+    },
+    "nvidia_dra": {
+      "digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "matched_authorized_identity": true,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0,
+      "version_smokes": "PASS"
+    },
+    "artifact": {
+      "tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+      "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+      "artifact_bytes": 3090835702,
+      "all_file_hashes_and_sizes_match_manifest": true,
+      "quality_gate_outcome": "FAIL",
+      "production_approved": false
+    }
+  },
+  "sequential_ecr_gates": {
+    "model_loader": {
+      "repository": "medzen-model-loader",
+      "tag": "b6a-003b-69bdce1",
+      "pushed_utc": "2026-08-05T02:43:33.852Z",
+      "oci_index_digest": "sha256:ac6f694b2e420c908b5aba21fa5009a2e3051359624710161b55645c0dfbcdbc",
+      "linux_amd64_manifest_digest": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+      "attestation_manifest_digest": "sha256:101f3d4bca0a109d0b0305473a84852f718528123831427606a876b8d1139f73",
+      "automatic_scan_on_push": true,
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-05T02:43:42Z",
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 0,
+      "gate": "PASS"
+    },
+    "asr_runtime": {
+      "repository": "medzen-asr-runtime",
+      "tag": "b6a-003b-69bdce1",
+      "pushed_utc": "2026-08-05T02:51:57.337Z",
+      "oci_index_digest": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "linux_amd64_manifest_digest": "sha256:3ade552609469b0099861f200e2d925889bc260fc8a961b04ff290fe1f5f65ab",
+      "attestation_manifest_digest": "sha256:5998f0339dfbf41f3ac5ab3b3e23ba1721080c5793caaa5dfc33e9f1d6a68543",
+      "automatic_scan_on_push": true,
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-05T02:52:54Z",
+      "critical": 0,
+      "high": 4,
+      "medium": 2,
+      "undefined": 2,
+      "gate": "FAIL"
+    },
+    "nvidia_dra": {
+      "push_attempted": false,
+      "reason": "Sequence stopped at the preceding ASR runtime scan gate."
+    }
+  },
+  "critical_and_high_findings": [
+    {
+      "id": "CVE-2025-66418",
+      "severity": "HIGH",
+      "package": "python3-pip-whl",
+      "observed_version": "24.0+dfsg-1ubuntu1.3"
+    },
+    {
+      "id": "CVE-2025-66418",
+      "severity": "HIGH",
+      "package": "python-pip",
+      "observed_version": "24.0+dfsg-1ubuntu1.3"
+    },
+    {
+      "id": "CVE-2025-66471",
+      "severity": "HIGH",
+      "package": "python3-pip-whl",
+      "observed_version": "24.0+dfsg-1ubuntu1.3"
+    },
+    {
+      "id": "CVE-2025-66471",
+      "severity": "HIGH",
+      "package": "python-pip",
+      "observed_version": "24.0+dfsg-1ubuntu1.3"
+    }
+  ],
+  "scanner_discrepancy": {
+    "local_docker_scout_high": 0,
+    "authoritative_ecr_basic_scan_high": 4,
+    "interpretation": "The packet correctly treats the automatic ECR scan as authoritative. The local result cannot override the remote failure."
+  },
+  "stop_decision": {
+    "trigger": "AUTOMATIC_ECR_SCAN_HIGH_FINDINGS",
+    "packet_rule": "Any critical or high finding stops the sequence; no failed image may be deployed and no waiver may be introduced during execution.",
+    "sequence_stopped_before_nvidia_dra_push": true,
+    "security_waiver_used": false,
+    "artifact_upload_attempted": false,
+    "identity_apply_attempted": false,
+    "deployment_attempted": false,
+    "gpu_window_opened": false,
+    "success_label_used": false,
+    "result": "B6A_PLATFORM_PROOF_BLOCKED_IMAGE_SCAN"
+  },
+  "post_stop_verification": {
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0
+    },
+    "nvidia_dra_images_pushed": 0,
+    "artifact_objects_uploaded": 0,
+    "b6a_iam_role_created": false,
+    "b6a_identity_resources_in_terraform_state": 0,
+    "b6a_namespace_created": false,
+    "b6a_kubernetes_resources_created": 0,
+    "production_registry_parameters": 0,
+    "approved_asr_writes": 0,
+    "registered_models_or_versions": 0,
+    "language_artifact_or_approved_version_changes": 0,
+    "b5_blocked_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30"
+  },
+  "retention": {
+    "model_loader_passed_image_retained": true,
+    "asr_failed_image_retained_as_immutable_failure_evidence": true,
+    "image_deletion_authorized": false
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_before_active_reservation_usd": 47.5288,
+    "existing_packet_reservation_usd": 15.0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "exact_ecr_scan_and_storage_cost": "NOT_YET_RECONCILED",
+    "reservation_state": "REMAINS_OPEN_PENDING_BILLING_RECONCILIATION"
+  },
+  "remediation_boundary": {
+    "current_packet_may_resume": false,
+    "new_packet_required": "B6A-AWS-CHANGE-PACKET-2026-003C",
+    "new_owner_approval_required": true,
+    "security_waiver_permitted": false,
+    "recommended_engineering": "Build the ASR runtime as a multi-stage image so Ubuntu's build-only python3-pip-whl and related venv bootstrap packages do not exist in the final CUDA runtime stage. Preserve the serving dependencies and runtime behavior, produce a new immutable image identity, then require both local and automatic ECR scans before a new packet may continue.",
+    "model_loader_rebuild_required": false,
+    "nvidia_dra_push_must_remain_after_the_new_asr_gate": true
+  },
+  "conclusion": "Packet 2026-003B failed closed at the authoritative ASR automatic ECR scan. No failed image was deployed, no GPU was started, B6A remains blocked, B5 remains blocked, and a separately approved 003C packet is required for any continuation."
+}

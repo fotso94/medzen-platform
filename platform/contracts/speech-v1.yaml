@@ -1,0 +1,136 @@
+contract_id: MEDZEN-SPEECH-CONTRACT-2026-001
+version: medzen.speech.v1
+status: prospective_owner_authorized_b6a_definition
+authority:
+  decision: B6A-AUTH-2026-001
+  reason: Base-v5 references external section 7-v4, but that endpoint contract is not present in the repository or supplied PDFs.
+
+invariants:
+  - only_speech_orchestrator_is_externally_routable
+  - every_server_response_or_event_carries_request_id_and_model_versions
+  - transcript_verbatim_is_never_rewritten_as_english_or_french
+  - final_results_are_never_dropped
+  - cancellation_propagates_within_250_ms
+  - tts_text_only_is_a_successful_fallback
+  - phi_content_is_never_logged
+
+common:
+  request_id:
+    type: string
+    format: uuid
+  model_versions:
+    type: object
+    required: [asr, registry_snapshot]
+    properties:
+      asr: {type: string}
+      registry_snapshot: {type: string}
+      llm: {type: [string, 'null']}
+      rag: {type: [string, 'null']}
+      tts: {type: [string, 'null']}
+  error:
+    required: [code, message, retryable]
+    properties:
+      code: {type: string}
+      message: {type: string}
+      retryable: {type: boolean}
+  logging:
+    allowed: [request_id, hashed_session_id, event_type, language, model_versions, latency_ms, status_code, error_code]
+    forbidden: [audio, audio_bytes, transcript, reply_text, person_name, patient_id]
+
+public_file_mode:
+  method: POST
+  path: /v1/conversations/speech
+  owner: speech-orchestrator
+  b6a_implementation_state: NOT_IMPLEMENTED
+  request:
+    content_type: multipart/form-data
+    required: [audio]
+    optional: [request_id, language_hint, response_audio]
+  response:
+    status: 200
+    required: [request_id, session_id, language, transcript, reply, model_versions, latency_ms]
+    transcript:
+      required: [verbatim, normalized, normalization_version]
+    reply:
+      required: [text, audio_url, tts_backend]
+      tts_backend: [fish, self_hosted, text_only]
+      rule: audio_url is null when tts_backend is text_only
+
+public_streaming:
+  protocol: websocket
+  path: /v1/conversations/stream
+  owner: speech-orchestrator
+  b6a_implementation_state: NOT_IMPLEMENTED
+  client_events:
+    start:
+      required: [type, request_id]
+      optional: [language_hint, audio_format]
+    audio:
+      frame: binary
+      format: pcm_s16le
+      sample_rate_hz: 16000
+      channels: 1
+      ordering: websocket_frame_order
+    end_of_speech: {frame: json, required: [type]}
+    cancel: {frame: json, required: [type, reason]}
+    barge_in: {frame: json, required: [type]}
+  server_events:
+    ready: {required: [type, request_id, session_id, model_versions]}
+    partial_transcript: {required: [type, request_id, session_id, sequence, text, model_versions]}
+    final_transcript: {required: [type, request_id, session_id, transcript, model_versions]}
+    reply_text: {required: [type, request_id, session_id, text, citations, model_versions]}
+    audio_chunk: {required: [type, request_id, session_id, sequence, model_versions]}
+    completed: {required: [type, request_id, session_id, model_versions, latency_ms]}
+    cancelled: {required: [type, request_id, session_id, model_versions]}
+    error: {required: [type, request_id, session_id, error, model_versions]}
+  backpressure:
+    partial_transcripts: {max: 4, overflow: drop_oldest}
+    audio_chunks: {max: 8, overflow: pause_upstream}
+    final_results: {max: 16, overflow: block_then_controlled_error}
+
+internal_asr_file_mode:
+  method: POST
+  path: /internal/v1/transcriptions
+  owner: asr-runtime
+  authentication: cluster_network_only
+  b6a_implementation_state: REQUIRED
+  request:
+    content_type: audio/wav
+    headers:
+      X-Request-ID: {required: true, format: uuid}
+      X-MedZen-Language: {required: false}
+    maximum_audio_bytes: 26214400
+  response:
+    status: 200
+    required: [request_id, language, language_probability, transcript, duration_seconds, model_versions, latency_ms]
+    transcript:
+      required: [verbatim, normalized, normalization_version]
+
+internal_asr_streaming:
+  protocol: websocket
+  path: /internal/v1/transcriptions/stream
+  owner: asr-runtime
+  authentication: cluster_network_only
+  b6a_implementation_state: REQUIRED
+  rule: Uses the same start, binary-audio, end_of_speech, cancel and ASR transcript events as public_streaming.
+
+health:
+  /healthz: process_alive_only
+  /readyz:
+    required:
+      - model_manifest_verified
+      - model_tree_verified
+      - model_loaded
+      - smoke_inference_passed
+      - platform_test_disclosure_loaded
+
+b6a_limits:
+  classification: PLATFORM_PROOF_ONLY
+  model: openai/whisper-large-v3
+  precision: CTranslate2_float16
+  serving_label: v0
+  allowed_services: [model-loader, asr-runtime]
+  production_registry_alias_change: false
+  approved_version_change: false
+  full_conversation_response: false
+  tts_backend: text_only_not_exercised

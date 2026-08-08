@@ -78,20 +78,46 @@ def kms_statements(perms: list[dict], meta: dict) -> list[dict]:
     """
     keys = meta.get("kms", {})
     need: dict[str, set[str]] = {}
+    registry_need: dict[str, set[str]] = {}
     for p in perms:
         arn = keys.get(p["resource"])
         if not arn:
             continue                                  # unencrypted or non-S3
         actions = set(p["actions"])
+        if p["resource"] == "registry":
+            if actions & {"ssm:GetParameter", "ssm:GetParameters",
+                          "ssm:GetParametersByPath"}:
+                registry_need.setdefault(arn, set()).add("kms:Decrypt")
+            if "ssm:PutParameter" in actions:
+                registry_need.setdefault(arn, set()).update(
+                    {"kms:Encrypt", "kms:GenerateDataKey"})
+            continue
         if "s3:GetObject" in actions:
             need.setdefault(arn, set()).add("kms:Decrypt")
         if "s3:PutObject" in actions:
             need.setdefault(arn, set()).update({"kms:GenerateDataKey", "kms:Decrypt"})
-    return [{"Sid": f"SseKmsFor{_sid(arn)}", "Effect": "Allow",
-             # DescribeKey lets the SDK resolve key state before a transfer;
-             # read-only metadata, no data-plane power.
-             "Action": sorted(acts | {"kms:DescribeKey"}), "Resource": [arn]}
-            for arn, acts in sorted(need.items())]     # sorted => idempotent output
+    statements = [
+        {"Sid": f"SseKmsFor{_sid(arn)}", "Effect": "Allow",
+         # DescribeKey lets the SDK resolve key state before a transfer;
+         # read-only metadata, no data-plane power.
+         "Action": sorted(acts | {"kms:DescribeKey"}), "Resource": [arn]}
+        for arn, acts in sorted(need.items())
+    ]
+    for arn, acts in sorted(registry_need.items()):
+        statements.extend([
+            {"Sid": f"RegistryKmsMetadataFor{_sid(arn)}", "Effect": "Allow",
+             "Action": ["kms:DescribeKey"], "Resource": [arn]},
+            {"Sid": f"RegistryKmsDataFor{_sid(arn)}", "Effect": "Allow",
+             "Action": sorted(acts), "Resource": [arn],
+             "Condition": {
+                 "StringEquals": {
+                     "kms:ViaService": f"ssm.{meta['region']}.amazonaws.com"},
+                 "StringLike": {
+                     "kms:EncryptionContext:PARAMETER_ARN": (
+                         f"arn:aws:ssm:{meta['region']}:{meta['account_id']}:"
+                         f"parameter{meta['registry_ssm_prefix']}/*")}}},
+        ])
+    return statements                            # sorted inputs => idempotent output
 
 
 def _sid(key_arn: str) -> str:

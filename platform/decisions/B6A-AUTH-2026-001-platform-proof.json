@@ -1,0 +1,105 @@
+{
+  "record": "B6A_PLATFORM_PROOF_AUTHORIZATION",
+  "id": "B6A-AUTH-2026-001",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-03T23:35:11Z",
+  "authorization_source": "Owner message: yes, proceed with Claude's phased recommendation, using the corrections and calling the first deployment B6A rather than B6.1. EKS extended-support upgrade first and extend the budget to $300.",
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit": "b0ae5fd83b401d6318d17095f271d66cc4349f5b",
+    "git_tree": "cd8f9d75563c2b62431d92cbcfb53518d46e1a3e",
+    "commit_count": 145,
+    "worktree_clean": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "remote_tracking_state": "master matched origin/master"
+  },
+  "supersedes_by_reference_only": {
+    "path": "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json",
+    "sha256": "31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc",
+    "interpretation": "The earlier record remains immutable. This authorization enables the separately authorized platform-only work it identified as not yet authorized."
+  },
+  "preserved_evidence": [
+    {
+      "path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "required_state": "BLOCKED_UNCHANGED"
+    },
+    {
+      "path": "platform/evidence/B5-MLFLOW-ATTACHMENT-2026-001A.json",
+      "sha256": "3e64e252720bde333dcfb69ff4f28f26ee37679cac57796e464f4a3c12ecf743",
+      "required_state": "VERIFIED_COMPLETE_UNCHANGED"
+    },
+    {
+      "path": "platform/evidence/CAMPAIGNRUN-2026-014-passed.json",
+      "sha256": "fac46bfbd200e074ed4b15d93b626f90b0ccd0e164506bcc2e6b95f9c42a20e7",
+      "required_state": "HISTORICAL_B4_SPEND_AND_SPOT_EVIDENCE_UNCHANGED"
+    }
+  ],
+  "budget": {
+    "path": "platform/decisions/B6A-BUDGET-2026-001-aggregate-300.json",
+    "sha256": "d50334d650d90fc7623172bff9a051040a95192736b247e3cad3f3d235e8d91d",
+    "aggregate_ceiling_usd": 300.0,
+    "historical_b4_committed_usd": 22.5288,
+    "eks_upgrade_reservation_usd": 25.0
+  },
+  "approved_aws_packet": {
+    "id": "B6A-AWS-CHANGE-PACKET-2026-001",
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-001-eks-upgrade.md",
+    "sha256": "1ffe8045c8260ca1e75db433a0b3733a1b8bc5d99980ec233ce4bc5f0c6ae4a9",
+    "approved_operation": "Sequential EKS control-plane, managed-node-group and compatible managed-add-on upgrades from 1.31 to 1.36 with GPU desired size fixed at zero."
+  },
+  "purpose": {
+    "milestone_name": "B6A",
+    "milestone_not_equal_to": "B6.1",
+    "description": "Build and prove the narrow zero-shot Whisper serving path before the full five-service B6 deployment.",
+    "model": "openai/whisper-large-v3 zero-shot",
+    "serving_label": "v0 temporary platform-test baseline",
+    "fine_tuned_candidate_used": false,
+    "production_model_approval_claimed": false
+  },
+  "approved_local_engineering": [
+    "B1 Terraform and live-state reconciliation without blind apply",
+    "Versioned non-serving SSM publication-path implementation and tests",
+    "Missing file-mode and streaming service-contract definition",
+    "TTS reuse-versus-build decision record without changing the separately owned service",
+    "Model-loader service implementation and container tests",
+    "Zero-shot ASR runtime implementation and container tests",
+    "CTranslate2 float16 packaging of the exact pinned zero-shot base model for a non-approved test path",
+    "Immutable v0 manifest, hashes, provenance and explicit failing baseline-quality disclosure",
+    "Preparation of a separate time-boxed B6A worker-scaling and deployment packet"
+  ],
+  "approved_aws_operations_now": [
+    "B6A-AWS-CHANGE-PACKET-2026-001 only"
+  ],
+  "requires_separate_itemized_packet_and_explicit_owner_approval": [
+    "CPU or GPU scaling for the B6A deployment window",
+    "Any v0 test-artifact upload",
+    "Any ECR image push",
+    "Any SSM write",
+    "Any Kubernetes deployment or service creation",
+    "Any ALB or ingress change"
+  ],
+  "prohibited_operations": [
+    "Any training run",
+    "Use or deployment of the blocked B4 fine-tuned artifact",
+    "B5 report regeneration or mutation",
+    "Model registration or model-version creation",
+    "MLflow stage transition",
+    "Write to approved/asr/",
+    "Language artifact or approved_version change",
+    "Production SSM publication or serving-alias change",
+    "Public or production launch",
+    "Use or modification of the separately owned medzen-tts-gateway repository or ECS service",
+    "B5 AWS packet 2026-001B",
+    "Claiming B6A as B6.1 or full B6 completion"
+  ],
+  "required_b6a_outcome": {
+    "classification": "PLATFORM_PROOF_ONLY",
+    "fine_tuned_promotion_state": "BLOCKED_UNCHANGED",
+    "deferred_language_approved_versions": "NULL_UNCHANGED",
+    "full_b6_state": "NOT_COMPLETE",
+    "b6_1_state": "NOT_CLAIMED"
+  }
+}

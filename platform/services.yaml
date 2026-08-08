@@ -24,6 +24,9 @@ meta:
   kms:
     data: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57        # alias/medzen-data
     audio_cache: arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda # alias/medzen-audio
+    # Parameter Store is a control-plane data use, so it reuses the data key.
+    # The generated role grants constrain decrypt to SSM and this exact path.
+    registry: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57
   registry_ssm_prefix: /medzen/registry     # existing app config lives under
                                            # /medzen-health-pro/* and /medzen/tts/* — no collision
 
@@ -83,7 +86,9 @@ services:
   asr-runtime:
     role: Speech to text. Serves ONE multilingual Whisper artifact for all
           languages; per-language approval lives in the registry, not in
-          separate deployments.
+          separate deployments. It loads the verifier-approved artifact and
+          runs one bounded inference on the serving path before reporting
+          ready.
     node_pool: gpu
     public: false
     image_repo: medzen-asr-runtime
@@ -98,7 +103,7 @@ services:
     probes:
       # 5-minute budget: 6-8 GB image + 30-60s model load. Web-app defaults
       # crash-loop this pod and the cause is not obvious from the events.
-      startup:  {path: /healthz, port: 8081, period: 10, failure_threshold: 30}
+      startup:  {path: /readyz, port: 8081, period: 10, failure_threshold: 30}
       liveness: {path: /healthz, port: 8081, period: 30, failure_threshold: 3}
       readiness: {path: /readyz, port: 8081, period: 10, failure_threshold: 3}
     init_container: model-loader
@@ -180,9 +185,10 @@ services:
 # --------------------------------------------------------------------------
 init_containers:
   model-loader:
-    role: Download the approved artifact, verify SHA-256, run an inference
-          smoke test, exit 0. A failure leaves the pod unready rather than
-          half-loaded serving wrong weights.
+    role: Download the authorized artifact, verify the manifest, every file
+          SHA-256 and the artifact-tree SHA-256, write an atomic verification
+          marker, then exit 0. It performs no inference and requests no GPU.
+          A failure prevents the main container from starting.
     image_repo: medzen-model-loader
     resources:
       requests: {cpu: "500m", memory: "2Gi"}

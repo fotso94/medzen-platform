@@ -1,0 +1,128 @@
+{
+  "record": "B6A_ZERO_SHOT_PLATFORM_PROOF_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-003A",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-04T22:40:53Z",
+  "authorization_source": "Owner reply 'Approved' to the explicit request to review and approve B6A-AWS-CHANGE-PACKET-2026-003A as the next separately gated deployment packet.",
+  "interpretation": "Authorization applies only to packet 2026-003A and its incorporated unchanged packet 2026-003 controls. It is not a general AWS, training, promotion or production-serving authorization.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "304622490b37ab43c24948a4226775004c074afa",
+    "git_tree": "b3fff54f40938fa054dfc7d98aa4121a065c2773",
+    "commit_count": 158,
+    "worktree_clean": true,
+    "remote_branch_commit": "304622490b37ab43c24948a4226775004c074afa"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003A-deployment.md",
+    "sha256": "95fd8d6161e895729cbe1c075331f73467f4444607cea306f43d25b338e0441c",
+    "incorporates_by_reference": {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003-deployment.md",
+      "sha256": "e5af50e5bded83ec2feffa682481a76fc706b8aee0a3fea7c56ab33341192da1",
+      "historical_packet_edited": false
+    }
+  },
+  "prerequisites": {
+    "standard_support": {
+      "path": "platform/evidence/B6A-EKS-STANDARD-SUPPORT-2026-004.json",
+      "sha256": "91e79be0a2fe5a6c42f99704ff8dbebc9dad1560d11d2062bfc3c85afb1ec64c",
+      "status": "VERIFIED_COMPLETE",
+      "live_support_type": "STANDARD"
+    },
+    "budget": {
+      "path": "platform/decisions/B6A-BUDGET-2026-002-conservative-reconciliation.json",
+      "sha256": "331513c34f2a73a4c0037d4441160333e7b8ac93cba9b8aa79b908be56e8f75c",
+      "aggregate_ceiling_usd": 300.0,
+      "committed_usd": 47.5288,
+      "packet_reservation_usd": 15.0,
+      "remaining_after_reservation_usd": 237.4712,
+      "maximum_gpu_hours": 2
+    },
+    "local_engineering": {
+      "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-001.json",
+      "sha256": "4fae62ca41df9f48372036efdcf4bdd6fb4b0b18a44de6845b8e9cb190460089",
+      "status": "VERIFIED_LOCAL_ENGINEERING_COMPLETE"
+    },
+    "clean_gpu_component": {
+      "path": "platform/evidence/B6A-NVIDIA-DRA-LOCAL-2026-001.json",
+      "sha256": "6c33d2e1e0dc381608fec5875010a657e46da2e8c53944dea1af3d6c60e5c800",
+      "status": "VERIFIED_LOCAL_ONLY",
+      "required_rebuild_image_id": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+      "critical_max": 0,
+      "high_max": 0,
+      "security_waiver_authorized": false
+    }
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "namespace": "medzen",
+    "gpu_nodegroup": "gpu"
+  },
+  "verified_preconditions": {
+    "cluster_status": "ACTIVE",
+    "kubernetes_version": "1.36",
+    "support_type": "STANDARD",
+    "cluster_and_addon_health_issues": 0,
+    "cpu_desired": 2,
+    "gpu_minimum": 0,
+    "gpu_desired": 0,
+    "gpu_maximum": 1,
+    "gpu_instance_type": "g6.xlarge",
+    "runtime_ecr_images": 0,
+    "nvidia_dra_repository_exists": false,
+    "s3_target_prefix_objects": 0,
+    "registry_parameters": 0,
+    "namespace_exists": false,
+    "b6a_iam_role_exists": false,
+    "b6a_pod_identity_associations": 0,
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_bytes": 3090835702,
+    "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850"
+  },
+  "authorized_operations_in_order": [
+    "rebuild_and_locally_rescan_the_exact_medzen_nvidia_dra_image",
+    "create_only_the_immutable_scan_on_push_kms_encrypted_medzen_nvidia_dra_ecr_repository_without_a_lifecycle_policy",
+    "push_only_the_bound_model_loader_asr_runtime_and_nvidia_dra_images_and_require_zero_push_scan_critical_or_high_findings",
+    "upload_only_the_bound_v0_artifact_and_manifest_to_the_exact_content_addressed_b6a_asr_v0_prefix",
+    "create_only_the_reviewed_medzen_b6a_asr_role_inline_policy_and_exact_eks_pod_identity_association",
+    "render_review_and_install_only_the_digest_pinned_nvidia_dra_v0_4_1_component_with_gpu_resources_enabled_compute_domains_disabled_and_gpu_node_restriction",
+    "create_only_the_reviewed_internal_b6a_namespace_service_account_configmap_resource_claim_deployment_clusterip_service_and_ingress_deny_policy",
+    "set_gpu_desired_to_one_for_at_most_two_hours_and_run_the_bound_loader_hash_cuda_readiness_transcription_and_l4_memory_proofs",
+    "scale_the_b6a_deployment_and_gpu_nodegroup_back_to_zero_and_create_immutable_completion_or_failure_evidence"
+  ],
+  "mandatory_stop_conditions": [
+    "identity_or_live_precondition_mismatch",
+    "plan_or_render_contains_an_unlisted_resource_or_change",
+    "any_critical_or_high_image_finding",
+    "artifact_manifest_object_or_tree_hash_mismatch",
+    "gpu_claim_or_resource_slice_missing",
+    "smoke_inference_readiness_or_transcription_failure",
+    "phi_bearing_log",
+    "two_hour_gpu_deadline_or_budget_breach"
+  ],
+  "mandatory_cleanup": {
+    "deployment_replicas_after_test": 0,
+    "gpu_desired_after_test": 0,
+    "gpu_nodes_after_test": 0,
+    "b6a_pods_after_test": 0
+  },
+  "prohibited_operations": [
+    "training_or_use_of_the_blocked_b4_candidate",
+    "model_registration_mlflow_stage_transition_or_approved_asr_write",
+    "language_artifact_or_approved_version_change",
+    "production_registry_ssm_or_serving_alias_change",
+    "public_endpoint_ingress_load_balancer_alb_or_route",
+    "legacy_nvidia_device_plugin_installation",
+    "security_waiver_or_unpinned_image",
+    "modification_of_historical_b4_b5_or_prior_packet_evidence",
+    "claiming_b6a_as_b6_1_or_full_b6",
+    "any_operation_outside_packet_2026_003a"
+  ],
+  "permitted_success_label": "B6A_PLATFORM_PROOF_COMPLETE"
+}

@@ -1,0 +1,93 @@
+{
+  "record": "B6A_PLATFORM_VERTICAL_SLICE_CLOSURE",
+  "id": "B6A-CLOSURE-2026-001",
+  "revision": 1,
+  "status": "CLOSED_COMPLETE",
+  "closed_utc": "2026-08-08T21:40:04Z",
+  "closure_basis": {
+    "execution_result": {
+      "path": "platform/evidence/B6A-PACKET-2026-003C-F-COMPLETE.json",
+      "sha256": "3d6b8f345dd99398663e75d8e4f310b04da8e304f82a844489421314e7912d8b",
+      "status": "VERIFIED_COMPLETE_CLEANUP_COMPLETE",
+      "outcome": "B6A_PLATFORM_PROOF_COMPLETE"
+    },
+    "owner_authorization": {
+      "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-F-ssm-discovery-full-proof.json",
+      "sha256": "1f9e511465264ab325e5557424619b7d128a2e7b7d0f3fa5a0df74339420816a"
+    },
+    "independent_review": {
+      "path": "platform/decisions/B6A-INDEPENDENT-REVIEW-2026-003C-F.json",
+      "sha256": "c9d74fcfd07e7a738cac872aa91da67306debe61eb15da7036efa60334d76e18",
+      "status": "PASS"
+    }
+  },
+  "bound_platform_test_candidate": {
+    "classification": "ZERO_SHOT_WHISPER_LARGE_V3_V0_PLATFORM_TEST_ONLY",
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+    "model_loader_child_digest": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "asr_runtime_child_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "nvidia_dra_child_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+  },
+  "exit_conditions": {
+    "model_loader_download_hash_verification_and_placement": "PASS",
+    "stable_gpu_and_dra_readiness": "PASS",
+    "pre_artifact_sampler_self_test_120_numeric_samples": "PASS",
+    "asr_runtime_cuda_load_startup_smoke_and_readiness": "PASS",
+    "synthetic_no_phi_transcription_http_200": "PASS",
+    "transcription_receipt_fsynced_before_memory_sampler": "PASS",
+    "numeric_peak_l4_gpu_memory": "PASS_4180_MIB",
+    "mandatory_zero_state_cleanup": "PASS",
+    "cost_inside_allowance": "PASS",
+    "terraform_post_run_drift": "NO_CHANGES"
+  },
+  "measurement_closure": {
+    "measurement_scope": "loaded_v0_model_plus_second_synthetic_inference_on_g6_xlarge_l4",
+    "baseline_used_mib": 3988,
+    "peak_used_mib": 4180,
+    "total_mib": 23034,
+    "sample_count": 14,
+    "status": "B6A_V0_SERVING_PROOF_GPU_MEMORY_MEASURED",
+    "limitation": "This is not a measurement or approval of the blocked B5 fine-tuned candidate and does not close its production-resource deviation."
+  },
+  "cleanup_and_non_promotion": {
+    "gpu_nodegroup_desired": 0,
+    "gpu_asg_instances": 0,
+    "gpu_nodes": 0,
+    "b6a_workloads": 0,
+    "nvidia_dra_pods": 0,
+    "deadline_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "models_registered": 0,
+    "approved_versions_changed": 0,
+    "production_serving_aliases_changed": 0,
+    "deployments_left_running": 0
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_reservation_usd": 15.0,
+    "this_run_conservative_gpu_seconds": 773,
+    "cumulative_b6a_conservative_gpu_seconds": 3363,
+    "remaining_original_two_hour_allowance_seconds": 3837,
+    "this_run_conservative_gpu_cost_usd": 0.2161,
+    "cumulative_b6a_conservative_gpu_cost_usd": 0.9401,
+    "actual_billing_reconciliation": "PENDING"
+  },
+  "governance_boundaries": {
+    "b5_gate_report": {
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "outcome": "BLOCKED",
+      "unchanged": true
+    },
+    "b5_passed": false,
+    "v0_approved_for_production": false,
+    "full_b6_complete": false,
+    "training_or_language_scope_changed": false,
+    "historical_b4_b5_evidence_changed": false,
+    "b6a_complete": true
+  },
+  "closure_statement": "B6A proved the narrow artifact-to-transcription serving chain and its cleanup controls with zero-shot v0. It did not promote a model, complete B5, or complete full B6.",
+  "next_step": "FULL_B6_PLANNING_REVIEW",
+  "next_step_constraint": "Stop B6A packet work. Define the remaining service, streaming, isolation, failure-drill, contract, cost and approval boundaries prospectively before implementation."
+}

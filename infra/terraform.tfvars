@@ -17,3 +17,7 @@ audio_bucket = "medzen-audio-cache"
 
 # 0 until L-DB2E81BA lands. Raise to 1 and re-apply; no other change needed.
 gpu_desired_size = 0
+
+# Dedicated publication boundary. This principal may assume the role, but the
+# role itself is the only identity granted Parameter Store writes.
+registry_publisher_principal_arn = "arn:aws:iam::558069890522:user/s.fotso"

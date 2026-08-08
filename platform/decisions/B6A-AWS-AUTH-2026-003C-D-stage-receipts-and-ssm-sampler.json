@@ -1,0 +1,107 @@
+{
+  "record": "B6A_003C_D_DURABLE_RECEIPTS_AND_SSM_SAMPLER_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-003C-D",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-08T18:28:49Z",
+  "authorization_source": "Owner statement: 'I approve B6A AWS change packet 2026-003C-D for execution. Proceed: IAM enablement (plan must show exactly one create), CPU registration verification, then the GPU window within the remaining 6,520-second allowance.'",
+  "interpretation": "This authorizes only the ordered 003C-D execution after the independent IAM PASS: one exact node SSM inline-policy create, CPU SSM registration verification, one bounded GPU node, predeploy SSM sampler self-test, separate transcription and GPU-memory receipts, and mandatory zero cleanup. It does not authorize any other IAM, artifact, image, promotion, production SSM, public traffic, training or language action.",
+  "owner_review_binding": {
+    "packet_commit": "d62aeb1dd0c6b4a645c6adf4b59ce457e774a786",
+    "packet_sha256": "d28d1f625d80f861c415d421f61c9c32b869c81fd240e346c8476d5c0e89a0b9"
+  },
+  "independent_iam_review": {
+    "status": "PASS",
+    "reviewer": "independent architecture reviewer (Claude)",
+    "path": "platform/decisions/B6A-IAM-REVIEW-2026-003C-D.json",
+    "sha256": "795df2a8a5eb63c588a35f2d09edc07fee52817add41ac15ae0ab1782ba75c21",
+    "changes_required": 0
+  },
+  "packet": {
+    "id": "B6A-AWS-CHANGE-PACKET-2026-003C-D",
+    "sha256": "d28d1f625d80f861c415d421f61c9c32b869c81fd240e346c8476d5c0e89a0b9"
+  },
+  "source_bindings": {
+    "pipeline/runtime_receipts.py": "9534f4c77242b7bf295e2b82943349326c8338d24baf01ac948ac89d9e353ef7",
+    "platform/runtime-receipt-policy-v1.yaml": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda",
+    "platform/iam/medzen-node-ssm-core.json": "ce0b898088de05b8c27c6be21aa038d5d8a4e354b84dd09c041d163631b8ac58",
+    "infra/eks.tf": "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b",
+    "scripts/b6a_003c_d_common.py": "c08146e90ffb9a5582fbef05592737a5f9e4591750f8d5ac799623542c796d1a",
+    "scripts/b6a_003c_d_bindings.py": "ff2d9e35738911b490f835c91a71fa283917493820a1d32fb33055a7437330e5",
+    "scripts/b6a_003c_d_deadline.py": "2422be3ca1e30615d4f46672e5a3f05ed180332b5ceebf7e4c914ad4994624ee",
+    "scripts/b6a_003c_d_cleanup.sh": "2b18978a3505fc0c01f2b83f84db3d246cc7b2bc657a0ff87782ad616c26ffeb",
+    "scripts/b6a_003c_d_ssm_sampler.sh": "04efd821527689c453571a277c7f2d8e673b377bdf00f1f01d1f46f2e3a19cb7",
+    "scripts/run_b6a_003c_d_sampler_self_test.py": "1a6fcb7a369db89a0b43781b296ef22e5e6bea605b036fc0937c3d8f2b3c48bb",
+    "scripts/run_b6a_003c_d_proof.py": "718851b9c97b8b9d5027ca6f364f68df569ff40ea4c0ed09b9a812fce0d1b1c3",
+    "scripts/run_b6a_003c_d_gpu_window.sh": "e456f65cbe200c726ba886c0bacb9d270b4d4fe70b85072e5d2c6c49fee8c51d",
+    "scripts/check_b6a_003c_d_iam_plan.py": "701365a1d75fb43d2f93fefe3af9b9f7f0989701a90d302b9249a17ce3251653"
+  },
+  "bound_resources": {
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "cpu_nodegroup": "cpu",
+    "gpu_nodegroup": "gpu",
+    "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "maximum_gpu_nodes": 1,
+    "maximum_window_seconds": 6520,
+    "maximum_cumulative_b6a_seconds": 7200,
+    "conservative_prior_gpu_seconds": 680,
+    "deadline_action": "medzen-b6a-003c-d-deadline-scale-zero",
+    "terraform_plan_actions": {
+      "create": 1,
+      "update": 0,
+      "delete": 0,
+      "only_resource": "aws_iam_role_policy.node_ssm_core"
+    },
+    "ssm_document": "AWS-RunShellScript",
+    "ssm_document_version": "1"
+  },
+  "authorized_operations_in_order": [
+    "commit_and_push_this_authorization_and_independent_review",
+    "generate_and_guard_a_fresh_one_create_terraform_plan",
+    "apply_only_aws_iam_role_policy_node_ssm_core_and_require_post_apply_no_changes",
+    "require_both_existing_cpu_nodes_online_in_ssm_without_sending_a_cpu_command",
+    "persist_local_bindings_and_install_cleanup_traps",
+    "arm_and_read_back_only_the_bound_6520_second_gpu_deadline",
+    "scale_only_the_gpu_nodegroup_from_zero_to_one",
+    "require_stable_dra_and_run_the_120_sample_ssm_self_test_before_model_deploy",
+    "apply_only_the_bound_b6a_workload_and_persist_transcription_before_memory_sampling",
+    "persist_a_separate_pass_or_incomplete_gpu_memory_receipt",
+    "delete_or_scale_only_the_b6a_workload_and_gpu_to_zero_on_every_outcome",
+    "disarm_the_deadline_only_after_complete_zero_state_proof",
+    "audit_transcription_receipt_timestamp_before_memory_sampler_start",
+    "create_commit_and_push_immutable_completion_or_failure_evidence"
+  ],
+  "prohibited_operations": [
+    "any_terraform_action_other_than_one_node_ssm_inline_policy_create",
+    "ssm_command_to_a_cpu_node_or_any_instance_other_than_the_exact_gpu_node",
+    "parameter_store_s3_cloudwatch_output_or_raw_sampler_output",
+    "artifact_upload_overwrite_image_build_push_scan_or_dra_change",
+    "training_quality_reclassification_language_reactivation_or_green_bucket_action",
+    "approved_asr_write_model_registration_mlflow_stage_or_production_ssm_change",
+    "public_endpoint_ingress_load_balancer_production_traffic_or_non_synthetic_audio",
+    "more_than_one_gpu_node_or_more_than_6520_new_gpu_seconds",
+    "editing_historical_b4_b5_or_prior_b6a_records",
+    "claiming_v0_production_readiness_b5_pass_b6_1_or_full_b6"
+  ],
+  "permitted_outcomes": [
+    "B6A_PLATFORM_PROOF_COMPLETE",
+    "INCOMPLETE_MEASUREMENT",
+    "BLOCKED_SSM_SAMPLER_SELF_TEST",
+    "BLOCKED_PLATFORM_PROOF",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "post_run_audit_condition": {
+    "required": true,
+    "assertion": "The transcription receipt recorded_utc must be earlier than the GPU-memory sampler start timestamp.",
+    "failure_effect": "B6A cannot be accepted as complete."
+  }
+}

@@ -30,6 +30,13 @@ resource "aws_eks_cluster" "this" {
   version  = var.eks_version
   role_arn = aws_iam_role.cluster.arn
 
+  # Keep the cluster on the normal support track. AWS will automatically move
+  # a cluster to the next supported minor when standard support ends, so every
+  # application release must remain compatible with that documented behavior.
+  upgrade_policy {
+    support_type = "STANDARD"
+  }
+
   vpc_config {
     subnet_ids              = var.subnet_ids
     endpoint_private_access = true
@@ -74,6 +81,17 @@ resource "aws_iam_role_policy_attachment" "node" {
   ])
   role       = aws_iam_role.node.name
   policy_arn = each.value
+}
+
+# Systems Manager is the independently reviewed, no-ingress control path for
+# bounded node-level diagnostics. The exact permissions are frozen locally
+# instead of following a mutable AWS-managed policy version. Because the CPU
+# and GPU node groups share this role, any apply requires an explicit packet
+# and independent IAM review.
+resource "aws_iam_role_policy" "node_ssm_core" {
+  name   = "${var.name}-node-ssm-core"
+  role   = aws_iam_role.node.id
+  policy = file("${path.module}/../platform/iam/medzen-node-ssm-core.json")
 }
 
 # ---- CPU node group --------------------------------------------------------

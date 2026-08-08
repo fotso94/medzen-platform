@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EksPodIdentityOnly",
+      "Effect": "Allow",
+      "Principal": {"Service": "pods.eks.amazonaws.com"},
+      "Action": ["sts:AssumeRole", "sts:TagSession"],
+      "Condition": {
+        "StringEquals": {"aws:SourceAccount": "558069890522"},
+        "ArnEquals": {"aws:SourceArn": "arn:aws:eks:eu-central-1:558069890522:cluster/medzen-speech"}
+      }
+    }
+  ]
+}

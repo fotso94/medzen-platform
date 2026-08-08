@@ -1,0 +1,40 @@
+{
+  "record": "B6A_NODE_SSM_LEAST_PRIVILEGE_REFINEMENT",
+  "id": "B6A-DESIGN-2026-008",
+  "revision": 1,
+  "status": "local-engineering-only-independent-iam-review-required",
+  "created_utc": "2026-08-08T18:24:00Z",
+  "supersedes_or_edits": false,
+  "supplements": {
+    "path": "platform/decisions/B6A-DESIGN-2026-006-stage-receipts-and-ssm-sampler.json",
+    "sha256": "8b64cee73972cd19582357a6c383be2d6340ea5ecd366a6fa1ba4be158923302"
+  },
+  "refinement": {
+    "policy_path": "platform/iam/medzen-node-ssm-core.json",
+    "removed_as_unnecessary": [
+      "ssm:GetDeployablePatchSnapshotForInstance",
+      "ssm:GetManifest",
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:PutInventory",
+      "ssm:PutComplianceItems",
+      "ssm:PutConfigurePackageResult"
+    ],
+    "explicitly_absent": [
+      "ssm:SendCommand",
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "s3:*",
+      "logs:*"
+    ],
+    "retained_purpose": "SSM Agent registration, command-document/status handling, and message channels only",
+    "shared_role_scope": "existing CPU and GPU EKS nodes",
+    "independent_review_required": true
+  },
+  "pre_gpu_validation": {
+    "require_two_existing_cpu_nodes_to_register_online_after_apply": true,
+    "cpu_run_command_required": false,
+    "failure_action": "Do not arm a GPU deadline or scale the GPU node group."
+  },
+  "execution_authorized": false
+}

@@ -1,0 +1,102 @@
+{
+  "record": "B6A_003C_F_BOUNDED_SSM_DISCOVERY_FULL_PLATFORM_PROOF_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-003C-F",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-08T21:17:46Z",
+  "authorization_source": "Owner statement: 'I approve B6A AWS change packet 2026-003C-F for execution.'",
+  "interpretation": "This authorizes only the exact independently reviewed 003C-F sequence: zero-state preflight, deadline-first one-GPU window, bounded SSM invocation discovery for the proven pre-artifact sampler, bound v0 transcription, independent GPU-memory measurement and mandatory zero cleanup. It authorizes no IAM, Terraform resource, artifact, image, DRA, promotion, production SSM, training or language change.",
+  "owner_review_binding": {
+    "packet_commit": "7c120b86f50f0c80438af0d4720b88997b5c1526",
+    "packet_sha256": "18f30e489c02a33abc69696d57f9917f2a20ab204cd0d8ba32f2872fb15df27c"
+  },
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "independent architecture reviewer (Claude)",
+    "path": "platform/decisions/B6A-INDEPENDENT-REVIEW-2026-003C-F.json",
+    "sha256": "c9d74fcfd07e7a738cac872aa91da67306debe61eb15da7036efa60334d76e18",
+    "changes_required": 0
+  },
+  "packet": {
+    "id": "B6A-AWS-CHANGE-PACKET-2026-003C-F",
+    "sha256": "18f30e489c02a33abc69696d57f9917f2a20ab204cd0d8ba32f2872fb15df27c"
+  },
+  "source_bindings": {
+    "pipeline/runtime_receipts_v2.py": "898c70d1e502bd84d01a5e6f619d6c6d6fe26627e3ae678b26c87d47145367f2",
+    "platform/runtime-receipt-policy-v2.yaml": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "scripts/b6a_003c_e_ssm_sampler.sh": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "scripts/run_b6a_003c_e_proof.py": "73236c92533bf56b8c9b8f60ead18033d17fc0cb10377fc238bb22ff5a417ea5",
+    "scripts/b6a_003c_f_common.py": "b22117796f88a5559ea182abc4d546f091a96d7f1a2fef25779024308f849175",
+    "scripts/b6a_003c_f_bindings.py": "f871d4f98df318734242af1e03b8fe8988ac6ad4f69d7362ab232fd9199cb294",
+    "scripts/b6a_003c_f_deadline.py": "76bd978d17972b85bf4303c63db0690a2b4bdc32c1d67a7ac28633c573451009",
+    "scripts/b6a_003c_f_cleanup.sh": "8bbfe9f29d382b8d3edb10022b37d04c310cefca2a65bf1244e6fe1495c79a53",
+    "scripts/run_b6a_003c_f_sampler_self_test.py": "fd96fa3f77f5c933da8bad9f863820d28b5e58c0fa39677c37c1580589deb94f",
+    "scripts/run_b6a_003c_f_gpu_window.sh": "20dc4556f8d96114bca19a923f1c2ac80666fe95fa41626c8ec8a23aa55f2b1b"
+  },
+  "bound_resources": {
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "gpu_nodegroup": "gpu",
+    "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "maximum_gpu_nodes": 1,
+    "maximum_window_seconds": 4610,
+    "maximum_cumulative_b6a_seconds": 7200,
+    "conservative_prior_gpu_seconds": 2590,
+    "deadline_action": "medzen-b6a-003c-f-deadline-scale-zero",
+    "iam_changes": 0,
+    "terraform_resource_changes": 0,
+    "ssm_document": "AWS-RunShellScript",
+    "ssm_document_version": "1"
+  },
+  "authorized_operations_in_order": [
+    "commit_and_push_this_authorization_and_independent_review",
+    "verify_exact_sources_retained_state_terraform_no_changes_and_zero_gpu_state",
+    "persist_local_bindings_and_install_cleanup_traps",
+    "arm_and_read_back_only_the_bound_4610_second_gpu_deadline",
+    "scale_only_the_gpu_nodegroup_from_zero_to_one",
+    "require_online_ssm_registration_and_stable_dra_before_model_or_audio",
+    "send_the_proven_sampler_once_and_retry_only_bounded_invocation_does_not_exist",
+    "require_exact_120_sample_pass_before_model_deploy",
+    "apply_only_the_bound_b6a_workload_and_persist_transcription_before_memory_sampling",
+    "persist_a_separate_pass_or_incomplete_gpu_memory_receipt",
+    "delete_or_scale_only_the_b6a_workload_and_gpu_to_zero_on_every_outcome",
+    "disarm_the_deadline_only_after_complete_zero_state_proof",
+    "audit_receipt_order_numeric_peak_cleanup_and_cost",
+    "publish_b6a_closure_only_if_every_post_run_condition_passes",
+    "create_commit_and_push_immutable_completion_or_failure_evidence"
+  ],
+  "prohibited_operations": [
+    "iam_kms_ecr_image_dra_pod_identity_or_terraform_resource_change",
+    "artifact_upload_overwrite_or_approved_asr_write",
+    "training_quality_reclassification_language_reactivation_or_green_bucket_action",
+    "model_registration_mlflow_stage_or_production_ssm_change",
+    "public_endpoint_ingress_load_balancer_production_traffic_phi_or_non_synthetic_audio",
+    "raw_output_after_the_pre_artifact_boundary",
+    "more_than_one_gpu_node_or_more_than_4610_new_conservative_gpu_seconds",
+    "editing_historical_b4_b5_or_prior_b6a_records",
+    "claiming_v0_production_readiness_b5_pass_or_full_b6"
+  ],
+  "permitted_outcomes": [
+    "B6A_PLATFORM_PROOF_COMPLETE",
+    "INCOMPLETE_MEASUREMENT",
+    "BLOCKED_SSM_SAMPLER_SELF_TEST",
+    "BLOCKED_PLATFORM_PROOF",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "post_run_audit_conditions": {
+    "transcription_receipt_recorded_before_memory_sampler_start": true,
+    "numeric_peak_l4_gpu_memory_required_for_completion": true,
+    "cleanup_zero_required": true,
+    "maximum_additional_gpu_seconds": 4610,
+    "all_pass_effect": "publish B6A closure record and stop",
+    "next_step_after_closure": "full-B6 planning review"
+  }
+}

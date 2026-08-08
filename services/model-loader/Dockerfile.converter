@@ -1,0 +1,24 @@
+# Local-only B6A zero-shot converter. Model weights are mounted read-only and
+# are never copied into the image. The resulting image digest is bound into the
+# manifest produced by scripts/package_b6a_zero_shot.py.
+FROM python:3.12-slim-trixie@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    HF_HUB_OFFLINE=1 \
+    HF_HUB_DISABLE_XET=1
+
+RUN useradd --system --uid 10001 --create-home medzen
+WORKDIR /opt/medzen
+RUN pip install --no-cache-dir "pip==26.2"
+COPY services/model-loader/requirements.converter.txt ./requirements.converter.txt
+RUN pip install -r requirements.converter.txt \
+    && python -c 'import ctranslate2, torch, transformers; assert ctranslate2.__version__ == "4.8.1"; assert torch.__version__.split("+")[0] == "2.13.0"; assert transformers.__version__ == "5.14.1"' \
+    && python -m pip uninstall -y pip setuptools wheel \
+    && apt-get purge -y --allow-remove-essential perl-base \
+    && rm -rf /var/lib/apt/lists/* /root/.cache
+COPY scripts/package_b6a_zero_shot.py ./scripts/package_b6a_zero_shot.py
+
+USER 10001:10001
+ENTRYPOINT ["python", "/opt/medzen/scripts/package_b6a_zero_shot.py"]

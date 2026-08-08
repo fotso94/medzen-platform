@@ -1,0 +1,166 @@
+{
+  "record": "B6A_PRE_ARTIFACT_INTERACTIVE_SAMPLER_DEBUG_RESULT",
+  "id": "B6A-SAMPLER-DEBUG-2026-001-RESULT",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "outcome": "PASS_PROVEN_120_SAMPLE_SCRIPT",
+  "completed_utc": "2026-08-08T20:05:16Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-SAMPLER-DEBUG-AUTH-2026-001.json",
+    "sha256": "8e8751816dcb0a5a3c43f6f118d38a03d839406b42a905c0f2f475924924d8c6",
+    "git_commit": "0887b545a4513a68d45854ce2151d7ea3d5417e2"
+  },
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "historical_v1_path": "platform/runtime-receipt-policy-v1.yaml",
+    "historical_v1_sha256": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda",
+    "historical_receipts_changed": false
+  },
+  "pre_artifact_invariant": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false,
+    "transcription_attempted": false,
+    "gpu_memory_proof_attempted": false,
+    "raw_output_exception_valid_for_entire_debug": true
+  },
+  "diagnosis": {
+    "original_003c_d_command_id": "9b0295f8-8bc3-428f-87a6-a6d08e2834b3",
+    "original_refusal_code": "CRICTL_ABSENT",
+    "confirmed_node_inventory": {
+      "crictl": "ABSENT",
+      "ctr": "/usr/bin/ctr",
+      "nerdctl": "/usr/local/bin/nerdctl",
+      "nsenter": "/usr/bin/nsenter"
+    },
+    "root_cause": "The EKS AL2023 GPU AMI does not contain crictl, but the sampler required it before locating the DRA container.",
+    "correction": "Replace crictl container discovery, inspection and exec with the explicit nerdctl k8s.io namespace interface."
+  },
+  "proven_sampler": {
+    "path": "scripts/b6a_003c_e_ssm_sampler.sh",
+    "debug_working_copy_path": "scripts/b6a_003c_d_ssm_sampler.sh",
+    "debug_working_copy_restored_to_historical_sha_after_proof": true,
+    "starting_sha256": "04efd821527689c453571a277c7f2d8e673b377bdf00f1f01d1f46f2e3a19cb7",
+    "proven_sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "runtime_interface": "/usr/local/bin/nerdctl --namespace k8s.io",
+    "exact_dra_pod_uid": "68970a0a-3bd5-491b-9608-0141719563fd",
+    "exact_dra_container_id": "c1cd16d4bb9ce4b8e29844f0a30a5cf70dd2f5629cf18068bd5b5a488bf408f8",
+    "exact_dra_image_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "explicit_bash_invocation_used": true,
+    "sample_count": 120,
+    "gpu_index": 0,
+    "minimum_used_mib": 0,
+    "peak_used_mib": 0,
+    "total_mib": 23034,
+    "raw_stderr": "",
+    "result": "PASS"
+  },
+  "ssm_commands": [
+    {
+      "purpose": "tooling_inventory",
+      "command_id": "b0a13e31-3caa-47f9-a397-6acefc1a4a44",
+      "status": "Success",
+      "response_code": 0,
+      "execution_elapsed": "PT0.011S"
+    },
+    {
+      "purpose": "nerdctl_exact_dra_probe",
+      "command_id": "9cb8d0ea-b572-4adc-9892-981bc848545c",
+      "status": "Success",
+      "response_code": 0,
+      "execution_elapsed": "PT0.28S"
+    },
+    {
+      "purpose": "patched_120_numeric_sample_proof",
+      "command_id": "0958ce20-f034-4f01-9526-9e5da88a5ee3",
+      "status": "Success",
+      "response_code": 0,
+      "execution_start_utc": "2026-08-08T19:51:50.119Z",
+      "execution_end_utc": "2026-08-08T19:54:01.119Z",
+      "execution_elapsed": "PT2M11.906S"
+    }
+  ],
+  "receipts": [
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/prior_failure_diagnosis.json",
+      "sha256": "158bb968ea5f45bae64fe56e6cf257ca3732c733d434e2d7079ea0eae3d61d51"
+    },
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/deadline.json",
+      "sha256": "408c9d20d66fc84805f1683310553335174ecacc40edd25c40f6cc70c1d50279"
+    },
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/tooling_inventory.json",
+      "sha256": "46ca6358d73ba397bdada212d4cc3fe2bc0c488fb8416d545e69491823de1a55"
+    },
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/nerdctl_probe.json",
+      "sha256": "bbf271a1899ab090f16e6dc76c5ddfaca7f85490e1de2eab5b64b35919ed7e9d"
+    },
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/sampler_120_proof.json",
+      "sha256": "30cd3b6799cda5da69e40afc638c21499fc4eb86738df0c3c7b3e810047076ab"
+    },
+    {
+      "path": "platform/evidence/receipts/B6A-SAMPLER-DEBUG-2026-001/cleanup.json",
+      "sha256": "676cdcc8f49d1ca4d37615cc47b31351b86436d39c75ec4bcaaf9f456c49549f"
+    }
+  ],
+  "deadline_and_gpu_window": {
+    "deadline_event_id": "7c390bde-a3f5-44d2-b541-7b19ee0e28ad",
+    "deadline_armed_utc": "2026-08-08T19:43:55Z",
+    "deadline_utc": "2026-08-08T19:58:41Z",
+    "deadline_seconds_from_arm": 886,
+    "gpu_scale_up_requested_utc": "2026-08-08T19:44:52Z",
+    "gpu_instance_launch_utc": "2026-08-08T19:45:33Z",
+    "gpu_scale_down_requested_utc": "2026-08-08T19:55:59Z",
+    "gpu_termination_selected_utc": "2026-08-08T19:56:41Z",
+    "launch_to_termination_selection_seconds": 668,
+    "zero_state_proven_utc": "2026-08-08T20:05:16Z",
+    "managed_cleanup_confirmation_exceeded_900_seconds": true,
+    "interpretation": "Compute termination was selected inside the authorized window. AWS-managed node and ASG bookkeeping delayed complete zero-state confirmation; no debug work occurred after scale-down was requested."
+  },
+  "cleanup_verification": {
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_instances": 0,
+    "gpu_ec2_state": "terminated",
+    "gpu_nodes": 0,
+    "dra_pods": 0,
+    "medzen_workloads": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "post_run_terraform_plan": "NO_CHANGES"
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_reservation_usd": 15.0,
+    "prior_conservative_gpu_seconds": 1191,
+    "debug_authorized_seconds": 900,
+    "debug_conservative_debit_seconds": 900,
+    "cumulative_conservative_gpu_seconds": 2091,
+    "remaining_original_two_hour_allowance_seconds": 5109,
+    "debug_maximum_estimated_gpu_cost_usd": 0.2516,
+    "cumulative_conservative_gpu_cost_usd": 0.5846,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "production_and_governance_boundaries": {
+    "packet_003c_e_created": false,
+    "packet_003c_e_approved": false,
+    "full_b6a_proof_attempted": false,
+    "model_or_audio_artifact_changed": false,
+    "approved_artifact_written": false,
+    "model_registered": false,
+    "production_ssm_changed": false,
+    "training_or_language_scope_changed": false,
+    "b5_outcome": "BLOCKED",
+    "b6a_complete": false,
+    "b6_status": "BLOCKED"
+  },
+  "next_boundary": "Prepare packet 003C-E bound to sampler SHA-256 b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96, policy v2 and no more than the remaining 5109-second allowance. Present it for independent review and owner approval; do not execute it yet."
+}

@@ -1,0 +1,49 @@
+{
+  "record": "B6A_TTS_SERVICE_BOUNDARY",
+  "id": "B6A-TTS-2026-001",
+  "revision": 1,
+  "status": "DECIDED",
+  "authority": "B6A-AUTH-2026-001",
+  "finding": {
+    "repository_services_directory_tracked_files": 0,
+    "medzen_speech_tts_gateway_ecr_images": 0,
+    "platform_source_of_truth_existing_code": null,
+    "base_v5_claim": "The original plan describes a deployed TTS gateway, but the current MedZen speech-platform repository and its dedicated ECR repository contain no implementation.",
+    "conclusion": "The MedZen speech-platform TTS service is not built. It must not be described as reusable completed code."
+  },
+  "separate_existing_service": {
+    "name": "medzen-tts-gateway",
+    "ownership": "different project",
+    "allowed_for_b6a": false,
+    "modification_authorized": false,
+    "reuse_authorized": false,
+    "reason": "The owner explicitly excluded the separately owned repository and ECS service from this project."
+  },
+  "b6a_decision": {
+    "tts_service_built_in_b6a": false,
+    "tts_service_deployed_in_b6a": false,
+    "b6a_services": [
+      "model-loader",
+      "asr-runtime"
+    ],
+    "tts_contract_state": "DEFINED_FOR_LATER_FULL_B6",
+    "fallback_if_later_conversation_slice_precedes_tts": "text_only",
+    "claim": "B6A proves artifact loading and ASR serving only; it is not a full voice-conversation deployment."
+  },
+  "future_full_b6": {
+    "required_action": "Build a new medzen-speech-tts-gateway owned by this repository, or obtain a new owner-approved integration decision.",
+    "required_fallback_chain": [
+      "fish",
+      "self_hosted_only_when_registry_approved",
+      "text_only"
+    ],
+    "text_only_is_success": true
+  },
+  "preserved_controls": {
+    "blocked_b5_artifact_used": false,
+    "approved_version_changes": 0,
+    "production_ssm_changes": 0,
+    "aws_changes": 0,
+    "deployments": 0
+  }
+}

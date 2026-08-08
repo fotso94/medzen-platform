@@ -1,0 +1,111 @@
+{
+  "record": "B6A_RUNTIME_IMAGE_HARDENING_LOCAL_ENGINEERING_DECISION",
+  "id": "B6A-DESIGN-2026-003",
+  "revision": 1,
+  "status": "owner-approved-local-engineering-only",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-05T03:07:40Z",
+  "authorization_source": "Owner message: okay go ahead with Claude recommendations with your corrections and report while doing it.",
+  "interpretation": "Authorize local ASR multi-stage runtime remediation, reusable image-hardening controls, local tests and scans, and preparation of a separately gated 003C-A ECR scan-only packet. No AWS mutation is authorized by this decision.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "c69e1c82fe8b42866047e00ae94a90bb4642aa35",
+    "git_tree": "91fa218f75a871b74789cb936c7ea68b1e41b252",
+    "commit_count": 167,
+    "worktree_clean": true,
+    "remote_branch_commit": "c69e1c82fe8b42866047e00ae94a90bb4642aa35"
+  },
+  "supersedes_by_reference_only": [
+    {
+      "path": "platform/decisions/B6A-DESIGN-2026-002-runtime-verification-boundary.json",
+      "sha256": "b0c14c29d583ded50c08dcad5f372280bad0aa01aa2a53ee090122b8b63bbc19",
+      "historical_record_edited": false,
+      "preserved_interpretation": "The loader verifies content without GPU; the ASR runtime owns CUDA load and one bounded startup inference."
+    },
+    {
+      "path": "platform/evidence/B6A-PACKET-2026-003B-FAILED-IMAGE-SCAN.json",
+      "sha256": "385b77b3e9aac7e9393ef10c912ae926e5527f3d92a47d1be24c3b19a5f4e4a9",
+      "historical_record_edited": false,
+      "preserved_interpretation": "Packet 003B failed closed and cannot resume."
+    },
+    {
+      "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-002.json",
+      "sha256": "f2a9b96d0e3967e2f0f808fa8629a10135ac5262f37b81a1240e7f2a814b6183",
+      "historical_record_edited": false,
+      "preserved_interpretation": "The model-loader remediation remains complete and its passed ECR identity does not require rebuilding."
+    }
+  ],
+  "root_cause": {
+    "failed_image": "medzen-asr-runtime:b6a-003b-69bdce1",
+    "authoritative_ecr_high_findings": 4,
+    "affected_os_package": "python3-pip-whl",
+    "introduced_by": "The ASR Dockerfile installed python3.12-venv in the final CUDA stage; that package pulled the Ubuntu pip wheel package into the deployable image.",
+    "not_inherited_from_pinned_cuda_base": true,
+    "local_scout_disagreement_preserved": "Local Scout reported zero high findings; the automatic ECR result remains authoritative."
+  },
+  "required_asr_design": {
+    "build_stage": [
+      "Use the exact pinned CUDA/cuDNN base and install venv bootstrap tooling only in a named builder stage.",
+      "Create /opt/venv, install the fully pinned serving dependency set and run import plus CUDA/cuDNN dynamic-link smokes.",
+      "Remove pip, setuptools and wheel from the completed virtual environment before transfer."
+    ],
+    "runtime_stage": [
+      "Start again from the exact pinned CUDA/cuDNN base.",
+      "Install OS security updates and runtime-only packages, excluding python3.12-venv, python3-pip-whl, compilers and build tools.",
+      "Copy only the completed virtual environment and service source from the builder stage.",
+      "Retain non-root execution, offline model settings and the existing runtime API and CUDA startup-smoke contract."
+    ],
+    "mandatory_local_gates": [
+      "Final dpkg inventory has no python3-pip-whl or python3.12-venv.",
+      "Final virtual environment exposes no pip module or pip executable.",
+      "CTranslate2, faster-whisper, CUDA and cuDNN import/link smoke passes.",
+      "Docker Scout reports zero critical and zero high findings.",
+      "Repository tests, Terraform validation and generated-output checks pass."
+    ]
+  },
+  "standing_runtime_image_pattern": {
+    "scope": "B6A and future serving services",
+    "rules": [
+      "Use digest-pinned bases and multi-stage builds whenever dependency installation needs build or bootstrap tooling.",
+      "Keep compilers, package installers, venv bootstrap wheels, caches and source-control tools out of final runtime stages.",
+      "Run as a fixed non-root identity and support a read-only root filesystem.",
+      "Assert final OS and language-package inventories in behavioral tests.",
+      "Require local scanning and a separately authorized automatic ECR scan before deployment authorization.",
+      "Bind deployable child digests rather than tags or OCI indexes in Kubernetes."
+    ]
+  },
+  "future_003c_a_boundary": {
+    "purpose": "Scan-only AWS packet, not deployment.",
+    "model_loader": "Reuse the existing immutable ECR child digest that passed the automatic packet-003B scan; do not rebuild or repush it.",
+    "asr_runtime": "Push only the new locally clean immutable identity and require automatic ECR COMPLETE with zero critical and zero high findings.",
+    "nvidia_dra": "Then push the existing bound local identity and require the same automatic ECR gate.",
+    "prohibited_even_if_scans_pass": [
+      "Artifact upload",
+      "IAM or Pod Identity creation",
+      "Kubernetes or EKS mutation",
+      "GPU scale-up",
+      "Approved ASR or production registry publication",
+      "Deployment or B6A completion claim"
+    ],
+    "separate_owner_approval_required": true
+  },
+  "allowed_operations": [
+    "Local Dockerfile service test and hardening-standard changes",
+    "Local deterministic image builds and package inventory inspection",
+    "Local runtime smokes and vulnerability scans",
+    "Preparation of immutable local engineering evidence",
+    "Preparation of B6A AWS change packet 2026-003C-A"
+  ],
+  "prohibited_operations": [
+    "Any AWS mutation",
+    "Any ECR push or scan invocation",
+    "Any artifact upload",
+    "Any IAM EKS Kubernetes SSM KMS S3 or GPU mutation",
+    "Any security waiver",
+    "Any model promotion registration or approved-ASR write",
+    "Any language artifact or approved_version change",
+    "Any change to historical B4 B5 003A or 003B evidence",
+    "Any claim that B6A B6.1 or full B6 is complete"
+  ],
+  "required_next_authorization": "The completed 003C-A scan-only packet must be itemized and explicitly approved before either new ASR or existing NVIDIA DRA image is pushed to ECR."
+}

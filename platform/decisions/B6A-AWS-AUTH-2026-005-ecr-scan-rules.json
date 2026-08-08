@@ -1,0 +1,72 @@
+{
+  "record": "B6A_ECR_SCAN_RULES_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-005",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-05T02:23:48Z",
+  "authorization_source": "Owner reply 'Approved Go Ahead' to the immediately preceding explicit statement that approval would apply to B6A AWS change packet 2026-005 only and would not authorize packet 2026-003B.",
+  "interpretation": "Authorization applies only to packet 2026-005. It does not authorize packet 2026-003B, an image push, an image scan invocation, a deployment, or any GPU operation.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "ee8715212723a1808fc4bf858941c65d431762ea",
+    "git_tree": "80d9653d16c474b4d1209e21f9a61edf46a447c0",
+    "commit_count": 163,
+    "worktree_clean": true,
+    "remote_branch_commit": "ee8715212723a1808fc4bf858941c65d431762ea"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-005-ecr-scan-rules.md",
+    "sha256": "cc0ebbc6fbcb31f1c3ffde114b2d3d3b3182ce11255c89cbbef9dd04160e10ff"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "verified_preconditions": {
+    "registry_id": "558069890522",
+    "scan_type": "BASIC",
+    "rules": []
+  },
+  "authorized_operations_in_order": [
+    "refresh_live_terraform_state",
+    "create_and_machine_check_a_saved_plan_targeting_only_aws_ecr_registry_scanning_configuration_b6a_runtime",
+    "apply_that_exact_content_addressed_saved_plan_once",
+    "verify_exact_SCAN_ON_PUSH_rules_for_medzen_model_loader_medzen_asr_runtime_and_medzen_nvidia_dra",
+    "create_and_machine_check_an_exactly_targeted_NO_CHANGES_residual_plan",
+    "create_local_immutable_completion_evidence"
+  ],
+  "hard_apply_preconditions": {
+    "terraform_backend_identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "allowed_resource_actions": {
+      "aws_ecr_registry_scanning_configuration.b6a_runtime": [
+        "create"
+      ]
+    },
+    "creates": 1,
+    "changes": 0,
+    "deletes": 0,
+    "replacements": 0,
+    "output_changes": 0,
+    "scan_type": "BASIC",
+    "scan_frequency": "SCAN_ON_PUSH",
+    "exact_repository_filters": [
+      "medzen-asr-runtime",
+      "medzen-model-loader",
+      "medzen-nvidia-dra"
+    ]
+  },
+  "prohibited_operations": [
+    "packet_2026_003B_identity_or_deployment_operation",
+    "ecr_repository_creation_deletion_or_mutation",
+    "image_push_tag_delete_or_scan_invocation",
+    "wildcard_or_medzen_tts_gateway_filter",
+    "s3_iam_kms_ssm_eks_kubernetes_or_gpu_change",
+    "security_waiver",
+    "model_registry_language_approved_asr_or_b5_evidence_change",
+    "claiming_B6A_deployed_or_complete"
+  ],
+  "rollback_boundary": "On a verified regression only, restore BASIC scanning with the empty rule list captured before apply, verify by read-back, and create an immutable rollback receipt. Do not delete any repository or image."
+}

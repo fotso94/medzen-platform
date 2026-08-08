@@ -1,0 +1,89 @@
+{
+  "record": "B6A_PRE_ARTIFACT_INTERACTIVE_SAMPLER_DEBUG_AUTHORIZATION",
+  "id": "B6A-SAMPLER-DEBUG-AUTH-2026-001",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-08T19:41:52Z",
+  "authorization_source": "Owner directive: one bounded interactive sampler-debug window; GPU up only with a deadline armed, run the sampler through SSM, read stderr live, fix and verify 120 numeric samples interactively, then scale to zero. Approximately 900 seconds of the remaining 6009-second allowance is approved under the existing reservation. 003C-E is not approved.",
+  "interpretation": "This is a versioned diagnostic authorization, not packet 003C-E and not a full B6A proof. It permits one pre-artifact GPU debug window and bounded raw SSM stdout/stderr because no model or audio artifact or workload may exist on the node.",
+  "starting_repository": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "14febb46678b7a37cd947ef1ed3d9742d57de198",
+    "git_tree": "9efab45cd6f15e7a3cd5ff9c28240b625e5b83f0",
+    "commit_count": 192,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "policy_binding": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "historical_v1_path": "platform/runtime-receipt-policy-v1.yaml",
+    "historical_v1_sha256": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda"
+  },
+  "starting_sampler": {
+    "path": "scripts/b6a_003c_d_ssm_sampler.sh",
+    "sha256": "04efd821527689c453571a277c7f2d8e673b377bdf00f1f01d1f46f2e3a19cb7",
+    "final_proven_hash_required_in_result": true
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "profile": "medzen",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "gpu_nodegroup": "gpu",
+    "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "deadline_action": "medzen-b6a-sampler-debug-2026-001-scale-zero",
+    "maximum_gpu_nodes": 1,
+    "maximum_debug_window_seconds": 900,
+    "conservative_prior_gpu_seconds": 1191,
+    "remaining_allowance_before_debug_seconds": 6009,
+    "remaining_allowance_after_maximum_debug_seconds": 5109
+  },
+  "pre_artifact_invariant": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false,
+    "full_b6a_workload_permitted": false,
+    "raw_output_persistence_permitted": true,
+    "raw_output_maximum_utf8_bytes_per_stream": 32768
+  },
+  "authorized_operations_in_order": [
+    "commit_and_push_this_authorization_and_runtime_receipt_policy_v2",
+    "verify_clean_synchronized_branch_and_zero_gpu_workload_approved_and_registry_state",
+    "arm_and_read_back_only_the_900_second_debug_deadline",
+    "scale_only_the_gpu_nodegroup_from_zero_to_one",
+    "require_one_healthy_gpu_node_and_stable_dra_readiness",
+    "send_bounded_interactive_ssm_commands_only_to_the_exact_gpu_instance",
+    "read_and_persist_bounded_raw_stdout_and_stderr_under_the_pre_artifact_exception",
+    "edit_and_retest_only_the_sampler_script_until_one_exact_120_numeric_sample_pass_or_deadline",
+    "scale_the_gpu_nodegroup_to_zero_on_every_outcome",
+    "delete_the_deadline_only_after_complete_zero_state_proof",
+    "create_commit_and_push_immutable_debug_evidence_with_the_final_sampler_hash"
+  ],
+  "prohibited_operations": [
+    "model_or_audio_artifact_download_mount_or_copy_to_the_gpu_node",
+    "b6a_model_loader_asr_runtime_or_audio_workload_apply",
+    "transcription_memory_proof_or_full_b6a_proof",
+    "iam_kms_ecr_image_dra_or_terraform_change",
+    "training_language_scope_or_green_bucket_change",
+    "approved_asr_write_model_registration_mlflow_transition_or_production_ssm_change",
+    "more_than_one_gpu_or_more_than_900_new_conservative_gpu_seconds",
+    "execution_or_approval_of_packet_003C_E",
+    "editing_historical_b4_b5_or_prior_b6a_decisions_evidence_or_receipts"
+  ],
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_guardrail_before_existing_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_usd": 0.0,
+    "recorded_g6_xlarge_hourly_rate_usd": 1.0064,
+    "maximum_debug_gpu_cost_usd": 0.2516
+  },
+  "permitted_outcomes": [
+    "PASS_PROVEN_120_SAMPLE_SCRIPT",
+    "BLOCKED_INTERACTIVE_DEBUG",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "next_boundary": "Even a successful debug closes only this diagnostic authorization. Packet 003C-E must bind the proven sampler hash and receive separate review and owner approval before the full proof runs."
+}

@@ -1,0 +1,110 @@
+{
+  "record": "B6A_STABLE_DRA_READINESS_BOUNDED_RETRY_AWS_AUTHORIZATION",
+  "id": "B6A-AWS-AUTH-2026-003C-C",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-08T16:53:32Z",
+  "authorization_source": "Owner statement: 'Approved: B6A AWS change packet 2026-003C-C only.'",
+  "interpretation": "This authorizes one bounded 003C-C retry using only the retained non-serving artifact, identity, DRA installation and exact scan-passed image digests. It does not authorize any green-bucket data action, training, promotion, approved-ASR publication, model registration, production registry publication, public traffic, image change, security waiver, second GPU or work outside packet 2026-003C-C.",
+  "repository_at_authorization": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "530f72e6934b3ef2e102734e1af055b15f34554e",
+    "git_tree": "d82e7f64a0bc5582e0e16a943513858e00c121c9",
+    "commit_count": 181,
+    "worktree_clean": true,
+    "remote_branch_commit": "530f72e6934b3ef2e102734e1af055b15f34554e"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-C-stable-readiness-retry.md",
+    "sha256": "9b1f21d6625ceef6ac402b9f119ebbefffebb6160d0aa5768340df1291b38406",
+    "status_at_approval": "BLOCKED — NOT AUTHORIZED"
+  },
+  "prerequisites": {
+    "prior_failure": {
+      "path": "platform/evidence/B6A-PACKET-2026-003C-B-FAILED-DRA-READINESS.json",
+      "sha256": "d73ed0643f611ec2e823c86a971bdd43a531e4a142f3242afc7d07fdbe772fcf",
+      "outcome": "FAILED_CLOSED_EXECUTION"
+    },
+    "remediation_design": {
+      "path": "platform/decisions/B6A-DESIGN-2026-005-dra-stable-readiness.json",
+      "sha256": "345a77f21d9a6924a7c321ee27c4647f5d63a61f67a77b739a2d88ee0e62d282"
+    },
+    "local_engineering": {
+      "path": "platform/evidence/B6A-LOCAL-ENGINEERING-2026-005.json",
+      "sha256": "a780710c770e51bc738698ded4f064a708d5607bc7008bc133cf10fd3da044c3",
+      "status": "LOCAL_REMEDIATION_COMPLETE_GPU_RETRY_NOT_AUTHORIZED"
+    },
+    "budget": {
+      "path": "platform/decisions/B6A-BUDGET-2026-002-conservative-reconciliation.json",
+      "sha256": "331513c34f2a73a4c0037d4441160333e7b8ac93cba9b8aa79b908be56e8f75c",
+      "aggregate_ceiling_usd": 300.0,
+      "committed_guardrail_usd": 47.5288,
+      "existing_reservation_usd": 15.0,
+      "new_reservation_created": false
+    }
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "gpu_nodegroup": "gpu",
+    "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "gpu_instance_type": "g6.xlarge",
+    "maximum_gpu_nodes": 1,
+    "maximum_window_seconds": 7140,
+    "maximum_retry_window_seconds": 7140,
+    "maximum_cumulative_b6a_seconds": 7200,
+    "deadline_action": "medzen-b6a-003c-c-deadline-scale-zero"
+  },
+  "retained_read_only_bindings": {
+    "artifact_prefix": "s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/",
+    "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+    "artifact_manifest_sha256": "c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850",
+    "artifact_objects": 6,
+    "artifact_bytes": 3090838860,
+    "b6a_role_arn": "arn:aws:iam::558069890522:role/medzen-b6a-asr-role",
+    "pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "model_loader_digest": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "asr_runtime_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "nvidia_dra_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "nvidia_dra_render_sha256": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "bound_resources": {
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "authorized_operations_in_order": [
+    "reverify_only_all_retained_packet_preconditions_and_bindings",
+    "install_local_cleanup_traps_before_any_aws_write",
+    "arm_and_read_back_only_the_bound_7140_second_deadline",
+    "scale_only_the_gpu_nodegroup_from_zero_to_one",
+    "require_three_stable_dra_readiness_observations_before_workload",
+    "run_only_the_unchanged_one_synthetic_audio_platform_proof",
+    "persist_no_phi_diagnostics_before_cleanup_on_refusal",
+    "delete_or_scale_only_the_b6a_workload_and_gpu_to_zero_on_every_outcome",
+    "disarm_the_deadline_only_after_complete_zero_state_proof",
+    "create_commit_and_push_immutable_completion_or_failure_evidence"
+  ],
+  "prohibited_operations": [
+    "green_bucket_branch_merge_data_ingestion_training_or_language_reactivation",
+    "artifact_upload_overwrite_or_approved_asr_write",
+    "terraform_apply_iam_pod_identity_or_dra_change_reapply_delete_or_reinstall",
+    "image_rebuild_retag_push_scan_digest_substitution_or_security_waiver",
+    "model_registration_mlflow_stage_language_serving_field_or_production_ssm_change",
+    "public_endpoint_ingress_load_balancer_production_traffic_or_non_synthetic_audio",
+    "more_than_one_gpu_node_or_more_than_7140_retry_seconds",
+    "editing_historical_b4_b5_or_prior_b6a_records",
+    "claiming_v0_production_readiness_b5_pass_b6_1_or_full_b6"
+  ],
+  "permitted_outcomes": [
+    "B6A_PLATFORM_PROOF_COMPLETE",
+    "BLOCKED_DRA_STABLE_READINESS",
+    "BLOCKED_PLATFORM_PROOF",
+    "FAILED_CLOSED_EXECUTION"
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "record": "B6A_RUNTIME_VERIFICATION_AND_IMAGE_REMEDIATION_LOCAL_EVIDENCE",
+  "id": "B6A-LOCAL-ENGINEERING-2026-002",
+  "revision": 1,
+  "status": "LOCAL_ENGINEERING_COMPLETE_AWS_BLOCKED",
+  "completed_utc": "2026-08-05T01:14:08Z",
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "69bdce16cb880d5ff3d75ee9058651329214654d",
+    "git_tree": "4063d8b24d47a4886e9dccd4f2f6bd86a107615d",
+    "commit_count": 162,
+    "worktree_clean_at_build": true,
+    "remote_tracking_state": "matched origin/codex/b6a-platform-proof"
+  },
+  "governing_records": [
+    {
+      "path": "platform/decisions/B6A-DESIGN-2026-002-runtime-verification-boundary.json",
+      "sha256": "b0c14c29d583ded50c08dcad5f372280bad0aa01aa2a53ee090122b8b63bbc19"
+    },
+    {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-005-ecr-scan-rules.md",
+      "sha256": "cc0ebbc6fbcb31f1c3ffde114b2d3d3b3182ce11255c89cbbef9dd04160e10ff",
+      "state": "PREPARED_NOT_APPLIED"
+    },
+    {
+      "path": "platform/evidence/B6A-PACKET-2026-003A-FAILED-IMAGE-SCAN.json",
+      "sha256": "e7bac17f17eacefdfe418a91041f694764e68b004485712d4abc358836cecb68",
+      "state": "IMMUTABLE_UNCHANGED"
+    },
+    {
+      "path": "platform/evidence/b5/gate-reports/25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30.json",
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "state": "BLOCKED_UNCHANGED"
+    }
+  ],
+  "source_bindings": {
+    "platform_services_yaml": "8509f01e96dedf9a7b6c07a4d22399ae4099c86fc9b176883fcb285a61a87c56",
+    "b6a_kubernetes_template": "c8df6356d092c37a0a59326e349507115778eddb7c0fc2b76c6b15c6428a1f0d",
+    "model_loader_dockerfile": "68cf3a5344c77ea6a2b0a837691de5badfcb778cf2869ebacecbb4b189f29e7c",
+    "model_loader_requirements": "8ec2ac835d915c7e366c9ed55d2cab5167be58b12f8cbc310dca930af6211b54",
+    "asr_runtime_dockerfile": "6169b908fed0c73620ac2c95dba15ecd1464108a61e369446b5176938507993a",
+    "asr_runtime_requirements": "0ecd777febf7b407781425486ad3054dc2a3c771fee7faf699eb704a4644b236"
+  },
+  "responsibility_boundary": {
+    "model_loader": "Manifest, file and tree hash verification only; schema-v2 atomic marker; no inference and no GPU claim.",
+    "asr_runtime": "Refuse incomplete marker, load the serving CUDA model, run one bounded inference, then and only then set ready=true.",
+    "startup_probe": "Polls /readyz and never executes inference itself."
+  },
+  "tests": {
+    "canonical_pytest": {
+      "passed": 870,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "generated_artifacts_check": "PASS_13_FILES_CURRENT",
+    "terraform_validate": "PASS",
+    "packet_2026_005_saved_plan_guard": {
+      "status": "PASS_EXACT_B6A_PACKET_2026_005",
+      "add": 1,
+      "change": 0,
+      "destroy": 0,
+      "saved_plan_bytes": 41642,
+      "saved_plan_sha256": "46dbe8b5650982212ae7d5a04aa3710aed220c9671cf6ca6603e96d6320ff60f",
+      "applied": false
+    },
+    "packet_2026_003b_identity_preparation_guard": {
+      "status": "PASS_EXACT_B6A_PACKET_2026_003B_IDENTITY_PHASE",
+      "add": 3,
+      "change": 0,
+      "destroy": 0,
+      "saved_plan_bytes": 46327,
+      "saved_plan_sha256": "4cbf19a5be8058a781843b9de03557974401dbe9efec47196c6b8b2d78d23e67",
+      "applied": false,
+      "interpretation": "Read-only targeted preparation proof only. Regenerate after packet 2026-005 is applied and before any separately approved 003B apply."
+    }
+  },
+  "images": {
+    "model_loader": {
+      "local_tag": "medzen-model-loader:b6a-003b-69bdce1",
+      "local_oci_index_id": "sha256:ac6f694b2e420c908b5aba21fa5009a2e3051359624710161b55645c0dfbcdbc",
+      "architecture": "linux/amd64",
+      "local_image_bytes": 43903251,
+      "indexed_packages": 30,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0,
+      "aws_sdk_import_smoke": "PASS",
+      "sqlite_extension_absent": true,
+      "sqlite_package_absent": true,
+      "inference_or_cuda_dependency_present": false
+    },
+    "asr_runtime": {
+      "local_tag": "medzen-asr-runtime:b6a-003b-69bdce1",
+      "local_oci_index_id": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "architecture": "linux/amd64",
+      "local_image_bytes": 3111673226,
+      "indexed_packages": 258,
+      "docker_scout_critical": 0,
+      "docker_scout_high": 0,
+      "ctranslate2_faster_whisper_import_smoke": "PASS",
+      "cuda_cudnn_dynamic_link_smoke": "PASS",
+      "gpu_inference_executed_locally": false
+    }
+  },
+  "repeat_build_check": {
+    "model_loader_repeat_oci_index_id": "sha256:922a9c4c4f33274b0a0089648f7d76493ec60c606c3d3c07a454756f3cb39d36",
+    "asr_runtime_repeat_oci_index_id": "sha256:330a115fe9999634d21ebbe61a20e982af044b9ef75d3b0b7880010840724a24",
+    "rootfs_layer_sequence_identical_per_image": true,
+    "exact_size_identical_per_image": true,
+    "oci_index_identity_note": "The repeated output reference changes the top-level provenance attestation/index identity. Packet 003B binds the final local index and must separately resolve and scan the deployable linux/amd64 child digest in ECR."
+  },
+  "aws_boundary": {
+    "read_only_identity_verified": "arn:aws:iam::558069890522:user/s.fotso",
+    "live_registry_scanning_before_packet_2026_005": {
+      "scan_type": "BASIC",
+      "rules": []
+    },
+    "aws_mutations_during_this_engineering_record": 0,
+    "ecr_images_pushed": 0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "ecr_scan_and_storage_cost": "NOT_RECONCILED"
+  },
+  "conclusion": "The corrected loader/ASR boundary and both clean-commit images pass local engineering and critical/high scan gates. Local Scout is not the authoritative ECR gate. Packet 2026-005 must be separately approved, applied and verified before packet 2026-003B can be approved or executed."
+}

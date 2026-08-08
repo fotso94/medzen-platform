@@ -1,0 +1,45 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "sampler_self_test",
+  "attempt_id": "patched_120_numeric_sample_proof",
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T19:54:01Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "pre_artifact_facts": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false
+  },
+  "command": {
+    "command_id": "0958ce20-f034-4f01-9526-9e5da88a5ee3",
+    "instance_id": "i-0cb9109e43b61c7c7",
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "response_code": 0,
+    "execution_start_utc": "2026-08-08T19:51:50.119Z",
+    "execution_end_utc": "2026-08-08T19:54:01.119Z",
+    "execution_elapsed": "PT2M11.906S"
+  },
+  "sampler": {
+    "path": "scripts/b6a_003c_e_ssm_sampler.sh",
+    "debug_working_copy_path": "scripts/b6a_003c_d_ssm_sampler.sh",
+    "debug_working_copy_restored_to_historical_sha_after_proof": true,
+    "starting_sha256": "04efd821527689c453571a277c7f2d8e673b377bdf00f1f01d1f46f2e3a19cb7",
+    "proven_sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "runtime_interface": "/usr/local/bin/nerdctl --namespace k8s.io",
+    "invoked_with_explicit_bash": true
+  },
+  "measurement": {
+    "sample_count": 120,
+    "gpu_index": 0,
+    "minimum_used_mib": 0,
+    "peak_used_mib": 0,
+    "total_mib": 23034
+  },
+  "raw_stdout": "MEDZEN_SAMPLER_SELF_TEST_V1 status=PASS samples=120 gpu_index=0 min_used_mib=0 peak_used_mib=0 total_mib=23034\n",
+  "raw_stderr": "",
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}

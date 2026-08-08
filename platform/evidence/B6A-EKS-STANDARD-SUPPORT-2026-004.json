@@ -1,0 +1,105 @@
+{
+  "record": "B6A_EKS_STANDARD_SUPPORT_AWS_APPLY_EVIDENCE",
+  "id": "B6A-EKS-STANDARD-SUPPORT-2026-004",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "completed_utc": "2026-08-04T22:34:51Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-004-eks-standard-support.json",
+    "git_commit": "1e360342cd0487c0d21cb0754f4ffe48814d2f86"
+  },
+  "change_packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-004-eks-standard-support.md",
+    "sha256": "d2341bcca95051b822b020b47780bd46595ccf6de02a097fb3fdeedfba854257"
+  },
+  "execution_identity": {
+    "required_profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "reviewed_plan": {
+    "path_at_execution": "/private/tmp/medzen-b6a-004-approved.tfplan",
+    "sha256": "724b17200fd1dfdc6d29e7ce48667e066457220b6d0baa61d78341cdf0bb7a74",
+    "bytes": 51970,
+    "machine_guard": "PASS_EXACT_B6A_PACKET_2026_004",
+    "pre_apply_guard_scope": "Exact resource, action and output boundary: only aws_eks_cluster.this update; no output changes.",
+    "post_apply_strengthened_guard_scope": "The same content-addressed saved plan was revalidated for the exact EXTENDED-to-STANDARD value transition, equality of every other cluster attribute and zero unknown after-state values before this completion evidence was finalized.",
+    "summary": {
+      "add": 0,
+      "change": 1,
+      "destroy": 0,
+      "replacement": 0
+    },
+    "resource_actions": {
+      "aws_eks_cluster.this": "update"
+    },
+    "exact_field_transition": {
+      "upgrade_policy.support_type": {
+        "before": "EXTENDED",
+        "after": "STANDARD"
+      }
+    },
+    "all_other_cluster_attributes_byte_equivalent_in_plan_json": true,
+    "unknown_after_values": 0,
+    "output_changes": 0
+  },
+  "apply_result": {
+    "applied_utc": "2026-08-04T22:30:27Z",
+    "summary": "Apply complete: Resources: 0 added, 1 changed, 0 destroyed.",
+    "resource": "aws_eks_cluster.this",
+    "method": "Applied the exact content-addressed saved plan after identity, resource/action/output machine-guard checks and direct plan-summary review; then revalidated that same plan with the strengthened exact-field guard before finalizing evidence."
+  },
+  "post_apply_verification": {
+    "residual_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6a-004-post.tfplan",
+      "sha256": "2e70d5954c9f35bdcf3903a9e7987b65dc892c0f2b368cbb8b9aca4de53e91a2",
+      "bytes": 50859,
+      "result": "NO_CHANGES"
+    },
+    "eks": {
+      "cluster": "medzen-speech",
+      "status": "ACTIVE",
+      "version": "1.36",
+      "support_type": "STANDARD",
+      "health_issues": 0
+    },
+    "cpu_nodegroup": {
+      "name": "cpu",
+      "status": "ACTIVE",
+      "minimum": 2,
+      "desired": 2,
+      "maximum": 4,
+      "health_issues": 0,
+      "unchanged_by_this_packet": true
+    },
+    "gpu_nodegroup": {
+      "name": "gpu",
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0,
+      "unchanged_by_this_packet": true
+    },
+    "registry_parameter_count": 0
+  },
+  "explicit_non_events": {
+    "kubernetes_version_or_addon_changes": 0,
+    "nodegroup_image_or_scaling_changes": 0,
+    "network_changes": 0,
+    "gpu_instances_started": 0,
+    "ssm_parameters_created_updated_or_deleted": 0,
+    "kms_iam_ecr_or_s3_changes": 0,
+    "containers_or_models_published": 0,
+    "kubernetes_workload_changes": 0,
+    "language_registry_changes": 0,
+    "b4_or_b5_evidence_changes": 0,
+    "deployments": 0
+  },
+  "authorization_boundary": {
+    "packet_2026_004_complete": true,
+    "packet_2026_003a_authorized": false,
+    "next_required_owner_action": "Review and explicitly approve B6A-AWS-CHANGE-PACKET-2026-003A before any deployment, image publication, Kubernetes mutation, or GPU scale-up."
+  },
+  "conclusion": "EKS support policy is STANDARD and packet 2026-004 is verified complete. This evidence does not authorize or execute packet 2026-003A."
+}

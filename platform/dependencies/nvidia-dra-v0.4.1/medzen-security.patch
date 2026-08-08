@@ -1,0 +1,50 @@
+diff --git a/deployments/container/Dockerfile b/deployments/container/Dockerfile
+index a3c5b7a..ca19113 100644
+--- a/deployments/container/Dockerfile
++++ b/deployments/container/Dockerfile
+@@ -1,4 +1,4 @@
+-# syntax=docker.io/docker/dockerfile:1.7-labs
++# syntax=docker.io/docker/dockerfile:1.7-labs@sha256:b99fecfe00268a8b556fad7d9c37ee25d716ae08a5d7320e6d51c4dd83246894
+ # The above enables the COPY --exclude + --parent flags
+ # Copyright The Kubernetes Authors
+ #
+@@ -14,11 +14,8 @@
+ # See the License for the specific language governing permissions and
+ # limitations under the License.
+ 
+-# Declared here for use in FROM directives below
+-ARG TOOLKIT_CONTAINER_IMAGE=unknown
+-
+ # Run build with binaries native to the current build platform.
+-FROM --platform=$BUILDPLATFORM nvcr.io/nvidia/base/ubuntu:jammy-20260217 AS build
++FROM --platform=$BUILDPLATFORM nvcr.io/nvidia/base/ubuntu:jammy-20260217@sha256:d60df2cd85036996175abc357b530d59675b598c6e585403c01f9ec7ead0daf1 AS build
+ 
+ # Require arg to be provided (set invalid default value).
+ ARG GOLANG_VERSION=x.x.x
+@@ -98,16 +95,12 @@ RUN apt-get update \
+  && rm -rf /var/lib/apt/lists/* \
+  && /bin/bash-static --version
+ 
+-# Pull the nvidia-cdi-hook binary out of the relevant toolkit container
+-# (arch: TARGETPLATFORM, set via --platform).
+-FROM ${TOOLKIT_CONTAINER_IMAGE} AS toolkit
+-
+ # Construct production image (arch: TARGETPLATFORM, set via the `--platform` CLI
+ # arg). gcr.io/distroless/cc:debug is distroless/cc plus busybox at /busybox/
+ # (PATH includes /busybox). The scripts bundled in this image (kubelet-plugin-
+ # prestart.sh, bind_to_driver.sh, unbind_from_driver.sh) require coreutils
+ # (ln, find, date, sleep, head, env, readlink, basename) provided by busybox.
+-FROM gcr.io/distroless/cc:debug
++FROM gcr.io/distroless/cc:debug@sha256:3be83724bcda99b72307e8d3cea256b3cfa5678b5198c1351bf66d2bc60d9cf9
+ 
+ ENV NVIDIA_DISABLE_REQUIRE="true"
+ ENV NVIDIA_VISIBLE_DEVICES=all
+@@ -131,7 +124,7 @@ COPY LICENSE /
+ 
+ COPY --from=bash    /bin/bash-static                          /bin/bash
+ 
+-COPY --from=toolkit /artifacts/rpm/usr/bin/nvidia-cdi-hook    /usr/bin/nvidia-cdi-hook
++COPY /medzen/nvidia-cdi-hook                                 /usr/bin/nvidia-cdi-hook
+ COPY --from=build   /artifacts/compute-domain-controller      /usr/bin/compute-domain-controller
+ COPY --from=build   /artifacts/compute-domain-kubelet-plugin  /usr/bin/compute-domain-kubelet-plugin
+ COPY --from=build   /artifacts/compute-domain-daemon          /usr/bin/compute-domain-daemon

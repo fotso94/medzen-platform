@@ -1,0 +1,209 @@
+{
+  "record": "B6A_003C_F_SSM_DISCOVERY_FULL_PLATFORM_PROOF_EXECUTION_RESULT",
+  "id": "B6A-PACKET-2026-003C-F-COMPLETE",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE_CLEANUP_COMPLETE",
+  "outcome": "B6A_PLATFORM_PROOF_COMPLETE",
+  "completed_utc": "2026-08-08T21:40:04Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-F-ssm-discovery-full-proof.md",
+      "sha256": "18f30e489c02a33abc69696d57f9917f2a20ab204cd0d8ba32f2872fb15df27c",
+      "reviewed_commit": "7c120b86f50f0c80438af0d4720b88997b5c1526"
+    },
+    "independent_review": {
+      "path": "platform/decisions/B6A-INDEPENDENT-REVIEW-2026-003C-F.json",
+      "sha256": "c9d74fcfd07e7a738cac872aa91da67306debe61eb15da7036efa60334d76e18",
+      "status": "PASS"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-F-ssm-discovery-full-proof.json",
+      "sha256": "1f9e511465264ab325e5557424619b7d128a2e7b7d0f3fa5a0df74339420816a",
+      "commit": "c869abcffadc048f1ab46e6ac9eb473689d0363a"
+    },
+    "execution_git_commit": "c869abcffadc048f1ab46e6ac9eb473689d0363a"
+  },
+  "prewindow_local_transport_refusal": {
+    "status": "PREWINDOW_LOCAL_TRANSPORT_REFUSAL",
+    "reason": "The first launcher invocation ran in a network-restricted local sandbox and could not reach AWS while arming the deadline.",
+    "receipt": {
+      "path": "platform/evidence/receipts/B6A-2026-003C-F/local_bindings.json",
+      "sha256": "7d39715562121186b34101119392827a10632b65efe8240a3ad46217e525412c",
+      "recorded_utc": "2026-08-08T21:21:09Z",
+      "status": "PASS"
+    },
+    "deadline_receipt_created": false,
+    "gpu_window_opened": false,
+    "aws_or_kubernetes_mutation": false,
+    "external_zero_state_verified_before_continuation": true,
+    "source_packet_or_authorization_changed": false,
+    "continuation_receipt_directory": "platform/evidence/receipts/B6A-2026-003C-F-LIVE"
+  },
+  "preflight": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "eks_version": "1.36",
+    "eks_support": "STANDARD",
+    "gpu_initial_minimum": 0,
+    "gpu_initial_desired": 0,
+    "gpu_initial_maximum": 1,
+    "gpu_initial_instances_nodes_and_pods": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "retained_artifact_objects": 6,
+    "retained_pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "retained_image_digests_verified": 3,
+    "terraform_plan": "NO_CHANGES"
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:22:23Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/local_bindings.json",
+      "sha256": "061e74cad8ba03f4d7954670da1b1111b9701937f7f32a9e789bcb5399264462"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:22:24Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/deadline.json",
+      "sha256": "999f2178fb730346200bdb3c270300da003732ffccb2c7e0d4f6e7b1b7c9b254"
+    },
+    {
+      "stage": "dra_stable_readiness",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:24:32Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/dra_stable_readiness.json",
+      "sha256": "41fef63a2f33f122454a24bc4a8f443f4b91fe2d977ba6ebe6a7b4e8d1456d28"
+    },
+    {
+      "stage": "sampler_self_test",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:26:49Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/sampler_self_test.json",
+      "sha256": "8848c206ecbf459e5e0ffd754352b8eb3086d0b1a750e40c471f890ad8cebde1"
+    },
+    {
+      "stage": "transcription",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:28:39Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/transcription.json",
+      "sha256": "b1f748ac175a07e6fcc6b153af4f91fb24852c3ff995d2f8df13aaf6b557e3ac"
+    },
+    {
+      "stage": "gpu_memory_measurement",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:28:44Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/gpu_memory_measurement.json",
+      "sha256": "2a5f4d508efb5d5c033e4bb272cac2c0341bd1baec7449798c933341fd5dc73e"
+    },
+    {
+      "stage": "proof_summary",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:28:44Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/proof_summary.json",
+      "sha256": "14ef77a0dc4106ec27f0a8fc8e3d5c926e3a71d7b95b201d1958eb6ac41b0d5c"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T21:35:55Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/cleanup.json",
+      "sha256": "08346eb0f4bf5e775d97f7e91c10cbe2e8ad80dc53e83cd259f85f0e4ab8c387"
+    }
+  ],
+  "platform_proof": {
+    "model_loader": "PASS_DOWNLOAD_SHA256_VERIFY_AND_PLACE",
+    "asr_runtime": "PASS_READY_AND_SYNTHETIC_TRANSCRIPTION",
+    "http_status": 200,
+    "network_path": "kubectl_port_forward_loopback_only_no_public_endpoint",
+    "synthetic_no_phi": true,
+    "transcript_text_persisted": false,
+    "runtime_logs_phi_safe": true,
+    "dra_stable_readiness": "PASS",
+    "sampler_self_test_samples": 120
+  },
+  "post_run_review": {
+    "transcription_receipt_recorded_utc": "2026-08-08T21:28:39Z",
+    "memory_sampler_first_sample_utc": "2026-08-08T21:28:41.132Z",
+    "transcription_receipt_preceded_sampler_start_milliseconds": 2132,
+    "transcription_receipt_fsynced_before_memory_sampler": true,
+    "receipt_ordering": "PASS",
+    "numeric_peak_l4_gpu_memory": "PASS",
+    "baseline_used_mib": 3988,
+    "peak_used_mib": 4180,
+    "total_mib": 23034,
+    "measurement_samples": 14,
+    "measurement_scope": "loaded_v0_model_plus_second_synthetic_inference",
+    "cleanup_zero": "PASS",
+    "cost_inside_remaining_allowance": "PASS",
+    "all_completion_conditions_pass": true,
+    "b6a_closed": true
+  },
+  "gpu_window": {
+    "deadline_armed_utc": "2026-08-08T21:22:23Z",
+    "deadline_utc": "2026-08-08T22:39:13Z",
+    "instance_id": "i-034de8a8a0da7c758",
+    "instance_type": "g6.xlarge",
+    "instance_launch_utc": "2026-08-08T21:23:02.503Z",
+    "termination_selected_utc": "2026-08-08T21:29:20.216Z",
+    "termination_complete_utc": "2026-08-08T21:35:45Z",
+    "cleanup_proven_utc": "2026-08-08T21:35:55Z",
+    "launch_to_termination_selection_seconds": 378,
+    "conservative_lifecycle_seconds": 773,
+    "authorized_maximum_seconds": 4610
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_guardrail_before_existing_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "prior_conservative_gpu_seconds": 2590,
+    "this_run_conservative_gpu_seconds": 773,
+    "cumulative_conservative_gpu_seconds": 3363,
+    "remaining_original_two_hour_allowance_seconds": 3837,
+    "recorded_g6_xlarge_hourly_rate_usd": 1.0064,
+    "this_run_conservative_gpu_cost_usd": 0.2161,
+    "cumulative_conservative_gpu_cost_usd": 0.9401,
+    "actual_billed_cost": "NOT_YET_RECONCILED",
+    "reservation_state": "REMAINS_OPEN_PENDING_AWS_BILLING_RECONCILIATION"
+  },
+  "cleanup_verification": {
+    "receipt_status": "PASS",
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_desired": 0,
+    "asg_instances": 0,
+    "gpu_ec2_state": "terminated",
+    "gpu_nodes": 0,
+    "dra_pods": 0,
+    "medzen_workloads": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "post_run_terraform_plan": "NO_CHANGES"
+  },
+  "serving_resource_measurement": {
+    "prior_status": "PEAK_L4_GPU_MEMORY_NOT_MEASURED",
+    "new_status": "MEASURED_FOR_EXACT_B6A_V0_RUNTIME_PROOF",
+    "peak_l4_gpu_memory_mib": 4180,
+    "scope_limit": "This closes the B6A v0 serving-proof measurement gap only. It does not retroactively complete the B5 candidate production-resource deviation, change any B5 gate, or approve a model."
+  },
+  "project_state": {
+    "artifact_or_image_changed": false,
+    "iam_or_terraform_resource_changed": false,
+    "approved_artifact_written": false,
+    "model_registered": false,
+    "production_ssm_changed": false,
+    "training_or_language_scope_changed": false,
+    "b5_outcome": "BLOCKED",
+    "b6a_complete": true,
+    "b6_complete": false
+  },
+  "next_boundary": "B6A is closed. Stop B6A packet work. The next authorized activity is a full-B6 planning review; implementation requires its own prospective scope and approvals."
+}

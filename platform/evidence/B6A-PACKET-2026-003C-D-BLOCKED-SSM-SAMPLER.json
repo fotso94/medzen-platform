@@ -1,0 +1,205 @@
+{
+  "record": "B6A_003C_D_DURABLE_RECEIPTS_AND_SSM_SAMPLER_RESULT",
+  "id": "B6A-PACKET-2026-003C-D-BLOCKED-SSM-SAMPLER",
+  "revision": 1,
+  "status": "VERIFIED_BLOCKED_CLEANUP_COMPLETE",
+  "outcome": "BLOCKED_SSM_SAMPLER_SELF_TEST",
+  "failure_stage": "PREDEPLOY_SSM_SAMPLER_SELF_TEST",
+  "completed_utc": "2026-08-08T19:25:37Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-D-stage-receipts-and-ssm-sampler.md",
+      "sha256": "d28d1f625d80f861c415d421f61c9c32b869c81fd240e346c8476d5c0e89a0b9"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-D-stage-receipts-and-ssm-sampler.json",
+      "sha256": "39a0790afa5ae00b7ce0c6732e13ad7b5bc80a7cf9a675cb15f4ef622faf6ba1"
+    },
+    "independent_review": {
+      "path": "platform/decisions/B6A-IAM-REVIEW-2026-003C-D.json",
+      "sha256": "795df2a8a5eb63c588a35f2d09edc07fee52817add41ac15ae0ab1782ba75c21",
+      "status": "PASS"
+    },
+    "phase_a": {
+      "path": "platform/evidence/B6A-IAM-APPLY-2026-003C-D.json",
+      "sha256": "8722e1c45379b4b55dc62399feafb9bc05e88366e1f3375bf60562160479e340",
+      "status": "VERIFIED_COMPLETE"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "cb2b26094bf12b906db4576669af58cb6bd36f0f",
+    "git_tree": "c4903eafb7b2e94a1716f91ec0750dffa54cdf52",
+    "commit_count": 191,
+    "worktree_clean": true,
+    "remote_branch_commit": "cb2b26094bf12b906db4576669af58cb6bd36f0f"
+  },
+  "prewindow_local_invocation": {
+    "first_invocation_outcome": "REFUSED_BEFORE_LOCAL_BINDINGS",
+    "reason": "PYTHON_REPOSITORY_IMPORT_PATH_ABSENT",
+    "aws_mutation_before_refusal": false,
+    "receipt_created_before_refusal": false,
+    "deadline_armed_before_refusal": false,
+    "gpu_desired_before_refusal": 0,
+    "correction": "RERUN_EXACT_BOUND_SOURCES_WITH_CLEAN_REPOSITORY_ROOT_IN_PYTHONPATH",
+    "source_or_packet_changed": false
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T18:59:20Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-D/local_bindings.json",
+      "sha256": "53f74dcf6a437cca1c7c9fe284422846683cda9c6e55c645d27d34f77fc5cb0e"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T18:59:21Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-D/deadline.json",
+      "sha256": "4f234e99f551399ed798d7feceeb572c73765642a4345fe1bbfe1437e3d27a6e"
+    },
+    {
+      "stage": "dra_stable_readiness",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T19:00:54Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-D/dra_stable_readiness.json",
+      "sha256": "f5305c56f783fb92a064462e3aa1a178c72b28e0405afe2d3b4a623a44f59a9e"
+    },
+    {
+      "stage": "sampler_self_test",
+      "status": "REFUSED",
+      "recorded_utc": "2026-08-08T19:00:59Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-D/sampler_self_test.json",
+      "sha256": "41a9cbce41df36faf02098f95e3d267baae5fc254fae3dea2ad98c8dfb5b15a2"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T19:08:10Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-D/cleanup.json",
+      "sha256": "97410fe6bd7fafc2eca0fa6449119cc0b96484e37ccac2a453a2a165be21c63d"
+    }
+  ],
+  "absent_stage_receipts": {
+    "transcription": "NOT_CREATED_MODEL_NEVER_DEPLOYED",
+    "gpu_memory_measurement": "NOT_CREATED_TRANSCRIPTION_STAGE_NOT_REACHED",
+    "proof_summary": "NOT_CREATED_PROOF_STAGE_NOT_REACHED"
+  },
+  "proof_ordering_audit": {
+    "independent_review_condition": "transcription receipt timestamp must be earlier than GPU-memory sampler start",
+    "transcription_receipt_persisted": false,
+    "gpu_memory_sampler_started": false,
+    "outcome": "NOT_APPLICABLE_STAGES_NOT_REACHED",
+    "interpretation": "The condition did not fail. The predeploy sampler gate refused before the workload, transcription, or memory proof existed."
+  },
+  "stable_dra": {
+    "status": "DRA_STABLE_READY",
+    "consecutive_reads": 3,
+    "reads": 13,
+    "device_count": 1,
+    "gpu_node": "ip-172-31-7-56.eu-central-1.compute.internal",
+    "dra_pod_uid": "c09a70b4-6252-4bde-895e-578d6277a6d3",
+    "driver_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "resource_slice": "00000-gpu.nvidia.com-ip-172-31-7-56.eu-central-1.compute.ik4prh"
+  },
+  "ssm_self_test": {
+    "receipt_code": "SSM_SELF_TEST_FAILED",
+    "command_id": "9b0295f8-8bc3-428f-87a6-a6d08e2834b3",
+    "instance_id": "i-0cddc9f5789cee950",
+    "document_name": "AWS-RunShellScript",
+    "document_version": "1",
+    "plugin_name": "aws:runShellScript",
+    "status": "Failed",
+    "status_details": "Failed",
+    "response_code": 1,
+    "execution_start_utc": "2026-08-08T19:00:56.437Z",
+    "execution_end_utc": "2026-08-08T19:00:56.437Z",
+    "execution_elapsed": "PT0.005S",
+    "model_deployed_before_self_test": false,
+    "raw_stdout_or_stderr_preserved": false,
+    "exact_underlying_shell_refusal": "NOT_PRESERVED_BY_003C_D",
+    "interpretation": "The exact lower-level command reason is not proven and is not reconstructed from timing."
+  },
+  "gpu_window": {
+    "instance_id": "i-0cddc9f5789cee950",
+    "instance_type": "g6.xlarge",
+    "image_id": "ami-0a2cdcb403e09fd74",
+    "launch_utc": "2026-08-08T18:59:39Z",
+    "termination_selected_utc": "2026-08-08T19:01:13Z",
+    "cleanup_proven_utc": "2026-08-08T19:08:10Z",
+    "observed_launch_to_termination_selection_seconds": 94,
+    "conservative_lifecycle_seconds": 511,
+    "recorded_hourly_rate_usd": 1.0064,
+    "conservative_estimated_gpu_cost_usd": 0.1429,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "cleanup_verification": {
+    "receipt_status": "PASS",
+    "deadline_disarmed_after_zero": true,
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_desired": 0,
+    "asg_instances": 0,
+    "gpu_ec2_instance_state": "terminated",
+    "gpu_nodes": 0,
+    "medzen_pods": 0,
+    "asr_deployment_present": false,
+    "dra_pods_at_gpu_zero": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "post_run_terraform_plan": "NO_CHANGES"
+  },
+  "local_session_and_network": {
+    "active_gpu_window_session_interrupted": false,
+    "cleanup_session_interrupted": false,
+    "receipts_persisted_during_window": true,
+    "post_run_read_only_audit_delay_observed": true,
+    "delay_window": "approximately 2026-08-08T19:00Z through 2026-08-08T19:25Z",
+    "attribution": "LOCAL_NETWORK_OUTAGE_REPORTED_BY_OWNER; NOT_INDEPENDENTLY_DIAGNOSED_BY_EXECUTION_RECORD",
+    "effect": "A later read-only metadata query was delayed. The AWS-run SSM command, cleanup controller, durable receipts, GPU scale-down, and deadline disarm completed independently and were not invalidated."
+  },
+  "retained_state": {
+    "node_ssm_policy_retained": true,
+    "node_ssm_policy_direct_service_charge_usd": 0,
+    "b6a_artifact_changed": false,
+    "image_changed": false,
+    "dra_changed": false,
+    "approved_artifact_written": false,
+    "model_registered": false,
+    "production_ssm_changed": false,
+    "training_or_language_scope_changed": false
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300,
+    "committed_guardrail_before_active_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15,
+    "prior_conservative_gpu_seconds": 680,
+    "this_attempt_conservative_gpu_seconds": 511,
+    "cumulative_conservative_gpu_seconds": 1191,
+    "remaining_original_two_hour_allowance_seconds": 6009,
+    "prior_conservative_gpu_cost_usd": 0.1901,
+    "this_attempt_conservative_gpu_cost_usd": 0.1429,
+    "cumulative_conservative_gpu_cost_usd": 0.333,
+    "reservation_reconciliation": "PENDING_AWS_BILLING"
+  },
+  "project_state": {
+    "b5_outcome": "BLOCKED",
+    "b5_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+    "b6a_outcome": "BLOCKED_SSM_SAMPLER_SELF_TEST",
+    "b6a_complete": false,
+    "b6_complete": false,
+    "b6_status": "BLOCKED"
+  },
+  "required_remediation_before_retry": [
+    "Persist the SSM command identity immediately after SendCommand succeeds, including on later refusal.",
+    "Accept and persist only a strict allowlisted no-PHI sampler refusal code on failed SSM invocations; never persist raw stdout or stderr.",
+    "Keep the model-deploy gate closed until the exact-context numeric sampler self-test passes.",
+    "Prepare a new versioned packet bound to changed source hashes and no more than the remaining 6009-second cumulative allowance."
+  ],
+  "next_boundary": "Packet 2026-003C-D is closed. No retry may resume it; local remediation and a new independently reviewed and owner-approved packet are required."
+}

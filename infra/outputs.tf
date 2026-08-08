@@ -9,3 +9,5 @@ output "kubeconfig_cmd" {
 output "gpu_note" {
   value = "GPU node group created at desired_size=${var.gpu_desired_size}. Raise after quota L-DB2E81BA is granted."
 }
+output "registry_publisher_role_arn" { value = aws_iam_role.registry_publisher.arn }
+output "registry_parameter_prefix" { value = local.registry_parameter_prefix }

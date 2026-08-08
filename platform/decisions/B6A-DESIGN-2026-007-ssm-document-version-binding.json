@@ -1,0 +1,29 @@
+{
+  "record": "B6A_SSM_DOCUMENT_VERSION_BINDING",
+  "id": "B6A-DESIGN-2026-007",
+  "revision": 1,
+  "status": "local-engineering-only-new-packet-required",
+  "created_utc": "2026-08-08T18:20:00Z",
+  "supersedes_or_edits": false,
+  "supplements": {
+    "path": "platform/decisions/B6A-DESIGN-2026-006-stage-receipts-and-ssm-sampler.json",
+    "sha256": "8b64cee73972cd19582357a6c383be2d6340ea5ecd366a6fa1ba4be158923302"
+  },
+  "live_read_only_verification": {
+    "region": "eu-central-1",
+    "document": "AWS-RunShellScript",
+    "default_document_version": "1",
+    "status": "Active",
+    "document_type": "Command",
+    "format": "JSON"
+  },
+  "binding": {
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "mutable_default_reference_permitted": false,
+    "remote_s3_output_permitted": false,
+    "remote_cloudwatch_output_permitted": false
+  },
+  "reason": "The execution must invoke the immutable version number that was reviewed, not the mutable $DEFAULT selector.",
+  "execution_authorized": false
+}

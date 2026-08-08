@@ -1,0 +1,33 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "sampler_self_test",
+  "attempt_id": "nerdctl_exact_dra_probe",
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T19:50:37Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "pre_artifact_facts": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false
+  },
+  "command": {
+    "command_id": "9cb8d0ea-b572-4adc-9892-981bc848545c",
+    "instance_id": "i-0cb9109e43b61c7c7",
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "response_code": 0,
+    "execution_elapsed": "PT0.28S"
+  },
+  "bound_dra": {
+    "pod_uid": "68970a0a-3bd5-491b-9608-0141719563fd",
+    "container_id": "c1cd16d4bb9ce4b8e29844f0a30a5cf70dd2f5629cf18068bd5b5a488bf408f8",
+    "image_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+  },
+  "bounded_stdout_summary": "MEDZEN_NERDCTL_PROBE_V1\nCONTAINER ID                                                        IMAGE                                                                                                                                        COMMAND    CREATED          STATUS    PORTS    NAMES\nc1cd16d4bb9ce4b8e29844f0a30a5cf70dd2f5629cf18068bd5b5a488bf408f8    558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246    gpu-kubelet-plugin    3 minutes ago    Up                 k8s://nvidia-dra-driver/dra-driver-nvidia-gpu-kubelet-plugin-ld4ps/gpus\nQUIET=c1cd16d4bb9c\nMEDZEN_NERDCTL_PROBE_END\n",
+  "raw_stderr": "",
+  "raw_output_note": "The exact raw output was inspected live under policy v2. This receipt deliberately stores a bounded summary because the upstream container entrypoint column was not needed to bind the container, pod UID or image digest.",
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}

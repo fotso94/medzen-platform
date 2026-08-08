@@ -1,0 +1,43 @@
+{
+  "record": "B6A_PLATFORM_AGGREGATE_BUDGET_DECISION",
+  "id": "B6A-BUDGET-2026-001",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-03T23:35:11Z",
+  "authorization_source": "Owner message: proceed with the corrected phased B6A recommendation, perform the EKS extended-support upgrade first, and extend the budget to $300.",
+  "interpretation": "Prospective aggregate project ceiling. Historical B4 ledgers and evidence remain immutable; their committed spend is carried forward rather than reset.",
+  "previous_aggregate_ceiling_usd": 100.0,
+  "new_aggregate_ceiling_usd": 300.0,
+  "historical_b4_committed_usd": 22.5288,
+  "historical_b4_unresolved_reservations": 0,
+  "remaining_before_b1_b6a_infrastructure_reconciliation_usd": 277.4712,
+  "existing_infrastructure_spend_state": {
+    "state": "NOT_RECONCILED_TO_PROJECT_TOTAL",
+    "reason": "The B4 ledger measured bounded campaign compute, not all persistent AWS infrastructure. Cost Explorer includes unrelated services in the shared account and cannot yet provide a complete MedZen Speech project total.",
+    "must_be_reconciled_before_claiming_final_remaining_budget": true
+  },
+  "initial_reservations": [
+    {
+      "packet": "B6A-AWS-CHANGE-PACKET-2026-001",
+      "purpose": "Sequential EKS 1.31 to 1.36 upgrade with GPU desired size held at zero",
+      "worst_case_usd": 25.0,
+      "state": "reserved"
+    }
+  ],
+  "remaining_after_initial_reservations_before_infrastructure_reconciliation_usd": 252.4712,
+  "controls": {
+    "historical_b4_records_immutable": true,
+    "spend_reset_permitted": false,
+    "reserve_before_aws_change": true,
+    "one_active_aws_packet_at_a_time": true,
+    "reconcile_after_observed_completion": true,
+    "unresolved_reservation_blocks_next_billable_packet": true,
+    "gpu_default_desired_size": 0,
+    "gpu_test_window_requires_separate_itemized_packet": true,
+    "training_authorized": false,
+    "model_promotion_authorized": false,
+    "approved_asr_publication_authorized": false,
+    "production_ssm_publication_authorized": false
+  }
+}
