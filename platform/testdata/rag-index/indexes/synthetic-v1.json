@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "index_version": "synthetic-v1",
+  "classification": "SYNTHETIC_NON_CLINICAL",
+  "documents": [
+    {
+      "document_id": "synthetic-hours",
+      "title": "Fictional training desk hours",
+      "source_uri": "medzen://synthetic/training-desk",
+      "section": "hours",
+      "language": "en",
+      "text": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
+      "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c"
+    },
+    {
+      "document_id": "synthetic-card",
+      "title": "Fictional practice card",
+      "source_uri": "medzen://synthetic/training-desk",
+      "section": "arrival",
+      "language": "en",
+      "text": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
+      "content_sha256": "edaaf0f8a6ab248c2b1143c6f9b913e219e3db55998c2819f6298952521571e1"
+    },
+    {
+      "document_id": "synthetic-support",
+      "title": "Synthetic support hours",
+      "source_uri": "medzen://synthetic/support-line",
+      "section": "hours",
+      "language": "en",
+      "text": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
+      "content_sha256": "fe6f9abbbd89dfeacdfefa8e31a9cc9bcc22a6bd8e9174e6c8e6f35f935751eb"
+    }
+  ]
+}

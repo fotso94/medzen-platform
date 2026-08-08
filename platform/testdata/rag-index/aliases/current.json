@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "alias": "current",
+  "manifest_path": "indexes/synthetic-v1.json",
+  "manifest_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160"
+}
