@@ -54,6 +54,7 @@
     "gpu_auto_scaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
     "gpu_instance_type": "g6.xlarge",
     "maximum_gpu_nodes": 1,
+    "maximum_window_seconds": 7140,
     "maximum_retry_window_seconds": 7140,
     "maximum_cumulative_b6a_seconds": 7200,
     "deadline_action": "medzen-b6a-003c-c-deadline-scale-zero"
@@ -70,6 +71,10 @@
     "asr_runtime_digest": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
     "nvidia_dra_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
     "nvidia_dra_render_sha256": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "bound_resources": {
     "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
     "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
   },
