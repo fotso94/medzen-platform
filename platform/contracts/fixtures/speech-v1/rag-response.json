@@ -1,0 +1,30 @@
+{
+  "request_id": "55555555-5555-4555-8555-555555555555",
+  "query_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "index": {
+    "alias": "current",
+    "version": "synthetic-v1",
+    "snapshot_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "classification": "SYNTHETIC_NON_CLINICAL"
+  },
+  "citations": [
+    {
+      "rank": 1,
+      "document_id": "synthetic-hours",
+      "title": "Fictional training desk hours",
+      "source_uri": "medzen://synthetic/training-desk",
+      "section": "hours",
+      "content_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "excerpt": "The fictional training desk opens Monday at 09:00.",
+      "score": 4.0
+    }
+  ],
+  "model_versions": {
+    "asr": null,
+    "registry_snapshot": "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001",
+    "llm": null,
+    "rag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "tts": null
+  },
+  "latency_ms": 0.5
+}

@@ -1,0 +1,29 @@
+{
+  "request_id": "11111111-1111-4111-8111-111111111111",
+  "session_id": "22222222-2222-4222-8222-222222222222",
+  "language": "ln",
+  "transcript": {
+    "verbatim": "synthetic example",
+    "normalized": "synthetic example",
+    "normalization_version": "b6-synthetic-v1"
+  },
+  "reply": {
+    "text": "This is a synthetic non-clinical response.",
+    "audio_url": null,
+    "tts_backend": "text_only"
+  },
+  "model_versions": {
+    "asr": "v0-platform-test",
+    "registry_snapshot": "b6-test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "llm": "local-mock-v1",
+    "rag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "tts": null
+  },
+  "latency_ms": {
+    "total": 12.5,
+    "asr": 5.0,
+    "rag": 1.0,
+    "llm": 6.0,
+    "tts": 0.5
+  }
+}
