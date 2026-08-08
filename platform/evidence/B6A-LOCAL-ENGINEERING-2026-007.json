@@ -1,0 +1,122 @@
+{
+  "record": "B6A_003C_E_PROVEN_SAMPLER_FULL_PROOF_LOCAL_ENGINEERING_RESULT",
+  "id": "B6A-LOCAL-ENGINEERING-2026-007",
+  "revision": 1,
+  "status": "LOCAL_ENGINEERING_COMPLETE_INDEPENDENT_REVIEW_AND_PACKET_APPROVAL_REQUIRED",
+  "completed_utc": "2026-08-08T20:20:06Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-SAMPLER-DEBUG-2026-001-RESULT.json",
+    "sha256": "87c25c36bf950099b1668c93018b9f35eb733eb3ecf9fc4af5ecff1e1201695c",
+    "outcome": "PASS_PROVEN_120_SAMPLE_SCRIPT",
+    "historical_record_edited": false
+  },
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "starting_commit": "37e56c049940cbda83b22c38cd8bef5c077d4650",
+    "starting_tree": "71636315be8df89d6ee83bf0edf7a64359724c3b",
+    "starting_commit_count": 194,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "private_remote_backup": true
+  },
+  "source_bindings": {
+    "pipeline/runtime_receipts_v2.py": "898c70d1e502bd84d01a5e6f619d6c6d6fe26627e3ae678b26c87d47145367f2",
+    "platform/runtime-receipt-policy-v2.yaml": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "scripts/b6a_003c_e_common.py": "652ad7e2752eb611da6a3c895babe2b72077c92a64251d15b97368dd71c919f0",
+    "scripts/b6a_003c_e_bindings.py": "a2e6ef10d83e5b4bd1cb2201e47c7dfe75af3707b77c28be3e8628573ac721c7",
+    "scripts/b6a_003c_e_deadline.py": "3ddf23d1af989e441d0ff3c7232b307cac62ba67a9a24bc125ca26bf52cf4187",
+    "scripts/b6a_003c_e_cleanup.sh": "7225fc8f16d561d8097b124ca53bfcdeb1c5d37d9a5226332d208a197ed58e4b",
+    "scripts/b6a_003c_e_ssm_sampler.sh": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "scripts/run_b6a_003c_e_sampler_self_test.py": "392ddce6731f75b6af36d8656da1ae14b1f963576697fd7c861e1d7b502ed0b1",
+    "scripts/run_b6a_003c_e_proof.py": "73236c92533bf56b8c9b8f60ead18033d17fc0cb10377fc238bb22ff5a417ea5",
+    "scripts/run_b6a_003c_e_gpu_window.sh": "f3a8b1ebe7051d04fa5fb830cd5465b9450ec534b039e29a0d2569dfed97cf93"
+  },
+  "historical_immutability": {
+    "pipeline/runtime_receipts.py": "9534f4c77242b7bf295e2b82943349326c8338d24baf01ac948ac89d9e353ef7",
+    "platform/runtime-receipt-policy-v1.yaml": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda",
+    "historical_003c_d_sources_or_receipts_changed": false
+  },
+  "proven_sampler": {
+    "path": "scripts/b6a_003c_e_ssm_sampler.sh",
+    "sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "live_command_id": "0958ce20-f034-4f01-9526-9e5da88a5ee3",
+    "execution_context": "ssm_to_gpu_node_nerdctl_k8s_io_exec_exact_dra_container_chroot_driver_root",
+    "numeric_samples": 120,
+    "raw_stderr": "",
+    "result": "PASS"
+  },
+  "receipt_policy_v2": {
+    "pre_artifact_raw_output_stages": [
+      "local_bindings",
+      "dra_stable_readiness",
+      "sampler_self_test"
+    ],
+    "required_pre_artifact_facts": {
+      "model_artifact_present_on_node": false,
+      "audio_artifact_present_on_node": false,
+      "model_or_audio_workload_applied": false
+    },
+    "maximum_utf8_bytes_per_raw_field": 32768,
+    "exact_command_path_and_sha256_required": true,
+    "audio_transcript_credentials_secrets_or_phi_permitted": false,
+    "post_artifact_raw_output_permitted": false,
+    "non_retroactive": true
+  },
+  "proof_separation": {
+    "transcription_receipt_exclusive_atomic_and_fsync_backed": true,
+    "transcription_receipt_before_memory_sampler_start": true,
+    "memory_failure_status": "INCOMPLETE_MEASUREMENT",
+    "memory_failure_voids_transcription": false,
+    "transcript_text_persisted": false
+  },
+  "bound_resources": {
+    "workload_render_path": "platform/k8s/b6a/asr-platform-proof-003c-b.rendered.yaml",
+    "workload_render_sha256": "9e51c009ea995c15261505b2416611a8bbf2e8071e75758527d9e180f9be8f68",
+    "synthetic_audio_path": "platform/testdata/b6a-003c-b-synthetic.wav",
+    "synthetic_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_guardrail_before_existing_reservation_usd": 47.5288,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_usd": 0.0,
+    "conservative_prior_gpu_seconds": 2091,
+    "maximum_remaining_gpu_seconds": 5109,
+    "conservative_cumulative_maximum_seconds": 7200,
+    "recorded_g6_xlarge_hourly_rate_usd": 1.0064,
+    "maximum_003c_e_gpu_cost_usd": 1.4285,
+    "gpu_desired_during_local_engineering": 0,
+    "gpu_cost_for_local_engineering_usd": 0.0
+  },
+  "validation": {
+    "focused_tests_passed": 17,
+    "focused_tests_failed": 0,
+    "canonical_pytest_passed": 1055,
+    "canonical_pytest_failed": 0,
+    "canonical_pytest_skipped": 0,
+    "canonical_pytest_deselected": 7,
+    "canonical_pytest_warnings": 1,
+    "warning": "Existing Starlette TestClient deprecation only",
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "generated_output_check": "PASS_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "execution_boundary": {
+    "packet_003c_e_prepared": true,
+    "packet_003c_e_independently_reviewed": false,
+    "packet_003c_e_owner_approved": false,
+    "aws_command_attempted": false,
+    "kubectl_command_attempted": false,
+    "deadline_creation_attempted": false,
+    "gpu_scale_up_attempted": false,
+    "workload_apply_attempted": false,
+    "transcription_attempted": false,
+    "approved_asr_write_attempted": false,
+    "production_ssm_change_attempted": false,
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "next_boundary": "Commit and push the exact 003C-E packet and sources, obtain an independent review PASS bound to their hashes, then obtain exact owner approval. No 003C-E execution is authorized before both gates complete."
+}
