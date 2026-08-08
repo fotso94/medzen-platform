@@ -1,0 +1,66 @@
+schema: medzen.runtime_receipt_policy/v1
+id: RUNTIME-RECEIPTS-2026-001
+status: standing-rule
+purpose: >-
+  Preserve every independently successful runtime stage even when a later stage
+  refuses, fails, or remains incomplete.
+
+receipt_schema: MEDZEN_RUNTIME_STAGE_RECEIPT_V1
+write_rules:
+  - Persist a stage receipt immediately when that stage reaches a terminal outcome.
+  - Use an exclusive, atomic, fsync-backed write; an existing receipt is immutable.
+  - A later receipt may depend on an earlier receipt but may never replace, amend,
+    invalidate, or delete it.
+  - Missing, malformed, duplicated, or out-of-order required receipts fail closed.
+  - Receipt files contain hashes and bounded metadata, never audio, transcript text,
+    raw service logs, credentials, secrets, or patient data.
+
+terminal_statuses:
+  - PASS
+  - REFUSED
+  - INCOMPLETE_MEASUREMENT
+  - NOT_RUN
+
+b6a_stage_order:
+  - local_bindings
+  - deadline
+  - dra_stable_readiness
+  - sampler_self_test
+  - transcription
+  - gpu_memory_measurement
+  - proof_summary
+  - cleanup
+
+dependencies:
+  deadline: [local_bindings]
+  dra_stable_readiness: [deadline]
+  sampler_self_test: [dra_stable_readiness]
+  transcription: [sampler_self_test]
+  gpu_memory_measurement: [transcription]
+  proof_summary: [transcription]
+  cleanup: [deadline]
+dependency_rule: >-
+  PASS and INCOMPLETE_MEASUREMENT receipts require every successful predecessor
+  needed to reach that stage. A REFUSED receipt may be written without a missing
+  predecessor so that the refusal itself is durable; it may not claim that the
+  missing predecessor passed.
+
+independent_proofs:
+  transcription:
+    success_status: PASS
+    durable_before_stage: gpu_memory_measurement
+    later_measurement_failure_can_void: false
+  gpu_memory_measurement:
+    success_status: PASS
+    failure_status: INCOMPLETE_MEASUREMENT
+    failed_measurement_changes_transcription_status: false
+
+aggregate_semantics:
+  complete: >-
+    Transcription PASS, GPU-memory PASS, and cleanup PASS are all durably present.
+  incomplete_measurement: >-
+    Transcription PASS is durable, while GPU-memory is INCOMPLETE_MEASUREMENT;
+    the transcription proof remains valid and B6A remains incomplete.
+  refused: >-
+    A required precondition or transcription proof refused. Any earlier PASS receipt
+    remains valid evidence of only the stage it records.

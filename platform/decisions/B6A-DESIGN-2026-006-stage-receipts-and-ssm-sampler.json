@@ -1,0 +1,113 @@
+{
+  "record": "B6A_STAGE_RECEIPTS_AND_SSM_SAMPLER_DESIGN",
+  "id": "B6A-DESIGN-2026-006",
+  "revision": 1,
+  "status": "local-engineering-complete-new-packet-and-independent-iam-review-required",
+  "created_utc": "2026-08-08T18:07:29Z",
+  "owner_direction": {
+    "review_outcome": "003C-C PASS_WITH_CONCERNS",
+    "local_003c_d_build_authorized": true,
+    "receipt_per_stage_standing_rule_required": true,
+    "transcription_and_gpu_memory_must_be_independent": true,
+    "ssm_sampler_self_test_before_model_deploy_required": true,
+    "maximum_remaining_gpu_seconds": 6520,
+    "independent_review_before_iam_or_standing_cost": true,
+    "historical_record_edit_authorized": false
+  },
+  "immutable_trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-C-BLOCKED-GPU-MEMORY.json",
+    "sha256": "d888d9d47d58787a4a804fc7f118bb1f94fc72d85d2196c0b8dd01a5bef0cf73",
+    "outcome": "BLOCKED_PLATFORM_PROOF",
+    "receipt_ordering_defect": "A later memory-measurement refusal prevented the already successful in-process transcription from becoming durable evidence.",
+    "edited": false
+  },
+  "standing_runtime_rule": {
+    "path": "platform/runtime-receipt-policy-v1.yaml",
+    "sha256": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda",
+    "schema": "MEDZEN_RUNTIME_STAGE_RECEIPT_V1",
+    "properties": [
+      "Every reached stage writes one exclusive atomic fsync-backed terminal receipt immediately.",
+      "No later stage may replace amend delete invalidate or void an earlier receipt.",
+      "Receipts contain hashes and bounded metadata but no audio transcript text raw logs credentials secrets or patient data.",
+      "Missing malformed duplicated unknown or out-of-order receipts fail closed."
+    ]
+  },
+  "independent_proofs": {
+    "transcription": {
+      "receipt_status_on_success": "PASS",
+      "durable_before_gpu_sampler_starts": true,
+      "stored_content": "response transcript readiness and source hashes only; no transcript text",
+      "later_memory_failure_can_void": false
+    },
+    "gpu_memory": {
+      "exercise": "loaded v0 model plus a second synthetic inference after the transcription receipt is durable",
+      "receipt_status_on_success": "PASS",
+      "receipt_status_on_failure": "INCOMPLETE_MEASUREMENT",
+      "failure_changes_transcription_status": false,
+      "scope_limit": "This measures serving-inference memory; it does not retroactively claim a startup-memory trace for 003C-C."
+    }
+  },
+  "predeploy_sampler_self_test": {
+    "transport": "AWS Systems Manager Run Command using AWS-RunShellScript",
+    "target": "the exact EC2 instance backing the stable DRA GPU node",
+    "duration": "120 numeric samples at approximately one-second intervals",
+    "execution_context": "crictl exec into the exact DRA gpus container then /busybox/chroot /driver-root /usr/bin/nvidia-smi",
+    "required_output": "one bounded numeric MEDZEN_SAMPLER_SELF_TEST_V1 PASS line",
+    "remote_s3_output": false,
+    "remote_cloudwatch_output": false,
+    "model_deployment_on_failure": false,
+    "failure_receipt_required": true
+  },
+  "live_iam_gap_verified_utc": "2026-08-08T17:52:00Z",
+  "live_iam_gap": {
+    "node_role": "arn:aws:iam::558069890522:role/medzen-speech-node-role",
+    "attached_managed_policies": [
+      "AmazonEKS_CNI_Policy",
+      "AmazonEC2ContainerRegistryReadOnly",
+      "AmazonEKSWorkerNodePolicy"
+    ],
+    "inline_policies": [],
+    "ssm_managed_nodes": 0,
+    "conclusion": "The required SSM self-test cannot run until the EKS node role receives SSM Agent core permissions."
+  },
+  "iam_design": {
+    "terraform_resource": "aws_iam_role_policy.node_ssm_core",
+    "policy_path": "platform/iam/medzen-node-ssm-core.json",
+    "policy_sha256": "53bac175e2e64c075935d961c1a48527b4bb9c6d1fa0ed81ea54829f862b2014",
+    "planned_actions": "1 create 0 update 0 delete",
+    "shared_role_effect": "The existing CPU and GPU node groups share this role, so both become SSM managed nodes after credential refresh.",
+    "send_command_granted_to_node_role": false,
+    "s3_or_cloudwatch_output_permission_granted": false,
+    "independent_review_required_before_apply": true,
+    "review_must_confirm": [
+      "The shared CPU and GPU role scope is acceptable.",
+      "The frozen permission document matches the intended SSM Agent core boundary.",
+      "No sender permissions data sink permissions or application permissions are introduced.",
+      "Rollback is deletion of only medzen-speech-node-ssm-core after confirming no command is active."
+    ]
+  },
+  "cpu_scale_to_zero": {
+    "verified_utc": "2026-08-08T17:56:00Z",
+    "nodes": 2,
+    "non_system_workloads": 0,
+    "only_kube_system_pods": true,
+    "recommendation": "Keep the CPU baseline while 003C-D review and execution are expected within about 24 hours; otherwise reverify workloads and separately scale CPU desired and minimum to zero.",
+    "included_in_003c_d_packet": false,
+    "control_plane_continues_billing_at_cpu_zero": true
+  },
+  "allowed_local_operations": [
+    "Add standing receipt policy and reusable immutable receipt implementation",
+    "Add versioned 003C-D bindings deadline sampler proof cleanup and window scripts",
+    "Add the frozen SSM Agent core policy source and Terraform resource",
+    "Add behavioral tests and a one-change Terraform plan guard",
+    "Prepare local evidence and a new 003C-D change packet",
+    "Commit and push to the existing private branch"
+  ],
+  "prohibited_until_later_authorization": [
+    "Terraform apply IAM mutation SSM command scheduled action or GPU scale-up",
+    "Artifact image DRA Pod Identity approved-ASR production SSM or serving mutation",
+    "Training promotion model registration public traffic or non-synthetic audio",
+    "Claiming 003C-C transcription success B6A completion B6.1 or full B6 completion"
+  ],
+  "next_boundary": "Obtain an independent IAM review receipt, then owner approval of the exact committed 003C-D packet before applying the single IAM resource or opening a GPU window."
+}
