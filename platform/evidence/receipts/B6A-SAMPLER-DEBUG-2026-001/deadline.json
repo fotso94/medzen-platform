@@ -1,0 +1,23 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "deadline",
+  "attempt_id": "sampler_debug_deadline",
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T19:43:55Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "payload": {
+    "event_id": "7c390bde-a3f5-44d2-b541-7b19ee0e28ad",
+    "action": "medzen-b6a-sampler-debug-2026-001-scale-zero",
+    "asg": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "deadline_utc": "2026-08-08T19:58:41Z",
+    "minimum": 0,
+    "desired": 0,
+    "maximum": 1,
+    "maximum_window_seconds": 900,
+    "read_back_exactly": true
+  },
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}

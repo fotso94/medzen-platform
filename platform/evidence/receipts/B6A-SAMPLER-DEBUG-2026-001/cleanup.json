@@ -1,0 +1,29 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "cleanup",
+  "attempt_id": "sampler_debug_zero_cleanup",
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T20:05:16Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "payload": {
+    "scale_up_event_id": "76120999-3114-48ac-8171-3957e725a815",
+    "scale_up_requested_utc": "2026-08-08T19:44:52Z",
+    "scale_down_event_id": "de46e752-3539-4d72-afb4-6960b4e292ba",
+    "scale_down_requested_utc": "2026-08-08T19:55:59Z",
+    "instance_launch_utc": "2026-08-08T19:45:33Z",
+    "instance_termination_selected_utc": "2026-08-08T19:56:41Z",
+    "instance_state": "terminated",
+    "gpu_nodegroup_zero": true,
+    "gpu_asg_zero": true,
+    "gpu_nodes_zero": true,
+    "dra_pods_zero": true,
+    "medzen_workloads_zero": true,
+    "scheduled_actions_zero": true,
+    "deadline_disposition": "ELAPSED_ACTION_AUTO_REMOVED_DELETE_RETURNED_NOT_FOUND_AFTER_ZERO",
+    "post_run_terraform_plan": "NO_CHANGES"
+  },
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}

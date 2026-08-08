@@ -1,0 +1,28 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "sampler_self_test",
+  "attempt_id": "prior_003c_d_failure_diagnosis",
+  "status": "REFUSED",
+  "recorded_utc": "2026-08-08T19:42:30Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "pre_artifact_facts": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false
+  },
+  "command": {
+    "command_id": "9b0295f8-8bc3-428f-87a6-a6d08e2834b3",
+    "instance_id": "i-0cddc9f5789cee950",
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "response_code": 1,
+    "execution_start_utc": "2026-08-08T19:00:56.437Z",
+    "execution_elapsed": "PT0.005S"
+  },
+  "raw_stdout": "MEDZEN_SAMPLER_SELF_TEST_V1 status=REFUSED code=CRICTL_ABSENT\n",
+  "raw_stderr": "failed to run commands: exit status 1",
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1",
+  "stage": "sampler_self_test",
+  "attempt_id": "tooling_inventory",
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T19:48:37Z",
+  "policy": {
+    "path": "platform/runtime-receipt-policy-v2.yaml",
+    "sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd"
+  },
+  "pre_artifact_facts": {
+    "model_artifact_present_on_node": false,
+    "audio_artifact_present_on_node": false,
+    "model_or_audio_workload_applied": false
+  },
+  "command": {
+    "command_id": "b0a13e31-3caa-47f9-a397-6acefc1a4a44",
+    "instance_id": "i-0cb9109e43b61c7c7",
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "response_code": 0,
+    "execution_elapsed": "PT0.011S"
+  },
+  "raw_stdout": "MEDZEN_DEBUG_INVENTORY_V1\nPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin\ncrictl=ABSENT\nctr=/usr/bin/ctr\nnerdctl=/usr/local/bin/nerdctl\nnsenter=/usr/bin/nsenter\n-rwxr-xr-x. 1 root root 25708000 Jun 26 16:29 /usr/bin/ctr\n-rwxr-xr-x. 1 root root 25708000 Jun 26 16:29 /bin/ctr\n-rwxr-xr-x. 1 root root 28408 Jul 10 19:10 /usr/bin/nsenter\n-rwxr-xr-x. 1 root root 28408 Jul 10 19:10 /bin/nsenter\nMEDZEN_DEBUG_INVENTORY_END\n",
+  "raw_stderr": "",
+  "contains_audio_transcript_credentials_secrets_or_phi": false
+}
