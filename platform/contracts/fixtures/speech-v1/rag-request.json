@@ -1,0 +1,6 @@
+{
+  "request_id": "55555555-5555-4555-8555-555555555555",
+  "query": "When does the fictional training desk open?",
+  "language": "en",
+  "top_k": 3
+}

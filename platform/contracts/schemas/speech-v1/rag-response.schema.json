@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.speech.v1.rag-response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "query_id",
+    "index",
+    "citations",
+    "model_versions",
+    "latency_ms"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "format": "uuid"},
+    "query_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["alias", "version", "snapshot_sha256", "classification"],
+      "properties": {
+        "alias": {"type": "string"},
+        "version": {"type": "string"},
+        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "classification": {"const": "SYNTHETIC_NON_CLINICAL"}
+      }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rank",
+          "document_id",
+          "title",
+          "source_uri",
+          "section",
+          "content_sha256",
+          "excerpt",
+          "score"
+        ],
+        "properties": {
+          "rank": {"type": "integer", "minimum": 1},
+          "document_id": {"type": "string"},
+          "title": {"type": "string"},
+          "source_uri": {"type": "string", "pattern": "^medzen://synthetic/"},
+          "section": {"type": "string"},
+          "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "excerpt": {"type": "string"},
+          "score": {"type": "number", "exclusiveMinimum": 0}
+        }
+      }
+    },
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "properties": {
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string"},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": "string"},
+        "tts": {"type": ["string", "null"]}
+      }
+    },
+    "latency_ms": {"type": "number", "minimum": 0}
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "client": [
+    {
+      "type": "start",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "language_hint": "ln",
+      "audio_format": "pcm_s16le/16000/mono"
+    },
+    {"type": "end_of_speech"}
+  ],
+  "server": [
+    {
+      "type": "ready",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-platform-test",
+        "registry_snapshot": "b6-test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "llm": null,
+        "rag": null,
+        "tts": null
+      }
+    },
+    {
+      "type": "final_transcript",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "transcript": {
+        "verbatim": "synthetic example",
+        "normalized": "synthetic example",
+        "normalization_version": "b6-synthetic-v1"
+      },
+      "model_versions": {
+        "asr": "v0-platform-test",
+        "registry_snapshot": "b6-test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "llm": null,
+        "rag": null,
+        "tts": null
+      }
+    },
+    {
+      "type": "reply_text",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "text": "This is a synthetic non-clinical response.",
+      "citations": [],
+      "model_versions": {
+        "asr": "v0-platform-test",
+        "registry_snapshot": "b6-test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "llm": "local-mock-v1",
+        "rag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "tts": null
+      }
+    },
+    {
+      "type": "completed",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-platform-test",
+        "registry_snapshot": "b6-test:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "llm": "local-mock-v1",
+        "rag": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "tts": null
+      },
+      "latency_ms": {"total": 14.0}
+    }
+  ]
+}

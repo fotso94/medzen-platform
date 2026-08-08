@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.speech.v1.stream-server-event",
+  "type": "object",
+  "required": ["type", "request_id", "session_id", "model_versions"],
+  "properties": {
+    "type": {
+      "enum": [
+        "ready",
+        "partial_transcript",
+        "final_transcript",
+        "reply_text",
+        "audio_chunk",
+        "completed",
+        "cancelled",
+        "error"
+      ]
+    },
+    "request_id": {"type": "string", "format": "uuid"},
+    "session_id": {"type": "string", "format": "uuid"},
+    "model_versions": {
+      "type": "object",
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"]
+    }
+  }
+}

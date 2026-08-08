@@ -1,0 +1,84 @@
+{
+  "record": "B6_CONTRACT_ADOPTION_AND_LOCAL_RAG_EXIT",
+  "id": "B6-LOCAL-ENGINEERING-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_LOCAL_COMPLETE",
+  "recorded_utc": "2026-08-08T22:48:01Z",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "7a5bbe932f18ff34cb009d04c99bb1888512ac96",
+    "planning_pull_request": 3,
+    "planning_pull_request_state": "MERGED"
+  },
+  "contract_adoption": {
+    "decision": "B6-CONTRACT-2026-001",
+    "contract": "MEDZEN-SPEECH-CONTRACT-2026-001",
+    "version": "medzen.speech.v1",
+    "contract_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "schema_count": 4,
+    "golden_fixture_count": 5,
+    "consumer_provider_contract_tests": "PASS"
+  },
+  "b6_1_local_rag": {
+    "outcome": "LOCAL_EXIT_COMPLETE",
+    "service": "rag-index",
+    "external_reachability": false,
+    "aws_dependency": false,
+    "classification": "SYNTHETIC_NON_CLINICAL",
+    "clinical_content_approved": false,
+    "index_version": "synthetic-v1",
+    "index_snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "features_verified": [
+      "deterministic retrieval ordering",
+      "citation identity and content hashes",
+      "checksum-bound alias resolution",
+      "empty index refusal",
+      "tampered manifest refusal",
+      "health and readiness behavior",
+      "successful empty result set",
+      "alias switch and exact rollback",
+      "request and content absent from access logs"
+    ]
+  },
+  "source_bindings": {
+    "platform/contracts/speech-v1.yaml": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "platform/decisions/B6-CONTRACT-2026-001-adoption.json": "5a643982459b46876259cf73c5e8e89e529c5f14d8251febb9550205a7486e88",
+    "services/rag-index/medzen_rag_index/app.py": "41bcf2ead13e39e7737bc93ed3b22d0940897e1d9d7b69433c0bc0898017a3bc",
+    "services/rag-index/medzen_rag_index/index.py": "0bebc9fff30e4d58e2b8a551060446f48afe2ada8be1ee00e660ac13a25b9a04",
+    "platform/testdata/rag-index/indexes/synthetic-v1.json": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "platform/testdata/rag-index/aliases/current.json": "b535b8eff3ae6244e5b7957036b10e74f557d29655e000bb1367cb73ae4fafd0",
+    "tests/test_b6_contract_adoption.py": "bfb2e1155499f4482ce43bd7d7ed82a5c12264d0502ac18eb5dae2707c6dfcbc",
+    "tests/test_rag_index.py": "99a6e9538e96d8f12e576017dae518ac0d0e7c0672f55a8c130c903d4b209bd4"
+  },
+  "validation": {
+    "pytest_passed": 1116,
+    "pytest_failed": 0,
+    "pytest_deselected": 7,
+    "pytest_warnings": 1,
+    "warning_interpretation": "Existing FastAPI TestClient dependency deprecation; no test failure.",
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "generated_platform_files": "CURRENT_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "aws_and_governance": {
+    "aws_packets_authorized": 0,
+    "new_aws_resources": 0,
+    "iam_changes": 0,
+    "ssm_writes": 0,
+    "ssm_registry_parameter_count_verified": 0,
+    "ecr_pushes": 0,
+    "kubernetes_deployments": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "training_runs": 0,
+    "approved_artifact_writes": 0,
+    "production_serving_changes": 0
+  },
+  "remaining_boundaries": [
+    "Clinical content requires an independent clinical-owner decision and provenance review.",
+    "The RAG deployment image, security scan and EKS deployment are not part of this local exit.",
+    "The B6.5A versioned test-registry SSM publication requires its own small AWS packet.",
+    "B6.2 LLM-gateway work starts only after this contract/RAG pull request is reviewed and merged."
+  ]
+}

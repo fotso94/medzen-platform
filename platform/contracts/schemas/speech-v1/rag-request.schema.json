@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.speech.v1.rag-request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "query"],
+  "properties": {
+    "request_id": {"type": "string", "format": "uuid"},
+    "query": {"type": "string", "minLength": 1, "maxLength": 2000},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "top_k": {"type": "integer", "minimum": 1, "maximum": 5, "default": 3}
+  }
+}

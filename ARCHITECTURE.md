@@ -89,7 +89,7 @@ Full machine-readable spec: `platform/services.yaml`.
 | `asr-runtime` | **GPU** | 8081 | 1 fixed | `medzen-asr-role` | Different hardware, slowest start; an API deploy must never restart it |
 | `llm-gateway` | CPU | 8082 | 2–4 HPA | `medzen-llm-role` | Hides Bedrock↔Qwen swap behind one interface |
 | `tts-gateway` | CPU | 8080 | 1–3 HPA | `medzen-tts-role` | Not yet built in this repository; will hide Fish↔self-hosted↔text-only fallback and own the cache |
-| `rag-index` | CPU | 8083 | 2–4 HPA | `medzen-rag-role` | Content versioning is independent of model versioning |
+| `rag-index` | CPU | 8083 | 2–4 HPA | `medzen-rag-role` | Local synthetic B6.1 implementation exists; clinical content and deployment remain unapproved |
 | `model-loader` | init | — | per pod | shares the ASR pod role | Verification-only artifact fetch; Kubernetes gives init and main containers the same Pod identity, and failure leaves the pod unready |
 | `trainer` | EC2 | — | spot | `medzen-trainer-role` | Offline; plain Docker so it runs unchanged on SageMaker later |
 

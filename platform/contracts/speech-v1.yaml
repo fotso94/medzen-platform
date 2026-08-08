@@ -1,9 +1,28 @@
 contract_id: MEDZEN-SPEECH-CONTRACT-2026-001
 version: medzen.speech.v1
-status: prospective_owner_authorized_b6a_definition
+status: canonical_owner_adopted_full_b6_contract
 authority:
-  decision: B6A-AUTH-2026-001
-  reason: Base-v5 references external section 7-v4, but that endpoint contract is not present in the repository or supplied PDFs.
+  decision: B6-CONTRACT-2026-001
+  adopted_by_role: platform-owner
+  adopted_utc: '2026-08-08T22:40:37Z'
+  reason: The owner explicitly adopted MEDZEN-SPEECH-CONTRACT-2026-001 as the canonical full-B6 contract because Base-v5 section 7-v4 is unavailable.
+
+compatibility:
+  request_header: X-MedZen-Contract-Version
+  required_value: medzen.speech.v1
+  additive_optional_fields: backward_compatible
+  removing_or_retyping_a_field: requires_new_major_contract
+  event_reordering: requires_new_major_contract
+  unknown_client_fields: ignored
+  unknown_server_event_types: client_must_fail_closed
+
+public_authentication:
+  mechanism: opaque_bearer_token
+  header: Authorization
+  format: Bearer <client-key>
+  validation_owner: speech-orchestrator
+  secret_source: medzen/client-api-keys
+  token_must_never_be_logged: true
 
 invariants:
   - only_speech_orchestrator_is_externally_routable
@@ -22,7 +41,7 @@ common:
     type: object
     required: [asr, registry_snapshot]
     properties:
-      asr: {type: string}
+      asr: {type: [string, 'null']}
       registry_snapshot: {type: string}
       llm: {type: [string, 'null']}
       rag: {type: [string, 'null']}
@@ -33,6 +52,15 @@ common:
       code: {type: string}
       message: {type: string}
       retryable: {type: boolean}
+  error_codes:
+    - AUTH_REQUIRED
+    - AUTH_INVALID
+    - CONTRACT_VERSION_UNSUPPORTED
+    - INVALID_REQUEST
+    - PAYLOAD_TOO_LARGE
+    - UNSUPPORTED_AUDIO_TYPE
+    - DEPENDENCY_UNAVAILABLE
+    - CANCELLED
   logging:
     allowed: [request_id, hashed_session_id, event_type, language, model_versions, latency_ms, status_code, error_code]
     forbidden: [audio, audio_bytes, transcript, reply_text, person_name, patient_id]
@@ -42,8 +70,11 @@ public_file_mode:
   path: /v1/conversations/speech
   owner: speech-orchestrator
   b6a_implementation_state: NOT_IMPLEMENTED
+  authentication: public_authentication
+  contract_version_header: required
   request:
     content_type: multipart/form-data
+    maximum_audio_bytes: 26214400
     required: [audio]
     optional: [request_id, language_hint, response_audio]
   response:
@@ -61,6 +92,21 @@ public_streaming:
   path: /v1/conversations/stream
   owner: speech-orchestrator
   b6a_implementation_state: NOT_IMPLEMENTED
+  authentication: public_authentication_during_websocket_upgrade
+  contract_version_header: required_during_websocket_upgrade
+  limits:
+    maximum_binary_frame_bytes: 65536
+    maximum_session_audio_bytes: 26214400
+    idle_timeout_seconds: 30
+  close_codes:
+    normal: 1000
+    cancelled: 4000
+    auth_required: 4401
+    auth_invalid: 4403
+    contract_version_unsupported: 4406
+    invalid_event: 4422
+    payload_too_large: 4429
+    dependency_unavailable: 4503
   client_events:
     start:
       required: [type, request_id]
@@ -113,6 +159,34 @@ internal_asr_streaming:
   authentication: cluster_network_only
   b6a_implementation_state: REQUIRED
   rule: Uses the same start, binary-audio, end_of_speech, cancel and ASR transcript events as public_streaming.
+
+internal_rag_retrieval:
+  method: POST
+  path: /internal/v1/retrievals
+  owner: rag-index
+  authentication: cluster_network_only
+  implementation_state: REQUIRED_FOR_B6_1
+  content_policy: synthetic_non_clinical_only_until_clinical_owner_approval
+  request:
+    content_type: application/json
+    maximum_body_bytes: 16384
+    required: [request_id, query]
+    optional: [language, top_k]
+    top_k: {minimum: 1, maximum: 5, default: 3}
+    maximum_query_characters: 2000
+  response:
+    status: 200
+    required: [request_id, query_id, index, citations, model_versions, latency_ms]
+    index:
+      required: [alias, version, snapshot_sha256, classification]
+    citation:
+      required: [rank, document_id, title, source_uri, section, content_sha256, excerpt, score]
+  rules:
+    - result_order_is_deterministic
+    - empty_index_refuses_readiness
+    - alias_target_hash_must_match
+    - request_and_content_are_never_logged
+    - zero_matches_is_a_successful_empty_citations_list
 
 health:
   /healthz: process_alive_only

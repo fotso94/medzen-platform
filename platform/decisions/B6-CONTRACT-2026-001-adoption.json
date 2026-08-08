@@ -1,0 +1,59 @@
+{
+  "record": "B6_CANONICAL_SPEECH_CONTRACT_ADOPTION",
+  "id": "B6-CONTRACT-2026-001",
+  "revision": 1,
+  "status": "OWNER_ADOPTED",
+  "recorded_utc": "2026-08-08T22:42:06Z",
+  "authorized_by_role": "platform-owner",
+  "authorization_source": "Owner message: I adopt MEDZEN-SPEECH-CONTRACT-2026-001 (speech-v1.yaml) as the canonical full-B6 contract.",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "7a5bbe932f18ff34cb009d04c99bb1888512ac96",
+    "pull_request_3_state": "MERGED"
+  },
+  "adopted_contract": {
+    "id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+    "version": "medzen.speech.v1",
+    "path": "platform/contracts/speech-v1.yaml",
+    "pre_adoption_sha256": "c55e00be9d62ca103f2346750040c6626683bd3f648d5c529255c4b575e1f12a",
+    "adopted_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "interpretation": "This contract replaces the unavailable external Base-v5 section 7-v4 for full-B6 implementation. Compatibility-breaking changes require a new prospective owner decision and major contract version."
+  },
+  "governing_plan": {
+    "path": "platform/decisions/PLAN-2026-013-full-b6-serving.md",
+    "sha256": "3cfba1521281384aabbc91c4c5f04f7e2bec51444cfdf15f8a28b56a8f20418b",
+    "status": "OWNER_APPROVED_AND_MERGED"
+  },
+  "explicit_contract_bindings": {
+    "public_authentication": "opaque bearer token validated only by speech-orchestrator",
+    "contract_version_header": "X-MedZen-Contract-Version: medzen.speech.v1",
+    "maximum_file_audio_bytes": 26214400,
+    "maximum_stream_frame_bytes": 65536,
+    "maximum_stream_session_audio_bytes": 26214400,
+    "cancellation_propagation_ms": 250,
+    "text_only_tts_is_success": true,
+    "phi_content_logging_forbidden": true,
+    "server_responses_and_events_bind_request_and_model_versions": true,
+    "internal_rag_contract_added_for_b6_1": true
+  },
+  "authorized_local_work": [
+    "Canonical contract schemas and synthetic golden fixtures",
+    "Consumer and provider contract tests",
+    "Local-only B6.1 RAG implementation using synthetic non-clinical content",
+    "Deterministic index, citation, alias and rollback tests"
+  ],
+  "not_authorized": [
+    "Any AWS resource or IAM change",
+    "Any SSM write including the B6.5A test registry path",
+    "Any CPU or GPU scale-up",
+    "Any ECR push or Kubernetes deployment",
+    "Any clinical-content publication",
+    "Any training, model registration, approved artifact write or production serving change"
+  ],
+  "preserved_state": {
+    "b5_gate_outcome": "BLOCKED_UNCHANGED",
+    "deferred_language_approved_versions": "NULL_UNCHANGED",
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0
+  }
+}
