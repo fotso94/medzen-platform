@@ -1,0 +1,38 @@
+{
+  "record": "B6_UNIFIED_MASTER_HISTORY",
+  "id": "GIT-UNIFICATION-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "completed_utc": "2026-08-08T21:56:00Z",
+  "repository": {
+    "url": "https://github.com/fotso94/medzen-platform",
+    "visibility": "private",
+    "default_branch": "master"
+  },
+  "pull_requests": [
+    {
+      "number": 1,
+      "url": "https://github.com/fotso94/medzen-platform/pull/1",
+      "head": "codex/b6a-platform-proof",
+      "head_commit": "e2dad088ffe1da430e6a728ba4371bf0c8edd378",
+      "merge_commit": "a59692052a0d9a62e343b7a4e1c95f31be4c5a79",
+      "state": "MERGED"
+    },
+    {
+      "number": 2,
+      "url": "https://github.com/fotso94/medzen-platform/pull/2",
+      "head": "data/green-bucket-aggregation",
+      "head_commit": "c9d9e4133bdf439fd3d28f16cbdbbcd332e11183",
+      "merge_commit": "20b4b4fdcbe42477907838ec01ed616e92f05149",
+      "state": "MERGED"
+    }
+  ],
+  "unified_master_commit": "20b4b4fdcbe42477907838ec01ed616e92f05149",
+  "checks": {
+    "b6a_head_is_ancestor_of_master": true,
+    "green_bucket_head_is_ancestor_of_master": true,
+    "local_master_fast_forwarded_to_remote": true,
+    "branches_merged_through_distinct_pull_requests": true
+  },
+  "interpretation": "Full-B6 planning begins from one history containing both the accepted B6A platform proof and the independently produced Green Bucket data records. This merge does not reactivate training or approve a model."
+}
