@@ -20,6 +20,9 @@ def test_node_ssm_policy_is_frozen_and_contains_no_data_sink_permissions():
     assert "ec2messages:GetMessages" in actions
     assert not any(action.startswith("s3:") for action in actions)
     assert not any(action.startswith("logs:") for action in actions)
+    assert "ssm:GetParameter" not in actions
+    assert "ssm:GetParameters" not in actions
+    assert "ssm:PutInventory" not in actions
     assert "ssm:SendCommand" not in actions
 
 
