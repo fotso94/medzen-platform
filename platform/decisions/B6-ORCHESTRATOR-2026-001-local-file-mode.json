@@ -1,0 +1,55 @@
+{
+  "record": "B6_3_ORCHESTRATOR_LOCAL_FILE_MODE_DECISION",
+  "id": "B6-ORCHESTRATOR-2026-001",
+  "revision": 1,
+  "status": "OWNER_AUTHORIZED_LOCAL_ONLY",
+  "recorded_utc": "2026-08-08T23:33:03Z",
+  "authorized_by_role": "platform-owner",
+  "authorization_source": "Owner direction after independent PASS of PR #5: merge PR #5 and proceed to B6.3 orchestrator file-mode, local-only, using an SSM-shaped local registry fixture.",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "995ae92cea8fc5377a2b749fed86ec545af18cae",
+    "pull_request_5_state": "MERGED"
+  },
+  "contract": {
+    "parent_id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+    "parent_path": "platform/contracts/speech-v1.yaml",
+    "parent_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "additive_contract_id": "MEDZEN-ORCHESTRATOR-FILE-CONTRACT-2026-001",
+    "additive_contract_path": "platform/contracts/orchestrator-file-v1.yaml",
+    "additive_contract_sha256": "5d44c360a046c2bd56d9ddc8caa275c133955e3aee9a8a553b9f016f4f70a65d",
+    "parent_contract_mutation_permitted": false
+  },
+  "authorized_local_work": [
+    "Opaque bearer authentication against a hash-only synthetic key fixture",
+    "Request and session identity",
+    "Content-addressed routing through a local fixture shaped like future SSM parameters",
+    "Mandatory local synthetic emergency check before RAG or LLM",
+    "Checksum-bound synthetic ASR to the existing local synthetic RAG and fake LLM",
+    "Cited text-only response assembly with every model and registry version",
+    "PHI-safe access logging and fail-closed behavioral tests"
+  ],
+  "registry_boundary": {
+    "local_root_pattern": "/medzen/registry/test/b6/<snapshot-sha256>",
+    "bound_local_root": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "snapshot_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "parameter_shape": ["Name", "Type", "Value", "Version"],
+    "parameter_type": "SecureString",
+    "future_b6_5a_change": "Replace LocalParameterStore with the SSM adapter; do not change RegistryRouter validation or route values",
+    "ssm_publication_authorized_now": false
+  },
+  "prohibited_operations": [
+    "Any AWS API, SSM write, IAM change, ECR push or Kubernetes action",
+    "Any real Bedrock, network provider or clinical-content access",
+    "Any CPU or GPU scale-up",
+    "Any model registration, approved artifact, approved_version or serving-alias change",
+    "Any use of real speech or PHI",
+    "Streaming, real TTS or deployment"
+  ],
+  "preserved_state": {
+    "b5_gate_outcome": "BLOCKED_UNCHANGED",
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "ssm_registry_parameters": 0
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "headers": {
+    "Authorization": "Bearer <redacted-b6-local-test-key>",
+    "X-MedZen-Contract-Version": "medzen.speech.v1"
+  },
+  "form": {
+    "request_id": "11111111-1111-4111-8111-111111111111",
+    "language_hint": "en",
+    "response_audio": false
+  },
+  "audio_fixture": "platform/testdata/orchestrator/synthetic-file-request.wav",
+  "audio_sha256": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+  "contains_speech": false,
+  "contains_phi": false
+}

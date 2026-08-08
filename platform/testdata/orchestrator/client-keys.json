@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "classification": "B6_3_LOCAL_SYNTHETIC_ONLY",
+  "clients": [
+    {
+      "client_id": "b6-local-contract-test",
+      "key_sha256": "5f9a796e009a8a433d0c3b966499166f5c446e4bd660f5416a4abf2ebd059ac5",
+      "enabled": true
+    }
+  ]
+}
