@@ -1,0 +1,86 @@
+{
+  "record": "B6_CPU_PLANNING_SCALE_TO_ZERO",
+  "id": "B6-CPU-SCALE-ZERO-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "executed_utc": "2026-08-08T21:58:03Z",
+  "verified_utc": "2026-08-08T22:16:52Z",
+  "authorization": "Owner direction to scale CPU nodes to zero before the full-B6 planning and build phase",
+  "target": {
+    "aws_profile": "medzen",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "nodegroup": "cpu",
+    "auto_scaling_group": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
+  },
+  "pre_change": {
+    "scaling": {
+      "min_size": 2,
+      "desired_size": 2,
+      "max_size": 4
+    },
+    "kubernetes_cpu_nodes": [
+      "ip-172-31-12-184.eu-central-1.compute.internal",
+      "ip-172-31-22-228.eu-central-1.compute.internal"
+    ],
+    "scheduled_workload_assessment": "SYSTEM_ONLY",
+    "system_pod_families_observed": [
+      "aws-node",
+      "coredns",
+      "eks-pod-identity-agent",
+      "kube-proxy"
+    ],
+    "medzen_or_user_workloads_observed": 0
+  },
+  "eks_update": {
+    "id": "3b4165a8-2f67-3b0b-81a7-5750741eb824",
+    "type": "ConfigUpdate",
+    "status": "Successful",
+    "parameters": {
+      "min_size": 0,
+      "desired_size": 0,
+      "max_size": 4
+    },
+    "errors": []
+  },
+  "post_change": {
+    "nodegroup_status": "ACTIVE",
+    "nodegroup_scaling": {
+      "min_size": 0,
+      "desired_size": 0,
+      "max_size": 4
+    },
+    "auto_scaling_group_desired_capacity": 0,
+    "auto_scaling_group_instances": [],
+    "kubernetes_cpu_nodes": [],
+    "former_instance_states": {
+      "i-02b2e75b60c73d621": "terminated",
+      "i-0e9507602eb7cab34": "terminated"
+    },
+    "gpu_desired_capacity": 0,
+    "control_plane_billing_continues": true
+  },
+  "managed_drain": {
+    "coredns_disruption_budget_observed_during_scale_down": true,
+    "interpretation": "The final worker remained in the EKS-managed lifecycle wait while system pods drained. Completion was allowed to occur through the managed process.",
+    "force_termination_used": false,
+    "pod_disruption_budget_modified": false,
+    "lifecycle_hook_bypassed": false
+  },
+  "desired_state_source": {
+    "path": "infra/b6_planning_override.tf",
+    "sha256": "296ccddd66a108f3667273f0b2683c62d48882340fe2585bf1069ae47b32d2bf",
+    "historical_infra_path_preserved": "infra/eks.tf",
+    "historical_infra_sha256": "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b",
+    "terraform_plan_after_change": "NO_CHANGES"
+  },
+  "safety": {
+    "new_aws_resources_created": 0,
+    "iam_changes": 0,
+    "approved_asr_writes": 0,
+    "production_ssm_writes": 0,
+    "training_runs": 0,
+    "model_registrations": 0
+  },
+  "interpretation": "The B6 planning and local-build posture is CPU=0 and GPU=0. Scaling workers above zero is a future billable execution change and requires a versioned AWS packet."
+}

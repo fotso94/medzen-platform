@@ -45,9 +45,12 @@ Three planes. They share **S3, ECR and the registry — nothing else**.
    `Deny` on `secretsmanager:*` and `bedrock:*`, and on writes to `eval/*`.
    This is the isolation SageMaker sells, obtained structurally for free.
 3. **Models are data, not images.** Containers hold runtime code only. The
-   `model-loader` init container pulls the approved artifact, verifies its
-   SHA-256, runs an inference smoke test, then exits 0. Promotion and rollback
-   are registry alias changes — no rebuild in either direction.
+   `model-loader` init container pulls the authorized artifact, verifies its
+   manifest and file/tree SHA-256 values, writes an atomic marker, then exits
+   0. The ASR runtime validates that marker, loads the model and runs the
+   serving-path inference smoke before becoming Ready. Production promotion
+   and rollback remain registry alias changes — no image rebuild in either
+   direction.
 4. **The registry is the only door.** A model reaches traffic only by passing
    its gates, being registered, and having its language's `approved_version`
    bumped in a reviewed PR. Nobody can push weights directly.
@@ -85,9 +88,9 @@ Full machine-readable spec: `platform/services.yaml`.
 | `speech-orchestrator` | CPU | 8080 | 2–6 HPA | `medzen-orch-role` | Only public surface; owns policy and session so models stay stateless |
 | `asr-runtime` | **GPU** | 8081 | 1 fixed | `medzen-asr-role` | Different hardware, slowest start; an API deploy must never restart it |
 | `llm-gateway` | CPU | 8082 | 2–4 HPA | `medzen-llm-role` | Hides Bedrock↔Qwen swap behind one interface |
-| `tts-gateway` | CPU | 8080 | 1–3 HPA | `medzen-tts-role` | Already built; hides Fish↔Qwen3-TTS swap and owns the cache |
+| `tts-gateway` | CPU | 8080 | 1–3 HPA | `medzen-tts-role` | Not yet built in this repository; will hide Fish↔self-hosted↔text-only fallback and own the cache |
 | `rag-index` | CPU | 8083 | 2–4 HPA | `medzen-rag-role` | Content versioning is independent of model versioning |
-| `model-loader` | init | — | per pod | `medzen-loader-role` | Read-only artifact fetch; failure leaves pod unready, never half-loaded |
+| `model-loader` | init | — | per pod | shares the ASR pod role | Verification-only artifact fetch; Kubernetes gives init and main containers the same Pod identity, and failure leaves the pod unready |
 | `trainer` | EC2 | — | spot | `medzen-trainer-role` | Offline; plain Docker so it runs unchanged on SageMaker later |
 
 ### Settings that are deliberate, not defaults

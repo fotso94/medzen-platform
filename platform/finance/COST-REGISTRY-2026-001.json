@@ -1,0 +1,158 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-001",
+  "revision": 1,
+  "status": "CURRENT_GUARDRAIL_SNAPSHOT",
+  "recorded_utc": "2026-08-08T22:20:08Z",
+  "currency": "USD",
+  "purpose": "One non-destructive index over every historical budget decision and the current B6A cost state. Source records remain immutable and authoritative for their own events.",
+  "source_records": [
+    {
+      "path": "platform/decisions/B4-BUDGET-2026-001-ceiling-extension.json",
+      "sha256": "1b18c54211eab2efed4e0ff5afe16f31aaeb612792c25421db0aca1223c6b60d"
+    },
+    {
+      "path": "platform/decisions/B4-BUDGET-2026-002-ceiling-extension.json",
+      "sha256": "4e41517745ad412e28697cc4cdf0a5fff262b464e83aa049a00ad87b65091a5d"
+    },
+    {
+      "path": "platform/decisions/B4-BUDGET-2026-003-aggregate-ceiling.json",
+      "sha256": "71318a28e2a2ea2dbda77d062c6ded06432839fdeb632d596499e4c13f3fe75b"
+    },
+    {
+      "path": "platform/evidence/CAMPAIGNRUN-2026-014-passed.json",
+      "sha256": "fac46bfbd200e074ed4b15d93b626f90b0ccd0e164506bcc2e6b95f9c42a20e7"
+    },
+    {
+      "path": "platform/decisions/B6A-BUDGET-2026-001-aggregate-300.json",
+      "sha256": "d50334d650d90fc7623172bff9a051040a95192736b247e3cad3f3d235e8d91d"
+    },
+    {
+      "path": "platform/decisions/B6A-BUDGET-2026-002-conservative-reconciliation.json",
+      "sha256": "331513c34f2a73a4c0037d4441160333e7b8ac93cba9b8aa79b908be56e8f75c"
+    },
+    {
+      "path": "platform/evidence/B6A-CLOSURE-2026-001.json",
+      "sha256": "11a3c55f592387086556e85e882db6492b588cd0a5ee1be574566b707114ea51"
+    },
+    {
+      "path": "platform/evidence/B6-CPU-SCALE-ZERO-2026-001.json",
+      "sha256": "a8f3819484f2fb91a8357e3e4c8ff1d0c4fa3007972f4f6e749463041bd7f4fd"
+    }
+  ],
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 47.5288,
+    "active_reservations_usd": 15.0,
+    "committed_plus_reserved_usd": 62.5288,
+    "guardrail_headroom_after_reservations_usd": 237.4712,
+    "b6a_conservative_gpu_consumption_inside_active_reservation_usd": 0.9401,
+    "actual_project_spend": "NOT_FULLY_RECONCILED",
+    "claim_limit": "The 237.4712 value is guardrail headroom, not a claim about bank-statement or Cost Explorer spend. Standing infrastructure and the active B6A reservation still require attributable billing reconciliation."
+  },
+  "allocations": [
+    {
+      "allocation_id": "B4-MODEL-FACTORY",
+      "financial_state": "RECONCILED_COMMITTED",
+      "recognized_committed_usd": 22.5288,
+      "active_reservation_usd": 0.0,
+      "actual_or_conservative_basis": "B4 aggregate campaign ledgers through CAMPAIGNRUN-2026-014",
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B4",
+        "Workstream": "model-factory",
+        "BudgetRegistry": "COST-REGISTRY-2026-001"
+      }
+    },
+    {
+      "allocation_id": "B6A-EKS-UPGRADE",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL",
+      "recognized_committed_usd": 25.0,
+      "active_reservation_usd": 0.0,
+      "actual_or_conservative_basis": "Full packet 2026-001 reservation recognized; exact incremental AWS charge pending attribution",
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B6A",
+        "Workstream": "eks-upgrade",
+        "BudgetRegistry": "COST-REGISTRY-2026-001"
+      }
+    },
+    {
+      "allocation_id": "B6A-SERVING-PROOF",
+      "financial_state": "ACTIVE_RESERVATION_PENDING_BILLING_RECONCILIATION",
+      "recognized_committed_usd": 0.0,
+      "active_reservation_usd": 15.0,
+      "conservative_observed_gpu_cost_usd": 0.9401,
+      "conservative_gpu_seconds": 3363,
+      "actual_or_conservative_basis": "B6A closure lifecycle accounting at 1.0064 USD/hour; consumption is inside, not additional to, the 15 USD reservation",
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B6A",
+        "Workstream": "serving-proof",
+        "BudgetRegistry": "COST-REGISTRY-2026-001"
+      }
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "UNRECONCILED_STANDING_COST",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "scope": "EKS control plane, storage, logs, encryption keys and other persistent platform resources",
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS",
+      "compute_posture_evidence": "platform/evidence/B6-CPU-SCALE-ZERO-2026-001.json",
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "platform",
+        "Workstream": "standing-infrastructure",
+        "BudgetRegistry": "COST-REGISTRY-2026-001"
+      }
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "NOT_PRESENT_IN_HISTORICAL_BUDGET_RECORDS",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "scope": "Green Bucket ingestion and its terminated temporary compute",
+      "claim_limit": "No cost is inferred from the data handoff. Attribute from AWS billing before recognizing an amount.",
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "data",
+        "Workstream": "green-bucket-ingestion",
+        "BudgetRegistry": "COST-REGISTRY-2026-001"
+      }
+    }
+  ],
+  "allocation_tag_standard": {
+    "required_keys": [
+      "Project",
+      "Environment",
+      "CostCenter",
+      "Stage",
+      "Workstream",
+      "BudgetRegistry"
+    ],
+    "aws_activation_state": "NOT_APPLIED_BY_THIS_RECORD",
+    "future_rule": "Every billable AWS packet must name its allocation_id and exact tag set. New or changed AWS resources must receive these tags through Terraform and the account billing console must activate the supported keys before costs are described as attributable.",
+    "historical_rule": "Historical costs without tags remain allocated by immutable evidence reference; tags are never fabricated retroactively."
+  },
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_must_not_be_mixed": true,
+    "new_aws_resources_require_versioned_packet": true,
+    "next_reconciliation_creates_new_registry_revision": true
+  }
+}
