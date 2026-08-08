@@ -118,7 +118,7 @@ def run_ssm_self_test(
     response = ssm.send_command(
         InstanceIds=[instance_id],
         DocumentName="AWS-RunShellScript",
-        DocumentVersion="$DEFAULT",
+        DocumentVersion="1",
         TimeoutSeconds=180,
         Comment="MedZen B6A 003C-D pre-deploy numeric GPU sampler self-test",
         Parameters={"commands": [exports + command_text]},

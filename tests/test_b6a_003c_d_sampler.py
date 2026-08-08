@@ -72,6 +72,7 @@ def test_ssm_self_test_has_no_remote_output_sink_and_binds_exact_context():
     assert result["sample_count"] == 120
     assert ssm.sent["InstanceIds"] == [INSTANCE]
     assert ssm.sent["DocumentName"] == "AWS-RunShellScript"
+    assert ssm.sent["DocumentVersion"] == "1"
     assert ssm.sent["CloudWatchOutputConfig"] == {"CloudWatchOutputEnabled": False}
     assert "OutputS3" not in json.dumps(ssm.sent)
     sent_command = ssm.sent["Parameters"]["commands"][0]
