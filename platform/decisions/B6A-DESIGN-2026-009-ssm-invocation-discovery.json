@@ -1,0 +1,50 @@
+{
+  "record": "B6A_SSM_INVOCATION_DISCOVERY_AND_COMMAND_ID_DURABILITY_DESIGN",
+  "id": "B6A-DESIGN-2026-009",
+  "revision": 1,
+  "status": "local-remediation-only-new-packet-required",
+  "recorded_utc": "2026-08-08T20:53:00Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-E-BLOCKED-SSM-INVOCATION.json",
+    "outcome": "BLOCKED_SSM_SAMPLER_SELF_TEST",
+    "historical_record_edited": false
+  },
+  "confirmed_control_defect": "A successful SendCommand was followed immediately by GetCommandInvocation. SSM returned InvocationDoesNotExist before the invocation record became discoverable, and the client treated that retryable discovery state as terminal.",
+  "required_behavior": {
+    "send_command_once": true,
+    "validate_and_retain_command_id_immediately": true,
+    "invocation_does_not_exist_retryable_only_during_bounded_discovery": true,
+    "discovery_poll_interval_seconds": 3,
+    "maximum_discovery_and_execution_polls": 60,
+    "maximum_poll_period_seconds": 180,
+    "unknown_lookup_error_fails_closed": true,
+    "unknown_command_status_fails_closed": true,
+    "every_terminal_outcome_after_dispatch_preserves_command_id": true,
+    "model_deploy_before_exact_sampler_pass": false
+  },
+  "launcher_correction": {
+    "repository_root_added_to_pythonpath_by_bound_script": true,
+    "operator_environment_workaround_required": false
+  },
+  "tests_required": [
+    "delayed_invocation_discovery_then_success",
+    "permanent_invocation_discovery_timeout_preserves_command_id",
+    "unexpected_lookup_failure_preserves_command_id_and_fails_closed",
+    "unknown_command_status_preserves_command_id_and_fails_closed",
+    "successful_exact_120_sample_summary",
+    "deadline_first_ordering_and_zero_cleanup",
+    "historical_003c_e_sources_and_receipts_unchanged"
+  ],
+  "budget_boundary": {
+    "conservative_prior_gpu_seconds": 2590,
+    "maximum_remaining_gpu_seconds": 4610,
+    "conservative_cumulative_maximum_seconds": 7200
+  },
+  "prohibited": [
+    "retry_or_resume_packet_003c_e",
+    "edit_any_003c_e_source_decision_evidence_or_receipt",
+    "aws_or_kubernetes_execution_before_a_new_independently_reviewed_owner_approved_packet",
+    "model_artifact_image_iam_dra_approved_asr_or_production_ssm_change"
+  ],
+  "next_boundary": "Complete local tests and prepare packet 003C-F bound to the changed sources and no more than 4610 seconds. Do not execute without independent review PASS and later owner approval."
+}

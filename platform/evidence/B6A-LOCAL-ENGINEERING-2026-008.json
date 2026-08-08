@@ -1,0 +1,92 @@
+{
+  "record": "B6A_003C_F_SSM_DISCOVERY_REMEDIATION_LOCAL_ENGINEERING_RESULT",
+  "id": "B6A-LOCAL-ENGINEERING-2026-008",
+  "revision": 1,
+  "status": "LOCAL_ENGINEERING_COMPLETE_INDEPENDENT_REVIEW_AND_PACKET_APPROVAL_REQUIRED",
+  "completed_utc": "2026-08-08T20:59:41Z",
+  "trigger": {
+    "path": "platform/evidence/B6A-PACKET-2026-003C-E-BLOCKED-SSM-INVOCATION.json",
+    "sha256": "f29f4508879219848a0c598ca28d779e9421ec0b31673b3c59e97dcb67cc9491",
+    "outcome": "BLOCKED_SSM_SAMPLER_SELF_TEST",
+    "historical_record_edited": false
+  },
+  "design": {
+    "path": "platform/decisions/B6A-DESIGN-2026-009-ssm-invocation-discovery.json",
+    "sha256": "2e70661e142cdf511c72e158fb3043e63368d86d06bd16f5cfcc3099569e907e",
+    "status": "local-remediation-only-new-packet-required"
+  },
+  "repository": {
+    "branch": "codex/b6a-platform-proof",
+    "starting_commit": "c61b93ab3d389d06ba24e0aebf931c33ea1cd880",
+    "starting_commit_count": 197,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "private_remote_backup": true
+  },
+  "source_bindings": {
+    "pipeline/runtime_receipts_v2.py": "898c70d1e502bd84d01a5e6f619d6c6d6fe26627e3ae678b26c87d47145367f2",
+    "platform/runtime-receipt-policy-v2.yaml": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "scripts/b6a_003c_e_ssm_sampler.sh": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "scripts/run_b6a_003c_e_proof.py": "73236c92533bf56b8c9b8f60ead18033d17fc0cb10377fc238bb22ff5a417ea5",
+    "scripts/b6a_003c_f_common.py": "b22117796f88a5559ea182abc4d546f091a96d7f1a2fef25779024308f849175",
+    "scripts/b6a_003c_f_bindings.py": "f871d4f98df318734242af1e03b8fe8988ac6ad4f69d7362ab232fd9199cb294",
+    "scripts/b6a_003c_f_deadline.py": "76bd978d17972b85bf4303c63db0690a2b4bdc32c1d67a7ac28633c573451009",
+    "scripts/b6a_003c_f_cleanup.sh": "8bbfe9f29d382b8d3edb10022b37d04c310cefca2a65bf1244e6fe1495c79a53",
+    "scripts/run_b6a_003c_f_sampler_self_test.py": "fd96fa3f77f5c933da8bad9f863820d28b5e58c0fa39677c37c1580589deb94f",
+    "scripts/run_b6a_003c_f_gpu_window.sh": "20dc4556f8d96114bca19a923f1c2ac80666fe95fa41626c8ec8a23aa55f2b1b"
+  },
+  "remediation": {
+    "send_command_once": true,
+    "command_id_validated_immediately": true,
+    "invocation_does_not_exist_retryable": true,
+    "maximum_polls": 60,
+    "poll_interval_seconds": 3,
+    "maximum_poll_period_seconds": 180,
+    "unexpected_lookup_error_fails_closed": true,
+    "unknown_status_fails_closed": true,
+    "terminal_outcome_after_dispatch_preserves_command_id": true,
+    "repository_pythonpath_bound_by_launcher": true,
+    "model_deploy_requires_sampler_pass": true
+  },
+  "proof_separation_retained": {
+    "transcription_receipt_before_memory_sampler_start": true,
+    "memory_failure_status": "INCOMPLETE_MEASUREMENT",
+    "memory_failure_voids_transcription": false,
+    "post_artifact_raw_output_permitted": false
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_reservation_usd": 15.0,
+    "new_reservation_usd": 0.0,
+    "conservative_prior_gpu_seconds": 2590,
+    "maximum_remaining_gpu_seconds": 4610,
+    "conservative_cumulative_maximum_seconds": 7200,
+    "maximum_003c_f_gpu_cost_usd": 1.2887,
+    "gpu_desired_during_local_engineering": 0,
+    "gpu_cost_for_local_engineering_usd": 0.0
+  },
+  "validation": {
+    "focused_tests_passed": 20,
+    "focused_tests_failed": 0,
+    "canonical_pytest_passed": 1074,
+    "canonical_pytest_failed": 0,
+    "canonical_pytest_skipped": 0,
+    "canonical_pytest_deselected": 7,
+    "canonical_pytest_warnings": 1,
+    "warning": "Existing Starlette TestClient deprecation only",
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "post_003c_e_terraform_plan": "NO_CHANGES",
+    "git_diff_check": "PASS"
+  },
+  "execution_boundary": {
+    "packet_003c_f_prepared": true,
+    "packet_003c_f_independently_reviewed": false,
+    "packet_003c_f_owner_approved": false,
+    "aws_or_kubernetes_action_during_local_remediation": false,
+    "gpu_scale_up_attempted_for_003c_f": false,
+    "workload_apply_attempted_for_003c_f": false,
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "next_boundary": "Commit and push the exact 003C-F packet and sources, obtain an independent review PASS bound to their hashes, then obtain exact owner approval. No 003C-F execution is authorized before both gates complete."
+}
