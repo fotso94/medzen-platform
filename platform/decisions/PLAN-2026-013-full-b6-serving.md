@@ -34,7 +34,8 @@ flowchart LR
     L --> O["B6.3 Orchestrator file mode"]
     O --> S["B6.4 Streaming and VAD"]
     S --> T["B6.5 TTS and text-only fallback"]
-    T --> D["B6.6 Bounded EKS integration"]
+    T --> P["B6.5A Versioned test-registry publication"]
+    P --> D["B6.6 Bounded EKS integration"]
     D --> F["B6.7 Drills and closure"]
     M["Parallel: ASR base-model decision"] -. "does not block platform build" .-> D
 ```
@@ -122,6 +123,27 @@ Self-hosted TTS remains absent until a voice/model is registry-approved.
 
 Exit: Fish success and timeout/error both preserve the text response; the
 failure path reports `tts_backend=text_only` with no 500 cascade.
+
+### B6.5A - Versioned SSM test-registry publication
+
+Before B6.6, prepare and independently review a small, separate AWS packet for
+the registry data the orchestrator requires at readiness. Publish a minimal,
+content-addressed B6 snapshot as KMS-encrypted SecureStrings beneath
+`/medzen/registry/test/b6/<snapshot-sha256>/*`. The packet must bind the exact
+source-tree hash, canonical parameter values, KMS key, publisher-role identity,
+parameter names, maximum parameter count and allocation tags.
+
+Writes are create-only with readback verification. An existing path with a
+different value refuses the run. The packet may not write
+`/medzen/registry/serving/current`, any production snapshot path, an
+`approved_version`, an artifact field or a serving alias. The B6 orchestrator
+must be configured to read the exact test snapshot root; its readiness must
+fail when the manifest/index is absent, malformed or hash-mismatched. The B6.6
+integration packet binds the verified snapshot SHA and SSM parameter versions.
+
+Exit: the versioned test snapshot is readable by the orchestrator role, remains
+non-serving, and has an immutable publication/readback receipt. This step is
+not authorized by this plan or by contract adoption.
 
 ### B6.6 - Bounded EKS integration
 
@@ -230,7 +252,9 @@ The track must:
 2. identify which deferred languages now meet their prospective reactivation
    condition; Acholi, Akan and Ewe still lack FLEURS in the current handoff;
 3. freeze one common zero-shot evaluation protocol and compare Whisper
-   large-v3 with an owner-approved multilingual alternative shortlist;
+   large-v3 with **Meta Omnilingual ASR** and any additional owner-approved
+   multilingual alternatives; bind every evaluated model to an exact revision
+   and verified licence before execution;
 4. compare per-language WER/CER, code-switch behavior, normalization/tokenizer
    fit, licence, L4 memory/latency, conversion/runtime support and projected
    training cost; and

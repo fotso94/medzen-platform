@@ -22,6 +22,20 @@ def test_full_b6_plan_covers_the_six_point_review_agenda():
         assert heading in value
 
 
+def test_full_b6_plan_places_non_serving_ssm_publication_before_integration():
+    value = text()
+    publication = value.index("### B6.5A - Versioned SSM test-registry publication")
+    integration = value.index("### B6.6 - Bounded EKS integration")
+    assert publication < integration
+    assert "/medzen/registry/test/b6/<snapshot-sha256>/*" in value
+    assert "may not write\n`/medzen/registry/serving/current`" in value
+    assert "small, separate AWS packet" in value
+
+
+def test_full_b6_plan_names_meta_omnilingual_asr_shortlist():
+    assert "Meta Omnilingual ASR" in text()
+
+
 def test_full_b6_plan_starts_from_the_unified_master_and_is_not_authorization():
     value = text()
     assert "20b4b4fdcbe42477907838ec01ed616e92f05149" in value
