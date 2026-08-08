@@ -1,0 +1,40 @@
+{
+  "record": "B6A_003C_D_INDEPENDENT_IAM_REVIEW",
+  "id": "B6A-IAM-REVIEW-2026-003C-D",
+  "revision": 1,
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T18:28:49Z",
+  "reviewer": {
+    "role": "independent-architecture-reviewer",
+    "identity": "Claude",
+    "independent_from_implementer": true
+  },
+  "review_source": "Owner-supplied independent review result in the Codex task: 'Independent IAM review result: PASS.'",
+  "bindings": {
+    "packet_id": "B6A-AWS-CHANGE-PACKET-2026-003C-D",
+    "packet_path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-D-stage-receipts-and-ssm-sampler.md",
+    "packet_sha256": "d28d1f625d80f861c415d421f61c9c32b869c81fd240e346c8476d5c0e89a0b9",
+    "reviewed_git_commit": "d62aeb1dd0c6b4a645c6adf4b59ce457e774a786",
+    "node_policy_path": "platform/iam/medzen-node-ssm-core.json",
+    "node_policy_sha256": "ce0b898088de05b8c27c6be21aa038d5d8a4e354b84dd09c041d163631b8ac58",
+    "receipt_policy_path": "platform/runtime-receipt-policy-v1.yaml",
+    "receipt_policy_sha256": "86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda"
+  },
+  "findings": {
+    "node_ssm_policy_minimal_and_correct": true,
+    "parameter_read_access_absent": true,
+    "s3_access_absent": true,
+    "logging_access_absent": true,
+    "command_sending_access_absent": true,
+    "remaining_actions": "agent-core and message channels only; reviewed as not resource-scopable",
+    "receipt_module_wired_into_all_four_executable_scripts": true,
+    "incomplete_measurement_decoupling_verified_in_proof_path": true,
+    "changes_required": 0
+  },
+  "post_run_audit_condition": {
+    "required": true,
+    "assertion": "The durable transcription receipt timestamp must be earlier than the GPU memory sampler start timestamp.",
+    "failure_effect": "The result cannot pass independent post-run review."
+  },
+  "scope": "Independent review evidence only; this record does not itself authorize AWS execution."
+}
