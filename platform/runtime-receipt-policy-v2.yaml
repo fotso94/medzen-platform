@@ -1,0 +1,80 @@
+schema: medzen.runtime_receipt_policy/v2
+id: RUNTIME-RECEIPTS-2026-002
+status: standing-rule
+effective_scope: prospective-runtime-and-pre-artifact-debug-receipts
+supersedes_by_reference:
+  path: platform/runtime-receipt-policy-v1.yaml
+  sha256: 86f3b45417268b4c9713fb28076485bf44e779cbbdea6b9b1cf6911dfbee7bda
+historical_effect: none
+purpose: >-
+  Preserve every independently successful runtime stage and retain actionable
+  diagnostics when a stage is provably executed before any model or audio
+  artifact exists on the node.
+
+base_receipt_schema: MEDZEN_RUNTIME_STAGE_RECEIPT_V1
+pre_artifact_debug_receipt_schema: MEDZEN_PRE_ARTIFACT_DEBUG_RECEIPT_V1
+write_rules:
+  - Persist a stage receipt immediately when that stage reaches a terminal outcome.
+  - Use an exclusive, atomic, fsync-backed write; an existing receipt is immutable.
+  - A later receipt may depend on an earlier receipt but may never replace, amend,
+    invalidate, or delete it.
+  - Missing, malformed, duplicated, or out-of-order required receipts fail closed.
+  - Audio, transcript text, credentials, secrets and patient data remain prohibited
+    in every receipt without exception.
+
+pre_artifact_raw_output_exception:
+  allowed_stages:
+    - local_bindings
+    - dra_stable_readiness
+    - sampler_self_test
+  required_facts:
+    model_artifact_present_on_node: false
+    audio_artifact_present_on_node: false
+    model_or_audio_workload_applied: false
+  allowed_fields:
+    - raw_stdout
+    - raw_stderr
+  maximum_utf8_bytes_per_field: 32768
+  exact_command_binding_required: true
+  immutable_content_addressed_receipt_required: true
+  expires_for_run_when: >-
+    Any model artifact, audio artifact, model workload or audio workload becomes
+    present on the node.
+  rationale: >-
+    PHI cannot exist in these pre-artifact stages by construction. Persisting the
+    bounded exact command output is necessary to diagnose immediate infrastructure
+    and shell failures that an allowlisted refusal code cannot explain.
+
+post_artifact_rule: >-
+  Once the exception expires, receipts return to bounded hashes and metadata only;
+  raw service logs, raw sampler output, audio and transcript text are prohibited.
+
+terminal_statuses:
+  - PASS
+  - REFUSED
+  - INCOMPLETE_MEASUREMENT
+  - NOT_RUN
+
+b6a_stage_order:
+  - local_bindings
+  - deadline
+  - dra_stable_readiness
+  - sampler_self_test
+  - transcription
+  - gpu_memory_measurement
+  - proof_summary
+  - cleanup
+
+independent_proofs:
+  transcription:
+    success_status: PASS
+    durable_before_stage: gpu_memory_measurement
+    later_measurement_failure_can_void: false
+  gpu_memory_measurement:
+    success_status: PASS
+    failure_status: INCOMPLETE_MEASUREMENT
+    failed_measurement_changes_transcription_status: false
+
+non_retroactivity: >-
+  This rule does not modify, reinterpret or authorize changes to any receipt or
+  decision bound to runtime-receipt-policy-v1.
