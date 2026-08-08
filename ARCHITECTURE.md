@@ -87,7 +87,7 @@ Full machine-readable spec: `platform/services.yaml`.
 |---|---|---|---|---|---|
 | `speech-orchestrator` | CPU | 8080 | 2–6 HPA | `medzen-orch-role` | Only public surface; owns policy and session so models stay stateless |
 | `asr-runtime` | **GPU** | 8081 | 1 fixed | `medzen-asr-role` | Different hardware, slowest start; an API deploy must never restart it |
-| `llm-gateway` | CPU | 8082 | 2–4 HPA | `medzen-llm-role` | Hides Bedrock↔Qwen swap behind one interface |
+| `llm-gateway` | CPU | 8082 | 2–4 HPA | `medzen-llm-role` | Local mocked B6.2 implementation exists; real Bedrock remains packet-controlled |
 | `tts-gateway` | CPU | 8080 | 1–3 HPA | `medzen-tts-role` | Not yet built in this repository; will hide Fish↔self-hosted↔text-only fallback and own the cache |
 | `rag-index` | CPU | 8083 | 2–4 HPA | `medzen-rag-role` | Local synthetic B6.1 implementation exists; clinical content and deployment remain unapproved |
 | `model-loader` | init | — | per pod | shares the ASR pod role | Verification-only artifact fetch; Kubernetes gives init and main containers the same Pod identity, and failure leaves the pod unready |

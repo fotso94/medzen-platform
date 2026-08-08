@@ -1,0 +1,60 @@
+contract_id: MEDZEN-LLM-CONTRACT-2026-001
+version: medzen.llm.v1
+status: b6_2_local_mock_contract
+parent_contract:
+  id: MEDZEN-SPEECH-CONTRACT-2026-001
+  version: medzen.speech.v1
+  sha256: e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d
+
+scope:
+  service: llm-gateway
+  mode: local_mock_only
+  clinical_content: prohibited
+  real_bedrock_invocation: requires_separate_versioned_aws_packet
+  real_bedrock_packet_limits_required: [maximum_requests, maximum_input_tokens, maximum_output_tokens, maximum_cost_usd]
+
+endpoint:
+  method: POST
+  path: /internal/v1/responses
+  authentication: cluster_network_only
+  content_type: application/json
+  maximum_body_bytes: 65536
+  request:
+    required: [request_id, language, transcript, rag, model_versions]
+    transcript_required: [verbatim, normalized, normalization_version]
+    rag_required: [query_id, index_snapshot_sha256, citations]
+    citation_required: [rank, document_id, title, source_uri, section, content_sha256, excerpt, score]
+    maximum_citations: 5
+  response:
+    required: [request_id, language, reply, policy, provider, model_versions, latency_ms]
+    reply_required: [text, citations, citation_binding_sha256]
+    policy_required: [id, sha256]
+
+invariants:
+  - language_policy_is_loaded_from_versioned_source_and_matches_generated_registry_reference
+  - factual_generation_requires_at_least_one_supplied_rag_citation
+  - every_returned_citation_is_byte_identity_bound_to_the_supplied_rag_citation
+  - rag_model_version_matches_the_supplied_index_snapshot
+  - provider_timeout_is_bounded_and_counted_by_the_breaker
+  - open_breaker_prevents_provider_invocation
+  - provider_failure_never_falls_back_to_an_invented_answer
+  - request_transcript_reply_and_citation_content_are_never_logged
+  - every_response_carries_request_id_and_complete_model_versions
+
+local_provider:
+  name: fake_bedrock
+  model_version: fake-bedrock-local-v1
+  network_access: false
+  deterministic: true
+  allowed_outcomes: [success, timeout, unavailable, tampered_citation]
+
+error_codes:
+  INVALID_REQUEST: {status: 400, retryable: false}
+  UNSUPPORTED_MEDIA_TYPE: {status: 415, retryable: false}
+  CITATIONS_REQUIRED: {status: 422, retryable: false}
+  CITATION_BINDING_INVALID: {status: 502, retryable: false}
+  LANGUAGE_POLICY_UNAVAILABLE: {status: 422, retryable: false}
+  PROVIDER_TIMEOUT: {status: 504, retryable: true}
+  PROVIDER_UNAVAILABLE: {status: 503, retryable: true}
+  PROVIDER_CIRCUIT_OPEN: {status: 503, retryable: true}
+  PAYLOAD_TOO_LARGE: {status: 413, retryable: false}
