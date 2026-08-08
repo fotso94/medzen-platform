@@ -52,4 +52,3 @@ def test_packet_preserves_budget_zero_cleanup_and_no_promotion():
     assert "B5 remains `BLOCKED`" in text
     assert "approved-ASR" in text
     assert "production SSM/serving change" in text
-

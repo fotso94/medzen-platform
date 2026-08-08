@@ -32,4 +32,3 @@ def test_local_record_proves_no_aws_execution_and_keeps_proofs_separate():
     assert separation["memory_failure_status"] == "INCOMPLETE_MEASUREMENT"
     assert separation["memory_failure_voids_transcription"] is False
     assert value["live_read_only_platform_snapshot"]["gpu_nodegroup"]["desired"] == 0
-
