@@ -1,0 +1,203 @@
+{
+  "record": "B6A_003C_E_PROVEN_SAMPLER_FULL_PROOF_EXECUTION_RESULT",
+  "id": "B6A-PACKET-2026-003C-E-BLOCKED-SSM-INVOCATION",
+  "revision": 1,
+  "status": "VERIFIED_BLOCKED_CLEANUP_COMPLETE",
+  "outcome": "BLOCKED_SSM_SAMPLER_SELF_TEST",
+  "failure_stage": "PREDEPLOY_SSM_INVOCATION_DISCOVERY",
+  "completed_utc": "2026-08-08T20:52:40Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-E-proven-sampler-full-proof.md",
+      "sha256": "633cf7fb8c437d25f1931a3c9d439938d73ce2746532b4ab5f10655d6696b0d6",
+      "reviewed_commit": "67ea2b76d887e7ba4cc1ab4be08af785fbdb98bf"
+    },
+    "independent_review": {
+      "path": "platform/decisions/B6A-INDEPENDENT-REVIEW-2026-003C-E.json",
+      "sha256": "af64c67482561d3d8af37e48760c4a6942ff3b16811ba5ca41fdac6cd656ed73",
+      "status": "PASS"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-E-proven-sampler-full-proof.json",
+      "sha256": "fb1a9c26a7af805625d6a16f7027d7b5cefededfc38a02186d9ce282e02620ff",
+      "commit": "5d75bb140179be4856c0a05567c050b761ddd83c"
+    }
+  },
+  "preflight": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "eks_version": "1.36",
+    "eks_support": "STANDARD",
+    "gpu_initial_minimum": 0,
+    "gpu_initial_desired": 0,
+    "gpu_initial_maximum": 1,
+    "gpu_initial_instances_nodes_and_pods": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "retained_artifact_objects": 6,
+    "retained_pod_identity_association": "a-ajbhedkszqlnrrjk4",
+    "retained_image_digests_verified": 3,
+    "terraform_plan": "NO_CHANGES"
+  },
+  "local_invocation_corrections": [
+    {
+      "stage": "terraform_preflight",
+      "first_outcome": "REFUSED_BEFORE_PLAN",
+      "reason": "BACKEND_PROFILE_NOT_EXPLICIT",
+      "correction": "RERUN_THROUGH_SCRIPTS_TERRAFORM_MEDZEN_SH_WITH_AWS_PROFILE_MEDZEN",
+      "corrected_outcome": "NO_CHANGES",
+      "aws_mutation_before_refusal": false
+    },
+    {
+      "stage": "packet_entry",
+      "first_outcome": "REFUSED_BEFORE_LOCAL_BINDINGS",
+      "reason": "PYTHON_REPOSITORY_IMPORT_PATH_ABSENT",
+      "correction": "RERUN_EXACT_BOUND_SOURCES_WITH_CLEAN_REPOSITORY_ROOT_IN_PYTHONPATH",
+      "precedent": "platform/evidence/B6A-PACKET-2026-003C-D-BLOCKED-SSM-SAMPLER.json",
+      "source_or_packet_changed": false,
+      "aws_mutation_before_refusal": false,
+      "receipt_created_before_refusal": false,
+      "deadline_armed_before_refusal": false
+    }
+  ],
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T20:40:04Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-E/local_bindings.json",
+      "sha256": "8dfe8f3ce46fc3d4b0653914a6b83033d4094e8edf72cccf1c1f0289f01119ce"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T20:40:06Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-E/deadline.json",
+      "sha256": "6247d64e89ec78df9dc862e5407f4899c5b75bfcc069b87c0ac0a1d1338111e3"
+    },
+    {
+      "stage": "dra_stable_readiness",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T20:41:27Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-E/dra_stable_readiness.json",
+      "sha256": "b7b19d1fd2ed7a1fe133f74d75c96c0e55939549b60f5d5f0cde3aee8884f521"
+    },
+    {
+      "stage": "sampler_self_test",
+      "status": "REFUSED",
+      "recorded_utc": "2026-08-08T20:41:29Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-E/sampler_self_test.json",
+      "sha256": "bd2f88a997a1a650bbeda6930d62cff0e746a044bffd3a4d8bcc986df471bac1"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-08T20:48:40Z",
+      "path": "platform/evidence/receipts/B6A-2026-003C-E/cleanup.json",
+      "sha256": "81fba51fb7871e14e0789dc725cd239d25c940cc0f4fee60cb5152aa23cc55b5"
+    }
+  ],
+  "stable_dra": {
+    "status": "PASS",
+    "consecutive_reads": 3,
+    "total_reads": 11,
+    "device_count": 1,
+    "gpu_node": "ip-172-31-3-43.eu-central-1.compute.internal",
+    "dra_pod_uid": "c3e3f2c4-390c-4db5-b401-bb5f18039fed",
+    "dra_child_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+  },
+  "ssm_sampler": {
+    "command_id": "889c2ab6-650e-40e8-b7c0-e7fa6a9d8071",
+    "cloudtrail_send_command_event_id": "e986ba1c-6d88-4f2f-bb49-9b123d8351b0",
+    "instance_id": "i-0bd05eaf3570926e1",
+    "document": "AWS-RunShellScript",
+    "document_version": "1",
+    "send_command_utc": "2026-08-08T20:41:29Z",
+    "first_lookup_result": "InvocationDoesNotExist",
+    "terminal_status": "Failed",
+    "terminal_status_details": "Undeliverable",
+    "response_code": -1,
+    "command_executed": false,
+    "raw_stdout": "",
+    "raw_stderr": "",
+    "model_or_audio_present_before_refusal": false,
+    "control_defect": "The client treated SSM InvocationDoesNotExist immediately after successful SendCommand as terminal instead of polling through the bounded eventual-consistency interval.",
+    "interpretation": "Cleanup began immediately after the lookup exception, so the pending command became Undeliverable when the node terminated. This is not a failure of the proven sampler script."
+  },
+  "absent_stage_receipts": {
+    "transcription": "NOT_CREATED_MODEL_NEVER_DEPLOYED",
+    "gpu_memory_measurement": "NOT_CREATED_TRANSCRIPTION_STAGE_NOT_REACHED",
+    "proof_summary": "NOT_CREATED_PROOF_STAGE_NOT_REACHED"
+  },
+  "post_run_review": {
+    "transcription_before_memory_condition": "NOT_APPLICABLE_STAGES_NOT_REACHED",
+    "peak_l4_gpu_memory": "NOT_MEASURED",
+    "cleanup_zero": "PASS",
+    "cost_inside_remaining_allowance": "PASS",
+    "all_completion_conditions_pass": false,
+    "b6a_closed": false
+  },
+  "gpu_window": {
+    "deadline_armed_utc": "2026-08-08T20:40:05Z",
+    "deadline_utc": "2026-08-08T22:05:14Z",
+    "instance_id": "i-0bd05eaf3570926e1",
+    "instance_type": "g6.xlarge",
+    "instance_launch_utc": "2026-08-08T20:40:21Z",
+    "termination_selected_utc": "2026-08-08T20:41:42Z",
+    "termination_complete_utc": "2026-08-08T20:48:27Z",
+    "cleanup_proven_utc": "2026-08-08T20:48:40Z",
+    "launch_to_termination_selection_seconds": 81,
+    "conservative_lifecycle_seconds": 499,
+    "authorized_maximum_seconds": 5109
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_reservation_usd": 15.0,
+    "prior_conservative_gpu_seconds": 2091,
+    "this_run_conservative_gpu_seconds": 499,
+    "cumulative_conservative_gpu_seconds": 2590,
+    "remaining_original_two_hour_allowance_seconds": 4610,
+    "recorded_g6_xlarge_hourly_rate_usd": 1.0064,
+    "this_run_conservative_gpu_cost_usd": 0.1395,
+    "cumulative_conservative_gpu_cost_usd": 0.7241,
+    "actual_billed_cost": "NOT_YET_RECONCILED"
+  },
+  "cleanup_verification": {
+    "receipt_status": "PASS",
+    "eks_gpu_status": "ACTIVE",
+    "eks_gpu_minimum": 0,
+    "eks_gpu_desired": 0,
+    "eks_gpu_maximum": 1,
+    "eks_gpu_health_issues": 0,
+    "asg_desired": 0,
+    "asg_instances": 0,
+    "gpu_ec2_state": "terminated",
+    "gpu_nodes": 0,
+    "dra_pods": 0,
+    "medzen_workloads": 0,
+    "scheduled_actions": 0,
+    "approved_asr_objects_or_versions": 0,
+    "production_registry_parameters": 0,
+    "post_run_terraform_plan": "NO_CHANGES"
+  },
+  "project_state": {
+    "artifact_or_image_changed": false,
+    "iam_or_terraform_resource_changed": false,
+    "approved_artifact_written": false,
+    "model_registered": false,
+    "production_ssm_changed": false,
+    "training_or_language_scope_changed": false,
+    "b5_outcome": "BLOCKED",
+    "b6a_complete": false,
+    "b6_complete": false
+  },
+  "required_remediation_before_retry": [
+    "Treat SSM InvocationDoesNotExist as a bounded retryable result immediately after SendCommand.",
+    "Preserve the command ID in every terminal sampler receipt after SendCommand succeeds.",
+    "Test delayed invocation discovery, permanent lookup failure, unknown status, timeout and successful 120-sample completion.",
+    "Prepare a new versioned packet bound to changed source hashes and no more than the remaining 4610-second cumulative allowance."
+  ],
+  "next_boundary": "Packet 003C-E is closed. No retry may resume it. Local remediation and a new independently reviewed and owner-approved packet are required before another GPU window."
+}
