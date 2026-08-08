@@ -1,0 +1,102 @@
+{
+  "record": "B6A_003C_D_IAM_APPLY_AND_CPU_REGISTRATION",
+  "id": "B6A-IAM-APPLY-2026-003C-D",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "outcome": "PASS_AFTER_EVENTUAL_SSM_REGISTRATION",
+  "recorded_utc": "2026-08-08T18:55:42Z",
+  "authorization": {
+    "path": "platform/decisions/B6A-AWS-AUTH-2026-003C-D-stage-receipts-and-ssm-sampler.json",
+    "sha256": "39a0790afa5ae00b7ce0c6732e13ad7b5bc80a7cf9a675cb15f4ef622faf6ba1",
+    "git_commit": "a7a43c246d4761f267ead62ddf63b1e096ebcdf1"
+  },
+  "independent_review": {
+    "path": "platform/decisions/B6A-IAM-REVIEW-2026-003C-D.json",
+    "sha256": "795df2a8a5eb63c588a35f2d09edc07fee52817add41ac15ae0ab1782ba75c21",
+    "status": "PASS"
+  },
+  "packet": {
+    "path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-D-stage-receipts-and-ssm-sampler.md",
+    "sha256": "d28d1f625d80f861c415d421f61c9c32b869c81fd240e346c8476d5c0e89a0b9"
+  },
+  "repository_at_apply": {
+    "branch": "codex/b6a-platform-proof",
+    "git_commit": "a7a43c246d4761f267ead62ddf63b1e096ebcdf1",
+    "git_tree": "93188cea5c49006d3af576f90503840b72ada5a7",
+    "commit_count": 190,
+    "worktree_clean": true,
+    "remote_branch_commit": "a7a43c246d4761f267ead62ddf63b1e096ebcdf1"
+  },
+  "execution_identity": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "profile": "medzen",
+    "region": "eu-central-1"
+  },
+  "terraform": {
+    "fresh_plan_sha256": "04bb65cf513767acbaaeba5d99bd1e66fa9116cae61d76f4aaf7bcde428cc133",
+    "guard_outcome": "PASS_EXACTLY_ONE_IAM_CREATE",
+    "create": 1,
+    "update": 0,
+    "delete": 0,
+    "only_resource": "aws_iam_role_policy.node_ssm_core",
+    "apply_result": "1_ADDED_0_CHANGED_0_DESTROYED",
+    "post_apply_plan": "NO_CHANGES"
+  },
+  "applied_policy": {
+    "role": "medzen-speech-node-role",
+    "policy_name": "medzen-speech-node-ssm-core",
+    "source_path": "platform/iam/medzen-node-ssm-core.json",
+    "source_sha256": "ce0b898088de05b8c27c6be21aa038d5d8a4e354b84dd09c041d163631b8ac58",
+    "readback_semantically_equal": true,
+    "parameter_store_access": false,
+    "s3_access": false,
+    "logging_access": false,
+    "command_sending_access": false,
+    "standing_no_ingress_boundary_retained": true,
+    "direct_service_charge_usd": 0.0
+  },
+  "cpu_registration": {
+    "required_instance_count": 2,
+    "initial_registration_reads": [],
+    "initial_polling_seconds": ">600",
+    "interpretation_of_initial_empty_reads": "EVENTUAL_REGISTRATION_DELAY_NOT_A_TERMINAL_FAILURE",
+    "commands_sent_to_cpu_nodes": 0,
+    "eventual_registration": [
+      {
+        "kubernetes_node": "ip-172-31-12-184.eu-central-1.compute.internal",
+        "instance_id": "i-0e9507602eb7cab34",
+        "ping_status": "Online",
+        "last_ping_utc": "2026-08-08T18:50:23.213Z",
+        "platform": "Amazon Linux",
+        "agent_version": "3.3.4624.0"
+      },
+      {
+        "kubernetes_node": "ip-172-31-22-228.eu-central-1.compute.internal",
+        "instance_id": "i-02b2e75b60c73d621",
+        "ping_status": "Online",
+        "last_ping_utc": "2026-08-08T18:51:35.593Z",
+        "platform": "Amazon Linux",
+        "agent_version": "3.3.4624.0"
+      }
+    ],
+    "final_outcome": "PASS_BOTH_EXISTING_CPU_NODES_ONLINE",
+    "cpu_command_gate_respected": true
+  },
+  "phase_b_boundary_at_record_time": {
+    "deadline_armed": false,
+    "gpu_desired": 0,
+    "gpu_instances": 0,
+    "gpu_nodes": 0,
+    "b6a_workload_applied": false,
+    "gpu_seconds_added": 0,
+    "gpu_cost_usd": 0.0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0
+  },
+  "cloudtrail": {
+    "put_role_policy_event_available_at_record_time": false,
+    "interpretation": "CloudTrail lookup had not surfaced the management event; no event identity or timestamp is invented. Terraform apply output and exact live policy readback are the bound apply evidence."
+  },
+  "next_boundary": "Phase A is complete. Phase B may proceed only from a clean synchronized commit under the still-open 003C-D authorization and the 6520-second remaining GPU allowance."
+}
