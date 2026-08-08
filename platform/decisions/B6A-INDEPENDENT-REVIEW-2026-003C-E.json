@@ -1,0 +1,41 @@
+{
+  "record": "B6A_003C_E_INDEPENDENT_ARCHITECTURE_REVIEW",
+  "id": "B6A-INDEPENDENT-REVIEW-2026-003C-E",
+  "revision": 1,
+  "status": "PASS",
+  "recorded_utc": "2026-08-08T20:31:51Z",
+  "reviewer": {
+    "role": "independent-architecture-reviewer",
+    "identity": "Claude",
+    "independent_from_implementer": true
+  },
+  "review_source": "Owner-supplied independent review in the Codex task: 'Independent review of B6A packet 2026-003C-E: PASS.'",
+  "bindings": {
+    "packet_id": "B6A-AWS-CHANGE-PACKET-2026-003C-E",
+    "packet_path": "platform/decisions/B6A-AWS-CHANGE-PACKET-2026-003C-E-proven-sampler-full-proof.md",
+    "packet_sha256": "633cf7fb8c437d25f1931a3c9d439938d73ce2746532b4ab5f10655d6696b0d6",
+    "reviewed_git_commit": "67ea2b76d887e7ba4cc1ab4be08af785fbdb98bf",
+    "proven_sampler_path": "scripts/b6a_003c_e_ssm_sampler.sh",
+    "proven_sampler_sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+    "receipt_policy_path": "platform/runtime-receipt-policy-v2.yaml",
+    "receipt_policy_sha256": "58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd",
+    "maximum_window_seconds": 5109
+  },
+  "criteria": {
+    "proven_sampler_hash_binding_verified_on_disk": true,
+    "receipt_policy_v2_binding_verified": true,
+    "transcription_before_memory_receipt_ordering_verified": true,
+    "iam_changes": 0,
+    "deadline_first_window_seconds": 5109,
+    "changes_required": 0
+  },
+  "post_run_review_conditions": {
+    "transcription_receipt_timestamp_before_memory_sampler_start": true,
+    "numeric_peak_l4_gpu_memory_required": true,
+    "cleanup_receipts_at_zero_required": true,
+    "cost_within_remaining_allowance_required": true,
+    "all_conditions_pass_effect": "B6A closes",
+    "any_condition_fail_effect": "B6A remains incomplete"
+  },
+  "scope": "Independent review evidence only; this record does not itself authorize execution."
+}
