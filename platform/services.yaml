@@ -115,9 +115,10 @@ services:
            the registry per language (correction 3).
 
   llm-gateway:
-    role: Understanding and response generation. Bedrock Claude now; a vLLM
-          Qwen3-8B upstream is added later, per language, when the A5 trigger
-          fires. Applies the per-language policy from the registry.
+    role: Understanding and response generation. B6.2 uses a local fake
+          Bedrock provider only. A real Bedrock adapter requires its own capped
+          AWS packet; a vLLM Qwen upstream remains a later per-language option.
+          Applies the versioned per-language policy referenced by the registry.
     node_pool: cpu
     public: false
     image_repo: medzen-llm-gateway
@@ -135,7 +136,8 @@ services:
         - {actions: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream], resource: bedrock}
         - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
     depends_on: [rag-index]
-    notes: Clinical facts stay in RAG, never in weights (A5 invariant).
+    notes: Clinical facts stay in RAG, never in weights (A5 invariant). The
+           local B6.2 provider has no network or AWS SDK path.
 
   tts-gateway:
     role: Text to speech. Fish Audio API now; Qwen3-TTS pod later. Owns the

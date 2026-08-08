@@ -1,0 +1,33 @@
+version: medzen.llm.policy-source.v1
+classification: B6_2_LOCAL_MOCK_ONLY
+defaults:
+  engine: bedrock
+  citations_required: true
+  maximum_citations: 5
+  maximum_input_characters: 8000
+  maximum_output_tokens: 512
+  timeout_ms: 30000
+  rules:
+    - answer_in_the_requested_language
+    - use_only_the_supplied_citations_for_factual_claims
+    - preserve_the_user_transcript_without_rewriting_it
+    - refuse_when_no_citation_support_is_available
+    - never_emit_patient_or_person_identifiers_to_logs
+policies:
+  acholi-medzen-v1: {language: acholi, response_language: Acholi}
+  akan-medzen-v1: {language: akan, response_language: Akan}
+  amharic-medzen-v1: {language: amharic, response_language: Amharic}
+  english-medzen-v1: {language: english, response_language: English}
+  ewe-medzen-v1: {language: ewe, response_language: Ewe}
+  french-medzen-v1: {language: french, response_language: French}
+  fula-medzen-v1: {language: fula, response_language: Fula}
+  hausa-medzen-v1: {language: hausa, response_language: Hausa}
+  igbo-medzen-v1: {language: igbo, response_language: Igbo}
+  lingala-medzen-v1: {language: lingala, response_language: Lingala}
+  luganda-medzen-v1: {language: luganda, response_language: Luganda}
+  oromo-medzen-v1: {language: oromo, response_language: Oromo}
+  pidgin-medzen-v1: {language: pidgin, response_language: Pidgin}
+  shona-medzen-v1: {language: shona, response_language: Shona}
+  swahili-medzen-v1: {language: swahili, response_language: Swahili}
+  wolof-medzen-v1: {language: wolof, response_language: Wolof}
+  yoruba-medzen-v1: {language: yoruba, response_language: Yoruba}

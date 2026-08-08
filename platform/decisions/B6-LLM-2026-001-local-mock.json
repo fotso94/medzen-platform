@@ -1,0 +1,56 @@
+{
+  "record": "B6_2_LLM_GATEWAY_LOCAL_MOCK_DECISION",
+  "id": "B6-LLM-2026-001",
+  "revision": 1,
+  "status": "OWNER_AUTHORIZED_LOCAL_ONLY",
+  "recorded_utc": "2026-08-08T23:06:27Z",
+  "authorized_by_role": "platform-owner",
+  "authorization_source": "Owner message: proceed to B6.2 — the LLM gateway, local/mocked only: fake Bedrock upstream for the full suite, language-policy loading, RAG citation binding, timeout/breaker behavior.",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "e7fa1bf338cff36135af40fd94aa96b5ff09dc4f",
+    "pull_request_4_state": "MERGED"
+  },
+  "contract": {
+    "id": "MEDZEN-LLM-CONTRACT-2026-001",
+    "path": "platform/contracts/llm-v1.yaml",
+    "sha256": "67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a",
+    "parent_speech_contract_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
+  },
+  "language_policy_source": {
+    "path": "registry/llm-policies/v1.yaml",
+    "sha256": "47f81b1f4a60ce1e98a61a8875b51a287d5d967162f1c651e2e23f5ebc659662",
+    "generated_language_records_covered": 17,
+    "missing_policy_references_permitted": false
+  },
+  "authorized_local_work": [
+    "Fake Bedrock provider with deterministic synthetic responses",
+    "Generated-language registry to versioned-policy resolution",
+    "Exact RAG citation and index-snapshot binding",
+    "Provider timeout and shared circuit-breaker behavior",
+    "Local HTTP contract, health, readiness and PHI-safe logging tests"
+  ],
+  "real_bedrock_boundary": {
+    "authorized_now": false,
+    "required_before_first_invocation": "Separate versioned AWS packet and owner approval",
+    "required_packet_caps": [
+      "maximum requests",
+      "maximum input tokens",
+      "maximum output tokens",
+      "maximum cost USD"
+    ]
+  },
+  "prohibited_operations": [
+    "Any real Bedrock or other network provider invocation",
+    "Any AWS resource, IAM, SSM, ECR or Kubernetes change",
+    "Any CPU or GPU scale-up",
+    "Any clinical-content use or publication",
+    "Any training, model registration, approved artifact or production serving change"
+  ],
+  "preserved_state": {
+    "b5_gate_outcome": "BLOCKED_UNCHANGED",
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "ssm_registry_parameters": 0
+  }
+}

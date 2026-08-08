@@ -1,0 +1,95 @@
+{
+  "record": "B6_2_LLM_GATEWAY_LOCAL_EXIT",
+  "id": "B6-LOCAL-ENGINEERING-2026-002",
+  "revision": 1,
+  "status": "VERIFIED_LOCAL_COMPLETE",
+  "recorded_utc": "2026-08-08T23:07:22Z",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "e7fa1bf338cff36135af40fd94aa96b5ff09dc4f",
+    "pull_request_4_state": "MERGED"
+  },
+  "authorization": {
+    "decision": "B6-LLM-2026-001",
+    "decision_sha256": "37991e881f64aa99e2e585e2ef9190797b058225b68efdec6400a7caddee364f",
+    "scope": "LOCAL_MOCK_ONLY"
+  },
+  "contract": {
+    "id": "MEDZEN-LLM-CONTRACT-2026-001",
+    "sha256": "67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a",
+    "request_schema": "PASS",
+    "response_schema": "PASS",
+    "synthetic_golden_request_response": "PASS"
+  },
+  "b6_2_local_exit": {
+    "outcome": "LOCAL_EXIT_COMPLETE",
+    "provider": "fake_bedrock",
+    "provider_network_access": false,
+    "real_bedrock_adapter_present": false,
+    "aws_sdk_dependency_present": false,
+    "language_policy_count": 17,
+    "language_policy_source_sha256": "47f81b1f4a60ce1e98a61a8875b51a287d5d967162f1c651e2e23f5ebc659662",
+    "features_verified": [
+      "every generated language resolves exactly one versioned policy",
+      "cross-language or missing policy references fail closed",
+      "requested language policy reaches the provider request",
+      "RAG index snapshot matches the RAG model-version identity",
+      "provider citations remain byte-identity bound to supplied citations",
+      "missing citations refuse before provider invocation",
+      "provider citation invention or modification refuses",
+      "provider timeout is bounded by the policy value",
+      "three timeouts open the shared circuit breaker",
+      "open breaker prevents a fourth provider invocation",
+      "half-open successful probe closes the breaker",
+      "provider failure returns no invented fallback answer",
+      "open breaker makes readiness fail",
+      "transcript, citation and reply content remain absent from logs",
+      "real provider mode refuses at startup"
+    ]
+  },
+  "source_bindings": {
+    "platform/decisions/B6-LLM-2026-001-local-mock.json": "37991e881f64aa99e2e585e2ef9190797b058225b68efdec6400a7caddee364f",
+    "platform/contracts/llm-v1.yaml": "67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a",
+    "platform/services.yaml": "fd560a7f5522c04ec57015d9bbd73286a40937af0eca04c6383dbebaa1bdb0a2",
+    "registry/llm-policies/v1.yaml": "47f81b1f4a60ce1e98a61a8875b51a287d5d967162f1c651e2e23f5ebc659662",
+    "services/llm-gateway/medzen_llm_gateway/app.py": "995a68634813fd2168dec48db3b229ae77133ccb311802c60c27e77ba4956f33",
+    "services/llm-gateway/medzen_llm_gateway/gateway.py": "9e5ff25fc51e2d3328f35898e8e0d69ebfab2dfbee6b0e5f987b18f7d32f7298",
+    "services/llm-gateway/medzen_llm_gateway/policy.py": "513893ac66f5de3fb320795882cff9363fcf8456b916c224012cbde3d3eb5625",
+    "services/llm-gateway/medzen_llm_gateway/provider.py": "64cf79edd4f3b4a89e97de6d78d1d228ebba206c24eeef15952dada4a162fae3",
+    "services/llm-gateway/medzen_llm_gateway/shared_resilience.py": "0561a7d861c3b15c6f96124754b7b44a327fbe9051d69d5ac5c732cda52cac56",
+    "platform/lib/resilience.py": "ac3d998566cfcae83756cfd974ab4eb267a6a9f08e45b53fe8175f51c1f88867",
+    "tests/test_llm_contract.py": "381cc72b1b60349529b06686983ee2ab1864bbbf72e6d49347706b41fd014408",
+    "tests/test_llm_gateway.py": "368132d8db5bdb52930ad6462ba7a32e8ec55eb9e6dd5e424c5cc56637053756"
+  },
+  "validation": {
+    "focused_passed": 18,
+    "focused_failed": 0,
+    "pytest_passed": 1137,
+    "pytest_failed": 0,
+    "pytest_deselected": 7,
+    "pytest_warnings": 1,
+    "warning_interpretation": "Existing FastAPI TestClient dependency deprecation; no test failure.",
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "generated_platform_files": "CURRENT_13_FILES",
+    "git_diff_check": "PASS"
+  },
+  "aws_and_governance": {
+    "aws_packets_authorized": 0,
+    "real_bedrock_invocations": 0,
+    "new_aws_resources": 0,
+    "iam_changes": 0,
+    "ssm_writes": 0,
+    "ecr_pushes": 0,
+    "kubernetes_deployments": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "training_runs": 0,
+    "production_serving_changes": 0
+  },
+  "remaining_boundaries": [
+    "A real Bedrock invocation requires a separately reviewed and owner-approved versioned packet with request, token and cost caps.",
+    "The LLM deployment image, security scan and EKS deployment are outside this local exit.",
+    "B6.3 orchestrator file-mode work starts only after this B6.2 pull request is independently reviewed and merged."
+  ]
+}

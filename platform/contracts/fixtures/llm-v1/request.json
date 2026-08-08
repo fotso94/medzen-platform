@@ -1,0 +1,32 @@
+{
+  "request_id": "66666666-6666-4666-8666-666666666666",
+  "language": "english",
+  "transcript": {
+    "verbatim": "When does the fictional training desk open?",
+    "normalized": "when does the fictional training desk open",
+    "normalization_version": "b6-synthetic-v1"
+  },
+  "rag": {
+    "query_id": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "index_snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "citations": [
+      {
+        "rank": 1,
+        "document_id": "synthetic-hours",
+        "title": "Fictional training desk hours",
+        "source_uri": "medzen://synthetic/training-desk",
+        "section": "hours",
+        "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
+        "excerpt": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
+        "score": 9.0
+      }
+    ]
+  },
+  "model_versions": {
+    "asr": "v0-platform-test",
+    "registry_snapshot": "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001",
+    "llm": null,
+    "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "tts": null
+  }
+}
