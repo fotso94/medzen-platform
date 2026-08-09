@@ -3,6 +3,8 @@
 # 2026-006 must be independently approved before any resource here is applied.
 
 resource "aws_secretsmanager_secret" "b6_client_keys" {
+  count = var.enable_b6_client_keys ? 1 : 0
+
   name                    = "medzen/client-api-keys"
   description             = "B6.6 synthetic integration-only client API key hashes"
   kms_key_id              = aws_kms_key.data.arn
@@ -24,7 +26,7 @@ data "aws_iam_policy_document" "b6_client_keys" {
     sid       = "AllowOnlyOrchestratorRead"
     effect    = "Allow"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.b6_client_keys.arn]
+    resources = [aws_secretsmanager_secret.b6_client_keys[0].arn]
     principals {
       type        = "AWS"
       identifiers = [aws_iam_role.pod["speech-orchestrator"].arn]
@@ -35,7 +37,7 @@ data "aws_iam_policy_document" "b6_client_keys" {
     sid       = "DenyEveryOtherPrincipalRead"
     effect    = "Deny"
     actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.b6_client_keys.arn]
+    resources = [aws_secretsmanager_secret.b6_client_keys[0].arn]
     principals {
       type        = "AWS"
       identifiers = ["*"]
@@ -49,7 +51,9 @@ data "aws_iam_policy_document" "b6_client_keys" {
 }
 
 resource "aws_secretsmanager_secret_policy" "b6_client_keys" {
-  secret_arn          = aws_secretsmanager_secret.b6_client_keys.arn
+  count = var.enable_b6_client_keys ? 1 : 0
+
+  secret_arn          = aws_secretsmanager_secret.b6_client_keys[0].arn
   policy              = data.aws_iam_policy_document.b6_client_keys.json
   block_public_policy = true
 }
@@ -83,7 +87,28 @@ data "aws_iam_policy_document" "b6_client_keys_kms" {
 }
 
 resource "aws_iam_role_policy" "b6_client_keys_kms" {
+  count = var.enable_b6_client_keys ? 1 : 0
+
   name   = "medzen-orch-b6-client-secret-kms"
   role   = aws_iam_role.pod["speech-orchestrator"].id
   policy = data.aws_iam_policy_document.b6_client_keys_kms.json
+}
+
+# Packet 2026-006 created these resources before the lifecycle gate existed.
+# This explicit state-address migration is a no-op while the gate is true and
+# permits B6.6 cleanup to schedule recoverable deletion without manual state
+# surgery.
+moved {
+  from = aws_secretsmanager_secret.b6_client_keys
+  to   = aws_secretsmanager_secret.b6_client_keys[0]
+}
+
+moved {
+  from = aws_secretsmanager_secret_policy.b6_client_keys
+  to   = aws_secretsmanager_secret_policy.b6_client_keys[0]
+}
+
+moved {
+  from = aws_iam_role_policy.b6_client_keys_kms
+  to   = aws_iam_role_policy.b6_client_keys_kms[0]
 }

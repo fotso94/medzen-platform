@@ -1,0 +1,100 @@
+{
+  "record": "B6_SYNTHETIC_INTEGRATION_WINDOW_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-008",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T20:14:13Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-008 only.' after independent review PASS of PR #15 and packet 2026-008.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings_requiring_change": 0,
+    "review_scope": "Live AWS prerequisites, digest-pinning with machine guard, dual deadline-first shutdown, ECS source-security-group isolation probe, refusal drill, zero-state closure, and reproduced suites.",
+    "pull_request": "https://github.com/fotso94/medzen-platform/pull/15",
+    "reviewed_packet_sha256": "153db3cdf59dd08dbc6ba7e3d09cac9a9dd41c124f4a9df65868f7582734d60e",
+    "reviewed_repository_commit": "48130b03e9b97e84be60e0aa09c8ba6e558ad4a6"
+  },
+  "repository_at_authorization": {
+    "branch": "codex/b6-6-integration-packet",
+    "git_commit_before_authorization_record": "48130b03e9b97e84be60e0aa09c8ba6e558ad4a6",
+    "git_tree_before_authorization_record": "938f6370e07a7a2acdb199888652f1835c0ec3a2",
+    "prepared_source_commit": "76e052ddb671e52125128c4892a20e54d1a60fc9",
+    "prepared_source_tree": "18c1b41bb8eaa76cd414bee8a39badbdb3962c1b",
+    "commit_count_before_authorization_record": 259,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-008",
+    "sha256": "153db3cdf59dd08dbc6ba7e3d09cac9a9dd41c124f4a9df65868f7582734d60e"
+  },
+  "packet_path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md",
+  "cost": {
+    "registry_id": "COST-REGISTRY-2026-004",
+    "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+    "maximum_usd": 10.0
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "maximum_window_seconds": 14400,
+    "maximum_cpu_nodes": 2,
+    "maximum_gpu_nodes": 1,
+    "maximum_fargate_probe_tasks": 1,
+    "maximum_internal_albs": 1
+  },
+  "authorized_operations": [
+    "arm_and_verify_exact_cpu_and_gpu_aws_side_scale_zero_deadlines_before_scale_up",
+    "scale_cpu_nodegroup_to_at_most_two_and_gpu_nodegroup_to_at_most_one",
+    "apply_exact_guarded_seven_add_terraform_window_plan",
+    "create_one_narrow_ephemeral_ecs_execution_role_and_exact_ecr_pull_policy",
+    "install_digest_pinned_qualified_alb_controller_and_nvidia_dra_driver",
+    "deploy_digest_pinned_b6_services_in_dependency_order_from_zero_replicas",
+    "create_one_internal_http_alb_restricted_to_exact_backend_source_security_group",
+    "run_one_short_lived_source_security_group_fargate_readyz_probe",
+    "run_synthetic_file_websocket_cancellation_refusal_and_rag_unavailable_proofs",
+    "persist_write_once_phi_safe_stage_receipts",
+    "remove_window_resources_scale_both_worker_groups_to_zero_and_disarm_only_after_zero",
+    "schedule_recoverable_seven_day_deletion_of_synthetic_client_secret_and_remove_exact_local_token_file",
+    "publish_immutable_execution_and_zero_state_evidence"
+  ],
+  "prohibited_operations": [
+    "public_alb_production_dns_tls_or_production_traffic",
+    "production_ssm_serving_pointer_or_registry_write",
+    "approved_asr_write_model_registration_mlflow_transition_or_language_approval_change",
+    "real_bedrock_fish_training_green_bucket_mutation_or_phi",
+    "image_rebuild_tag_deployment_scan_waiver_or_unreviewed_iam_permission",
+    "capacity_or_duration_above_packet_bounds",
+    "deadline_disarm_before_proven_cpu_and_gpu_zero",
+    "force_delete_synthetic_secret_without_recovery"
+  ],
+  "source_bindings": {
+    "infra/alb_controller.tf": "c7005d9c2fa230f1192d2867c75d7691702ba9ff9191e878623c6956671c22eb",
+    "infra/b6_client_secret.tf": "b978839377007b0bfe992bdf216aa101c45349fceb5a3eb43bbce067197a1afa",
+    "infra/b6_integration_window.tf": "73ec7282cf4f5b8e7dfbb3081ebdd689424d96260bb03564983f73a9b33ca205",
+    "infra/variables.tf": "59c1226f9a797e13756575ef77b45ce9324e1f1fb4743bc7d84fa8bec4f272dd",
+    "pipeline/b6_integration_receipts.py": "0f3b8d3fd9e79a04c4ad44ed1882bb3f6b97fc0b7e0b12ca082c167729d0ff15",
+    "platform/designs/B6-LBC-HELM-VALUES-2026-001.yaml": "583a2ae8fc8f18bdd57dbf2bd2ba5136fa3ee0d2134b23f7998b1a09ca9ff519",
+    "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json": "f0364c098d8e7cbcc53b9fb0dddd46a8dda8295b420803e179106e326e160c83",
+    "platform/evidence/B6-CLIENT-API-KEYS-2026-001.json": "6120c7a9b82dd51a2ceccd504156c8448c0322c5ba31e65334505caf3856c2e0",
+    "platform/evidence/B6-DEPLOYMENT-REGISTRY-2026-001-RETRY-007A.json": "68aa1a8f50bfa28d4216f3f366bb75d910a9d4ad63a849bcc9267669304f3595",
+    "platform/evidence/B6-LBC-QUALIFICATION-AWS-EXECUTION-2026-001.json": "56265113cbfa3ebec85309ec9966dc5fb7a2dd28e1c5fad0b1a4dd6e946cb8f3",
+    "platform/finance/COST-REGISTRY-2026-004.json": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb",
+    "platform/k8s/b6-6/integration-window.yaml": "ac3874f56bd0525cc39eaf1a786d3dd76eff67b75089d8146403338b6396351a",
+    "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "platform/testdata/orchestrator/synthetic-file-request.wav": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+    "scripts/b6_6_bindings.py": "d4e0db6b9b650ddafbefc8c6166c6d62cdccbb1acaa3e0f75b767324632f4d31",
+    "scripts/b6_6_cleanup.sh": "b993af392407d9b106e657172a4b4dacca2871a7c6a0fee0bdb32c3bf5f01711",
+    "scripts/b6_6_deadline.py": "486b8e2332742584f03ed211199aa1aaf7bc5cb478b769b41afe3943aec901a5",
+    "scripts/b6_6_probe.py": "fbd3f062b1aa845f78a2407a7077c738846d86a8c5c2f672e21fe48b8a107105",
+    "scripts/b6_6_receipt.py": "3629ffc8b3b6c34ec1d3cfdcde5c8aa28a73796806826f8dce5084a8995c7280",
+    "scripts/check_b6_6_window_plan.py": "8c19f2a5bc236f37d07c99999e093e48927e503bf2b52f786d34447ed117509f",
+    "scripts/pin_aws_lbc_digest.py": "bcd3b3e97e992f96457df392f76aa9da8d91f801a0610cc5533660c6400ce5cb",
+    "scripts/run_b6_6_integration_window.sh": "fb80d750a1f19a158692d88f9c2b4d86e0babc91298279a4c102d7738ed5731f",
+    "scripts/terraform_medzen.sh": "1a1d9c158001d9b15ac1403bde2138ec284c250b28715818b395697317c274f1"
+  }
+}

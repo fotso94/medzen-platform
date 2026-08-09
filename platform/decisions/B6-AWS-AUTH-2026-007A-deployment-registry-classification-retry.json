@@ -1,0 +1,91 @@
+{
+  "record": "B6_DEPLOYMENT_REGISTRY_CLASSIFICATION_RETRY_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-007A",
+  "revision": 1,
+  "status": "OWNER_APPROVED_FOR_EXECUTION",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T19:02:39Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-007A only.' after independent review PASS of PR #14 and packet 2026-007A.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "outcome": "PASS",
+    "findings": 0,
+    "reproduced_tests": {
+      "passed": 25,
+      "failed": 0
+    },
+    "review_scope": "Explicit deployment-classification selection, refuse-before-AWS on relative paths, unchanged three-parameter scope, and reviewer reproduction of 25/25 tests."
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit": "9d23892e79ce718d6fd0cdcee6dc762a58d549e6",
+    "git_tree": "45d95427c95e616903bd472d5950b863b63c7ab2",
+    "commit_count": 255,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_14": "MERGED"
+  },
+  "packet": {
+    "id": "B6 AWS change packet 2026-007A",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-007A-deployment-registry-classification-retry.md",
+    "sha256": "4325445f0880da492cc5980439b599b8c44e999070ad7b3255f7517bb80a94d0"
+  },
+  "failed_predecessor": {
+    "packet_id": "B6 AWS change packet 2026-007",
+    "evidence_path": "platform/evidence/B6-DEPLOYMENT-REGISTRY-2026-001-FAILED-CLOSED.json",
+    "evidence_sha256": "6055040b24558da9fc2fe42f9b18dcf83054f9ffdb2b65fcd7c98d2b28a7b82d",
+    "status": "BLOCKED_RUNTIME_REGISTRY_CLASSIFICATION",
+    "rollback_verified": true
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-DEPLOYMENT-REGISTRY-2026-001.json",
+    "sha256": "8cef584e4e582077dfc97ef7272a28606e6cef513bf5bdbf742baa4dee7dc6b5",
+    "snapshot_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "parameter_count": 3
+  },
+  "runner": {
+    "path": "scripts/run_b6_deployment_registry_publication_v2.py",
+    "sha256": "391ec0665c68143668cd5b7d042dbb96a62834bca96e9c41d2ab19b7c888163a",
+    "required_classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+    "absolute_paths_required": true
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "publisher_role": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "exact_root": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81"
+  },
+  "authorized_operations": [
+    "verify_exact_root_empty_and_production_pointer_absent",
+    "verify_existing_publisher_policy_has_zero_terraform_drift",
+    "assume_existing_publisher_role_for_at_most_one_hour",
+    "create_exactly_three_manifest_bound_securestrings_with_overwrite_false",
+    "read_back_values_hashes_versions_types_kms_identity_and_exact_tags",
+    "reconstruct_snapshot_with_explicit_deployed_classification",
+    "prove_production_pointer_absent_and_unchanged",
+    "create_and_publish_immutable_execution_evidence"
+  ],
+  "hard_preconditions": {
+    "terraform_changes": 0,
+    "parameter_count_before": 0,
+    "parameter_count_after": 3,
+    "expected_initial_version": 1,
+    "overwrite": false,
+    "production_alias_changes": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "maximum_incremental_cost_usd": 0.1
+  },
+  "prohibited_operations": [
+    "terraform_apply_or_iam_kms_ecr_eks_security_group_or_secret_change",
+    "parameter_outside_exact_content_addressed_root",
+    "production_registry_or_serving_alias_change",
+    "cpu_or_gpu_scale_up",
+    "workload_alb_model_approved_artifact_or_provider_call",
+    "phi_overwrite_or_security_waiver"
+  ],
+  "next_boundary": "Only a VERIFIED_COMPLETE execution receipt permits preparation of the separately reviewed B6.6 successor packet with a ten-dollar reservation."
+}

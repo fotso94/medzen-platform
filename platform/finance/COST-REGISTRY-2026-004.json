@@ -1,0 +1,95 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-004",
+  "revision": 4,
+  "status": "CURRENT_GUARDRAIL_SNAPSHOT_WITH_ACTIVE_RESERVATION",
+  "recorded_utc": "2026-08-09T19:30:00Z",
+  "currency": "USD",
+  "supersedes": {
+    "path": "platform/finance/COST-REGISTRY-2026-003.json",
+    "sha256": "a06fadee5a85ea763e80e333df1bd116dc0f184b5a3b02a9eafa820830d380f5"
+  },
+  "purpose": "Reserve one bounded 10 USD guardrail for the independently reviewed B6.6 synthetic integration window without treating the reservation as AWS authorization or actual spend.",
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 63.5288,
+    "active_reservations_usd": 10.0,
+    "committed_plus_reserved_usd": 73.5288,
+    "guardrail_headroom_after_reservations_usd": 226.4712,
+    "actual_project_spend": "NOT_FULLY_RECONCILED",
+    "claim_limit": "The 10 USD amount is a conservative execution ceiling, not a claim that AWS has billed or will bill 10 USD. Standing infrastructure and packets 2026-005, 2026-006 and 2026-007A remain pending attributable billing."
+  },
+  "allocations": [
+    {
+      "allocation_id": "B4-MODEL-FACTORY",
+      "financial_state": "RECONCILED_COMMITTED",
+      "recognized_committed_usd": 22.5288,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-EKS-UPGRADE",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL",
+      "recognized_committed_usd": 25.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-SERVING-PROOF",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 15.0,
+      "active_reservation_usd": 0.0,
+      "conservative_observed_gpu_cost_usd": 0.9401
+    },
+    {
+      "allocation_id": "B6-5B-ECR-SCAN-ONLY-2026-001",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 1.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+      "financial_state": "ACTIVE_RESERVED_NOT_AUTHORIZED",
+      "recognized_committed_usd": 0.0,
+      "active_reservation_usd": 10.0,
+      "maximum_wall_clock_seconds": 14400,
+      "maximum_worker_capacity": {
+        "m6i.large_cpu_nodes": 2,
+        "g6.xlarge_gpu_nodes": 1,
+        "fargate_probe_tasks": 1
+      },
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B6.6",
+        "Workstream": "integration-window",
+        "BudgetRegistry": "COST-REGISTRY-2026-003"
+      },
+      "tag_namespace_note": "COST-REGISTRY-2026-003 remains the immutable live allocation-tag namespace already bound to the qualified controller, secret and test-registry resources. This revision changes accounting state only and does not rewrite retained live-resource tags."
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "UNRECONCILED_STANDING_COST",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS"
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0
+    }
+  ],
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "current_active_billable_reservations": 1,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_must_not_be_mixed": true,
+    "new_aws_resources_require_versioned_packet": true,
+    "window_cleanup_required_before_reservation_close": true,
+    "next_reconciliation_creates_new_registry_revision": true
+  }
+}

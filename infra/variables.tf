@@ -70,6 +70,18 @@ variable "enable_b6_load_balancer_controller" {
   description = "True only inside an approved, deadline-first B6.6 window after CPU nodes are Ready; reset false before scale-to-zero."
 }
 
+variable "enable_b6_integration_window" {
+  type        = bool
+  default     = false
+  description = "True only inside an approved B6.6 window after both worker deadlines are armed; reset false during cleanup."
+}
+
+variable "enable_b6_client_keys" {
+  type        = bool
+  default     = true
+  description = "Retains the packet-006 synthetic key boundary through B6.6; set false only during the approved final cleanup."
+}
+
 variable "github_repo" {
   type        = string
   default     = "REPLACE/medzen-platform"
