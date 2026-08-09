@@ -9,7 +9,8 @@
 terraform {
   required_version = ">= 1.5.0"
   required_providers {
-    aws = { source = "hashicorp/aws", version = "~> 5.60" }
+    aws  = { source = "hashicorp/aws", version = "~> 5.60" }
+    helm = { source = "hashicorp/helm", version = "= 3.2.0" }
   }
 
   backend "s3" {
@@ -35,6 +36,26 @@ provider "aws" {
       ManagedBy   = "terraform"
       Environment = var.environment
       Component   = "speech-platform"
+    }
+  }
+}
+
+# Helm is used only for Terraform-owned, reviewed cluster add-ons. Authentication
+# is short-lived and obtained from the same named AWS profile as the AWS
+# provider; no bearer token is stored in Terraform state or configuration.
+provider "helm" {
+  kubernetes = {
+    host                   = aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(aws_eks_cluster.this.certificate_authority[0].data)
+    exec = {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      command     = "aws"
+      args = [
+        "eks", "get-token",
+        "--cluster-name", aws_eks_cluster.this.name,
+        "--region", var.region,
+        "--profile", var.profile,
+      ]
     }
   }
 }

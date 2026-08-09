@@ -64,6 +64,12 @@ variable "gpu_desired_size" {
   description = "Stays 0 until quota L-DB2E81BA lands (CASE_OPENED 2026-07-29)."
 }
 
+variable "enable_b6_load_balancer_controller" {
+  type        = bool
+  default     = false
+  description = "True only inside an approved, deadline-first B6.6 window after CPU nodes are Ready; reset false before scale-to-zero."
+}
+
 variable "github_repo" {
   type        = string
   default     = "REPLACE/medzen-platform"

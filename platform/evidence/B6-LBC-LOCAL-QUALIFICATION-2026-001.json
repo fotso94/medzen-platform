@@ -1,0 +1,46 @@
+{
+  "record": "B6_AWS_LOAD_BALANCER_CONTROLLER_LOCAL_QUALIFICATION",
+  "id": "B6-LBC-LOCAL-QUALIFICATION-2026-001",
+  "revision": 1,
+  "status": "PASS_LOCAL_QUALIFICATION_AWS_SCAN_REQUIRED",
+  "recorded_utc": "2026-08-09T04:20:26Z",
+  "source": {
+    "image": "public.ecr.aws/eks/aws-load-balancer-controller:v3.5.0",
+    "oci_index_digest": "sha256:298acdff5a571731276aaea3d5cc450a264e4ad710a5bddf3e518f68a3f9f6cb",
+    "qualified_platform": "linux/amd64",
+    "qualified_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "config_digest": "sha256:681ba44db1bc26af37cc05d00e7fb8d788d3a8f665825257dedf342f06883b92"
+  },
+  "runtime_identity": {
+    "os": "linux",
+    "architecture": "amd64",
+    "user": "65532",
+    "entrypoint": ["/controller"]
+  },
+  "docker_scout": {
+    "tool_version": "1.18.3",
+    "packages_indexed": 103,
+    "severity_filter": ["critical", "high"],
+    "critical": 0,
+    "high": 0,
+    "result_count": 0,
+    "outcome": "PASS"
+  },
+  "helm_render": {
+    "chart_version": "3.5.0",
+    "chart_package_sha256": "45051f634b33e10baccb3354d0681b7de787c60445e599fa276e0c9aedd4ccd5",
+    "deployment_render_sha256_run_1": "18a14c29f8cb2734f2a176d03d7de410355682a85ad3ca45308413211c4d9275",
+    "deployment_render_sha256_run_2": "18a14c29f8cb2734f2a176d03d7de410355682a85ad3ca45308413211c4d9275",
+    "deployment_render_deterministic": true,
+    "full_bundle_hash_not_used": "The upstream chart generates unique webhook TLS certificate bytes on first install.",
+    "postrendered_deployment_image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller@sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "public_upstream_runtime_image_references": 0,
+    "moving_tag_runtime_image_references": 0,
+    "outcome": "PASS"
+  },
+  "aws_mutations": 0,
+  "ecr_pushes": 0,
+  "aws_ecr_scan_status": "NOT_EVALUATED",
+  "security_waiver_used": false,
+  "next_gate": "Packet 2026-005 must mirror the same child manifest into the immutable private repository and require the live ECR child-digest scan to complete with zero critical and zero high findings before IAM or Helm stages may continue."
+}

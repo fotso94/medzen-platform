@@ -1,0 +1,112 @@
+{
+  "record": "B6_AWS_LOAD_BALANCER_CONTROLLER_QUALIFICATION_DESIGN",
+  "id": "B6-LBC-QUALIFICATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_DESIGN_COMPLETE_AWS_EXECUTION_NOT_AUTHORIZED",
+  "prepared_utc": "2026-08-09T04:20:26Z",
+  "upstream": {
+    "project": "kubernetes-sigs/aws-load-balancer-controller",
+    "release": "v3.5.0",
+    "release_date": "2026-08-03",
+    "release_commit": "11eb202",
+    "release_url": "https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/tag/v3.5.0",
+    "minimum_kubernetes": "1.22",
+    "cluster_kubernetes": "1.36",
+    "official_image": "public.ecr.aws/eks/aws-load-balancer-controller:v3.5.0",
+    "oci_index_digest": "sha256:298acdff5a571731276aaea3d5cc450a264e4ad710a5bddf3e518f68a3f9f6cb",
+    "linux_amd64_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "child_config_digest": "sha256:681ba44db1bc26af37cc05d00e7fb8d788d3a8f665825257dedf342f06883b92",
+    "runtime_user": "65532",
+    "entrypoint": ["/controller"]
+  },
+  "helm": {
+    "provider": "hashicorp/helm",
+    "provider_version": "3.2.0",
+    "chart_repository": "https://aws.github.io/eks-charts",
+    "chart": "aws-load-balancer-controller",
+    "chart_version": "3.5.0",
+    "chart_package_sha256": "45051f634b33e10baccb3354d0681b7de787c60445e599fa276e0c9aedd4ccd5",
+    "values_path": "platform/designs/B6-LBC-HELM-VALUES-2026-001.yaml",
+    "values_sha256": "583a2ae8fc8f18bdd57dbf2bd2ba5136fa3ee0d2134b23f7998b1a09ca9ff519",
+    "postrenderer_path": "scripts/pin_aws_lbc_digest.py",
+    "postrenderer_sha256": "bcd3b3e97e992f96457df392f76aa9da8d91f801a0610cc5533660c6400ce5cb",
+    "deterministic_deployment_render_sha256": "18a14c29f8cb2734f2a176d03d7de410355682a85ad3ca45308413211c4d9275",
+    "full_bundle_hash_excluded_reason": "The upstream chart generates a unique webhook TLS certificate on first installation. The versioned chart package, values, post-renderer and deterministic Deployment are hash-bound; generated certificate bytes are not treated as reproducible source.",
+    "deployment_image_result": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller@sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f"
+  },
+  "source_policy_comparison": {
+    "official_policy_url": "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.5.0/docs/install/iam_policy.json",
+    "official_policy_sha256": "16f232c9d9f79366fe949c4550ad517a202380058a9e48d45a4e215044a20a6a",
+    "medzen_policy_path": "platform/iam/medzen-lbc-role.policy.template.json",
+    "medzen_policy_sha256": "f8d3362a83dca756c1af76bf6facff131aef7888771766c53d10f93ca59a27bc",
+    "removed_action_families": [
+      "iam:CreateServiceLinkedRole",
+      "ec2 security-group create/tag/ingress/revoke/delete",
+      "ACM and IAM server-certificate reads",
+      "Cognito",
+      "WAF and WAFv2",
+      "Shield",
+      "listener certificate mutation",
+      "internet-facing and network load balancers"
+    ],
+    "reason_service_linked_role_removed": "AWSServiceRoleForElasticLoadBalancing was confirmed present before packet preparation."
+  },
+  "scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "vpc": "vpc-051aa9df8b64bf141",
+    "watch_namespace": "medzen",
+    "load_balancer_scheme": "internal",
+    "target_type": "ip",
+    "exact_subnets": [
+      "subnet-00232b25bc1ac407a",
+      "subnet-05029419c6c61a536",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "load_balancer_name_prefix": "medzen-b6-",
+    "target_group_name_prefix": "k8s-medzen-",
+    "target_group_name_reason": "The controller derives target-group names from the watched medzen namespace rather than the Ingress load-balancer-name annotation.",
+    "controller_manages_security_groups": false,
+    "controller_manages_backend_security_group_rules": false,
+    "service_mutator_webhook": false,
+    "legacy_ingress_class_annotation": false,
+    "ingress_group_annotation": false,
+    "waf": false,
+    "wafv2": false,
+    "shield": false
+  },
+  "terraform": {
+    "path": "infra/alb_controller.tf",
+    "resources": [
+      "aws_ecr_repository.b6_load_balancer_controller",
+      "aws_security_group.b6_internal_alb",
+      "aws_iam_role.b6_load_balancer_controller",
+      "aws_iam_role_policy.b6_load_balancer_controller",
+      "aws_eks_pod_identity_association.b6_load_balancer_controller"
+    ],
+    "window_only_resource": "helm_release.b6_load_balancer_controller[0]",
+    "window_enable_variable": "enable_b6_load_balancer_controller",
+    "window_enable_default": false,
+    "installation_owner": "Terraform",
+    "installation_sequence": "B6.6 arms deadline, scales CPU, proves nodes Ready, applies the Terraform Helm release with wait/atomic enabled, and proves the exact digest Ready before any Ingress.",
+    "uninstall_sequence": "B6.6 deletes Ingress and AWS load-balancing resources, sets the enable variable false to destroy the Terraform Helm release, then scales CPU to zero.",
+    "reason_not_installed_at_zero_workers": "The chart installs failure-closed admission webhooks; leaving them without Ready endpoints could block unrelated Kubernetes admission requests."
+  },
+  "rollback": {
+    "order": [
+      "delete_any_window_Ingress_and_wait_for_controller_ALB_cleanup",
+      "B6_6_destroys_the_Terraform_Helm_release_before_worker_scale_down",
+      "a_separate_boundary_rollback_may_destroy_controller_Pod_Identity_role_policy_role_and_empty_ALB_security_group",
+      "retain_scan_evidence_repository_unless_a_separate_deletion_decision_authorizes_removal",
+      "restore_eight_filter_scanning_configuration_to_the_prior_seven_exact_filters_only_if_the_controller_repository_is_removed"
+    ],
+    "worker_capacity_change": 0
+  },
+  "explicit_non_claims": [
+    "Local Docker Scout qualification is not the required AWS ECR child-manifest scan.",
+    "Packet 2026-005 does not install the Helm release while worker capacity is zero.",
+    "The controller is not authorized to create a public ALB or modify any EC2 security group.",
+    "This design does not authorize packet execution."
+  ]
+}

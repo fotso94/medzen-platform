@@ -1,0 +1,53 @@
+# Reviewed values for AWS Load Balancer Controller 3.5.0.
+# The Helm post-renderer replaces the exact immutable tag below with the
+# locally qualified linux/amd64 child digest and refuses any other image.
+replicaCount: 1
+
+image:
+  repository: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller
+  tag: v3.5.0-c2ebdeae779c
+  pullPolicy: IfNotPresent
+
+clusterName: medzen-speech
+region: eu-central-1
+vpcId: vpc-051aa9df8b64bf141
+watchNamespace: medzen
+
+ingressClass: alb
+createIngressClassResource: true
+ingressClassConfig:
+  default: false
+
+defaultTargetType: ip
+defaultLoadBalancerScheme: internal
+disableIngressClassAnnotation: true
+disableIngressGroupNameAnnotation: true
+tolerateNonExistentBackendService: false
+tolerateNonExistentBackendAction: false
+
+enableShield: false
+enableWaf: false
+enableWafv2: false
+enableBackendSecurityGroup: false
+enableManageBackendSecurityGroupRules: false
+enableServiceMutatorWebhook: false
+logLevel: info
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+
+defaultTags:
+  Project: medzen-speech
+  Environment: dev
+  Stage: B6.6
+  Workstream: integration-window
+  BudgetRegistry: COST-REGISTRY-2026-003
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

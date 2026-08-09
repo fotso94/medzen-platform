@@ -1,0 +1,102 @@
+{
+  "record": "B6_DEPLOYMENT_REGISTRY_PUBLICATION_MANIFEST",
+  "id": "B6-DEPLOYMENT-REGISTRY-2026-001",
+  "revision": 1,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "publisher_role_arn": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "repository_binding": {
+    "preparation_authorization_commit": "1d4a3bbb1e79145cdcc10ee9ba0877c2cf3fe95d",
+    "preparation_authorization_tree": "41ba4711c9774418f32d9ad8615ddfdaf84fce1c"
+  },
+  "snapshot": {
+    "root": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "snapshot_material_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "source_path": "registry/deployment/b6-v0-synthetic.json",
+    "source_file_sha256": "2629e3b7fb1ae33e7dc6966134bd8f544a8211c98036b8ea4ecfc2a0fed19ebd",
+    "generated_path": "platform/generated/registry-ssm/b6-v0-synthetic.json",
+    "generated_file_sha256": "33433626b0f2070a714df31e16306d6a511652b0870b0ba3cb5ec701847c9821",
+    "generator_path": "scripts/generate_b6_deployment_registry.py",
+    "generator_sha256": "39f5b6da56ce697834d0363d4a4efefd15554defd05c146858588db7b2c6fe1d",
+    "maximum_parameter_count": 3,
+    "parameter_count": 3
+  },
+  "terraform_contract": {
+    "expected_add": 1,
+    "expected_change": 0,
+    "expected_destroy": 0,
+    "only_address": "aws_iam_role_policy.registry_publisher_b6_5c_tags"
+  },
+  "allocation": {
+    "allocation_id": "B6-DEPLOYMENT-REGISTRY",
+    "maximum_incremental_cost_usd": 0.1,
+    "tags": {
+      "BudgetRegistry": "COST-REGISTRY-2026-003",
+      "CostCenter": "speech-platform",
+      "Environment": "dev",
+      "Project": "medzen-speech",
+      "Stage": "B6.5C",
+      "Workstream": "ssm-deployment-registry"
+    }
+  },
+  "write_contract": {
+    "create_only": true,
+    "overwrite": false,
+    "data_parameters_before_manifest": true,
+    "readback_with_decryption": true,
+    "verify_parameter_versions": true,
+    "verify_tags": true,
+    "identical_complete_snapshot_may_be_reused": true,
+    "partial_or_different_snapshot_refuses": true,
+    "production_pointer_changes": 0
+  },
+  "parameters": [
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/_manifest",
+      "Type": "SecureString",
+      "Value": "{\"classification\":\"B6_6_SYNTHETIC_INTEGRATION_ONLY\",\"parameter_value_sha256\":{\"index\":\"4ce97b58eee7813181108062d50caa20a63504dbf1f6006134a523c8ed0e5f51\",\"routes/english\":\"bc37f0de752bd3f92b10c6a5d22c526473c9dc828425144cdd6c8a6403f01e0b\"},\"schema_version\":1,\"snapshot_material_sha256\":\"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81\",\"snapshot_sha256\":\"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81\"}",
+      "ValueSHA256": "f9ae5d9c6c1eba7c17acc08336a1a3a7a3a408f2623904e4ccc7d21f720e38c6",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 3
+    },
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/index",
+      "Type": "SecureString",
+      "Value": "{\"default_language\":\"english\",\"languages\":[{\"alias\":\"english\",\"codes\":[\"en\",\"eng\"],\"route_parameter\":\"routes/english\"}],\"schema_version\":1}",
+      "ValueSHA256": "4ce97b58eee7813181108062d50caa20a63504dbf1f6006134a523c8ed0e5f51",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 1
+    },
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/routes/english",
+      "Type": "SecureString",
+      "Value": "{\"asr\":{\"artifact_tree_sha256\":\"5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e\",\"backend\":\"http_cluster_v1\",\"model_version\":\"v0\",\"reported_registry_snapshot\":\"b6a-non-serving:c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850\"},\"classification\":\"B6_6_SYNTHETIC_INTEGRATION_ONLY\",\"contract_version\":\"medzen.speech.v1\",\"dependencies\":{\"asr\":{\"contract_id\":\"MEDZEN-SPEECH-CONTRACT-2026-001\",\"contract_sha256\":\"e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d\",\"endpoint\":\"http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions\"},\"llm\":{\"contract_id\":\"MEDZEN-LLM-CONTRACT-2026-001\",\"contract_sha256\":\"67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a\",\"endpoint\":\"http://llm-gateway.medzen.svc.cluster.local:8082/internal/v1/responses\"},\"rag\":{\"contract_id\":\"MEDZEN-SPEECH-CONTRACT-2026-001\",\"contract_sha256\":\"e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d\",\"endpoint\":\"http://rag-index.medzen.svc.cluster.local:8083/internal/v1/retrievals\"},\"tts\":{\"contract_id\":\"MEDZEN-TTS-CONTRACT-2026-001\",\"contract_sha256\":\"2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8\",\"endpoint\":\"http://tts-gateway.medzen.svc.cluster.local:8080/internal/v1/syntheses\"}},\"language\":{\"accepted_codes\":[\"en\",\"eng\"],\"alias\":\"english\",\"response_code\":\"en\"},\"llm\":{\"model_version\":\"fake-bedrock-local-v1\",\"policy_id\":\"english-medzen-v1\"},\"rag\":{\"alias\":\"current\",\"query_language\":\"en\",\"snapshot_sha256\":\"6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160\"},\"schema_version\":2,\"tts\":{\"backend\":\"http_text_only_v1\",\"model_version\":null}}",
+      "ValueSHA256": "bc37f0de752bd3f92b10c6a5d22c526473c9dc828425144cdd6c8a6403f01e0b",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 2
+    }
+  ],
+  "rollback": {
+    "actor": "owner operator identity, never the publisher role",
+    "action": "delete exactly the three parameter names beneath the bound root",
+    "production_pointer": "must remain absent before and after rollback"
+  }
+}
