@@ -14,7 +14,10 @@ ACCOUNT = "558069890522"
 REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
-WINDOW_SECONDS = 14400
+# Packet 2026-008 consumed a conservatively bounded 1,784 seconds before its
+# zero-state proof. The corrective window stays inside the original four-hour
+# cumulative allowance with a 16-second safety margin.
+WINDOW_SECONDS = 12600
 GROUPS = {
     "cpu": {
         "asg": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772",

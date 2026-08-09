@@ -31,6 +31,7 @@ STAGES = (
     "failure_drills",
     "isolation_proof",
     "cleanup",
+    "cleanup_recovery",
 )
 DEPENDENCIES = {
     "deadline": ("local_bindings",),
@@ -50,6 +51,7 @@ DEPENDENCIES = {
     "failure_drills": ("cancellation_proof",),
     "isolation_proof": ("failure_drills",),
     "cleanup": ("deadline",),
+    "cleanup_recovery": ("deadline",),
 }
 STATUSES = {"PASS", "REFUSED", "INCOMPLETE", "NOT_RUN"}
 FORBIDDEN_KEYS = {

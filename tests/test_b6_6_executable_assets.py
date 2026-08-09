@@ -14,7 +14,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 COST = ROOT / "platform/finance/COST-REGISTRY-2026-004.json"
 MANIFEST = ROOT / "platform/k8s/b6-6/integration-window.yaml"
-PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md"
+HISTORICAL_PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md"
+HISTORICAL_AUTH = ROOT / "platform/decisions/B6-AWS-AUTH-2026-008-b6-6-integration-window.json"
+PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-009-b6-6-corrective-window.md"
 
 
 def documents():
@@ -110,10 +112,64 @@ def test_runner_and_cleanup_are_shell_valid_and_deadline_first():
     assert value.index("scripts/b6_6_deadline.py arm") < value.index("desiredSize=2")
     assert value.index("scripts/b6_6_deadline.py arm") < value.index("desiredSize=1")
     assert "trap cleanup EXIT INT TERM" in value
+    assert "bash scripts/b6_6_cleanup.sh" in value
+    assert "scripts/b6_6_wait_workers.py" in value
+    assert "get daemonset/dra-driver-nvidia-gpu-kubelet-plugin" in value
+    assert "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6" in value
     closed = cleanup.read_text()
     assert closed.index("delete ingress/speech-orchestrator-b6-window") < closed.index("enable_b6_load_balancer_controller=false")
     assert closed.index("enable_b6_load_balancer_controller=false") < closed.index("nodegroup-name cpu")
     assert "SCHEDULED_RECOVERABLE_DELETION" in closed
+    assert "record_incomplete_cleanup" in closed
+    assert "cleanup_recovery" in closed
+
+
+def test_worker_gate_waits_for_resources_before_evaluating_readiness():
+    from scripts.b6_6_wait_workers import wait_for_workers
+
+    calls = {"cpu": 0, "gpu": 0}
+    now = [0.0]
+
+    def node(ready: bool):
+        return {"status": {"conditions": [{
+            "type": "Ready", "status": "True" if ready else "False",
+        }]}}
+
+    def snapshot(workload):
+        calls[workload] += 1
+        if calls[workload] == 1:
+            return []
+        return [node(True)] * (2 if workload == "cpu" else 1)
+
+    result = wait_for_workers(
+        snapshot,
+        30,
+        monotonic=lambda: now[0],
+        sleep=lambda seconds: now.__setitem__(0, now[0] + seconds),
+    )
+    assert result["cpu_nodes_ready"] == 2
+    assert result["gpu_nodes_ready"] == 1
+    assert result["resources_existed_before_ready_evaluation"] is True
+    assert result["observation_reads"] == 4
+
+
+def test_worker_gate_fails_closed_if_capacity_exceeds_bound():
+    from scripts.b6_6_wait_workers import WorkerReadinessRefusal, wait_for_workers
+
+    with pytest.raises(WorkerReadinessRefusal, match="CPU_NODE_COUNT_EXCEEDS_BOUND"):
+        wait_for_workers(
+            lambda workload: [{"status": {"conditions": []}}] * (3 if workload == "cpu" else 0),
+            30,
+        )
+
+
+def test_cleanup_terraform_is_valid_when_secret_gate_is_false_and_cpu_drift_is_ignored():
+    secret = (ROOT / "infra/b6_client_secret.tf").read_text()
+    override = (ROOT / "infra/b6_6_window_override.tf").read_text()
+    assert secret.count("try(") >= 2
+    assert "secret:medzen/client-api-keys-*" in secret
+    assert "data.aws_iam_policy_document.b6_client_keys.json" in secret
+    assert "ignore_changes = [scaling_config[0].desired_size]" in override
 
 
 def test_receipts_are_write_once_ordered_and_reject_sensitive_fields(tmp_path):
@@ -178,11 +234,11 @@ def test_deadline_arms_both_groups_at_the_same_time_and_disarms_only_after_zero(
     control = DeadlineControl(autoscaling, FakeEKS())
     now = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     result = control.arm(now)
-    assert result["window_seconds"] == 14400
+    assert result["window_seconds"] == 12600
     starts = {
         actions[0]["StartTime"] for actions in autoscaling.actions.values()
     }
-    assert starts == {now + timedelta(seconds=14400)}
+    assert starts == {now + timedelta(seconds=12600)}
     assert control.disarm_after_zero()["deadlines_removed_after_zero"] is True
     assert all(not actions for actions in autoscaling.actions.values())
 
@@ -201,27 +257,25 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
     }
     packet_sha = "a" * 64
     record = {
-        "id": "B6-AWS-AUTH-2026-008",
+        "id": "B6-AWS-AUTH-2026-009",
         "status": "owner-approved",
-        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-008", "sha256": packet_sha},
+        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-009", "sha256": packet_sha},
         "independent_review": {"status": "PASS", "reviewer": "independent"},
         "cost": {"registry_id": "COST-REGISTRY-2026-004", "allocation_id": "B6-INTEGRATION-WINDOW-2026-001", "maximum_usd": 10.0},
         "source_bindings": sources,
     }
     authorization = tmp_path / "authorization.json"
     authorization.write_text(json.dumps(record))
-    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-008"
+    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-009"
     record["source_bindings"].pop(next(iter(REQUIRED_SOURCES)))
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):
         validate(authorization, packet_sha, root)
 
 
-def test_executable_packet_binds_every_source_and_still_requires_approval():
-    import hashlib
-    from scripts.b6_6_bindings import REQUIRED_SOURCES
-
-    value = PACKET.read_text()
+def test_historical_executable_packet_keeps_its_original_source_bindings():
+    authorization = json.loads(HISTORICAL_AUTH.read_bytes())
+    value = HISTORICAL_PACKET.read_text()
     assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
     assert "This packet is not authorized by its preparation" in value
     assert "Approve B6 AWS change packet 2026-008 only." in value
@@ -229,6 +283,25 @@ def test_executable_packet_binds_every_source_and_still_requires_approval():
     assert "`B6-INTEGRATION-WINDOW-2026-001` — exactly `$10.00`" in value
     assert "production serving pointer absent" in value
     assert "B5 remains `BLOCKED`" in value
+    for relative, expected in authorization["source_bindings"].items():
+        assert f"`{relative}`" in value
+        assert f"`{expected}`" in value
+
+
+def test_corrective_packet_binds_current_sources_and_requires_new_approval():
+    import hashlib
+    from scripts.b6_6_bindings import REQUIRED_SOURCES
+
+    value = PACKET.read_text()
+    assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
+    assert "This packet is not authorized by its preparation" in value
+    assert "Approve B6 AWS change packet 2026-009 only." in value
+    assert "at most 12,600 additional seconds" in value
+    assert "exactly `7 add / 0 change / 0 destroy`" in value
+    assert "exactly `0 add / 0 change / 3 destroy`" in value
+    assert "new reservation: `$0`" in value
+    assert "production SSM" in value
+    assert "B5's `BLOCKED`" in value
     for relative in REQUIRED_SOURCES:
         expected = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
         assert f"`{relative}`" in value

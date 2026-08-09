@@ -1,0 +1,109 @@
+{
+  "record": "B6_6_LOCAL_CORRECTIVE_ENGINEERING",
+  "id": "B6-6-LOCAL-CORRECTION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_CORRECTION_COMPLETE_AWAITING_INDEPENDENT_REVIEW",
+  "recorded_utc": "2026-08-09T20:57:42Z",
+  "superseded_execution": {
+    "packet_id": "B6-AWS-CHANGE-PACKET-2026-008",
+    "outcome": "REFUSED_WORKER_REGISTRATION_AND_CLEANUP_IMPLEMENTATION",
+    "evidence_path": "platform/evidence/B6-PACKET-2026-008-REFUSED-WORKER-REGISTRATION.json",
+    "history_edited": false,
+    "packet_may_resume": false
+  },
+  "corrections": {
+    "worker_registration": {
+      "prior_defect": "A single kubectl wait invocation refused immediately when the GPU node resource did not yet exist.",
+      "correction": "A bounded gate now polls until the exact two CPU and one GPU resources both exist and are Ready, refuses excess capacity, and emits only a sanitized reason code on failure.",
+      "maximum_wait_seconds": 1200
+    },
+    "cleanup_invocation": {
+      "prior_defect": "The runner invoked a mode-0644 cleanup source directly.",
+      "correction": "The hash-bound runner invokes the cleanup source explicitly through bash; executable file mode is no longer an unbound runtime dependency."
+    },
+    "cleanup_receipts": {
+      "prior_defect": "An automatic cleanup refusal produced no immediate cleanup-stage receipt.",
+      "correction": "The cleanup source persists an immutable INCOMPLETE receipt at its exact failing step and supports a separate cleanup_recovery receipt without overwriting history."
+    },
+    "terraform_secret_disable": {
+      "prior_defect": "Policy evaluation indexed a count-zero secret during the disabled cleanup plan.",
+      "correction": "The policy data source keeps its stable state address and uses a deterministic, unused fallback ARN only while the policy resource itself has count zero."
+    },
+    "terraform_worker_drift": {
+      "prior_defect": "The targeted cleanup graph proposed resetting temporary CPU desired capacity before the ordered worker cleanup stage.",
+      "correction": "The CPU managed node group now ignores desired-size drift, matching the existing GPU rule; the bounded runner and deadline controller remain the only window capacity controls."
+    },
+    "prewindow_zero_state": {
+      "correction": "The runner now refuses before worker scale-up if CPU/GPU nodes, synthetic pods, the window Ingress, the window controller, or the DRA DaemonSet already exist."
+    },
+    "synthetic_token_binding": {
+      "correction": "The runner verifies the retained local token's exact path, mode, byte length, and SHA-256 against packet-006 evidence before any AWS mutation, without reading or logging the secret value."
+    },
+    "cumulative_deadline": {
+      "packet_2026_008_conservative_seconds": 1784,
+      "corrective_maximum_seconds": 12600,
+      "combined_seconds": 14384,
+      "original_allowance_seconds": 14400,
+      "safety_margin_seconds": 16
+    }
+  },
+  "validation": {
+    "focused_pytest": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_executable_assets.py tests/test_b6_6_integration_packet.py tests/test_b6_6_integration_packet_revision_2.py",
+      "passed": 21,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_pytest": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1310,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1,
+      "warning_note": "Known Starlette TestClient deprecation warning; no test failure."
+    },
+    "terraform_validate": "PASS",
+    "terraform_create_plan": {
+      "mode": "READ_ONLY_PLAN_NOT_APPLIED",
+      "adds": 7,
+      "changes": 0,
+      "deletes": 0,
+      "guard": "PASS_B6_6_CREATE",
+      "ephemeral_plan_sha256": "0eab2b1232b4ba46e78ba22216807b0b54358a015dbf2eccc8b0cb9875579e4c"
+    },
+    "terraform_cleanup_plan": {
+      "mode": "READ_ONLY_PLAN_NOT_APPLIED",
+      "adds": 0,
+      "changes": 0,
+      "deletes": 3,
+      "delete_addresses": [
+        "aws_iam_role_policy.b6_client_keys_kms[0]",
+        "aws_secretsmanager_secret.b6_client_keys[0]",
+        "aws_secretsmanager_secret_policy.b6_client_keys[0]"
+      ],
+      "cpu_nodegroup_changes": 0,
+      "guard": "PASS_B6_6_CLEANUP",
+      "ephemeral_plan_sha256": "97124b5463321f45b32b7052bef6654d48a8010c0432e0f167653367a7a7cbf3"
+    }
+  },
+  "aws_effects": {
+    "terraform_plan_only": true,
+    "terraform_apply": false,
+    "resources_created": 0,
+    "resources_changed": 0,
+    "resources_deleted": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "new_cost": "NO_COMPUTE_STARTED_FOR_LOCAL_CORRECTION"
+  },
+  "budget": {
+    "registry_id": "COST-REGISTRY-2026-004",
+    "existing_active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "actual_packet_2026_008_billing": "PENDING_ATTRIBUTABLE_BILLING",
+    "reservation_closed": false
+  },
+  "next_boundary": "Prepare packet 2026-009 with exact source hashes. Independent review and a new owner approval are mandatory before any AWS or Kubernetes retry."
+}
