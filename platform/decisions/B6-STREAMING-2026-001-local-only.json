@@ -1,0 +1,54 @@
+{
+  "record": "B6_4_STREAMING_VAD_RESILIENCE_DECISION",
+  "id": "B6-STREAMING-2026-001",
+  "revision": 1,
+  "status": "OWNER_AUTHORIZED_LOCAL_ONLY",
+  "recorded_utc": "2026-08-08T23:58:19Z",
+  "authorized_by_role": "platform-owner",
+  "authorization_source": "Owner direction after independent PASS of PR #6: merge PR #6 and proceed to B6.4 streaming, VAD, cancellation and backpressure, local-only.",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "37cb5fadc5815b9833cb640d703bdaee48c87fbb",
+    "pull_request_6_state": "MERGED"
+  },
+  "contract": {
+    "parent_id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+    "parent_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "file_mode_parent_sha256": "5d44c360a046c2bd56d9ddc8caa275c133955e3aee9a8a553b9f016f4f70a65d",
+    "streaming_contract_path": "platform/contracts/orchestrator-stream-v1.yaml",
+    "streaming_contract_sha256": "0f37c2b81d1145b039da405f145a52de6310d75708bfd0800ebc13d8acd9e7f8",
+    "parent_contract_mutation_permitted": false
+  },
+  "authorized_local_work": [
+    "Authenticated WebSocket session and event state machine",
+    "VAD interface, deterministic local fixture detector and injected Silero adapter boundary",
+    "Partial queue maximum 4 with drop-oldest behavior",
+    "Audio-output queue maximum 8 with upstream pause behavior",
+    "Final-result queue maximum 16 with atomic fail-closed behavior",
+    "Process-local final-batch persistence before first delivery",
+    "Cancellation and barge-in propagation within 250 milliseconds",
+    "Idle/pipeline timeouts, circuit breaker and clean disconnect behavior",
+    "Local synthetic contract, privacy and resilience tests"
+  ],
+  "dependency_constraint": {
+    "technical_debt": "TD-B6-2026-001",
+    "starlette_pin": "1.3.1",
+    "dependency_upgrade_authorized": false,
+    "eventual_container_rule": "Install strictly from services/speech-orchestrator/requirements.txt and rerun the B6.3 multipart regression."
+  },
+  "prohibited_operations": [
+    "Any AWS API, SSM write, IAM change, ECR push or Kubernetes action",
+    "Any real Silero model download, real audio, PHI or clinical content",
+    "Any real Bedrock, TTS or network provider invocation",
+    "Any CPU or GPU scale-up",
+    "Any model registration, approved artifact, approved_version or serving-alias change",
+    "Any deployment or B6.5 transition before independent review"
+  ],
+  "preserved_state": {
+    "b5_gate_outcome": "BLOCKED_UNCHANGED",
+    "b6_3_exit": "INDEPENDENT_REVIEW_PASS",
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "ssm_registry_parameters": 0
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "record": "B6_STARLETTE_MULTIPART_COMPATIBILITY_DEBT",
+  "id": "TD-B6-2026-001",
+  "revision": 1,
+  "status": "ACCEPTED_NO_ACTION_CURRENT_SLICE",
+  "recorded_utc": "2026-08-08T23:58:19Z",
+  "reported_by": "independent PR #6 exit reviewer",
+  "finding": "With Starlette 1.6.x, the otherwise valid B6.3 multipart request returns HTTP 400.",
+  "current_verified_runtime": {
+    "fastapi": "0.141.1",
+    "starlette": "1.3.1",
+    "python_multipart": "0.0.32",
+    "isolated_b6_3_suite": "24/24 PASS"
+  },
+  "current_action": "Keep the exact pins; do not change multipart handling during B6.4.",
+  "mandatory_revisit_triggers": [
+    "Any FastAPI, Starlette or python-multipart version change",
+    "The first speech-orchestrator container build",
+    "Any base-image rebuild that resolves dependencies again"
+  ],
+  "future_container_requirements": [
+    "Install only from services/speech-orchestrator/requirements.txt",
+    "Do not install an unpinned override after the requirements file",
+    "Run pip check inside the built image",
+    "Run the B6.3 valid multipart request against the built image before acceptance"
+  ],
+  "closure_condition": "A prospective dependency update has an explicit compatibility decision and the B6.3 multipart regression passes in the target container.",
+  "scope_effect": "Technical debt only; does not block the independently accepted B6.3 exit or the local B6.4 build."
+}

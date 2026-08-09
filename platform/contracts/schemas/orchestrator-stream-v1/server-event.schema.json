@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.orchestrator.stream.v1.server-event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "request_id", "session_id", "model_versions"],
+  "properties": {
+    "type": {
+      "enum": ["ready", "partial_transcript", "final_transcript", "reply_text", "audio_chunk", "completed", "cancelled", "error"]
+    },
+    "request_id": {"type": "string", "format": "uuid"},
+    "session_id": {"type": "string", "format": "uuid"},
+    "model_versions": {"$ref": "#/$defs/model_versions"},
+    "sequence": {"type": "integer", "minimum": 1},
+    "text": {"type": "string", "minLength": 1},
+    "transcript": {"$ref": "#/$defs/transcript"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "citations": {
+      "type": "array",
+      "maxItems": 5,
+      "items": {"$ref": "#/$defs/citation"}
+    },
+    "tts_backend": {"const": "text_only"},
+    "latency_ms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["total", "asr", "rag", "llm", "tts"],
+      "properties": {
+        "total": {"type": "number", "minimum": 0},
+        "asr": {"type": "number", "minimum": 0},
+        "rag": {"type": "number", "minimum": 0},
+        "llm": {"type": "number", "minimum": 0},
+        "tts": {"type": "number", "minimum": 0}
+      }
+    },
+    "reason": {"enum": ["cancel", "barge_in"]},
+    "cancellation_latency_ms": {"type": "number", "minimum": 0, "maximum": 250},
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "retryable": {"type": "boolean"}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"type": {"const": "partial_transcript"}}},
+      "then": {"required": ["sequence", "text"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "final_transcript"}}},
+      "then": {"required": ["transcript", "language"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "reply_text"}}},
+      "then": {"required": ["text", "citations", "tts_backend"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "audio_chunk"}}},
+      "then": {"required": ["sequence"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "completed"}}},
+      "then": {"required": ["latency_ms"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "cancelled"}}},
+      "then": {"required": ["reason", "cancellation_latency_ms"]}
+    },
+    {
+      "if": {"properties": {"type": {"const": "error"}}},
+      "then": {"required": ["error"]}
+    }
+  ],
+  "$defs": {
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "properties": {
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string", "minLength": 1},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": ["string", "null"]},
+        "tts": {"type": ["string", "null"]}
+      }
+    },
+    "transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verbatim", "normalized", "normalization_version"],
+      "properties": {
+        "verbatim": {"type": "string", "minLength": 1},
+        "normalized": {"type": "string", "minLength": 1},
+        "normalization_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rank", "document_id", "title", "source_uri", "section", "content_sha256", "excerpt", "score"],
+      "properties": {
+        "rank": {"type": "integer", "minimum": 1},
+        "document_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "source_uri": {"type": "string", "minLength": 1},
+        "section": {"type": "string", "minLength": 1},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "excerpt": {"type": "string", "minLength": 1},
+        "score": {"type": "number", "exclusiveMinimum": 0}
+      }
+    }
+  }
+}
