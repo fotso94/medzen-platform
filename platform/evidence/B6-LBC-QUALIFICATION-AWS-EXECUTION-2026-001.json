@@ -1,0 +1,124 @@
+{
+  "record": "B6_ALB_CONTROLLER_QUALIFICATION_AWS_EXECUTION",
+  "id": "B6-LBC-QUALIFICATION-AWS-EXECUTION-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "recorded_utc": "2026-08-09T12:31:55Z",
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-005-alb-controller-qualification.json",
+    "sha256": "16e7497d34daf7e25d7bd647c9bed59d84618cddd4c0cad2897fa6870a846cfb"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-005-alb-controller-qualification.md",
+    "sha256": "6f0a336808cba8307ee3735481eb25c034afaaf7455765db0e501d017c0e201e"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "terraform_state_lineage": "cc991efe-2154-ac03-fe73-48392ec7a9a3",
+    "terraform_state_serial_after": 22
+  },
+  "stage_a": {
+    "outcome": "PASS",
+    "plan": {
+      "path_not_retained": "/private/tmp/b6-005-stage-a.tfplan",
+      "sha256": "78f84938510c9d4349e65e3ff4b4ec7dc2fb918e711eff0a447e7a8a7f0be871",
+      "guard": "PASS_B6_LBC_STAGE_A",
+      "add": 1,
+      "change": 1,
+      "destroy": 0
+    },
+    "applied": {
+      "aws_ecr_repository.b6_load_balancer_controller": "created",
+      "aws_ecr_registry_scanning_configuration.b6a_runtime": "updated_in_place",
+      "scan_filter_count_after": 8
+    }
+  },
+  "controller_image": {
+    "source": "public.ecr.aws/eks/aws-load-balancer-controller",
+    "source_linux_amd64_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "private_repository": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller",
+    "private_tag": "v3.5.0-c2ebdeae779c",
+    "private_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "digest_identity": "PASS",
+    "image_size_bytes": 29105986,
+    "pushed_utc": "2026-08-09T12:26:52.024Z",
+    "rebuild_performed": false,
+    "security_waiver_used": false,
+    "live_scan": {
+      "queried_by": "child_digest",
+      "status": "COMPLETE",
+      "completed_utc": "2026-08-09T12:26:59Z",
+      "critical": 0,
+      "high": 0,
+      "all_findings": 0,
+      "canonical_response_sha256": "62e4703de419d5a6c603a9ecc8bbee142128477ea9e7528e0f2776416ed3c3a5"
+    }
+  },
+  "stage_b": {
+    "outcome": "PASS",
+    "plan": {
+      "path_not_retained": "/private/tmp/b6-005-stage-b.tfplan",
+      "sha256": "8b0be95f13db7a2040323937893a3993522f608e1b5e4787a21fff2e606d1e2f",
+      "guard": "PASS_B6_LBC_STAGE_B",
+      "add": 4,
+      "change": 0,
+      "destroy": 0
+    },
+    "applied": {
+      "security_group_id": "sg-0f0f6c66852830013",
+      "role_arn": "arn:aws:iam::558069890522:role/medzen-lbc-role",
+      "inline_policy": "medzen-lbc-access",
+      "pod_identity_association_id": "a-r3q0lpnurafsdzzuv",
+      "pod_identity_namespace": "kube-system",
+      "pod_identity_service_account": "aws-load-balancer-controller"
+    },
+    "security_group": {
+      "vpc_id": "vpc-051aa9df8b64bf141",
+      "ingress_rule_count": 0,
+      "egress": "tcp/8080 to 172.31.0.0/16 only",
+      "canonical_live_sha256": "b45683573c54e3ba14479c483aca50bd8138bdc58bee6489aedab257b7195510"
+    },
+    "iam_review": {
+      "independent_pre_apply_template_review": "PASS_NO_FINDINGS",
+      "post_apply_dynamic_security_group_binding_audit": "PASS",
+      "deployed_policy_canonical_sha256": "f1cd1b2134a5431d38bfdef223eb10dfe52041ceadc2bbbbd441047f97ae97fe",
+      "deployed_policy_binds_exact_security_group": "sg-0f0f6c66852830013",
+      "ec2_security_group_write_actions": 0,
+      "public_alb_permission": false
+    }
+  },
+  "closure_verification": {
+    "targeted_residual_plan": {
+      "sha256": "d6c42ac3002a93334ee583f28bbd065735b8ca53298756ff2ff8a27a71b802dd",
+      "outcome": "NO_CHANGES"
+    },
+    "controller_deployments": 0,
+    "controller_services": 0,
+    "controller_admission_webhooks": 0,
+    "ingresses_all_namespaces": 0,
+    "medzen_b6_load_balancers": 0,
+    "helm_release_created": false,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0
+  },
+  "cost": {
+    "maximum_incremental_cost_usd": 0.2,
+    "compute_started": false,
+    "load_balancer_started": false,
+    "finalized_incremental_cost_usd": null,
+    "finalized_cost_reason": "AWS billing data has not landed; only small retained ECR storage and API scanning cost is possible."
+  },
+  "explicit_non_events": {
+    "cpu_scale_changes": 0,
+    "gpu_scale_changes": 0,
+    "helm_installs": 0,
+    "application_deployments": 0,
+    "production_ssm_changes": 0,
+    "approved_model_changes": 0,
+    "provider_calls": 0,
+    "security_waivers": 0
+  },
+  "next_boundary": "Packet 2026-006 is eligible for its separately approved execution."
+}
