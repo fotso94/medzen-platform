@@ -296,15 +296,19 @@ def test_asr_request_identity_mismatch_refuses_before_rag_or_llm():
     assert caught.value.code == "DEPENDENCY_UNAVAILABLE"
 
 
-def test_service_has_no_aws_sdk_or_outbound_http_dependency():
+def test_remote_dependencies_do_not_add_a_general_purpose_http_client():
     service_root = ROOT / "services/speech-orchestrator"
     source = "\n".join(
         path.read_text() for path in sorted(service_root.rglob("*.py"))
     )
     requirements = (service_root / "requirements.txt").read_text().casefold()
+    deployed_requirements = (
+        service_root / "requirements.deployed.txt"
+    ).read_text().casefold()
     for forbidden in (
-        "import boto3", "import botocore", "import requests", "import httpx",
-        "boto3==", "botocore==", "requests==", "httpx==",
+        "import requests", "import httpx", "requests==", "httpx==",
     ):
         assert forbidden not in source.casefold()
         assert forbidden not in requirements
+    assert "boto3==1.43.58" in deployed_requirements
+    assert "botocore==1.43.63" in deployed_requirements

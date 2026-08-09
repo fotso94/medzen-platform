@@ -12,8 +12,33 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ALIAS_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 CODE_RE = re.compile(r"^[a-z]{2,3}$")
 ROOT_RE = re.compile(r"^/medzen/registry/test/b6/([0-9a-f]{64})$")
-CLASSIFICATION = "B6_3_LOCAL_SYNTHETIC_ONLY"
+LOCAL_CLASSIFICATION = "B6_3_LOCAL_SYNTHETIC_ONLY"
+DEPLOYED_CLASSIFICATION = "B6_6_SYNTHETIC_INTEGRATION_ONLY"
 CONTRACT_VERSION = "medzen.speech.v1"
+DEPLOYED_ENDPOINTS = {
+    "asr": "http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions",
+    "rag": "http://rag-index.medzen.svc.cluster.local:8083/internal/v1/retrievals",
+    "llm": "http://llm-gateway.medzen.svc.cluster.local:8082/internal/v1/responses",
+    "tts": "http://tts-gateway.medzen.svc.cluster.local:8080/internal/v1/syntheses",
+}
+DEPLOYED_CONTRACTS = {
+    "asr": (
+        "MEDZEN-SPEECH-CONTRACT-2026-001",
+        "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    ),
+    "rag": (
+        "MEDZEN-SPEECH-CONTRACT-2026-001",
+        "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    ),
+    "llm": (
+        "MEDZEN-LLM-CONTRACT-2026-001",
+        "67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a",
+    ),
+    "tts": (
+        "MEDZEN-TTS-CONTRACT-2026-001",
+        "2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8",
+    ),
+}
 
 
 class RegistryRefusal(RuntimeError):
@@ -93,6 +118,80 @@ class LocalParameterStore:
         )
 
 
+class SSMParameterStore:
+    """Narrow deployed adapter for the two read-only registry operations."""
+
+    def __init__(self, client: Any):
+        self._client = client
+
+    @staticmethod
+    def _parameter(raw: Any) -> Parameter:
+        if not isinstance(raw, dict):
+            raise RegistryRefusal("SSM returned a malformed registry parameter")
+        try:
+            parameter = Parameter(
+                Name=raw["Name"],
+                Type=raw["Type"],
+                Value=raw["Value"],
+                Version=raw["Version"],
+            )
+        except (KeyError, TypeError) as exc:
+            raise RegistryRefusal("SSM returned an incomplete registry parameter") from exc
+        if (
+            parameter.Type != "SecureString"
+            or not isinstance(parameter.Name, str)
+            or not isinstance(parameter.Value, str)
+            or isinstance(parameter.Version, bool)
+            or not isinstance(parameter.Version, int)
+            or parameter.Version < 1
+        ):
+            raise RegistryRefusal("SSM registry parameter identity is invalid")
+        return parameter
+
+    def get_parameter(self, name: str) -> Parameter:
+        try:
+            response = self._client.get_parameter(Name=name, WithDecryption=True)
+            return self._parameter(response["Parameter"])
+        except RegistryRefusal:
+            raise
+        except Exception as exc:
+            raise RegistryRefusal("required SSM registry parameter is unavailable") from exc
+
+    def get_parameters_by_path(self, path: str) -> tuple[Parameter, ...]:
+        parameters: dict[str, Parameter] = {}
+        token: str | None = None
+        try:
+            while True:
+                request: dict[str, Any] = {
+                    "Path": path.rstrip("/"),
+                    "Recursive": True,
+                    "WithDecryption": True,
+                    "MaxResults": 10,
+                }
+                if token is not None:
+                    request["NextToken"] = token
+                response = self._client.get_parameters_by_path(**request)
+                for raw in response.get("Parameters", []):
+                    parameter = self._parameter(raw)
+                    if parameter.Name in parameters:
+                        raise RegistryRefusal(
+                            "SSM registry snapshot contains a duplicate parameter"
+                        )
+                    parameters[parameter.Name] = parameter
+                if len(parameters) > 32:
+                    raise RegistryRefusal("SSM registry snapshot exceeds the bounded size")
+                token = response.get("NextToken")
+                if token is None:
+                    break
+                if not isinstance(token, str) or not token:
+                    raise RegistryRefusal("SSM registry pagination token is malformed")
+        except RegistryRefusal:
+            raise
+        except Exception as exc:
+            raise RegistryRefusal("SSM registry snapshot is unavailable") from exc
+        return tuple(parameters[name] for name in sorted(parameters))
+
+
 @dataclass(frozen=True)
 class RegistryRoute:
     alias: str
@@ -100,7 +199,9 @@ class RegistryRoute:
     accepted_codes: tuple[str, ...]
     asr_backend: str
     asr_model_version: str
-    asr_fixture_sha256: str
+    asr_fixture_sha256: str | None
+    asr_artifact_tree_sha256: str | None
+    asr_reported_registry_snapshot: str
     rag_alias: str
     rag_snapshot_sha256: str
     rag_query_language: str
@@ -109,6 +210,8 @@ class RegistryRoute:
     tts_backend: str
     tts_model_version: None
     registry_snapshot: str
+    classification: str
+    dependency_endpoints: dict[str, str]
 
     @property
     def model_versions(self) -> dict[str, str | None]:
@@ -119,6 +222,24 @@ class RegistryRoute:
             "rag": None,
             "tts": self.tts_model_version,
         }
+
+    @property
+    def expected_asr_versions(self) -> dict[str, str | None]:
+        return {
+            "asr": self.asr_model_version,
+            "registry_snapshot": self.asr_reported_registry_snapshot,
+            "llm": None,
+            "rag": None,
+            "tts": None,
+        }
+
+    def endpoint(self, dependency: str) -> str:
+        try:
+            return self.dependency_endpoints[dependency]
+        except KeyError as exc:
+            raise RegistryRefusal(
+                f"registry route has no deployed {dependency} endpoint"
+            ) from exc
 
 
 def _object(parameter: Parameter) -> dict[str, Any]:
@@ -138,11 +259,23 @@ def _exact(value: Any, fields: set[str], label: str) -> dict[str, Any]:
 
 
 class RegistryRouter:
-    def __init__(self, store: ParameterStore, root: str):
+    def __init__(
+        self,
+        store: ParameterStore,
+        root: str,
+        *,
+        expected_classification: str = LOCAL_CLASSIFICATION,
+    ):
         match = ROOT_RE.fullmatch(root.rstrip("/"))
         if match is None:
             raise RegistryRefusal("registry root is not a versioned B6 test snapshot")
+        if expected_classification not in {
+            LOCAL_CLASSIFICATION,
+            DEPLOYED_CLASSIFICATION,
+        }:
+            raise RegistryRefusal("registry classification policy is unknown")
         self.root = root.rstrip("/")
+        self.classification = expected_classification
         self.snapshot_sha256 = match.group(1)
         self.registry_snapshot = f"b6-test:{self.snapshot_sha256}"
         self._routes_by_alias, self._aliases_by_code, self.default_language = self._load(store)
@@ -167,7 +300,7 @@ class RegistryRouter:
         )
         if (
             manifest["schema_version"] != 1
-            or manifest["classification"] != CLASSIFICATION
+            or manifest["classification"] != self.classification
             or manifest["snapshot_sha256"] != self.snapshot_sha256
             or manifest["snapshot_material_sha256"] != self.snapshot_sha256
         ):
@@ -234,7 +367,7 @@ class RegistryRouter:
             raise RegistryRefusal("registry default language is missing")
         material = {
             "schema_version": 1,
-            "classification": CLASSIFICATION,
+            "classification": self.classification,
             "index": index,
             "routes": raw_routes,
         }
@@ -245,21 +378,20 @@ class RegistryRouter:
     def _route(
         self, alias: str, codes: tuple[str, ...], value: Any
     ) -> RegistryRoute:
-        route = _exact(
-            value,
-            {
-                "schema_version", "classification", "language", "contract_version",
-                "asr", "rag", "llm", "tts"
-            },
-            "registry route",
-        )
+        if self.classification == LOCAL_CLASSIFICATION:
+            return self._local_route(alias, codes, value)
+        return self._deployed_route(alias, codes, value)
+
+    def _common_route(
+        self,
+        *,
+        alias: str,
+        codes: tuple[str, ...],
+        route: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         language = _exact(
             route["language"], {"alias", "response_code", "accepted_codes"},
             "registry route language"
-        )
-        asr = _exact(
-            route["asr"], {"backend", "model_version", "fixture_sha256"},
-            "registry ASR route"
         )
         rag = _exact(
             route["rag"], {"alias", "snapshot_sha256", "query_language"},
@@ -272,18 +404,11 @@ class RegistryRouter:
             route["tts"], {"backend", "model_version"}, "registry TTS route"
         )
         if (
-            route["schema_version"] != 1
-            or route["classification"] != CLASSIFICATION
-            or route["contract_version"] != CONTRACT_VERSION
+            route["contract_version"] != CONTRACT_VERSION
             or language["alias"] != alias
             or language["accepted_codes"] != list(codes)
             or not isinstance(language["response_code"], str)
             or CODE_RE.fullmatch(language["response_code"]) is None
-            or asr["backend"] != "local_synthetic_fixture"
-            or not isinstance(asr["model_version"], str)
-            or not asr["model_version"]
-            or not isinstance(asr["fixture_sha256"], str)
-            or SHA256_RE.fullmatch(asr["fixture_sha256"]) is None
             or rag["alias"] != "current"
             or not isinstance(rag["snapshot_sha256"], str)
             or SHA256_RE.fullmatch(rag["snapshot_sha256"]) is None
@@ -291,6 +416,37 @@ class RegistryRouter:
             or CODE_RE.fullmatch(rag["query_language"]) is None
             or llm["model_version"] != "fake-bedrock-local-v1"
             or llm["policy_id"] != f"{alias}-medzen-v1"
+            or tts["model_version"] is not None
+        ):
+            raise RegistryRefusal("registry route is unsafe or inconsistent")
+        return language, rag, llm, tts
+
+    def _local_route(
+        self, alias: str, codes: tuple[str, ...], value: Any
+    ) -> RegistryRoute:
+        route = _exact(
+            value,
+            {
+                "schema_version", "classification", "language", "contract_version",
+                "asr", "rag", "llm", "tts"
+            },
+            "registry route",
+        )
+        asr = _exact(
+            route["asr"], {"backend", "model_version", "fixture_sha256"},
+            "registry ASR route"
+        )
+        language, rag, llm, tts = self._common_route(
+            alias=alias, codes=codes, route=route
+        )
+        if (
+            route["schema_version"] != 1
+            or route["classification"] != LOCAL_CLASSIFICATION
+            or asr["backend"] != "local_synthetic_fixture"
+            or not isinstance(asr["model_version"], str)
+            or not asr["model_version"]
+            or not isinstance(asr["fixture_sha256"], str)
+            or SHA256_RE.fullmatch(asr["fixture_sha256"]) is None
             or tts != {"backend": "text_only", "model_version": None}
         ):
             raise RegistryRefusal("registry route is unsafe or inconsistent")
@@ -301,6 +457,8 @@ class RegistryRouter:
             asr_backend=asr["backend"],
             asr_model_version=asr["model_version"],
             asr_fixture_sha256=asr["fixture_sha256"],
+            asr_artifact_tree_sha256=None,
+            asr_reported_registry_snapshot=self.registry_snapshot,
             rag_alias=rag["alias"],
             rag_snapshot_sha256=rag["snapshot_sha256"],
             rag_query_language=rag["query_language"],
@@ -309,6 +467,86 @@ class RegistryRouter:
             tts_backend=tts["backend"],
             tts_model_version=None,
             registry_snapshot=self.registry_snapshot,
+            classification=LOCAL_CLASSIFICATION,
+            dependency_endpoints={},
+        )
+
+    def _deployed_route(
+        self, alias: str, codes: tuple[str, ...], value: Any
+    ) -> RegistryRoute:
+        route = _exact(
+            value,
+            {
+                "schema_version", "classification", "language", "contract_version",
+                "asr", "rag", "llm", "tts", "dependencies"
+            },
+            "registry route",
+        )
+        language, rag, llm, tts = self._common_route(
+            alias=alias, codes=codes, route=route
+        )
+        asr = _exact(
+            route["asr"],
+            {
+                "backend", "model_version", "artifact_tree_sha256",
+                "reported_registry_snapshot"
+            },
+            "registry ASR route",
+        )
+        dependencies = _exact(
+            route["dependencies"], set(DEPLOYED_ENDPOINTS),
+            "registry dependency routes",
+        )
+        endpoints: dict[str, str] = {}
+        for name, expected_endpoint in DEPLOYED_ENDPOINTS.items():
+            dependency = _exact(
+                dependencies[name], {"endpoint", "contract_id", "contract_sha256"},
+                f"registry {name} dependency",
+            )
+            expected_contract, expected_sha = DEPLOYED_CONTRACTS[name]
+            if dependency != {
+                "endpoint": expected_endpoint,
+                "contract_id": expected_contract,
+                "contract_sha256": expected_sha,
+            }:
+                raise RegistryRefusal(
+                    f"registry {name} dependency is not the reviewed cluster contract"
+                )
+            endpoints[name] = dependency["endpoint"]
+        if (
+            route["schema_version"] != 2
+            or route["classification"] != DEPLOYED_CLASSIFICATION
+            or asr["backend"] != "http_cluster_v1"
+            or asr["model_version"] != "v0"
+            or not isinstance(asr["artifact_tree_sha256"], str)
+            or SHA256_RE.fullmatch(asr["artifact_tree_sha256"]) is None
+            or not isinstance(asr["reported_registry_snapshot"], str)
+            or not asr["reported_registry_snapshot"].startswith("b6a-non-serving:")
+            or SHA256_RE.fullmatch(
+                asr["reported_registry_snapshot"].removeprefix("b6a-non-serving:")
+            ) is None
+            or tts != {"backend": "http_text_only_v1", "model_version": None}
+        ):
+            raise RegistryRefusal("deployed registry route is unsafe or inconsistent")
+        return RegistryRoute(
+            alias=alias,
+            response_code=language["response_code"],
+            accepted_codes=codes,
+            asr_backend=asr["backend"],
+            asr_model_version=asr["model_version"],
+            asr_fixture_sha256=None,
+            asr_artifact_tree_sha256=asr["artifact_tree_sha256"],
+            asr_reported_registry_snapshot=asr["reported_registry_snapshot"],
+            rag_alias=rag["alias"],
+            rag_snapshot_sha256=rag["snapshot_sha256"],
+            rag_query_language=rag["query_language"],
+            llm_model_version=llm["model_version"],
+            llm_policy_id=llm["policy_id"],
+            tts_backend=tts["backend"],
+            tts_model_version=None,
+            registry_snapshot=self.registry_snapshot,
+            classification=DEPLOYED_CLASSIFICATION,
+            dependency_endpoints=endpoints,
         )
 
     def resolve(self, language: str | None) -> RegistryRoute:

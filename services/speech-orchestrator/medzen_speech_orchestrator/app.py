@@ -15,11 +15,23 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import UploadFile
 
-from .auth import AuthRefusal, LocalKeyStore
+from .auth import AuthRefusal, KeyStore, LocalKeyStore, SecretsManagerKeyStore
 from .emergency import EmergencyChecker
 from .local_dependencies import LocalLLMClient, LocalRAGClient, SyntheticASRClient
 from .orchestrator import OrchestratorRefusal, SpeechOrchestrator
-from .registry import LocalParameterStore, RegistryRouter
+from .registry import (
+    DEPLOYED_CLASSIFICATION,
+    LocalParameterStore,
+    RegistryRouter,
+    SSMParameterStore,
+)
+from .remote_dependencies import (
+    ClusterHTTPTransport,
+    RemoteASRClient,
+    RemoteLLMClient,
+    RemoteRAGClient,
+    RemoteTTSClient,
+)
 
 
 LOGGER = logging.getLogger("medzen.orchestrator")
@@ -59,8 +71,6 @@ def _error(
 
 
 def build_local_orchestrator() -> tuple[SpeechOrchestrator, LocalKeyStore]:
-    if os.environ.get("MEDZEN_ORCHESTRATOR_MODE", "local_fixture") != "local_fixture":
-        raise RuntimeError("B6.3 refuses every non-local orchestrator mode")
     root = _root()
     fixture_path = Path(os.environ.get(
         "MEDZEN_LOCAL_REGISTRY_FIXTURE",
@@ -88,9 +98,49 @@ def build_local_orchestrator() -> tuple[SpeechOrchestrator, LocalKeyStore]:
     return orchestrator, auth
 
 
+def build_deployed_orchestrator() -> tuple[SpeechOrchestrator, SecretsManagerKeyStore]:
+    if os.environ.get("AWS_REGION") != "eu-central-1":
+        raise RuntimeError("deployed orchestrator requires the reviewed AWS region")
+    registry_root = os.environ.get("MEDZEN_REGISTRY_ROOT", "")
+    if not re.fullmatch(r"/medzen/registry/test/b6/[0-9a-f]{64}", registry_root):
+        raise RuntimeError("deployed orchestrator requires an exact test registry root")
+    if os.environ.get("MEDZEN_CLIENT_KEYS_SECRET_ID") != "medzen/client-api-keys":
+        raise RuntimeError("deployed orchestrator requires the exact client key secret")
+    import boto3
+
+    router = RegistryRouter(
+        SSMParameterStore(boto3.client("ssm", region_name="eu-central-1")),
+        registry_root,
+        expected_classification=DEPLOYED_CLASSIFICATION,
+    )
+    transport = ClusterHTTPTransport(timeout_seconds=30.0)
+    orchestrator = SpeechOrchestrator(
+        router=router,
+        emergency=EmergencyChecker(_root() / "registry/emergency-policies/v1.yaml"),
+        asr=RemoteASRClient(transport),
+        rag=RemoteRAGClient(transport),
+        llm=RemoteLLMClient(transport),
+        tts=RemoteTTSClient(transport),
+    )
+    auth = SecretsManagerKeyStore(
+        boto3.client("secretsmanager", region_name="eu-central-1"),
+        "medzen/client-api-keys",
+    )
+    return orchestrator, auth
+
+
+def build_configured_orchestrator() -> tuple[SpeechOrchestrator, KeyStore]:
+    mode = os.environ.get("MEDZEN_ORCHESTRATOR_MODE", "local_fixture")
+    if mode == "local_fixture":
+        return build_local_orchestrator()
+    if mode == "deployed_http_ssm":
+        return build_deployed_orchestrator()
+    raise RuntimeError("orchestrator mode is unknown and was refused")
+
+
 def create_app(
     orchestrator: SpeechOrchestrator | None = None,
-    auth: LocalKeyStore | None = None,
+    auth: KeyStore | None = None,
     *,
     max_audio_bytes: int = MAX_AUDIO_BYTES,
 ) -> FastAPI:
@@ -101,17 +151,26 @@ def create_app(
     async def lifespan(app: FastAPI):
         try:
             if supplied_orchestrator is None or supplied_auth is None:
-                built_orchestrator, built_auth = build_local_orchestrator()
+                built_orchestrator, built_auth = build_configured_orchestrator()
                 app.state.orchestrator = supplied_orchestrator or built_orchestrator
                 app.state.auth = supplied_auth or built_auth
             else:
                 app.state.orchestrator = supplied_orchestrator
                 app.state.auth = supplied_auth
             app.state.startup_error = None
+            app.state.mode = (
+                "local_fixture"
+                if app.state.orchestrator.router.classification
+                == "B6_3_LOCAL_SYNTHETIC_ONLY"
+                else "deployed_http_ssm"
+            )
         except Exception as exc:
             app.state.orchestrator = None
             app.state.auth = None
             app.state.startup_error = type(exc).__name__
+            app.state.mode = os.environ.get(
+                "MEDZEN_ORCHESTRATOR_MODE", "local_fixture"
+            )
         yield
 
     app = FastAPI(
@@ -150,7 +209,7 @@ def create_app(
         ready = service is not None and request.app.state.auth is not None
         payload: dict[str, Any] = {
             "ready": ready,
-            "mode": "local_fixture",
+            "mode": request.app.state.mode,
             "registry_loaded": service is not None,
             "authentication_loaded": request.app.state.auth is not None,
             "external_network_access": False,

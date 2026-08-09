@@ -467,6 +467,7 @@ class LocalStreamingPipeline:
 
     async def cancel(self, request_id: str, reason: str) -> None:
         self.cancel_calls.append((request_id, reason))
+        self.orchestrator.cancel(request_id)
         await asyncio.sleep(0)
 
 

@@ -1,0 +1,71 @@
+{
+  "record": "B6_5B_ORCHESTRATOR_ONLY_ALB_SECURITY_GROUP_DESIGN",
+  "id": "B6-5B-ORCHESTRATOR-ALB-BOUNDARY-2026-001",
+  "revision": 1,
+  "status": "LOCAL_DESIGN_ONLY_NOT_APPLIED",
+  "account": "558069890522",
+  "region": "eu-central-1",
+  "vpc_id": "vpc-051aa9df8b64bf141",
+  "source_discovery": {
+    "path": "platform/evidence/B6-5B-NETWORK-DISCOVERY-2026-001.json",
+    "backend_security_group_id": "sg-0a83abae6ab954543",
+    "backend_owner_confirmation_required_before_apply": true
+  },
+  "future_packet_created_resource": {
+    "logical_name": "b6_orchestrator_internal_alb_security_group",
+    "standing_cost_change": false,
+    "requires_independent_review_and_owner_approved_AWS_packet": true,
+    "ingress": [
+      {
+        "protocol": "tcp",
+        "from_port": 80,
+        "to_port": 80,
+        "source_security_group_id": "sg-0a83abae6ab954543",
+        "cidr_sources": []
+      }
+    ],
+    "egress": [
+      {
+        "protocol": "tcp",
+        "from_port": 8080,
+        "to_port": 8080,
+        "destination_security_group_id": "sg-070fc00321934eacb",
+        "cidr_destinations": []
+      }
+    ]
+  },
+  "ingress_design": {
+    "controller": "AWS Load Balancer Controller",
+    "scheme": "internal",
+    "target_type": "ip",
+    "listener": "HTTP_80_SYNTHETIC_ONLY",
+    "backend_service": "speech-orchestrator",
+    "backend_service_port": 8080,
+    "paths": [
+      "/v1/conversations/speech",
+      "/v1/conversations/stream"
+    ],
+    "healthcheck_path": "/readyz",
+    "security_group_annotation_must_bind_packet_created_group": true,
+    "manage_backend_security_group_rules": true,
+    "public_or_internet_facing_route": false,
+    "production_DNS_or_alias_change": false
+  },
+  "service_exposure": {
+    "speech-orchestrator": "INTERNAL_ALB_TO_CLUSTER_IP",
+    "asr-runtime": "CLUSTER_IP_ONLY",
+    "rag-index": "CLUSTER_IP_ONLY",
+    "llm-gateway": "CLUSTER_IP_ONLY",
+    "tts-gateway": "CLUSTER_IP_ONLY"
+  },
+  "fail_closed_conditions": [
+    "backend_owner_does_not_confirm_sg-0a83abae6ab954543_as_the_calling_workload",
+    "source_rule_contains_any_IP_CIDR",
+    "ALB_scheme_is_not_internal",
+    "any_dependency_has_Ingress_LoadBalancer_NodePort_or_external_IP",
+    "controller_would_modify_a_rule_outside_the_packet_plan",
+    "TLS_or_production_traffic_is_proposed_without_a_successor_security_decision"
+  ],
+  "rollback": "Delete only the packet-created Ingress, ALB security group, controller-created target/listener resources and exact managed backend rule; verify every dependency remains ClusterIP and shared production groups are byte-identical except for the explicitly packet-bound temporary source relationship.",
+  "claim_limit": "This is a local design. It creates no AWS or Kubernetes resource and does not authorize synthetic or production traffic. HTTP is scoped only to a bounded synthetic integration window; production use must adopt TLS prospectively."
+}

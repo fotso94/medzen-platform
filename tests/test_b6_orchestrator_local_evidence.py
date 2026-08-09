@@ -2,16 +2,28 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DECISION = ROOT / "platform/decisions/B6-ORCHESTRATOR-2026-001-local-file-mode.json"
 EVIDENCE = ROOT / "platform/evidence/B6-LOCAL-ENGINEERING-2026-003-orchestrator-file-mode.json"
+EVIDENCE_COMMIT = "db62fbe47f25c552deb05d378ba7e19ee04bec8e"
 
 
 def sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def historical_sha(relative: str) -> str:
+    value = subprocess.run(
+        ["git", "show", f"{EVIDENCE_COMMIT}:{relative}"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout
+    return hashlib.sha256(value).hexdigest()
 
 
 def test_owner_decision_preserves_the_adopted_contract_and_cloud_boundary():
@@ -44,7 +56,7 @@ def test_exit_record_binds_every_named_source_and_preserves_cloud_zero():
     evidence = json.loads(EVIDENCE.read_bytes())
     assert evidence["status"] == "VERIFIED_LOCAL_COMPLETE"
     for relative, expected in evidence["source_bindings"].items():
-        assert sha(ROOT / relative) == expected, relative
+        assert historical_sha(relative) == expected, relative
     assert evidence["outcome"]["request_body_logged"] is False
     assert evidence["aws_and_governance"] == {
         "aws_calls": 0,

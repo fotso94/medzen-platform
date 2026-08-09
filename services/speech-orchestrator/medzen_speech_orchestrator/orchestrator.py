@@ -9,7 +9,12 @@ from typing import Any, Callable, Protocol
 
 from .emergency import EmergencyChecker
 from .local_dependencies import ASRResult
-from .registry import RegistryRefusal, RegistryRoute, RegistryRouter
+from .registry import (
+    DEPLOYED_CLASSIFICATION,
+    RegistryRefusal,
+    RegistryRoute,
+    RegistryRouter,
+)
 
 
 MODEL_VERSION_KEYS = {"asr", "registry_snapshot", "llm", "rag", "tts"}
@@ -50,6 +55,18 @@ class LLMClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class TTSClient(Protocol):
+    def synthesize(
+        self,
+        *,
+        request_id: str,
+        language: str,
+        text: str,
+        versions: dict[str, str | None],
+        route: RegistryRoute,
+    ) -> dict[str, Any]: ...
+
+
 class SpeechOrchestrator:
     def __init__(
         self,
@@ -59,6 +76,7 @@ class SpeechOrchestrator:
         asr: ASRClient,
         rag: RAGClient,
         llm: LLMClient,
+        tts: TTSClient | None = None,
         clock: Callable[[], float] = time.perf_counter,
         session_id_factory: Callable[[], uuid.UUID] = uuid.uuid4,
     ):
@@ -67,6 +85,7 @@ class SpeechOrchestrator:
         self.asr = asr
         self.rag = rag
         self.llm = llm
+        self.tts = tts
         self.clock = clock
         self.session_id_factory = session_id_factory
 
@@ -104,6 +123,17 @@ class SpeechOrchestrator:
         ).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    def cancel(self, request_id: str) -> None:
+        """Propagate cancellation to every adapter with active request state."""
+        seen: set[int] = set()
+        for dependency in (self.asr, self.rag, self.llm, self.tts):
+            if dependency is None or id(dependency) in seen:
+                continue
+            seen.add(id(dependency))
+            cancel = getattr(dependency, "cancel", None)
+            if callable(cancel):
+                cancel(request_id)
+
     def handle(
         self, *, audio: bytes, request_id: str, language_hint: str | None
     ) -> tuple[str, dict[str, Any]]:
@@ -139,7 +169,7 @@ class SpeechOrchestrator:
                 )
             route = self.router.resolve(asr.language)
             asr_versions = self._versions(asr.model_versions, "ASR")
-            if asr_versions != route.model_versions:
+            if asr_versions != route.expected_asr_versions:
                 raise OrchestratorRefusal(
                     "DEPENDENCY_UNAVAILABLE",
                     "ASR result does not match the registry route",
@@ -176,8 +206,31 @@ class SpeechOrchestrator:
                     route=route,
                 )
             )
-            rag_versions = self._versions(rag.get("model_versions"), "RAG")
+            reported_rag_versions = self._versions(rag.get("model_versions"), "RAG")
             index = rag.get("index")
+            if route.classification == DEPLOYED_CLASSIFICATION:
+                rag_identity_valid = reported_rag_versions == {
+                    "asr": None,
+                    "registry_snapshot": (
+                        "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001"
+                    ),
+                    "llm": None,
+                    "rag": f"sha256:{route.rag_snapshot_sha256}",
+                    "tts": None,
+                }
+                rag_versions = {
+                    **route.model_versions,
+                    "rag": f"sha256:{route.rag_snapshot_sha256}",
+                }
+            else:
+                rag_identity_valid = (
+                    reported_rag_versions["asr"] == route.asr_model_version
+                    and reported_rag_versions["registry_snapshot"]
+                    == route.registry_snapshot
+                    and reported_rag_versions["rag"]
+                    == f"sha256:{route.rag_snapshot_sha256}"
+                )
+                rag_versions = reported_rag_versions
             if (
                 rag.get("request_id") != request_id
                 or not isinstance(index, dict)
@@ -185,9 +238,7 @@ class SpeechOrchestrator:
                 or index.get("snapshot_sha256") != route.rag_snapshot_sha256
                 or not isinstance(rag.get("citations"), list)
                 or not rag["citations"]
-                or rag_versions["asr"] != route.asr_model_version
-                or rag_versions["registry_snapshot"] != route.registry_snapshot
-                or rag_versions["rag"] != f"sha256:{route.rag_snapshot_sha256}"
+                or not rag_identity_valid
             ):
                 raise OrchestratorRefusal(
                     "DEPENDENCY_UNAVAILABLE",
@@ -230,6 +281,49 @@ class SpeechOrchestrator:
                     503,
                     True,
                 )
+            tts_ms = 0.0
+            tts_reply = {
+                "audio_url": None,
+                "tts_backend": "text_only",
+            }
+            if self.tts is not None:
+                tts, tts_ms = self._timed(
+                    lambda: self.tts.synthesize(
+                        request_id=request_id,
+                        language=route.alias,
+                        text=reply["text"],
+                        versions=versions,
+                        route=route,
+                    )
+                )
+                tts_versions = self._versions(tts.get("model_versions"), "TTS")
+                if (
+                    tts.get("request_id") != request_id
+                    or tts.get("language") != route.alias
+                    or tts.get("text") != reply["text"]
+                    or tts.get("tts_backend") not in {
+                        "fish", "self_hosted", "text_only"
+                    }
+                    or not isinstance(tts.get("content_sha256"), str)
+                    or tts["content_sha256"]
+                    != hashlib.sha256(reply["text"].encode("utf-8")).hexdigest()
+                    or tts_versions != versions
+                    or (
+                        tts.get("tts_backend") == "text_only"
+                        and tts.get("audio_url") is not None
+                    )
+                ):
+                    raise OrchestratorRefusal(
+                        "DEPENDENCY_UNAVAILABLE",
+                        "TTS result does not preserve the reply and registry identity",
+                        503,
+                        True,
+                    )
+                tts_reply = {
+                    "audio_url": tts.get("audio_url"),
+                    "tts_backend": tts["tts_backend"],
+                }
+                versions = tts_versions
             total_ms = round((self.clock() - total_started) * 1000, 3)
             return session_id, {
                 "request_id": request_id,
@@ -240,13 +334,12 @@ class SpeechOrchestrator:
                     "text": reply["text"],
                     "citations": reply["citations"],
                     "citation_binding_sha256": reply["citation_binding_sha256"],
-                    "audio_url": None,
-                    "tts_backend": "text_only",
+                    **tts_reply,
                 },
                 "model_versions": versions,
                 "latency_ms": {
                     "total": total_ms, "asr": asr_ms,
-                    "rag": rag_ms, "llm": llm_ms, "tts": 0.0,
+                    "rag": rag_ms, "llm": llm_ms, "tts": tts_ms,
                 },
             }
         except OrchestratorRefusal:

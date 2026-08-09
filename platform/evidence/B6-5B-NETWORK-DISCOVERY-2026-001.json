@@ -1,0 +1,45 @@
+{
+  "record": "B6_5B_READ_ONLY_NETWORK_DISCOVERY",
+  "id": "B6-5B-NETWORK-DISCOVERY-2026-001",
+  "recorded_utc": "2026-08-09T02:19:16Z",
+  "mutation_performed": false,
+  "caller": "arn:aws:iam::558069890522:user/s.fotso",
+  "account": "558069890522",
+  "region": "eu-central-1",
+  "vpc_id": "vpc-051aa9df8b64bf141",
+  "selected_backend_source": {
+    "security_group_id": "sg-0a83abae6ab954543",
+    "security_group_arn": "arn:aws:ec2:eu-central-1:558069890522:security-group/sg-0a83abae6ab954543",
+    "group_name": "medzen-ehrbase-eu-central-1-ECSSecurityGroup-JvyK2cVqEotR",
+    "description": "Security group for ECS tasks",
+    "tags": {
+      "Name": "medzen-ehrbase-ecs-sg",
+      "Project": "MedZen",
+      "Environment": "production",
+      "aws:cloudformation:stack-name": "medzen-ehrbase-eu-central-1"
+    },
+    "selection_basis": "This is the live MedZen production ECS task security group in the shared VPC. It is the narrow workload identity, not the public EHRbase ALB group, VPC CIDR, default group, or unrelated TTS/cache group.",
+    "packet_reverification_required": true,
+    "backend_owner_confirmation_required_before_apply": true
+  },
+  "excluded_sources": [
+    {
+      "security_group_id": "sg-011c64052091dc65e",
+      "reason": "internet-facing EHRbase ALB; broad public ingress is not a backend workload identity"
+    },
+    {
+      "security_group_id": "sg-0ec6a550611714d0c",
+      "reason": "default VPC security group"
+    },
+    {
+      "security_group_id": "sg-02b862f0245ab457c",
+      "reason": "separately owned MedZen TTS ALB"
+    },
+    {
+      "security_group_id": "sg-070fc00321934eacb",
+      "reason": "EKS cluster security group, not the calling backend"
+    }
+  ],
+  "live_cluster_security_group": "sg-070fc00321934eacb",
+  "claim_limit": "Read-only discovery identifies the exact candidate source group. It does not prove application ownership of future speech calls and does not authorize any ingress rule, ALB, target group or shared-VPC mutation."
+}

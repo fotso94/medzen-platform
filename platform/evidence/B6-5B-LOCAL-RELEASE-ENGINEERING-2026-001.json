@@ -1,0 +1,148 @@
+{
+  "record": "B6_5B_LOCAL_RELEASE_ENGINEERING_RESULT",
+  "id": "B6-5B-LOCAL-RELEASE-ENGINEERING-2026-001",
+  "status": "VERIFIED_LOCAL_COMPLETE_ECR_SCAN_NOT_AUTHORIZED",
+  "recorded_utc": "2026-08-09T02:34:30Z",
+  "authorization": {
+    "path": "platform/decisions/B6-5B-LOCAL-RELEASE-ENGINEERING-2026-001.json",
+    "owner_approved": true
+  },
+  "source": {
+    "branch": "codex/b6-5b-release-engineering",
+    "git_commit": "7ec176b2b69a3a552c6f135c36a8a1fc51cedc69",
+    "base_image": "python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+    "runtime_image_hardening_sha256": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791"
+  },
+  "tests": {
+    "canonical_suite": {
+      "passed": 1274,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "focused_release_boundary": {
+      "passed": 51,
+      "failed": 0
+    },
+    "historical_evidence_files_modified": 0,
+    "historical_source_hash_interpretation": "Historical B6.3 and B6.4 evidence continues to verify the Git commit that produced it; successor source evolution does not rewrite an immutable record."
+  },
+  "images": {
+    "medzen-rag-index": {
+      "local_tag": "medzen-rag-index:b6-5b-7ec176b",
+      "dockerfile_sha256": "4b534e5f0983984c6190fcc2117a1449b4d072025a64ecba3409ed1935947c9f",
+      "oci_archive_sha256": "2019c57cbefdc44b1f121dac8058ebd1404b7d794f3ed0b1b9ba004251efefbc",
+      "oci_archive_bytes": 18688000,
+      "oci_index_sha256": "ea14d76c708ce09d711bc9db7b21570fafcd753b3f6be6fb5cbfe07c7e4558f6",
+      "linux_amd64_child": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+      "config_digest": "sha256:6328b1046a986782f529d511bf92bec07105206d98ad879f7479b5474fd214f9",
+      "compressed_layer_bytes": 18671634,
+      "runtime_packages": 14,
+      "runtime_receipt_sha256": "29b021d40feb97b5542bb04b43dcccf4fdaa73e8687d77ac511bfdd97404e036",
+      "committed_runtime_receipt_path": "platform/evidence/b6-5b/images/medzen-rag-index.runtime.json",
+      "committed_runtime_receipt_sha256": "ef0f677ccc12ae41634a5b7c04d3805b51da106ec759a6d16663775763f1d77d",
+      "local_scout_sarif_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+      "committed_local_scout_sarif_path": "platform/evidence/b6-5b/images/medzen-rag-index.scout.sarif.json",
+      "committed_local_scout_sarif_sha256": "bf7955d5ef15895ea9594a33b1a28ab3b0047430863bcb9220fa89c0cce8bfc0",
+      "critical_findings": 0,
+      "high_findings": 0
+    },
+    "medzen-llm-gateway": {
+      "local_tag": "medzen-llm-gateway:b6-5b-7ec176b",
+      "dockerfile_sha256": "4fa397766528e5d7d82eb0b48586d0e95a5fc5825483f49c6493fd00ac68c516",
+      "oci_archive_sha256": "efb2bfe84dd3dabf56f2ce995a361fbc16a3670a6af35aaca4a273f20568ff81",
+      "oci_archive_bytes": 19585024,
+      "oci_index_sha256": "e229a0fb5284cd02f843232df204c7421c75870c05a437db0c37c242b2b856fe",
+      "linux_amd64_child": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
+      "config_digest": "sha256:3adea43ed479032ef3ef244d19f5f2b60fa84dc13d6ffbaaea88746cac0b560e",
+      "compressed_layer_bytes": 19564809,
+      "runtime_packages": 15,
+      "runtime_receipt_sha256": "5461ff257253d58cc99334db545179b696cafd6e0612a6a34994d8e6d9072dd7",
+      "committed_runtime_receipt_path": "platform/evidence/b6-5b/images/medzen-llm-gateway.runtime.json",
+      "committed_runtime_receipt_sha256": "f66c6783f02d2d11e88c3277b68d1ed07c6b47022d17a589252b91c24ac0e0fc",
+      "local_scout_sarif_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+      "committed_local_scout_sarif_path": "platform/evidence/b6-5b/images/medzen-llm-gateway.scout.sarif.json",
+      "committed_local_scout_sarif_sha256": "bf7955d5ef15895ea9594a33b1a28ab3b0047430863bcb9220fa89c0cce8bfc0",
+      "critical_findings": 0,
+      "high_findings": 0
+    },
+    "medzen-orchestrator": {
+      "local_tag": "medzen-orchestrator:b6-5b-7ec176b",
+      "dockerfile_sha256": "955276d74771030ecbfedb12895d937c5fddf38a10ea18163450eaf830c4953e",
+      "deployed_requirements_sha256": "573745f52f1bb9d0645ef7f64d4c2b040821677036efdaab4e9008d252f85152",
+      "oci_archive_sha256": "e67915f126b98938c479b513429500aaba669bf4a19685638a8611df9f844fb3",
+      "oci_archive_bytes": 36765184,
+      "oci_index_sha256": "baac58d14ea2ab222a829e904e0dfcb30f14d377bb35616691f47f7653baf641",
+      "linux_amd64_child": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
+      "config_digest": "sha256:441cde5e33956692932f12b42343bcf4cb53af01d27df80bd9bfccdc79315d5c",
+      "compressed_layer_bytes": 36746463,
+      "runtime_packages": 24,
+      "runtime_receipt_sha256": "f2f49e674f370fab67d7bdd24bc096c5d774dc7d5ead9aead8b453bbac2ea146",
+      "committed_runtime_receipt_path": "platform/evidence/b6-5b/images/medzen-orchestrator.runtime.json",
+      "committed_runtime_receipt_sha256": "c74e7880e82b2eaf99a28ca7c0bb44b534680a165a04720128a44a82e79f9fd4",
+      "local_scout_sarif_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+      "committed_local_scout_sarif_path": "platform/evidence/b6-5b/images/medzen-orchestrator.scout.sarif.json",
+      "committed_local_scout_sarif_sha256": "bf7955d5ef15895ea9594a33b1a28ab3b0047430863bcb9220fa89c0cce8bfc0",
+      "critical_findings": 0,
+      "high_findings": 0
+    },
+    "medzen-speech-tts-gateway": {
+      "local_tag": "medzen-speech-tts-gateway:b6-5b-7ec176b",
+      "dockerfile_sha256": "2d0508bb8f572a71d56a1578d630e175056a9d56e4adb75f650b6c22a6a379d0",
+      "oci_archive_sha256": "b248a3740602909996d96f644ae079b6455cd1b6a3f749141e706744945bfc4f",
+      "oci_archive_bytes": 19577856,
+      "oci_index_sha256": "fce19bd14b3044ffae94af57e6ed490cf061c2b3e27e3ffc609fd13be140320e",
+      "linux_amd64_child": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d",
+      "config_digest": "sha256:ff6ee26ce64cc84ef2052baa4f87e4de7ef2b39188496860dada14ab4bf13a87",
+      "compressed_layer_bytes": 19559971,
+      "runtime_packages": 15,
+      "runtime_receipt_sha256": "9a90ad6795ec39eb8fe44a20dc1717c88014fc302a1570ab08ae4bfa217bd5bd",
+      "committed_runtime_receipt_path": "platform/evidence/b6-5b/images/medzen-speech-tts-gateway.runtime.json",
+      "committed_runtime_receipt_sha256": "00bdaf6d31681ab3e1d2bd4f8535e22a9bf388e61e41176b5269b0b892959461",
+      "local_scout_sarif_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+      "committed_local_scout_sarif_path": "platform/evidence/b6-5b/images/medzen-speech-tts-gateway.scout.sarif.json",
+      "committed_local_scout_sarif_sha256": "bf7955d5ef15895ea9594a33b1a28ab3b0047430863bcb9220fa89c0cce8bfc0",
+      "critical_findings": 0,
+      "high_findings": 0
+    }
+  },
+  "runtime_boundary": {
+    "fixed_uid_gid": "10001:10001",
+    "read_only_root_smoke": "PASS_ALL_FOUR",
+    "network_disabled_import_smoke": "PASS_ALL_FOUR",
+    "dynamic_link_smoke": "PASS_ALL_FOUR",
+    "package_manager_records": 0,
+    "pip_setuptools_wheel_importable": false,
+    "model_weights_baked_into_images": false
+  },
+  "registry": {
+    "source_path": "registry/deployment/b6-v0-synthetic.json",
+    "source_sha256": "2629e3b7fb1ae33e7dc6966134bd8f544a8211c98036b8ea4ecfc2a0fed19ebd",
+    "generated_path": "platform/generated/registry-ssm/b6-v0-synthetic.json",
+    "generated_sha256": "33433626b0f2070a714df31e16306d6a511652b0870b0ba3cb5ec701847c9821",
+    "snapshot_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "ssm_root": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "published": false,
+    "production_pointer_changed": false
+  },
+  "network_and_cost": {
+    "network_design_sha256": "3de0fc48bdc44c83405b160be36bb196fc08c811746bfac811aeea1d4bdeca5d",
+    "cost_registry_sha256": "09295b13592941dfce2f54dae584e4dcbc8346f2964b1c658106991050da778f",
+    "active_reservations_usd": 0.0,
+    "guardrail_headroom_usd": 237.4712
+  },
+  "aws_boundary": {
+    "read_only_discovery_performed": true,
+    "mutations": 0,
+    "ecr_pushes": 0,
+    "ecr_images_created": 0,
+    "ssm_writes": 0,
+    "iam_changes": 0,
+    "kubernetes_actions": 0,
+    "node_scale_up": 0,
+    "alb_or_security_group_changes": 0,
+    "production_serving_changes": 0
+  },
+  "conclusion": "B6.5B local release engineering is complete. The four exact images are locally qualified only. Automatic ECR child-manifest scanning requires separate packet 2026-003 approval; deployment remains unauthorized."
+}

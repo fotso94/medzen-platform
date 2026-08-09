@@ -14,13 +14,16 @@ SERVICE_ROOT = ROOT / "services/speech-orchestrator"
 sys.path.insert(0, str(SERVICE_ROOT))
 
 from medzen_speech_orchestrator.registry import (  # noqa: E402
+    DEPLOYED_CLASSIFICATION,
     LocalParameterStore,
     RegistryRefusal,
     RegistryRouter,
+    SSMParameterStore,
 )
 
 
 FIXTURE = ROOT / "platform/testdata/registry-ssm/b6-local-v1.json"
+DEPLOYED_FIXTURE = ROOT / "platform/generated/registry-ssm/b6-v0-synthetic.json"
 
 
 def fixture_value() -> dict:
@@ -143,3 +146,71 @@ def test_non_versioned_or_production_roots_are_rejected():
     ):
         with pytest.raises(RegistryRefusal, match="versioned B6 test"):
             RegistryRouter(store, root)
+
+
+def test_deployment_fixture_is_generated_content_addressed_and_mode_bound():
+    subprocess.run(
+        [sys.executable, "scripts/generate_b6_deployment_registry.py", "--check"],
+        cwd=ROOT,
+        check=True,
+    )
+    value = json.loads(DEPLOYED_FIXTURE.read_bytes())
+    root = fixture_root(value)
+    router = RegistryRouter(
+        LocalParameterStore(DEPLOYED_FIXTURE),
+        root,
+        expected_classification=DEPLOYED_CLASSIFICATION,
+    )
+    route = router.resolve("en")
+    assert route.classification == DEPLOYED_CLASSIFICATION
+    assert route.asr_model_version == "v0"
+    assert route.asr_artifact_tree_sha256 == (
+        "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e"
+    )
+    assert route.endpoint("asr") == (
+        "http://asr-runtime.medzen.svc.cluster.local:8081"
+        "/internal/v1/transcriptions"
+    )
+    with pytest.raises(RegistryRefusal, match="manifest identity"):
+        RegistryRouter(LocalParameterStore(DEPLOYED_FIXTURE), root)
+    with pytest.raises(RegistryRefusal, match="manifest identity"):
+        RegistryRouter(
+            LocalParameterStore(FIXTURE),
+            fixture_root(),
+            expected_classification=DEPLOYED_CLASSIFICATION,
+        )
+
+
+class FakeSSM:
+    def __init__(self, fixture: Path):
+        self.parameters = {
+            item["Name"]: item for item in json.loads(fixture.read_bytes())["parameters"]
+        }
+
+    def get_parameter(self, **kwargs):
+        return {"Parameter": self.parameters[kwargs["Name"]]}
+
+    def get_parameters_by_path(self, **kwargs):
+        names = sorted(
+            name for name in self.parameters
+            if name.startswith(kwargs["Path"].rstrip("/") + "/")
+        )
+        offset = int(kwargs.get("NextToken", "0"))
+        selected = names[offset:offset + 2]
+        response = {"Parameters": [self.parameters[name] for name in selected]}
+        if offset + 2 < len(names):
+            response["NextToken"] = str(offset + 2)
+        return response
+
+
+def test_ssm_adapter_decrypts_paginates_and_preserves_parameter_versions():
+    value = json.loads(DEPLOYED_FIXTURE.read_bytes())
+    root = fixture_root(value)
+    store = SSMParameterStore(FakeSSM(DEPLOYED_FIXTURE))
+    parameters = store.get_parameters_by_path(root)
+    assert len(parameters) == 3
+    assert all(parameter.Version == 1 for parameter in parameters)
+    router = RegistryRouter(
+        store, root, expected_classification=DEPLOYED_CLASSIFICATION
+    )
+    assert router.resolve("eng").alias == "english"
