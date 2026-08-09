@@ -16,7 +16,9 @@ COST = ROOT / "platform/finance/COST-REGISTRY-2026-004.json"
 MANIFEST = ROOT / "platform/k8s/b6-6/integration-window.yaml"
 HISTORICAL_PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md"
 HISTORICAL_AUTH = ROOT / "platform/decisions/B6-AWS-AUTH-2026-008-b6-6-integration-window.json"
-PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-009-b6-6-corrective-window.md"
+PACKET_009 = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-009-b6-6-corrective-window.md"
+AUTH_009 = ROOT / "platform/decisions/B6-AWS-AUTH-2026-009-b6-6-corrective-window.json"
+PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-010-b6-6-token-encoding-correction.md"
 
 
 def documents():
@@ -115,7 +117,7 @@ def test_runner_and_cleanup_are_shell_valid_and_deadline_first():
     assert "bash scripts/b6_6_cleanup.sh" in value
     assert "scripts/b6_6_wait_workers.py" in value
     assert "get daemonset/dra-driver-nvidia-gpu-kubelet-plugin" in value
-    assert "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6" in value
+    assert "scripts/b6_6_token_binding.py" in value
     closed = cleanup.read_text()
     assert closed.index("delete ingress/speech-orchestrator-b6-window") < closed.index("enable_b6_load_balancer_controller=false")
     assert closed.index("enable_b6_load_balancer_controller=false") < closed.index("nodegroup-name cpu")
@@ -161,6 +163,24 @@ def test_worker_gate_fails_closed_if_capacity_exceeds_bound():
             lambda workload: [{"status": {"conditions": []}}] * (3 if workload == "cpu" else 0),
             30,
         )
+
+
+def test_token_binding_hashes_bearer_and_requires_exact_lf_encoding():
+    import hashlib
+    from scripts.b6_6_token_binding import TokenBindingRefusal, verify_bytes
+
+    bearer = b"x" * 43
+    assert len(bearer) == 43
+    expected = hashlib.sha256(bearer).hexdigest()
+    assert verify_bytes(bearer + b"\n", expected) == {
+        "bearer_bytes": 43,
+        "bearer_sha256_verified": True,
+        "file_bytes": 44,
+        "line_ending": "LF",
+    }
+    for malformed in (bearer, bearer + b"\r\n", bearer + b"\n\n", b"y" * 43 + b"\n"):
+        with pytest.raises(TokenBindingRefusal):
+            verify_bytes(malformed, expected)
 
 
 def test_cleanup_terraform_is_valid_when_secret_gate_is_false_and_cpu_drift_is_ignored():
@@ -257,16 +277,16 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
     }
     packet_sha = "a" * 64
     record = {
-        "id": "B6-AWS-AUTH-2026-009",
+        "id": "B6-AWS-AUTH-2026-010",
         "status": "owner-approved",
-        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-009", "sha256": packet_sha},
+        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-010", "sha256": packet_sha},
         "independent_review": {"status": "PASS", "reviewer": "independent"},
         "cost": {"registry_id": "COST-REGISTRY-2026-004", "allocation_id": "B6-INTEGRATION-WINDOW-2026-001", "maximum_usd": 10.0},
         "source_bindings": sources,
     }
     authorization = tmp_path / "authorization.json"
     authorization.write_text(json.dumps(record))
-    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-009"
+    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-010"
     record["source_bindings"].pop(next(iter(REQUIRED_SOURCES)))
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):
@@ -288,11 +308,9 @@ def test_historical_executable_packet_keeps_its_original_source_bindings():
         assert f"`{expected}`" in value
 
 
-def test_corrective_packet_binds_current_sources_and_requires_new_approval():
-    import hashlib
-    from scripts.b6_6_bindings import REQUIRED_SOURCES
-
-    value = PACKET.read_text()
+def test_packet_009_keeps_its_original_source_bindings():
+    authorization = json.loads(AUTH_009.read_bytes())
+    value = PACKET_009.read_text()
     assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
     assert "This packet is not authorized by its preparation" in value
     assert "Approve B6 AWS change packet 2026-009 only." in value
@@ -302,6 +320,23 @@ def test_corrective_packet_binds_current_sources_and_requires_new_approval():
     assert "new reservation: `$0`" in value
     assert "production SSM" in value
     assert "B5's `BLOCKED`" in value
+    for relative, expected in authorization["source_bindings"].items():
+        assert f"`{relative}`" in value
+        assert f"`{expected}`" in value
+
+
+def test_packet_010_binds_current_sources_and_requires_new_approval():
+    import hashlib
+    from scripts.b6_6_bindings import REQUIRED_SOURCES
+
+    value = PACKET.read_text()
+    assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
+    assert "This packet is not authorized by its preparation" in value
+    assert "Approve B6 AWS change packet 2026-010 only." in value
+    assert "Packet 2026-009 worker seconds: `0`" in value
+    assert "Maximum packet-2026-010 window: `12,600 seconds`" in value
+    assert "new reservation: `$0`" in value
+    assert "exactly one final LF" in value
     for relative in REQUIRED_SOURCES:
         expected = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
         assert f"`{relative}`" in value
