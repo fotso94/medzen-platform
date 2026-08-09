@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "index": {
+    "schema_version": 1,
+    "default_language": "english",
+    "languages": [
+      {
+        "alias": "english",
+        "codes": ["en", "eng"],
+        "route_parameter": "routes/english"
+      }
+    ]
+  },
+  "routes": {
+    "english": {
+      "schema_version": 2,
+      "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+      "language": {
+        "alias": "english",
+        "response_code": "en",
+        "accepted_codes": ["en", "eng"]
+      },
+      "contract_version": "medzen.speech.v1",
+      "asr": {
+        "backend": "http_cluster_v1",
+        "model_version": "v0",
+        "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+        "reported_registry_snapshot": "b6a-non-serving:c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850"
+      },
+      "rag": {
+        "alias": "current",
+        "snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+        "query_language": "en"
+      },
+      "llm": {
+        "model_version": "fake-bedrock-local-v1",
+        "policy_id": "english-medzen-v1"
+      },
+      "tts": {
+        "backend": "http_text_only_v1",
+        "model_version": null
+      },
+      "dependencies": {
+        "asr": {
+          "endpoint": "http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions",
+          "contract_id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+          "contract_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
+        },
+        "rag": {
+          "endpoint": "http://rag-index.medzen.svc.cluster.local:8083/internal/v1/retrievals",
+          "contract_id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+          "contract_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
+        },
+        "llm": {
+          "endpoint": "http://llm-gateway.medzen.svc.cluster.local:8082/internal/v1/responses",
+          "contract_id": "MEDZEN-LLM-CONTRACT-2026-001",
+          "contract_sha256": "67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a"
+        },
+        "tts": {
+          "endpoint": "http://tts-gateway.medzen.svc.cluster.local:8080/internal/v1/syntheses",
+          "contract_id": "MEDZEN-TTS-CONTRACT-2026-001",
+          "contract_sha256": "2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8"
+        }
+      }
+    }
+  }
+}

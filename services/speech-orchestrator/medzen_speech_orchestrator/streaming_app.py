@@ -16,7 +16,7 @@ from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
 from .app import create_app as create_file_app
-from .auth import AuthRefusal, LocalKeyStore
+from .auth import AuthRefusal, KeyStore
 from .orchestrator import SpeechOrchestrator
 from .registry import RegistryRefusal
 from .streaming import (
@@ -239,7 +239,7 @@ async def _await_pipeline_or_control(
 
 def create_app(
     orchestrator: SpeechOrchestrator | None = None,
-    auth: LocalKeyStore | None = None,
+    auth: KeyStore | None = None,
     *,
     pipeline: StreamingPipeline | None = None,
     vad_factory: Callable[[], VoiceActivityDetector] = LocalEnergyVAD,
@@ -289,7 +289,7 @@ def create_app(
         ready = service is not None and key_store is not None and state is State.CLOSED
         payload: dict[str, Any] = {
             "ready": ready,
-            "mode": "local_fixture",
+            "mode": request.app.state.mode,
             "registry_loaded": service is not None,
             "authentication_loaded": key_store is not None,
             "streaming_ready": guard is not None,
