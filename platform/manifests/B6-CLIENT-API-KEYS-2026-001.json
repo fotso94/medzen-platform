@@ -1,0 +1,78 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_REQUEST_MANIFEST",
+  "id": "B6-CLIENT-API-KEYS-2026-001",
+  "revision": 1,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "orchestrator_role_arn": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "secret_name": "medzen/client-api-keys",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "repository_binding": {
+    "preparation_authorization_commit": "1d4a3bbb1e79145cdcc10ee9ba0877c2cf3fe95d",
+    "preparation_authorization_tree": "41ba4711c9774418f32d9ad8615ddfdaf84fce1c"
+  },
+  "terraform_contract": {
+    "targeted_plan_required": true,
+    "expected_add": 3,
+    "expected_change": 0,
+    "expected_destroy": 0,
+    "exact_addresses": [
+      "aws_iam_role_policy.b6_client_keys_kms",
+      "aws_secretsmanager_secret.b6_client_keys",
+      "aws_secretsmanager_secret_policy.b6_client_keys"
+    ],
+    "secret_value_in_terraform_state": false,
+    "new_kms_keys": 0,
+    "new_iam_roles": 0
+  },
+  "key_material_contract": {
+    "client_id": "b6-window-probe",
+    "random_bytes": 32,
+    "bearer_encoding": "base64url_without_padding",
+    "stored_secret_field": "key_sha256",
+    "stored_hash_encoding": "lowercase_hex_sha256",
+    "plaintext_written_to": "/private/tmp/medzen-b6-6-client-token",
+    "plaintext_file_mode": "0600",
+    "plaintext_never_committed_or_logged": true,
+    "receipt_contains_plaintext": false
+  },
+  "secret_value_schema": {
+    "schema_version": 1,
+    "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+    "clients_exactly": 1,
+    "client_fields": ["client_id", "enabled", "key_sha256"],
+    "canonical_json": true
+  },
+  "read_boundary": {
+    "resource_policy_block_public_policy": true,
+    "only_allowed_reader": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "all_other_principals_get_secret_value": "EXPLICIT_DENY",
+    "orchestrator_identity_policy_resource": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys*",
+    "kms_via_service": "secretsmanager.eu-central-1.amazonaws.com",
+    "kms_encryption_context": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys*"
+  },
+  "allocation": {
+    "allocation_id": "B6-SYNTHETIC-CLIENT-KEYS",
+    "maximum_incremental_cost_usd": 0.1,
+    "tags": {
+      "BudgetRegistry": "COST-REGISTRY-2026-003",
+      "Classification": "SYNTHETIC_TEST_ONLY",
+      "CostCenter": "speech-platform",
+      "Environment": "dev",
+      "Project": "medzen-speech",
+      "Stage": "B6.6",
+      "Workstream": "integration-window-auth"
+    }
+  },
+  "rotation_and_deletion": {
+    "rotate_if_plaintext_is_lost_or_exposed": "Create a new 32-byte token, publish only its SHA-256 as a new AWSCURRENT version, and remove AWSPREVIOUS after the old token is refused.",
+    "normal_close": "After B6.6 evidence is complete, remove the local plaintext file immediately and schedule secret deletion with the configured seven-day recovery window.",
+    "failed_boundary_packet": "Delete the local plaintext file; if no later packet depends on the secret, schedule seven-day deletion.",
+    "force_delete_without_recovery": false
+  }
+}

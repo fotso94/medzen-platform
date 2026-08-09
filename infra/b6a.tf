@@ -25,6 +25,9 @@ resource "aws_ecr_repository" "b6a_nvidia_dra" {
 # not only the deprecated per-repository flag. Packet 2026-005 must be
 # separately approved before this exact account/region-level change is applied.
 # Exact filters intentionally exclude the separately owned medzen-tts-gateway.
+# The four full-B6 services passed packet 2026-003. The controller filter is a
+# prospective addition under packet 2026-005; the repository and image do not
+# exist until that packet is separately approved and executed.
 resource "aws_ecr_registry_scanning_configuration" "b6a_runtime" {
   scan_type = "BASIC"
 
@@ -43,6 +46,31 @@ resource "aws_ecr_registry_scanning_configuration" "b6a_runtime" {
 
     repository_filter {
       filter      = "medzen-nvidia-dra"
+      filter_type = "WILDCARD"
+    }
+
+    repository_filter {
+      filter      = "medzen-rag-index"
+      filter_type = "WILDCARD"
+    }
+
+    repository_filter {
+      filter      = "medzen-llm-gateway"
+      filter_type = "WILDCARD"
+    }
+
+    repository_filter {
+      filter      = "medzen-orchestrator"
+      filter_type = "WILDCARD"
+    }
+
+    repository_filter {
+      filter      = "medzen-speech-tts-gateway"
+      filter_type = "WILDCARD"
+    }
+
+    repository_filter {
+      filter      = "medzen-aws-load-balancer-controller"
       filter_type = "WILDCARD"
     }
   }

@@ -1,0 +1,136 @@
+{
+  "record": "B6_PREDEPLOYMENT_BOUNDARY_LOCAL_PREPARATION",
+  "id": "B6-PREDEPLOYMENT-BOUNDARY-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_PREPARATION_COMPLETE_AWAITING_INDEPENDENT_REVIEW",
+  "completed_utc": "2026-08-09T05:09:58Z",
+  "starting_authorization": {
+    "path": "platform/decisions/B6-PREDEPLOYMENT-BOUNDARIES-2026-001-local-preparation.json",
+    "git_commit": "1d4a3bbb1e79145cdcc10ee9ba0877c2cf3fe95d",
+    "git_tree": "41ba4711c9774418f32d9ad8615ddfdaf84fce1c"
+  },
+  "packets": {
+    "2026-005": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-005-alb-controller-qualification.md",
+      "sha256": "6f0a336808cba8307ee3735481eb25c034afaaf7455765db0e501d017c0e201e",
+      "status": "DRAFT_AWAITING_REVIEW",
+      "preview_plans": {
+        "stage_a": {
+          "sha256": "c8161a926d2827ce45405eabeb859172387f3eae63202b6a0784541f4362ca37",
+          "add": 1,
+          "change": 1,
+          "destroy": 0,
+          "guard": "PASS_B6_LBC_STAGE_A"
+        },
+        "stage_b": {
+          "sha256": "956d39343367e15d02cc29e75095c70a22716cdbd24f326f5d895ac0d07d8b56",
+          "add": 4,
+          "change": 0,
+          "destroy": 0,
+          "guard": "PASS_B6_LBC_STAGE_B"
+        }
+      }
+    },
+    "2026-006": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-006-synthetic-client-api-keys.md",
+      "sha256": "308ad49995adf586727449f4b79c8f688a8d0a8a4f4d23d011d5d59ce8377397",
+      "request_manifest_sha256": "8b2057b14faff1e34549acba76ebefd6b117abf1a956741f9a5b193dea801d68",
+      "status": "DRAFT_AWAITING_REVIEW",
+      "preview_plan": {
+        "sha256": "fba16dc4a2f3bcd4fad1067e249e2e3271797b86b49279467b276d06cc1fefce",
+        "add": 3,
+        "change": 0,
+        "destroy": 0,
+        "guard": "PASS_B6_CLIENT_SECRET_PLAN"
+      }
+    },
+    "2026-007": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-007-deployment-registry.md",
+      "sha256": "2c55aba2728bd7669800796963b297265ce125869bc2464a8f72c1050ef7481f",
+      "request_manifest_sha256": "8cef584e4e582077dfc97ef7272a28606e6cef513bf5bdbf742baa4dee7dc6b5",
+      "status": "DRAFT_AWAITING_REVIEW",
+      "preview_plan": {
+        "sha256": "255cd8f57f3346f40f1d3dd2903eaf797681cce496ce180b824cde7817a7bcdd",
+        "add": 1,
+        "change": 0,
+        "destroy": 0,
+        "guard": "PASS_B6_DEPLOYMENT_REGISTRY_PLAN"
+      }
+    }
+  },
+  "controller_qualification": {
+    "release": "v3.5.0",
+    "linux_amd64_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "docker_scout_packages": 103,
+    "critical": 0,
+    "high": 0,
+    "security_waiver_used": false,
+    "deterministic_deployment_render_sha256_run_1": "18a14c29f8cb2734f2a176d03d7de410355682a85ad3ca45308413211c4d9275",
+    "deterministic_deployment_render_sha256_run_2": "18a14c29f8cb2734f2a176d03d7de410355682a85ad3ca45308413211c4d9275",
+    "aws_ecr_scan": "NOT_EVALUATED_PACKET_2026_005_REQUIRED",
+    "helm_installed": false
+  },
+  "live_read_only_preflight": {
+    "ecr_scan_filters_before": 7,
+    "controller_repository_exists": false,
+    "controller_role_exists": false,
+    "controller_pod_identity_exists": false,
+    "controller_helm_release_exists": false,
+    "client_secret_exists": false,
+    "deployment_registry_parameter_count": 0,
+    "production_serving_pointer_exists": false,
+    "cpu_min": 0,
+    "cpu_desired": 0,
+    "gpu_min": 0,
+    "gpu_desired": 0
+  },
+  "historical_hash_preservation": {
+    "outcome": "PASS",
+    "files": {
+      "infra/eks.tf": "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b",
+      "infra/secrets.tf": "b7d3c0e50b6535a2f516b0139cf1dcb12cb163c133d76b2b44580b0fb77f1d19",
+      "infra/ssm.tf": "3bca452b19d7983428ef7fe834e0f113c29d64ee94e818196e7765db2d65581a",
+      "platform/services.yaml": "fd560a7f5522c04ec57015d9bbd73286a40937af0eca04c6383dbebaa1bdb0a2",
+      "platform/generate.py": "0b3c462d5279684b8135c23b1d3f1027449c53c42e56632cc0ee7dd373271d0d",
+      "platform/iam/medzen-orch-role.json": "c1117e21c09432a7cb0bbabc370b43b47e046f16342908fbde0e2758533cef6a"
+    },
+    "corrective_history": "The first full test run detected nine historical-hash failures caused by initially placing new behavior in hash-bound source files. Those edits were removed; all new behavior now lives in additive B6-specific files."
+  },
+  "verification": {
+    "pytest": {
+      "passed": 1292,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "new_boundary_tests": {
+      "passed": 11,
+      "failed": 0
+    },
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "generated_platform_files": "PASS_CURRENT",
+    "deployment_registry_generator": "PASS_CURRENT",
+    "deployment_registry_packet_validator": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "cost": {
+    "committed_usd": 63.5288,
+    "active_reservations_usd": 0.0,
+    "guardrail_usd": 300.0,
+    "headroom_usd": 236.4712,
+    "preparation_incremental_aws_cost_usd": 0.0
+  },
+  "explicit_non_events": {
+    "aws_mutations": 0,
+    "ecr_pushes": 0,
+    "iam_changes": 0,
+    "secret_or_ssm_writes": 0,
+    "nodes_scaled": 0,
+    "deployments": 0,
+    "approved_asr_writes": 0,
+    "production_alias_changes": 0
+  },
+  "next_boundary": "Independent review of the PR and each packet. No packet may execute until its exact owner approval is recorded."
+}
