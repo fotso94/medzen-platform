@@ -198,6 +198,9 @@ def test_dedicated_publisher_terraform_is_prefix_bound_and_delete_denied():
     assert '"ssm:DeleteParameter", "ssm:DeleteParameters"' in source
     assert 'variable = "kms:ViaService"' in source
     assert 'variable = "kms:EncryptionContext:PARAMETER_ARN"' in source
+    assert 'actions   = ["ssm:AddTagsToResource"]' in source
+    assert 'actions   = ["ssm:ListTagsForResource"]' in source
+    assert 'variable = "aws:TagKeys"' in source
 
 
 def test_trainer_still_has_no_ssm_capability():

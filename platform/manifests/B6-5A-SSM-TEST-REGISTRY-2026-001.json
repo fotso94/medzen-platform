@@ -1,0 +1,90 @@
+{
+  "record": "B6_5A_SSM_TEST_REGISTRY_PUBLICATION_MANIFEST",
+  "id": "B6-5A-SSM-TEST-REGISTRY-2026-001",
+  "revision": 1,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "NON_SERVING_LOCAL_SYNTHETIC_TEST_ONLY",
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "publisher_role_arn": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "repository_binding": {
+    "starting_commit": "e91110ff161d01a5ba341442c9f4fc0c3b79c2c9",
+    "starting_tree": "a46e90a31ba616d6ce8899d54bd703e0d383b580"
+  },
+  "snapshot": {
+    "root": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "snapshot_material_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "source_path": "platform/testdata/registry-ssm/source/b6-local-v1.json",
+    "source_file_sha256": "a853365107b6e16e270ee75f9e830b99a1f848861321ee3cf69cfe59ddaf0f86",
+    "fixture_path": "platform/testdata/registry-ssm/b6-local-v1.json",
+    "fixture_file_sha256": "31f3db63c2955b445d02f4a00cace3cdf9e8e49da797478716a3a2945db59b8a",
+    "generator_path": "scripts/generate_b6_orchestrator_fixtures.py",
+    "generator_sha256": "943c5ef0f67426fbb3ad28124804068c0899c47237f0557383c8a106e4e46b92",
+    "maximum_parameter_count": 3,
+    "parameter_count": 3
+  },
+  "allocation": {
+    "allocation_id": "B6-SSM-TEST-REGISTRY",
+    "maximum_incremental_cost_usd": 0.10,
+    "tags": {
+      "BudgetRegistry": "COST-REGISTRY-2026-001",
+      "CostCenter": "speech-platform",
+      "Environment": "dev",
+      "Project": "medzen-speech",
+      "Stage": "B6.5A",
+      "Workstream": "ssm-test-registry"
+    }
+  },
+  "write_contract": {
+    "create_only": true,
+    "overwrite": false,
+    "data_parameters_before_manifest": true,
+    "readback_with_decryption": true,
+    "verify_parameter_versions": true,
+    "verify_tags": true,
+    "identical_complete_snapshot_may_be_reused": true,
+    "partial_or_different_snapshot_refuses": true
+  },
+  "parameters": [
+    {
+      "Name": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6/_manifest",
+      "Type": "SecureString",
+      "Value": "{\"classification\":\"B6_3_LOCAL_SYNTHETIC_ONLY\",\"parameter_value_sha256\":{\"index\":\"4ce97b58eee7813181108062d50caa20a63504dbf1f6006134a523c8ed0e5f51\",\"routes/english\":\"8a04906cd140ff2f2dcb003d6953c348f81055b67924594edd02b2a40ed914b2\"},\"schema_version\":1,\"snapshot_material_sha256\":\"a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6\",\"snapshot_sha256\":\"a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6\"}",
+      "ValueSHA256": "e09464c797b15392552cfcbd3035d7847f191df1e761c5ed69148a21d7377e36",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 3
+    },
+    {
+      "Name": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6/index",
+      "Type": "SecureString",
+      "Value": "{\"default_language\":\"english\",\"languages\":[{\"alias\":\"english\",\"codes\":[\"en\",\"eng\"],\"route_parameter\":\"routes/english\"}],\"schema_version\":1}",
+      "ValueSHA256": "4ce97b58eee7813181108062d50caa20a63504dbf1f6006134a523c8ed0e5f51",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 1
+    },
+    {
+      "Name": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6/routes/english",
+      "Type": "SecureString",
+      "Value": "{\"asr\":{\"backend\":\"local_synthetic_fixture\",\"fixture_sha256\":\"97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b\",\"model_version\":\"v0-local-synthetic-asr\"},\"classification\":\"B6_3_LOCAL_SYNTHETIC_ONLY\",\"contract_version\":\"medzen.speech.v1\",\"language\":{\"accepted_codes\":[\"en\",\"eng\"],\"alias\":\"english\",\"response_code\":\"en\"},\"llm\":{\"model_version\":\"fake-bedrock-local-v1\",\"policy_id\":\"english-medzen-v1\"},\"rag\":{\"alias\":\"current\",\"query_language\":\"en\",\"snapshot_sha256\":\"6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160\"},\"schema_version\":1,\"tts\":{\"backend\":\"text_only\",\"model_version\":null}}",
+      "ValueSHA256": "8a04906cd140ff2f2dcb003d6953c348f81055b67924594edd02b2a40ed914b2",
+      "KeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+      "Tier": "Standard",
+      "DataType": "text",
+      "Overwrite": false,
+      "ExpectedInitialVersion": 1,
+      "PublishOrder": 2
+    }
+  ]
+}
