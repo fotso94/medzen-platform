@@ -51,6 +51,66 @@ data "aws_iam_policy_document" "registry_publisher" {
     resources = [local.registry_parameter_arn]
   }
 
+  # PutParameter with tags has ssm:AddTagsToResource as a dependent IAM
+  # action. Keep that capability separate from the value writer so packet
+  # tests can prove the complete allocation-tag set is present. This is still
+  # confined to the registry prefix and does not weaken the deletion deny.
+  statement {
+    sid       = "TagRegistryParametersForCostAllocation"
+    effect    = "Allow"
+    actions   = ["ssm:AddTagsToResource"]
+    resources = [local.registry_parameter_arn]
+    condition {
+      test     = "ForAllValues:StringEquals"
+      variable = "aws:TagKeys"
+      values = [
+        "Project",
+        "Environment",
+        "CostCenter",
+        "Stage",
+        "Workstream",
+        "BudgetRegistry",
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Project"
+      values   = ["medzen-speech"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Environment"
+      values   = ["dev"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/CostCenter"
+      values   = ["speech-platform"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Stage"
+      values   = ["B6.5A"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/Workstream"
+      values   = ["ssm-test-registry"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestTag/BudgetRegistry"
+      values   = ["COST-REGISTRY-2026-001"]
+    }
+  }
+
+  statement {
+    sid       = "ReadRegistryParameterTags"
+    effect    = "Allow"
+    actions   = ["ssm:ListTagsForResource"]
+    resources = [local.registry_parameter_arn]
+  }
+
   # A future accidental broad attachment cannot turn this dedicated role into
   # a general Parameter Store writer.
   statement {
