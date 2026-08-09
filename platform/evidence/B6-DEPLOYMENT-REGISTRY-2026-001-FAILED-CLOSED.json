@@ -1,0 +1,81 @@
+{
+  "record": "B6_DEPLOYMENT_REGISTRY_AWS_EXECUTION",
+  "id": "B6-DEPLOYMENT-REGISTRY-2026-001",
+  "revision": 1,
+  "status": "BLOCKED_RUNTIME_REGISTRY_CLASSIFICATION",
+  "recorded_utc": "2026-08-09T18:48:22Z",
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-007-deployment-registry.json",
+    "sha256": "2271f70bde43a1fc74fc87597f681d726ad38b1c0755eecb1664e2c51d0ea314",
+    "id": "B6-AWS-AUTH-2026-007"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-007-deployment-registry.md",
+    "sha256": "2c55aba2728bd7669800796963b297265ce125869bc2464a8f72c1050ef7481f"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-DEPLOYMENT-REGISTRY-2026-001.json",
+    "sha256": "8cef584e4e582077dfc97ef7272a28606e6cef513bf5bdbf742baa4dee7dc6b5",
+    "snapshot_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81"
+  },
+  "terraform": {
+    "plan_path_not_retained": "/private/tmp/b6-007.tfplan",
+    "plan_sha256": "d7e19fdd8886857d98a21837c89b1c4c83989258907544ceeff963095d1c1912",
+    "guard": "PASS_B6_DEPLOYMENT_REGISTRY_PLAN",
+    "add": 1,
+    "change": 0,
+    "destroy": 0,
+    "applied_resource": "aws_iam_role_policy.registry_publisher_b6_5c_tags",
+    "state_lineage": "cc991efe-2154-ac03-fe73-48392ec7a9a3",
+    "state_serial_after": 24,
+    "targeted_residual_plan_sha256": "a9ec4fabfec26f108b9cb9fae81d9990d377ee4e200f4af7fdd6046d7604cf9b",
+    "targeted_residual_outcome": "NO_CHANGES"
+  },
+  "publication_attempt": {
+    "runner_sha256": "b3c92c8705bccecaede2888d120326c8872c8129630eec3d903738dd9beb1ffc",
+    "request_validator": "PASS_B6_DEPLOYMENT_REGISTRY_PACKET",
+    "mode": "CREATE",
+    "parameters_created_before_runtime_gate": 3,
+    "completion_manifest_created_last": true,
+    "runtime_gate": "FAIL",
+    "exception_type": "medzen_speech_orchestrator.registry.RegistryRefusal",
+    "exception_message": "registry manifest identity is invalid",
+    "receipt_written_by_runner": false
+  },
+  "root_cause": {
+    "classification_in_manifest": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+    "registry_router_default_classification": "B6_3_LOCAL_SYNTHETIC_ONLY",
+    "runner_passed_explicit_deployed_classification": false,
+    "diagnosis": "The deployment publication runner instantiated RegistryRouter without its required deployed-classification argument. The manifest and content hash were not shown to be defective; the runtime verification call selected the local-only policy by default.",
+    "historical_packet_and_runner_must_remain_unchanged": true
+  },
+  "automatic_rollback": {
+    "triggered": true,
+    "actor": "arn:aws:iam::558069890522:user/s.fotso",
+    "parameters_deleted": 3,
+    "exact_root_after": "EMPTY",
+    "production_pointer_after": "ABSENT",
+    "parameters_outside_exact_root_changed": 0
+  },
+  "safe_end_state": {
+    "supplemental_publisher_tag_policy_retained": true,
+    "published_snapshot_parameters": 0,
+    "production_alias_changes": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "deployments": 0,
+    "load_balancers": 0,
+    "approved_model_changes": 0
+  },
+  "cost": {
+    "maximum_incremental_cost_usd": 0.1,
+    "compute_started": false,
+    "finalized_incremental_cost_usd": null,
+    "finalized_cost_reason": "AWS billing data has not landed; the three transient Standard parameters were deleted and only a no-charge IAM policy remains."
+  },
+  "retry": {
+    "permitted_under_packet_2026_007": false,
+    "required_next_record": "new versioned packet binding a corrected runner and a local deployed-classification proof",
+    "b6_6_successor_eligible": false
+  }
+}

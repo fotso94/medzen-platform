@@ -1,0 +1,76 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-006",
+  "revision": 1,
+  "status": "OWNER_APPROVED_FOR_EXECUTION",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T12:34:05Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-006 only.' conditioned on packet 2026-005 evidence, after independent review PASS of PR #13 and all three packets.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "outcome": "PASS",
+    "findings": 0,
+    "review_scope": "PR #13 packet 2026-006: hash-only synthetic secret, exact-reader allow plus all-other-principals deny, KMS ViaService and encryption-context restrictions, and 11/11 boundary tests"
+  },
+  "prior_gate": {
+    "packet": "B6 AWS change packet 2026-005",
+    "evidence_path": "platform/evidence/B6-LBC-QUALIFICATION-AWS-EXECUTION-2026-001.json",
+    "evidence_sha256": "56265113cbfa3ebec85309ec9966dc5fb7a2dd28e1c5fad0b1a4dd6e946cb8f3",
+    "status": "VERIFIED_COMPLETE"
+  },
+  "repository_at_authorization": {
+    "branch": "codex/b6-predeployment-execution",
+    "git_commit": "9ca463b4b4379e60b7a2ee6b1900e52fde3ed5d6",
+    "git_tree": "842894345241521fad0ba022f206be98894e38cc",
+    "commit_count": 249,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "packet": {
+    "id": "B6 AWS change packet 2026-006",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-006-synthetic-client-api-keys.md",
+    "sha256": "308ad49995adf586727449f4b79c8f688a8d0a8a4f4d23d011d5d59ce8377397"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-CLIENT-API-KEYS-2026-001.json",
+    "sha256": "8b2057b14faff1e34549acba76ebefd6b117abf1a956741f9a5b193dea801d68"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "secret_name": "medzen/client-api-keys",
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "only_reader": "arn:aws:iam::558069890522:role/medzen-orch-role"
+  },
+  "authorized_operations": [
+    "fresh_targeted_terraform_plan_and_exact_delta_guard",
+    "create_exact_empty_kms_encrypted_secret_and_resource_policy",
+    "create_exact_additive_orchestrator_kms_decrypt_policy",
+    "generate_one_32_byte_synthetic_bearer_token_to_private_tmp_mode_0600",
+    "publish_only_the_token_sha256_in_one_canonical_secret_value",
+    "validate_resource_policy_and_prove_operator_get_is_explicitly_denied",
+    "create_and_publish_hash_only_execution_evidence"
+  ],
+  "hard_preconditions": {
+    "terraform_plan_add": 3,
+    "terraform_plan_change": 0,
+    "terraform_plan_destroy": 0,
+    "secret_value_in_terraform": false,
+    "real_client_keys": 0,
+    "random_bytes": 32,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "maximum_incremental_cost_usd": 0.1
+  },
+  "prohibited_operations": [
+    "real_client_key_storage",
+    "secret_plaintext_in_terraform_git_logs_or_evidence",
+    "new_kms_key_or_iam_role",
+    "cpu_or_gpu_scale_up",
+    "deployment_alb_production_ssm_approved_model_or_provider_call",
+    "phi"
+  ],
+  "next_boundary": "Packet 2026-007 may execute only after immutable VERIFIED_COMPLETE evidence for this packet is committed and published."
+}

@@ -1,0 +1,91 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_EXECUTION",
+  "id": "B6-CLIENT-API-KEYS-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE_WITH_LOCAL_RECEIPT_RECOVERY",
+  "completed_utc": "2026-08-09T18:29:05Z",
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-006-synthetic-client-api-keys.json",
+    "sha256": "a65f28c907858545eddfbe191223b5ced2a9814c72e798fbac05fe0acb259f90",
+    "id": "B6-AWS-AUTH-2026-006"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-006-synthetic-client-api-keys.md",
+    "sha256": "308ad49995adf586727449f4b79c8f688a8d0a8a4f4d23d011d5d59ce8377397"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-CLIENT-API-KEYS-2026-001.json",
+    "sha256": "8b2057b14faff1e34549acba76ebefd6b117abf1a956741f9a5b193dea801d68"
+  },
+  "terraform": {
+    "plan_path_not_retained": "/private/tmp/b6-006.tfplan",
+    "plan_sha256": "9bda74b1a24993a60b6db8bbfb8bdec0890ba241e88de152ffd4547f680be938",
+    "guard": "PASS_B6_CLIENT_SECRET_PLAN",
+    "add": 3,
+    "change": 0,
+    "destroy": 0,
+    "state_lineage": "cc991efe-2154-ac03-fe73-48392ec7a9a3",
+    "state_serial_after": 23,
+    "targeted_residual_plan_sha256": "c27105b6eff84c14a79da78717c89c0c3295a629c5a080027c7e0b01114342b0",
+    "targeted_residual_outcome": "NO_CHANGES",
+    "secret_value_in_configuration_plan_or_state": false
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "publication": {
+    "version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "stages": [
+      "AWSCURRENT"
+    ],
+    "secret_value_sha256": "ec1a39980ad72cbba6dd4dafb6912b49edf4a685e07374f2e83920b740031759",
+    "bearer_token_sha256": "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6",
+    "plaintext_recorded": false,
+    "local_token_path": "/private/tmp/medzen-b6-6-client-token",
+    "local_token_mode": "0600",
+    "local_token_file_bytes_including_newline": 44
+  },
+  "access_boundary": {
+    "resource_policy_validation": "PASS_DURING_RUNNER_BEFORE_RECEIPT_FORMATTING_ERROR",
+    "resource_policy_canonical_sha256": "318a323fe01349dca140c8eff48cfef9da1cda163b6cc7616d3da718c0d20cb1",
+    "supplemental_kms_policy_canonical_sha256": "8a9c8064b7a66e8003e326b4ae02a1288c7d304fd471734146f70fbaacbd5dd4",
+    "operator_get_secret_value": "EXPLICITLY_DENIED_AS_REQUIRED",
+    "only_allowed_reader": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "orchestrator_live_read": "DEFERRED_TO_B6_6_POD_IDENTITY_PROOF"
+  },
+  "receipt_recovery": {
+    "required": true,
+    "aws_publication_succeeded_before_local_error": true,
+    "error": "The runner received a repository-relative authorization path and failed while calling Path.relative_to(ROOT) after publication and access-denial verification.",
+    "aws_retry_or_overwrite_performed": false,
+    "secret_read_performed": false,
+    "recovery_inputs": [
+      "retained mode-0600 local token",
+      "deterministic reviewed publication code",
+      "non-secret Secrets Manager version metadata",
+      "live resource-policy and IAM-policy hashes",
+      "explicit operator AccessDenied result"
+    ],
+    "future_fix": "Resolve runner CLI paths before execution and persist a pre-publication stage receipt; do not modify the packet-bound runner retroactively."
+  },
+  "cost": {
+    "maximum_incremental_cost_usd": 0.1,
+    "finalized_incremental_cost_usd": null,
+    "finalized_cost_reason": "AWS billing data has not landed; one retained secret version has only small standing cost."
+  },
+  "explicit_non_events": {
+    "real_client_keys": 0,
+    "plaintext_in_receipt_or_git": 0,
+    "new_kms_keys": 0,
+    "new_iam_roles": 0,
+    "secret_overwrites_or_rotations": 0,
+    "nodes_scaled": 0,
+    "deployments": 0,
+    "production_ssm_changes": 0
+  },
+  "next_boundary": "Packet 2026-007 is eligible for its separately approved execution."
+}
