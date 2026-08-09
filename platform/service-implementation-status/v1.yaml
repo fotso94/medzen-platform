@@ -1,0 +1,22 @@
+record_id: MEDZEN-SERVICE-IMPLEMENTATION-STATUS-2026-001
+revision: 1
+status: versioned_additive_source
+topology_source: platform/services.yaml
+topology_source_rule: immutable_hash_bound_by_prior_b6_evidence
+
+services:
+  tts-gateway:
+    image_repo: medzen-speech-tts-gateway
+    repository_code_path: services/speech-tts-gateway
+    implementation_stage: B6_5_LOCAL_MOCK
+    default_backend: text_only
+    fake_fish: implemented_local_no_network
+    real_fish: not_implemented_requires_separate_authorization
+    durable_cache: not_implemented
+    self_hosted: absent_until_registry_approval
+    external_gateway_reused_or_modified: false
+
+interpretation: >-
+  This additive record updates implementation progress without changing the
+  B6.2-evidence-bound service topology source. It does not authorize deployment,
+  AWS access, provider credentials, registry publication, or serving traffic.

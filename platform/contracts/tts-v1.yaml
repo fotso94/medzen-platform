@@ -1,0 +1,111 @@
+contract_id: MEDZEN-TTS-CONTRACT-2026-001
+version: medzen.tts.v1
+status: b6_5_local_mock_contract
+parent_contract:
+  id: MEDZEN-SPEECH-CONTRACT-2026-001
+  version: medzen.speech.v1
+  sha256: e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d
+
+scope:
+  service: medzen-speech-tts-gateway
+  repository_path: services/speech-tts-gateway
+  mode: local_mock_only
+  content: synthetic_non_clinical_only
+  default_backend: text_only
+  fake_fish_network_access: false
+  real_fish_access: prohibited
+  self_hosted_tts: absent_until_voice_and_model_are_registry_approved
+
+endpoint:
+  method: POST
+  path: /internal/v1/syntheses
+  authentication: cluster_network_only
+  content_type: application/json
+  maximum_body_bytes: 65536
+  request:
+    required: [request_id, language, text, model_versions]
+    maximum_text_characters: 8192
+    rule: incoming_tts_model_version_must_be_null
+  response:
+    status_for_valid_request: 200
+    required:
+      - request_id
+      - language
+      - text
+      - content_sha256
+      - synthesis_key_sha256
+      - tts_backend
+      - provider
+      - audio_url
+      - media_type
+      - audio_sha256
+      - model_versions
+      - cache_hit
+      - provider_attempted
+      - degradation_reason
+
+text_only:
+  classification: successful_terminal_fallback
+  audio_url: null
+  media_type: null
+  audio_sha256: null
+  tts_model_version: null
+  rule: provider_failure_never_discards_or_changes_the_supplied_text
+
+fake_fish:
+  name: fake_fish
+  model_version: fake-fish-local-v1
+  voice_id: b6-local-synthetic-fish-voice
+  media_type: audio/vnd.medzen.synthetic
+  first_byte_timeout_ms: 2000
+  network_access: false
+  allowed_outcomes: [success, timeout, unavailable, malformed]
+
+idempotency:
+  text_hash: sha256_utf8_exact_text
+  synthesis_key_fields:
+    [text_sha256, language, provider, voice_id, model_version, media_type]
+  canonicalization: utf8_json_sorted_keys_compact
+  request_id_in_key: false
+  repeated_request_rule: same_key_returns_same_cached_audio_without_provider_call
+  cached_audio_integrity: sha256_verified_before_reference_is_returned
+
+breaker:
+  source: platform/resilience.yaml
+  provider: fish
+  timeout_threshold: 3
+  failure_threshold: 5
+  open_behavior: text_only_success_without_provider_call
+  readiness_rule: remain_ready_for_text_only_and_expose_open_fish_state
+
+invariants:
+  - text_only_is_a_successful_response_not_an_error
+  - fish_success_preserves_the_exact_input_text
+  - fish_timeout_error_or_open_breaker_preserves_the_exact_input_text
+  - fish_timeout_error_or_open_breaker_returns_tts_backend_text_only
+  - valid_provider_failure_never_causes_an_http_500
+  - provider_audio_is_cached_by_content_bound_synthesis_key
+  - provider_is_never_called_twice_for_the_same_cached_synthesis_key
+  - self_hosted_tts_is_not_implemented_in_b6_5
+  - request_text_and_audio_bytes_are_never_logged
+  - every_response_carries_request_id_and_complete_model_versions
+
+errors:
+  INVALID_REQUEST: {status: 400, retryable: false}
+  UNSUPPORTED_MEDIA_TYPE: {status: 415, retryable: false}
+  PAYLOAD_TOO_LARGE: {status: 413, retryable: false}
+  SERVICE_UNAVAILABLE: {status: 503, retryable: true}
+
+test_strategy:
+  unit:
+    - exact_content_and_synthesis_hashes
+    - cache_idempotency_and_collision_refusal
+    - fish_timeout_failure_and_breaker_transitions
+  integration:
+    - text_only_http_success
+    - fake_fish_http_success_and_cache_hit
+    - fake_fish_timeout_and_error_http_200_fallback
+  regression:
+    - canonical_parent_contract_hash_unchanged
+    - external_gateway_is_never_imported_or_modified
+    - generated_platform_and_language_files_remain_current
