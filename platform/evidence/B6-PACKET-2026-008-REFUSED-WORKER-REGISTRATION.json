@@ -1,0 +1,204 @@
+{
+  "record": "B6_2026_008_SYNTHETIC_INTEGRATION_WINDOW_EXECUTION_RESULT",
+  "id": "B6-PACKET-2026-008-REFUSED-WORKER-REGISTRATION",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_COMPUTE_ZERO_CLEANUP_INCOMPLETE",
+  "outcome": "REFUSED_WORKER_REGISTRATION_AND_CLEANUP_IMPLEMENTATION",
+  "failure_stage": "WORKERS_READY",
+  "recorded_utc": "2026-08-09T20:47:32Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md",
+      "sha256": "153db3cdf59dd08dbc6ba7e3d09cac9a9dd41c124f4a9df65868f7582734d60e"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-008-b6-6-integration-window.json",
+      "sha256": "3360ca81bf7d10d27fe5c0304b97db738ad85b4d52a9f88f7b10e368a7b4b874",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/15",
+      "reviewed_repository_commit": "48130b03e9b97e84be60e0aa09c8ba6e558ad4a6",
+      "reviewed_packet_sha256": "153db3cdf59dd08dbc6ba7e3d09cac9a9dd41c124f4a9df65868f7582734d60e"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "master",
+    "git_commit": "ee0adbae6aede091505565f7bcfd731054032214",
+    "git_tree": "87d4ec3b93dee1447e4561cf0c24281152003773",
+    "commit_count": 261,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_15_merged": true,
+    "worktree_clean_before_receipts": true
+  },
+  "prewindow_local_invocation": {
+    "first_invocation_outcome": "REFUSED_BEFORE_BINDINGS",
+    "reason": "RUNNER_FILE_MODE_0644_DIRECT_EXEC_PERMISSION_DENIED",
+    "aws_mutation_before_refusal": false,
+    "correction": "INVOKE_THE_EXACT_HASH_BOUND_RUNNER_THROUGH_BASH",
+    "source_or_packet_changed": false
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T20:17:05Z",
+      "path": "platform/evidence/receipts/B6-2026-008-LIVE/local_bindings.json",
+      "sha256": "ddc9ebe15ea2c43cceb2aae3b8ff4bdca931e40736f2009712f2cb609a4faa08"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T20:17:08Z",
+      "path": "platform/evidence/receipts/B6-2026-008-LIVE/deadline.json",
+      "sha256": "bbb40ec168de1220f11aadb582b234f4087994b2017ef74920dd152a6592a654"
+    },
+    {
+      "stage": "workers_ready",
+      "status": "REFUSED",
+      "recorded_utc": "2026-08-09T20:46:55Z",
+      "path": "platform/evidence/receipts/B6-2026-008-LIVE/workers_ready.json",
+      "sha256": "9b93b22176f9d73b05af1d141ab93b8c7ec64318bec52b4a823930219c38ee1e",
+      "recording_note": "Post-run durable receipt; it records the already-observed worker gate refusal and does not claim contemporaneous persistence."
+    },
+    {
+      "stage": "cleanup",
+      "status": "INCOMPLETE",
+      "recorded_utc": "2026-08-09T20:46:55Z",
+      "path": "platform/evidence/receipts/B6-2026-008-LIVE/cleanup.json",
+      "sha256": "7330bdce73ecb8a345ffc7e353485e5e9750f631aeadd4b3d4afbe411d64e432",
+      "interpretation": "Compute zero and deadline removal passed, but the reviewed automatic cleanup did not complete and the synthetic secret and local token remain recoverably retained."
+    }
+  ],
+  "worker_registration_refusal": {
+    "cpu_nodes_ready": 2,
+    "gpu_node_resource_count_at_single_wait_invocation": 0,
+    "reason_code": "GPU_NODE_RESOURCE_NOT_OBSERVED_AT_SINGLE_WAIT_INVOCATION",
+    "observed_behavior": "kubectl wait was invoked before a matching GPU node resource existed, so it refused immediately instead of waiting for the resource to appear.",
+    "worker_capacity_created": {
+      "cpu": [
+        {
+          "instance_id": "i-026a761b4f78cdd9f",
+          "instance_type": "m6i.large",
+          "launch_utc": "2026-08-09T20:17:49Z",
+          "terminal_state": "terminated"
+        },
+        {
+          "instance_id": "i-0ed121e5b946bccbb",
+          "instance_type": "m6i.large",
+          "launch_utc": "2026-08-09T20:17:49Z",
+          "terminal_state": "terminated"
+        }
+      ],
+      "gpu": [
+        {
+          "instance_id": "i-0a2a57dceee889370",
+          "instance_type": "g6.xlarge",
+          "launch_utc": "2026-08-09T20:17:48Z",
+          "terminal_state": "terminated"
+        }
+      ]
+    }
+  },
+  "automatic_cleanup_findings": {
+    "reviewed_cleanup_invocation_outcome": "REFUSED_DIRECT_EXEC_PERMISSION_DENIED",
+    "reviewed_cleanup_file_mode": "0644",
+    "manual_exact_script_via_bash": "STARTED_THEN_REFUSED_TERRAFORM_PLAN",
+    "terraform_apply_performed": false,
+    "terraform_refusal": {
+      "error": "Invalid index",
+      "source": "infra/b6_client_secret.tf",
+      "cause": "The disabled secret resource had count zero while policy data still indexed aws_secretsmanager_secret.b6_client_keys[0].",
+      "additional_observation": "The targeted cleanup graph also proposed a CPU node-group scaling update while workers were active. No saved plan was applied."
+    },
+    "dra_cleanup": {
+      "resources_present_when_cleanup_started": true,
+      "created_by_this_run": "NOT_PROVEN_RUNNER_STOPPED_BEFORE_DRA_APPLY",
+      "removed": true
+    }
+  },
+  "stages_not_run": [
+    "terraform_window",
+    "controller_ready",
+    "dra_ready",
+    "rag_ready",
+    "asr_ready",
+    "tts_ready",
+    "llm_ready",
+    "orchestrator_ready",
+    "alb_ready",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "zero_state_verification": {
+    "verified_utc": "2026-08-09T20:47:32Z",
+    "manual_emergency_cleanup_within_packet_scope": true,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "kubernetes_cpu_or_gpu_nodes": 0,
+    "deadline_actions_remaining": 0,
+    "synthetic_workload_pods": 0,
+    "window_ingresses": 0,
+    "window_ecs_clusters": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_changes": 0,
+    "window_terraform_apply_performed": false
+  },
+  "retained_recoverable_state": {
+    "synthetic_secret": "medzen/client-api-keys",
+    "synthetic_secret_state": "EXISTS_NOT_SCHEDULED_FOR_DELETION",
+    "local_token_path": "/private/tmp/medzen-b6-6-client-token",
+    "local_token_mode": "0600",
+    "local_token_state": "RETAINED_FOR_A_CORRECTIVE_PACKET",
+    "production_ssm_pointer_changed": false,
+    "approved_artifact_changed": false,
+    "model_registered": false,
+    "training_or_language_scope_changed": false
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_before_reservation_usd": 63.5288,
+    "active_reservation_usd": 10.0,
+    "reservation_state": "REMAINS_ACTIVE_PENDING_ATTRIBUTABLE_BILLING_AND_COMPLETE_CLEANUP",
+    "actual_billed_cost": "NOT_YET_RECONCILED",
+    "fargate_tasks_started": 0,
+    "internal_albs_created": 0,
+    "window_terraform_resources_created": 0,
+    "cost_claim": "Three bounded worker instances ran briefly and terminated. No exact billed amount is inferred from wall-clock evidence."
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "production_deployment_occurred": false
+  },
+  "required_remediation_before_retry": [
+    "Create a new versioned packet; packet 2026-008 is closed and must not be resumed.",
+    "Wait for the exact expected CPU and GPU node-resource counts to exist before invoking kubectl readiness waits.",
+    "Make cleanup invocation independent of executable file mode, or bind executable modes as part of the reviewed source identity.",
+    "Make enable_b6_client_keys=false Terraform evaluation valid and prove the cleanup plan has only the exact intended destroys with no worker-node-group delta.",
+    "Add a prewindow Kubernetes zero-state check for DRA and every window-only resource, with explicit retained-resource handling.",
+    "Prove automatic cleanup end to end locally and with plan-only tests before another billable window.",
+    "Independently review and obtain owner approval for the corrective packet before any retry."
+  ],
+  "next_boundary": "Packet 2026-008 is closed as an interrupted refusal. Local correction and a new independently reviewed and owner-approved packet are required; no retry is authorized by this record."
+}
