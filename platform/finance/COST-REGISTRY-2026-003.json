@@ -1,0 +1,90 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-003",
+  "revision": 3,
+  "status": "CURRENT_GUARDRAIL_SNAPSHOT",
+  "recorded_utc": "2026-08-09T03:00:36Z",
+  "currency": "USD",
+  "supersedes": {
+    "path": "platform/finance/COST-REGISTRY-2026-002.json",
+    "sha256": "09295b13592941dfce2f54dae584e4dcbc8346f2964b1c658106991050da778f"
+  },
+  "purpose": "Conservatively close the B6.5B ECR scan-only reservation after PASS_SCAN_ONLY without claiming exact AWS billing attribution.",
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 63.5288,
+    "active_reservations_usd": 0.0,
+    "committed_plus_reserved_usd": 63.5288,
+    "guardrail_headroom_after_reservations_usd": 236.4712,
+    "actual_project_spend": "NOT_FULLY_RECONCILED",
+    "claim_limit": "The complete 1 USD ECR scan-only reservation is recognized conservatively as committed. This is a guardrail closure, not a claim that AWS billed 1 USD for the four pushes and automatic scans."
+  },
+  "allocations": [
+    {
+      "allocation_id": "B4-MODEL-FACTORY",
+      "financial_state": "RECONCILED_COMMITTED",
+      "recognized_committed_usd": 22.5288,
+      "active_reservation_usd": 0.0,
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "B4", "Workstream": "model-factory", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    },
+    {
+      "allocation_id": "B6A-EKS-UPGRADE",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL",
+      "recognized_committed_usd": 25.0,
+      "active_reservation_usd": 0.0,
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "B6A", "Workstream": "eks-upgrade", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    },
+    {
+      "allocation_id": "B6A-SERVING-PROOF",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 15.0,
+      "active_reservation_usd": 0.0,
+      "conservative_observed_gpu_cost_usd": 0.9401,
+      "conservative_gpu_seconds": 3363,
+      "unattributed_guardrail_margin_usd": 14.0599,
+      "actual_or_conservative_basis": "The full closed reservation remains committed guardrail until attributable billing permits a future non-destructive revision.",
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "B6A", "Workstream": "serving-proof", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    },
+    {
+      "allocation_id": "B6-5B-ECR-SCAN-ONLY-2026-001",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 1.0,
+      "active_reservation_usd": 0.0,
+      "actual_cost_usd": null,
+      "actual_or_conservative_basis": "Four exact images were pushed and automatically scanned. Actual ECR storage and scanning attribution is pending; the full reservation is retained conservatively.",
+      "evidence": "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "B6.5B", "Workstream": "ecr-scan-only", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "UNRECONCILED_STANDING_COST",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS",
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "platform", "Workstream": "standing-infrastructure", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "allocation_tags": {"Project": "medzen-speech", "Environment": "dev", "CostCenter": "speech-platform", "Stage": "data", "Workstream": "green-bucket-ingestion", "BudgetRegistry": "COST-REGISTRY-2026-003"}
+    }
+  ],
+  "allocation_tag_standard": {
+    "required_keys": ["Project", "Environment", "CostCenter", "Stage", "Workstream", "BudgetRegistry"],
+    "aws_activation_state": "NOT_APPLIED_BY_THIS_RECORD",
+    "future_rule": "Every billable packet must bind an allocation id and the exact COST-REGISTRY-2026-003 tag set."
+  },
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "current_active_billable_reservations": 0,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_must_not_be_mixed": true,
+    "new_aws_resources_require_versioned_packet": true,
+    "next_reconciliation_creates_new_registry_revision": true
+  }
+}

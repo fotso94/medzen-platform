@@ -1,0 +1,92 @@
+{
+  "record": "B6_FOUR_IMAGE_ECR_SCAN_ONLY_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-003",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T02:48:08Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-003 only.' after independent review PASS of B6.5B and packet 2026-003.",
+  "interpretation": "Authorization applies only to the four-image automatic ECR scan qualification in packet 2026-003. It does not authorize deployment, SSM publication, IAM, EKS, Kubernetes, ALB or security-group changes, node scale-up, provider calls, model promotion, B6.6 execution or full-B6 completion.",
+  "repository_at_authorization": {
+    "branch": "codex/b6-5b-scan-evidence",
+    "git_commit": "fef89d5bdee72b262ed0d42599f405484ff026a1",
+    "git_tree": "965a51df2c35a3632b5268143657c68f6f633366",
+    "commit_count": 240,
+    "worktree_clean_before_authorization_record": true,
+    "remote_master_commit": "fef89d5bdee72b262ed0d42599f405484ff026a1"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-003-b6-5b-ecr-scan-only.md",
+    "sha256": "a87de1c1210a9c4578284ae64e9f8aa99567ae5012de763b55953fbc293fb6c6",
+    "status_at_approval": "BLOCKED — NOT AUTHORIZED"
+  },
+  "local_engineering": {
+    "path": "platform/evidence/B6-5B-LOCAL-RELEASE-ENGINEERING-2026-001.json",
+    "sha256": "8872e9c659fc8791bc8da8260d142ec36a53d4ec5ff23508a4d96d5b4b08fb5b",
+    "status": "VERIFIED_LOCAL_COMPLETE_ECR_SCAN_NOT_AUTHORIZED"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "ecr_registry": "558069890522.dkr.ecr.eu-central-1.amazonaws.com"
+  },
+  "bound_images": {
+    "medzen-rag-index": {
+      "local_tag": "medzen-rag-index:b6-5b-7ec176b",
+      "linux_amd64_child": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+      "config_digest": "sha256:6328b1046a986782f529d511bf92bec07105206d98ad879f7479b5474fd214f9",
+      "ecr_tag": "b6-5b-7ec176b"
+    },
+    "medzen-llm-gateway": {
+      "local_tag": "medzen-llm-gateway:b6-5b-7ec176b",
+      "linux_amd64_child": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
+      "config_digest": "sha256:3adea43ed479032ef3ef244d19f5f2b60fa84dc13d6ffbaaea88746cac0b560e",
+      "ecr_tag": "b6-5b-7ec176b"
+    },
+    "medzen-orchestrator": {
+      "local_tag": "medzen-orchestrator:b6-5b-7ec176b",
+      "linux_amd64_child": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
+      "config_digest": "sha256:441cde5e33956692932f12b42343bcf4cb53af01d27df80bd9bfccdc79315d5c",
+      "ecr_tag": "b6-5b-7ec176b"
+    },
+    "medzen-speech-tts-gateway": {
+      "local_tag": "medzen-speech-tts-gateway:b6-5b-7ec176b",
+      "linux_amd64_child": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d",
+      "config_digest": "sha256:ff6ee26ce64cc84ef2052baa4f87e4de7ef2b39188496860dada14ab4bf13a87",
+      "ecr_tag": "b6-5b-7ec176b"
+    }
+  },
+  "authorized_operations": [
+    "reverify_exact_live_and_local_preconditions",
+    "replace_the_single_regional_basic_scan_on_push_rule_with_exactly_the_bound_seven_repository_filters",
+    "authenticate_to_the_exact_private_ecr_registry",
+    "tag_and_push_only_the_four_bound_local_image_identities",
+    "wait_for_and_record_all_four_automatic_child_manifest_scan_results",
+    "retain_the_images_and_create_immutable_scan_result_evidence"
+  ],
+  "prohibited_operations": [
+    "manual_ecr_start_image_scan",
+    "image_rebuild_substitution_deletion_or_security_waiver",
+    "repository_creation_or_mutability_encryption_change",
+    "iam_kms_s3_ssm_eks_kubernetes_alb_or_security_group_change",
+    "node_scale_up_or_provider_call",
+    "approved_asr_write_model_registration_or_language_serving_field_change",
+    "production_ssm_change",
+    "deployment_or_claiming_B6_6_or_full_B6_completion"
+  ],
+  "deterministic_outcomes": [
+    "PASS_SCAN_ONLY",
+    "BLOCKED_IMAGE_SCAN",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "committed_before_reservation_usd": 62.5288,
+    "authorized_reservation_usd": 1.0,
+    "headroom_after_reservation_usd": 236.4712,
+    "gpu_and_cpu_desired_capacity_required": 0
+  },
+  "next_boundary": "Only PASS_SCAN_ONLY permits presentation of a separately reviewed and owner-approved B6.6 integration-window packet."
+}

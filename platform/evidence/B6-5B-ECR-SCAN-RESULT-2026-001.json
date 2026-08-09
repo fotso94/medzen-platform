@@ -1,0 +1,171 @@
+{
+  "record": "B6_FOUR_IMAGE_ECR_SCAN_ONLY_RESULT",
+  "id": "B6-5B-ECR-SCAN-RESULT-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "outcome": "PASS_SCAN_ONLY",
+  "completed_utc": "2026-08-09T03:00:36Z",
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-003-b6-5b-ecr-scan-only.json",
+    "sha256": "1202d8ed5126da08459bfac5023627fa7d99e20b460c96bd80e3c603fce8ed84",
+    "git_commit": "d8c5b079d3e483c6c6a5f6a923dc1f897c307556",
+    "owner_phrase": "Approve B6 AWS change packet 2026-003 only.",
+    "independent_review": "PASS"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-003-b6-5b-ecr-scan-only.md",
+    "sha256": "a87de1c1210a9c4578284ae64e9f8aa99567ae5012de763b55953fbc293fb6c6"
+  },
+  "local_engineering": {
+    "path": "platform/evidence/B6-5B-LOCAL-RELEASE-ENGINEERING-2026-001.json",
+    "sha256": "8872e9c659fc8791bc8da8260d142ec36a53d4ec5ff23508a4d96d5b4b08fb5b",
+    "image_source_commit": "7ec176b2b69a3a552c6f135c36a8a1fc51cedc69",
+    "runtime_smokes_reverified": 4,
+    "runtime_smoke_failures": 0,
+    "local_critical_findings": 0,
+    "local_high_findings": 0
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6-5b-scan-evidence",
+    "git_commit": "d8c5b079d3e483c6c6a5f6a923dc1f897c307556",
+    "git_tree": "54d9861acb47d9837a3cb4e96fb039ec5136773e",
+    "commit_count": 241,
+    "worktree_clean": true,
+    "remote_branch_commit": "d8c5b079d3e483c6c6a5f6a923dc1f897c307556"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "preconditions": {
+    "regional_ecr_scan_type": "BASIC",
+    "regional_ecr_scan_frequency": "SCAN_ON_PUSH",
+    "regional_ecr_filters_exact": [
+      "medzen-model-loader",
+      "medzen-nvidia-dra",
+      "medzen-asr-runtime"
+    ],
+    "all_seven_repositories_tag_immutable": true,
+    "all_seven_repositories_scan_on_push": true,
+    "all_seven_repositories_kms_encrypted": true,
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "all_four_destination_repositories_empty": true,
+    "all_four_destination_tags_absent": true,
+    "cpu_nodegroup": {"status": "ACTIVE", "minimum": 0, "desired": 0, "maximum": 4},
+    "gpu_nodegroup": {"status": "ACTIVE", "minimum": 0, "desired": 0, "maximum": 1}
+  },
+  "scanner_configuration_change": {
+    "put_calls": 1,
+    "scan_type": "BASIC",
+    "scan_frequency": "SCAN_ON_PUSH",
+    "readback_exact": true,
+    "filters_exact": [
+      "medzen-model-loader",
+      "medzen-nvidia-dra",
+      "medzen-asr-runtime",
+      "medzen-rag-index",
+      "medzen-llm-gateway",
+      "medzen-orchestrator",
+      "medzen-speech-tts-gateway"
+    ],
+    "retained_as_standing_repository_scan_rule": true
+  },
+  "automatic_scan_subjects": {
+    "medzen-rag-index": {
+      "tag": "b6-5b-7ec176b",
+      "local_child_digest": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+      "config_digest": "sha256:6328b1046a986782f529d511bf92bec07105206d98ad879f7479b5474fd214f9",
+      "ecr_child_digest": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+      "identity_match": true,
+      "ecr_image_size_bytes": 18675322,
+      "pushed_utc": "2026-08-09T02:57:56.747Z",
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-09T02:58:03Z",
+      "critical": 0,
+      "high": 0,
+      "finding_severity_counts": {},
+      "findings": [],
+      "gate": "PASS"
+    },
+    "medzen-llm-gateway": {
+      "tag": "b6-5b-7ec176b",
+      "local_child_digest": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
+      "config_digest": "sha256:3adea43ed479032ef3ef244d19f5f2b60fa84dc13d6ffbaaea88746cac0b560e",
+      "ecr_child_digest": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
+      "identity_match": true,
+      "ecr_image_size_bytes": 19569099,
+      "pushed_utc": "2026-08-09T02:58:13.452Z",
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-09T02:58:20Z",
+      "critical": 0,
+      "high": 0,
+      "finding_severity_counts": {},
+      "findings": [],
+      "gate": "PASS"
+    },
+    "medzen-orchestrator": {
+      "tag": "b6-5b-7ec176b",
+      "local_child_digest": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
+      "config_digest": "sha256:441cde5e33956692932f12b42343bcf4cb53af01d27df80bd9bfccdc79315d5c",
+      "ecr_child_digest": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
+      "identity_match": true,
+      "ecr_image_size_bytes": 36750808,
+      "pushed_utc": "2026-08-09T02:58:37.400Z",
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-09T02:58:45Z",
+      "critical": 0,
+      "high": 0,
+      "finding_severity_counts": {},
+      "findings": [],
+      "gate": "PASS"
+    },
+    "medzen-speech-tts-gateway": {
+      "tag": "b6-5b-7ec176b",
+      "local_child_digest": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d",
+      "config_digest": "sha256:ff6ee26ce64cc84ef2052baa4f87e4de7ef2b39188496860dada14ab4bf13a87",
+      "ecr_child_digest": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d",
+      "identity_match": true,
+      "ecr_image_size_bytes": 19563880,
+      "pushed_utc": "2026-08-09T02:58:56.726Z",
+      "scan_status": "COMPLETE",
+      "scan_completed_utc": "2026-08-09T02:59:04Z",
+      "critical": 0,
+      "high": 0,
+      "finding_severity_counts": {},
+      "findings": [],
+      "gate": "PASS"
+    }
+  },
+  "post_execution_verification": {
+    "manual_start_image_scan_events": 0,
+    "security_waiver_used": false,
+    "images_rebuilt_or_substituted": 0,
+    "images_deleted": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "approved_asr_objects": 0,
+    "production_registry_parameters": 0,
+    "ssm_writes": 0,
+    "iam_changes": 0,
+    "kubernetes_actions": 0,
+    "alb_or_security_group_changes": 0,
+    "deployment_attempted": false,
+    "provider_calls": 0
+  },
+  "budget": {
+    "aggregate_ceiling_usd": 300.0,
+    "reservation_usd": 1.0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "ecr_actual_cost": "NOT_YET_RECONCILED",
+    "conservative_closure": "The full 1 USD reservation is recognized as committed guardrail in COST-REGISTRY-2026-003 without claiming AWS billed that amount."
+  },
+  "next_boundary": {
+    "b6_6_execution_authorized": false,
+    "permitted_next_work": "Present a separately reviewed and owner-approved B6.6 integration-window packet binding all seven scan-passed child digests.",
+    "separate_owner_approval_required": true
+  },
+  "conclusion": "Packet 2026-003 completed as PASS_SCAN_ONLY. All four exact child-manifest identities passed the authoritative automatic ECR scanner with zero critical and zero high findings. No waiver, deployment, node scale-up, production registry change or model promotion occurred."
+}
