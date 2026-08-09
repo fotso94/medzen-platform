@@ -1,0 +1,78 @@
+{
+  "record": "B6_2026_009_CORRECTIVE_INTEGRATION_WINDOW_PREFLIGHT_RESULT",
+  "id": "B6-PACKET-2026-009-REFUSED-TOKEN-ENCODING",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_BEFORE_AWS_MUTATION",
+  "outcome": "REFUSED_SYNTHETIC_TOKEN_ENCODING_BINDING",
+  "failure_stage": "PRE_RECEIPT_LOCAL_TOKEN_BINDING",
+  "recorded_utc": "2026-08-09T21:37:15Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-009-b6-6-corrective-window.md",
+      "sha256": "75fd2cf91e130ca7f1a52d1916e4af98d82bfae3e24752b2dc9b995d86a06ab4"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-009-b6-6-corrective-window.json",
+      "sha256": "460d203c4701dbd2ec81c0749ab3e441f4009935754c3cc45f370dc351e8ae1f",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/16",
+      "reviewed_repository_commit": "96dd8516b296fbeba1dfe78845d66d602ea6e796"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "master",
+    "git_commit": "002818d953befac9d992d3e376700f26b73d6b93",
+    "git_tree": "cba76d8aaa0e6241787057a25c57ce89575aae48",
+    "commit_count": 265,
+    "pull_request_16_merged": true,
+    "worktree_clean_before_execution": true
+  },
+  "token_binding_observation": {
+    "path": "/private/tmp/medzen-b6-6-client-token",
+    "mode": "0600",
+    "file_bytes": 44,
+    "ends_with_single_line_feed": true,
+    "file_sha256": "7937f936968612ebe56172e5ae1594d55c60c506200885488e28653207a096a8",
+    "bearer_bytes_after_line_ending_removal": 43,
+    "bearer_sha256": "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6",
+    "packet_006_evidence_bearer_sha256": "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6",
+    "root_cause": "The packet-009 runner correctly required a 44-byte newline-terminated file but incorrectly compared the packet-006 bearer-token hash to all 44 file bytes."
+  },
+  "stage_receipts": {
+    "created": 0,
+    "reason": "The token binding precedes local_bindings receipt persistence by design."
+  },
+  "aws_verification": {
+    "mutation_attempted": false,
+    "deadlines_armed": false,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "cpu_deadline_actions": 0,
+    "gpu_deadline_actions": 0,
+    "services_deployed": 0,
+    "terraform_apply": false,
+    "fargate_tasks": 0,
+    "internal_albs_created": 0,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0
+  },
+  "budget": {
+    "existing_active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "worker_seconds": 0,
+    "incremental_compute_cost_usd": 0.0,
+    "reservation_state": "REMAINS_ACTIVE"
+  },
+  "required_correction": [
+    "Require mode 0600 and exactly 44 file bytes.",
+    "Require exactly one final LF byte and no CR or embedded newline in the 43-byte bearer value.",
+    "Compare packet-006 bearer_token_sha256 to the 43-byte bearer value, not the newline-terminated file.",
+    "Add regression tests for the exact valid encoding and malformed line endings.",
+    "Create a new versioned packet with changed source hashes; packet 2026-009 must not resume."
+  ],
+  "next_boundary": "Packet 2026-009 is closed. Local correction, independent review and a new owner approval are required before any AWS retry."
+}
