@@ -1,0 +1,46 @@
+{
+  "record": "B6_6_INTEGRATION_PACKET_READINESS",
+  "id": "B6-6-PACKET-READINESS-2026-001",
+  "revision": 1,
+  "status": "BLOCKED_LOCAL_RELEASE_ENGINEERING_REQUIRED",
+  "recorded_utc": "2026-08-09T01:32:42Z",
+  "repository": {
+    "branch": "codex/b6-5a-execution-evidence",
+    "git_commit": "9cfd499967d8aa015472c1f4c2a4c9f8c4962c54",
+    "git_tree": "e3373a648c20ba8348e136206120b045dd917d61"
+  },
+  "b6_5a": {
+    "status": "VERIFIED_COMPLETE_PENDING_INDEPENDENT_EXIT_REVIEW",
+    "evidence_path": "platform/evidence/B6-SSM-TEST-REGISTRY-2026-001.json",
+    "evidence_sha256": "4b8a6dc527001811b6e8dc05bbcd92d04c80893120015dca5ff8dc29e80f7ffd",
+    "snapshot_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "parameter_versions": [1, 1, 1]
+  },
+  "known_deployable_images": {
+    "medzen-model-loader": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "medzen-asr-runtime": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+    "medzen-nvidia-dra": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+  },
+  "missing_deployable_images": {
+    "medzen-rag-index": {"ecr_image_count": 0, "dockerfile_present": false},
+    "medzen-llm-gateway": {"ecr_image_count": 0, "dockerfile_present": false},
+    "medzen-orchestrator": {"ecr_image_count": 0, "dockerfile_present": false},
+    "medzen-speech-tts-gateway": {"ecr_image_count": 0, "dockerfile_present": false}
+  },
+  "integration_gaps": [
+    "The orchestrator defaults to local_fixture and refuses every deployed mode.",
+    "The orchestrator uses in-process synthetic ASR, RAG and LLM adapters; deployed HTTP clients are absent.",
+    "The B6.5A registry route explicitly identifies v0-local-synthetic-asr and fake-bedrock-local-v1, not the retained B6A v0 runtime identity.",
+    "Generated Kubernetes manifests contain PLACEHOLDER_TAG and no digest-bound B6.6 overlay exists.",
+    "No reviewed orchestrator-only ALB/Ingress definition or exact backend security-group source is bound.",
+    "The active B6A 15 USD reservation remains pending billing reconciliation under the one-active-reservation rule."
+  ],
+  "unchanged_aws_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "new_resources_from_readiness_review": 0,
+    "ecr_pushes_from_readiness_review": 0,
+    "deployments_from_readiness_review": 0
+  },
+  "required_next_local_exit": "Build, test and independently review a B6.5B release-engineering PR that supplies minimal hardened images, deployed adapters, an exact test-registry route, digest-bound manifests and isolation tests."
+}

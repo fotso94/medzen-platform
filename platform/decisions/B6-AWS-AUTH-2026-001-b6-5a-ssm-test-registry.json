@@ -1,0 +1,77 @@
+{
+  "record": "B6_5A_SSM_TEST_REGISTRY_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-001",
+  "revision": 1,
+  "status": "OWNER_APPROVED_FOR_EXECUTION",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T01:19:23Z",
+  "authorization_source": "Owner message approving B6 AWS change packet 2026-001 after independent PASS of PR #9.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "outcome": "PASS",
+    "findings": 0,
+    "review_scope": "PR #9 / B6 packet 2026-001: content-addressed test path, create-only SecureStrings, tag-key-constrained AddTagsToResource delta, and retained Deny statements"
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit": "d4bcdb601d0e1a8ca8ac0d55dac9aa8d5a674a0a",
+    "git_tree": "5dda8628afe853b76a418660ab3cf4541efc0168",
+    "commit_count": 232,
+    "worktree_clean": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_9": "MERGED"
+  },
+  "packet": {
+    "id": "B6 AWS change packet 2026-001 (B6.5A SSM test registry)",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-001-b6-5a-ssm-test-registry.md",
+    "sha256": "b9c496152dfae322e5d6f74dd5396a1041a3c213f46b8dc0d13c086c48167350"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-5A-SSM-TEST-REGISTRY-2026-001.json",
+    "sha256": "75ec85328d1424acc80a0db55d5f407571c3ffcdc0e4f9e8a4ebe8962075edb3",
+    "snapshot_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "parameter_count": 3
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "publisher_role": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "authorized_operations": [
+    "saved_live_terraform_plan_and_exact_delta_validation",
+    "one_in_place_registry_publisher_inline_policy_update",
+    "post_apply_zero_residual_terraform_plan",
+    "assume_existing_registry_publisher_role_for_at_most_one_hour",
+    "create_or_reuse_exactly_three_manifest_bound_test_securestrings",
+    "readback_values_versions_types_key_identity_and_exact_tags",
+    "publisher_and_orchestrator_policy_simulation",
+    "production_alias_before_after_hash_verification",
+    "exact_three_parameter_rollback_by_owner_identity_on_failure",
+    "immutable_execution_receipt_creation"
+  ],
+  "hard_preconditions": {
+    "terraform_plan_add": 0,
+    "terraform_plan_change": 1,
+    "terraform_plan_destroy": 0,
+    "only_terraform_address": "aws_iam_role_policy.registry_publisher",
+    "maximum_parameter_count": 3,
+    "overwrite": false,
+    "production_alias_changes": 0,
+    "maximum_incremental_cost_usd": 0.1,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0
+  },
+  "prohibited_operations": [
+    "any_parameter_outside_the_exact_content_addressed_test_root",
+    "production_registry_snapshot_or_serving_alias_change",
+    "artifact_or_approved_version_change",
+    "new_iam_role_or_kms_key",
+    "eks_nodegroup_network_ecr_bedrock_fish_training_or_inference_action",
+    "cpu_or_gpu_scale_up",
+    "b6_6_execution"
+  ],
+  "separate_future_packet_required": "B6.6 integration window"
+}
