@@ -1,0 +1,84 @@
+{
+  "record": "B6_PREDEPLOYMENT_BOUNDARY_PREPARATION_AUTHORIZATION",
+  "id": "B6-PREDEPLOYMENT-BOUNDARIES-2026-001",
+  "revision": 1,
+  "status": "owner-approved-local-preparation-only",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T04:20:26Z",
+  "authorization_source": "Owner message accepting the independent PASS review of PR #12 and authorizing preparation of the three B6.6 pre-deployment boundary items.",
+  "interpretation": "Authorize local engineering, validation and packet preparation for the AWS Load Balancer Controller qualification boundary, a synthetic integration-only client API key secret, and a content-addressed deployment registry publication. This record does not authorize execution of any prepared AWS packet.",
+  "starting_repository": {
+    "branch": "codex/b6-predeployment-boundaries",
+    "git_commit": "41d6f13bdbc7161fb1a23f45e752707dbcfecee9",
+    "git_tree": "46c6c928fb8da0b2fd74d63f2e28596a40e0740c",
+    "commit_count": 244,
+    "worktree_clean": true,
+    "merged_pull_request": "https://github.com/fotso94/medzen-platform/pull/12"
+  },
+  "governing_sources": {
+    "full_b6_plan": {
+      "path": "platform/decisions/PLAN-2026-013-full-b6-serving.md",
+      "sha256": "3cfba1521281384aabbc91c4c5f04f7e2bec51444cfdf15f8a28b56a8f20418b"
+    },
+    "speech_contract": {
+      "path": "platform/contracts/speech-v1.yaml",
+      "sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
+    },
+    "runtime_image_hardening": {
+      "path": "platform/standards/runtime-image-hardening-v1.md",
+      "sha256": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791"
+    },
+    "cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-003.json",
+      "sha256": "a06fadee5a85ea763e80e333df1bd116dc0f184b5a3b02a9eafa820830d380f5"
+    },
+    "blocked_b6_6_draft": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-004-b6-6-integration-window-revision-2.md",
+      "sha256": "f9c6c6030cb0cd120dd6dbd7f3eb8dd93eb331791d812d58be865ab3fe513975"
+    },
+    "seven_image_scan_result": {
+      "path": "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
+      "sha256": "f0364c098d8e7cbcc53b9fb0dddd46a8dda8295b420803e179106e326e160c83"
+    }
+  },
+  "packet_strategy": {
+    "decision": "three_separate_packets",
+    "reason": "Keep controller IAM and installation, secret creation, and registry publication independently reviewable and independently stoppable.",
+    "packets": [
+      "B6 AWS change packet 2026-005 — ALB controller qualification",
+      "B6 AWS change packet 2026-006 — synthetic client API key secret",
+      "B6 AWS change packet 2026-007 — deployment registry snapshot"
+    ]
+  },
+  "authorized_operations": [
+    "inspect_current_AWS_state_read_only",
+    "qualify_an_exact_upstream_AWS_Load_Balancer_Controller_release_locally",
+    "prepare_cluster_and_VPC_scoped_controller_IAM_Terraform_Helm_and_scan_controls",
+    "prepare_a_synthetic_test_only_KMS_encrypted_client_key_secret_and_narrow_read_policy",
+    "prepare_content_addressed_create_only_registry_publication_using_the_existing_publisher_role",
+    "add_fail_closed_plan_packet_and_behavioral_tests",
+    "run_local_tests_Terraform_format_validation_and_non_mutating_plans",
+    "prepare_a_successor_B6_6_packet_after_all_three_boundaries_have_verified_execution_evidence"
+  ],
+  "prohibited_operations": [
+    "Terraform_apply_or_other_AWS_mutation",
+    "ECR_repository_creation_image_push_or_live_scan_start",
+    "IAM_role_policy_or_Pod_Identity_mutation",
+    "KMS_Secrets_Manager_or_SSM_write",
+    "Helm_install_Kubernetes_apply_or_node_scale_up",
+    "ALB_security_group_listener_target_group_or_DNS_creation",
+    "approved_ASR_publication_model_registration_or_production_registry_alias_change",
+    "activating_the_10_USD_B6_6_reservation",
+    "claiming_any_boundary_or_B6_6_complete_without_execution_evidence"
+  ],
+  "required_safety_properties": [
+    "controller_image_is_pinned_to_and_deployed_by_the_same_scan_passed_linux_amd64_child_digest",
+    "controller_IAM_is_scoped_to_eu_central_1_cluster_medzen_speech_and_VPC_vpc_051aa9df8b64bf141_where_AWS_conditions_support_it",
+    "controller_installation_is_Terraform_managed_and_reversible",
+    "client_key_material_is_synthetic_never_committed_never_logged_and_readable_only_by_the_orchestrator_role",
+    "deployment_registry_uses_a_new_content_addressed_non_serving_test_path_and_create_only_SecureStrings",
+    "every_packet_refuses_unreviewed_deltas_and_has_an_explicit_rollback",
+    "CPU_and_GPU_node_groups_remain_at_zero_during_preparation"
+  ],
+  "next_authorization_boundary": "Each prepared packet requires independent review and exact owner approval before execution. No AWS packet is authorized by this record."
+}
