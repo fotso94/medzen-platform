@@ -1,0 +1,73 @@
+{
+  "record": "B6_ALB_CONTROLLER_QUALIFICATION_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-005",
+  "revision": 1,
+  "status": "OWNER_APPROVED_FOR_EXECUTION",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T12:20:31Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-005 only.' after independent review PASS of PR #13 and all three packets.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "outcome": "PASS",
+    "findings": 0,
+    "review_scope": "PR #13 packet 2026-005: condition-scoped controller policy, drift-refusing digest pin, window-only controller lifecycle and 11/11 boundary tests"
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit": "43475ccb2f6c3037671051d763c63272f2a8a2b1",
+    "git_tree": "3d73f225df68f20bfc90c9003cec359626813e7b",
+    "reviewed_source_commit": "c5bcfbecd2364d6dbcb8167073a3855d179f05e0",
+    "commit_count": 247,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_13": "MERGED"
+  },
+  "packet": {
+    "id": "B6 AWS change packet 2026-005",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-005-alb-controller-qualification.md",
+    "sha256": "6f0a336808cba8307ee3735481eb25c034afaaf7455765db0e501d017c0e201e"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "private_repository": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller"
+  },
+  "authorized_operations": [
+    "fresh_stage_a_terraform_plan_and_exact_delta_guard",
+    "create_exact_private_ecr_repository_and_eighth_scan_filter",
+    "mirror_exact_upstream_linux_amd64_child_without_rebuild",
+    "automatic_ecr_scan_by_child_digest_with_zero_critical_and_high_gate",
+    "fresh_stage_b_terraform_plan_and_exact_delta_guard",
+    "independent_rendered_policy_review_after_security_group_id_resolution",
+    "create_exact_empty_alb_security_group_controller_role_inline_policy_and_pod_identity",
+    "verify_no_helm_release_webhook_ingress_alb_or_node_scale_change",
+    "create_and_publish_immutable_execution_evidence"
+  ],
+  "hard_preconditions": {
+    "stage_a_plan_add": 1,
+    "stage_a_plan_change": 1,
+    "stage_a_plan_destroy": 0,
+    "stage_b_plan_add": 4,
+    "stage_b_plan_change": 0,
+    "stage_b_plan_destroy": 0,
+    "controller_child_digest": "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f",
+    "critical_findings_max": 0,
+    "high_findings_max": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "maximum_incremental_cost_usd": 0.2
+  },
+  "prohibited_operations": [
+    "public_or_internet_facing_load_balancer",
+    "controller_security_group_mutation",
+    "helm_installation_or_kubernetes_webhook_creation",
+    "cpu_or_gpu_scale_up",
+    "application_deployment_ingress_dns_or_production_ssm_change",
+    "model_publication_registry_approval_provider_call_or_phi",
+    "security_waiver"
+  ],
+  "next_boundary": "Packet 2026-006 may execute only after immutable PASS evidence for this packet is committed and published."
+}
