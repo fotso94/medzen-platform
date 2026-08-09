@@ -1,0 +1,81 @@
+{
+  "record": "B6_DEPLOYMENT_REGISTRY_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-007",
+  "revision": 1,
+  "status": "OWNER_APPROVED_FOR_EXECUTION",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T18:36:39Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-007 only.' conditioned on packet 2026-006 evidence, after independent review PASS of PR #13 and all three packets.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "outcome": "PASS",
+    "findings": 0,
+    "review_scope": "PR #13 packet 2026-007: exact content-addressed non-serving snapshot, create-only publication, constrained supplemental tag permission, preserved historical deny statements, and 11/11 boundary tests"
+  },
+  "prior_gate": {
+    "packet": "B6 AWS change packet 2026-006",
+    "evidence_path": "platform/evidence/B6-CLIENT-API-KEYS-2026-001.json",
+    "evidence_sha256": "6120c7a9b82dd51a2ceccd504156c8448c0322c5ba31e65334505caf3856c2e0",
+    "status": "VERIFIED_COMPLETE_WITH_LOCAL_RECEIPT_RECOVERY"
+  },
+  "repository_at_authorization": {
+    "branch": "codex/b6-predeployment-execution",
+    "git_commit": "943ce2b9fa85f69dd65ffb6020edc969ef6d0956",
+    "git_tree": "ebb7c8859d25aa115ec4711d99d63f4ab00fb60c",
+    "commit_count": 251,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "packet": {
+    "id": "B6 AWS change packet 2026-007",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-007-deployment-registry.md",
+    "sha256": "2c55aba2728bd7669800796963b297265ce125869bc2464a8f72c1050ef7481f"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-DEPLOYMENT-REGISTRY-2026-001.json",
+    "sha256": "8cef584e4e582077dfc97ef7272a28606e6cef513bf5bdbf742baa4dee7dc6b5",
+    "snapshot_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "parameter_count": 3
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "publisher_role": "arn:aws:iam::558069890522:role/medzen-registry-publisher-role",
+    "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "exact_root": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81"
+  },
+  "authorized_operations": [
+    "fresh_targeted_terraform_plan_and_exact_delta_guard",
+    "create_exact_supplemental_add_tags_inline_policy",
+    "validate_exact_request_manifest_and_empty_destination_root",
+    "assume_existing_publisher_role_for_at_most_one_hour",
+    "create_exactly_three_manifest_bound_securestrings_with_overwrite_false",
+    "read_back_values_hashes_versions_types_kms_identity_and_exact_tags",
+    "reconstruct_and_verify_registry_router_snapshot",
+    "prove_production_pointer_absent_and_unchanged",
+    "create_and_publish_immutable_execution_evidence"
+  ],
+  "hard_preconditions": {
+    "terraform_plan_add": 1,
+    "terraform_plan_change": 0,
+    "terraform_plan_destroy": 0,
+    "parameter_count": 3,
+    "expected_initial_version": 1,
+    "overwrite": false,
+    "production_alias_changes": 0,
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "maximum_incremental_cost_usd": 0.1
+  },
+  "prohibited_operations": [
+    "parameter_outside_exact_content_addressed_root",
+    "production_registry_or_serving_alias_change",
+    "new_iam_role_or_kms_key",
+    "cpu_or_gpu_scale_up",
+    "workload_alb_model_approved_artifact_or_provider_call",
+    "phi"
+  ],
+  "next_boundary": "Only immutable VERIFIED_COMPLETE evidence permits preparation of the separately reviewed B6.6 successor packet."
+}
