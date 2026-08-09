@@ -1,0 +1,123 @@
+{
+  "client": [
+    {
+      "type": "start",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "language_hint": "en",
+      "audio_format": "pcm_s16le/16000/mono"
+    },
+    {"binary_fixture": "platform/testdata/orchestrator/synthetic-file-request.wav#pcm_frames"},
+    {"type": "end_of_speech"}
+  ],
+  "server": [
+    {
+      "type": "ready",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-local-synthetic-asr",
+        "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+        "llm": null,
+        "rag": null,
+        "tts": null
+      }
+    },
+    {
+      "type": "partial_transcript",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-local-synthetic-asr",
+        "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+        "llm": null,
+        "rag": null,
+        "tts": null
+      },
+      "sequence": 1,
+      "text": "When"
+    },
+    {
+      "type": "final_transcript",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-local-synthetic-asr",
+        "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+        "llm": null,
+        "rag": null,
+        "tts": null
+      },
+      "transcript": {
+        "verbatim": "When does the fictional training desk open?",
+        "normalized": "When does the fictional training desk open?",
+        "normalization_version": "b6-local-synthetic-v1"
+      },
+      "language": "en"
+    },
+    {
+      "type": "reply_text",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-local-synthetic-asr",
+        "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+        "llm": "fake-bedrock-local-v1",
+        "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+        "tts": null
+      },
+      "text": "[English synthetic] Answer supported only by synthetic-hours, synthetic-card, synthetic-support.",
+      "citations": [
+        {
+          "rank": 1,
+          "document_id": "synthetic-hours",
+          "title": "Fictional training desk hours",
+          "source_uri": "medzen://synthetic/training-desk",
+          "section": "hours",
+          "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
+          "excerpt": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
+          "score": 10.0
+        },
+        {
+          "rank": 2,
+          "document_id": "synthetic-card",
+          "title": "Fictional practice card",
+          "source_uri": "medzen://synthetic/training-desk",
+          "section": "arrival",
+          "content_sha256": "edaaf0f8a6ab248c2b1143c6f9b913e219e3db55998c2819f6298952521571e1",
+          "excerpt": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
+          "score": 6.0
+        },
+        {
+          "rank": 3,
+          "document_id": "synthetic-support",
+          "title": "Synthetic support hours",
+          "source_uri": "medzen://synthetic/support-line",
+          "section": "hours",
+          "content_sha256": "fe6f9abbbd89dfeacdfefa8e31a9cc9bcc22a6bd8e9174e6c8e6f35f935751eb",
+          "excerpt": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
+          "score": 1.0
+        }
+      ],
+      "tts_backend": "text_only"
+    },
+    {
+      "type": "completed",
+      "request_id": "33333333-3333-4333-8333-333333333333",
+      "session_id": "44444444-4444-4444-8444-444444444444",
+      "model_versions": {
+        "asr": "v0-local-synthetic-asr",
+        "registry_snapshot": "b6-test:a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+        "llm": "fake-bedrock-local-v1",
+        "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+        "tts": null
+      },
+      "latency_ms": {
+        "total": 13.0,
+        "asr": 2.0,
+        "rag": 3.0,
+        "llm": 4.0,
+        "tts": 0.0
+      }
+    }
+  ]
+}

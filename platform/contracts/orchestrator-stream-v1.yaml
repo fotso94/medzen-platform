@@ -1,0 +1,97 @@
+contract_id: MEDZEN-ORCHESTRATOR-STREAM-CONTRACT-2026-001
+version: medzen.orchestrator.stream.v1
+status: b6_4_local_streaming_contract
+parent_contract:
+  id: MEDZEN-SPEECH-CONTRACT-2026-001
+  version: medzen.speech.v1
+  sha256: e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d
+file_mode_parent:
+  id: MEDZEN-ORCHESTRATOR-FILE-CONTRACT-2026-001
+  sha256: 5d44c360a046c2bd56d9ddc8caa275c133955e3aee9a8a553b9f016f4f70a65d
+compatibility:
+  parent_contracts_are_unchanged: true
+  additive_event_fields_are_backward_compatible: true
+
+scope:
+  service: speech-orchestrator
+  mode: local_websocket_only
+  audio: generated_non_speech_pcm_fixture_only
+  content: synthetic_non_clinical_only
+  aws_access: prohibited
+  network_providers: prohibited
+  real_silero_weights_loaded: false
+  tts_audio_generation: deferred_to_b6_5
+
+endpoint:
+  protocol: websocket
+  path: /v1/conversations/stream
+  authentication: opaque_bearer_token_during_upgrade
+  contract_header: {name: X-MedZen-Contract-Version, value: medzen.speech.v1}
+  limits:
+    maximum_binary_frame_bytes: 65536
+    maximum_session_audio_bytes: 26214400
+    idle_timeout_seconds: 30
+    pipeline_timeout_seconds: 30
+    cancellation_budget_ms: 250
+  start:
+    required: [type, request_id]
+    optional: [language_hint, audio_format]
+    audio_format: pcm_s16le/16000/mono
+  controls: [end_of_speech, cancel, barge_in]
+  server_sequence:
+    successful: [ready, partial_transcript_optional, final_transcript, reply_text, completed]
+    cancelled: [ready, partial_transcript_optional, cancelled]
+
+vad:
+  interface: VoiceActivityDetector
+  silero_adapter: callable_injected_no_download_path
+  b6_4_runtime: deterministic_local_energy_fixture_detector
+  rule: local_energy_detection_proves_control_flow_not_speech_accuracy
+
+backpressure:
+  partial_transcripts: {maximum: 4, overflow: drop_oldest}
+  audio_chunks: {maximum: 8, overflow: pause_upstream}
+  final_results: {maximum: 16, overflow: refuse_without_mutation}
+  final_batch: [final_transcript, reply_text, completed]
+  rule: final_batch_is_persisted_in_memory_before_first_send_and_is_never_silently_dropped
+
+cancellation:
+  controls: [cancel, barge_in]
+  deadline_ms: 250
+  pipeline_task: cancelled
+  downstream_cancel_hook: bounded_by_the_same_deadline
+  event: cancelled
+  close_code: 4000
+
+disconnects:
+  before_final_batch: cancel_in_flight_work_without_sending_an_error
+  during_final_delivery: retain_the_complete_persisted_batch_and_delivery_count
+  normal_completion_close_code: 1000
+
+logging:
+  allowed: [request_id, hashed_session_id, event_type, language, model_versions, latency_ms, status_code, error_code]
+  forbidden: [authorization, client_key, audio, audio_bytes, transcript, partial_text, reply_text, citation_excerpt, person_name, patient_id]
+
+close_codes:
+  cancelled: 4000
+  auth_required: 4401
+  auth_invalid: 4403
+  contract_version_unsupported: 4406
+  invalid_event: 4422
+  payload_too_large: 4429
+  dependency_unavailable: 4503
+
+test_strategy:
+  unit:
+    - vad_interface_and_silero_adapter_validation
+    - exact_queue_capacities_and_overflow_policies
+    - atomic_final_batch_persistence
+    - breaker_and_timeout_behavior
+  integration:
+    - websocket_success_sequence_and_golden_events
+    - cancel_and_barge_in_under_250_ms
+    - invalid_sequence_payload_and_idle_refusals
+    - clean_disconnect_and_retained_final_batch
+  regression:
+    - b6_3_file_mode_and_all_historical_hashes_remain_green
+    - starlette_is_strictly_pinned_to_1_3_1

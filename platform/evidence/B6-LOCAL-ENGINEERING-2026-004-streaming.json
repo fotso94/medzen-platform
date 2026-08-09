@@ -1,0 +1,121 @@
+{
+  "record": "B6_4_LOCAL_STREAMING_VAD_RESILIENCE_EXIT",
+  "id": "B6-LOCAL-ENGINEERING-2026-004",
+  "revision": 1,
+  "status": "VERIFIED_LOCAL_COMPLETE",
+  "recorded_utc": "2026-08-09T00:14:52Z",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "37cb5fadc5815b9833cb640d703bdaee48c87fbb",
+    "pull_request_6_state": "MERGED"
+  },
+  "authorization": {
+    "id": "B6-STREAMING-2026-001",
+    "path": "platform/decisions/B6-STREAMING-2026-001-local-only.json",
+    "sha256": "5af795949799ce6854f62f57e9e8f2a54c63b7dc7852762282e7267e944a26ff",
+    "scope": "LOCAL_ONLY"
+  },
+  "outcome": {
+    "b6_stage": "B6.4",
+    "exit": "LOCAL_STREAMING_COMPLETE_PENDING_INDEPENDENT_PR_REVIEW",
+    "authenticated_websocket": "PASS",
+    "session_and_request_identity": "PASS",
+    "registry_routing": "PASS_LOCAL_SSM_SHAPED_FIXTURE",
+    "vad_boundary": "PASS_INJECTED_INTERFACE",
+    "vad_runtime": "LOCAL_ENERGY_FIXTURE_NOT_REAL_SILERO",
+    "queue_limits": {
+      "partial_transcripts": 4,
+      "audio_output_chunks": 8,
+      "final_results": 16
+    },
+    "partial_overflow": "PASS_DROP_OLDEST",
+    "audio_overflow": "PASS_PAUSE_UPSTREAM",
+    "final_overflow": "PASS_ATOMIC_REFUSAL_NO_DROP",
+    "final_result_preservation": "PASS_PERSISTED_BEFORE_FIRST_SEND",
+    "cancellation_and_barge_in": "PASS_WITHIN_250_MS",
+    "processing_timeout_cleanup": "PASS_CANCELLED_AND_REAPED",
+    "slow_client_disconnect": "PASS_COMPLETE_FINAL_BATCH_RETAINED",
+    "clean_disconnect": "PASS_IN_FLIGHT_WORK_CANCELLED",
+    "pipeline_timeout_and_breaker": "PASS_FAIL_CLOSED_VISIBLE_IN_READINESS",
+    "b6_3_file_mode_regression": "PASS",
+    "request_body_logged": false,
+    "audio_transcript_reply_or_citation_content_logged": false
+  },
+  "dependency_debt": {
+    "id": "TD-B6-2026-001",
+    "status": "ACCEPTED_NO_ACTION_CURRENT_SLICE",
+    "starlette_pin": "1.3.1",
+    "requirements_installation_rule": "Install strictly from the pinned speech-orchestrator requirements file.",
+    "future_dependency_bump_requires_multipart_revalidation": true
+  },
+  "source_bindings": {
+    "platform/contracts/speech-v1.yaml": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "platform/contracts/orchestrator-file-v1.yaml": "5d44c360a046c2bd56d9ddc8caa275c133955e3aee9a8a553b9f016f4f70a65d",
+    "platform/contracts/orchestrator-stream-v1.yaml": "0f37c2b81d1145b039da405f145a52de6310d75708bfd0800ebc13d8acd9e7f8",
+    "platform/contracts/schemas/orchestrator-stream-v1/server-event.schema.json": "2b45648d0b22a9e616efa18432f19ed3ef907a0ad24f7c707bf3ee02ef67747e",
+    "platform/contracts/fixtures/orchestrator-stream-v1/success-sequence.json": "d88e3b44aa8cfd59eb7d975f61c82b7074c5a218e2f41fa91e2244dfe4e3496d",
+    "platform/decisions/B6-STREAMING-2026-001-local-only.json": "5af795949799ce6854f62f57e9e8f2a54c63b7dc7852762282e7267e944a26ff",
+    "platform/technical-debt/TD-B6-2026-001-starlette-multipart.json": "3fa4e571d6273741c159e6f5c323adf0fb6b7adf18f35888c7a1f6b03aa56834",
+    "platform/evidence/B6-LOCAL-ENGINEERING-2026-003-orchestrator-file-mode.json": "d1c31858c7df473b09899652a19705573035979b7d1eef180d1e25bcc91ebe56",
+    "platform/testdata/orchestrator/synthetic-file-request.wav": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+    "platform/testdata/orchestrator/asr-fixture.json": "78e6f3f5f3f276664d5a0b5ad959c94d31fae4ff7107209f78039fafbaec4336",
+    "services/speech-orchestrator/STREAMING.md": "a13dfed0359088bb077e1befef6b7db0b1ce5f41db8b50c54164c4248400d217",
+    "services/speech-orchestrator/requirements.txt": "1bb4f0bf8fc7e112aa3221b44576de98ee322f74b59b5347bf6aee50ad3028cf",
+    "services/speech-orchestrator/medzen_speech_orchestrator/app.py": "a7e68feab4878917860255c547c727113c2a6adbb8abbc40620c66dbc1461e5c",
+    "services/speech-orchestrator/medzen_speech_orchestrator/auth.py": "05a7d9bed0edbd1e97f3dc08c6186b45f18c09d8dd6d189922b4c537d4e0dee8",
+    "services/speech-orchestrator/medzen_speech_orchestrator/emergency.py": "a049ffa4c9866da5446bb98d41e6f2e01b5260e888073d0fa66a2d5f75321ccf",
+    "services/speech-orchestrator/medzen_speech_orchestrator/local_dependencies.py": "fbc59c1d3263a9f96dffc54041e07bb3df8c729dacf5a843e7b533e57b5d317b",
+    "services/speech-orchestrator/medzen_speech_orchestrator/orchestrator.py": "2e8ca3075a3c3ebb66c58335efd220a34cfdb2451450679e9a5856d7e6f5bd43",
+    "services/speech-orchestrator/medzen_speech_orchestrator/registry.py": "ce122ccf545302791e41415f70ef47da993a9a2cc6bcc1002af30219b77f8fc0",
+    "services/speech-orchestrator/medzen_speech_orchestrator/streaming.py": "093d2a1b8e0f2e6b348b4633be02c48268a632191839386f7200cf4fe8f14767",
+    "services/speech-orchestrator/medzen_speech_orchestrator/streaming_app.py": "c62890f51d52a5461ab8ad3acbe43b67f0a3ff737b1c0a6b166b33e0521cc00c",
+    "services/speech-orchestrator/medzen_speech_orchestrator/streaming_resilience.py": "136b7b6a594fbaa329de748e026f712de99770da6b964cd3ecba930a6203da1b",
+    "services/speech-orchestrator/medzen_speech_orchestrator/vad.py": "12173ec2aea6c42eb9220bf915be76455b86e27f3bf3cbe61aa521e34f9a5206",
+    "tests/test_streaming_core.py": "100641e437ea858fdd6e089b46b27e33576334309e336e5a91bb17126317b3f8",
+    "tests/test_speech_orchestrator_streaming.py": "2ad6e1e1d6764a1afe9bd85343cc0395e78f2cb539d8e0f0089292955e622079",
+    "tests/test_b6_streaming_governance.py": "d691dccf0c6fa60e97252efcd320e7cee2d99b68986ca20fd40d51364c2be18c",
+    "tests/test_b6_streaming_evidence.py": "3b236bfb784c7ebe65031ec94aaab722b0edf3dc97c83b64ab1bac44ae0f3d06"
+  },
+  "historical_immutability": {
+    "b6_3_bound_source_hashes_reverified": 6,
+    "b6_3_bound_source_hashes_changed": 0,
+    "b4_or_b5_records_changed": 0,
+    "interpretation": "B6.4 is additive and composes the accepted B6.3 app without editing its bound source files."
+  },
+  "validation": {
+    "focused_tests": {"passed": 39, "failed": 0, "skipped": 0, "deselected": 0, "warnings": 1},
+    "canonical_pytest": {"passed": 1200, "failed": 0, "skipped": 0, "deselected": 7, "warnings": 1},
+    "warning_interpretation": "Known FastAPI TestClient dependency deprecation; the accepted multipart compatibility debt remains pinned and the request regression passes.",
+    "python_compileall": "PASS",
+    "pip_check": "PASS",
+    "fixture_generation_check": "PASS",
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "generated_platform_files": "CURRENT_13_FILES",
+    "generated_language_files": "CURRENT_27_FILES",
+    "architecture_validation": "PASS_8_COMPONENTS_WITH_4_PREEXISTING_ORPHAN_POLICY_WARNINGS",
+    "git_diff_check": "PASS"
+  },
+  "aws_and_governance": {
+    "aws_calls": 0,
+    "aws_packets_authorized": 0,
+    "new_aws_resources": 0,
+    "iam_changes": 0,
+    "ssm_writes": 0,
+    "ecr_pushes": 0,
+    "kubernetes_actions": 0,
+    "cpu_or_gpu_scale_up": 0,
+    "real_silero_downloads": 0,
+    "real_bedrock_calls": 0,
+    "approved_artifact_writes": 0,
+    "production_serving_changes": 0
+  },
+  "remaining_boundaries": [
+    "Independent review and merge of the B6.4 pull request are required before the next B6 slice.",
+    "The local energy detector proves VAD control flow only; real Silero loading, threshold evidence and deployed runtime behavior remain unproven.",
+    "The final-result store is process-local; B6.6 must choose durable session and result storage before production.",
+    "The audio-output queue policy is proven locally without real TTS; B6.5 must connect and retest an actual TTS producer with text-only fallback.",
+    "B6.5A SSM registry publication requires its own versioned AWS packet before B6.6 readiness can pass.",
+    "Real ASR, service IAM, EKS integration, network isolation and failure drills remain later full-B6 work."
+  ]
+}
