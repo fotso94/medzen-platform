@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -10,8 +11,10 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 COST = ROOT / "platform/finance/COST-REGISTRY-2026-004.json"
 MANIFEST = ROOT / "platform/k8s/b6-6/integration-window.yaml"
+PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-008-b6-6-integration-window-executable.md"
 
 
 def documents():
@@ -212,3 +215,21 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):
         validate(authorization, packet_sha, root)
+
+
+def test_executable_packet_binds_every_source_and_still_requires_approval():
+    import hashlib
+    from scripts.b6_6_bindings import REQUIRED_SOURCES
+
+    value = PACKET.read_text()
+    assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
+    assert "This packet is not authorized by its preparation" in value
+    assert "Approve B6 AWS change packet 2026-008 only." in value
+    assert "exactly `7 add / 0 change / 0 destroy`" in value
+    assert "`B6-INTEGRATION-WINDOW-2026-001` — exactly `$10.00`" in value
+    assert "production serving pointer absent" in value
+    assert "B5 remains `BLOCKED`" in value
+    for relative in REQUIRED_SOURCES:
+        expected = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+        assert f"`{relative}`" in value
+        assert f"`{expected}`" in value
