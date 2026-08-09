@@ -1,0 +1,94 @@
+{
+  "record": "B6_5A_SSM_TEST_REGISTRY_CLOSURE",
+  "id": "B6-SSM-TEST-REGISTRY-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE_PENDING_INDEPENDENT_EXIT_REVIEW",
+  "recorded_utc": "2026-08-09T01:32:42Z",
+  "repository_execution": {
+    "branch": "codex/b6-5a-execution-evidence",
+    "authorization_and_runner_commit": "cd2bec5",
+    "merged_packet_commit": "d4bcdb601d0e1a8ca8ac0d55dac9aa8d5a674a0a"
+  },
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-001-b6-5a-ssm-test-registry.json",
+    "sha256": "fbb3639c72608b2e93db9a58862cc24e277f9eb84c135360023ee55a1d0998d9",
+    "independent_review": "PASS_NO_FINDINGS",
+    "owner_approval": "BOUND_EXACT_PACKET_AND_REQUEST_MANIFEST"
+  },
+  "terraform": {
+    "reviewed_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6-5a-2026-001-cd2bec5.tfplan",
+      "sha256": "546001d4829e00ffeaadc26700cf05d26a8303be836895b5d4fceb5d96628c78",
+      "bytes": 58513,
+      "machine_guard": "PASS_EXACT_B6_5A_PACKET_2026_001",
+      "summary": {"add": 0, "change": 1, "destroy": 0},
+      "only_resource": "aws_iam_role_policy.registry_publisher",
+      "added_actions": ["ssm:AddTagsToResource", "ssm:ListTagsForResource"],
+      "global_delete_deny_retained": true
+    },
+    "apply": {
+      "result": "Apply complete! Resources: 0 added, 1 changed, 0 destroyed.",
+      "new_roles": 0,
+      "new_kms_keys": 0
+    },
+    "residual_plan": {
+      "path_at_execution": "/private/tmp/medzen-b6-5a-2026-001-post-iam.tfplan",
+      "sha256": "1e48a6e18a0f1442bee23d49d50fafc06026201f159a29ab6c94799d8bd200be",
+      "bytes": 59117,
+      "result": "NO_CHANGES"
+    }
+  },
+  "content_addressed_receipt": {
+    "path": "platform/evidence/receipts/7e8f79a43c81babaed4685b90ad5e4a98f00f31ed80d20224c42818efeb71517.json",
+    "sha256": "7e8f79a43c81babaed4685b90ad5e4a98f00f31ed80d20224c42818efeb71517",
+    "bytes": 3961
+  },
+  "publication": {
+    "outcome": "PUBLISHED_VERIFIED_NON_SERVING",
+    "root": "/medzen/registry/test/b6/a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "snapshot_sha256": "a2486c03eb20b6fd3d30b5ea38eb4d29895c2e1ab26073d21282a9bbedacb8e6",
+    "parameter_count": 3,
+    "all_initially_absent": true,
+    "all_version": 1,
+    "all_type": "SecureString",
+    "all_tier": "Standard",
+    "all_data_type": "text",
+    "all_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "all_values_match_request_manifest": true,
+    "all_six_allocation_tags_match": true,
+    "completion_manifest_published_last": true,
+    "registry_router_validation": "PASS"
+  },
+  "policy_and_rollback": {
+    "operator_exact_three_parameter_delete": "allowed",
+    "publisher_delete": "explicitDeny",
+    "orchestrator_registry_reads": "allowed_by_policy_simulation",
+    "orchestrator_registry_writes": "denied_by_policy_simulation",
+    "actual_pod_identity_read": "DEFERRED_TO_SEPARATELY_AUTHORIZED_B6_6_WINDOW"
+  },
+  "post_run_audit": {
+    "parameter_readback_count": 3,
+    "parameter_versions": [1, 1, 1],
+    "parameter_types": ["SecureString", "SecureString", "SecureString"],
+    "production_serving_current": "PARAMETER_NOT_FOUND_BEFORE_AND_AFTER",
+    "production_alias_changes": 0,
+    "cpu_nodegroup": {"minimum": 0, "desired": 0, "maximum": 4},
+    "gpu_nodegroup": {"minimum": 0, "desired": 0, "maximum": 1}
+  },
+  "cost": {
+    "allocation_id": "B6-SSM-TEST-REGISTRY",
+    "packet_ceiling_usd": 0.1,
+    "compute_started": false,
+    "exact_incremental_billing": "NOT_YET_RECONCILED",
+    "claim_limit": "The packet ceiling is not a claim of billed spend. Reconcile API/KMS charges when billing data is available."
+  },
+  "explicit_non_events": {
+    "production_parameters_changed": 0,
+    "parameters_outside_exact_test_root": 0,
+    "approved_model_changes": 0,
+    "deployments": 0,
+    "cpu_or_gpu_scale_changes": 0,
+    "bedrock_or_fish_calls": 0
+  },
+  "conclusion": "B6.5A published and verified the exact content-addressed non-serving synthetic registry snapshot. It does not authorize or complete B6.6."
+}
