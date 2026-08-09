@@ -72,6 +72,6 @@ def test_full_b6_plan_corrects_tts_and_pod_identity_assumptions():
     assert "do not reuse or modify" in value
     assert "share a Pod service account" in " ".join(value.split())
     architecture = (ROOT / "ARCHITECTURE.md").read_text()
-    assert "Not yet built in this repository" in architecture
+    assert "Local mocked B6.5 implementation exists" in architecture
     assert "shares the ASR pod role" in architecture
     assert "ASR runtime validates that marker" in architecture

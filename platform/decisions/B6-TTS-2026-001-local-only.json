@@ -1,0 +1,56 @@
+{
+  "record": "B6_5_SPEECH_TTS_GATEWAY_LOCAL_DECISION",
+  "id": "B6-TTS-2026-001",
+  "revision": 1,
+  "status": "OWNER_AUTHORIZED_LOCAL_ONLY",
+  "recorded_utc": "2026-08-09T00:41:46Z",
+  "authorized_by_role": "platform-owner",
+  "authorization_source": "Owner direction after independent PASS of PR #7: merge PR #7 and proceed to B6.5, building the new repository-owned TTS gateway with text-only success, fake Fish, content-hash idempotency and provider-breaker fallback.",
+  "repository_start": {
+    "branch": "master",
+    "git_commit": "bfa5db505fd54950bc39ef2c8487d59dcc19f3c7",
+    "pull_request_7_state": "MERGED"
+  },
+  "contract": {
+    "parent_id": "MEDZEN-SPEECH-CONTRACT-2026-001",
+    "parent_sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d",
+    "tts_contract_path": "platform/contracts/tts-v1.yaml",
+    "tts_contract_sha256": "2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8",
+    "parent_contract_mutation_permitted": false
+  },
+  "service_boundary": {
+    "owned_service": "medzen-speech-tts-gateway",
+    "owned_path": "services/speech-tts-gateway",
+    "implementation_status_path": "platform/service-implementation-status/v1.yaml",
+    "implementation_status_sha256": "477feae7765d34a6fb9df53c2331e4d8157b914665ad22d5ae5afdfacdd92a6e",
+    "externally_owned_service": "medzen-tts-gateway",
+    "external_service_reuse_or_mutation_permitted": false
+  },
+  "authorized_local_work": [
+    "Text-only terminal success path",
+    "Injected deterministic fake Fish provider with no credentials or network path",
+    "Exact-text content hash and voice-bound synthesis-key idempotency",
+    "Process-local content-addressed audio cache",
+    "Fish timeout, failure, malformed-response and open-breaker degradation to text-only",
+    "Health/readiness reporting that exposes provider breaker state",
+    "Local synthetic contract, privacy, concurrency and regression tests"
+  ],
+  "prohibited_operations": [
+    "Any access to or modification of the externally owned medzen-tts-gateway",
+    "Any real Fish request, credential lookup, HTTP client or network provider",
+    "Any self-hosted TTS voice, model or artifact without registry approval",
+    "Any AWS API, SSM write, IAM change, ECR push or Kubernetes action",
+    "Any CPU or GPU scale-up",
+    "Any real audio, PHI or clinical content",
+    "Any approved artifact, approved_version or production serving change",
+    "Any B6.5A transition before independent review"
+  ],
+  "preserved_state": {
+    "b5_gate_outcome": "BLOCKED_UNCHANGED",
+    "b6_4_exit": "INDEPENDENT_REVIEW_PASS",
+    "deferred_language_approved_versions": "NULL_UNCHANGED",
+    "cpu_desired_capacity": 0,
+    "gpu_desired_capacity": 0,
+    "ssm_registry_parameters": 0
+  }
+}

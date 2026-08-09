@@ -1,0 +1,22 @@
+{
+  "request_id": "77777777-7777-4777-8777-777777777777",
+  "language": "english",
+  "text": "[English synthetic] Answer supported only by synthetic-hours.",
+  "content_sha256": "064039ffe3173c31536ebcab258fc1825d4ebe7371ac9eb118fe37aa39f60a96",
+  "synthesis_key_sha256": null,
+  "tts_backend": "text_only",
+  "provider": "text_only",
+  "audio_url": null,
+  "media_type": null,
+  "audio_sha256": null,
+  "model_versions": {
+    "asr": "v0-platform-test",
+    "registry_snapshot": "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001",
+    "llm": "fake-bedrock-local-v1",
+    "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "tts": null
+  },
+  "cache_hit": false,
+  "provider_attempted": false,
+  "degradation_reason": "POLICY_TEXT_ONLY"
+}

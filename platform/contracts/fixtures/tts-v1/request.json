@@ -1,0 +1,12 @@
+{
+  "request_id": "77777777-7777-4777-8777-777777777777",
+  "language": "english",
+  "text": "[English synthetic] Answer supported only by synthetic-hours.",
+  "model_versions": {
+    "asr": "v0-platform-test",
+    "registry_snapshot": "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001",
+    "llm": "fake-bedrock-local-v1",
+    "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "tts": null
+  }
+}

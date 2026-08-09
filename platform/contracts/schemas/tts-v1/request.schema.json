@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.tts.v1.request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["request_id", "language", "text", "model_versions"],
+  "properties": {
+    "request_id": {"type": "string", "format": "uuid"},
+    "language": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "model_versions": {"$ref": "#/$defs/model_versions"}
+  },
+  "$defs": {
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "properties": {
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string", "minLength": 1},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": ["string", "null"]},
+        "tts": {"type": "null"}
+      }
+    }
+  }
+}
