@@ -22,15 +22,7 @@ wav="platform/testdata/orchestrator/synthetic-file-request.wav"
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" && -f "$token_file" ]] || { echo "REFUSING: required B6.6 execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
-.venv/bin/python - "$token_file" <<'PY'
-import hashlib,stat,sys
-from pathlib import Path
-p=Path(sys.argv[1])
-assert stat.S_IMODE(p.stat().st_mode) == 0o600
-value=p.read_bytes()
-assert len(value) == 44
-assert hashlib.sha256(value).hexdigest() == "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6"
-PY
+.venv/bin/python scripts/b6_6_token_binding.py "$token_file" >/dev/null
 
 .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
 import json,sys

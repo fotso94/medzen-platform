@@ -1,0 +1,72 @@
+{
+  "record": "B6_6_LOCAL_TOKEN_ENCODING_CORRECTION",
+  "id": "B6-6-LOCAL-CORRECTION-2026-002",
+  "revision": 1,
+  "status": "LOCAL_CORRECTION_COMPLETE_AWAITING_INDEPENDENT_REVIEW",
+  "recorded_utc": "2026-08-09T21:41:11Z",
+  "superseded_execution": {
+    "packet_id": "B6-AWS-CHANGE-PACKET-2026-009",
+    "outcome": "REFUSED_SYNTHETIC_TOKEN_ENCODING_BINDING",
+    "evidence_path": "platform/evidence/B6-PACKET-2026-009-REFUSED-TOKEN-ENCODING.json",
+    "history_edited": false,
+    "packet_may_resume": false
+  },
+  "correction": {
+    "root_cause": "The reviewed preflight compared the packet-006 bearer hash to the newline-terminated token file instead of the bearer value consumed by the probe.",
+    "new_boundary": [
+      "Require the exact /private/tmp/medzen-b6-6-client-token path.",
+      "Require mode 0600 and exactly 44 bytes.",
+      "Require one final LF, no CR and no embedded line ending in the 43-byte bearer.",
+      "Compare the immutable packet-006 bearer SHA-256 to only those 43 bearer bytes.",
+      "Emit only a sanitized reason code on refusal."
+    ],
+    "valid_live_token_proof": {
+      "bearer_bytes": 43,
+      "file_bytes": 44,
+      "line_ending": "LF",
+      "bearer_sha256_verified": true,
+      "plaintext_logged_or_persisted": false
+    }
+  },
+  "terraform_continuity": {
+    "terraform_sources_changed_since_packet_2026_009": false,
+    "create_plan_guard": "PASS_B6_6_CREATE changes=7",
+    "cleanup_plan_guard": "PASS_B6_6_CLEANUP changes=3",
+    "cpu_nodegroup_plan_changes": 0,
+    "plan_apply_performed": false
+  },
+  "validation": {
+    "focused_pytest": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_executable_assets.py",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_pytest": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1312,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1,
+      "warning_note": "Known Starlette TestClient deprecation warning; no test failure."
+    },
+    "shell_syntax": "PASS",
+    "live_local_token_binding": "PASS_NO_PLAINTEXT_OUTPUT"
+  },
+  "aws_effects": {
+    "aws_mutations": 0,
+    "deadlines_armed": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "new_cost_usd": 0.0
+  },
+  "budget": {
+    "registry_id": "COST-REGISTRY-2026-004",
+    "existing_active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "remaining_corrective_allowance_seconds": 12600
+  },
+  "next_boundary": "Prepare packet 2026-010 with exact changed-source hashes. Independent review and new owner approval are mandatory before any AWS retry."
+}
