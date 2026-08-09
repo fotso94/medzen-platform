@@ -1,0 +1,65 @@
+{
+  "record": "B6_5B_LOCAL_RELEASE_ENGINEERING_AUTHORIZATION",
+  "id": "B6-5B-LOCAL-RELEASE-ENGINEERING-2026-001",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-09T01:47:58Z",
+  "authorization_source": "Owner message approving B6.5B local-only release engineering after independent PASS review of PR #10.",
+  "interpretation": "Authorize only local release engineering for the four new B6 services and preparation of a separate scan-only ECR packet. This record does not authorize an AWS mutation, image push, registry publication, deployment, standing cost, model promotion or production-serving change.",
+  "starting_repository": {
+    "branch": "master",
+    "git_commit": "efcfa5a2d6cd4a81af10786228e08d1154000f30",
+    "git_tree": "da18d1c6ef0412943458e7aa2aeb2079de806467",
+    "commit_count": 236,
+    "worktree_clean": true,
+    "merged_pull_request": "https://github.com/fotso94/medzen-platform/pull/10"
+  },
+  "governing_sources": {
+    "full_b6_plan": {
+      "path": "platform/decisions/PLAN-2026-013-full-b6-serving.md",
+      "sha256": "3cfba1521281384aabbc91c4c5f04f7e2bec51444cfdf15f8a28b56a8f20418b"
+    },
+    "speech_contract": {
+      "path": "platform/contracts/speech-v1.yaml",
+      "sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
+    },
+    "runtime_image_hardening": {
+      "path": "platform/standards/runtime-image-hardening-v1.md",
+      "sha256": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791"
+    },
+    "starting_cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-001.json",
+      "sha256": "bf0d83f2480bf461682d636f1eeb7373250816dfe541125ff1fca664c93da1b7"
+    }
+  },
+  "authorized_operations": [
+    "add_hardened_multi_stage_Dockerfiles_for_rag_llm_orchestrator_and_tts",
+    "run_local_build_import_dynamic_link_contract_and_critical_high_security_scans",
+    "add_configuration_selected_orchestrator_HTTP_dependency_adapters_while_retaining_local_fixture_mode",
+    "create_content_addressed_deployment_registry_source_and_local_generation_tests",
+    "design_orchestrator_only_internal_ALB_and_exact_backend_security_group_boundary_without_applying_it",
+    "create_a_successor_cost_registry_revision_that_conservatively_closes_the_prior_15_USD_reservation",
+    "prepare_but_do_not_execute_a_versioned_four_image_ECR_scan_only_packet"
+  ],
+  "prohibited_operations": [
+    "AWS_resource_or_IAM_mutation",
+    "ECR_authentication_push_or_scan_execution",
+    "SSM_or_KMS_write",
+    "Kubernetes_apply_or_node_scale_up",
+    "ALB_or_security_group_creation_or_modification",
+    "Bedrock_or_Fish_real_provider_invocation",
+    "approved_ASR_publication_model_registration_or_language_serving_change",
+    "production_registry_alias_change",
+    "claiming_B6_6_or_full_B6_completion"
+  ],
+  "required_outputs": [
+    "four_locally_qualified_runtime_images",
+    "remote_adapter_contract_tests_and_unchanged_local_mode_tests",
+    "new_non_serving_deployment_registry_snapshot_source",
+    "reviewable_ALB_security_group_and_ClusterIP_design",
+    "cost_registry_revision",
+    "separately_approvable_scan_only_packet"
+  ],
+  "next_authorization_boundary": "No image may be pushed to ECR until the four-image scan-only packet is independently reviewed and explicitly approved by the owner."
+}
