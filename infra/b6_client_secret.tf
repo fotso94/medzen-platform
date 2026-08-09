@@ -23,10 +23,13 @@ resource "aws_secretsmanager_secret" "b6_client_keys" {
 
 data "aws_iam_policy_document" "b6_client_keys" {
   statement {
-    sid       = "AllowOnlyOrchestratorRead"
-    effect    = "Allow"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.b6_client_keys[0].arn]
+    sid     = "AllowOnlyOrchestratorRead"
+    effect  = "Allow"
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = [try(
+      aws_secretsmanager_secret.b6_client_keys[0].arn,
+      "arn:${data.aws_partition.current.partition}:secretsmanager:${var.region}:${var.account_id}:secret:medzen/client-api-keys-*",
+    )]
     principals {
       type        = "AWS"
       identifiers = [aws_iam_role.pod["speech-orchestrator"].arn]
@@ -34,10 +37,13 @@ data "aws_iam_policy_document" "b6_client_keys" {
   }
 
   statement {
-    sid       = "DenyEveryOtherPrincipalRead"
-    effect    = "Deny"
-    actions   = ["secretsmanager:GetSecretValue"]
-    resources = [aws_secretsmanager_secret.b6_client_keys[0].arn]
+    sid     = "DenyEveryOtherPrincipalRead"
+    effect  = "Deny"
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = [try(
+      aws_secretsmanager_secret.b6_client_keys[0].arn,
+      "arn:${data.aws_partition.current.partition}:secretsmanager:${var.region}:${var.account_id}:secret:medzen/client-api-keys-*",
+    )]
     principals {
       type        = "AWS"
       identifiers = ["*"]

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Execute only an independently reviewed and owner-approved packet 2026-008.
+# Execute only an independently reviewed and owner-approved packet 2026-009.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,6 +22,15 @@ wav="platform/testdata/orchestrator/synthetic-file-request.wav"
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" && -f "$token_file" ]] || { echo "REFUSING: required B6.6 execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
+.venv/bin/python - "$token_file" <<'PY'
+import hashlib,stat,sys
+from pathlib import Path
+p=Path(sys.argv[1])
+assert stat.S_IMODE(p.stat().st_mode) == 0o600
+value=p.read_bytes()
+assert len(value) == 44
+assert hashlib.sha256(value).hexdigest() == "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6"
+PY
 
 .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
 import json,sys
@@ -37,7 +46,7 @@ cleanup() {
   trap - EXIT INT TERM
   set +e
   if [[ -n "${port_forward_pid:-}" ]]; then kill "$port_forward_pid" >/dev/null 2>&1 || true; fi
-  scripts/b6_6_cleanup.sh "$kubeconfig" "$authorization" "$packet_sha256" "$receipts_dir" "$token_file"
+  bash scripts/b6_6_cleanup.sh "$kubeconfig" "$authorization" "$packet_sha256" "$receipts_dir" "$token_file"
   cleanup_status=$?
   if [[ $cleanup_status -ne 0 ]]; then
     echo "REFUSING: B6.6 cleanup proof failed; AWS deadlines remain armed" >&2
@@ -57,18 +66,24 @@ deadline_payload="$(.venv/bin/python scripts/b6_6_deadline.py arm)"
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81 --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters)' --output text)" == "3" ]]
 aws secretsmanager describe-secret --secret-id medzen/client-api-keys --region eu-central-1 --profile medzen >/dev/null
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters[?Name==`/medzen/registry/serving/current`])' --output text)" == "0" ]]
+[[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l 'workload in (cpu,gpu)' --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
+[[ "$(kubectl --kubeconfig "$kubeconfig" get pods -n medzen -l medzen.io/classification=synthetic-integration-only --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
+[[ "$(kubectl --kubeconfig "$kubeconfig" get ingress -A --request-timeout=15s -o json | jq '[.items[] | select(.metadata.name=="speech-orchestrator-b6-window")] | length')" == "0" ]]
+! kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system --request-timeout=15s >/dev/null 2>&1
+! kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --request-timeout=15s >/dev/null 2>&1
 
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name cpu --scaling-config minSize=0,maxSize=4,desiredSize=2 --region eu-central-1 --profile medzen >/dev/null
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name gpu --scaling-config minSize=0,maxSize=1,desiredSize=1 --region eu-central-1 --profile medzen >/dev/null
 aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name cpu --region eu-central-1 --profile medzen
 aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name gpu --region eu-central-1 --profile medzen
-kubectl --kubeconfig "$kubeconfig" wait nodes -l workload=cpu --for=condition=Ready --timeout=20m
-kubectl --kubeconfig "$kubeconfig" wait nodes -l workload=gpu --for=condition=Ready --timeout=20m
-[[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l workload=cpu -o json | jq '.items | length')" == "2" ]]
-[[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l workload=gpu -o json | jq '.items | length')" == "1" ]]
-.venv/bin/python scripts/b6_6_receipt.py workers_ready PASS --receipts-dir "$receipts_dir" --payload '{"cpu_nodes_ready":2,"gpu_nodes_ready":1,"maximum_cpu_nodes":2,"maximum_gpu_nodes":1}'
+if worker_payload="$(.venv/bin/python scripts/b6_6_wait_workers.py --kubeconfig "$kubeconfig" --wait-seconds 1200)"; then
+  .venv/bin/python scripts/b6_6_receipt.py workers_ready PASS --receipts-dir "$receipts_dir" --payload "$worker_payload"
+else
+  .venv/bin/python scripts/b6_6_receipt.py workers_ready REFUSED --receipts-dir "$receipts_dir" --payload "$worker_payload"
+  exit 2
+fi
 
-window_plan="/private/tmp/b6-008-create-$PPID.tfplan"
+window_plan="/private/tmp/b6-009-create-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend

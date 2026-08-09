@@ -9,12 +9,15 @@ from pathlib import Path
 from typing import Any
 
 
-AUTH_ID = "B6-AWS-AUTH-2026-008"
-PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-008"
+AUTH_ID = "B6-AWS-AUTH-2026-009"
+PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-009"
 REQUIRED_SOURCES = {
     "infra/alb_controller.tf",
     "infra/b6_integration_window.tf",
     "infra/b6_client_secret.tf",
+    "infra/b6_6_window_override.tf",
+    "infra/eks.tf",
+    "infra/b6_planning_override.tf",
     "infra/variables.tf",
     "pipeline/b6_integration_receipts.py",
     "platform/designs/B6-LBC-HELM-VALUES-2026-001.yaml",
@@ -22,6 +25,9 @@ REQUIRED_SOURCES = {
     "platform/evidence/B6-CLIENT-API-KEYS-2026-001.json",
     "platform/evidence/B6-DEPLOYMENT-REGISTRY-2026-001-RETRY-007A.json",
     "platform/evidence/B6-LBC-QUALIFICATION-AWS-EXECUTION-2026-001.json",
+    "platform/evidence/B6-6-LOCAL-CORRECTION-2026-001.json",
+    "platform/evidence/B6-PACKET-2026-008-REFUSED-WORKER-REGISTRATION.json",
+    "platform/evidence/B6A-PACKET-2026-003C-A-SCAN-RESULT.json",
     "platform/finance/COST-REGISTRY-2026-004.json",
     "platform/k8s/b6-6/integration-window.yaml",
     "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
@@ -31,6 +37,7 @@ REQUIRED_SOURCES = {
     "scripts/b6_6_deadline.py",
     "scripts/b6_6_probe.py",
     "scripts/b6_6_receipt.py",
+    "scripts/b6_6_wait_workers.py",
     "scripts/check_b6_6_window_plan.py",
     "scripts/pin_aws_lbc_digest.py",
     "scripts/run_b6_6_integration_window.sh",
