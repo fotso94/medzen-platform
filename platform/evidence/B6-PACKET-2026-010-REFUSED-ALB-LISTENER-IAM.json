@@ -1,0 +1,295 @@
+{
+  "record": "B6_2026_010_TOKEN_CORRECTED_INTEGRATION_WINDOW_EXECUTION_RESULT",
+  "id": "B6-PACKET-2026-010-REFUSED-ALB-LISTENER-IAM",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_AT_ALB_LISTENER_CLEANUP_PASS",
+  "outcome": "INCOMPLETE_ALB_LISTENER_IAM_REFUSAL",
+  "failure_stage": "INTERNAL_ALB_LISTENER",
+  "recorded_utc": "2026-08-09T22:28:45Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-010-b6-6-token-encoding-correction.md",
+      "sha256": "5fe122e983629905160e38e7ec75aa23ac70db2b1def11ae2d3e7e1206ec76ff"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-010-b6-6-token-encoding-correction.json",
+      "sha256": "fc3ae5c5f04cca2691b8d9cab8990ce394f5ff4d4feb3b1919b71727d0bd1fdd",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/17",
+      "reviewed_repository_commit": "9380919a21a4225b1bdf6c1603c98be644843c81",
+      "reviewed_packet_sha256": "5fe122e983629905160e38e7ec75aa23ac70db2b1def11ae2d3e7e1206ec76ff",
+      "reproduced_tests": "15/15"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "master",
+    "git_commit": "88f2126c6fbe7c1ae32aaf20a52b009a52a19cba",
+    "git_tree": "6aaf950fdae34cf106729ba7927bdc661ac7ff1c",
+    "commit_count": 269,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_17_merged": true,
+    "worktree_clean_before_receipts": true
+  },
+  "preflight": {
+    "token": {
+      "path": "/private/tmp/medzen-b6-6-client-token",
+      "mode": "0600",
+      "file_bytes": 44,
+      "bearer_bytes": 43,
+      "line_ending": "LF",
+      "bearer_sha256_verified": true,
+      "plaintext_logged_or_persisted": false
+    },
+    "source_bindings_verified": 33,
+    "aws_account": "558069890522",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_asg_instances": 0,
+    "cpu_deadline_actions": 0,
+    "gpu_deadline_actions": 0,
+    "kubernetes_worker_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "controller_deployment": "ABSENT",
+    "dra_daemonset": "ABSENT",
+    "test_registry_parameters": 3,
+    "production_serving_pointer_count": 0,
+    "synthetic_secret": "EXISTS_NOT_PENDING_DELETION"
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T21:59:43Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/local_bindings.json",
+      "sha256": "25fc042769b19f7935236349d628bf3740e05fad8a0800b867633f7ebe2146bb"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T21:59:45Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/deadline.json",
+      "sha256": "22126da36bb36026c9947f8563fe96662bbfafcdf6f8cf9280d8977959a6fb10"
+    },
+    {
+      "stage": "workers_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:01:24Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/workers_ready.json",
+      "sha256": "26ca4ef907e7289fec481a850f7a1197d1e388f6ec1f726a8e4fa7a1694e6768"
+    },
+    {
+      "stage": "terraform_window",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:02:11Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/terraform_window.json",
+      "sha256": "7552d741bd1db1a7a3405b1edc0f961660ca0202e86a98a2085fab578663cacf"
+    },
+    {
+      "stage": "controller_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:02:13Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/controller_ready.json",
+      "sha256": "b1df5ba23cf00e9604d7a99cb524da84dbc355748c539f6902142e524f076c57"
+    },
+    {
+      "stage": "dra_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:02:25Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/dra_ready.json",
+      "sha256": "343a84aeabe30e5f33c00b34f938a2c908e9a896a12291f2ede20d572dcf09d9"
+    },
+    {
+      "stage": "rag_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:02:40Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/rag_ready.json",
+      "sha256": "992ac6958a81dbf386ab59a354555542803e0fc2973054ad38a923348a946c8d"
+    },
+    {
+      "stage": "asr_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:04:22Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/asr_ready.json",
+      "sha256": "dd69b9ddc390213fd5d42f507e613a4ee30ce558e6737a5d9e17bcff5b47303c"
+    },
+    {
+      "stage": "tts_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:04:28Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/tts_ready.json",
+      "sha256": "0b12db9a34b26218e51ad2e69ccd47a8f9a1b76c07256c0ef19900cae98df021"
+    },
+    {
+      "stage": "llm_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:04:35Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/llm_ready.json",
+      "sha256": "f837599459367530946f1c38bff1689fbabe415a2230f0119d6c79d87d338b1b"
+    },
+    {
+      "stage": "orchestrator_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:04:43Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/orchestrator_ready.json",
+      "sha256": "3c3a0f986219d99f442a5b4f91ab8f02f2e169054d3874690870aed07501ab27"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-09T22:23:38Z",
+      "path": "platform/evidence/receipts/B6-2026-010-LIVE/cleanup.json",
+      "sha256": "7c2ce25760a340d76e02cead565cfe1f01a72c0263145fef9037e3439c02fc4c"
+    }
+  ],
+  "successful_runtime_proofs_before_refusal": {
+    "worker_gate": {
+      "cpu_nodes_ready": 2,
+      "gpu_nodes_ready": 1,
+      "observation_reads": 10,
+      "excess_capacity": false
+    },
+    "terraform_create_plan": {
+      "adds": 7,
+      "changes": 0,
+      "destroys": 0,
+      "machine_guard": "PASS"
+    },
+    "controller": {
+      "ready_replicas": 1,
+      "digest_pinned": true,
+      "namespace_watch": "medzen"
+    },
+    "dra": {
+      "ready": true,
+      "digest_pinned": true,
+      "gpu_nodes": 1
+    },
+    "services": {
+      "rag_index": "READY_EMBEDDED_SYNTHETIC",
+      "asr_runtime": "READY_ZERO_SHOT_WHISPER_LARGE_V3_V0",
+      "asr_artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+      "tts_gateway": "READY_TEXT_ONLY_ZERO_FISH_CALLS",
+      "llm_gateway": "READY_FAKE_ZERO_BEDROCK_CALLS",
+      "speech_orchestrator": "READY_DEPLOYED_HTTP_SSM",
+      "registry_snapshot": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+      "scan_passed_workload_child_digests_verified": 6
+    }
+  },
+  "alb_listener_refusal": {
+    "controller_role": "arn:aws:iam::558069890522:role/medzen-lbc-role",
+    "assumed_role_session": "arn:aws:sts::558069890522:assumed-role/medzen-lbc-role/eks-medzen-spe-aws-load-b-c4d90858-8b90-458c-acae-62200f61c9d9",
+    "operation": "elasticloadbalancing:CreateListener",
+    "resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/medzen-b6-window/ec356cda681eae2a",
+    "error_code": "AccessDenied",
+    "first_observed_cloudtrail_utc": "2026-08-09T22:02:35Z",
+    "last_observed_cloudtrail_utc": "2026-08-09T22:05:25Z",
+    "representative_request_id": "9be3fb39-6703-4d0d-a42d-9d75ab2c5f0e",
+    "cloudtrail_error": "No identity-based policy allows elasticloadbalancing:CreateListener on the named B6 load-balancer resource.",
+    "iam_simulation_on_observed_load_balancer_arn": "implicitDeny",
+    "policy_observation": "The reviewed policy lists CreateListener but its listener-management statement is resource-scoped only to listener and listener-rule ARNs; the denied AWS resource was the load-balancer ARN.",
+    "root_cause_interpretation": "CreateListener resource authorization for initial listener creation was incomplete. This interpretation must be independently reviewed before changing IAM.",
+    "alb_hostname_assigned": false,
+    "listener_created": false,
+    "fargate_probe_started": false,
+    "operator_action": "Interrupted the non-healing wait after evidence collection so the reviewed automatic cleanup ran immediately.",
+    "runner_exit_code": 130,
+    "retry_attempted": false
+  },
+  "stages_not_run": [
+    "alb_ready",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "cleanup": {
+    "automatic_cleanup": "PASS",
+    "terraform_cleanup_plan": {
+      "adds": 0,
+      "changes": 0,
+      "destroys": 10,
+      "machine_guard": "PASS"
+    },
+    "worker_scale_zero_requested_utc": "2026-08-09T22:07:08Z",
+    "gpu_final_termination_utc": "2026-08-09T22:13:36Z",
+    "cpu_final_termination_utc": "2026-08-09T22:23:25Z",
+    "cleanup_receipt_utc": "2026-08-09T22:23:38Z",
+    "deadlines_removed_after_zero": true,
+    "local_token_removed": true,
+    "synthetic_secret": "SCHEDULED_RECOVERABLE_DELETION",
+    "window_terraform_resources": 0,
+    "window_ecs_cluster": "INACTIVE",
+    "window_probe_iam_role": "ABSENT",
+    "window_alb": "ABSENT"
+  },
+  "zero_state_verification": {
+    "verified_after_cleanup": true,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "kubernetes_worker_nodes": 0,
+    "synthetic_workload_pods": 0,
+    "window_ingresses": 0,
+    "deadline_actions_remaining": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_pointer_changes": 0
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_before_reservation_usd": 63.5288,
+    "active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "packet_2026_010_wall_clock_worker_window_seconds": 1373,
+    "cpu_instance_seconds_observed": 1829,
+    "gpu_instance_seconds_observed": 784,
+    "aggregate_instance_seconds_observed": 2613,
+    "cumulative_window_seconds_with_packet_2026_008": 3157,
+    "maximum_cumulative_window_seconds": 14400,
+    "fargate_tasks_started": 0,
+    "internal_albs_partially_created_then_removed": 1,
+    "actual_billed_cost": "NOT_YET_RECONCILED",
+    "reservation_state": "REMAINS_ACTIVE_PENDING_ATTRIBUTABLE_BILLING_AND_RETRY_DECISION",
+    "cost_claim": "Observed instance timing and control limits are recorded; no exact AWS billed amount is inferred."
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "b5_promotion_status": "BLOCKED_UNCHANGED",
+    "production_deployment_occurred": false,
+    "synthetic_conversation_proof_completed": false
+  },
+  "required_remediation_before_retry": [
+    "Close packet 2026-010 by this refusal record; do not resume or reinterpret it.",
+    "Create a new versioned IAM-correction packet for the existing medzen-lbc-access policy; no IAM change is authorized by this record.",
+    "Independently review the minimal CreateListener resource semantics, keeping the internal scheme, exact VPC/subnet/security-group, name, tag and region boundaries intact.",
+    "Add policy regression tests that allow CreateListener only for the exact B6 internal load-balancer boundary and deny unrelated load balancers, listeners and accounts.",
+    "Use IAM simulation and a no-compute Terraform plan to prove the exact in-place policy delta before application.",
+    "Account explicitly for the synthetic secret now pending recoverable deletion and the removed local token before any new integration window.",
+    "Create, independently review and obtain owner approval for a new bounded integration-window packet; packet 2026-010 authorizes no retry."
+  ],
+  "next_boundary": "Packet 2026-010 is closed as an ALB-listener IAM refusal with automatic cleanup PASS. B6.6 remains incomplete. A separately reviewed IAM correction and a new owner-approved integration packet are required before retry."
+}
