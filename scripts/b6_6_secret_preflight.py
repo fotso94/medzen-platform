@@ -31,7 +31,8 @@ from scripts.run_b6_client_secret_restoration import (
 )
 
 
-NEW_VERSION = "d09d567e-9bde-482a-b95a-3cab990a1006"
+NEW_VERSION = "daacb67e-fcd1-41e1-bf62-47a3f18c8d0b"
+PRIOR_CURRENT_VERSION = "d09d567e-9bde-482a-b95a-3cab990a1006"
 RESOURCE_POLICY_SHA256 = "318a323fe01349dca140c8eff48cfef9da1cda163b6cc7616d3da718c0d20cb1"
 KMS_POLICY_SHA256 = "8a9c8064b7a66e8003e326b4ae02a1288c7d304fd471734146f70fbaacbd5dd4"
 
@@ -60,7 +61,11 @@ def verify(secret_client: Any, iam_client: Any, identity: dict[str, Any]) -> dic
     version_map = {
         item.get("VersionId"): sorted(item.get("VersionStages", [])) for item in versions
     }
-    if version_map != {NEW_VERSION: ["AWSCURRENT"], OLD_VERSION: []}:
+    if version_map != {
+        NEW_VERSION: ["AWSCURRENT"],
+        PRIOR_CURRENT_VERSION: [],
+        OLD_VERSION: [],
+    }:
         raise SecretPreflightRefusal("secret version map differs")
     resource_policy = json.loads(
         secret_client.get_resource_policy(SecretId=SECRET_ARN)["ResourcePolicy"]
@@ -80,7 +85,8 @@ def verify(secret_client: Any, iam_client: Any, identity: dict[str, Any]) -> dic
     return {
         "status": "PASS",
         "secret_version_id": NEW_VERSION,
-        "historical_version_unstaged": True,
+        "prior_current_version_unstaged": True,
+        "older_version_unstaged": True,
         "resource_policy_sha256": resource_policy_sha,
         "kms_policy_sha256": kms_policy_sha,
         "plaintext_read": False,

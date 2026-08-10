@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Independently invocable cleanup for B6-AWS-CHANGE-PACKET-2026-014.
+# Independently invocable cleanup for B6-AWS-CHANGE-PACKET-2026-016.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -79,7 +79,7 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window_and_secret"
-cleanup_plan="/private/tmp/b6-014-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-016-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints

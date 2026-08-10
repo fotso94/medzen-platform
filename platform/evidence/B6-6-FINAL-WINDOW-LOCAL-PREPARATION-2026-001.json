@@ -1,0 +1,110 @@
+{
+  "record": "B6_6_FINAL_SYNTHETIC_INTEGRATION_WINDOW_LOCAL_PREPARATION",
+  "id": "B6-6-FINAL-WINDOW-LOCAL-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_PREPARATION_COMPLETE_AWAITING_INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+  "recorded_utc": "2026-08-10T05:40:06Z",
+  "repository": {
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "branch": "codex/b6-015-execution",
+    "starting_execution_evidence_commit": "4b8e97e",
+    "historical_packet_2026_014_modified": false,
+    "historical_packet_2026_015_modified": false
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-016",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-016-b6-6-final-window.md",
+    "sha256": "1560c5b6a775377cff43bf46a236bdd5da0c645cf3f846b33bc63ed50c670f6d",
+    "authorized": false,
+    "executed": false,
+    "owner_authorization_record_created": false
+  },
+  "credential_prerequisite": {
+    "packet_id": "B6-AWS-CHANGE-PACKET-2026-015",
+    "status": "VERIFIED_COMPLETE",
+    "evidence_path": "platform/evidence/B6-CLIENT-SECRET-RESTORATION-AWS-EXECUTION-2026-002.json",
+    "evidence_sha256": "3d221399287dc55c3ae2d72d1a5e381680dc5263d21451c8434ccc21f95becb3",
+    "new_version_id": "daacb67e-fcd1-41e1-bf62-47a3f18c8d0b",
+    "bearer_token_sha256": "77f2979e024c42e91db938fecdb6214359637b316ad5edf6bbf1008fe59a89ea",
+    "plaintext_recorded": false
+  },
+  "implemented_controls": {
+    "authorization_id_required": "B6-AWS-AUTH-2026-016",
+    "exact_receipt_directory": "platform/evidence/receipts/B6-2026-016-LIVE",
+    "clean_reviewed_worktree_required": true,
+    "deadline_armed_before_scale_up": true,
+    "maximum_window_seconds": 9581,
+    "create_plan": {
+      "adds": 12,
+      "changes": 0,
+      "destroys": 0
+    },
+    "full_cleanup_plan": {
+      "adds": 0,
+      "changes": 0,
+      "destroys": 15
+    },
+    "endpoint_wait_seconds": 900,
+    "endpoint_recheck_before_fargate": true,
+    "seven_workload_driver_images_digest_pinned": true,
+    "controller_digest_pinned": true,
+    "production_serving_pointer_must_remain_absent": true,
+    "cleanup_before_deadline_disarm": true
+  },
+  "live_read_only_preview": {
+    "status": "PASS_EXACT_ZERO_STARTING_STATE",
+    "cpu_desired": 0,
+    "cpu_instances": 0,
+    "gpu_desired": 0,
+    "gpu_instances": 0,
+    "scheduled_shutdown_actions": 0,
+    "internal_albs": 0,
+    "probe_ecs_clusters": 0,
+    "temporary_vpc_endpoints": 0,
+    "temporary_endpoint_security_groups": 0,
+    "production_serving_pointer": "ABSENT",
+    "aws_mutations": 0
+  },
+  "verification": {
+    "focused": {
+      "passed": 63,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical": {
+      "passed": 1386,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "terraform_validate": "PASS",
+    "shell_syntax": "PASS",
+    "python_compile": "PASS",
+    "source_hash_bindings": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "cost": {
+    "aggregate_ceiling_usd": 300.0,
+    "registry_id": "COST-REGISTRY-2026-004",
+    "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+    "existing_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "maximum_window_allocation_usd": 10.0
+  },
+  "explicit_non_events_during_packet_2026_016_preparation": {
+    "aws_mutations": 0,
+    "terraform_plans": 0,
+    "terraform_applies": 0,
+    "worker_scale_changes": 0,
+    "kubernetes_mutations": 0,
+    "vpc_endpoint_changes": 0,
+    "alb_changes": 0,
+    "fargate_tasks": 0,
+    "ssm_changes": 0,
+    "approved_artifact_changes": 0,
+    "production_serving_changes": 0
+  },
+  "next_boundary": "Independent review of the exact packet SHA and prepared commit, followed by owner approval of B6 AWS change packet 2026-016 only."
+}

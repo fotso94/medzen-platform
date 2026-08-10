@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Execute only an independently reviewed and owner-approved packet 2026-014.
+# Execute only an independently reviewed and owner-approved packet 2026-016.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,12 +16,16 @@ authorization="$2"
 packet_sha256="$3"
 receipts_dir="$4"
 token_file="$5"
+expected_receipts="$repo_root/platform/evidence/receipts/B6-2026-016-LIVE"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" && -f "$token_file" ]] || { echo "REFUSING: required B6.6 execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
+[[ "$receipts_dir" == "$expected_receipts" ]] || { echo "REFUSING: exact packet-2026-016 receipt directory is required" >&2; exit 2; }
+[[ ! -e "$receipts_dir" ]] || { echo "REFUSING: packet-2026-016 receipt directory already exists" >&2; exit 2; }
+[[ -z "$(git status --porcelain=v1)" ]] || { echo "REFUSING: execution requires a clean reviewed worktree" >&2; exit 2; }
 .venv/bin/python scripts/b6_6_token_binding.py "$token_file" >/dev/null
 
 .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
@@ -76,7 +80,7 @@ else
   exit 2
 fi
 
-window_plan="/private/tmp/b6-014-create-$PPID.tfplan"
+window_plan="/private/tmp/b6-016-create-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints

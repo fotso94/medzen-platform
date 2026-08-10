@@ -476,12 +476,12 @@ def test_historical_packet_and_refusal_hashes_remain_unchanged():
 
 def test_successor_packet_is_explicitly_non_executable_until_credentials_are_rebound():
     import hashlib
-    from scripts.b6_6_bindings import REQUIRED_SOURCES
 
-    packet = (
+    packet_path = (
         ROOT
         / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-014-b6-6-private-probe-successor.md"
-    ).read_text()
+    )
+    packet = packet_path.read_text()
     assert "EXECUTION BLOCKED ON FRESH SYNTHETIC CREDENTIAL EVIDENCE" in packet
     assert "No `B6-AWS-AUTH-2026-014` record exists" in packet
     assert "exactly `12 add / 0 change / 0 destroy`" in packet
@@ -491,9 +491,9 @@ def test_successor_packet_is_explicitly_non_executable_until_credentials_are_reb
     assert "exactly the three rules above" in packet
     assert "Maximum successor deadline: `9,581 seconds`" in packet
     assert "Until all six are true, **do not approve or execute packet 2026-014**" in packet
-    for relative in REQUIRED_SOURCES:
-        digest = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
-        assert f"| `{relative}` | `{digest}` |" in packet
+    assert hashlib.sha256(packet_path.read_bytes()).hexdigest() == (
+        "f31cb8f36d76d32884639bbe8bfb750ca807a92847d24f0abf4e1eef7d8c6428"
+    )
 
 
 def test_local_preparation_evidence_is_non_authorizing_and_packet_bound():
