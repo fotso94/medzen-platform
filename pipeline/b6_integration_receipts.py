@@ -25,6 +25,7 @@ STAGES = (
     "llm_ready",
     "orchestrator_ready",
     "alb_ready",
+    "alb_tag_mutation_warning",
     "file_proof",
     "websocket_proof",
     "cancellation_proof",
@@ -45,7 +46,8 @@ DEPENDENCIES = {
     "llm_ready": ("tts_ready",),
     "orchestrator_ready": ("llm_ready",),
     "alb_ready": ("orchestrator_ready",),
-    "file_proof": ("alb_ready",),
+    "alb_tag_mutation_warning": ("alb_ready",),
+    "file_proof": ("alb_tag_mutation_warning",),
     "websocket_proof": ("file_proof",),
     "cancellation_proof": ("websocket_proof",),
     "failure_drills": ("cancellation_proof",),
@@ -53,7 +55,7 @@ DEPENDENCIES = {
     "cleanup": ("deadline",),
     "cleanup_recovery": ("deadline",),
 }
-STATUSES = {"PASS", "REFUSED", "INCOMPLETE", "NOT_RUN"}
+STATUSES = {"PASS", "WARNING_NON_FATAL", "REFUSED", "INCOMPLETE", "NOT_RUN"}
 FORBIDDEN_KEYS = {
     "audio", "audio_bytes", "transcript", "reply", "citation_text",
     "authorization", "bearer", "token", "secret_value", "stdout", "stderr",
@@ -136,7 +138,11 @@ class ReceiptStore:
 
     def require_pass(self, stage: str) -> dict[str, Any]:
         value = self.load(stage)
-        if value["status"] != "PASS":
+        accepted = value["status"] == "PASS" or (
+            stage == "alb_tag_mutation_warning"
+            and value["status"] == "WARNING_NON_FATAL"
+        )
+        if not accepted:
             raise ReceiptRefusal(f"{stage} receipt is not PASS")
         return value
 
