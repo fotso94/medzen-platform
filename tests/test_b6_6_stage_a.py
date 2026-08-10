@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
 
 from pipeline.b6_integration_receipts import (
+    ReceiptStore,
     STAGE_A_EXECUTION_STAGES,
     STAGE_A_STAGES,
 )
 from scripts.b6_6_cold_rehearsal import (
+    _aws_read_fixture_fidelity,
     _stage_a_scenario,
     _task_eni_sg_egress_lint,
     _terraform_description_charset_lint,
@@ -17,6 +21,8 @@ from scripts.b6_6_stage_a import (
     MAXIMUM_COST_USD,
     MAXIMUM_SECONDS,
     STABLE_PROBE_PASSES,
+    StageAContext,
+    StageARunner,
 )
 from scripts.check_b6_6_window_plan import (
     AWS_DESCRIPTION_CHARSET,
@@ -26,8 +32,11 @@ from scripts.check_b6_6_window_plan import (
     lint_task_eni_security_group_egress,
 )
 from scripts.b6_6_probe_endpoints import (
+    EgressRule,
     EndpointRefusal,
-    _verify_security_group_egress,
+    _normalize_security_group_rules,
+    _read_security_group_egress_rules,
+    _verify_security_group_egress_rules,
 )
 
 
@@ -146,34 +155,194 @@ def test_cold_rehearsal_lints_every_projected_rendered_plan_description() -> Non
     assert result["real_aws_calls"] == 0
 
 
-def test_runtime_egress_verifier_requires_exact_ecr_self_and_s3_prefix_rules() -> None:
-    group = {
-        "GroupId": "sg-probe",
-        "IpPermissionsEgress": [
-            {
-                "IpProtocol": "tcp",
-                "FromPort": 443,
-                "ToPort": 443,
-                "UserIdGroupPairs": [{"GroupId": "sg-probe"}],
-                "PrefixListIds": [],
-                "IpRanges": [],
-                "Ipv6Ranges": [],
-            },
-            {
-                "IpProtocol": "tcp",
-                "FromPort": 443,
-                "ToPort": 443,
-                "UserIdGroupPairs": [],
-                "PrefixListIds": [{"PrefixListId": "pl-s3"}],
-                "IpRanges": [],
-                "Ipv6Ranges": [],
-            },
-        ],
-    }
-    _verify_security_group_egress(group, "pl-s3")
-    group["IpPermissionsEgress"].pop()
+def _required_domain_rules() -> list[EgressRule]:
+    return [
+        EgressRule(
+            rule_id="sgr-domain-ecr",
+            group_id="sg-probe",
+            protocol="tcp",
+            from_port=443,
+            to_port=443,
+            referenced_group_id="sg-probe",
+            prefix_list_id=None,
+            cidr_ipv4=None,
+            cidr_ipv6=None,
+        ),
+        EgressRule(
+            rule_id="sgr-domain-s3",
+            group_id="sg-probe",
+            protocol="tcp",
+            from_port=443,
+            to_port=443,
+            referenced_group_id=None,
+            prefix_list_id="pl-s3",
+            cidr_ipv4=None,
+            cidr_ipv6=None,
+        ),
+    ]
+
+
+def test_recorded_real_responses_prove_merged_shape_and_minus_one_port_quirk() -> None:
+    merged_path = (
+        ROOT
+        / "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json"
+    )
+    rules_path = (
+        ROOT
+        / "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json"
+    )
+    evidence = json.loads(
+        (ROOT / "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-001.json").read_bytes()
+    )
+    expected = {item["path"]: item["sha256"] for item in evidence["captures"]}
+    for path in (merged_path, rules_path):
+        relative = str(path.relative_to(ROOT))
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[relative]
+
+    merged = json.loads(merged_path.read_bytes())["SecurityGroups"][0]
+    per_rule = json.loads(rules_path.read_bytes())
+    merged_egress = merged["IpPermissionsEgress"]
+    individual_egress = [
+        item for item in per_rule["SecurityGroupRules"] if item["IsEgress"] is True
+    ]
+    assert len(merged_egress) == 1
+    assert len(merged_egress[0]["UserIdGroupPairs"]) == 1
+    assert len(merged_egress[0]["IpRanges"]) == 1
+    assert "FromPort" not in merged_egress[0]
+    assert "ToPort" not in merged_egress[0]
+    assert len(individual_egress) == 2
+    assert all(item["IpProtocol"] == "-1" for item in individual_egress)
+    assert all(item["FromPort"] == -1 for item in individual_egress)
+    assert all(item["ToPort"] == -1 for item in individual_egress)
+    assert len(_normalize_security_group_rules(per_rule)) == 2
+
+
+def test_cold_rehearsal_binds_recorded_aws_read_response_fixtures() -> None:
+    result = _aws_read_fixture_fidelity()
+    assert result["status"] == "PASS"
+    assert result["merged_egress_permission_objects"] == 1
+    assert result["individual_egress_rules"] == 2
+    assert result["protocol_minus_one_port_quirk"] == "PASS"
+    assert result["real_aws_calls"] == 0
+
+
+def test_runtime_reader_uses_per_rule_api_with_recorded_real_response() -> None:
+    response = json.loads(
+        (
+            ROOT
+            / "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json"
+        ).read_bytes()
+    )
+
+    class RecordedResponseClient:
+        def __init__(self) -> None:
+            self.requests: list[dict[str, object]] = []
+
+        def describe_security_group_rules(self, **kwargs: object) -> dict[str, object]:
+            self.requests.append(kwargs)
+            return response
+
+        def describe_security_groups(self, **_: object) -> dict[str, object]:
+            raise AssertionError("merged permission API must not verify egress")
+
+    client = RecordedResponseClient()
+    rules = _read_security_group_egress_rules(client, "sg-070fc00321934eacb")
+    assert len(rules) == 2
+    assert client.requests == [
+        {
+            "Filters": [
+                {"Name": "group-id", "Values": ["sg-070fc00321934eacb"]}
+            ]
+        }
+    ]
+
+
+def test_runtime_egress_policy_requires_exact_ecr_self_and_s3_prefix_rules() -> None:
+    rules = _required_domain_rules()
+    _verify_security_group_egress_rules(rules, "sg-probe", "pl-s3")
+
     with pytest.raises(EndpointRefusal, match="egress count"):
-        _verify_security_group_egress(group, "pl-s3")
+        _verify_security_group_egress_rules(rules[1:], "sg-probe", "pl-s3")
+    with pytest.raises(EndpointRefusal, match="egress count"):
+        _verify_security_group_egress_rules(rules[:1], "sg-probe", "pl-s3")
+    with pytest.raises(EndpointRefusal, match="egress count"):
+        _verify_security_group_egress_rules(
+            [*rules, rules[0]], "sg-probe", "pl-s3"
+        )
+
+    missing_ecr_destination = [
+        EgressRule(**{**rules[0].__dict__, "referenced_group_id": None}),
+        rules[1],
+    ]
+    with pytest.raises(EndpointRefusal, match="egress destination"):
+        _verify_security_group_egress_rules(
+            missing_ecr_destination, "sg-probe", "pl-s3"
+        )
+    missing_s3_destination = [
+        rules[0],
+        EgressRule(**{**rules[1].__dict__, "prefix_list_id": None}),
+    ]
+    with pytest.raises(EndpointRefusal, match="egress destination"):
+        _verify_security_group_egress_rules(
+            missing_s3_destination, "sg-probe", "pl-s3"
+        )
+
+
+def test_runtime_egress_policy_refuses_unexpected_or_minus_one_rule() -> None:
+    rules = _required_domain_rules()
+    rules[1] = EgressRule(
+        **{
+            **rules[1].__dict__,
+            "protocol": "-1",
+            "from_port": -1,
+            "to_port": -1,
+        }
+    )
+    with pytest.raises(EndpointRefusal, match="egress transport"):
+        _verify_security_group_egress_rules(rules, "sg-probe", "pl-s3")
+
+
+def test_injected_pre_model_refusal_persists_exact_safe_error_text(
+    tmp_path: Path,
+) -> None:
+    _stage_a_scenario(tmp_path, "safe-error", "stage_a_endpoints")
+    receipt = json.loads((tmp_path / "safe-error/stage_a_endpoints.json").read_bytes())
+    assert receipt["status"] == "REFUSED"
+    assert receipt["payload"]["safe_exception_text"] == "INJECTED_STAGE_A_FAILURE"
+
+
+def test_live_verifier_exception_persists_exact_safe_error_text(tmp_path: Path) -> None:
+    exact = "probe endpoint SG egress count or identity differs"
+
+    class EndpointFailureOperations:
+        def before_run(self, context: StageAContext) -> None:
+            del context
+
+        def execute(self, stage: str, context: StageAContext) -> dict[str, object]:
+            del context
+            if stage == "stage_a_endpoints":
+                raise EndpointRefusal(exact)
+            if stage == "stage_a_cleanup":
+                return {"cleanup_complete": True}
+            return {"stage": stage}
+
+        def recover_cleanup(self, context: StageAContext) -> dict[str, object]:
+            del context
+            return {"recovery_completed": True, "zero_state": True}
+
+    receipts = tmp_path / "live-verifier-error"
+    context = StageAContext(
+        authorization=tmp_path / "unused.json",
+        packet_sha256="0" * 64,
+        receipts_dir=receipts,
+    )
+    result = StageARunner(
+        EndpointFailureOperations(), ReceiptStore(receipts)
+    ).run(context)
+    receipt = json.loads((receipts / "stage_a_endpoints.json").read_bytes())
+    assert result.outcome == "REFUSED"
+    assert receipt["payload"]["exception_class"] == "EndpointRefusal"
+    assert receipt["payload"]["safe_exception_text"] == exact
 
 
 def test_rendered_plan_description_lint_accepts_full_aws_charset() -> None:

@@ -145,7 +145,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-024-A{context.attempt}-LIVE"
+            / f"B6-2026-025-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -234,7 +234,7 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-024-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-025-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -266,6 +266,8 @@ class RealOperations:
             "stage_a_full_pass_runs",
             "stage_a_injected_failure_runs",
             "task_eni_sg_egress_lint",
+            "terraform_description_charset_lint",
+            "aws_read_fixture_fidelity",
         )
         if any(fresh["payload"].get(key) != bound["payload"].get(key) for key in compared):
             raise StageFailure("PRE_ATTEMPT_COLD_REHEARSAL_DIFFERS")

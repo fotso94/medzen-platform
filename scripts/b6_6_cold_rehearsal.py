@@ -28,6 +28,7 @@ from pipeline.b6_integration_receipts import (
 )
 from scripts.b6_6_credential import KMS_KEY, SECRET_ARN, SECRET_NAME, rotate_and_verify
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
+from scripts.b6_6_probe_endpoints import _normalize_security_group_rules
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
 from scripts.b6_6_stage_a import (
     MAXIMUM_COST_USD,
@@ -71,6 +72,70 @@ GUARDS = {
     "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip"],
     "cleanup": ["zero_state_before_deadline_disarm_persistent_secret_retained"],
 }
+
+
+def _aws_read_fixture_fidelity() -> dict[str, Any]:
+    decision_path = (
+        ROOT / "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json"
+    )
+    evidence_path = (
+        ROOT / "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-001.json"
+    )
+    decision = json.loads(decision_path.read_bytes())
+    evidence = json.loads(evidence_path.read_bytes())
+    if (
+        decision.get("status") != "owner-directed-standing-rule"
+        or evidence.get("status") != "PASS_READ_ONLY_LIVE_CAPTURE"
+        or evidence.get("aws", {}).get("mutations") != 0
+    ):
+        raise AssertionError("AWS read-response fixture authority differs")
+    captures = evidence.get("captures")
+    if not isinstance(captures, list) or len(captures) != 2:
+        raise AssertionError("AWS read-response fixture inventory differs")
+    payloads: dict[str, dict[str, Any]] = {}
+    fixture_hashes: dict[str, str] = {}
+    for capture in captures:
+        relative = capture.get("path")
+        digest = capture.get("sha256")
+        if not isinstance(relative, str) or not isinstance(digest, str):
+            raise AssertionError("AWS read-response fixture binding is malformed")
+        path = ROOT / relative
+        if sha256_file(path) != digest:
+            raise AssertionError("AWS read-response fixture hash differs")
+        payloads[str(capture["api"])] = json.loads(path.read_bytes())
+        fixture_hashes[relative] = digest
+
+    merged_groups = payloads["ec2:DescribeSecurityGroups"].get("SecurityGroups")
+    if not isinstance(merged_groups, list) or len(merged_groups) != 1:
+        raise AssertionError("recorded DescribeSecurityGroups fixture differs")
+    merged = merged_groups[0].get("IpPermissionsEgress")
+    rules_response = payloads["ec2:DescribeSecurityGroupRules"]
+    raw_rules = rules_response.get("SecurityGroupRules")
+    normalized = _normalize_security_group_rules(rules_response)
+    if (
+        not isinstance(merged, list)
+        or len(merged) != 1
+        or not isinstance(raw_rules, list)
+        or len([item for item in raw_rules if item.get("IsEgress") is True]) != 2
+        or len(normalized) != 2
+        or any(rule.protocol != "-1" for rule in normalized)
+        or any(rule.from_port != -1 or rule.to_port != -1 for rule in normalized)
+        or "FromPort" in merged[0]
+        or "ToPort" in merged[0]
+    ):
+        raise AssertionError("recorded AWS response-shape behavior differs")
+    return {
+        "status": "PASS",
+        "decision_path": str(decision_path.relative_to(ROOT)),
+        "decision_sha256": sha256_file(decision_path),
+        "evidence_path": str(evidence_path.relative_to(ROOT)),
+        "evidence_sha256": sha256_file(evidence_path),
+        "fixture_hashes": dict(sorted(fixture_hashes.items())),
+        "merged_egress_permission_objects": 1,
+        "individual_egress_rules": 2,
+        "protocol_minus_one_port_quirk": "PASS",
+        "real_aws_calls": 0,
+    }
 
 
 def _task_eni_sg_egress_lint() -> dict[str, Any]:
@@ -353,6 +418,12 @@ def _stage_a_scenario(root: Path, name: str, fail_stage: str | None) -> dict[str
         statuses = {item["stage"]: item["status"] for item in receipts}
         if result.outcome != "REFUSED" or statuses.get(fail_stage) != "REFUSED":
             raise AssertionError(f"Stage A failure did not refuse exactly {fail_stage}")
+        failure_receipt = runner.store.load(fail_stage)
+        if (
+            failure_receipt.get("payload", {}).get("safe_exception_text")
+            != "INJECTED_STAGE_A_FAILURE"
+        ):
+            raise AssertionError("Stage A refusal lost its exact safe exception text")
         expected_cleanup = "REFUSED" if fail_stage == "stage_a_cleanup" else "PASS"
         if statuses.get("stage_a_cleanup") != expected_cleanup:
             raise AssertionError("Stage A injected cleanup status differs")
@@ -438,6 +509,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
     task_eni_sg_egress_lint = _task_eni_sg_egress_lint()
     terraform_description_charset_lint = _terraform_description_charset_lint()
+    aws_read_fixture_fidelity = _aws_read_fixture_fidelity()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -470,6 +542,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "stage_a_scenarios": stage_a_scenarios,
         "task_eni_sg_egress_lint": task_eni_sg_egress_lint,
         "terraform_description_charset_lint": terraform_description_charset_lint,
+        "aws_read_fixture_fidelity": aws_read_fixture_fidelity,
         "real_aws_calls": 0,
         "real_kubectl_calls": 0,
         "aws_mutations": 0,

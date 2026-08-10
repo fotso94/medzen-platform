@@ -1,0 +1,59 @@
+{
+  "SecurityGroups": [
+    {
+      "GroupId": "sg-070fc00321934eacb",
+      "IpPermissionsEgress": [
+        {
+          "IpProtocol": "-1",
+          "UserIdGroupPairs": [
+            {
+              "Description": "Allows EFA traffic, which is not matched by CIDR rules.",
+              "UserId": "558069890522",
+              "GroupId": "sg-070fc00321934eacb"
+            }
+          ],
+          "IpRanges": [
+            {
+              "CidrIp": "0.0.0.0/0"
+            }
+          ],
+          "Ipv6Ranges": [],
+          "PrefixListIds": []
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "aws:eks:cluster-name",
+          "Value": "medzen-speech"
+        },
+        {
+          "Key": "Name",
+          "Value": "eks-cluster-sg-medzen-speech-1678132760"
+        },
+        {
+          "Key": "kubernetes.io/cluster/medzen-speech",
+          "Value": "owned"
+        }
+      ],
+      "VpcId": "vpc-051aa9df8b64bf141",
+      "SecurityGroupArn": "arn:aws:ec2:eu-central-1:558069890522:security-group/sg-070fc00321934eacb",
+      "OwnerId": "558069890522",
+      "GroupName": "eks-cluster-sg-medzen-speech-1678132760",
+      "Description": "EKS created security group applied to ENI that is attached to EKS Control Plane master nodes, as well as any managed workloads.",
+      "IpPermissions": [
+        {
+          "IpProtocol": "-1",
+          "UserIdGroupPairs": [
+            {
+              "UserId": "558069890522",
+              "GroupId": "sg-070fc00321934eacb"
+            }
+          ],
+          "IpRanges": [],
+          "Ipv6Ranges": [],
+          "PrefixListIds": []
+        }
+      ]
+    }
+  ]
+}

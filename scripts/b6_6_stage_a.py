@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run packet-2026-024 Stage A isolated Fargate qualification."""
+"""Run packet-2026-025 Stage A isolated Fargate qualification."""
 from __future__ import annotations
 
 import argparse
@@ -35,9 +35,9 @@ OPERATION_SECONDS = 1200
 CLEANUP_SECONDS = 600
 MAXIMUM_COST_USD = 0.50
 STABLE_PROBE_PASSES = 3
-RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-024-STAGE-A-LIVE"
-PLAN = Path("/private/tmp/b6-024-stage-a.tfplan")
-CLEANUP_PLAN = Path("/private/tmp/b6-024-stage-a-cleanup.tfplan")
+RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE"
+PLAN = Path("/private/tmp/b6-025-stage-a.tfplan")
+CLEANUP_PLAN = Path("/private/tmp/b6-025-stage-a-cleanup.tfplan")
 TARGETS = tuple(f"-target={address.removesuffix('[0]')}" for address in sorted(QUALIFICATION_ADDRESSES))
 REASONS = {
     "stage_a_preflight": "STAGE_A_PREFLIGHT_REFUSED",
@@ -396,12 +396,17 @@ class StageARunner:
             payload = self.operations.execute(stage, context)
             status = "PASS"
         except StageARefusal as exc:
-            payload = {"reason_code": exc.reason_code, **exc.payload}
+            payload = {
+                "reason_code": exc.reason_code,
+                "safe_exception_text": str(exc),
+                **exc.payload,
+            }
             self.failure_stage = self.failure_stage or stage
         except Exception as exc:
             payload = {
                 "reason_code": REASONS[stage],
                 "exception_class": type(exc).__name__,
+                "safe_exception_text": str(exc),
             }
             self.failure_stage = self.failure_stage or stage
         finally:
@@ -413,6 +418,7 @@ class StageARunner:
                         "recovery_completed": False,
                         "zero_state": False,
                         "recovery_exception_class": type(exc).__name__,
+                        "recovery_safe_exception_text": str(exc),
                     }
                 payload = {**payload, "cleanup_recovery": recovery}
             self._persist(stage, status, payload)
@@ -434,6 +440,7 @@ class StageARunner:
                     {
                         "reason_code": "STAGE_A_TOP_LEVEL_REFUSED",
                         "exception_class": type(exc).__name__,
+                        "safe_exception_text": str(exc),
                     },
                 )
         finally:

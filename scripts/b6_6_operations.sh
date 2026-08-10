@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for independently reviewed packet 2026-024.
+# Canonical operation dispatcher for independently reviewed packet 2026-025.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,7 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-024-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-025-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -118,7 +118,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-024-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-025-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -147,7 +147,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-024-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-025-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
