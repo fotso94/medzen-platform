@@ -90,7 +90,8 @@ scripts/terraform_medzen.sh plan -input=false -out="$cleanup_plan" \
 
 change_count="$(terraform -chdir=infra show -json "$cleanup_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
 if [[ "$change_count" != "0" ]]; then
-  if [[ -e "$receipts_dir/terraform_window.json" ]]; then
+  terraform_window_status="$(jq -r '.status // empty' "$receipts_dir/terraform_window.json" 2>/dev/null || true)"
+  if [[ "$terraform_window_status" == "PASS" ]]; then
     .venv/bin/python scripts/check_b6_6_window_plan.py destroy "$cleanup_plan"
   else
     .venv/bin/python scripts/check_b6_6_window_plan.py cleanup "$cleanup_plan"

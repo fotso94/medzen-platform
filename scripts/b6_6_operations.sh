@@ -137,6 +137,7 @@ stage_pre_endpoint_images() {
 stage_terraform_window() {
   plan="/private/tmp/b6-019-endpoints-$PPID.tfplan"
   targets=(
+    -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
     -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
     -target=aws_vpc_security_group_ingress_rule.b6_nodes_from_alb
