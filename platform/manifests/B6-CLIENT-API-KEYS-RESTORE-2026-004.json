@@ -1,0 +1,62 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_CREDENTIAL_STAGE_0_REQUEST",
+  "id": "B6-CLIENT-API-KEYS-RESTORE-2026-004",
+  "revision": 1,
+  "status": "PROPOSED_IN_PACKET_STAGE_0_NOT_AUTHORIZED",
+  "purpose": "Restore the exact recoverable synthetic secret, reconcile only its existing reviewed access boundary, create fresh random material and bind the resulting version and hashes to immutable stage receipts before any worker deadline or compute starts.",
+  "required_starting_state": {
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "recovery_state": "PENDING_RECOVERABLE_DELETION",
+    "current_version_id": "daacb67e-fcd1-41e1-bf62-47a3f18c8d0b",
+    "current_version_stages": [
+      "AWSCURRENT"
+    ],
+    "unstaged_version_ids": [
+      "d09d567e-9bde-482a-b95a-3cab990a1006",
+      "f78c8aa8-2765-4788-9928-dd1ba7c406bf"
+    ],
+    "terraform_secret_addresses": 0,
+    "resource_policy": "ABSENT",
+    "orchestrator_kms_inline_policy": "ABSENT",
+    "local_token": "ABSENT",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "production_serving_pointer": "ABSENT"
+  },
+  "authorized_only_after_packet_approval": {
+    "restore_calls": 1,
+    "old_plaintext_reads": 0,
+    "old_value_reuse": false,
+    "fresh_random_bytes": 32,
+    "fresh_token_file_mode": "0600",
+    "terraform_import_addresses": [
+      "aws_secretsmanager_secret.b6_client_keys[0]"
+    ],
+    "terraform_reconciliation_addresses": [
+      "aws_secretsmanager_secret_policy.b6_client_keys[0]",
+      "aws_iam_role_policy.b6_client_keys_kms[0]"
+    ],
+    "force_delete_without_recovery": false
+  },
+  "dynamic_binding_rule": {
+    "pre_approval_token_or_version_value_exists": false,
+    "rotation_receipt_must_bind": [
+      "fresh version ID",
+      "fresh bearer SHA-256",
+      "canonical secret-value SHA-256"
+    ],
+    "verification_receipt_must_prove": [
+      "fresh version is AWSCURRENT",
+      "all three prior versions are unstaged",
+      "operator plaintext read is explicitly denied",
+      "local token bytes and mode match the rotation receipt"
+    ],
+    "later_window_stages_may_start_only_after_verified_receipt": true
+  },
+  "failure_boundary": {
+    "stage_0_failure_starts_compute": false,
+    "stage_0_failure_arms_worker_deadline": false,
+    "cleanup": "remove local token, remove Terraform secret/access addresses, schedule seven-day recoverable deletion and persist cleanup receipt"
+  },
+  "expires_utc": "2026-08-17T04:00:00Z"
+}

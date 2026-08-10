@@ -1,0 +1,98 @@
+{
+  "record": "B6_6_ENDPOINT_POLICY_CORRECTION_READ_ONLY_EVALUATION",
+  "id": "B6-6-ENDPOINT-POLICY-CORRECTION-EVALUATION-2026-001",
+  "revision": 1,
+  "status": "PASS_SELECTED_PRINCIPAL_INDEPENDENT_CUSTOM_POLICY",
+  "recorded_utc": "2026-08-10T14:17:48Z",
+  "repository": {
+    "branch": "codex/b6-017-principal-free-successor",
+    "starting_commit": "25fb88c37e4a5890a32fc15a529394661c951cd5",
+    "pull_request_27_merged": true,
+    "pull_request_27_merge_commit": "25fb88c37e4a5890a32fc15a529394661c951cd5"
+  },
+  "question_evaluated": "Whether the two custom ECR VPC endpoint policies can remove their newly-created IAM role Principal references instead of staging IAM propagation.",
+  "official_service_rules": {
+    "custom_endpoint_policy_requires_principal_element": true,
+    "default_endpoint_policy": {
+      "principal": "*",
+      "action": "*",
+      "resource": "*",
+      "selected": false,
+      "reason": "It is broader than the exact image-pull requirement."
+    },
+    "custom_endpoint_policy_is_additional_boundary": true,
+    "identity_policy_still_required": true,
+    "references": [
+      "https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-access.html",
+      "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html",
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_evaluation-logic.html"
+    ]
+  },
+  "selected_design": {
+    "classification": "CUSTOM_POLICY_REQUIRED_WILDCARD_PRINCIPAL_WITH_NARROW_ACTION_RESOURCE_BOUNDARY",
+    "ecr_api": {
+      "principal": "*",
+      "actions": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "resources": [
+        "*"
+      ]
+    },
+    "ecr_dkr": {
+      "principal": "*",
+      "actions": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+      ],
+      "resources": [
+        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-rag-index"
+      ]
+    },
+    "identity_boundary": "Only the temporary probe execution role has the exact repository pull permissions.",
+    "network_boundary": "The temporary endpoint SG self-references TCP/443 and is attached to the one temporary Fargate probe as well as both ECR interface endpoints.",
+    "same_apply_role_propagation_dependency_removed": true,
+    "staged_role_first_fallback_required": false
+  },
+  "important_live_network_correction": {
+    "originally_named_probe_security_group": "sg-0a83abae6ab954543",
+    "actual_group_name": "medzen-ehrbase-eu-central-1-ECSSecurityGroup-JvyK2cVqEotR",
+    "name_tag": "medzen-ehrbase-ecs-sg",
+    "environment_tag": "production",
+    "attached_network_interfaces": 2,
+    "classification": "SHARED_BACKEND_NETWORK_IDENTITY_NOT_PROBE_EXCLUSIVE",
+    "consequence": "It remains attached to the temporary probe only for internal ALB ingress. It is no longer the source identity admitted by the ECR endpoint SG.",
+    "new_probe_endpoint_path": "The one temporary task additionally carries the temporary endpoint SG; the interface endpoints admit TLS only from that SG's self-reference."
+  },
+  "read_only_terraform_evaluation": {
+    "saved_plan": "/private/tmp/b6-017-local-create.tfplan",
+    "saved_plan_sha256": "c455c33db4ee311d654d8c5f67085db68b6d46a9bd1cfef754a71c42f6451d8b",
+    "adds": 12,
+    "changes": 0,
+    "destroys": 0,
+    "machine_guard": "PASS_B6_6_SUCCESSOR_CREATE",
+    "apply_performed": false
+  },
+  "live_compute_state": {
+    "cpu": {
+      "minimum": 0,
+      "maximum": 4,
+      "desired": 0
+    },
+    "gpu": {
+      "minimum": 0,
+      "maximum": 1,
+      "desired": 0
+    }
+  },
+  "non_events": {
+    "aws_mutations": 0,
+    "kubectl_mutations": 0,
+    "resources_created": 0,
+    "compute_started": false,
+    "credential_restored": false,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0
+  }
+}
