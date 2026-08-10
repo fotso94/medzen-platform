@@ -264,7 +264,9 @@ def test_r6_settled_controls_remain_in_canonical_sources() -> None:
     runner = (ROOT / "scripts/b6_6_runner.py").read_text()
     assert operations.index("stage_pre_endpoint_images") < operations.index("stage_terraform_window")
     assert 'identifiers = ["*"]' in (ROOT / "infra/b6_6_endpoint_policy_override.tf").read_text()
-    assert "PROBE_EXCLUSIVE_SELF_REFERENCE" in endpoints
+    assert "DEFERRED_TO_THREE_PROBE_LAUNCHES" in endpoints
+    assert "describe_prefix_lists" in endpoints
+    assert "describe_security_group_rules" not in endpoints
     assert '"tag:Boundary"' not in endpoints
     assert 'item.get("ServiceName") in set(SERVICES.values())' in endpoints
     assert "wait-seconds 1200" in operations

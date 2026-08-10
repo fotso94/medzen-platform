@@ -1,0 +1,58 @@
+{
+  "nodegroup": {
+    "nodegroupName": "gpu",
+    "nodegroupArn": "arn:aws:eks:eu-central-1:558069890522:nodegroup/medzen-speech/gpu/b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "clusterName": "medzen-speech",
+    "version": "1.36",
+    "releaseVersion": "1.36.2-20260728",
+    "createdAt": "2026-07-29T14:38:44.132000-04:00",
+    "modifiedAt": "2026-08-10T17:58:54.547000-04:00",
+    "status": "ACTIVE",
+    "capacityType": "ON_DEMAND",
+    "scalingConfig": {
+      "minSize": 0,
+      "maxSize": 1,
+      "desiredSize": 0
+    },
+    "instanceTypes": [
+      "g6.xlarge"
+    ],
+    "subnets": [
+      "subnet-05029419c6c61a536",
+      "subnet-00232b25bc1ac407a",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "amiType": "AL2023_x86_64_NVIDIA",
+    "nodeRole": "arn:aws:iam::558069890522:role/medzen-speech-node-role",
+    "labels": {
+      "workload": "gpu"
+    },
+    "taints": [
+      {
+        "key": "nvidia.com/gpu",
+        "value": "true",
+        "effect": "NO_SCHEDULE"
+      }
+    ],
+    "resources": {
+      "autoScalingGroups": [
+        {
+          "name": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
+        }
+      ]
+    },
+    "diskSize": 20,
+    "health": {
+      "issues": []
+    },
+    "updateConfig": {
+      "maxUnavailable": 1
+    },
+    "tags": {
+      "Project": "medzen-speech",
+      "Environment": "dev",
+      "ManagedBy": "terraform",
+      "Component": "speech-platform"
+    }
+  }
+}

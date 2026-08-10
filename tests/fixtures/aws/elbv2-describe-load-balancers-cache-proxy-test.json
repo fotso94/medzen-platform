@@ -1,0 +1,39 @@
+{
+  "LoadBalancers": [
+    {
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9",
+      "DNSName": "internal-cache-proxy-test-924288695.eu-central-1.elb.amazonaws.com",
+      "CanonicalHostedZoneId": "Z215JYRZR1TBD5",
+      "CreatedTime": "2026-05-11T16:03:09.082000+00:00",
+      "LoadBalancerName": "cache-proxy-test",
+      "Scheme": "internal",
+      "VpcId": "vpc-051aa9df8b64bf141",
+      "State": {
+        "Code": "active"
+      },
+      "Type": "application",
+      "AvailabilityZones": [
+        {
+          "ZoneName": "eu-central-1a",
+          "SubnetId": "subnet-00232b25bc1ac407a",
+          "LoadBalancerAddresses": []
+        },
+        {
+          "ZoneName": "eu-central-1c",
+          "SubnetId": "subnet-01fb2fc3f56bce55e",
+          "LoadBalancerAddresses": []
+        },
+        {
+          "ZoneName": "eu-central-1b",
+          "SubnetId": "subnet-05029419c6c61a536",
+          "LoadBalancerAddresses": []
+        }
+      ],
+      "SecurityGroups": [
+        "sg-0047105ccc517db0c"
+      ],
+      "IpAddressType": "ipv4",
+      "EnablePrefixForIpv6SourceNat": "off"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "Listeners": [
+    {
+      "ListenerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/cache-proxy-test/a6aba2020bec36a9/259e482b3e133823",
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9",
+      "Port": 80,
+      "Protocol": "HTTP",
+      "DefaultActions": [
+        {
+          "Type": "forward",
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/cache-proxy-test/546ae6a0af46af8c",
+          "Order": 1,
+          "ForwardConfig": {
+            "TargetGroups": [
+              {
+                "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/cache-proxy-test/546ae6a0af46af8c",
+                "Weight": 1
+              }
+            ],
+            "TargetGroupStickinessConfig": {
+              "Enabled": false
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

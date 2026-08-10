@@ -1,0 +1,16 @@
+{
+  "User": {
+    "Path": "/",
+    "UserName": "s.fotso",
+    "UserId": "AIDAYD34OXXNH4XZFDFEI",
+    "Arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "CreateDate": "2026-07-16T14:56:50+00:00",
+    "PasswordLastUsed": "2026-08-10T15:01:18+00:00",
+    "Tags": [
+      {
+        "Key": "AKIAYD34OXXNH2GN7ZGV",
+        "Value": "MyAccessKeys"
+      }
+    ]
+  }
+}

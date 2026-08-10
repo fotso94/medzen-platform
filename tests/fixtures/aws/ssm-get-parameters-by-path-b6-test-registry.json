@@ -1,0 +1,31 @@
+{
+  "Parameters": [
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/_manifest",
+      "Type": "SecureString",
+      "Value": "{\"classification\":\"B6_6_SYNTHETIC_INTEGRATION_ONLY\",\"parameter_value_sha256\":{\"index\":\"4ce97b58eee7813181108062d50caa20a63504dbf1f6006134a523c8ed0e5f51\",\"routes/english\":\"bc37f0de752bd3f92b10c6a5d22c526473c9dc828425144cdd6c8a6403f01e0b\"},\"schema_version\":1,\"snapshot_material_sha256\":\"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81\",\"snapshot_sha256\":\"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81\"}",
+      "Version": 1,
+      "LastModifiedDate": "2026-08-09T15:09:37.261000-04:00",
+      "ARN": "arn:aws:ssm:eu-central-1:558069890522:parameter/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/_manifest",
+      "DataType": "text"
+    },
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/index",
+      "Type": "SecureString",
+      "Value": "{\"default_language\":\"english\",\"languages\":[{\"alias\":\"english\",\"codes\":[\"en\",\"eng\"],\"route_parameter\":\"routes/english\"}],\"schema_version\":1}",
+      "Version": 1,
+      "LastModifiedDate": "2026-08-09T15:09:36.901000-04:00",
+      "ARN": "arn:aws:ssm:eu-central-1:558069890522:parameter/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/index",
+      "DataType": "text"
+    },
+    {
+      "Name": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/routes/english",
+      "Type": "SecureString",
+      "Value": "{\"asr\":{\"artifact_tree_sha256\":\"5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e\",\"backend\":\"http_cluster_v1\",\"model_version\":\"v0\",\"reported_registry_snapshot\":\"b6a-non-serving:c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850\"},\"classification\":\"B6_6_SYNTHETIC_INTEGRATION_ONLY\",\"contract_version\":\"medzen.speech.v1\",\"dependencies\":{\"asr\":{\"contract_id\":\"MEDZEN-SPEECH-CONTRACT-2026-001\",\"contract_sha256\":\"e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d\",\"endpoint\":\"http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions\"},\"llm\":{\"contract_id\":\"MEDZEN-LLM-CONTRACT-2026-001\",\"contract_sha256\":\"67ee016e205a287d74c415d457b4520f4ded5e6962d7e0d11551c715aaea581a\",\"endpoint\":\"http://llm-gateway.medzen.svc.cluster.local:8082/internal/v1/responses\"},\"rag\":{\"contract_id\":\"MEDZEN-SPEECH-CONTRACT-2026-001\",\"contract_sha256\":\"e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d\",\"endpoint\":\"http://rag-index.medzen.svc.cluster.local:8083/internal/v1/retrievals\"},\"tts\":{\"contract_id\":\"MEDZEN-TTS-CONTRACT-2026-001\",\"contract_sha256\":\"2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8\",\"endpoint\":\"http://tts-gateway.medzen.svc.cluster.local:8080/internal/v1/syntheses\"}},\"language\":{\"accepted_codes\":[\"en\",\"eng\"],\"alias\":\"english\",\"response_code\":\"en\"},\"llm\":{\"model_version\":\"fake-bedrock-local-v1\",\"policy_id\":\"english-medzen-v1\"},\"rag\":{\"alias\":\"current\",\"query_language\":\"en\",\"snapshot_sha256\":\"6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160\"},\"schema_version\":2,\"tts\":{\"backend\":\"http_text_only_v1\",\"model_version\":null}}",
+      "Version": 1,
+      "LastModifiedDate": "2026-08-09T15:09:37.088000-04:00",
+      "ARN": "arn:aws:ssm:eu-central-1:558069890522:parameter/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81/routes/english",
+      "DataType": "text"
+    }
+  ]
+}

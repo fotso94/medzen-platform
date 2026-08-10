@@ -1,0 +1,62 @@
+{
+  "VpcEndpoints": [
+    {
+      "VpcEndpointId": "vpce-0c807782b5e1c9577",
+      "VpcEndpointType": "Interface",
+      "VpcId": "vpc-051aa9df8b64bf141",
+      "ServiceName": "com.amazonaws.elasticache.serverless.eu-central-1.vpce-svc-093700281c7b6e75a",
+      "State": "available",
+      "PolicyDocument": "{\n  \"Statement\": [\n    {\n      \"Action\": \"*\",\n      \"Effect\": \"Allow\",\n      \"Principal\": \"*\",\n      \"Resource\": \"*\"\n    }\n  ]\n}",
+      "RouteTableIds": [],
+      "SubnetIds": [
+        "subnet-01fb2fc3f56bce55e",
+        "subnet-05029419c6c61a536",
+        "subnet-00232b25bc1ac407a"
+      ],
+      "Groups": [
+        {
+          "GroupId": "sg-00523ea53f141d0be",
+          "GroupName": "medzen-elasticache-sg"
+        }
+      ],
+      "IpAddressType": "ipv4",
+      "DnsOptions": {
+        "DnsRecordIpType": "ipv4"
+      },
+      "PrivateDnsEnabled": false,
+      "RequesterManaged": true,
+      "NetworkInterfaceIds": [
+        "eni-0f3463cbb1370ae4c",
+        "eni-09fcbafb17a73e792",
+        "eni-0064c6803889b0302"
+      ],
+      "DnsEntries": [
+        {
+          "DnsName": "vpce-0c807782b5e1c9577-gwdnbbp2.vpce-svc-093700281c7b6e75a.eu-central-1.vpce.amazonaws.com",
+          "HostedZoneId": "Z273ZU8SZ5RJPC"
+        },
+        {
+          "DnsName": "vpce-0c807782b5e1c9577-gwdnbbp2-eu-central-1a.vpce-svc-093700281c7b6e75a.eu-central-1.vpce.amazonaws.com",
+          "HostedZoneId": "Z273ZU8SZ5RJPC"
+        },
+        {
+          "DnsName": "vpce-0c807782b5e1c9577-gwdnbbp2-eu-central-1b.vpce-svc-093700281c7b6e75a.eu-central-1.vpce.amazonaws.com",
+          "HostedZoneId": "Z273ZU8SZ5RJPC"
+        },
+        {
+          "DnsName": "vpce-0c807782b5e1c9577-gwdnbbp2-eu-central-1c.vpce-svc-093700281c7b6e75a.eu-central-1.vpce.amazonaws.com",
+          "HostedZoneId": "Z273ZU8SZ5RJPC"
+        }
+      ],
+      "CreationTimestamp": "2026-04-16T10:57:38.767000+00:00",
+      "Tags": [
+        {
+          "Key": "AmazonElastiCacheManaged",
+          "Value": "true"
+        }
+      ],
+      "OwnerId": "558069890522",
+      "ServiceRegion": "eu-central-1"
+    }
+  ]
+}

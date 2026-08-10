@@ -1,0 +1,28 @@
+{
+  "TargetGroups": [
+    {
+      "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/cache-proxy-test/546ae6a0af46af8c",
+      "TargetGroupName": "cache-proxy-test",
+      "Protocol": "HTTP",
+      "Port": 8080,
+      "VpcId": "vpc-051aa9df8b64bf141",
+      "HealthCheckProtocol": "HTTP",
+      "HealthCheckPort": "traffic-port",
+      "HealthCheckEnabled": true,
+      "HealthCheckIntervalSeconds": 10,
+      "HealthCheckTimeoutSeconds": 5,
+      "HealthyThresholdCount": 2,
+      "UnhealthyThresholdCount": 3,
+      "HealthCheckPath": "/health",
+      "Matcher": {
+        "HttpCode": "200"
+      },
+      "LoadBalancerArns": [
+        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
+      ],
+      "TargetType": "ip",
+      "ProtocolVersion": "HTTP1",
+      "IpAddressType": "ipv4"
+    }
+  ]
+}

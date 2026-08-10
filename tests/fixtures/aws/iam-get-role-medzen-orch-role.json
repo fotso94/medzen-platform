@@ -1,0 +1,47 @@
+{
+  "Role": {
+    "Path": "/",
+    "RoleName": "medzen-orch-role",
+    "RoleId": "AROAYD34OXXNDMAINNW4B",
+    "Arn": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "CreateDate": "2026-07-29T18:29:41+00:00",
+    "AssumeRolePolicyDocument": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {
+            "Service": "pods.eks.amazonaws.com"
+          },
+          "Action": [
+            "sts:TagSession",
+            "sts:AssumeRole"
+          ]
+        }
+      ]
+    },
+    "MaxSessionDuration": 3600,
+    "Tags": [
+      {
+        "Key": "Project",
+        "Value": "medzen-speech"
+      },
+      {
+        "Key": "Component",
+        "Value": "speech-platform"
+      },
+      {
+        "Key": "Environment",
+        "Value": "dev"
+      },
+      {
+        "Key": "ManagedBy",
+        "Value": "terraform"
+      }
+    ],
+    "RoleLastUsed": {
+      "LastUsedDate": "2026-08-10T18:28:50+00:00",
+      "Region": "eu-central-1"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "id": "B6-ENDPOINT-VERIFIER-2026-002",
+  "version": 2,
+  "status": "owner-directed-prospective-successor-design",
+  "recorded_at_utc": "2026-08-10T22:10:03Z",
+  "purpose": "Replace redundant endpoint network-shape assertions with the three-consecutive-probe empirical connectivity gate while retaining controls that successful image pulls cannot prove.",
+  "supersedes_by_reference": [
+    "B6-AWS-CHANGE-PACKET-2026-025 runtime endpoint-verifier design"
+  ],
+  "historical_records_modified": false,
+  "runtime_endpoint_verification": {
+    "basic_existence": [
+      "one temporary endpoint security group with the packet boundary identity",
+      "one available ecr-api endpoint",
+      "one available ecr-dkr endpoint",
+      "one available s3 endpoint",
+      "one AWS-managed S3 prefix list"
+    ],
+    "policy_documents": [
+      "ecr-api GetAuthorizationToken only",
+      "ecr-dkr exact repository pull actions only",
+      "s3 exact ECR layer-bucket GetObject only"
+    ],
+    "s3_gateway_real_fields": [
+      "State",
+      "RouteTableIds",
+      "PolicyDocument"
+    ],
+    "s3_prefix_list_api": "ec2:DescribePrefixLists",
+    "deleted_network_shape_assertions": [
+      "SubnetIds",
+      "Groups",
+      "PrivateDnsEnabled",
+      "VpcEndpointType",
+      "security-group ingress and egress response shapes",
+      "prefix-list-to-security-group wiring"
+    ]
+  },
+  "empirical_connectivity_gate": {
+    "required_consecutive_passes": 3,
+    "task_type": "private Fargate",
+    "assign_public_ip": "DISABLED",
+    "proof": "each task pulls the exact scan-passed image through the temporary endpoint chain, starts its application process and exits zero",
+    "full_window_unlock_before_pass": false
+  },
+  "recorded_real_response_rule": {
+    "standing_rule": "B6-AWS-READ-FIXTURE-FIDELITY-2026-001",
+    "capture_evidence": "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json",
+    "runner_read_apis": 23,
+    "fixtures": 29,
+    "uncovered": 0,
+    "future_uncovered_api_behavior": "COLD_REHEARSAL_REFUSED"
+  },
+  "deviations": []
+}

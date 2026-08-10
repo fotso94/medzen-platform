@@ -8,15 +8,20 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_r5_audit_covers_every_canonical_verifier_and_has_no_open_findings() -> None:
-    value = json.loads(
+    historical = json.loads(
         (ROOT / "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-001.json").read_bytes()
     )
-    assert value["status"] == "PASS_WITH_CORRECTIONS"
-    assert value["unresolved_r5_findings"] == 0
-    assert value["deviations"] == []
-    assert len(value["scope"]["files"]) == 19
-    assert "scripts/b6_6_stage_a.py" in value["scope"]["files"]
-    assert len(value["corrections"]) == 7
+    current = json.loads(
+        (ROOT / "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-002.json").read_bytes()
+    )
+    assert historical["status"] == "PASS_WITH_CORRECTIONS"
+    assert len(historical["scope"]["files"]) == 19
+    assert current["status"] == "PASS_WITH_EMPIRICAL_REDUCTION"
+    assert current["unresolved_r5_findings"] == 0
+    assert current["deviations"] == []
+    assert current["empirical_gate"]["required_consecutive_probe_passes"] == 3
+    assert current["aws_read_fixture_coverage"]["uncovered_read_apis"] == 0
+    assert len(current["deleted_assertion_classes"]) == 6
 
 
 def test_corrected_verifiers_do_not_restore_incidental_whole_shape_checks() -> None:
