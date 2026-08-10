@@ -1,0 +1,337 @@
+{
+  "record": "B6_2026_016_FINAL_SYNTHETIC_INTEGRATION_WINDOW_EXECUTION_RESULT",
+  "id": "B6-PACKET-2026-016-REFUSED-ECR-ENDPOINT-POLICY",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_AT_ECR_INTERFACE_ENDPOINT_POLICY_CLEANUP_PASS",
+  "outcome": "INCOMPLETE_ECR_INTERFACE_ENDPOINT_POLICY_REFUSAL",
+  "failure_stage": "TERRAFORM_WINDOW_ECR_INTERFACE_ENDPOINT_CREATE",
+  "recorded_utc": "2026-08-10T06:35:29Z",
+  "governance_bindings": {
+    "packet": {
+      "id": "B6-AWS-CHANGE-PACKET-2026-016",
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-016-b6-6-final-window.md",
+      "sha256": "1560c5b6a775377cff43bf46a236bdd5da0c645cf3f846b33bc63ed50c670f6d"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-016-b6-6-final-window.json",
+      "sha256": "ef45385736164a6dd93aa7e9b01845f6db205324745075b6b144114b8975655a",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/26",
+      "reviewed_repository_commit": "0d74bee549525fe7d913f4a40bf0e34e51c1ebb1",
+      "merged_master_commit": "638659598272bb60004dfed98f52f5057cbe637c",
+      "reviewed_packet_sha256": "1560c5b6a775377cff43bf46a236bdd5da0c645cf3f846b33bc63ed50c670f6d"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6-016-execution",
+    "git_commit": "3c2474bb6802ee7bf863d246c1091606aa39756f",
+    "git_tree": "79766e8e965f40f431bbe61953708a882f6c78b9",
+    "commit_count": 296,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_26_merged": true,
+    "worktree_clean_before_receipts": true
+  },
+  "preflight": {
+    "source_bindings_verified": 61,
+    "aws_account": "558069890522",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "secret_version": "daacb67e-fcd1-41e1-bf62-47a3f18c8d0b",
+    "secret_version_stage": "AWSCURRENT",
+    "token_mode": "0600",
+    "token_plaintext_logged_or_persisted": false,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_asg_instances": 0,
+    "deadline_actions": 0,
+    "kubernetes_worker_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "production_serving_pointer_count": 0
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T06:06:15Z",
+      "path": "platform/evidence/receipts/B6-2026-016-LIVE/local_bindings.json",
+      "sha256": "947d99df47a04d54ee8df1157cec7e6077f8da20ab160c1a0d7eaf93ac9907f4"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T06:06:18Z",
+      "path": "platform/evidence/receipts/B6-2026-016-LIVE/deadline.json",
+      "sha256": "d6ee20d8517e7562551717c1e9ab9a011ad2f810ec3cfbb674c1bc94b2cc7490"
+    },
+    {
+      "stage": "workers_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T06:08:05Z",
+      "path": "platform/evidence/receipts/B6-2026-016-LIVE/workers_ready.json",
+      "sha256": "567575529500f36c01decbbb9da91d8bb3930d0dd82fcb212fec5c5d6f9b8d72"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T06:25:42Z",
+      "path": "platform/evidence/receipts/B6-2026-016-LIVE/cleanup.json",
+      "sha256": "bd7ee7889fb30c43a91eba992520c57a55380dc1d1f49bfa0ccf116ea89d4b6d"
+    }
+  ],
+  "successful_controls_before_refusal": {
+    "deadline": {
+      "armed_utc": "2026-08-10T06:06:16Z",
+      "deadline_utc": "2026-08-10T08:45:57Z",
+      "window_seconds": 9581,
+      "cpu_and_gpu_deadlines_armed_before_scale_up": true
+    },
+    "worker_gate": {
+      "cpu_nodes_ready": 2,
+      "gpu_nodes_ready": 1,
+      "maximum_cpu_nodes": 2,
+      "maximum_gpu_nodes": 1,
+      "observation_reads": 22,
+      "excess_capacity": false
+    },
+    "terraform_create_plan": {
+      "path": "/private/tmp/b6-016-create-3260.tfplan",
+      "sha256": "b29b7f8247cc4e74035befb18e044161ffebf9a5ae4e573460382c3e1c2da010",
+      "adds": 12,
+      "changes": 0,
+      "destroys": 0,
+      "machine_guard": "PASS_B6_6_CREATE"
+    },
+    "created_before_refusal": {
+      "temporary_probe_execution_role": 1,
+      "temporary_probe_inline_policy": 1,
+      "temporary_ecs_cluster": 1,
+      "temporary_ecs_task_definition": 1,
+      "temporary_endpoint_security_group": 1,
+      "temporary_s3_gateway_endpoint": 1,
+      "temporary_security_group_rules": 3,
+      "temporary_load_balancer_controller_release": 1,
+      "temporary_ecr_interface_endpoints": 0
+    }
+  },
+  "endpoint_policy_refusal": {
+    "terraform_apply_attempted": true,
+    "terraform_window_receipt_persisted": false,
+    "service_deployment_attempted": false,
+    "model_or_audio_artifact_present_on_workers": false,
+    "fargate_task_started": false,
+    "internal_alb_created": false,
+    "ecr_api": {
+      "service": "com.amazonaws.eu-central-1.ecr.api",
+      "request_utc": "2026-08-10T06:08:24Z",
+      "cloudtrail_event_id": "4d2eec31-9f31-4620-b3f9-de55e43c2f5f",
+      "request_id": "b91bcfd4-1f88-4f0f-a1fe-9ba13ccad51d",
+      "error_code": "Client.InvalidPolicyDocument",
+      "terraform_error": "InvalidPolicyDocument: UnknownError",
+      "policy": {
+        "version": "2012-10-17",
+        "sid": "ExactProbeRoleRegistryToken",
+        "effect": "Allow",
+        "principal": "arn:aws:iam::558069890522:role/medzen-b6-window-probe-execution",
+        "actions": [
+          "ecr:GetAuthorizationToken"
+        ],
+        "resource": "*"
+      }
+    },
+    "ecr_dkr": {
+      "service": "com.amazonaws.eu-central-1.ecr.dkr",
+      "request_utc": "2026-08-10T06:08:23Z",
+      "cloudtrail_event_id": "413f5425-eba3-414a-995b-75040f9abe9b",
+      "request_id": "bbb9fb88-ef96-4edc-8529-15d1b99a931d",
+      "error_code": "Client.InvalidPolicyDocument",
+      "terraform_error": "InvalidPolicyDocument: UnknownError",
+      "policy": {
+        "version": "2012-10-17",
+        "sid": "ExactProbeRoleQualifiedImagePull",
+        "effect": "Allow",
+        "principal": "arn:aws:iam::558069890522:role/medzen-b6-window-probe-execution",
+        "actions": [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability"
+        ],
+        "resource": "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-rag-index"
+      }
+    },
+    "s3_control": {
+      "service": "com.amazonaws.eu-central-1.s3",
+      "request_utc": "2026-08-10T06:08:21Z",
+      "cloudtrail_event_id": "2857fb08-1604-4ac9-b639-184718630860",
+      "request_id": "994bbac4-34d6-42ff-a1bd-fc487fba3fc7",
+      "result": "CREATED_THEN_REMOVED_BY_CLEANUP"
+    }
+  },
+  "read_only_diagnosis": {
+    "classification": "STRONG_INFERENCE_IAM_PRINCIPAL_PROPAGATION_NOT_YET_PROVEN",
+    "temporary_role_create": {
+      "request_utc": "2026-08-10T06:08:20Z",
+      "cloudtrail_event_id": "50083fc4-b7d6-4cfa-b994-5522a5225b08",
+      "request_id": "1428c099-25b6-42d7-ba39-f78025ec0b7d",
+      "result": "SUCCESS"
+    },
+    "seconds_from_role_create_to_ecr_dkr_request": 3,
+    "seconds_from_role_create_to_ecr_api_request": 4,
+    "supporting_facts": [
+      "Both ECR endpoint policies named the temporary role as their principal and failed within four seconds of that role being created.",
+      "The ECR API policy uses the same specific-role-principal and Resource-star structure documented in the official Amazon ECR PrivateLink example.",
+      "The independent S3 gateway endpoint policy created successfully in the same Terraform apply.",
+      "AWS documents eventual consistency for IAM changes and recommends allowing propagation time before dependent workflows use new identities."
+    ],
+    "not_proven": [
+      "CloudTrail does not identify which policy element the EC2 endpoint service rejected.",
+      "IAM Access Analyzer does not support AWS::EC2::VPCEndpoint as a validate-policy resource type, so that read-only API could not independently validate either endpoint policy.",
+      "The repository-scoped Resource value in the ECR DKR policy still requires service-specific live validation after the principal is demonstrably propagated."
+    ],
+    "official_references": [
+      "https://docs.aws.amazon.com/AmazonECR/latest/userguide/vpc-endpoints.html",
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/troubleshoot.html",
+      "https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_principal.html"
+    ],
+    "no_correction_or_retry_performed": true
+  },
+  "stages_not_run": [
+    "terraform_window",
+    "endpoints_ready",
+    "controller_ready",
+    "dra_ready",
+    "rag_ready",
+    "asr_ready",
+    "tts_ready",
+    "llm_ready",
+    "orchestrator_ready",
+    "fargate_probe",
+    "alb_ready",
+    "alb_tag_mutation_warning",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "cleanup": {
+    "automatic_cleanup": "PASS",
+    "terraform_cleanup_plan": {
+      "path": "/private/tmp/b6-016-cleanup-10603.tfplan",
+      "sha256": "f9214d4157c60927862730d8dafd01c8e8a1c8059c38d48f0aedb5d6ac4b4bef",
+      "adds": 0,
+      "changes": 0,
+      "destroys": 13,
+      "full_reviewed_destroy_bound": 15,
+      "partial_creation_subset_guard": "PASS_B6_6_CLEANUP"
+    },
+    "gpu_scale_zero_requested_utc": "2026-08-10T06:09:28Z",
+    "cpu_scale_zero_requested_utc": "2026-08-10T06:09:29Z",
+    "cleanup_receipt_utc": "2026-08-10T06:25:42Z",
+    "deadlines_removed_after_zero": true,
+    "local_token_removed": true,
+    "synthetic_secret": "SCHEDULED_RECOVERABLE_DELETION",
+    "window_terraform_resources": 0,
+    "window_ecs_cluster": "ABSENT",
+    "window_probe_iam_role": "ABSENT",
+    "window_alb": "ABSENT",
+    "window_vpc_endpoints": 0,
+    "window_endpoint_security_groups": 0
+  },
+  "zero_state_verification": {
+    "verified_after_cleanup": true,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "kubernetes_worker_nodes": 0,
+    "synthetic_workload_pods": 0,
+    "window_ingresses": 0,
+    "deadline_actions_remaining": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_pointer_changes": 0
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_before_reservation_usd": 63.5288,
+    "active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "accounting_convention": "SECONDS_FROM_DEADLINE_ARMED_UTC_THROUGH_CLEANUP_RECEIPT_UTC",
+    "packet_2026_016_conservative_wall_clock_seconds": 1166,
+    "cpu_instance_seconds_observed": 1271,
+    "gpu_instance_seconds_observed": 166,
+    "aggregate_instance_seconds_observed": 1437,
+    "cumulative_window_seconds_before_packet_2026_016": 4819,
+    "cumulative_window_seconds_after_packet_2026_016": 5985,
+    "remaining_window_seconds": 8415,
+    "maximum_cumulative_window_seconds": 14400,
+    "fargate_tasks_started": 0,
+    "internal_albs_created": 0,
+    "interface_endpoints_created": 0,
+    "gateway_endpoints_created_then_removed": 1,
+    "actual_billed_cost": "NOT_YET_RECONCILED",
+    "reservation_state": "REMAINS_ACTIVE_PENDING_ATTRIBUTABLE_BILLING_AND_SUCCESSOR_DECISION",
+    "cost_claim": "Observed worker lifetime and deadline-to-cleanup timing are recorded; no exact AWS billed amount is inferred."
+  },
+  "verification": {
+    "focused_result_and_bound_window_suites": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_packet_2026_016_result.py tests/test_b6_6_final_window_successor.py tests/test_b6_6_attempt_4_runtime.py tests/test_b6_6_executable_assets.py",
+      "passed": 35,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_local_suite": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1392,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "unpinned_system_python_run": {
+      "canonical": false,
+      "passed": 1340,
+      "failed": 25,
+      "skipped": 13,
+      "deselected": 6,
+      "classification": "ENVIRONMENT_ONLY_MISSING_PINNED_DEPENDENCIES_AND_KNOWN_STARLETTE_MULTIPART_DRIFT"
+    },
+    "json_parse": "PASS"
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "b5_promotion_status": "BLOCKED_UNCHANGED",
+    "production_deployment_occurred": false,
+    "synthetic_conversation_proof_completed": false
+  },
+  "required_remediation_before_retry": [
+    "Close packet 2026-016 by this refusal record; do not resume, edit or reinterpret it.",
+    "Prepare and independently review a bounded endpoint-policy correction that removes the same-apply principal-propagation race without broadening the endpoint policies. A staged role-first design with an explicit propagation gate is preferred for review.",
+    "Validate both ECR endpoint policy documents after the temporary principal has propagated, including the repository-scoped ECR DKR Resource behavior; do not convert the diagnosis inference into a proven root cause without evidence.",
+    "Restore and rotate the synthetic credential through a new versioned credential-restoration packet because the secret is pending recoverable deletion and the local token was removed.",
+    "Bind the corrected source hashes, fresh secret version, fresh token hash and remaining 8415-second allowance into a new integration-window packet.",
+    "Obtain independent review and explicit owner approval before any AWS retry; packet 2026-016 authorizes no retry."
+  ],
+  "next_boundary": "Packet 2026-016 is closed as an ECR interface-endpoint policy refusal with automatic cleanup PASS. B6.6 remains incomplete. A separately reviewed endpoint-principal propagation correction, fresh synthetic credential restoration and a new owner-approved window packet are required."
+}
