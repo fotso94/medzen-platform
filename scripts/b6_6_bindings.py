@@ -34,6 +34,7 @@ REQUIRED_SOURCES = {
     "platform/evidence/B6-PACKET-2026-020-NOT-EXECUTED-PRINCIPAL-PREFLIGHT-CONDITION.json",
     "platform/evidence/B6-PACKET-2026-020A-ATTEMPT-1-REFUSED-ENDPOINT-PLAN-GUARD.json",
     "platform/evidence/B6-PACKET-2026-021-ATTEMPT-2-REFUSED-FARGATE-BOUNDARY.json",
+    "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-001.json",
     "platform/evidence/receipts/B6-2026-020A-BRIDGE/persistent_secret_bridge.json",
     "platform/finance/COST-REGISTRY-2026-004.json",
     "platform/k8s/b6-6/integration-window.yaml",
@@ -55,12 +56,15 @@ REQUIRED_SOURCES = {
     "scripts/b6_6_probe.py",
     "scripts/b6_6_probe_endpoints.py",
     "scripts/b6_6_runner.py",
+    "scripts/b6_6_stage_a.py",
     "scripts/b6_6_wait_workers.py",
     "scripts/check_b6_6_persistent_secret_plan.py",
     "scripts/check_b6_6_window_plan.py",
     "scripts/terraform_medzen.sh",
     "tests/test_b6_6_consolidated_window.py",
     "tests/test_b6_6_fargate_boundary.py",
+    "tests/test_b6_6_r5_verifier_audit.py",
+    "tests/test_b6_6_stage_a.py",
 }
 
 
@@ -96,10 +100,17 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
     if value.get("allowance") != {
         "aggregate_project_ceiling_usd": 300.0,
         "existing_reservation_usd": 10.0,
+        "stage_a_requested_runs": 1,
+        "stage_a_maximum_seconds": 1800,
+        "stage_a_maximum_cost_usd": 0.5,
+        "stage_a_consecutive_probe_tasks": 3,
+        "stage_a_eks_worker_mutations": 0,
+        "stage_a_pass_required_before_window": True,
         "requested_attempts": 2,
         "maximum_seconds_per_attempt": 4500,
         "maximum_requested_worker_seconds": 9000,
         "estimated_compute_usd": 3.2,
+        "combined_stage_a_and_window_ceiling_usd": 3.7,
         "cold_rehearsal_required_before_each_attempt": True,
         "unused_seconds_not_transferable_between_attempts": True,
     }:
@@ -118,6 +129,8 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "status": "PASS_COLD_REHEARSAL",
         "full_pass_runs": 1,
         "injected_failure_runs": 23,
+        "stage_a_full_pass_runs": 1,
+        "stage_a_injected_failure_runs": 7,
     }:
         raise BindingRefusal("cold-rehearsal binding differs")
     sources = value.get("source_bindings")

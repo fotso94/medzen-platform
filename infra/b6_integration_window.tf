@@ -11,6 +11,7 @@ locals {
   b6_probe_repository_arn      = "arn:${data.aws_partition.current.partition}:ecr:${var.region}:${var.account_id}:repository/medzen-rag-index"
   b6_ecr_layer_bucket_arn      = "arn:${data.aws_partition.current.partition}:s3:::prod-${var.region}-starport-layer-bucket/*"
   b6_probe_image               = "${var.account_id}.dkr.ecr.${var.region}.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
+  b6_probe_resources_enabled   = var.enable_b6_probe_qualification || var.enable_b6_integration_window
   b6_window_tags = {
     Project        = "medzen-speech"
     Environment    = var.environment
@@ -21,11 +22,18 @@ locals {
   }
 }
 
+check "b6_probe_mode_is_exclusive" {
+  assert {
+    condition     = !(var.enable_b6_probe_qualification && var.enable_b6_integration_window)
+    error_message = "B6 probe qualification and the full integration window may not be enabled together."
+  }
+}
+
 # The two interface endpoints have one dedicated endpoint-side security group.
 # Its only ingress is TLS from the already reviewed Fargate probe security
 # group. It has no broad CIDR ingress and is deleted with the window.
 resource "aws_security_group" "b6_probe_endpoints" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   name        = "medzen-b6-probe-vpce"
   description = "Window-only private ECR endpoints for the B6.6 Fargate probe"
@@ -38,7 +46,7 @@ resource "aws_security_group" "b6_probe_endpoints" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "b6_probe_to_endpoints" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   security_group_id            = aws_security_group.b6_probe_endpoints[0].id
   referenced_security_group_id = local.b6_backend_security_group_id
@@ -96,7 +104,7 @@ data "aws_iam_policy_document" "b6_probe_s3_endpoint" {
 }
 
 resource "aws_vpc_endpoint" "b6_probe_ecr_api" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.region}.ecr.api"
@@ -114,7 +122,7 @@ resource "aws_vpc_endpoint" "b6_probe_ecr_api" {
 }
 
 resource "aws_vpc_endpoint" "b6_probe_ecr_dkr" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   vpc_id              = var.vpc_id
   service_name        = "com.amazonaws.${var.region}.ecr.dkr"
@@ -132,7 +140,7 @@ resource "aws_vpc_endpoint" "b6_probe_ecr_dkr" {
 }
 
 resource "aws_vpc_endpoint" "b6_probe_s3" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   vpc_id            = var.vpc_id
   service_name      = "com.amazonaws.${var.region}.s3"
@@ -185,7 +193,7 @@ data "aws_iam_policy_document" "b6_probe_execution_trust" {
 }
 
 resource "aws_iam_role" "b6_probe_execution" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   name                 = "medzen-b6-window-probe-execution"
   max_session_duration = 3600
@@ -215,7 +223,7 @@ data "aws_iam_policy_document" "b6_probe_execution" {
 }
 
 resource "aws_iam_role_policy" "b6_probe_execution" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   name   = "medzen-b6-window-probe-pull"
   role   = aws_iam_role.b6_probe_execution[0].id
@@ -223,7 +231,7 @@ resource "aws_iam_role_policy" "b6_probe_execution" {
 }
 
 resource "aws_ecs_cluster" "b6_probe" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   name = "medzen-b6-window-probe"
   setting {
@@ -234,7 +242,7 @@ resource "aws_ecs_cluster" "b6_probe" {
 }
 
 resource "aws_ecs_task_definition" "b6_probe" {
-  count = var.enable_b6_integration_window ? 1 : 0
+  count = local.b6_probe_resources_enabled ? 1 : 0
 
   family                   = "medzen-b6-window-probe"
   requires_compatibilities = ["FARGATE"]

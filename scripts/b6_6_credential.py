@@ -148,7 +148,7 @@ def rotate_and_verify(
     if published.get("VersionId") != value_sha256:
         raise CredentialRefusal("fresh version identity differs")
     versions = _version_map(secret_client)
-    if versions.get(value_sha256) != ["AWSCURRENT"]:
+    if "AWSCURRENT" not in set(versions.get(value_sha256, [])):
         raise CredentialRefusal("fresh version is not AWSCURRENT")
     raw = token_path.read_bytes()
     if (

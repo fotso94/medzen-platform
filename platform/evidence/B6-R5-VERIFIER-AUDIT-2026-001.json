@@ -1,0 +1,115 @@
+{
+  "id": "B6-R5-VERIFIER-AUDIT-2026-001",
+  "recorded_utc": "2026-08-10T19:28:35Z",
+  "status": "PASS_WITH_CORRECTIONS",
+  "source_rule": {
+    "path": "platform/decisions/B6-WINDOW-VERIFIER-POLICY-2026-001.json",
+    "review_section": "B6-WINDOW-DESIGN-REVIEW-2026-001-R5"
+  },
+  "scope": {
+    "statement": "Every verifier reachable from packet-2026-022 Stage A, the full B6.6 runner, cleanup, receipt validation and their plan guards was reviewed for equality, cardinality, ordering, tag, version and history assertions.",
+    "files": [
+      "pipeline/b6_integration_receipts.py",
+      "scripts/b6_6_bindings.py",
+      "scripts/b6_6_cleanup.sh",
+      "scripts/b6_6_credential.py",
+      "scripts/b6_6_deadline.py",
+      "scripts/b6_6_fargate_probe.py",
+      "scripts/b6_6_lbc_runtime.py",
+      "scripts/b6_6_lbc_tag_warning.py",
+      "scripts/b6_6_manifest_slice.py",
+      "scripts/b6_6_operations.sh",
+      "scripts/b6_6_persistent_secret_bridge.py",
+      "scripts/b6_6_pre_endpoint_images.py",
+      "scripts/b6_6_probe.py",
+      "scripts/b6_6_probe_endpoints.py",
+      "scripts/b6_6_runner.py",
+      "scripts/b6_6_stage_a.py",
+      "scripts/b6_6_wait_workers.py",
+      "scripts/check_b6_6_persistent_secret_plan.py",
+      "scripts/check_b6_6_window_plan.py"
+    ],
+    "binding": "The revised packet source-hash table binds this audit and every listed executable source."
+  },
+  "classification_rule": {
+    "retained": [
+      "Exact account, role, resource, path, action and digest identities",
+      "Exact cost and capacity maxima",
+      "Exact security boundaries and zero-state requirements",
+      "Exact adopted speech-contract outcomes and stage ordering",
+      "Exact authorization, source-hash and receipt-chain bindings"
+    ],
+    "prohibited": [
+      "Whole-object equality when only named fields affect safety or function",
+      "List ordering when membership is the invariant",
+      "Serialized JSON key ordering",
+      "Historical version, tag or receipt counts",
+      "Extra deny-only policy statements that cannot expand access"
+    ]
+  },
+  "corrections": [
+    {
+      "verifier": "Fargate task definition",
+      "before": "Whole linuxParameters object equality",
+      "after": "Require initProcessEnabled=true, no added capabilities, and ALL among dropped capabilities; ignore unrelated normalized fields and harmless additional drops."
+    },
+    {
+      "verifier": "Persistent credential",
+      "before": "Fresh version stages equaled the one-item AWSCURRENT list",
+      "after": "Require AWSCURRENT membership for the freshly created version without asserting on unrelated labels or historical cardinality."
+    },
+    {
+      "verifier": "CPU/GPU zero state",
+      "before": "Whole scalingConfig object equality",
+      "after": "Compare only minSize, maxSize and desiredSize cost/safety fields."
+    },
+    {
+      "verifier": "Terraform receipt summary",
+      "before": "Serialized JSON string equality",
+      "after": "Semantic jq comparisons of plan counts and exact resource-name membership."
+    },
+    {
+      "verifier": "Private endpoint boundary",
+      "before": "Security-group list ordering and exactly one total policy statement",
+      "after": "Order-independent exact SG membership; exactly one bounded Allow statement while additional Deny-only statements are tolerated."
+    },
+    {
+      "verifier": "ALB routes",
+      "before": "Path-pattern list ordering",
+      "after": "Order-independent exact path membership."
+    },
+    {
+      "verifier": "Stage A window unlock",
+      "before": "Whole aggregate receipt payload equality",
+      "after": "Require only the enumerated packet, stability, cleanup, zero-EKS, time, cost and unlock fields while receipt schema and dependency hashes remain exact."
+    }
+  ],
+  "retained_assertion_groups": [
+    {
+      "group": "Authorization and receipts",
+      "rationale": "Exact IDs, hashes, statuses, paths and dependency hashes are governance and tamper boundaries, not incidental runtime shape."
+    },
+    {
+      "group": "Infrastructure plans and cleanup",
+      "rationale": "Exact changed-address and action sets prevent unauthorized mutation; zero counts prove cost and cleanup boundaries."
+    },
+    {
+      "group": "Images and workers",
+      "rationale": "Exact scan-passed child digests, bounded replicas and Ready state prove supply-chain identity, cost ceiling and launch readiness."
+    },
+    {
+      "group": "Network and ALB",
+      "rationale": "Exact VPC, subnets, security groups, ports, routes, target health and required tag values implement isolation and functional routing. Extra unrelated tags are not rejected."
+    },
+    {
+      "group": "Synthetic contract probes",
+      "rationale": "HTTP outcomes, model-version keys, event types, cancellation limit and controlled failure codes are adopted contract behavior."
+    },
+    {
+      "group": "Credential",
+      "rationale": "Secret identity, KMS key, fresh canonical value, token length/mode/hash and operator denial are security/function invariants. Historical version and tag counts remain unevaluated."
+    }
+  ],
+  "unresolved_r5_findings": 0,
+  "deviations": []
+}

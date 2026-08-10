@@ -226,8 +226,9 @@ def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     assert "terraform_plan_receipt" in operations
     assert "resource_names" in operations
-    assert '"adds":1,"changes":0,"destroys":0,"resource_names"' in operations
-    assert '"adds":11,"changes":0,"destroys":0' in operations
+    assert ".adds == 1 and .changes == 0 and .destroys == 0" in operations
+    assert ".adds == 11 and .changes == 0 and .destroys == 0" in operations
+    assert "jq -e --argjson expected" in operations
     for address in (
         "helm_release.b6_load_balancer_controller[0]",
         "aws_ecs_cluster.b6_probe[0]",

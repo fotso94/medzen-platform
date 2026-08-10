@@ -120,7 +120,7 @@ def verify_live(client: Any) -> dict[str, Any]:
         configured_paths = condition.get("PathPatternConfig", {}).get("Values", [])
         if (
             condition.get("Field") != "path-pattern"
-            or configured_paths != expected_paths
+            or set(configured_paths) != set(expected_paths)
         ):
             raise RuntimeEvidenceRefusal("B6 route path differs")
         action = actions[0]

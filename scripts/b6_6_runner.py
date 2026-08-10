@@ -19,8 +19,10 @@ if str(ROOT) not in sys.path:
 
 from pipeline.b6_integration_receipts import (
     EXECUTION_STAGES,
+    STAGE_A_EXECUTION_STAGES,
     WINDOW_STAGES,
     ReceiptStore,
+    sha256_file,
 )
 
 
@@ -188,6 +190,50 @@ class RealOperations:
         if bridge.get("stage") != "persistent_secret_bridge" or bridge.get("status") != "PASS":
             raise StageFailure("PERSISTENT_SECRET_BRIDGE_RECEIPT_REQUIRED")
 
+        from scripts.b6_6_stage_a import (
+            MAXIMUM_COST_USD as STAGE_A_MAXIMUM_COST_USD,
+            MAXIMUM_SECONDS as STAGE_A_MAXIMUM_SECONDS,
+            RECEIPTS as STAGE_A_RECEIPTS,
+            STABLE_PROBE_PASSES,
+        )
+
+        stage_a_store = ReceiptStore(STAGE_A_RECEIPTS)
+        try:
+            stage_a = stage_a_store.load("stage_a")
+            stage_a_cleanup = stage_a_store.load("stage_a_cleanup")
+            stage_a_predecessors = (*STAGE_A_EXECUTION_STAGES, "stage_a_cleanup")
+            predecessor_hashes = {
+                stage: sha256_file(stage_a_store.path(stage))
+                for stage in stage_a_predecessors
+            }
+        except Exception as exc:
+            raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED") from exc
+        if (
+            stage_a.get("status") != "PASS"
+            or stage_a_cleanup.get("status") != "PASS"
+            or any(
+                stage_a_store.load(stage).get("status") != "PASS"
+                for stage in STAGE_A_EXECUTION_STAGES
+            )
+            or stage_a.get("dependencies") != predecessor_hashes
+            or not isinstance(stage_a.get("payload"), dict)
+            or any(
+                stage_a["payload"].get(key) != expected
+                for key, expected in {
+                    "packet_sha256": context.packet_sha256,
+                    "stable_probe_passes": STABLE_PROBE_PASSES,
+                    "required_consecutive_probe_passes": STABLE_PROBE_PASSES,
+                    "cleanup_complete": True,
+                    "eks_worker_mutations": 0,
+                    "maximum_seconds": STAGE_A_MAXIMUM_SECONDS,
+                    "maximum_cost_usd": STAGE_A_MAXIMUM_COST_USD,
+                    "window_attempts_unlocked": True,
+                    "failure_stage": None,
+                }.items()
+            )
+        ):
+            raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
+
         with tempfile.TemporaryDirectory(prefix="medzen-b6-022-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
@@ -217,6 +263,8 @@ class RealOperations:
             "real_kubectl_calls",
             "aws_mutations",
             "kubernetes_mutations",
+            "stage_a_full_pass_runs",
+            "stage_a_injected_failure_runs",
         )
         if any(fresh["payload"].get(key) != bound["payload"].get(key) for key in compared):
             raise StageFailure("PRE_ATTEMPT_COLD_REHEARSAL_DIFFERS")

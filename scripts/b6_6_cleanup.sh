@@ -87,7 +87,8 @@ scripts/terraform_medzen.sh plan -input=false -out="$cleanup_plan" \
   -var=account_id=558069890522 \
   -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
   -var=enable_b6_load_balancer_controller=false \
-  -var=enable_b6_integration_window=false "${targets[@]}"
+  -var=enable_b6_integration_window=false \
+  -var=enable_b6_probe_qualification=false "${targets[@]}"
 
 change_count="$(terraform -chdir=infra show -json "$cleanup_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
 if [[ "$change_count" != "0" ]]; then

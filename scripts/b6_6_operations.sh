@@ -124,10 +124,11 @@ stage_controller_window() {
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
     -var=enable_b6_load_balancer_controller=true \
     -var=enable_b6_integration_window=false \
+    -var=enable_b6_probe_qualification=false \
     -target=helm_release.b6_load_balancer_controller
   .venv/bin/python scripts/check_b6_6_window_plan.py controller "$plan"
   plan_receipt="$(terraform_plan_receipt "$plan")"
-  [[ "$plan_receipt" == '{"adds":1,"changes":0,"destroys":0,"resource_names":["helm_release.b6_load_balancer_controller[0]"]}' ]]
+  jq -e '.adds == 1 and .changes == 0 and .destroys == 0 and .resource_names == ["helm_release.b6_load_balancer_controller[0]"]' <<<"$plan_receipt" >/dev/null
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$plan"
   write_payload "$(jq -c '. + {before_private_endpoints:true}' <<<"$plan_receipt")"
 }
@@ -165,12 +166,12 @@ stage_terraform_window() {
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
     -var=enable_b6_load_balancer_controller=true \
-    -var=enable_b6_integration_window=true "${targets[@]}"
+    -var=enable_b6_integration_window=true \
+    -var=enable_b6_probe_qualification=false "${targets[@]}"
   .venv/bin/python scripts/check_b6_6_window_plan.py endpoints "$plan"
   plan_receipt="$(terraform_plan_receipt "$plan")"
   expected_resources='["aws_ecs_cluster.b6_probe[0]","aws_ecs_task_definition.b6_probe[0]","aws_iam_role.b6_probe_execution[0]","aws_iam_role_policy.b6_probe_execution[0]","aws_security_group.b6_probe_endpoints[0]","aws_vpc_endpoint.b6_probe_ecr_api[0]","aws_vpc_endpoint.b6_probe_ecr_dkr[0]","aws_vpc_endpoint.b6_probe_s3[0]","aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]","aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]","aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]"]'
-  [[ "$(jq -c '.resource_names' <<<"$plan_receipt")" == "$expected_resources" ]]
-  [[ "$(jq -c 'del(.resource_names)' <<<"$plan_receipt")" == '{"adds":11,"changes":0,"destroys":0}' ]]
+  jq -e --argjson expected "$expected_resources" '.adds == 11 and .changes == 0 and .destroys == 0 and .resource_names == $expected' <<<"$plan_receipt" >/dev/null
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$plan"
   write_payload "$(jq -c '. + {controller_changes:0,endpoint_security_groups_created:1,fargate_maximum_tasks:1,iam_roles_created:1,security_group_rules_created:3,vpc_endpoints_created:3}' <<<"$plan_receipt")"
 }

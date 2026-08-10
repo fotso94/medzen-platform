@@ -28,6 +28,11 @@ ADDRESSES = {
 }
 CONTROLLER = "helm_release.b6_load_balancer_controller[0]"
 ENDPOINT_ADDRESSES = ADDRESSES - {CONTROLLER}
+ALB_ADDRESSES = {
+    "aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]",
+    "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
+}
+QUALIFICATION_ADDRESSES = ENDPOINT_ADDRESSES - ALB_ADDRESSES
 RAG_DIGEST = "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
 VPC_ID = "vpc-051aa9df8b64bf141"
 PROBE_SG = "sg-0a83abae6ab954543"
@@ -261,10 +266,83 @@ def validate_endpoints(plan: dict[str, Any]) -> None:
     validate_create(combined)
 
 
+def validate_qualification(plan: dict[str, Any]) -> None:
+    actual = changes(plan)
+    if actual != {address: ["create"] for address in QUALIFICATION_ADDRESSES}:
+        raise ValueError(f"qualification delta differs: {actual!r}")
+
+    # Reuse the established full boundary validator after proving the real plan
+    # contains only the nine probe resources. These three sentinels represent
+    # resources intentionally excluded from isolated Stage A; no sentinel value
+    # is read from or applied to Terraform.
+    combined = copy.deepcopy(plan)
+    combined["resource_changes"].extend(
+        [
+            {
+                "address": CONTROLLER,
+                "change": {"actions": ["create"], "after": {}},
+            },
+            {
+                "address": "aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]",
+                "change": {
+                    "actions": ["create"],
+                    "after": {
+                        "security_group_id": "sg-0f0f6c66852830013",
+                        "referenced_security_group_id": "sg-0a83abae6ab954543",
+                        "from_port": 80,
+                        "to_port": 80,
+                    },
+                },
+            },
+            {
+                "address": "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
+                "change": {
+                    "actions": ["create"],
+                    "after": {
+                        "security_group_id": "sg-070fc00321934eacb",
+                        "referenced_security_group_id": "sg-0f0f6c66852830013",
+                        "from_port": 8080,
+                        "to_port": 8080,
+                    },
+                },
+            },
+        ]
+    )
+    validate_create(combined)
+
+
+def validate_qualification_destroy(plan: dict[str, Any]) -> None:
+    actual = changes(plan)
+    if actual != {address: ["delete"] for address in QUALIFICATION_ADDRESSES}:
+        raise ValueError(f"qualification destroy delta differs: {actual!r}")
+
+
+def validate_qualification_cleanup(plan: dict[str, Any]) -> None:
+    actual = changes(plan)
+    if not actual or not set(actual).issubset(QUALIFICATION_ADDRESSES):
+        raise ValueError(
+            f"qualification cleanup contains absent or unknown resources: {actual!r}"
+        )
+    if any(actions != ["delete"] for actions in actual.values()):
+        raise ValueError(
+            f"qualification cleanup contains a non-delete action: {actual!r}"
+        )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "mode", choices=("create", "controller", "endpoints", "destroy", "cleanup")
+        "mode",
+        choices=(
+            "create",
+            "controller",
+            "endpoints",
+            "destroy",
+            "cleanup",
+            "qualification",
+            "qualification-destroy",
+            "qualification-cleanup",
+        ),
     )
     parser.add_argument("plan", type=Path)
     args = parser.parse_args()
@@ -276,6 +354,9 @@ def main() -> int:
             "endpoints": validate_endpoints,
             "destroy": validate_destroy,
             "cleanup": validate_cleanup,
+            "qualification": validate_qualification,
+            "qualification-destroy": validate_qualification_destroy,
+            "qualification-cleanup": validate_qualification_cleanup,
         }[args.mode](plan)
     except (OSError, KeyError, ValueError, StopIteration, subprocess.SubprocessError) as exc:
         print(f"REFUSING B6.6 {args.mode.upper()}: {exc}", file=sys.stderr)

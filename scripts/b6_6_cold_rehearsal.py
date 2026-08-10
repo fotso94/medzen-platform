@@ -19,6 +19,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipeline.b6_integration_receipts import (
+    STAGE_A_EXECUTION_STAGES,
+    STAGE_A_STAGES,
     WINDOW_STAGES,
     ReceiptStore,
     canonical_json,
@@ -27,6 +29,14 @@ from pipeline.b6_integration_receipts import (
 from scripts.b6_6_credential import KMS_KEY, SECRET_ARN, SECRET_NAME, rotate_and_verify
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
+from scripts.b6_6_stage_a import (
+    MAXIMUM_COST_USD,
+    MAXIMUM_SECONDS,
+    STABLE_PROBE_PASSES,
+    StageAContext,
+    StageARefusal,
+    StageARunner,
+)
 
 
 RUNNER_SOURCES = tuple(sorted(REQUIRED_SOURCES - {COLD_PATH}))
@@ -164,6 +174,104 @@ class FakeOperations:
         }
 
 
+class FakeStageAOperations:
+    def __init__(self, fail_stage: str | None):
+        self.fail_stage = fail_stage
+        self.real_aws_calls = 0
+        self.real_kubectl_calls = 0
+        self.eks_worker_mutations = 0
+
+    def before_run(self, context: StageAContext) -> None:
+        del context
+
+    def execute(self, stage: str, context: StageAContext) -> dict[str, Any]:
+        del context
+        if self.fail_stage == stage:
+            raise StageARefusal("INJECTED_STAGE_A_FAILURE", {"injected_stage": stage})
+        if stage.startswith("stage_a_probe_"):
+            return {
+                "ordinal": int(stage.rsplit("_", 1)[1]),
+                "application_started": True,
+                "image_pull_proven": True,
+                "assign_public_ip": "DISABLED",
+                "probe_task_security_group_count": 1,
+            }
+        if stage == "stage_a_cleanup":
+            return {
+                "cleanup_complete": True,
+                "window_terraform_resources": 0,
+                "cpu_desired": 0,
+                "gpu_desired": 0,
+                "eks_worker_mutations": 0,
+            }
+        return {
+            "stage_a_guard_verified": stage,
+            "eks_worker_mutations": 0,
+        }
+
+    def recover_cleanup(self, context: StageAContext) -> dict[str, Any]:
+        del context
+        return {
+            "recovery_completed": True,
+            "zero_state": True,
+            "window_terraform_resources": 0,
+            "probe_vpc_endpoints": 0,
+            "probe_iam_roles": 0,
+            "active_probe_ecs_clusters": 0,
+            "cpu_desired": 0,
+            "gpu_desired": 0,
+        }
+
+
+def _stage_a_scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
+    directory = root / name
+    operations = FakeStageAOperations(fail_stage)
+    context = StageAContext(
+        authorization=root / "fake-authorization.json",
+        packet_sha256="0" * 64,
+        receipts_dir=directory,
+    )
+    runner = StageARunner(operations, ReceiptStore(directory, clock=Clock()))
+    result = runner.run(context)
+    receipts = [
+        {
+            "stage": stage,
+            "status": runner.store.load(stage)["status"],
+            "sha256": sha256_file(runner.store.path(stage)),
+        }
+        for stage in STAGE_A_STAGES
+        if runner.store.path(stage).exists()
+    ]
+    if fail_stage is None:
+        if result.outcome != "PASS" or [item["stage"] for item in receipts] != list(STAGE_A_STAGES):
+            raise AssertionError("Stage A cold pass did not produce its complete receipt chain")
+        if any(item["status"] != "PASS" for item in receipts):
+            raise AssertionError("Stage A cold pass contains a non-PASS receipt")
+    else:
+        statuses = {item["stage"]: item["status"] for item in receipts}
+        if result.outcome != "REFUSED" or statuses.get(fail_stage) != "REFUSED":
+            raise AssertionError(f"Stage A failure did not refuse exactly {fail_stage}")
+        expected_cleanup = "REFUSED" if fail_stage == "stage_a_cleanup" else "PASS"
+        if statuses.get("stage_a_cleanup") != expected_cleanup:
+            raise AssertionError("Stage A injected cleanup status differs")
+        if statuses.get("stage_a") != "REFUSED":
+            raise AssertionError("Stage A aggregate did not refuse")
+    return {
+        "scenario": name,
+        "injected_failure_stage": fail_stage,
+        "outcome": result.outcome,
+        "failure_stage": result.failure_stage,
+        "cleanup_complete": result.cleanup_complete,
+        "receipts": receipts,
+        "real_aws_calls": operations.real_aws_calls,
+        "real_kubectl_calls": operations.real_kubectl_calls,
+        "eks_worker_mutations": operations.eks_worker_mutations,
+        "maximum_seconds": MAXIMUM_SECONDS,
+        "maximum_cost_usd": MAXIMUM_COST_USD,
+        "required_consecutive_probe_passes": STABLE_PROBE_PASSES,
+    }
+
+
 def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
     directory = root / name
     operations = FakeOperations(fail_stage)
@@ -233,7 +341,16 @@ def run(output_dir: Path) -> dict[str, Any]:
             _scenario(root, f"fail-{index:02d}-{stage}", stage)
             for index, stage in enumerate(WINDOW_STAGES, start=1)
         )
-    results_sha256 = hashlib.sha256(canonical_json(scenarios)).hexdigest()
+        stage_a_scenarios = [_stage_a_scenario(root, "stage-a-full-pass", None)]
+        stage_a_scenarios.extend(
+            _stage_a_scenario(root, f"stage-a-fail-{index:02d}-{stage}", stage)
+            for index, stage in enumerate(
+                (*STAGE_A_EXECUTION_STAGES, "stage_a_cleanup"), start=1
+            )
+        )
+    results_sha256 = hashlib.sha256(
+        canonical_json({"window": scenarios, "stage_a": stage_a_scenarios})
+    ).hexdigest()
     source_hashes = {relative: sha256_file(ROOT / relative) for relative in RUNNER_SOURCES}
     payload = {
         "review": "B6-WINDOW-DESIGN-REVIEW-2026-001",
@@ -244,6 +361,9 @@ def run(output_dir: Path) -> dict[str, Any]:
         "runner_source_hashes": source_hashes,
         "scenario_results_sha256": results_sha256,
         "scenarios": scenarios,
+        "stage_a_full_pass_runs": 1,
+        "stage_a_injected_failure_runs": len(stage_a_scenarios) - 1,
+        "stage_a_scenarios": stage_a_scenarios,
         "real_aws_calls": 0,
         "real_kubectl_calls": 0,
         "aws_mutations": 0,

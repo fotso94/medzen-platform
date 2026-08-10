@@ -109,9 +109,14 @@ def _verify_policy(
     except Exception as exc:
         raise EndpointRefusal("endpoint policy is malformed") from exc
     statements = value.get("Statement", [])
-    if not isinstance(statements, list) or len(statements) != 1:
-        raise EndpointRefusal("endpoint policy statement count differs")
-    statement = statements[0]
+    if not isinstance(statements, list):
+        raise EndpointRefusal("endpoint policy statements are malformed")
+    allowed = [item for item in statements if item.get("Effect") == "Allow"]
+    if len(allowed) != 1 or any(
+        item.get("Effect") not in {"Allow", "Deny"} for item in statements
+    ):
+        raise EndpointRefusal("endpoint policy allow boundary differs")
+    statement = allowed[0]
     principal = statement.get("Principal")
     if isinstance(principal, dict):
         principal = principal.get("AWS")
@@ -147,7 +152,8 @@ def _verify_endpoint_security_group(ec2: Any) -> str:
         permission.get("IpProtocol") != "tcp"
         or permission.get("FromPort") != 443
         or permission.get("ToPort") != 443
-        or [item.get("GroupId") for item in pairs] != [group_id]
+        or len(pairs) != 1
+        or {item.get("GroupId") for item in pairs} != {group_id}
         or permission.get("IpRanges")
         or permission.get("Ipv6Ranges")
         or permission.get("PrefixListIds")
@@ -190,8 +196,9 @@ def verify_available(ec2: Any) -> dict[str, Any]:
             or endpoint.get("VpcEndpointType") != "Interface"
             or set(endpoint.get("SubnetIds", [])) != SUBNETS
             or endpoint.get("PrivateDnsEnabled") is not True
-            or [item.get("GroupId") for item in endpoint.get("Groups", [])]
-            != [endpoint_sg]
+            or len(endpoint.get("Groups", [])) != 1
+            or {item.get("GroupId") for item in endpoint.get("Groups", [])}
+            != {endpoint_sg}
         ):
             raise EndpointRefusal(f"{purpose} endpoint network boundary differs")
 
