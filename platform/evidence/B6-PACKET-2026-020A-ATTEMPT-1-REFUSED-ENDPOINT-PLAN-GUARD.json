@@ -1,0 +1,140 @@
+{
+  "id": "B6-PACKET-2026-020A-ATTEMPT-1-REFUSED-ENDPOINT-PLAN-GUARD",
+  "recorded_at_utc": "2026-08-10T18:11:58Z",
+  "status": "REFUSED_WITH_MANUAL_ZERO_STATE_RECOVERY",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-020A",
+    "sha256": "f332208a708413a192b3e0365f90a0bf9d5c2b494dac5bca38fbe262c3ef03d3"
+  },
+  "authorization_sha256": "3c9fa4cc4a85a1fc8e8c70e79f65e106af768ad316616e6fc5733cf5e3524457",
+  "bridge": {
+    "status": "PASS",
+    "receipt_sha256": "7e5c14f0afb1c6d2e2e34d49b3a251f6d31a1ba126bf1da0f3d59154acc22db7",
+    "principals_verified_before_mutation": true,
+    "compute_started": false
+  },
+  "attempt": {
+    "number": 1,
+    "outcome": "REFUSED",
+    "started_at_utc": "2026-08-10T17:54:01Z",
+    "deadline_armed_at_utc": "2026-08-10T17:54:04Z",
+    "refused_at_utc": "2026-08-10T17:58:57Z",
+    "stop_stage": "terraform_window",
+    "pass_stages": [
+      "stage0",
+      "deadline",
+      "workers_ready",
+      "dra_ready",
+      "rag_ready",
+      "asr_ready",
+      "tts_ready",
+      "llm_ready",
+      "orchestrator_ready",
+      "controller_window",
+      "controller_ready",
+      "pre_endpoint_images"
+    ],
+    "not_started_stages": [
+      "endpoints_ready",
+      "fargate_probe",
+      "alb_ready",
+      "alb_tag_mutation_warning",
+      "file_proof",
+      "websocket_proof",
+      "cancellation_proof",
+      "failure_drills",
+      "isolation_proof"
+    ],
+    "conversation_proofs_executed": 0,
+    "production_traffic": 0,
+    "phi_used": false
+  },
+  "root_cause": {
+    "classification": "LOCAL_PLAN_VALIDATOR_TARGET_SET_MISMATCH",
+    "endpoint_plan_sha256": "64975c00a19ab0881a162c0a24208c5a8306124f60eb5a794075a48ae0cdfb88",
+    "endpoint_plan_delta": {
+      "adds": 11,
+      "changes": 0,
+      "destroys": 0,
+      "controller_present_in_plan": false,
+      "endpoint_probe_addresses_exact": true
+    },
+    "explanation": "The operation intentionally targeted only the eleven endpoint/probe resources, while validate_endpoints unconditionally searched the targeted plan for the controller no-op entry. Terraform omitted the untargeted controller, StopIteration was converted to a refusal, and no endpoint plan was applied.",
+    "aws_create_started": false
+  },
+  "receipt_chain": {
+    "stage0": "950f71f1975d5a5f9dce545561589444abd0932bf93bc3ae5d5b39078311f6c7",
+    "deadline": "aac14d9e8d33562d87a545a4464003fbb6d61b572993346cc01f8ad58054dc6a",
+    "workers_ready": "1cf18c12b87ecea17dbdfedcd2678455833f09f1e5702460b6218d6e424ea081",
+    "dra_ready": "f69b8590151b84b54ebd7da03139a238729c71f2606c60cea215c7e6d9329c39",
+    "rag_ready": "c10d640494f9031ff9f8a73b7a20ac07ff54441d94d7916e7a451512f2c38a75",
+    "asr_ready": "9ee5c11fc5c87eef352a0c3b10c3fd367a6a058affa5c20ea6204f001bc49f09",
+    "tts_ready": "af1500a008d4c1b347e109671c92d391b45bdb44e7d497e568d68665fd84abd0",
+    "llm_ready": "210a84504b1437149788124c53fd3f07adc63557cdc361fbc8b7088fee6d6037",
+    "orchestrator_ready": "e01d3b2868123084a6c2c23c12d2eee95ccecd3842c3f3ea2f563441dad4de19",
+    "controller_window": "481a85e6be9ac4b82508790da9ea60c3327fa1619d6cec252491995d221c3169",
+    "controller_ready": "9832c352fadb1b16e8943092fdf0e87b3aec6666d28d494e422305607d145582",
+    "pre_endpoint_images": "6bdecc8dd5c0f4320793047c3f9c20a4ff5a6242f0c883a8ce39934d5c92b8dc",
+    "terraform_window": "422aae9514bece53483fdc00493e68fb9daf2f06c923fab8c5fde6e6cf52c799",
+    "cleanup": "cdcb1aa2827cf478692c86adf39a8cc73e2cc7a7f9dd8862e86b4db755ba2e2e"
+  },
+  "cleanup_defect": {
+    "original_receipt_status": "REFUSED",
+    "classification": "RECEIPT_EXISTENCE_MISCLASSIFIED_PRE_APPLY_REFUSAL_AS_FULL_CREATE",
+    "explanation": "Cleanup selected the all-twelve-resource destroy guard merely because terraform_window.json existed. The stage had refused before apply, so only the controller existed and the actual one-delete cleanup plan correctly failed the twelve-delete guard.",
+    "automatic_cleanup_removed_workloads": true,
+    "automatic_cleanup_removed_dra": true,
+    "automatic_cleanup_removed_controller": false
+  },
+  "manual_recovery": {
+    "authorized_scope": "packet-bound fail-closed cleanup and scale-to-zero containment",
+    "worker_scale_zero_requested_at_utc": "2026-08-10T18:00:24Z",
+    "cleanup_plan_sha256": "5121d25f5cbb0b7c17199cb24f295ec05eb61cd00476b91f5679610650270e51",
+    "cleanup_plan": {
+      "adds": 0,
+      "changes": 0,
+      "destroys": 1,
+      "address": "helm_release.b6_load_balancer_controller[0]",
+      "machine_guard": "PASS_B6_6_CLEANUP"
+    },
+    "controller_destroyed": true,
+    "gpu_asg_zero_at_utc": "2026-08-10T18:07:17Z",
+    "cpu_asg_zero_at_utc": "2026-08-10T18:09:33Z",
+    "cpu_termination_hook_completed_for_already_terminating_instance": true,
+    "deadlines_removed_after_zero": true,
+    "local_synthetic_token_removed": true
+  },
+  "verified_zero_state": {
+    "cpu_nodegroup": {"desired": 0, "instances": 0, "status": "ACTIVE", "health_issues": 0},
+    "gpu_nodegroup": {"desired": 0, "instances": 0, "status": "ACTIVE", "health_issues": 0},
+    "deadline_actions": 0,
+    "synthetic_pods": 0,
+    "load_balancer_controller_deployments": 0,
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_ecs_clusters": 0,
+    "probe_iam_roles": 0,
+    "internal_albs": 0,
+    "production_ssm_pointer_changes": 0,
+    "approved_asr_changes": 0,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED"
+  },
+  "allowance": {
+    "attempts_consumed": 1,
+    "attempts_remaining": 1,
+    "attempt_1_unused_seconds_transferable": false,
+    "maximum_attempt_2_seconds": 4500,
+    "attempt_2_under_packet_2026_020A": "BLOCKED_BECAUSE_CLEANUP_RECEIPT_IS_NOT_PASS",
+    "existing_reservation_usd": 10.0,
+    "actual_billing": "PENDING_AWS_COST_EXPLORER_LAG"
+  },
+  "disposition": {
+    "packet_2026_020A_terminal": true,
+    "automatic_retry": false,
+    "required_corrections": [
+      "Make the endpoint validator prove controller stability from live Terraform state or include the controller target explicitly.",
+      "Select cleanup guard from the applied-resource set and stage PASS status, never receipt-file existence."
+    ],
+    "new_versioned_packet_and_independent_review_required": true
+  }
+}
