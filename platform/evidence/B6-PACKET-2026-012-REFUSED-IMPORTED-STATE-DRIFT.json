@@ -1,0 +1,194 @@
+{
+  "record": "B6_2026_012_SYNTHETIC_SECRET_RESTORATION_EXECUTION_RESULT",
+  "id": "B6-PACKET-2026-012-REFUSED-IMPORTED-STATE-DRIFT",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_AFTER_RESTORE_CLEANUP_REQUIRES_SUCCESSOR_PACKET",
+  "outcome": "INCOMPLETE_TERRAFORM_IMPORT_STATE_REPRESENTATION_REFUSAL",
+  "failure_stage": "TERRAFORM_RECONCILIATION",
+  "recorded_utc": "2026-08-10T01:50:23Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-012-synthetic-secret-token-restoration.md",
+      "sha256": "aa4beadbdd3673d3fa124db585e137a49d03022b74654e8df0ac5af7d2f60949"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-012-synthetic-secret-token-restoration.json",
+      "sha256": "971a123f5cda00da298172ffc1b7dfd081a77a1ccb85e8085f37cc30cee95aff",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/20",
+      "reviewed_repository_commit": "fc4af29228a943df1066a8cc6091b42b6ca6afe8",
+      "reviewed_packet_sha256": "aa4beadbdd3673d3fa124db585e137a49d03022b74654e8df0ac5af7d2f60949",
+      "reproduced_tests": "12/12"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6-secret-restoration-execution",
+    "authorization_commit": "598733c5848135d98b42d981ebc7b2841d416ed5",
+    "authorization_tree": "3ae7196d6f19f3ea5c0ceca2f58e7eb93072186a",
+    "commit_count": 278,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_20_merged": true,
+    "worktree_clean_before_execution": true
+  },
+  "preflight": {
+    "verified_utc": "2026-08-10T01:41:52Z",
+    "aws_account": "558069890522",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1",
+    "authorization_sources_verified": 14,
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "secret_state": "PENDING_RECOVERABLE_DELETION_EXACT",
+    "historical_version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "historical_version_stages": [
+      "AWSCURRENT"
+    ],
+    "resource_policy": "ABSENT",
+    "orchestrator_kms_inline_policy": "ABSENT",
+    "terraform_secret_addresses": 0,
+    "local_plaintext_token": "ABSENT",
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "kubernetes_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "controller": "ABSENT",
+    "dra": "ABSENT",
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0
+  },
+  "stage_receipts": [
+    {
+      "stage": "restore",
+      "status": "PASS_RESTORED_AWAITING_BOUNDARY_RECONSTRUCTION",
+      "recorded_utc": "2026-08-10T01:43:25Z",
+      "path": "platform/evidence/receipts/B6-2026-012-LIVE/restore.json",
+      "sha256": "d47127c1592b0c63d7c4f5e99c70316027b662039afd387928af6ba27e9b4f34"
+    },
+    {
+      "stage": "terraform_reconciliation",
+      "status": "REFUSED_PLAN_NOT_APPLIED",
+      "path": "platform/evidence/receipts/B6-2026-012-LIVE/terraform_reconciliation.json",
+      "sha256": "49acce009f2866460508127c1c3c0f9199b525c53c2f2c21b50fd632e0f24433"
+    },
+    {
+      "stage": "cleanup",
+      "status": "INCOMPLETE_REQUIRES_SUCCESSOR_PACKET",
+      "path": "platform/evidence/receipts/B6-2026-012-LIVE/cleanup.json",
+      "sha256": "e3e0684e403938bef024c98eed0c81b38d0126f825d5f32e3710597fcf13940f"
+    }
+  ],
+  "execution": {
+    "initial_sandboxed_restore_attempt": {
+      "outcome": "NO_AWS_CALL_COMPLETED_DNS_REFUSAL",
+      "mutation": false,
+      "receipt_created": false
+    },
+    "restore": {
+      "outcome": "PASS",
+      "exact_arn_restored": true,
+      "plaintext_read_or_created": false
+    },
+    "terraform_import": {
+      "outcome": "PASS",
+      "address": "aws_secretsmanager_secret.b6_client_keys[0]",
+      "exact_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+      "state_lineage": "cc991efe-2154-ac03-fe73-48392ec7a9a3",
+      "state_serial_after_import": 29
+    },
+    "reconciliation_plan": {
+      "path_not_retained": "/private/tmp/b6-012-reconcile.tfplan",
+      "sha256": "cbed9c4c9ae324ca17a8536fd291fe145d6dfcf034e192ac4696a0e03bf99ba2",
+      "adds": 2,
+      "updates": 1,
+      "destroys": 0,
+      "guard": "REFUSED",
+      "applied": false,
+      "expected": "2 add / 0 change / 0 destroy with imported secret no-op"
+    }
+  },
+  "root_cause": {
+    "classification": "TERRAFORM_PROVIDER_IMPORT_STATE_REPRESENTATION",
+    "live_aws_tags_already_exact": true,
+    "live_aws_tag_count": 9,
+    "imported_tags_all_already_exact": true,
+    "imported_tags_all_count": 9,
+    "imported_explicit_tags_count": 5,
+    "configuration_explicit_tags_count": 7,
+    "default_tag_keys_filtered_from_imported_explicit_tags": [
+      "Environment",
+      "Project"
+    ],
+    "other_planned_state_normalization": {
+      "force_overwrite_replica_secret": "null to false",
+      "recovery_window_in_days": "null to 7"
+    },
+    "remote_identity_or_value_change_observed": false,
+    "interpretation": "AWS already has the exact nine allocation tags. The provider filters its default Environment and Project tags out of the imported explicit tags field, while this resource also declares them explicitly. It therefore proposes an in-place state/config normalization that packet 2026-012 deliberately did not authorize."
+  },
+  "fail_closed_cleanup": {
+    "plan_path_not_retained": "/private/tmp/b6-012-cleanup.tfplan",
+    "plan_sha256": "b3606606b36f4a061aa3ed062ac7c8391623928bf4615975e73a51e2257320a3",
+    "adds": 0,
+    "updates": 0,
+    "destroys": 1,
+    "only_address": "aws_secretsmanager_secret.b6_client_keys[0]",
+    "guard": "REFUSED_CLEANUP_SECRET_IDENTITY",
+    "guard_reason": "The imported provider state omits recovery_window_in_days, but the reviewed cleanup guard requires that write-only field to equal 7.",
+    "applied": false,
+    "bypass_used": false,
+    "force_delete_used": false
+  },
+  "current_exact_state": {
+    "secret": "RESTORED_EXACT_ARN",
+    "secret_version": "HISTORICAL_ONLY_AWSCURRENT_UNCHANGED",
+    "terraform_address": "IMPORTED_EXACT_ARN",
+    "resource_policy": "ABSENT",
+    "orchestrator_kms_inline_policy": "ABSENT",
+    "new_token_generated": false,
+    "local_plaintext_token": "ABSENT",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "deployment_attempted": false,
+    "production_state_changed": false
+  },
+  "explicit_non_events": {
+    "terraform_plans_applied": 0,
+    "resource_policies_created": 0,
+    "iam_policies_created_or_changed": 0,
+    "new_secret_versions": 0,
+    "secret_values_read": 0,
+    "local_tokens_created": 0,
+    "workers_started": 0,
+    "kubernetes_mutations": 0,
+    "load_balancers_created": 0,
+    "ssm_changes": 0,
+    "approved_artifact_changes": 0,
+    "production_serving_pointer_changes": 0
+  },
+  "cost": {
+    "existing_active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "compute_cost_usd": 0.0,
+    "incremental_secret_cost": "PENNIES_NOT_YET_RECONCILED"
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "attempt_4_authorized": false
+  },
+  "required_successor": [
+    "Do not edit or reinterpret packet 2026-012, its authorization or its receipts.",
+    "Create a separately reviewed successor packet that permits only the exact observed imported-secret normalization plus the same two boundary creates.",
+    "Prospectively fix the reconcile guard to verify before/after tags, tags_all, exact ARN/KMS/name and only the null-to-reviewed-default fields.",
+    "Prospectively fix cleanup validation so an exact imported secret remains deletable even when the provider omits its write-only recovery field.",
+    "After successor execution produces the new secret version and token hash, create a separate attempt-4 bounded-window packet."
+  ],
+  "next_boundary": "Packet 2026-012 is closed as a fail-closed Terraform import-state refusal. The secret is restored but unexposed by a resource policy, no new token exists, and compute is zero. A new independently reviewed owner-approved successor packet is required before normalization, access-boundary creation, rotation, cleanup or attempt 4."
+}

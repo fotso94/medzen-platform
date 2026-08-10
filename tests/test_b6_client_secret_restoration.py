@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import stat
 import subprocess
@@ -21,6 +22,10 @@ def load_module(name: str, relative: str):
     return module
 
 
+def file_sha(relative: str) -> str:
+    return hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+
+
 guard = load_module("b6_secret_restoration_guard", "scripts/check_b6_client_secret_restoration_plan.py")
 runner = load_module("b6_secret_restoration_runner", "scripts/run_b6_client_secret_restoration.py")
 
@@ -34,18 +39,13 @@ def good_plan() -> dict:
                     "actions": ["no-op"],
                     "after": {
                         "arn": guard.SECRET_ARN,
+                        "id": guard.SECRET_ARN,
                         "name": "medzen/client-api-keys",
                         "kms_key_id": guard.KMS_KEY,
                         "recovery_window_in_days": 7,
-                        "tags": {
-                            "Project": "medzen-speech",
-                            "Environment": "dev",
-                            "CostCenter": "speech-platform",
-                            "Stage": "B6.6",
-                            "Workstream": "integration-window-auth",
-                            "BudgetRegistry": "COST-REGISTRY-2026-003",
-                            "Classification": "SYNTHETIC_TEST_ONLY",
-                        },
+                        "force_overwrite_replica_secret": False,
+                        "tags": guard.expected_explicit_tags(),
+                        "tags_all": guard.expected_tags_all(),
                     },
                 },
             },
@@ -91,6 +91,50 @@ def test_restoration_manifest_is_exact_and_non_authorizing() -> None:
         "verification",
     ]
     assert manifest["failure_cleanup"]["force_delete_without_recovery"] is False
+
+
+def test_successor_manifest_stages_normalization_before_boundary_creation() -> None:
+    manifest = json.loads(
+        (ROOT / "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-002.json").read_text()
+    )
+    assert manifest["status"] == "PROPOSED_NOT_AUTHORIZED"
+    assert manifest["starting_state"]["secret"] == "RESTORED_EXACT_ARN"
+    assert manifest["normalization_plan"]["stage_a"] == {
+        "adds": 0,
+        "changes": 1,
+        "destroys": 0,
+        "only_address": guard.SECRET,
+        "only_changed_fields": [
+            "force_overwrite_replica_secret",
+            "recovery_window_in_days",
+            "tags",
+        ],
+        "live_aws_tags_change": False,
+        "tags_all_before_after_identical": True,
+    }
+    assert manifest["normalization_plan"]["stage_b_after_a"]["adds"] == 2
+    assert manifest["prohibited"][0] == "restore_secret_again"
+
+
+def test_packet_012_history_and_refusal_receipts_are_immutable() -> None:
+    assert file_sha(
+        "platform/decisions/B6-AWS-CHANGE-PACKET-2026-012-synthetic-secret-token-restoration.md"
+    ) == "aa4beadbdd3673d3fa124db585e137a49d03022b74654e8df0ac5af7d2f60949"
+    assert file_sha(
+        "platform/decisions/B6-AWS-AUTH-2026-012-synthetic-secret-token-restoration.json"
+    ) == "971a123f5cda00da298172ffc1b7dfd081a77a1ccb85e8085f37cc30cee95aff"
+    refusal = json.loads(
+        (ROOT / "platform/evidence/B6-PACKET-2026-012-REFUSED-IMPORTED-STATE-DRIFT.json").read_text()
+    )
+    assert refusal["outcome"] == "INCOMPLETE_TERRAFORM_IMPORT_STATE_REPRESENTATION_REFUSAL"
+    for receipt in refusal["stage_receipts"]:
+        assert file_sha(receipt["path"]) == receipt["sha256"]
+
+
+def test_successor_runner_has_no_restore_execution_phase() -> None:
+    source = (ROOT / "scripts/run_b6_client_secret_restoration.py").read_text()
+    assert 'choices=("adopt", "rotate", "verify")' in source
+    assert 'if args.phase == "restore"' not in source
 
 
 def test_restoration_plan_guard_accepts_only_import_plus_two_creates() -> None:
@@ -165,6 +209,40 @@ def test_restoration_cleanup_guard_accepts_only_exact_subset_deletes() -> None:
         pass
     else:
         raise AssertionError("an unrelated cleanup delete was accepted")
+
+
+def test_imported_secret_normalization_accepts_only_three_exact_fields() -> None:
+    plan = good_plan()
+    plan["resource_changes"] = plan["resource_changes"][:1]
+    secret = plan["resource_changes"][0]["change"]
+    secret["actions"] = ["update"]
+    secret["before"] = {
+        **secret["after"],
+        "force_overwrite_replica_secret": None,
+        "recovery_window_in_days": None,
+        "tags": guard.imported_explicit_tags(),
+    }
+    secret["after_unknown"] = {}
+    guard.validate(plan, "normalize")
+
+    wrong = good_plan()
+    wrong["resource_changes"] = wrong["resource_changes"][:1]
+    secret = wrong["resource_changes"][0]["change"]
+    secret["actions"] = ["update"]
+    secret["before"] = {
+        **secret["after"],
+        "description": "unexpected",
+        "force_overwrite_replica_secret": None,
+        "recovery_window_in_days": None,
+        "tags": guard.imported_explicit_tags(),
+    }
+    secret["after_unknown"] = {}
+    try:
+        guard.validate(wrong, "normalize")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an unrelated imported-secret field drift was accepted")
 
 
 class FakeSecretClient:
@@ -254,7 +332,7 @@ class FakeIamClient:
 
 def test_receipts_are_durable_per_stage_and_contain_no_plaintext(tmp_path: Path) -> None:
     secret = FakeSecretClient()
-    authorization = {"id": "B6-AWS-AUTH-2026-012"}
+    authorization = {"id": "B6-AWS-AUTH-2026-012A"}
     runner.TOKEN_PATH = tmp_path / "token"
 
     restore_receipt = tmp_path / "receipts" / "restore.json"
@@ -280,12 +358,27 @@ def test_receipts_are_durable_per_stage_and_contain_no_plaintext(tmp_path: Path)
     assert "plaintext_recorded\":false" in combined
 
 
+def test_successor_adoption_is_read_only_and_requires_restored_state(tmp_path: Path) -> None:
+    secret = FakeSecretClient()
+    secret.pending = False
+    runner.TOKEN_PATH = tmp_path / "token"
+    receipt = tmp_path / "restore.json"
+    value = runner.adopt_restored(
+        secret,
+        receipt,
+        {"id": "B6-AWS-AUTH-2026-012A"},
+    )
+    assert value["status"] == "PASS_RESTORED_AWAITING_BOUNDARY_RECONSTRUCTION"
+    assert value["aws_mutation_performed"] is False
+    assert receipt.is_file()
+
+
 def test_restoration_runner_refuses_without_apply() -> None:
     result = subprocess.run(
         [
             sys.executable,
             str(ROOT / "scripts/run_b6_client_secret_restoration.py"),
-            "restore",
+            "adopt",
             "--authorization",
             "/does/not/exist",
             "--receipts-dir",

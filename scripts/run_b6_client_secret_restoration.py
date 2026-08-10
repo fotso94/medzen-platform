@@ -18,7 +18,7 @@ from botocore.exceptions import ClientError
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-001.json"
+MANIFEST = ROOT / "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-002.json"
 EXPECTED_ACCOUNT = "558069890522"
 EXPECTED_REGION = "eu-central-1"
 EXPECTED_OPERATOR = f"arn:aws:iam::{EXPECTED_ACCOUNT}:user/s.fotso"
@@ -67,7 +67,7 @@ def require_receipt(path: Path, expected_status: str) -> dict[str, Any]:
 
 def load_authorization(path: Path) -> tuple[dict[str, Any], dict[str, Any], Path]:
     authorization = json.loads(path.read_bytes())
-    if authorization.get("id") != "B6-AWS-AUTH-2026-012" or authorization.get("status") != "owner-approved":
+    if authorization.get("id") != "B6-AWS-AUTH-2026-012A" or authorization.get("status") != "owner-approved":
         raise RestorationRefusal("exact owner authorization is absent")
     manifest = json.loads(MANIFEST.read_bytes())
     binding = authorization.get("request_manifest", {})
@@ -161,6 +161,27 @@ def restore(secret_client: Any, receipt: Path, authorization: dict[str, Any], ma
         "manifest_sha256": sha(MANIFEST.read_bytes()),
         "secret_arn": restored.get("ARN", SECRET_ARN),
         "historical_version_id": OLD_VERSION,
+        "plaintext_read_or_created": False,
+    }
+    persist(receipt, value)
+    return value
+
+
+def adopt_restored(secret_client: Any, receipt: Path, authorization: dict[str, Any]) -> dict[str, Any]:
+    current = secret_client.describe_secret(SecretId=SECRET_NAME)
+    validate_description(current, pending=False)
+    if TOKEN_PATH.exists():
+        raise RestorationRefusal("local token unexpectedly exists before successor adoption")
+    value = {
+        "record": "B6_SYNTHETIC_SECRET_SUCCESSOR_ADOPTION_STAGE",
+        "status": "PASS_RESTORED_AWAITING_BOUNDARY_RECONSTRUCTION",
+        "recorded_utc": now(),
+        "authorization_id": authorization["id"],
+        "manifest_sha256": sha(MANIFEST.read_bytes()),
+        "secret_arn": SECRET_ARN,
+        "historical_version_id": OLD_VERSION,
+        "source_refusal_receipt": "B6-PACKET-2026-012-REFUSED-IMPORTED-STATE-DRIFT",
+        "aws_mutation_performed": False,
         "plaintext_read_or_created": False,
     }
     persist(receipt, value)
@@ -288,7 +309,7 @@ def verify(secret_client: Any, rotation_receipt: Path, receipt: Path, authorizat
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("phase", choices=("restore", "rotate", "verify"))
+    parser.add_argument("phase", choices=("adopt", "rotate", "verify"))
     parser.add_argument("--authorization", type=Path, required=True)
     parser.add_argument("--receipts-dir", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
@@ -305,8 +326,8 @@ def main() -> int:
         if identity.get("Account") != EXPECTED_ACCOUNT or identity.get("Arn") != EXPECTED_OPERATOR:
             raise RestorationRefusal("operator identity differs")
         secret_client = session.client("secretsmanager")
-        if args.phase == "restore":
-            result = restore(secret_client, args.receipts_dir / "restore.json", authorization, manifest)
+        if args.phase == "adopt":
+            result = adopt_restored(secret_client, args.receipts_dir / "restore.json", authorization)
         elif args.phase == "rotate":
             require_receipt(
                 args.receipts_dir / "restore.json",
