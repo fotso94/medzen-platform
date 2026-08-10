@@ -1,0 +1,106 @@
+{
+  "record": "B6_IMPORTED_STATE_NORMALIZATION_AND_RESTORATION_CONTINUATION_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-012A",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-10T02:23:42Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-012A only.' after independent review PASS of PR #21 and packet 2026-012A.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings_requiring_change": 0,
+    "review_scope": "Representation-only drift verified against live AWS; staged normalize-then-create guards verified; suites reproduced.",
+    "pull_request": "https://github.com/fotso94/medzen-platform/pull/21",
+    "reviewed_repository_commit": "587697c90800e41302ee9d981fa6ed7cf1c78116",
+    "reviewed_packet_sha256": "20b5a851b04b4d685a19d770aa3b903f36dab40f95c8bfe599bf9ce97ed7fe10",
+    "reproduced_tests": "PASS_COUNT_NOT_SPECIFIED"
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "merged_commit": "367d2988813c26ab6a2c08b3345d0cb90a2a64de",
+    "merged_tree": "6180f2adcea21176c268999a4d12b2e9f91f8f3e",
+    "commit_count_before_authorization_record": 280,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_21_merged": true
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-012A",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-012A-import-state-normalization-continuation.md",
+    "sha256": "20b5a851b04b4d685a19d770aa3b903f36dab40f95c8bfe599bf9ce97ed7fe10"
+  },
+  "request_manifest": {
+    "path": "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-002.json",
+    "sha256": "1dc091bf4ee3bcbb93b329839a341c66a787e26e79e4fb2b8de97a34364dc291"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "secret_name": "medzen/client-api-keys",
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "historical_version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "stage_a_required_adds": 0,
+    "stage_a_required_updates": 1,
+    "stage_a_required_destroys": 0,
+    "stage_b_required_adds": 2,
+    "stage_b_required_updates": 0,
+    "stage_b_required_destroys": 0,
+    "maximum_cpu_nodes": 0,
+    "maximum_gpu_nodes": 0,
+    "new_reservation_usd": 0.0
+  },
+  "authorized_operations": [
+    "verify_exact_account_operator_region_packet_review_commit_sources_current_secret_state_and_zero_compute",
+    "adopt_without_restoring_the_exact_already_restored_secret_into_a_new_receipt_chain",
+    "generate_and_guard_one_fresh_secret_only_zero_add_one_update_zero_destroy_normalization_plan",
+    "apply_once_the_exact_guarded_stage_a_saved_plan",
+    "prove_live_aws_tags_unchanged_and_secret_only_residual_no_changes",
+    "persist_the_terraform_normalization_receipt_before_stage_b",
+    "generate_and_guard_one_fresh_two_create_zero_update_zero_destroy_access_boundary_plan",
+    "apply_once_the_exact_guarded_stage_b_saved_plan",
+    "persist_the_terraform_reconciliation_receipt_before_rotation",
+    "generate_one_new_32_byte_synthetic_token_and_publish_only_its_sha256",
+    "persist_the_rotation_receipt_immediately_after_publication",
+    "remove_awsprevious_from_the_historical_version_after_verification",
+    "prove_operator_get_secret_value_is_explicitly_denied",
+    "publish_immutable_execution_and_zero_compute_evidence",
+    "run_only_the_exact_guarded_recoverable_cleanup_if_any_stage_stops"
+  ],
+  "prohibited_operations": [
+    "restore_secret_again_or_apply_any_packet_2026_012_refused_plan",
+    "combine_stage_a_and_stage_b_or_apply_an_unknown_policy_value",
+    "read_or_reuse_the_historical_secret_plaintext_or_hash_as_the_new_token",
+    "force_delete_any_secret_without_recovery",
+    "terraform_change_outside_the_exact_stage_a_and_stage_b_addresses",
+    "worker_scale_up_kubernetes_controller_dra_alb_or_fargate_change",
+    "attempt_4_window_execution",
+    "ssm_ecr_model_registry_approved_artifact_production_provider_training_phi_or_real_client_change"
+  ],
+  "source_bindings": {
+    "platform/decisions/B6-AWS-CHANGE-PACKET-2026-012-synthetic-secret-token-restoration.md": "aa4beadbdd3673d3fa124db585e137a49d03022b74654e8df0ac5af7d2f60949",
+    "platform/decisions/B6-AWS-AUTH-2026-012-synthetic-secret-token-restoration.json": "971a123f5cda00da298172ffc1b7dfd081a77a1ccb85e8085f37cc30cee95aff",
+    "platform/evidence/B6-PACKET-2026-012-REFUSED-IMPORTED-STATE-DRIFT.json": "19be424d2aee39f862c5e6de3b2335a87a8031b5e84e3fd6a50d03a465164c69",
+    "platform/evidence/B6-CLIENT-SECRET-SUCCESSOR-PREPARATION-2026-001.json": "6a83e95dc4aadefbabba799593fdadb392ace0726a54265bd96bda564c3dbb75",
+    "platform/evidence/receipts/B6-2026-012-LIVE/restore.json": "d47127c1592b0c63d7c4f5e99c70316027b662039afd387928af6ba27e9b4f34",
+    "platform/evidence/receipts/B6-2026-012-LIVE/terraform_reconciliation.json": "49acce009f2866460508127c1c3c0f9199b525c53c2f2c21b50fd632e0f24433",
+    "platform/evidence/receipts/B6-2026-012-LIVE/cleanup.json": "e3e0684e403938bef024c98eed0c81b38d0126f825d5f32e3710597fcf13940f",
+    "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-001.json": "ba81fcaa8414b1d0335be833090dffde3653199e918fcfd32a06501b6ece10de",
+    "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-002.json": "1dc091bf4ee3bcbb93b329839a341c66a787e26e79e4fb2b8de97a34364dc291",
+    "scripts/check_b6_client_secret_restoration_plan.py": "9bb596216bcd9bd18440df9e698574021a278db8c7314a21ebced3d6d04d1f0e",
+    "scripts/run_b6_client_secret_restoration.py": "baa58777cd05a3edad5f5236013ca5e3556dd654026790a6f2599022981422cc",
+    "tests/test_b6_client_secret_restoration.py": "0d80c6ad2e6b33149ce38844b28b882b60d1924cee4f2c403ab853bdf8c03e63",
+    "infra/b6_client_secret.tf": "9594a8463dfee4c617939aff14c37e158b4b8b40771b19e83633c178db383c84",
+    "platform/finance/COST-REGISTRY-2026-004.json": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb",
+    "scripts/terraform_medzen.sh": "1a1d9c158001d9b15ac1403bde2138ec284c250b28715818b395697317c274f1"
+  },
+  "cost": {
+    "registry_id": "COST-REGISTRY-2026-004",
+    "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+    "existing_reservation_usd": 10.0,
+    "maximum_incremental_secret_cost_usd": 0.1,
+    "new_reservation_usd": 0.0
+  }
+}
