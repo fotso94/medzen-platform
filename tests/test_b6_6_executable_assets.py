@@ -273,7 +273,14 @@ def test_deadline_arms_both_groups_at_the_same_time_and_disarms_only_after_zero(
 
 
 def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
-    from scripts.b6_6_bindings import REQUIRED_SOURCES, BindingRefusal, validate
+    from scripts.b6_6_bindings import (
+        CREDENTIAL_EVIDENCE_PATH,
+        CREDENTIAL_EVIDENCE_SHA256,
+        EXPECTED_CREDENTIAL_BINDING,
+        REQUIRED_SOURCES,
+        BindingRefusal,
+        validate,
+    )
 
     root = tmp_path / "repo"
     for relative in REQUIRED_SOURCES:
@@ -285,17 +292,36 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
         for relative in REQUIRED_SOURCES
     }
     packet_sha = "a" * 64
+    (root / CREDENTIAL_EVIDENCE_PATH).write_bytes(b"evidence")
+    sources[CREDENTIAL_EVIDENCE_PATH] = __import__("hashlib").sha256(b"evidence").hexdigest()
     record = {
-        "id": "B6-AWS-AUTH-2026-014",
+        "id": "B6-AWS-AUTH-2026-016",
         "status": "owner-approved",
-        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-014", "sha256": packet_sha},
-        "independent_review": {"status": "PASS", "reviewer": "independent"},
+        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-016", "sha256": packet_sha},
+        "independent_review": {
+            "status": "PASS",
+            "reviewer": "independent",
+            "reviewed_packet_sha256": packet_sha,
+        },
+        "credential_binding": EXPECTED_CREDENTIAL_BINDING,
+        "credential_restoration_evidence": {
+            "path": CREDENTIAL_EVIDENCE_PATH,
+            "sha256": CREDENTIAL_EVIDENCE_SHA256,
+            "status": "VERIFIED_COMPLETE",
+        },
         "cost": {"registry_id": "COST-REGISTRY-2026-004", "allocation_id": "B6-INTEGRATION-WINDOW-2026-001", "maximum_usd": 10.0},
         "source_bindings": sources,
     }
     authorization = tmp_path / "authorization.json"
     authorization.write_text(json.dumps(record))
-    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-014"
+    # The evidence identity is separately fixed, so use its real expected bytes
+    # in this synthetic repository before validation.
+    (root / CREDENTIAL_EVIDENCE_PATH).write_bytes(
+        (ROOT / CREDENTIAL_EVIDENCE_PATH).read_bytes()
+    )
+    sources[CREDENTIAL_EVIDENCE_PATH] = CREDENTIAL_EVIDENCE_SHA256
+    authorization.write_text(json.dumps(record))
+    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-016"
     record["source_bindings"].pop(next(iter(REQUIRED_SOURCES)))
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):

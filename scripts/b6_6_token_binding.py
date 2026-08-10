@@ -10,7 +10,7 @@ from pathlib import Path
 
 
 TOKEN_PATH = Path("/private/tmp/medzen-b6-6-client-token")
-BEARER_SHA256 = "3a30b00fc96111490c2b471eec5eebe1c9d26bf991508428cf2f5511e306b84a"
+BEARER_SHA256 = "77f2979e024c42e91db938fecdb6214359637b316ad5edf6bbf1008fe59a89ea"
 
 
 class TokenBindingRefusal(RuntimeError):

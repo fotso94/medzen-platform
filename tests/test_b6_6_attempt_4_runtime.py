@@ -164,20 +164,20 @@ def test_attempt_4_tag_warning_is_ordered_and_does_not_void_functional_proof(tmp
     assert store.require_pass("file_proof")["status"] == "PASS"
 
 
-def test_attempt_4_binds_rotated_token_and_remaining_allowance() -> None:
+def test_final_successor_binds_fresh_token_and_remaining_allowance() -> None:
     from scripts.b6_6_deadline import WINDOW_SECONDS
     from scripts.b6_6_token_binding import BEARER_SHA256
 
     evidence = json.loads(
-        (ROOT / "platform/evidence/B6-CLIENT-SECRET-RESTORATION-CONTINUATION-AWS-EXECUTION-2026-001.json").read_bytes()
+        (ROOT / "platform/evidence/B6-CLIENT-SECRET-RESTORATION-AWS-EXECUTION-2026-002.json").read_bytes()
     )
-    assert BEARER_SHA256 == evidence["rotation_and_verification"]["bearer_token_sha256"]
+    assert BEARER_SHA256 == evidence["credential_binding"]["bearer_token_sha256"]
     assert WINDOW_SECONDS == 14400 - 4819 == 9581
     assert hashlib.sha256((ROOT / "scripts/b6_6_token_binding.py").read_bytes()).hexdigest()
 
 
-def test_attempt_4_secret_preflight_requires_exact_version_and_policies() -> None:
-    from scripts.b6_6_secret_preflight import NEW_VERSION, verify
+def test_successor_secret_preflight_requires_exact_three_version_map_and_policies() -> None:
+    from scripts.b6_6_secret_preflight import NEW_VERSION, PRIOR_CURRENT_VERSION, verify
     from scripts.check_b6_client_secret_restoration_plan import expected_kms_policy
     from scripts.run_b6_client_secret_restoration import (
         EXPECTED_ACCOUNT,
@@ -204,6 +204,7 @@ def test_attempt_4_secret_preflight_requires_exact_version_and_policies() -> Non
             assert SecretId == SECRET_ARN and IncludeDeprecated is True
             return {"Versions": [
                 {"VersionId": NEW_VERSION, "VersionStages": ["AWSCURRENT"]},
+                {"VersionId": PRIOR_CURRENT_VERSION, "VersionStages": []},
                 {"VersionId": OLD_VERSION, "VersionStages": []},
             ]}
 
@@ -225,11 +226,12 @@ def test_attempt_4_secret_preflight_requires_exact_version_and_policies() -> Non
     assert result["plaintext_read"] is False
 
 
-def test_attempt_4_runner_refuses_secret_or_tag_rule_drift_before_probes() -> None:
+def test_successor_runner_refuses_secret_or_tag_rule_drift_before_probes() -> None:
     source = (ROOT / "scripts/run_b6_6_integration_window.sh").read_text()
     secret_gate = (ROOT / "scripts/b6_6_secret_preflight.py").read_text()
+    assert "daacb67e-fcd1-41e1-bf62-47a3f18c8d0b" in secret_gate
     assert "d09d567e-9bde-482a-b95a-3cab990a1006" in secret_gate
-    assert "f78c8aa8-2765-4788-9928-dd1ba7c406bf" not in secret_gate
+    assert "OLD_VERSION" in secret_gate
     assert "scripts/b6_6_secret_preflight.py --profile medzen" in source
     assert source.index("scripts/b6_6_lbc_runtime.py verify") < source.index("scripts/b6_6_probe.py file")
     assert source.index("alb_tag_mutation_warning") < source.index("scripts/b6_6_probe.py file")
