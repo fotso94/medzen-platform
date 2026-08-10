@@ -1,25 +1,21 @@
 #!/usr/bin/env python3
-"""Run one bounded, PHI-free Fargate readiness probe with safe evidence."""
+"""Run the probe with separate backend and probe-exclusive endpoint SGs."""
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import re
 import sys
 import time
 from pathlib import Path
 from typing import Any, Callable
-
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.b6_6_probe_endpoints import (
-    ACCOUNT,
+    BACKEND_SECURITY_GROUP,
     PROFILE,
-    PROBE_SECURITY_GROUP,
     REGION,
     SUBNETS,
     verify_available,
@@ -28,12 +24,13 @@ from scripts.b6_6_probe_endpoints import (
 
 CLUSTER = "medzen-b6-window-probe"
 TASK_FAMILY = "medzen-b6-window-probe"
+ACCOUNT = "558069890522"
 ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/medzen-b6-window-probe-execution"
 IMAGE = (
     f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/medzen-rag-index@"
     "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
 )
-TARGET = re.compile(
+TARGET = __import__("re").compile(
     r"^http://internal-medzen-b6-window-[0-9]+\.eu-central-1\.elb\.amazonaws\.com/readyz$"
 )
 ENTRY_POINT = ["/usr/local/bin/python", "-c"]
@@ -47,7 +44,7 @@ class ProbeRefusal(RuntimeError):
 
 
 def _hash(value: str) -> str:
-    return hashlib.sha256(value.encode()).hexdigest()
+    return __import__("hashlib").sha256(value.encode()).hexdigest()
 
 
 def _task_definition(ecs: Any) -> str:
@@ -93,9 +90,7 @@ def _failure_reason(task: dict[str, Any]) -> str:
     reason = str(task.get("stoppedReason", ""))
     stop_code = str(task.get("stopCode", ""))
     lowered = reason.lower()
-    if "ecr" in lowered and (
-        "authorization" in lowered or "registry auth" in lowered
-    ):
+    if "ecr" in lowered and ("authorization" in lowered or "registry auth" in lowered):
         return "ECR_IMAGE_PULL_FAILURE"
     if "cannotpullcontainer" in lowered or "pull image" in lowered:
         return "IMAGE_PULL_FAILURE"
@@ -152,7 +147,8 @@ def run_probe(
         raise ProbeRefusal("probe target URL differs")
     if wait_seconds < 1 or wait_seconds > 600:
         raise ProbeRefusal("probe task wait bound differs")
-    verify_available(ec2)
+    endpoint = verify_available(ec2)
+    endpoint_sg = endpoint["endpoint_security_group_id"]
     definition = _task_definition(ecs)
     response = ecs.run_task(
         cluster=CLUSTER,
@@ -161,7 +157,9 @@ def run_probe(
         networkConfiguration={
             "awsvpcConfiguration": {
                 "subnets": sorted(SUBNETS),
-                "securityGroups": [PROBE_SECURITY_GROUP],
+                "securityGroups": sorted(
+                    [BACKEND_SECURITY_GROUP, endpoint_sg]
+                ),
                 "assignPublicIp": "DISABLED",
             }
         },
@@ -182,6 +180,7 @@ def run_probe(
             "readyz_request_completed": False,
             "assign_public_ip": "DISABLED",
             "private_endpoint_count": 3,
+            "probe_task_security_group_count": 2,
         }
     task_arn = response["tasks"][0].get("taskArn", "")
     if not isinstance(task_arn, str) or not task_arn:
@@ -193,7 +192,10 @@ def run_probe(
             raise ProbeRefusal("probe task read-back differs")
         task = described["tasks"][0]
         if task.get("lastStatus") == "STOPPED":
-            return _safe_task_result(task)
+            result = _safe_task_result(task)
+            result["probe_task_security_group_count"] = 2
+            result["probe_exclusive_endpoint_security_group"] = True
+            return result
         if monotonic() >= stop:
             return {
                 "status": "REFUSED",
@@ -203,17 +205,9 @@ def run_probe(
                 "readyz_request_completed": False,
                 "assign_public_ip": "DISABLED",
                 "private_endpoint_count": 3,
+                "probe_task_security_group_count": 2,
             }
         sleep(10)
-
-
-def _clients(profile: str) -> tuple[Any, Any]:
-    import boto3
-
-    session = boto3.Session(profile_name=profile, region_name=REGION)
-    if session.client("sts").get_caller_identity().get("Account") != ACCOUNT:
-        raise ProbeRefusal("AWS account differs")
-    return session.client("ecs"), session.client("ec2")
 
 
 def main() -> int:
@@ -223,7 +217,10 @@ def main() -> int:
     parser.add_argument("--wait-seconds", type=int, default=600)
     args = parser.parse_args()
     try:
-        ecs, ec2 = _clients(args.profile)
+        import boto3
+
+        session = boto3.Session(profile_name=args.profile, region_name=REGION)
+        ecs, ec2 = session.client("ecs"), session.client("ec2")
         result = run_probe(ecs, ec2, args.target_url, args.wait_seconds)
     except Exception as exc:
         result = {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Independently invocable cleanup for B6-AWS-CHANGE-PACKET-2026-016.
+# Canonical persistent-secret cleanup for B6-AWS-CHANGE-PACKET-2026-019.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -7,8 +7,8 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 cd "$repo_root"
 export PYTHONPATH="$repo_root${PYTHONPATH:+:$PYTHONPATH}"
 
-if [[ $# -ne 5 ]]; then
-  echo "usage: $0 KUBECONFIG AUTHORIZATION PACKET_SHA256 RECEIPTS_DIR TOKEN_FILE" >&2
+if [[ $# -ne 7 ]]; then
+  echo "usage: $0 KUBECONFIG AUTHORIZATION PACKET_SHA256 RECEIPTS_DIR TOKEN_FILE ATTEMPT PAYLOAD_PATH" >&2
   exit 2
 fi
 kubeconfig="$1"
@@ -16,25 +16,13 @@ authorization="$2"
 packet_sha256="$3"
 receipts_dir="$4"
 token_file="$5"
-
-cleanup_step="bindings"
-cleanup_receipt_stage="cleanup"
-[[ -e "$receipts_dir/cleanup.json" ]] && cleanup_receipt_stage="cleanup_recovery"
-
-record_incomplete_cleanup() {
-  original_status=$?
-  trap - EXIT
-  if [[ $original_status -ne 0 && ! -e "$receipts_dir/${cleanup_receipt_stage}.json" ]]; then
-    payload="$(jq -nc --arg step "$cleanup_step" '{automatic_cleanup_complete:false,cleanup_step:$step,reason_code:"CLEANUP_STEP_REFUSED"}')"
-    .venv/bin/python scripts/b6_6_receipt.py "$cleanup_receipt_stage" INCOMPLETE --receipts-dir "$receipts_dir" --payload "$payload" >/dev/null || true
-  fi
-  exit "$original_status"
-}
-trap record_incomplete_cleanup EXIT
+attempt="$6"
+payload_path="$7"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
+[[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: attempt must be 1 or 2" >&2; exit 2; }
 
 .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
 import sys
@@ -78,8 +66,8 @@ kubectl --kubeconfig "$kubeconfig" delete \
 
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
-cleanup_step="terraform_window_and_secret"
-cleanup_plan="/private/tmp/b6-016-cleanup-$PPID.tfplan"
+cleanup_step="terraform_window"
+cleanup_plan="/private/tmp/b6-019-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
@@ -93,16 +81,12 @@ targets=(
   -target=aws_iam_role_policy.b6_probe_execution
   -target=aws_ecs_cluster.b6_probe
   -target=aws_ecs_task_definition.b6_probe
-  -target=aws_secretsmanager_secret.b6_client_keys
-  -target=aws_secretsmanager_secret_policy.b6_client_keys
-  -target=aws_iam_role_policy.b6_client_keys_kms
 )
 scripts/terraform_medzen.sh plan -input=false -out="$cleanup_plan" \
   -var=account_id=558069890522 \
   -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
   -var=enable_b6_load_balancer_controller=false \
-  -var=enable_b6_integration_window=false \
-  -var=enable_b6_client_keys=false "${targets[@]}"
+  -var=enable_b6_integration_window=false "${targets[@]}"
 
 change_count="$(terraform -chdir=infra show -json "$cleanup_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
 if [[ "$change_count" != "0" ]]; then
@@ -126,7 +110,7 @@ aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name gpu 
 aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name cpu --region eu-central-1 --profile medzen
 .venv/bin/python scripts/b6_6_deadline.py disarm --wait-seconds 1800
 
-cleanup_step="local_token_removal"
+cleanup_step="local_token_removal_persistent_secret_retention"
 if [[ -e "$token_file" ]]; then
   /bin/rm -f -- "$token_file"
 fi
@@ -139,5 +123,24 @@ cleanup_step="zero_state_proof"
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'Parameters[?Name==`/medzen/registry/serving/current`]' --output json | jq 'length')" == "0" ]]
 [[ ! -e "$token_file" ]]
 
-cleanup_step="receipt_persistence"
-.venv/bin/python scripts/b6_6_receipt.py "$cleanup_receipt_stage" PASS --receipts-dir "$receipts_dir" --payload '{"alb_count":0,"approved_asr_changes":0,"cpu_asg_instances":0,"cpu_desired":0,"deadline_actions":0,"deployments":0,"endpoint_security_groups":0,"gpu_asg_instances":0,"gpu_desired":0,"ingresses":0,"local_token_removed":true,"probe_vpc_endpoints":0,"production_ssm_pointer_changes":0,"synthetic_secret":"SCHEDULED_RECOVERABLE_DELETION","window_terraform_resources":0}'
+# R1: the exact synthetic secret and its permanent deny policy survive every
+# window. The operator must still be unable to retrieve plaintext.
+secret="$(aws secretsmanager describe-secret --secret-id arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE --region eu-central-1 --profile medzen --output json)"
+[[ "$(jq -r '.Name' <<<"$secret")" == "medzen/client-api-keys" ]]
+[[ "$(jq -r '.KmsKeyId' <<<"$secret")" == "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57" ]]
+.venv/bin/python - <<'PY'
+import boto3
+from botocore.exceptions import ClientError
+
+client = boto3.Session(profile_name="medzen", region_name="eu-central-1").client("secretsmanager")
+try:
+    client.get_secret_value(SecretId="arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE")
+except ClientError as exc:
+    if exc.response.get("Error", {}).get("Code") != "AccessDeniedException":
+        raise
+else:
+    raise RuntimeError("operator unexpectedly read persistent secret")
+PY
+
+cleanup_step="payload"
+jq -nc '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"

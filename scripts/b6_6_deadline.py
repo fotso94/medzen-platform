@@ -14,10 +14,10 @@ ACCOUNT = "558069890522"
 REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
-# Packets 2026-008, 2026-010 and 2026-013 consumed a conservatively bounded
-# cumulative 4,819 seconds before their zero-state proofs. The successor may
-# use only the remaining 9,581 seconds of the original 14,400-second allowance.
-WINDOW_SECONDS = 9581
+# Each approved attempt receives one independent 4,500-second deadline. Packet
+# 2026-019 requests two such attempts; unused time from one attempt is never
+# allowed to lengthen the other.
+WINDOW_SECONDS = 4500
 GROUPS = {
     "cpu": {
         "asg": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772",
