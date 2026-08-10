@@ -117,10 +117,14 @@ def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
     if not task_arn:
         raise ProbeRefusal("PROBE_TASK_ARN_ABSENT")
     exit_code = container.get("exitCode")
+    container_status = container.get("lastStatus")
+    application_started = container_status == "RUNNING" or (
+        container_status == "STOPPED" and isinstance(exit_code, int)
+    )
     if (
         exit_code == 0
         and task.get("lastStatus") == "STOPPED"
-        and bool(container.get("runtimeId"))
+        and container_status == "STOPPED"
     ):
         return {
             "status": "PASS",
@@ -138,7 +142,7 @@ def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
         "task_arn_sha256": _hash(task_arn),
         "task_stop_code": str(task.get("stopCode", "ABSENT")),
         "container_exit_code_present": isinstance(exit_code, int),
-        "application_started": bool(container.get("runtimeId")),
+        "application_started": application_started,
         "readyz_request_completed": False,
         "assign_public_ip": "DISABLED",
         "private_endpoint_count": 3,

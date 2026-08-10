@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run packet-2026-022 Stage A isolated Fargate qualification."""
+"""Run packet-2026-023 Stage A isolated Fargate qualification."""
 from __future__ import annotations
 
 import argparse
@@ -35,9 +35,9 @@ OPERATION_SECONDS = 1200
 CLEANUP_SECONDS = 600
 MAXIMUM_COST_USD = 0.50
 STABLE_PROBE_PASSES = 3
-RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-022-STAGE-A-LIVE"
-PLAN = Path("/private/tmp/b6-022-stage-a.tfplan")
-CLEANUP_PLAN = Path("/private/tmp/b6-022-stage-a-cleanup.tfplan")
+RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-023-STAGE-A-LIVE"
+PLAN = Path("/private/tmp/b6-023-stage-a.tfplan")
+CLEANUP_PLAN = Path("/private/tmp/b6-023-stage-a-cleanup.tfplan")
 TARGETS = tuple(f"-target={address.removesuffix('[0]')}" for address in sorted(QUALIFICATION_ADDRESSES))
 REASONS = {
     "stage_a_preflight": "STAGE_A_PREFLIGHT_REFUSED",
@@ -213,7 +213,7 @@ class RealStageAOperations:
         )
         self.terraform_applied = True
         return {
-            "adds": 9,
+            "adds": 11,
             "changes": 0,
             "destroys": 0,
             "resource_names": names,
@@ -230,6 +230,10 @@ class RealStageAOperations:
             "gateway_endpoint_count": value["gateway_endpoint_count"],
             "endpoint_ingress_source_mode": value["endpoint_ingress_source_mode"],
             "private_dns_interface_endpoints": value["private_dns_interface_endpoints"],
+            "endpoint_egress_rule_count": value["endpoint_egress_rule_count"],
+            "ecr_egress_destination": value["ecr_egress_destination"],
+            "s3_egress_prefix_list_id": value["s3_egress_prefix_list_id"],
+            "dns_security_group_filtering": value["dns_security_group_filtering"],
         }
 
     def _probe(self, ordinal: int) -> dict[str, Any]:

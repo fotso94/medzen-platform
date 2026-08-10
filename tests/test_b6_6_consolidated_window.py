@@ -227,7 +227,7 @@ def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
     assert "terraform_plan_receipt" in operations
     assert "resource_names" in operations
     assert ".adds == 1 and .changes == 0 and .destroys == 0" in operations
-    assert ".adds == 11 and .changes == 0 and .destroys == 0" in operations
+    assert ".adds == 13 and .changes == 0 and .destroys == 0" in operations
     assert "jq -e --argjson expected" in operations
     for address in (
         "helm_release.b6_load_balancer_controller[0]",
@@ -242,6 +242,8 @@ def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
         "aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]",
         "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
         "aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]",
+        "aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]",
+        "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]",
     ):
         assert address in operations
 

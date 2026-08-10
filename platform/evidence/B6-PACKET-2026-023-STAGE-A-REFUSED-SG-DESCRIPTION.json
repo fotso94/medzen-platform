@@ -1,0 +1,139 @@
+{
+  "id": "B6-PACKET-2026-023-STAGE-A-REFUSED-SG-DESCRIPTION",
+  "recorded_at_utc": "2026-08-10T20:32:05Z",
+  "status": "REFUSED_WITH_AUTOMATIC_ZERO_STATE_CLEANUP",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-023",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-023-probe-egress.md",
+    "sha256": "503ca67317d2d668a56ad76e08377e5acbd953f7c1c83cef72364d55561b8775",
+    "reviewed_commit": "b33358d6d814a02c3880f448d9153c4cd72cbb18"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-023",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-023-stage-a-and-window.json",
+    "sha256": "efdd93eeb83ae51d29d61b444035b691974be2d62aa047b361376a6d33c9741d"
+  },
+  "stage_a": {
+    "outcome": "REFUSED",
+    "preflight_passed_at_utc": "2026-08-10T20:27:04Z",
+    "terraform_refused_at_utc": "2026-08-10T20:28:18Z",
+    "cleanup_completed_at_utc": "2026-08-10T20:30:43Z",
+    "aggregate_recorded_at_utc": "2026-08-10T20:30:44Z",
+    "wall_clock_seconds_from_preflight_receipt_through_cleanup": 220,
+    "pass_stages": [
+      "stage_a_preflight"
+    ],
+    "refused_stage": "stage_a_terraform",
+    "not_started_stages": [
+      "stage_a_endpoints",
+      "stage_a_probe_1",
+      "stage_a_probe_2",
+      "stage_a_probe_3"
+    ],
+    "stable_probe_passes": 0,
+    "required_consecutive_probe_passes": 3,
+    "window_attempts_unlocked": false,
+    "eks_worker_mutations": 0,
+    "gpu_window_opened": false,
+    "full_window_started": false,
+    "production_traffic": 0,
+    "phi_used": false
+  },
+  "terraform_stage": {
+    "plan_guard_status": "PASS",
+    "planned_adds": 11,
+    "planned_changes": 0,
+    "planned_destroys": 0,
+    "apply_status": "REFUSED",
+    "receipt_reason_code": "STAGE_A_TERRAFORM_REFUSED",
+    "receipt_exception_class": "CalledProcessError",
+    "resources_created_before_refusal": 10,
+    "resources_not_created": [
+      "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]"
+    ]
+  },
+  "root_cause": {
+    "classification": "EC2_SECURITY_GROUP_RULE_DESCRIPTION_CONTAINS_DISALLOWED_APOSTROPHE",
+    "status": "CONFIRMED_BY_CLOUDTRAIL",
+    "resource": "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]",
+    "event_time_utc": "2026-08-10T20:27:25Z",
+    "event_name": "AuthorizeSecurityGroupEgress",
+    "event_source": "ec2.amazonaws.com",
+    "request_id": "8598f9d9-adf1-433a-ae77-bcf707ab473a",
+    "error_code": "Client.InvalidParameterValue",
+    "submitted_description": "TLS from the isolated probe to ECR's S3 layer endpoint",
+    "submitted_prefix_list_id": "pl-6ea54007",
+    "explanation": "The apostrophe in ECR's is outside the EC2 security-group rule description character set. The ECR self-reference rule was accepted; AWS refused the S3 prefix-list rule description before Stage A could reach endpoint readiness or launch a task.",
+    "network_design_validity": "NOT_EVALUATED_AT_RUNTIME_BECAUSE_THE_RULE_WAS_NOT_CREATED",
+    "correction_boundary": "A prospective successor may replace the description with an EC2-valid string while preserving both exact TCP 443 destinations, all guards, the task-ENI lint and the three-consecutive-pass gate. It requires a new versioned packet, fresh cold rehearsal, independent review and owner approval."
+  },
+  "receipt_chain": {
+    "stage_a_preflight": "f1d569b7ba9911c6478191bb559546fad91f110ea10dd97816ed358b60fd9d2e",
+    "stage_a_terraform": "7791c0c1cc964e9e7d1d4a1e12a36bd8e79bb7da073dcc6528a71f237c4a056b",
+    "stage_a_cleanup": "1b086b750332580b376fa4b18eabbb265cfac31224dd6766889026a833f17c85",
+    "stage_a": "eb91429d52ad06a542cd42cdc499cc794e8c53de54d151d56d3b0ce17e75d55c"
+  },
+  "automatic_cleanup": {
+    "status": "PASS",
+    "resource_names_removed": 10,
+    "window_terraform_resources": 0,
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_iam_roles": 0,
+    "active_probe_ecs_clusters": 0,
+    "active_probe_task_definitions": 0,
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "eks_worker_mutations": 0
+  },
+  "independent_zero_state_readback": {
+    "aws_account": "558069890522",
+    "identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "recorded_at_utc": "2026-08-10T20:32:05Z",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "min": 0,
+      "max": 4,
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "min": 0,
+      "max": 1,
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_iam_roles": 0,
+    "active_probe_task_definitions": 0,
+    "probe_ecs_cluster_status": "INACTIVE",
+    "running_probe_tasks": 0,
+    "pending_probe_tasks": 0,
+    "terraform_managed_probe_or_window_resources": 0
+  },
+  "allowance": {
+    "stage_a_runs_consumed": 1,
+    "stage_a_runs_remaining_under_packet": 0,
+    "stage_a_maximum_cost_usd": 0.5,
+    "stage_a_actual_billing": "PENDING_AWS_COST_EXPLORER_LAG",
+    "full_window_attempts_started": 0,
+    "full_window_worker_seconds_consumed": 0,
+    "approved_attempt_slots_not_used": 2,
+    "approved_attempt_slots_unlocked": 0,
+    "existing_reservation_usd": 10.0,
+    "automatic_transfer_or_retry_permitted": false
+  },
+  "disposition": {
+    "packet_2026_023_terminal": true,
+    "b6_6_complete": false,
+    "full_window_attempts_executed": 0,
+    "automatic_retry": false,
+    "next_step": "Prepare a narrowly corrected versioned successor with an EC2-valid S3 egress rule description; preserve both egress paths and every carried gate, generate a fresh cold rehearsal, and obtain independent review and owner approval before another Stage A run."
+  }
+}
