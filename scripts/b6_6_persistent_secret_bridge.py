@@ -23,6 +23,14 @@ from scripts.b6_6_bindings import validate as validate_bindings
 from scripts.b6_6_credential import ACCOUNT, KMS_KEY, PROFILE, REGION, SECRET_ARN, SECRET_NAME
 
 
+ORCHESTRATOR_ROLE_NAME = "medzen-orch-role"
+ORCHESTRATOR_ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/{ORCHESTRATOR_ROLE_NAME}"
+REGISTRY_PUBLISHER_USER_NAME = "s.fotso"
+REGISTRY_PUBLISHER_USER_ARN = (
+    f"arn:aws:iam::{ACCOUNT}:user/{REGISTRY_PUBLISHER_USER_NAME}"
+)
+
+
 class BridgeRefusal(RuntimeError):
     pass
 
@@ -45,8 +53,20 @@ def _operator_denied(client: Any) -> bool:
     return False
 
 
+def _verify_referenced_principals(session: Any) -> tuple[str, ...]:
+    """Resolve every exact IAM principal before any bridge mutation."""
+    iam = session.client("iam")
+    role = iam.get_role(RoleName=ORCHESTRATOR_ROLE_NAME).get("Role", {})
+    user = iam.get_user(UserName=REGISTRY_PUBLISHER_USER_NAME).get("User", {})
+    if role.get("Arn") != ORCHESTRATOR_ROLE_ARN:
+        raise BridgeRefusal("orchestrator role principal does not resolve exactly")
+    if user.get("Arn") != REGISTRY_PUBLISHER_USER_ARN:
+        raise BridgeRefusal("registry publisher principal does not resolve exactly")
+    return (ORCHESTRATOR_ROLE_ARN, REGISTRY_PUBLISHER_USER_ARN)
+
+
 def _permanent_resource_policy() -> str:
-    orchestrator = f"arn:aws:iam::{ACCOUNT}:role/medzen-orch-role"
+    orchestrator = ORCHESTRATOR_ROLE_ARN
     return json.dumps(
         {
             "Version": "2012-10-17",
@@ -88,6 +108,7 @@ def execute(
         session = boto3.Session(profile_name=PROFILE, region_name=REGION)
         if session.client("sts").get_caller_identity().get("Account") != ACCOUNT:
             raise BridgeRefusal("AWS account differs")
+        referenced_principals = _verify_referenced_principals(session)
         client = session.client("secretsmanager")
         before = client.describe_secret(SecretId=SECRET_ARN)
         identity_differs = (
@@ -162,6 +183,9 @@ def execute(
             "permanent_resource_policy": True,
             "operator_deny_installed_before_terraform": True,
             "operator_get_secret_value": "EXPLICITLY_DENIED_AS_REQUIRED",
+            "referenced_principals_verified_before_mutation": list(
+                referenced_principals
+            ),
             "compute_started": False,
             "window_resources_created": 0,
         }
