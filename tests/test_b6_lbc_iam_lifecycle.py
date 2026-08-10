@@ -10,6 +10,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PRECHANGE_COMMIT = "026e99be1dfbd8258c31df021f4664d316edd8c0"
 
 
 def sha(path: Path) -> str:
@@ -71,7 +72,7 @@ def test_create_actions_use_their_documented_parent_resources() -> None:
 
 
 def test_create_manage_and_tag_boundaries_preserve_actions_and_existing_statements() -> None:
-    before = load_policy("master")
+    before = load_policy(PRECHANGE_COMMIT)
     after = load_policy()
     before_sids = by_sid(before)
     after_sids = by_sid(after)
@@ -149,7 +150,7 @@ def _fake_plan(before: dict, after: dict) -> dict:
 
 def test_terraform_guard_accepts_only_the_one_policy_update() -> None:
     guard = load_module("b6_lbc_iam_plan", "scripts/check_b6_lbc_iam_correction_plan.py")
-    before = load_policy("master")
+    before = load_policy(PRECHANGE_COMMIT)
     after = load_policy()
     guard.validate(_fake_plan(before, after))
 
@@ -164,7 +165,7 @@ def test_terraform_guard_accepts_only_the_one_policy_update() -> None:
 
 def test_terraform_guard_refuses_unrelated_statement_or_action_change() -> None:
     guard = load_module("b6_lbc_iam_plan_changed", "scripts/check_b6_lbc_iam_correction_plan.py")
-    before = load_policy("master")
+    before = load_policy(PRECHANGE_COMMIT)
     after = load_policy()
     by_sid(after)["ReadOnlyDiscoveryInExactRegion"]["Action"].append("iam:CreateRole")
     with pytest.raises(ValueError):

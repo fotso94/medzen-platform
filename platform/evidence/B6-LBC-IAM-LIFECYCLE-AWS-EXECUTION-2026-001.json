@@ -1,0 +1,172 @@
+{
+  "record": "B6_ALB_CONTROLLER_FULL_LIFECYCLE_IAM_CORRECTION_AWS_EXECUTION",
+  "id": "B6-LBC-IAM-LIFECYCLE-AWS-EXECUTION-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_COMPLETE",
+  "outcome": "PASS_IAM_ONLY",
+  "recorded_utc": "2026-08-10T00:48:22Z",
+  "authorization": {
+    "path": "platform/decisions/B6-AWS-AUTH-2026-011-lbc-iam-lifecycle-correction.json",
+    "sha256": "bd76dc3d6d14c65950fbe245777151f6d7e5275728cd72e1bc5eece4aa422083",
+    "status": "owner-approved"
+  },
+  "packet": {
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-011-lbc-iam-lifecycle-correction.md",
+    "sha256": "9df81fb37f8bfd47dc0b7daa426ec19020e72ed6623853dab783ea38aaabac73"
+  },
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "pull_request": "https://github.com/fotso94/medzen-platform/pull/19",
+    "reviewed_repository_commit": "d8b2405aa29e7e02bcd7d1d156a97b48f2659145",
+    "reviewed_packet_sha256": "9df81fb37f8bfd47dc0b7daa426ec19020e72ed6623853dab783ea38aaabac73",
+    "findings_requiring_change": 0
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6-lbc-iam-execution",
+    "git_commit": "8edb5b8",
+    "authorization_base_commit": "b96bf7707bd9bc8de71d4cf4f1fcbd496d37b25f",
+    "commit_count": 274,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "worktree_clean_before_plan": true,
+    "pull_request_19_merged": true
+  },
+  "preflight": {
+    "aws_account": "558069890522",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1",
+    "source_bindings_verified": 9,
+    "live_policy_canonical_sha256": "f1cd1b2134a5431d38bfdef223eb10dfe52041ceadc2bbbbd441047f97ae97fe",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "asg_instances": 0,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "asg_instances": 0,
+      "health_issues": 0
+    },
+    "kubernetes_nodes": 0,
+    "medzen_pods": 0,
+    "ingresses": 0,
+    "controller_deployment": "ABSENT",
+    "dra_daemonset": "ABSENT",
+    "medzen_b6_load_balancers": 0,
+    "scheduled_shutdown_actions": 0,
+    "local_synthetic_token": "ABSENT",
+    "synthetic_secret": {
+      "state": "PENDING_RECOVERABLE_DELETION_UNCHANGED",
+      "deleted_utc": "2026-08-09T22:06:53.769Z",
+      "recovery_deadline_utc": "2026-08-16T22:06:53Z"
+    },
+    "unrelated_capacity_note": "The unrelated avatar-chatbot ECS autoscaling group is outside the MedZen EKS tag boundary and was not inspected as MedZen capacity or modified."
+  },
+  "terraform": {
+    "state_lineage": "cc991efe-2154-ac03-fe73-48392ec7a9a3",
+    "state_serial_after": 28,
+    "fresh_plan": {
+      "path_not_retained": "/private/tmp/b6-lbc-iam-2026-011-approved.tfplan",
+      "sha256": "d5bb91210fb4ecb750263afbca3e3de16fc7be97415a0aeb68c2e19ad424be07",
+      "adds": 0,
+      "updates": 1,
+      "destroys": 0,
+      "only_address": "aws_iam_role_policy.b6_load_balancer_controller",
+      "guard": "PASS_B6_LBC_IAM_CORRECTION changes=1 add=0 update=1 destroy=0"
+    },
+    "apply": {
+      "result": "PASS",
+      "adds": 0,
+      "updates": 1,
+      "destroys": 0
+    },
+    "targeted_residual_plan": "NO_CHANGES"
+  },
+  "cloudtrail_confirmation": {
+    "event_name": "PutRolePolicy",
+    "event_id": "66fbac69-c53c-4b3e-ac3e-9c8a75acbbea",
+    "event_utc": "2026-08-10T00:45:15Z",
+    "request_id": "487ab8e0-7c99-464a-8290-8cc166326dc4",
+    "role": "medzen-lbc-role",
+    "policy": "medzen-lbc-access",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "live_policy_after": {
+    "canonical_sha256": "38db52d2a17acf608da3f8236b5b41baaad09e6d6e67e53ffc09e3c188309529",
+    "statement_count": 13,
+    "unique_action_count": 41,
+    "deny_statement_count": 0,
+    "existing_tag_statement_unchanged": true
+  },
+  "live_postapply_simulation": {
+    "api": "SimulatePrincipalPolicy",
+    "mode": "live-postapply",
+    "scenario_count": 44,
+    "required_positive_allowed": 21,
+    "negative_boundary_implicit_denies": 19,
+    "listener_rule_tag_mutation_observation_implicit_denies": 4,
+    "explicit_denies": 0,
+    "mismatches": 0,
+    "creation_time_tagging": {
+      "CreateListener": "allowed",
+      "CreateRule": "allowed"
+    },
+    "parent_resource_creation": {
+      "CreateListener_on_load_balancer_parent": "allowed",
+      "CreateRule_on_listener_parent": "allowed"
+    },
+    "cleanup_path": {
+      "DeleteListener": "allowed",
+      "DeleteRule": "allowed",
+      "DeleteTargetGroup": "allowed",
+      "DeleteLoadBalancer": "allowed"
+    },
+    "tag_mutation_interpretation": "The exact listener/rule AddTags and RemoveTags pairs retain the reviewed IAM Simulator service-model limitation. They are observations, not PASS claims. A later bounded window must receipt exact post-create tag-mutation denials as non-fatal warnings only after functional ALB proofs pass."
+  },
+  "zero_state_after": {
+    "verified": true,
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "kubernetes_nodes": 0,
+    "medzen_pods": 0,
+    "ingresses": 0,
+    "controller_deployment": "ABSENT",
+    "dra_daemonset": "ABSENT",
+    "medzen_b6_load_balancers": 0,
+    "scheduled_shutdown_actions": 0,
+    "local_synthetic_token": "ABSENT",
+    "synthetic_secret": "PENDING_RECOVERABLE_DELETION_UNCHANGED"
+  },
+  "cost": {
+    "incremental_expected_usd": 0.0,
+    "new_reservation_usd": 0.0,
+    "existing_b6_window_reservation_consumed": false,
+    "standing_resources_created": 0
+  },
+  "explicit_non_events": {
+    "workers_started": 0,
+    "helm_installs": 0,
+    "kubernetes_mutations": 0,
+    "load_balancers_created": 0,
+    "secret_changes": 0,
+    "ssm_changes": 0,
+    "ecr_changes": 0,
+    "approved_artifact_changes": 0,
+    "production_ssm_changes": 0,
+    "provider_calls": 0,
+    "security_waivers": 0
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "b5_promotion_status": "BLOCKED_UNCHANGED"
+  },
+  "next_boundary": "Packet 2026-011 is complete. A separate owner-approved packet must restore and rotate the synthetic secret/token. Only after its immutable evidence exists may a new bounded integration-window packet be finalized and approved."
+}

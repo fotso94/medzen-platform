@@ -1,0 +1,79 @@
+{
+  "record": "B6_LBC_POST_CREATE_TAG_MUTATION_RUNTIME_RULE",
+  "id": "B6-LBC-TAG-MUTATION-RUNTIME-RULE-2026-001",
+  "revision": 1,
+  "status": "OWNER_DIRECTED_BINDING_FOR_SUCCESSOR_WINDOW",
+  "recorded_utc": "2026-08-10T01:10:00Z",
+  "purpose": "Make the independently reviewed IAM Simulator limitation explicit in the next bounded integration window without weakening ALB creation, function or cleanup gates.",
+  "source": {
+    "owner_directive": "A post-create listener or listener-rule tag-mutation denial is receipted as a non-fatal warning because the ALB works without post-create tag edits.",
+    "packet_2026_011_execution_evidence": "platform/evidence/B6-LBC-IAM-LIFECYCLE-AWS-EXECUTION-2026-001.json",
+    "packet_2026_011_execution_evidence_sha256": "da38f29ec5cd218620e2c649a19500b24db04b7ecd0b55a873b61bb1fce09236"
+  },
+  "exact_warning_allowlist": {
+    "error_codes": [
+      "AccessDenied",
+      "AccessDeniedException"
+    ],
+    "pairs": [
+      {
+        "operation": "elasticloadbalancing:AddTags",
+        "resource_type": "listener"
+      },
+      {
+        "operation": "elasticloadbalancing:RemoveTags",
+        "resource_type": "listener"
+      },
+      {
+        "operation": "elasticloadbalancing:AddTags",
+        "resource_type": "listener-rule"
+      },
+      {
+        "operation": "elasticloadbalancing:RemoveTags",
+        "resource_type": "listener-rule"
+      }
+    ],
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "load_balancer_name": "medzen-b6-window",
+    "timing": "POST_CREATE_ONLY"
+  },
+  "prerequisites_before_non_fatal_classification": [
+    "creation-time listener and rule tagging completed or the resources were created with the required exact tags",
+    "the exact B6 internal ALB exists with its reviewed security group",
+    "listener port 80 exists",
+    "the target is healthy",
+    "the isolated Fargate readyz probe returns success"
+  ],
+  "receipt": {
+    "required": true,
+    "stage": "alb_tag_mutation_warning",
+    "status": "WARNING_NON_FATAL",
+    "fields": [
+      "operation",
+      "error_code",
+      "resource_arn",
+      "resource_type",
+      "observed_utc",
+      "functional_alb_proof_receipt_sha256"
+    ],
+    "raw_log_may_contain_phi": false
+  },
+  "always_fatal": [
+    "CreateLoadBalancer, CreateListener or CreateRule denial",
+    "creation-time tag denial",
+    "a denial for any action outside the four exact pairs",
+    "a denial for another account, region, load-balancer name or resource type",
+    "missing or malformed operation, error code, resource ARN or timestamp",
+    "missing exact internal ALB, listener, healthy target or isolated readyz proof",
+    "cleanup DeleteRule, DeleteListener, DeleteTargetGroup or DeleteLoadBalancer denial",
+    "unknown error or ambiguous classification"
+  ],
+  "scope": {
+    "iam_change_authorized": false,
+    "aws_execution_authorized": false,
+    "worker_scale_authorized": false,
+    "window_retry_authorized": false,
+    "must_be_hash_bound_by_successor_window_packet": true
+  }
+}
