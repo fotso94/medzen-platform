@@ -1,0 +1,196 @@
+{
+  "id": "B6-PACKET-2026-024-STAGE-A-REFUSED-ENDPOINT-VERIFIER-SHAPE",
+  "recorded_at_utc": "2026-08-10T21:04:40Z",
+  "status": "REFUSED_WITH_AUTOMATIC_ZERO_STATE_CLEANUP",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-024",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-024-description-charset.md",
+    "sha256": "2b9b17452e14bf4566b7d48f8578dcbad84ec8786d4ad149761b5d5cb49c4144",
+    "reviewed_commit": "2af5c7fad48f7750228b585bdc1d5e889577167f"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-024",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-024-stage-a-and-window.json",
+    "sha256": "5dbc93a016a975dcc35a732b1e1a341361ff18707d3655632332486501b7c6d8",
+    "authorization_commit": "814e17e81560e875c802f716d3cb16bd75210493"
+  },
+  "stage_a": {
+    "outcome": "REFUSED",
+    "preflight_passed_at_utc": "2026-08-10T20:57:19Z",
+    "terraform_passed_at_utc": "2026-08-10T20:58:33Z",
+    "endpoint_stage_refused_at_utc": "2026-08-10T20:58:34Z",
+    "cleanup_completed_at_utc": "2026-08-10T21:01:08Z",
+    "wall_clock_seconds_from_preflight_receipt_through_cleanup": 229,
+    "pass_stages": [
+      "stage_a_preflight",
+      "stage_a_terraform"
+    ],
+    "refused_stage": "stage_a_endpoints",
+    "not_started_stages": [
+      "stage_a_probe_1",
+      "stage_a_probe_2",
+      "stage_a_probe_3"
+    ],
+    "stable_probe_passes": 0,
+    "required_consecutive_probe_passes": 3,
+    "window_attempts_unlocked": false,
+    "eks_worker_mutations": 0,
+    "gpu_window_opened": false,
+    "full_window_started": false,
+    "production_traffic": 0,
+    "phi_used": false
+  },
+  "terraform_stage": {
+    "status": "PASS",
+    "adds": 11,
+    "changes": 0,
+    "destroys": 0,
+    "eks_resources": 0,
+    "alb_resources": 0,
+    "service_resources": 0,
+    "resource_names": [
+      "aws_ecs_cluster.b6_probe[0]",
+      "aws_ecs_task_definition.b6_probe[0]",
+      "aws_iam_role.b6_probe_execution[0]",
+      "aws_iam_role_policy.b6_probe_execution[0]",
+      "aws_security_group.b6_probe_endpoints[0]",
+      "aws_vpc_endpoint.b6_probe_ecr_api[0]",
+      "aws_vpc_endpoint.b6_probe_ecr_dkr[0]",
+      "aws_vpc_endpoint.b6_probe_s3[0]",
+      "aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]",
+      "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]",
+      "aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]"
+    ]
+  },
+  "endpoint_refusal": {
+    "receipt_status": "REFUSED",
+    "receipt_reason_code": "STAGE_A_ENDPOINTS_REFUSED",
+    "receipt_exception_class": "EndpointRefusal",
+    "exact_exception_message_persisted": false,
+    "diagnostic_limit": "The endpoint receipt retained only the generic exception class and packet-level reason code. The exact pre-model verifier message was not persisted before cleanup removed the temporary resources.",
+    "endpoint_creation_api_errors": 0,
+    "probe_tasks_launched": 0
+  },
+  "root_cause_analysis": {
+    "classification": "DESCRIBE_SECURITY_GROUPS_PERMISSION_GROUPING_MISMATCH",
+    "confidence": "HIGH_EVIDENCE_SUPPORTED_NOT_DIRECTLY_RECORDED",
+    "finding": "The runtime verifier requires exactly two IpPermissionsEgress objects, one for the self-referenced ECR path and one for the S3 prefix-list path. EC2 DescribeSecurityGroups can combine individual rules that share protocol and port into one permission object containing multiple destination collections.",
+    "exact_stage_a_cloudtrail_evidence": {
+      "security_group_id": "sg-0466488fb899104b3",
+      "ecr_rule": {
+        "event_name": "AuthorizeSecurityGroupEgress",
+        "event_time_utc": "2026-08-10T20:57:37Z",
+        "security_group_rule_id": "sgr-06ee76fbbfb3dc5a3",
+        "protocol": "tcp",
+        "from_port": 443,
+        "to_port": 443,
+        "destination_type": "SELF_REFERENCED_SECURITY_GROUP",
+        "destination": "sg-0466488fb899104b3",
+        "api_error": null
+      },
+      "s3_rule": {
+        "event_name": "AuthorizeSecurityGroupEgress",
+        "event_time_utc": "2026-08-10T20:57:41Z",
+        "security_group_rule_id": "sgr-0cb840cb4cbacaf18",
+        "protocol": "tcp",
+        "from_port": 443,
+        "to_port": 443,
+        "destination_type": "S3_PREFIX_LIST",
+        "destination": "pl-6ea54007",
+        "api_error": null
+      },
+      "rules_existed_as_distinct_rule_ids": true,
+      "rules_revoked_by_cleanup": true
+    },
+    "live_read_only_api_shape_reproduction": {
+      "status": "REPRODUCED_ON_AN_EXISTING_UNRELATED_SECURITY_GROUP",
+      "security_group_id": "sg-0180e692cc099834d",
+      "individual_security_group_rules": 2,
+      "shared_transport_tuple": true,
+      "destination_types": [
+        "ipv4",
+        "security_group"
+      ],
+      "describe_security_groups_permission_objects": 1,
+      "combined_destination_collections_in_one_permission_object": true
+    },
+    "source_and_test_observation": {
+      "source": "scripts/b6_6_probe_endpoints.py",
+      "strict_shape_check": "len(IpPermissionsEgress) == 2",
+      "test": "tests/test_b6_6_stage_a.py::test_runtime_egress_verifier_requires_exact_ecr_self_and_s3_prefix_rules",
+      "fixture_models_two_permission_objects": true,
+      "collapsed_permission_shape_covered": false,
+      "r5_incidental_shape_regression": true
+    },
+    "alternative_causes": "The two required rules and all three endpoint create calls succeeded. Because the exact exception text was not persisted, the deleted live response cannot be replayed and this classification is not marked CloudTrail-confirmed at the individual verifier-branch level.",
+    "required_correction_boundary": "A prospective successor must normalize the EC2 response into individual destination rules, or use DescribeSecurityGroupRules, then require exactly one TCP-443 self-reference and exactly one TCP-443 S3 prefix-list destination without requiring incidental permission grouping. It must add a collapsed-shape regression test and persist the exact safe exception message for stages before any model or audio exists. A new versioned packet, fresh cold rehearsal, independent review and owner approval are required before another Stage A run."
+  },
+  "receipt_chain": {
+    "stage_a_preflight": "6cb41843051035b32d4ffa113c80205a1035315d56d3c747f069efaa4a228d51",
+    "stage_a_terraform": "87838149d882442217c515ea564b2367d629152540de0b9ec7010c33d09d63eb",
+    "stage_a_endpoints": "6ff2d5a05a97c63dc7b7dd5d356d15574d76ec10f468097b1020643e53a43a71",
+    "stage_a_cleanup": "babcab5413637912e3e96876a0924a34e1ad3fdb3e5f8542fe012eb09dd5b2cd",
+    "stage_a": "55afce110752734a523eb23b3bc93f5ebd68edffbca5a3f3d54b1dac32de7e46"
+  },
+  "automatic_cleanup": {
+    "status": "PASS",
+    "resource_names_removed": 11,
+    "window_terraform_resources": 0,
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_iam_roles": 0,
+    "active_probe_ecs_clusters": 0,
+    "active_probe_task_definitions": 0,
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "eks_worker_mutations": 0
+  },
+  "independent_zero_state_readback": {
+    "aws_account": "558069890522",
+    "identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "recorded_at_utc": "2026-08-10T21:04:40Z",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "min": 0,
+      "max": 4,
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "min": 0,
+      "max": 1,
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_iam_roles": 0,
+    "active_probe_task_definitions": 0,
+    "active_probe_ecs_clusters": 0,
+    "terraform_managed_probe_or_window_resources": 0
+  },
+  "allowance": {
+    "stage_a_runs_consumed": 1,
+    "stage_a_runs_remaining_under_packet": 0,
+    "stage_a_maximum_cost_usd": 0.5,
+    "stage_a_actual_billing": "PENDING_AWS_COST_EXPLORER_LAG",
+    "full_window_attempts_started": 0,
+    "full_window_worker_seconds_consumed": 0,
+    "approved_attempt_slots_not_used": 2,
+    "approved_attempt_slots_unlocked": 0,
+    "existing_reservation_usd": 10.0,
+    "automatic_transfer_or_retry_permitted": false
+  },
+  "disposition": {
+    "packet_2026_024_terminal": true,
+    "b6_6_complete": false,
+    "full_window_attempts_executed": 0,
+    "automatic_retry": false,
+    "next_step": "Obtain independent review of this refusal evidence, then prepare a narrowly corrected successor that normalizes EC2 security-group rule shapes and persists exact safe pre-model refusal details."
+  }
+}
