@@ -1,0 +1,1 @@
+{"contains_audio_transcript_reply_citations_credentials_or_phi":false,"dependencies":{"dra_ready":"b074a98dd0420c9c33afb50e73431f1613fda596120d3cb021b182aae9736e4b"},"payload":{"provider":"embedded_synthetic","ready_replicas":1,"service_type":"ClusterIP"},"recorded_utc":"2026-08-10T03:35:37Z","schema":"MEDZEN_B6_INTEGRATION_STAGE_RECEIPT_V1","stage":"rag_ready","status":"PASS"}
