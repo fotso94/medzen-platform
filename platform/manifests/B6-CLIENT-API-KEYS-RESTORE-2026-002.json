@@ -1,0 +1,108 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_RESTORATION_SUCCESSOR_REQUEST_MANIFEST",
+  "id": "B6-CLIENT-API-KEYS-RESTORE-2026-002",
+  "revision": 2,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "supersedes": {
+    "path": "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-001.json",
+    "sha256": "ba81fcaa8414b1d0335be833090dffde3653199e918fcfd32a06501b6ece10de",
+    "interpretation": "The prior manifest and packet remain immutable. This successor starts from the exact fail-closed state they produced."
+  },
+  "source_refusal": {
+    "path": "platform/evidence/B6-PACKET-2026-012-REFUSED-IMPORTED-STATE-DRIFT.json",
+    "status": "VERIFIED_REFUSED_AFTER_RESTORE_CLEANUP_REQUIRES_SUCCESSOR_PACKET"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "orchestrator_role_arn": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "secret_name": "medzen/client-api-keys",
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "starting_state": {
+    "secret": "RESTORED_EXACT_ARN",
+    "terraform_address": "aws_secretsmanager_secret.b6_client_keys[0]",
+    "terraform_state_serial": 29,
+    "resource_policy": "ABSENT",
+    "orchestrator_kms_inline_policy": "ABSENT",
+    "historical_version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "historical_version_stages": [
+      "AWSCURRENT"
+    ],
+    "local_plaintext_token": "ABSENT",
+    "cpu_desired": 0,
+    "gpu_desired": 0
+  },
+  "normalization_plan": {
+    "stage_a": {
+      "adds": 0,
+      "changes": 1,
+      "destroys": 0,
+      "only_address": "aws_secretsmanager_secret.b6_client_keys[0]",
+      "only_changed_fields": [
+        "force_overwrite_replica_secret",
+        "recovery_window_in_days",
+        "tags"
+      ],
+      "live_aws_tags_change": false,
+      "tags_all_before_after_identical": true
+    },
+    "stage_b_after_a": {
+      "adds": 2,
+      "changes": 0,
+      "destroys": 0,
+      "exact_create_addresses": [
+        "aws_iam_role_policy.b6_client_keys_kms[0]",
+        "aws_secretsmanager_secret_policy.b6_client_keys[0]"
+      ],
+      "secret_address_action": "no-op"
+    }
+  },
+  "new_key_material": {
+    "client_id": "b6-window-probe",
+    "random_bytes": 32,
+    "bearer_encoding": "base64url_without_padding",
+    "bearer_characters": 43,
+    "stored_field": "key_sha256",
+    "stored_hash_encoding": "lowercase_hex_sha256",
+    "plaintext_path": "/private/tmp/medzen-b6-6-client-token",
+    "plaintext_file_mode": "0600",
+    "plaintext_file_bytes_including_lf": 44,
+    "historical_plaintext_read_or_reused": false,
+    "receipt_contains_plaintext": false
+  },
+  "version_transition": {
+    "new_version": "AWSCURRENT",
+    "historical_version_after_verification": "NO_STAGES",
+    "remove_awsprevious": true,
+    "runtime_reads_only_awscurrent": true
+  },
+  "receipt_order": [
+    "adopt_restored",
+    "terraform_normalization",
+    "terraform_reconciliation",
+    "rotation",
+    "verification"
+  ],
+  "cleanup": {
+    "guard_accepts_exact_imported_state_with_recovery_field_null_or_7": true,
+    "plaintext_removed": true,
+    "secret_deletion": "SCHEDULE_SEVEN_DAY_RECOVERABLE_DELETION",
+    "force_delete_without_recovery": false
+  },
+  "cost": {
+    "new_reservation_usd": 0.0,
+    "maximum_incremental_usd_within_existing_b6_reservation": 0.1
+  },
+  "prohibited": [
+    "restore_secret_again",
+    "read_or_reuse_historical_plaintext",
+    "apply_the_refused_combined_plan",
+    "worker_scale_up_or_kubernetes_mutation",
+    "attempt_4_window_execution",
+    "production_ssm_or_approved_artifact_change"
+  ]
+}

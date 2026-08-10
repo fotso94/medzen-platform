@@ -16,6 +16,7 @@ SECRET = "aws_secretsmanager_secret.b6_client_keys[0]"
 POLICY = "aws_secretsmanager_secret_policy.b6_client_keys[0]"
 KMS = "aws_iam_role_policy.b6_client_keys_kms[0]"
 EXPECTED_CHANGES = {POLICY: ["create"], KMS: ["create"]}
+EXPECTED_NORMALIZE_CHANGES = {SECRET: ["update"]}
 SECRET_ARN = "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
 KMS_KEY = "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
 ORCHESTRATOR = "arn:aws:iam::558069890522:role/medzen-orch-role"
@@ -70,6 +71,34 @@ def expected_kms_policy() -> dict[str, Any]:
     }
 
 
+def expected_explicit_tags() -> dict[str, str]:
+    return {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B6.6",
+        "Workstream": "integration-window-auth",
+        "BudgetRegistry": "COST-REGISTRY-2026-003",
+        "Classification": "SYNTHETIC_TEST_ONLY",
+    }
+
+
+def expected_tags_all() -> dict[str, str]:
+    return {
+        **expected_explicit_tags(),
+        "ManagedBy": "terraform",
+        "Component": "speech-platform",
+    }
+
+
+def imported_explicit_tags() -> dict[str, str]:
+    return {
+        key: value
+        for key, value in expected_explicit_tags().items()
+        if key not in {"Project", "Environment"}
+    }
+
+
 def load(path: Path) -> dict[str, Any]:
     result = subprocess.run(
         [str(ROOT / "scripts/terraform_medzen.sh"), "show", "-json", str(path)],
@@ -105,7 +134,12 @@ def validate_cleanup(plan: dict[str, Any]) -> None:
             before.get("arn") != SECRET_ARN
             or before.get("name") != "medzen/client-api-keys"
             or before.get("kms_key_id") != KMS_KEY
-            or before.get("recovery_window_in_days") != 7
+            or before.get("recovery_window_in_days") not in (None, 7)
+            or before.get("tags_all") != expected_tags_all()
+            or before.get("tags") not in (
+                imported_explicit_tags(),
+                expected_explicit_tags(),
+            )
         ):
             raise ValueError("cleanup secret identity differs")
         if address == POLICY and before.get("secret_arn") != SECRET_ARN:
@@ -121,13 +155,15 @@ def validate(plan: dict[str, Any], mode: str = "reconcile") -> None:
     if mode == "cleanup":
         validate_cleanup(plan)
         return
-    if mode != "reconcile":
+    if mode not in {"reconcile", "normalize"}:
         raise ValueError(f"unknown plan mode: {mode}")
-    if changes(plan) != EXPECTED_CHANGES:
+    expected_changes = EXPECTED_CHANGES if mode == "reconcile" else EXPECTED_NORMALIZE_CHANGES
+    if changes(plan) != expected_changes:
         raise ValueError(f"restoration delta differs: {changes(plan)!r}")
     secret_change = item(plan, SECRET)["change"]
-    if secret_change["actions"] != ["no-op"]:
-        raise ValueError("restored secret was not imported as an exact no-op")
+    expected_secret_actions = ["no-op"] if mode == "reconcile" else ["update"]
+    if secret_change["actions"] != expected_secret_actions:
+        raise ValueError("restored secret action differs")
     secret = secret_change.get("after") or {}
     if (
         secret.get("arn") != SECRET_ARN
@@ -136,17 +172,37 @@ def validate(plan: dict[str, Any], mode: str = "reconcile") -> None:
         or secret.get("recovery_window_in_days") != 7
     ):
         raise ValueError("restored secret identity or encryption boundary differs")
-    expected_tags = {
-        "Project": "medzen-speech",
-        "Environment": "dev",
-        "CostCenter": "speech-platform",
-        "Stage": "B6.6",
-        "Workstream": "integration-window-auth",
-        "BudgetRegistry": "COST-REGISTRY-2026-003",
-        "Classification": "SYNTHETIC_TEST_ONLY",
-    }
-    if any(secret.get("tags", {}).get(key) != value for key, value in expected_tags.items()):
+    if any(secret.get("tags", {}).get(key) != value for key, value in expected_explicit_tags().items()):
         raise ValueError("restored secret allocation tags differ")
+    if mode == "normalize":
+        before = secret_change.get("before") or {}
+        if (
+            before.get("arn") != SECRET_ARN
+            or before.get("id") != SECRET_ARN
+            or before.get("name") != "medzen/client-api-keys"
+            or before.get("kms_key_id") != KMS_KEY
+            or before.get("tags") != imported_explicit_tags()
+            or before.get("tags_all") != expected_tags_all()
+            or before.get("force_overwrite_replica_secret") is not None
+            or before.get("recovery_window_in_days") is not None
+            or secret.get("tags") != expected_explicit_tags()
+            or secret.get("tags_all") != expected_tags_all()
+            or secret.get("force_overwrite_replica_secret") is not False
+            or secret_change.get("after_unknown") != {}
+        ):
+            raise ValueError("imported-secret normalization boundary differs")
+        changed_fields = {
+            key
+            for key in set(before) | set(secret)
+            if before.get(key) != secret.get(key)
+        }
+        if changed_fields != {
+            "force_overwrite_replica_secret",
+            "recovery_window_in_days",
+            "tags",
+        }:
+            raise ValueError(f"unexpected imported-secret normalized fields: {sorted(changed_fields)!r}")
+        return
 
     policy = item(plan, POLICY)["change"].get("after") or {}
     if policy.get("secret_arn") != SECRET_ARN or policy.get("block_public_policy") is not True:
@@ -167,7 +223,7 @@ def validate(plan: dict[str, Any], mode: str = "reconcile") -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("reconcile", "cleanup"), default="reconcile")
+    parser.add_argument("--mode", choices=("reconcile", "normalize", "cleanup"), default="reconcile")
     parser.add_argument("plan", type=Path)
     args = parser.parse_args()
     try:
@@ -178,6 +234,8 @@ def main() -> int:
         return 2
     if args.mode == "cleanup":
         print(f"PASS_B6_CLIENT_SECRET_RESTORATION_CLEANUP destroys={len(changes(plan))}")
+    elif args.mode == "normalize":
+        print("PASS_B6_CLIENT_SECRET_NORMALIZATION_PLAN changes=1 add=0 update=1 destroy=0")
     else:
         print("PASS_B6_CLIENT_SECRET_RESTORATION_PLAN changes=2 add=2 update=0 destroy=0")
     return 0
