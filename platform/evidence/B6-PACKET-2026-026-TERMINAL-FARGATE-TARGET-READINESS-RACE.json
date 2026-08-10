@@ -1,0 +1,228 @@
+{
+  "record": "B6_2026_026_STAGE_A_AND_TWO_WINDOW_ATTEMPTS_RESULT",
+  "id": "B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE",
+  "revision": 1,
+  "status": "RECORDED_PENDING_INDEPENDENT_EXIT_REVIEW",
+  "outcome": "STAGE_A_PASS_TWO_WINDOW_ATTEMPTS_REFUSED_CLEANUP_VERIFIED",
+  "failure_stage": "FARGATE_PROBE",
+  "recorded_utc": "2026-08-10T23:39:40Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-026-empirical-probe-verifier.md",
+      "sha256": "c39130c456b36b128f3c52fab22a533243c9d8e235128c574c3c56f892634702"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-026-stage-a-and-window.json",
+      "sha256": "2eeed4f4b59a74a385f07f4fbe77a843f61358caae3586cec494dc6106cdaeb1",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "reviewed_repository_commit": "cc9a71233d7bae143f6842d3abd7a26698f4d731",
+      "reviewed_packet_sha256": "c39130c456b36b128f3c52fab22a533243c9d8e235128c574c3c56f892634702",
+      "reviewed_cold_rehearsal_sha256": "e4ba622c2f757944d26e2a3383f6c84644ffb17acab1206950a201e16c0702b8",
+      "reviewer_reproduction": "37/37",
+      "findings": 0
+    }
+  },
+  "repository_execution": {
+    "branch": "master",
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "review_and_authorization_merge_commit": "2e35cfb91332f0825f1fff3ea5feb64aba428266",
+    "stage_a_evidence_commit": "52221b304da245cdbc4954d4c8223728bfd6037d",
+    "attempt_1_evidence_commit": "4e0299afa7955bf048da976ee0f451af5a321514",
+    "attempt_2_execution_commit": "4e0299afa7955bf048da976ee0f451af5a321514"
+  },
+  "stage_a": {
+    "outcome": "PASS",
+    "receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a.json",
+    "receipt_sha256": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22",
+    "cleanup_receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json",
+    "cleanup_receipt_sha256": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
+    "stable_probe_passes": 3,
+    "required_consecutive_probe_passes": 3,
+    "all_probe_container_exit_codes": 0,
+    "image_pull_proven": true,
+    "eks_worker_mutations": 0,
+    "temporary_resources_created_and_removed": 11,
+    "cleanup_complete": true,
+    "window_attempts_unlocked": true
+  },
+  "window_attempts": [
+    {
+      "attempt": 1,
+      "receipt_directory": "platform/evidence/receipts/B6-2026-026-A1-LIVE",
+      "outcome": "REFUSED",
+      "passed_stages_before_refusal": [
+        "stage0",
+        "deadline",
+        "workers_ready",
+        "dra_ready",
+        "rag_ready",
+        "asr_ready",
+        "tts_ready",
+        "llm_ready",
+        "orchestrator_ready",
+        "controller_window",
+        "controller_ready",
+        "pre_endpoint_images",
+        "terraform_window",
+        "endpoints_ready"
+      ],
+      "terminal_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-026-A1-LIVE/fargate_probe.json",
+        "sha256": "97a259607e7a572c018a568484cfd2ea67cac484ad4f0d56bac3e6d9fbe1114f",
+        "recorded_utc": "2026-08-10T22:48:31Z",
+        "status": "REFUSED",
+        "reason_code": "FARGATE_PROBE_REFUSED",
+        "application_started": true,
+        "readyz_request_completed": false,
+        "kubernetes_image_pull_failures": 0
+      },
+      "live_readback": {
+        "ecs_stop_code": "EssentialContainerExited",
+        "container_exit_code": 1
+      },
+      "cleanup_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-026-A1-LIVE/cleanup.json",
+        "sha256": "a024de2bb3178470cb4e56abd9ceeb8c61329e5230260710aceb19249c6f913a",
+        "recorded_utc": "2026-08-10T23:08:57Z",
+        "status": "PASS"
+      }
+    },
+    {
+      "attempt": 2,
+      "receipt_directory": "platform/evidence/receipts/B6-2026-026-A2-LIVE",
+      "outcome": "REFUSED",
+      "passed_stages_before_refusal": [
+        "stage0",
+        "deadline",
+        "workers_ready",
+        "dra_ready",
+        "rag_ready",
+        "asr_ready",
+        "tts_ready",
+        "llm_ready",
+        "orchestrator_ready",
+        "controller_window",
+        "controller_ready",
+        "pre_endpoint_images",
+        "terraform_window",
+        "endpoints_ready"
+      ],
+      "terminal_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-026-A2-LIVE/fargate_probe.json",
+        "sha256": "938860587ff89b8b590ab92cbc8760e04fb78a79b6a5cd08014b323695590d83",
+        "recorded_utc": "2026-08-10T23:17:18Z",
+        "status": "REFUSED",
+        "reason_code": "FARGATE_PROBE_REFUSED",
+        "application_started": true,
+        "readyz_request_completed": false,
+        "kubernetes_image_pull_failures": 0
+      },
+      "live_readback": {
+        "observed_utc_minute": "2026-08-10T23:16Z",
+        "load_balancer_scheme": "internal",
+        "target_group": "k8s-medzen-speechor-eecaf316c9",
+        "target_port": 8080,
+        "target_health_state": "initial",
+        "target_health_reason": "Elb.RegistrationInProgress",
+        "ecs_stop_code": "EssentialContainerExited",
+        "container_exit_code": 1
+      },
+      "cleanup_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-026-A2-LIVE/cleanup.json",
+        "sha256": "d1c1152d8d36921817ca568db74d728bfef0daf0111cbe8477204353ca17f037",
+        "recorded_utc": "2026-08-10T23:37:18Z",
+        "status": "PASS"
+      }
+    }
+  ],
+  "diagnosis": {
+    "classification": "CONFIRMED_ALB_TARGET_READINESS_SEQUENCING_RACE",
+    "confidence": "HIGH",
+    "facts": [
+      "The full-window endpoint and Kubernetes image checks passed in both attempts.",
+      "The Fargate application process started in both attempts and exited one, while the readyz assertion did not complete.",
+      "Attempt 2 observed the exact ALB target in initial state with reason Elb.RegistrationInProgress immediately before the probe refusal.",
+      "scripts/b6_6_operations.sh stage_fargate_probe waits only for an ingress hostname before launching the Fargate readyz client.",
+      "Target-health verification currently occurs only in the later stage_alb_ready stage, after the Fargate probe."
+    ],
+    "interpretation": "The live readback proves the target was not yet ready when the probe ran. The container command's resulting readyz failure is consistent with and attributable to this ordering defect; no endpoint or image-pull failure was observed.",
+    "not_claimed": [
+      "No conversation proof passed.",
+      "No WebSocket proof passed.",
+      "No cancellation proof passed.",
+      "No failure drill passed.",
+      "B6.6 is not complete."
+    ]
+  },
+  "stages_not_run_after_each_refusal": [
+    "alb_ready",
+    "tag_result",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "packet_terminal_state": {
+    "stage_a_runs_authorized": 1,
+    "stage_a_runs_consumed": 1,
+    "full_window_attempts_authorized": 2,
+    "full_window_attempts_consumed": 2,
+    "further_attempt_authorized": false,
+    "source_or_packet_changed_during_execution": false,
+    "new_packet_required": true
+  },
+  "zero_state_verification": {
+    "verified_utc": "2026-08-10T23:39:40Z",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "asg_instances": 0
+    },
+    "kubernetes_workload_nodes": 0,
+    "synthetic_medzen_pods": 0,
+    "window_ingresses": 0,
+    "temporary_vpc_endpoints": 0,
+    "window_load_balancers": 0,
+    "window_terraform_resources": 0,
+    "deadline_actions": 0,
+    "production_ssm_serving_pointer_count": 0,
+    "approved_asr_changes": 0,
+    "local_synthetic_token_present": false,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_PLAINTEXT_READ_DENIED",
+    "default_terraform_plan": "NO_CHANGES"
+  },
+  "budget_control": {
+    "aggregate_project_ceiling_usd": 300,
+    "existing_reservation_usd": 10,
+    "stage_a_ceiling_usd": 0.5,
+    "window_attempt_ceiling_seconds_each": 4500,
+    "full_window_attempts_consumed": 2,
+    "actual_billed_cost": "NOT_YET_RECONCILED_AWS_BILLING_LAG",
+    "new_reservation_created": false,
+    "cost_claim": "Execution remained within the packet's existing reservation and time bounds; no exact billed amount is inferred before attributable billing settles."
+  },
+  "required_successor_correction": [
+    "Preserve packet 2026-026 and all receipts unchanged; do not resume either consumed attempt.",
+    "Add a bounded ALB target-health readiness gate after hostname discovery and before any Fargate readyz task launches.",
+    "Require every exact target selected for the probe path to remain healthy for stable consecutive observations before launching the probe.",
+    "Treat initial and Elb.RegistrationInProgress as bounded retry states; receipt and fail closed on timeout or terminal unhealthy states.",
+    "Persist a dedicated target-readiness receipt before the Fargate receipt.",
+    "Add recorded-real-response fixtures for both RegistrationInProgress and healthy DescribeTargetHealth responses under the standing fixture-fidelity rule.",
+    "Run a fresh cold rehearsal and obtain independent review, a new owner-approved packet and a fresh allowance before any further window."
+  ],
+  "next_boundary": "Packet 2026-026 is terminal. Local successor engineering may correct the sequencing defect, but no additional AWS window is authorized by this record."
+}
