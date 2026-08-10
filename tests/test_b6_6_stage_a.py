@@ -8,15 +8,21 @@ from pipeline.b6_integration_receipts import (
     STAGE_A_EXECUTION_STAGES,
     STAGE_A_STAGES,
 )
-from scripts.b6_6_cold_rehearsal import _stage_a_scenario
+from scripts.b6_6_cold_rehearsal import (
+    _stage_a_scenario,
+    _task_eni_sg_egress_lint,
+    _terraform_description_charset_lint,
+)
 from scripts.b6_6_stage_a import (
     MAXIMUM_COST_USD,
     MAXIMUM_SECONDS,
     STABLE_PROBE_PASSES,
 )
 from scripts.check_b6_6_window_plan import (
+    AWS_DESCRIPTION_CHARSET,
     TASK_ENI_EGRESS_RULES,
     PLAN_TASK_ENI_SECURITY_GROUPS,
+    lint_rendered_plan_description_charset,
     lint_task_eni_security_group_egress,
 )
 from scripts.b6_6_probe_endpoints import (
@@ -122,6 +128,22 @@ def test_cold_rehearsal_executes_the_static_task_eni_egress_lint() -> None:
     assert "_task_eni_sg_egress_lint()" in source
     assert "missing_egress_refusal_cases" in source
     assert "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER" in source
+    result = _task_eni_sg_egress_lint()
+    assert result["status"] == "PASS"
+    assert result["task_eni_security_groups"] == 2
+    assert result["egress_rules"] == 3
+    assert result["missing_egress_refusal_cases"] == 2
+
+
+def test_cold_rehearsal_lints_every_projected_rendered_plan_description() -> None:
+    result = _terraform_description_charset_lint()
+    assert result["status"] == "PASS"
+    assert result["description_fields"] == 50
+    assert result["string_descriptions"] == 48
+    assert result["null_descriptions"] == 2
+    assert result["invalid_descriptions"] == 0
+    assert result["invalid_description_refusal_cases"] == 1
+    assert result["real_aws_calls"] == 0
 
 
 def test_runtime_egress_verifier_requires_exact_ecr_self_and_s3_prefix_rules() -> None:
@@ -152,3 +174,44 @@ def test_runtime_egress_verifier_requires_exact_ecr_self_and_s3_prefix_rules() -
     group["IpPermissionsEgress"].pop()
     with pytest.raises(EndpointRefusal, match="egress count"):
         _verify_security_group_egress(group, "pl-s3")
+
+
+def test_rendered_plan_description_lint_accepts_full_aws_charset() -> None:
+    value = "Letters 0123456789. _-:/()#,@[]+=&;{}!$*"
+    assert AWS_DESCRIPTION_CHARSET.fullmatch(value)
+    result = lint_rendered_plan_description_charset(
+        {
+            "planned_values": {
+                "description": value,
+                "nullable": {"description": None},
+            },
+            "configuration": {
+                "description": {"constant_value": "Also valid; value"}
+            },
+        }
+    )
+    assert result == {
+        "status": "PASS",
+        "description_fields": 3,
+        "string_descriptions": 2,
+        "null_descriptions": 1,
+        "invalid_descriptions": 0,
+        "allowed_character_class": "A-Za-z0-9. _-:/()#,@[]+=&;{}!$*",
+    }
+
+
+def test_rendered_plan_description_lint_refuses_apostrophe_anywhere() -> None:
+    plan = {
+        "resource_changes": [
+            {"change": {"after": {"description": "ECR's S3 layer endpoint"}}}
+        ]
+    }
+    with pytest.raises(ValueError, match=r"U\+0027"):
+        lint_rendered_plan_description_charset(plan)
+
+
+def test_rendered_plan_description_lint_fails_closed_on_unknown_shape() -> None:
+    with pytest.raises(ValueError, match="not a known string"):
+        lint_rendered_plan_description_charset(
+            {"configuration": {"description": {"references": ["var.value"]}}}
+        )

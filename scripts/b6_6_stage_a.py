@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run packet-2026-023 Stage A isolated Fargate qualification."""
+"""Run packet-2026-024 Stage A isolated Fargate qualification."""
 from __future__ import annotations
 
 import argparse
@@ -35,9 +35,9 @@ OPERATION_SECONDS = 1200
 CLEANUP_SECONDS = 600
 MAXIMUM_COST_USD = 0.50
 STABLE_PROBE_PASSES = 3
-RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-023-STAGE-A-LIVE"
-PLAN = Path("/private/tmp/b6-023-stage-a.tfplan")
-CLEANUP_PLAN = Path("/private/tmp/b6-023-stage-a-cleanup.tfplan")
+RECEIPTS = ROOT / "platform/evidence/receipts/B6-2026-024-STAGE-A-LIVE"
+PLAN = Path("/private/tmp/b6-024-stage-a.tfplan")
+CLEANUP_PLAN = Path("/private/tmp/b6-024-stage-a-cleanup.tfplan")
 TARGETS = tuple(f"-target={address.removesuffix('[0]')}" for address in sorted(QUALIFICATION_ADDRESSES))
 REASONS = {
     "stage_a_preflight": "STAGE_A_PREFLIGHT_REFUSED",
