@@ -1,0 +1,374 @@
+{
+  "record": "B6_2026_017_PRINCIPAL_INDEPENDENT_SUCCESSOR_EXECUTION_RESULT",
+  "id": "B6-PACKET-2026-017-REFUSED-DRA-ECR-ENDPOINT-DNS",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_AT_DRA_ECR_ENDPOINT_NETWORK_CLEANUP_PASS",
+  "outcome": "INCOMPLETE_DRA_ECR_ENDPOINT_NETWORK_REFUSAL",
+  "failure_stage": "DRA_READY_IMAGE_PULL",
+  "recorded_utc": "2026-08-10T15:28:33Z",
+  "governance_bindings": {
+    "packet": {
+      "id": "B6-AWS-CHANGE-PACKET-2026-017",
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-017-b6-6-principal-independent-successor.md",
+      "sha256": "8fa32f4013445fd18ad353119ddd10a1c5c199935059a63afedf951c61a045b6"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-017-b6-6-principal-independent-successor.json",
+      "sha256": "9450d516fa57564dcaacf76bbe79f031fdf993cd3517db2e931d14df9191e54e",
+      "status": "owner-approved"
+    },
+    "cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-004.json",
+      "sha256": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "pull_request": "https://github.com/fotso94/medzen-platform/pull/28",
+      "reviewed_repository_commit": "cf15510ef617c0035b6552dd5dba3c2da6ae3cb0",
+      "merged_master_commit": "792f3856b31f15a94a786a14f27bdb8636946e01",
+      "reviewed_packet_sha256": "8fa32f4013445fd18ad353119ddd10a1c5c199935059a63afedf951c61a045b6"
+    }
+  },
+  "repository_at_execution": {
+    "branch": "codex/b6-017-execution",
+    "git_commit": "708bc01d2796180dfbb8d040193b33fe553e959d",
+    "git_tree": "67e4c8fe96df362d11463f41bb9cde6edb7ba289",
+    "commit_count": 301,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_28_merged": true,
+    "worktree_clean_before_receipts": true
+  },
+  "preflight": {
+    "source_bindings_verified": 51,
+    "aws_account": "558069890522",
+    "operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_asg_instances": 0,
+    "deadline_actions": 0,
+    "kubernetes_worker_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "production_serving_pointer_count": 0
+  },
+  "credential_stage_zero": {
+    "status": "PASS_THEN_RECOVERABLE_ZERO_STATE",
+    "fresh_version_id": "201f9790-72c4-45f7-a05b-967551532aef",
+    "bearer_token_sha256": "b448a3585ddafb6bf2f5f221f7d2b9d190933f563e4eb696404164174f6d2e26",
+    "secret_value_sha256": "495dd134362493753e4fc7c936510bdf62b72f594587b7a9f01aeaf4d050f943",
+    "all_prior_versions_unstaged": true,
+    "operator_get_secret_value": "EXPLICITLY_DENIED_AS_REQUIRED",
+    "plaintext_logged_or_persisted": false,
+    "receipts": [
+      {
+        "stage": "preflight",
+        "status": "PASS_EXACT_PENDING_STATE",
+        "recorded_utc": "2026-08-10T14:57:53Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/preflight.json",
+        "sha256": "0931e999b14b3a74d7a2fc6ad6790f57a61d4d17884c1920445279c62f95675a"
+      },
+      {
+        "stage": "restore",
+        "status": "PASS_RESTORED_AWAITING_TERRAFORM",
+        "recorded_utc": "2026-08-10T14:57:54Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/restore.json",
+        "sha256": "22efc01d29fc6fd069c3dc0f7b5ee60c7e93356896ac3344f7cbfbdde0b82e03"
+      },
+      {
+        "stage": "terraform_import",
+        "status": "PASS_EXACT_SECRET_IMPORTED",
+        "recorded_utc": "2026-08-10T14:58:05Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/terraform_import.json",
+        "sha256": "5f0e652ecdb04cec29a456af1b71584382adba602f9562f0f2888a3c269f3634"
+      },
+      {
+        "stage": "terraform_normalization",
+        "status": "PASS_TERRAFORM_NORMALIZED_OR_ALREADY_EXACT",
+        "recorded_utc": "2026-08-10T14:58:33Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/terraform_normalization.json",
+        "sha256": "98418d8a26c14cd779169429a33efce4f504999889748a286d0d80577c267ccc"
+      },
+      {
+        "stage": "terraform_reconciliation",
+        "status": "PASS_TERRAFORM_RECONCILED",
+        "recorded_utc": "2026-08-10T14:59:02Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/terraform_reconciliation.json",
+        "sha256": "684cb0b6e4baabda2aa4e683298b410fa75f17cb63b865cd5c6cb47daa8b7ad1"
+      },
+      {
+        "stage": "rotation",
+        "status": "PASS_ROTATED_AWAITING_VERIFICATION",
+        "recorded_utc": "2026-08-10T14:59:03Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/rotation.json",
+        "sha256": "da126ee335a725f3d6637843d82deed4d529f036707749cc3d7d6429711bfd03"
+      },
+      {
+        "stage": "verification",
+        "status": "VERIFIED_COMPLETE",
+        "recorded_utc": "2026-08-10T14:59:04Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/verification.json",
+        "sha256": "d8a4a24e992ce3bc2f62db1ebb5036ed5529970533fc98c22abd34d41df862e2"
+      },
+      {
+        "stage": "cleanup",
+        "status": "PASS_RECOVERABLE_ZERO_STATE",
+        "recorded_utc": "2026-08-10T15:09:09Z",
+        "path": "platform/evidence/receipts/B6-2026-017-LIVE/credential/cleanup.json",
+        "sha256": "607dbc92c14b39b43903cb0136274c83f137d9859c80ba98b4b4b83aff958582"
+      }
+    ]
+  },
+  "stage_receipts": [
+    {
+      "stage": "local_bindings",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T14:59:05Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/local_bindings.json",
+      "sha256": "6c458a690bc5be2f908466b17c2357cc90ea8a810e86700823cbcc5cc9ffc86c"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T14:59:07Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/deadline.json",
+      "sha256": "b6054792f7c9c37d327e5664cce2fb3719928468572d2b8ce9fc47c8cbf37afa"
+    },
+    {
+      "stage": "workers_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T15:00:30Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/workers_ready.json",
+      "sha256": "6853c1e29bccc56ef85c11d2d4369980dc5eb318e340a036b931ed00809d0279"
+    },
+    {
+      "stage": "terraform_window",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T15:01:53Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/terraform_window.json",
+      "sha256": "73ee56ebe5c25c7e837c40e82804e450e7d728171f82f787d5d657b408469f26"
+    },
+    {
+      "stage": "endpoints_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T15:01:54Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/endpoints_ready.json",
+      "sha256": "2660d3a5d68d672e29469acbd31d53255d238208c8a0857c8b1b604f22956085"
+    },
+    {
+      "stage": "controller_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T15:01:56Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/controller_ready.json",
+      "sha256": "6c924120ff487f162ceee4db780999bb7cf3d4eaf46bf5c069a4e6a181fea32c"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-10T15:25:09Z",
+      "path": "platform/evidence/receipts/B6-2026-017-LIVE/cleanup.json",
+      "sha256": "68c719fbd15a5dca9735612691355410e745363baf4569ac2882a686e19af29c"
+    }
+  ],
+  "successful_controls_before_refusal": {
+    "credential_rotation": "PASS_VERIFIED_FRESH",
+    "deadline": {
+      "armed_utc": "2026-08-10T14:59:06Z",
+      "deadline_utc": "2026-08-10T16:14:06Z",
+      "window_seconds": 4500,
+      "cpu_and_gpu_deadlines_armed_before_scale_up": true
+    },
+    "worker_gate": {
+      "cpu_nodes_ready": 2,
+      "gpu_nodes_ready": 1,
+      "maximum_cpu_nodes": 2,
+      "maximum_gpu_nodes": 1,
+      "observation_reads": 14,
+      "excess_capacity": false
+    },
+    "terraform_create_plan": {
+      "path": "/private/tmp/b6-017-create-3260.tfplan",
+      "sha256": "1a1959738a76a017a4b57ac9b3b0361e6ca539b13422b8d0273a2d9523328442",
+      "adds": 12,
+      "changes": 0,
+      "destroys": 0,
+      "machine_guard": "PASS_B6_6_CREATE"
+    },
+    "endpoint_correction": {
+      "status": "PASS_PROVEN",
+      "interface_endpoints_available": 2,
+      "gateway_endpoints_available": 1,
+      "principal_mode": "REQUIRED_WILDCARD_NO_ROLE_REFERENCE",
+      "temporary_security_group": "sg-0ca6899c4c72fb3a0",
+      "network_ingress_mode": "PROBE_EXCLUSIVE_SELF_REFERENCE",
+      "prior_same_apply_principal_propagation_race_removed": true
+    },
+    "controller": {
+      "ready_replicas": 1,
+      "digest_pinned": true,
+      "namespace_watch": "medzen"
+    }
+  },
+  "dra_image_pull_refusal": {
+    "dra_manifest_applied": true,
+    "dra_ready_receipt_persisted": false,
+    "pod": "dra-driver-nvidia-gpu-kubelet-plugin-vr6sc",
+    "pod_state": "Init:ErrImagePull",
+    "repository": "medzen-nvidia-dra",
+    "image_child_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "request_host": "558069890522.dkr.ecr.eu-central-1.amazonaws.com",
+    "resolved_private_endpoint_ip": "172.31.26.108",
+    "observed_error_class": "TCP_443_IO_TIMEOUT",
+    "model_or_audio_artifact_present_on_workers": false,
+    "service_deployment_attempted": false,
+    "fargate_task_started": false,
+    "internal_alb_created": false,
+    "manual_stop_after_deterministic_refusal": true,
+    "manual_stop_reason": "Preserve the packet security boundary and remaining GPU allowance rather than broaden endpoint access or wait through the 15-minute rollout timeout.",
+    "packet_scope_changed_during_execution": false
+  },
+  "read_only_diagnosis": {
+    "classification": "PROVEN_ENDPOINT_PRIVATE_DNS_AND_SECURITY_GROUP_REACHABILITY_CONFLICT",
+    "root_cause": "The available ECR interface endpoints enabled private DNS for the VPC, so the GPU node resolved the standard ECR hostname to an endpoint ENI. The endpoint security group intentionally admitted TCP 443 only from itself for the Fargate probe; the GPU node was not an admitted source, and the DRA pull timed out.",
+    "supporting_facts": [
+      "The endpoints_ready receipt proves two interface endpoints were available with private DNS enabled.",
+      "The same receipt proves endpoint ingress was a probe-exclusive self-reference on sg-0ca6899c4c72fb3a0.",
+      "The DRA kubelet pull used the standard regional ECR hostname, resolved to private IP 172.31.26.108 and timed out on TCP 443.",
+      "The DRA image was the first uncached Kubernetes image pulled after endpoint availability; no application manifest had been applied.",
+      "Removing the endpoints during cleanup removed the VPC-wide private-DNS interception and every temporary endpoint resource."
+    ],
+    "scope_limit": "No claim is made that the endpoint policy would authorize the DRA repository. The network timeout occurred first; repository-policy coverage must be considered independently in any successor design.",
+    "no_mid_run_correction_or_retry_performed": true
+  },
+  "stages_not_run": [
+    "dra_ready",
+    "rag_ready",
+    "asr_ready",
+    "tts_ready",
+    "llm_ready",
+    "orchestrator_ready",
+    "fargate_probe",
+    "alb_ready",
+    "alb_tag_mutation_warning",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "cleanup": {
+    "automatic_cleanup": "PASS",
+    "terraform_cleanup_plan": {
+      "path": "/private/tmp/b6-017-cleanup-24445.tfplan",
+      "sha256": "56aaea0f218860fa7216a215d9227ab6b553eda006dfb2733ffbad5e855974fd",
+      "adds": 0,
+      "changes": 0,
+      "destroys": 15,
+      "machine_guard": "PASS_B6_6_CLEANUP"
+    },
+    "gpu_scale_zero_requested_utc": "2026-08-10T15:08:45Z",
+    "cpu_scale_zero_requested_utc": "2026-08-10T15:08:42Z",
+    "cleanup_receipt_utc": "2026-08-10T15:25:09Z",
+    "managed_cpu_termination_hook": {
+      "instance": "i-0040dd4b9839423cb",
+      "state_observed": "Terminating:Wait_THEN_Terminating:Proceed",
+      "termination_utc": "2026-08-10T15:23:49Z",
+      "operator_forced_completion": false
+    },
+    "deadlines_removed_after_zero": true,
+    "local_token_removed": true,
+    "synthetic_secret": "SCHEDULED_RECOVERABLE_DELETION",
+    "window_terraform_resources": 0,
+    "window_ecs_cluster": "ABSENT",
+    "window_probe_iam_role": "ABSENT",
+    "window_alb": "ABSENT",
+    "window_vpc_endpoints": 0,
+    "window_endpoint_security_groups": 0
+  },
+  "zero_state_verification": {
+    "verified_after_cleanup": true,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "kubernetes_worker_nodes": 0,
+    "synthetic_workload_objects": 0,
+    "window_ingresses": 0,
+    "deadline_actions_remaining": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_pointer_changes": 0
+  },
+  "budget_control": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_before_reservation_usd": 63.5288,
+    "active_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "accounting_convention": "SECONDS_FROM_DEADLINE_ARMED_UTC_THROUGH_CLEANUP_RECEIPT_UTC",
+    "packet_2026_017_conservative_wall_clock_seconds": 1563,
+    "cpu_instance_seconds_observed": 2008,
+    "gpu_instance_seconds_observed": 555,
+    "aggregate_instance_seconds_observed": 2563,
+    "cumulative_window_seconds_before_packet_2026_017": 5985,
+    "cumulative_window_seconds_after_packet_2026_017": 7548,
+    "remaining_window_seconds": 6852,
+    "maximum_cumulative_window_seconds": 14400,
+    "fargate_tasks_started": 0,
+    "internal_albs_created": 0,
+    "interface_endpoints_created_then_removed": 2,
+    "gateway_endpoints_created_then_removed": 1,
+    "actual_billed_cost": "NOT_YET_RECONCILED",
+    "reservation_state": "REMAINS_ACTIVE_PENDING_ATTRIBUTABLE_BILLING_AND_SUCCESSOR_DECISION",
+    "cost_claim": "Observed worker lifetime and deadline-to-cleanup timing are recorded; no exact AWS billed amount is inferred."
+  },
+  "verification": {
+    "focused_result_and_bound_successor_suites": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_packet_2026_017_result.py tests/test_b6_6_successor_packet.py tests/test_b6_6_private_probe_successor.py tests/test_b6_6_executable_assets.py tests/test_b6_client_secret_restoration_execution.py",
+      "passed": 57,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_local_suite": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1415,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "json_parse": "PASS"
+  },
+  "project_state": {
+    "b6a_complete": true,
+    "b6_6_complete": false,
+    "b6_status": "INCOMPLETE",
+    "b5_promotion_status": "BLOCKED_UNCHANGED",
+    "production_deployment_occurred": false,
+    "synthetic_conversation_proof_completed": false
+  },
+  "required_remediation_before_retry": [
+    "Close packet 2026-017 by this refusal record; do not resume, edit or reinterpret it.",
+    "Preserve the principal-independent, pull-only endpoint policy correction and temporary self-isolated endpoint security group; both behaved as reviewed.",
+    "Eliminate the VPC-wide private-DNS conflict by sequencing all Kubernetes image pulls and readiness proofs before the ECR interface endpoints become available. At minimum this includes the digest-pinned controller and DRA images; the successor design must also account for every service image and restart or rescheduling behavior.",
+    "Keep the ECR endpoints exclusively for the private Fargate probe unless a separately reviewed design explicitly authorizes broader endpoint-network and repository-policy scope.",
+    "Validate the endpoint DKR repository policy remains sufficient for the exact Fargate probe image and does not need to authorize Kubernetes repositories.",
+    "Fold fresh credential restoration into successor stage 0, bind fresh version and hashes at runtime, and preserve recoverable cleanup.",
+    "Bind the corrected source hashes and remaining 6852-second allowance into a new packet with independent review and explicit owner approval."
+  ],
+  "next_boundary": "Packet 2026-017 is closed as a DRA ECR private-DNS/security-group reachability refusal with automatic cleanup PASS. B6.6 remains incomplete. Prepare a separately reviewed pre-endpoint Kubernetes image-readiness sequence and a new bounded window packet; no retry is authorized by packet 2026-017."
+}
