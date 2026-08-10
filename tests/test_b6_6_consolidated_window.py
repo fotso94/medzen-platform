@@ -13,6 +13,13 @@ from pipeline.b6_integration_receipts import (
 )
 from scripts.b6_6_cold_rehearsal import GUARDS, FakeSecretClient, _scenario
 from scripts.b6_6_credential import CredentialRefusal, rotate_and_verify
+from scripts.b6_6_persistent_secret_bridge import (
+    BridgeRefusal,
+    ORCHESTRATOR_ROLE_ARN,
+    REGISTRY_PUBLISHER_USER_ARN,
+    _permanent_resource_policy,
+    _verify_referenced_principals,
+)
 from scripts.b6_6_runner import RunContext, Runner, StageResult
 
 
@@ -90,6 +97,52 @@ def test_operator_plaintext_read_is_a_refusal(tmp_path: Path) -> None:
     client.get_secret_value = lambda **_: {"SecretString": "forbidden"}  # type: ignore[method-assign]
     with pytest.raises(CredentialRefusal):
         rotate_and_verify(client, tmp_path / "token")
+
+
+def test_bridge_policy_uses_the_established_orchestrator_role() -> None:
+    policy = json.loads(_permanent_resource_policy())
+    assert policy["Statement"][0]["Principal"]["AWS"] == (
+        "arn:aws:iam::558069890522:role/medzen-orch-role"
+    )
+    assert policy["Statement"][1]["Condition"]["ArnNotEquals"] == {
+        "aws:PrincipalArn": "arn:aws:iam::558069890522:role/medzen-orch-role"
+    }
+    assert "medzen-speech-orchestrator" not in _permanent_resource_policy()
+
+
+class FakeIam:
+    def __init__(self, role_arn: str = ORCHESTRATOR_ROLE_ARN) -> None:
+        self.role_arn = role_arn
+
+    def get_role(self, **_: str) -> dict:
+        return {"Role": {"Arn": self.role_arn}}
+
+    def get_user(self, **_: str) -> dict:
+        return {"User": {"Arn": REGISTRY_PUBLISHER_USER_ARN}}
+
+
+class FakeIamSession:
+    def __init__(self, iam: FakeIam) -> None:
+        self.iam = iam
+
+    def client(self, service: str) -> FakeIam:
+        assert service == "iam"
+        return self.iam
+
+
+def test_bridge_resolves_every_exact_principal_before_any_mutation() -> None:
+    assert _verify_referenced_principals(FakeIamSession(FakeIam())) == (
+        ORCHESTRATOR_ROLE_ARN,
+        REGISTRY_PUBLISHER_USER_ARN,
+    )
+    with pytest.raises(BridgeRefusal, match="does not resolve exactly"):
+        _verify_referenced_principals(
+            FakeIamSession(FakeIam("arn:aws:iam::558069890522:role/wrong"))
+        )
+    source = (ROOT / "scripts/b6_6_persistent_secret_bridge.py").read_text()
+    verification = source.index("referenced_principals = _verify_referenced_principals")
+    assert verification < source.index("client.restore_secret")
+    assert verification < source.index("client.put_resource_policy")
 
 
 def test_receipt_engine_is_write_once_and_fails_closed(tmp_path: Path) -> None:

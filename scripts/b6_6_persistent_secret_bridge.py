@@ -23,6 +23,14 @@ from scripts.b6_6_bindings import validate as validate_bindings
 from scripts.b6_6_credential import ACCOUNT, KMS_KEY, PROFILE, REGION, SECRET_ARN, SECRET_NAME
 
 
+ORCHESTRATOR_ROLE_NAME = "medzen-orch-role"
+ORCHESTRATOR_ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/{ORCHESTRATOR_ROLE_NAME}"
+REGISTRY_PUBLISHER_USER_NAME = "s.fotso"
+REGISTRY_PUBLISHER_USER_ARN = (
+    f"arn:aws:iam::{ACCOUNT}:user/{REGISTRY_PUBLISHER_USER_NAME}"
+)
+
+
 class BridgeRefusal(RuntimeError):
     pass
 
@@ -45,8 +53,20 @@ def _operator_denied(client: Any) -> bool:
     return False
 
 
+def _verify_referenced_principals(session: Any) -> tuple[str, ...]:
+    """Resolve every exact IAM principal before any bridge mutation."""
+    iam = session.client("iam")
+    role = iam.get_role(RoleName=ORCHESTRATOR_ROLE_NAME).get("Role", {})
+    user = iam.get_user(UserName=REGISTRY_PUBLISHER_USER_NAME).get("User", {})
+    if role.get("Arn") != ORCHESTRATOR_ROLE_ARN:
+        raise BridgeRefusal("orchestrator role principal does not resolve exactly")
+    if user.get("Arn") != REGISTRY_PUBLISHER_USER_ARN:
+        raise BridgeRefusal("registry publisher principal does not resolve exactly")
+    return (ORCHESTRATOR_ROLE_ARN, REGISTRY_PUBLISHER_USER_ARN)
+
+
 def _permanent_resource_policy() -> str:
-    orchestrator = f"arn:aws:iam::{ACCOUNT}:role/medzen-speech-orchestrator"
+    orchestrator = ORCHESTRATOR_ROLE_ARN
     return json.dumps(
         {
             "Version": "2012-10-17",
@@ -73,7 +93,13 @@ def _permanent_resource_policy() -> str:
     )
 
 
-def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict[str, Any]:
+def execute(
+    authorization: Path,
+    packet_sha256: str,
+    receipts_dir: Path,
+    *,
+    mode: str,
+) -> dict[str, Any]:
     validate_bindings(authorization, packet_sha256, ROOT)
     store = ReceiptStore(receipts_dir)
     status = "REFUSED"
@@ -82,16 +108,25 @@ def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict
         session = boto3.Session(profile_name=PROFILE, region_name=REGION)
         if session.client("sts").get_caller_identity().get("Account") != ACCOUNT:
             raise BridgeRefusal("AWS account differs")
+        referenced_principals = _verify_referenced_principals(session)
         client = session.client("secretsmanager")
         before = client.describe_secret(SecretId=SECRET_ARN)
-        if (
+        identity_differs = (
             before.get("ARN") != SECRET_ARN
             or before.get("Name") != SECRET_NAME
             or before.get("KmsKeyId") != KMS_KEY
-            or before.get("DeletedDate") is None
-        ):
-            raise BridgeRefusal("exact recoverable packet-018 secret state differs")
-        client.restore_secret(SecretId=SECRET_ARN)
+        )
+        if identity_differs:
+            raise BridgeRefusal("exact persistent secret identity differs")
+        if mode == "initial":
+            if before.get("DeletedDate") is None:
+                raise BridgeRefusal("exact recoverable packet-018 secret state differs")
+            client.restore_secret(SecretId=SECRET_ARN)
+        elif mode == "continuation":
+            if before.get("DeletedDate") is not None or not _operator_denied(client):
+                raise BridgeRefusal("contained packet-019 continuation state differs")
+        else:
+            raise BridgeRefusal("unknown bridge mode")
 
         # Close the only possible plaintext-read interval before Terraform state
         # work. A failed import/plan therefore still leaves the secret denied.
@@ -136,7 +171,11 @@ def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict
             raise BridgeRefusal("persistent secret post-bridge invariants differ")
         status = "PASS"
         payload = {
-            "transition": "RECOVERABLE_DELETION_TO_PERSISTENT_OPERATOR_DENIED",
+            "transition": (
+                "RECOVERABLE_DELETION_TO_PERSISTENT_OPERATOR_DENIED"
+                if mode == "initial"
+                else "CONTAINED_RESTORED_STATE_TO_TERRAFORM_MANAGED_PERSISTENT"
+            ),
             "secret_arn": SECRET_ARN,
             "existing_secret_reused": True,
             "historical_version_count_evaluated": False,
@@ -144,6 +183,9 @@ def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict
             "permanent_resource_policy": True,
             "operator_deny_installed_before_terraform": True,
             "operator_get_secret_value": "EXPLICITLY_DENIED_AS_REQUIRED",
+            "referenced_principals_verified_before_mutation": list(
+                referenced_principals
+            ),
             "compute_started": False,
             "window_resources_created": 0,
         }
@@ -165,12 +207,14 @@ def main() -> int:
     parser.add_argument("--authorization", type=Path, required=True)
     parser.add_argument("--packet-sha256", required=True)
     parser.add_argument("--receipts-dir", type=Path, required=True)
+    parser.add_argument("--mode", choices=("initial", "continuation"), required=True)
     args = parser.parse_args()
     try:
         result = execute(
             args.authorization.resolve(),
             args.packet_sha256,
             args.receipts_dir.resolve(),
+            mode=args.mode,
         )
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "reason_code": type(exc).__name__}))

@@ -1,0 +1,35 @@
+{
+  "id": "B6-PACKET-2026-020-NOT-EXECUTED-PRINCIPAL-PREFLIGHT-CONDITION",
+  "recorded_at_utc": "2026-08-10T17:43:59Z",
+  "status": "NOT_EXECUTED_REVIEW_CONDITION",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-020",
+    "sha256": "0c1bae0ca8faf5c7f4279f325d0d91c645588b140e923fc47150c312921d4c1e"
+  },
+  "review_binding": {
+    "reviewed_repository_commit": "92ad8f6d7659eba960e43def6586bb5d972b5d19",
+    "cold_rehearsal_sha256": "450689352d02c4d127318f42480f0e86cbe7a23311d0ce9430ee63ee22cd15eb",
+    "status": "PASS_WITH_BINDING_EXECUTION_REQUIREMENT",
+    "requirement": "The bridge runner performs its own live existence check of every referenced principal before any mutation."
+  },
+  "owner_approval_received": true,
+  "execution": {
+    "bridge_started": false,
+    "aws_mutations": 0,
+    "terraform_mutations": 0,
+    "kubernetes_mutations": 0,
+    "worker_attempts_started": 0,
+    "worker_seconds_consumed": 0,
+    "compute_cost_usd": 0.0
+  },
+  "reason": "The packet-bound bridge source verified the corrected role literal but did not itself resolve every referenced IAM principal before its first mutation. Executing the approved hash would have violated the independent review requirement.",
+  "disposition": {
+    "packet_2026_020_terminal": true,
+    "retry_under_packet_2026_020_permitted": false,
+    "successor": "B6-AWS-CHANGE-PACKET-2026-020A",
+    "allowance_seconds_remaining": 9000,
+    "attempts_remaining": 2,
+    "existing_reservation_usd": 10.0,
+    "new_independent_review_and_owner_approval_required": true
+  }
+}
