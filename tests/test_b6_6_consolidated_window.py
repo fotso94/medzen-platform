@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+import json
+import stat
+from pathlib import Path
+
+import pytest
+
+from pipeline.b6_integration_receipts import (
+    WINDOW_STAGES,
+    ReceiptRefusal,
+    ReceiptStore,
+)
+from scripts.b6_6_cold_rehearsal import GUARDS, FakeSecretClient, _scenario
+from scripts.b6_6_credential import CredentialRefusal, rotate_and_verify
+from scripts.b6_6_runner import RunContext, Runner, StageResult
+
+
+ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_STAGES = (
+    "stage0",
+    "deadline",
+    "workers_ready",
+    "dra_ready",
+    "rag_ready",
+    "asr_ready",
+    "tts_ready",
+    "llm_ready",
+    "orchestrator_ready",
+    "controller_window",
+    "controller_ready",
+    "pre_endpoint_images",
+    "terraform_window",
+    "endpoints_ready",
+    "fargate_probe",
+    "alb_ready",
+    "alb_tag_mutation_warning",
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof",
+    "cleanup",
+)
+
+
+def test_exact_23_stage_chain_and_invariant_lists_are_complete() -> None:
+    assert WINDOW_STAGES == EXPECTED_STAGES
+    assert set(GUARDS) == set(EXPECTED_STAGES)
+    assert all(GUARDS[stage] for stage in EXPECTED_STAGES)
+
+
+def test_full_pass_and_every_induced_failure_persist_receipts_and_cleanup(tmp_path: Path) -> None:
+    passed = _scenario(tmp_path, "pass", None)
+    assert passed["outcome"] == "PASS"
+    assert [item["stage"] for item in passed["receipts"]] == list(EXPECTED_STAGES)
+    assert all(item["status"] == "PASS" for item in passed["receipts"])
+    for index, stage in enumerate(EXPECTED_STAGES, start=1):
+        result = _scenario(tmp_path, f"fail-{index}", stage)
+        receipts = {item["stage"]: item for item in result["receipts"]}
+        assert result["outcome"] == "REFUSED"
+        assert receipts[stage]["status"] == "REFUSED"
+        assert "cleanup" in receipts
+        assert result["cleanup_complete"] is True
+        assert result["real_aws_calls"] == 0
+        assert result["real_kubectl_calls"] == 0
+
+
+@pytest.mark.parametrize("historical_versions", [0, 1, 2, 3, 7, 25])
+def test_rotation_ignores_historical_cardinality_and_writes_exact_token(
+    tmp_path: Path, historical_versions: int
+) -> None:
+    token = tmp_path / "token"
+    result = rotate_and_verify(
+        FakeSecretClient(historical_versions),
+        token,
+        material_factory=lambda size: bytes(range(size)),
+    )
+    assert result["status"] == "PASS"
+    assert result["historical_version_count_evaluated"] is False
+    assert result["secret_tag_count_evaluated"] is False
+    assert stat.S_IMODE(token.stat().st_mode) == 0o600
+    assert len(token.read_bytes()) == 44
+    assert token.read_bytes().endswith(b"\n")
+    assert token.read_bytes().count(b"\n") == 1
+
+
+def test_operator_plaintext_read_is_a_refusal(tmp_path: Path) -> None:
+    client = FakeSecretClient()
+    client.get_secret_value = lambda **_: {"SecretString": "forbidden"}  # type: ignore[method-assign]
+    with pytest.raises(CredentialRefusal):
+        rotate_and_verify(client, tmp_path / "token")
+
+
+def test_receipt_engine_is_write_once_and_fails_closed(tmp_path: Path) -> None:
+    store = ReceiptStore(tmp_path)
+    receipt = store.persist("stage0", "PASS", {"safe": True})
+    assert receipt["status"] == "PASS"
+    with pytest.raises(ReceiptRefusal):
+        store.persist("stage0", "PASS", {"safe": True})
+    with pytest.raises(ReceiptRefusal):
+        store.persist("stage0", "UNKNOWN", {})
+    with pytest.raises(ReceiptRefusal):
+        store.persist("unknown", "PASS", {})
+    with pytest.raises(ReceiptRefusal):
+        store.persist("deadline", "PASS", {"stdout": "not allowed"})
+
+
+class BeforeRunFailure:
+    def before_run(self, context: RunContext) -> None:
+        del context
+        raise RuntimeError("injected")
+
+    def execute(self, stage: str, context: RunContext) -> StageResult:
+        del context
+        assert stage == "cleanup"
+        return StageResult({"zero_state": True})
+
+    def recover_cleanup(self, context: RunContext) -> dict:
+        del context
+        return {"recovery_completed": True}
+
+
+def test_top_level_exception_gets_terminal_receipt_and_cleanup(tmp_path: Path) -> None:
+    store = ReceiptStore(tmp_path / "receipts")
+    context = RunContext(
+        kubeconfig=tmp_path / "kubeconfig",
+        authorization=tmp_path / "authorization",
+        packet_sha256="0" * 64,
+        receipts_dir=tmp_path / "receipts",
+        token_file=tmp_path / "token",
+        attempt=1,
+    )
+    result = Runner(BeforeRunFailure(), store).run(context)
+    assert result.outcome == "REFUSED"
+    assert store.load("runner_exception")["payload"]["terminal_classification"] == "EXCEPTION"
+    assert store.load("cleanup")["status"] == "PASS"
+
+
+def test_r1_persistent_secret_and_cleanup_boundary_are_structural() -> None:
+    terraform = (ROOT / "infra/b6_client_secret.tf").read_text()
+    override = (ROOT / "infra/b6_6_persistent_secret_override.tf").read_text()
+    cleanup = (ROOT / "scripts/b6_6_cleanup.sh").read_text()
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    bridge = (ROOT / "scripts/b6_6_persistent_secret_bridge.py").read_text()
+    assert 'resource "aws_secretsmanager_secret" "b6_client_keys"' in terraform
+    assert "DenyEveryOtherPrincipalRead" in terraform
+    assert override.count("prevent_destroy = true") == 3
+    assert "SCHEDULED_RECOVERABLE_DELETION" not in cleanup
+    assert "restore-secret" not in operations
+    assert "delete-secret" not in operations
+    assert "b6_6_credential.py" in operations
+    assert 'persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED"' in cleanup
+    assert bridge.index("put_resource_policy") < bridge.index(
+        '["terraform", "-chdir=infra", "state", "list"]'
+    )
+    assert "BlockPublicPolicy=True" in bridge
+
+
+def test_r6_settled_controls_remain_in_canonical_sources() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    endpoints = (ROOT / "scripts/b6_6_probe_endpoints.py").read_text()
+    deadline = (ROOT / "scripts/b6_6_deadline.py").read_text()
+    runner = (ROOT / "scripts/b6_6_runner.py").read_text()
+    assert operations.index("stage_pre_endpoint_images") < operations.index("stage_terraform_window")
+    assert 'identifiers = ["*"]' in (ROOT / "infra/b6_6_endpoint_policy_override.tf").read_text()
+    assert "PROBE_EXCLUSIVE_SELF_REFERENCE" in endpoints
+    assert '"tag:Boundary"' not in endpoints
+    assert 'item.get("ServiceName") in set(SERVICES.values())' in endpoints
+    assert "wait-seconds 1200" in operations
+    assert "WINDOW_SECONDS = 4500" in deadline
+    assert "WARNING_OUTSIDE_APPROVED_STAGE" in runner
+    fatal_rule = (ROOT / "platform/decisions/B6-LBC-TAG-MUTATION-RUNTIME-RULE-2026-002.json").read_text()
+    for action in ("CreateListener", "CreateRule", "DeleteListener", "DeleteRule"):
+        assert action in fatal_rule
+
+
+def test_only_one_b6_6_script_family_and_receipt_engine_remain() -> None:
+    scripts = [path.name for path in (ROOT / "scripts").glob("b6_6_*")]
+    assert not any("successor" in name or "images_before_endpoints" in name for name in scripts)
+    assert not (ROOT / "pipeline/b6_integration_receipts_v2.py").exists()
+    assert not (ROOT / "scripts/b6_6_receipt_v2.py").exists()
+    assert not (ROOT / "scripts/b6_6_stage_runtime.sh").exists()
+
+
+def test_standing_verifier_policy_prohibits_incidental_checks() -> None:
+    value = json.loads(
+        (ROOT / "platform/decisions/B6-WINDOW-VERIFIER-POLICY-2026-001.json").read_bytes()
+    )
+    assert value["source_review"].endswith("R5")
+    assert "Historical secret-version cardinality" in value["prohibited"]
+    assert "Every packet enumerates each stage's invariant list." in value["required"]

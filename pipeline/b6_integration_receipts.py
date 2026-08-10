@@ -1,4 +1,4 @@
-"""Write-once, PHI-safe stage receipts for the B6.6 integration window."""
+"""Single write-once receipt engine for the consolidated B6.6 window."""
 from __future__ import annotations
 
 import hashlib
@@ -8,23 +8,25 @@ import re
 import secrets
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
-SCHEMA = "MEDZEN_B6_INTEGRATION_STAGE_RECEIPT_V1"
-STAGES = (
-    "local_bindings",
+SCHEMA = "MEDZEN_B6_INTEGRATION_RECEIPT_V2"
+EXECUTION_STAGES = (
+    "stage0",
     "deadline",
     "workers_ready",
-    "terraform_window",
-    "endpoints_ready",
-    "controller_ready",
     "dra_ready",
     "rag_ready",
     "asr_ready",
     "tts_ready",
     "llm_ready",
     "orchestrator_ready",
+    "controller_window",
+    "controller_ready",
+    "pre_endpoint_images",
+    "terraform_window",
+    "endpoints_ready",
     "fargate_probe",
     "alb_ready",
     "alb_tag_mutation_warning",
@@ -33,38 +35,26 @@ STAGES = (
     "cancellation_proof",
     "failure_drills",
     "isolation_proof",
-    "cleanup",
-    "cleanup_recovery",
 )
-DEPENDENCIES = {
-    "deadline": ("local_bindings",),
-    "workers_ready": ("deadline",),
-    "terraform_window": ("workers_ready",),
-    "endpoints_ready": ("terraform_window",),
-    "controller_ready": ("endpoints_ready",),
-    "dra_ready": ("controller_ready",),
-    "rag_ready": ("dra_ready",),
-    "asr_ready": ("rag_ready",),
-    "tts_ready": ("asr_ready",),
-    "llm_ready": ("tts_ready",),
-    "orchestrator_ready": ("llm_ready",),
-    "fargate_probe": ("orchestrator_ready",),
-    "alb_ready": ("fargate_probe",),
-    "alb_tag_mutation_warning": ("alb_ready",),
-    "file_proof": ("alb_tag_mutation_warning",),
-    "websocket_proof": ("file_proof",),
-    "cancellation_proof": ("websocket_proof",),
-    "failure_drills": ("cancellation_proof",),
-    "isolation_proof": ("failure_drills",),
-    "cleanup": ("deadline",),
-    "cleanup_recovery": ("deadline",),
-}
-STATUSES = {"PASS", "WARNING_NON_FATAL", "REFUSED", "INCOMPLETE", "NOT_RUN"}
+WINDOW_STAGES = (*EXECUTION_STAGES, "cleanup")
+AUXILIARY_STAGES = ("persistent_secret_bridge", "runner_exception", "cold_rehearsal")
+ALL_STAGES = (*WINDOW_STAGES, *AUXILIARY_STAGES)
+STATUSES = {"PASS", "REFUSED", "WARNING_NON_FATAL"}
 FORBIDDEN_KEYS = {
-    "audio", "audio_bytes", "transcript", "reply", "citation_text",
-    "authorization", "bearer", "token", "secret_value", "stdout", "stderr",
+    "audio",
+    "audio_bytes",
+    "transcript",
+    "reply",
+    "citation_text",
+    "authorization",
+    "bearer",
+    "token",
+    "secret_value",
+    "stdout",
+    "stderr",
 }
 SAFE_STAGE = re.compile(r"[a-z][a-z0-9_]*")
+SAFE_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class ReceiptRefusal(RuntimeError):
@@ -75,15 +65,25 @@ def canonical_json(value: Any) -> bytes:
     return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
+def sha256_bytes(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
 def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha256_bytes(path.read_bytes())
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def _walk(value: Any, path: tuple[str, ...] = ()) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
             if not isinstance(key, str) or key.lower() in FORBIDDEN_KEYS:
-                raise ReceiptRefusal(f"receipt field is prohibited: {'.'.join(path + (str(key),))}")
+                raise ReceiptRefusal(
+                    f"receipt field is prohibited: {'.'.join(path + (str(key),))}"
+                )
             _walk(child, path + (key,))
     elif isinstance(value, list):
         for child in value:
@@ -94,7 +94,9 @@ def _walk(value: Any, path: tuple[str, ...] = ()) -> None:
             raise ReceiptRefusal("credential-like receipt value is prohibited")
 
 
-def _write_once(path: Path, encoded: bytes) -> None:
+def write_once(path: Path, value: dict[str, Any]) -> str:
+    _walk(value)
+    encoded = canonical_json(value)
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists():
         raise ReceiptRefusal(f"refusing to overwrite immutable receipt: {path.name}")
@@ -108,7 +110,9 @@ def _write_once(path: Path, encoded: bytes) -> None:
         try:
             os.link(temporary, path)
         except FileExistsError as exc:
-            raise ReceiptRefusal(f"refusing to overwrite immutable receipt: {path.name}") from exc
+            raise ReceiptRefusal(
+                f"refusing to overwrite immutable receipt: {path.name}"
+            ) from exc
         temporary.unlink()
         directory = os.open(path.parent, os.O_RDONLY)
         try:
@@ -118,15 +122,17 @@ def _write_once(path: Path, encoded: bytes) -> None:
     finally:
         if temporary.exists():
             temporary.unlink()
+    return sha256_bytes(encoded)
 
 
 class ReceiptStore:
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, *, clock: Callable[[], str] = utc_now):
         self.directory = directory
+        self.clock = clock
 
     def path(self, stage: str) -> Path:
-        if stage not in STAGES or SAFE_STAGE.fullmatch(stage) is None:
-            raise ReceiptRefusal(f"unknown B6.6 receipt stage: {stage}")
+        if stage not in ALL_STAGES or SAFE_STAGE.fullmatch(stage) is None:
+            raise ReceiptRefusal(f"unknown consolidated B6.6 receipt stage: {stage}")
         return self.directory / f"{stage}.json"
 
     def load(self, stage: str) -> dict[str, Any]:
@@ -140,34 +146,39 @@ class ReceiptStore:
             raise ReceiptRefusal(f"{stage} receipt status differs")
         return value
 
-    def require_pass(self, stage: str) -> dict[str, Any]:
-        value = self.load(stage)
-        accepted = value["status"] == "PASS" or (
-            stage == "alb_tag_mutation_warning"
-            and value["status"] == "WARNING_NON_FATAL"
-        )
-        if not accepted:
-            raise ReceiptRefusal(f"{stage} receipt is not PASS")
-        return value
+    def hashes(self) -> dict[str, str]:
+        return {
+            stage: sha256_file(self.path(stage))
+            for stage in ALL_STAGES
+            if self.path(stage).exists()
+        }
 
-    def persist(self, stage: str, status: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def persist(
+        self,
+        stage: str,
+        status: str,
+        payload: dict[str, Any],
+        *,
+        dependencies: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         self.path(stage)
         if status not in STATUSES:
-            raise ReceiptRefusal("unknown B6.6 receipt status")
-        _walk(payload)
-        dependency_hashes: dict[str, str] = {}
-        for dependency in DEPENDENCIES.get(stage, ()):
-            self.require_pass(dependency)
-            dependency_hashes[dependency] = sha256_file(self.path(dependency))
+            raise ReceiptRefusal("unknown consolidated B6.6 receipt status")
+        dependency_hashes = dependencies or {}
+        if any(
+            dependency not in ALL_STAGES
+            or SAFE_SHA256.fullmatch(str(digest)) is None
+            for dependency, digest in dependency_hashes.items()
+        ):
+            raise ReceiptRefusal("receipt dependency binding is malformed")
         value = {
             "schema": SCHEMA,
             "stage": stage,
             "status": status,
-            "recorded_utc": datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z"),
-            "dependencies": dependency_hashes,
+            "recorded_utc": self.clock(),
+            "dependencies": dict(sorted(dependency_hashes.items())),
             "contains_audio_transcript_reply_citations_credentials_or_phi": False,
             "payload": payload,
         }
-        encoded = canonical_json(value)
-        _write_once(self.path(stage), encoded)
-        return {**value, "receipt_sha256": hashlib.sha256(encoded).hexdigest()}
+        digest = write_once(self.path(stage), value)
+        return {**value, "receipt_sha256": digest}

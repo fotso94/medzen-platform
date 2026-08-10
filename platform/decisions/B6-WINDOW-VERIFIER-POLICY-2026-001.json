@@ -1,0 +1,18 @@
+{
+  "id": "B6-WINDOW-VERIFIER-POLICY-2026-001",
+  "revision": 1,
+  "status": "standing-rule-proposed-with-packet-2026-019",
+  "source_review": "B6-WINDOW-DESIGN-REVIEW-2026-001-R5",
+  "rule": "Verify only safety and functional invariants; never require incidental counts, tags, history, or artifacts that do not change safety or function.",
+  "required": [
+    "Every packet enumerates each stage's invariant list.",
+    "Unknown or malformed states refuse.",
+    "Safety boundaries, exact resource identities, digest identities, ordering, deadlines, bounded counts and zero-state cleanup remain exact."
+  ],
+  "prohibited": [
+    "Historical secret-version cardinality",
+    "Tag totals when exact required tag values are not a safety boundary",
+    "Historical receipt counts",
+    "Pre-existing incidental state not required for safety or function"
+  ]
+}

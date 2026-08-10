@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Verify the window-only private image-pull path for the B6.6 probe."""
+"""Verify the principal-independent, probe-exclusive ECR endpoint path."""
 from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
+from pathlib import Path
 from typing import Any, Callable
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 ACCOUNT = "558069890522"
 REGION = "eu-central-1"
 PROFILE = "medzen"
 VPC_ID = "vpc-051aa9df8b64bf141"
-PROBE_SECURITY_GROUP = "sg-0a83abae6ab954543"
+BACKEND_SECURITY_GROUP = "sg-0a83abae6ab954543"
 ENDPOINT_SECURITY_GROUP_NAME = "medzen-b6-probe-vpce"
 MAIN_ROUTE_TABLE = "rtb-0c6eb6874ce0565dc"
 SUBNETS = {
@@ -21,10 +26,7 @@ SUBNETS = {
     "subnet-01fb2fc3f56bce55e",
 }
 BOUNDARY = "B6-6-PROBE"
-ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/medzen-b6-window-probe-execution"
-REPOSITORY_ARN = (
-    f"arn:aws:ecr:{REGION}:{ACCOUNT}:repository/medzen-rag-index"
-)
+REPOSITORY_ARN = f"arn:aws:ecr:{REGION}:{ACCOUNT}:repository/medzen-rag-index"
 LAYER_BUCKET_ARN = f"arn:aws:s3:::prod-{REGION}-starport-layer-bucket/*"
 SERVICES = {
     "ecr-api": f"com.amazonaws.{REGION}.ecr.api",
@@ -41,11 +43,10 @@ class EndpointPending(RuntimeError):
     pass
 
 
-def _tags(value: dict[str, Any]) -> dict[str, str]:
-    return {
-        str(item.get("Key", "")): str(item.get("Value", ""))
-        for item in value.get("Tags", [])
-    }
+def _client(profile: str) -> Any:
+    import boto3
+
+    return boto3.Session(profile_name=profile, region_name=REGION).client("ec2")
 
 
 def _as_set(value: Any) -> set[str]:
@@ -53,41 +54,23 @@ def _as_set(value: Any) -> set[str]:
         return {value}
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return set(value)
-    raise EndpointRefusal("endpoint policy field is malformed")
+    return set()
 
 
-def _verify_policy(
-    raw: str,
-    *,
-    sid: str,
-    actions: set[str],
-    resources: set[str],
-    principals: set[str] | None = None,
-) -> None:
-    if principals is None:
-        principals = {ROLE_ARN}
-    try:
-        value = json.loads(raw)
-    except Exception as exc:
-        raise EndpointRefusal("endpoint policy is malformed") from exc
-    statements = value.get("Statement", [])
-    if not isinstance(statements, list) or len(statements) != 1:
-        raise EndpointRefusal("endpoint policy statement count differs")
-    statement = statements[0]
-    principal = statement.get("Principal")
-    if isinstance(principal, dict):
-        principal_values = _as_set(principal.get("AWS"))
-    else:
-        principal_values = _as_set(principal)
-    if (
-        statement.get("Sid") != sid
-        or statement.get("Effect") != "Allow"
-        or _as_set(statement.get("Action")) != actions
-        or _as_set(statement.get("Resource")) != resources
-        or principal_values != principals
-        or "Condition" in statement
-    ):
-        raise EndpointRefusal("endpoint policy boundary differs")
+def _tags(value: dict[str, Any]) -> dict[str, str]:
+    return {
+        str(item.get("Key")): str(item.get("Value"))
+        for item in value.get("Tags", [])
+    }
+
+
+def _endpoint_security_groups(ec2: Any) -> list[dict[str, Any]]:
+    return ec2.describe_security_groups(
+        Filters=[
+            {"Name": "vpc-id", "Values": [VPC_ID]},
+            {"Name": "group-name", "Values": [ENDPOINT_SECURITY_GROUP_NAME]},
+        ]
+    ).get("SecurityGroups", [])
 
 
 def _all_service_endpoints(ec2: Any) -> list[dict[str, Any]]:
@@ -102,26 +85,45 @@ def _all_service_endpoints(ec2: Any) -> list[dict[str, Any]]:
     ]
 
 
-def _endpoint_security_groups(ec2: Any) -> list[dict[str, Any]]:
-    response = ec2.describe_security_groups(
-        Filters=[
-            {"Name": "vpc-id", "Values": [VPC_ID]},
-            {"Name": "group-name", "Values": [ENDPOINT_SECURITY_GROUP_NAME]},
-        ]
-    )
-    return response.get("SecurityGroups", [])
-
-
 def verify_absent(ec2: Any) -> dict[str, Any]:
     endpoints = _all_service_endpoints(ec2)
     groups = _endpoint_security_groups(ec2)
     if endpoints or groups:
-        raise EndpointRefusal("window-only probe endpoint boundary is not absent")
+        raise EndpointRefusal("temporary probe endpoint boundary is not absent")
     return {
         "status": "PASS",
-        "vpc_endpoint_count": 0,
-        "endpoint_security_group_count": 0,
+        "probe_vpc_endpoints": 0,
+        "probe_endpoint_security_groups": 0,
     }
+
+
+def _verify_policy(
+    raw: str,
+    *,
+    sid: str,
+    actions: set[str],
+    resources: set[str],
+) -> None:
+    try:
+        value = json.loads(raw)
+    except Exception as exc:
+        raise EndpointRefusal("endpoint policy is malformed") from exc
+    statements = value.get("Statement", [])
+    if not isinstance(statements, list) or len(statements) != 1:
+        raise EndpointRefusal("endpoint policy statement count differs")
+    statement = statements[0]
+    principal = statement.get("Principal")
+    if isinstance(principal, dict):
+        principal = principal.get("AWS")
+    if (
+        statement.get("Sid") != sid
+        or statement.get("Effect") != "Allow"
+        or _as_set(statement.get("Action")) != actions
+        or _as_set(statement.get("Resource")) != resources
+        or _as_set(principal) != {"*"}
+        or "Condition" in statement
+    ):
+        raise EndpointRefusal("endpoint policy boundary differs")
 
 
 def _verify_endpoint_security_group(ec2: Any) -> str:
@@ -131,25 +133,30 @@ def _verify_endpoint_security_group(ec2: Any) -> str:
     if len(groups) != 1:
         raise EndpointRefusal("endpoint security group count differs")
     group = groups[0]
-    if _tags(group).get("Boundary") != BOUNDARY:
-        raise EndpointRefusal("endpoint security group boundary tag differs")
+    group_id = str(group.get("GroupId", ""))
     permissions = group.get("IpPermissions", [])
-    if len(permissions) != 1:
-        raise EndpointRefusal("endpoint security group ingress count differs")
+    if (
+        not group_id
+        or _tags(group).get("Boundary") != BOUNDARY
+        or len(permissions) != 1
+    ):
+        raise EndpointRefusal("endpoint security group identity differs")
     permission = permissions[0]
     pairs = permission.get("UserIdGroupPairs", [])
     if (
         permission.get("IpProtocol") != "tcp"
         or permission.get("FromPort") != 443
         or permission.get("ToPort") != 443
-        or [item.get("GroupId") for item in pairs] != [PROBE_SECURITY_GROUP]
+        or [item.get("GroupId") for item in pairs] != [group_id]
         or permission.get("IpRanges")
         or permission.get("Ipv6Ranges")
         or permission.get("PrefixListIds")
         or group.get("IpPermissionsEgress")
     ):
-        raise EndpointRefusal("endpoint security group is not scoped to the probe SG only")
-    return str(group.get("GroupId", ""))
+        raise EndpointRefusal(
+            "endpoint SG must admit TLS only from its probe-exclusive self reference"
+        )
+    return group_id
 
 
 def verify_available(ec2: Any) -> dict[str, Any]:
@@ -190,13 +197,13 @@ def verify_available(ec2: Any) -> dict[str, Any]:
 
     _verify_policy(
         str(by_purpose["ecr-api"].get("PolicyDocument", "")),
-        sid="ExactProbeRoleRegistryToken",
+        sid="ProbeNetworkRegistryToken",
         actions={"ecr:GetAuthorizationToken"},
         resources={"*"},
     )
     _verify_policy(
         str(by_purpose["ecr-dkr"].get("PolicyDocument", "")),
-        sid="ExactProbeRoleQualifiedImagePull",
+        sid="ProbeNetworkQualifiedImagePull",
         actions={
             "ecr:BatchCheckLayerAvailability",
             "ecr:BatchGetImage",
@@ -224,7 +231,6 @@ def verify_available(ec2: Any) -> dict[str, Any]:
         sid="MinimumEcrLayerBucketRead",
         actions={"s3:GetObject"},
         resources={LAYER_BUCKET_ARN},
-        principals={"*"},
     )
     return {
         "status": "PASS",
@@ -233,9 +239,14 @@ def verify_available(ec2: Any) -> dict[str, Any]:
         "private_dns_interface_endpoints": 2,
         "interface_subnet_bindings": 6,
         "endpoint_security_group_id": endpoint_sg,
-        "endpoint_ingress_source_security_group": PROBE_SECURITY_GROUP,
+        "endpoint_ingress_source_security_group": endpoint_sg,
+        "endpoint_ingress_source_mode": "PROBE_EXCLUSIVE_SELF_REFERENCE",
+        "probe_task_security_groups": sorted(
+            [BACKEND_SECURITY_GROUP, endpoint_sg]
+        ),
         "endpoint_ingress_port": 443,
         "gateway_route_table_id": MAIN_ROUTE_TABLE,
+        "ecr_endpoint_principal_mode": "REQUIRED_WILDCARD_NO_ROLE_REFERENCE",
     }
 
 
@@ -256,15 +267,6 @@ def wait_available(
             if monotonic() >= stop:
                 raise EndpointRefusal("probe endpoints did not become available in time")
             sleep(15)
-
-
-def _client(profile: str) -> Any:
-    import boto3
-
-    session = boto3.Session(profile_name=profile, region_name=REGION)
-    if session.client("sts").get_caller_identity().get("Account") != ACCOUNT:
-        raise EndpointRefusal("AWS account differs")
-    return session.client("ec2")
 
 
 def main() -> int:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import subprocess
 import sys
@@ -25,11 +26,8 @@ ADDRESSES = {
     "aws_ecs_cluster.b6_probe[0]",
     "aws_ecs_task_definition.b6_probe[0]",
 }
-SECRET_ADDRESSES = {
-    "aws_secretsmanager_secret.b6_client_keys[0]",
-    "aws_secretsmanager_secret_policy.b6_client_keys[0]",
-    "aws_iam_role_policy.b6_client_keys_kms[0]",
-}
+CONTROLLER = "helm_release.b6_load_balancer_controller[0]"
+ENDPOINT_ADDRESSES = ADDRESSES - {CONTROLLER}
 RAG_DIGEST = "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
 VPC_ID = "vpc-051aa9df8b64bf141"
 PROBE_SG = "sg-0a83abae6ab954543"
@@ -128,7 +126,8 @@ def validate_create(plan: dict[str, Any]) -> None:
         plan, "aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]"
     )
     if (
-        endpoint_source.get("referenced_security_group_id") != PROBE_SG
+        endpoint_source.get("referenced_security_group_id")
+        != endpoint_source.get("security_group_id")
         or endpoint_source.get("from_port") != 443
         or endpoint_source.get("to_port") != 443
         or endpoint_source.get("ip_protocol") != "tcp"
@@ -143,14 +142,14 @@ def validate_create(plan: dict[str, Any]) -> None:
         (
             "ecr_api",
             "com.amazonaws.eu-central-1.ecr.api",
-            "ExactProbeRoleRegistryToken",
+            "ProbeNetworkRegistryToken",
             {"ecr:GetAuthorizationToken"},
             {"*"},
         ),
         (
             "ecr_dkr",
             "com.amazonaws.eu-central-1.ecr.dkr",
-            "ExactProbeRoleQualifiedImagePull",
+            "ProbeNetworkQualifiedImagePull",
             {
                 "ecr:BatchCheckLayerAvailability",
                 "ecr:BatchGetImage",
@@ -180,8 +179,7 @@ def validate_create(plan: dict[str, Any]) -> None:
             or statement.get("Effect") != "Allow"
             or _string_set(statement.get("Action"), "actions") != actions
             or _string_set(statement.get("Resource"), "resources") != resources
-            or _principal_set(statement)
-            != {"arn:aws:iam::558069890522:role/medzen-b6-window-probe-execution"}
+            or _principal_set(statement) != {"*"}
             or "Condition" in statement
         ):
             raise ValueError(f"{purpose} endpoint policy differs")
@@ -218,28 +216,67 @@ def validate_create(plan: dict[str, Any]) -> None:
 
 def validate_destroy(plan: dict[str, Any]) -> None:
     actual = changes(plan)
-    expected = ADDRESSES | SECRET_ADDRESSES
-    if actual != {address: ["delete"] for address in expected}:
+    if actual != {address: ["delete"] for address in ADDRESSES}:
         raise ValueError(f"destroy delta differs: {actual!r}")
 
 
 def validate_cleanup(plan: dict[str, Any]) -> None:
     actual = changes(plan)
-    allowed = ADDRESSES | SECRET_ADDRESSES
+    allowed = ADDRESSES
     if not actual or not set(actual).issubset(allowed):
         raise ValueError(f"cleanup delta contains absent or unknown resources: {actual!r}")
     if any(actions != ["delete"] for actions in actual.values()):
         raise ValueError(f"cleanup contains a non-delete action: {actual!r}")
 
 
+def validate_controller(plan: dict[str, Any]) -> None:
+    actual = changes(plan)
+    if actual != {CONTROLLER: ["create"]}:
+        raise ValueError(f"controller delta differs: {actual!r}")
+    release = _after(plan, CONTROLLER)
+    if (
+        release.get("name") != "aws-load-balancer-controller"
+        or release.get("namespace") != "kube-system"
+        or release.get("chart") != "aws-load-balancer-controller"
+        or release.get("version") != "3.5.0"
+        or release.get("repository") != "https://aws.github.io/eks-charts"
+        or release.get("atomic") is not True
+        or release.get("wait") is not True
+        or release.get("wait_for_jobs") is not True
+    ):
+        raise ValueError("controller release boundary differs")
+
+
+def validate_endpoints(plan: dict[str, Any]) -> None:
+    actual = changes(plan)
+    if actual != {address: ["create"] for address in ENDPOINT_ADDRESSES}:
+        raise ValueError(f"endpoint/probe delta differs: {actual!r}")
+    combined = copy.deepcopy(plan)
+    release = next(
+        item for item in combined["resource_changes"] if item["address"] == CONTROLLER
+    )
+    if release["change"]["actions"] != ["no-op"]:
+        raise ValueError("controller is not stable before endpoint creation")
+    release["change"]["actions"] = ["create"]
+    validate_create(combined)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("create", "destroy", "cleanup"))
+    parser.add_argument(
+        "mode", choices=("create", "controller", "endpoints", "destroy", "cleanup")
+    )
     parser.add_argument("plan", type=Path)
     args = parser.parse_args()
     try:
         plan = load(args.plan)
-        {"create": validate_create, "destroy": validate_destroy, "cleanup": validate_cleanup}[args.mode](plan)
+        {
+            "create": validate_create,
+            "controller": validate_controller,
+            "endpoints": validate_endpoints,
+            "destroy": validate_destroy,
+            "cleanup": validate_cleanup,
+        }[args.mode](plan)
     except (OSError, KeyError, ValueError, StopIteration, subprocess.SubprocessError) as exc:
         print(f"REFUSING B6.6 {args.mode.upper()}: {exc}", file=sys.stderr)
         return 2
