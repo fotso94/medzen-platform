@@ -138,7 +138,9 @@ class DeadlineControl:
             if (
                 nodegroup.get("status") != "ACTIVE"
                 or nodegroup.get("health", {}).get("issues")
-                or scaling != {"minSize": 0, "maxSize": binding["maximum"], "desiredSize": 0}
+                or scaling.get("minSize") != 0
+                or scaling.get("maxSize") != binding["maximum"]
+                or scaling.get("desiredSize") != 0
                 or not self._zero(self._group(name), binding["maximum"])
             ):
                 raise DeadlineRefusal(f"{name} is not proven zero")

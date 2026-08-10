@@ -1,0 +1,165 @@
+{
+  "id": "B6-PACKET-2026-021-ATTEMPT-2-REFUSED-FARGATE-BOUNDARY",
+  "recorded_at_utc": "2026-08-10T18:42:34Z",
+  "status": "REFUSED_WITH_AUTOMATIC_ZERO_STATE_CLEANUP",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-021",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-021-endpoint-cleanup-guards.md",
+    "sha256": "a2354dafcd4d89ce9adf9b345ae23ee5364d53d5ca251deadf36a779d4dcae54",
+    "reviewed_commit": "56b2a504a1888e5fa5422d0165236252bd5c74e4"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-021",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-021-endpoint-cleanup-guards.json",
+    "sha256": "9d46897a3a4375e1b245d2e239fcd7b93c9d3ecfc4f186d4dc2dbdab4edb71fe"
+  },
+  "attempt": {
+    "number": 2,
+    "outcome": "REFUSED",
+    "started_at_utc": "2026-08-10T18:24:48Z",
+    "deadline_armed_at_utc": "2026-08-10T18:24:52Z",
+    "refused_at_utc": "2026-08-10T18:31:05Z",
+    "cleanup_completed_at_utc": "2026-08-10T18:42:34Z",
+    "wall_clock_seconds_through_cleanup": 1066,
+    "stop_stage": "fargate_probe",
+    "pass_stages": [
+      "stage0",
+      "deadline",
+      "workers_ready",
+      "dra_ready",
+      "rag_ready",
+      "asr_ready",
+      "tts_ready",
+      "llm_ready",
+      "orchestrator_ready",
+      "controller_window",
+      "controller_ready",
+      "pre_endpoint_images",
+      "terraform_window",
+      "endpoints_ready"
+    ],
+    "refused_stages": ["fargate_probe"],
+    "not_started_stages": [
+      "alb_ready",
+      "alb_tag_mutation_warning",
+      "file_proof",
+      "websocket_proof",
+      "cancellation_proof",
+      "failure_drills",
+      "isolation_proof"
+    ],
+    "conversation_proofs_executed": 0,
+    "fargate_tasks_started": 0,
+    "production_traffic": 0,
+    "phi_used": false
+  },
+  "root_cause": {
+    "classification": "LOCAL_TASK_DEFINITION_VERIFIER_REJECTED_REQUIRED_HARDENING",
+    "explanation": "The Fargate probe verifier required linuxParameters to equal only {initProcessEnabled: true}. Terraform correctly registered the hardened task with initProcessEnabled true and capabilities.drop=[ALL]. Exact-dictionary equality treated the additional required hardening as drift and raised ProbeRefusal before ecs:RunTask.",
+    "task_definition": {
+      "family": "medzen-b6-window-probe",
+      "revision": 5,
+      "status_after_cleanup": "INACTIVE",
+      "expected_by_faulty_verifier": {
+        "initProcessEnabled": true
+      },
+      "observed_hardened_value": {
+        "capabilities": {
+          "add": [],
+          "drop": ["ALL"]
+        },
+        "initProcessEnabled": true
+      }
+    },
+    "cloudtrail_run_task_events_in_refusal_interval": 0,
+    "aws_service_failure": false,
+    "network_failure": false,
+    "image_pull_attempted": false,
+    "application_started": false
+  },
+  "terraform_window": {
+    "status": "PASS",
+    "adds": 11,
+    "changes": 0,
+    "destroys": 0,
+    "controller_changes": 0,
+    "vpc_endpoints_created": 3,
+    "endpoint_security_groups_created": 1,
+    "iam_roles_created": 1,
+    "fargate_maximum_tasks": 1,
+    "receipt_limitation": "The 2026-021 receipt contains counts but not resource names. Independent review made names mandatory from the next packet onward."
+  },
+  "receipt_chain": {
+    "stage0": "5740e021b102c235a679ce96a587dab8fdc5255751c84d1d6c6444fed4b807fb",
+    "deadline": "2144e513b472578126e32c0cd4a10d60fd6bd6a1dd3d8044be5c879f96bb9057",
+    "workers_ready": "f499dc1e4f7627cf0817be2d9712ca8b101423a2955337bdc095efff20cefde4",
+    "dra_ready": "86942de63e9ad116633397731c16d35bd9f26e8bca3078f2adb5f17876b8eacf",
+    "rag_ready": "f85b6d23ee183b685ffa3938834ad028692cc8d51fdba0dfc2f57383e3683cac",
+    "asr_ready": "8c02b2e495014460287f422fc3f372036f3e1d1a6fc8e19f7f8543ac5030fa58",
+    "tts_ready": "4422a7606a71d2210adb9e67ac82e39868f43e6f46a8f5f29a3b1130986751ff",
+    "llm_ready": "639c9967511f2d700fbfae7dad436c7b5977c7b027ecdb49fbffcffc97ed5aab",
+    "orchestrator_ready": "55ce7299918abdf2ce881b1ed03ff0a06b0da1260988279dc4cb01203ae0edc6",
+    "controller_window": "a2386f0c140430b08b28c9f0655adb4ab679c46ae435c997d0c5237ec2e164b2",
+    "controller_ready": "dcfa06c475687dced2fca7e750a021ae8e3e2aa9c7d6bbea5596067c53d65190",
+    "pre_endpoint_images": "c9e57dfeee53d937d8f2d7192438a837449417cfa667b455c4bd19796a849833",
+    "terraform_window": "ee98326976f4787236b9ac728122972edf8f09959a55217fb23dbd8a00547aaf",
+    "endpoints_ready": "213a6b2630a9ece97c48f95f04eda4900696bd1fc34a43f2390b04b6b6f21411",
+    "fargate_probe": "94f9ee52d44a56bc30d4133c0968254708afe0aa8938faa5311acfac5165335c",
+    "cleanup": "eade6838f707b5d187ec8e4d6785b7190dac24251f3620cec30fb7839a84fe54"
+  },
+  "automatic_cleanup": {
+    "status": "PASS",
+    "full_destroy_guard_selected_from_terraform_stage_pass": true,
+    "alb_count": 0,
+    "window_terraform_resources": 0,
+    "probe_vpc_endpoints": 0,
+    "endpoint_security_groups": 0,
+    "deployments": 0,
+    "ingresses": 0,
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "deadline_actions": 0,
+    "local_token_removed": true,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED"
+  },
+  "independent_zero_state_readback": {
+    "cpu_nodegroup": {"desired": 0, "instances": 0, "status": "ACTIVE", "health_issues": 0},
+    "gpu_nodegroup": {"desired": 0, "instances": 0, "status": "ACTIVE", "health_issues": 0},
+    "kubernetes_nodes": 0,
+    "deadline_actions": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "probe_iam_roles": 0,
+    "active_probe_ecs_clusters": 0,
+    "internal_albs": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "local_token": "ABSENT",
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED"
+  },
+  "allowance": {
+    "attempts_consumed": 2,
+    "attempts_remaining": 0,
+    "maximum_attempt_seconds": 4500,
+    "unused_seconds_transferable": false,
+    "existing_reservation_usd": 10.0,
+    "reservation_state": "RETAINED_PENDING_BILLING_RECONCILIATION_AND_OWNER_DECISION",
+    "actual_billing": "PENDING_AWS_COST_EXPLORER_LAG",
+    "new_attempt_requires_fresh_owner_allowance": true
+  },
+  "disposition": {
+    "packet_2026_021_terminal": true,
+    "b6_6_complete": false,
+    "automatic_retry": false,
+    "required_local_corrections": [
+      "Bind the exact hardened linuxParameters shape, including capabilities.drop=[ALL], in the task-definition verifier.",
+      "Persist the Terraform plan counts and exact resource names in the Terraform stage receipt.",
+      "Carry a structured safe probe refusal reason into the stage receipt without logging request bodies, credentials, audio, transcripts, replies or citations."
+    ],
+    "new_versioned_packet_independent_review_and_owner_allowance_required": true
+  }
+}

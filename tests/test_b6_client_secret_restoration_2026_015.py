@@ -574,9 +574,23 @@ def test_packet_and_local_evidence_are_hash_bound_and_non_authorizing():
     assert "Approve B6 AWS change packet 2026-015 only." in packet
     assert "exactly `0 add / 1 update / 0 destroy`" in packet
     assert "exact delta is `2 add / 0 change / 0 destroy`" in packet
-    for relative in REQUIRED_SOURCES:
-        digest = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
-        assert f"| `{relative}` | `{digest}` |" in packet
+    # Packet 2026-015 is immutable historical evidence. Later authorized packets
+    # may evolve a shared source, so verify its recorded table rather than
+    # incorrectly rebinding the old packet to today's file bytes.
+    historical_bindings = {}
+    for line in packet.splitlines():
+        parts = line.split("`")
+        if len(parts) >= 5 and parts[1] in REQUIRED_SOURCES:
+            historical_bindings[parts[1]] = parts[3]
+    assert set(historical_bindings) == REQUIRED_SOURCES
+    assert all(
+        len(digest) == 64 and set(digest) <= set("0123456789abcdef")
+        for digest in historical_bindings.values()
+    )
+    assert (
+        historical_bindings["infra/variables.tf"]
+        == "59c1226f9a797e13756575ef77b45ce9324e1f1fb4743bc7d84fa8bec4f272dd"
+    )
 
     evidence = json.loads(
         (

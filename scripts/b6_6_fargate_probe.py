@@ -37,6 +37,9 @@ ENTRY_POINT = ["/usr/local/bin/python", "-c"]
 COMMAND = [
     "import json,os,urllib.request; u=os.environ['TARGET_URL']; r=urllib.request.urlopen(u,timeout=15); v=json.load(r); assert r.status==200 and v.get('ready') is True"
 ]
+QUALIFICATION_COMMAND = [
+    "import sys; assert sys.version_info[:2] >= (3, 12)"
+]
 
 
 class ProbeRefusal(RuntimeError):
@@ -60,8 +63,10 @@ def _task_definition(ecs: Any) -> str:
         or set(value.get("requiresCompatibilities", [])) != {"FARGATE"}
         or len(containers) != 1
     ):
-        raise ProbeRefusal("probe task-definition boundary differs")
+        raise ProbeRefusal("PROBE_TASK_DEFINITION_BOUNDARY_DIFFERS")
     container = containers[0]
+    linux_parameters = container.get("linuxParameters", {})
+    capabilities = linux_parameters.get("capabilities", {})
     environment = {
         item.get("name"): item.get("value") for item in container.get("environment", [])
     }
@@ -72,17 +77,19 @@ def _task_definition(ecs: Any) -> str:
         or container.get("entryPoint") != ENTRY_POINT
         or container.get("command") != COMMAND
         or container.get("readonlyRootFilesystem") is not True
-        or container.get("linuxParameters") != {"initProcessEnabled": True}
+        or linux_parameters.get("initProcessEnabled") is not True
+        or capabilities.get("add") not in (None, [])
+        or "ALL" not in set(capabilities.get("drop", []))
         or environment != {"TARGET_URL": "http://not-set.invalid/readyz"}
         or container.get("secrets")
         or container.get("logConfiguration")
     ):
-        raise ProbeRefusal("probe container boundary differs")
+        raise ProbeRefusal("PROBE_CONTAINER_BOUNDARY_DIFFERS")
     arn = value.get("taskDefinitionArn")
     if not isinstance(arn, str) or not arn.startswith(
         f"arn:aws:ecs:{REGION}:{ACCOUNT}:task-definition/{TASK_FAMILY}:"
     ):
-        raise ProbeRefusal("probe task-definition ARN differs")
+        raise ProbeRefusal("PROBE_TASK_DEFINITION_ARN_DIFFERS")
     return arn
 
 
@@ -104,13 +111,21 @@ def _failure_reason(task: dict[str, Any]) -> str:
 def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
     containers = task.get("containers", [])
     if len(containers) != 1:
-        raise ProbeRefusal("probe task container count differs")
+        raise ProbeRefusal("PROBE_TASK_CONTAINER_COUNT_DIFFERS")
     container = containers[0]
     task_arn = str(task.get("taskArn", ""))
     if not task_arn:
-        raise ProbeRefusal("probe task ARN is absent")
+        raise ProbeRefusal("PROBE_TASK_ARN_ABSENT")
     exit_code = container.get("exitCode")
-    if exit_code == 0 and task.get("lastStatus") == "STOPPED":
+    container_status = container.get("lastStatus")
+    application_started = container_status == "RUNNING" or (
+        container_status == "STOPPED" and isinstance(exit_code, int)
+    )
+    if (
+        exit_code == 0
+        and task.get("lastStatus") == "STOPPED"
+        and container_status == "STOPPED"
+    ):
         return {
             "status": "PASS",
             "reason_code": "READYZ_ASSERTION_PASSED",
@@ -127,11 +142,90 @@ def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
         "task_arn_sha256": _hash(task_arn),
         "task_stop_code": str(task.get("stopCode", "ABSENT")),
         "container_exit_code_present": isinstance(exit_code, int),
-        "application_started": bool(container.get("runtimeId")),
+        "application_started": application_started,
         "readyz_request_completed": False,
         "assign_public_ip": "DISABLED",
         "private_endpoint_count": 3,
     }
+
+
+def run_isolated_probe(
+    ecs: Any,
+    ec2: Any,
+    wait_seconds: int,
+    *,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    """Launch one Stage A task using only the probe-exclusive endpoint SG."""
+    if wait_seconds < 1 or wait_seconds > 300:
+        raise ProbeRefusal("PROBE_TASK_WAIT_BOUND_DIFFERS")
+    endpoint = verify_available(ec2)
+    endpoint_sg = endpoint["endpoint_security_group_id"]
+    definition = _task_definition(ecs)
+    response = ecs.run_task(
+        cluster=CLUSTER,
+        taskDefinition=definition,
+        launchType="FARGATE",
+        networkConfiguration={
+            "awsvpcConfiguration": {
+                "subnets": sorted(SUBNETS),
+                "securityGroups": [endpoint_sg],
+                "assignPublicIp": "DISABLED",
+            }
+        },
+        overrides={
+            "containerOverrides": [
+                {"name": "probe", "command": QUALIFICATION_COMMAND}
+            ]
+        },
+    )
+    if response.get("failures") or len(response.get("tasks", [])) != 1:
+        return {
+            "status": "REFUSED",
+            "reason_code": "RUN_TASK_REFUSED",
+            "application_started": False,
+            "image_pull_proven": False,
+            "assign_public_ip": "DISABLED",
+            "private_endpoint_count": 3,
+            "probe_task_security_group_count": 1,
+        }
+    task_arn = response["tasks"][0].get("taskArn", "")
+    if not isinstance(task_arn, str) or not task_arn:
+        raise ProbeRefusal("RUN_TASK_RESPONSE_HAS_NO_TASK_ARN")
+    stop = monotonic() + wait_seconds
+    while True:
+        described = ecs.describe_tasks(cluster=CLUSTER, tasks=[task_arn])
+        if described.get("failures") or len(described.get("tasks", [])) != 1:
+            raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
+        task = described["tasks"][0]
+        if task.get("lastStatus") == "STOPPED":
+            result = _safe_task_result(task)
+            if result.get("status") == "PASS":
+                result["reason_code"] = "ISOLATED_IMAGE_PULL_AND_PROCESS_EXIT_PASSED"
+                result["readyz_request_completed"] = False
+            result.update(
+                {
+                    "qualification_mode": "ISOLATED_STAGE_A",
+                    "image_pull_proven": result.get("status") == "PASS",
+                    "probe_task_security_group_count": 1,
+                    "probe_exclusive_endpoint_security_group": True,
+                }
+            )
+            return result
+        if monotonic() >= stop:
+            return {
+                "status": "REFUSED",
+                "reason_code": "PROBE_TASK_TIMEOUT",
+                "task_arn_sha256": _hash(task_arn),
+                "application_started": False,
+                "image_pull_proven": False,
+                "assign_public_ip": "DISABLED",
+                "private_endpoint_count": 3,
+                "probe_task_security_group_count": 1,
+                "qualification_mode": "ISOLATED_STAGE_A",
+            }
+        sleep(10)
 
 
 def run_probe(
@@ -144,9 +238,9 @@ def run_probe(
     sleep: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     if TARGET.fullmatch(target_url) is None:
-        raise ProbeRefusal("probe target URL differs")
+        raise ProbeRefusal("PROBE_TARGET_URL_DIFFERS")
     if wait_seconds < 1 or wait_seconds > 600:
-        raise ProbeRefusal("probe task wait bound differs")
+        raise ProbeRefusal("PROBE_TASK_WAIT_BOUND_DIFFERS")
     endpoint = verify_available(ec2)
     endpoint_sg = endpoint["endpoint_security_group_id"]
     definition = _task_definition(ecs)
@@ -184,12 +278,12 @@ def run_probe(
         }
     task_arn = response["tasks"][0].get("taskArn", "")
     if not isinstance(task_arn, str) or not task_arn:
-        raise ProbeRefusal("run-task response has no task ARN")
+        raise ProbeRefusal("RUN_TASK_RESPONSE_HAS_NO_TASK_ARN")
     stop = monotonic() + wait_seconds
     while True:
         described = ecs.describe_tasks(cluster=CLUSTER, tasks=[task_arn])
         if described.get("failures") or len(described.get("tasks", [])) != 1:
-            raise ProbeRefusal("probe task read-back differs")
+            raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
         task = described["tasks"][0]
         if task.get("lastStatus") == "STOPPED":
             result = _safe_task_result(task)
@@ -222,6 +316,13 @@ def main() -> int:
         session = boto3.Session(profile_name=args.profile, region_name=REGION)
         ecs, ec2 = session.client("ecs"), session.client("ec2")
         result = run_probe(ecs, ec2, args.target_url, args.wait_seconds)
+    except ProbeRefusal as exc:
+        result = {
+            "status": "REFUSED",
+            "reason_code": str(exc),
+            "application_started": False,
+            "readyz_request_completed": False,
+        }
     except Exception as exc:
         result = {
             "status": "REFUSED",

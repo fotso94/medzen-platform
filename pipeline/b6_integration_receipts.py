@@ -37,8 +37,17 @@ EXECUTION_STAGES = (
     "isolation_proof",
 )
 WINDOW_STAGES = (*EXECUTION_STAGES, "cleanup")
+STAGE_A_EXECUTION_STAGES = (
+    "stage_a_preflight",
+    "stage_a_terraform",
+    "stage_a_endpoints",
+    "stage_a_probe_1",
+    "stage_a_probe_2",
+    "stage_a_probe_3",
+)
+STAGE_A_STAGES = (*STAGE_A_EXECUTION_STAGES, "stage_a_cleanup", "stage_a")
 AUXILIARY_STAGES = ("persistent_secret_bridge", "runner_exception", "cold_rehearsal")
-ALL_STAGES = (*WINDOW_STAGES, *AUXILIARY_STAGES)
+ALL_STAGES = (*WINDOW_STAGES, *STAGE_A_STAGES, *AUXILIARY_STAGES)
 STATUSES = {"PASS", "REFUSED", "WARNING_NON_FATAL"}
 FORBIDDEN_KEYS = {
     "audio",

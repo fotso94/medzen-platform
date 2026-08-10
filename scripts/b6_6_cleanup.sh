@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical persistent-secret cleanup for B6-AWS-CHANGE-PACKET-2026-019.
+# Canonical persistent-secret cleanup for B6-AWS-CHANGE-PACKET-2026-025.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,6 +18,7 @@ receipts_dir="$4"
 token_file="$5"
 attempt="$6"
 payload_path="$7"
+alb_hostname_file="/private/tmp/b6-025-attempt-${attempt}-alb-hostname"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
@@ -67,13 +68,15 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window"
-cleanup_plan="/private/tmp/b6-019-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-025-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
   -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
   -target=aws_vpc_security_group_ingress_rule.b6_nodes_from_alb
   -target=aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints
+  -target=aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints
+  -target=aws_vpc_security_group_egress_rule.b6_probe_to_s3
   -target=aws_vpc_endpoint.b6_probe_ecr_api
   -target=aws_vpc_endpoint.b6_probe_ecr_dkr
   -target=aws_vpc_endpoint.b6_probe_s3
@@ -86,7 +89,8 @@ scripts/terraform_medzen.sh plan -input=false -out="$cleanup_plan" \
   -var=account_id=558069890522 \
   -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
   -var=enable_b6_load_balancer_controller=false \
-  -var=enable_b6_integration_window=false "${targets[@]}"
+  -var=enable_b6_integration_window=false \
+  -var=enable_b6_probe_qualification=false "${targets[@]}"
 
 change_count="$(terraform -chdir=infra show -json "$cleanup_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
 if [[ "$change_count" != "0" ]]; then
@@ -115,6 +119,9 @@ cleanup_step="local_token_removal_persistent_secret_retention"
 if [[ -e "$token_file" ]]; then
   /bin/rm -f -- "$token_file"
 fi
+if [[ -e "$alb_hostname_file" ]]; then
+  /bin/rm -f -- "$alb_hostname_file"
+fi
 
 # Zero-state proof is exact and refuses before the final cleanup receipt.
 cleanup_step="zero_state_proof"
@@ -123,6 +130,7 @@ cleanup_step="zero_state_proof"
 [[ "$(kubectl --kubeconfig "$kubeconfig" get ingress -A -o json | jq '[.items[] | select(.metadata.name=="speech-orchestrator-b6-window")] | length')" == "0" ]]
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'Parameters[?Name==`/medzen/registry/serving/current`]' --output json | jq 'length')" == "0" ]]
 [[ ! -e "$token_file" ]]
+[[ ! -e "$alb_hostname_file" ]]
 
 # R1: the exact synthetic secret and its permanent deny policy survive every
 # window. The operator must still be unable to retrieve plaintext.
@@ -144,4 +152,4 @@ else:
 PY
 
 cleanup_step="payload"
-jq -nc '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"
+jq -nc '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_alb_hostname_removed:true,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"

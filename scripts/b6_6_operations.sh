@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for independently reviewed packet 2026-019.
+# Canonical operation dispatcher for independently reviewed packet 2026-025.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,10 +20,19 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-019-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-025-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
+}
+
+terraform_plan_receipt() {
+  terraform -chdir=infra show -json "$1" | jq -c '{
+    adds: ([.resource_changes[]? | select(.change.actions == ["create"])] | length),
+    changes: ([.resource_changes[]? | select(.change.actions == ["update"] or .change.actions == ["delete","create"] or .change.actions == ["create","delete"])] | length),
+    destroys: ([.resource_changes[]? | select(.change.actions == ["delete"])] | length),
+    resource_names: ([.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"]) | .address] | sort)
+  }'
 }
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
@@ -109,16 +118,19 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-019-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-025-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
     -var=enable_b6_load_balancer_controller=true \
     -var=enable_b6_integration_window=false \
+    -var=enable_b6_probe_qualification=false \
     -target=helm_release.b6_load_balancer_controller
   .venv/bin/python scripts/check_b6_6_window_plan.py controller "$plan"
+  plan_receipt="$(terraform_plan_receipt "$plan")"
+  jq -e '.adds == 1 and .changes == 0 and .destroys == 0 and .resource_names == ["helm_release.b6_load_balancer_controller[0]"]' <<<"$plan_receipt" >/dev/null
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$plan"
-  write_payload '{"adds":1,"changes":0,"destroys":0,"resource":"helm_release.b6_load_balancer_controller","before_private_endpoints":true}'
+  write_payload "$(jq -c '. + {before_private_endpoints:true}' <<<"$plan_receipt")"
 }
 
 stage_controller_ready() {
@@ -135,13 +147,15 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-019-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-025-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
     -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
     -target=aws_vpc_security_group_ingress_rule.b6_nodes_from_alb
     -target=aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints
+    -target=aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints
+    -target=aws_vpc_security_group_egress_rule.b6_probe_to_s3
     -target=aws_vpc_endpoint.b6_probe_ecr_api
     -target=aws_vpc_endpoint.b6_probe_ecr_dkr
     -target=aws_vpc_endpoint.b6_probe_s3
@@ -154,10 +168,14 @@ stage_terraform_window() {
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
     -var=enable_b6_load_balancer_controller=true \
-    -var=enable_b6_integration_window=true "${targets[@]}"
+    -var=enable_b6_integration_window=true \
+    -var=enable_b6_probe_qualification=false "${targets[@]}"
   .venv/bin/python scripts/check_b6_6_window_plan.py endpoints "$plan"
+  plan_receipt="$(terraform_plan_receipt "$plan")"
+  expected_resources='["aws_ecs_cluster.b6_probe[0]","aws_ecs_task_definition.b6_probe[0]","aws_iam_role.b6_probe_execution[0]","aws_iam_role_policy.b6_probe_execution[0]","aws_security_group.b6_probe_endpoints[0]","aws_vpc_endpoint.b6_probe_ecr_api[0]","aws_vpc_endpoint.b6_probe_ecr_dkr[0]","aws_vpc_endpoint.b6_probe_s3[0]","aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]","aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]","aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]","aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]","aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]"]'
+  jq -e --argjson expected "$expected_resources" '.adds == 13 and .changes == 0 and .destroys == 0 and .resource_names == $expected' <<<"$plan_receipt" >/dev/null
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$plan"
-  write_payload '{"adds":11,"changes":0,"destroys":0,"controller_changes":0,"endpoint_security_groups_created":1,"fargate_maximum_tasks":1,"iam_roles_created":1,"security_group_rules_created":3,"vpc_endpoints_created":3}'
+  write_payload "$(jq -c '. + {controller_changes:0,endpoint_security_groups_created:1,fargate_maximum_tasks:1,iam_roles_created:1,security_group_ingress_rules_created:3,security_group_egress_rules_created:2,vpc_endpoints_created:3}' <<<"$plan_receipt")"
 }
 
 stage_endpoints_ready() {
@@ -175,8 +193,10 @@ stage_fargate_probe() {
     [[ -n "$hostname" ]] || sleep 15
   done
   printf '%s\n' "$hostname" >"$alb_hostname_file"
-  payload="$(.venv/bin/python scripts/b6_6_fargate_probe.py --target-url "http://$hostname/readyz" --profile medzen --wait-seconds 600)"
+  probe_status=0
+  payload="$(.venv/bin/python scripts/b6_6_fargate_probe.py --target-url "http://$hostname/readyz" --profile medzen --wait-seconds 600)" || probe_status=$?
   write_payload "$payload"
+  [[ "$probe_status" == "0" ]] || return "$probe_status"
 }
 
 stage_alb_ready() {

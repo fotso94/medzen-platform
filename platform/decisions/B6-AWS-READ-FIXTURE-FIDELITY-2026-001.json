@@ -1,0 +1,32 @@
+{
+  "id": "B6-AWS-READ-FIXTURE-FIDELITY-2026-001",
+  "status": "owner-directed-standing-rule",
+  "recorded_at_utc": "2026-08-10T21:12:29Z",
+  "scope": "All executable verifiers that interpret AWS read-API responses",
+  "rule": "Every AWS read-response verifier must have regression coverage driven by an immutable response captured from the real AWS API. Hand-written client response dictionaries may not stand in for an AWS response fixture.",
+  "allowed_test_boundary": "Pure policy evaluators may use domain-level values after the recorded-response parser boundary has been exercised by a real-response fixture.",
+  "fixture_requirements": [
+    "Record the exact API operation and request selector.",
+    "Record capture time, AWS account, region and caller identity separately from the raw response.",
+    "Keep the raw response payload byte-stable and content-addressed.",
+    "Cover known optional-field and response-grouping behavior from the real payload.",
+    "Fail closed if a production response cannot be normalized into the tested domain shape."
+  ],
+  "first_fixture_set": {
+    "security_group_id": "sg-070fc00321934eacb",
+    "describe_security_groups": "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json",
+    "describe_security_group_rules": "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json",
+    "facts": {
+      "individual_egress_rule_count": 2,
+      "merged_egress_permission_count": 1,
+      "protocol_minus_one_rule_port_fields_in_per_rule_api": [-1, -1],
+      "protocol_minus_one_port_fields_in_merged_api": "ABSENT"
+    }
+  },
+  "prohibited": [
+    "Inventing an AWS response shape in a unit-test fake",
+    "Requiring incidental list grouping, list order or optional-field presence that is not a policy invariant",
+    "Silently adapting a fixture after a verifier failure"
+  ],
+  "supersedes": null
+}
