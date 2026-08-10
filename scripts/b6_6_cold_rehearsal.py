@@ -40,6 +40,7 @@ from scripts.b6_6_stage_a import (
 from scripts.check_b6_6_window_plan import (
     TASK_ENI_EGRESS_RULES,
     PLAN_TASK_ENI_SECURITY_GROUPS,
+    lint_rendered_plan_description_charset,
     lint_task_eni_security_group_egress,
 )
 
@@ -117,6 +118,54 @@ def _task_eni_sg_egress_lint() -> dict[str, Any]:
         "dns_security_group_filtering": (
             "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER"
         ),
+    }
+
+
+def _terraform_description_charset_lint() -> dict[str, Any]:
+    path = ROOT / "platform/evidence/B6-RENDERED-TERRAFORM-DESCRIPTIONS-2026-001.json"
+    evidence = json.loads(path.read_bytes())
+    projection = evidence.get("description_projection", {})
+    items = projection.get("items")
+    if (
+        evidence.get("status") != "PASS_READ_ONLY_RENDERED_PLAN_PROJECTION"
+        or evidence.get("aws_mutations") != 0
+        or evidence.get("kubernetes_mutations") != 0
+        or not isinstance(items, list)
+        or hashlib.sha256(canonical_json(items)).hexdigest()
+        != projection.get("canonical_sha256")
+    ):
+        raise AssertionError("rendered Terraform description projection differs")
+    projected_plan = {
+        "rendered_description_projection": [
+            {"description": item.get("value")} for item in items
+        ]
+    }
+    result = lint_rendered_plan_description_charset(projected_plan)
+    expected = {
+        "description_fields": projection.get("description_fields"),
+        "string_descriptions": projection.get("string_descriptions"),
+        "null_descriptions": projection.get("null_descriptions"),
+        "invalid_descriptions": 0,
+        "allowed_character_class": projection.get("allowed_character_class"),
+    }
+    if any(result.get(key) != value for key, value in expected.items()):
+        raise AssertionError("rendered Terraform description lint result differs")
+    injected = json.loads(json.dumps(projected_plan))
+    injected["rendered_description_projection"][0]["description"] = "ECR's S3"
+    try:
+        lint_rendered_plan_description_charset(injected)
+    except ValueError as exc:
+        if "U+0027" not in str(exc):
+            raise AssertionError("apostrophe refusal did not identify U+0027") from exc
+    else:
+        raise AssertionError("apostrophe did not refuse description lint")
+    return {
+        **result,
+        "projection_path": str(path.relative_to(ROOT)),
+        "projection_sha256": sha256_file(path),
+        "projection_inventory_sha256": projection["canonical_sha256"],
+        "invalid_description_refusal_cases": 1,
+        "real_aws_calls": 0,
     }
 
 
@@ -388,6 +437,7 @@ def run(output_dir: Path) -> dict[str, Any]:
     if output_dir.exists():
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
     task_eni_sg_egress_lint = _task_eni_sg_egress_lint()
+    terraform_description_charset_lint = _terraform_description_charset_lint()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -419,6 +469,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "stage_a_injected_failure_runs": len(stage_a_scenarios) - 1,
         "stage_a_scenarios": stage_a_scenarios,
         "task_eni_sg_egress_lint": task_eni_sg_egress_lint,
+        "terraform_description_charset_lint": terraform_description_charset_lint,
         "real_aws_calls": 0,
         "real_kubectl_calls": 0,
         "aws_mutations": 0,
