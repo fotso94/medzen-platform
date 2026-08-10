@@ -254,11 +254,11 @@ def test_deadline_arms_both_groups_at_the_same_time_and_disarms_only_after_zero(
     control = DeadlineControl(autoscaling, FakeEKS())
     now = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     result = control.arm(now)
-    assert result["window_seconds"] == 12600
+    assert result["window_seconds"] == 11243
     starts = {
         actions[0]["StartTime"] for actions in autoscaling.actions.values()
     }
-    assert starts == {now + timedelta(seconds=12600)}
+    assert starts == {now + timedelta(seconds=11243)}
     assert control.disarm_after_zero()["deadlines_removed_after_zero"] is True
     assert all(not actions for actions in autoscaling.actions.values())
 
@@ -277,16 +277,16 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
     }
     packet_sha = "a" * 64
     record = {
-        "id": "B6-AWS-AUTH-2026-010",
+        "id": "B6-AWS-AUTH-2026-013",
         "status": "owner-approved",
-        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-010", "sha256": packet_sha},
+        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-013", "sha256": packet_sha},
         "independent_review": {"status": "PASS", "reviewer": "independent"},
         "cost": {"registry_id": "COST-REGISTRY-2026-004", "allocation_id": "B6-INTEGRATION-WINDOW-2026-001", "maximum_usd": 10.0},
         "source_bindings": sources,
     }
     authorization = tmp_path / "authorization.json"
     authorization.write_text(json.dumps(record))
-    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-010"
+    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-013"
     record["source_bindings"].pop(next(iter(REQUIRED_SOURCES)))
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):
@@ -325,10 +325,10 @@ def test_packet_009_keeps_its_original_source_bindings():
         assert f"`{expected}`" in value
 
 
-def test_packet_010_binds_current_sources_and_requires_new_approval():
-    import hashlib
-    from scripts.b6_6_bindings import REQUIRED_SOURCES
-
+def test_packet_010_keeps_its_original_sources_and_approval_boundary():
+    authorization = json.loads(
+        (ROOT / "platform/decisions/B6-AWS-AUTH-2026-010-b6-6-token-encoding-correction.json").read_bytes()
+    )
     value = PACKET.read_text()
     assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in value
     assert "This packet is not authorized by its preparation" in value
@@ -337,7 +337,6 @@ def test_packet_010_binds_current_sources_and_requires_new_approval():
     assert "Maximum packet-2026-010 window: `12,600 seconds`" in value
     assert "new reservation: `$0`" in value
     assert "exactly one final LF" in value
-    for relative in REQUIRED_SOURCES:
-        expected = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+    for relative, expected in authorization["source_bindings"].items():
         assert f"`{relative}`" in value
         assert f"`{expected}`" in value

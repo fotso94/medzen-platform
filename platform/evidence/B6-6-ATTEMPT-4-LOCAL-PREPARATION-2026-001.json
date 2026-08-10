@@ -1,0 +1,91 @@
+{
+  "record": "B6_6_ATTEMPT_4_LOCAL_PREPARATION",
+  "id": "B6-6-ATTEMPT-4-LOCAL-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_PREPARATION_COMPLETE_AWAITING_INDEPENDENT_REVIEW_AND_OWNER_APPROVAL",
+  "recorded_utc": "2026-08-10T03:15:33Z",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-013",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-013-b6-6-attempt-4.md",
+    "sha256": "8e286f062aea3148d22689763969995fceafe5134b3f5030396ce7807509e5af",
+    "authorized": false
+  },
+  "repository": {
+    "branch": "codex/b6-secret-restoration-continuation",
+    "base_evidence_commit": "b775e48cdc68288fd8db03fc0a6c5248c7ea6331",
+    "base_evidence_tree": "5c505ca6127eaa9d82744778d0cd999b4d912682",
+    "base_commit_count": 282,
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "prerequisite": {
+    "path": "platform/evidence/B6-CLIENT-SECRET-RESTORATION-CONTINUATION-AWS-EXECUTION-2026-001.json",
+    "sha256": "1d949f019ce0b2e69f1fba525d535d61fc19ed07e99f08d11729c1c099784c89",
+    "status": "VERIFIED_COMPLETE",
+    "new_secret_version_id": "d09d567e-9bde-482a-b95a-3cab990a1006",
+    "bearer_token_sha256": "3a30b00fc96111490c2b471eec5eebe1c9d26bf991508428cf2f5511e306b84a"
+  },
+  "corrections": {
+    "secret_preflight": "EXACT_IDENTITY_VERSION_TAG_POLICY_AND_KMS_READ_ONLY_GATE",
+    "token_binding": "EXACT_ROTATED_43_BYTE_BEARER_HASH_AND_44_BYTE_LF_FILE",
+    "remaining_deadline_seconds": 11243,
+    "cumulative_seconds_already_charged": 3157,
+    "cumulative_allowance_seconds": 14400,
+    "alb_live_gate": "INTERNAL_LISTENER_RULE_TAG_TARGET_AND_FARGATE_PROOF",
+    "tag_mutation_receipt": "SEPARATE_ORDERED_WARNING_NON_FATAL_ONLY_FOR_FOUR_EXACT_POST_CREATE_PAIRS",
+    "unknown_or_creation_or_cleanup_denial": "FATAL",
+    "source_bindings": 41
+  },
+  "tests": {
+    "focused": {
+      "passed": 50,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical": {
+      "passed": 1348,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "python_compile": "PASS",
+    "shell_syntax": "PASS",
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "live_read_only_preview": {
+    "status": "NOT_COMPLETED_LOCAL_DNS_TO_AWS_STS_UNAVAILABLE",
+    "attempts": 5,
+    "aws_mutations": 0,
+    "saved_plan_applied": false,
+    "interpretation": "This is not recorded as a plan PASS. Infrastructure source is unchanged from the previously applied seven-add guarded window, packet 012A left the three secret addresses at residual NO_CHANGES, and execution must regenerate and machine-guard a fresh exact seven-add saved plan before apply.",
+    "terraform_source_changed_for_attempt_4": false
+  },
+  "zero_state_readback": {
+    "required_profile_account": "558069890522",
+    "required_profile_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "cpu_nodegroup_status": "ACTIVE",
+    "cpu_desired": 0,
+    "gpu_nodegroup_status": "ACTIVE",
+    "gpu_desired": 0,
+    "approved_asr_objects": 0,
+    "readback_limit": "Kubernetes and selected AWS endpoints experienced local DNS failures; packet execution rechecks every zero-state item before mutation."
+  },
+  "explicit_non_events": {
+    "attempt_4_authorizations_created": 0,
+    "terraform_plans_applied": 0,
+    "workers_started": 0,
+    "kubernetes_mutations": 0,
+    "iam_changes": 0,
+    "secret_changes": 0,
+    "load_balancers_created": 0,
+    "fargate_tasks_started": 0,
+    "production_ssm_changes": 0,
+    "approved_artifact_changes": 0,
+    "model_promotions": 0,
+    "new_reservations_usd": 0.0
+  },
+  "next_boundary": "Independent review must bind the final packet SHA-256 and prepared commit. Only a subsequent B6-AWS-AUTH-2026-013 owner record may authorize attempt 4."
+}

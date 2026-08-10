@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Execute only an independently reviewed and owner-approved packet 2026-009.
+# Execute only an independently reviewed and owner-approved packet 2026-013.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,7 +56,7 @@ deadline_payload="$(.venv/bin/python scripts/b6_6_deadline.py arm)"
 # Fail closed unless every pre-created boundary is still exact.
 [[ "$(aws sts get-caller-identity --profile medzen --query Account --output text)" == "558069890522" ]]
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81 --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters)' --output text)" == "3" ]]
-aws secretsmanager describe-secret --secret-id medzen/client-api-keys --region eu-central-1 --profile medzen >/dev/null
+.venv/bin/python scripts/b6_6_secret_preflight.py --profile medzen >/dev/null
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters[?Name==`/medzen/registry/serving/current`])' --output text)" == "0" ]]
 [[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l 'workload in (cpu,gpu)' --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
 [[ "$(kubectl --kubeconfig "$kubeconfig" get pods -n medzen -l medzen.io/classification=synthetic-integration-only --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
@@ -75,7 +75,7 @@ else
   exit 2
 fi
 
-window_plan="/private/tmp/b6-009-create-$PPID.tfplan"
+window_plan="/private/tmp/b6-013-create-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
@@ -150,7 +150,19 @@ task_arn="$(aws ecs run-task --cluster medzen-b6-window-probe --task-definition 
 [[ "$task_arn" == arn:aws:ecs:* && "$task_arn" != "None" ]]
 aws ecs wait tasks-stopped --cluster medzen-b6-window-probe --tasks "$task_arn" --region eu-central-1 --profile medzen
 [[ "$(aws ecs describe-tasks --cluster medzen-b6-window-probe --tasks "$task_arn" --region eu-central-1 --profile medzen --query 'tasks[0].containers[0].exitCode' --output text)" == "0" ]]
-.venv/bin/python scripts/b6_6_receipt.py alb_ready PASS --receipts-dir "$receipts_dir" --payload '{"alb_security_group":"sg-0f0f6c66852830013","backend_source_security_group":"sg-0a83abae6ab954543","fargate_probe_exit_code":0,"internal_alb":true,"listener_port":80,"orchestrator_readyz":true,"public_route":false}'
+alb_payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py verify --profile medzen)"
+.venv/bin/python scripts/b6_6_receipt.py alb_ready PASS --receipts-dir "$receipts_dir" --payload "$alb_payload"
+tag_payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py classify --kubeconfig "$kubeconfig" --receipts-dir "$receipts_dir")"
+tag_result="$(jq -r '.status' <<<"$tag_payload")"
+if [[ "$tag_result" == "WARNING_NON_FATAL" ]]; then
+  tag_receipt_status="WARNING_NON_FATAL"
+elif [[ "$tag_result" == "PASS_NO_TAG_MUTATION_DENIAL" ]]; then
+  tag_receipt_status="PASS"
+else
+  echo "REFUSING: ALB tag-mutation result is unknown" >&2
+  exit 2
+fi
+.venv/bin/python scripts/b6_6_receipt.py alb_tag_mutation_warning "$tag_receipt_status" --receipts-dir "$receipts_dir" --payload "$tag_payload"
 
 kubectl --kubeconfig "$kubeconfig" port-forward --namespace medzen service/speech-orchestrator 18080:8080 >/dev/null 2>&1 &
 port_forward_pid=$!
