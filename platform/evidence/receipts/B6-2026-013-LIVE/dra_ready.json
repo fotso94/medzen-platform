@@ -1,0 +1,1 @@
+{"contains_audio_transcript_reply_citations_credentials_or_phi":false,"dependencies":{"controller_ready":"3e22b72f053e48c236f1cb5185b1563dbcd140c70f31e19ae43216aa9aff6585"},"payload":{"daemonset_ready":true,"digest_pinned":true,"gpu_nodes":1},"recorded_utc":"2026-08-10T03:35:23Z","schema":"MEDZEN_B6_INTEGRATION_STAGE_RECEIPT_V1","stage":"dra_ready","status":"PASS"}
