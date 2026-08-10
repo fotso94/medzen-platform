@@ -100,7 +100,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-020A-A{context.attempt}-LIVE"
+            / f"B6-2026-021-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -145,7 +145,7 @@ class RealOperations:
         if bridge.get("stage") != "persistent_secret_bridge" or bridge.get("status") != "PASS":
             raise StageFailure("PERSISTENT_SECRET_BRIDGE_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-020a-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-021-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [

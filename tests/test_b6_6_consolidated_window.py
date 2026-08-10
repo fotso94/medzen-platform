@@ -210,6 +210,18 @@ def test_r1_persistent_secret_and_cleanup_boundary_are_structural() -> None:
     assert "BlockPublicPolicy=True" in bridge
 
 
+def test_endpoint_plan_includes_controller_noop_and_cleanup_uses_stage_status() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    cleanup = (ROOT / "scripts/b6_6_cleanup.sh").read_text()
+    endpoint_stage = operations[operations.index("stage_terraform_window()") :]
+    endpoint_stage = endpoint_stage[: endpoint_stage.index("stage_endpoints_ready()")]
+    assert "-target=helm_release.b6_load_balancer_controller" in endpoint_stage
+    assert "check_b6_6_window_plan.py endpoints" in endpoint_stage
+    assert "terraform_window_status=" in cleanup
+    assert '"$terraform_window_status" == "PASS"' in cleanup
+    assert '[[ -e "$receipts_dir/terraform_window.json" ]]' not in cleanup
+
+
 def test_r6_settled_controls_remain_in_canonical_sources() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     endpoints = (ROOT / "scripts/b6_6_probe_endpoints.py").read_text()

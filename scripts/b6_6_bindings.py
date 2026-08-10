@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed unless packet 2026-020A binds the consolidated window exactly."""
+"""Fail closed unless packet 2026-021 binds the consolidated window exactly."""
 from __future__ import annotations
 
 import hashlib
@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 
-AUTH_ID = "B6-AWS-AUTH-2026-020A"
-PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-020A"
-COLD_PATH = "platform/evidence/receipts/B6-2026-020A-COLD/cold_rehearsal.json"
+AUTH_ID = "B6-AWS-AUTH-2026-021"
+PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-021"
+COLD_PATH = "platform/evidence/receipts/B6-2026-021-COLD/cold_rehearsal.json"
 REVIEW_PATH = "platform/designs/B6-WINDOW-DESIGN-REVIEW-2026-001.md"
 REQUIRED_SOURCES = {
     "infra/alb_controller.tf",
@@ -32,6 +32,8 @@ REQUIRED_SOURCES = {
     "platform/evidence/B6-PACKET-2026-018-REFUSED-CREDENTIAL-LEGACY-VERSION-CARDINALITY.json",
     "platform/evidence/B6-PACKET-2026-019-REFUSED-BRIDGE-PRINCIPAL.json",
     "platform/evidence/B6-PACKET-2026-020-NOT-EXECUTED-PRINCIPAL-PREFLIGHT-CONDITION.json",
+    "platform/evidence/B6-PACKET-2026-020A-ATTEMPT-1-REFUSED-ENDPOINT-PLAN-GUARD.json",
+    "platform/evidence/receipts/B6-2026-020A-BRIDGE/persistent_secret_bridge.json",
     "platform/finance/COST-REGISTRY-2026-004.json",
     "platform/k8s/b6-6/integration-window.yaml",
     "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
@@ -70,15 +72,15 @@ def sha256_file(path: Path) -> str:
 
 def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
     if re.fullmatch(r"[0-9a-f]{64}", packet_sha256) is None:
-        raise BindingRefusal("exact packet-2026-020A SHA-256 is required")
+        raise BindingRefusal("exact packet-2026-021 SHA-256 is required")
     try:
         value = json.loads(path.read_bytes())
     except Exception as exc:
-        raise BindingRefusal("packet-2026-020A authorization is absent") from exc
+        raise BindingRefusal("packet-2026-021 authorization is absent") from exc
     if value.get("id") != AUTH_ID or value.get("status") != "owner-approved":
-        raise BindingRefusal("packet 2026-020A is not owner-approved")
+        raise BindingRefusal("packet 2026-021 is not owner-approved")
     if value.get("packet") != {"id": PACKET_ID, "sha256": packet_sha256}:
-        raise BindingRefusal("packet-2026-020A binding differs")
+        raise BindingRefusal("packet-2026-021 binding differs")
     review = value.get("independent_review", {})
     reviewed_commit = review.get("reviewed_repository_commit")
     if (
@@ -88,18 +90,18 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         or re.fullmatch(r"[0-9a-f]{40}", str(reviewed_commit)) is None
         or value.get("prepared_repository_commit") != reviewed_commit
     ):
-        raise BindingRefusal("independent packet-2026-020A review is absent")
+        raise BindingRefusal("independent packet-2026-021 review is absent")
     if value.get("allowance") != {
         "aggregate_project_ceiling_usd": 300.0,
         "existing_reservation_usd": 10.0,
-        "requested_attempts": 2,
+        "requested_attempts": 1,
         "maximum_seconds_per_attempt": 4500,
-        "maximum_requested_worker_seconds": 9000,
-        "estimated_compute_usd": 3.2,
+        "maximum_requested_worker_seconds": 4500,
+        "estimated_compute_usd": 1.6,
         "cold_rehearsal_required_before_each_attempt": True,
         "unused_seconds_not_transferable_between_attempts": True,
     }:
-        raise BindingRefusal("packet-2026-020A allowance binding differs")
+        raise BindingRefusal("packet-2026-021 allowance binding differs")
     if value.get("persistent_secret") != {
         "bridge_receipt_required_before_attempt_1": True,
         "create_or_delete_during_window": False,
@@ -118,15 +120,15 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         raise BindingRefusal("cold-rehearsal binding differs")
     sources = value.get("source_bindings")
     if not isinstance(sources, dict) or set(sources) != REQUIRED_SOURCES:
-        raise BindingRefusal("packet-2026-020A source binding set differs")
+        raise BindingRefusal("packet-2026-021 source binding set differs")
     for relative, expected in sorted(sources.items()):
         if relative.startswith("/") or ".." in Path(relative).parts:
-            raise BindingRefusal("packet-2026-020A source path is unsafe")
+            raise BindingRefusal("packet-2026-021 source path is unsafe")
         target = root / relative
         if (
             re.fullmatch(r"[0-9a-f]{64}", str(expected)) is None
             or not target.is_file()
             or sha256_file(target) != expected
         ):
-            raise BindingRefusal(f"packet-2026-020A source hash differs: {relative}")
+            raise BindingRefusal(f"packet-2026-021 source hash differs: {relative}")
     return value
