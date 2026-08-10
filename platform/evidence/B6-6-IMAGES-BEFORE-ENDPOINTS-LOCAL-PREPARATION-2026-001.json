@@ -1,0 +1,113 @@
+{
+  "record": "B6_6_IMAGES_BEFORE_ENDPOINTS_SUCCESSOR_LOCAL_PREPARATION",
+  "id": "B6-6-IMAGES-BEFORE-ENDPOINTS-LOCAL-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "READY_FOR_INDEPENDENT_REVIEW_NOT_AUTHORIZED",
+  "recorded_utc": "2026-08-10T15:58:02Z",
+  "repository": {
+    "branch": "codex/b6-018-images-before-endpoints",
+    "starting_master_commit": "fa52175c4aa264c8c1e8c2d17b5af1c8e1c6d01e",
+    "pull_request_29_merged": true
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-018",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-018-b6-6-images-before-endpoints.md",
+    "sha256": "7ff863f2de76fe885964a60deabcb1fb469ae2b20c31545367780ab1bb2a1543",
+    "authorized": false,
+    "executable": false,
+    "owner_authorization_record_created": false
+  },
+  "implementation": {
+    "receipt_protocol": "V2_STRUCTURAL_PASS_OR_REFUSED",
+    "attempted_stages_wrapped": 22,
+    "refusal_persisted_before_cleanup": true,
+    "cleanup_binds_refused_stage": true,
+    "historical_v1_sources_modified": false,
+    "images_before_endpoints": {
+      "applications": 7,
+      "expected_pods": 7,
+      "expected_child_digests": 8,
+      "running_ready_and_scheduled_node_required": true,
+      "image_id_residency_required": true,
+      "endpoint_absence_required": true
+    },
+    "post_endpoint_pull_reason_code": "POST_ENDPOINT_NEW_KUBERNETES_IMAGE_PULL_FATAL",
+    "post_endpoint_kubernetes_pod_creation_intended": false,
+    "rag_failure_drill": "SERVICE_SELECTOR_ONLY_NO_POD_RECREATION",
+    "controller_create_guard": {
+      "adds": 1,
+      "changes": 0,
+      "destroys": 0
+    },
+    "endpoint_create_guard": {
+      "adds": 11,
+      "changes": 0,
+      "destroys": 0,
+      "controller_must_be_noop_at_execution": true
+    },
+    "full_cleanup_guard": {
+      "adds": 0,
+      "changes": 0,
+      "destroys": 15
+    },
+    "cumulative_seconds_before": 7548,
+    "remaining_seconds_before": 6852,
+    "maximum_worker_window_seconds": 4500,
+    "remaining_after_full_cap": 2352,
+    "attempts_without_new_owner_allowance": 1
+  },
+  "credential_stage": {
+    "manifest": "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-005.json",
+    "prior_current_version_id": "201f9790-72c4-45f7-a05b-967551532aef",
+    "prior_version_count": 4,
+    "old_plaintext_read_or_reuse": false,
+    "fresh_binding_occurs_only_during_approved_execution": true
+  },
+  "read_only_plan_verification": {
+    "controller_preview": {
+      "path": "/private/tmp/b6-018-controller-preview.tfplan",
+      "sha256": "2bbfffb440ffe3fc36513e3ea193b14963cbb9a503bc8ef65558c9129698095a",
+      "guard": "PASS_B6_6_IMAGES_FIRST_CONTROLLER changes=1"
+    },
+    "endpoint_preview": {
+      "path": "/private/tmp/b6-018-endpoints-preview.tfplan",
+      "sha256": "e6e241830e28f9349ba2157aa6210b355d403fb98a16fe54149e70b9778e2f0c",
+      "guard": "PASS_B6_6_IMAGES_FIRST_PREVIEW-ENDPOINTS changes=11"
+    },
+    "terraform_applied": false
+  },
+  "verification": {
+    "focused_successor_and_bound_regression_suites": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_images_before_endpoints.py tests/test_b6_6_packet_2026_017_result.py tests/test_b6_6_successor_packet.py tests/test_b6_6_private_probe_successor.py tests/test_b6_6_executable_assets.py tests/test_b6_client_secret_restoration_execution.py",
+      "passed": 70,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_local_suite": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1428,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "terraform_fmt": "PASS",
+    "terraform_validate_with_AWS_PROFILE_medzen": "PASS",
+    "bash_syntax": "PASS",
+    "python_compile": "PASS",
+    "json_parse": "PASS"
+  },
+  "non_events": {
+    "aws_mutations": 0,
+    "kubectl_mutations": 0,
+    "resources_created": 0,
+    "compute_started": false,
+    "credential_restored": false,
+    "secret_plaintext_read": false,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0,
+    "authorization_record_created": false
+  },
+  "next_boundary": "Independent review must bind the prepared commit and packet SHA-256. Only a later exact owner approval may create B6-AWS-AUTH-2026-018 and execute the one remaining full-attempt window."
+}
