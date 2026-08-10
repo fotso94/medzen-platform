@@ -1,0 +1,77 @@
+{
+  "record": "B6_6_PRINCIPAL_INDEPENDENT_SUCCESSOR_LOCAL_PREPARATION",
+  "id": "B6-6-PRINCIPAL-INDEPENDENT-SUCCESSOR-LOCAL-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "READY_FOR_INDEPENDENT_REVIEW_NOT_AUTHORIZED",
+  "recorded_utc": "2026-08-10T14:22:31Z",
+  "repository": {
+    "branch": "codex/b6-017-principal-free-successor",
+    "starting_master_commit": "25fb88c37e4a5890a32fc15a529394661c951cd5",
+    "pull_request_27_merged": true
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-017",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-017-b6-6-principal-independent-successor.md",
+    "sha256": "8fa32f4013445fd18ad353119ddd10a1c5c199935059a63afedf951c61a045b6",
+    "authorized": false,
+    "executable": false,
+    "owner_authorization_record_created": false
+  },
+  "implementation": {
+    "endpoint_policy": "CUSTOM_REQUIRED_WILDCARD_PRINCIPAL_EXACT_ACTION_RESOURCE",
+    "same_apply_role_reference_removed": true,
+    "default_full_access_policy_used": false,
+    "endpoint_network_source": "TEMPORARY_SELF_REFERENCED_SG_ATTACHED_TO_ONE_PROBE",
+    "shared_backend_sg_used_only_for_internal_alb_path": true,
+    "credential_restoration": "IN_PACKET_COMPUTE_FREE_STAGE_0_DYNAMIC_RECEIPT_BINDING",
+    "credential_reuse": false,
+    "deadline_seconds": 4500,
+    "remaining_seconds_before": 8415,
+    "remaining_seconds_after_full_cap": 3915,
+    "terraform_create_guard": {
+      "adds": 12,
+      "changes": 0,
+      "destroys": 0
+    },
+    "terraform_full_cleanup_guard": {
+      "adds": 0,
+      "changes": 0,
+      "destroys": 15
+    }
+  },
+  "verification": {
+    "focused_successor_and_bound_regression_suites": {
+      "command": ".venv/bin/pytest -q tests/test_b6_6_successor_packet.py tests/test_b6_6_packet_2026_016_result.py tests/test_b6_6_final_window_successor.py tests/test_b6_6_attempt_4_runtime.py tests/test_b6_6_executable_assets.py tests/test_b6_6_private_probe_successor.py tests/test_b6_client_secret_restoration_2026_015.py",
+      "passed": 79,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical_local_suite": {
+      "command": ".venv/bin/pytest -q",
+      "passed": 1409,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "terraform_fmt": "PASS",
+    "terraform_validate": "PASS",
+    "bash_syntax": "PASS",
+    "python_compile": "PASS",
+    "json_parse": "PASS",
+    "read_only_saved_plan_sha256": "c455c33db4ee311d654d8c5f67085db68b6d46a9bd1cfef754a71c42f6451d8b"
+  },
+  "non_events": {
+    "aws_mutations": 0,
+    "kubectl_mutations": 0,
+    "resources_created": 0,
+    "compute_started": false,
+    "credential_restored": false,
+    "secret_plaintext_read": false,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0,
+    "authorization_record_created": false
+  },
+  "next_boundary": "Independent review must bind the prepared commit and packet SHA-256. Only a later exact owner approval may create B6-AWS-AUTH-2026-017 and execute the packet."
+}
