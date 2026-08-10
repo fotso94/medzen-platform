@@ -82,24 +82,94 @@
       }
     },
     {
-      "Sid": "CreateAndManageExactB6ListenersAndRules",
+      "Sid": "CreateOnlyExactB6ListenersOnClusterTaggedAlb",
+      "Effect": "Allow",
+      "Action": "elasticloadbalancing:CreateListener",
+      "Resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/medzen-b6-*/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "medzen-speech"
+        }
+      }
+    },
+    {
+      "Sid": "CreateOnlyExactB6RulesOnClusterTaggedListener",
+      "Effect": "Allow",
+      "Action": "elasticloadbalancing:CreateRule",
+      "Resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/medzen-b6-*/*/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "medzen-speech"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyExactClusterTaggedB6Listeners",
       "Effect": "Allow",
       "Action": [
-        "elasticloadbalancing:CreateListener",
-        "elasticloadbalancing:CreateRule",
         "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:ModifyListener"
+      ],
+      "Resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/medzen-b6-*/*/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "medzen-speech"
+        }
+      }
+    },
+    {
+      "Sid": "ManageOnlyExactClusterTaggedB6Rules",
+      "Effect": "Allow",
+      "Action": [
         "elasticloadbalancing:DeleteRule",
-        "elasticloadbalancing:ModifyListener",
         "elasticloadbalancing:ModifyRule",
         "elasticloadbalancing:SetRulePriorities"
       ],
-      "Resource": [
-        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/medzen-b6-*/*/*",
-        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-*/*/*/*"
-      ],
+      "Resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-*/*/*/*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestedRegion": "eu-central-1"
+          "aws:RequestedRegion": "eu-central-1",
+          "aws:ResourceTag/elbv2.k8s.aws/cluster": "medzen-speech"
+        }
+      }
+    },
+    {
+      "Sid": "TagOnlyDuringExactB6ListenerAndRuleCreation",
+      "Effect": "Allow",
+      "Action": "elasticloadbalancing:AddTags",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "eu-central-1",
+          "aws:RequestTag/elbv2.k8s.aws/cluster": "medzen-speech",
+          "aws:RequestTag/Project": "medzen-speech",
+          "aws:RequestTag/Environment": "dev",
+          "aws:RequestTag/Stage": "B6.6",
+          "aws:RequestTag/Workstream": "integration-window",
+          "aws:RequestTag/BudgetRegistry": "COST-REGISTRY-2026-003",
+          "elasticloadbalancing:CreateAction": [
+            "CreateListener",
+            "CreateRule"
+          ]
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": [
+            "elbv2.k8s.aws/cluster",
+            "ingress.k8s.aws/stack",
+            "ingress.k8s.aws/resource",
+            "Project",
+            "Environment",
+            "Stage",
+            "Workstream",
+            "BudgetRegistry"
+          ]
+        },
+        "Null": {
+          "aws:TagKeys": "false",
+          "elasticloadbalancing:CreateAction": "false"
         }
       }
     },

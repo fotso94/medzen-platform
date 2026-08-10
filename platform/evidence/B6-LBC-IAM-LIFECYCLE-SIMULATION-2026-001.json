@@ -1,0 +1,202 @@
+{
+  "record": "B6_LBC_IAM_FULL_LIFECYCLE_SIMULATION",
+  "id": "B6-LBC-IAM-LIFECYCLE-SIMULATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_PREPARATION_COMPLETE_AWAITING_INDEPENDENT_REVIEW",
+  "recorded_utc": "2026-08-10T00:17:47Z",
+  "purpose": "Prepare one IAM-only correction after packet 2026-010 was refused at CreateListener, while testing the controller role across its complete reviewed ALB lifecycle before any IAM mutation.",
+  "repository": {
+    "base_branch": "master",
+    "base_commit": "026e99be1dfbd8258c31df021f4664d316edd8c0",
+    "base_commit_count": 271,
+    "working_branch": "codex/b6-lbc-full-lifecycle-iam",
+    "remote": "https://github.com/fotso94/medzen-platform.git"
+  },
+  "refusal_binding": {
+    "path": "platform/evidence/B6-PACKET-2026-010-REFUSED-ALB-LISTENER-IAM.json",
+    "sha256": "4ea2234f6803049d6d4afd4a24a2f03f118c1c45c090b173f61cfef8506fdabf",
+    "failure_stage": "INTERNAL_ALB_LISTENER",
+    "failed_action": "elasticloadbalancing:CreateListener",
+    "failed_parent_resource": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/medzen-b6-window/ec356cda681eae2a",
+    "cleanup": "PASS",
+    "zero_state_verified": true
+  },
+  "live_role_before_change": {
+    "arn": "arn:aws:iam::558069890522:role/medzen-lbc-role",
+    "inline_policy_name": "medzen-lbc-access",
+    "canonical_policy_sha256": "f1cd1b2134a5431d38bfdef223eb10dfe52041ceadc2bbbbd441047f97ae97fe",
+    "statement_count": 9,
+    "unique_action_count": 41,
+    "deny_statement_count": 0,
+    "permissions_boundary": null,
+    "max_session_seconds": 3600
+  },
+  "policy_delta": {
+    "proposed_template_sha256": "722567dc992e0782781ffbc8eba1456f2412510188b2634c672dd59c3d9218ec",
+    "proposed_rendered_canonical_sha256": "38db52d2a17acf608da3f8236b5b41baaad09e6d6e67e53ffc09e3c188309529",
+    "proposed_statement_count": 13,
+    "proposed_unique_action_count": 41,
+    "proposed_deny_statement_count": 0,
+    "removed_statement": "CreateAndManageExactB6ListenersAndRules",
+    "replacement_statements": [
+      "CreateOnlyExactB6ListenersOnClusterTaggedAlb",
+      "CreateOnlyExactB6RulesOnClusterTaggedListener",
+      "ManageOnlyExactClusterTaggedB6Listeners",
+      "ManageOnlyExactClusterTaggedB6Rules",
+      "TagOnlyDuringExactB6ListenerAndRuleCreation"
+    ],
+    "new_action_names": 0,
+    "unrelated_statement_changes": 0,
+    "existing_tag_statement": {
+      "sid": "TagOnlyExactB6Resources",
+      "before_sha256": "936c19acea4cf0a122e5568cd14e94fd61d0875a439e2fc5a20c25dade2b3683",
+      "after_sha256": "936c19acea4cf0a122e5568cd14e94fd61d0875a439e2fc5a20c25dade2b3683",
+      "unchanged": true
+    },
+    "deny_preservation": "The live policy contained zero Deny statements; the proposal removes zero and adds zero. Existing deny-like boundaries remain condition-based implicit denies."
+  },
+  "resource_semantics": {
+    "CreateListener": "loadbalancer/app/medzen-b6-*/* parent ARN",
+    "CreateRule": "listener/app/medzen-b6-*/*/* parent ARN",
+    "ModifyListener_DeleteListener": "listener/app/medzen-b6-*/*/* child ARN",
+    "ModifyRule_SetRulePriorities_DeleteRule": "listener-rule/app/medzen-b6-*/*/*/* child ARN",
+    "dependent_creation_tags": "AddTags on Resource * only when elasticloadbalancing:CreateAction is CreateListener or CreateRule and every existing approved request-tag value and tag-key restriction passes"
+  },
+  "simulations": {
+    "script": {
+      "path": "scripts/simulate_b6_lbc_lifecycle.py",
+      "sha256": "9c8443fdd0de256e20046ea307623a84e7ca6ca06da2506ba4576b893d266ab4"
+    },
+    "live_before": {
+      "api": "SimulatePrincipalPolicy",
+      "scenario_count": 44,
+      "allowed": 18,
+      "implicit_denies": 26,
+      "explicit_denies": 0,
+      "required_positive_failures": [
+        "create_listener_on_parent_load_balancer",
+        "add_tags_during_create_listener",
+        "add_tags_during_create_rule"
+      ],
+      "other_required_positive_operations": "18 allowed",
+      "negative_boundary_operations": "19/19 implicitDeny",
+      "listener_rule_tag_resource_observations": "4/4 implicitDeny"
+    },
+    "live_role_plus_proposed_overlay": {
+      "api": "SimulatePrincipalPolicy",
+      "scenario_count": 21,
+      "required_positive_allowed": 21,
+      "implicit_denies": 0,
+      "explicit_denies": 0,
+      "mismatches": 0
+    },
+    "proposed_policy_in_isolation": {
+      "api": "SimulateCustomPolicy",
+      "scenario_count": 44,
+      "required_positive_allowed": 21,
+      "negative_boundary_implicit_denies": 19,
+      "listener_rule_tag_resource_observation_implicit_denies": 4,
+      "explicit_denies": 0,
+      "mismatches": 0
+    },
+    "required_positive_scenarios": [
+      "describe_load_balancers",
+      "create_load_balancer",
+      "create_target_group",
+      "create_listener_on_parent_load_balancer",
+      "create_rule_on_parent_listener",
+      "modify_listener",
+      "modify_rule",
+      "set_rule_priorities",
+      "add_tags_during_create_listener",
+      "add_tags_during_create_rule",
+      "delete_listener",
+      "delete_rule",
+      "modify_load_balancer_attributes",
+      "set_security_groups",
+      "set_subnets",
+      "modify_target_group",
+      "modify_target_group_attributes",
+      "register_targets",
+      "deregister_targets",
+      "delete_target_group",
+      "delete_load_balancer"
+    ],
+    "negative_boundary_scenarios": [
+      "deny_public_load_balancer",
+      "deny_wrong_alb_security_group",
+      "deny_wrong_alb_subnet",
+      "deny_create_listener_outside_name",
+      "deny_create_listener_on_child_arn",
+      "deny_create_listener_missing_cluster_tag",
+      "deny_create_rule_outside_name",
+      "deny_create_rule_on_child_arn",
+      "deny_modify_listener_outside_name",
+      "deny_modify_listener_on_rule_arn",
+      "deny_modify_rule_outside_name",
+      "deny_modify_rule_on_listener_arn",
+      "deny_create_listener_tags_unexpected_key",
+      "deny_create_rule_tags_unexpected_key",
+      "deny_delete_listener_outside_name",
+      "deny_delete_rule_outside_name",
+      "deny_delete_load_balancer_missing_cluster_tag",
+      "deny_delete_target_group_missing_cluster_tag",
+      "deny_wrong_region"
+    ]
+  },
+  "iam_simulator_tag_resource_limitation": {
+    "classification": "OBSERVED_SIMULATOR_SERVICE_MODEL_LIMITATION_NOT_TREATED_AS_POLICY_PASS_OR_FAILURE",
+    "exact_pairs_retained": [
+      "AddTags on listener ARN",
+      "AddTags on listener-rule ARN",
+      "RemoveTags on listener ARN",
+      "RemoveTags on listener-rule ARN"
+    ],
+    "proposed_policy_result": "implicitDeny for all four exact-ARN observations",
+    "unrestricted_control_policy": {
+      "policy": "Allow AddTags and RemoveTags on Resource *",
+      "canonical_sha256": "1927958f40c19e920cf3d92465d7a7a7205cb73f2c36c82bada8b56c53fe85b1",
+      "result": "implicitDeny for the same four exact-ARN observations"
+    },
+    "safe_interpretation": "The four exact pairs remain visible. The proposal does not claim those simulator results are allowed. Creation-time dependent AddTags is separately simulated with Resource * and the service CreateAction context; both CreateListener and CreateRule paths are allowed only with the exact approved tag conditions. Runtime behavior remains subject to the subsequent bounded integration window."
+  },
+  "terraform_plan": {
+    "path_not_retained": "/private/tmp/b6-lbc-iam-2026-011.tfplan",
+    "sha256": "350fad7294212ec67ee7bdb6f9bf7a3141785ae5806069eb1baa01629e5e3ad0",
+    "target": "aws_iam_role_policy.b6_load_balancer_controller",
+    "adds": 0,
+    "updates": 1,
+    "destroys": 0,
+    "guard": "PASS_B6_LBC_IAM_CORRECTION changes=1 add=0 update=1 destroy=0",
+    "guard_path": "scripts/check_b6_lbc_iam_correction_plan.py",
+    "guard_sha256": "5583f3e5366c9cd6c65a4e47239346efc56b87075902ecb8029ab5c2ba966f6e",
+    "terraform_source_path": "infra/alb_controller.tf",
+    "terraform_source_sha256": "c7005d9c2fa230f1192d2867c75d7691702ba9ff9191e878623c6956671c22eb",
+    "terraform_wrapper_path": "scripts/terraform_medzen.sh",
+    "terraform_wrapper_sha256": "1a1d9c158001d9b15ac1403bde2138ec284c250b28715818b395697317c274f1"
+  },
+  "tests": {
+    "focused": "18 passed, 0 failed",
+    "test_path": "tests/test_b6_lbc_iam_lifecycle.py",
+    "test_sha256": "9bd513f8bbb73f1ba457989e932d61adf29772685e958b01e926c2eb788646a8",
+    "canonical_suite": "1319 passed, 0 failed, 7 deselected, 1 dependency deprecation warning"
+  },
+  "references": {
+    "elb_service_authorization": "https://docs.aws.amazon.com/service-authorization/latest/reference/list_awselasticloadbalancingv2.html",
+    "iam_simulation_api": "https://docs.aws.amazon.com/IAM/latest/APIReference/API_SimulatePrincipalPolicy.html",
+    "official_lbc_policy": "https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v3.5.0/docs/install/iam_policy.json"
+  },
+  "explicit_non_events": {
+    "iam_changes_applied": 0,
+    "aws_resources_created": 0,
+    "aws_resources_modified": 0,
+    "aws_resources_deleted": 0,
+    "workers_started": 0,
+    "kubernetes_changes": 0,
+    "secret_changes": 0,
+    "ssm_changes": 0,
+    "approved_artifact_changes": 0,
+    "production_ssm_changes": 0
+  },
+  "next_boundary": "Independent review and explicit owner approval of packet 2026-011 are required before the one IAM update. Secret/token restoration and any bounded integration window remain separate later packets."
+}
