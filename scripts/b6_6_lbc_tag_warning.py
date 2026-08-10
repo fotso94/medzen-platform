@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Classify only four exact post-create LBC tag denials as non-fatal warnings."""
+"""Classify tag denials only on the exact live B6 listener and three rules."""
 
 from __future__ import annotations
 
@@ -34,20 +34,33 @@ def validate_proof(proof: dict[str, Any]) -> None:
         "internal_alb": True,
         "alb_security_group": "sg-0f0f6c66852830013",
         "listener_port": 80,
+        "route_count": 3,
         "target_healthy": True,
-        "orchestrator_readyz": True,
-        "fargate_probe_exit_code": 0,
         "creation_time_exact_tags": True,
+        "tagged_resource_count": 5,
     }
     if any(proof.get(key) != value for key, value in required.items()):
         raise TagWarningRefusal("functional ALB prerequisite proof is incomplete")
     receipt_hash = proof.get("receipt_sha256", "")
     if not re.fullmatch(r"[0-9a-f]{64}", str(receipt_hash)):
         raise TagWarningRefusal("functional ALB proof receipt hash is malformed")
+    fargate_hash = proof.get("fargate_probe_receipt_sha256", "")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(fargate_hash)):
+        raise TagWarningRefusal("functional Fargate proof receipt hash is malformed")
+    resources = proof.get("tag_mutation_resource_arns")
+    if not isinstance(resources, list) or len(resources) != 4 or len(set(resources)) != 4:
+        raise TagWarningRefusal("exact tag-mutation resource set is absent")
+    matches = [ARN.fullmatch(str(resource)) for resource in resources]
+    if any(match is None for match in matches):
+        raise TagWarningRefusal("tag-mutation resource ARN differs")
+    kinds = [match.group("kind") for match in matches if match is not None]
+    if kinds.count("listener") != 1 or kinds.count("listener-rule") != 3:
+        raise TagWarningRefusal("tag-mutation resource kinds differ")
 
 
 def classify(observations: list[dict[str, Any]], proof: dict[str, Any]) -> dict[str, Any]:
     validate_proof(proof)
+    allowed_resources = set(proof["tag_mutation_resource_arns"])
     normalized: list[dict[str, Any]] = []
     for observation in observations:
         action = observation.get("operation")
@@ -64,6 +77,7 @@ def classify(observations: list[dict[str, Any]], proof: dict[str, Any]) -> dict[
             or error not in ALLOWED_ERRORS
             or match is None
             or not kind_shape_is_exact
+            or resource not in allowed_resources
             or timing != "POST_CREATE"
             or not isinstance(observed, str)
             or not observed.endswith("Z")
@@ -83,6 +97,7 @@ def classify(observations: list[dict[str, Any]], proof: dict[str, Any]) -> dict[
         "warning_count": len(normalized),
         "warnings": normalized,
         "functional_alb_proof_receipt_sha256": proof["receipt_sha256"],
+        "functional_fargate_probe_receipt_sha256": proof["fargate_probe_receipt_sha256"],
     }
 
 

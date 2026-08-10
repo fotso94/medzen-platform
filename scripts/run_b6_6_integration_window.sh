@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Execute only an independently reviewed and owner-approved packet 2026-013.
+# Execute only an independently reviewed and owner-approved packet 2026-014.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -63,6 +63,7 @@ deadline_payload="$(.venv/bin/python scripts/b6_6_deadline.py arm)"
 [[ "$(kubectl --kubeconfig "$kubeconfig" get ingress -A --request-timeout=15s -o json | jq '[.items[] | select(.metadata.name=="speech-orchestrator-b6-window")] | length')" == "0" ]]
 ! kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system --request-timeout=15s >/dev/null 2>&1
 ! kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --request-timeout=15s >/dev/null 2>&1
+.venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
 
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name cpu --scaling-config minSize=0,maxSize=4,desiredSize=2 --region eu-central-1 --profile medzen >/dev/null
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name gpu --scaling-config minSize=0,maxSize=1,desiredSize=1 --region eu-central-1 --profile medzen >/dev/null
@@ -75,11 +76,16 @@ else
   exit 2
 fi
 
-window_plan="/private/tmp/b6-013-create-$PPID.tfplan"
+window_plan="/private/tmp/b6-014-create-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
+  -target=aws_security_group.b6_probe_endpoints
   -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
   -target=aws_vpc_security_group_ingress_rule.b6_nodes_from_alb
+  -target=aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints
+  -target=aws_vpc_endpoint.b6_probe_ecr_api
+  -target=aws_vpc_endpoint.b6_probe_ecr_dkr
+  -target=aws_vpc_endpoint.b6_probe_s3
   -target=aws_iam_role.b6_probe_execution
   -target=aws_iam_role_policy.b6_probe_execution
   -target=aws_ecs_cluster.b6_probe
@@ -96,7 +102,12 @@ scripts/terraform_medzen.sh plan -input=false -out="$window_plan" \
   -var=enable_b6_client_keys=true "${targets[@]}"
 .venv/bin/python scripts/check_b6_6_window_plan.py create "$window_plan"
 scripts/terraform_medzen.sh apply -input=false -auto-approve "$window_plan"
-.venv/bin/python scripts/b6_6_receipt.py terraform_window PASS --receipts-dir "$receipts_dir" --payload '{"adds":7,"changes":0,"destroys":0,"fargate_maximum_tasks":1,"iam_roles_created":1,"security_group_rules_created":2}'
+.venv/bin/python scripts/b6_6_receipt.py terraform_window PASS --receipts-dir "$receipts_dir" --payload '{"adds":12,"changes":0,"destroys":0,"endpoint_security_groups_created":1,"fargate_maximum_tasks":1,"iam_roles_created":1,"security_group_rules_created":3,"vpc_endpoints_created":3}'
+
+# Do not launch the Fargate task until both interface endpoints and the S3
+# gateway endpoint are available and their exact SG/policy boundary reads back.
+endpoint_payload="$(.venv/bin/python scripts/b6_6_probe_endpoints.py available --profile medzen --wait-seconds 900)"
+.venv/bin/python scripts/b6_6_receipt.py endpoints_ready PASS --receipts-dir "$receipts_dir" --payload "$endpoint_payload"
 
 kubectl --kubeconfig "$kubeconfig" rollout status deployment/aws-load-balancer-controller --namespace kube-system --timeout=10m
 [[ "$(kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system -o jsonpath='{.spec.template.spec.containers[0].image}')" == "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller@sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f" ]]
@@ -145,11 +156,14 @@ alb_type="$(aws elbv2 describe-load-balancers --names medzen-b6-window --region 
 alb_security_groups="$(aws elbv2 describe-load-balancers --names medzen-b6-window --region eu-central-1 --profile medzen --query 'LoadBalancers[0].SecurityGroups' --output json | jq -c 'sort')"
 [[ "$alb_scheme" == "internal" && "$alb_type" == "application" && "$alb_security_groups" == '["sg-0f0f6c66852830013"]' ]]
 
-overrides="$(jq -nc --arg target "http://$alb_hostname/readyz" '{containerOverrides:[{name:"probe",environment:[{name:"TARGET_URL",value:$target}]}]}')"
-task_arn="$(aws ecs run-task --cluster medzen-b6-window-probe --task-definition medzen-b6-window-probe --launch-type FARGATE --network-configuration 'awsvpcConfiguration={subnets=[subnet-00232b25bc1ac407a,subnet-05029419c6c61a536,subnet-01fb2fc3f56bce55e],securityGroups=[sg-0a83abae6ab954543],assignPublicIp=DISABLED}' --overrides "$overrides" --region eu-central-1 --profile medzen --query 'tasks[0].taskArn' --output text)"
-[[ "$task_arn" == arn:aws:ecs:* && "$task_arn" != "None" ]]
-aws ecs wait tasks-stopped --cluster medzen-b6-window-probe --tasks "$task_arn" --region eu-central-1 --profile medzen
-[[ "$(aws ecs describe-tasks --cluster medzen-b6-window-probe --tasks "$task_arn" --region eu-central-1 --profile medzen --query 'tasks[0].containers[0].exitCode' --output text)" == "0" ]]
+fargate_payload=""
+if fargate_payload="$(.venv/bin/python scripts/b6_6_fargate_probe.py --target-url "http://$alb_hostname/readyz" --profile medzen --wait-seconds 600)"; then
+  .venv/bin/python scripts/b6_6_receipt.py fargate_probe PASS --receipts-dir "$receipts_dir" --payload "$fargate_payload"
+else
+  .venv/bin/python scripts/b6_6_receipt.py fargate_probe REFUSED --receipts-dir "$receipts_dir" --payload "$fargate_payload"
+  echo "REFUSING: isolated Fargate readiness probe did not pass" >&2
+  exit 2
+fi
 alb_payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py verify --profile medzen)"
 .venv/bin/python scripts/b6_6_receipt.py alb_ready PASS --receipts-dir "$receipts_dir" --payload "$alb_payload"
 tag_payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py classify --kubeconfig "$kubeconfig" --receipts-dir "$receipts_dir")"

@@ -94,7 +94,13 @@ def test_window_terraform_has_exact_ephemeral_network_and_probe_boundary():
     raw = (ROOT / "infra/b6_integration_window.tf").read_text()
     assert 'b6_backend_security_group_id = "sg-0a83abae6ab954543"' in raw
     assert 'b6_node_security_group_id    = "sg-070fc00321934eacb"' in raw
-    assert raw.count("var.enable_b6_integration_window ? 1 : 0") == 6
+    assert 'b6_main_route_table_id       = "rtb-0c6eb6874ce0565dc"' in raw
+    assert raw.count("var.enable_b6_integration_window ? 1 : 0") == 11
+    assert 'service_name        = "com.amazonaws.${var.region}.ecr.api"' in raw
+    assert 'service_name        = "com.amazonaws.${var.region}.ecr.dkr"' in raw
+    assert 'service_name      = "com.amazonaws.${var.region}.s3"' in raw
+    assert "referenced_security_group_id = local.b6_backend_security_group_id" in raw
+    assert "private_dns_enabled = true" in raw
     assert "ecr:GetAuthorizationToken" in raw
     assert "ecr:BatchGetImage" in raw
     for forbidden in (
@@ -118,6 +124,9 @@ def test_runner_and_cleanup_are_shell_valid_and_deadline_first():
     assert "scripts/b6_6_wait_workers.py" in value
     assert "get daemonset/dra-driver-nvidia-gpu-kubelet-plugin" in value
     assert "scripts/b6_6_token_binding.py" in value
+    assert value.index("b6_6_probe_endpoints.py available") < value.index(
+        "b6_6_fargate_probe.py"
+    )
     closed = cleanup.read_text()
     assert closed.index("delete ingress/speech-orchestrator-b6-window") < closed.index("enable_b6_load_balancer_controller=false")
     assert closed.index("enable_b6_load_balancer_controller=false") < closed.index("nodegroup-name cpu")
@@ -254,11 +263,11 @@ def test_deadline_arms_both_groups_at_the_same_time_and_disarms_only_after_zero(
     control = DeadlineControl(autoscaling, FakeEKS())
     now = datetime(2026, 8, 9, 20, 0, tzinfo=timezone.utc)
     result = control.arm(now)
-    assert result["window_seconds"] == 11243
+    assert result["window_seconds"] == 9581
     starts = {
         actions[0]["StartTime"] for actions in autoscaling.actions.values()
     }
-    assert starts == {now + timedelta(seconds=11243)}
+    assert starts == {now + timedelta(seconds=9581)}
     assert control.disarm_after_zero()["deadlines_removed_after_zero"] is True
     assert all(not actions for actions in autoscaling.actions.values())
 
@@ -277,16 +286,16 @@ def test_bindings_require_exact_source_set_and_owner_review(tmp_path):
     }
     packet_sha = "a" * 64
     record = {
-        "id": "B6-AWS-AUTH-2026-013",
+        "id": "B6-AWS-AUTH-2026-014",
         "status": "owner-approved",
-        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-013", "sha256": packet_sha},
+        "packet": {"id": "B6-AWS-CHANGE-PACKET-2026-014", "sha256": packet_sha},
         "independent_review": {"status": "PASS", "reviewer": "independent"},
         "cost": {"registry_id": "COST-REGISTRY-2026-004", "allocation_id": "B6-INTEGRATION-WINDOW-2026-001", "maximum_usd": 10.0},
         "source_bindings": sources,
     }
     authorization = tmp_path / "authorization.json"
     authorization.write_text(json.dumps(record))
-    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-013"
+    assert validate(authorization, packet_sha, root)["id"] == "B6-AWS-AUTH-2026-014"
     record["source_bindings"].pop(next(iter(REQUIRED_SOURCES)))
     authorization.write_text(json.dumps(record))
     with pytest.raises(BindingRefusal, match="set differs"):

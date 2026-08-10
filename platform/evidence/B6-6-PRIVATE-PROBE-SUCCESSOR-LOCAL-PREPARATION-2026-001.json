@@ -1,0 +1,136 @@
+{
+  "record": "B6_6_PRIVATE_PROBE_SUCCESSOR_LOCAL_PREPARATION",
+  "id": "B6-6-PRIVATE-PROBE-SUCCESSOR-LOCAL-PREPARATION-2026-001",
+  "revision": 1,
+  "status": "LOCAL_TECHNICAL_CORRECTION_COMPLETE_EXECUTION_BLOCKED_ON_FRESH_CREDENTIAL_EVIDENCE_REVIEW_AND_APPROVAL",
+  "recorded_utc": "2026-08-10T04:48:53Z",
+  "repository": {
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "branch": "codex/b6-6-private-probe-successor",
+    "starting_master_commit": "1d4431a396aa53ef63bcc838c958e7d5f847b8f0",
+    "pull_request_23_merged": true,
+    "historical_records_modified": false
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-014",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-014-b6-6-private-probe-successor.md",
+    "sha256": "f31cb8f36d76d32884639bbe8bfb750ca807a92847d24f0abf4e1eef7d8c6428",
+    "authorized": false,
+    "executable": false,
+    "owner_authorization_record_created": false
+  },
+  "triggering_refusal": {
+    "path": "platform/evidence/B6-PACKET-2026-013-REFUSED-FARGATE-ECR-NETWORK.json",
+    "sha256": "daa679e744738094059a6faae53e5ebb7d44dd920c4da1ba5bac71100049590a",
+    "status": "VERIFIED_REFUSED_AT_FARGATE_ECR_PULL_CLEANUP_PASS"
+  },
+  "implemented_corrections": {
+    "private_image_pull": {
+      "ecr_api_interface_endpoints": 1,
+      "ecr_dkr_interface_endpoints": 1,
+      "s3_gateway_endpoints": 1,
+      "interface_endpoint_subnets_each": 3,
+      "endpoint_security_groups": 1,
+      "endpoint_ingress_rules": 1,
+      "endpoint_ingress_protocol_port": "TCP_443",
+      "only_ingress_source_security_group": "sg-0a83abae6ab954543",
+      "s3_gateway_policy_principal": "*",
+      "s3_gateway_policy_action": "s3:GetObject",
+      "s3_gateway_policy_resource": "arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*",
+      "s3_gateway_policy_basis": "AWS_DOCUMENTED_MINIMUM_ECR_LAYER_BUCKET_POLICY_AND_GATEWAY_ENDPOINT_PRINCIPAL_REQUIREMENT",
+      "public_ip": false,
+      "nat_added": false,
+      "standing_endpoints": false
+    },
+    "availability_gate": {
+      "maximum_wait_seconds": 900,
+      "poll_seconds": 15,
+      "readback_before_controller": true,
+      "reverify_immediately_before_fargate_run_task": true,
+      "mismatch_fails_immediately": true
+    },
+    "alb_route_gate": {
+      "default_rules": 1,
+      "non_default_rules": 3,
+      "exact_priorities": [
+        "1",
+        "2",
+        "3"
+      ],
+      "exact_route_prefixes": [
+        "/v1/conversations/speech",
+        "/v1/conversations/stream",
+        "/readyz"
+      ],
+      "tag_mutation_resources": 4,
+      "tagged_resources": 5
+    },
+    "receipts": {
+      "new_stages": [
+        "endpoints_ready",
+        "fargate_probe"
+      ],
+      "endpoint_receipt_before_controller": true,
+      "fargate_receipt_before_alb": true,
+      "raw_task_stop_text_persisted": false
+    },
+    "terraform_guards": {
+      "exact_create_adds": 12,
+      "exact_create_changes": 0,
+      "exact_create_destroys": 0,
+      "exact_full_cleanup_destroys": 15,
+      "endpoint_absence_required_before_deadline_disarm": true,
+      "deleting_endpoint_counts_as_present": true
+    }
+  },
+  "budget_continuity": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "maximum_cumulative_window_seconds": 14400,
+    "charged_before_successor_seconds": 4819,
+    "remaining_successor_allowance_seconds": 9581
+  },
+  "verification": {
+    "focused": {
+      "passed": 49,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "canonical": {
+      "passed": 1369,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "terraform_fmt_check": "PASS",
+    "terraform_validate": "PASS",
+    "python_compile": "PASS",
+    "shell_syntax": "PASS",
+    "git_diff_check": "PASS",
+    "source_bindings_verified_by_test": true
+  },
+  "open_prerequisite": {
+    "reason": "Packet-2026-013 cleanup removed the local synthetic token, scheduled recoverable deletion of the secret and removed its access policies.",
+    "required_next_action": "Prepare, independently review, owner-approve and execute a narrow fresh synthetic credential restoration at CPU/GPU zero, then bind its new version ID, token hash and immutable evidence into the successor packet.",
+    "historical_token_reuse_permitted": false,
+    "secret_plaintext_read_permitted": false,
+    "packet_final_review_permitted_before_binding": false,
+    "packet_execution_permitted": false
+  },
+  "explicit_non_events": {
+    "aws_api_mutations": 0,
+    "terraform_plans_generated": 0,
+    "terraform_plans_applied": 0,
+    "kubernetes_mutations": 0,
+    "workers_started": 0,
+    "vpc_endpoints_created": 0,
+    "fargate_tasks_started": 0,
+    "secrets_created_or_restored": 0,
+    "iam_changes": 0,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0
+  }
+}

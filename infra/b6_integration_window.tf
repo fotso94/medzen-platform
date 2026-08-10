@@ -6,6 +6,10 @@
 locals {
   b6_backend_security_group_id = "sg-0a83abae6ab954543"
   b6_node_security_group_id    = "sg-070fc00321934eacb"
+  b6_main_route_table_id       = "rtb-0c6eb6874ce0565dc"
+  b6_probe_execution_role_arn  = "arn:${data.aws_partition.current.partition}:iam::${var.account_id}:role/medzen-b6-window-probe-execution"
+  b6_probe_repository_arn      = "arn:${data.aws_partition.current.partition}:ecr:${var.region}:${var.account_id}:repository/medzen-rag-index"
+  b6_ecr_layer_bucket_arn      = "arn:${data.aws_partition.current.partition}:s3:::prod-${var.region}-starport-layer-bucket/*"
   b6_probe_image               = "${var.account_id}.dkr.ecr.${var.region}.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
   b6_window_tags = {
     Project        = "medzen-speech"
@@ -15,6 +19,132 @@ locals {
     Workstream     = "integration-window"
     BudgetRegistry = "COST-REGISTRY-2026-003"
   }
+}
+
+# The two interface endpoints have one dedicated endpoint-side security group.
+# Its only ingress is TLS from the already reviewed Fargate probe security
+# group. It has no broad CIDR ingress and is deleted with the window.
+resource "aws_security_group" "b6_probe_endpoints" {
+  count = var.enable_b6_integration_window ? 1 : 0
+
+  name        = "medzen-b6-probe-vpce"
+  description = "Window-only private ECR endpoints for the B6.6 Fargate probe"
+  vpc_id      = var.vpc_id
+
+  tags = merge(local.b6_window_tags, {
+    Name     = "medzen-b6-probe-vpce"
+    Boundary = "B6-6-PROBE"
+  })
+}
+
+resource "aws_vpc_security_group_ingress_rule" "b6_probe_to_endpoints" {
+  count = var.enable_b6_integration_window ? 1 : 0
+
+  security_group_id            = aws_security_group.b6_probe_endpoints[0].id
+  referenced_security_group_id = local.b6_backend_security_group_id
+  ip_protocol                  = "tcp"
+  from_port                    = 443
+  to_port                      = 443
+  description                  = "TLS from the exact B6.6 Fargate probe SG only"
+
+  tags = local.b6_window_tags
+}
+
+data "aws_iam_policy_document" "b6_probe_ecr_api_endpoint" {
+  statement {
+    sid       = "ExactProbeRoleRegistryToken"
+    effect    = "Allow"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+    principals {
+      type        = "AWS"
+      identifiers = [local.b6_probe_execution_role_arn]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "b6_probe_ecr_dkr_endpoint" {
+  statement {
+    sid    = "ExactProbeRoleQualifiedImagePull"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:GetDownloadUrlForLayer",
+    ]
+    resources = [local.b6_probe_repository_arn]
+    principals {
+      type        = "AWS"
+      identifiers = [local.b6_probe_execution_role_arn]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "b6_probe_s3_endpoint" {
+  statement {
+    sid       = "MinimumEcrLayerBucketRead"
+    effect    = "Allow"
+    actions   = ["s3:GetObject"]
+    resources = [local.b6_ecr_layer_bucket_arn]
+    principals {
+      # Gateway endpoint policies require Principal="*". The boundary is the
+      # one AWS-documented ECR layer bucket and GetObject action only.
+      type        = "*"
+      identifiers = ["*"]
+    }
+  }
+}
+
+resource "aws_vpc_endpoint" "b6_probe_ecr_api" {
+  count = var.enable_b6_integration_window ? 1 : 0
+
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.region}.ecr.api"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = sort(var.subnet_ids)
+  security_group_ids  = [aws_security_group.b6_probe_endpoints[0].id]
+  private_dns_enabled = true
+  policy              = data.aws_iam_policy_document.b6_probe_ecr_api_endpoint.json
+
+  tags = merge(local.b6_window_tags, {
+    Name            = "medzen-b6-probe-ecr-api"
+    Boundary        = "B6-6-PROBE"
+    EndpointPurpose = "ecr-api"
+  })
+}
+
+resource "aws_vpc_endpoint" "b6_probe_ecr_dkr" {
+  count = var.enable_b6_integration_window ? 1 : 0
+
+  vpc_id              = var.vpc_id
+  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = sort(var.subnet_ids)
+  security_group_ids  = [aws_security_group.b6_probe_endpoints[0].id]
+  private_dns_enabled = true
+  policy              = data.aws_iam_policy_document.b6_probe_ecr_dkr_endpoint.json
+
+  tags = merge(local.b6_window_tags, {
+    Name            = "medzen-b6-probe-ecr-dkr"
+    Boundary        = "B6-6-PROBE"
+    EndpointPurpose = "ecr-dkr"
+  })
+}
+
+resource "aws_vpc_endpoint" "b6_probe_s3" {
+  count = var.enable_b6_integration_window ? 1 : 0
+
+  vpc_id            = var.vpc_id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [local.b6_main_route_table_id]
+  policy            = data.aws_iam_policy_document.b6_probe_s3_endpoint.json
+
+  tags = merge(local.b6_window_tags, {
+    Name            = "medzen-b6-probe-s3"
+    Boundary        = "B6-6-PROBE"
+    EndpointPurpose = "s3"
+  })
 }
 
 resource "aws_vpc_security_group_ingress_rule" "b6_alb_from_backend" {
