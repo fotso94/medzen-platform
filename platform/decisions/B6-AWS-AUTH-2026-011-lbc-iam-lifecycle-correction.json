@@ -1,0 +1,88 @@
+{
+  "record": "B6_ALB_CONTROLLER_FULL_LIFECYCLE_IAM_CORRECTION_AWS_AUTHORIZATION",
+  "id": "B6-AWS-AUTH-2026-011",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-10T00:37:15Z",
+  "authorization_source": "Owner message: 'Approve B6 AWS change packet 2026-011 only.' after independent review PASS of PR #19 and packet 2026-011.",
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings_requiring_change": 0,
+    "review_scope": "Before/after lifecycle simulation verified; three live quirks reproduced and resolved; 19/19 boundaries remained denied; creation-time tagging proven; listener/rule tag-mutation simulator limitation honestly scoped.",
+    "pull_request": "https://github.com/fotso94/medzen-platform/pull/19",
+    "reviewed_packet_sha256": "9df81fb37f8bfd47dc0b7daa426ec19020e72ed6623853dab783ea38aaabac73",
+    "reviewed_repository_commit": "d8b2405aa29e7e02bcd7d1d156a97b48f2659145"
+  },
+  "repository_at_authorization": {
+    "branch": "master",
+    "git_commit_before_authorization_record": "b96bf7707bd9bc8de71d4cf4f1fcbd496d37b25f",
+    "git_tree_before_authorization_record": "01d3180ba36ce9307df1f6af5efc95552409f895",
+    "commit_count_before_authorization_record": 273,
+    "worktree_clean_before_authorization_record": true,
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "pull_request_19_merged": true
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-011",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-011-lbc-iam-lifecycle-correction.md",
+    "sha256": "9df81fb37f8bfd47dc0b7daa426ec19020e72ed6623853dab783ea38aaabac73"
+  },
+  "aws_scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "required_profile": "medzen",
+    "required_operator": "arn:aws:iam::558069890522:user/s.fotso",
+    "role": "medzen-lbc-role",
+    "inline_policy": "medzen-lbc-access",
+    "terraform_address": "aws_iam_role_policy.b6_load_balancer_controller",
+    "maximum_plan_adds": 0,
+    "required_plan_updates": 1,
+    "maximum_plan_destroys": 0,
+    "maximum_cpu_nodes": 0,
+    "maximum_gpu_nodes": 0,
+    "maximum_albs": 0,
+    "new_reservation_usd": 0.0
+  },
+  "authorized_operations": [
+    "verify_exact_account_operator_region_packet_review_commit_and_source_bindings",
+    "verify_live_inline_policy_matches_exact_prechange_canonical_sha256",
+    "verify_cpu_gpu_kubernetes_and_window_resources_remain_at_zero",
+    "generate_one_fresh_targeted_state_refreshed_terraform_plan",
+    "machine_guard_exact_zero_add_one_inline_policy_update_zero_destroy_delta",
+    "apply_once_the_exact_guarded_saved_plan",
+    "read_back_and_verify_exact_postchange_canonical_policy_sha256",
+    "run_full_live_postapply_iam_lifecycle_simulation",
+    "retain_four_listener_rule_tag_mutation_simulator_observations_without_claiming_pass",
+    "verify_zero_state_and_publish_immutable_execution_evidence"
+  ],
+  "prohibited_operations": [
+    "any_terraform_change_outside_the_one_inline_policy_update",
+    "worker_scale_up_helm_install_kubernetes_mutation_or_alb_creation",
+    "secret_or_local_token_restoration",
+    "ssm_ecr_kms_or_other_iam_change",
+    "integration_window_retry_or_packet_2026_010_reuse",
+    "production_ssm_approved_artifact_model_registry_or_language_change",
+    "provider_call_training_phi_or_production_traffic",
+    "cost_reservation_consumption"
+  ],
+  "required_prechange_canonical_policy_sha256": "f1cd1b2134a5431d38bfdef223eb10dfe52041ceadc2bbbbd441047f97ae97fe",
+  "required_postchange_canonical_policy_sha256": "38db52d2a17acf608da3f8236b5b41baaad09e6d6e67e53ffc09e3c188309529",
+  "source_bindings": {
+    "infra/alb_controller.tf": "c7005d9c2fa230f1192d2867c75d7691702ba9ff9191e878623c6956671c22eb",
+    "platform/evidence/B6-LBC-IAM-LIFECYCLE-SIMULATION-2026-001.json": "3001d13c666cc8dc48401e5997b252915927aa459e59289317fb55736aae2842",
+    "platform/evidence/B6-PACKET-2026-010-REFUSED-ALB-LISTENER-IAM.json": "4ea2234f6803049d6d4afd4a24a2f03f118c1c45c090b173f61cfef8506fdabf",
+    "platform/finance/COST-REGISTRY-2026-004.json": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb",
+    "platform/iam/medzen-lbc-role.policy.template.json": "722567dc992e0782781ffbc8eba1456f2412510188b2634c672dd59c3d9218ec",
+    "scripts/check_b6_lbc_iam_correction_plan.py": "5583f3e5366c9cd6c65a4e47239346efc56b87075902ecb8029ab5c2ba966f6e",
+    "scripts/simulate_b6_lbc_lifecycle.py": "9c8443fdd0de256e20046ea307623a84e7ca6ca06da2506ba4576b893d266ab4",
+    "scripts/terraform_medzen.sh": "1a1d9c158001d9b15ac1403bde2138ec284c250b28715818b395697317c274f1",
+    "tests/test_b6_lbc_iam_lifecycle.py": "9bd513f8bbb73f1ba457989e932d61adf29772685e958b01e926c2eb788646a8"
+  },
+  "cost": {
+    "registry_id": "COST-REGISTRY-2026-004",
+    "incremental_expected_usd": 0.0,
+    "existing_b6_window_reservation_consumed": false
+  }
+}
