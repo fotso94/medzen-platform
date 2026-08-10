@@ -46,7 +46,7 @@ def _operator_denied(client: Any) -> bool:
 
 
 def _permanent_resource_policy() -> str:
-    orchestrator = f"arn:aws:iam::{ACCOUNT}:role/medzen-speech-orchestrator"
+    orchestrator = f"arn:aws:iam::{ACCOUNT}:role/medzen-orch-role"
     return json.dumps(
         {
             "Version": "2012-10-17",
@@ -73,7 +73,13 @@ def _permanent_resource_policy() -> str:
     )
 
 
-def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict[str, Any]:
+def execute(
+    authorization: Path,
+    packet_sha256: str,
+    receipts_dir: Path,
+    *,
+    mode: str,
+) -> dict[str, Any]:
     validate_bindings(authorization, packet_sha256, ROOT)
     store = ReceiptStore(receipts_dir)
     status = "REFUSED"
@@ -84,14 +90,22 @@ def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict
             raise BridgeRefusal("AWS account differs")
         client = session.client("secretsmanager")
         before = client.describe_secret(SecretId=SECRET_ARN)
-        if (
+        identity_differs = (
             before.get("ARN") != SECRET_ARN
             or before.get("Name") != SECRET_NAME
             or before.get("KmsKeyId") != KMS_KEY
-            or before.get("DeletedDate") is None
-        ):
-            raise BridgeRefusal("exact recoverable packet-018 secret state differs")
-        client.restore_secret(SecretId=SECRET_ARN)
+        )
+        if identity_differs:
+            raise BridgeRefusal("exact persistent secret identity differs")
+        if mode == "initial":
+            if before.get("DeletedDate") is None:
+                raise BridgeRefusal("exact recoverable packet-018 secret state differs")
+            client.restore_secret(SecretId=SECRET_ARN)
+        elif mode == "continuation":
+            if before.get("DeletedDate") is not None or not _operator_denied(client):
+                raise BridgeRefusal("contained packet-019 continuation state differs")
+        else:
+            raise BridgeRefusal("unknown bridge mode")
 
         # Close the only possible plaintext-read interval before Terraform state
         # work. A failed import/plan therefore still leaves the secret denied.
@@ -136,7 +150,11 @@ def execute(authorization: Path, packet_sha256: str, receipts_dir: Path) -> dict
             raise BridgeRefusal("persistent secret post-bridge invariants differ")
         status = "PASS"
         payload = {
-            "transition": "RECOVERABLE_DELETION_TO_PERSISTENT_OPERATOR_DENIED",
+            "transition": (
+                "RECOVERABLE_DELETION_TO_PERSISTENT_OPERATOR_DENIED"
+                if mode == "initial"
+                else "CONTAINED_RESTORED_STATE_TO_TERRAFORM_MANAGED_PERSISTENT"
+            ),
             "secret_arn": SECRET_ARN,
             "existing_secret_reused": True,
             "historical_version_count_evaluated": False,
@@ -165,12 +183,14 @@ def main() -> int:
     parser.add_argument("--authorization", type=Path, required=True)
     parser.add_argument("--packet-sha256", required=True)
     parser.add_argument("--receipts-dir", type=Path, required=True)
+    parser.add_argument("--mode", choices=("initial", "continuation"), required=True)
     args = parser.parse_args()
     try:
         result = execute(
             args.authorization.resolve(),
             args.packet_sha256,
             args.receipts_dir.resolve(),
+            mode=args.mode,
         )
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "reason_code": type(exc).__name__}))

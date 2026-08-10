@@ -100,7 +100,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-019-A{context.attempt}-LIVE"
+            / f"B6-2026-020-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -135,7 +135,7 @@ class RealOperations:
             raise StageFailure("REVIEWED_CLEAN_COMMIT_REQUIRED")
         bridge_path = (
             ROOT
-            / "platform/evidence/receipts/B6-2026-019-BRIDGE"
+            / "platform/evidence/receipts/B6-2026-020-BRIDGE"
             / "persistent_secret_bridge.json"
         )
         try:

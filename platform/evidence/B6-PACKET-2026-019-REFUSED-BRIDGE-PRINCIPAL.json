@@ -1,0 +1,66 @@
+{
+  "record": "B6_2026_019_PERSISTENT_SECRET_BRIDGE_RESULT",
+  "id": "B6-PACKET-2026-019-REFUSED-BRIDGE-PRINCIPAL",
+  "revision": 1,
+  "status": "VERIFIED_REFUSED_BRIDGE_CONTAINED_NO_COMPUTE",
+  "recorded_utc": "2026-08-10T17:27:53Z",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-019",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-019-consolidated-window.md",
+    "sha256": "a3bd79d594e791fa1a4f396aebf16f1e03ddfec2377f8bb9c6b736232c29602b"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-019",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-019-consolidated-window.json",
+    "sha256": "1404b048071fa0128e17008793355af8b09ae8bbf8ebd4f8bdbd95ff0c725218"
+  },
+  "review": {
+    "status": "PASS",
+    "reviewed_commit": "d5e9df7205f22347040342f8065acd1ae8eb5891",
+    "merged_master_commit": "e4b60a5cc1a9afb1e7d6958ee35e9b6d0963b825",
+    "authorization_commit": "a873b4b"
+  },
+  "execution": {
+    "stage": "persistent_secret_bridge",
+    "outcome": "REFUSED",
+    "exception_class": "MalformedPolicyDocumentException",
+    "receipt": {
+      "path": "platform/evidence/receipts/B6-2026-019-BRIDGE/persistent_secret_bridge.json",
+      "sha256": "2dd182d17cbe94ffb75553a6b58240c83dde5ccf77e3453a4219b8bb1a4b82bc",
+      "status": "REFUSED"
+    },
+    "compute_started": false,
+    "deadline_armed": false,
+    "attempt_1_started": false,
+    "attempt_2_started": false,
+    "worker_seconds_consumed": 0,
+    "remaining_authorized_worker_seconds": 9000
+  },
+  "root_cause": {
+    "classification": "BRIDGE_PRINCIPAL_LITERAL_DOES_NOT_EXIST",
+    "reviewed_bridge_principal": "arn:aws:iam::558069890522:role/medzen-speech-orchestrator",
+    "established_terraform_principal": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "finding": "The bridge constructed a resource policy for a nonexistent IAM role. Secrets Manager rejected the policy as malformed immediately after RestoreSecret and before Terraform import, planning or apply."
+  },
+  "containment": {
+    "status": "PASS",
+    "scope": "Restore the already-approved access boundary immediately after the refusal; no plaintext read and no new role or compute.",
+    "secret_deleted_date": null,
+    "resource_policy_principal": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "resource_policy_canonical_sha256": "318a323fe01349dca140c8eff48cfef9da1cda163b6cc7616d3da718c0d20cb1",
+    "operator_get_secret_value": "EXPLICITLY_DENIED_AS_REQUIRED",
+    "plaintext_read_or_recorded": false,
+    "cpu_desired": 0,
+    "cpu_instances": 0,
+    "gpu_desired": 0,
+    "gpu_instances": 0,
+    "temporary_window_resources_created": 0
+  },
+  "governance": {
+    "packet_2026_019_terminal": true,
+    "receipt_overwritten_or_reconstructed": false,
+    "retry_under_packet_2026_019_permitted": false,
+    "new_reviewed_successor_required": true,
+    "reason": "The immutable required bridge receipt is REFUSED and the correction changes a packet-bound source hash."
+  }
+}
