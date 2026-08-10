@@ -1,0 +1,94 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_RESTORATION_REQUEST_MANIFEST",
+  "id": "B6-CLIENT-API-KEYS-RESTORE-2026-001",
+  "revision": 1,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "repository_binding": {
+    "starting_commit": "ae22d8ca87ed72ae33efa88985d07ee610721692",
+    "source_execution_evidence": "platform/evidence/B6-LBC-IAM-LIFECYCLE-AWS-EXECUTION-2026-001.json"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "orchestrator_role_arn": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "secret_name": "medzen/client-api-keys",
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "recovery_precondition": {
+    "state": "PENDING_RECOVERABLE_DELETION",
+    "deleted_utc": "2026-08-09T22:06:53.769Z",
+    "recovery_deadline_utc": "2026-08-16T22:06:53Z",
+    "resource_policy_deleted_cloudtrail_event_id": "cdbc5e35-61d9-4e3a-baa3-654350e90e78",
+    "terraform_state_contains_secret": false,
+    "orchestrator_kms_inline_policy_present": false,
+    "local_plaintext_token_present": false
+  },
+  "historical_version": {
+    "version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "current_stage_before_rotation": "AWSCURRENT",
+    "historical_receipt": "platform/evidence/B6-CLIENT-API-KEYS-2026-001.json",
+    "historical_bearer_sha256": "fe83e1a29619c5b05b83b1d77d820dde850d35e6a75102947881e6d152d68be6",
+    "historical_plaintext_recoverable": false,
+    "must_not_be_reused": true
+  },
+  "terraform_reconciliation": {
+    "exact_import_address": "aws_secretsmanager_secret.b6_client_keys[0]",
+    "exact_import_id": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "expected_plan": {
+      "adds": 2,
+      "changes": 0,
+      "destroys": 0,
+      "exact_create_addresses": [
+        "aws_iam_role_policy.b6_client_keys_kms[0]",
+        "aws_secretsmanager_secret_policy.b6_client_keys[0]"
+      ],
+      "secret_address_action": "no-op"
+    },
+    "secret_value_in_terraform_configuration_plan_or_state": false
+  },
+  "new_key_material": {
+    "client_id": "b6-window-probe",
+    "random_bytes": 32,
+    "bearer_encoding": "base64url_without_padding",
+    "bearer_characters": 43,
+    "stored_field": "key_sha256",
+    "stored_hash_encoding": "lowercase_hex_sha256",
+    "plaintext_path": "/private/tmp/medzen-b6-6-client-token",
+    "plaintext_file_mode": "0600",
+    "plaintext_file_bytes_including_lf": 44,
+    "receipt_contains_plaintext": false
+  },
+  "version_transition": {
+    "new_version": "AWSCURRENT",
+    "historical_version_after_verification": "NO_STAGES",
+    "remove_awsprevious": true,
+    "runtime_reads_only_awscurrent": true
+  },
+  "access_boundary": {
+    "resource_policy_block_public_policy": true,
+    "only_allowed_reader": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "all_other_principals_get_secret_value": "EXPLICIT_DENY",
+    "kms_via_service": "secretsmanager.eu-central-1.amazonaws.com",
+    "kms_encryption_context": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys*",
+    "orchestrator_live_read": "DEFERRED_TO_NEW_BOUNDED_WINDOW"
+  },
+  "receipt_order": [
+    "restore",
+    "terraform_reconciliation",
+    "rotation",
+    "verification"
+  ],
+  "failure_cleanup": {
+    "plaintext_removed": true,
+    "secret_deletion": "SCHEDULE_SEVEN_DAY_RECOVERABLE_DELETION",
+    "force_delete_without_recovery": false,
+    "workers_started": false
+  },
+  "cost": {
+    "new_reservation_usd": 0.0,
+    "maximum_incremental_usd_within_existing_b6_reservation": 0.1
+  }
+}
