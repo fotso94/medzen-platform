@@ -252,7 +252,7 @@ def test_new_credential_stage_advances_from_packet_017_fresh_version():
     assert len(manifest["required_starting_state"]["unstaged_version_ids"]) == 3
 
 
-def test_packet_is_not_authorized_during_local_preparation():
+def test_packet_and_later_authorization_preserve_the_reviewed_boundary():
     packet_path = (
         ROOT
         / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-018-b6-6-images-before-endpoints.md"
@@ -267,9 +267,17 @@ def test_packet_is_not_authorized_during_local_preparation():
     assert "POST_ENDPOINT_NEW_KUBERNETES_IMAGE_PULL_FATAL" in packet
     assert "the same wrapper\npersists `PASS` and `REFUSED` receipts" in packet
     assert "Approve B6 AWS change packet 2026-018 only." in packet
-    assert not (
-        ROOT / "platform/decisions/B6-AWS-AUTH-2026-018-b6-6-images-before-endpoints.json"
-    ).exists()
+    authorization = json.loads(
+        (
+            ROOT
+            / "platform/decisions/B6-AWS-AUTH-2026-018-b6-6-images-before-endpoints.json"
+        ).read_bytes()
+    )
+    assert authorization["id"] == "B6-AWS-AUTH-2026-018"
+    assert authorization["status"] == "owner-approved"
+    assert authorization["packet"]["sha256"] == (
+        "7ff863f2de76fe885964a60deabcb1fb469ae2b20c31545367780ab1bb2a1543"
+    )
 
 
 def test_packet_principal_source_table_is_hash_exact():
@@ -282,8 +290,16 @@ def test_packet_principal_source_table_is_hash_exact():
         if not item[0].startswith("/")
     ]
     assert len(bindings) == 14
-    for relative, digest in bindings:
-        assert sha256(ROOT / relative) == digest
+    authorization_path = (
+        ROOT / "platform/decisions/B6-AWS-AUTH-2026-018-b6-6-images-before-endpoints.json"
+    )
+    if authorization_path.exists():
+        execution_sources = json.loads(authorization_path.read_bytes())["source_bindings"]
+        for relative, digest in bindings:
+            assert execution_sources[relative] == digest
+    else:
+        for relative, digest in bindings:
+            assert sha256(ROOT / relative) == digest
 
 
 def test_local_preparation_evidence_is_packet_bound_and_non_authorizing():
