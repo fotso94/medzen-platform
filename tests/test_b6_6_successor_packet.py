@@ -273,7 +273,7 @@ def test_authorization_validator_requires_reviewed_commit_identity() -> None:
     assert 'value.get("prepared_repository_commit") != reviewed_commit' in source
 
 
-def test_successor_packet_is_draft_and_contains_exact_approval_boundary() -> None:
+def test_successor_packet_preserves_review_boundary_and_has_exact_authorization() -> None:
     packet = (
         ROOT
         / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-017-b6-6-principal-independent-successor.md"
@@ -285,9 +285,16 @@ def test_successor_packet_is_draft_and_contains_exact_approval_boundary() -> Non
     assert "Remaining before this packet | 8,415" in packet
     assert "Maximum packet-2026-017 worker deadline | 4,500" in packet
     assert "Approve B6 AWS change packet 2026-017 only." in packet
-    assert not (
-        ROOT / "platform/decisions/B6-AWS-AUTH-2026-017-b6-6-principal-independent-successor.json"
-    ).exists()
+    authorization_path = (
+        ROOT
+        / "platform/decisions/B6-AWS-AUTH-2026-017-b6-6-principal-independent-successor.json"
+    )
+    authorization = json.loads(authorization_path.read_bytes())
+    assert authorization["id"] == "B6-AWS-AUTH-2026-017"
+    assert authorization["status"] == "owner-approved"
+    assert authorization["packet"]["sha256"] == (
+        "8fa32f4013445fd18ad353119ddd10a1c5c199935059a63afedf951c61a045b6"
+    )
 
 
 def test_local_preparation_evidence_is_non_authorizing_and_packet_bound() -> None:
