@@ -15,7 +15,12 @@ sys.path.insert(0, str(ROOT))
 class FakeElbv2:
     alb = "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/medzen-b6-window/1111111111111111"
     listener = "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/medzen-b6-window/1111111111111111/2222222222222222"
-    rule = "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-window/1111111111111111/2222222222222222/3333333333333333"
+    rules = [
+        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-window/1111111111111111/2222222222222222/3333333333333331",
+        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-window/1111111111111111/2222222222222222/3333333333333332",
+        "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener-rule/app/medzen-b6-window/1111111111111111/2222222222222222/3333333333333333",
+    ]
+    rule = rules[0]
     target_group = "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/k8s-medzen-test/4444444444444444"
 
     def describe_load_balancers(self, Names):
@@ -37,10 +42,31 @@ class FakeElbv2:
 
     def describe_rules(self, ListenerArn):
         assert ListenerArn == self.listener
-        return {"Rules": [
-            {"RuleArn": self.rule, "IsDefault": False},
-            {"RuleArn": self.rule + "/default", "IsDefault": True},
-        ]}
+        paths = {
+            "1": ["/v1/conversations/speech", "/v1/conversations/speech/*"],
+            "2": ["/v1/conversations/stream", "/v1/conversations/stream/*"],
+            "3": ["/readyz", "/readyz/*"],
+        }
+        rules = [
+            {
+                "RuleArn": arn,
+                "Priority": priority,
+                "IsDefault": False,
+                "Conditions": [{
+                    "Field": "path-pattern",
+                    "PathPatternConfig": {"Values": paths[priority]},
+                }],
+                "Actions": [{
+                    "Type": "forward",
+                    "ForwardConfig": {"TargetGroups": [{
+                        "TargetGroupArn": self.target_group,
+                    }]},
+                }],
+            }
+            for priority, arn in zip(("1", "2", "3"), self.rules)
+        ]
+        rules.append({"RuleArn": self.rule + "/default", "IsDefault": True})
+        return {"Rules": rules}
 
     def describe_target_groups(self, LoadBalancerArn):
         assert LoadBalancerArn == self.alb
@@ -70,7 +96,11 @@ def test_attempt_4_alb_live_proof_requires_exact_tags_and_healthy_target() -> No
     assert proof["target_healthy"] is True
     assert proof["creation_time_exact_tags"] is True
     assert proof["required_tag_count"] == 6
-    assert proof["tagged_resource_count"] == 3
+    assert proof["tagged_resource_count"] == 5
+    assert proof["route_count"] == 3
+    assert set(proof["tag_mutation_resource_arns"]) == {
+        FakeElbv2.listener, *FakeElbv2.rules,
+    }
 
 
 def test_attempt_4_parses_only_exact_child_resource_tag_denials() -> None:
@@ -104,18 +134,20 @@ def test_attempt_4_tag_warning_is_ordered_and_does_not_void_functional_proof(tmp
     store = ReceiptStore(tmp_path)
     for stage in (
         "local_bindings", "deadline", "workers_ready", "terraform_window",
-        "controller_ready", "dra_ready", "rag_ready", "asr_ready", "tts_ready",
-        "llm_ready", "orchestrator_ready",
+        "endpoints_ready", "controller_ready", "dra_ready", "rag_ready",
+        "asr_ready", "tts_ready", "llm_ready", "orchestrator_ready",
     ):
         store.persist(stage, "PASS", {"proven": True})
+    store.persist("fargate_probe", "PASS", {"readyz_request_completed": True})
     alb = store.persist("alb_ready", "PASS", {
         "internal_alb": True,
         "alb_security_group": "sg-0f0f6c66852830013",
         "listener_port": 80,
+        "route_count": 3,
         "target_healthy": True,
-        "orchestrator_readyz": True,
-        "fargate_probe_exit_code": 0,
         "creation_time_exact_tags": True,
+        "tagged_resource_count": 5,
+        "tag_mutation_resource_arns": [FakeElbv2.listener, *FakeElbv2.rules],
     })
     log = (
         '2026-08-10T04:00:00Z AccessDenied: elasticloadbalancing:RemoveTags resource '
@@ -140,7 +172,7 @@ def test_attempt_4_binds_rotated_token_and_remaining_allowance() -> None:
         (ROOT / "platform/evidence/B6-CLIENT-SECRET-RESTORATION-CONTINUATION-AWS-EXECUTION-2026-001.json").read_bytes()
     )
     assert BEARER_SHA256 == evidence["rotation_and_verification"]["bearer_token_sha256"]
-    assert WINDOW_SECONDS == 14400 - 3157 == 11243
+    assert WINDOW_SECONDS == 14400 - 4819 == 9581
     assert hashlib.sha256((ROOT / "scripts/b6_6_token_binding.py").read_bytes()).hexdigest()
 
 
@@ -203,12 +235,13 @@ def test_attempt_4_runner_refuses_secret_or_tag_rule_drift_before_probes() -> No
     assert source.index("alb_tag_mutation_warning") < source.index("scripts/b6_6_probe.py file")
 
 
-def test_attempt_4_packet_binds_every_current_source_and_requires_new_approval() -> None:
-    from scripts.b6_6_bindings import REQUIRED_SOURCES, sha256_file
-
+def test_attempt_4_packet_keeps_its_approved_source_bindings() -> None:
     packet = (
         ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-013-b6-6-attempt-4.md"
     ).read_text()
+    authorization = json.loads(
+        (ROOT / "platform/decisions/B6-AWS-AUTH-2026-013-b6-6-attempt-4.json").read_bytes()
+    )
     assert "Status: **DRAFT — AWAITING INDEPENDENT REVIEW AND OWNER APPROVAL**" in packet
     assert "This draft itself authorizes no AWS or Kubernetes mutation" in packet
     assert "Approve B6 AWS change packet 2026-013 only." in packet
@@ -219,8 +252,8 @@ def test_attempt_4_packet_binds_every_current_source_and_requires_new_approval()
     assert "3a30b00fc96111490c2b471eec5eebe1c9d26bf991508428cf2f5511e306b84a" in packet
     assert "WARNING_NON_FATAL" in packet
     assert "B5 remains `BLOCKED`" in packet
-    for relative in REQUIRED_SOURCES:
-        assert f"`{relative}` | `{sha256_file(ROOT / relative)}`" in packet
+    for relative, expected in authorization["source_bindings"].items():
+        assert f"`{relative}` | `{expected}`" in packet
 
 
 def test_attempt_4_preparation_evidence_is_non_authorizing_and_hash_bound() -> None:

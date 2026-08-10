@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Independently invocable cleanup for B6-AWS-CHANGE-PACKET-2026-013.
+# Independently invocable cleanup for B6-AWS-CHANGE-PACKET-2026-014.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -79,11 +79,16 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window_and_secret"
-cleanup_plan="/private/tmp/b6-013-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-014-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
+  -target=aws_security_group.b6_probe_endpoints
   -target=aws_vpc_security_group_ingress_rule.b6_alb_from_backend
   -target=aws_vpc_security_group_ingress_rule.b6_nodes_from_alb
+  -target=aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints
+  -target=aws_vpc_endpoint.b6_probe_ecr_api
+  -target=aws_vpc_endpoint.b6_probe_ecr_dkr
+  -target=aws_vpc_endpoint.b6_probe_s3
   -target=aws_iam_role.b6_probe_execution
   -target=aws_iam_role_policy.b6_probe_execution
   -target=aws_ecs_cluster.b6_probe
@@ -101,9 +106,18 @@ scripts/terraform_medzen.sh plan -input=false -out="$cleanup_plan" \
 
 change_count="$(terraform -chdir=infra show -json "$cleanup_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
 if [[ "$change_count" != "0" ]]; then
-  .venv/bin/python scripts/check_b6_6_window_plan.py cleanup "$cleanup_plan"
+  if [[ -e "$receipts_dir/terraform_window.json" ]]; then
+    .venv/bin/python scripts/check_b6_6_window_plan.py destroy "$cleanup_plan"
+  else
+    .venv/bin/python scripts/check_b6_6_window_plan.py cleanup "$cleanup_plan"
+  fi
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$cleanup_plan"
 fi
+
+# Terraform must finish deleting both interface endpoints, the S3 gateway
+# endpoint and their endpoint-side SG before worker deadlines can be disarmed.
+cleanup_step="endpoint_absence"
+.venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
 
 cleanup_step="worker_scale_zero"
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name gpu --scaling-config minSize=0,maxSize=1,desiredSize=0 --region eu-central-1 --profile medzen >/dev/null
@@ -126,4 +140,4 @@ cleanup_step="zero_state_proof"
 [[ ! -e "$token_file" ]]
 
 cleanup_step="receipt_persistence"
-.venv/bin/python scripts/b6_6_receipt.py "$cleanup_receipt_stage" PASS --receipts-dir "$receipts_dir" --payload '{"alb_count":0,"approved_asr_changes":0,"cpu_asg_instances":0,"cpu_desired":0,"deadline_actions":0,"deployments":0,"gpu_asg_instances":0,"gpu_desired":0,"ingresses":0,"local_token_removed":true,"production_ssm_pointer_changes":0,"synthetic_secret":"SCHEDULED_RECOVERABLE_DELETION","window_terraform_resources":0}'
+.venv/bin/python scripts/b6_6_receipt.py "$cleanup_receipt_stage" PASS --receipts-dir "$receipts_dir" --payload '{"alb_count":0,"approved_asr_changes":0,"cpu_asg_instances":0,"cpu_desired":0,"deadline_actions":0,"deployments":0,"endpoint_security_groups":0,"gpu_asg_instances":0,"gpu_desired":0,"ingresses":0,"local_token_removed":true,"probe_vpc_endpoints":0,"production_ssm_pointer_changes":0,"synthetic_secret":"SCHEDULED_RECOVERABLE_DELETION","window_terraform_resources":0}'

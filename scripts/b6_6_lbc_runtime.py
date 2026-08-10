@@ -32,6 +32,11 @@ REQUIRED_TAGS = {
     "Workstream": "integration-window",
     "BudgetRegistry": "COST-REGISTRY-2026-003",
 }
+EXPECTED_ROUTES = {
+    "1": ["/v1/conversations/speech", "/v1/conversations/speech/*"],
+    "2": ["/v1/conversations/stream", "/v1/conversations/stream/*"],
+    "3": ["/readyz", "/readyz/*"],
+}
 ACCESS_DENIED = re.compile(r"AccessDenied(?:Exception)?")
 DENIAL_SIGNAL = re.compile(r"AccessDenied|UnauthorizedOperation|not authorized to perform", re.I)
 ACTION = re.compile(r"elasticloadbalancing:(?P<action>[A-Za-z]+)")
@@ -91,20 +96,59 @@ def verify_live(client: Any) -> dict[str, Any]:
         raise RuntimeEvidenceRefusal("B6 listener differs")
     listener_arn = str(listener.get("ListenerArn", ""))
     rules = client.describe_rules(ListenerArn=listener_arn).get("Rules", [])
-    rule = _exact_one([item for item in rules if not item.get("IsDefault")], "non-default rule")
-    rule_arn = str(rule.get("RuleArn", ""))
+    _exact_one([item for item in rules if item.get("IsDefault")], "default rule")
+    non_default = [item for item in rules if not item.get("IsDefault")]
+    if len(non_default) != 3:
+        raise RuntimeEvidenceRefusal("exactly three non-default rules are required")
     target_group = _exact_one(
         client.describe_target_groups(LoadBalancerArn=alb_arn).get("TargetGroups", []),
         "target group",
     )
+    target_group_arn = str(target_group.get("TargetGroupArn", ""))
+    route_arns: list[str] = []
+    observed_priorities: set[str] = set()
+    for rule in non_default:
+        priority = str(rule.get("Priority", ""))
+        expected_paths = EXPECTED_ROUTES.get(priority)
+        conditions = rule.get("Conditions", [])
+        actions = rule.get("Actions", [])
+        if expected_paths is None or priority in observed_priorities:
+            raise RuntimeEvidenceRefusal("B6 route priority differs")
+        if len(conditions) != 1 or len(actions) != 1:
+            raise RuntimeEvidenceRefusal("B6 route condition or action count differs")
+        condition = conditions[0]
+        configured_paths = condition.get("PathPatternConfig", {}).get("Values", [])
+        if (
+            condition.get("Field") != "path-pattern"
+            or configured_paths != expected_paths
+        ):
+            raise RuntimeEvidenceRefusal("B6 route path differs")
+        action = actions[0]
+        forward_targets = action.get("ForwardConfig", {}).get("TargetGroups", [])
+        target_arns = {item.get("TargetGroupArn") for item in forward_targets}
+        if (
+            action.get("Type") != "forward"
+            or len(forward_targets) != 1
+            or target_arns != {target_group_arn}
+        ):
+            raise RuntimeEvidenceRefusal("B6 route target differs")
+        rule_arn = str(rule.get("RuleArn", ""))
+        if not rule_arn:
+            raise RuntimeEvidenceRefusal("B6 route ARN is absent")
+        observed_priorities.add(priority)
+        route_arns.append(rule_arn)
+    if observed_priorities != set(EXPECTED_ROUTES):
+        raise RuntimeEvidenceRefusal("B6 route set differs")
     target_health = client.describe_target_health(
-        TargetGroupArn=target_group.get("TargetGroupArn", "")
+        TargetGroupArn=target_group_arn
     ).get("TargetHealthDescriptions", [])
     if not target_health or any(
         item.get("TargetHealth", {}).get("State") != "healthy" for item in target_health
     ):
         raise RuntimeEvidenceRefusal("B6 target is not healthy")
-    tags = _tag_map(client, [alb_arn, listener_arn, rule_arn])
+    route_arns.sort()
+    tagged_arns = [alb_arn, listener_arn, *route_arns]
+    tags = _tag_map(client, tagged_arns)
     for resource_arn, actual in tags.items():
         for key, expected in REQUIRED_TAGS.items():
             if actual.get(key) != expected:
@@ -115,13 +159,14 @@ def verify_live(client: Any) -> dict[str, Any]:
         "internal_alb": True,
         "alb_security_group": ALB_SECURITY_GROUP,
         "listener_port": 80,
+        "route_count": 3,
+        "route_priorities": sorted(EXPECTED_ROUTES),
+        "tag_mutation_resource_arns": [listener_arn, *route_arns],
         "target_healthy": True,
-        "orchestrator_readyz": True,
-        "fargate_probe_exit_code": 0,
         "creation_time_exact_tags": True,
         "required_tag_count": len(REQUIRED_TAGS),
-        "tagged_resource_count": 3,
-        "resource_arn_set_sha256": canonical_sha256(sorted((alb_arn, listener_arn, rule_arn))),
+        "tagged_resource_count": 5,
+        "resource_arn_set_sha256": canonical_sha256(sorted(tagged_arns)),
     }
 
 
@@ -156,6 +201,13 @@ def classify_runtime(
     if receipt.get("stage") != "alb_ready" or receipt.get("status") != "PASS":
         raise RuntimeEvidenceRefusal("functional ALB receipt is not PASS")
     proof = dict(receipt.get("payload", {}))
+    dependencies = receipt.get("dependencies", {})
+    if set(dependencies) != {"fargate_probe"}:
+        raise RuntimeEvidenceRefusal("functional ALB Fargate dependency differs")
+    fargate_receipt_sha256 = dependencies.get("fargate_probe", "")
+    if re.fullmatch(r"[0-9a-f]{64}", str(fargate_receipt_sha256)) is None:
+        raise RuntimeEvidenceRefusal("functional Fargate receipt hash is malformed")
+    proof["fargate_probe_receipt_sha256"] = fargate_receipt_sha256
     proof["receipt_sha256"] = receipt_sha256
     observations = parse_denials(controller_logs)
     try:

@@ -1,0 +1,97 @@
+{
+  "record": "B6_LBC_POST_CREATE_TAG_MUTATION_EXACT_RESOURCE_RULE",
+  "id": "B6-LBC-TAG-MUTATION-RUNTIME-RULE-2026-002",
+  "revision": 2,
+  "status": "DRAFT_AWAITING_SUCCESSOR_PACKET_REVIEW_AND_OWNER_APPROVAL",
+  "recorded_utc": "2026-08-10T04:37:15Z",
+  "purpose": "Narrow the existing post-create tag-denial warning to the exact listener and three live route-rule ARNs proven by the successor ALB receipt.",
+  "supersedes_by_reference": {
+    "path": "platform/decisions/B6-LBC-TAG-MUTATION-RUNTIME-RULE-2026-001.json",
+    "sha256": "a77d229f97939d74d5a161a6c1bb7a0a2514a1870fd0e1b63d20445ec425e16c",
+    "historical_record_edited": false,
+    "interpretation": "The original four action/resource-type pairs remain unchanged; this revision adds exact live-resource membership and exact route cardinality."
+  },
+  "triggering_evidence": {
+    "path": "platform/evidence/B6-PACKET-2026-013-REFUSED-FARGATE-ECR-NETWORK.json",
+    "sha256": "daa679e744738094059a6faae53e5ebb7d44dd920c4da1ba5bac71100049590a",
+    "finding": "The reviewed manifest creates three non-default route rules while the prior verifier expected one."
+  },
+  "exact_route_set": [
+    {
+      "priority": "1",
+      "paths": [
+        "/v1/conversations/speech",
+        "/v1/conversations/speech/*"
+      ]
+    },
+    {
+      "priority": "2",
+      "paths": [
+        "/v1/conversations/stream",
+        "/v1/conversations/stream/*"
+      ]
+    },
+    {
+      "priority": "3",
+      "paths": [
+        "/readyz",
+        "/readyz/*"
+      ]
+    }
+  ],
+  "prerequisites": {
+    "fargate_probe_receipt": "PASS",
+    "alb_ready_receipt": "PASS",
+    "internal_alb": true,
+    "listener_count": 1,
+    "listener_port": 80,
+    "non_default_rule_count": 3,
+    "healthy_target_group_count": 1,
+    "creation_time_exact_tags": true,
+    "tagged_resource_count": 5
+  },
+  "warning_boundary": {
+    "operations": [
+      "elasticloadbalancing:AddTags",
+      "elasticloadbalancing:RemoveTags"
+    ],
+    "error_codes": [
+      "AccessDenied",
+      "AccessDeniedException"
+    ],
+    "timing": "POST_CREATE_ONLY",
+    "allowed_resource_set_source": "alb_ready.payload.tag_mutation_resource_arns",
+    "allowed_resource_set": "EXACTLY_ONE_LISTENER_AND_THREE_LISTENER_RULE_ARNS",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "load_balancer_name": "medzen-b6-window"
+  },
+  "receipt_bindings": [
+    "functional_alb_proof_receipt_sha256",
+    "functional_fargate_probe_receipt_sha256",
+    "operation",
+    "error_code",
+    "resource_arn",
+    "resource_type",
+    "observed_utc"
+  ],
+  "always_fatal": [
+    "any observation whose resource ARN is absent from the exact live four-resource warning set",
+    "a missing, extra, duplicate or reordered route priority",
+    "a route path or target-group action mismatch",
+    "CreateLoadBalancer, CreateListener or CreateRule denial",
+    "creation-time tag denial",
+    "failed or missing Fargate readiness receipt",
+    "failed or missing ALB receipt",
+    "DeleteRule, DeleteListener, DeleteTargetGroup, DeleteLoadBalancer or endpoint-cleanup denial",
+    "unknown, malformed or ambiguous evidence"
+  ],
+  "scope": {
+    "warning_scope_broadened": false,
+    "iam_change_authorized": false,
+    "aws_execution_authorized": false,
+    "worker_scale_authorized": false,
+    "window_retry_authorized": false,
+    "must_be_hash_bound_by_successor_window_packet": true
+  }
+}
