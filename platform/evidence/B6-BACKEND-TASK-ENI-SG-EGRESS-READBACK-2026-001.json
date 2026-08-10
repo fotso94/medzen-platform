@@ -1,0 +1,26 @@
+{
+  "id": "B6-BACKEND-TASK-ENI-SG-EGRESS-READBACK-2026-001",
+  "recorded_at_utc": "2026-08-10T20:11:09Z",
+  "status": "PASS_READ_ONLY",
+  "aws_account": "558069890522",
+  "identity": "arn:aws:iam::558069890522:user/s.fotso",
+  "region": "eu-central-1",
+  "security_group": {
+    "group_id": "sg-0a83abae6ab954543",
+    "group_name": "medzen-ehrbase-eu-central-1-ECSSecurityGroup-JvyK2cVqEotR",
+    "vpc_id": "vpc-051aa9df8b64bf141",
+    "task_eni_use": "Full-window Fargate probe backend identity; not used by isolated Stage A.",
+    "egress_rule_count": 1,
+    "egress": [
+      {
+        "ip_protocol": "-1",
+        "ipv4_cidr": "0.0.0.0/0",
+        "description": "Allow all outbound traffic"
+      }
+    ],
+    "minimum_one_egress_rule": "PASS"
+  },
+  "mutations": 0,
+  "cost_usd": 0.0,
+  "scope_note": "This record attests only that the existing external task-ENI SG has at least one egress rule. Packet 2026-023 does not create, modify or reinterpret that shared SG."
+}

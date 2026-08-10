@@ -37,6 +37,11 @@ from scripts.b6_6_stage_a import (
     StageARefusal,
     StageARunner,
 )
+from scripts.check_b6_6_window_plan import (
+    TASK_ENI_EGRESS_RULES,
+    PLAN_TASK_ENI_SECURITY_GROUPS,
+    lint_task_eni_security_group_egress,
+)
 
 
 RUNNER_SOURCES = tuple(sorted(REQUIRED_SOURCES - {COLD_PATH}))
@@ -53,7 +58,7 @@ GUARDS = {
     "controller_window": ["controller_plan_1_0_0_with_named_resource_receipt"],
     "controller_ready": ["digest_pinned_controller_before_endpoints"],
     "pre_endpoint_images": ["seven_pods_eight_resident_child_digests"],
-    "terraform_window": ["endpoint_plan_11_0_0_with_named_resources_controller_noop"],
+    "terraform_window": ["endpoint_plan_13_0_0_with_named_resources_controller_noop"],
     "endpoints_ready": ["probe_exclusive_endpoints_available_900_seconds"],
     "fargate_probe": ["one_private_probe_no_public_ip_exact_hardened_task_boundary"],
     "alb_ready": ["internal_alb_exact_security_groups"],
@@ -65,6 +70,54 @@ GUARDS = {
     "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip"],
     "cleanup": ["zero_state_before_deadline_disarm_persistent_secret_retained"],
 }
+
+
+def _task_eni_sg_egress_lint() -> dict[str, Any]:
+    external_evidence = json.loads(
+        (
+            ROOT
+            / "platform/evidence/B6-BACKEND-TASK-ENI-SG-EGRESS-READBACK-2026-001.json"
+        ).read_bytes()
+    )
+    external = external_evidence["security_group"]
+    if (
+        external_evidence.get("status") != "PASS_READ_ONLY"
+        or external.get("group_id") != "sg-0a83abae6ab954543"
+        or external.get("egress_rule_count", 0) < 1
+        or external.get("minimum_one_egress_rule") != "PASS"
+    ):
+        raise AssertionError("external task ENI SG egress attestation differs")
+    external_group = f"external:{external['group_id']}"
+    attached_groups = set(PLAN_TASK_ENI_SECURITY_GROUPS) | {external_group}
+    egress_by_group = {
+        group: set(TASK_ENI_EGRESS_RULES)
+        for group in PLAN_TASK_ENI_SECURITY_GROUPS
+    }
+    egress_by_group[external_group] = {external_evidence["id"]}
+    result = lint_task_eni_security_group_egress(
+        attached_groups, egress_by_group
+    )
+    missing_refusal_cases = 0
+    for group in attached_groups:
+        broken = {key: set(value) for key, value in egress_by_group.items()}
+        broken[group] = set()
+        try:
+            lint_task_eni_security_group_egress(attached_groups, broken)
+        except ValueError:
+            missing_refusal_cases += 1
+        else:
+            raise AssertionError("task ENI SG without egress did not refuse")
+    return {
+        **result,
+        "plan_managed_task_eni_security_groups": 1,
+        "external_attested_task_eni_security_groups": 1,
+        "packet_managed_egress_rules": 2,
+        "external_attested_egress_rules": 1,
+        "missing_egress_refusal_cases": missing_refusal_cases,
+        "dns_security_group_filtering": (
+            "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER"
+        ),
+    }
 
 
 class FakeSecretClient:
@@ -334,6 +387,7 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
 def run(output_dir: Path) -> dict[str, Any]:
     if output_dir.exists():
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
+    task_eni_sg_egress_lint = _task_eni_sg_egress_lint()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -364,6 +418,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "stage_a_full_pass_runs": 1,
         "stage_a_injected_failure_runs": len(stage_a_scenarios) - 1,
         "stage_a_scenarios": stage_a_scenarios,
+        "task_eni_sg_egress_lint": task_eni_sg_egress_lint,
         "real_aws_calls": 0,
         "real_kubectl_calls": 0,
         "aws_mutations": 0,

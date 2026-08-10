@@ -15,6 +15,7 @@ from scripts.b6_6_fargate_probe import (
     ProbeRefusal,
     _task_definition,
     run_isolated_probe,
+    _safe_task_result,
 )
 from scripts.b6_6_runner import safe_fargate_refusal
 
@@ -144,7 +145,7 @@ class IsolatedEcs(FakeEcs):
                     "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/one",
                     "lastStatus": "STOPPED",
                     "containers": [
-                        {"exitCode": 0, "runtimeId": "runtime-proves-image-started"}
+                        {"lastStatus": "STOPPED", "exitCode": 0}
                     ],
                 }
             ]
@@ -169,3 +170,51 @@ def test_isolated_probe_uses_only_endpoint_sg_and_proves_image_start(monkeypatch
     assert ecs.run_request["overrides"]["containerOverrides"][0]["command"] == [
         "import sys; assert sys.version_info[:2] >= (3, 12)"
     ]
+
+
+def test_runtime_id_never_classifies_application_start_without_exit_code() -> None:
+    result = _safe_task_result(
+        {
+            "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/one",
+            "lastStatus": "STOPPED",
+            "stopCode": "TaskFailedToStart",
+            "stoppedReason": "ECR registry auth failed",
+            "containers": [
+                {
+                    "lastStatus": "STOPPED",
+                    "exitCode": None,
+                    "runtimeId": "present-even-though-process-never-ran",
+                }
+            ],
+        }
+    )
+    assert result["status"] == "REFUSED"
+    assert result["reason_code"] == "ECR_IMAGE_PULL_FAILURE"
+    assert result["application_started"] is False
+    assert result["container_exit_code_present"] is False
+
+
+def test_stopped_container_with_integer_exit_proves_application_started() -> None:
+    result = _safe_task_result(
+        {
+            "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/one",
+            "lastStatus": "STOPPED",
+            "containers": [{"lastStatus": "STOPPED", "exitCode": 12}],
+        }
+    )
+    assert result["status"] == "REFUSED"
+    assert result["application_started"] is True
+    assert result["container_exit_code_present"] is True
+
+
+def test_running_container_proves_application_started_before_exit() -> None:
+    result = _safe_task_result(
+        {
+            "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/one",
+            "lastStatus": "RUNNING",
+            "containers": [{"lastStatus": "RUNNING"}],
+        }
+    )
+    assert result["status"] == "REFUSED"
+    assert result["application_started"] is True
+    assert result["container_exit_code_present"] is False

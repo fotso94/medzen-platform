@@ -18,6 +18,8 @@ ADDRESSES = {
     "aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]",
     "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
     "aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]",
+    "aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]",
+    "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]",
     "aws_vpc_endpoint.b6_probe_ecr_api[0]",
     "aws_vpc_endpoint.b6_probe_ecr_dkr[0]",
     "aws_vpc_endpoint.b6_probe_s3[0]",
@@ -33,6 +35,11 @@ ALB_ADDRESSES = {
     "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
 }
 QUALIFICATION_ADDRESSES = ENDPOINT_ADDRESSES - ALB_ADDRESSES
+PLAN_TASK_ENI_SECURITY_GROUPS = {"aws_security_group.b6_probe_endpoints"}
+TASK_ENI_EGRESS_RULES = {
+    "aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]",
+    "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]",
+}
 RAG_DIGEST = "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
 VPC_ID = "vpc-051aa9df8b64bf141"
 PROBE_SG = "sg-0a83abae6ab954543"
@@ -74,6 +81,58 @@ def _config(plan: dict[str, Any], address: str) -> dict[str, Any]:
         item for item in plan["configuration"]["root_module"]["resources"]
         if item["address"] == base
     )
+
+
+def _references(plan: dict[str, Any], address: str, field: str) -> set[str]:
+    return set(_config(plan, address)["expressions"][field].get("references", []))
+
+
+def _references_only(
+    plan: dict[str, Any], address: str, field: str, resource: str
+) -> bool:
+    references = _references(plan, address, field)
+    return resource in references and all(
+        item == resource or item.startswith(f"{resource}[")
+        for item in references
+    )
+
+
+def lint_task_eni_security_group_egress(
+    attached_security_groups: set[str],
+    egress_rules_by_security_group: dict[str, set[str]],
+) -> dict[str, Any]:
+    """Refuse any task-ENI SG with no explicit outbound rule."""
+    missing = sorted(
+        group
+        for group in attached_security_groups
+        if not egress_rules_by_security_group.get(group)
+    )
+    if missing:
+        raise ValueError(f"task ENI security group has no egress rule: {missing!r}")
+    return {
+        "status": "PASS",
+        "task_eni_security_groups": len(attached_security_groups),
+        "egress_rules": sum(
+            len(egress_rules_by_security_group[group])
+            for group in attached_security_groups
+        ),
+        "missing_egress_security_groups": 0,
+    }
+
+
+def validate_task_eni_security_group_egress(plan: dict[str, Any]) -> dict[str, Any]:
+    egress_by_group = {group: set() for group in PLAN_TASK_ENI_SECURITY_GROUPS}
+    for address in TASK_ENI_EGRESS_RULES:
+        references = _references(plan, address, "security_group_id")
+        for group in PLAN_TASK_ENI_SECURITY_GROUPS:
+            if group in references:
+                egress_by_group[group].add(address)
+    result = lint_task_eni_security_group_egress(
+        PLAN_TASK_ENI_SECURITY_GROUPS, egress_by_group
+    )
+    if result["egress_rules"] != 2:
+        raise ValueError("probe task ENI security group must have exactly two egress rules")
+    return result
 
 
 def _policy_statement(raw: str) -> dict[str, Any]:
@@ -143,6 +202,49 @@ def validate_create(plan: dict[str, Any]) -> None:
     )["expressions"]["security_group_id"].get("references", [])
     if "aws_security_group.b6_probe_endpoints" not in endpoint_group_references:
         raise ValueError("probe endpoint destination SG reference differs")
+    ecr_egress_address = (
+        "aws_vpc_security_group_egress_rule.b6_probe_to_ecr_endpoints[0]"
+    )
+    ecr_egress = _after(plan, ecr_egress_address)
+    if (
+        ecr_egress.get("from_port") != 443
+        or ecr_egress.get("to_port") != 443
+        or ecr_egress.get("ip_protocol") != "tcp"
+        or not _references_only(
+            plan,
+            ecr_egress_address,
+            "security_group_id",
+            "aws_security_group.b6_probe_endpoints",
+        )
+        or not _references_only(
+            plan,
+            ecr_egress_address,
+            "referenced_security_group_id",
+            "aws_security_group.b6_probe_endpoints",
+        )
+    ):
+        raise ValueError("probe ECR endpoint egress rule differs")
+    s3_egress_address = "aws_vpc_security_group_egress_rule.b6_probe_to_s3[0]"
+    s3_egress = _after(plan, s3_egress_address)
+    if (
+        s3_egress.get("from_port") != 443
+        or s3_egress.get("to_port") != 443
+        or s3_egress.get("ip_protocol") != "tcp"
+        or not _references_only(
+            plan,
+            s3_egress_address,
+            "security_group_id",
+            "aws_security_group.b6_probe_endpoints",
+        )
+        or not _references_only(
+            plan,
+            s3_egress_address,
+            "prefix_list_id",
+            "aws_vpc_endpoint.b6_probe_s3",
+        )
+    ):
+        raise ValueError("probe S3 prefix-list egress rule differs")
+    validate_task_eni_security_group_egress(plan)
     for purpose, service, sid, actions, resources in (
         (
             "ecr_api",
@@ -272,7 +374,7 @@ def validate_qualification(plan: dict[str, Any]) -> None:
         raise ValueError(f"qualification delta differs: {actual!r}")
 
     # Reuse the established full boundary validator after proving the real plan
-    # contains only the nine probe resources. These three sentinels represent
+    # contains only the eleven probe resources. These three sentinels represent
     # resources intentionally excluded from isolated Stage A; no sentinel value
     # is read from or applied to Terraform.
     combined = copy.deepcopy(plan)

@@ -79,7 +79,7 @@ variable "enable_b6_integration_window" {
 variable "enable_b6_probe_qualification" {
   type        = bool
   default     = false
-  description = "True only for packet-2026-022 Stage A isolated Fargate qualification; never starts EKS workers or ALB resources."
+  description = "True only for the current reviewed Stage A isolated Fargate qualification; never starts EKS workers or ALB resources."
 }
 
 variable "enable_b6_client_keys" {
