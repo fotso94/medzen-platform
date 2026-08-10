@@ -1,0 +1,136 @@
+{
+  "record": "B6_SYNTHETIC_CLIENT_API_KEYS_POST_ATTEMPT_4_RESTORATION_REQUEST",
+  "id": "B6-CLIENT-API-KEYS-RESTORE-2026-003",
+  "revision": 3,
+  "status": "PROPOSED_NOT_AUTHORIZED",
+  "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+  "expires_no_later_than_utc": "2026-08-17T04:00:00Z",
+  "supersedes_by_reference": {
+    "path": "platform/manifests/B6-CLIENT-API-KEYS-RESTORE-2026-002.json",
+    "sha256": "1dc091bf4ee3bcbb93b329839a341c66a787e26e79e4fb2b8de97a34364dc291",
+    "historical_record_edited": false
+  },
+  "source_cleanup": {
+    "path": "platform/evidence/B6-PACKET-2026-013-REFUSED-FARGATE-ECR-NETWORK.json",
+    "sha256": "daa679e744738094059a6faae53e5ebb7d44dd920c4da1ba5bac71100049590a",
+    "status": "VERIFIED_REFUSED_AT_FARGATE_ECR_PULL_CLEANUP_PASS",
+    "synthetic_secret": "SCHEDULED_RECOVERABLE_DELETION",
+    "local_token_removed": true,
+    "window_terraform_resources": 0
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "operator_principal_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "orchestrator_role_arn": "arn:aws:iam::558069890522:role/medzen-orch-role",
+    "secret_name": "medzen/client-api-keys",
+    "secret_arn": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  "required_starting_state": {
+    "secret": "PENDING_RECOVERABLE_DELETION_EXACT_ARN",
+    "terraform_addresses": [],
+    "resource_policy": "ABSENT",
+    "orchestrator_kms_inline_policy": "ABSENT",
+    "current_version_id": "d09d567e-9bde-482a-b95a-3cab990a1006",
+    "current_version_stages": [
+      "AWSCURRENT"
+    ],
+    "older_version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "older_version_stages": [],
+    "local_plaintext_token": "ABSENT",
+    "cpu_desired": 0,
+    "cpu_instances": 0,
+    "gpu_desired": 0,
+    "gpu_instances": 0,
+    "kubernetes_worker_nodes": 0,
+    "production_serving_pointer": "ABSENT"
+  },
+  "staged_execution": {
+    "stage_0": "VALIDATE_OWNER_REVIEW_BINDINGS_IDENTITY_EXACT_PENDING_SECRET_VERSIONS_ABSENT_POLICIES_ABSENT_STATE_ZERO_COMPUTE_AND_ABSENT_LOCAL_TOKEN",
+    "stage_1": "RESTORE_EXACT_RECOVERABLE_SECRET_WITHOUT_GET_SECRET_VALUE",
+    "stage_2": "IMPORT_ONLY_EXACT_SECRET_TERRAFORM_ADDRESS",
+    "stage_3": "NORMALIZE_IMPORTED_REPRESENTATION_ONLY_IF_EXACT_PROVEN_THREE_FIELD_DELTA_OTHERWISE_REQUIRE_NO_CHANGE",
+    "stage_4": "CREATE_ONLY_EXACT_RESOURCE_POLICY_AND_KMS_INLINE_POLICY_AFTER_NORMALIZATION_RESIDUAL_NO_CHANGE",
+    "stage_5": "ROTATE_TO_NEW_CSPRNG_TOKEN_AND_PERSIST_RECEIPT_IMMEDIATELY",
+    "stage_6": "VERIFY_NEW_AWSCURRENT_REMOVE_AWSPREVIOUS_FROM_PRIOR_CURRENT_PROVE_BOTH_HISTORICAL_VERSIONS_UNSTAGED_AND_OPERATOR_READ_DENIED"
+  },
+  "normalization": {
+    "mode": "NORMALIZE_IF_NEEDED_FAIL_CLOSED",
+    "permitted_update_address": "aws_secretsmanager_secret.b6_client_keys[0]",
+    "permitted_changed_fields": [
+      "force_overwrite_replica_secret",
+      "recovery_window_in_days",
+      "tags"
+    ],
+    "alternative_accepted_result": "EXACT_SECRET_NO_OP_WITH_FULL_IDENTITY_TAG_AND_ENCRYPTION_READBACK",
+    "unknown_after_values_permitted": false,
+    "combined_normalization_and_policy_plan_permitted": false
+  },
+  "boundary_reconciliation": {
+    "adds": 2,
+    "changes": 0,
+    "destroys": 0,
+    "exact_create_addresses": [
+      "aws_iam_role_policy.b6_client_keys_kms[0]",
+      "aws_secretsmanager_secret_policy.b6_client_keys[0]"
+    ],
+    "secret_address_action": "NO_OP",
+    "residual_result": "NO_CHANGES"
+  },
+  "new_key_material": {
+    "client_id": "b6-window-probe",
+    "random_bytes": 32,
+    "bearer_encoding": "base64url_without_padding",
+    "bearer_characters": 43,
+    "stored_field": "key_sha256",
+    "stored_hash_encoding": "lowercase_hex_sha256",
+    "plaintext_path": "/private/tmp/medzen-b6-6-client-token",
+    "plaintext_file_mode": "0600",
+    "plaintext_file_bytes_including_lf": 44,
+    "previous_plaintext_read_or_reused": false,
+    "receipt_contains_plaintext": false
+  },
+  "version_transition": {
+    "new_version": "AWSCURRENT",
+    "prior_current_version_id": "d09d567e-9bde-482a-b95a-3cab990a1006",
+    "prior_current_after_verification": "NO_STAGES",
+    "older_version_id": "f78c8aa8-2765-4788-9928-dd1ba7c406bf",
+    "older_version_after_verification": "NO_STAGES",
+    "remove_awsprevious": true,
+    "runtime_reads_only_awscurrent": true
+  },
+  "receipt_order": [
+    "preflight",
+    "restore",
+    "terraform_import",
+    "terraform_normalization",
+    "terraform_reconciliation",
+    "rotation",
+    "verification"
+  ],
+  "failure_cleanup": {
+    "plaintext_removed_first": true,
+    "terraform_guard_accepts_only_nonempty_subset_of_three_exact_deletes": true,
+    "secret_deletion": "SCHEDULE_SEVEN_DAY_RECOVERABLE_DELETION",
+    "force_delete_without_recovery": false,
+    "cleanup_receipt_required": true,
+    "later_window_blocked_on_cleanup_failure": true
+  },
+  "cost": {
+    "aggregate_ceiling_usd": 300.0,
+    "existing_b6_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "maximum_incremental_usd_within_existing_reservation": 0.1,
+    "compute_cost_usd": 0.0
+  },
+  "prohibited": [
+    "create_a_different_secret_or_arn",
+    "read_or_reuse_any_previous_plaintext",
+    "apply_a_combined_unknown_policy_plan",
+    "worker_scale_up_or_kubernetes_mutation",
+    "integration_window_execution",
+    "production_ssm_or_approved_artifact_change",
+    "force_delete_without_recovery"
+  ]
+}
