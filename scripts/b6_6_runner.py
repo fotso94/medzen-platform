@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -49,6 +50,48 @@ REASON_CODES = {
     "isolation_proof": "ISOLATION_PROOF_REFUSED",
     "cleanup": "CLEANUP_REFUSED",
 }
+SAFE_FARGATE_REFUSAL_CODES = {
+    "ECR_IMAGE_PULL_FAILURE",
+    "IMAGE_PULL_FAILURE",
+    "PROBE_CONTAINER_BOUNDARY_DIFFERS",
+    "PROBE_CONTAINER_NONZERO_OR_UNKNOWN_STOP",
+    "PROBE_TARGET_URL_DIFFERS",
+    "PROBE_TASK_ARN_ABSENT",
+    "PROBE_TASK_CONTAINER_COUNT_DIFFERS",
+    "PROBE_TASK_DEFINITION_ARN_DIFFERS",
+    "PROBE_TASK_DEFINITION_BOUNDARY_DIFFERS",
+    "PROBE_TASK_READBACK_DIFFERS",
+    "PROBE_TASK_TIMEOUT",
+    "PROBE_TASK_WAIT_BOUND_DIFFERS",
+    "RUN_TASK_REFUSED",
+    "RUN_TASK_RESPONSE_HAS_NO_TASK_ARN",
+    "TASK_FAILED_TO_START",
+    "TASK_STOPPED_BY_SERVICE",
+}
+
+
+def safe_fargate_refusal(path: Path) -> dict[str, Any] | None:
+    """Return only allowlisted, non-PHI probe refusal fields."""
+    try:
+        value = json.loads(path.read_bytes())
+    except Exception:
+        return None
+    if not isinstance(value, dict):
+        return None
+    reason = value.get("reason_code")
+    if (
+        value.get("status") != "REFUSED"
+        or reason not in SAFE_FARGATE_REFUSAL_CODES
+        or not isinstance(value.get("application_started"), bool)
+        or not isinstance(value.get("readyz_request_completed"), bool)
+        or re.fullmatch(r"[A-Z0-9_]{1,80}", str(reason)) is None
+    ):
+        return None
+    return {
+        "reason_code": reason,
+        "application_started": value["application_started"],
+        "readyz_request_completed": value["readyz_request_completed"],
+    }
 
 
 class StageFailure(RuntimeError):
@@ -100,7 +143,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-021-A{context.attempt}-LIVE"
+            / f"B6-2026-022-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -145,7 +188,7 @@ class RealOperations:
         if bridge.get("stage") != "persistent_secret_bridge" or bridge.get("status") != "PASS":
             raise StageFailure("PERSISTENT_SECRET_BRIDGE_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-021-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-022-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -206,6 +249,10 @@ class RealOperations:
                     "reason_code": REASON_CODES[stage],
                     "command_exit_code": completed.returncode,
                 }
+                if stage == "fargate_probe":
+                    probe_refusal = safe_fargate_refusal(payload_path)
+                    if probe_refusal is not None:
+                        diagnosis["probe_refusal"] = probe_refusal
                 if self.endpoints_enabled and stage != "cleanup":
                     post = subprocess.run(
                         [

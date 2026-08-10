@@ -222,6 +222,38 @@ def test_endpoint_plan_includes_controller_noop_and_cleanup_uses_stage_status() 
     assert '[[ -e "$receipts_dir/terraform_window.json" ]]' not in cleanup
 
 
+def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    assert "terraform_plan_receipt" in operations
+    assert "resource_names" in operations
+    assert '"adds":1,"changes":0,"destroys":0,"resource_names"' in operations
+    assert '"adds":11,"changes":0,"destroys":0' in operations
+    for address in (
+        "helm_release.b6_load_balancer_controller[0]",
+        "aws_ecs_cluster.b6_probe[0]",
+        "aws_ecs_task_definition.b6_probe[0]",
+        "aws_iam_role.b6_probe_execution[0]",
+        "aws_iam_role_policy.b6_probe_execution[0]",
+        "aws_security_group.b6_probe_endpoints[0]",
+        "aws_vpc_endpoint.b6_probe_ecr_api[0]",
+        "aws_vpc_endpoint.b6_probe_ecr_dkr[0]",
+        "aws_vpc_endpoint.b6_probe_s3[0]",
+        "aws_vpc_security_group_ingress_rule.b6_alb_from_backend[0]",
+        "aws_vpc_security_group_ingress_rule.b6_nodes_from_alb[0]",
+        "aws_vpc_security_group_ingress_rule.b6_probe_to_endpoints[0]",
+    ):
+        assert address in operations
+
+
+def test_fargate_refusal_payload_is_written_before_nonzero_return() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    stage = operations[operations.index("stage_fargate_probe()") :]
+    stage = stage[: stage.index("stage_alb_ready()")]
+    assert stage.index('write_payload "$payload"') < stage.index(
+        '[[ "$probe_status" == "0" ]] || return "$probe_status"'
+    )
+
+
 def test_r6_settled_controls_remain_in_canonical_sources() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     endpoints = (ROOT / "scripts/b6_6_probe_endpoints.py").read_text()
