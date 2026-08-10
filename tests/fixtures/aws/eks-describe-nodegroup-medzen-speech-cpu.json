@@ -1,0 +1,54 @@
+{
+  "nodegroup": {
+    "nodegroupName": "cpu",
+    "nodegroupArn": "arn:aws:eks:eu-central-1:558069890522:nodegroup/medzen-speech/cpu/32cfd795-fa28-d1d9-1b8c-2ed678be1772",
+    "clusterName": "medzen-speech",
+    "version": "1.36",
+    "releaseVersion": "1.36.2-20260728",
+    "createdAt": "2026-07-29T14:38:43.108000-04:00",
+    "modifiedAt": "2026-08-10T17:59:22.287000-04:00",
+    "status": "ACTIVE",
+    "capacityType": "ON_DEMAND",
+    "scalingConfig": {
+      "minSize": 0,
+      "maxSize": 4,
+      "desiredSize": 0
+    },
+    "instanceTypes": [
+      "m6i.large"
+    ],
+    "subnets": [
+      "subnet-05029419c6c61a536",
+      "subnet-00232b25bc1ac407a",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "amiType": "AL2023_x86_64_STANDARD",
+    "nodeRole": "arn:aws:iam::558069890522:role/medzen-speech-node-role",
+    "labels": {
+      "workload": "cpu"
+    },
+    "resources": {
+      "autoScalingGroups": [
+        {
+          "name": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
+        }
+      ]
+    },
+    "diskSize": 20,
+    "health": {
+      "issues": []
+    },
+    "updateConfig": {
+      "maxUnavailable": 1
+    },
+    "nodeRepairConfig": {
+      "enabled": false
+    },
+    "tags": {
+      "Project": "medzen-speech",
+      "Environment": "dev",
+      "ManagedBy": "terraform",
+      "Component": "speech-platform"
+    }
+  }
+}

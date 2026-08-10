@@ -1,0 +1,33 @@
+{
+  "TagDescriptions": [
+    {
+      "ResourceArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9",
+      "Tags": [
+        {
+          "Key": "Project",
+          "Value": "medzen"
+        },
+        {
+          "Key": "Environment",
+          "Value": "test"
+        },
+        {
+          "Key": "Service",
+          "Value": "cache-proxy"
+        },
+        {
+          "Key": "Owner",
+          "Value": "platform"
+        },
+        {
+          "Key": "ManagedBy",
+          "Value": "terraform"
+        },
+        {
+          "Key": "Component",
+          "Value": "redis-rest-proxy"
+        }
+      ]
+    }
+  ]
+}

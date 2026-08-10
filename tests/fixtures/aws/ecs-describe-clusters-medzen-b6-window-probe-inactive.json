@@ -1,0 +1,19 @@
+{
+  "clusters": [
+    {
+      "clusterArn": "arn:aws:ecs:eu-central-1:558069890522:cluster/medzen-b6-window-probe",
+      "clusterName": "medzen-b6-window-probe",
+      "status": "INACTIVE",
+      "registeredContainerInstancesCount": 0,
+      "runningTasksCount": 0,
+      "pendingTasksCount": 0,
+      "activeServicesCount": 0,
+      "statistics": [],
+      "tags": [],
+      "settings": [],
+      "capacityProviders": [],
+      "defaultCapacityProviderStrategy": []
+    }
+  ],
+  "failures": []
+}

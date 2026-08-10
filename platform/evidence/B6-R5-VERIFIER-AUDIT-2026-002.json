@@ -1,0 +1,51 @@
+{
+  "id": "B6-R5-VERIFIER-AUDIT-2026-002",
+  "recorded_at_utc": "2026-08-10T22:10:03Z",
+  "status": "PASS_WITH_EMPIRICAL_REDUCTION",
+  "authority": {
+    "owner_direction": "Cut the verifier down to what the three-probe Stage A gate cannot prove.",
+    "prospective_decision": "platform/decisions/B6-ENDPOINT-VERIFIER-2026-002-empirical.json",
+    "original_review": "platform/designs/B6-WINDOW-DESIGN-REVIEW-2026-001.md",
+    "historical_audit_preserved": "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-001.json"
+  },
+  "scope": {
+    "runtime_verifier": "scripts/b6_6_probe_endpoints.py",
+    "terraform_plan_verifier": "scripts/check_b6_6_window_plan.py",
+    "stage_a_runner": "scripts/b6_6_stage_a.py",
+    "cold_rehearsal": "scripts/b6_6_cold_rehearsal.py"
+  },
+  "retained_assertions": [
+    "Exact temporary endpoint and security-group existence and identity",
+    "Exact endpoint policy documents and their allowed actions and resources",
+    "All three endpoint states must be available",
+    "The S3 gateway endpoint must bind the exact approved route table",
+    "The AWS-managed S3 prefix-list identity must resolve through DescribePrefixLists",
+    "Exactly three consecutive private probe launches must pass before any full window unlocks"
+  ],
+  "deleted_assertion_classes": [
+    "Interface endpoint subnet membership",
+    "Interface endpoint security-group response shape and attachment membership",
+    "PrivateDnsEnabled response shape",
+    "Security-group ingress and egress permission grouping and per-rule wiring",
+    "Terraform expression-reference wiring for endpoint security groups and the S3 prefix list",
+    "Task-ENI egress-count lint"
+  ],
+  "rationale": "Three consecutive private Fargate tasks must pull the exact digest through the temporary ECR and S3 endpoints and start successfully. This directly proves the complete connectivity chain. Retaining response-shape assertions for the same chain adds failure modes without adding evidence. Policy documents and the S3 gateway route table remain checked because a successful pull does not prove least-privilege policy or route-table scope.",
+  "aws_read_fixture_coverage": {
+    "evidence": "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json",
+    "explicit_runner_read_apis": 23,
+    "recorded_real_response_fixtures": 29,
+    "uncovered_read_apis": 0,
+    "describe_vpc_endpoints_prefix_list_id_present": false,
+    "s3_prefix_list_source": "ec2:DescribePrefixLists"
+  },
+  "empirical_gate": {
+    "required_consecutive_probe_passes": 3,
+    "public_ip": "DISABLED",
+    "exact_digest_required": true,
+    "application_process_must_start": true,
+    "all_full_window_attempts_locked_until_pass": true
+  },
+  "unresolved_r5_findings": 0,
+  "deviations": []
+}

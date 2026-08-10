@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -14,7 +13,6 @@ from pipeline.b6_integration_receipts import (
 from scripts.b6_6_cold_rehearsal import (
     _aws_read_fixture_fidelity,
     _stage_a_scenario,
-    _task_eni_sg_egress_lint,
     _terraform_description_charset_lint,
 )
 from scripts.b6_6_stage_a import (
@@ -26,17 +24,12 @@ from scripts.b6_6_stage_a import (
 )
 from scripts.check_b6_6_window_plan import (
     AWS_DESCRIPTION_CHARSET,
-    TASK_ENI_EGRESS_RULES,
-    PLAN_TASK_ENI_SECURITY_GROUPS,
     lint_rendered_plan_description_charset,
-    lint_task_eni_security_group_egress,
 )
 from scripts.b6_6_probe_endpoints import (
-    EgressRule,
     EndpointRefusal,
-    _normalize_security_group_rules,
-    _read_security_group_egress_rules,
-    _verify_security_group_egress_rules,
+    _s3_prefix_list_id,
+    _verify_policy,
 )
 
 
@@ -117,31 +110,17 @@ def test_probe_task_eni_sg_has_ecr_and_s3_tls_egress_and_dns_exemption() -> None
     assert "security groups cannot filter" in terraform
 
 
-def test_static_lint_refuses_any_task_eni_security_group_without_egress() -> None:
-    group = next(iter(PLAN_TASK_ENI_SECURITY_GROUPS))
-    result = lint_task_eni_security_group_egress(
-        set(PLAN_TASK_ENI_SECURITY_GROUPS), {group: set(TASK_ENI_EGRESS_RULES)}
-    )
+def test_empirical_gate_replaces_network_shape_assertions() -> None:
+    result = _aws_read_fixture_fidelity()["network_reduction"]
     assert result == {
         "status": "PASS",
-        "task_eni_security_groups": 1,
-        "egress_rules": 2,
-        "missing_egress_security_groups": 0,
+        "network_shape_assertions": 0,
+        "policy_documents_verified": 3,
+        "gateway_route_table_assertion": 1,
+        "s3_prefix_list_api": "ec2:DescribePrefixLists",
+        "connectivity_evidence": "THREE_CONSECUTIVE_PRIVATE_PROBE_LAUNCHES",
+        "required_consecutive_probe_passes": 3,
     }
-    with pytest.raises(ValueError, match="task ENI security group has no egress rule"):
-        lint_task_eni_security_group_egress(set(PLAN_TASK_ENI_SECURITY_GROUPS), {})
-
-
-def test_cold_rehearsal_executes_the_static_task_eni_egress_lint() -> None:
-    source = (ROOT / "scripts/b6_6_cold_rehearsal.py").read_text()
-    assert "_task_eni_sg_egress_lint()" in source
-    assert "missing_egress_refusal_cases" in source
-    assert "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER" in source
-    result = _task_eni_sg_egress_lint()
-    assert result["status"] == "PASS"
-    assert result["task_eni_security_groups"] == 2
-    assert result["egress_rules"] == 3
-    assert result["missing_egress_refusal_cases"] == 2
 
 
 def test_cold_rehearsal_lints_every_projected_rendered_plan_description() -> None:
@@ -155,82 +134,22 @@ def test_cold_rehearsal_lints_every_projected_rendered_plan_description() -> Non
     assert result["real_aws_calls"] == 0
 
 
-def _required_domain_rules() -> list[EgressRule]:
-    return [
-        EgressRule(
-            rule_id="sgr-domain-ecr",
-            group_id="sg-probe",
-            protocol="tcp",
-            from_port=443,
-            to_port=443,
-            referenced_group_id="sg-probe",
-            prefix_list_id=None,
-            cidr_ipv4=None,
-            cidr_ipv6=None,
-        ),
-        EgressRule(
-            rule_id="sgr-domain-s3",
-            group_id="sg-probe",
-            protocol="tcp",
-            from_port=443,
-            to_port=443,
-            referenced_group_id=None,
-            prefix_list_id="pl-s3",
-            cidr_ipv4=None,
-            cidr_ipv6=None,
-        ),
-    ]
-
-
-def test_recorded_real_responses_prove_merged_shape_and_minus_one_port_quirk() -> None:
-    merged_path = (
-        ROOT
-        / "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json"
-    )
-    rules_path = (
-        ROOT
-        / "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json"
-    )
-    evidence = json.loads(
-        (ROOT / "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-001.json").read_bytes()
-    )
-    expected = {item["path"]: item["sha256"] for item in evidence["captures"]}
-    for path in (merged_path, rules_path):
-        relative = str(path.relative_to(ROOT))
-        assert hashlib.sha256(path.read_bytes()).hexdigest() == expected[relative]
-
-    merged = json.loads(merged_path.read_bytes())["SecurityGroups"][0]
-    per_rule = json.loads(rules_path.read_bytes())
-    merged_egress = merged["IpPermissionsEgress"]
-    individual_egress = [
-        item for item in per_rule["SecurityGroupRules"] if item["IsEgress"] is True
-    ]
-    assert len(merged_egress) == 1
-    assert len(merged_egress[0]["UserIdGroupPairs"]) == 1
-    assert len(merged_egress[0]["IpRanges"]) == 1
-    assert "FromPort" not in merged_egress[0]
-    assert "ToPort" not in merged_egress[0]
-    assert len(individual_egress) == 2
-    assert all(item["IpProtocol"] == "-1" for item in individual_egress)
-    assert all(item["FromPort"] == -1 for item in individual_egress)
-    assert all(item["ToPort"] == -1 for item in individual_egress)
-    assert len(_normalize_security_group_rules(per_rule)) == 2
-
-
 def test_cold_rehearsal_binds_recorded_aws_read_response_fixtures() -> None:
     result = _aws_read_fixture_fidelity()
     assert result["status"] == "PASS"
-    assert result["merged_egress_permission_objects"] == 1
-    assert result["individual_egress_rules"] == 2
-    assert result["protocol_minus_one_port_quirk"] == "PASS"
+    assert result["runtime_read_api_count"] == 23
+    assert result["fixture_count"] == 29
+    assert result["uncovered_read_apis"] == 0
+    assert result["describe_vpc_endpoints_prefix_list_id_present"] is False
+    assert result["s3_prefix_list_id"] == "pl-6ea54007"
     assert result["real_aws_calls"] == 0
 
 
-def test_runtime_reader_uses_per_rule_api_with_recorded_real_response() -> None:
+def test_prefix_list_reader_uses_recorded_real_describe_prefix_lists_response() -> None:
     response = json.loads(
         (
             ROOT
-            / "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json"
+            / "tests/fixtures/aws/ec2-describe-prefix-lists-s3-eu-central-1.json"
         ).read_bytes()
     )
 
@@ -238,68 +157,52 @@ def test_runtime_reader_uses_per_rule_api_with_recorded_real_response() -> None:
         def __init__(self) -> None:
             self.requests: list[dict[str, object]] = []
 
-        def describe_security_group_rules(self, **kwargs: object) -> dict[str, object]:
+        def describe_prefix_lists(self, **kwargs: object) -> dict[str, object]:
             self.requests.append(kwargs)
             return response
 
-        def describe_security_groups(self, **_: object) -> dict[str, object]:
-            raise AssertionError("merged permission API must not verify egress")
-
     client = RecordedResponseClient()
-    rules = _read_security_group_egress_rules(client, "sg-070fc00321934eacb")
-    assert len(rules) == 2
+    assert _s3_prefix_list_id(client) == "pl-6ea54007"
     assert client.requests == [
         {
             "Filters": [
-                {"Name": "group-id", "Values": ["sg-070fc00321934eacb"]}
+                {
+                    "Name": "prefix-list-name",
+                    "Values": ["com.amazonaws.eu-central-1.s3"],
+                }
             ]
         }
     ]
 
 
-def test_runtime_egress_policy_requires_exact_ecr_self_and_s3_prefix_rules() -> None:
-    rules = _required_domain_rules()
-    _verify_security_group_egress_rules(rules, "sg-probe", "pl-s3")
-
-    with pytest.raises(EndpointRefusal, match="egress count"):
-        _verify_security_group_egress_rules(rules[1:], "sg-probe", "pl-s3")
-    with pytest.raises(EndpointRefusal, match="egress count"):
-        _verify_security_group_egress_rules(rules[:1], "sg-probe", "pl-s3")
-    with pytest.raises(EndpointRefusal, match="egress count"):
-        _verify_security_group_egress_rules(
-            [*rules, rules[0]], "sg-probe", "pl-s3"
-        )
-
-    missing_ecr_destination = [
-        EgressRule(**{**rules[0].__dict__, "referenced_group_id": None}),
-        rules[1],
-    ]
-    with pytest.raises(EndpointRefusal, match="egress destination"):
-        _verify_security_group_egress_rules(
-            missing_ecr_destination, "sg-probe", "pl-s3"
-        )
-    missing_s3_destination = [
-        rules[0],
-        EgressRule(**{**rules[1].__dict__, "prefix_list_id": None}),
-    ]
-    with pytest.raises(EndpointRefusal, match="egress destination"):
-        _verify_security_group_egress_rules(
-            missing_s3_destination, "sg-probe", "pl-s3"
-        )
-
-
-def test_runtime_egress_policy_refuses_unexpected_or_minus_one_rule() -> None:
-    rules = _required_domain_rules()
-    rules[1] = EgressRule(
-        **{
-            **rules[1].__dict__,
-            "protocol": "-1",
-            "from_port": -1,
-            "to_port": -1,
+def test_policy_document_checks_remain_exact_and_fail_closed() -> None:
+    allowed = json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "MinimumEcrLayerBucketRead",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "s3:GetObject",
+                    "Resource": "arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*",
+                }
+            ],
         }
     )
-    with pytest.raises(EndpointRefusal, match="egress transport"):
-        _verify_security_group_egress_rules(rules, "sg-probe", "pl-s3")
+    _verify_policy(
+        allowed,
+        sid="MinimumEcrLayerBucketRead",
+        actions={"s3:GetObject"},
+        resources={"arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*"},
+    )
+    with pytest.raises(EndpointRefusal, match="policy boundary"):
+        _verify_policy(
+            allowed,
+            sid="wrong",
+            actions={"s3:GetObject"},
+            resources={"arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*"},
+        )
 
 
 def test_injected_pre_model_refusal_persists_exact_safe_error_text(
@@ -312,7 +215,7 @@ def test_injected_pre_model_refusal_persists_exact_safe_error_text(
 
 
 def test_live_verifier_exception_persists_exact_safe_error_text(tmp_path: Path) -> None:
-    exact = "probe endpoint SG egress count or identity differs"
+    exact = "s3 gateway route-table boundary differs"
 
     class EndpointFailureOperations:
         def before_run(self, context: StageAContext) -> None:

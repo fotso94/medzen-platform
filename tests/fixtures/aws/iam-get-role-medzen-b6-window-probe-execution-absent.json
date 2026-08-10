@@ -1,0 +1,18 @@
+{
+  "Error": {
+    "Type": "Sender",
+    "Code": "NoSuchEntity",
+    "Message": "The role with name medzen-b6-window-probe-execution cannot be found."
+  },
+  "ResponseMetadata": {
+    "RequestId": "647ddefe-3e70-4014-85db-48e67dff37cd",
+    "HTTPStatusCode": 404,
+    "HTTPHeaders": {
+      "date": "Mon, 10 Aug 2026 22:07:57 GMT",
+      "x-amzn-requestid": "647ddefe-3e70-4014-85db-48e67dff37cd",
+      "content-type": "text/xml",
+      "content-length": "312"
+    },
+    "RetryAttempts": 0
+  }
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed unless packet 2026-025 binds the consolidated window exactly."""
+"""Fail closed unless packet 2026-026 binds the consolidated window exactly."""
 from __future__ import annotations
 
 import hashlib
@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 
-AUTH_ID = "B6-AWS-AUTH-2026-025"
-PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-025"
-COLD_PATH = "platform/evidence/receipts/B6-2026-025-COLD/cold_rehearsal.json"
+AUTH_ID = "B6-AWS-AUTH-2026-026"
+PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-026"
+COLD_PATH = "platform/evidence/receipts/B6-2026-026-COLD/cold_rehearsal.json"
 DESCRIPTION_PROJECTION_PATH = (
     "platform/evidence/B6-RENDERED-TERRAFORM-DESCRIPTIONS-2026-001.json"
 )
@@ -31,6 +31,7 @@ REQUIRED_SOURCES = {
     "platform/decisions/B6-LBC-TAG-MUTATION-RUNTIME-RULE-2026-002.json",
     "platform/decisions/B6-WINDOW-VERIFIER-POLICY-2026-001.json",
     "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
+    "platform/decisions/B6-ENDPOINT-VERIFIER-2026-002-empirical.json",
     "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
     "platform/evidence/B6-BACKEND-TASK-ENI-SG-EGRESS-READBACK-2026-001.json",
     DESCRIPTION_PROJECTION_PATH,
@@ -67,7 +68,18 @@ REQUIRED_SOURCES = {
     "platform/evidence/receipts/B6-2026-024-STAGE-A-LIVE/stage_a_preflight.json",
     "platform/evidence/receipts/B6-2026-024-STAGE-A-LIVE/stage_a_terraform.json",
     "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
+    "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json",
     "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-001.json",
+    "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-002.json",
+    "platform/decisions/B6-AWS-CHANGE-PACKET-2026-025-per-rule-verifier.md",
+    "platform/decisions/B6-AWS-AUTH-2026-025-stage-a-and-window.json",
+    "platform/evidence/B6-PACKET-2026-025-STAGE-A-REFUSED-S3-ENDPOINT-API-SHAPE.json",
+    "platform/evidence/receipts/B6-2026-025-COLD/cold_rehearsal.json",
+    "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE/stage_a.json",
+    "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE/stage_a_cleanup.json",
+    "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE/stage_a_endpoints.json",
+    "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE/stage_a_preflight.json",
+    "platform/evidence/receipts/B6-2026-025-STAGE-A-LIVE/stage_a_terraform.json",
     "platform/evidence/receipts/B6-2026-020A-BRIDGE/persistent_secret_bridge.json",
     "platform/finance/COST-REGISTRY-2026-004.json",
     "platform/k8s/b6-6/integration-window.yaml",
@@ -76,6 +88,7 @@ REQUIRED_SOURCES = {
     "platform/testdata/orchestrator/synthetic-file-request.wav",
     COLD_PATH,
     "scripts/b6_6_bindings.py",
+    "scripts/b6_6_aws_read_fixtures.py",
     "scripts/b6_6_cleanup.sh",
     "scripts/b6_6_cold_rehearsal.py",
     "scripts/b6_6_credential.py",
@@ -101,6 +114,34 @@ REQUIRED_SOURCES = {
     "tests/test_b6_6_stage_a.py",
     "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json",
     "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json",
+    "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-cpu.json",
+    "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-gpu.json",
+    "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-cpu.json",
+    "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-gpu.json",
+    "tests/fixtures/aws/ec2-describe-prefix-lists-s3-eu-central-1.json",
+    "tests/fixtures/aws/ec2-describe-vpc-endpoints-interface-vpce-0c807782b5e1c9577.json",
+    "tests/fixtures/aws/ec2-describe-vpc-endpoints-s3-gateway-vpce-09b2f7b21a4f625f3.json",
+    "tests/fixtures/aws/ecs-describe-clusters-medzen-b6-window-probe-inactive.json",
+    "tests/fixtures/aws/ecs-describe-task-definition-medzen-b6-window-probe-9-inactive.json",
+    "tests/fixtures/aws/ecs-describe-tasks-medzen-b6-window-probe-missing.json",
+    "tests/fixtures/aws/ecs-list-tasks-medzen-b6-window-probe-empty.json",
+    "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-cpu.json",
+    "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-gpu.json",
+    "tests/fixtures/aws/elbv2-describe-listeners-cache-proxy-test.json",
+    "tests/fixtures/aws/elbv2-describe-load-balancers-cache-proxy-test.json",
+    "tests/fixtures/aws/elbv2-describe-rules-cache-proxy-test.json",
+    "tests/fixtures/aws/elbv2-describe-tags-cache-proxy-test.json",
+    "tests/fixtures/aws/elbv2-describe-target-groups-cache-proxy-test.json",
+    "tests/fixtures/aws/elbv2-describe-target-health-cache-proxy-test.json",
+    "tests/fixtures/aws/iam-get-role-medzen-b6-window-probe-execution-absent.json",
+    "tests/fixtures/aws/iam-get-role-medzen-orch-role.json",
+    "tests/fixtures/aws/iam-get-user-s-fotso.json",
+    "tests/fixtures/aws/secretsmanager-describe-secret-medzen-client-api-keys.json",
+    "tests/fixtures/aws/secretsmanager-get-secret-value-medzen-client-api-keys-denied.json",
+    "tests/fixtures/aws/secretsmanager-list-secret-version-ids-medzen-client-api-keys.json",
+    "tests/fixtures/aws/ssm-get-parameters-by-path-b6-test-registry.json",
+    "tests/fixtures/aws/ssm-get-parameters-by-path-serving-empty.json",
+    "tests/fixtures/aws/sts-get-caller-identity-medzen.json",
 }
 
 
@@ -114,15 +155,15 @@ def sha256_file(path: Path) -> str:
 
 def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
     if re.fullmatch(r"[0-9a-f]{64}", packet_sha256) is None:
-        raise BindingRefusal("exact packet-2026-025 SHA-256 is required")
+        raise BindingRefusal("exact packet-2026-026 SHA-256 is required")
     try:
         value = json.loads(path.read_bytes())
     except Exception as exc:
-        raise BindingRefusal("packet-2026-025 authorization is absent") from exc
+        raise BindingRefusal("packet-2026-026 authorization is absent") from exc
     if value.get("id") != AUTH_ID or value.get("status") != "owner-approved":
-        raise BindingRefusal("packet 2026-025 is not owner-approved")
+        raise BindingRefusal("packet 2026-026 is not owner-approved")
     if value.get("packet") != {"id": PACKET_ID, "sha256": packet_sha256}:
-        raise BindingRefusal("packet-2026-025 binding differs")
+        raise BindingRefusal("packet-2026-026 binding differs")
     review = value.get("independent_review", {})
     reviewed_commit = review.get("reviewed_repository_commit")
     if (
@@ -132,7 +173,7 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         or re.fullmatch(r"[0-9a-f]{40}", str(reviewed_commit)) is None
         or value.get("prepared_repository_commit") != reviewed_commit
     ):
-        raise BindingRefusal("independent packet-2026-025 review is absent")
+        raise BindingRefusal("independent packet-2026-026 review is absent")
     if value.get("allowance") != {
         "aggregate_project_ceiling_usd": 300.0,
         "existing_reservation_usd": 10.0,
@@ -150,7 +191,7 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "cold_rehearsal_required_before_each_attempt": True,
         "unused_seconds_not_transferable_between_attempts": True,
     }:
-        raise BindingRefusal("packet-2026-025 allowance binding differs")
+        raise BindingRefusal("packet-2026-026 allowance binding differs")
     if value.get("persistent_secret") != {
         "bridge_receipt_required_before_attempt_1": True,
         "create_or_delete_during_window": False,
@@ -158,6 +199,9 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "operator_plaintext_read": "EXPLICIT_DENY_REQUIRED",
     }:
         raise BindingRefusal("persistent-secret lifecycle binding differs")
+    from scripts.b6_6_aws_read_fixtures import audit as audit_aws_read_fixtures
+
+    aws_read_fixture_fidelity = audit_aws_read_fixtures(root)
     cold = value.get("cold_rehearsal", {})
     if cold != {
         "path": COLD_PATH,
@@ -167,18 +211,9 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "injected_failure_runs": 23,
         "stage_a_full_pass_runs": 1,
         "stage_a_injected_failure_runs": 7,
-        "task_eni_sg_egress_lint": {
-            "status": "PASS",
-            "task_eni_security_groups": 2,
-            "egress_rules": 3,
-            "missing_egress_security_groups": 0,
-            "plan_managed_task_eni_security_groups": 1,
-            "external_attested_task_eni_security_groups": 1,
-            "packet_managed_egress_rules": 2,
-            "external_attested_egress_rules": 1,
-            "missing_egress_refusal_cases": 2,
-            "dns_security_group_filtering": "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER",
-        },
+        "empirical_connectivity_gate": aws_read_fixture_fidelity[
+            "network_reduction"
+        ],
         "terraform_description_charset_lint": {
             "status": "PASS",
             "description_fields": 50,
@@ -192,34 +227,20 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
             "invalid_description_refusal_cases": 1,
             "real_aws_calls": 0,
         },
-        "aws_read_fixture_fidelity": {
-            "status": "PASS",
-            "decision_path": "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
-            "decision_sha256": "4d048375b6b17d9e84ec29babbf5bb8b007b74d6736032a424293c541d8ee822",
-            "evidence_path": "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
-            "evidence_sha256": "6bd723750bcf006ea760d78617b21781114c5a63d9943d91b5c3e2ce2cbe876d",
-            "fixture_hashes": {
-                "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json": "96dd135dc918f7b7de260d8aa92df3bd7ffd184b8796ab1b90e43933927af469",
-                "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json": "2f9129d630cadc5f2915a5bf8c9b9885096fb39b43bfbe5125fab23d71c5a49a",
-            },
-            "merged_egress_permission_objects": 1,
-            "individual_egress_rules": 2,
-            "protocol_minus_one_port_quirk": "PASS",
-            "real_aws_calls": 0,
-        },
+        "aws_read_fixture_fidelity": aws_read_fixture_fidelity,
     }:
         raise BindingRefusal("cold-rehearsal binding differs")
     sources = value.get("source_bindings")
     if not isinstance(sources, dict) or set(sources) != REQUIRED_SOURCES:
-        raise BindingRefusal("packet-2026-025 source binding set differs")
+        raise BindingRefusal("packet-2026-026 source binding set differs")
     for relative, expected in sorted(sources.items()):
         if relative.startswith("/") or ".." in Path(relative).parts:
-            raise BindingRefusal("packet-2026-025 source path is unsafe")
+            raise BindingRefusal("packet-2026-026 source path is unsafe")
         target = root / relative
         if (
             re.fullmatch(r"[0-9a-f]{64}", str(expected)) is None
             or not target.is_file()
             or sha256_file(target) != expected
         ):
-            raise BindingRefusal(f"packet-2026-025 source hash differs: {relative}")
+            raise BindingRefusal(f"packet-2026-026 source hash differs: {relative}")
     return value

@@ -6,7 +6,6 @@ import argparse
 import json
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
@@ -18,6 +17,7 @@ ACCOUNT = "558069890522"
 REGION = "eu-central-1"
 PROFILE = "medzen"
 VPC_ID = "vpc-051aa9df8b64bf141"
+# Execution inputs used by the probe launcher, not endpoint response assertions.
 BACKEND_SECURITY_GROUP = "sg-0a83abae6ab954543"
 ENDPOINT_SECURITY_GROUP_NAME = "medzen-b6-probe-vpce"
 MAIN_ROUTE_TABLE = "rtb-0c6eb6874ce0565dc"
@@ -42,21 +42,6 @@ class EndpointRefusal(RuntimeError):
 
 class EndpointPending(RuntimeError):
     pass
-
-
-@dataclass(frozen=True)
-class EgressRule:
-    """Policy-relevant projection of one EC2 security-group rule."""
-
-    rule_id: str
-    group_id: str
-    protocol: str
-    from_port: int | None
-    to_port: int | None
-    referenced_group_id: str | None
-    prefix_list_id: str | None
-    cidr_ipv4: str | None
-    cidr_ipv6: str | None
 
 
 def _client(profile: str) -> Any:
@@ -99,6 +84,17 @@ def _all_service_endpoints(ec2: Any) -> list[dict[str, Any]]:
         if item.get("ServiceName") in set(SERVICES.values())
         and item.get("State") != "deleted"
     ]
+
+
+def _s3_prefix_lists(ec2: Any) -> list[dict[str, Any]]:
+    return ec2.describe_prefix_lists(
+        Filters=[
+            {
+                "Name": "prefix-list-name",
+                "Values": [SERVICES["s3"]],
+            }
+        ]
+    ).get("PrefixLists", [])
 
 
 def verify_absent(ec2: Any) -> dict[str, Any]:
@@ -155,139 +151,24 @@ def _verify_endpoint_security_group(ec2: Any) -> dict[str, Any]:
         raise EndpointRefusal("endpoint security group count differs")
     group = groups[0]
     group_id = str(group.get("GroupId", ""))
-    permissions = group.get("IpPermissions", [])
-    if (
-        not group_id
-        or _tags(group).get("Boundary") != BOUNDARY
-        or len(permissions) != 1
-    ):
+    if not group_id or _tags(group).get("Boundary") != BOUNDARY:
         raise EndpointRefusal("endpoint security group identity differs")
-    permission = permissions[0]
-    pairs = permission.get("UserIdGroupPairs", [])
-    if (
-        permission.get("IpProtocol") != "tcp"
-        or permission.get("FromPort") != 443
-        or permission.get("ToPort") != 443
-        or len(pairs) != 1
-        or {item.get("GroupId") for item in pairs} != {group_id}
-        or permission.get("IpRanges")
-        or permission.get("Ipv6Ranges")
-        or permission.get("PrefixListIds")
-    ):
-        raise EndpointRefusal(
-            "endpoint SG must admit TLS only from its probe-exclusive self reference"
-        )
     return group
 
 
-def _normalize_security_group_rules(response: dict[str, Any]) -> list[EgressRule]:
-    """Normalize a real DescribeSecurityGroupRules page into policy values."""
-    raw = response.get("SecurityGroupRules")
-    if not isinstance(raw, list) or any(not isinstance(item, dict) for item in raw):
-        raise EndpointRefusal("security-group-rule response is malformed")
-    result: list[EgressRule] = []
-    for item in raw:
-        if not isinstance(item.get("IsEgress"), bool):
-            raise EndpointRefusal("security-group-rule direction is malformed")
-        if item["IsEgress"] is not True:
-            continue
-        referenced = item.get("ReferencedGroupInfo")
-        if referenced is not None and not isinstance(referenced, dict):
-            raise EndpointRefusal("security-group-rule reference is malformed")
-        result.append(
-            EgressRule(
-                rule_id=str(item.get("SecurityGroupRuleId", "")),
-                group_id=str(item.get("GroupId", "")),
-                protocol=str(item.get("IpProtocol", "")),
-                from_port=item.get("FromPort"),
-                to_port=item.get("ToPort"),
-                referenced_group_id=(
-                    str(referenced.get("GroupId", "")) if referenced else None
-                ),
-                prefix_list_id=item.get("PrefixListId"),
-                cidr_ipv4=item.get("CidrIpv4"),
-                cidr_ipv6=item.get("CidrIpv6"),
-            )
-        )
-    return result
-
-
-def _read_security_group_egress_rules(ec2: Any, group_id: str) -> list[EgressRule]:
-    if not group_id:
-        raise EndpointRefusal("probe endpoint SG identity is absent")
-    rules: list[EgressRule] = []
-    token: str | None = None
-    seen_tokens: set[str] = set()
-    while True:
-        request: dict[str, Any] = {
-            "Filters": [{"Name": "group-id", "Values": [group_id]}]
-        }
-        if token is not None:
-            request["NextToken"] = token
-        response = ec2.describe_security_group_rules(**request)
-        if not isinstance(response, dict):
-            raise EndpointRefusal("security-group-rule response is malformed")
-        rules.extend(_normalize_security_group_rules(response))
-        next_token = response.get("NextToken")
-        if next_token is None:
-            return rules
-        if (
-            not isinstance(next_token, str)
-            or not next_token
-            or next_token in seen_tokens
-        ):
-            raise EndpointRefusal("security-group-rule pagination is malformed")
-        seen_tokens.add(next_token)
-        token = next_token
-
-
-def _verify_security_group_egress_rules(
-    rules: list[EgressRule], group_id: str, s3_prefix_list_id: str
-) -> None:
-    if not group_id or not s3_prefix_list_id or len(rules) != 2:
-        raise EndpointRefusal("probe endpoint SG egress count or identity differs")
-    ecr_rules: list[EgressRule] = []
-    s3_rules: list[EgressRule] = []
-    for rule in rules:
-        if (
-            not rule.rule_id.startswith("sgr-")
-            or rule.group_id != group_id
-            or rule.protocol != "tcp"
-            or rule.from_port != 443
-            or rule.to_port != 443
-        ):
-            raise EndpointRefusal("probe endpoint SG egress transport differs")
-        has_reference = bool(rule.referenced_group_id)
-        has_prefix = bool(rule.prefix_list_id)
-        has_cidr = bool(rule.cidr_ipv4) or bool(rule.cidr_ipv6)
-        if (
-            has_reference
-            and not has_prefix
-            and not has_cidr
-            and rule.referenced_group_id == group_id
-        ):
-            ecr_rules.append(rule)
-        elif (
-            has_prefix
-            and not has_reference
-            and not has_cidr
-            and rule.prefix_list_id == s3_prefix_list_id
-        ):
-            s3_rules.append(rule)
-        else:
-            raise EndpointRefusal("probe endpoint SG egress destination differs")
-    if len(ecr_rules) != 1 or len(s3_rules) != 1:
-        raise EndpointRefusal("probe endpoint SG requires ECR and S3 TLS egress")
-
-
-def _verify_security_group_egress(
-    ec2: Any, group_id: str, s3_prefix_list_id: str
-) -> None:
-    _verify_security_group_egress_rules(
-        _read_security_group_egress_rules(ec2, group_id),
-        group_id,
-        s3_prefix_list_id,
-    )
+def _s3_prefix_list_id(ec2: Any) -> str:
+    prefix_lists = _s3_prefix_lists(ec2)
+    if len(prefix_lists) != 1:
+        raise EndpointRefusal("S3 managed prefix list count differs")
+    prefix_list = prefix_lists[0]
+    prefix_list_id = prefix_list.get("PrefixListId")
+    if (
+        prefix_list.get("PrefixListName") != SERVICES["s3"]
+        or not isinstance(prefix_list_id, str)
+        or not prefix_list_id.startswith("pl-")
+    ):
+        raise EndpointRefusal("S3 managed prefix list identity differs")
+    return prefix_list_id
 
 
 def verify_available(ec2: Any) -> dict[str, Any]:
@@ -317,16 +198,6 @@ def verify_available(ec2: Any) -> dict[str, Any]:
             raise EndpointPending(f"{purpose} endpoint is not available")
         if state != "available":
             raise EndpointRefusal(f"{purpose} endpoint entered a terminal state")
-        if (
-            endpoint.get("ServiceName") != SERVICES[purpose]
-            or endpoint.get("VpcEndpointType") != "Interface"
-            or set(endpoint.get("SubnetIds", [])) != SUBNETS
-            or endpoint.get("PrivateDnsEnabled") is not True
-            or len(endpoint.get("Groups", [])) != 1
-            or {item.get("GroupId") for item in endpoint.get("Groups", [])}
-            != {endpoint_sg}
-        ):
-            raise EndpointRefusal(f"{purpose} endpoint network boundary differs")
 
     _verify_policy(
         str(by_purpose["ecr-api"].get("PolicyDocument", "")),
@@ -351,42 +222,24 @@ def verify_available(ec2: Any) -> dict[str, Any]:
         raise EndpointPending("s3 endpoint is not available")
     if state != "available":
         raise EndpointRefusal("s3 endpoint entered a terminal state")
-    if (
-        s3.get("ServiceName") != SERVICES["s3"]
-        or s3.get("VpcEndpointType") != "Gateway"
-        or set(s3.get("RouteTableIds", [])) != {MAIN_ROUTE_TABLE}
-        or s3.get("SubnetIds")
-        or s3.get("Groups")
-        or not isinstance(s3.get("PrefixListId"), str)
-        or not s3.get("PrefixListId")
-    ):
-        raise EndpointRefusal("s3 endpoint network boundary differs")
-    _verify_security_group_egress(ec2, endpoint_sg, str(s3["PrefixListId"]))
+    if set(s3.get("RouteTableIds", [])) != {MAIN_ROUTE_TABLE}:
+        raise EndpointRefusal("s3 gateway route-table boundary differs")
     _verify_policy(
         str(s3.get("PolicyDocument", "")),
         sid="MinimumEcrLayerBucketRead",
         actions={"s3:GetObject"},
         resources={LAYER_BUCKET_ARN},
     )
+    s3_prefix_list_id = _s3_prefix_list_id(ec2)
     return {
         "status": "PASS",
         "interface_endpoint_count": 2,
         "gateway_endpoint_count": 1,
-        "private_dns_interface_endpoints": 2,
-        "interface_subnet_bindings": 6,
         "endpoint_security_group_id": endpoint_sg,
-        "endpoint_ingress_source_security_group": endpoint_sg,
-        "endpoint_ingress_source_mode": "PROBE_EXCLUSIVE_SELF_REFERENCE",
-        "probe_task_security_groups": sorted(
-            [BACKEND_SECURITY_GROUP, endpoint_sg]
-        ),
-        "endpoint_ingress_port": 443,
-        "endpoint_egress_rule_count": 2,
-        "ecr_egress_destination": "PROBE_EXCLUSIVE_SELF_REFERENCE",
-        "s3_egress_prefix_list_id": str(s3["PrefixListId"]),
-        "dns_security_group_filtering": (
-            "NOT_APPLICABLE_AMAZON_PROVIDED_VPC_RESOLVER"
-        ),
+        "endpoint_policies_verified": 3,
+        "network_shape_assertions": 0,
+        "connectivity_proof": "DEFERRED_TO_THREE_PROBE_LAUNCHES",
+        "s3_prefix_list_id": s3_prefix_list_id,
         "gateway_route_table_id": MAIN_ROUTE_TABLE,
         "ecr_endpoint_principal_mode": "REQUIRED_WILDCARD_NO_ROLE_REFERENCE",
     }

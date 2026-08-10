@@ -1,0 +1,9 @@
+{
+  "tasks": [],
+  "failures": [
+    {
+      "arn": "arn:aws:ecs:eu-central-1:558069890522:task/medzen-b6-window-probe/94aaf80cffa142558b8094b083b25867",
+      "reason": "MISSING"
+    }
+  ]
+}

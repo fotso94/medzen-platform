@@ -1,0 +1,88 @@
+{
+  "taskDefinition": {
+    "taskDefinitionArn": "arn:aws:ecs:eu-central-1:558069890522:task-definition/medzen-b6-window-probe:9",
+    "containerDefinitions": [
+      {
+        "name": "probe",
+        "image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+        "cpu": 0,
+        "portMappings": [],
+        "essential": true,
+        "entryPoint": [
+          "/usr/local/bin/python",
+          "-c"
+        ],
+        "command": [
+          "import json,os,urllib.request; u=os.environ['TARGET_URL']; r=urllib.request.urlopen(u,timeout=15); v=json.load(r); assert r.status==200 and v.get('ready') is True"
+        ],
+        "environment": [
+          {
+            "name": "TARGET_URL",
+            "value": "http://not-set.invalid/readyz"
+          }
+        ],
+        "mountPoints": [],
+        "volumesFrom": [],
+        "linuxParameters": {
+          "capabilities": {
+            "add": [],
+            "drop": [
+              "ALL"
+            ]
+          },
+          "initProcessEnabled": true
+        },
+        "readonlyRootFilesystem": true,
+        "systemControls": []
+      }
+    ],
+    "family": "medzen-b6-window-probe",
+    "executionRoleArn": "arn:aws:iam::558069890522:role/medzen-b6-window-probe-execution",
+    "networkMode": "awsvpc",
+    "revision": 9,
+    "volumes": [],
+    "status": "INACTIVE",
+    "requiresAttributes": [
+      {
+        "name": "com.amazonaws.ecs.capability.ecr-auth"
+      },
+      {
+        "name": "com.amazonaws.ecs.capability.docker-remote-api.1.17"
+      },
+      {
+        "name": "com.amazonaws.ecs.capability.docker-remote-api.1.21"
+      },
+      {
+        "name": "com.amazonaws.ecs.capability.docker-remote-api.1.25"
+      },
+      {
+        "name": "ecs.capability.execution-role-ecr-pull"
+      },
+      {
+        "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+      },
+      {
+        "name": "ecs.capability.task-eni"
+      }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+      "EC2",
+      "MANAGED_INSTANCES",
+      "FARGATE"
+    ],
+    "runtimePlatform": {
+      "cpuArchitecture": "X86_64",
+      "operatingSystemFamily": "LINUX"
+    },
+    "requiresCompatibilities": [
+      "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "registeredAt": "2026-08-10T17:47:36.302000-04:00",
+    "deregisteredAt": "2026-08-10T17:48:50.374000-04:00",
+    "registeredBy": "arn:aws:iam::558069890522:user/s.fotso"
+  },
+  "tags": []
+}
