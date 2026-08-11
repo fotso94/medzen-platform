@@ -1,0 +1,178 @@
+{
+  "record": "B6_2026_027_WINDOW_ATTEMPT_1_RESULT",
+  "id": "B6-PACKET-2026-027-ATTEMPT-1-REFUSED-FILE-PROOF",
+  "revision": 1,
+  "status": "RECORDED_PENDING_INDEPENDENT_EXIT_REVIEW",
+  "outcome": "REFUSED_FILE_PROOF_CLEANUP_VERIFIED",
+  "failure_stage": "FILE_PROOF",
+  "recorded_utc": "2026-08-11T02:37:00Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-027-alb-stability-and-layered-retry.md",
+      "sha256": "ef2e0939f2975eaaf72eea4ba0e33908561093b233faab4c51dc177955decb84"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-027-window.json",
+      "sha256": "c6b6fbcc00717041912343e0c3209d91f7bdecdbc3e216f80d10112e1fa69f77",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "reviewed_repository_commit": "c07712232d605960c247053c40a6b5b0cff128a9",
+      "reviewed_packet_sha256": "ef2e0939f2975eaaf72eea4ba0e33908561093b233faab4c51dc177955decb84",
+      "reviewed_cold_rehearsal_sha256": "5ba49e1c6c8a1d191e16b1c768bd49957b9ba11fa348cca56df704f34f6cdbab",
+      "reviewer_reproduction": "39/39",
+      "findings": 0
+    }
+  },
+  "repository_execution": {
+    "branch": "master",
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "authorization_commit": "b2878f20ec614a8a81ffbde25e183071c53acf99",
+    "review_and_authorization_merge_commit": "68fcc793ecae6461cdae5063889de2d550b47c88",
+    "attempt_1_execution_commit": "68fcc793ecae6461cdae5063889de2d550b47c88"
+  },
+  "attempt": {
+    "number": 1,
+    "receipt_directory": "platform/evidence/receipts/B6-2026-027-A1-LIVE",
+    "outcome": "REFUSED",
+    "passed_stages_before_refusal": [
+      "stage0",
+      "deadline",
+      "workers_ready",
+      "dra_ready",
+      "rag_ready",
+      "asr_ready",
+      "tts_ready",
+      "llm_ready",
+      "orchestrator_ready",
+      "controller_window",
+      "controller_ready",
+      "pre_endpoint_images",
+      "terraform_window",
+      "endpoints_ready",
+      "alb_ready",
+      "fargate_probe",
+      "alb_tag_mutation_warning"
+    ],
+    "corrected_boundary_results": {
+      "alb_ready": {
+        "status": "PASS",
+        "receipt_sha256": "5420d953c383a923a7d41b50263ed8129a63c1e14e05a22b087d1aa27a753431",
+        "stable_healthy_observations": 3,
+        "target_count": 1,
+        "polls": 17
+      },
+      "fargate_probe": {
+        "status": "PASS",
+        "receipt_sha256": "b18692ed7b46226400b7a68520656fbc983ec0d415061a5dd3784c3fbc45ffaa",
+        "reason_code": "READYZ_ASSERTION_PASSED",
+        "application_started": true,
+        "container_exit_code": 0,
+        "readyz_request_completed": true
+      }
+    },
+    "terminal_receipt": {
+      "path": "platform/evidence/receipts/B6-2026-027-A1-LIVE/file_proof.json",
+      "sha256": "4d574b7fe5f788313fc3a403c259fd5d1c8def4ee2e6bef710d19798485b9e76",
+      "recorded_utc": "2026-08-11T02:16:07Z",
+      "status": "REFUSED",
+      "reason_code": "FILE_CONVERSATION_PROOF_REFUSED",
+      "kubernetes_image_pull_failures": 0,
+      "safe_detail_available": false
+    },
+    "cleanup_receipt": {
+      "path": "platform/evidence/receipts/B6-2026-027-A1-LIVE/cleanup.json",
+      "sha256": "a93974337b265d1c3927b3fa5c81a9d3b142af6f429cd1e209078943e7e2b4fe",
+      "recorded_utc": "2026-08-11T02:35:56Z",
+      "status": "PASS"
+    },
+    "all_receipt_hashes": {
+      "alb_ready": "5420d953c383a923a7d41b50263ed8129a63c1e14e05a22b087d1aa27a753431",
+      "alb_tag_mutation_warning": "d814f5e49bae32b25f7654e829a8491797cea67fffd567019d6eb46f47cbad7b",
+      "asr_ready": "e2996ed2df051f81a3e4d7e76ae0f4491f5d01ee77079cc714d20c24a8aed08d",
+      "cleanup": "a93974337b265d1c3927b3fa5c81a9d3b142af6f429cd1e209078943e7e2b4fe",
+      "controller_ready": "77be058a50a518289b8e2a9680dce574d4662e834ba796053a62ecae0674d646",
+      "controller_window": "dd11cc169ead130b7d33a42b7e1d604c0ec6b2cd270c240d7dda87c63755c1fb",
+      "deadline": "567fb72850b239eaa4fee16ae7a3b354a0f8c399f612aa16f4da77390ccb4330",
+      "dra_ready": "55aeb563a39fe537574ca6792aae3be79e45178818cd1a134274a39703930050",
+      "endpoints_ready": "fd6be98c193370b2441e7f5fac4c75135ef35edbcb654bc3431dc2a868ff19e6",
+      "fargate_probe": "b18692ed7b46226400b7a68520656fbc983ec0d415061a5dd3784c3fbc45ffaa",
+      "file_proof": "4d574b7fe5f788313fc3a403c259fd5d1c8def4ee2e6bef710d19798485b9e76",
+      "llm_ready": "7ce569493c12f7c7a496eb60504aa82d587bee786755d1aaed276f968cc72e26",
+      "orchestrator_ready": "aeeb34a9e51d2cb0108d9ec6baa01f2f7ac5e05f76ede7867cba5fd57a6c330c",
+      "pre_endpoint_images": "1c283809fa4165f38d3f9a2446a84a6c708018e5deb7f4b2540503ffa11bb112",
+      "rag_ready": "05fcddd8c0542b5c98182e1d1af1d22fb4edecfe250e74f058b97454e4dbbc85",
+      "stage0": "96e948b9c5935bd1e38c72490c7880728d42f81b8a0d5685899ce583a4861b39",
+      "terraform_window": "ad159017f707c5c5868e0cf23ad08b8cf38c5e3ceb96bb9a0fa3e840ead6938c",
+      "tts_ready": "916a6a90ecb4491b9b2397c721104dc718e6296ac7b7c87deeab4ab1b960d0ee",
+      "workers_ready": "f5f5bd6baa62f21dc9a513a159ce1b55d515fe85d00f1f022317ca607c7f509a"
+    }
+  },
+  "diagnosis": {
+    "classification": "UNDIAGNOSED_SYNTHETIC_FILE_PROOF_REFUSAL",
+    "confidence": "NOT_ASSIGNED",
+    "facts": [
+      "The restructured ALB target-health gate passed before the Fargate task was launched.",
+      "The in-container readyz probe exited zero after receiving HTTP 200 with ready true.",
+      "The file-conversation proof then exited two and persisted a fail-closed receipt.",
+      "No Kubernetes image-pull failure was observed.",
+      "The receipt contains no audio, transcript, reply, citations, credentials or PHI."
+    ],
+    "not_inferred": [
+      "The generic refusal receipt does not establish an application-layer root cause.",
+      "No conversation, WebSocket, cancellation, failure-drill or isolation proof is claimed."
+    ]
+  },
+  "stages_not_run_after_refusal": [
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+    "isolation_proof"
+  ],
+  "zero_state_verification": {
+    "verified_utc": "2026-08-11T02:37:00Z",
+    "cpu_nodegroup": {
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "asg_instances": 0
+    },
+    "gpu_nodegroup": {
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "asg_instances": 0
+    },
+    "kubernetes_workload_nodes": 0,
+    "synthetic_medzen_pods": 0,
+    "window_ingresses": 0,
+    "temporary_vpc_endpoints": 0,
+    "window_load_balancers": 0,
+    "window_terraform_resources": 0,
+    "deadline_actions": 0,
+    "production_ssm_serving_pointer_count": 0,
+    "approved_asr_changes": 0,
+    "local_synthetic_token_present": false,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_PLAINTEXT_READ_DENIED",
+    "default_terraform_plan": "NO_CHANGES"
+  },
+  "attempt_allowance": {
+    "authorized_attempts": 2,
+    "consumed_attempts": 1,
+    "remaining_attempts": 1,
+    "attempt_ceiling_seconds": 4500,
+    "non_transferable": true,
+    "attempt_2_condition": "AUTHORIZED_ONLY_AFTER_ATTEMPT_1_CLEANUP_PASS_AND_INDEPENDENT_ZERO_STATE_VERIFICATION",
+    "attempt_2_condition_met": true
+  },
+  "budget_control": {
+    "aggregate_project_ceiling_usd": 300,
+    "existing_reservation_usd": 10,
+    "new_reservation_created": false,
+    "actual_billed_cost": "NOT_YET_RECONCILED_AWS_BILLING_LAG",
+    "cost_claim": "Attempt 1 remained within the packet's 4,500-second ceiling and existing reservation; no exact billed amount is inferred before attributable billing settles."
+  },
+  "next_boundary": "One unchanged second attempt remains authorized by packet 2026-027 because cleanup passed and independent zero state was verified. Any source change or further attempt requires a new reviewed packet and owner approval."
+}
