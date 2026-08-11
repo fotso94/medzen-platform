@@ -77,6 +77,8 @@ def test_qualification_is_a_real_container_conversation_not_testclient():
         "_wait_for_partial_source_refusal",
         '"dependency": "streaming_partial_source"',
         '"status": "PASS_FAIL_CLOSED"',
+        '"stable_conversation_passes": 3',
+        "for _ in range(3)",
     ):
         assert required in checker
     assert "TestClient" not in checker

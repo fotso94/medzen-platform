@@ -187,8 +187,10 @@ def _exact_streamed_conversation(
         try:
             result = json.loads(completed.stdout)
         except json.JSONDecodeError as exc:
+            stderr = " ".join(completed.stderr.strip().split())[-1024:]
             raise RuntimeError(
-                "exact WebSocket conversation returned malformed evidence"
+                "exact WebSocket conversation returned malformed evidence: "
+                f"exit={completed.returncode} stderr={stderr or 'absent'}"
             ) from exc
         if completed.returncode != 0:
             assertion = result.get("failed_assertion", "UNCLASSIFIED")
@@ -401,15 +403,22 @@ def _orchestrator_websocket_smoke(
             "network_binding": "loopback_ephemeral",
             "status": "PASS",
         })
-        conversation = _exact_streamed_conversation(
-            "127.0.0.1",
-            port,
-            runtime_app_sha256=runtime_app_sha256,
-        )
+        conversations = [
+            _exact_streamed_conversation(
+                "127.0.0.1",
+                port,
+                runtime_app_sha256=runtime_app_sha256,
+            )
+            for _ in range(3)
+        ]
+        if any(value != conversations[0] for value in conversations[1:]):
+            raise RuntimeError("stable WebSocket conversation results differ")
+        conversation = conversations[0]
         conversation.update({
             "container_read_only": True,
             "fixture_mounts": "read_only_synthetic_only",
             "network_binding": "loopback_ephemeral",
+            "stable_conversation_passes": 3,
         })
         return handshake, conversation, dependency_gate
     finally:
