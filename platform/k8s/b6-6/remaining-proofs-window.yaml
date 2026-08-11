@@ -1,0 +1,438 @@
+# B6.6 synthetic integration render. This is intentionally separate from the
+# generated production-shaped base manifests. Every image is pinned to the
+# Linux/AMD64 child manifest that passed ECR scanning.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medzen
+  labels:
+    medzen.io/milestone: b6-6
+    medzen.io/classification: synthetic-integration-only
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: asr-runtime-b6a
+  namespace: medzen
+  labels:
+    app.kubernetes.io/name: asr-runtime
+    medzen.io/classification: synthetic-integration-only
+    medzen.io/serving-label: v0
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rag-index
+  namespace: medzen
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: llm-gateway
+  namespace: medzen
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tts-gateway
+  namespace: medzen
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: speech-orchestrator
+  namespace: medzen
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asr-runtime-config
+  namespace: medzen
+data:
+  AWS_REGION: eu-central-1
+  MODEL_DESTINATION: /models
+  MODEL_DIR: /models
+  MEDZEN_INFERENCE_DEVICE: cuda
+  MODEL_MANIFEST_S3_URI: s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/MANIFEST.json
+  MODEL_MANIFEST_SHA256: c64978f4f231516caa2387ab4ccee569ddf4a0f3b98049278c0afe4c307fd850
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: speech-orchestrator-config
+  namespace: medzen
+data:
+  AWS_REGION: eu-central-1
+  MEDZEN_ORCHESTRATOR_MODE: deployed_http_ssm
+  MEDZEN_CLIENT_KEYS_SECRET_ID: medzen/client-api-keys
+  MEDZEN_REGISTRY_ROOT: /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81
+  MEDZEN_B6_PROOF_AUDIO_SHA256: 3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3
+  MEDZEN_B6_RAG_INDEX_SHA256: 6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: asr-runtime-gpu
+  namespace: medzen
+spec:
+  spec:
+    devices:
+      requests:
+      - name: gpu
+        exactly:
+          deviceClassName: gpu.nvidia.com
+          count: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-index
+  namespace: medzen
+  labels: &rag-labels
+    app.kubernetes.io/name: rag-index
+    medzen.io/classification: synthetic-integration-only
+  annotations:
+    medzen.io/change-packet: B6-AWS-CHANGE-PACKET-2026-008
+spec:
+  replicas: 0
+  selector:
+    matchLabels: *rag-labels
+  template:
+    metadata:
+      labels: *rag-labels
+    spec:
+      serviceAccountName: rag-index
+      nodeSelector: {workload: cpu}
+      securityContext: &pod-security
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: rag-index
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c
+        imagePullPolicy: IfNotPresent
+        ports: [{name: http, containerPort: 8083}]
+        resources:
+          requests: {cpu: 250m, memory: 512Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext: &container-security
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        startupProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 24}
+        readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 3}
+        volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 128Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: rag-index, namespace: medzen}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: rag-index
+    medzen.io/classification: synthetic-integration-only
+  ports: [{name: http, port: 8083, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-gateway
+  namespace: medzen
+  labels: &llm-labels
+    app.kubernetes.io/name: llm-gateway
+    medzen.io/classification: synthetic-integration-only
+  annotations: {medzen.io/change-packet: B6-AWS-CHANGE-PACKET-2026-008}
+spec:
+  replicas: 0
+  selector: {matchLabels: *llm-labels}
+  template:
+    metadata: {labels: *llm-labels}
+    spec:
+      serviceAccountName: llm-gateway
+      nodeSelector: {workload: cpu}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: llm-gateway
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-llm-gateway@sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a
+        imagePullPolicy: IfNotPresent
+        env: [{name: MEDZEN_LLM_PROVIDER, value: fake}]
+        ports: [{name: http, containerPort: 8082}]
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        startupProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 24}
+        readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 3}
+        volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 128Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: llm-gateway, namespace: medzen}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: llm-gateway
+    medzen.io/classification: synthetic-integration-only
+  ports: [{name: http, port: 8082, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tts-gateway
+  namespace: medzen
+  labels: &tts-labels
+    app.kubernetes.io/name: tts-gateway
+    medzen.io/classification: synthetic-integration-only
+  annotations: {medzen.io/change-packet: B6-AWS-CHANGE-PACKET-2026-008}
+spec:
+  replicas: 0
+  selector: {matchLabels: *tts-labels}
+  template:
+    metadata: {labels: *tts-labels}
+    spec:
+      serviceAccountName: tts-gateway
+      nodeSelector: {workload: cpu}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: tts-gateway
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-speech-tts-gateway@sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d
+        imagePullPolicy: IfNotPresent
+        env: [{name: MEDZEN_SPEECH_TTS_PROVIDER, value: text_only}]
+        ports: [{name: http, containerPort: 8080}]
+        resources:
+          requests: {cpu: 250m, memory: 256Mi}
+          limits: {cpu: "1", memory: 1Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        startupProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 24}
+        readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 3}
+        volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 128Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: tts-gateway, namespace: medzen}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tts-gateway
+    medzen.io/classification: synthetic-integration-only
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: asr-runtime
+  namespace: medzen
+  labels: &asr-deploy-labels
+    app.kubernetes.io/name: asr-runtime
+    medzen.io/classification: synthetic-integration-only
+    medzen.io/serving-label: v0
+  annotations: {medzen.io/change-packet: B6-AWS-CHANGE-PACKET-2026-008}
+spec:
+  replicas: 0
+  strategy: {type: Recreate}
+  selector: {matchLabels: *asr-deploy-labels}
+  template:
+    metadata: {labels: *asr-deploy-labels}
+    spec:
+      serviceAccountName: asr-runtime-b6a
+      nodeSelector: {workload: gpu}
+      tolerations:
+      - {key: nvidia.com/gpu, operator: Equal, value: "true", effect: NoSchedule}
+      resourceClaims:
+      - {name: gpu, resourceClaimTemplateName: asr-runtime-gpu}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      initContainers:
+      - name: model-loader
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader@sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5
+        imagePullPolicy: IfNotPresent
+        envFrom: [{configMapRef: {name: asr-runtime-config}}]
+        resources:
+          requests: {cpu: 500m, memory: 2Gi}
+          limits: {cpu: "2", memory: 4Gi}
+        securityContext: &asr-container-security
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        volumeMounts: [{name: model, mountPath: /models}, {name: tmp, mountPath: /tmp}]
+      containers:
+      - name: asr-runtime
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime@sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087
+        imagePullPolicy: IfNotPresent
+        envFrom: [{configMapRef: {name: asr-runtime-config}}]
+        ports: [{name: http, containerPort: 8081}]
+        resources:
+          requests: {cpu: "2", memory: 8Gi}
+          limits: {cpu: "4", memory: 12Gi}
+          claims: [{name: gpu}]
+        securityContext: *asr-container-security
+        startupProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 10, failureThreshold: 60}
+        readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 10, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 3}
+        volumeMounts: [{name: model, mountPath: /models, readOnly: true}, {name: tmp, mountPath: /tmp}]
+      volumes:
+      - {name: model, emptyDir: {sizeLimit: 8Gi}}
+      - {name: tmp, emptyDir: {sizeLimit: 1Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: asr-runtime, namespace: medzen}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: asr-runtime
+    medzen.io/classification: synthetic-integration-only
+    medzen.io/serving-label: v0
+  ports: [{name: http, port: 8081, targetPort: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: speech-orchestrator
+  namespace: medzen
+  labels: &orchestrator-labels
+    app.kubernetes.io/name: speech-orchestrator
+    medzen.io/classification: synthetic-integration-only
+  annotations: {medzen.io/change-packet: B6-AWS-CHANGE-PACKET-2026-008}
+spec:
+  replicas: 0
+  selector: {matchLabels: *orchestrator-labels}
+  template:
+    metadata: {labels: *orchestrator-labels}
+    spec:
+      serviceAccountName: speech-orchestrator
+      nodeSelector: {workload: cpu}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+      - name: speech-orchestrator
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed
+        imagePullPolicy: IfNotPresent
+        envFrom: [{configMapRef: {name: speech-orchestrator-config}}]
+        ports: [{name: http, containerPort: 8080}]
+        resources:
+          requests: {cpu: 500m, memory: 512Mi}
+          limits: {cpu: "2", memory: 2Gi}
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities: {drop: [ALL]}
+        startupProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 36}
+        readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 3}
+        livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 30, failureThreshold: 3}
+        volumeMounts: [{name: tmp, mountPath: /tmp}]
+      volumes: [{name: tmp, emptyDir: {sizeLimit: 128Mi}}]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: speech-orchestrator, namespace: medzen}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: speech-orchestrator
+    medzen.io/classification: synthetic-integration-only
+  ports: [{name: http, port: 8080, targetPort: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: default-deny-ingress, namespace: medzen}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress]
+  ingress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: orchestrator-to-dependencies, namespace: medzen}
+spec:
+  podSelector:
+    matchExpressions:
+    - {key: app.kubernetes.io/name, operator: In, values: [asr-runtime, rag-index, llm-gateway, tts-gateway]}
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector: {matchLabels: {app.kubernetes.io/name: speech-orchestrator}}
+    ports:
+    - {protocol: TCP, port: 8080}
+    - {protocol: TCP, port: 8081}
+    - {protocol: TCP, port: 8082}
+    - {protocol: TCP, port: 8083}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: orchestrator-ingress, namespace: medzen}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: speech-orchestrator}}
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - ipBlock: {cidr: 172.31.0.0/16}
+    - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: medzen}}
+    ports: [{protocol: TCP, port: 8080}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: speech-orchestrator-b6-window
+  namespace: medzen
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/security-groups: sg-0f0f6c66852830013
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+    alb.ingress.kubernetes.io/subnets: subnet-00232b25bc1ac407a,subnet-05029419c6c61a536,subnet-01fb2fc3f56bce55e
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /readyz
+    alb.ingress.kubernetes.io/load-balancer-name: medzen-b6-window
+    alb.ingress.kubernetes.io/load-balancer-attributes: deletion_protection.enabled=false,idle_timeout.timeout_seconds=60
+    alb.ingress.kubernetes.io/tags: Project=medzen-speech,Environment=dev,Stage=B6.6,Workstream=integration-window,BudgetRegistry=COST-REGISTRY-2026-003
+spec:
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+      - path: /readyz
+        pathType: Prefix
+        backend: {service: {name: speech-orchestrator, port: {number: 8080}}}
+      - path: /v1/conversations/speech
+        pathType: Prefix
+        backend: {service: {name: speech-orchestrator, port: {number: 8080}}}
+      - path: /v1/conversations/stream
+        pathType: Prefix
+        backend: {service: {name: speech-orchestrator, port: {number: 8080}}}
