@@ -1,0 +1,232 @@
+{
+  "id": "B6-PACKET-2026-029-ATTEMPT-1-REFUSED-RAG-ALIGNMENT",
+  "revision": 1,
+  "status": "TERMINAL_REFUSED_ONE_ATTEMPT_ONE_UNSPENT",
+  "recorded_utc": "2026-08-11T05:19:40Z",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-029",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-029-post-mutation-stability.md",
+    "sha256": "b32bbeee830d9c399451430f1f1d7a4e668cf97e03374f3b4839c73179564a5b"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-029",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-029-window.json",
+    "sha256": "e4880d55fd80051ac3c09d0d1894256670beb4520b874ab26483d9dacdcbd73f"
+  },
+  "reviewed_commit": "5c9cd448739d519821b9b125d83b5c4bb3fc34d1",
+  "review_and_authorization_merge_commit": "91064bacb4dfb8b1adcc5e8393f02489c747e84b",
+  "attempt_1": {
+    "outcome": "REFUSED",
+    "failure_stage": "file_proof",
+    "reason_code": "FILE_CONVERSATION_PROOF_REFUSED",
+    "failed_assertion": "FILE_HTTP_STATUS_IS_200",
+    "probe_exit_code": 31,
+    "http_status": 503,
+    "dependency_error_code": "DEPENDENCY_UNAVAILABLE",
+    "safe_error_text": "RAG result does not match the request and registry",
+    "response_body_sha256": "de5b70d424b4d9cd5d78fb1bab631fa1d3e103d284338076c5f10c3145c25ef9",
+    "response_body_truncated": false,
+    "synthetic_only": true,
+    "phi_present": false,
+    "cleanup": "PASS"
+  },
+  "live_control_result": {
+    "classification": "PASS_FAIL_CLOSED_RAG_REQUEST_OR_REGISTRY_ALIGNMENT_GATE",
+    "apparatus_defect": false,
+    "first_live_conversation_reached": true,
+    "fargate_ready_probe": "PASS",
+    "stable_alb_target_observations": 3,
+    "clinical_safety_interpretation": "The platform refused rather than returning an unbound or uncited answer when the RAG result failed request and registry validation."
+  },
+  "attempt_2": {
+    "status": "NOT_EXECUTED",
+    "authorized_but_unspent": true,
+    "reason": "Owner directed that an unchanged retry must not be spent after the deterministic platform configuration finding.",
+    "transfer_permitted": false,
+    "successor_packet_required": true
+  },
+  "stage_receipts": [
+    {
+      "stage": "alb_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:51:51Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/alb_ready.json",
+      "sha256": "15cb1d20c9caf7aebb6ac34d0fe2e86a22d4b7c65e48ce26526b8ffdc5aa5440"
+    },
+    {
+      "stage": "alb_tag_mutation_warning",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:52:59Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/alb_tag_mutation_warning.json",
+      "sha256": "446ce856fea4e18754fd00d6a45a4413c3a8bfef73adac3c8edbb6bd9ff91573"
+    },
+    {
+      "stage": "asr_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:44:24Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/asr_ready.json",
+      "sha256": "b8e4f85bf653ac066ce324a24d2a4a1ac8eadfceceeb47687d54c5958b7ac604"
+    },
+    {
+      "stage": "cleanup",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T05:14:23Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/cleanup.json",
+      "sha256": "8260a5e6fff1c5ee6454bca92cc7397243eda699219278237b27b623abf77abd"
+    },
+    {
+      "stage": "controller_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:46:33Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/controller_ready.json",
+      "sha256": "6651fdd7a4d39fab7ef34952c942693038a9f400a604fa28fe7f486805002104"
+    },
+    {
+      "stage": "controller_window",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:46:20Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/controller_window.json",
+      "sha256": "2d2144e5803b9d4e9403676050175a105e899f467bd809bc9e26e4d8d2693a09"
+    },
+    {
+      "stage": "deadline",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:40:20Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/deadline.json",
+      "sha256": "6e19e1f9ab39e879e14c3304550908ad9c9199e429806b14a2779e6f2e6542b3"
+    },
+    {
+      "stage": "dra_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:42:03Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/dra_ready.json",
+      "sha256": "63bd868b8c11d3d8dd0ac81b653cef552be9d930adf73d57b6476b33db4cea63"
+    },
+    {
+      "stage": "endpoints_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:48:26Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/endpoints_ready.json",
+      "sha256": "5352d648ad3bb36b4d5cd6849900b7addf597e7930b5d23dae1a2253bb9a5469"
+    },
+    {
+      "stage": "fargate_probe",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:52:46Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/fargate_probe.json",
+      "sha256": "1e27660e7a6e624fcb22f83c328fdd64f6dc1c1d88ae796fc1683a8c0311ed33"
+    },
+    {
+      "stage": "file_proof",
+      "status": "REFUSED",
+      "recorded_utc": "2026-08-11T04:53:04Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/file_proof.json",
+      "sha256": "0443c8260a6e030a70625bd995074f26d09eaba5986aac55c54bb363a0cac729"
+    },
+    {
+      "stage": "llm_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:45:03Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/llm_ready.json",
+      "sha256": "b0328a4f777014fcc5163a1f4d70de24f5fd958be20d2125ed1f6b52d97d1c82"
+    },
+    {
+      "stage": "orchestrator_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:45:34Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/orchestrator_ready.json",
+      "sha256": "ceb40e7cde2cd168c8b59a5cfbcb4dde79511476570baf622e1dd345674a59f2"
+    },
+    {
+      "stage": "pre_endpoint_images",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:46:46Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/pre_endpoint_images.json",
+      "sha256": "1e773d8831b07febfbfe520dda831a2f73093229f0a604b96e5141678cb2de4a"
+    },
+    {
+      "stage": "rag_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:42:30Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/rag_ready.json",
+      "sha256": "fee3f2d4a04701d961df8843b9624331464e9cdf76b507636665b998ced3e614"
+    },
+    {
+      "stage": "stage0",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:40:13Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/stage0.json",
+      "sha256": "9bb8ab9def9e6fe903d338fefb508e6b55d22ec53dd4eb716dc315be2bb7ba92"
+    },
+    {
+      "stage": "terraform_window",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:47:52Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/terraform_window.json",
+      "sha256": "84ff492a150e2db2905131c8651df1d4525cb0ab26538d7abee963c5e0f6e686"
+    },
+    {
+      "stage": "tts_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:44:44Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/tts_ready.json",
+      "sha256": "f378d1fcb2afbedfbe13ca17d13582385f3f759a0ba9e8abc9e5967631885c87"
+    },
+    {
+      "stage": "workers_ready",
+      "status": "PASS",
+      "recorded_utc": "2026-08-11T04:41:40Z",
+      "path": "platform/evidence/receipts/B6-2026-029-A1-LIVE/workers_ready.json",
+      "sha256": "125a92179b2c6c48fe47d650c6837615294f242edcd746f4cd2a50175f5fd552"
+    }
+  ],
+  "zero_state": {
+    "cleanup_receipt_sha256": "8260a5e6fff1c5ee6454bca92cc7397243eda699219278237b27b623abf77abd",
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "workload_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "window_deployments": 0,
+    "probe_vpc_endpoints": 0,
+    "probe_endpoint_security_groups": 0,
+    "alb_count": 0,
+    "deadline_actions": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "local_token_absent": true,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED",
+    "terraform_zero_stable_observations": 3
+  },
+  "cost_and_allowance": {
+    "attempts_authorized": 2,
+    "attempts_consumed": 1,
+    "attempts_deliberately_unspent": 1,
+    "deadline_window_seconds": 4500,
+    "conservative_attempt_wall_clock_seconds": 2049,
+    "cpu_instance_seconds_from_asg_activity": 3096,
+    "gpu_instance_seconds_from_asg_activity": 1428,
+    "existing_reservation_usd": 10.0,
+    "incremental_aws_billing": "PENDING_RECONCILIATION",
+    "inside_existing_reservation": true
+  },
+  "prohibited_state_unchanged": {
+    "production_ssm_pointer_changes": 0,
+    "approved_asr_changes": 0,
+    "model_registrations": 0,
+    "mlflow_stage_transitions": 0,
+    "production_traffic": 0,
+    "phi": 0
+  },
+  "successor_boundary": {
+    "unchanged_attempt_2_permitted": false,
+    "required_work": [
+      "Extract the exact deployed RAG image index identity.",
+      "Resolve the deployment snapshot or proof-input binding without weakening the fail-closed check.",
+      "Add cold-rehearsal mismatch-refusal and aligned-pass cases.",
+      "Obtain independent review and exact owner approval of a new versioned packet before AWS mutation or another window."
+    ]
+  }
+}
