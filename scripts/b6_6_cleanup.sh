@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical persistent-secret cleanup for prospective packet 2026-029.
+# Canonical persistent-secret cleanup for prospective packet 2026-030.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ receipts_dir="$4"
 token_file="$5"
 attempt="$6"
 payload_path="$7"
-alb_hostname_file="/private/tmp/b6-029-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-030-attempt-${attempt}-alb-hostname"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
@@ -96,7 +96,7 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window"
-cleanup_plan="/private/tmp/b6-029-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-030-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
@@ -133,7 +133,7 @@ fi
 
 terraform_zero_stable=0
 for observation in 1 2 3; do
-  verify_plan="/private/tmp/b6-029-cleanup-stable-$PPID-$observation.tfplan"
+  verify_plan="/private/tmp/b6-030-cleanup-stable-$PPID-$observation.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$verify_plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \

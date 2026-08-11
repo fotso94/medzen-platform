@@ -40,6 +40,10 @@ PYTHON_SOURCE_APIS: dict[str, dict[str, str]] = {
         "describe_target_health": "elasticloadbalancing:DescribeTargetHealth",
         "get_caller_identity": "sts:GetCallerIdentity",
     },
+    "scripts/b6_6_registry_readback.py": {
+        "get_caller_identity": "sts:GetCallerIdentity",
+        "get_parameters_by_path": "ssm:GetParametersByPath",
+    },
     "scripts/b6_6_persistent_secret_bridge.py": {
         "describe_secret": "secretsmanager:DescribeSecret",
         "get_caller_identity": "sts:GetCallerIdentity",

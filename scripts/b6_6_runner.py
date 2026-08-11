@@ -89,6 +89,8 @@ SAFE_ALB_REFUSAL_CODES = {
 }
 SAFE_STAGE0_REFUSAL_CODES = {
     "STAGE0_BINDING_REFUSED",
+    "STAGE0_RAG_ALIGNMENT_REFUSED",
+    "STAGE0_REGISTRY_READBACK_REFUSED",
     "STAGE0_LOCAL_PATH_REFUSED",
     "STAGE0_CREDENTIAL_ROTATION_REFUSED",
     "STAGE0_AWS_IDENTITY_REFUSED",
@@ -286,7 +288,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-029-A{context.attempt}-LIVE"
+            / f"B6-2026-030-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -375,7 +377,7 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-029-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-030-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [

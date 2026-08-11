@@ -323,7 +323,7 @@ def test_whole_runner_post_mutation_audit_has_no_one_shot_verifier() -> None:
     evidence = json.loads(
         (
             ROOT
-            / "platform/evidence/B6-POST-MUTATION-VERIFIER-AUDIT-2026-001.json"
+            / "platform/evidence/B6-POST-MUTATION-VERIFIER-AUDIT-2026-002.json"
         ).read_bytes()
     )
     assert evidence == result

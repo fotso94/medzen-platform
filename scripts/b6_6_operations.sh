@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-029.
+# Canonical operation dispatcher for prospective packet 2026-030.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,8 +19,8 @@ token_file="$6"
 attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
-wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-029-attempt-${attempt}-alb-hostname"
+wav="platform/testdata/b6a-003c-b-synthetic.wav"
+alb_hostname_file="/private/tmp/b6-030-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -58,7 +58,7 @@ terraform_plan_receipt() {
 [[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: attempt must be 1 or 2" >&2; exit 2; }
 
 stage_stage0() {
-  local binding_output credential_output credential_payload command_status observed
+  local alignment_output alignment_payload binding_output credential_output credential_payload command_status observed readback_output readback_payload
   set +e
   binding_output="$(.venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" 2>&1 <<'PY'
 import sys
@@ -74,8 +74,28 @@ PY
     return $?
   fi
 
+  set +e
+  alignment_output="$(.venv/bin/python scripts/b6_6_registry_rag_alignment.py audit 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]] || ! alignment_payload="$(jq -ce 'select(.status == "PASS_ALIGNED_RAG_PROOF_PATH")' <<<"$alignment_output" 2>/dev/null)"; then
+    observed="$(jq -r '.reason_code // "registry and RAG proof alignment output malformed"' <<<"$alignment_output" 2>/dev/null || printf '%s' "$alignment_output")"
+    stage0_refuse STAGE0_RAG_ALIGNMENT_REFUSED PROOF_INPUT_REGISTRY_AND_RAG_IDENTITIES_ALIGN 42 "$observed"
+    return $?
+  fi
+
   if [[ -e "$token_file" || -e "$alb_hostname_file" ]]; then
     stage0_refuse STAGE0_LOCAL_PATH_REFUSED LOCAL_EPHEMERAL_PATHS_ABSENT 32 "preexisting local token or ALB hostname path"
+    return $?
+  fi
+
+  set +e
+  readback_output="$(.venv/bin/python scripts/b6_6_registry_readback.py --profile medzen 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]] || ! readback_payload="$(jq -ce 'select(.status == "PASS_REUSE_IDENTICAL_COMPLETE")' <<<"$readback_output" 2>/dev/null)"; then
+    observed="$(jq -r '.reason_code // "registry read-back output malformed"' <<<"$readback_output" 2>/dev/null || printf '%s' "$readback_output")"
+    stage0_refuse STAGE0_REGISTRY_READBACK_REFUSED CONTENT_ADDRESSED_TEST_REGISTRY_IS_EXACT_AND_PRODUCTION_ABSENT 43 "$observed"
     return $?
   fi
 
@@ -170,7 +190,7 @@ PY
     stage0_refuse STAGE0_ENDPOINT_ABSENCE_REFUSED WINDOW_ENDPOINTS_ARE_ABSENT 41 "$observed"
     return $?
   fi
-  write_payload "$(jq -nc --argjson credential "$credential_payload" --arg attempt "$attempt" '{authorization_record:"HASH_BOUND_OWNER_APPROVED",cost_registry:"COST-REGISTRY-2026-005",attempt:($attempt|tonumber),source_bindings_verified:true,credential:$credential}')"
+  write_payload "$(jq -nc --argjson alignment "$alignment_payload" --argjson readback "$readback_payload" --argjson credential "$credential_payload" --arg attempt "$attempt" '{authorization_record:"HASH_BOUND_OWNER_APPROVED",cost_registry:"COST-REGISTRY-2026-005",attempt:($attempt|tonumber),source_bindings_verified:true,registry_rag_alignment:$alignment,registry_readback:$readback,credential:$credential}')"
 }
 
 stage_deadline() {
@@ -234,7 +254,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-029-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-030-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -262,7 +282,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-029-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-030-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints

@@ -70,6 +70,8 @@ data:
   MEDZEN_ORCHESTRATOR_MODE: deployed_http_ssm
   MEDZEN_CLIENT_KEYS_SECRET_ID: medzen/client-api-keys
   MEDZEN_REGISTRY_ROOT: /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81
+  MEDZEN_B6_PROOF_AUDIO_SHA256: 3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3
+  MEDZEN_B6_RAG_INDEX_SHA256: 6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160
 ---
 apiVersion: resource.k8s.io/v1
 kind: ResourceClaimTemplate

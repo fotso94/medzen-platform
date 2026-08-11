@@ -16,7 +16,10 @@ sys.path.insert(0, str(SERVICE_ROOT))
 
 from medzen_speech_orchestrator.app import create_app  # noqa: E402
 from medzen_speech_orchestrator.emergency import EmergencyChecker  # noqa: E402
-from medzen_speech_orchestrator.orchestrator import SpeechOrchestrator  # noqa: E402
+from medzen_speech_orchestrator.orchestrator import (  # noqa: E402
+    OrchestratorRefusal,
+    SpeechOrchestrator,
+)
 from medzen_speech_orchestrator.registry import (  # noqa: E402
     DEPLOYED_CLASSIFICATION,
     LocalParameterStore,
@@ -185,6 +188,41 @@ def test_remote_http_chain_preserves_contract_versions_citations_and_text_fallba
     }
     service.cancel(REQUEST_ID)
     assert transport.cancelled
+
+
+class MismatchedRAGIdentityTransport(RecordingTransport):
+    def post_json(self, *, endpoint, request_id, value):
+        response = super().post_json(
+            endpoint=endpoint, request_id=request_id, value=value
+        )
+        route = deployed_router().resolve("en")
+        if endpoint == route.endpoint("rag"):
+            response["index"]["snapshot_sha256"] = "0" * 64
+        return response
+
+
+def test_remote_http_chain_refuses_a_rag_registry_identity_mismatch():
+    transport = MismatchedRAGIdentityTransport()
+    service = SpeechOrchestrator(
+        router=deployed_router(),
+        emergency=EmergencyChecker(ROOT / "registry/emergency-policies/v1.yaml"),
+        asr=RemoteASRClient(transport),
+        rag=RemoteRAGClient(transport),
+        llm=RemoteLLMClient(transport),
+        tts=RemoteTTSClient(transport),
+    )
+    with pytest.raises(
+        OrchestratorRefusal,
+        match="RAG result does not match the request and registry",
+    ) as caught:
+        service.handle(
+            audio=b"RIFF\x00\x00\x00\x00WAVEsynthetic",
+            request_id=REQUEST_ID,
+            language_hint="en",
+        )
+    assert caught.value.code == "DEPENDENCY_UNAVAILABLE"
+    assert caught.value.status_code == 503
+    assert [call[0] for call in transport.calls] == ["asr", "rag"]
 
 
 @pytest.mark.parametrize(
