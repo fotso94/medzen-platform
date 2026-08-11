@@ -27,6 +27,7 @@ LOCAL_CONVERSATION = ROOT / (
     "platform/evidence/b6-websocket-runtime/"
     "medzen-orchestrator.full-conversation.json"
 )
+COLD_RECEIPT = ROOT / "platform/evidence/receipts/B6-2026-032A-COLD/cold_rehearsal.json"
 NEW = "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
 OLD = "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa"
 
@@ -108,26 +109,12 @@ def test_manifest_renderer_is_separate_from_historical_projection():
     assert [item.get("kind") for item in ingress if item] == ["Ingress"]
 
 
-def test_cold_rehearsal_is_deterministic_and_never_creates_file_receipt(tmp_path):
-    first = tmp_path / "first"
-    second = tmp_path / "second"
-    for output in (first, second):
-        subprocess.run(
-            [
-                sys.executable,
-                "scripts/b6_remaining_cold_rehearsal.py",
-                "--output-dir",
-                str(output),
-            ],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    one = json.loads((first / "cold_rehearsal.json").read_bytes())
-    two = json.loads((second / "cold_rehearsal.json").read_bytes())
-    assert one == two
-    payload = one["payload"]
+def test_historical_cold_rehearsal_is_immutable_and_refuses_source_drift(tmp_path):
+    assert _sha(COLD_RECEIPT) == (
+        "84d5c16a8540502554365e3cba9639e60b24866fd4bb3328fc57a9194d8b2401"
+    )
+    historical = json.loads(COLD_RECEIPT.read_bytes())
+    payload = historical["payload"]
     assert payload["status"] == "PASS_COLD_REHEARSAL"
     assert payload["full_pass_runs"] == 1
     assert payload["injected_failure_runs"] == 22
@@ -137,7 +124,20 @@ def test_cold_rehearsal_is_deterministic_and_never_creates_file_receipt(tmp_path
     assert payload["new_attempt_allowance"] == 0
     assert payload["real_aws_calls"] == 0
     assert payload["real_kubectl_calls"] == 0
-    assert all(not (scenario_dir / "file_proof.json").exists() for scenario_dir in first.iterdir())
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "scripts/b6_remaining_cold_rehearsal.py",
+            "--output-dir",
+            str(tmp_path / "current-source-refusal"),
+        ],
+        cwd=ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.returncode == 2
+    assert "immutable predecessor binding differs" in completed.stdout
 
 
 def test_attempt_parser_allows_only_continuity_attempt_two():

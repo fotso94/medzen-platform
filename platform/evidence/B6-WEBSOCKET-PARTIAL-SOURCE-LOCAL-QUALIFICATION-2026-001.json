@@ -1,0 +1,123 @@
+{
+  "id": "B6-WEBSOCKET-PARTIAL-SOURCE-LOCAL-QUALIFICATION-2026-001",
+  "revision": 1,
+  "status": "PASS_LOCAL_ECR_SCAN_NOT_AUTHORIZED",
+  "recorded_utc": "2026-08-11T17:12:30Z",
+  "source": {
+    "git_commit": "bfaad78f9de5e40ab0602244ece05007aed43f12",
+    "dockerfile_sha256": "692350118b6f332e7bc5f065e1f615a49db40921706af15b3d02dd2d880b961f",
+    "requirements_sha256": "07587a01cdf0a27b0e07d1873b4152859f5d05ddbebf13df2026e5bb5441f7bc",
+    "deployed_requirements_sha256": "573745f52f1bb9d0645ef7f64d4c2b040821677036efdaab4e9008d252f85152",
+    "streaming_core_sha256": "32dad8615ed126567d4f548b623c4be70efeb5ba26cc8f434c3b70970026839f",
+    "streaming_app_sha256": "be8fd1e826ea8fd565928a928896de48dd7295432b484fa549e1a8228f72bbdb",
+    "window_probe_sha256": "0b2f1d1625bca3b09ad1aaac975813bec3a03994cafd7d19a410d6857aea3246",
+    "qualification_checker_sha256": "a88a450bc82ab929e9b615287adbe563c4c3904303acffbe38441e68b500b063",
+    "qualification_builder_sha256": "3c3a7e0093b5be0a546938ebc33db5102acb107b0951bd07338ed9c63be879d4",
+    "remediation_decision_sha256": "bd25734d8e5823f4c9f6a98d96af1262718469fe5560611c190070ae7934eed1"
+  },
+  "immutable_predecessor": {
+    "path": "platform/evidence/B6-PACKET-2026-032A-ATTEMPT-2-TERMINAL-DEPENDENCY-REFUSAL.json",
+    "sha256": "94a67cfcd9dd5541acf721dc05634559930dfdf5d4b685c26da02b3c9a1cf67a",
+    "outcome": "REFUSED",
+    "close_code": 4503,
+    "cleanup": "PASS"
+  },
+  "root_cause_proof": {
+    "dependency": "streaming_partial_source",
+    "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+    "deployed_image_missing_fixture_before_correction": true,
+    "file_route_constructs_partial_source": false,
+    "stream_route_constructed_partial_source_at_session_start": true,
+    "previous_qualification_host_mount_masked_missing_image_file": true,
+    "proof_audio_reconstructed_byte_identical": true,
+    "proof_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+  },
+  "image": {
+    "local_tag": "medzen-orchestrator:b6-ws-bfaad78",
+    "platform": "linux/amd64",
+    "local_deployable_child": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
+    "config_digest": "sha256:35e563713752a05418cde7dacaa50dd2939f787ac627e1d17471b1e271518e5a",
+    "oci_archive_sha256": "399cbb9352619046e484c00f9e2836eaf065da6a43f1c3bd18e60e32c8628474",
+    "runtime_receipt": {
+      "path": "platform/evidence/b6-websocket-runtime/medzen-orchestrator.partial-source-successor.runtime.json",
+      "sha256": "c7de1571d408cf1a7df9c002efb0fa1364c81b754668d34b4a4994e0892e63db"
+    },
+    "local_scan_receipt": {
+      "path": "platform/evidence/b6-websocket-runtime/medzen-orchestrator.partial-source-successor.scout.sarif.json",
+      "sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7"
+    }
+  },
+  "runtime_qualification": {
+    "fixed_uid_gid": "10001:10001",
+    "package_manager_records": 0,
+    "websocket_backend": "websockets==17.0.1",
+    "packaged_partial_source_sha256": "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc",
+    "deliberately_missing_source": {
+      "status": "PASS_FAIL_CLOSED",
+      "readyz_status": 503,
+      "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+    },
+    "aligned_source": {
+      "status": "PASS",
+      "rfc6455_handshake_status": 101,
+      "stable_full_conversation_passes": 3,
+      "final_result_preserved": true,
+      "event_sequence": [
+        "ready",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "final_transcript",
+        "reply_text",
+        "completed"
+      ],
+      "probe_app_pair_sha256": "f6c8eb872cbd80c5542350e0c4ac5c0b1cff82d820d94ab452ef12cba816a9d6"
+    }
+  },
+  "local_scan": {
+    "tool": "Docker Scout 1.18.3",
+    "packages_indexed": 25,
+    "critical": 0,
+    "high": 0,
+    "finding_count": 0,
+    "security_waiver_used": false
+  },
+  "local_refusals_before_final_pass": [
+    {
+      "source_commit": "fa18d8b7ec14ad7286c400c3fbbe7d275b5c7ea3",
+      "aws_calls": 0,
+      "reason": "The qualification launcher did not retain the probe import failure."
+    },
+    {
+      "source_commit": "bb5146e2e604ea788dd15295f7cb36dd07aa39d4",
+      "aws_calls": 0,
+      "reason": "The checker exposed ModuleNotFoundError because its probe subprocess inherited no repository PYTHONPATH."
+    }
+  ],
+  "tests": {
+    "focused": {
+      "passed": 69,
+      "failed": 0,
+      "warnings": 1
+    },
+    "canonical_local_suite": {
+      "passed": 1528,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    }
+  },
+  "aws_boundary": {
+    "ecr_pushes": 0,
+    "aws_mutations": 0,
+    "kubernetes_mutations": 0,
+    "worker_scale_up": 0,
+    "gpu_seconds": 0,
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0
+  },
+  "next_boundary": "Independent review and exact owner approval are required before the exact image may be pushed under a scan-only packet."
+}
