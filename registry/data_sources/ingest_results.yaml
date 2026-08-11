@@ -112,3 +112,19 @@ aaf_2026_08_11:
   note: "the Cameroon-French seed: yaounde alone is 10.6h of Cameroonian
          French; one false start (non-canonical licence key hit the
          unknown->eval_only fail-safe) fixed and junk prefix cleared"
+
+# --- 2026-08-11 batch 3: owner-supplied Kallaama full release + LRSC ---
+kallaama_full_2026_08_11:
+  serer:  {clips: 12486, hours: 32.01, prefix: curated/serer/asr/kallaama_srr/gb1/,  new_language: true}
+  pulaar: {clips: 14606, hours: 24.56, prefix: curated/pulaar/asr/kallaama_fuc/gb1/}
+  tier: permissive (CC-BY-4.0, Kallaama)
+  notes:
+    - "wolof archive skipped: same source already ingested (10.12h) in the campaign"
+    - "pulaar (fuc) distinct from WAXAL fula (fuf); pairs with soreva-v1 pulaar eval"
+lrsc_2026_08_11:
+  lingala: {clips: 2920, hours: 4.99, prefix: curated/lingala/asr/lrsc/gb1/}
+  tier: permissive (owner authority; provenance CdWav2Vec/LRSC public corpus)
+skipped_2026_08_11:
+  csrc: "unlabelled only (download notebooks for 200GB raw audio) — no transcripts;
+         candidate for future self-supervised pretraining"
+  nchlt_afr: "train/dev/test lists + pronunciation dict only — audio corpus absent"
