@@ -11,10 +11,10 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 RULE_ID = "B6-POST-MUTATION-STABILITY-2026-001"
-EVIDENCE_ID = "B6-POST-MUTATION-VERIFIER-AUDIT-2026-002"
+EVIDENCE_ID = "B6-POST-MUTATION-VERIFIER-AUDIT-2026-003"
 PREDECESSOR_PATH = (
     "platform/evidence/"
-    "B6-PACKET-2026-029-ATTEMPT-1-REFUSED-RAG-ALIGNMENT.json"
+    "B6-PACKET-2026-030-ATTEMPT-1-REFUSED-PROBE-AUDIO-BINDING.json"
 )
 
 
@@ -93,7 +93,7 @@ def audit(root: Path = ROOT) -> dict[str, Any]:
         "predecessor": {
             "path": PREDECESSOR_PATH,
             "sha256": sha256_file(root / PREDECESSOR_PATH),
-            "diagnosis": "LIVE_RAG_REQUEST_OR_REGISTRY_ALIGNMENT_REFUSAL",
+            "diagnosis": "PROBE_AUDIO_BINDING_SOURCE_DRIFT",
         },
         "post_mutation_paths": len(results),
         "corrected_paths": corrected,

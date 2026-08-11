@@ -18,6 +18,8 @@ import wave
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from scripts.b6_6_proof_audio_binding import PROOF_AUDIO_SHA256_ENV
+
 
 CONTRACT = "medzen.speech.v1"
 REGISTRY = "b6-test:d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81"
@@ -542,7 +544,13 @@ def main() -> int:
     parser.add_argument("--wav", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if hashlib.sha256(args.wav.read_bytes()).hexdigest() != "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b":
+        expected_audio_sha256 = os.environ.get(PROOF_AUDIO_SHA256_ENV)
+        if (
+            expected_audio_sha256 is None
+            or re.fullmatch(r"[0-9a-f]{64}", expected_audio_sha256) is None
+            or hashlib.sha256(args.wav.read_bytes()).hexdigest()
+            != expected_audio_sha256
+        ):
             _refuse("SYNTHETIC_WAV_SHA256_MATCHES", "synthetic WAV binding differs")
         result = {
             "file": file_proof,

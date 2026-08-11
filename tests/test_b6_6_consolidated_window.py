@@ -223,10 +223,10 @@ def test_endpoint_plan_includes_controller_noop_and_cleanup_uses_stage_status() 
     assert '[[ -e "$receipts_dir/terraform_window.json" ]]' not in cleanup
 
 
-def test_runtime_and_cleanup_bind_the_same_packet_029_hostname_file() -> None:
+def test_runtime_and_cleanup_bind_the_same_packet_030a_hostname_file() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     cleanup = (ROOT / "scripts/b6_6_cleanup.sh").read_text()
-    expected = 'alb_hostname_file="/private/tmp/b6-030-attempt-${attempt}-alb-hostname"'
+    expected = 'alb_hostname_file="/private/tmp/b6-030a-attempt-${attempt}-alb-hostname"'
     assert expected in operations
     assert expected in cleanup
 

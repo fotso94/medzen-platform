@@ -285,10 +285,12 @@ class RealOperations:
     def before_run(self, context: RunContext) -> None:
         from scripts.b6_6_bindings import COLD_PATH, validate
 
+        if context.attempt != 2:
+            raise StageFailure("PACKET_2026_030A_ONLY_CARRIES_ATTEMPT_2")
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-030-A{context.attempt}-LIVE"
+            / f"B6-2026-030A-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -377,7 +379,56 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-030-pre-attempt-cold-") as temporary:
+        source_receipts = (
+            ROOT / "platform/evidence/receipts/B6-2026-030-A1-LIVE"
+        )
+        source_evidence_path = (
+            ROOT
+            / "platform/evidence/"
+            / "B6-PACKET-2026-030-ATTEMPT-1-REFUSED-PROBE-AUDIO-BINDING.json"
+        )
+        try:
+            source_evidence = json.loads(source_evidence_path.read_bytes())
+            source_cleanup = ReceiptStore(source_receipts).load("cleanup")
+        except Exception as exc:
+            raise StageFailure("PACKET_2026_030_ATTEMPT_1_CONTINUITY_REQUIRED") from exc
+        if (
+            source_evidence.get("status")
+            != "TERMINAL_REFUSED_ONE_ATTEMPT_ONE_LOCKED"
+            or source_evidence.get("attempt_2", {}).get("status")
+            != "LOCKED_NOT_EXECUTED"
+            or source_evidence.get("attempt_2", {}).get(
+                "authorized_seconds_remaining"
+            )
+            != 4500
+            or source_evidence.get("attempt_1", {}).get("failure_stage")
+            != "file_proof"
+            or source_cleanup.get("status") != "PASS"
+            or source_evidence.get("receipt_hashes", {}).get("cleanup")
+            != sha256_file(source_receipts / "cleanup.json")
+            or any(
+                source_evidence.get("zero_state", {}).get(key) != 0
+                for key in (
+                    "cpu_desired",
+                    "cpu_asg_instances",
+                    "gpu_desired",
+                    "gpu_asg_instances",
+                    "workload_nodes",
+                    "synthetic_pods",
+                    "window_ingresses",
+                    "window_deployments",
+                    "probe_vpc_endpoints",
+                    "endpoint_security_groups",
+                    "alb_count",
+                    "deadline_actions",
+                    "production_serving_pointer_count",
+                    "approved_asr_changes",
+                )
+            )
+        ):
+            raise StageFailure("PACKET_2026_030_ATTEMPT_1_CONTINUITY_REQUIRED")
+
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-030a-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -404,6 +455,7 @@ class RealOperations:
             "proof_diagnostic_injected_failure_runs",
             "pre_deadline_cleanup_injected_failure_runs",
             "credential_visibility_transient_injection_runs",
+            "proof_audio_binding_injected_failure_runs",
             "enumerated_stages",
             "runner_source_hashes",
             "scenario_results_sha256",
@@ -417,6 +469,7 @@ class RealOperations:
             "proof_diagnostic_rehearsal",
             "pre_deadline_cleanup_rehearsal",
             "credential_visibility_rehearsal",
+            "proof_audio_binding_rehearsal",
             "post_mutation_stability_audit",
             "empirical_connectivity_gate",
             "terraform_description_charset_lint",
@@ -639,7 +692,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--packet-sha256", required=True)
     parser.add_argument("--receipts-dir", type=Path, required=True)
     parser.add_argument("--token-file", type=Path, required=True)
-    parser.add_argument("--attempt", type=int, choices=(1, 2), required=True)
+    parser.add_argument("--attempt", type=int, choices=(2,), required=True)
     return parser.parse_args()
 
 
