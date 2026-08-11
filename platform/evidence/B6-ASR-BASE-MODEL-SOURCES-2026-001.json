@@ -1,0 +1,68 @@
+{
+  "record": "ASR_BASE_MODEL_SOURCE_IDENTITY",
+  "id": "B6-ASR-BASE-MODEL-SOURCES-2026-001",
+  "status": "SOURCE_IDENTITIES_MEASURED_NO_COMPUTE_AUTHORIZED",
+  "recorded_utc": "2026-08-11T22:15:17Z",
+  "scope": "Read-only provenance and byte-identity measurement for the three-candidate pilot. No model inference, training, AWS mutation, language reactivation or promotion.",
+  "official_source": {
+    "repository": "https://github.com/facebookresearch/omnilingual-asr",
+    "release_tag": "0.2.0",
+    "release_commit": "145a12a668aace6c1d0d290128c1225571fc1955",
+    "package": "omnilingual-asr==0.2.0",
+    "package_wheel_sha256": "6b8e811143603463c371c23464ff1946a52f876e6b6a62c5fb3deee6e39ab6d4",
+    "v2_asset_card_sha256": "af4d63febb0569831210e470b256ec70dc3a55065756c21c1f514d0001f283ed",
+    "supported_language_source_sha256": "675b8a263aed48269020d4e9f06b3063d5b4e0d5399b2c3e0e06160e08d24f8e",
+    "license": "Apache-2.0"
+  },
+  "candidates": [
+    {
+      "candidate": "whisper-large-v3-operational-control",
+      "model": "openai/whisper-large-v3",
+      "base_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+      "precision": "CTranslate2 float16",
+      "artifact_tree_sha256": "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
+      "artifact_prefix": "s3://medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/",
+      "role": "existing B6A-proven operational control; not a full-suite quality result"
+    },
+    {
+      "candidate": "omniASR_CTC_1B_v2",
+      "url": "https://dl.fbaipublicfiles.com/mms/omniASR-CTC-1B-v2.pt",
+      "content_length_bytes": 3902956068,
+      "object_version_reference": "VeYX5LLhqf9GXPIO7.2bDkHC4jYppX9F",
+      "sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+      "sha256_measurement": "single sequential read of the official object; exact byte length verified"
+    },
+    {
+      "candidate": "omniASR_LLM_1B_v2",
+      "url": "https://dl.fbaipublicfiles.com/mms/omniASR-LLM-1B-v2.pt",
+      "content_length_bytes": 9118733852,
+      "object_version_reference": "PL0knnqDMbS.sgl4wX4VZqXLrc8U3B7f",
+      "sha256": "cceb4d9ebac3d168a6af6b26c62ce11bafc562b38976c6bfa87e7d60422c6da5",
+      "sha256_measurement": "eight bounded byte ranges concatenated in exact offset order; total byte length and final digest verified"
+    }
+  ],
+  "shared_tokenizer": {
+    "url": "https://dl.fbaipublicfiles.com/mms/omniASR_tokenizer_written_v2.model",
+    "sha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e"
+  },
+  "method": {
+    "network": "read-only HTTPS against official Meta release objects",
+    "http_etag_treated_as_sha256": false,
+    "model_files_committed_to_repository": false,
+    "model_files_retained_as_local_authority": false,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "inference_started": false
+  },
+  "execution_boundary": {
+    "input_freeze_status": "REFUSED_INPUT_FREEZE",
+    "pilot_permitted": false,
+    "required_before_compute": [
+      "PASS_INPUT_FREEZE twice with byte-identical evidence",
+      "locally qualified deterministic evaluation harness",
+      "scan-passed evaluation image bound by linux/amd64 child digest",
+      "independent packet review",
+      "exact owner approval"
+    ]
+  }
+}

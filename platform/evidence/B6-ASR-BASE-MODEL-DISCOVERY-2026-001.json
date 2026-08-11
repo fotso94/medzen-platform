@@ -1,0 +1,1395 @@
+{
+  "data_source": {
+    "correction_record": "registry/data_sources/eval-corrections-2026-08-11.json",
+    "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+    "git_commit": "2906ddd24e16f2e2c30d9ecd324e47733ba6ac78",
+    "inventory_path": "registry/data_sources/ingest_results.yaml",
+    "inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+    "live_prefix": "s3://medzen-speech/eval/"
+  },
+  "duplicates": [
+    {
+      "audio_checksum_sha256": "6c472e2ab556b66022b048165929c7a9a6a0ff67d2b0370a5b17d1e1255a4d94",
+      "duplicate": "ewondo/asr/soreva-v1/manifest.jsonl:112",
+      "first": "ewondo/asr/soreva-v1/manifest.jsonl:111"
+    },
+    {
+      "audio_checksum_sha256": "4dc52a35b08269e38f8c54627c09f0292bdf098ed6fbb19f0d7eee3d6e23bb3d",
+      "duplicate": "gbaya/asr/soreva-v1/manifest.jsonl:15",
+      "first": "gbaya/asr/soreva-v1/manifest.jsonl:4"
+    }
+  ],
+  "evaluation_boundary": {
+    "applies_to": "manifest namespace",
+    "audio_object_location_is_not_scope_signal": true,
+    "audio_object_requirement": "s3://medzen-speech/** plus bound SHA-256",
+    "leakage_control": "full adopted train/eval audio SHA-256 disjointness",
+    "rule": "eval/<language>/**"
+  },
+  "execution": {
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "languages_reactivated": 0,
+    "required_next_state": "CORRECT_DATA_METADATA_AND_DUPLICATES_THEN_REAUDIT",
+    "training_started": false,
+    "zero_shot_scoring_started": false
+  },
+  "hard_findings": [
+    "DUPLICATE_AUDIO_SHA256"
+  ],
+  "id": "B6-ASR-BASE-MODEL-DISCOVERY-2026-001",
+  "inventory": {
+    "hours": 60.830514,
+    "language_aliases": [
+      "acholi",
+      "akan",
+      "amharic",
+      "bafia",
+      "baka",
+      "bakoko",
+      "bamun",
+      "basaa",
+      "duala",
+      "ejagham",
+      "english",
+      "eton",
+      "ewe",
+      "ewondo",
+      "fefe",
+      "french",
+      "fula",
+      "fulfulde",
+      "gbaya",
+      "ghomala",
+      "hausa",
+      "igbo",
+      "isu",
+      "kera",
+      "kinyarwanda",
+      "kom",
+      "kwasio",
+      "lamso",
+      "lingala",
+      "luganda",
+      "maka",
+      "malagasy",
+      "medumba",
+      "mundang",
+      "ngiemboon",
+      "ngombala",
+      "nomaande",
+      "nugunu",
+      "oromo",
+      "pidgin",
+      "pulaar",
+      "sepedi",
+      "shona",
+      "swahili",
+      "wolof",
+      "yambeta",
+      "yangben",
+      "yemba",
+      "yoruba"
+    ],
+    "languages": 49,
+    "manifests": 64,
+    "rows": 24232,
+    "selected_manifest_generations": {
+      "original": 52,
+      "preference": "manifest.r2.jsonl when present; otherwise manifest.jsonl",
+      "r2": 12
+    }
+  },
+  "manifests": [
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#ach_asr"
+      ],
+      "hours": 0.36964,
+      "language": "acholi",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/acholi/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 65,
+      "selected_generation": "r2",
+      "sha256": "f6d1f0a5ac2e2ba854ca7d3736e2d001c7b6b8c88283e08c0c860ea73ea96c43",
+      "sources": [
+        "waxalnlp/makerere"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#aka_asr"
+      ],
+      "hours": 0.396888,
+      "language": "akan",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/akan/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 72,
+      "selected_generation": "r2",
+      "sha256": "30fdb0620be9ebc01758c2abcec0f985770d40793e2922f9352573f4490f0b4e",
+      "sources": [
+        "waxalnlp/university_ghana"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#am_et"
+      ],
+      "hours": 2.265717,
+      "language": "amharic",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/amharic/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 739,
+      "selected_generation": "original",
+      "sha256": "f6ebdfe92bd50ff3a3622515c47212ee100f8eab883cb51cbc6fff87c3376f1d",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#amh_asr"
+      ],
+      "hours": 0.124253,
+      "language": "amharic",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/amharic/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 25,
+      "selected_generation": "r2",
+      "sha256": "0517018c0a47f3d380306e48e67fc03f6903ecc923763a7575d27f49721b25b0",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ksf_cm"
+      ],
+      "hours": 0.088213,
+      "language": "bafia",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/bafia/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 144,
+      "selected_generation": "original",
+      "sha256": "c6157d1adc0d7138f0e2ae12cdfbb9ac4a33166e3e8916b17f59c3c030e532b0",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bkc_cm"
+      ],
+      "hours": 0.114456,
+      "language": "baka",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/baka/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 147,
+      "selected_generation": "original",
+      "sha256": "6461db703613f3371aee10e27d80474eba95a711e10fbe908c11c8626bdade1a",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bkh_cm"
+      ],
+      "hours": 0.093824,
+      "language": "bakoko",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/bakoko/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 147,
+      "selected_generation": "original",
+      "sha256": "2cc1a1a68f4235cf9820fc2b531887391e4e7e02a0f8cfc8dfe9385b9eead1ba",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bax_cm"
+      ],
+      "hours": 0.081465,
+      "language": "bamun",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/bamun/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 147,
+      "selected_generation": "original",
+      "sha256": "1b637a23251c40a5bb7f74572bbe5d2a28c13a4bfd6568f620d0a39acc903e4b",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bas_cm"
+      ],
+      "hours": 0.109254,
+      "language": "basaa",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/basaa/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 145,
+      "selected_generation": "original",
+      "sha256": "8b3a68cd9d0ad343ec93f68f03e48a42c9b292679b7382aaa023b39143ee80ea",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#dua_cm"
+      ],
+      "hours": 0.101511,
+      "language": "duala",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/duala/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 139,
+      "selected_generation": "original",
+      "sha256": "b25d1b7db1acf82b71f01909451f8896a8e10a8d18e8a19f08e09fecf2d2b9ad",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#etu_cm"
+      ],
+      "hours": 0.111883,
+      "language": "ejagham",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ejagham/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 145,
+      "selected_generation": "original",
+      "sha256": "b09fc5350ca180ecf877f115b5ef087869505e8ede48ff0857d543a90488386f",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#en_us"
+      ],
+      "hours": 2.811483,
+      "language": "english",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/english/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 1040,
+      "selected_generation": "original",
+      "sha256": "c4dfad31181bf42a557ace36addefd68e8d689276913064a668f20c1342ce634",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#eto_cm"
+      ],
+      "hours": 0.14488,
+      "language": "eton",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/eton/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "7e03cce083e0a98b5de70d38a4023f37427e9ecc90e9994ee8515af44743a82c",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ewe_tg"
+      ],
+      "hours": 0.119268,
+      "language": "ewe",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ewe/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 142,
+      "selected_generation": "original",
+      "sha256": "0aea5487682821bcdeb11c79b299960ae29e3444594a1b2282e82ed613fd7695",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#ewe_asr"
+      ],
+      "hours": 0.178463,
+      "language": "ewe",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ewe/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 34,
+      "selected_generation": "r2",
+      "sha256": "8142e15496226e1f2e84795bfb77e80c13ca2f71f21332a5726ff6d5c7544788",
+      "sources": [
+        "waxalnlp/university_ghana"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ewo_cm"
+      ],
+      "hours": 0.052067,
+      "language": "ewondo",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ewondo/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 127,
+      "selected_generation": "original",
+      "sha256": "04695f28422f15f91677b0d21e5871e9a298d4a0e15c7a6badf449cc4ee5fe1f",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#fmp_cm"
+      ],
+      "hours": 0.08995,
+      "language": "fefe",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/fefe/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 146,
+      "selected_generation": "original",
+      "sha256": "4ba781e8afa551c3d2cc2507f0e17b2be9d8cb2de733702c4d073415698fd39d",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "openslr-57-african-accented-french#ca16_test"
+      ],
+      "hours": 0.30372,
+      "language": "french",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/french/asr/aaf-test-v1/manifest.r2.jsonl",
+      "prospective_independent": true,
+      "rows": 475,
+      "selected_generation": "r2",
+      "sha256": "e75582d2739a212b070b529a390263f0e6d43b4b108c88a8f6cf5cc81113121c",
+      "sources": [
+        "aaf"
+      ],
+      "version": "aaf-test-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#fr_fr"
+      ],
+      "hours": 2.737033,
+      "language": "french",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/french/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 964,
+      "selected_generation": "original",
+      "sha256": "4bab129ecb952ee8aa125ff6d2b0ff0841f9c278fc8d328b91002edb2bf4305b",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#ff_sn"
+      ],
+      "hours": 3.54235,
+      "language": "fula",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/fula/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 920,
+      "selected_generation": "original",
+      "sha256": "9f08ebb98b6bea245db272f08aa769793f3eca3def8ab6b151668851cf21b655",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#ful_asr"
+      ],
+      "hours": 0.275127,
+      "language": "fula",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/fula/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 51,
+      "selected_generation": "r2",
+      "sha256": "39bd7223c0d4e9c4020cd669c2ca901ac5fc38bb525d40808ab4c36e4169fee3",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#fub_cm"
+      ],
+      "hours": 0.065212,
+      "language": "fulfulde",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/fulfulde/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 122,
+      "selected_generation": "original",
+      "sha256": "051b326a25c8f32d8af709fd58ab213fbc9c9945bb444e6a90831fb918f36deb",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#gya_cf"
+      ],
+      "hours": 0.043438,
+      "language": "gbaya",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/gbaya/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 101,
+      "selected_generation": "original",
+      "sha256": "095b5f496fbece1f7518e6aea87d531d19527ca1d625c098036e3e4e61ba9802",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bbj_cm"
+      ],
+      "hours": 0.036448,
+      "language": "ghomala",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ghomala/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 89,
+      "selected_generation": "original",
+      "sha256": "61711e50be3297012882ab92608b6aa85e8561ca0b5415f3b330acb24c63501b",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#ha_ng"
+      ],
+      "hours": 3.92885,
+      "language": "hausa",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/hausa/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 826,
+      "selected_generation": "original",
+      "sha256": "59a68e746984c3037b8d7e2065d2001720249da0bc8972630aaf9cd3b2be40df",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ha_ng"
+      ],
+      "hours": 0.103218,
+      "language": "hausa",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/hausa/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 149,
+      "selected_generation": "original",
+      "sha256": "82b48a3018681d6493d0290c089c500bb99ba573337e972d10b214980536ab99",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#ig_ng"
+      ],
+      "hours": 5.405767,
+      "language": "igbo",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/igbo/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 1253,
+      "selected_generation": "original",
+      "sha256": "a533c583fd9faeafa6cf1de1dc9ddce4e3860a259e7f39065ae52f3eb338f500",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ibo_ng"
+      ],
+      "hours": 0.099224,
+      "language": "igbo",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/igbo/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 140,
+      "selected_generation": "original",
+      "sha256": "04ad1751564d0b081dafa5df5b9a0d99239a8231a1dcebaf136f255ccafbf0a6",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#isu_cm"
+      ],
+      "hours": 0.124431,
+      "language": "isu",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/isu/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 147,
+      "selected_generation": "original",
+      "sha256": "23309d652329d0ffc2f92703be1c4f07d6a907a25e839ef5e59f6813020ea1eb",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ker_td"
+      ],
+      "hours": 0.084156,
+      "language": "kera",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/kera/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 132,
+      "selected_generation": "original",
+      "sha256": "6e837ff887a1df3af1662cbcfd4b08bc6cea1ac899607739cd071e7b9e9d99b0",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "fsicoli/common_voice_17_0@8262c16bf297c87a9cd88c51997c4758ed7a8ba2#rw"
+      ],
+      "hours": 10.0012,
+      "language": "kinyarwanda",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/kinyarwanda/asr/cv17-test-v1/manifest.r2.jsonl",
+      "prospective_independent": true,
+      "rows": 6657,
+      "selected_generation": "r2",
+      "sha256": "96dd66e0aef9e28157007b9091a3ded04841b1bd9c74b1fe4113e97f1986ecb3",
+      "sources": [
+        "common_voice"
+      ],
+      "version": "cv17-test-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#bkm_Kom"
+      ],
+      "hours": 0.089089,
+      "language": "kom",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/kom/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 143,
+      "selected_generation": "original",
+      "sha256": "7f93693be1b44a06356aaad4d592a949eb6c00dff5ab88dccffde0615b9b95c4",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#kqs_cm"
+      ],
+      "hours": 0.059468,
+      "language": "kwasio",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/kwasio/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 132,
+      "selected_generation": "original",
+      "sha256": "e9d0336ff0f9a57d944da8584785916fe0741ad74dbc8c73b19db1aa31f83da9",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#lns_cm"
+      ],
+      "hours": 0.093389,
+      "language": "lamso",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/lamso/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 140,
+      "selected_generation": "original",
+      "sha256": "01c93aca8a26fd3b6b5308044b959cdcbd89676e3675898d9c2226028867d599",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#ln_cd"
+      ],
+      "hours": 3.2065,
+      "language": "lingala",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/lingala/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 642,
+      "selected_generation": "original",
+      "sha256": "4d958f72b90672bc49dabe92f1566c1d0cabb0bcf9fcac11eafadf1a302294c3",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#lin_cd"
+      ],
+      "hours": 0.122984,
+      "language": "lingala",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/lingala/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "4d83ee983870bd48a8f70f4395b2ed445e1011e98b75b3e90729f2b590d8c749",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#lin_asr"
+      ],
+      "hours": 0.180587,
+      "language": "lingala",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/lingala/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 35,
+      "selected_generation": "r2",
+      "sha256": "295565d671810c44ebba075383cb10cea4c27641210b3c5ea548e637663cca5d",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#lin_asr"
+      ],
+      "hours": 0.404133,
+      "language": "lingala",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/lingala/asr/v2-holdout/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 77,
+      "selected_generation": "r2",
+      "sha256": "c07cb766744dcdb4f86ccd4a8b4f66d551eb6b19e2d5adb26a9c8d9f9d5e90cf",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v2-holdout"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#lg_ug"
+      ],
+      "hours": 4.543833,
+      "language": "luganda",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/luganda/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 1003,
+      "selected_generation": "original",
+      "sha256": "2f44a4d2ebb03770ba596a34e253a89dfcbb3dc3a6525c6050d2fbb03c3c6fc0",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#lug_asr"
+      ],
+      "hours": 0.31197,
+      "language": "luganda",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/luganda/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 53,
+      "selected_generation": "r2",
+      "sha256": "178a891e4c3513715b6489f0458f40bcee76bdc12a41054a80d9f83e72a959fd",
+      "sources": [
+        "waxalnlp/makerere"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#mcp_cm"
+      ],
+      "hours": 0.097734,
+      "language": "maka",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/maka/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 148,
+      "selected_generation": "original",
+      "sha256": "df69a760ead32b1ddaec8f94499fbcc44f775997104fd8b860e53aa0be740a8b",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#mlg_cm"
+      ],
+      "hours": 0.095671,
+      "language": "malagasy",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/malagasy/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 146,
+      "selected_generation": "original",
+      "sha256": "076442e78ce3ca2fc66477ebd1dd71b3d32f0fda592a18a7c7b7a5ba51d8a5a1",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#byv_cm"
+      ],
+      "hours": 0.145751,
+      "language": "medumba",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/medumba/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 146,
+      "selected_generation": "original",
+      "sha256": "912ef12702a3f7d314df543b974398a9c9b605af5c68cbba3401451beb21a368",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#mua_cm"
+      ],
+      "hours": 0.055693,
+      "language": "mundang",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/mundang/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 125,
+      "selected_generation": "original",
+      "sha256": "ccedb3195cf5bf499b5cb032d0c2c98764d54f48476380d3112c9c238d90b1e1",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#nnh_cm"
+      ],
+      "hours": 0.109391,
+      "language": "ngiemboon",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ngiemboon/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "0ac487848cb1701ff1b2fd17a5145a176b26d53784c07c98cc47bb05dceb572b",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#nla_cm"
+      ],
+      "hours": 0.099867,
+      "language": "ngombala",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/ngombala/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 145,
+      "selected_generation": "original",
+      "sha256": "9190209c38739cdaae702fdb1cd0837dd49d7cebd94b529847bb724c6da07aef",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#lem_cm"
+      ],
+      "hours": 0.117191,
+      "language": "nomaande",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/nomaande/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "add88b9ad7864fbd1e92b2267f2f9fc5903c75296957ea838d71a0fc4b1d4752",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#yas_cm"
+      ],
+      "hours": 0.147876,
+      "language": "nugunu",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/nugunu/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "e96719980eb976b858232b53ad91367613917699f8a92b46f1a3cd06eb1ccbb3",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#om_et"
+      ],
+      "hours": 0.1899,
+      "language": "oromo",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/oromo/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 60,
+      "selected_generation": "original",
+      "sha256": "728b0a680f720b9656bad342bedfed6cec390cc24e448096bd5de422c1002375",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#orm_asr"
+      ],
+      "hours": 0.18126,
+      "language": "oromo",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/oromo/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 35,
+      "selected_generation": "r2",
+      "sha256": "89a4dbb401f15c7c433a4b486e7e2c1a6356297049e43d32ce87bbcc73e7e2d2",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#pcm_cm"
+      ],
+      "hours": 0.071378,
+      "language": "pidgin",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/pidgin/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 142,
+      "selected_generation": "original",
+      "sha256": "7d55f0e5ec61307dedcef0453a84fd444ea75e47de26548b02bde3f97aa4fa5a",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#fuc_sn"
+      ],
+      "hours": 0.089383,
+      "language": "pulaar",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/pulaar/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 149,
+      "selected_generation": "original",
+      "sha256": "f8119f4b69889c5676ede63ea73c57c338d79f8378890fe7786400498910b7b8",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#nso_za"
+      ],
+      "hours": 0.140514,
+      "language": "sepedi",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/sepedi/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 148,
+      "selected_generation": "original",
+      "sha256": "d660262c782264aefda642deecdf8529787f2710ac353feb257dd51832a7c9b6",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#sn_zw"
+      ],
+      "hours": 5.308433,
+      "language": "shona",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/shona/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 1312,
+      "selected_generation": "original",
+      "sha256": "d5f8beb138e020c762cd93e33e063a5ed37c7e7a46a8b1f4ac61b5586c68b394",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/WaxalNLP@e0a62aaebc61#sna_asr"
+      ],
+      "hours": 0.094213,
+      "language": "shona",
+      "license_tiers": [
+        "sharealike"
+      ],
+      "path": "eval/shona/asr/v1/manifest.r2.jsonl",
+      "prospective_independent": false,
+      "rows": 15,
+      "selected_generation": "r2",
+      "sha256": "a5576e00ef5c7057ccd1e61d0409c015791a9c94a2e15cfee7e570d856a55df4",
+      "sources": [
+        "waxalnlp/digital_umuganda"
+      ],
+      "version": "v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#sw_ke"
+      ],
+      "hours": 2.717517,
+      "language": "swahili",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/swahili/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 697,
+      "selected_generation": "original",
+      "sha256": "d702a77abd077577f549c5d9fb9c0593e80765a37b0b77f184609e3f7b1b2de4",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#swa_ke"
+      ],
+      "hours": 0.111434,
+      "language": "swahili",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/swahili/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 146,
+      "selected_generation": "original",
+      "sha256": "364d84dafb441d7cd09358990d74d2c7bf0ff87a7fb79964c8008a1ba96f13e1",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#wo_sn"
+      ],
+      "hours": 2.261833,
+      "language": "wolof",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/wolof/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 515,
+      "selected_generation": "original",
+      "sha256": "3213f2b9565b7b30ecd2755229e852644c7563cd0ed9c330cf9e564c10626b39",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#wol_sn"
+      ],
+      "hours": 0.09588,
+      "language": "wolof",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/wolof/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 145,
+      "selected_generation": "original",
+      "sha256": "4183703c35463412a4771afb5f95e985861ee9e30c914f98ce8c0671803411d5",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#yat_cm"
+      ],
+      "hours": 0.151508,
+      "language": "yambeta",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/yambeta/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "7ca8986b4a0ecb0324a16ed9bd1699a41bebd55adda2dacda80922627f320f37",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#yav_cm"
+      ],
+      "hours": 0.084931,
+      "language": "yangben",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/yangben/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 132,
+      "selected_generation": "original",
+      "sha256": "bb032998d36f65475184dea8f198b1961ac1fa92b569f2b05b70da83a9fa84e4",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ybb_cm"
+      ],
+      "hours": 0.08024,
+      "language": "yemba",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/yemba/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 150,
+      "selected_generation": "original",
+      "sha256": "c9e97e160d532590ed4e1d62051a51bd02dd483464f99370fad6a28a8f4101bf",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    },
+    {
+      "dataset_releases": [
+        "google/fleurs@70bb2e84b976#yo_ng"
+      ],
+      "hours": 5.234167,
+      "language": "yoruba",
+      "license_tiers": [
+        "eval_only"
+      ],
+      "path": "eval/yoruba/asr/fleurs-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 1184,
+      "selected_generation": "original",
+      "sha256": "b23a0f7e853cda25e7cf98d85137707cbba6292bd6495c7d09c2d1b684af8fce",
+      "sources": [
+        "fleurs"
+      ],
+      "version": "fleurs-v1"
+    },
+    {
+      "dataset_releases": [
+        "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#yor_ng"
+      ],
+      "hours": 0.133406,
+      "language": "yoruba",
+      "license_tiers": [
+        "permissive"
+      ],
+      "path": "eval/yoruba/asr/soreva-v1/manifest.jsonl",
+      "prospective_independent": true,
+      "rows": 137,
+      "selected_generation": "original",
+      "sha256": "2392c514d9211077b0b6e567604afe3a25a21ffe2b1d3476d57da62701af9796",
+      "sources": [
+        "soreva"
+      ],
+      "version": "soreva-v1"
+    }
+  ],
+  "policy_findings": {
+    "asr_train_manifests": [],
+    "asr_train_rows_in_eval": 0,
+    "missing_license_tier_manifests": [],
+    "missing_license_tier_rows": 0,
+    "non_test_split_manifests": [],
+    "non_test_split_rows": 0
+  },
+  "prospective_independent_suite": {
+    "historical_b4_v1_and_v2_holdout_excluded": true,
+    "hours": 58.31398,
+    "included_versions": [
+      "aaf-test-v1",
+      "cv17-test-v1",
+      "fleurs-v1",
+      "soreva-v1"
+    ],
+    "language_aliases": [
+      "amharic",
+      "bafia",
+      "baka",
+      "bakoko",
+      "bamun",
+      "basaa",
+      "duala",
+      "ejagham",
+      "english",
+      "eton",
+      "ewe",
+      "ewondo",
+      "fefe",
+      "french",
+      "fula",
+      "fulfulde",
+      "gbaya",
+      "ghomala",
+      "hausa",
+      "igbo",
+      "isu",
+      "kera",
+      "kinyarwanda",
+      "kom",
+      "kwasio",
+      "lamso",
+      "lingala",
+      "luganda",
+      "maka",
+      "malagasy",
+      "medumba",
+      "mundang",
+      "ngiemboon",
+      "ngombala",
+      "nomaande",
+      "nugunu",
+      "oromo",
+      "pidgin",
+      "pulaar",
+      "sepedi",
+      "shona",
+      "swahili",
+      "wolof",
+      "yambeta",
+      "yangben",
+      "yemba",
+      "yoruba"
+    ],
+    "languages": 47,
+    "manifests": 54,
+    "rows": 23770
+  },
+  "record": "ASR_BASE_MODEL_EVALUATION_INPUT_DISCOVERY",
+  "recorded_utc": "2026-08-11T21:47:36Z",
+  "scope": "Metadata-only audit; no audio decode, model inference, training, AWS mutation, language reactivation or promotion.",
+  "status": "REFUSED_INPUT_FREEZE"
+}
