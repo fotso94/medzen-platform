@@ -1,0 +1,340 @@
+{
+  "id": "B6-POST-MUTATION-VERIFIER-AUDIT-2026-003",
+  "recorded_date": "2026-08-11",
+  "rule_id": "B6-POST-MUTATION-STABILITY-2026-001",
+  "status": "PASS",
+  "predecessor": {
+    "path": "platform/evidence/B6-PACKET-2026-030-ATTEMPT-1-REFUSED-PROBE-AUDIO-BINDING.json",
+    "sha256": "194e878ae8c55146811fa036ecaad8b7d2ede4b59383c5b7510d0962aeeedf93",
+    "diagnosis": "PROBE_AUDIO_BINDING_SOURCE_DRIFT"
+  },
+  "post_mutation_paths": 31,
+  "corrected_paths": 30,
+  "preexisting_compliant_paths": 1,
+  "one_shot_paths_remaining": 0,
+  "minimum_stable_observations": 2,
+  "source_hashes": {
+    "scripts/b6_6_cleanup.sh": "f5d4c1285545b8e0477a82c33cc0f11f0397cdedb7973f6357407dc96073045b",
+    "scripts/b6_6_credential.py": "b3e41544392605f0ca91a88efb1e477683d42a54bd00086f1a8628ebf6de7c77",
+    "scripts/b6_6_deadline.py": "8ec91ba6df79a72debf29a1faa50f39bf55c02daa5a5241df7e4d75b629927a2",
+    "scripts/b6_6_fargate_probe.py": "109358133d22fcfd7604d5842cd4f21b00c5bfacf5ccfc2b77cad388fa2e1bf7",
+    "scripts/b6_6_lbc_runtime.py": "671de38b749deb7236ca00125ebc824c9e656d880db9ba26e70a5fb8ee5fb7dd",
+    "scripts/b6_6_operations.sh": "22b069cdf076f26bac08be2ae95196fc332cda6512376f89310f8aeea3097eda",
+    "scripts/b6_6_pre_endpoint_images.py": "197359db87b87256883fbb9bf737dc8ec7a144968591d2146a2e18cc34d70bcd",
+    "scripts/b6_6_probe_endpoints.py": "2f532bb860c105883e45f89d68ec3b359b51178a6112752a040cb529daa11341",
+    "scripts/b6_6_wait_workers.py": "f62b71a661206d1d453a499c7ea41dcd941ca82785b4a82fc108fc28517a7603"
+  },
+  "controls": [
+    {
+      "id": "credential_version_stage",
+      "mutation": "Secrets Manager PutSecretValue",
+      "verifier": "exact version AWSCURRENT visibility",
+      "source": "scripts/b6_6_credential.py",
+      "marker": "wait_for_exact_current_version",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "local_token_file",
+      "mutation": "ephemeral token file write and fsync",
+      "verifier": "exact mode, length, newline, content and hash",
+      "source": "scripts/b6_6_credential.py",
+      "marker": "wait_for_local_token_stable",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "operator_plaintext_denial",
+      "mutation": "synthetic secret version rotation",
+      "verifier": "stable operator GetSecretValue denial",
+      "source": "scripts/b6_6_credential.py",
+      "marker": "wait_for_operator_denied",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "deadline_arm",
+      "mutation": "two Auto Scaling scheduled actions",
+      "verifier": "matching shared deadline",
+      "source": "scripts/b6_6_deadline.py",
+      "marker": "stable_deadline_observations",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "worker_scale_up",
+      "mutation": "EKS CPU and GPU desired capacity",
+      "verifier": "exact Ready worker set",
+      "source": "scripts/b6_6_wait_workers.py",
+      "marker": "\"stable_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "dra_apply",
+      "mutation": "NVIDIA DRA DaemonSet apply",
+      "verifier": "ready digest-pinned DaemonSet",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "b6_6_k8s_stability.py daemonset",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "rag_deploy",
+      "mutation": "RAG Deployment apply and scale",
+      "verifier": "RAG Deployment availability",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name rag-index --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "asr_deploy",
+      "mutation": "ASR Deployment scale",
+      "verifier": "ASR Deployment availability",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name asr-runtime --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "tts_deploy",
+      "mutation": "TTS Deployment scale",
+      "verifier": "TTS Deployment availability",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name tts-gateway --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "llm_deploy",
+      "mutation": "LLM Deployment scale",
+      "verifier": "LLM Deployment availability",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name llm-gateway --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "orchestrator_deploy",
+      "mutation": "orchestrator Deployment scale",
+      "verifier": "orchestrator Deployment availability",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name speech-orchestrator --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "resident_image_set",
+      "mutation": "all workload image pulls",
+      "verifier": "exact resident child-digest set",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "b6_6_k8s_stability.py pod-images",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "full_pre_endpoint_image_set",
+      "mutation": "all seven workload and controller pod starts",
+      "verifier": "exact eight-digest node-resident image set",
+      "source": "scripts/b6_6_pre_endpoint_images.py",
+      "marker": "\"stable_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "controller_install",
+      "mutation": "Terraform Helm controller install",
+      "verifier": "controller Deployment and digest",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name aws-load-balancer-controller --replicas 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "endpoint_create",
+      "mutation": "Terraform endpoint creation",
+      "verifier": "exact available endpoint boundary",
+      "source": "scripts/b6_6_probe_endpoints.py",
+      "marker": "\"stable_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "alb_target_registration",
+      "mutation": "Ingress and ALB target registration",
+      "verifier": "stable healthy target identity",
+      "source": "scripts/b6_6_lbc_runtime.py",
+      "marker": "\"stable_healthy_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": false,
+      "status": "PASS"
+    },
+    {
+      "id": "alb_runtime_shape",
+      "mutation": "ALB listener, rules and creation tags",
+      "verifier": "stable runtime shape hash",
+      "source": "scripts/b6_6_lbc_runtime.py",
+      "marker": "\"stable_runtime_shape_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "fargate_task",
+      "mutation": "ECS RunTask",
+      "verifier": "stable terminal task result",
+      "source": "scripts/b6_6_fargate_probe.py",
+      "marker": "\"stable_terminal_observations\": consecutive_terminal",
+      "stable_observations": 2,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "alb_tag_classification",
+      "mutation": "controller post-create tag attempts",
+      "verifier": "stable bounded tag-denial classification",
+      "source": "scripts/b6_6_lbc_runtime.py",
+      "marker": "\"stable_tag_classification_observations\": consecutive",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "local_port_forward",
+      "mutation": "kubectl port-forward process start",
+      "verifier": "two consecutive ready responses",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "stable_ready=$((stable_ready + 1))",
+      "stable_observations": 2,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "rag_drill_unavailable",
+      "mutation": "RAG Service selector diversion",
+      "verifier": "zero Endpoint addresses",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name rag-index --count 0",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "rag_drill_restore",
+      "mutation": "RAG Service selector restoration",
+      "verifier": "one Endpoint address",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "--name rag-index --count 1",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "isolation_state",
+      "mutation": "window Service and Ingress creation",
+      "verifier": "exact stable ClusterIP and ingress boundary",
+      "source": "scripts/b6_6_operations.sh",
+      "marker": "b6_6_k8s_stability.py isolation",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_ecs_tasks",
+      "mutation": "ECS StopTask",
+      "verifier": "zero listed tasks",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "ecs_zero_stable",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_alb",
+      "mutation": "Ingress deletion",
+      "verifier": "LoadBalancerNotFound",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "alb_absent_stable",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_kubernetes",
+      "mutation": "Kubernetes workload deletion",
+      "verifier": "zero window Kubernetes state",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "kubernetes_zero_payload",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_terraform",
+      "mutation": "Terraform temporary-resource destroy",
+      "verifier": "zero-change targeted plan",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "terraform_zero_stable",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_endpoints",
+      "mutation": "VPC endpoint destroy",
+      "verifier": "stable endpoint and SG absence",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "b6_6_probe_endpoints.py wait-absent",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_workers",
+      "mutation": "EKS worker scale to zero",
+      "verifier": "stable EKS and ASG zero",
+      "source": "scripts/b6_6_deadline.py",
+      "marker": "\"stable_zero_observations\": POST_MUTATION_STABLE_OBSERVATIONS",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_deadlines",
+      "mutation": "scheduled-action deletion",
+      "verifier": "stable scheduled-action absence",
+      "source": "scripts/b6_6_deadline.py",
+      "marker": "\"stable_deadline_absence_observations\": POST_MUTATION_STABLE_OBSERVATIONS",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    },
+    {
+      "id": "cleanup_local_files",
+      "mutation": "token and hostname unlink",
+      "verifier": "stable local absence",
+      "source": "scripts/b6_6_cleanup.sh",
+      "marker": "local_absence_stable",
+      "stable_observations": 3,
+      "corrected_by_this_change": true,
+      "status": "PASS"
+    }
+  ],
+  "deviations": []
+}

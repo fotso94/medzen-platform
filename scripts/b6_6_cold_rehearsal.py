@@ -50,6 +50,7 @@ from scripts.b6_6_lbc_runtime import (
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
 from scripts.b6_6_aws_read_fixtures import audit as audit_aws_read_fixtures
 from scripts.b6_6_post_mutation_audit import audit as audit_post_mutation
+from scripts.b6_6_proof_audio_binding import rehearsal as rehearse_proof_audio_binding
 from scripts.b6_6_registry_rag_alignment import rehearsal as rehearse_registry_rag_alignment
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
 from scripts.b6_6_stage_a import (
@@ -909,6 +910,7 @@ def run(output_dir: Path) -> dict[str, Any]:
     pre_deadline_cleanup_rehearsal = _pre_deadline_cleanup_rehearsal()
     credential_visibility_rehearsal = _credential_visibility_rehearsal()
     post_mutation_stability_audit = audit_post_mutation(ROOT)
+    proof_audio_binding_rehearsal = rehearse_proof_audio_binding()
     registry_rag_alignment_rehearsal = rehearse_registry_rag_alignment()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
@@ -934,6 +936,7 @@ def run(output_dir: Path) -> dict[str, Any]:
                 "pre_deadline_cleanup": pre_deadline_cleanup_rehearsal,
                 "credential_visibility": credential_visibility_rehearsal,
                 "post_mutation_stability": post_mutation_stability_audit,
+                "proof_audio_binding": proof_audio_binding_rehearsal,
                 "registry_rag_alignment": registry_rag_alignment_rehearsal,
             }
         )
@@ -947,6 +950,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         + len(new_gate_rehearsal["injected_failures"])
         + proof_diagnostic_rehearsal["injected_assertion_failures"]
         + len(pre_deadline_cleanup_rehearsal["injected_paths"])
+        + proof_audio_binding_rehearsal["injected_failures"]
         + 1,
         "stage_injected_failure_runs": len(WINDOW_STAGES),
         "new_gate_injected_failure_runs": len(
@@ -959,6 +963,9 @@ def run(output_dir: Path) -> dict[str, Any]:
             pre_deadline_cleanup_rehearsal["injected_paths"]
         ),
         "credential_visibility_transient_injection_runs": 1,
+        "proof_audio_binding_injected_failure_runs": proof_audio_binding_rehearsal[
+            "injected_failures"
+        ],
         "registry_rag_alignment_injected_failure_runs": 1,
         "enumerated_stages": list(WINDOW_STAGES),
         "runner_source_hashes": source_hashes,
@@ -972,6 +979,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "pre_deadline_cleanup_rehearsal": pre_deadline_cleanup_rehearsal,
         "credential_visibility_rehearsal": credential_visibility_rehearsal,
         "post_mutation_stability_audit": post_mutation_stability_audit,
+        "proof_audio_binding_rehearsal": proof_audio_binding_rehearsal,
         "registry_rag_alignment_rehearsal": registry_rag_alignment_rehearsal,
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"

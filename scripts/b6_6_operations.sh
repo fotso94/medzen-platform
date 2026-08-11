@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-030.
+# Canonical operation dispatcher for prospective packet 2026-030A.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,8 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/b6a-003c-b-synthetic.wav"
-alb_hostname_file="/private/tmp/b6-030-attempt-${attempt}-alb-hostname"
+proof_audio_sha256="$(.venv/bin/python -c 'from scripts.b6_6_proof_audio_binding import PROOF_AUDIO_SHA256; print(PROOF_AUDIO_SHA256)')"
+alb_hostname_file="/private/tmp/b6-030a-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -55,7 +56,8 @@ terraform_plan_receipt() {
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: required execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
-[[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: attempt must be 1 or 2" >&2; exit 2; }
+[[ "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-030A carries only attempt 2" >&2; exit 2; }
+[[ "$proof_audio_sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "REFUSING: proof-audio binding is malformed" >&2; exit 2; }
 
 stage_stage0() {
   local alignment_output alignment_payload binding_output credential_output credential_payload command_status observed readback_output readback_payload
@@ -254,7 +256,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-030-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-030a-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -282,7 +284,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-030-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-030a-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
@@ -384,7 +386,8 @@ run_local_probe() {
     jq -nc '{status:"REFUSED",reason_code:"SYNTHETIC_PROOF_ASSERTION_REFUSED",failed_assertion:"LOCAL_PORT_FORWARD_READYZ",probe_exit_code:101,http_status:null,sanitized_response_body:"",response_body_truncated:false,response_body_sha256:"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",safe_error_text:"local port-forward readyz did not pass within 60 seconds",synthetic_only:true,phi_present:false}'
     return 101
   fi
-  .venv/bin/python scripts/b6_6_probe.py "$mode" --base-url http://127.0.0.1:18080 --token-file "$token_file" --wav "$wav"
+  MEDZEN_B6_PROOF_AUDIO_SHA256="$proof_audio_sha256" \
+    .venv/bin/python scripts/b6_6_probe.py "$mode" --base-url http://127.0.0.1:18080 --token-file "$token_file" --wav "$wav"
 }
 
 run_probe_stage() {

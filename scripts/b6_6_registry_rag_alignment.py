@@ -10,6 +10,12 @@ from typing import Any
 
 import yaml
 
+from scripts.b6_6_proof_audio_binding import (
+    PROOF_AUDIO_PATH,
+    PROOF_AUDIO_SHA256,
+    audit as audit_proof_audio_binding,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 IDENTITY_EVIDENCE = ROOT / "platform/evidence/B6-RAG-IMAGE-INDEX-IDENTITY-2026-001.json"
@@ -17,8 +23,7 @@ REGISTRY_SOURCE = ROOT / "registry/deployment/b6-v0-synthetic.json"
 RAG_ROOT = ROOT / "platform/testdata/rag-index"
 WINDOW_MANIFEST = ROOT / "platform/k8s/b6-6/integration-window.yaml"
 B6A_TRANSCRIPTION = ROOT / "platform/evidence/receipts/B6A-2026-003C-F-LIVE/transcription.json"
-PROOF_AUDIO = ROOT / "platform/testdata/b6a-003c-b-synthetic.wav"
-PROOF_AUDIO_SHA256 = "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3"
+PROOF_AUDIO = PROOF_AUDIO_PATH
 PROOF_TRANSCRIPT = "This is a synthetic MedZen platform test. No patient data is present."
 PROOF_TRANSCRIPT_SHA256 = "4c0a11f2c67286a5de444f776a927da784fde10f80fd8f9140c4e907285c9d19"
 RAG_INDEX_SHA256 = "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160"
@@ -62,6 +67,7 @@ def evaluate_contract(*, expected_index_sha256: str, observed_index_sha256: str,
 
 def audit(root: Path = ROOT) -> dict[str, Any]:
     del root  # all paths are immutable module bindings rooted at this repository
+    proof_audio_binding = audit_proof_audio_binding()
     identity = json.loads(IDENTITY_EVIDENCE.read_bytes())
     registry = json.loads(REGISTRY_SOURCE.read_bytes())
     transcription = json.loads(B6A_TRANSCRIPTION.read_bytes())
@@ -142,6 +148,7 @@ def audit(root: Path = ROOT) -> dict[str, Any]:
         "citation_document_ids": [item["document_id"] for item in citations],
         "image_identity_evidence_sha256": _sha256(IDENTITY_EVIDENCE),
         "prior_live_transcription_receipt_sha256": _sha256(B6A_TRANSCRIPTION),
+        "proof_audio_binding": proof_audio_binding,
         "aws_calls": 0,
         "kubernetes_calls": 0,
         "mutations": 0,

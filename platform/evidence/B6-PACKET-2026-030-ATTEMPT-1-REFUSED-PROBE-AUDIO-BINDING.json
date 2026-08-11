@@ -1,0 +1,112 @@
+{
+  "id": "B6-PACKET-2026-030-ATTEMPT-1-REFUSED-PROBE-AUDIO-BINDING",
+  "revision": 1,
+  "status": "TERMINAL_REFUSED_ONE_ATTEMPT_ONE_LOCKED",
+  "recorded_utc": "2026-08-11T06:17:36Z",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-030",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-030-rag-proof-alignment.md",
+    "sha256": "e1689199f5f525e29e9ef42ee6796919db45d6d59a8f8f6f9341e5f567fe4605"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-030",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-030-window.json",
+    "sha256": "9c6f8e65ae72e4c1cf097dfeefdec527d33e422a352cd7a719dac56de9d98482"
+  },
+  "reviewed_commit": "c1a47d7c0b6bdd5facc94f9a3ee03feb4f5d6da8",
+  "review_and_authorization_merge_commit": "e6565734a28cfb18c612d08875a72a658d6b0abf",
+  "attempt_1": {
+    "outcome": "REFUSED",
+    "stages_passed_before_refusal": 17,
+    "failure_stage": "file_proof",
+    "reason_code": "FILE_CONVERSATION_PROOF_REFUSED",
+    "failed_assertion": "SYNTHETIC_WAV_SHA256_MATCHES",
+    "probe_exit_code": 10,
+    "http_status": null,
+    "safe_error_text": "synthetic WAV binding differs",
+    "response_body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "response_body_bytes": 0,
+    "synthetic_only": true,
+    "phi_present": false,
+    "conversation_request_sent": false,
+    "cleanup": "PASS"
+  },
+  "diagnosis": {
+    "classification": "PROBE_AUDIO_BINDING_SOURCE_DRIFT",
+    "registry_rag_identity_gate": "PASS",
+    "registry_readback": "PASS_REUSE_IDENTICAL_COMPLETE",
+    "fargate_private_ready_probe": "PASS",
+    "manifest_expected_audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "selected_audio_file_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "probe_private_literal_sha256": "97592cb9f83e38439ea9d7ff1841e502bf1ef5b60be096dd91ac80a320e5402b",
+    "source_location": "scripts/b6_6_probe.py:545",
+    "apparatus_result": "The proof client refused locally before making an HTTP request because it retained the superseded B6.3 mock-tone hash.",
+    "required_class_fix": "The probe must obtain the expected proof-audio hash from one reviewed binding source, and the cold rehearsal must refuse any probe, manifest or packet binding drift."
+  },
+  "attempt_2": {
+    "status": "LOCKED_NOT_EXECUTED",
+    "authorized_seconds_remaining": 4500,
+    "additional_reservation_required": false,
+    "unchanged_retry_permitted": false,
+    "continuity_condition": "A narrow successor packet must bind the class fix, fresh cold rehearsal and this zero-state receipt, then receive independent review PASS and exact owner approval."
+  },
+  "receipt_hashes": {
+    "stage0": "fef9e0b564b7a44b029d332ba1f4b28575a3557ff9732b1b4c7f8ddf366063c4",
+    "deadline": "fa1b94c645ad055762f9ca88ce1c0517458c38f7e6e9b4b942a26503ffd1a91a",
+    "workers_ready": "64e2847c021a497036b1464970f9ca4aaaf6e88489817be402600820a9731756",
+    "dra_ready": "c12abe70d263d9dcd3bdf55f77895cbc0b8b86437000f605aa80ccb82f2ae415",
+    "rag_ready": "3c626a755299f8b1f0b60067ca2b25192c6ad680041b708a5566d50716b1c89f",
+    "asr_ready": "76c7c05963104463c032e5bceab9383f8f40046dba26cfd2f7ee2d964441eec9",
+    "tts_ready": "d3f5173e4062ce42b3f6bedc42cabf2ae23b60ef7b3954c7bcc4509f5f5fbd91",
+    "llm_ready": "8a55fb6bd9430efd5fd804b5ea2f352499ee660d9df826570d14043f0dee5333",
+    "orchestrator_ready": "5542e8bd6515225d3c1a0d72829c9c892c64902b89420785e3f15b78b9a2edd7",
+    "controller_window": "99583f1d40f50d2860719dfc31640e752eed41a0f1fab1f230a374c901d10ba9",
+    "controller_ready": "cae9549a0a23cce1477b5eade3fd2317f74c174752e938e438c832d115fcd665",
+    "pre_endpoint_images": "a0373fdbe91726c4a06ccbe0215d184ab545ef2ee6f86551532c9f0514c92b99",
+    "terraform_window": "33b3440e1864b5f4a8c7f481a05450269823ba184637c8b6ba6191632bb033f6",
+    "endpoints_ready": "0bcb77725a240284be23e32430c031d03adad198e88e97c29865949847edc9be",
+    "alb_ready": "b2497fab6738e557176f3b21d47bff1f01fa8bf92d02ae2253db55bb3a9e87b3",
+    "fargate_probe": "9764f311514da092c36625564fc3b1e0d3e80d19dc3168a5effea7744e183149",
+    "alb_tag_mutation_warning": "b58552b637ca9838f29ed1e3d34b30e3fe89e819e1f367c73fd1f9ec3796c79b",
+    "file_proof": "cd3398ffd61b668160d921667d67c993e4cc60f0f4fbf0832df74a819b2aede3",
+    "cleanup": "2cdf7870ae473d7c62e83ceb066bfa81562c42ac69b4e6c7d23e565ab9b8c20d"
+  },
+  "zero_state": {
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "workload_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "window_deployments": 0,
+    "probe_vpc_endpoints": 0,
+    "endpoint_security_groups": 0,
+    "alb_count": 0,
+    "deadline_actions": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_changes": 0,
+    "local_token_absent": true,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED",
+    "stable_zero_observations": 3,
+    "terraform_zero_stable_observations": 3
+  },
+  "cost_and_allowance": {
+    "attempts_authorized": 2,
+    "attempts_consumed": 1,
+    "attempts_remaining_locked": 1,
+    "maximum_seconds_per_attempt": 4500,
+    "attempt_wall_clock_seconds": 2094,
+    "existing_reservation_usd": 10.0,
+    "incremental_aws_billing": "PENDING_RECONCILIATION",
+    "inside_existing_reservation": true
+  },
+  "prohibited_state_unchanged": {
+    "production_ssm_pointer_changes": 0,
+    "approved_asr_changes": 0,
+    "model_registrations": 0,
+    "mlflow_stage_transitions": 0,
+    "production_traffic": 0,
+    "phi": 0
+  }
+}

@@ -15,8 +15,8 @@ REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
 # Each approved attempt receives one independent 4,500-second deadline. Packet
-# Prospective packet 2026-030 requests two such attempts; unused time is never
-# allowed to lengthen the other.
+# Prospective packet 2026-030A carries only the remaining independent attempt;
+# unused time from attempt 1 is not added to its 4,500-second deadline.
 WINDOW_SECONDS = 4500
 POST_MUTATION_STABLE_OBSERVATIONS = 3
 POST_MUTATION_POLL_SECONDS = 2
