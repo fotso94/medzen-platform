@@ -152,6 +152,9 @@ def safe_proof_refusal(path: Path, command_exit_code: int) -> dict[str, Any] | N
     body = value.get("sanitized_response_body")
     http_status = value.get("http_status")
     safe_error = value.get("safe_error_text")
+    frame_type = value.get("websocket_frame_type")
+    close_code = value.get("websocket_close_code")
+    close_reason = value.get("websocket_close_reason")
     if (
         value.get("status") != "REFUSED"
         or value.get("reason_code") != "SYNTHETIC_PROOF_ASSERTION_REFUSED"
@@ -167,12 +170,36 @@ def safe_proof_refusal(path: Path, command_exit_code: int) -> dict[str, Any] | N
         or value.get("synthetic_only") is not True
         or value.get("phi_present") is not False
         or (http_status is not None and (not isinstance(http_status, int) or not 100 <= http_status <= 599))
+        or (
+            frame_type is not None
+            and re.fullmatch(r"[a-z][a-z0-9_]{0,31}", str(frame_type)) is None
+        )
+        or (
+            frame_type == "close"
+            and (
+                not isinstance(close_code, int)
+                or not 1000 <= close_code <= 4999
+                or not isinstance(close_reason, str)
+                or len(close_reason.encode("utf-8")) > DIAGNOSTIC_MAX_UTF8_BYTES
+            )
+        )
+        or (
+            frame_type != "close"
+            and (close_code is not None or close_reason is not None)
+        )
     ):
         return None
     lowered = body.lower()
     if "authorization:" in lowered or "bearer " in lowered:
         return None
-    return {
+    if isinstance(close_reason, str):
+        lowered_close_reason = close_reason.lower()
+        if (
+            "authorization:" in lowered_close_reason
+            or "bearer " in lowered_close_reason
+        ):
+            return None
+    result = {
         "reason_code": value["reason_code"],
         "failed_assertion": assertion,
         "probe_exit_code": value["probe_exit_code"],
@@ -184,6 +211,12 @@ def safe_proof_refusal(path: Path, command_exit_code: int) -> dict[str, Any] | N
         "synthetic_only": True,
         "phi_present": False,
     }
+    if frame_type is not None:
+        result["websocket_frame_type"] = frame_type
+    if frame_type == "close":
+        result["websocket_close_code"] = close_code
+        result["websocket_close_reason"] = close_reason
+    return result
 
 
 def safe_fargate_refusal(path: Path) -> dict[str, Any] | None:

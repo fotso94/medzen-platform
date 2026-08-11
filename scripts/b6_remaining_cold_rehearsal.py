@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic no-AWS rehearsal for packet 2026-032 remaining proofs."""
+"""Deterministic no-AWS rehearsal for packet 2026-032A attempt continuity."""
 from __future__ import annotations
 
 import argparse
@@ -19,8 +19,10 @@ if str(ROOT) not in sys.path:
 from pipeline.b6_integration_receipts import ReceiptStore, canonical_json, sha256_file
 from scripts.b6_6_runner import RunContext, StageFailure, StageResult
 from scripts.b6_remaining_bindings import (
+    ATTEMPT_1_RESULT_PATH,
     COLD_PATH,
     FILE_RECEIPT_PATH,
+    LOCAL_CONVERSATION_PATH,
     NEW_ORCHESTRATOR_DIGEST,
     REQUIRED_SOURCES,
     SCAN_RESULT_PATH,
@@ -139,7 +141,7 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
         packet_sha256="0" * 64,
         receipts_dir=directory,
         token_file=root / f"{name}.token",
-        attempt=1,
+        attempt=2,
     )
     runner = RemainingRunner(operations, ReceiptStore(directory, clock=Clock()))
     result = runner.run(context)
@@ -198,6 +200,12 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
 def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
     scan = json.loads((ROOT / SCAN_RESULT_PATH).read_bytes())
     file_receipt = json.loads((ROOT / FILE_RECEIPT_PATH).read_bytes())
+    attempt_1 = json.loads((ROOT / ATTEMPT_1_RESULT_PATH).read_bytes())
+    local_conversation = json.loads(
+        (ROOT / LOCAL_CONVERSATION_PATH).read_bytes()
+    )
+    conversation = local_conversation.get("websocket_conversation", {})
+    probe_app = conversation.get("probe_app_binding", {})
     source_paths = (
         "platform/k8s/b6-6/remaining-proofs-window.yaml",
         "scripts/b6_remaining_operations.sh",
@@ -218,6 +226,24 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
         or file_receipt.get("stage") != "file_proof"
         or file_receipt.get("status") != "PASS"
         or file_receipt.get("payload", {}).get("http_status") != 200
+        or attempt_1.get("execution", {}).get("failure_stage")
+        != "websocket_proof"
+        or attempt_1.get("execution", {}).get("cleanup") != "PASS"
+        or attempt_1.get("allowance", {}).get("packet_attempts_remaining") != 1
+        or local_conversation.get("status") != "PASS"
+        or conversation.get("status") != "PASS"
+        or conversation.get("final_result_preserved") is not True
+        or conversation.get("event_types", [None])[0] != "ready"
+        or conversation.get("event_types", [])[-3:]
+        != ["final_transcript", "reply_text", "completed"]
+        or probe_app.get("probe_sha256")
+        != sha256_file(ROOT / "scripts/b6_6_probe.py")
+        or probe_app.get("runtime_app_sha256")
+        != sha256_file(
+            ROOT
+            / "services/speech-orchestrator/"
+            / "medzen_speech_orchestrator/streaming_app.py"
+        )
     ):
         raise AssertionError("immutable predecessor binding differs")
     return {
@@ -231,6 +257,24 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
         "file_proof_sha256": sha256_file(ROOT / FILE_RECEIPT_PATH),
         "file_proof_status": "PASS",
         "file_proof_rerun": False,
+        "packet_2026_032_attempt_1_path": ATTEMPT_1_RESULT_PATH,
+        "packet_2026_032_attempt_1_sha256": sha256_file(
+            ROOT / ATTEMPT_1_RESULT_PATH
+        ),
+        "packet_2026_032_attempt_1_failure_stage": "websocket_proof",
+        "packet_2026_032_attempt_1_cleanup": "PASS",
+        "packet_2026_032_attempts_remaining": 1,
+        "local_conversation_path": LOCAL_CONVERSATION_PATH,
+        "local_conversation_sha256": sha256_file(
+            ROOT / LOCAL_CONVERSATION_PATH
+        ),
+        "local_conversation_status": "PASS",
+        "probe_app_pair_sha256": probe_app["pair_sha256"],
+        "exact_window_probe_sha256": probe_app["probe_sha256"],
+        "runtime_app_sha256": probe_app["runtime_app_sha256"],
+        "local_aws_calls": 0,
+        "local_kubectl_calls": 0,
+        "local_cloud_cost_usd": 0.0,
         "digest_projection_count": len(source_paths),
         "old_digest_projection_count": 0,
         "real_aws_calls": 0,
@@ -242,7 +286,7 @@ def run(output_dir: Path) -> dict[str, Any]:
     if output_dir.exists():
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
     reuse = _immutable_reuse_and_digest_audit()
-    with tempfile.TemporaryDirectory(prefix="medzen-b6-032-cold-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="medzen-b6-032a-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
         scenarios.extend(
@@ -258,7 +302,9 @@ def run(output_dir: Path) -> dict[str, Any]:
     }
     payload = {
         "status": "PASS_COLD_REHEARSAL",
-        "packet": "B6-AWS-CHANGE-PACKET-2026-032",
+        "packet": "B6-AWS-CHANGE-PACKET-2026-032A",
+        "continuity_attempt_number": 2,
+        "new_attempt_allowance": 0,
         "full_pass_runs": 1,
         "injected_failure_runs": len(REMAINING_WINDOW_STAGES),
         "enumerated_execution_stages": list(REMAINING_EXECUTION_STAGES),

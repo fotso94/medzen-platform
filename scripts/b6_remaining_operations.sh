@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-032.
+# Canonical operation dispatcher for prospective packet 2026-032A.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +21,7 @@ payload_path="$8"
 manifest="platform/k8s/b6-6/remaining-proofs-window.yaml"
 wav="platform/testdata/b6a-003c-b-synthetic.wav"
 proof_audio_sha256="$(.venv/bin/python -c 'from scripts.b6_6_proof_audio_binding import PROOF_AUDIO_SHA256; print(PROOF_AUDIO_SHA256)')"
-alb_hostname_file="/private/tmp/b6-032-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-032a-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -56,7 +56,7 @@ terraform_plan_receipt() {
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: required execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
-[[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-032 carries only attempts 1 and 2" >&2; exit 2; }
+[[ "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-032A carries only continuity attempt 2" >&2; exit 2; }
 [[ "$proof_audio_sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "REFUSING: proof-audio binding is malformed" >&2; exit 2; }
 
 stage_stage0() {
@@ -290,7 +290,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-032-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-032a-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -318,7 +318,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-032-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-032a-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints

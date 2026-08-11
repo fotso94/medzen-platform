@@ -39,8 +39,14 @@ Before any deployment packet may be approved:
    they are not runtime dependencies.
 3. Run service import, dynamic-link and contract smokes from the final image.
    Any service exposing WebSocket routes must also start the final container and
-   complete a real TCP/RFC 6455 upgrade against each qualifying route. An
-   in-process `TestClient` exchange is not a runtime-protocol qualification.
+   complete a real TCP/RFC 6455 upgrade against each qualifying route. A
+   handshake alone is insufficient: the exact deployment-window client must
+   also complete its full synthetic session through authentication, request
+   frames, intermediate events, final-result delivery and orderly close
+   against the containerized application with checksum-bound fake
+   dependencies. Persist the event sequence and bind the passing client and
+   in-image application sources by SHA-256. An in-process `TestClient`
+   exchange is not a runtime-protocol qualification.
 4. Run the repository's local critical/high security scan.
 5. Under a separate owner-approved scan-only packet, push the immutable image
    and require the automatic ECR scan of the deployable child to reach
