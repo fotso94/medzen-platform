@@ -57,6 +57,8 @@ PROOF_EXIT_CODES = {
     "WEBSOCKET_CONNECTION_REMAINS_OPEN": 59,
     "WEBSOCKET_EVENT_COUNT_WITHIN_BOUND": 60,
     "WEBSOCKET_SEQUENCE_MATCHES": 61,
+    "WEBSOCKET_CLOSED_BEFORE_EVENT": 62,
+    "WEBSOCKET_SERVER_ERROR_EVENT": 63,
     "CANCELLATION_STREAM_BECOMES_READY": 70,
     "CANCELLATION_EVENT_IS_CANCELLED": 71,
     "CANCELLATION_LATENCY_WITHIN_250_MS": 72,
@@ -151,6 +153,9 @@ class ProbeRefusal(RuntimeError):
         exit_code: int,
         http_status: int | None = None,
         response_body: bytes = b"",
+        websocket_frame_type: str | None = None,
+        websocket_close_code: int | None = None,
+        websocket_close_reason: str | None = None,
     ) -> None:
         super().__init__(safe_error_text)
         if PROOF_EXIT_CODES.get(failed_assertion) != exit_code:
@@ -160,10 +165,13 @@ class ProbeRefusal(RuntimeError):
         self.exit_code = exit_code
         self.http_status = http_status
         self.response_body = response_body
+        self.websocket_frame_type = websocket_frame_type
+        self.websocket_close_code = websocket_close_code
+        self.websocket_close_reason = websocket_close_reason
 
     def diagnostic(self) -> dict:
         body, truncated = sanitize_response_body(self.response_body)
-        return {
+        result = {
             "status": "REFUSED",
             "reason_code": "SYNTHETIC_PROOF_ASSERTION_REFUSED",
             "failed_assertion": self.failed_assertion,
@@ -176,6 +184,13 @@ class ProbeRefusal(RuntimeError):
             "synthetic_only": True,
             "phi_present": False,
         }
+        if self.websocket_frame_type is not None:
+            result["websocket_frame_type"] = self.websocket_frame_type
+        if self.websocket_close_code is not None:
+            result["websocket_close_code"] = self.websocket_close_code
+        if self.websocket_close_reason is not None:
+            result["websocket_close_reason"] = self.websocket_close_reason
+        return result
 
 
 def _refuse(
@@ -184,6 +199,9 @@ def _refuse(
     *,
     http_status: int | None = None,
     response_body: bytes = b"",
+    websocket_frame_type: str | None = None,
+    websocket_close_code: int | None = None,
+    websocket_close_reason: str | None = None,
 ) -> None:
     raise ProbeRefusal(
         message,
@@ -191,6 +209,9 @@ def _refuse(
         exit_code=PROOF_EXIT_CODES[assertion],
         http_status=http_status,
         response_body=response_body,
+        websocket_frame_type=websocket_frame_type,
+        websocket_close_code=websocket_close_code,
+        websocket_close_reason=websocket_close_reason,
     )
 
 
@@ -382,8 +403,38 @@ class WebSocket:
 
     def receive_json(self) -> dict:
         opcode, payload = self.receive()
+        frame_type = {
+            0: "continuation",
+            1: "text",
+            2: "binary",
+            8: "close",
+            9: "ping",
+            10: "pong",
+        }.get(opcode, f"unknown_{opcode}")
+        if opcode == 8:
+            close_code = (
+                struct.unpack("!H", payload[:2])[0]
+                if len(payload) >= 2
+                else None
+            )
+            close_reason, _ = sanitize_response_body(
+                payload[2:] if len(payload) >= 2 else b""
+            )
+            _refuse(
+                "WEBSOCKET_CLOSED_BEFORE_EVENT",
+                "WebSocket closed before the next expected event",
+                response_body=payload,
+                websocket_frame_type=frame_type,
+                websocket_close_code=close_code,
+                websocket_close_reason=close_reason,
+            )
         if opcode != 1:
-            _refuse("WEBSOCKET_EVENT_FRAME_IS_TEXT", "expected a text WebSocket frame", response_body=payload)
+            _refuse(
+                "WEBSOCKET_EVENT_FRAME_IS_TEXT",
+                "expected a text WebSocket frame",
+                response_body=payload,
+                websocket_frame_type=frame_type,
+            )
         try:
             value = json.loads(payload)
         except Exception:
@@ -463,17 +514,31 @@ def websocket_proof(args: argparse.Namespace) -> dict:
         pcm = stream.readframes(stream.getnframes())
     websocket = WebSocket(args.base_url, token)
     events: list[str] = []
+
+    def receive_event() -> dict:
+        event = websocket.receive_json()
+        if event.get("type") == "error":
+            _refuse(
+                "WEBSOCKET_SERVER_ERROR_EVENT",
+                "server returned a WebSocket error event",
+                response_body=json.dumps(
+                    event, sort_keys=True, separators=(",", ":")
+                ).encode(),
+                websocket_frame_type="text",
+            )
+        return event
+
     try:
         websocket.json({"type": "start", "request_id": str(uuid.uuid4()), "language_hint": "en", "audio_format": "pcm_s16le/16000/mono"})
-        event = websocket.receive_json()
+        event = receive_event()
         events.append(event.get("type", ""))
         for offset in range(0, len(pcm), 32768):
             websocket.binary(pcm[offset:offset + 32768])
-            event = websocket.receive_json()
+            event = receive_event()
             events.append(event.get("type", ""))
         websocket.json({"type": "end_of_speech"})
         while "completed" not in events:
-            event = websocket.receive_json()
+            event = receive_event()
             events.append(event.get("type", ""))
             if len(events) > 32:
                 _refuse("WEBSOCKET_EVENT_COUNT_WITHIN_BOUND", "WebSocket event count exceeds bound")

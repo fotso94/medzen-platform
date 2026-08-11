@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import struct
 import subprocess
 from pathlib import Path
 
@@ -14,6 +15,7 @@ from scripts.b6_6_probe import (
     PROOF_EXIT_CODES,
     REGISTRY,
     ProbeRefusal,
+    WebSocket,
     evaluate_file_response,
     sanitize_response_body,
 )
@@ -173,6 +175,53 @@ def test_runner_accepts_only_complete_allowlisted_proof_diagnostics(
     diagnostic["failed_assertion"] = "UNKNOWN_ASSERTION"
     path.write_text(json.dumps(diagnostic))
     assert safe_proof_refusal(path, captured.value.exit_code) is None
+
+
+def test_websocket_close_frame_retains_type_code_and_reason(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    websocket = object.__new__(WebSocket)
+    payload = struct.pack("!H", 4503) + b"synthetic dependency unavailable"
+    monkeypatch.setattr(websocket, "receive", lambda: (8, payload))
+    with pytest.raises(ProbeRefusal) as captured:
+        websocket.receive_json()
+    failure = captured.value
+    assert failure.failed_assertion == "WEBSOCKET_CLOSED_BEFORE_EVENT"
+    assert failure.exit_code == PROOF_EXIT_CODES["WEBSOCKET_CLOSED_BEFORE_EVENT"]
+    diagnostic = failure.diagnostic()
+    assert diagnostic["websocket_frame_type"] == "close"
+    assert diagnostic["websocket_close_code"] == 4503
+    assert diagnostic["websocket_close_reason"] == (
+        "synthetic dependency unavailable"
+    )
+    path = tmp_path / "websocket-close.json"
+    path.write_text(json.dumps(diagnostic))
+    retained = safe_proof_refusal(path, failure.exit_code)
+    assert retained is not None
+    assert retained["websocket_frame_type"] == "close"
+    assert retained["websocket_close_code"] == 4503
+    assert retained["websocket_close_reason"] == (
+        "synthetic dependency unavailable"
+    )
+
+
+def test_websocket_close_reason_is_sanitized_before_runner_retention(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    websocket = object.__new__(WebSocket)
+    payload = struct.pack("!H", 4503) + b"Bearer should-not-persist"
+    monkeypatch.setattr(websocket, "receive", lambda: (8, payload))
+    with pytest.raises(ProbeRefusal) as captured:
+        websocket.receive_json()
+    diagnostic = captured.value.diagnostic()
+    assert diagnostic["websocket_close_reason"] == "[CREDENTIAL_REDACTED]"
+    path = tmp_path / "unsafe-websocket-close.json"
+    path.write_text(json.dumps(diagnostic))
+    retained = safe_proof_refusal(path, captured.value.exit_code)
+    assert retained is not None
+    assert retained["websocket_close_reason"] == "[CREDENTIAL_REDACTED]"
 
 
 def test_receipt_engine_scopes_synthetic_body_to_refused_proof_stages(

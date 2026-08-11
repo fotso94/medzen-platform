@@ -1,0 +1,63 @@
+{
+  "id": "B6-WEBSOCKET-CONVERSATION-QUALIFICATION-2026-001",
+  "revision": 1,
+  "status": "owner-directed-local-remediation-complete",
+  "recorded_utc": "2026-08-11T16:06:00Z",
+  "purpose": "Prevent a handshake-only image qualification from concealing a WebSocket conversation failure before the final packet-2026-032 attempt.",
+  "owner_directive": {
+    "full_local_conversation_required": true,
+    "exact_window_probe_required": true,
+    "frame_type_diagnostic_required": true,
+    "close_code_and_reason_required_for_close_frames": true,
+    "attempt_2_locked_until_local_pass": true
+  },
+  "immutable_predecessor": {
+    "path": "platform/evidence/B6-PACKET-2026-032-ATTEMPT-1-TERMINAL-WEBSOCKET-FRAME-REFUSAL.json",
+    "sha256": "9d9efd1b561f859f324f0556f38432c91f77b2ec2124effb8f24d829b8582877",
+    "outcome": "REFUSED",
+    "failure_stage": "websocket_proof",
+    "cleanup": "PASS"
+  },
+  "implementation": {
+    "runtime_image_changed": false,
+    "runtime_image_child_digest": "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed",
+    "historical_fixture_changes": 0,
+    "qualification_fixture_strategy": "Separate generated checksum-bound fake registry and ASR overlays, mounted read-only only during local qualification.",
+    "probe_diagnostics": [
+      "websocket_frame_type",
+      "websocket_close_code",
+      "websocket_close_reason"
+    ],
+    "standing_rule": "Every serving image with a WebSocket route must pass the exact full synthetic deployment-window session against the real container; a handshake alone is insufficient."
+  },
+  "local_pass": {
+    "path": "platform/evidence/b6-websocket-runtime/medzen-orchestrator.full-conversation.json",
+    "sha256": "daeca28c81eb75e22f8fa9453e9b55f45c3fc7d06e86868da4442fcb021de56e",
+    "status": "PASS",
+    "event_sequence": [
+      "ready",
+      "partial_transcript",
+      "partial_transcript",
+      "partial_transcript",
+      "partial_transcript",
+      "partial_transcript",
+      "final_transcript",
+      "reply_text",
+      "completed"
+    ],
+    "probe_sha256": "d0ab3f1d230a80814e5cbfa21a63bb422a534da5d30d86aeffef5a16ac01b1e2",
+    "runtime_app_sha256": "87e5c6ac2e334ba95b62294b6f91de6a0a703f1ee991d6bb15b985f6aef75289",
+    "probe_app_pair_sha256": "e68098b4d3b1722bb37c0851be770bcf51bf656a24476c264f141a5361866a9b",
+    "aws_calls": 0,
+    "kubernetes_calls": 0,
+    "cloud_cost_usd": 0.0
+  },
+  "allowed_next_step": "Prepare a narrowly reviewed packet-2026-032A source-binding successor that carries only packet-2026-032 attempt 2 and no added allowance.",
+  "prohibited_without_new_review_and_exact_approval": [
+    "Any AWS, Terraform or Kubernetes mutation",
+    "Execution under the now-superseded packet-2026-032 source hashes",
+    "Any new or transferred attempt allowance",
+    "Any image rebuild, push or digest substitution",
+    "Any production SSM, approved/asr, MLflow or model-registry mutation"
+  ]
+}

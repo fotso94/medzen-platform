@@ -52,7 +52,7 @@ def test_real_upgrade_validator_accepts_only_a_valid_rfc6455_response():
         _validate_websocket_upgrade(response(key, status="404 Not Found"), key)
 
 
-def test_qualification_is_a_real_container_handshake_not_testclient():
+def test_qualification_is_a_real_container_conversation_not_testclient():
     checker = (ROOT / "scripts/check_b6_service_image.py").read_text()
     standard = (ROOT / "platform/standards/runtime-image-hardening-v2.md").read_text()
     for required in (
@@ -64,7 +64,12 @@ def test_qualification_is_a_real_container_handshake_not_testclient():
         "socket.create_connection",
         "Sec-WebSocket-Key",
         "_real_websocket_handshake",
+        "_exact_streamed_conversation",
         "_orchestrator_websocket_smoke",
+        '"scripts/b6_6_probe.py"',
+        '"websocket"',
+        '"final_transcript", "reply_text", "completed"',
+        '"probe_app_binding"',
     ):
         assert required in checker
     assert "TestClient" not in checker

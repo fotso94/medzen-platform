@@ -6,15 +6,27 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-032-remaining-proofs.md"
+PACKET = ROOT / (
+    "platform/decisions/"
+    "B6-AWS-CHANGE-PACKET-2026-032A-websocket-local-qualified.md"
+)
 SCAN = ROOT / "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json"
 FILE_RECEIPT = ROOT / "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json"
+ATTEMPT_1 = ROOT / (
+    "platform/evidence/"
+    "B6-PACKET-2026-032-ATTEMPT-1-TERMINAL-WEBSOCKET-FRAME-REFUSAL.json"
+)
+LOCAL_CONVERSATION = ROOT / (
+    "platform/evidence/b6-websocket-runtime/"
+    "medzen-orchestrator.full-conversation.json"
+)
 NEW = "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
 OLD = "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa"
 
@@ -27,12 +39,14 @@ def test_packet_binds_scan_pass_file_pass_and_exact_allowance():
     packet = PACKET.read_text()
     assert _sha(SCAN) in packet
     assert _sha(FILE_RECEIPT) in packet
+    assert _sha(ATTEMPT_1) in packet
+    assert _sha(LOCAL_CONVERSATION) in packet
     assert NEW in packet
     assert "must not be rerun" in packet
-    assert "two non-transferable" in packet
-    assert "4,500-second attempts within the existing $10 reservation" in packet
+    assert "single unused non-transferable 4,500-second attempt" in packet
+    assert "continuity attempt 2" in packet
     assert "New reservation | `$0.00`" in packet
-    assert "A third attempt" in packet
+    assert "Any further attempt" in packet
 
 
 def test_successor_stages_exclude_file_and_keep_only_remaining_live_proofs():
@@ -119,12 +133,14 @@ def test_cold_rehearsal_is_deterministic_and_never_creates_file_receipt(tmp_path
     assert payload["injected_failure_runs"] == 22
     assert payload["file_proof_receipts_created"] == 0
     assert payload["preserved_proofs_not_executed"] == ["file_proof"]
+    assert payload["continuity_attempt_number"] == 2
+    assert payload["new_attempt_allowance"] == 0
     assert payload["real_aws_calls"] == 0
     assert payload["real_kubectl_calls"] == 0
     assert all(not (scenario_dir / "file_proof.json").exists() for scenario_dir in first.iterdir())
 
 
-def test_attempt_parser_allows_only_one_or_two():
+def test_attempt_parser_allows_only_continuity_attempt_two():
     script = ROOT / "scripts/b6_remaining_runner.py"
     common = [
         sys.executable,
@@ -140,9 +156,12 @@ def test_attempt_parser_allows_only_one_or_two():
         "--token-file",
         "/tmp/missing-token",
     ]
-    result = subprocess.run([*common, "--attempt", "3"], capture_output=True, text=True)
-    assert result.returncode != 0
-    assert "invalid choice: '3'" in result.stderr
+    for attempt in (1, 3):
+        result = subprocess.run(
+            [*common, "--attempt", str(attempt)], capture_output=True, text=True
+        )
+        assert result.returncode != 0
+        assert f"invalid choice: '{attempt}'" in result.stderr
 
 
 def test_stage0_proves_worker_deployment_and_alb_zero_state():
@@ -184,3 +203,133 @@ def test_successor_stage0_safe_refusals_retain_exact_pre_model_detail(tmp_path):
             "safe_error_text": "synthetic pre-model diagnostic",
             "pre_model_and_audio": True,
         }
+
+
+def test_authorization_binding_accepts_only_the_single_continuity_attempt(
+    tmp_path: Path,
+):
+    from scripts.b6_remaining_bindings import (
+        ATTEMPT_1_RESULT_PATH,
+        AUTH_ID,
+        COLD_PATH,
+        FILE_RECEIPT_PATH,
+        LOCAL_CONVERSATION_PATH,
+        NEW_ORCHESTRATOR_DIGEST,
+        PACKET_ID,
+        REQUIRED_SOURCES,
+        SCAN_RESULT_PATH,
+        BindingRefusal,
+        validate,
+    )
+
+    packet_sha256 = _sha(PACKET)
+    reviewed_commit = "1" * 40
+    authorization = {
+        "id": AUTH_ID,
+        "status": "owner-approved",
+        "packet": {"id": PACKET_ID, "sha256": packet_sha256},
+        "prepared_repository_commit": reviewed_commit,
+        "independent_review": {
+            "status": "PASS",
+            "reviewed_repository_commit": reviewed_commit,
+            "reviewed_packet_sha256": packet_sha256,
+            "reviewed_cold_rehearsal_sha256": _sha(ROOT / COLD_PATH),
+        },
+        "allowance": {
+            "aggregate_project_ceiling_usd": 300.0,
+            "recognized_committed_guardrail_usd": 64.4286064216,
+            "existing_reservation_usd": 10.0,
+            "new_reservation_usd": 0.0,
+            "original_packet_attempts_authorized": 2,
+            "original_packet_attempts_consumed": 1,
+            "continuity_attempt_number": 2,
+            "requested_attempts": 1,
+            "maximum_seconds_per_attempt": 4500,
+            "maximum_requested_worker_seconds": 4500,
+            "estimated_compute_usd": 1.6,
+            "attempts_non_transferable": True,
+            "pass_terminates_packet": True,
+            "cold_rehearsal_required_before_each_attempt": True,
+        },
+        "proof_scope": {
+            "preserved_not_rerun": ["file_proof"],
+            "remaining_live_proofs": [
+                "websocket_proof",
+                "cancellation_proof",
+                "failure_drills",
+                "isolation_proof",
+            ],
+            "production_traffic": False,
+            "synthetic_only": True,
+        },
+        "stage_a_reuse": {
+            "source_packet": "B6-AWS-CHANGE-PACKET-2026-026",
+            "aggregate_receipt_path": (
+                "platform/evidence/receipts/"
+                "B6-2026-026-STAGE-A-LIVE/stage_a.json"
+            ),
+            "aggregate_receipt_sha256": _sha(
+                ROOT
+                / "platform/evidence/receipts/"
+                / "B6-2026-026-STAGE-A-LIVE/stage_a.json"
+            ),
+            "cleanup_receipt_path": (
+                "platform/evidence/receipts/"
+                "B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json"
+            ),
+            "cleanup_receipt_sha256": _sha(
+                ROOT
+                / "platform/evidence/receipts/"
+                / "B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json"
+            ),
+            "stable_probe_passes": 3,
+            "cleanup_complete": True,
+            "rerun_permitted": False,
+        },
+        "immutable_evidence": {
+            "packet_2026_031_scan_result": {
+                "path": SCAN_RESULT_PATH,
+                "sha256": _sha(ROOT / SCAN_RESULT_PATH),
+                "outcome": "PASS_SCAN_ONLY",
+                "orchestrator_child_manifest_digest": NEW_ORCHESTRATOR_DIGEST,
+            },
+            "preserved_file_proof": {
+                "path": FILE_RECEIPT_PATH,
+                "sha256": _sha(ROOT / FILE_RECEIPT_PATH),
+                "status": "PASS",
+                "rerun_permitted": False,
+            },
+            "packet_2026_032_attempt_1_refusal": {
+                "path": ATTEMPT_1_RESULT_PATH,
+                "sha256": _sha(ROOT / ATTEMPT_1_RESULT_PATH),
+                "status": (
+                    "REFUSED_ATTEMPT_2_LOCKED_PENDING_"
+                    "LOCAL_CONVERSATION_QUALIFICATION"
+                ),
+                "failure_stage": "websocket_proof",
+                "cleanup": "PASS",
+            },
+            "local_full_websocket_conversation": {
+                "path": LOCAL_CONVERSATION_PATH,
+                "sha256": _sha(ROOT / LOCAL_CONVERSATION_PATH),
+                "status": "PASS",
+                "probe_app_pair_sha256": (
+                    "e68098b4d3b1722bb37c0851be770bcf"
+                    "51bf656a24476c264f141a5361866a9b"
+                ),
+            },
+        },
+        "source_bindings": {
+            relative: _sha(ROOT / relative)
+            for relative in sorted(REQUIRED_SOURCES)
+        },
+    }
+    path = tmp_path / "authorization.json"
+    path.write_text(json.dumps(authorization))
+    assert validate(path, packet_sha256, ROOT)["allowance"][
+        "requested_attempts"
+    ] == 1
+    authorization["allowance"]["requested_attempts"] = 2
+    path.write_text(json.dumps(authorization))
+    with pytest.raises(BindingRefusal, match="allowance binding differs"):
+        validate(path, packet_sha256, ROOT)
