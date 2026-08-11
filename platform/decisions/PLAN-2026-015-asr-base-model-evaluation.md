@@ -1,10 +1,10 @@
 # PLAN-2026-015 — Whisper versus Meta Omnilingual ASR
 
-Status: **PROPOSED — INPUT FREEZE REFUSED ON TWO IDENTITIES — NO MODEL SCORING AUTHORIZED**
+Status: **PROPOSED — INPUT FREEZE PASSED TWICE — LOCAL RUNTIME QUALIFIED — IMAGE SCAN BLOCKED ON META-PINNED PYTORCH — NO MODEL SCORING AUTHORIZED**
 
 Owner purpose: evaluate the existing Whisper large-v3 base against production-realistic Meta Omnilingual ASR candidates on the expanded African-language evaluation inventory, without changing B4/B5 history, language scope, promotion gates, or production state.
 
-This remains a separate decision track from B7, but both now share unified mainline commit `e04a4140491d7a5d0a389403bcc3c20eed3ca713`. Nothing in this plan is AWS authorization.
+This remains a separate decision track from B7, but both now share unified mainline commit `7a5040601fcd171c394aae679a9fad9d621c673b`. Nothing in this plan is AWS authorization.
 
 ## 1. Preserved boundaries
 
@@ -19,33 +19,32 @@ This remains a separate decision track from B7, but both now share unified mainl
 
 The metadata-only inventory is bound to:
 
-- unified starting commit: `e04a4140491d7a5d0a389403bcc3c20eed3ca713`;
-- latest data-source commit: `2906ddd24e16f2e2c30d9ecd324e47733ba6ac78`;
+- unified starting commit: `7a5040601fcd171c394aae679a9fad9d621c673b`;
+- latest data-source commit: `46448c66e9068026552aa65262d689201c85fe7d`;
 - source inventory: `registry/data_sources/ingest_results.yaml`;
 - source inventory SHA-256: `f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953`;
 - correction record: `registry/data_sources/eval-corrections-2026-08-11.json`, SHA-256 `91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad`;
+- correction addendum: `registry/data_sources/eval-corrections-2026-08-11.json.note`, SHA-256 `4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f`;
 - discovery record: `platform/evidence/B6-ASR-BASE-MODEL-DISCOVERY-2026-001.json`;
-- discovery record SHA-256: `dd6ca577b0394fae5ea274ac9da631b3d6e4ab7a5a8af748e876e4763be29d06`;
+- discovery record SHA-256: `c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a`;
+- reproduction record: `platform/evidence/B6-ASR-BASE-MODEL-INPUT-FREEZE-REPRODUCTION-2026-001.json`, SHA-256 `adba05093d830e3e6d56dec1e408a07e98a8e90074ab64aae2d93174928843b1`;
 - model-source identity record: `platform/evidence/B6-ASR-BASE-MODEL-SOURCES-2026-001.json`;
-- model-source identity record SHA-256: `adb88498d996ccafd7cb42beb2c72780d2593ca5b0e8bcd5d793b09be46c2794`;
+- model-source identity record SHA-256: `34baae05d5bc74601a2228002fe6c2d86999fddfe1e152e49b4febf62e2817eb`;
 - live read-only source prefix: `s3://medzen-speech/eval/`.
 
-The audit observed 64 manifests, 24,232 rows, 60.830514 hours, and 49 language aliases. Excluding historical B4 `v1` and `v2-holdout` inputs leaves a prospective independent suite of 54 manifests, 23,770 rows, 58.313980 hours, and 47 language aliases. Acholi and Akan currently have no new independent evaluation version, so they cannot enter the prospective comparison merely through their historical B4 sets.
+The audit observed 64 manifests, 24,230 rows, 60.829811 hours, and 49 language aliases. Excluding historical B4 `v1` and `v2-holdout` inputs leaves a prospective independent suite of 54 manifests, 23,768 rows, 58.313277 hours, and 47 language aliases. Acholi and Akan currently have no new independent evaluation version, so they cannot enter the prospective comparison merely through their historical B4 sets.
 
 No audio was downloaded and no inference was started during discovery.
 
-### 2.1 Current refusal
+### 2.1 Passed input freeze
 
-The audit prefers `manifest.r2.jsonl` beside a frozen original and otherwise selects `manifest.jsonl`; it never counts both. The live re-audit selected 12 ASR r2 manifests and 52 originals. The remaining input-freeze state is `REFUSED_INPUT_FREEZE` on exactly two intra-manifest identities:
+The audit prefers `manifest.r2.jsonl` beside a frozen original and otherwise selects `manifest.jsonl`; it never counts both. The final live re-audit selected 14 ASR r2 manifests and 50 originals. Two independent executions returned byte-identical `PASS_INPUT_FREEZE` results: canonical stdout SHA-256 `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` and normalized evidence SHA-256 `c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a` in both runs.
 
-- Ewondo SOREVA SHA-256 `6c472e2ab556b66022b048165929c7a9a6a0ff67d2b0370a5b17d1e1255a4d94`, first at row 111 and duplicated at row 112;
-- Gbaya SOREVA SHA-256 `4dc52a35b08269e38f8c54627c09f0292bdf098ed6fbb19f0d7eee3d6e23bb3d`, first at row 4 and duplicated at row 15.
-
-The r2 manifests cleared all permission, license-tier, and split findings: `asr_train` rows in the selected evaluation set are zero, missing tiers are zero, and non-test splits are zero. The correction record's `dupes: 0` describes its cross-manifest check; the two findings above are repeated rows inside individual SOREVA manifests and therefore remain visible.
+The two prior findings were resolved prospectively by the data-owned r2 manifests without modifying the frozen originals: Ewondo r2 SHA-256 `da26e21dbb45e4b118a6987fdc7aa63f217f0aeb4f04885c91c04243448756fd` and Gbaya r2 SHA-256 `585de6329739155aa4e87c77ef277547b884c9ec6a3e051034fedfdb14a54846`. The final selected set contains zero duplicate audio identities, zero `asr_train` permissions, zero missing tiers, and zero non-test splits.
 
 Owner audit ruling: the evaluation boundary is the manifest namespace `eval/<language>/**`. An audio object may live elsewhere under `s3://medzen-speech/**` and remain bound by its SHA-256; object layout is not evidence of leakage. The prior 13,077-row path finding is withdrawn prospectively from this audit, not erased from its earlier evidence. Leakage is instead decided by complete train/eval checksum disjointness. The SOREVA source tally is already corrected to 39 languages / 5,483 clips on the unified mainline and is no longer an open finding.
 
-Corrections must be prospective and content-addressed. They must not overwrite the historical B4 manifests or silently discard duplicates. The corrected freeze must prove disjoint train/evaluation audio checksums across the complete adopted inventory, exact row counts, licenses, uses, splits, source releases, and audio-object hashes.
+Corrections remain prospective and content-addressed; historical B4 manifests and earlier refusal evidence remain unchanged. The passed freeze binds the complete selected inventory, exact row counts, licenses, uses, splits, source releases, and audio-object hashes. It authorizes local runtime qualification only, not scoring or AWS execution.
 
 ## 3. Candidates and provenance
 
@@ -71,7 +70,7 @@ The primary Meta screen contains two v2 1B candidates:
 Official source bindings discovered before model download:
 
 - repository: `facebookresearch/omnilingual-asr`, release tag `0.2.0`, commit `145a12a668aace6c1d0d290128c1225571fc1955`;
-- package: `omnilingual-asr==0.2.0`, wheel SHA-256 `6b8e811143603463c371c23464ff1946a52f876e6b6a62c5fb3deee6e39ab6d4`;
+- installation identity: repository release tag `0.2.0` at the exact commit above, installed from source without dependency resolution; the package declares internal version `0.1.0`, which the image verifies at build and startup;
 - v2 asset-card SHA-256: `af4d63febb0569831210e470b256ec70dc3a55065756c21c1f514d0001f283ed`;
 - supported-language source SHA-256: `675b8a263aed48269020d4e9f06b3063d5b4e0d5399b2c3e0e06160e08d24f8e`;
 - code and released models: Apache-2.0.
@@ -86,6 +85,14 @@ Checkpoint URLs and current observed object metadata:
 The shared v2 written tokenizer SHA-256 is `8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e`. These identities were measured from the official release objects using read-only HTTPS and exact byte-length verification; no model was retained in the repository and no inference occurred. An HTTP ETag, including a multipart ETag, is not a SHA-256. Each checkpoint and tokenizer must still be mirrored create-only into a controlled, non-serving staging area, verified by read-back, scanned with the evaluation image, and bound before compute.
 
 `omniASR_LLM_7B_ZS` is excluded from the first comparison: it expects one to ten in-context audio/transcript examples, is roughly 30 GiB to download, and has an official A100 inference estimate near 20 GiB. That is not the same zero-shot operating condition and is a poor first fit for the existing 23,034 MiB L4.
+
+### 3.3 Local runtime qualification and security result
+
+The local `linux/amd64` image qualifies functionally and structurally: it runs read-only as UID/GID 10001, imports the exact three adapters offline, binds the Meta source commit and internal version, and contains no compiler, source-control client, or Python package installer. The result is bound by `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-001.json`, SHA-256 `737bb22ec59c88f6d2daf20f688bfd17021c20053711db891c2ae2a8168a86a5`. Its local-build attestation identifies pre-commit source `79d2a25f35950e74ac07bf93f909651edcaafa9c`; because the qualification changes were uncommitted at build time, this diagnostic image is explicitly ineligible for publication even apart from its scan findings.
+
+The image does **not** pass the mandatory local scan. Updating PyArrow from 20.0.0 to 23.0.1 removed its high finding, but the supported Meta runtime still has four high findings in `torch==2.8.0+cu128`. A tested upgrade to PyTorch 2.11 was rejected at startup by `fairseq2n 0.6`, which pins and enforces PyTorch 2.8. The released Omnilingual source bounds fairseq2 to 0.5.2–0.6.0. No unsupported override and no vulnerability waiver was used.
+
+Therefore no ECR push, authoritative scan, model download, GPU start, or pilot execution is permitted. This is an upstream security/compatibility blocker, not an input-freeze or data-quality failure. Resolution requires either a scan-clean upstream-compatible Meta/fairseq2 release or a new, independently reviewed decision to build and validate a compatible runtime from source before this pilot packet can advance.
 
 ## 4. Preliminary compatibility result
 
@@ -175,21 +182,21 @@ After `PASS_INPUT_FREEZE`, present a small pilot packet binding:
 
 The packet must stop before the full suite. The full run needs a second authorization based on pilot evidence and a new cost estimate.
 
-The current draft pilot packet is `platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md`. It is deliberately non-executable while the two duplicate identities remain and while the evaluation image has no scan-passed child digest.
+The current draft pilot packet is `platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md`. It remains non-executable because the local image has four unwaived high findings; an authoritative image scan cannot be requested yet.
 
 ## 9. Exit semantics
 
-Planning can conclude as `BASE_MODEL_EVALUATION_READY_FOR_INPUT_REPAIR`.
+Planning can conclude as `BASE_MODEL_EVALUATION_INPUT_FREEZE_PASSED`.
 
-Scoring remains `BLOCKED_INPUT_FREEZE` today. A later evaluation may conclude `WHISPER_RECOMMENDED`, `OMNILINGUAL_CTC_RECOMMENDED`, `OMNILINGUAL_LLM_RECOMMENDED`, `NO_CANDIDATE_ELIGIBLE`, or `OWNER_DECISION_REQUIRED`. None of those states changes B5, activates a training language, promotes a model, or authorizes production use.
+Scoring is `BLOCKED_LOCAL_IMAGE_SCAN` today. A later evaluation may conclude `WHISPER_RECOMMENDED`, `OMNILINGUAL_CTC_RECOMMENDED`, `OMNILINGUAL_LLM_RECOMMENDED`, `NO_CANDIDATE_ELIGIBLE`, or `OWNER_DECISION_REQUIRED`. None of those states changes B5, activates a training language, promotes a model, or authorizes production use.
 
 ## 10. Immediate next actions
 
-1. Independently review this plan and the discovery record.
-2. The data engineer publishes Ewondo and Gbaya SOREVA r2 manifests that resolve the named intra-manifest identities without mutating the originals.
-3. Require a deterministic `PASS_INPUT_FREEZE` re-audit using r2 preference.
-4. Prepare the local evaluation harness and fixtures without model downloads or AWS calls.
-5. Reconcile cost, present the pilot packet, and only then run measured inference.
+1. Obtain a scan-clean Meta-compatible runtime or approve a separate, reviewable source-built compatibility qualification track; no waiver is proposed.
+2. Rebuild and require a local zero-critical/high scan.
+3. Only after local PASS, present a separate authoritative ECR scan-only packet.
+4. Bind the scan-passed `linux/amd64` child digest and a clean source commit into the pilot packet for independent review.
+5. Only after the exact owner approval may the bounded pilot run measured inference.
 
 Official references:
 

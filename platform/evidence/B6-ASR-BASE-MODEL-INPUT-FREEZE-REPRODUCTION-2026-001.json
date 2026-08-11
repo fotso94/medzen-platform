@@ -1,0 +1,63 @@
+{
+  "record": "ASR_BASE_MODEL_INPUT_FREEZE_REPRODUCTION",
+  "id": "B6-ASR-BASE-MODEL-INPUT-FREEZE-REPRODUCTION-2026-001",
+  "status": "PASS_INPUT_FREEZE_REPRODUCED_IDENTICALLY",
+  "recorded_utc": "2026-08-11T22:25:25Z",
+  "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",
+  "unified_master": "7a5040601fcd171c394aae679a9fad9d621c673b",
+  "audit_script": "scripts/audit_asr_base_model_eval_inputs.py",
+  "audit_record": "platform/evidence/B6-ASR-BASE-MODEL-DISCOVERY-2026-001.json",
+  "audit_record_sha256": "c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a",
+  "canonical_stdout_runs": [
+    {
+      "run": 1,
+      "status": "PASS_INPUT_FREEZE",
+      "sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad"
+    },
+    {
+      "run": 2,
+      "status": "PASS_INPUT_FREEZE",
+      "sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad"
+    }
+  ],
+  "normalized_persisted_runs": [
+    {
+      "run": 1,
+      "sha256": "c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a"
+    },
+    {
+      "run": 2,
+      "sha256": "c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a"
+    }
+  ],
+  "byte_identical": true,
+  "bindings": {
+    "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+    "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+    "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
+    "ewondo_r2_sha256": "da26e21dbb45e4b118a6987fdc7aa63f217f0aeb4f04885c91c04243448756fd",
+    "gbaya_r2_sha256": "585de6329739155aa4e87c77ef277547b884c9ec6a3e051034fedfdb14a54846"
+  },
+  "result": {
+    "selected_manifests": 64,
+    "selected_r2_manifests": 14,
+    "rows": 24230,
+    "languages": 49,
+    "prospective_manifests": 54,
+    "prospective_rows": 23768,
+    "prospective_languages": 47,
+    "duplicate_audio_sha256": 0,
+    "asr_train_rows_in_eval": 0,
+    "missing_license_tier_rows": 0,
+    "non_test_split_rows": 0
+  },
+  "execution": {
+    "audio_downloaded": false,
+    "inference_started": false,
+    "gpu_started": false,
+    "aws_mutations": 0,
+    "training_started": false,
+    "languages_reactivated": 0
+  },
+  "next_gate": "LOCAL_EVALUATION_RUNTIME_QUALIFICATION"
+}

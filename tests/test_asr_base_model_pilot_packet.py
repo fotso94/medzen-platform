@@ -32,25 +32,24 @@ def sources() -> dict:
 
 def test_packet_is_explicitly_non_executable() -> None:
     value = packet()
-    assert "BLOCKED_INPUT_FREEZE" in value
+    assert "INPUT FREEZE PASSED" in value
+    assert "BLOCKED_LOCAL_IMAGE_SCAN" in value
     assert "NOT EXECUTABLE" in value
     assert "NO APPROVAL REQUESTED" in value
     assert "approval phrase is intentionally unavailable" in value
-    assert "Stage 0 is mandatory and currently refuses" in value
+    assert "Stage 0 remains mandatory" in value
 
 
-def test_packet_binds_the_two_remaining_duplicate_identities() -> None:
+def test_packet_binds_the_reproduced_passed_freeze() -> None:
     value = packet()
     for expected in (
-        "6c472e2ab556b66022b048165929c7a9a6a0ff67d2b0370a5b17d1e1255a4d94",
-        "eval/ewondo/asr/soreva-v1/manifest.jsonl:111",
-        "eval/ewondo/asr/soreva-v1/manifest.jsonl:112",
-        "4dc52a35b08269e38f8c54627c09f0292bdf098ed6fbb19f0d7eee3d6e23bb3d",
-        "eval/gbaya/asr/soreva-v1/manifest.jsonl:4",
-        "eval/gbaya/asr/soreva-v1/manifest.jsonl:15",
+        "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+        "c5d4353b179b58d4f5c8f8770c04475ed7e2e45ef5b9518123973dc241ff930a",
+        "14 r2 and 50 original manifests",
+        "zero duplicate identities",
     ):
         assert expected in value
-    assert "zero is a cross-manifest duplicate count" in value
+    assert "zero `asr_train`" in value
 
 
 def test_packet_applies_r2_preference_and_owner_boundary() -> None:
@@ -85,7 +84,7 @@ def test_source_record_binds_exact_candidate_bytes() -> None:
 def test_packet_binds_source_evidence_and_model_trio() -> None:
     value = packet()
     digest = hashlib.sha256(SOURCE_EVIDENCE.read_bytes()).hexdigest()
-    assert digest == "adb88498d996ccafd7cb42beb2c72780d2593ca5b0e8bcd5d793b09be46c2794"
+    assert digest == "34baae05d5bc74601a2228002fe6c2d86999fddfe1e152e49b4febf62e2817eb"
     assert digest in value
     for expected in (
         "Whisper large-v3",
@@ -109,11 +108,13 @@ def test_pilot_selection_and_modes_are_deterministic() -> None:
 
 def test_packet_requires_local_qualification_and_authoritative_scan() -> None:
     value = packet()
-    assert "real-container smoke inference" in value
+    assert "run the real container read-only as its non-root user" in value
     assert "separate scan-only packet" in value
     assert "scan-passed `linux/amd64` child digest" in value
     assert "zero critical/high findings" in value
     assert "No vulnerability waiver" in value
+    assert "0 critical and 4 high findings" in value
+    assert "fairseq2n 0.6" in value
 
 
 def test_measurement_set_is_complete_and_fail_closed() -> None:

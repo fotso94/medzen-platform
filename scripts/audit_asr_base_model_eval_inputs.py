@@ -77,6 +77,7 @@ def audit(
     data_commit: str,
     source_inventory_sha256: str,
     correction_record_sha256: str,
+    correction_addendum_sha256: str,
     recorded_utc: str,
 ) -> dict[str, Any]:
     if not root.is_dir():
@@ -87,6 +88,8 @@ def audit(
         raise AuditRefusal("source inventory SHA-256 is malformed")
     if not SHA256_RE.fullmatch(correction_record_sha256):
         raise AuditRefusal("correction record SHA-256 is malformed")
+    if not SHA256_RE.fullmatch(correction_addendum_sha256):
+        raise AuditRefusal("correction addendum SHA-256 is malformed")
     if not recorded_utc.endswith("Z"):
         raise AuditRefusal("recorded time must be an explicit UTC value")
 
@@ -250,6 +253,8 @@ def audit(
             "inventory_sha256": source_inventory_sha256,
             "correction_record": "registry/data_sources/eval-corrections-2026-08-11.json",
             "correction_record_sha256": correction_record_sha256,
+            "correction_addendum": "registry/data_sources/eval-corrections-2026-08-11.json.note",
+            "correction_addendum_sha256": correction_addendum_sha256,
             "live_prefix": "s3://medzen-speech/eval/",
         },
         "evaluation_boundary": {
@@ -301,7 +306,11 @@ def audit(
             "training_started": False,
             "aws_mutations": 0,
             "languages_reactivated": 0,
-            "required_next_state": "CORRECT_DATA_METADATA_AND_DUPLICATES_THEN_REAUDIT",
+            "required_next_state": (
+                "CORRECT_DATA_METADATA_AND_DUPLICATES_THEN_REAUDIT"
+                if hard_findings
+                else "QUALIFY_EVALUATION_RUNTIME_THEN_REVIEW_PILOT_PACKET"
+            ),
         },
     }
 
@@ -312,6 +321,7 @@ def main() -> int:
     parser.add_argument("--data-commit", required=True)
     parser.add_argument("--source-inventory-sha256", required=True)
     parser.add_argument("--correction-record-sha256", required=True)
+    parser.add_argument("--correction-addendum-sha256", required=True)
     parser.add_argument("--recorded-utc", required=True)
     args = parser.parse_args()
     try:
@@ -320,6 +330,7 @@ def main() -> int:
             data_commit=args.data_commit,
             source_inventory_sha256=args.source_inventory_sha256,
             correction_record_sha256=args.correction_record_sha256,
+            correction_addendum_sha256=args.correction_addendum_sha256,
             recorded_utc=args.recorded_utc,
         )
     except AuditRefusal as exc:

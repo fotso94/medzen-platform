@@ -1,0 +1,19 @@
+name: medzen_omniASR_tokenizer_written_v2
+tokenizer_family: char_tokenizer
+tokenizer: /models/omniASR_tokenizer_written_v2.model
+
+---
+
+name: medzen_omniASR_CTC_1B_v2
+model_family: wav2vec2_asr
+model_arch: 1b_v2
+checkpoint: /models/omniASR-CTC-1B-v2.pt
+tokenizer_ref: medzen_omniASR_tokenizer_written_v2
+
+---
+
+name: medzen_omniASR_LLM_1B_v2
+model_family: wav2vec2_llama
+model_arch: 1b_v2
+checkpoint: /models/omniASR-LLM-1B-v2.pt
+tokenizer_ref: medzen_omniASR_tokenizer_written_v2

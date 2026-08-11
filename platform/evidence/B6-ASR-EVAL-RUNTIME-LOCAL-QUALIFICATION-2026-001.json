@@ -1,0 +1,108 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-001",
+  "status": "BLOCKED_LOCAL_IMAGE_SCAN",
+  "recorded_utc": "2026-08-11T23:07:23Z",
+  "scope": "Local-only linux/amd64 build, non-root read-only-container qualification, hardening checks and vulnerability scan. No model weights, audio, inference, AWS mutation or GPU were used.",
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:local-qualification",
+    "oci_index_sha256": "5249b40dac223d8394718b9b75f04810636fd987f323bb9b2c0cf2128580c2a1",
+    "linux_amd64_manifest_sha256": "0ebf1cc58ae0a82bd3a57435a3393f84528b651ff3aafe7ab7c516553003c7b9",
+    "config_sha256": "15e3ad8d8e20c37a1f30a59f20440e1f4658b72e661daed28793d0f8e15d2e7e",
+    "attestation_manifest_sha256": "34defef7fb6fbda2b2d77b365f3016a5ca35463a7a4a4ca2cd6cac15a61db722",
+    "attested_source_commit": "79d2a25f35950e74ac07bf93f909651edcaafa9c",
+    "source_worktree_clean_at_build": false,
+    "publication_eligible": false,
+    "platform": "linux/amd64",
+    "size_bytes": 7296779774,
+    "base_image": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc"
+  },
+  "qualification": {
+    "status": "PASS_LOCAL_RUNTIME_IMPORT_QUALIFICATION",
+    "container_read_only": true,
+    "tmpfs_only": "/tmp",
+    "uid": 10001,
+    "gid": 10001,
+    "build_tools_absent": ["gcc", "g++", "cmake", "git", "pip", "pip3"],
+    "python_pip_module_absent": true,
+    "candidate_adapters": [
+      "whisper-large-v3",
+      "omniASR_CTC_1B_v2",
+      "omniASR_LLM_1B_v2"
+    ],
+    "versions": {
+      "fairseq2": "0.6",
+      "faster-whisper": "1.2.1",
+      "omnilingual_asr_internal": "0.1.0",
+      "omnilingual_asr_release_tag": "0.2.0",
+      "pyarrow": "23.0.1",
+      "torch": "2.8.0+cu128",
+      "torchaudio": "2.8.0+cu128"
+    },
+    "source_commit": "145a12a668aace6c1d0d290128c1225571fc1955"
+  },
+  "local_scan": {
+    "scanner": "Docker Scout CLI 1.18.3",
+    "analyzed_packages": 305,
+    "critical": 0,
+    "high": 4,
+    "medium_requested": false,
+    "low_requested": false,
+    "waiver_used": false,
+    "findings": [
+      {
+        "id": "CVE-2026-24747",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.10.0",
+        "fixed": "2.10.0"
+      },
+      {
+        "id": "CVE-2026-4538",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<=2.10.0",
+        "fixed": "NOT_AVAILABLE_IN_SCANNER_RECORD"
+      },
+      {
+        "id": "CVE-2025-55552",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.9.0",
+        "fixed": "2.9.0"
+      },
+      {
+        "id": "CVE-2025-55551",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.9.0",
+        "fixed": "2.9.0"
+      }
+    ]
+  },
+  "remediation": {
+    "pyarrow": "PASS: upgraded from 20.0.0 to 23.0.1; CVE-2026-25087 is absent from the final scan.",
+    "torch_upgrade_attempt": "REFUSED_BY_UPSTREAM_RUNTIME",
+    "attempted_versions": {
+      "torch": "2.11.0+cu128",
+      "torchaudio": "2.11.0+cu128"
+    },
+    "safe_error": "fairseq2 requires a CUDA 12.8 build of PyTorch 2.8.0, but the installed version is a CUDA 12.8 build of PyTorch 2.11.0.",
+    "constraint": "The bound Meta Omnilingual release requires fairseq2[arrow]>=0.5.2,<=0.6.0; fairseq2n 0.6 pins and enforces torch==2.8.0.",
+    "unsupported_override_used": false,
+    "required_resolution": "A scan-clean upstream-compatible Meta/fairseq2 runtime, or a new independently reviewed owner decision for a separately qualified source-built compatibility path. The current pilot forbids vulnerability waivers."
+  },
+  "execution": {
+    "model_weights_downloaded": false,
+    "audio_downloaded": false,
+    "inference_started": false,
+    "gpu_started": false,
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "pilot_permitted": false
+  }
+}

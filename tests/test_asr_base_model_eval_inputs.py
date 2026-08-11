@@ -21,6 +21,7 @@ canonical_json = MODULE.canonical_json
 COMMIT = "a" * 40
 INVENTORY_SHA = "b" * 64
 CORRECTION_SHA = "c" * 64
+ADDENDUM_SHA = "d" * 64
 
 
 def row(language: str, version: str, checksum: str, **overrides: object) -> dict:
@@ -61,6 +62,7 @@ def run(root: Path) -> dict:
         data_commit=COMMIT,
         source_inventory_sha256=INVENTORY_SHA,
         correction_record_sha256=CORRECTION_SHA,
+        correction_addendum_sha256=ADDENDUM_SHA,
         recorded_utc="2026-08-11T20:00:00Z",
     )
 
@@ -71,6 +73,10 @@ def test_clean_independent_suite_passes_and_is_deterministic(tmp_path: Path) -> 
     second = run(tmp_path)
     assert first == second
     assert first["status"] == "PASS_INPUT_FREEZE"
+    assert first["execution"]["required_next_state"] == (
+        "QUALIFY_EVALUATION_RUNTIME_THEN_REVIEW_PILOT_PACKET"
+    )
+    assert first["data_source"]["correction_addendum_sha256"] == ADDENDUM_SHA
     assert first["inventory"] == {
         "manifests": 1,
         "rows": 1,
@@ -96,6 +102,9 @@ def test_duplicate_audio_refuses_without_silent_deduplication(tmp_path: Path) ->
     )
     result = run(tmp_path)
     assert result["status"] == "REFUSED_INPUT_FREEZE"
+    assert result["execution"]["required_next_state"] == (
+        "CORRECT_DATA_METADATA_AND_DUPLICATES_THEN_REAUDIT"
+    )
     assert result["hard_findings"] == ["DUPLICATE_AUDIO_SHA256"]
     assert result["inventory"]["rows"] == 2
     assert len(result["duplicates"]) == 1

@@ -2,14 +2,15 @@
   "record": "ASR_BASE_MODEL_SOURCE_IDENTITY",
   "id": "B6-ASR-BASE-MODEL-SOURCES-2026-001",
   "status": "SOURCE_IDENTITIES_MEASURED_NO_COMPUTE_AUTHORIZED",
-  "recorded_utc": "2026-08-11T22:15:17Z",
+  "recorded_utc": "2026-08-11T22:25:25Z",
   "scope": "Read-only provenance and byte-identity measurement for the three-candidate pilot. No model inference, training, AWS mutation, language reactivation or promotion.",
   "official_source": {
     "repository": "https://github.com/facebookresearch/omnilingual-asr",
     "release_tag": "0.2.0",
     "release_commit": "145a12a668aace6c1d0d290128c1225571fc1955",
-    "package": "omnilingual-asr==0.2.0",
-    "package_wheel_sha256": "6b8e811143603463c371c23464ff1946a52f876e6b6a62c5fb3deee6e39ab6d4",
+    "installation_identity": "repository tag 0.2.0 at the exact release commit; installed from source with no dependency resolution",
+    "package_internal_version": "0.1.0",
+    "provenance_correction": "The upstream release tag is 0.2.0, while pyproject.toml at the bound release commit declares package version 0.1.0. The runtime binds the tag and commit and verifies the internal version; it does not claim a nonexistent omnilingual-asr==0.2.0 package wheel.",
     "v2_asset_card_sha256": "af4d63febb0569831210e470b256ec70dc3a55065756c21c1f514d0001f283ed",
     "supported_language_source_sha256": "675b8a263aed48269020d4e9f06b3063d5b4e0d5399b2c3e0e06160e08d24f8e",
     "license": "Apache-2.0"
@@ -55,7 +56,7 @@
     "inference_started": false
   },
   "execution_boundary": {
-    "input_freeze_status": "REFUSED_INPUT_FREEZE",
+    "input_freeze_status": "PASS_INPUT_FREEZE_REPRODUCED_IDENTICALLY",
     "pilot_permitted": false,
     "required_before_compute": [
       "PASS_INPUT_FREEZE twice with byte-identical evidence",

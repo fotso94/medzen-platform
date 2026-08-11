@@ -1,24 +1,15 @@
 {
   "data_source": {
+    "correction_addendum": "registry/data_sources/eval-corrections-2026-08-11.json.note",
+    "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
     "correction_record": "registry/data_sources/eval-corrections-2026-08-11.json",
     "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
-    "git_commit": "2906ddd24e16f2e2c30d9ecd324e47733ba6ac78",
+    "git_commit": "46448c66e9068026552aa65262d689201c85fe7d",
     "inventory_path": "registry/data_sources/ingest_results.yaml",
     "inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
     "live_prefix": "s3://medzen-speech/eval/"
   },
-  "duplicates": [
-    {
-      "audio_checksum_sha256": "6c472e2ab556b66022b048165929c7a9a6a0ff67d2b0370a5b17d1e1255a4d94",
-      "duplicate": "ewondo/asr/soreva-v1/manifest.jsonl:112",
-      "first": "ewondo/asr/soreva-v1/manifest.jsonl:111"
-    },
-    {
-      "audio_checksum_sha256": "4dc52a35b08269e38f8c54627c09f0292bdf098ed6fbb19f0d7eee3d6e23bb3d",
-      "duplicate": "gbaya/asr/soreva-v1/manifest.jsonl:15",
-      "first": "gbaya/asr/soreva-v1/manifest.jsonl:4"
-    }
-  ],
+  "duplicates": [],
   "evaluation_boundary": {
     "applies_to": "manifest namespace",
     "audio_object_location_is_not_scope_signal": true,
@@ -30,16 +21,14 @@
     "aws_mutations": 0,
     "gpu_started": false,
     "languages_reactivated": 0,
-    "required_next_state": "CORRECT_DATA_METADATA_AND_DUPLICATES_THEN_REAUDIT",
+    "required_next_state": "QUALIFY_EVALUATION_RUNTIME_THEN_REVIEW_PILOT_PACKET",
     "training_started": false,
     "zero_shot_scoring_started": false
   },
-  "hard_findings": [
-    "DUPLICATE_AUDIO_SHA256"
-  ],
+  "hard_findings": [],
   "id": "B6-ASR-BASE-MODEL-DISCOVERY-2026-001",
   "inventory": {
-    "hours": 60.830514,
+    "hours": 60.829811,
     "language_aliases": [
       "acholi",
       "akan",
@@ -93,11 +82,11 @@
     ],
     "languages": 49,
     "manifests": 64,
-    "rows": 24232,
+    "rows": 24230,
     "selected_manifest_generations": {
-      "original": 52,
+      "original": 50,
       "preference": "manifest.r2.jsonl when present; otherwise manifest.jsonl",
-      "r2": 12
+      "r2": 14
     }
   },
   "manifests": [
@@ -390,16 +379,16 @@
       "dataset_releases": [
         "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#ewo_cm"
       ],
-      "hours": 0.052067,
+      "hours": 0.051721,
       "language": "ewondo",
       "license_tiers": [
         "permissive"
       ],
-      "path": "eval/ewondo/asr/soreva-v1/manifest.jsonl",
+      "path": "eval/ewondo/asr/soreva-v1/manifest.r2.jsonl",
       "prospective_independent": true,
-      "rows": 127,
-      "selected_generation": "original",
-      "sha256": "04695f28422f15f91677b0d21e5871e9a298d4a0e15c7a6badf449cc4ee5fe1f",
+      "rows": 126,
+      "selected_generation": "r2",
+      "sha256": "da26e21dbb45e4b118a6987fdc7aa63f217f0aeb4f04885c91c04243448756fd",
       "sources": [
         "soreva"
       ],
@@ -523,16 +512,16 @@
       "dataset_releases": [
         "OlameMend/soreva@1897cf9927c1afc354efa6192943f6d4783bae93#gya_cf"
       ],
-      "hours": 0.043438,
+      "hours": 0.043081,
       "language": "gbaya",
       "license_tiers": [
         "permissive"
       ],
-      "path": "eval/gbaya/asr/soreva-v1/manifest.jsonl",
+      "path": "eval/gbaya/asr/soreva-v1/manifest.r2.jsonl",
       "prospective_independent": true,
-      "rows": 101,
-      "selected_generation": "original",
-      "sha256": "095b5f496fbece1f7518e6aea87d531d19527ca1d625c098036e3e4e61ba9802",
+      "rows": 100,
+      "selected_generation": "r2",
+      "sha256": "585de6329739155aa4e87c77ef277547b884c9ec6a3e051034fedfdb14a54846",
       "sources": [
         "soreva"
       ],
@@ -1328,7 +1317,7 @@
   },
   "prospective_independent_suite": {
     "historical_b4_v1_and_v2_holdout_excluded": true,
-    "hours": 58.31398,
+    "hours": 58.313277,
     "included_versions": [
       "aaf-test-v1",
       "cv17-test-v1",
@@ -1386,10 +1375,10 @@
     ],
     "languages": 47,
     "manifests": 54,
-    "rows": 23770
+    "rows": 23768
   },
   "record": "ASR_BASE_MODEL_EVALUATION_INPUT_DISCOVERY",
-  "recorded_utc": "2026-08-11T21:47:36Z",
+  "recorded_utc": "2026-08-11T22:25:25Z",
   "scope": "Metadata-only audit; no audio decode, model inference, training, AWS mutation, language reactivation or promotion.",
-  "status": "REFUSED_INPUT_FREEZE"
+  "status": "PASS_INPUT_FREEZE"
 }

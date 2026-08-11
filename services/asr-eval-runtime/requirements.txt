@@ -1,0 +1,10 @@
+# Direct runtime pins. The build receipt additionally binds the complete
+# installed distribution inventory from the final image.
+fairseq2[arrow]==0.6
+faster-whisper==1.2.1
+kenlm==0.3.0
+numba==0.61.2
+numpy==1.26.4
+pandas==2.3.3
+polars==1.43.2
+pyarrow==23.0.1
