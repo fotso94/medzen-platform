@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic no-AWS rehearsal for packet 2026-032A attempt continuity."""
+"""Deterministic no-AWS rehearsal for packet 2026-034."""
 from __future__ import annotations
 
 import argparse
@@ -19,11 +19,12 @@ if str(ROOT) not in sys.path:
 from pipeline.b6_integration_receipts import ReceiptStore, canonical_json, sha256_file
 from scripts.b6_6_runner import RunContext, StageFailure, StageResult
 from scripts.b6_remaining_bindings import (
-    ATTEMPT_1_RESULT_PATH,
     COLD_PATH,
     FILE_RECEIPT_PATH,
-    LOCAL_CONVERSATION_PATH,
+    LOCAL_QUALIFICATION_PATH,
+    LOCAL_RUNTIME_PATH,
     NEW_ORCHESTRATOR_DIGEST,
+    PRIOR_REFUSAL_PATH,
     REQUIRED_SOURCES,
     SCAN_RESULT_PATH,
 )
@@ -31,10 +32,11 @@ from scripts.b6_remaining_runner import (
     REMAINING_EXECUTION_STAGES,
     REMAINING_WINDOW_STAGES,
     RemainingRunner,
+    _prior_attempt_continuity,
 )
 
 OLD_ORCHESTRATOR_DIGEST = (
-    "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa"
+    "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
 )
 GUARDS = {
     "stage0": ["hash_bound_authorization", "fresh_synthetic_credential", "preserved_file_proof_binding", "worker_capacity_zero", "synthetic_deployments_zero", "window_alb_absent"],
@@ -54,7 +56,7 @@ GUARDS = {
     "alb_ready": ["hostname_active_and_stable_healthy_target"],
     "fargate_probe": ["private_readiness_probe"],
     "alb_tag_mutation_warning": ["bounded_nonfatal_tag_mutation_rule"],
-    "websocket_proof": ["real_streaming_contract"],
+    "websocket_proof": ["real_streaming_contract", "streaming_partial_source_ready"],
     "cancellation_proof": ["cancel_within_250ms"],
     "failure_drills": ["dependency_refusal_without_pod_recreation"],
     "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip"],
@@ -73,8 +75,14 @@ class Clock:
 
 
 class FakeOperations:
-    def __init__(self, fail_stage: str | None) -> None:
+    def __init__(
+        self,
+        fail_stage: str | None,
+        *,
+        dependency_unavailable: bool = False,
+    ) -> None:
         self.fail_stage = fail_stage
+        self.dependency_unavailable = dependency_unavailable
         self.guards_invoked: dict[str, list[str]] = {}
         self.platform_mutations = 0
         self.real_aws_calls = 0
@@ -115,6 +123,19 @@ class FakeOperations:
                 "cold_rehearsal": True,
                 "invariants_verified": GUARDS[stage],
             }
+        if self.dependency_unavailable and stage == "websocket_proof":
+            raise StageFailure(
+                "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+                {
+                    "injected_stage": stage,
+                    "dependency": "streaming_partial_source",
+                    "http_status": 503,
+                    "close_code": 4503,
+                    "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+                    "guards_invoked": GUARDS[stage],
+                    "synthetic_only": True,
+                },
+            )
         if self.fail_stage == stage:
             raise StageFailure(
                 "INJECTED_REMAINING_PROOFS_FAILURE",
@@ -132,16 +153,25 @@ class FakeOperations:
         }
 
 
-def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
+def _scenario(
+    root: Path,
+    name: str,
+    fail_stage: str | None,
+    *,
+    dependency_unavailable: bool = False,
+) -> dict[str, Any]:
     directory = root / name
-    operations = FakeOperations(fail_stage)
+    operations = FakeOperations(
+        fail_stage,
+        dependency_unavailable=dependency_unavailable,
+    )
     context = RunContext(
         kubeconfig=root / "fake-kubeconfig",
         authorization=root / "fake-authorization.json",
         packet_sha256="0" * 64,
         receipts_dir=directory,
         token_file=root / f"{name}.token",
-        attempt=2,
+        attempt=1,
     )
     runner = RemainingRunner(operations, ReceiptStore(directory, clock=Clock()))
     result = runner.run(context)
@@ -182,9 +212,37 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
             expected.add("cleanup")
     if invoked != expected:
         raise AssertionError("remaining-proofs guard invocation set differs")
+    dependency_diagnostic = None
+    if dependency_unavailable:
+        dependency_payload = runner.store.load("websocket_proof")["payload"]
+        dependency_diagnostic = {
+            "dependency": dependency_payload.get("dependency"),
+            "http_status": dependency_payload.get("http_status"),
+            "close_code": dependency_payload.get("close_code"),
+            "reason_code": dependency_payload.get("reason_code"),
+            "synthetic_only": dependency_payload.get("synthetic_only"),
+        }
+        if dependency_diagnostic != {
+            "dependency": "streaming_partial_source",
+            "http_status": 503,
+            "close_code": 4503,
+            "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+            "synthetic_only": True,
+        }:
+            raise AssertionError("dependency refusal diagnostic differs")
     return {
         "scenario": name,
         "injected_failure_stage": fail_stage,
+        "injected_reason_code": (
+            "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+            if dependency_unavailable
+            else (
+                "INJECTED_REMAINING_PROOFS_FAILURE"
+                if fail_stage is not None
+                else None
+            )
+        ),
+        "dependency_refusal_diagnostic": dependency_diagnostic,
         "outcome": result.outcome,
         "failure_stage": result.failure_stage,
         "cleanup_complete": operations.zero_state,
@@ -200,12 +258,18 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
 def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
     scan = json.loads((ROOT / SCAN_RESULT_PATH).read_bytes())
     file_receipt = json.loads((ROOT / FILE_RECEIPT_PATH).read_bytes())
-    attempt_1 = json.loads((ROOT / ATTEMPT_1_RESULT_PATH).read_bytes())
-    local_conversation = json.loads(
-        (ROOT / LOCAL_CONVERSATION_PATH).read_bytes()
+    prior_refusal = json.loads((ROOT / PRIOR_REFUSAL_PATH).read_bytes())
+    qualification = json.loads((ROOT / LOCAL_QUALIFICATION_PATH).read_bytes())
+    runtime = json.loads((ROOT / LOCAL_RUNTIME_PATH).read_bytes())
+    unavailable = qualification.get("runtime_qualification", {}).get(
+        "deliberately_missing_source", {}
     )
-    conversation = local_conversation.get("websocket_conversation", {})
-    probe_app = conversation.get("probe_app_binding", {})
+    aligned = qualification.get("runtime_qualification", {}).get(
+        "aligned_source", {}
+    )
+    probe_app = runtime.get("websocket_conversation", {}).get(
+        "probe_app_binding", {}
+    )
     source_paths = (
         "platform/k8s/b6-6/remaining-proofs-window.yaml",
         "scripts/b6_remaining_operations.sh",
@@ -226,15 +290,20 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
         or file_receipt.get("stage") != "file_proof"
         or file_receipt.get("status") != "PASS"
         or file_receipt.get("payload", {}).get("http_status") != 200
-        or attempt_1.get("execution", {}).get("failure_stage")
+        or prior_refusal.get("execution", {}).get("failure_stage")
         != "websocket_proof"
-        or attempt_1.get("execution", {}).get("cleanup") != "PASS"
-        or attempt_1.get("allowance", {}).get("packet_attempts_remaining") != 1
-        or local_conversation.get("status") != "PASS"
-        or conversation.get("status") != "PASS"
-        or conversation.get("final_result_preserved") is not True
-        or conversation.get("event_types", [None])[0] != "ready"
-        or conversation.get("event_types", [])[-3:]
+        or prior_refusal.get("execution", {}).get("cleanup") != "PASS"
+        or prior_refusal.get("allowance", {}).get("packet_attempts_remaining") != 0
+        or qualification.get("status") != "PASS_LOCAL_ECR_SCAN_NOT_AUTHORIZED"
+        or unavailable.get("status") != "PASS_FAIL_CLOSED"
+        or unavailable.get("readyz_status") != 503
+        or unavailable.get("reason_code")
+        != "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+        or aligned.get("status") != "PASS"
+        or aligned.get("stable_full_conversation_passes") != 3
+        or aligned.get("final_result_preserved") is not True
+        or aligned.get("event_sequence", [None])[0] != "ready"
+        or aligned.get("event_sequence", [])[-3:]
         != ["final_transcript", "reply_text", "completed"]
         or probe_app.get("probe_sha256")
         != sha256_file(ROOT / "scripts/b6_6_probe.py")
@@ -257,18 +326,24 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
         "file_proof_sha256": sha256_file(ROOT / FILE_RECEIPT_PATH),
         "file_proof_status": "PASS",
         "file_proof_rerun": False,
-        "packet_2026_032_attempt_1_path": ATTEMPT_1_RESULT_PATH,
-        "packet_2026_032_attempt_1_sha256": sha256_file(
-            ROOT / ATTEMPT_1_RESULT_PATH
+        "packet_2026_032a_dependency_refusal_path": PRIOR_REFUSAL_PATH,
+        "packet_2026_032a_dependency_refusal_sha256": sha256_file(
+            ROOT / PRIOR_REFUSAL_PATH
         ),
-        "packet_2026_032_attempt_1_failure_stage": "websocket_proof",
-        "packet_2026_032_attempt_1_cleanup": "PASS",
-        "packet_2026_032_attempts_remaining": 1,
-        "local_conversation_path": LOCAL_CONVERSATION_PATH,
-        "local_conversation_sha256": sha256_file(
-            ROOT / LOCAL_CONVERSATION_PATH
+        "packet_2026_032a_dependency_refusal_stage": "websocket_proof",
+        "packet_2026_032a_dependency_refusal_close_code": 4503,
+        "packet_2026_032a_dependency_refusal_cleanup": "PASS",
+        "local_qualification_path": LOCAL_QUALIFICATION_PATH,
+        "local_qualification_sha256": sha256_file(
+            ROOT / LOCAL_QUALIFICATION_PATH
         ),
-        "local_conversation_status": "PASS",
+        "local_qualification_status": "PASS_LOCAL_ECR_SCAN_NOT_AUTHORIZED",
+        "dependency_unavailable_injection_basis": {
+            "http_status": 503,
+            "close_code": 4503,
+            "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+        },
+        "stable_full_conversation_passes": 3,
         "probe_app_pair_sha256": probe_app["pair_sha256"],
         "exact_window_probe_sha256": probe_app["probe_sha256"],
         "runtime_app_sha256": probe_app["runtime_app_sha256"],
@@ -282,16 +357,66 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
     }
 
 
+def _attempt_model_audit(root: Path) -> dict[str, Any]:
+    _prior_attempt_continuity(1, root / "unused-attempt-1")
+    prior = root / "attempt-1-clean-refusal"
+    store = ReceiptStore(prior, clock=Clock())
+    store.persist("stage0", "PASS", {"cold_rehearsal": True})
+    store.persist(
+        "websocket_proof",
+        "REFUSED",
+        {"reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"},
+        dependencies=store.hashes(),
+    )
+    zero = {
+        "alb_count": 0,
+        "approved_asr_changes": 0,
+        "cpu_asg_instances": 0,
+        "cpu_desired": 0,
+        "deadline_actions": 0,
+        "deployments": 0,
+        "endpoint_security_groups": 0,
+        "gpu_asg_instances": 0,
+        "gpu_desired": 0,
+        "ingresses": 0,
+        "probe_vpc_endpoints": 0,
+        "production_ssm_pointer_changes": 0,
+        "window_terraform_resources": 0,
+        "persistent_synthetic_secret": "RETAINED_OPERATOR_DENIED",
+    }
+    store.persist("cleanup", "PASS", zero, dependencies=store.hashes())
+    _prior_attempt_continuity(2, prior)
+    return {
+        "allowed_attempts": [1, 2],
+        "seconds_per_attempt": {"1": 4500, "2": 4500},
+        "maximum_requested_worker_seconds": 9000,
+        "attempts_non_transferable": True,
+        "attempt_1_requires_no_predecessor": True,
+        "attempt_2_requires_attempt_1_clean_refusal": True,
+        "pass_terminates_packet": True,
+        "status": "PASS",
+    }
+
+
 def run(output_dir: Path) -> dict[str, Any]:
     if output_dir.exists():
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
     reuse = _immutable_reuse_and_digest_audit()
-    with tempfile.TemporaryDirectory(prefix="medzen-b6-032a-cold-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="medzen-b6-034-cold-") as temporary:
         root = Path(temporary)
+        attempt_model = _attempt_model_audit(root)
         scenarios = [_scenario(root, "full-pass", None)]
         scenarios.extend(
             _scenario(root, f"fail-{index:02d}-{stage}", stage)
             for index, stage in enumerate(REMAINING_WINDOW_STAGES, start=1)
+        )
+        scenarios.append(
+            _scenario(
+                root,
+                "dependency-unavailable-websocket-proof",
+                "websocket_proof",
+                dependency_unavailable=True,
+            )
         )
     results_sha256 = hashlib.sha256(
         canonical_json({"window": scenarios, "immutable_reuse": reuse})
@@ -302,11 +427,14 @@ def run(output_dir: Path) -> dict[str, Any]:
     }
     payload = {
         "status": "PASS_COLD_REHEARSAL",
-        "packet": "B6-AWS-CHANGE-PACKET-2026-032A",
-        "continuity_attempt_number": 2,
-        "new_attempt_allowance": 0,
+        "packet": "B6-AWS-CHANGE-PACKET-2026-034",
+        "requested_attempts": 2,
+        "maximum_seconds_per_attempt": 4500,
+        "attempts_non_transferable": True,
+        "attempt_model_audit": attempt_model,
         "full_pass_runs": 1,
-        "injected_failure_runs": len(REMAINING_WINDOW_STAGES),
+        "injected_failure_runs": len(REMAINING_WINDOW_STAGES) + 1,
+        "dependency_unavailable_injections": 1,
         "enumerated_execution_stages": list(REMAINING_EXECUTION_STAGES),
         "enumerated_receipt_stages": list(REMAINING_WINDOW_STAGES),
         "remaining_live_proofs": [

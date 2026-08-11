@@ -15,39 +15,40 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 PACKET = ROOT / (
     "platform/decisions/"
-    "B6-AWS-CHANGE-PACKET-2026-032A-websocket-local-qualified.md"
+    "B6-AWS-CHANGE-PACKET-2026-034-remaining-proofs.md"
 )
-SCAN = ROOT / "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json"
+SCAN = ROOT / "platform/evidence/B6-PACKET-2026-033-SCAN-RESULT.json"
 FILE_RECEIPT = ROOT / "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json"
-ATTEMPT_1 = ROOT / (
+PRIOR_REFUSAL = ROOT / (
     "platform/evidence/"
-    "B6-PACKET-2026-032-ATTEMPT-1-TERMINAL-WEBSOCKET-FRAME-REFUSAL.json"
+    "B6-PACKET-2026-032A-ATTEMPT-2-TERMINAL-DEPENDENCY-REFUSAL.json"
 )
-LOCAL_CONVERSATION = ROOT / (
-    "platform/evidence/b6-websocket-runtime/"
-    "medzen-orchestrator.full-conversation.json"
+LOCAL_QUALIFICATION = ROOT / (
+    "platform/evidence/"
+    "B6-WEBSOCKET-PARTIAL-SOURCE-LOCAL-QUALIFICATION-2026-001.json"
 )
-COLD_RECEIPT = ROOT / "platform/evidence/receipts/B6-2026-032A-COLD/cold_rehearsal.json"
-NEW = "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
-OLD = "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa"
+COLD_RECEIPT = ROOT / "platform/evidence/receipts/B6-2026-034-COLD/cold_rehearsal.json"
+HISTORICAL_COLD = ROOT / "platform/evidence/receipts/B6-2026-032A-COLD/cold_rehearsal.json"
+NEW = "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3"
+OLD = "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
 
 
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_packet_binds_scan_pass_file_pass_and_exact_allowance():
+def test_packet_binds_scan_pass_file_pass_and_fresh_allowance():
     packet = PACKET.read_text()
     assert _sha(SCAN) in packet
     assert _sha(FILE_RECEIPT) in packet
-    assert _sha(ATTEMPT_1) in packet
-    assert _sha(LOCAL_CONVERSATION) in packet
+    assert _sha(PRIOR_REFUSAL) in packet
+    assert _sha(LOCAL_QUALIFICATION) in packet
     assert NEW in packet
     assert "must not be rerun" in packet
-    assert "single unused non-transferable 4,500-second attempt" in packet
-    assert "continuity attempt 2" in packet
+    assert "two non-transferable" in packet
+    assert "Fresh attempts requested | `2`" in packet
     assert "New reservation | `$0.00`" in packet
-    assert "Any further attempt" in packet
+    assert "A third attempt" in packet
 
 
 def test_successor_stages_exclude_file_and_keep_only_remaining_live_proofs():
@@ -109,11 +110,11 @@ def test_manifest_renderer_is_separate_from_historical_projection():
     assert [item.get("kind") for item in ingress if item] == ["Ingress"]
 
 
-def test_historical_cold_rehearsal_is_immutable_and_refuses_source_drift(tmp_path):
-    assert _sha(COLD_RECEIPT) == (
+def test_historical_cold_rehearsal_remains_immutable():
+    assert _sha(HISTORICAL_COLD) == (
         "84d5c16a8540502554365e3cba9639e60b24866fd4bb3328fc57a9194d8b2401"
     )
-    historical = json.loads(COLD_RECEIPT.read_bytes())
+    historical = json.loads(HISTORICAL_COLD.read_bytes())
     payload = historical["payload"]
     assert payload["status"] == "PASS_COLD_REHEARSAL"
     assert payload["full_pass_runs"] == 1
@@ -124,23 +125,72 @@ def test_historical_cold_rehearsal_is_immutable_and_refuses_source_drift(tmp_pat
     assert payload["new_attempt_allowance"] == 0
     assert payload["real_aws_calls"] == 0
     assert payload["real_kubectl_calls"] == 0
+
+
+def test_fresh_cold_rehearsal_includes_dependency_unavailable_injection():
+    receipt = json.loads(COLD_RECEIPT.read_bytes())
+    payload = receipt["payload"]
+    assert payload["packet"] == "B6-AWS-CHANGE-PACKET-2026-034"
+    assert payload["requested_attempts"] == 2
+    assert payload["maximum_seconds_per_attempt"] == 4500
+    assert payload["attempts_non_transferable"] is True
+    assert payload["attempt_model_audit"] == {
+        "allowed_attempts": [1, 2],
+        "seconds_per_attempt": {"1": 4500, "2": 4500},
+        "maximum_requested_worker_seconds": 9000,
+        "attempts_non_transferable": True,
+        "attempt_1_requires_no_predecessor": True,
+        "attempt_2_requires_attempt_1_clean_refusal": True,
+        "pass_terminates_packet": True,
+        "status": "PASS",
+    }
+    assert payload["full_pass_runs"] == 1
+    assert payload["injected_failure_runs"] == 23
+    assert payload["dependency_unavailable_injections"] == 1
+    injected = [
+        scenario
+        for scenario in payload["scenarios"]
+        if scenario["scenario"] == "dependency-unavailable-websocket-proof"
+    ]
+    assert len(injected) == 1
+    assert injected[0]["outcome"] == "REFUSED"
+    assert injected[0]["failure_stage"] == "websocket_proof"
+    assert injected[0]["injected_reason_code"] == (
+        "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+    )
+    assert injected[0]["dependency_refusal_diagnostic"] == {
+        "dependency": "streaming_partial_source",
+        "http_status": 503,
+        "close_code": 4503,
+        "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+        "synthetic_only": True,
+    }
+    assert injected[0]["cleanup_complete"] is True
+    assert payload["file_proof_receipts_created"] == 0
+    assert payload["real_aws_calls"] == 0
+    assert payload["real_kubectl_calls"] == 0
+
+
+def test_fresh_cold_rehearsal_is_deterministic(tmp_path):
     completed = subprocess.run(
         [
             sys.executable,
             "scripts/b6_remaining_cold_rehearsal.py",
             "--output-dir",
-            str(tmp_path / "current-source-refusal"),
+            str(tmp_path / "repeat"),
         ],
         cwd=ROOT,
         check=False,
         capture_output=True,
         text=True,
     )
-    assert completed.returncode == 2
-    assert "immutable predecessor binding differs" in completed.stdout
+    assert completed.returncode == 0, completed.stdout
+    repeated = json.loads((tmp_path / "repeat/cold_rehearsal.json").read_bytes())
+    reviewed = json.loads(COLD_RECEIPT.read_bytes())
+    assert repeated["payload"] == reviewed["payload"]
 
 
-def test_attempt_parser_allows_only_continuity_attempt_two():
+def test_attempt_parser_allows_exactly_fresh_attempts_one_and_two():
     script = ROOT / "scripts/b6_remaining_runner.py"
     common = [
         sys.executable,
@@ -156,12 +206,17 @@ def test_attempt_parser_allows_only_continuity_attempt_two():
         "--token-file",
         "/tmp/missing-token",
     ]
-    for attempt in (1, 3):
+    for attempt in (0, 3):
         result = subprocess.run(
             [*common, "--attempt", str(attempt)], capture_output=True, text=True
         )
         assert result.returncode != 0
         assert f"invalid choice: '{attempt}'" in result.stderr
+    for attempt in (1, 2):
+        result = subprocess.run(
+            [*common, "--attempt", str(attempt)], capture_output=True, text=True
+        )
+        assert "invalid choice" not in result.stderr
 
 
 def test_stage0_proves_worker_deployment_and_alb_zero_state():
@@ -205,17 +260,17 @@ def test_successor_stage0_safe_refusals_retain_exact_pre_model_detail(tmp_path):
         }
 
 
-def test_authorization_binding_accepts_only_the_single_continuity_attempt(
+def test_authorization_binding_accepts_only_two_fresh_nontransferable_attempts(
     tmp_path: Path,
 ):
     from scripts.b6_remaining_bindings import (
-        ATTEMPT_1_RESULT_PATH,
         AUTH_ID,
         COLD_PATH,
         FILE_RECEIPT_PATH,
-        LOCAL_CONVERSATION_PATH,
+        LOCAL_QUALIFICATION_PATH,
         NEW_ORCHESTRATOR_DIGEST,
         PACKET_ID,
+        PRIOR_REFUSAL_PATH,
         REQUIRED_SOURCES,
         SCAN_RESULT_PATH,
         BindingRefusal,
@@ -240,13 +295,10 @@ def test_authorization_binding_accepts_only_the_single_continuity_attempt(
             "recognized_committed_guardrail_usd": 64.4286064216,
             "existing_reservation_usd": 10.0,
             "new_reservation_usd": 0.0,
-            "original_packet_attempts_authorized": 2,
-            "original_packet_attempts_consumed": 1,
-            "continuity_attempt_number": 2,
-            "requested_attempts": 1,
+            "requested_attempts": 2,
             "maximum_seconds_per_attempt": 4500,
-            "maximum_requested_worker_seconds": 4500,
-            "estimated_compute_usd": 1.6,
+            "maximum_requested_worker_seconds": 9000,
+            "estimated_compute_usd": 3.2,
             "attempts_non_transferable": True,
             "pass_terminates_packet": True,
             "cold_rehearsal_required_before_each_attempt": True,
@@ -287,7 +339,7 @@ def test_authorization_binding_accepts_only_the_single_continuity_attempt(
             "rerun_permitted": False,
         },
         "immutable_evidence": {
-            "packet_2026_031_scan_result": {
+            "packet_2026_033_scan_result": {
                 "path": SCAN_RESULT_PATH,
                 "sha256": _sha(ROOT / SCAN_RESULT_PATH),
                 "outcome": "PASS_SCAN_ONLY",
@@ -299,23 +351,25 @@ def test_authorization_binding_accepts_only_the_single_continuity_attempt(
                 "status": "PASS",
                 "rerun_permitted": False,
             },
-            "packet_2026_032_attempt_1_refusal": {
-                "path": ATTEMPT_1_RESULT_PATH,
-                "sha256": _sha(ROOT / ATTEMPT_1_RESULT_PATH),
-                "status": (
-                    "REFUSED_ATTEMPT_2_LOCKED_PENDING_"
-                    "LOCAL_CONVERSATION_QUALIFICATION"
-                ),
+            "packet_2026_032a_dependency_refusal": {
+                "path": PRIOR_REFUSAL_PATH,
+                "sha256": _sha(ROOT / PRIOR_REFUSAL_PATH),
+                "status": "REFUSED_NO_ATTEMPTS_REMAINING_PENDING_DEPENDENCY_DIAGNOSIS",
                 "failure_stage": "websocket_proof",
+                "close_code": 4503,
                 "cleanup": "PASS",
             },
-            "local_full_websocket_conversation": {
-                "path": LOCAL_CONVERSATION_PATH,
-                "sha256": _sha(ROOT / LOCAL_CONVERSATION_PATH),
-                "status": "PASS",
+            "local_partial_source_qualification": {
+                "path": LOCAL_QUALIFICATION_PATH,
+                "sha256": _sha(ROOT / LOCAL_QUALIFICATION_PATH),
+                "status": "PASS_LOCAL_ECR_SCAN_NOT_AUTHORIZED",
+                "dependency_unavailable_reason": (
+                    "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+                ),
+                "stable_full_conversation_passes": 3,
                 "probe_app_pair_sha256": (
-                    "e68098b4d3b1722bb37c0851be770bcf"
-                    "51bf656a24476c264f141a5361866a9b"
+                    "f6c8eb872cbd80c5542350e0c4ac5c0"
+                    "b1cff82d820d94ab452ef12cba816a9d6"
                 ),
             },
         },
@@ -328,8 +382,8 @@ def test_authorization_binding_accepts_only_the_single_continuity_attempt(
     path.write_text(json.dumps(authorization))
     assert validate(path, packet_sha256, ROOT)["allowance"][
         "requested_attempts"
-    ] == 1
-    authorization["allowance"]["requested_attempts"] = 2
+    ] == 2
+    authorization["allowance"]["requested_attempts"] = 3
     path.write_text(json.dumps(authorization))
     with pytest.raises(BindingRefusal, match="allowance binding differs"):
         validate(path, packet_sha256, ROOT)

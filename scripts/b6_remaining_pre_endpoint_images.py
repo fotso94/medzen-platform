@@ -31,7 +31,7 @@ EXPECTED = {
         "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a"
     },
     ("medzen", "speech-orchestrator"): {
-        "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed"
+        "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3"
     },
 }
 PULL_FAILURE_REASONS = {"ErrImagePull", "ImagePullBackOff", "RegistryUnavailable"}

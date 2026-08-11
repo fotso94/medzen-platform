@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical persistent-secret cleanup for prospective packet 2026-032A.
+# Canonical persistent-secret cleanup for prospective packet 2026-034.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,12 +18,12 @@ receipts_dir="$4"
 token_file="$5"
 attempt="$6"
 payload_path="$7"
-alb_hostname_file="/private/tmp/b6-032a-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-034-attempt-${attempt}-alb-hostname"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
-[[ "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-032A carries only continuity attempt 2" >&2; exit 2; }
+[[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-034 permits only attempts 1 or 2" >&2; exit 2; }
 
 .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
 import sys
@@ -96,7 +96,7 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window"
-cleanup_plan="/private/tmp/b6-032a-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-034-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
@@ -133,7 +133,7 @@ fi
 
 terraform_zero_stable=0
 for observation in 1 2 3; do
-  verify_plan="/private/tmp/b6-032a-cleanup-stable-$PPID-$observation.tfplan"
+  verify_plan="/private/tmp/b6-034-cleanup-stable-$PPID-$observation.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$verify_plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \

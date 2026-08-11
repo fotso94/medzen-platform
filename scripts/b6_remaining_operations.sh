@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-032A.
+# Canonical operation dispatcher for prospective packet 2026-034.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +21,7 @@ payload_path="$8"
 manifest="platform/k8s/b6-6/remaining-proofs-window.yaml"
 wav="platform/testdata/b6a-003c-b-synthetic.wav"
 proof_audio_sha256="$(.venv/bin/python -c 'from scripts.b6_6_proof_audio_binding import PROOF_AUDIO_SHA256; print(PROOF_AUDIO_SHA256)')"
-alb_hostname_file="/private/tmp/b6-032a-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-034-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -56,7 +56,7 @@ terraform_plan_receipt() {
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: required execution input is absent" >&2; exit 2; }
 [[ "$token_file" == "/private/tmp/medzen-b6-6-client-token" ]] || { echo "REFUSING: exact synthetic token path is required" >&2; exit 2; }
-[[ "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-032A carries only continuity attempt 2" >&2; exit 2; }
+[[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: packet 2026-034 permits only attempts 1 or 2" >&2; exit 2; }
 [[ "$proof_audio_sha256" =~ ^[0-9a-f]{64}$ ]] || { echo "REFUSING: proof-audio binding is malformed" >&2; exit 2; }
 
 stage_stage0() {
@@ -282,15 +282,15 @@ stage_llm() {
 stage_orchestrator() {
   kubectl --kubeconfig "$kubeconfig" scale deployment/speech-orchestrator --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/speech-orchestrator --namespace medzen --timeout=10m
-  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name speech-orchestrator --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed --wait-seconds 600)"
-  expected='["sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087","sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a","sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d","sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed","sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5","sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"]'
-  images="$(.venv/bin/python scripts/b6_6_k8s_stability.py pod-images --kubeconfig "$kubeconfig" --namespace medzen --selector medzen.io/classification=synthetic-integration-only --expected-digest sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087 --expected-digest sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a --expected-digest sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d --expected-digest sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed --expected-digest sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5 --expected-digest sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c --wait-seconds 600)"
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name speech-orchestrator --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3 --wait-seconds 600)"
+  expected='["sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087","sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3","sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a","sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d","sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5","sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"]'
+  images="$(.venv/bin/python scripts/b6_6_k8s_stability.py pod-images --kubeconfig "$kubeconfig" --namespace medzen --selector medzen.io/classification=synthetic-integration-only --expected-digest sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087 --expected-digest sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3 --expected-digest sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a --expected-digest sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d --expected-digest sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5 --expected-digest sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c --wait-seconds 600)"
   [[ "$(jq -c '.resident_child_digests' <<<"$images")" == "$expected" ]]
   write_payload "$(jq -nc --argjson stable "$stable" --argjson images "$images" '$stable + $images + {authentication_loaded:true,mode:"deployed_http_ssm",ready_replicas:1,registry_snapshot:"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",workload_child_digests_verified:6,before_private_endpoints:true}')"
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-032a-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-034-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -318,7 +318,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-032a-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-034-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
