@@ -1,0 +1,14 @@
+# DATA-SCOPE language declaration (hand-authored on the data branch).
+# Added 2026-08-11 for the SOREVA out-of-domain eval ingest (~150 clips).
+# NOT platform activation; the usual owner scope record still applies.
+alias: baka
+iso_code: bkc
+display_name: Baka
+status: data_only
+capabilities:
+  asr:
+    available: false          # eval material only (soreva-v1)
+asr:
+  artifact: null
+  approved_version: null
+  decode_strategy: pending_experiment

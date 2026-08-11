@@ -199,6 +199,11 @@ sources:
       igbo:    {code: ig, hours_est: at_fetch, verified: at_fetch}
       luganda: {code: lg, hours_est: at_fetch, verified: at_fetch}
       amharic: {code: am, hours_est: at_fetch, verified: at_fetch}
+      # 2026-08-11 owner-approved capped ingest: ~300 h train (of ~2,000
+      # validated available in the fsicoli mirror) + ~10 h eval from the CV
+      # test split. Cap enforced via MEDZEN_CV_MAX_SECONDS in the adapter.
+      kinyarwanda: {code: rw, hours_est: 2000, verified: 2026-08-08,
+                    ingest_cap_hours: 300}
 
   # -------------------------------------------------------------------------
   afrispeech_200:

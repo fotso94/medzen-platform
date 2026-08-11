@@ -43,3 +43,88 @@ notes:
      spill on disk not tmpfs); all cv-ingest AWS resources torn down after."
   - "Kallaama fula dropped (marginal; WAXAL+Meta already give 147 h of fula)."
   - "Cameroon Pidgin still deferred (Mozilla Data Collective signup failing)."
+
+# --- 2026-08-11 kinyarwanda capped ingest (owner-approved 300h) ---
+kinyarwanda_2026_08_11:
+  train:
+    clips: 216965
+    hours: 300.00
+    source: common_voice          # fsicoli CC0 mirror @ 8262c16bf297
+    tier: permissive
+    prefix: curated/kinyarwanda/asr/cv17_rw/gb1/
+    cap: "MEDZEN_CV_MAX_SECONDS=1080000 (of ~2,000 validated h available)"
+  eval:
+    clips: 6657
+    hours: 10.00
+    source: common_voice_test_split   # CV's canonical frozen test split
+    prefix: eval/kinyarwanda/asr/cv17-test-v1/
+    note: "whole-split eval via MEDZEN_EVAL_ONLY=1 (no speaker re-split)"
+  notes:
+    - "temporary EC2 c6i.xlarge (i-02ac6ba203d231f97); all resources torn down
+       and verified 2026-08-11 (instance, SG, IAM role+profile, hf-token param,
+       _cv-ingest staging)"
+    - "two false starts, both fail-closed with nothing uploaded: (1) kinyarwanda
+       missing from registry/languages -> added data-scope declaration; (2) eval
+       pass speaker re-split tripped near-dup on CV repeated prompts -> added
+       whole-run eval routing"
+
+# --- 2026-08-11 SOREVA out-of-domain eval ingest (owner-directed) ---
+soreva_2026_08_11:
+  source: OlameMend/soreva @ 1897cf9927c1   # CC-BY-4.0, Goethe-Institut collection
+  tier: permissive
+  purpose: eval_only_by_design              # ~150 read clips/config, male voices
+  languages: 39            # corrected 2026-08-11: mapping count was off by one
+  clips: 5483
+  hours: ~3.9
+  prefix: eval/<language>/asr/soreva-v1/
+  highlights:
+    - "FIRST Cameroonian-language eval material in the project: bafia bakoko
+       bamun basaa duala ejagham eton ewondo fefe ghomala isu kom kwasio lamso
+       maka medumba ngiemboon ngombala nomaande nugunu yambeta yangben yemba
+       + cameroon pidgin (pcm_cm)"
+    - "second, out-of-domain eval for hausa yoruba igbo lingala swahili wolof
+       ewe (alongside fleurs-v1) — enables OOD generalization measurement"
+  unavailable_from_source: [bafut, mka, nda]
+  notes:
+    - "31 new data-scope language declarations added to registry/languages"
+    - "A3 schema extended with license_tier+dialect (schema had lagged the
+       campaign data model; EC2 runs had silently skipped schema validation
+       because the staged tarball omitted schemas/ — now closed)"
+    - "run locally on the Mac (~403MB), no EC2, no teardown needed"
+
+# --- 2026-08-11 owner-supplied archives (local ingest, $0 compute) ---
+yemba_egra_2026_08_11:
+  train: {clips: 8019, hours: 2.25, prefix: curated/yemba/asr/egra/gb1/}
+  source: owner-supplied YembaEGRA archive (child word-reads, ~70 speakers)
+  tier: permissive (owner authority; licence documentation is the owner's)
+  note: "first Yemba TRAINING data; SOREVA soreva-v1 is its frozen eval;
+         A3 duration floor made domain-aware (0.3s for asr_words)"
+aaf_2026_08_11:
+  train:
+    clips: 12929
+    hours: 14.99
+    configs: {yaounde: 10.59, ca16_read: 2.49, niger_dev: 0.96,
+              ca16_conv: 0.54, ca16_devtest: 0.41}
+    prefix: curated/french/asr/aaf_*/gb1/
+  eval: {clips: 475, hours: 0.30, prefix: eval/french/asr/aaf-test-v1/}
+  source: OpenSLR-57 African Accented French (owner-supplied archive)
+  tier: permissive (Apache-2.0, verified openslr.org/57)
+  note: "the Cameroon-French seed: yaounde alone is 10.6h of Cameroonian
+         French; one false start (non-canonical licence key hit the
+         unknown->eval_only fail-safe) fixed and junk prefix cleared"
+
+# --- 2026-08-11 batch 3: owner-supplied Kallaama full release + LRSC ---
+kallaama_full_2026_08_11:
+  serer:  {clips: 12486, hours: 32.01, prefix: curated/serer/asr/kallaama_srr/gb1/,  new_language: true}
+  pulaar: {clips: 14606, hours: 24.56, prefix: curated/pulaar/asr/kallaama_fuc/gb1/}
+  tier: permissive (CC-BY-4.0, Kallaama)
+  notes:
+    - "wolof archive skipped: same source already ingested (10.12h) in the campaign"
+    - "pulaar (fuc) distinct from WAXAL fula (fuf); pairs with soreva-v1 pulaar eval"
+lrsc_2026_08_11:
+  lingala: {clips: 2920, hours: 4.99, prefix: curated/lingala/asr/lrsc/gb1/}
+  tier: permissive (owner authority; provenance CdWav2Vec/LRSC public corpus)
+skipped_2026_08_11:
+  csrc: "unlabelled only (download notebooks for 200GB raw audio) — no transcripts;
+         candidate for future self-supervised pretraining"
+  nchlt_afr: "train/dev/test lists + pronunciation dict only — audio corpus absent"

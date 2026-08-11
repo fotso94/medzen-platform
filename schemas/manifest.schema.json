@@ -38,9 +38,9 @@
     },
     "duration_s": {
       "type": "number",
-      "minimum": 1.0,
+      "minimum": 0.3,
       "maximum": 30.0,
-      "description": "Whisper truncates beyond 30s; under 1s is not useful speech"
+      "description": "Whisper truncates beyond 30s. Floor 0.3s is the physical minimum for word-level domains (asr_words); the validator range check enforces 1.0s for all other domains."
     },
     "sample_rate": {
       "const": 16000,
@@ -62,7 +62,7 @@
     "normalization_version": {
       "type": "string",
       "minLength": 1,
-      "description": "e.g. pidgin-norm-v2 \u2014 changing it invalidates cached scores"
+      "description": "e.g. pidgin-norm-v2 — changing it invalidates cached scores"
     },
     "primary_language": {
       "type": "string",
@@ -193,6 +193,20 @@
       "type": "string",
       "pattern": "^[a-f0-9]{64}$",
       "description": "REQUIRED. Checksum of the ORIGINAL bytes; audio_checksum_sha256 covers the curated 16 kHz WAV that is actually trained on."
+    },
+    "license_tier": {
+      "type": "string",
+      "enum": [
+        "permissive",
+        "sharealike",
+        "eval_only"
+      ],
+      "description": "Commercial-safety tier (green-bucket 2026-08); physical isolation follows this field."
+    },
+    "dialect": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source dialect/variety/config code (green-bucket 2026-08)."
     }
   }
 }

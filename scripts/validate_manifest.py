@@ -157,8 +157,12 @@ def main() -> int:
         if r.get("channels") != 1:
             errors.append(f"row {i}: channels={r.get('channels')} — must be mono")
         d = r.get("duration_s")
-        if not isinstance(d, (int, float)) or not (1.0 <= d <= 30.0):
-            errors.append(f"row {i}: duration_s={d} outside [1.0, 30.0]")
+        # word-level corpora (domain=asr_words, e.g. EGRA single-word reads)
+        # legitimately run 0.3-1.0 s; the 1.0 s floor exists to catch truncated
+        # SENTENCE clips and stays in force for every other domain.
+        lo = 0.3 if r.get("domain") == "asr_words" else 1.0
+        if not isinstance(d, (int, float)) or not (lo <= d <= 30.0):
+            errors.append(f"row {i}: duration_s={d} outside [{lo}, 30.0]")
         for f in ("text_verbatim", "text_normalized"):
             if not str(r.get(f, "")).strip():
                 errors.append(f"row {i}: {f} is empty")
