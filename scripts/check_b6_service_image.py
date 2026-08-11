@@ -151,6 +151,10 @@ def _orchestrator_websocket_smoke(image: str) -> dict[str, object]:
             ROOT / "services/rag-index/medzen_rag_index",
             "/opt/medzen/services/rag-index/medzen_rag_index",
         ),
+        (
+            ROOT / "services/llm-gateway/medzen_llm_gateway",
+            "/opt/medzen/services/llm-gateway/medzen_llm_gateway",
+        ),
     )
     command = [
         "docker", "run", "--detach", "--rm", "--name", container,
@@ -161,7 +165,8 @@ def _orchestrator_websocket_smoke(image: str) -> dict[str, object]:
         "--env", (
             "PYTHONPATH=/opt/site-packages:"
             "/opt/medzen/services/speech-orchestrator:"
-            "/opt/medzen/services/rag-index"
+            "/opt/medzen/services/rag-index:"
+            "/opt/medzen/services/llm-gateway"
         ),
     ]
     for source, target in mounts:
