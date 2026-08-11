@@ -37,8 +37,17 @@ LICENSE_POLICY = "cc0"                      # CC0 -> permissive
 # language -> CV locale code (present in this mirror; amharic absent here and
 # already covered by WAXAL with ~190 h, so it is not sourced from CV)
 CODES = {"swahili": "sw", "hausa": "ha", "yoruba": "yo",
-         "igbo": "ig", "luganda": "lg"}
+         "igbo": "ig", "luganda": "lg",
+         # rw verified real in this mirror 2026-08-08 (train.tsv ~1.0M rows,
+         # ~2,000 validated hours). Ingest is CAPPED via env (below) — the full
+         # locale is far larger than a first campaign needs.
+         "kinyarwanda": "rw"}
 SPLITS = ("train", "validation")
+
+# Optional env controls (added for the capped kinyarwanda ingest, 2026-08-11):
+#   MEDZEN_CV_MAX_SECONDS  stop after this many cumulative emitted seconds
+#   MEDZEN_CV_SPLITS       comma list overriding SPLITS (e.g. "test" for an
+#                          eval-only pass routed by the normal split field)
 
 
 class CommonVoiceAdapter:
@@ -68,25 +77,37 @@ class CommonVoiceAdapter:
         self.tier = gc.tier_for(LICENSE_POLICY)    # -> permissive
 
     def items(self, limit: int | None = None) -> Iterator[dict]:
+        import os
+
         import librosa
         import soundfile as sf
         from datasets import load_dataset
         from huggingface_hub import get_token
         token = get_token()
 
+        max_seconds = float(os.environ.get("MEDZEN_CV_MAX_SECONDS") or 0) or None
+        splits = tuple(s.strip() for s in
+                       (os.environ.get("MEDZEN_CV_SPLITS") or "").split(",")
+                       if s.strip()) or SPLITS
+
         base = f"{self.language}/{self.task}/{self.config}"
         sd = gc.spill_dir()
         spill = __import__("pathlib").Path(sd.name)
         self._spill_dir = sd
         produced = 0
-        for split in SPLITS:
+        emitted_s = 0.0
+        for split in splits:
             if limit and produced >= limit:
+                return
+            if max_seconds and emitted_s >= max_seconds:
                 return
             sel = split if limit is None else f"{split}[:{max(1, limit)}]"
             ds = load_dataset(REPO, self.code, split=sel, token=token,
                               trust_remote_code=True)
             for row in ds:
                 if limit and produced >= limit:
+                    return
+                if max_seconds and emitted_s >= max_seconds:
                     return
                 text = (row.get("sentence") or "").strip()
                 audio = row.get("audio") or {}
@@ -127,6 +148,7 @@ class CommonVoiceAdapter:
                 yield {"record": rec, "raw_path": rp, "wav_path": wp,
                        "raw_ext": ext, "stem": stem}
                 produced += 1
+                emitted_s += dur
 
     def rows(self, language: str | None = None,
              limit: int | None = None) -> Iterator[dict]:
