@@ -43,3 +43,27 @@ notes:
      spill on disk not tmpfs); all cv-ingest AWS resources torn down after."
   - "Kallaama fula dropped (marginal; WAXAL+Meta already give 147 h of fula)."
   - "Cameroon Pidgin still deferred (Mozilla Data Collective signup failing)."
+
+# --- 2026-08-11 kinyarwanda capped ingest (owner-approved 300h) ---
+kinyarwanda_2026_08_11:
+  train:
+    clips: 216965
+    hours: 300.00
+    source: common_voice          # fsicoli CC0 mirror @ 8262c16bf297
+    tier: permissive
+    prefix: curated/kinyarwanda/asr/cv17_rw/gb1/
+    cap: "MEDZEN_CV_MAX_SECONDS=1080000 (of ~2,000 validated h available)"
+  eval:
+    clips: 6657
+    hours: 10.00
+    source: common_voice_test_split   # CV's canonical frozen test split
+    prefix: eval/kinyarwanda/asr/cv17-test-v1/
+    note: "whole-split eval via MEDZEN_EVAL_ONLY=1 (no speaker re-split)"
+  notes:
+    - "temporary EC2 c6i.xlarge (i-02ac6ba203d231f97); all resources torn down
+       and verified 2026-08-11 (instance, SG, IAM role+profile, hf-token param,
+       _cv-ingest staging)"
+    - "two false starts, both fail-closed with nothing uploaded: (1) kinyarwanda
+       missing from registry/languages -> added data-scope declaration; (2) eval
+       pass speaker re-split tripped near-dup on CV repeated prompts -> added
+       whole-run eval routing"
