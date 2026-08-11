@@ -1,0 +1,10 @@
+{
+ "stats": {
+  "train_perm": 7989,
+  "tier_backfill": 857,
+  "split_fix": 77,
+  "dupes": 0
+ },
+ "r2_published": 21,
+ "convention": "manifest.r2.jsonl beside frozen original; consumers prefer r2"
+}
