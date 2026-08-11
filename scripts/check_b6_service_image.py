@@ -44,6 +44,14 @@ MODULES = {
 WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 ORCHESTRATOR_WEBSOCKET_PATH = "/v1/conversations/stream"
 ORCHESTRATOR_SYNTHETIC_KEY = "medzen-b6-synthetic-client-key"
+PARTIAL_SOURCE_PATH_ENV = "MEDZEN_STREAM_PARTIAL_FIXTURE"
+PARTIAL_SOURCE_SHA256_ENV = "MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256"
+PARTIAL_SOURCE_CONTAINER_PATH = (
+    "/opt/medzen/platform/testdata/orchestrator/b6-window-asr-fixture.json"
+)
+PARTIAL_SOURCE_SHA256 = (
+    "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc"
+)
 
 
 def run(*command: str) -> str:
@@ -157,6 +165,12 @@ def _exact_streamed_conversation(
         token_path.chmod(0o600)
         environment = os.environ.copy()
         environment[PROOF_AUDIO_SHA256_ENV] = PROOF_AUDIO_SHA256
+        existing_pythonpath = environment.get("PYTHONPATH")
+        environment["PYTHONPATH"] = (
+            str(ROOT)
+            if not existing_pythonpath
+            else str(ROOT) + os.pathsep + existing_pythonpath
+        )
         completed = subprocess.run(
             (
                 sys.executable,
@@ -179,8 +193,10 @@ def _exact_streamed_conversation(
         try:
             result = json.loads(completed.stdout)
         except json.JSONDecodeError as exc:
+            stderr = " ".join(completed.stderr.strip().split())[-1024:]
             raise RuntimeError(
-                "exact WebSocket conversation returned malformed evidence"
+                "exact WebSocket conversation returned malformed evidence: "
+                f"exit={completed.returncode} stderr={stderr or 'absent'}"
             ) from exc
         if completed.returncode != 0:
             assertion = result.get("failed_assertion", "UNCLASSIFIED")
@@ -257,14 +273,66 @@ def _wait_for_orchestrator_ready(container: str, port: int) -> None:
     raise RuntimeError(f"orchestrator readiness timed out: {last_error}")
 
 
+def _wait_for_partial_source_refusal(container: str, port: int) -> dict[str, object]:
+    deadline = time.monotonic() + 60.0
+    last_error = "not attempted"
+    while time.monotonic() < deadline:
+        try:
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=2.0)
+            connection.request("GET", "/readyz")
+            response = connection.getresponse()
+            payload = json.loads(response.read())
+            connection.close()
+            if (
+                response.status == 503
+                and payload.get("ready") is False
+                and payload.get("streaming_partial_source_loaded") is False
+                and payload.get("error_code")
+                == "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+            ):
+                return {
+                    "status": "PASS_FAIL_CLOSED",
+                    "http_status": 503,
+                    "dependency": "streaming_partial_source",
+                    "reason_code": payload["error_code"],
+                    "application_started": True,
+                }
+            last_error = f"HTTP {response.status} {payload.get('error_code')}"
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            last_error = type(exc).__name__
+        state = run(
+            "docker", "inspect", "--format={{.State.Running}}", container
+        ).strip()
+        if state != "true":
+            raise RuntimeError(
+                "orchestrator negative qualification container stopped"
+            )
+        time.sleep(0.5)
+    raise RuntimeError(
+        f"partial-source refusal qualification timed out: {last_error}"
+    )
+
+
 def _orchestrator_websocket_smoke(
     image: str,
     *,
     runtime_app_sha256: str,
-) -> tuple[dict[str, object], dict[str, object]]:
+) -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
     container = f"medzen-orchestrator-ws-smoke-{uuid.uuid4().hex[:12]}"
+    refused_container = f"medzen-orchestrator-ws-refusal-{uuid.uuid4().hex[:12]}"
     mounts = (
-        (ROOT / "platform/testdata", "/opt/medzen/platform/testdata"),
+        (
+            ROOT / "platform/testdata/registry-ssm",
+            "/opt/medzen/platform/testdata/registry-ssm",
+        ),
+        (
+            ROOT / "platform/testdata/orchestrator/client-keys.json",
+            "/opt/medzen/platform/testdata/orchestrator/client-keys.json",
+        ),
+        (
+            ROOT / "platform/testdata/rag-index",
+            "/opt/medzen/platform/testdata/rag-index",
+        ),
         (ROOT / "registry/languages", "/opt/medzen/registry/languages"),
         (ROOT / "registry/llm-policies", "/opt/medzen/registry/llm-policies"),
         (
@@ -280,31 +348,55 @@ def _orchestrator_websocket_smoke(
             "/opt/medzen/platform/testdata/orchestrator/asr-fixture.json",
         ),
     )
-    command = [
-        "docker", "run", "--detach", "--rm", "--name", container,
-        "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
-        "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-        "--publish", "127.0.0.1::8080",
-        "--env", "MEDZEN_ORCHESTRATOR_MODE=local_fixture",
-        "--env", (
-            "MEDZEN_LOCAL_REGISTRY_FIXTURE="
-            "/opt/medzen/platform/testdata/registry-ssm/"
-            "b6-window-websocket-v1.json"
-        ),
-        "--env", (
-            "PYTHONPATH=/opt/site-packages:"
-            "/opt/medzen/services/speech-orchestrator:"
-            "/opt/medzen/services/rag-index:"
-            "/opt/medzen/services/llm-gateway"
-        ),
-    ]
-    for source, target in mounts:
-        command.extend((
-            "--mount", f"type=bind,src={source},dst={target},readonly"
-        ))
-    command.append(image)
+    def command_for(name: str, *, missing_partial_source: bool) -> list[str]:
+        command = [
+            "docker", "run", "--detach", "--rm", "--name", name,
+            "--read-only", "--cap-drop=ALL", "--security-opt=no-new-privileges",
+            "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
+            "--publish", "127.0.0.1::8080",
+            "--env", "MEDZEN_ORCHESTRATOR_MODE=local_fixture",
+            "--env", (
+                "MEDZEN_LOCAL_REGISTRY_FIXTURE="
+                "/opt/medzen/platform/testdata/registry-ssm/"
+                "b6-window-websocket-v1.json"
+            ),
+            "--env", (
+                "PYTHONPATH=/opt/site-packages:"
+                "/opt/medzen/services/speech-orchestrator:"
+                "/opt/medzen/services/rag-index:"
+                "/opt/medzen/services/llm-gateway"
+            ),
+        ]
+        if missing_partial_source:
+            command.extend((
+                "--env",
+                f"{PARTIAL_SOURCE_PATH_ENV}=/opt/medzen/not-ready/absent.json",
+            ))
+        for source, target in mounts:
+            command.extend((
+                "--mount", f"type=bind,src={source},dst={target},readonly"
+            ))
+        command.append(image)
+        return command
+
     try:
-        run(*command)
+        run(*command_for(refused_container, missing_partial_source=True))
+        refused_binding = run(
+            "docker", "port", refused_container, "8080/tcp"
+        ).strip()
+        if not refused_binding.startswith("127.0.0.1:"):
+            raise RuntimeError("negative smoke port is not loopback-bound")
+        dependency_gate = _wait_for_partial_source_refusal(
+            refused_container, int(refused_binding.rsplit(":", 1)[1])
+        )
+        subprocess.run(
+            ("docker", "rm", "--force", refused_container),
+            check=False,
+            text=True,
+            capture_output=True,
+        )
+
+        run(*command_for(container, missing_partial_source=False))
         binding = run("docker", "port", container, "8080/tcp").strip()
         if not binding.startswith("127.0.0.1:"):
             raise RuntimeError("orchestrator smoke port is not loopback-bound")
@@ -317,24 +409,32 @@ def _orchestrator_websocket_smoke(
             "network_binding": "loopback_ephemeral",
             "status": "PASS",
         })
-        conversation = _exact_streamed_conversation(
-            "127.0.0.1",
-            port,
-            runtime_app_sha256=runtime_app_sha256,
-        )
+        conversations = [
+            _exact_streamed_conversation(
+                "127.0.0.1",
+                port,
+                runtime_app_sha256=runtime_app_sha256,
+            )
+            for _ in range(3)
+        ]
+        if any(value != conversations[0] for value in conversations[1:]):
+            raise RuntimeError("stable WebSocket conversation results differ")
+        conversation = conversations[0]
         conversation.update({
             "container_read_only": True,
             "fixture_mounts": "read_only_synthetic_only",
             "network_binding": "loopback_ephemeral",
+            "stable_conversation_passes": 3,
         })
-        return handshake, conversation
+        return handshake, conversation, dependency_gate
     finally:
-        subprocess.run(
-            ("docker", "rm", "--force", container),
-            check=False,
-            text=True,
-            capture_output=True,
-        )
+        for name in (container, refused_container):
+            subprocess.run(
+                ("docker", "rm", "--force", name),
+                check=False,
+                text=True,
+                capture_output=True,
+            )
 
 
 def main() -> int:
@@ -395,10 +495,22 @@ if getattr(loaded, "app", None) is None:
     raise SystemExit("service app import smoke did not produce an app")
 app_source_sha256 = hashlib.sha256(Path(loaded.__file__).read_bytes()).hexdigest()
 websocket_backend = None
+streaming_partial_source_sha256 = None
 if service == "speech-orchestrator":
     websocket_backend = importlib.metadata.version("websockets")
     if websocket_backend != expected_websocket_version:
         raise SystemExit("WebSocket backend version does not match the exact pin")
+    partial_path = Path(os.environ.get("MEDZEN_STREAM_PARTIAL_FIXTURE", ""))
+    expected_partial_sha256 = os.environ.get(
+        "MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256", ""
+    )
+    if not partial_path.is_file():
+        raise SystemExit("packaged streaming partial source is absent")
+    streaming_partial_source_sha256 = hashlib.sha256(
+        partial_path.read_bytes()
+    ).hexdigest()
+    if streaming_partial_source_sha256 != expected_partial_sha256:
+        raise SystemExit("packaged streaming partial source hash differs")
 packages = sorted(
     path.name for path in Path("/opt/site-packages").glob("*.dist-info")
 )
@@ -410,6 +522,7 @@ print(json.dumps({
     "language_installers": 0,
     "runtime_packages": packages,
     "websocket_backend": websocket_backend,
+    "streaming_partial_source_sha256": streaming_partial_source_sha256,
     "app_source_sha256": app_source_sha256,
 }, sort_keys=True))
 '''
@@ -430,8 +543,13 @@ print(json.dumps({
         raise SystemExit("runtime smoke did not execute as fixed non-root")
     websocket_handshake = None
     websocket_conversation = None
+    websocket_dependency_gate = None
     if args.service == "speech-orchestrator":
-        websocket_handshake, websocket_conversation = (
+        (
+            websocket_handshake,
+            websocket_conversation,
+            websocket_dependency_gate,
+        ) = (
             _orchestrator_websocket_smoke(
                 args.image,
                 runtime_app_sha256=result["app_source_sha256"],
@@ -445,6 +563,7 @@ print(json.dumps({
         "runtime_smoke": result,
         "websocket_handshake": websocket_handshake,
         "websocket_conversation": websocket_conversation,
+        "websocket_dependency_gate": websocket_dependency_gate,
         "status": "PASS",
     }, sort_keys=True))
     return 0

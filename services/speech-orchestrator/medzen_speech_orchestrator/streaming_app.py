@@ -5,6 +5,7 @@ import contextlib
 import hashlib
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -40,6 +41,8 @@ LOGGER = logging.getLogger("medzen.orchestrator.streaming")
 CONTRACT_VERSION = "medzen.speech.v1"
 LANGUAGE_RE = re.compile(r"^[a-z]{2,3}$")
 AUDIO_FORMAT = "pcm_s16le/16000/mono"
+PARTIAL_SOURCE_PATH_ENV = "MEDZEN_STREAM_PARTIAL_FIXTURE"
+PARTIAL_SOURCE_SHA256_ENV = "MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256"
 
 
 def _root() -> Path:
@@ -56,6 +59,15 @@ def _breaker() -> CircuitBreaker:
         open_duration_s=defaults["open_duration_s"],
         half_open_max_calls=defaults["half_open_max_calls"],
     )
+
+
+def _partial_source() -> SyntheticPartialSource:
+    path = Path(os.environ.get(
+        PARTIAL_SOURCE_PATH_ENV,
+        _root() / "platform/testdata/orchestrator/asr-fixture.json",
+    ))
+    expected_sha256 = os.environ.get(PARTIAL_SOURCE_SHA256_ENV)
+    return SyntheticPartialSource(path, expected_sha256)
 
 
 def _log(
@@ -264,14 +276,19 @@ def create_app(
                 if service is None or application.state.auth is None:
                     raise RuntimeError("file-mode orchestrator is not ready")
                 runtime = supplied_pipeline or LocalStreamingPipeline(service)
+                partial_source = _partial_source()
                 application.state.streaming_guard = StreamingPipelineGuard(
                     runtime, _breaker(), configured_limits.pipeline_timeout_s
                 )
+                application.state.streaming_partial_source = partial_source
                 application.state.streaming_error = None
                 application.state.final_result_store = store
             except Exception as exc:
                 application.state.streaming_guard = None
-                application.state.streaming_error = type(exc).__name__
+                application.state.streaming_partial_source = None
+                application.state.streaming_error = getattr(
+                    exc, "reason_code", type(exc).__name__
+                )
                 application.state.orchestrator = None
                 application.state.auth = None
             yield
@@ -285,14 +302,23 @@ def create_app(
         service = getattr(request.app.state, "orchestrator", None)
         key_store = getattr(request.app.state, "auth", None)
         guard = getattr(request.app.state, "streaming_guard", None)
+        partial_source = getattr(
+            request.app.state, "streaming_partial_source", None
+        )
         state = guard.breaker.state if guard is not None else None
-        ready = service is not None and key_store is not None and state is State.CLOSED
+        ready = (
+            service is not None
+            and key_store is not None
+            and partial_source is not None
+            and state is State.CLOSED
+        )
         payload: dict[str, Any] = {
             "ready": ready,
             "mode": request.app.state.mode,
             "registry_loaded": service is not None,
             "authentication_loaded": key_store is not None,
             "streaming_ready": guard is not None,
+            "streaming_partial_source_loaded": partial_source is not None,
             "streaming_breaker_state": state.value if state is not None else "unavailable",
             "external_network_access": False,
         }
@@ -313,8 +339,17 @@ def create_app(
         service = websocket.app.state.orchestrator
         key_store = websocket.app.state.auth
         guard = websocket.app.state.streaming_guard
-        if service is None or key_store is None or guard is None:
-            await websocket.close(code=4503)
+        partial_source = websocket.app.state.streaming_partial_source
+        if (
+            service is None
+            or key_store is None
+            or guard is None
+            or partial_source is None
+        ):
+            reason_code = (
+                websocket.app.state.streaming_error or "STREAMING_NOT_READY"
+            )
+            await websocket.close(code=4503, reason=reason_code)
             _log(
                 event_type="stream_refused", status_code=4503,
                 error_code="DEPENDENCY_UNAVAILABLE"
@@ -365,9 +400,7 @@ def create_app(
                 session_id=str(session_id_factory()),
                 route=route,
                 vad=vad_factory(),
-                partial_source=SyntheticPartialSource(
-                    _root() / "platform/testdata/orchestrator/asr-fixture.json"
-                ),
+                partial_source=partial_source.clone(),
                 limits=configured_limits,
                 clock=clock,
             )
@@ -521,7 +554,9 @@ def create_app(
                         },
                     ))
             with contextlib.suppress(RuntimeError, WebSocketDisconnect):
-                await websocket.close(code=exc.close_code)
+                await websocket.close(
+                    code=exc.close_code, reason=exc.reason_code
+                )
             _log(
                 event_type="stream_refused",
                 request_id=request_id,

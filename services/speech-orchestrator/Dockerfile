@@ -29,7 +29,9 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/opt/site-packages:/opt/medzen/services/speech-orchestrator \
     MEDZEN_ORCHESTRATOR_MODE=deployed_http_ssm \
     AWS_REGION=eu-central-1 \
-    MEDZEN_CLIENT_KEYS_SECRET_ID=medzen/client-api-keys
+    MEDZEN_CLIENT_KEYS_SECRET_ID=medzen/client-api-keys \
+    MEDZEN_STREAM_PARTIAL_FIXTURE=/opt/medzen/platform/testdata/orchestrator/b6-window-asr-fixture.json \
+    MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256=f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc
 COPY --from=runtime-rootfs /usr/local /usr/local
 COPY --from=runtime-rootfs /lib /lib
 COPY --from=runtime-rootfs /usr/lib /usr/lib
@@ -38,6 +40,7 @@ COPY --from=builder /opt/site-packages /opt/site-packages
 COPY services/speech-orchestrator/medzen_speech_orchestrator /opt/medzen/services/speech-orchestrator/medzen_speech_orchestrator
 COPY platform/lib /opt/medzen/platform/lib
 COPY platform/resilience.yaml /opt/medzen/platform/resilience.yaml
+COPY platform/testdata/orchestrator/b6-window-asr-fixture.json /opt/medzen/platform/testdata/orchestrator/b6-window-asr-fixture.json
 COPY registry/emergency-policies /opt/medzen/registry/emergency-policies
 USER 10001:10001
 EXPOSE 8080

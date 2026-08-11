@@ -1,0 +1,59 @@
+{
+  "id": "B6-WEBSOCKET-PARTIAL-SOURCE-REMEDIATION-2026-001",
+  "revision": 1,
+  "status": "owner-directed-local-remediation",
+  "recorded_utc": "2026-08-11T17:05:00Z",
+  "purpose": "Remove the host-mount qualification gap that allowed the deployed WebSocket image to pass locally without its required partial-transcript source.",
+  "immutable_predecessor": {
+    "path": "platform/evidence/B6-PACKET-2026-032A-ATTEMPT-2-TERMINAL-DEPENDENCY-REFUSAL.json",
+    "sha256": "94a67cfcd9dd5541acf721dc05634559930dfdf5d4b685c26da02b3c9a1cf67a",
+    "outcome": "REFUSED",
+    "failure_stage": "websocket_proof",
+    "websocket_close_code": 4503,
+    "cleanup": "PASS"
+  },
+  "root_cause": {
+    "dependency": "streaming_partial_source",
+    "reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+    "live_behavior": "The WebSocket transport and start exchange reached the session constructor, which attempted to load a synthetic partial-transcript fixture absent from the deployed image and failed closed with code 4503.",
+    "file_path_difference": "The file route never constructs SyntheticPartialSource, so the preserved file proof could pass while streaming refused.",
+    "qualification_gap": "The previous local image qualifier mounted platform/testdata over the image and supplied the missing file from the host, so it did not test the deployable image filesystem.",
+    "audio_transport_excluded": {
+      "original_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+      "stream_reconstructed_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+      "byte_identical": true
+    }
+  },
+  "probe_semantics": {
+    "close_4503_is_correct_fail_closed_behavior": true,
+    "close_4503_is_a_pass_only_for_an_intentionally_unavailable_dependency_drill": true,
+    "close_4503_during_the_streaming_success_proof": "REFUSED",
+    "dependency_ready_required_for_streaming_milestone": true,
+    "pass_with_note_permitted_for_streaming_success_proof": false
+  },
+  "prospective_changes": {
+    "package_exact_partial_source_in_image": true,
+    "partial_source_sha256": "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc",
+    "preload_and_validate_during_readiness": true,
+    "missing_or_hash_mismatched_source_makes_readyz_503": true,
+    "safe_reason_code": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+    "close_reason_retained": true,
+    "host_mount_may_not_mask_packaged_partial_source": true,
+    "local_negative_qualification": "Run the real container with the partial-source path deliberately absent and require fail-closed readiness before running the aligned full streamed conversation.",
+    "historical_receipts_changed": 0
+  },
+  "allowed_operations": [
+    "Local source changes and tests",
+    "One local orchestrator image rebuild",
+    "Local runtime qualification and vulnerability scan",
+    "Preparation of a versioned scan-only ECR packet"
+  ],
+  "prohibited_without_separate_exact_packet_approval": [
+    "Push the successor image to ECR",
+    "Deploy the successor image",
+    "Start CPU or GPU workers",
+    "Create or change AWS resources",
+    "Use packet 2026-032A for another attempt",
+    "Change production SSM, approved/asr, MLflow or model-registry state"
+  ]
+}
