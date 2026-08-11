@@ -39,7 +39,21 @@ def test_exact_window_conversation_pass_is_bound_to_probe_and_runtime_app():
     ]
     assert conversation["final_result_preserved"] is True
     binding = conversation["probe_app_binding"]
-    assert binding["probe_sha256"] == sha256(ROOT / "scripts/b6_6_probe.py")
+    authorization = json.loads((
+        ROOT / "platform/decisions/B6-AWS-AUTH-2026-032A-window.json"
+    ).read_bytes())
+    probe_source = subprocess.run(
+        [
+            "git",
+            "show",
+            f"{authorization['independent_review']['reviewed_repository_commit']}:"
+            "scripts/b6_6_probe.py",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout
+    assert binding["probe_sha256"] == hashlib.sha256(probe_source).hexdigest()
     runtime_source = subprocess.run(
         [
             "git",

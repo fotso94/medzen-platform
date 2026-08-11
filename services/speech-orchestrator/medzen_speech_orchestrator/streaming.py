@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
 import io
 import json
+import re
 import time
 import wave
 from dataclasses import dataclass, field
@@ -18,12 +20,21 @@ from .vad import VADRefusal, VoiceActivityDetector
 
 
 class StreamRefusal(RuntimeError):
-    def __init__(self, code: str, message: str, close_code: int, retryable: bool):
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        close_code: int,
+        retryable: bool,
+        *,
+        reason_code: str | None = None,
+    ):
         super().__init__(message)
         self.code = code
         self.message = message
         self.close_code = close_code
         self.retryable = retryable
+        self.reason_code = reason_code or code
 
 
 class StreamCancelled(RuntimeError):
@@ -214,16 +225,26 @@ async def deliver_final_batch(
 
 
 class SyntheticPartialSource:
-    def __init__(self, binding: Path):
+    def __init__(self, binding: Path, expected_sha256: str | None = None):
         try:
-            value = json.loads(binding.read_bytes())
+            raw = binding.read_bytes()
+            if (
+                expected_sha256 is not None
+                and (
+                    re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
+                    or hashlib.sha256(raw).hexdigest() != expected_sha256
+                )
+            ):
+                raise ValueError("partial-source checksum differs")
+            value = json.loads(raw)
             transcript = value["transcript"]["normalized"]
-        except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             raise StreamRefusal(
                 "DEPENDENCY_UNAVAILABLE",
                 "synthetic partial source is unavailable",
                 4503,
                 True,
+                reason_code="STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
             ) from exc
         if (
             value.get("classification") != "B6_3_LOCAL_SYNTHETIC_NON_SPEECH"
@@ -235,9 +256,16 @@ class SyntheticPartialSource:
                 "synthetic partial source is not local-fixture scoped",
                 4503,
                 True,
+                reason_code="STREAMING_PARTIAL_SOURCE_SCOPE_INVALID",
             )
         self.words = tuple(transcript.split())
         self.index = 0
+
+    def clone(self) -> "SyntheticPartialSource":
+        duplicate = object.__new__(SyntheticPartialSource)
+        duplicate.words = self.words
+        duplicate.index = 0
+        return duplicate
 
     def next(self) -> str | None:
         if self.index >= len(self.words):

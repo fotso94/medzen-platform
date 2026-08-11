@@ -412,14 +412,7 @@ class WebSocket:
             10: "pong",
         }.get(opcode, f"unknown_{opcode}")
         if opcode == 8:
-            close_code = (
-                struct.unpack("!H", payload[:2])[0]
-                if len(payload) >= 2
-                else None
-            )
-            close_reason, _ = sanitize_response_body(
-                payload[2:] if len(payload) >= 2 else b""
-            )
+            close_code, close_reason = self._close_details(payload)
             _refuse(
                 "WEBSOCKET_CLOSED_BEFORE_EVENT",
                 "WebSocket closed before the next expected event",
@@ -442,6 +435,36 @@ class WebSocket:
         if not isinstance(value, dict):
             _refuse("WEBSOCKET_EVENT_IS_OBJECT", "WebSocket event is not an object", response_body=payload)
         return value
+
+    @staticmethod
+    def _close_details(payload: bytes) -> tuple[int | None, str]:
+        close_code = (
+            struct.unpack("!H", payload[:2])[0]
+            if len(payload) >= 2
+            else None
+        )
+        close_reason, _ = sanitize_response_body(
+            payload[2:] if len(payload) >= 2 else b""
+        )
+        return close_code, close_reason
+
+    def receive_close(self) -> tuple[int | None, str]:
+        opcode, payload = self.receive()
+        if opcode != 8:
+            frame_type = {
+                0: "continuation",
+                1: "text",
+                2: "binary",
+                9: "ping",
+                10: "pong",
+            }.get(opcode, f"unknown_{opcode}")
+            _refuse(
+                "WEBSOCKET_ERROR_FOLLOWED_BY_CLOSE",
+                "server error event was not followed by a close frame",
+                response_body=payload,
+                websocket_frame_type=frame_type,
+            )
+        return self._close_details(payload)
 
     def _read(self, size: int) -> bytes:
         value = self.buffer[:size]
@@ -518,6 +541,7 @@ def websocket_proof(args: argparse.Namespace) -> dict:
     def receive_event() -> dict:
         event = websocket.receive_json()
         if event.get("type") == "error":
+            close_code, close_reason = websocket.receive_close()
             _refuse(
                 "WEBSOCKET_SERVER_ERROR_EVENT",
                 "server returned a WebSocket error event",
@@ -525,6 +549,8 @@ def websocket_proof(args: argparse.Namespace) -> dict:
                     event, sort_keys=True, separators=(",", ":")
                 ).encode(),
                 websocket_frame_type="text",
+                websocket_close_code=close_code,
+                websocket_close_reason=close_reason,
             )
         return event
 

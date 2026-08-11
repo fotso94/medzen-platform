@@ -224,6 +224,18 @@ def test_websocket_close_reason_is_sanitized_before_runner_retention(
     assert retained["websocket_close_reason"] == "[CREDENTIAL_REDACTED]"
 
 
+def test_websocket_error_event_can_retain_the_following_close_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    websocket = object.__new__(WebSocket)
+    payload = struct.pack("!H", 4503) + b"STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+    monkeypatch.setattr(websocket, "receive", lambda: (8, payload))
+    assert websocket.receive_close() == (
+        4503,
+        "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+    )
+
+
 def test_receipt_engine_scopes_synthetic_body_to_refused_proof_stages(
     tmp_path: Path,
 ) -> None:

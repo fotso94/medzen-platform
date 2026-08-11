@@ -381,3 +381,27 @@ def test_open_streaming_breaker_is_visible_in_readiness():
     assert ready.status_code == 503
     assert ready.json()["streaming_breaker_state"] == "open"
     assert ready.json()["error_code"] == "STREAMING_CIRCUIT_OPEN"
+
+
+def test_missing_partial_source_refuses_readiness_before_a_stream_can_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    service, auth = build_local_orchestrator()
+    missing = tmp_path / "deliberately-not-ready.json"
+    monkeypatch.setenv("MEDZEN_STREAM_PARTIAL_FIXTURE", str(missing))
+    monkeypatch.setenv("MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256", "0" * 64)
+    app = create_app(service, auth)
+    with TestClient(app) as client:
+        ready = client.get("/readyz")
+        assert ready.status_code == 503
+        assert ready.json()["streaming_partial_source_loaded"] is False
+        assert ready.json()["error_code"] == (
+            "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"
+        )
+        with pytest.raises(WebSocketDisconnect) as caught:
+            with client.websocket_connect(
+                "/v1/conversations/stream", headers=HEADERS
+            ):
+                pass
+    assert caught.value.code == 4503
+    assert caught.value.reason == "STREAMING_PARTIAL_SOURCE_UNAVAILABLE"

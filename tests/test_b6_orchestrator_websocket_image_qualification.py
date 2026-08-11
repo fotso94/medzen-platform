@@ -16,6 +16,10 @@ from scripts.check_b6_service_image import (
 
 ROOT = Path(__file__).resolve().parents[1]
 DECISION = ROOT / "platform/decisions/B6-WEBSOCKET-RUNTIME-REMEDIATION-2026-001.json"
+PARTIAL_SOURCE_DECISION = (
+    ROOT
+    / "platform/decisions/B6-WEBSOCKET-PARTIAL-SOURCE-REMEDIATION-2026-001.json"
+)
 
 
 def response(key: str, *, status: str = "101 Switching Protocols") -> bytes:
@@ -70,11 +74,49 @@ def test_qualification_is_a_real_container_conversation_not_testclient():
         '"websocket"',
         '"final_transcript", "reply_text", "completed"',
         '"probe_app_binding"',
+        "_wait_for_partial_source_refusal",
+        '"dependency": "streaming_partial_source"',
+        '"status": "PASS_FAIL_CLOSED"',
     ):
         assert required in checker
     assert "TestClient" not in checker
     assert "real TCP/RFC 6455 upgrade" in standard
     assert "supersedes `runtime-image-hardening-v1.md` prospectively" in standard
+
+
+def test_partial_source_is_packaged_hash_bound_and_not_masked_by_host_mount():
+    expected = "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc"
+    fixture = ROOT / "platform/testdata/orchestrator/b6-window-asr-fixture.json"
+    assert hashlib.sha256(fixture.read_bytes()).hexdigest() == expected
+    dockerfile = (ROOT / "services/speech-orchestrator/Dockerfile").read_text()
+    checker = (ROOT / "scripts/check_b6_service_image.py").read_text()
+    assert (
+        "COPY platform/testdata/orchestrator/b6-window-asr-fixture.json "
+        "/opt/medzen/platform/testdata/orchestrator/b6-window-asr-fixture.json"
+    ) in dockerfile
+    assert f"MEDZEN_STREAM_PARTIAL_FIXTURE_SHA256={expected}" in dockerfile
+    assert 'ROOT / "platform/testdata", "/opt/medzen/platform/testdata"' not in checker
+    assert "packaged streaming partial source is absent" in checker
+    assert "packaged streaming partial source hash differs" in checker
+
+
+def test_partial_source_decision_refuses_pass_with_note_and_preserves_history():
+    decision = json.loads(PARTIAL_SOURCE_DECISION.read_bytes())
+    predecessor = decision["immutable_predecessor"]
+    assert hashlib.sha256((ROOT / predecessor["path"]).read_bytes()).hexdigest() == (
+        predecessor["sha256"]
+    )
+    assert decision["root_cause"]["dependency"] == "streaming_partial_source"
+    assert decision["root_cause"]["qualification_gap"].startswith(
+        "The previous local image qualifier mounted platform/testdata"
+    )
+    assert decision["probe_semantics"]["close_4503_is_correct_fail_closed_behavior"]
+    assert decision["probe_semantics"]["pass_with_note_permitted_for_streaming_success_proof"] is False
+    prohibited = " ".join(
+        decision["prohibited_without_separate_exact_packet_approval"]
+    )
+    assert "Push the successor image to ECR" in prohibited
+    assert "Deploy the successor image" in prohibited
 
 
 def test_owner_decision_preserves_file_proof_and_aws_packet_boundary():
