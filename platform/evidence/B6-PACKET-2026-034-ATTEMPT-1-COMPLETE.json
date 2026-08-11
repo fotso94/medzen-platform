@@ -1,0 +1,209 @@
+{
+  "id": "B6-PACKET-2026-034-ATTEMPT-1-COMPLETE",
+  "revision": 1,
+  "status": "PASS_REMAINING_PROOFS_CLEANUP_COMPLETE",
+  "recorded_utc": "2026-08-11T18:37:28Z",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-034",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-034-remaining-proofs.md",
+    "sha256": "356a45b74a6060686fcafaad7fe595ea95298803a499a1a974804731efc825e2"
+  },
+  "authorization": {
+    "id": "B6-AWS-AUTH-2026-034",
+    "path": "platform/decisions/B6-AWS-AUTH-2026-034-window.json",
+    "sha256": "ae5251a018271a8f024554a969c6a6dac68295d4cc975f3e7354cd319879ec37"
+  },
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "independent architecture reviewer (Claude)",
+    "reviewed_commit": "20fa2d874d9842040f3d0de7c593a9ecb19c6010",
+    "packet_sha256": "356a45b74a6060686fcafaad7fe595ea95298803a499a1a974804731efc825e2",
+    "cold_rehearsal_sha256": "d426218888f28ec56a8ce41eda3a9fe286dd186e71c2fa934a28c96e308df7d5",
+    "findings": 0
+  },
+  "owner_authorization_commit": "130cb8d120ba3ab5344c0d8f21116533305c4398",
+  "execution": {
+    "attempt": 1,
+    "outcome": "PASS",
+    "failure_stage": null,
+    "stage_receipts": 22,
+    "stage_receipts_passed": 22,
+    "cleanup": "PASS",
+    "window_started_utc": "2026-08-11T17:58:14Z",
+    "remaining_proofs_completed_utc": "2026-08-11T18:12:08Z",
+    "cleanup_completed_utc": "2026-08-11T18:34:20Z",
+    "wall_clock_seconds": 2166,
+    "maximum_authorized_seconds": 4500,
+    "inside_time_allowance": true
+  },
+  "immutable_bindings": {
+    "orchestrator_child_digest": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
+    "orchestrator_scan_result_path": "platform/evidence/B6-PACKET-2026-033-SCAN-RESULT.json",
+    "orchestrator_scan_result_sha256": "fe7548a9555c35cb0dd1c0508c07f0eae028c809f370b36af95f9e66f7f7493d",
+    "local_dual_path_qualification_path": "platform/evidence/B6-WEBSOCKET-PARTIAL-SOURCE-LOCAL-QUALIFICATION-2026-001.json",
+    "local_dual_path_qualification_sha256": "5cdd5ebd8b7159ac010f67565aad26d0aea5c6be8e6b35836f43ed2ae2673eb3",
+    "packaged_partial_source_sha256": "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc"
+  },
+  "preserved_milestones": {
+    "file_proof": {
+      "path": "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json",
+      "sha256": "808d160e391998e3f534d8776342e58337ebb4a200ffaab58fcc43e586c60c89",
+      "status": "PASS_HISTORICAL_UNCHANGED",
+      "rerun": false
+    },
+    "b6a_platform_proof": "PASS_HISTORICAL_UNCHANGED",
+    "b5_gate_report": {
+      "sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+      "outcome": "BLOCKED",
+      "unchanged": true
+    }
+  },
+  "live_platform_proofs": {
+    "source_authorization_and_registry_alignment": "PASS",
+    "deadline_first": "PASS",
+    "worker_and_dra_readiness": "PASS",
+    "rag_asr_tts_llm_orchestrator_readiness": "PASS",
+    "pre_endpoint_image_residency": "PASS",
+    "temporary_endpoint_and_alb_stability": "PASS",
+    "private_fargate_probe": "PASS",
+    "streamed_websocket_conversation": "PASS",
+    "cancellation_and_barge_in": "PASS",
+    "controlled_failure_drills": "PASS",
+    "network_isolation": "PASS",
+    "automatic_zero_state_cleanup": "PASS"
+  },
+  "remaining_proof_results": {
+    "websocket": {
+      "status": "PASS",
+      "event_types": [
+        "ready",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "partial_transcript",
+        "final_transcript",
+        "reply_text",
+        "completed"
+      ],
+      "partial_queue_limit": 4,
+      "audio_queue_limit": 8,
+      "final_result_preserved": true
+    },
+    "cancellation": {
+      "status": "PASS",
+      "event_type": "cancelled",
+      "barge_in_latency_ms": 96.646,
+      "maximum_ms": 250
+    },
+    "failure_drills": {
+      "status": "PASS",
+      "rag_unavailable_http_status": 503,
+      "rag_unavailable_error_code": "DEPENDENCY_UNAVAILABLE",
+      "controlled_http_statuses": [
+        401,
+        422,
+        426
+      ],
+      "http_500_cascades": 0,
+      "rag_restored_stable_observations": 3,
+      "local_provider_drills": "PREPROVEN_BY_PINNED_SUITES_NO_REAL_PROVIDER_CALLS"
+    },
+    "isolation": {
+      "status": "PASS",
+      "orchestrator_ingresses": 1,
+      "orchestrator_service_type": "ClusterIP",
+      "dependency_service_count": 4,
+      "dependency_service_type": "ClusterIP",
+      "dependency_ingresses": 0,
+      "public_load_balancers": 0,
+      "stable_observations": 3
+    }
+  },
+  "receipt_hashes": {
+    "stage0": "10afac4ae6ebdb9aa45b6959f4fba26411eb0ab77367fa80dd3013adc93a3bb9",
+    "deadline": "8a89d72adf044e3efca8e55cbcaf03e2b13c79636eafbbeefebe5a01af09bacb",
+    "workers_ready": "a9620877322677d07fb726e6461b6bd8ae070b6d3c87b84282cae89691efc08c",
+    "dra_ready": "563ccff8e443c81cc180cc425f5f022ae8f273b947d0168718e2680e5712e883",
+    "rag_ready": "08716d2bb51522d85a0cb646330f0fea2f0a7cbc30b106e08cf2b53a284a1854",
+    "asr_ready": "4c130987b6b57104be29d09fe52af5d8f2b088e7f99898555038587f2c5646eb",
+    "tts_ready": "273ea7ce14bd7f8e1280e9e1ff0b8964894e1239453f29b0304101c19607f657",
+    "llm_ready": "e30271204a1d57bc4630eef86fe90b2b2ee5448b1928127aacb447fe3c4f6e0a",
+    "orchestrator_ready": "074cda343ae9d30972bee54bd714a2b756368824526cab632e8c5cca2fb7a918",
+    "controller_window": "151b39033397d0cda31b56ce82c1a7986980b5d6d261107e1efec19d062d8c45",
+    "controller_ready": "4d9c44dc2ad890e1e65310a7e31385bc55c39e1a87db1c2f301a6d346aea9433",
+    "pre_endpoint_images": "fbdefabe1a6db825055b2d32efa6f66f04d96be2e97b6503809334fbf11110fc",
+    "terraform_window": "487e44446c01c05f47b4124d7bb8e63b4033683920f230fe50945c30bb79a939",
+    "endpoints_ready": "89e0ecfac19365693f1c69f1e635cb188732660dc39a3e37a2c6776c7b310b35",
+    "alb_ready": "f20d472e0adfc6a9088561b05347d23989ab9501cc05dbb0d16a5286bdb20227",
+    "fargate_probe": "90ff6326ca6f6631844c71bef6b3bf1017132efccea6900e51c24daa92e1e95f",
+    "alb_tag_mutation_warning": "61be4f57e2cd7371e315b64ec75dbfbdfc16eb1b02f17e247e1df9dbb20058d7",
+    "websocket_proof": "f141499b8e894366f484a1fb7f07c9927315eabc941b8b8c4d7a2bea63b65100",
+    "cancellation_proof": "778d1fb1b165ec54b46377b4833c4c0f7e448ff08ceddc1f68c64907f4db53e7",
+    "failure_drills": "b75342eed7afdb97510cfb0e3599932c7af8f23df9a464feb8f552935ad56bed",
+    "isolation_proof": "ed519c926413f6ec6f4b5f625b26a563640b11c40a9541a4a8c6c64d1fc97883",
+    "cleanup": "b3d5fce33b30f74b85ba026e73d308e306a9d721f02d13a33371151d2d378b2e"
+  },
+  "allowance": {
+    "packet_attempts_authorized": 2,
+    "packet_attempts_consumed": 1,
+    "packet_attempts_unused": 1,
+    "packet_attempts_remaining": 0,
+    "maximum_seconds_per_attempt": 4500,
+    "attempt_1_wall_clock_seconds": 2166,
+    "attempt_2_status": "TERMINATED_UNUSED_BY_ATTEMPT_1_PASS",
+    "unused_seconds_transferable": false,
+    "existing_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "actual_incremental_aws_billing": "PENDING_RECONCILIATION",
+    "additional_execution_under_packet_2026_034": false
+  },
+  "zero_state": {
+    "cleanup_receipt_status": "PASS",
+    "independent_read_only_sweep_utc": "2026-08-11T18:37:28Z",
+    "cpu_desired": 0,
+    "cpu_asg_instances": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "workload_nodes": 0,
+    "synthetic_pods": 0,
+    "window_ingresses": 0,
+    "window_deployments": 0,
+    "window_terraform_resources": 0,
+    "probe_vpc_endpoints": 0,
+    "endpoint_security_groups": 0,
+    "running_probe_tasks": 0,
+    "alb_count": 0,
+    "alb_controller": 0,
+    "nvidia_dra_driver": 0,
+    "deadline_actions": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "local_token_absent": true,
+    "local_alb_hostname_absent": true,
+    "persistent_synthetic_secret": "RETAINED_KMS_BOUND_OPERATOR_DENIED",
+    "stable_zero_observations": 3,
+    "terraform_zero_stable_observations": 3
+  },
+  "prohibited_state_unchanged": {
+    "production_ssm_pointer_changes": 0,
+    "approved_asr_changes": 0,
+    "model_registrations": 0,
+    "mlflow_stage_transitions": 0,
+    "production_traffic": 0,
+    "phi": 0,
+    "real_provider_calls": 0,
+    "file_proof_reruns": 0
+  },
+  "completion_semantics": {
+    "b6a": "PASS_HISTORICAL_UNCHANGED",
+    "file_conversation_proof": "PASS_HISTORICAL_UNCHANGED_NO_RERUN",
+    "remaining_live_proofs": "PASS",
+    "b6_bounded_integration": "PASS",
+    "b6_drills": "PASS_LOCAL_AND_LIVE_BOUNDARIES",
+    "packet_2026_034": "COMPLETE_ATTEMPT_1_PASS",
+    "b6_complete": false,
+    "b6_closure_status": "PENDING_INDEPENDENT_EXIT_REVIEW_AND_COST_RECONCILIATION",
+    "b7_authorized": false
+  }
+}
