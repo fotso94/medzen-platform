@@ -88,3 +88,24 @@ def test_owner_decision_preserves_file_proof_and_aws_packet_boundary():
     assert decision["successor_window_boundary"]["live_proof_scope"] == [
         "streaming", "cancellation", "failure_drills", "isolation"
     ]
+
+
+def test_successor_builder_is_local_one_image_and_refuses_mutable_sources():
+    builder = (
+        ROOT / "scripts/build_b6_orchestrator_websocket_image.sh"
+    ).read_text()
+    assert "source worktree must be clean" in builder
+    assert "source commit is not the checked-out HEAD" in builder
+    assert "services/speech-orchestrator/Dockerfile" in builder
+    assert "scripts/check_b6_service_image.py" in builder
+    assert "docker scout cves" in builder
+    assert "medzen-orchestrator" in builder
+    for forbidden in (
+        "aws ecr",
+        "docker login",
+        "docker push",
+        "medzen-rag-index",
+        "medzen-llm-gateway",
+        "medzen-speech-tts-gateway",
+    ):
+        assert forbidden not in builder
