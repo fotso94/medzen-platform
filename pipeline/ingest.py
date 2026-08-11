@@ -77,6 +77,9 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "yemba_egra":
         from .adapters.yemba_egra import YembaEGRAAdapter
         return YembaEGRAAdapter(language, task=task, version=version)
+    if source == "lrsc":
+        from .adapters.lrsc import LRSCAdapter
+        return LRSCAdapter(language, task=task, version=version)
     if source == "kallaama":
         from .adapters.kallaama import KallaamaAdapter
         return KallaamaAdapter(language, task=task, version=version)

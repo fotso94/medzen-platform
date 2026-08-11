@@ -34,7 +34,11 @@ from .base import TARGET_SR, MIN_S, MAX_S, SourceSpec, build_record, usable
 
 SOURCE = "OpenSLR-151 / Zenodo-10892569"
 LICENSE_POLICY = "cc_by_4_0"               # CC-BY-4.0 -> permissive
-LANGS = {"wolof": ("wol", None), "fula": ("fuf", "pulaar")}
+LANGS = {"wolof": ("wol", None), "fula": ("fuf", "pulaar"),
+         # 2026-08-11 owner-supplied full release: serer is NEW; pulaar was
+         # dropped in the campaign for space and now enters (fuc, distinct
+         # from the WAXAL "fula" fuf material).
+         "serer": ("srr", None), "pulaar": ("fuc", None)}
 ENV_ROOT = "MEDZEN_KALLAAMA_DIR"
 
 
