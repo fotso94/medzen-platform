@@ -1,0 +1,145 @@
+{
+  "id": "B6-COST-RECONCILIATION-2026-005",
+  "revision": 1,
+  "status": "PASS_CONSERVATIVE_RECONCILIATION_WITH_DISCLOSED_AWS_GRANULARITY_LIMITS",
+  "recorded_utc": "2026-08-10T23:58:39Z",
+  "currency": "USD",
+  "scope": {
+    "ledger_predecessor": {
+      "path": "platform/finance/COST-REGISTRY-2026-004.json",
+      "sha256": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb",
+      "recorded_utc": "2026-08-09T19:30:00Z"
+    },
+    "through_execution": {
+      "path": "platform/evidence/B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE.json",
+      "sha256": "c82c51b6bd652000594c28d325a528ed415148149b670f3b075a3266cc2e9cc8",
+      "cleanup_verified_utc": "2026-08-10T23:39:40Z"
+    },
+    "statement": "All B6.6 Stage A and window activity after COST-REGISTRY-2026-004 through packet 2026-026 cleanup."
+  },
+  "aws_identity": {
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cost_explorer_region": "us-east-1",
+    "workload_region": "eu-central-1"
+  },
+  "cost_explorer_queries": {
+    "daily_period": {
+      "start_inclusive": "2026-08-09",
+      "end_exclusive": "2026-08-11",
+      "granularity": "DAILY",
+      "metric": "UnblendedCost",
+      "record_types": [
+        "Usage",
+        "Credit"
+      ],
+      "estimated_flags": {
+        "2026-08-09": true,
+        "2026-08-10": true
+      }
+    },
+    "relevant_service_daily_net": [
+      {
+        "date": "2026-08-09",
+        "gross_usage_usd": 197.4714436541,
+        "credits_usd": -196.8041088723,
+        "net_usd": 0.6673347818
+      },
+      {
+        "date": "2026-08-10",
+        "gross_usage_usd": 46.2239966424,
+        "credits_usd": -45.9915250026,
+        "net_usd": 0.2324716398
+      }
+    ],
+    "relevant_services": [
+      "AWS Key Management Service",
+      "AWS Secrets Manager",
+      "Amazon EC2 Container Registry (ECR)",
+      "EC2 - Other",
+      "Amazon Elastic Compute Cloud - Compute",
+      "Amazon Elastic Container Service",
+      "Amazon Elastic Container Service for Kubernetes",
+      "Amazon Elastic Load Balancing",
+      "Amazon Simple Storage Service",
+      "Amazon Virtual Private Cloud",
+      "AmazonCloudWatch",
+      "CloudWatch Events"
+    ],
+    "account_wide_relevant_service_totals": {
+      "gross_usage_usd": 243.6954402965,
+      "credits_usd": -242.7956338749,
+      "net_usd": 0.8998064216,
+      "accounting_use": "CONSERVATIVE_MAXIMUM_ATTRIBUTION_TO_B6_SINCE_REVISION_004"
+    }
+  },
+  "direct_worker_compute": {
+    "basis": "Exact eu-central-1 instance-type Cost Explorer lines, cross-checked against EKS and Auto Scaling RunInstances events after the predecessor timestamp.",
+    "lines": [
+      {
+        "usage_type": "EUC1-BoxUsage:g6.xlarge",
+        "usage_hours": 0.344167,
+        "gross_usage_usd": 0.3463696688,
+        "credits_usd": -0.3463696688,
+        "net_usd": 0.0
+      },
+      {
+        "usage_type": "EUC1-BoxUsage:m6i.large",
+        "usage_hours": 1.459168,
+        "gross_usage_usd": 0.16780432,
+        "credits_usd": -0.16780432,
+        "net_usd": 0.0
+      }
+    ],
+    "totals": {
+      "usage_hours": 1.803335,
+      "gross_usage_usd": 0.5141739888,
+      "credits_usd": -0.5141739888,
+      "net_usd": 0.0
+    },
+    "cloudtrail_cross_check": {
+      "first_successful_post_registry_instance_launch_utc": "2026-08-09T22:07:07Z",
+      "predecessor_recorded_utc": "2026-08-09T19:30:00Z",
+      "instance_types": [
+        "g6.xlarge",
+        "m6i.large"
+      ],
+      "launch_authorities": [
+        "AWSServiceRoleForAmazonEKSNodegroup",
+        "AWSServiceRoleForAutoScaling"
+      ]
+    }
+  },
+  "attribution_limits": {
+    "project_cost_allocation_tag_values_returned_by_cost_explorer": [
+      ""
+    ],
+    "project_cost_allocation_tags_available": false,
+    "hourly_cost_explorer": "NOT_ENABLED_PAYER_OPT_IN_REQUIRED",
+    "resource_level_cost_explorer": "NOT_ENABLED_PAYER_OPT_IN_REQUIRED",
+    "cost_and_usage_report_definitions": 0,
+    "billing_data_exports": 0,
+    "current_daily_results_are_estimated": true,
+    "current_day_ingestion_complete": false,
+    "interpretation": "AWS does not currently expose a finalized per-resource project bill for the complete execution interval. No exact shared-service allocation is fabricated. The full account-wide net charge for every service class the packet could touch is therefore used as a conservative project upper bound."
+  },
+  "reconciliation": {
+    "actual_direct_worker_compute_net_usd": 0.0,
+    "actual_direct_worker_compute_gross_usd": 0.5141739888,
+    "conservative_account_wide_relevant_service_net_upper_bound_usd": 0.8998064216,
+    "recognized_incremental_guardrail_usd": 0.8998064216,
+    "variance_between_direct_compute_net_and_recognized_guardrail_usd": 0.8998064216,
+    "variance_category": "UNATTRIBUTABLE_SHARED_SERVICE_AND_COST_EXPLORER_GRANULARITY_MARGIN",
+    "open_cash_billing_item": "AWS daily results remain estimated until the billing period settles; the guardrail does not wait on a lower future value.",
+    "owner_review_required": true
+  },
+  "controls": {
+    "aws_mutations": 0,
+    "historical_records_modified": false,
+    "credits_used_to_increase_future_allowance": false,
+    "conservative_upper_bound_used_instead_of_zero": true,
+    "existing_window_reservation_preserved": true,
+    "new_reservation_created": false,
+    "qualified_financial_review_required_before_signoff": true
+  }
+}

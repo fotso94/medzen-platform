@@ -1,0 +1,121 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-005",
+  "revision": 5,
+  "status": "CURRENT_RECONCILED_GUARDRAIL_WITH_ACTIVE_RESERVATION",
+  "recorded_utc": "2026-08-10T23:58:39Z",
+  "currency": "USD",
+  "supersedes": {
+    "path": "platform/finance/COST-REGISTRY-2026-004.json",
+    "sha256": "56ef3255490b9d7c02244c5cc11c4040de6879635c49d039d16083dea5eaf5eb"
+  },
+  "reconciliation_evidence": {
+    "path": "platform/evidence/B6-COST-RECONCILIATION-2026-005.json",
+    "sha256": "3fa05595ca23b6d49a35a7ff12e54b78d1c6c121e89b365bd7c14b95267ad0a9"
+  },
+  "purpose": "Recognize the conservative account-wide Cost Explorer net upper bound for every AWS service class touched since revision 004, preserve actual direct-compute gross, credit and net amounts separately, and retain the existing bounded B6.6 reservation.",
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 64.4286064216,
+    "active_reservations_usd": 10.0,
+    "committed_plus_reserved_usd": 74.4286064216,
+    "guardrail_headroom_after_reservations_usd": 225.5713935784,
+    "incremental_since_revision_004_recognized_guardrail_usd": 0.8998064216,
+    "actual_direct_worker_compute_gross_usd": 0.5141739888,
+    "actual_direct_worker_compute_credits_usd": -0.5141739888,
+    "actual_direct_worker_compute_net_usd": 0.0,
+    "claim_limit": "The 0.8998064216 USD increment is the full account-wide net Cost Explorer charge for all relevant services across both covering UTC dates, not a claim that every cent belongs to MedZen. AWS lacks active project cost-allocation values, hourly/resource granularity and a billing export, and current daily results remain estimated. This deliberately overstates rather than understates the project guardrail."
+  },
+  "allocations": [
+    {
+      "allocation_id": "B4-MODEL-FACTORY",
+      "financial_state": "RECONCILED_COMMITTED",
+      "recognized_committed_usd": 22.5288,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-EKS-UPGRADE",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL",
+      "recognized_committed_usd": 25.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-SERVING-PROOF",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 15.0,
+      "active_reservation_usd": 0.0,
+      "conservative_observed_gpu_cost_usd": 0.9401
+    },
+    {
+      "allocation_id": "B6-5B-ECR-SCAN-ONLY-2026-001",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 1.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+      "financial_state": "RECONCILED_CONSERVATIVE_UPPER_BOUND_WITH_ACTIVE_RESERVATION",
+      "recognized_committed_usd": 0.8998064216,
+      "active_reservation_usd": 10.0,
+      "direct_worker_compute": {
+        "gross_usage_usd": 0.5141739888,
+        "credits_usd": -0.5141739888,
+        "net_usd": 0.0
+      },
+      "conservative_account_wide_relevant_service_net_upper_bound_usd": 0.8998064216,
+      "maximum_worker_capacity": {
+        "m6i.large_cpu_nodes": 2,
+        "g6.xlarge_gpu_nodes": 1,
+        "fargate_probe_tasks": 1
+      },
+      "allocation_tags": {
+        "Project": "medzen-speech",
+        "Environment": "dev",
+        "CostCenter": "speech-platform",
+        "Stage": "B6.6",
+        "Workstream": "integration-window",
+        "BudgetRegistry": "COST-REGISTRY-2026-003"
+      },
+      "tag_namespace_note": "COST-REGISTRY-2026-003 remains the immutable live allocation-tag namespace. Cost Explorer returned no active Project tag value, so historical allocation is evidence-based and no tags are fabricated retroactively."
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "COVERED_BY_RELEVANT_SERVICE_UPPER_BOUND_FOR_THIS_INTERVAL_ONLY",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS"
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0
+    }
+  ],
+  "allocation_tag_standard": {
+    "required_keys": [
+      "Project",
+      "Environment",
+      "CostCenter",
+      "Stage",
+      "Workstream",
+      "BudgetRegistry"
+    ],
+    "cost_explorer_activation_state": "PROJECT_VALUES_NOT_AVAILABLE",
+    "future_rule": "Do not describe a future charge as tag-attributable until the billing console returns the required allocation-tag values."
+  },
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "current_active_billable_reservations": 1,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_separated": true,
+    "credits_used_to_expand_reservation": false,
+    "new_aws_resources_require_versioned_packet": true,
+    "window_cleanup_required_before_reservation_close": true,
+    "next_reconciliation_creates_new_registry_revision": true,
+    "owner_or_qualified_financial_review_required": true
+  }
+}

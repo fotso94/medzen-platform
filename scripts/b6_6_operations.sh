@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for independently reviewed packet 2026-026.
+# Canonical operation dispatcher for prospective packet 2026-027.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,7 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-026-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-027-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -57,7 +57,7 @@ PY
   ! kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system --request-timeout=15s >/dev/null 2>&1
   ! kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --request-timeout=15s >/dev/null 2>&1
   .venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
-  write_payload "$(jq -nc --argjson credential "$credential_payload" --arg attempt "$attempt" '{authorization_record:"HASH_BOUND_OWNER_APPROVED",cost_registry:"COST-REGISTRY-2026-004",attempt:($attempt|tonumber),source_bindings_verified:true,credential:$credential}')"
+  write_payload "$(jq -nc --argjson credential "$credential_payload" --arg attempt "$attempt" '{authorization_record:"HASH_BOUND_OWNER_APPROVED",cost_registry:"COST-REGISTRY-2026-005",attempt:($attempt|tonumber),source_bindings_verified:true,credential:$credential}')"
 }
 
 stage_deadline() {
@@ -118,7 +118,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-026-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-027-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -147,7 +147,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-026-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-027-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
@@ -183,7 +183,7 @@ stage_endpoints_ready() {
   write_payload "$payload"
 }
 
-stage_fargate_probe() {
+stage_alb_ready() {
   .venv/bin/python scripts/b6_6_manifest_slice.py ingress | kubectl --kubeconfig "$kubeconfig" apply -f -
   deadline=$((SECONDS + 900))
   hostname=""
@@ -193,19 +193,19 @@ stage_fargate_probe() {
     [[ -n "$hostname" ]] || sleep 15
   done
   printf '%s\n' "$hostname" >"$alb_hostname_file"
+  ready_status=0
+  payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py wait-ready --profile medzen --wait-seconds 900)" || ready_status=$?
+  write_payload "$payload"
+  [[ "$ready_status" == "0" ]] || return "$ready_status"
+}
+
+stage_fargate_probe() {
+  hostname="$(tr -d '\n' <"$alb_hostname_file")"
+  [[ -n "$hostname" ]]
   probe_status=0
   payload="$(.venv/bin/python scripts/b6_6_fargate_probe.py --target-url "http://$hostname/readyz" --profile medzen --wait-seconds 600)" || probe_status=$?
   write_payload "$payload"
   [[ "$probe_status" == "0" ]] || return "$probe_status"
-}
-
-stage_alb_ready() {
-  hostname="$(tr -d '\n' <"$alb_hostname_file")"
-  [[ -n "$hostname" ]]
-  [[ "$(aws elbv2 describe-load-balancers --names medzen-b6-window --region eu-central-1 --profile medzen --query 'LoadBalancers[0].Scheme' --output text)" == "internal" ]]
-  [[ "$(aws elbv2 describe-load-balancers --names medzen-b6-window --region eu-central-1 --profile medzen --query 'LoadBalancers[0].Type' --output text)" == "application" ]]
-  payload="$(.venv/bin/python scripts/b6_6_lbc_runtime.py verify --profile medzen)"
-  write_payload "$payload"
 }
 
 stage_tag_result() {
@@ -283,8 +283,8 @@ case "$stage" in
   pre_endpoint_images) stage_pre_endpoint_images ;;
   terraform_window) stage_terraform_window ;;
   endpoints_ready) stage_endpoints_ready ;;
-  fargate_probe) stage_fargate_probe ;;
   alb_ready) stage_alb_ready ;;
+  fargate_probe) stage_fargate_probe ;;
   alb_tag_mutation_warning) stage_tag_result ;;
   file_proof) stage_file_proof ;;
   websocket_proof) stage_websocket_proof ;;

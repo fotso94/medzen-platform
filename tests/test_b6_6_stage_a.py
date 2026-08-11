@@ -138,7 +138,8 @@ def test_cold_rehearsal_binds_recorded_aws_read_response_fixtures() -> None:
     result = _aws_read_fixture_fidelity()
     assert result["status"] == "PASS"
     assert result["runtime_read_api_count"] == 23
-    assert result["fixture_count"] == 29
+    assert result["fixture_count"] == 30
+    assert result["recorded_healthy_target_health_fixture_count"] == 1
     assert result["uncovered_read_apis"] == 0
     assert result["describe_vpc_endpoints_prefix_list_id_present"] is False
     assert result["s3_prefix_list_id"] == "pl-6ea54007"
