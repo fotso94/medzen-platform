@@ -50,6 +50,7 @@ from scripts.b6_6_lbc_runtime import (
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
 from scripts.b6_6_aws_read_fixtures import audit as audit_aws_read_fixtures
 from scripts.b6_6_post_mutation_audit import audit as audit_post_mutation
+from scripts.b6_6_registry_rag_alignment import rehearsal as rehearse_registry_rag_alignment
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
 from scripts.b6_6_stage_a import (
     MAXIMUM_COST_USD,
@@ -72,7 +73,7 @@ from scripts.check_b6_6_window_plan import lint_rendered_plan_description_charse
 
 RUNNER_SOURCES = tuple(sorted(REQUIRED_SOURCES - {COLD_PATH}))
 GUARDS = {
-    "stage0": ["persistent_secret", "operator_deny", "token_shape", "exact_fresh_version_three_stable_observations", "exact_safe_refusal_reason"],
+    "stage0": ["registry_rag_alignment_before_aws", "exact_registry_readback_before_mutation", "persistent_secret", "operator_deny", "token_shape", "exact_fresh_version_three_stable_observations", "exact_safe_refusal_reason"],
     "deadline": ["deadline_first_4500_seconds_three_stable_observations"],
     "workers_ready": ["bounded_worker_registration_1200_seconds_three_stable_observations"],
     "dra_ready": ["digest_pinned_dra_before_endpoints_three_stable_observations"],
@@ -908,6 +909,7 @@ def run(output_dir: Path) -> dict[str, Any]:
     pre_deadline_cleanup_rehearsal = _pre_deadline_cleanup_rehearsal()
     credential_visibility_rehearsal = _credential_visibility_rehearsal()
     post_mutation_stability_audit = audit_post_mutation(ROOT)
+    registry_rag_alignment_rehearsal = rehearse_registry_rag_alignment()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -932,6 +934,7 @@ def run(output_dir: Path) -> dict[str, Any]:
                 "pre_deadline_cleanup": pre_deadline_cleanup_rehearsal,
                 "credential_visibility": credential_visibility_rehearsal,
                 "post_mutation_stability": post_mutation_stability_audit,
+                "registry_rag_alignment": registry_rag_alignment_rehearsal,
             }
         )
     ).hexdigest()
@@ -943,7 +946,8 @@ def run(output_dir: Path) -> dict[str, Any]:
         "injected_failure_runs": len(WINDOW_STAGES)
         + len(new_gate_rehearsal["injected_failures"])
         + proof_diagnostic_rehearsal["injected_assertion_failures"]
-        + len(pre_deadline_cleanup_rehearsal["injected_paths"]),
+        + len(pre_deadline_cleanup_rehearsal["injected_paths"])
+        + 1,
         "stage_injected_failure_runs": len(WINDOW_STAGES),
         "new_gate_injected_failure_runs": len(
             new_gate_rehearsal["injected_failures"]
@@ -955,6 +959,7 @@ def run(output_dir: Path) -> dict[str, Any]:
             pre_deadline_cleanup_rehearsal["injected_paths"]
         ),
         "credential_visibility_transient_injection_runs": 1,
+        "registry_rag_alignment_injected_failure_runs": 1,
         "enumerated_stages": list(WINDOW_STAGES),
         "runner_source_hashes": source_hashes,
         "scenario_results_sha256": results_sha256,
@@ -967,6 +972,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "pre_deadline_cleanup_rehearsal": pre_deadline_cleanup_rehearsal,
         "credential_visibility_rehearsal": credential_visibility_rehearsal,
         "post_mutation_stability_audit": post_mutation_stability_audit,
+        "registry_rag_alignment_rehearsal": registry_rag_alignment_rehearsal,
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"
         ],

@@ -1,0 +1,89 @@
+{
+  "id": "B6-RAG-IMAGE-INDEX-IDENTITY-2026-001",
+  "revision": 1,
+  "status": "VERIFIED_ALIGNED_IDENTITY",
+  "recorded_utc": "2026-08-11T05:20:19Z",
+  "extraction": {
+    "mode": "LOCAL_OFFLINE_EXACT_CHILD_DIGEST",
+    "network": "NONE",
+    "root_filesystem": "READ_ONLY",
+    "host_architecture": "arm64",
+    "image_platform": "linux/amd64",
+    "emulation_used": true,
+    "aws_mutations": 0,
+    "kubernetes_mutations": 0
+  },
+  "image": {
+    "reference": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+    "child_manifest_digest": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+    "local_image_id": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+    "source_commit": "7ec176b2b69a3a552c6f135c36a8a1fc51cedc69",
+    "title": "medzen-rag-index"
+  },
+  "embedded_index": {
+    "alias": {
+      "alias": "current",
+      "manifest_path": "indexes/synthetic-v1.json",
+      "manifest_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+      "schema_version": 1
+    },
+    "alias_file_sha256": "b535b8eff3ae6244e5b7957036b10e74f557d29655e000bb1367cb73ae4fafd0",
+    "alias_manifest_hash_matches": true,
+    "alias_path": "/opt/medzen/platform/testdata/rag-index/aliases/current.json",
+    "manifest_file_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "manifest_identity": {
+      "classification": "SYNTHETIC_NON_CLINICAL",
+      "document_count": 3,
+      "index_version": "synthetic-v1",
+      "schema_version": 1
+    },
+    "manifest_path": "/opt/medzen/platform/testdata/rag-index/indexes/synthetic-v1.json"
+  },
+  "live_non_serving_registry": {
+    "root": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "parameter_count": 3,
+    "manifest_version": 1,
+    "route_version": 1,
+    "manifest_value_sha256": "f9ae5d9c6c1eba7c17acc08336a1a3a7a3a408f2623904e4ccc7d21f720e38c6",
+    "route_value_sha256": "bc37f0de752bd3f92b10c6a5d22c526473c9dc828425144cdd6c8a6403f01e0b",
+    "snapshot_sha256": "d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "route_rag_alias": "current",
+    "route_rag_snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "production_pointer_read_or_changed": false
+  },
+  "comparison": {
+    "image_manifest_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "registry_expected_rag_snapshot_sha256": "6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "exact_match": true,
+    "image_alias": "current",
+    "registry_alias": "current",
+    "alias_match": true
+  },
+  "aligned_proof_input": {
+    "path": "platform/testdata/b6a-003c-b-synthetic.wav",
+    "audio_sha256": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "synthetic_phrase_sha256": "4c0a11f2c67286a5de444f776a927da784fde10f80fd8f9140c4e907285c9d19",
+    "prior_live_asr_transcript_sha256": "4c0a11f2c67286a5de444f776a927da784fde10f80fd8f9140c4e907285c9d19",
+    "prior_live_asr_exact_phrase_match": true,
+    "offline_citation_count": 3,
+    "offline_citation_document_ids": [
+      "synthetic-card",
+      "synthetic-hours",
+      "synthetic-support"
+    ]
+  },
+  "finding": {
+    "literal_registry_to_image_index_identity_mismatch": false,
+    "observed_live_refusal": "RAG result does not match the request and registry",
+    "narrowed_configuration_issue": "The old window sent the B6.3 one-second 440 Hz non-speech fixture to real zero-shot ASR. The deployed registry and embedded RAG index identities already match exactly; republishing identical values cannot correct the refusal.",
+    "safe_correction": "Rebind the window proof to the previously live-proven, synthetic spoken B6A fixture whose exact ASR transcript hash retrieves three documents from this immutable RAG index."
+  },
+  "governance": {
+    "old_registry_parameters_unchanged": true,
+    "production_ssm_unchanged": true,
+    "approved_asr_unchanged": true,
+    "model_images_unchanged": true,
+    "new_publication_required": false,
+    "deviation_review_required": true
+  }
+}
