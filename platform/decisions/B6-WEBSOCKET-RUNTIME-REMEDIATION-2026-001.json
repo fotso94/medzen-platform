@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "decision_id": "B6-WEBSOCKET-RUNTIME-REMEDIATION-2026-001",
+  "recorded_utc": "2026-08-11T14:31:15Z",
+  "status": "OWNER_APPROVED_LOCAL_REMEDIATION_ONLY",
+  "starting_git_commit": "50a3f228a1db96171d90c00f79a5e801ee926589",
+  "owner_interpretation": "The 2026-030A WebSocket HTTP 404 is accepted as a runtime-image dependency defect: the route exists, but the deployed image has no WebSocket protocol backend.",
+  "immutable_prior_evidence": {
+    "path": "platform/evidence/B6-PACKET-2026-030A-ATTEMPT-2-TERMINAL-WEBSOCKET-REFUSAL.json",
+    "sha256": "00c383ae735e09dbaca5b198c34b2c949550629bc5440cd0aaf83b59c0e98e8d",
+    "file_proof_milestone": "PASS_STANDS_NO_RERUN_REQUIRED"
+  },
+  "prospective_change": {
+    "dependency": "websockets==17.0.1",
+    "dependency_source": "https://pypi.org/project/websockets/17.0.1/",
+    "python_compatibility": ">=3.11",
+    "qualification_rule": "Every qualifying orchestrator image must start its final container and complete a real TCP RFC6455 upgrade against /v1/conversations/stream. In-process TestClient coverage is not sufficient.",
+    "hardening_standard": "platform/standards/runtime-image-hardening-v2.md",
+    "historical_v1_sha256_unchanged": "428aee260c62d886648d6fb7d2572bffdf5d8fdab174ba07430f1ab96e2f6791"
+  },
+  "authorized_operations": [
+    "Pin the exact WebSocket runtime backend in the orchestrator requirements",
+    "Rebuild the orchestrator image locally",
+    "Run the real-container WebSocket qualification and local security scan",
+    "Run local regression suites",
+    "Prepare and publish a versioned one-image ECR scan-only packet for independent review"
+  ],
+  "prohibited_until_separate_exact_packet_approval": [
+    "Authenticate Docker to ECR",
+    "Tag or push the successor image to ECR",
+    "Change an ECR repository or scanner configuration",
+    "Deploy the successor image",
+    "Scale an EKS node group",
+    "Create or modify IAM, KMS, SSM, S3, EKS, Kubernetes, ALB, security-group or secret state",
+    "Write approved/asr or the production registry pointer",
+    "Run real Bedrock, Fish or non-synthetic traffic"
+  ],
+  "successor_window_boundary": {
+    "may_be_prepared_only_after": "PASS_SCAN_ONLY for the exact ECR linux/amd64 child digest",
+    "live_proof_scope": [
+      "streaming",
+      "cancellation",
+      "failure_drills",
+      "isolation"
+    ],
+    "file_proof": "Preserve and bind the existing PASS receipt; do not execute another file-proof request.",
+    "allowance_request": "Two non-transferable 4500-second attempts within the existing $10 reservation; requires separate independent review and exact owner approval."
+  }
+}

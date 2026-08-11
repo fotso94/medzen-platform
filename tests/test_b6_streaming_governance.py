@@ -49,9 +49,10 @@ def test_reviewer_multipart_finding_is_durable_and_dependency_pins_are_exact():
         "fastapi==0.141.1",
         "python-multipart==0.0.32",
         "PyYAML==6.0.3",
-        "starlette==1.3.1",
-        "uvicorn==0.52.0",
-    ]
+            "starlette==1.3.1",
+            "uvicorn==0.52.0",
+            "websockets==17.0.1",
+        ]
     assert all("==" in requirement for requirement in requirements)
     assert debt["future_container_requirements"] == [
         "Install only from services/speech-orchestrator/requirements.txt",
