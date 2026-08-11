@@ -15,9 +15,12 @@ REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
 # Each approved attempt receives one independent 4,500-second deadline. Packet
-# 2026-028 requests two such attempts; unused time from one attempt is never
+# Prospective packet 2026-029 requests two such attempts; unused time is never
 # allowed to lengthen the other.
 WINDOW_SECONDS = 4500
+POST_MUTATION_STABLE_OBSERVATIONS = 3
+POST_MUTATION_POLL_SECONDS = 2
+POST_MUTATION_VERIFY_SECONDS = 30
 GROUPS = {
     "cpu": {
         "asg": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772",
@@ -97,7 +100,7 @@ class DeadlineControl:
                     MaxSize=binding["maximum"],
                 )
                 created.append(name)
-            self.verify(now)
+            stable = self.wait_verify()
         except Exception:
             for name in created:
                 binding = GROUPS[name]
@@ -105,6 +108,7 @@ class DeadlineControl:
                     AutoScalingGroupName=binding["asg"],
                     ScheduledActionName=binding["action"],
                 )
+            self._wait_actions_absent()
             raise
         return {
             "status": "PASS",
@@ -112,7 +116,60 @@ class DeadlineControl:
             "deadline_utc": deadline.isoformat().replace("+00:00", "Z"),
             "window_seconds": WINDOW_SECONDS,
             "groups": {name: {"asg": value["asg"], "action": value["action"]} for name, value in GROUPS.items()},
+            "stable_deadline_observations": stable[
+                "stable_deadline_observations"
+            ],
+            "verification_polls": stable["verification_polls"],
         }
+
+    def wait_verify(
+        self,
+        wait_seconds: int = POST_MUTATION_VERIFY_SECONDS,
+        *,
+        stable_observations: int = POST_MUTATION_STABLE_OBSERVATIONS,
+        poll_seconds: int = POST_MUTATION_POLL_SECONDS,
+        monotonic: Any = time.monotonic,
+        sleep: Any = time.sleep,
+        now: Any = lambda: datetime.now(timezone.utc),
+    ) -> dict[str, Any]:
+        if (
+            wait_seconds < 1
+            or wait_seconds > POST_MUTATION_VERIFY_SECONDS
+            or stable_observations != POST_MUTATION_STABLE_OBSERVATIONS
+            or poll_seconds != POST_MUTATION_POLL_SECONDS
+        ):
+            raise DeadlineRefusal("deadline stable-verification boundary differs")
+        deadline = monotonic() + wait_seconds
+        consecutive = 0
+        polls = 0
+        expected_deadline: str | None = None
+        last_error: DeadlineRefusal | None = None
+        while True:
+            polls += 1
+            try:
+                result = self.verify(now())
+                observed = str(result["deadline_utc"])
+                if observed == expected_deadline:
+                    consecutive += 1
+                else:
+                    expected_deadline = observed
+                    consecutive = 1
+                last_error = None
+                if consecutive == stable_observations:
+                    return {
+                        **result,
+                        "stable_deadline_observations": consecutive,
+                        "verification_polls": polls,
+                    }
+            except DeadlineRefusal as exc:
+                consecutive = 0
+                expected_deadline = None
+                last_error = exc
+            if monotonic() >= deadline:
+                if last_error is not None:
+                    raise last_error
+                raise DeadlineRefusal("deadline did not remain stable before timeout")
+            sleep(poll_seconds)
 
     def verify(self, now: datetime) -> dict[str, Any]:
         now = _utc(now)
@@ -135,8 +192,10 @@ class DeadlineControl:
             raise DeadlineRefusal("CPU and GPU deadlines differ")
         return {"status": "PASS", "deadline_utc": deadlines.pop().isoformat().replace("+00:00", "Z")}
 
-    def disarm_after_zero(self) -> dict[str, Any]:
-        self._assert_zero()
+    def disarm_after_zero(
+        self, *, sleep: Any = time.sleep, monotonic: Any = time.monotonic
+    ) -> dict[str, Any]:
+        zero_polls = self._wait_zero_stable(sleep=sleep, monotonic=monotonic)
         for name, binding in GROUPS.items():
             actions = self._actions(name)
             if len(actions) != 1 or actions[0].get("ScheduledActionName") != binding["action"]:
@@ -145,9 +204,8 @@ class DeadlineControl:
                 AutoScalingGroupName=binding["asg"],
                 ScheduledActionName=binding["action"],
             )
-        if any(self._actions(name) for name in GROUPS):
-            raise DeadlineRefusal("a B6.6 deadline remains")
-        return {"status": "PASS", "cpu_zero": True, "gpu_zero": True, "deadlines_removed_after_zero": True}
+        absence_polls = self._wait_actions_absent(sleep=sleep, monotonic=monotonic)
+        return {"status": "PASS", "cpu_zero": True, "gpu_zero": True, "deadlines_removed_after_zero": True, "stable_zero_observations": POST_MUTATION_STABLE_OBSERVATIONS, "zero_verification_polls": zero_polls, "stable_deadline_absence_observations": POST_MUTATION_STABLE_OBSERVATIONS, "deadline_absence_polls": absence_polls}
 
     def _assert_zero(self) -> None:
         for name, binding in GROUPS.items():
@@ -165,11 +223,62 @@ class DeadlineControl:
             ):
                 raise DeadlineRefusal(f"{name} is not proven zero")
 
-    def cleanup_after_zero(self, deadline_receipt_status: str) -> dict[str, Any]:
+    def _wait_zero_stable(
+        self,
+        *,
+        sleep: Any = time.sleep,
+        monotonic: Any = time.monotonic,
+        wait_seconds: int = POST_MUTATION_VERIFY_SECONDS,
+    ) -> int:
+        deadline = monotonic() + wait_seconds
+        consecutive = 0
+        polls = 0
+        while True:
+            polls += 1
+            try:
+                self._assert_zero()
+                consecutive += 1
+                if consecutive == POST_MUTATION_STABLE_OBSERVATIONS:
+                    return polls
+            except DeadlineRefusal:
+                consecutive = 0
+            if monotonic() >= deadline:
+                raise DeadlineRefusal("worker groups did not remain stably zero")
+            sleep(POST_MUTATION_POLL_SECONDS)
+
+    def _wait_actions_absent(
+        self,
+        *,
+        sleep: Any = time.sleep,
+        monotonic: Any = time.monotonic,
+        wait_seconds: int = POST_MUTATION_VERIFY_SECONDS,
+    ) -> int:
+        deadline = monotonic() + wait_seconds
+        consecutive = 0
+        polls = 0
+        while True:
+            polls += 1
+            if any(self._actions(name) for name in GROUPS):
+                consecutive = 0
+            else:
+                consecutive += 1
+                if consecutive == POST_MUTATION_STABLE_OBSERVATIONS:
+                    return polls
+            if monotonic() >= deadline:
+                raise DeadlineRefusal("a B6.6 deadline remains")
+            sleep(POST_MUTATION_POLL_SECONDS)
+
+    def cleanup_after_zero(
+        self,
+        deadline_receipt_status: str,
+        *,
+        sleep: Any = time.sleep,
+        monotonic: Any = time.monotonic,
+    ) -> dict[str, Any]:
         """Reconcile only exact actions that actually exist after zero capacity."""
         if deadline_receipt_status not in {"PASS", "REFUSED", "ABSENT"}:
             raise DeadlineBoundaryRefusal("deadline receipt status is unknown")
-        self._assert_zero()
+        zero_polls = self._wait_zero_stable(sleep=sleep, monotonic=monotonic)
         present: dict[str, bool] = {}
         for name, binding in GROUPS.items():
             actions = self._actions(name)
@@ -187,8 +296,7 @@ class DeadlineControl:
                     AutoScalingGroupName=binding["asg"],
                     ScheduledActionName=binding["action"],
                 )
-        if any(self._actions(name) for name in GROUPS):
-            raise DeadlineRefusal("a B6.6 deadline remains")
+        absence_polls = self._wait_actions_absent(sleep=sleep, monotonic=monotonic)
         return {
             "status": "PASS",
             "cpu_zero": True,
@@ -199,6 +307,10 @@ class DeadlineControl:
             "deadline_actions_after": 0,
             "pre_deadline_refusal_supported": deadline_receipt_status
             in {"REFUSED", "ABSENT"},
+            "stable_zero_observations": POST_MUTATION_STABLE_OBSERVATIONS,
+            "zero_verification_polls": zero_polls,
+            "stable_deadline_absence_observations": POST_MUTATION_STABLE_OBSERVATIONS,
+            "deadline_absence_polls": absence_polls,
         }
 
 
@@ -226,7 +338,7 @@ def main() -> int:
         if args.mode == "arm":
             result = control.arm(datetime.now(timezone.utc))
         elif args.mode == "verify":
-            result = control.verify(datetime.now(timezone.utc))
+            result = control.wait_verify()
         elif args.mode == "disarm":
             stop = time.monotonic() + args.wait_seconds
             while True:

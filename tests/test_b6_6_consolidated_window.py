@@ -82,6 +82,7 @@ def test_rotation_ignores_historical_cardinality_and_writes_exact_token(
         FakeSecretClient(historical_versions),
         token,
         material_factory=lambda size: bytes(range(size)),
+        sleep=lambda _: None,
     )
     assert result["status"] == "PASS"
     assert result["historical_version_count_evaluated"] is False
@@ -96,7 +97,7 @@ def test_operator_plaintext_read_is_a_refusal(tmp_path: Path) -> None:
     client = FakeSecretClient()
     client.get_secret_value = lambda **_: {"SecretString": "forbidden"}  # type: ignore[method-assign]
     with pytest.raises(CredentialRefusal):
-        rotate_and_verify(client, tmp_path / "token")
+        rotate_and_verify(client, tmp_path / "token", sleep=lambda _: None)
 
 
 def test_bridge_policy_uses_the_established_orchestrator_role() -> None:
@@ -222,10 +223,10 @@ def test_endpoint_plan_includes_controller_noop_and_cleanup_uses_stage_status() 
     assert '[[ -e "$receipts_dir/terraform_window.json" ]]' not in cleanup
 
 
-def test_runtime_and_cleanup_bind_the_same_packet_028_hostname_file() -> None:
+def test_runtime_and_cleanup_bind_the_same_packet_029_hostname_file() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     cleanup = (ROOT / "scripts/b6_6_cleanup.sh").read_text()
-    expected = 'alb_hostname_file="/private/tmp/b6-028-attempt-${attempt}-alb-hostname"'
+    expected = 'alb_hostname_file="/private/tmp/b6-029-attempt-${attempt}-alb-hostname"'
     assert expected in operations
     assert expected in cleanup
 

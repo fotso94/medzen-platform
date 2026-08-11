@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical persistent-secret cleanup for prospective packet 2026-028.
+# Canonical persistent-secret cleanup for prospective packet 2026-029.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ receipts_dir="$4"
 token_file="$5"
 attempt="$6"
 payload_path="$7"
-alb_hostname_file="/private/tmp/b6-028-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-029-attempt-${attempt}-alb-hostname"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
@@ -40,18 +40,46 @@ if [[ -n "$task_arns" && "$task_arns" != "None" ]]; then
     aws ecs stop-task --cluster medzen-b6-window-probe --task "$task_arn" --reason B6_6_WINDOW_CLEANUP --region eu-central-1 --profile medzen >/dev/null || true
   done
 fi
+ecs_zero_stable=0
+for _ in {1..60}; do
+  set +e
+  ecs_read="$(aws ecs list-tasks --cluster medzen-b6-window-probe --region eu-central-1 --profile medzen --query 'length(taskArns)' --output text 2>&1)"
+  ecs_status=$?
+  set -e
+  if [[ "$ecs_status" == "0" && "$ecs_read" == "0" ]] || { [[ "$ecs_status" != "0" ]] && grep -q 'ClusterNotFoundException' <<<"$ecs_read"; }; then
+    ecs_zero_stable=$((ecs_zero_stable + 1))
+    [[ "$ecs_zero_stable" == "3" ]] && break
+  else
+    ecs_zero_stable=0
+  fi
+  sleep 5
+done
+[[ "$ecs_zero_stable" == "3" ]]
 
 # Remove the Ingress first and prove the controller-owned load balancer is gone
 # while the controller and CPU workers are still available.
 cleanup_step="ingress_and_alb"
 kubectl --kubeconfig "$kubeconfig" delete ingress/speech-orchestrator-b6-window --namespace medzen --ignore-not-found --wait=true --timeout=10m || true
 alb_deadline=$((SECONDS + 900))
-while aws elbv2 describe-load-balancers --names medzen-b6-window --region eu-central-1 --profile medzen >/dev/null 2>&1; do
+alb_absent_stable=0
+while [[ "$alb_absent_stable" != "3" ]]; do
+  set +e
+  alb_read="$(aws elbv2 describe-load-balancers --names medzen-b6-window --region eu-central-1 --profile medzen 2>&1)"
+  alb_status=$?
+  set -e
+  if [[ "$alb_status" == "0" ]]; then
+    alb_absent_stable=0
+  elif grep -q 'LoadBalancerNotFound' <<<"$alb_read"; then
+    alb_absent_stable=$((alb_absent_stable + 1))
+  else
+    echo "REFUSING: B6.6 ALB absence read failed ambiguously" >&2
+    exit 2
+  fi
   if (( SECONDS >= alb_deadline )); then
     echo "REFUSING: B6.6 ALB remains after Ingress deletion" >&2
     exit 2
   fi
-  sleep 15
+  [[ "$alb_absent_stable" == "3" ]] || sleep 15
 done
 
 cleanup_step="kubernetes_workloads"
@@ -68,7 +96,7 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window"
-cleanup_plan="/private/tmp/b6-028-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-029-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
@@ -103,10 +131,25 @@ if [[ "$change_count" != "0" ]]; then
   scripts/terraform_medzen.sh apply -input=false -auto-approve "$cleanup_plan"
 fi
 
+terraform_zero_stable=0
+for observation in 1 2 3; do
+  verify_plan="/private/tmp/b6-029-cleanup-stable-$PPID-$observation.tfplan"
+  scripts/terraform_medzen.sh plan -input=false -out="$verify_plan" \
+    -var=account_id=558069890522 \
+    -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
+    -var=enable_b6_load_balancer_controller=false \
+    -var=enable_b6_integration_window=false \
+    -var=enable_b6_probe_qualification=false "${targets[@]}"
+  verify_change_count="$(terraform -chdir=infra show -json "$verify_plan" | jq '[.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] | length')"
+  [[ "$verify_change_count" == "0" ]]
+  terraform_zero_stable=$((terraform_zero_stable + 1))
+  [[ "$terraform_zero_stable" == "3" ]] || sleep 5
+done
+
 # Terraform must finish deleting both interface endpoints, the S3 gateway
 # endpoint and their endpoint-side SG before worker deadlines can be disarmed.
 cleanup_step="endpoint_absence"
-.venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
+.venv/bin/python scripts/b6_6_probe_endpoints.py wait-absent --profile medzen --wait-seconds 900 >/dev/null
 
 cleanup_step="worker_scale_zero"
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name gpu --scaling-config minSize=0,maxSize=1,desiredSize=0 --region eu-central-1 --profile medzen >/dev/null
@@ -132,11 +175,16 @@ if [[ -e "$alb_hostname_file" ]]; then
   /bin/rm -f -- "$alb_hostname_file"
 fi
 
+local_absence_stable=0
+for _ in 1 2 3; do
+  [[ ! -e "$token_file" && ! -e "$alb_hostname_file" ]]
+  local_absence_stable=$((local_absence_stable + 1))
+  [[ "$local_absence_stable" == "3" ]] || sleep 1
+done
+
 # Zero-state proof is exact and refuses before the final cleanup receipt.
 cleanup_step="zero_state_proof"
-[[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l 'workload in (cpu,gpu)' -o json | jq '.items | length')" == "0" ]]
-[[ "$(kubectl --kubeconfig "$kubeconfig" get pods -n medzen -l medzen.io/classification=synthetic-integration-only -o json | jq '.items | length')" == "0" ]]
-[[ "$(kubectl --kubeconfig "$kubeconfig" get ingress -A -o json | jq '[.items[] | select(.metadata.name=="speech-orchestrator-b6-window")] | length')" == "0" ]]
+kubernetes_zero_payload="$(.venv/bin/python scripts/b6_6_k8s_stability.py window-zero --kubeconfig "$kubeconfig" --wait-seconds 900)"
 [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'Parameters[?Name==`/medzen/registry/serving/current`]' --output json | jq 'length')" == "0" ]]
 [[ ! -e "$token_file" ]]
 [[ ! -e "$alb_hostname_file" ]]
@@ -161,4 +209,4 @@ else:
 PY
 
 cleanup_step="payload"
-jq -nc --argjson deadline_cleanup "$deadline_cleanup_payload" '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deadline_cleanup:$deadline_cleanup,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_alb_hostname_removed:true,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"
+jq -nc --argjson deadline_cleanup "$deadline_cleanup_payload" --argjson kubernetes_zero "$kubernetes_zero_payload" '{alb_count:0,alb_absence_stable_observations:3,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deadline_cleanup:$deadline_cleanup,deployments:0,ecs_task_absence_stable_observations:3,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,kubernetes_zero:$kubernetes_zero,local_alb_hostname_removed:true,local_absence_stable_observations:3,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",terraform_zero_stable_observations:3,window_terraform_resources:0}' >"$payload_path"

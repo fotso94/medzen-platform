@@ -11,6 +11,8 @@ from typing import Any, Callable
 
 
 EXPECTED = {"cpu": 2, "gpu": 1}
+STABLE_OBSERVATIONS = 3
+POLL_SECONDS = 5
 
 
 class WorkerReadinessRefusal(RuntimeError):
@@ -62,28 +64,46 @@ def wait_for_workers(
     started = monotonic()
     deadline = started + wait_seconds
     reads = 0
+    consecutive = 0
     while True:
         observed: dict[str, tuple[int, int]] = {}
-        for workload, expected in EXPECTED.items():
-            nodes = snapshot(workload)
-            count = len(nodes)
-            ready = sum(1 for node in nodes if _ready(node))
-            reads += 1
-            if count > expected:
-                raise WorkerReadinessRefusal(f"{workload.upper()}_NODE_COUNT_EXCEEDS_BOUND")
-            observed[workload] = (count, ready)
-        if all(observed[name] == (expected, expected) for name, expected in EXPECTED.items()):
-            return {
-                "cpu_nodes_ready": EXPECTED["cpu"],
-                "gpu_nodes_ready": EXPECTED["gpu"],
-                "maximum_cpu_nodes": EXPECTED["cpu"],
-                "maximum_gpu_nodes": EXPECTED["gpu"],
-                "observation_reads": reads,
-                "resources_existed_before_ready_evaluation": True,
-            }
+        try:
+            for workload, expected in EXPECTED.items():
+                nodes = snapshot(workload)
+                count = len(nodes)
+                ready = sum(1 for node in nodes if _ready(node))
+                reads += 1
+                if count > expected:
+                    raise WorkerReadinessRefusal(
+                        f"{workload.upper()}_NODE_COUNT_EXCEEDS_BOUND"
+                    )
+                observed[workload] = (count, ready)
+        except WorkerReadinessRefusal as exc:
+            if exc.code != "KUBECTL_NODE_READ_FAILED":
+                raise
+            consecutive = 0
+            observed = {}
+        if len(observed) == len(EXPECTED) and all(
+            observed[name] == (expected, expected)
+            for name, expected in EXPECTED.items()
+        ):
+            consecutive += 1
+            if consecutive == STABLE_OBSERVATIONS:
+                return {
+                    "cpu_nodes_ready": EXPECTED["cpu"],
+                    "gpu_nodes_ready": EXPECTED["gpu"],
+                    "maximum_cpu_nodes": EXPECTED["cpu"],
+                    "maximum_gpu_nodes": EXPECTED["gpu"],
+                    "observation_reads": reads,
+                    "stable_observations": consecutive,
+                    "poll_interval_seconds": POLL_SECONDS,
+                    "resources_existed_before_ready_evaluation": True,
+                }
+        else:
+            consecutive = 0
         if monotonic() >= deadline:
             raise WorkerReadinessRefusal("EXACT_WORKER_SET_NOT_READY_BEFORE_DEADLINE")
-        sleep(5)
+        sleep(POLL_SECONDS)
 
 
 def main() -> int:

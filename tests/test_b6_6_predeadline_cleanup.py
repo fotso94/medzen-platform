@@ -74,7 +74,9 @@ def test_pre_deadline_refusal_with_no_actions_is_immediately_clean(
     receipt_status: str,
 ) -> None:
     autoscaling = FakeAutoscaling()
-    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero(receipt_status)
+    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero(
+        receipt_status, sleep=lambda _: None
+    )
     assert result == {
         "status": "PASS",
         "cpu_zero": True,
@@ -84,13 +86,19 @@ def test_pre_deadline_refusal_with_no_actions_is_immediately_clean(
         "deadline_actions_removed": 0,
         "deadline_actions_after": 0,
         "pre_deadline_refusal_supported": True,
+        "stable_zero_observations": 3,
+        "zero_verification_polls": 3,
+        "stable_deadline_absence_observations": 3,
+        "deadline_absence_polls": 3,
     }
     assert autoscaling.deleted == []
 
 
 def test_partial_exact_deadline_from_refused_arm_is_removed_after_zero() -> None:
     autoscaling = FakeAutoscaling({"cpu": [_action("cpu")], "gpu": []})
-    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero("REFUSED")
+    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero(
+        "REFUSED", sleep=lambda _: None
+    )
     assert result["deadline_actions_before"] == 1
     assert result["deadline_actions_removed"] == 1
     assert autoscaling.deleted == [("cpu", GROUPS["cpu"]["action"])]
@@ -100,7 +108,9 @@ def test_passing_deadline_receipt_removes_both_actions_after_zero() -> None:
     autoscaling = FakeAutoscaling(
         {"cpu": [_action("cpu")], "gpu": [_action("gpu")]}
     )
-    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero("PASS")
+    result = DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero(
+        "PASS", sleep=lambda _: None
+    )
     assert result["deadline_actions_before"] == 2
     assert result["deadline_actions_removed"] == 2
     assert result["pre_deadline_refusal_supported"] is False
@@ -109,12 +119,14 @@ def test_passing_deadline_receipt_removes_both_actions_after_zero() -> None:
 def test_unknown_or_unexpected_deadline_state_fails_closed() -> None:
     control = DeadlineControl(FakeAutoscaling(), FakeEks())
     with pytest.raises(DeadlineRefusal, match="status is unknown"):
-        control.cleanup_after_zero("UNKNOWN")
+        control.cleanup_after_zero("UNKNOWN", sleep=lambda _: None)
     autoscaling = FakeAutoscaling(
         {"cpu": [{"ScheduledActionName": "unexpected"}], "gpu": []}
     )
     with pytest.raises(DeadlineRefusal, match="boundary differs"):
-        DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero("ABSENT")
+        DeadlineControl(autoscaling, FakeEks()).cleanup_after_zero(
+            "ABSENT", sleep=lambda _: None
+        )
 
 
 def test_cleanup_shell_keys_deadline_reconciliation_to_receipt_status() -> None:
@@ -124,4 +136,5 @@ def test_cleanup_shell_keys_deadline_reconciliation_to_receipt_status() -> None:
     assert "b6_6_deadline.py cleanup" in source
     assert '--deadline-receipt-status "$deadline_receipt_status"' in source
     assert "b6_6_deadline.py disarm" not in source
-
+    assert "ClusterNotFoundException" in source
+    assert "ecs_zero_stable" in source

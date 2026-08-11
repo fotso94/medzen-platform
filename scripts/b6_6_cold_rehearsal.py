@@ -27,7 +27,12 @@ from pipeline.b6_integration_receipts import (
     canonical_json,
     sha256_file,
 )
-from scripts.b6_6_credential import KMS_KEY, SECRET_ARN, SECRET_NAME, rotate_and_verify
+from scripts.b6_6_credential import (
+    KMS_KEY,
+    SECRET_ARN,
+    SECRET_NAME,
+    rotate_and_verify,
+)
 from scripts.b6_6_fargate_probe import (
     PROBE_BAD_STATUS_EXIT_CODE,
     PROBE_CONNECT_EXIT_CODE,
@@ -44,6 +49,7 @@ from scripts.b6_6_lbc_runtime import (
 )
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
 from scripts.b6_6_aws_read_fixtures import audit as audit_aws_read_fixtures
+from scripts.b6_6_post_mutation_audit import audit as audit_post_mutation
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
 from scripts.b6_6_stage_a import (
     MAXIMUM_COST_USD,
@@ -66,29 +72,29 @@ from scripts.check_b6_6_window_plan import lint_rendered_plan_description_charse
 
 RUNNER_SOURCES = tuple(sorted(REQUIRED_SOURCES - {COLD_PATH}))
 GUARDS = {
-    "stage0": ["persistent_secret", "operator_deny", "token_shape", "fresh_version", "exact_safe_refusal_reason"],
-    "deadline": ["deadline_first_4500_seconds"],
-    "workers_ready": ["bounded_worker_registration_1200_seconds"],
-    "dra_ready": ["digest_pinned_dra_before_endpoints"],
-    "rag_ready": ["digest_pinned_rag_before_endpoints"],
-    "asr_ready": ["digest_pinned_loader_and_asr_before_endpoints"],
-    "tts_ready": ["digest_pinned_tts_before_endpoints"],
-    "llm_ready": ["digest_pinned_llm_before_endpoints"],
-    "orchestrator_ready": ["digest_pinned_orchestrator_before_endpoints"],
+    "stage0": ["persistent_secret", "operator_deny", "token_shape", "exact_fresh_version_three_stable_observations", "exact_safe_refusal_reason"],
+    "deadline": ["deadline_first_4500_seconds_three_stable_observations"],
+    "workers_ready": ["bounded_worker_registration_1200_seconds_three_stable_observations"],
+    "dra_ready": ["digest_pinned_dra_before_endpoints_three_stable_observations"],
+    "rag_ready": ["digest_pinned_rag_before_endpoints_three_stable_observations"],
+    "asr_ready": ["digest_pinned_loader_and_asr_before_endpoints_three_stable_observations"],
+    "tts_ready": ["digest_pinned_tts_before_endpoints_three_stable_observations"],
+    "llm_ready": ["digest_pinned_llm_before_endpoints_three_stable_observations"],
+    "orchestrator_ready": ["digest_pinned_orchestrator_before_endpoints_three_stable_observations"],
     "controller_window": ["controller_plan_1_0_0_with_named_resource_receipt"],
-    "controller_ready": ["digest_pinned_controller_before_endpoints"],
-    "pre_endpoint_images": ["seven_pods_eight_resident_child_digests"],
+    "controller_ready": ["digest_pinned_controller_before_endpoints_three_stable_observations"],
+    "pre_endpoint_images": ["seven_pods_eight_resident_child_digests_three_stable_observations"],
     "terraform_window": ["endpoint_plan_13_0_0_with_named_resources_controller_noop"],
-    "endpoints_ready": ["probe_exclusive_endpoints_available_900_seconds"],
-    "alb_ready": ["hostname_active_three_stable_healthy_target_observations"],
-    "fargate_probe": ["private_probe_24_attempt_layer_specific_retry"],
-    "alb_tag_mutation_warning": ["bounded_nonfatal_tag_rule_always_fatal_list"],
+    "endpoints_ready": ["probe_exclusive_endpoints_available_900_seconds_three_stable_observations"],
+    "alb_ready": ["hostname_active_three_stable_healthy_target_and_runtime_shape_observations"],
+    "fargate_probe": ["private_probe_24_attempt_layer_specific_retry_two_stable_terminal_observations"],
+    "alb_tag_mutation_warning": ["bounded_nonfatal_tag_rule_always_fatal_list_three_stable_observations"],
     "file_proof": ["synthetic_file_contract", "assertion_specific_sanitized_diagnostic"],
     "websocket_proof": ["synthetic_websocket_contract"],
     "cancellation_proof": ["cancel_within_250ms"],
-    "failure_drills": ["dependency_refusal_without_pod_recreation"],
-    "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip"],
-    "cleanup": ["zero_state_before_status_keyed_deadline_reconciliation_persistent_secret_retained"],
+    "failure_drills": ["dependency_refusal_without_pod_recreation_three_stable_endpoint_observations"],
+    "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip_three_stable_observations"],
+    "cleanup": ["three_stable_zero_observations_before_status_keyed_deadline_reconciliation_persistent_secret_retained"],
 }
 
 
@@ -477,7 +483,7 @@ def _pre_deadline_cleanup_rehearsal() -> dict[str, Any]:
     absent = DeadlineControl(
         _RecordedDeadlineAutoscaling(copy.deepcopy(empty_actions)),
         _RecordedDeadlineEks(),
-    ).cleanup_after_zero("ABSENT")
+    ).cleanup_after_zero("ABSENT", sleep=lambda _: None)
     partial_actions = copy.deepcopy(empty_actions)
     partial_actions["cpu"] = [
         {"ScheduledActionName": GROUPS["cpu"]["action"]}
@@ -485,7 +491,7 @@ def _pre_deadline_cleanup_rehearsal() -> dict[str, Any]:
     refused = DeadlineControl(
         _RecordedDeadlineAutoscaling(partial_actions),
         _RecordedDeadlineEks(),
-    ).cleanup_after_zero("REFUSED")
+    ).cleanup_after_zero("REFUSED", sleep=lambda _: None)
     if (
         absent.get("deadline_actions_before") != 0
         or absent.get("deadline_actions_after") != 0
@@ -553,6 +559,95 @@ class FakeSecretClient:
         )
 
 
+class _VisibilityClock:
+    def __init__(self) -> None:
+        self.seconds = 0.0
+
+    def monotonic(self) -> float:
+        return self.seconds
+
+    def sleep(self, seconds: float) -> None:
+        self.seconds += seconds
+
+
+class _StaleThenCurrentSecretClient(FakeSecretClient):
+    """Replay two stale list reads before three stable current reads."""
+
+    def __init__(self) -> None:
+        super().__init__(historical_versions=1)
+        self.created_version: str | None = None
+        self.visibility_reads = 0
+        self.put_calls = 0
+        self.stale_fixture = json.loads(
+            (
+                ROOT
+                / "tests/fixtures/aws/secretsmanager-list-secret-version-ids-stale-after-put.json"
+            ).read_bytes()
+        )
+        self.current_fixture = json.loads(
+            (
+                ROOT
+                / "tests/fixtures/aws/secretsmanager-list-secret-version-ids-current-after-put.json"
+            ).read_bytes()
+        )
+
+    def put_secret_value(self, **kwargs: Any) -> dict[str, Any]:
+        self.put_calls += 1
+        result = super().put_secret_value(**kwargs)
+        self.created_version = str(result["VersionId"])
+        return result
+
+    def list_secret_version_ids(self, **_: Any) -> dict[str, Any]:
+        if self.created_version is None:
+            return super().list_secret_version_ids()
+        self.visibility_reads += 1
+        if self.visibility_reads <= 2:
+            return copy.deepcopy(self.stale_fixture)
+        response = copy.deepcopy(self.current_fixture)
+        for item in response["Versions"]:
+            if item["VersionId"] == "__EXACT_CREATED_VERSION_ID__":
+                item["VersionId"] = self.created_version
+        return response
+
+
+def _credential_visibility_rehearsal() -> dict[str, Any]:
+    clock = _VisibilityClock()
+    client = _StaleThenCurrentSecretClient()
+    with tempfile.TemporaryDirectory(prefix="medzen-b6-credential-visibility-") as temporary:
+        result = rotate_and_verify(
+            client,
+            Path(temporary) / "token",
+            material_factory=lambda size: bytes(range(size)),
+            monotonic=clock.monotonic,
+            sleep=clock.sleep,
+        )
+    if (
+        client.put_calls != 1
+        or client.visibility_reads != 5
+        or result.get("stable_current_observations") != 3
+        or result.get("visibility_polls") != 5
+    ):
+        raise AssertionError("stale-to-current credential visibility replay differs")
+    fixtures = (
+        "tests/fixtures/aws/secretsmanager-list-secret-version-ids-stale-after-put.json",
+        "tests/fixtures/aws/secretsmanager-list-secret-version-ids-current-after-put.json",
+    )
+    return {
+        "status": "PASS",
+        "injection": "TWO_STALE_READS_THEN_THREE_STABLE_CURRENT_READS",
+        "created_version_verified_exactly": True,
+        "put_secret_value_calls": client.put_calls,
+        "visibility_polls": result["visibility_polls"],
+        "stable_current_observations": result["stable_current_observations"],
+        "additional_credentials_generated": 0,
+        "recorded_fixture_hashes": {
+            relative: sha256_file(ROOT / relative) for relative in fixtures
+        },
+        "real_aws_calls": 0,
+        "aws_mutations": 0,
+    }
+
+
 class Clock:
     def __init__(self):
         self.value = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -583,6 +678,7 @@ class FakeOperations:
                 self.secret,
                 context.token_file,
                 material_factory=lambda size: bytes(range(size)),
+                sleep=lambda _: None,
             )
         elif stage == "cleanup":
             context.token_file.unlink(missing_ok=True)
@@ -810,6 +906,8 @@ def run(output_dir: Path) -> dict[str, Any]:
     new_gate_rehearsal = _new_gate_rehearsal()
     proof_diagnostic_rehearsal = _proof_diagnostic_rehearsal()
     pre_deadline_cleanup_rehearsal = _pre_deadline_cleanup_rehearsal()
+    credential_visibility_rehearsal = _credential_visibility_rehearsal()
+    post_mutation_stability_audit = audit_post_mutation(ROOT)
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -832,6 +930,8 @@ def run(output_dir: Path) -> dict[str, Any]:
                 "new_gates": new_gate_rehearsal,
                 "proof_diagnostics": proof_diagnostic_rehearsal,
                 "pre_deadline_cleanup": pre_deadline_cleanup_rehearsal,
+                "credential_visibility": credential_visibility_rehearsal,
+                "post_mutation_stability": post_mutation_stability_audit,
             }
         )
     ).hexdigest()
@@ -854,6 +954,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "pre_deadline_cleanup_injected_failure_runs": len(
             pre_deadline_cleanup_rehearsal["injected_paths"]
         ),
+        "credential_visibility_transient_injection_runs": 1,
         "enumerated_stages": list(WINDOW_STAGES),
         "runner_source_hashes": source_hashes,
         "scenario_results_sha256": results_sha256,
@@ -864,6 +965,8 @@ def run(output_dir: Path) -> dict[str, Any]:
         "new_gate_rehearsal": new_gate_rehearsal,
         "proof_diagnostic_rehearsal": proof_diagnostic_rehearsal,
         "pre_deadline_cleanup_rehearsal": pre_deadline_cleanup_rehearsal,
+        "credential_visibility_rehearsal": credential_visibility_rehearsal,
+        "post_mutation_stability_audit": post_mutation_stability_audit,
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"
         ],
