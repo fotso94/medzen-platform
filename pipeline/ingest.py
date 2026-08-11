@@ -220,7 +220,13 @@ def main() -> int:
         print("no usable rows produced"); return 1
     rows = [it["record"] for it in items]
     print(f"\nbuilt {len(rows)} records")
-    eval_only = getattr(adapter, "tier", None) == "eval_only"
+    # MEDZEN_EVAL_ONLY=1 routes the whole run to eval/ exactly like an
+    # eval_only-tier source (added 2026-08-11: lets a training source's own
+    # frozen test split — e.g. CV rw test — become the eval set without the
+    # speaker re-split, which trips near-dup checks on CV's repeated prompts).
+    import os as _os
+    eval_only = (getattr(adapter, "tier", None) == "eval_only"
+                 or _os.environ.get("MEDZEN_EVAL_ONLY") == "1")
     if eval_only:
         # A whole-source frozen benchmark (e.g. FLEURS): every row is held out,
         # nothing enters training. No speaker/text split is carved, and only an
