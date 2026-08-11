@@ -1,0 +1,158 @@
+{
+  "id": "B6-COST-RECONCILIATION-2026-006",
+  "revision": 1,
+  "status": "PASS_CURRENT_AWS_BILLING_RECONCILED_WITH_CONSERVATIVE_RESERVATION_CLOSURE",
+  "recorded_utc": "2026-08-11T18:50:42Z",
+  "currency": "USD",
+  "scope": {
+    "ledger_predecessor": {
+      "path": "platform/finance/COST-REGISTRY-2026-005.json",
+      "sha256": "db7512d2d4ec2f54efa89e8527f9b310992393de191e38db0e7813d9279bcd2d",
+      "recorded_utc": "2026-08-10T23:58:39Z"
+    },
+    "through_execution": {
+      "path": "platform/evidence/B6-PACKET-2026-034-ATTEMPT-1-COMPLETE.json",
+      "sha256": "4e116b494fab72c68a79886212c234656714aff18b8f10098cc27f8c622506ad",
+      "cleanup_verified_utc": "2026-08-11T18:34:20Z",
+      "merge_commit": "c0f190f4f7a25d49559cf124057639086faaccac"
+    },
+    "statement": "Current Cost Explorer billing for the complete B6 integration interval from the revision-004 baseline through packet 2026-034 cleanup, with the revision-005 active reservation closed conservatively and without double counting the revised daily estimates."
+  },
+  "aws_identity": {
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cost_explorer_region": "us-east-1",
+    "workload_region": "eu-central-1"
+  },
+  "cost_explorer_queries": {
+    "cumulative_daily_period": {
+      "start_inclusive": "2026-08-09",
+      "end_exclusive": "2026-08-12",
+      "granularity": "DAILY",
+      "metric": "UnblendedCost",
+      "record_types": [
+        "Usage",
+        "Credit"
+      ],
+      "estimated_flags": {
+        "2026-08-09": true,
+        "2026-08-10": true,
+        "2026-08-11": true
+      }
+    },
+    "relevant_service_daily_net": [
+      {
+        "date": "2026-08-09",
+        "gross_usage_usd": 197.4714436541,
+        "credits_usd": -196.8041088723,
+        "net_usd": 0.6673347818
+      },
+      {
+        "date": "2026-08-10",
+        "gross_usage_usd": 192.8311853632,
+        "credits_usd": -192.157106619,
+        "net_usd": 0.6740787442
+      },
+      {
+        "date": "2026-08-11",
+        "gross_usage_usd": 45.8134667691,
+        "credits_usd": -45.6362430777,
+        "net_usd": 0.1772236914
+      }
+    ],
+    "relevant_services": [
+      "AWS Key Management Service",
+      "AWS Secrets Manager",
+      "Amazon EC2 Container Registry (ECR)",
+      "EC2 - Other",
+      "Amazon Elastic Compute Cloud - Compute",
+      "Amazon Elastic Container Service",
+      "Amazon Elastic Container Service for Kubernetes",
+      "Amazon Elastic Load Balancing",
+      "Amazon Simple Storage Service",
+      "Amazon Virtual Private Cloud",
+      "AmazonCloudWatch",
+      "CloudWatch Events"
+    ],
+    "account_wide_relevant_service_cumulative_totals": {
+      "gross_usage_usd": 436.1160957864,
+      "credits_usd": -434.597458569,
+      "net_usd": 1.5186372174,
+      "accounting_use": "CURRENT_CONSERVATIVE_MAXIMUM_ATTRIBUTION_TO_B6_FROM_REVISION_004_BASELINE"
+    },
+    "predecessor_observed_cumulative_net_usd": 0.8998064216,
+    "current_estimate_delta_since_revision_005_usd": 0.6188307958
+  },
+  "direct_worker_compute_since_revision_005": {
+    "basis": "Current eu-central-1 Cost Explorer instance-type lines for the non-overlapping 2026-08-11 UTC interval after revision 005.",
+    "lines": [
+      {
+        "usage_type": "EUC1-BoxUsage:g6.xlarge",
+        "usage_hours": 0.218611,
+        "gross_usage_usd": 0.2200101104,
+        "credits_usd": -0.2200101104,
+        "net_usd": 0.0
+      },
+      {
+        "usage_type": "EUC1-BoxUsage:m6i.large",
+        "usage_hours": 0.702778,
+        "gross_usage_usd": 0.08081947,
+        "credits_usd": -0.08081947,
+        "net_usd": 0.0
+      }
+    ],
+    "totals": {
+      "usage_hours": 0.921389,
+      "gross_usage_usd": 0.3008295804,
+      "credits_usd": -0.3008295804,
+      "net_usd": 0.0
+    }
+  },
+  "reservation_reconciliation": {
+    "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+    "revision_005_recognized_committed_usd": 0.8998064216,
+    "revision_005_active_reservation_usd": 10.0,
+    "revision_006_recognized_committed_usd": 10.8998064216,
+    "revision_006_active_reservation_usd": 0.0,
+    "reservation_closed_to_committed_guardrail_usd": 10.0,
+    "current_cost_explorer_cumulative_net_usd": 1.5186372174,
+    "conservative_guardrail_margin_above_current_cumulative_net_usd": 9.3811692042,
+    "interpretation": "The full reservation becomes committed guardrail because current-day Cost Explorer ingestion is incomplete. The margin is not a claim that AWS billed it and may be released only by a future non-destructive registry revision after billing settles."
+  },
+  "attribution_limits": {
+    "project_cost_allocation_tag_values_returned_by_cost_explorer": [
+      ""
+    ],
+    "project_cost_allocation_tags_available": false,
+    "hourly_cost_explorer": "NOT_ENABLED_PAYER_OPT_IN_REQUIRED",
+    "resource_level_cost_explorer": "NOT_ENABLED_PAYER_OPT_IN_REQUIRED",
+    "cost_and_usage_report_definitions": 0,
+    "billing_data_exports": 0,
+    "current_daily_results_are_estimated": true,
+    "current_day_ingestion_complete": false,
+    "interpretation": "AWS exposes current billing observations but not a finalized resource-level MedZen bill. Actual Cost Explorer values are recorded separately from the conservative budget guardrail; no exact shared-service allocation is fabricated."
+  },
+  "reconciliation": {
+    "current_cost_explorer_cumulative_net_usd": 1.5186372174,
+    "current_cost_explorer_delta_since_revision_005_usd": 0.6188307958,
+    "actual_direct_worker_compute_since_revision_005_gross_usd": 0.3008295804,
+    "actual_direct_worker_compute_since_revision_005_credits_usd": -0.3008295804,
+    "actual_direct_worker_compute_since_revision_005_net_usd": 0.0,
+    "recognized_guardrail_increment_since_revision_005_usd": 10.0,
+    "open_timing_margin_usd": 9.3811692042,
+    "timing_category": "AWS_CURRENT_DAY_INGESTION_AND_SHARED_SERVICE_ATTRIBUTION_MARGIN",
+    "expected_resolution": "Future Cost Explorer settlement may support a lower non-destructive guardrail revision; it does not block operational B6 closure because the full reservation remains recognized.",
+    "qualified_financial_review_required": true
+  },
+  "controls": {
+    "aws_mutations": 0,
+    "historical_records_modified": false,
+    "credits_used_to_increase_future_allowance": false,
+    "daily_estimate_overlap_double_counted": false,
+    "current_cost_explorer_values_and_guardrail_separated": true,
+    "full_reservation_recognized_on_close": true,
+    "active_reservation_closed": true,
+    "new_reservation_created": false,
+    "qualified_financial_review_required_before_financial_signoff": true
+  }
+}
