@@ -38,9 +38,9 @@
     },
     "duration_s": {
       "type": "number",
-      "minimum": 1.0,
+      "minimum": 0.3,
       "maximum": 30.0,
-      "description": "Whisper truncates beyond 30s; under 1s is not useful speech"
+      "description": "Whisper truncates beyond 30s. Floor 0.3s is the physical minimum for word-level domains (asr_words); the validator range check enforces 1.0s for all other domains."
     },
     "sample_rate": {
       "const": 16000,

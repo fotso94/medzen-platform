@@ -71,6 +71,12 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "soreva":
         from .adapters.soreva import SorevaAdapter
         return SorevaAdapter(language, task=task, version=version)
+    if source == "aaf":
+        from .adapters.aaf import AAFAdapter
+        return AAFAdapter(language, task=task, version=version)
+    if source == "yemba_egra":
+        from .adapters.yemba_egra import YembaEGRAAdapter
+        return YembaEGRAAdapter(language, task=task, version=version)
     if source == "kallaama":
         from .adapters.kallaama import KallaamaAdapter
         return KallaamaAdapter(language, task=task, version=version)
