@@ -23,7 +23,7 @@ from typing import Iterator
 from . import green_common as gc
 from .base import TARGET_SR, SourceSpec, build_record, usable
 
-LICENSE_POLICY = "apache_2_0"
+LICENSE_POLICY = "commercial_ok"        # Apache-2.0 (openslr-57); canonical tier key
 RELEASE = "openslr-57-african-accented-french"
 
 # config -> (transcript relpath, id column has .wav suffix?, default split)

@@ -27,7 +27,7 @@ from .base import TARGET_SR, SourceSpec, build_record, usable
 
 REPO = "OlameMend/soreva"
 REVISION = "1897cf9927c1afc354efa6192943f6d4783bae93"   # pinned 2026-08-11
-LICENSE_POLICY = "cc_by_4_0"                             # -> permissive tier
+LICENSE_POLICY = "commercial_ok"    # CC-BY-4.0 -> permissive; eval by PURPOSE not licence
 
 # our canonical language name -> SOREVA config. Names follow the existing
 # registry where the language exists (hausa, ewe, pidgin, ...); new languages
