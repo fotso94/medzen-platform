@@ -73,8 +73,8 @@ soreva_2026_08_11:
   source: OlameMend/soreva @ 1897cf9927c1   # CC-BY-4.0, Goethe-Institut collection
   tier: permissive
   purpose: eval_only_by_design              # ~150 read clips/config, male voices
-  languages: 40
-  clips: ~5629
+  languages: 39            # corrected 2026-08-11: mapping count was off by one
+  clips: 5483
   hours: ~3.9
   prefix: eval/<language>/asr/soreva-v1/
   highlights:
