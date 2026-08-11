@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -13,6 +14,16 @@ PACKET = ROOT / "platform/decisions/B6-AWS-CHANGE-PACKET-2026-003-b6-5b-ecr-scan
 
 def sha(relative: str) -> str:
     return hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
+
+
+def git_sha(commit: str, relative: str) -> str:
+    content = subprocess.run(
+        ["git", "show", f"{commit}:{relative}"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+    ).stdout
+    return hashlib.sha256(content).hexdigest()
 
 
 def test_local_evidence_binds_four_unique_children_and_current_sources():
@@ -45,7 +56,9 @@ def test_local_evidence_binds_four_unique_children_and_current_sources():
         assert image["critical_findings"] == image["high_findings"] == 0
         assert image["linux_amd64_child"].startswith("sha256:")
         assert re.fullmatch(r"sha256:[0-9a-f]{64}", image["config_digest"])
-        assert image["dockerfile_sha256"] == sha(dockerfiles[name])
+        assert image["dockerfile_sha256"] == git_sha(
+            evidence["source"]["git_commit"], dockerfiles[name]
+        )
         assert image["committed_runtime_receipt_sha256"] == sha(
             image["committed_runtime_receipt_path"]
         )

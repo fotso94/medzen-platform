@@ -8,7 +8,7 @@ COPY services/speech-orchestrator/requirements.txt /tmp/requirements.txt
 COPY services/speech-orchestrator/requirements.deployed.txt /tmp/requirements.deployed.txt
 RUN python -m pip install --no-cache-dir --target /opt/site-packages \
       --requirement /tmp/requirements.deployed.txt \
-    && python -c 'import sys; sys.path.insert(0, "/opt/site-packages"); import boto3, botocore, fastapi, multipart, starlette, uvicorn, yaml'
+    && python -c 'import sys; sys.path.insert(0, "/opt/site-packages"); import boto3, botocore, fastapi, multipart, starlette, uvicorn, yaml; import websockets'
 
 FROM python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322 AS runtime-rootfs
 RUN rm -rf \
