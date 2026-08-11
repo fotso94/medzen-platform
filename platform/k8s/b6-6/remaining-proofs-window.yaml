@@ -342,7 +342,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
       - name: speech-orchestrator
-        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3
         imagePullPolicy: IfNotPresent
         envFrom: [{configMapRef: {name: speech-orchestrator-config}}]
         ports: [{name: http, containerPort: 8080}]

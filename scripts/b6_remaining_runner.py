@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Canonical final-continuity-attempt runner for B6 packet 2026-032A."""
+"""Canonical two-attempt remaining-proofs runner for B6 packet 2026-034."""
 from __future__ import annotations
 
 import argparse
@@ -116,10 +116,17 @@ class RemainingRunner(Runner):
         )
 
 
-def _prior_attempt_continuity(attempt: int) -> None:
+def _prior_attempt_continuity(
+    attempt: int,
+    prior: Path | None = None,
+) -> None:
+    if attempt == 1:
+        return
     if attempt != 2:
-        raise StageFailure("PACKET_2026_032A_ONLY_CARRIES_CONTINUITY_ATTEMPT_2")
-    prior = ROOT / "platform/evidence/receipts/B6-2026-032-A1-LIVE"
+        raise StageFailure("PACKET_2026_034_ATTEMPT_OUT_OF_RANGE")
+    prior = prior or (
+        ROOT / "platform/evidence/receipts/B6-2026-034-A1-LIVE"
+    )
     store = ReceiptStore(prior)
     try:
         cleanup = store.load("cleanup")
@@ -165,14 +172,12 @@ class RealOperations:
         self.endpoints_enabled = False
 
     def before_run(self, context: RunContext) -> None:
-        if context.attempt != 2:
-            raise StageFailure(
-                "PACKET_2026_032A_ONLY_CARRIES_CONTINUITY_ATTEMPT_2"
-            )
+        if context.attempt not in {1, 2}:
+            raise StageFailure("PACKET_2026_034_ATTEMPT_OUT_OF_RANGE")
         expected = (
             ROOT
             / "platform/evidence/receipts"
-            / "B6-2026-032A-A2-LIVE"
+            / f"B6-2026-034-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -207,7 +212,7 @@ class RealOperations:
             raise StageFailure("REVIEWED_CLEAN_COMMIT_REQUIRED")
         _prior_attempt_continuity(context.attempt)
         with tempfile.TemporaryDirectory(
-            prefix="medzen-b6-032a-a2-pre-attempt-cold-"
+            prefix=f"medzen-b6-034-a{context.attempt}-pre-attempt-cold-"
         ) as temporary:
             output = Path(temporary) / "receipt"
             completed = subprocess.run(
@@ -234,7 +239,7 @@ class RealOperations:
 
     def execute(self, stage: str, context: RunContext) -> StageResult:
         with tempfile.NamedTemporaryFile(
-            prefix="medzen-b6-032a-payload-", delete=False
+            prefix="medzen-b6-034-payload-", delete=False
         ) as stream:
             payload_path = Path(stream.name)
         try:
@@ -355,7 +360,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--packet-sha256", required=True)
     parser.add_argument("--receipts-dir", type=Path, required=True)
     parser.add_argument("--token-file", type=Path, required=True)
-    parser.add_argument("--attempt", type=int, choices=(2,), required=True)
+    parser.add_argument("--attempt", type=int, choices=(1, 2), required=True)
     return parser.parse_args()
 
 
