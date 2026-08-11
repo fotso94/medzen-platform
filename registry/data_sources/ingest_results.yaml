@@ -67,3 +67,27 @@ kinyarwanda_2026_08_11:
        missing from registry/languages -> added data-scope declaration; (2) eval
        pass speaker re-split tripped near-dup on CV repeated prompts -> added
        whole-run eval routing"
+
+# --- 2026-08-11 SOREVA out-of-domain eval ingest (owner-directed) ---
+soreva_2026_08_11:
+  source: OlameMend/soreva @ 1897cf9927c1   # CC-BY-4.0, Goethe-Institut collection
+  tier: permissive
+  purpose: eval_only_by_design              # ~150 read clips/config, male voices
+  languages: 40
+  clips: ~5629
+  hours: ~3.9
+  prefix: eval/<language>/asr/soreva-v1/
+  highlights:
+    - "FIRST Cameroonian-language eval material in the project: bafia bakoko
+       bamun basaa duala ejagham eton ewondo fefe ghomala isu kom kwasio lamso
+       maka medumba ngiemboon ngombala nomaande nugunu yambeta yangben yemba
+       + cameroon pidgin (pcm_cm)"
+    - "second, out-of-domain eval for hausa yoruba igbo lingala swahili wolof
+       ewe (alongside fleurs-v1) — enables OOD generalization measurement"
+  unavailable_from_source: [bafut, mka, nda]
+  notes:
+    - "31 new data-scope language declarations added to registry/languages"
+    - "A3 schema extended with license_tier+dialect (schema had lagged the
+       campaign data model; EC2 runs had silently skipped schema validation
+       because the staged tarball omitted schemas/ — now closed)"
+    - "run locally on the Mac (~403MB), no EC2, no teardown needed"
