@@ -1,0 +1,183 @@
+{
+  "record": "B6_2026_027_TWO_WINDOW_ATTEMPTS_RESULT",
+  "id": "B6-PACKET-2026-027-TERMINAL-FILE-PROOF-AND-STAGE0-REFUSALS",
+  "revision": 1,
+  "status": "RECORDED_PENDING_INDEPENDENT_EXIT_REVIEW",
+  "outcome": "TWO_ATTEMPTS_CONSUMED_B6_6_INCOMPLETE_ZERO_STATE_VERIFIED",
+  "recorded_utc": "2026-08-11T02:47:45Z",
+  "governance_bindings": {
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-027-alb-probe-stability.md",
+      "sha256": "ef2e0939f2975eaaf72eea4ba0e33908561093b233faab4c51dc177955decb84"
+    },
+    "authorization": {
+      "path": "platform/decisions/B6-AWS-AUTH-2026-027-window.json",
+      "sha256": "c6b6fbcc00717041912343e0c3209d91f7bdecdbc3e216f80d10112e1fa69f77",
+      "status": "owner-approved"
+    },
+    "independent_review": {
+      "reviewer": "independent architecture reviewer (Claude)",
+      "status": "PASS",
+      "reviewed_repository_commit": "c07712232d605960c247053c40a6b5b0cff128a9",
+      "reviewed_packet_sha256": "ef2e0939f2975eaaf72eea4ba0e33908561093b233faab4c51dc177955decb84",
+      "reviewed_cold_rehearsal_sha256": "5ba49e1c6c8a1d191e16b1c768bd49957b9ba11fa348cca56df704f34f6cdbab",
+      "reviewer_reproduction": "39/39",
+      "findings": 0
+    }
+  },
+  "repository_execution": {
+    "branch": "master",
+    "remote": "https://github.com/fotso94/medzen-platform.git",
+    "review_and_authorization_merge_commit": "68fcc793ecae6461cdae5063889de2d550b47c88",
+    "attempt_1_execution_commit": "68fcc793ecae6461cdae5063889de2d550b47c88",
+    "attempt_1_evidence_commit": "c2bd3b4da8d77c0396a7c77ecf6134c4543d048a",
+    "attempt_2_execution_commit": "c2bd3b4da8d77c0396a7c77ecf6134c4543d048a",
+    "source_or_packet_changed_between_attempts": false
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "outcome": "REFUSED",
+      "failure_stage": "FILE_PROOF",
+      "detail_record": {
+        "path": "platform/evidence/B6-PACKET-2026-027-ATTEMPT-1-REFUSED-FILE-PROOF.json",
+        "sha256": "704a8daa85baaa5f4c16393f7424c607e6c7b2ccb70cb4a80f6b8778653d7142"
+      },
+      "detail_record_path_correction": {
+        "path": "platform/evidence/B6-PACKET-2026-027-ATTEMPT-1-PACKET-PATH-CORRECTION.json",
+        "sha256": "83d8777d7071e3b56a46cc4864d1b6cd7de528a59bc1a7f410e57678a39ce76a",
+        "status": "APPLIES"
+      },
+      "corrected_alb_stability_gate": "PASS",
+      "layered_fargate_probe": "PASS",
+      "file_conversation_proof": "REFUSED",
+      "cleanup": "PASS",
+      "cleanup_receipt_sha256": "a93974337b265d1c3927b3fa5c81a9d3b142af6f429cd1e209078943e7e2b4fe"
+    },
+    {
+      "attempt": 2,
+      "outcome": "REFUSED",
+      "failure_stage": "STAGE0",
+      "receipt_directory": "platform/evidence/receipts/B6-2026-027-A2-LIVE",
+      "stage0_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-027-A2-LIVE/stage0.json",
+        "sha256": "9b3131e461071435931a4b63744cf8044ca5d9e76cca52719252935c720bbc01",
+        "recorded_utc": "2026-08-11T02:38:56Z",
+        "status": "REFUSED",
+        "reason_code": "STAGE0_CREDENTIAL_OR_PREFLIGHT_REFUSED",
+        "command_exit_code": 2
+      },
+      "safe_post_refusal_facts": {
+        "compute_started": false,
+        "workers_started": false,
+        "gpu_window_opened": false,
+        "model_or_audio_present_on_node": false,
+        "temporary_endpoints_created": false,
+        "deployment_attempted": false,
+        "credential_rotation_completed_before_refusal": true,
+        "attempt_1_secret_version_now": "AWSPREVIOUS",
+        "attempt_2_secret_version_now": "AWSCURRENT",
+        "attempt_2_current_version_id": "3d3b46760ea9aba9acb92e8bcb41161feb688c9db5f58ad82d003bdb3d5c1cad"
+      },
+      "cleanup_receipt": {
+        "path": "platform/evidence/receipts/B6-2026-027-A2-LIVE/cleanup.json",
+        "sha256": "7f346254f8f8387982baf1203d43bad5566b5cb8781acf8021c9fcd3aa182b73",
+        "recorded_utc": "2026-08-11T02:45:58Z",
+        "status": "REFUSED",
+        "reason_code": "CLEANUP_REFUSED",
+        "command_exit_code": 143,
+        "cleanup_recovery_completed": false
+      }
+    }
+  ],
+  "attempt_2_diagnosis": {
+    "stage0_classification": "POST_CREDENTIAL_PREFLIGHT_TRANSIENT_OR_UNIDENTIFIED",
+    "stage0_confidence": "INSUFFICIENT_EVIDENCE_FOR_EXACT_CAUSE",
+    "stage0_facts": [
+      "The persistent secret was rotated to a fresh AWSCURRENT version at the stage-0 timestamp.",
+      "The stage-0 receipt then persisted the generic fail-closed reason STAGE0_CREDENTIAL_OR_PREFLIGHT_REFUSED.",
+      "All remaining read-only stage-0 invariants passed when rechecked after refusal: account, three test-registry parameters, absent production serving pointer, zero workload nodes, zero synthetic pods, absent controller, absent DRA and absent temporary endpoints.",
+      "The reviewed runner suppresses command output and the stage-0 receipt did not retain the exact safe pre-model error, so no narrower cause is claimed."
+    ],
+    "cleanup_classification": "PRE_DEADLINE_REFUSAL_CLEANUP_INVARIANT_DEFECT",
+    "cleanup_confidence": "HIGH",
+    "cleanup_facts": [
+      "Stage 0 refused before the deadline stage, so neither Auto Scaling group had a scheduled B6 deadline action.",
+      "Cleanup unconditionally called disarm_after_zero, which requires exactly one deadline action per group and retries that impossible condition for up to 1,800 seconds.",
+      "The non-mutating wait and its identical recovery wait were terminated after independent readback proved both groups at exact zero and no deadline actions.",
+      "The exact local synthetic token was then removed manually; no AWS resource was created to satisfy the impossible cleanup precondition."
+    ]
+  },
+  "zero_state_verification": {
+    "verified_utc": "2026-08-11T02:47:45Z",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "health_issues": 0,
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 4,
+      "asg_instances": 0,
+      "scheduled_deadline_actions": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "health_issues": 0,
+      "minimum": 0,
+      "desired": 0,
+      "maximum": 1,
+      "asg_instances": 0,
+      "scheduled_deadline_actions": 0
+    },
+    "kubernetes_workload_nodes": 0,
+    "synthetic_medzen_pods": 0,
+    "window_ingresses": 0,
+    "temporary_vpc_endpoints": 0,
+    "window_load_balancers": 0,
+    "window_terraform_resources": 0,
+    "production_ssm_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "local_synthetic_token_present": false,
+    "local_alb_hostname_present": false,
+    "persistent_synthetic_secret": "RETAINED_OPERATOR_PLAINTEXT_READ_DENIED",
+    "default_terraform_plan": "NO_CHANGES"
+  },
+  "proof_status": {
+    "alb_target_stability": "PASS_ATTEMPT_1",
+    "fargate_readyz": "PASS_ATTEMPT_1",
+    "file_conversation": "REFUSED_ATTEMPT_1",
+    "websocket_conversation": "NOT_RUN",
+    "cancellation": "NOT_RUN",
+    "failure_drills": "NOT_RUN",
+    "isolation": "NOT_RUN",
+    "b6_6": "INCOMPLETE"
+  },
+  "packet_terminal_state": {
+    "full_window_attempts_authorized": 2,
+    "full_window_attempts_consumed": 2,
+    "remaining_attempts": 0,
+    "further_attempt_authorized": false,
+    "new_packet_and_allowance_required": true
+  },
+  "budget_control": {
+    "aggregate_project_ceiling_usd": 300,
+    "existing_reservation_usd": 10,
+    "attempt_ceiling_seconds_each": 4500,
+    "new_reservation_created": false,
+    "attempt_2_gpu_seconds": 0,
+    "actual_billed_cost": "NOT_YET_RECONCILED_AWS_BILLING_LAG",
+    "cost_claim": "Attempt 2 refused before compute and added no GPU usage. Attempt 1 remained within the reviewed window ceiling. Exact attributable billing is deferred until AWS data settles."
+  },
+  "required_successor_work": [
+    "Preserve packet 2026-027, both attempt receipt directories and this terminal record unchanged.",
+    "Diagnose the attempt-1 file-proof refusal using a safe pre-production receipt that retains an allowlisted layer-specific reason without recording audio, transcript, reply, citations, credentials or PHI.",
+    "Make stage-0 pre-model failures retain exact safe stderr or an allowlisted substage reason.",
+    "Make cleanup handle a refusal before deadline arming as an already-disarmed state while still requiring exact zero capacity and zero scheduled actions.",
+    "Add regression tests for both pre-deadline cleanup and stage-0 safe-reason persistence.",
+    "Run a fresh cold rehearsal and obtain independent review, owner approval, a successor packet and fresh allowance before another AWS window."
+  ],
+  "prohibited_claims": [
+    "B6.6 did not pass.",
+    "The synthetic file conversation did not pass.",
+    "No production serving pointer, approved ASR artifact or production deployment was created."
+  ]
+}

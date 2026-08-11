@@ -1,0 +1,17 @@
+{
+  "record": "B6_2026_027_ATTEMPT_1_EVIDENCE_CORRECTION",
+  "id": "B6-PACKET-2026-027-ATTEMPT-1-PACKET-PATH-CORRECTION",
+  "revision": 1,
+  "status": "CORRECTION_APPLIES",
+  "recorded_utc": "2026-08-11T02:47:45Z",
+  "original_record": {
+    "path": "platform/evidence/B6-PACKET-2026-027-ATTEMPT-1-REFUSED-FILE-PROOF.json",
+    "sha256": "704a8daa85baaa5f4c16393f7424c607e6c7b2ccb70cb4a80f6b8778653d7142"
+  },
+  "field": "governance_bindings.packet.path",
+  "incorrect_value_preserved_in_original": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-027-alb-stability-and-layered-retry.md",
+  "correct_value": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-027-alb-probe-stability.md",
+  "correct_packet_sha256": "ef2e0939f2975eaaf72eea4ba0e33908561093b233faab4c51dc177955decb84",
+  "scope": "PATH_ONLY_NO_OUTCOME_OR_RECEIPT_HASH_CHANGE",
+  "reason": "The immutable attempt-1 record used a descriptive packet filename that does not exist. This additive record corrects the path without rewriting the original evidence."
+}
