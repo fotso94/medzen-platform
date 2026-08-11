@@ -79,6 +79,8 @@ def test_qualification_is_a_real_container_conversation_not_testclient():
         '"status": "PASS_FAIL_CLOSED"',
         '"stable_conversation_passes": 3',
         "for _ in range(3)",
+        'environment["PYTHONPATH"]',
+        "str(ROOT) + os.pathsep + existing_pythonpath",
     ):
         assert required in checker
     assert "TestClient" not in checker

@@ -165,6 +165,12 @@ def _exact_streamed_conversation(
         token_path.chmod(0o600)
         environment = os.environ.copy()
         environment[PROOF_AUDIO_SHA256_ENV] = PROOF_AUDIO_SHA256
+        existing_pythonpath = environment.get("PYTHONPATH")
+        environment["PYTHONPATH"] = (
+            str(ROOT)
+            if not existing_pythonpath
+            else str(ROOT) + os.pathsep + existing_pythonpath
+        )
         completed = subprocess.run(
             (
                 sys.executable,
