@@ -147,6 +147,10 @@ def _orchestrator_websocket_smoke(image: str) -> dict[str, object]:
         (ROOT / "platform/testdata", "/opt/medzen/platform/testdata"),
         (ROOT / "registry/languages", "/opt/medzen/registry/languages"),
         (ROOT / "registry/llm-policies", "/opt/medzen/registry/llm-policies"),
+        (
+            ROOT / "services/rag-index/medzen_rag_index",
+            "/opt/medzen/services/rag-index/medzen_rag_index",
+        ),
     )
     command = [
         "docker", "run", "--detach", "--rm", "--name", container,
@@ -154,6 +158,11 @@ def _orchestrator_websocket_smoke(image: str) -> dict[str, object]:
         "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
         "--publish", "127.0.0.1::8080",
         "--env", "MEDZEN_ORCHESTRATOR_MODE=local_fixture",
+        "--env", (
+            "PYTHONPATH=/opt/site-packages:"
+            "/opt/medzen/services/speech-orchestrator:"
+            "/opt/medzen/services/rag-index"
+        ),
     ]
     for source, target in mounts:
         command.extend((
@@ -170,6 +179,7 @@ def _orchestrator_websocket_smoke(image: str) -> dict[str, object]:
         result = _real_websocket_handshake("127.0.0.1", port)
         result.update({
             "container_read_only": True,
+            "fixture_mounts": "read_only_synthetic_only",
             "network_binding": "loopback_ephemeral",
             "status": "PASS",
         })

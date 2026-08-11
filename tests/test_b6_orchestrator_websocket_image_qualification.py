@@ -58,6 +58,8 @@ def test_qualification_is_a_real_container_handshake_not_testclient():
     for required in (
         '"docker", "run"',
         '"--publish", "127.0.0.1::8080"',
+        '"fixture_mounts": "read_only_synthetic_only"',
+        "/opt/medzen/services/rag-index",
         "socket.create_connection",
         "Sec-WebSocket-Key",
         "_real_websocket_handshake",
