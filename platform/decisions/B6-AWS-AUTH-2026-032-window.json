@@ -1,0 +1,127 @@
+{
+  "allowance": {
+    "aggregate_project_ceiling_usd": 300.0,
+    "attempts_non_transferable": true,
+    "cold_rehearsal_required_before_each_attempt": true,
+    "estimated_compute_usd": 3.2,
+    "existing_reservation_usd": 10.0,
+    "maximum_requested_worker_seconds": 9000,
+    "maximum_seconds_per_attempt": 4500,
+    "new_reservation_usd": 0.0,
+    "pass_terminates_packet": true,
+    "recognized_committed_guardrail_usd": 64.4286064216,
+    "requested_attempts": 2
+  },
+  "id": "B6-AWS-AUTH-2026-032",
+  "immutable_evidence": {
+    "packet_2026_031_scan_result": {
+      "orchestrator_child_manifest_digest": "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed",
+      "outcome": "PASS_SCAN_ONLY",
+      "path": "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json",
+      "sha256": "bc7b2a523114f692921492125574b712e65543f02e7dcb47d9f9e8c6fe6f427d"
+    },
+    "preserved_file_proof": {
+      "path": "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json",
+      "rerun_permitted": false,
+      "sha256": "808d160e391998e3f534d8776342e58337ebb4a200ffaab58fcc43e586c60c89",
+      "status": "PASS"
+    }
+  },
+  "independent_review": {
+    "findings": [],
+    "reviewed_cold_rehearsal_sha256": "afdcc845ae3fd554ca8b658bddce7bb6e5680666ff4ddb9dac1bfb49ceacbd86",
+    "reviewed_packet_sha256": "6f5babd210991b2177f9aeab0ea978662309fbc8b07729a55f4a9f775bff53fd",
+    "reviewed_repository_commit": "83d203623a1117c5ed400bbd503a7b317e9fac1b",
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS"
+  },
+  "owner_approval": {
+    "exact_phrase": "Approve B6 AWS change packet 2026-032 only, including two non-transferable 4,500-second attempts within the existing $10 reservation.",
+    "identity": "MedZen owner",
+    "scope": "B6 AWS change packet 2026-032 only",
+    "status": "APPROVED"
+  },
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-032",
+    "sha256": "6f5babd210991b2177f9aeab0ea978662309fbc8b07729a55f4a9f775bff53fd"
+  },
+  "prepared_repository_commit": "83d203623a1117c5ed400bbd503a7b317e9fac1b",
+  "prohibited": [
+    "file proof rerun or historical evidence mutation",
+    "third attempt or time transfer",
+    "production traffic or PHI",
+    "real Bedrock or Fish calls",
+    "production SSM pointer change",
+    "approved/asr publication",
+    "model registration or MLflow transition",
+    "unreviewed IAM, network, image, source, scope or safety-boundary change"
+  ],
+  "proof_scope": {
+    "preserved_not_rerun": [
+      "file_proof"
+    ],
+    "production_traffic": false,
+    "remaining_live_proofs": [
+      "websocket_proof",
+      "cancellation_proof",
+      "failure_drills",
+      "isolation_proof"
+    ],
+    "synthetic_only": true
+  },
+  "purpose": "Execute only the remaining B6 streaming, cancellation, failure-drill and isolation proofs after preserving the immutable file-proof PASS.",
+  "recorded_utc": "2026-08-11T15:17:39Z",
+  "review_merge_commit": "24f08d68604c8120e8867bde0e22a3cae4c1af50",
+  "source_bindings": {
+    "infra/b6_integration_window.tf": "5ac2f7de8475fd63ce1cb5ffe01609bd2df46815ccf787e7e83d7e910666fd57",
+    "pipeline/b6_integration_receipts.py": "2cf3b800edb631aa9fc43bb010552913a1da434025cbe025bb91c21ac4208166",
+    "platform/decisions/B6-AWS-CHANGE-PACKET-2026-032-remaining-proofs.md": "6f5babd210991b2177f9aeab0ea978662309fbc8b07729a55f4a9f775bff53fd",
+    "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json": "bc7b2a523114f692921492125574b712e65543f02e7dcb47d9f9e8c6fe6f427d",
+    "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a.json": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22",
+    "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
+    "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json": "808d160e391998e3f534d8776342e58337ebb4a200ffaab58fcc43e586c60c89",
+    "platform/evidence/receipts/B6-2026-032-COLD/cold_rehearsal.json": "afdcc845ae3fd554ca8b658bddce7bb6e5680666ff4ddb9dac1bfb49ceacbd86",
+    "platform/finance/COST-REGISTRY-2026-005.json": "db7512d2d4ec2f54efa89e8527f9b310992393de191e38db0e7813d9279bcd2d",
+    "platform/generated/registry-ssm/b6-v0-synthetic.json": "33433626b0f2070a714df31e16306d6a511652b0870b0ba3cb5ec701847c9821",
+    "platform/k8s/b6-6/remaining-proofs-window.yaml": "fd7e0b9b8e5e1828bade23c56af7d1406e06a51e43ef49d1cc7f613512b3334a",
+    "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "platform/runtime-receipt-policy-v3.yaml": "049dc6336f2507f037f6bbcc7e1784db66f0c274227d833bc761a1b7ab197a54",
+    "platform/testdata/b6a-003c-b-synthetic.wav": "3e7b78cbf65b5b857d0bd2ea6b2568ce74c523be2b319ade8930c9ac6a7630c3",
+    "registry/deployment/b6-v0-synthetic.json": "2629e3b7fb1ae33e7dc6966134bd8f544a8211c98036b8ea4ecfc2a0fed19ebd",
+    "scripts/b6_6_aws_read_fixtures.py": "ad482a18cd4ec27057fca5d839f366644f80b91b29b92de3ecd2a7437b5ddb6f",
+    "scripts/b6_6_credential.py": "b3e41544392605f0ca91a88efb1e477683d42a54bd00086f1a8628ebf6de7c77",
+    "scripts/b6_6_deadline.py": "8ec91ba6df79a72debf29a1faa50f39bf55c02daa5a5241df7e4d75b629927a2",
+    "scripts/b6_6_fargate_probe.py": "109358133d22fcfd7604d5842cd4f21b00c5bfacf5ccfc2b77cad388fa2e1bf7",
+    "scripts/b6_6_k8s_stability.py": "8d4eee7ab995397bb0ba575f6a622a346121966745c478aa6678bdf6469d3149",
+    "scripts/b6_6_lbc_runtime.py": "671de38b749deb7236ca00125ebc824c9e656d880db9ba26e70a5fb8ee5fb7dd",
+    "scripts/b6_6_lbc_tag_warning.py": "e45472f297003b89d4487d9a740b40344ed965dbe3263a14cc63f0a083c26720",
+    "scripts/b6_6_post_mutation_audit.py": "49b946464db210b77ec68c6e86d1284b9f21f0cc48500817114cefa086b12741",
+    "scripts/b6_6_probe.py": "17b84dbc04471c4537993bb21ead84c2afbc16a93c5d19ee0838ee43a1838f83",
+    "scripts/b6_6_probe_endpoints.py": "2f532bb860c105883e45f89d68ec3b359b51178a6112752a040cb529daa11341",
+    "scripts/b6_6_proof_audio_binding.py": "9e4782ffde86bbf99ebe7f3deab344ac54f38ef4175077cc3016363d73de8393",
+    "scripts/b6_6_registry_rag_alignment.py": "bb33a3c31ef0074d3aa862fda3a821efc32fe32e1c7147d8c6069b61d9f5e1e1",
+    "scripts/b6_6_registry_readback.py": "b3c07ec5c05aeef7d2dc00ba7b7c39e33090f6ff446601f1d3bad7775ce05ee5",
+    "scripts/b6_6_wait_workers.py": "f62b71a661206d1d453a499c7ea41dcd941ca82785b4a82fc108fc28517a7603",
+    "scripts/b6_remaining_bindings.py": "a7fbaf480c856291a2480a72be63ea6fdbb7e0de69be483a92e5e9d13c20f17a",
+    "scripts/b6_remaining_cleanup.sh": "8962a72221febbd74feee2022d9405c4d71f4312f9eda13cf4704eea9888fd92",
+    "scripts/b6_remaining_cold_rehearsal.py": "e798ab107f4de533b131b1f26b23d8d2d1561ff59900fc135e34da4b61bfcd76",
+    "scripts/b6_remaining_manifest_slice.py": "afac5ec55e166438a64165e271383c5595ca5a8786b8e6cdfa2ec3c4c6286571",
+    "scripts/b6_remaining_operations.sh": "af67cb03d09e2969ea698a8c923a04a53c8703d8920809279901b6142111b7a3",
+    "scripts/b6_remaining_pre_endpoint_images.py": "b01075750c4b4f04fa082d07f1f42d61b8ccdeab064c6d837af8adaa1dd65630",
+    "scripts/b6_remaining_runner.py": "480b62c22ff0d0e41112984106d3b5ddeb133b2fc0e7ac29c3300c9c48e5b9b2",
+    "scripts/check_b6_6_window_plan.py": "1e3a45aef57ca034ee53aac24d262c1d6056dfc6f2a850e0110aecd08b4492bc",
+    "scripts/terraform_medzen.sh": "1a1d9c158001d9b15ac1403bde2138ec284c250b28715818b395697317c274f1",
+    "tests/test_b6_remaining_proofs_window.py": "14afa14a101bead13ec130b1eb45e35384e567def03cab12bb6d9733da1983da"
+  },
+  "stage_a_reuse": {
+    "aggregate_receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a.json",
+    "aggregate_receipt_sha256": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22",
+    "cleanup_complete": true,
+    "cleanup_receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json",
+    "cleanup_receipt_sha256": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
+    "rerun_permitted": false,
+    "source_packet": "B6-AWS-CHANGE-PACKET-2026-026",
+    "stable_probe_passes": 3
+  },
+  "status": "owner-approved"
+}
