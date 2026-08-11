@@ -1,0 +1,103 @@
+{
+  "schema": "MEDZEN_B6_SCAN_ONLY_RESULT_V1",
+  "packet": {
+    "id": "B6-AWS-CHANGE-PACKET-2026-033",
+    "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-033-streaming-partial-source-scan-only.md",
+    "sha256": "a5cb99de828fbe322262a692043abbaf3b1304f720fafe0af33a7153772cf3b9",
+    "reviewed_commit": "2316e71998bc7e4f6afd7aa10a922ec5135c6fa0",
+    "review_status": "PASS",
+    "owner_approval": "Approve B6 AWS change packet 2026-033 only."
+  },
+  "execution": {
+    "executed_utc": "2026-08-11T17:27:35Z",
+    "completed_utc": "2026-08-11T17:28:22Z",
+    "profile": "medzen",
+    "region": "eu-central-1",
+    "account": "558069890522",
+    "caller_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "source_commit": "bfaad78f9de5e40ab0602244ece05007aed43f12"
+  },
+  "subject": {
+    "repository": "medzen-orchestrator",
+    "repository_uri": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator",
+    "tag": "b6-ws-bfaad78",
+    "platform": "linux/amd64",
+    "child_manifest_digest": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
+    "config_digest": "sha256:35e563713752a05418cde7dacaa50dd2939f787ac627e1d17471b1e271518e5a",
+    "image_size_in_bytes_ecr": 37265593,
+    "image_media_type": "application/vnd.oci.image.manifest.v1+json",
+    "artifact_media_type": "application/vnd.oci.image.config.v1+json",
+    "image_user": "10001:10001",
+    "local_oci_archive_sha256": "399cbb9352619046e484c00f9e2836eaf065da6a43f1c3bd18e60e32c8628474",
+    "local_runtime_receipt_sha256": "c7de1571d408cf1a7df9c002efb0fa1364c81b754668d34b4a4994e0892e63db",
+    "local_scan_receipt_sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+    "packaged_partial_source_sha256": "f5e6c57c3d8a57d80980ee3741723b36ae810e03aea10d2057fa2c30776a90fc",
+    "probe_app_pair_sha256": "f6c8eb872cbd80c5542350e0c4ac5c0b1cff82d820d94ab452ef12cba816a9d6"
+  },
+  "preconditions": {
+    "repository_tag_mutability": "IMMUTABLE",
+    "repository_scan_on_push": true,
+    "repository_encryption": "KMS",
+    "repository_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "registry_scan_type": "BASIC",
+    "registry_scan_frequency": "SCAN_ON_PUSH",
+    "registry_rule_count": 1,
+    "registry_repository_filter_count": 8,
+    "orchestrator_filter_present": true,
+    "destination_tag_absent_before_push": true,
+    "local_identity_match": true,
+    "fresh_local_qualification_byte_identical": true,
+    "dependency_unavailable_http_status": 503,
+    "dependency_unavailable_reason": "STREAMING_PARTIAL_SOURCE_UNAVAILABLE",
+    "real_rfc6455_handshake_http_status": 101,
+    "stable_full_conversation_passes": 3,
+    "websocket_backend": "websockets==17.0.1",
+    "cpu_desired": 0,
+    "gpu_desired": 0
+  },
+  "authoritative_scan": {
+    "queried_by": "linux/amd64 child manifest digest",
+    "status": "COMPLETE",
+    "description": "The scan was completed successfully.",
+    "completed_at": "2026-08-11T17:27:44Z",
+    "vulnerability_source_updated_at": "2026-08-11T17:27:44Z",
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "informational": 0,
+    "undefined": 0,
+    "finding_count": 0,
+    "security_waiver_used": false
+  },
+  "postconditions": {
+    "ecr_images_pushed": 1,
+    "ecr_repository_configuration_changes": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "workload_nodes": 0,
+    "medzen_deployments": 0,
+    "medzen_pods": 0,
+    "production_serving_pointer_count": 0,
+    "approved_asr_objects": 0,
+    "deployment_attempted": false,
+    "kubernetes_mutations": 0,
+    "iam_mutations": 0,
+    "ssm_mutations": 0,
+    "secret_mutations": 0,
+    "worker_scale_up": false,
+    "gpu_seconds": 0
+  },
+  "verification": {
+    "canonical_local_suite": {
+      "passed": 1531,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    }
+  },
+  "outcome": "PASS_SCAN_ONLY",
+  "deployment_authorized_by_this_record": false,
+  "next_boundary": "A separately reviewed packet may pin the exact scan-passed child for only the remaining streaming, cancellation, failure-drill and isolation proofs. Packet 2026-033 grants no window attempt or compute allowance; a fresh owner allowance decision is required."
+}
