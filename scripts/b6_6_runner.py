@@ -57,6 +57,9 @@ SAFE_FARGATE_REFUSAL_CODES = {
     "IMAGE_PULL_FAILURE",
     "PROBE_CONTAINER_BOUNDARY_DIFFERS",
     "PROBE_CONTAINER_NONZERO_OR_UNKNOWN_STOP",
+    "PROBE_DNS_RETRIES_EXHAUSTED",
+    "PROBE_CONNECT_RETRIES_EXHAUSTED",
+    "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED",
     "PROBE_TARGET_URL_DIFFERS",
     "PROBE_TASK_ARN_ABSENT",
     "PROBE_TASK_CONTAINER_COUNT_DIFFERS",
@@ -69,6 +72,20 @@ SAFE_FARGATE_REFUSAL_CODES = {
     "RUN_TASK_RESPONSE_HAS_NO_TASK_ARN",
     "TASK_FAILED_TO_START",
     "TASK_STOPPED_BY_SERVICE",
+}
+SAFE_ALB_REFUSAL_CODES = {
+    "ALB_BOUNDARY_DIFFERS",
+    "ALB_IDENTITY_AMBIGUOUS",
+    "ALB_RUNTIME_BOUNDARY_REFUSED",
+    "ALB_STATE_TERMINAL",
+    "ALB_TARGET_GROUP_AMBIGUOUS",
+    "ALB_TARGET_GROUP_ARN_ABSENT",
+    "ALB_TARGET_HEALTH_INTERNAL_STATE",
+    "ALB_TARGET_HEALTH_WAIT_BOUND_DIFFERS",
+    "ALB_TARGET_IDENTITY_MALFORMED",
+    "ALB_READ_API_REFUSED",
+    "ALB_TARGET_STABLE_HEALTH_TIMEOUT",
+    "ALB_TARGET_TERMINAL_UNHEALTHY",
 }
 
 
@@ -89,11 +106,40 @@ def safe_fargate_refusal(path: Path) -> dict[str, Any] | None:
         or re.fullmatch(r"[A-Z0-9_]{1,80}", str(reason)) is None
     ):
         return None
-    return {
+    result = {
         "reason_code": reason,
         "application_started": value["application_started"],
         "readyz_request_completed": value["readyz_request_completed"],
     }
+    exit_code = value.get("container_exit_code")
+    expected_exit_codes = {
+        "PROBE_DNS_RETRIES_EXHAUSTED": 21,
+        "PROBE_CONNECT_RETRIES_EXHAUSTED": 22,
+        "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED": 23,
+    }
+    if reason in expected_exit_codes:
+        if exit_code != expected_exit_codes[reason]:
+            return None
+        result["container_exit_code"] = exit_code
+    return result
+
+
+def safe_alb_refusal(path: Path) -> dict[str, Any] | None:
+    """Return only the allowlisted target-readiness refusal code."""
+    try:
+        value = json.loads(path.read_bytes())
+    except Exception:
+        return None
+    if not isinstance(value, dict):
+        return None
+    reason = value.get("reason_code")
+    if (
+        value.get("status") != "REFUSED"
+        or reason not in SAFE_ALB_REFUSAL_CODES
+        or re.fullmatch(r"[A-Z0-9_]{1,80}", str(reason)) is None
+    ):
+        return None
+    return {"reason_code": reason}
 
 
 class StageFailure(RuntimeError):
@@ -145,7 +191,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-026-A{context.attempt}-LIVE"
+            / f"B6-2026-027-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -220,7 +266,7 @@ class RealOperations:
             or any(
                 stage_a["payload"].get(key) != expected
                 for key, expected in {
-                    "packet_sha256": context.packet_sha256,
+                    "packet_sha256": "c39130c456b36b128f3c52fab22a533243c9d8e235128c574c3c56f892634702",
                     "stable_probe_passes": STABLE_PROBE_PASSES,
                     "required_consecutive_probe_passes": STABLE_PROBE_PASSES,
                     "cleanup_complete": True,
@@ -234,7 +280,7 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-026-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-027-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -256,6 +302,8 @@ class RealOperations:
             "status",
             "full_pass_runs",
             "injected_failure_runs",
+            "stage_injected_failure_runs",
+            "new_gate_injected_failure_runs",
             "enumerated_stages",
             "runner_source_hashes",
             "scenario_results_sha256",
@@ -265,6 +313,7 @@ class RealOperations:
             "kubernetes_mutations",
             "stage_a_full_pass_runs",
             "stage_a_injected_failure_runs",
+            "new_gate_rehearsal",
             "empirical_connectivity_gate",
             "terraform_description_charset_lint",
             "aws_read_fixture_fidelity",
@@ -304,6 +353,10 @@ class RealOperations:
                     probe_refusal = safe_fargate_refusal(payload_path)
                     if probe_refusal is not None:
                         diagnosis["probe_refusal"] = probe_refusal
+                if stage == "alb_ready":
+                    alb_refusal = safe_alb_refusal(payload_path)
+                    if alb_refusal is not None:
+                        diagnosis["alb_refusal"] = alb_refusal
                 if self.endpoints_enabled and stage != "cleanup":
                     post = subprocess.run(
                         [

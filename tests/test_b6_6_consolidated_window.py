@@ -39,8 +39,8 @@ EXPECTED_STAGES = (
     "pre_endpoint_images",
     "terraform_window",
     "endpoints_ready",
-    "fargate_probe",
     "alb_ready",
+    "fargate_probe",
     "alb_tag_mutation_warning",
     "file_proof",
     "websocket_proof",
@@ -222,6 +222,14 @@ def test_endpoint_plan_includes_controller_noop_and_cleanup_uses_stage_status() 
     assert '[[ -e "$receipts_dir/terraform_window.json" ]]' not in cleanup
 
 
+def test_runtime_and_cleanup_bind_the_same_packet_027_hostname_file() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    cleanup = (ROOT / "scripts/b6_6_cleanup.sh").read_text()
+    expected = 'alb_hostname_file="/private/tmp/b6-027-attempt-${attempt}-alb-hostname"'
+    assert expected in operations
+    assert expected in cleanup
+
+
 def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     assert "terraform_plan_receipt" in operations
@@ -251,9 +259,22 @@ def test_terraform_receipts_bind_plan_counts_and_exact_resource_names() -> None:
 def test_fargate_refusal_payload_is_written_before_nonzero_return() -> None:
     operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
     stage = operations[operations.index("stage_fargate_probe()") :]
-    stage = stage[: stage.index("stage_alb_ready()")]
+    stage = stage[: stage.index("stage_tag_result()")]
     assert stage.index('write_payload "$payload"') < stage.index(
         '[[ "$probe_status" == "0" ]] || return "$probe_status"'
+    )
+
+
+def test_alb_stable_health_receipt_precedes_fargate_launch() -> None:
+    operations = (ROOT / "scripts/b6_6_operations.sh").read_text()
+    assert operations.index("stage_alb_ready()") < operations.index(
+        "stage_fargate_probe()"
+    )
+    alb = operations[operations.index("stage_alb_ready()") :]
+    alb = alb[: alb.index("stage_fargate_probe()")]
+    assert "wait-ready --profile medzen --wait-seconds 900" in alb
+    assert alb.index('write_payload "$payload"') < alb.index(
+        '[[ "$ready_status" == "0" ]] || return "$ready_status"'
     )
 
 

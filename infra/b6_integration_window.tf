@@ -11,7 +11,36 @@ locals {
   b6_probe_repository_arn      = "arn:${data.aws_partition.current.partition}:ecr:${var.region}:${var.account_id}:repository/medzen-rag-index"
   b6_ecr_layer_bucket_arn      = "arn:${data.aws_partition.current.partition}:s3:::prod-${var.region}-starport-layer-bucket/*"
   b6_probe_image               = "${var.account_id}.dkr.ecr.${var.region}.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"
-  b6_probe_resources_enabled   = var.enable_b6_probe_qualification || var.enable_b6_integration_window
+  b6_probe_runtime_program = trimspace(<<-PY
+    import http.client, json, os, socket, sys, time, urllib.error, urllib.request
+    url = os.environ['TARGET_URL']
+    last_exit = 22
+    for attempt in range(24):
+        try:
+            with urllib.request.urlopen(url, timeout=5) as response:
+                status = response.status
+                body = json.load(response)
+            if status == 200 and body.get('ready') is True:
+                sys.exit(0)
+            last_exit = 23
+        except urllib.error.HTTPError:
+            last_exit = 23
+        except urllib.error.URLError as exc:
+            last_exit = 21 if isinstance(exc.reason, socket.gaierror) else 22
+        except socket.gaierror:
+            last_exit = 21
+        except (ConnectionError, TimeoutError, OSError):
+            last_exit = 22
+        except http.client.HTTPException:
+            last_exit = 22
+        except (AttributeError, json.JSONDecodeError, UnicodeDecodeError, ValueError):
+            last_exit = 23
+        if attempt < 23:
+            time.sleep(10)
+    sys.exit(last_exit)
+  PY
+  )
+  b6_probe_resources_enabled = var.enable_b6_probe_qualification || var.enable_b6_integration_window
   b6_window_tags = {
     Project        = "medzen-speech"
     Environment    = var.environment
@@ -291,13 +320,11 @@ resource "aws_ecs_task_definition" "b6_probe" {
   }
 
   container_definitions = jsonencode([{
-    name       = "probe"
-    image      = local.b6_probe_image
-    essential  = true
-    entryPoint = ["/usr/local/bin/python", "-c"]
-    command = [
-      "import json,os,urllib.request; u=os.environ['TARGET_URL']; r=urllib.request.urlopen(u,timeout=15); v=json.load(r); assert r.status==200 and v.get('ready') is True"
-    ]
+    name                   = "probe"
+    image                  = local.b6_probe_image
+    essential              = true
+    entryPoint             = ["/usr/local/bin/python", "-c"]
+    command                = [local.b6_probe_runtime_program]
     environment            = [{ name = "TARGET_URL", value = "http://not-set.invalid/readyz" }]
     readonlyRootFilesystem = true
     linuxParameters = {

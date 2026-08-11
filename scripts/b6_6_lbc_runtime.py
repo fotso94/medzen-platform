@@ -8,8 +8,11 @@ import json
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from botocore.exceptions import ClientError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +27,13 @@ REGION = "eu-central-1"
 PROFILE = "medzen"
 ALB_NAME = "medzen-b6-window"
 ALB_SECURITY_GROUP = "sg-0f0f6c66852830013"
+TARGET_HEALTH_WAIT_SECONDS = 900
+TARGET_HEALTH_POLL_SECONDS = 10
+TARGET_HEALTH_STABLE_OBSERVATIONS = 3
+RETRYABLE_INITIAL_REASONS = {
+    "Elb.InitialHealthChecking",
+    "Elb.RegistrationInProgress",
+}
 REQUIRED_TAGS = {
     "elbv2.k8s.aws/cluster": "medzen-speech",
     "Project": "medzen-speech",
@@ -52,6 +62,12 @@ class RuntimeEvidenceRefusal(RuntimeError):
     pass
 
 
+class TargetReadinessRefusal(RuntimeEvidenceRefusal):
+    def __init__(self, reason_code: str):
+        super().__init__(reason_code)
+        self.reason_code = reason_code
+
+
 def canonical_sha256(value: Any) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(encoded).hexdigest()
@@ -74,6 +90,158 @@ def _tag_map(client: Any, arns: list[str]) -> dict[str, dict[str, str]]:
     if set(result) != set(arns):
         raise RuntimeEvidenceRefusal("ALB tag read-back resource set differs")
     return result
+
+
+def _target_identity(descriptions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = [
+        {
+            "id": item.get("Target", {}).get("Id"),
+            "port": item.get("Target", {}).get("Port"),
+            "availability_zone": item.get("Target", {}).get("AvailabilityZone"),
+        }
+        for item in descriptions
+    ]
+    if any(
+        not isinstance(item["id"], str)
+        or not item["id"]
+        or not isinstance(item["port"], int)
+        for item in result
+    ):
+        raise TargetReadinessRefusal("ALB_TARGET_IDENTITY_MALFORMED")
+    return sorted(result, key=lambda item: (item["id"], item["port"], str(item["availability_zone"])))
+
+
+def classify_target_health_response(
+    descriptions: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Classify only readiness-relevant fields from a target-health response."""
+    if not descriptions:
+        return {"classification": "RETRY", "reason_code": "ALB_TARGETS_ABSENT"}
+    states = [
+        str(item.get("TargetHealth", {}).get("State", ""))
+        for item in descriptions
+    ]
+    reasons = [
+        str(item.get("TargetHealth", {}).get("Reason", ""))
+        for item in descriptions
+        if item.get("TargetHealth", {}).get("State") == "initial"
+    ]
+    if all(state == "healthy" for state in states):
+        identity = _target_identity(descriptions)
+        return {
+            "classification": "HEALTHY",
+            "reason_code": "ALB_TARGETS_HEALTHY",
+            "identity": identity,
+        }
+    if all(state in {"healthy", "initial"} for state in states) and reasons and all(
+        reason in RETRYABLE_INITIAL_REASONS for reason in reasons
+    ):
+        return {
+            "classification": "RETRY",
+            "reason_code": "ALB_TARGETS_INITIAL",
+        }
+    raise TargetReadinessRefusal("ALB_TARGET_TERMINAL_UNHEALTHY")
+
+
+def wait_for_stable_target_health(
+    client: Any,
+    wait_seconds: int = TARGET_HEALTH_WAIT_SECONDS,
+    *,
+    stable_observations: int = TARGET_HEALTH_STABLE_OBSERVATIONS,
+    poll_seconds: int = TARGET_HEALTH_POLL_SECONDS,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    """Wait for one exact target set to remain wholly healthy."""
+    if (
+        wait_seconds < 1
+        or wait_seconds > TARGET_HEALTH_WAIT_SECONDS
+        or stable_observations != TARGET_HEALTH_STABLE_OBSERVATIONS
+        or poll_seconds != TARGET_HEALTH_POLL_SECONDS
+    ):
+        raise TargetReadinessRefusal("ALB_TARGET_HEALTH_WAIT_BOUND_DIFFERS")
+    deadline = monotonic() + wait_seconds
+    consecutive = 0
+    stable_identity: list[dict[str, Any]] | None = None
+    polls = 0
+    while True:
+        polls += 1
+        try:
+            load_balancers = client.describe_load_balancers(Names=[ALB_NAME]).get(
+                "LoadBalancers", []
+            )
+        except ClientError as exc:
+            raise TargetReadinessRefusal("ALB_READ_API_REFUSED") from exc
+        if len(load_balancers) > 1:
+            raise TargetReadinessRefusal("ALB_IDENTITY_AMBIGUOUS")
+        if not load_balancers:
+            retry = True
+        else:
+            alb = load_balancers[0]
+            if (
+                alb.get("LoadBalancerName") != ALB_NAME
+                or alb.get("Scheme") != "internal"
+                or alb.get("Type") != "application"
+                or sorted(alb.get("SecurityGroups", [])) != [ALB_SECURITY_GROUP]
+            ):
+                raise TargetReadinessRefusal("ALB_BOUNDARY_DIFFERS")
+            state = alb.get("State", {}).get("Code")
+            if state == "provisioning":
+                retry = True
+            elif state != "active":
+                raise TargetReadinessRefusal("ALB_STATE_TERMINAL")
+            else:
+                try:
+                    target_groups = client.describe_target_groups(
+                        LoadBalancerArn=str(alb.get("LoadBalancerArn", ""))
+                    ).get("TargetGroups", [])
+                except ClientError as exc:
+                    raise TargetReadinessRefusal("ALB_READ_API_REFUSED") from exc
+                if len(target_groups) > 1:
+                    raise TargetReadinessRefusal("ALB_TARGET_GROUP_AMBIGUOUS")
+                if not target_groups:
+                    retry = True
+                else:
+                    target_group_arn = str(target_groups[0].get("TargetGroupArn", ""))
+                    if not target_group_arn:
+                        raise TargetReadinessRefusal("ALB_TARGET_GROUP_ARN_ABSENT")
+                    try:
+                        descriptions = client.describe_target_health(
+                            TargetGroupArn=target_group_arn
+                        ).get("TargetHealthDescriptions", [])
+                    except ClientError as exc:
+                        raise TargetReadinessRefusal("ALB_READ_API_REFUSED") from exc
+                    classification = classify_target_health_response(descriptions)
+                    if classification["classification"] == "HEALTHY":
+                        identity = classification["identity"]
+                        if identity == stable_identity:
+                            consecutive += 1
+                        else:
+                            stable_identity = identity
+                            consecutive = 1
+                        if consecutive == stable_observations:
+                            return {
+                                "load_balancer_active": True,
+                                "target_count": len(identity),
+                                "target_set_sha256": canonical_sha256(identity),
+                                "stable_healthy_observations": consecutive,
+                                "poll_interval_seconds": poll_seconds,
+                                "maximum_wait_seconds": wait_seconds,
+                                "polls": polls,
+                                "retryable_initial_reasons": sorted(
+                                    RETRYABLE_INITIAL_REASONS
+                                ),
+                            }
+                        retry = True
+                    else:
+                        consecutive = 0
+                        stable_identity = None
+                        retry = True
+        if not retry:
+            raise TargetReadinessRefusal("ALB_TARGET_HEALTH_INTERNAL_STATE")
+        if monotonic() >= deadline:
+            raise TargetReadinessRefusal("ALB_TARGET_STABLE_HEALTH_TIMEOUT")
+        sleep(poll_seconds)
 
 
 def verify_live(client: Any) -> dict[str, Any]:
@@ -196,19 +364,29 @@ def parse_denials(raw: str) -> list[dict[str, str]]:
 
 
 def classify_runtime(
-    *, receipt: dict[str, Any], receipt_sha256: str, controller_logs: str
+    *,
+    receipt: dict[str, Any],
+    receipt_sha256: str,
+    fargate_receipt: dict[str, Any],
+    fargate_receipt_sha256: str,
+    controller_logs: str,
 ) -> dict[str, Any]:
     if receipt.get("stage") != "alb_ready" or receipt.get("status") != "PASS":
         raise RuntimeEvidenceRefusal("functional ALB receipt is not PASS")
     proof = dict(receipt.get("payload", {}))
     dependencies = receipt.get("dependencies", {})
-    if set(dependencies) != {"fargate_probe"}:
-        raise RuntimeEvidenceRefusal("functional ALB Fargate dependency differs")
-    fargate_receipt_sha256 = dependencies.get("fargate_probe", "")
-    if re.fullmatch(r"[0-9a-f]{64}", str(fargate_receipt_sha256)) is None:
-        raise RuntimeEvidenceRefusal("functional Fargate receipt hash is malformed")
+    if set(dependencies) != {"endpoints_ready"}:
+        raise RuntimeEvidenceRefusal("functional ALB readiness dependency differs")
+    if (
+        fargate_receipt.get("stage") != "fargate_probe"
+        or fargate_receipt.get("status") != "PASS"
+        or fargate_receipt.get("dependencies") != {"alb_ready": receipt_sha256}
+        or re.fullmatch(r"[0-9a-f]{64}", fargate_receipt_sha256) is None
+    ):
+        raise RuntimeEvidenceRefusal("functional Fargate receipt binding differs")
     proof["fargate_probe_receipt_sha256"] = fargate_receipt_sha256
     proof["receipt_sha256"] = receipt_sha256
+    proof["alb_ready_receipt_sha256"] = receipt_sha256
     observations = parse_denials(controller_logs)
     try:
         return classify(observations, proof)
@@ -253,17 +431,32 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="mode", required=True)
     verify = subparsers.add_parser("verify")
     verify.add_argument("--profile", default=PROFILE)
+    wait_ready = subparsers.add_parser("wait-ready")
+    wait_ready.add_argument("--profile", default=PROFILE)
+    wait_ready.add_argument(
+        "--wait-seconds", type=int, default=TARGET_HEALTH_WAIT_SECONDS
+    )
     classify_parser = subparsers.add_parser("classify")
     classify_parser.add_argument("--kubeconfig", type=Path, required=True)
     classify_parser.add_argument("--receipts-dir", type=Path, required=True)
     args = parser.parse_args()
     try:
-        if args.mode == "verify":
-            result = verify_live(_session_client(args.profile))
+        if args.mode in {"verify", "wait-ready"}:
+            client = _session_client(args.profile)
+            if args.mode == "wait-ready":
+                readiness = wait_for_stable_target_health(
+                    client, wait_seconds=args.wait_seconds
+                )
+                result = {**verify_live(client), **readiness}
+            else:
+                result = verify_live(client)
         else:
             path = args.receipts_dir / "alb_ready.json"
             encoded = path.read_bytes()
             receipt = json.loads(encoded)
+            fargate_path = args.receipts_dir / "fargate_probe.json"
+            fargate_encoded = fargate_path.read_bytes()
+            fargate_receipt = json.loads(fargate_encoded)
             controller = json.loads((args.receipts_dir / "controller_ready.json").read_bytes())
             since_time = controller.get("recorded_utc")
             if not isinstance(since_time, str) or not since_time.endswith("Z"):
@@ -271,10 +464,13 @@ def main() -> int:
             result = classify_runtime(
                 receipt=receipt,
                 receipt_sha256=hashlib.sha256(encoded).hexdigest(),
+                fargate_receipt=fargate_receipt,
+                fargate_receipt_sha256=hashlib.sha256(fargate_encoded).hexdigest(),
                 controller_logs=_controller_logs(args.kubeconfig, since_time),
             )
-    except (OSError, json.JSONDecodeError, RuntimeEvidenceRefusal) as exc:
-        print(json.dumps({"status": "REFUSED", "reason_code": type(exc).__name__}))
+    except (ClientError, OSError, json.JSONDecodeError, RuntimeEvidenceRefusal) as exc:
+        reason_code = getattr(exc, "reason_code", "ALB_RUNTIME_BOUNDARY_REFUSED")
+        print(json.dumps({"status": "REFUSED", "reason_code": reason_code}))
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0

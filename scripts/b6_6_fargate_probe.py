@@ -34,9 +34,43 @@ TARGET = __import__("re").compile(
     r"^http://internal-medzen-b6-window-[0-9]+\.eu-central-1\.elb\.amazonaws\.com/readyz$"
 )
 ENTRY_POINT = ["/usr/local/bin/python", "-c"]
-COMMAND = [
-    "import json,os,urllib.request; u=os.environ['TARGET_URL']; r=urllib.request.urlopen(u,timeout=15); v=json.load(r); assert r.status==200 and v.get('ready') is True"
-]
+PROBE_ATTEMPTS = 24
+PROBE_INTERVAL_SECONDS = 10
+PROBE_REQUEST_TIMEOUT_SECONDS = 5
+PROBE_DNS_EXIT_CODE = 21
+PROBE_CONNECT_EXIT_CODE = 22
+PROBE_BAD_STATUS_EXIT_CODE = 23
+PROBE_PROGRAM = "\n".join(
+    [
+        "import http.client, json, os, socket, sys, time, urllib.error, urllib.request",
+        "url = os.environ['TARGET_URL']",
+        f"last_exit = {PROBE_CONNECT_EXIT_CODE}",
+        f"for attempt in range({PROBE_ATTEMPTS}):",
+        "    try:",
+        f"        with urllib.request.urlopen(url, timeout={PROBE_REQUEST_TIMEOUT_SECONDS}) as response:",
+        "            status = response.status",
+        "            body = json.load(response)",
+        "        if status == 200 and body.get('ready') is True:",
+        "            sys.exit(0)",
+        f"        last_exit = {PROBE_BAD_STATUS_EXIT_CODE}",
+        "    except urllib.error.HTTPError:",
+        f"        last_exit = {PROBE_BAD_STATUS_EXIT_CODE}",
+        "    except urllib.error.URLError as exc:",
+        f"        last_exit = {PROBE_DNS_EXIT_CODE} if isinstance(exc.reason, socket.gaierror) else {PROBE_CONNECT_EXIT_CODE}",
+        "    except socket.gaierror:",
+        f"        last_exit = {PROBE_DNS_EXIT_CODE}",
+        "    except (ConnectionError, TimeoutError, OSError):",
+        f"        last_exit = {PROBE_CONNECT_EXIT_CODE}",
+        "    except http.client.HTTPException:",
+        f"        last_exit = {PROBE_CONNECT_EXIT_CODE}",
+        "    except (AttributeError, json.JSONDecodeError, UnicodeDecodeError, ValueError):",
+        f"        last_exit = {PROBE_BAD_STATUS_EXIT_CODE}",
+        f"    if attempt < {PROBE_ATTEMPTS - 1}:",
+        f"        time.sleep({PROBE_INTERVAL_SECONDS})",
+        "sys.exit(last_exit)",
+    ]
+)
+COMMAND = [PROBE_PROGRAM]
 QUALIFICATION_COMMAND = [
     "import sys; assert sys.version_info[:2] >= (3, 12)"
 ]
@@ -108,6 +142,16 @@ def _failure_reason(task: dict[str, Any]) -> str:
     return "PROBE_CONTAINER_NONZERO_OR_UNKNOWN_STOP"
 
 
+def _probe_exit_reason(exit_code: Any, task: dict[str, Any]) -> str:
+    if exit_code == PROBE_DNS_EXIT_CODE:
+        return "PROBE_DNS_RETRIES_EXHAUSTED"
+    if exit_code == PROBE_CONNECT_EXIT_CODE:
+        return "PROBE_CONNECT_RETRIES_EXHAUSTED"
+    if exit_code == PROBE_BAD_STATUS_EXIT_CODE:
+        return "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED"
+    return _failure_reason(task)
+
+
 def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
     containers = task.get("containers", [])
     if len(containers) != 1:
@@ -138,9 +182,10 @@ def _safe_task_result(task: dict[str, Any]) -> dict[str, Any]:
         }
     return {
         "status": "REFUSED",
-        "reason_code": _failure_reason(task),
+        "reason_code": _probe_exit_reason(exit_code, task),
         "task_arn_sha256": _hash(task_arn),
         "task_stop_code": str(task.get("stopCode", "ABSENT")),
+        "container_exit_code": exit_code if isinstance(exit_code, int) else None,
         "container_exit_code_present": isinstance(exit_code, int),
         "application_started": application_started,
         "readyz_request_completed": False,

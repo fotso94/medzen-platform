@@ -1,0 +1,89 @@
+{
+  "id": "B6-ALB-PROBE-STABILITY-2026-001",
+  "revision": 1,
+  "status": "PROSPECTIVE_ENGINEERING_BOUNDARY_AWAITING_PACKET_APPROVAL",
+  "recorded_utc": "2026-08-11T00:18:00Z",
+  "purpose": "Eliminate both layers of the packet-2026-026 target-readiness race before requesting another integration-window allowance.",
+  "supersedes_by_reference": {
+    "terminal_evidence": {
+      "path": "platform/evidence/B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE.json",
+      "sha256": "c82c51b6bd652000594c28d325a528ed415148149b670f3b075a3266cc2e9cc8"
+    },
+    "packet": {
+      "path": "platform/decisions/B6-AWS-CHANGE-PACKET-2026-026-empirical-probe-verifier.md",
+      "sha256": "c39130c456b36b128f3c52fab22a533243c9d8e235128c574c3c56f892634702"
+    }
+  },
+  "alb_ready_gate": {
+    "sequence": [
+      "wait_for_ingress_hostname",
+      "wait_for_load_balancer_active",
+      "resolve_exact_target_group",
+      "require_same_exact_target_set_healthy_for_three_consecutive_observations",
+      "persist_alb_ready_receipt",
+      "permit_fargate_probe"
+    ],
+    "maximum_wait_seconds": 900,
+    "poll_interval_seconds": 10,
+    "stable_healthy_observations": 3,
+    "retryable_initial_reasons": [
+      "Elb.InitialHealthChecking",
+      "Elb.RegistrationInProgress"
+    ],
+    "empty_or_provisioning_state": "BOUNDED_RETRY",
+    "unknown_or_terminal_unhealthy_state": "REFUSE",
+    "recorded_real_fixture_required": true
+  },
+  "in_container_probe_retry": {
+    "required_even_after_alb_ready_pass": true,
+    "maximum_attempts": 24,
+    "interval_seconds": 10,
+    "request_timeout_seconds": 5,
+    "success_condition": "FIRST_HTTP_200_WITH_JSON_READY_TRUE",
+    "exhaustion_exit_codes": {
+      "dns": 21,
+      "connect_or_timeout": 22,
+      "bad_status_or_body": 23
+    },
+    "receipt_reason_codes": {
+      "dns": "PROBE_DNS_RETRIES_EXHAUSTED",
+      "connect_or_timeout": "PROBE_CONNECT_RETRIES_EXHAUSTED",
+      "bad_status_or_body": "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED"
+    },
+    "task_definition_and_runtime_verifier_must_bind_exact_program": true
+  },
+  "stage_a_reuse": {
+    "rerun_required": false,
+    "source_packet": "B6-AWS-CHANGE-PACKET-2026-026",
+    "aggregate_receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a.json",
+    "aggregate_receipt_sha256": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22",
+    "cleanup_receipt_path": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE/stage_a_cleanup.json",
+    "cleanup_receipt_sha256": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
+    "stable_probe_passes": 3,
+    "cleanup_complete": true
+  },
+  "requested_window_allowance": {
+    "existing_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "requested_attempts": 2,
+    "maximum_seconds_per_attempt": 4500,
+    "maximum_requested_worker_seconds": 9000,
+    "estimated_compute_usd": 3.2,
+    "unused_seconds_transferable": false,
+    "attempt_2_condition": "ATTEMPT_1_REFUSED_AND_ZERO_STATE_CLEANUP_PASS",
+    "pass_terminates_packet": true
+  },
+  "preserved_boundaries": {
+    "production_ssm_changes": 0,
+    "approved_asr_changes": 0,
+    "registered_models": 0,
+    "production_traffic": false,
+    "phi": false,
+    "real_bedrock_or_fish_invocation": false,
+    "new_persistent_resources": 0,
+    "new_iam_delta": 0,
+    "stage_receipt_persistence": "PASS_OR_REFUSED_BEFORE_CLEANUP",
+    "cleanup_to_zero_required": true
+  },
+  "authorization": "This engineering record does not authorize AWS execution. A versioned packet, independent review and owner approval remain mandatory."
+}

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import copy
 import json
+import re
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,12 @@ from scripts.b6_6_fargate_probe import (
     COMMAND,
     ENTRY_POINT,
     IMAGE,
+    PROBE_ATTEMPTS,
+    PROBE_BAD_STATUS_EXIT_CODE,
+    PROBE_CONNECT_EXIT_CODE,
+    PROBE_DNS_EXIT_CODE,
+    PROBE_INTERVAL_SECONDS,
+    PROBE_PROGRAM,
     ROLE_ARN,
     TASK_FAMILY,
     ProbeRefusal,
@@ -18,6 +26,9 @@ from scripts.b6_6_fargate_probe import (
     _safe_task_result,
 )
 from scripts.b6_6_runner import safe_fargate_refusal
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def _definition() -> dict:
@@ -64,6 +75,20 @@ class FakeEcs:
 def test_live_hardened_task_definition_shape_is_accepted() -> None:
     value = _definition()
     assert _task_definition(FakeEcs(value)) == value["taskDefinitionArn"]
+
+
+def test_terraform_and_verifier_bind_exact_retry_program() -> None:
+    terraform = (ROOT / "infra/b6_integration_window.tf").read_text()
+    match = re.search(
+        r"b6_probe_runtime_program = trimspace\(<<-PY\n(?P<program>.*?)\n\s+PY\n",
+        terraform,
+        re.DOTALL,
+    )
+    assert match is not None
+    assert textwrap.dedent(match.group("program")).strip() == PROBE_PROGRAM
+    assert PROBE_ATTEMPTS == 24
+    assert PROBE_INTERVAL_SECONDS == 10
+    assert "sys.exit(0)" in PROBE_PROGRAM
 
 
 @pytest.mark.parametrize(
@@ -205,6 +230,52 @@ def test_stopped_container_with_integer_exit_proves_application_started() -> Non
     assert result["status"] == "REFUSED"
     assert result["application_started"] is True
     assert result["container_exit_code_present"] is True
+
+
+@pytest.mark.parametrize(
+    ("exit_code", "reason_code"),
+    [
+        (PROBE_DNS_EXIT_CODE, "PROBE_DNS_RETRIES_EXHAUSTED"),
+        (PROBE_CONNECT_EXIT_CODE, "PROBE_CONNECT_RETRIES_EXHAUSTED"),
+        (PROBE_BAD_STATUS_EXIT_CODE, "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED"),
+    ],
+)
+def test_retry_exhaustion_exit_code_names_failing_layer(
+    exit_code: int, reason_code: str
+) -> None:
+    result = _safe_task_result(
+        {
+            "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/one",
+            "lastStatus": "STOPPED",
+            "stopCode": "EssentialContainerExited",
+            "containers": [{"lastStatus": "STOPPED", "exitCode": exit_code}],
+        }
+    )
+    assert result["status"] == "REFUSED"
+    assert result["reason_code"] == reason_code
+    assert result["container_exit_code"] == exit_code
+    assert result["application_started"] is True
+
+
+def test_layer_specific_retry_refusal_is_safe_for_receipt(tmp_path: Path) -> None:
+    path = tmp_path / "payload.json"
+    path.write_text(
+        json.dumps(
+            {
+                "status": "REFUSED",
+                "reason_code": "PROBE_DNS_RETRIES_EXHAUSTED",
+                "container_exit_code": PROBE_DNS_EXIT_CODE,
+                "application_started": True,
+                "readyz_request_completed": False,
+            }
+        )
+    )
+    assert safe_fargate_refusal(path) == {
+        "reason_code": "PROBE_DNS_RETRIES_EXHAUSTED",
+        "container_exit_code": PROBE_DNS_EXIT_CODE,
+        "application_started": True,
+        "readyz_request_completed": False,
+    }
 
 
 def test_running_container_proves_application_started_before_exit() -> None:

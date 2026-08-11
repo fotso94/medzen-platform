@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any
 
 
-EVIDENCE = "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json"
+BASE_EVIDENCE = "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json"
+SUPPLEMENTAL_EVIDENCE = "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-003.json"
 STANDING_RULE = "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json"
 READ_PREFIXES = ("describe_", "list_", "get_", "head_", "lookup_", "simulate_")
 
@@ -69,7 +70,6 @@ SHELL_SOURCE_APIS: dict[str, set[str]] = {
         "ssm:GetParametersByPath",
     },
     "scripts/b6_6_operations.sh": {
-        "elasticloadbalancing:DescribeLoadBalancers",
         "ssm:GetParametersByPath",
         "sts:GetCallerIdentity",
     },
@@ -167,14 +167,21 @@ def _assert_endpoint_reduction(root: Path) -> dict[str, Any]:
 
 
 def audit(root: Path) -> dict[str, Any]:
-    evidence_path = root / EVIDENCE
+    base_evidence_path = root / BASE_EVIDENCE
+    supplemental_evidence_path = root / SUPPLEMENTAL_EVIDENCE
     rule_path = root / STANDING_RULE
-    evidence = json.loads(evidence_path.read_bytes())
+    evidence = json.loads(base_evidence_path.read_bytes())
+    supplemental = json.loads(supplemental_evidence_path.read_bytes())
     rule = json.loads(rule_path.read_bytes())
     if (
         evidence.get("status")
         != "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_RUNNER_COVERAGE"
         or evidence.get("aws", {}).get("mutations") != 0
+        or supplemental.get("status")
+        != "PASS_READ_ONLY_ADDITIVE_TARGET_HEALTH_CAPTURE"
+        or supplemental.get("aws", {}).get("mutations") != 0
+        or supplemental.get("supersedes_by_reference")
+        != {"path": BASE_EVIDENCE, "sha256": _sha256(base_evidence_path)}
         or rule.get("status") != "owner-directed-standing-rule"
     ):
         raise AssertionError("AWS read fixture authority differs")
@@ -187,6 +194,10 @@ def audit(root: Path) -> dict[str, Any]:
     captures = evidence.get("captures")
     if not isinstance(captures, list):
         raise AssertionError("AWS read fixture capture list is malformed")
+    supplemental_capture = supplemental.get("capture")
+    if not isinstance(supplemental_capture, dict):
+        raise AssertionError("supplemental AWS read fixture capture is malformed")
+    captures = [*captures, supplemental_capture]
     coverage: dict[str, int] = {api: 0 for api in inventory}
     fixture_hashes: dict[str, str] = {}
     payloads: dict[str, list[dict[str, Any]]] = {}
@@ -223,6 +234,18 @@ def audit(root: Path) -> dict[str, Any]:
     prefix_lists = payloads["ec2:DescribePrefixLists"][0].get("PrefixLists", [])
     groups = payloads["ec2:DescribeSecurityGroups"][0].get("SecurityGroups", [])
     denied = payloads["secretsmanager:GetSecretValue"][0]
+    target_health_payloads = payloads[
+        "elasticloadbalancing:DescribeTargetHealth"
+    ]
+    healthy_target_sets = [
+        payload.get("TargetHealthDescriptions", [])
+        for payload in target_health_payloads
+        if payload.get("TargetHealthDescriptions")
+        and all(
+            item.get("TargetHealth", {}).get("State") == "healthy"
+            for item in payload.get("TargetHealthDescriptions", [])
+        )
+    ]
     if (
         not interfaces
         or gateway.get("State") != "available"
@@ -233,6 +256,7 @@ def audit(root: Path) -> dict[str, Any]:
         or not groups
         or denied.get("Error", {}).get("Code") != "AccessDeniedException"
         or "SecretString" in json.dumps(denied)
+        or not healthy_target_sets
     ):
         raise AssertionError("recorded AWS response facts differ")
 
@@ -240,14 +264,17 @@ def audit(root: Path) -> dict[str, Any]:
         "status": "PASS",
         "standing_rule_path": STANDING_RULE,
         "standing_rule_sha256": _sha256(rule_path),
-        "evidence_path": EVIDENCE,
-        "evidence_sha256": _sha256(evidence_path),
+        "base_evidence_path": BASE_EVIDENCE,
+        "base_evidence_sha256": _sha256(base_evidence_path),
+        "evidence_path": SUPPLEMENTAL_EVIDENCE,
+        "evidence_sha256": _sha256(supplemental_evidence_path),
         "runtime_read_api_count": len(inventory),
         "fixture_count": len(captures),
         "uncovered_read_apis": 0,
         "fixture_hashes": dict(sorted(fixture_hashes.items())),
         "describe_vpc_endpoints_prefix_list_id_present": False,
         "s3_prefix_list_id": "pl-6ea54007",
+        "recorded_healthy_target_health_fixture_count": len(healthy_target_sets),
         "network_reduction": _assert_endpoint_reduction(root),
         "real_aws_calls": 0,
     }

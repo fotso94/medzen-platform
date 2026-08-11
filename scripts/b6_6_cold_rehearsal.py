@@ -27,6 +27,19 @@ from pipeline.b6_integration_receipts import (
     sha256_file,
 )
 from scripts.b6_6_credential import KMS_KEY, SECRET_ARN, SECRET_NAME, rotate_and_verify
+from scripts.b6_6_fargate_probe import (
+    PROBE_BAD_STATUS_EXIT_CODE,
+    PROBE_CONNECT_EXIT_CODE,
+    PROBE_DNS_EXIT_CODE,
+    _safe_task_result,
+)
+from scripts.b6_6_lbc_runtime import (
+    ALB_NAME,
+    ALB_SECURITY_GROUP,
+    TargetReadinessRefusal,
+    classify_target_health_response,
+    wait_for_stable_target_health,
+)
 from scripts.b6_6_bindings import COLD_PATH, REQUIRED_SOURCES
 from scripts.b6_6_aws_read_fixtures import audit as audit_aws_read_fixtures
 from scripts.b6_6_runner import RunContext, Runner, StageFailure, StageResult
@@ -57,8 +70,8 @@ GUARDS = {
     "pre_endpoint_images": ["seven_pods_eight_resident_child_digests"],
     "terraform_window": ["endpoint_plan_13_0_0_with_named_resources_controller_noop"],
     "endpoints_ready": ["probe_exclusive_endpoints_available_900_seconds"],
-    "fargate_probe": ["one_private_probe_no_public_ip_exact_hardened_task_boundary"],
-    "alb_ready": ["internal_alb_exact_security_groups"],
+    "alb_ready": ["hostname_active_three_stable_healthy_target_observations"],
+    "fargate_probe": ["private_probe_24_attempt_layer_specific_retry"],
     "alb_tag_mutation_warning": ["bounded_nonfatal_tag_rule_always_fatal_list"],
     "file_proof": ["synthetic_file_contract"],
     "websocket_proof": ["synthetic_websocket_contract"],
@@ -118,6 +131,151 @@ def _terraform_description_charset_lint() -> dict[str, Any]:
         "projection_inventory_sha256": projection["canonical_sha256"],
         "invalid_description_refusal_cases": 1,
         "real_aws_calls": 0,
+    }
+
+
+class _GateClock:
+    def __init__(self) -> None:
+        self.value = 0.0
+
+    def monotonic(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.value += seconds
+
+
+class _RecordedTargetHealthClient:
+    def __init__(self, descriptions: list[dict[str, Any]]) -> None:
+        self.descriptions = descriptions
+
+    def describe_load_balancers(self, **_: Any) -> dict[str, Any]:
+        return {
+            "LoadBalancers": [
+                {
+                    "LoadBalancerName": ALB_NAME,
+                    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/medzen-b6-window/cold",
+                    "Scheme": "internal",
+                    "Type": "application",
+                    "SecurityGroups": [ALB_SECURITY_GROUP],
+                    "State": {"Code": "active"},
+                }
+            ]
+        }
+
+    def describe_target_groups(self, **_: Any) -> dict[str, Any]:
+        return {
+            "TargetGroups": [
+                {
+                    "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/k8s-medzen-speechor/cold"
+                }
+            ]
+        }
+
+    def describe_target_health(self, **_: Any) -> dict[str, Any]:
+        return {"TargetHealthDescriptions": self.descriptions}
+
+
+def _new_gate_rehearsal() -> dict[str, Any]:
+    healthy_path = (
+        ROOT
+        / "tests/fixtures/aws/elbv2-describe-target-health-medzen-ehrbase-healthy.json"
+    )
+    empty_path = (
+        ROOT / "tests/fixtures/aws/elbv2-describe-target-health-cache-proxy-test.json"
+    )
+    healthy = json.loads(healthy_path.read_bytes())["TargetHealthDescriptions"]
+    empty = json.loads(empty_path.read_bytes())["TargetHealthDescriptions"]
+    health_clock = _GateClock()
+    target_pass = wait_for_stable_target_health(
+        _RecordedTargetHealthClient(healthy),
+        wait_seconds=30,
+        monotonic=health_clock.monotonic,
+        sleep=health_clock.sleep,
+    )
+    timeout_clock = _GateClock()
+    try:
+        wait_for_stable_target_health(
+            _RecordedTargetHealthClient(empty),
+            wait_seconds=20,
+            monotonic=timeout_clock.monotonic,
+            sleep=timeout_clock.sleep,
+        )
+    except TargetReadinessRefusal as exc:
+        target_timeout = str(exc)
+    else:
+        raise AssertionError("recorded empty target-health response did not refuse")
+    initial = json.loads(json.dumps(healthy))
+    for item in initial:
+        item["TargetHealth"] = {
+            "State": "initial",
+            "Reason": "Elb.RegistrationInProgress",
+        }
+    if classify_target_health_response(initial) != {
+        "classification": "RETRY",
+        "reason_code": "ALB_TARGETS_INITIAL",
+    }:
+        raise AssertionError("registration-in-progress is not a bounded retry")
+
+    task = {
+        "taskArn": "arn:aws:ecs:eu-central-1:558069890522:task/cold",
+        "lastStatus": "STOPPED",
+        "stopCode": "EssentialContainerExited",
+        "containers": [{"lastStatus": "STOPPED", "exitCode": 0}],
+    }
+    probe_pass = _safe_task_result(task)
+    expected_probe_failures = {
+        PROBE_DNS_EXIT_CODE: "PROBE_DNS_RETRIES_EXHAUSTED",
+        PROBE_CONNECT_EXIT_CODE: "PROBE_CONNECT_RETRIES_EXHAUSTED",
+        PROBE_BAD_STATUS_EXIT_CODE: "PROBE_BAD_STATUS_OR_BODY_RETRIES_EXHAUSTED",
+    }
+    probe_failures: list[dict[str, Any]] = []
+    for exit_code, reason_code in expected_probe_failures.items():
+        failed = json.loads(json.dumps(task))
+        failed["containers"][0]["exitCode"] = exit_code
+        result = _safe_task_result(failed)
+        if result.get("reason_code") != reason_code:
+            raise AssertionError("probe exit code did not identify its failing layer")
+        probe_failures.append(
+            {
+                "gate": "in_container_retry",
+                "injected_exit_code": exit_code,
+                "outcome": "REFUSED",
+                "reason_code": reason_code,
+            }
+        )
+    return {
+        "status": "PASS",
+        "full_passes": [
+            {
+                "gate": "alb_target_health",
+                "stable_healthy_observations": target_pass[
+                    "stable_healthy_observations"
+                ],
+                "target_count": target_pass["target_count"],
+            },
+            {
+                "gate": "in_container_retry",
+                "outcome": probe_pass["status"],
+                "container_exit_code": 0,
+            },
+        ],
+        "injected_failures": [
+            {
+                "gate": "alb_target_health",
+                "injection": "RECORDED_EMPTY_RESPONSE_REPEATED_TO_TIMEOUT",
+                "outcome": "REFUSED",
+                "reason_code": target_timeout,
+            },
+            *probe_failures,
+        ],
+        "registration_in_progress_classification": "BOUNDED_RETRY",
+        "recorded_fixture_hashes": {
+            str(healthy_path.relative_to(ROOT)): sha256_file(healthy_path),
+            str(empty_path.relative_to(ROOT)): sha256_file(empty_path),
+        },
+        "real_aws_calls": 0,
+        "real_kubectl_calls": 0,
     }
 
 
@@ -396,6 +554,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         raise FileExistsError(f"cold rehearsal output already exists: {output_dir}")
     terraform_description_charset_lint = _terraform_description_charset_lint()
     aws_read_fixture_fidelity = _aws_read_fixture_fidelity()
+    new_gate_rehearsal = _new_gate_rehearsal()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -411,14 +570,25 @@ def run(output_dir: Path) -> dict[str, Any]:
             )
         )
     results_sha256 = hashlib.sha256(
-        canonical_json({"window": scenarios, "stage_a": stage_a_scenarios})
+        canonical_json(
+            {
+                "window": scenarios,
+                "stage_a": stage_a_scenarios,
+                "new_gates": new_gate_rehearsal,
+            }
+        )
     ).hexdigest()
     source_hashes = {relative: sha256_file(ROOT / relative) for relative in RUNNER_SOURCES}
     payload = {
         "review": "B6-WINDOW-DESIGN-REVIEW-2026-001",
         "status": "PASS_COLD_REHEARSAL",
         "full_pass_runs": 1,
-        "injected_failure_runs": 23,
+        "injected_failure_runs": len(WINDOW_STAGES)
+        + len(new_gate_rehearsal["injected_failures"]),
+        "stage_injected_failure_runs": len(WINDOW_STAGES),
+        "new_gate_injected_failure_runs": len(
+            new_gate_rehearsal["injected_failures"]
+        ),
         "enumerated_stages": list(WINDOW_STAGES),
         "runner_source_hashes": source_hashes,
         "scenario_results_sha256": results_sha256,
@@ -426,6 +596,7 @@ def run(output_dir: Path) -> dict[str, Any]:
         "stage_a_full_pass_runs": 1,
         "stage_a_injected_failure_runs": len(stage_a_scenarios) - 1,
         "stage_a_scenarios": stage_a_scenarios,
+        "new_gate_rehearsal": new_gate_rehearsal,
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"
         ],
