@@ -34,7 +34,8 @@ def test_corrected_verifiers_do_not_restore_incidental_whole_shape_checks() -> N
     assert 'container.get("linuxParameters") !=' not in fargate
     assert '"ALL" not in set(capabilities.get("drop", []))' in fargate
     assert 'versions.get(value_sha256) != ["AWSCURRENT"]' not in credential
-    assert '"AWSCURRENT" not in set(versions.get(value_sha256, []))' in credential
+    assert "wait_for_exact_current_version" in credential
+    assert "VERSION_VISIBILITY_STABLE_OBSERVATIONS = 3" in credential
     assert 'scaling != {"minSize"' not in deadline
     assert "len(allowed) != 1" in endpoints
     assert "set(configured_paths) != set(expected_paths)" in lbc

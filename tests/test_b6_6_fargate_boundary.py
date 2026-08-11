@@ -21,6 +21,7 @@ from scripts.b6_6_fargate_probe import (
     ROLE_ARN,
     TASK_FAMILY,
     ProbeRefusal,
+    _described_task_or_pending,
     _task_definition,
     run_isolated_probe,
     _safe_task_result,
@@ -289,3 +290,14 @@ def test_running_container_proves_application_started_before_exit() -> None:
     assert result["status"] == "REFUSED"
     assert result["application_started"] is True
     assert result["container_exit_code_present"] is False
+
+
+def test_eventually_consistent_missing_task_readback_is_retryable() -> None:
+    assert _described_task_or_pending({"tasks": [], "failures": []}) is None
+    assert _described_task_or_pending(
+        {"tasks": [], "failures": [{"reason": "MISSING"}]}
+    ) is None
+    with pytest.raises(ProbeRefusal, match="PROBE_TASK_READBACK_DIFFERS"):
+        _described_task_or_pending(
+            {"tasks": [], "failures": [{"reason": "ACCESS_DENIED"}]}
+        )

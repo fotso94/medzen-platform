@@ -1,0 +1,82 @@
+{
+  "id": "B6-POST-MUTATION-STABILITY-2026-001",
+  "revision": 1,
+  "status": "OWNER_DIRECTED_LOCAL_CONTROL_PENDING_PACKET_2026_029_APPROVAL",
+  "recorded_date": "2026-08-11",
+  "purpose": "Eliminate one-shot verify-after-mutate behavior from the B6.6 runner and correct the Secrets Manager read-after-write visibility race without rotating a second credential.",
+  "predecessor": {
+    "terminal_evidence_path": "platform/evidence/B6-PACKET-2026-028-TERMINAL-STAGE0-CREDENTIAL-CONSISTENCY-REFUSALS.json",
+    "terminal_evidence_sha256": "71351877c2abed9eddb739dcaf8b431aab77eb1975c4b2955b8061319b2d2647",
+    "packet_id": "B6-AWS-CHANGE-PACKET-2026-028",
+    "packet_sha256": "6d5ed6d0af1324f1be8234bdd5eae22dff22253d0ec299acacde162bfa3197fe",
+    "authorization_sha256": "0a5326580cd5ec9576cadf281d725c72ba02ce72d8e881defcd46607b8e8973b",
+    "attempts_consumed": 2,
+    "attempts_remaining": 0,
+    "worker_seconds_used": 0,
+    "cleanup": "PASS"
+  },
+  "credential_visibility_control": {
+    "mutation": "Exactly one Secrets Manager PutSecretValue call with the SHA-256 of the canonical synthetic secret value as ClientRequestToken.",
+    "verification_subject": "The exact version ID returned by that PutSecretValue call.",
+    "maximum_wait_seconds": 120,
+    "poll_interval_seconds": 5,
+    "required_consecutive_observations": 3,
+    "required_state": "The exact created version is the unique AWSCURRENT version and has no additional stage.",
+    "counter_reset": "Any stale, missing, ambiguous or changed observation resets the consecutive count.",
+    "timeout": "REFUSE",
+    "additional_put_on_stale_read": false,
+    "additional_credential_generation_on_stale_read": false,
+    "operator_plaintext_read": "EXPLICITLY_DENIED_AS_REQUIRED"
+  },
+  "standing_rule": {
+    "scope": "Every asynchronous post-mutation verification in the B6.6 runner, including cleanup and externally reconciled controller resources.",
+    "one_shot_verify_after_mutate": "PROHIBITED",
+    "bounded_poll_required": true,
+    "stable_observation_required": true,
+    "minimum_consecutive_observations": 2,
+    "exact_identity_or_expected_projection_required": true,
+    "counter_reset_on_pending_error_or_shape_change": true,
+    "unknown_or_malformed_state": "REFUSE",
+    "receipt_fields_required": [
+      "stable_observation_count",
+      "verification_poll_count",
+      "bounded_wait_or_poll_interval"
+    ]
+  },
+  "audit_result": {
+    "post_mutation_paths": 31,
+    "corrected_paths": 30,
+    "preexisting_compliant_paths": 1,
+    "one_shot_paths_remaining": 0,
+    "minimum_stable_observations": 2,
+    "deviations": []
+  },
+  "fixture_policy": {
+    "stale_then_current_injection": true,
+    "exact_created_version_sentinel_substituted_only_in_memory": true,
+    "recorded_real_api_shape_authority": "tests/fixtures/aws/secretsmanager-list-secret-version-ids-medzen-client-api-keys.json",
+    "fixture_provenance_record": "platform/evidence/B6-SECRETSMANAGER-VISIBILITY-FIXTURE-PROVENANCE-2026-001.json",
+    "real_aws_calls": 0,
+    "aws_mutations": 0
+  },
+  "allowed_now": [
+    "local implementation",
+    "local tests",
+    "cold rehearsal with fakes and bound fixtures",
+    "successor packet preparation",
+    "Git branch, commit, push and pull request"
+  ],
+  "prohibited_until_new_exact_approval": [
+    "AWS mutation",
+    "Kubernetes mutation",
+    "secret rotation",
+    "worker scale-up",
+    "GPU execution",
+    "production SSM publication",
+    "approved ASR publication",
+    "model registration",
+    "production traffic"
+  ],
+  "historical_effect": "NONE",
+  "deviations": []
+}

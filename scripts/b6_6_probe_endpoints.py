@@ -34,6 +34,9 @@ SERVICES = {
     "ecr-dkr": f"com.amazonaws.{REGION}.ecr.dkr",
     "s3": f"com.amazonaws.{REGION}.s3",
 }
+POST_MUTATION_STABLE_OBSERVATIONS = 3
+AVAILABLE_POLL_SECONDS = 15
+ABSENT_POLL_SECONDS = 5
 
 
 class EndpointRefusal(RuntimeError):
@@ -255,28 +258,84 @@ def wait_available(
     if wait_seconds < 1 or wait_seconds > 900:
         raise EndpointRefusal("endpoint wait bound differs")
     stop = monotonic() + wait_seconds
+    consecutive = 0
+    polls = 0
+    stable_identity: tuple[str, str] | None = None
     while True:
+        polls += 1
         try:
-            return verify_available(ec2)
+            observed = verify_available(ec2)
+            identity = (
+                str(observed["endpoint_security_group_id"]),
+                str(observed["s3_prefix_list_id"]),
+            )
+            if identity == stable_identity:
+                consecutive += 1
+            else:
+                stable_identity = identity
+                consecutive = 1
+            if consecutive == POST_MUTATION_STABLE_OBSERVATIONS:
+                return {
+                    **observed,
+                    "stable_observations": consecutive,
+                    "verification_polls": polls,
+                    "poll_interval_seconds": AVAILABLE_POLL_SECONDS,
+                }
         except EndpointPending:
+            consecutive = 0
+            stable_identity = None
             if monotonic() >= stop:
                 raise EndpointRefusal("probe endpoints did not become available in time")
-            sleep(15)
+        if monotonic() >= stop:
+            raise EndpointRefusal("probe endpoints did not remain stably available in time")
+        sleep(AVAILABLE_POLL_SECONDS)
+
+
+def wait_absent(
+    ec2: Any,
+    wait_seconds: int,
+    *,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    if wait_seconds < 1 or wait_seconds > 900:
+        raise EndpointRefusal("endpoint absence wait bound differs")
+    stop = monotonic() + wait_seconds
+    consecutive = 0
+    polls = 0
+    while True:
+        polls += 1
+        try:
+            observed = verify_absent(ec2)
+            consecutive += 1
+            if consecutive == POST_MUTATION_STABLE_OBSERVATIONS:
+                return {
+                    **observed,
+                    "stable_observations": consecutive,
+                    "verification_polls": polls,
+                    "poll_interval_seconds": ABSENT_POLL_SECONDS,
+                }
+        except EndpointRefusal:
+            consecutive = 0
+        if monotonic() >= stop:
+            raise EndpointRefusal("probe endpoints did not remain stably absent in time")
+        sleep(ABSENT_POLL_SECONDS)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("absent", "available"))
+    parser.add_argument("mode", choices=("absent", "available", "wait-absent"))
     parser.add_argument("--profile", default=PROFILE)
     parser.add_argument("--wait-seconds", type=int, default=900)
     args = parser.parse_args()
     try:
         client = _client(args.profile)
-        result = (
-            verify_absent(client)
-            if args.mode == "absent"
-            else wait_available(client, args.wait_seconds)
-        )
+        if args.mode == "absent":
+            result = verify_absent(client)
+        elif args.mode == "available":
+            result = wait_available(client, args.wait_seconds)
+        else:
+            result = wait_absent(client, args.wait_seconds)
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "reason_code": type(exc).__name__}))
         return 2

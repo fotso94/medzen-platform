@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-028.
+# Canonical operation dispatcher for prospective packet 2026-029.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,7 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-028-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-029-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
@@ -175,7 +175,6 @@ PY
 
 stage_deadline() {
   payload="$(.venv/bin/python scripts/b6_6_deadline.py arm)"
-  .venv/bin/python scripts/b6_6_deadline.py verify >/dev/null
   write_payload "$payload"
 }
 
@@ -191,47 +190,51 @@ stage_workers() {
 stage_dra() {
   kubectl --kubeconfig "$kubeconfig" apply -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml
   kubectl --kubeconfig "$kubeconfig" rollout status daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --timeout=15m
-  images="$(kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver -o json | jq -c '[.spec.template.spec.initContainers[]?.image,.spec.template.spec.containers[]?.image] | unique')"
-  [[ "$images" == '["558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"]' ]]
-  write_payload '{"daemonset_ready":true,"digest_pinned":true,"gpu_nodes":1,"before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py daemonset --kubeconfig "$kubeconfig" --namespace nvidia-dra-driver --name dra-driver-nvidia-gpu-kubelet-plugin --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-nvidia-dra@sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246 --wait-seconds 900)"
+  write_payload "$(jq -c '. + {daemonset_ready:true,digest_pinned:true,gpu_nodes:1,before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_rag() {
   .venv/bin/python scripts/b6_6_manifest_slice.py pre-endpoint | kubectl --kubeconfig "$kubeconfig" apply -f -
   kubectl --kubeconfig "$kubeconfig" scale deployment/rag-index --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/rag-index --namespace medzen --timeout=10m
-  write_payload '{"ready_replicas":1,"provider":"embedded_synthetic","service_type":"ClusterIP","before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name rag-index --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-rag-index@sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c --wait-seconds 600)"
+  write_payload "$(jq -c '. + {ready_replicas:1,provider:"embedded_synthetic",service_type:"ClusterIP",before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_asr() {
   kubectl --kubeconfig "$kubeconfig" scale deployment/asr-runtime --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/asr-runtime --namespace medzen --timeout=30m
-  write_payload '{"artifact_tree_sha256":"5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e","model":"zero-shot-whisper-large-v3","ready_replicas":1,"serving_label":"v0","before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name asr-runtime --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader@sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime@sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087 --wait-seconds 1800)"
+  write_payload "$(jq -c '. + {artifact_tree_sha256:"5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",model:"zero-shot-whisper-large-v3",ready_replicas:1,serving_label:"v0",before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_tts() {
   kubectl --kubeconfig "$kubeconfig" scale deployment/tts-gateway --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/tts-gateway --namespace medzen --timeout=10m
-  write_payload '{"fish_calls":0,"provider":"text_only","ready_replicas":1,"service_type":"ClusterIP","before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name tts-gateway --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-speech-tts-gateway@sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d --wait-seconds 600)"
+  write_payload "$(jq -c '. + {fish_calls:0,provider:"text_only",ready_replicas:1,service_type:"ClusterIP",before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_llm() {
   kubectl --kubeconfig "$kubeconfig" scale deployment/llm-gateway --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/llm-gateway --namespace medzen --timeout=10m
-  write_payload '{"bedrock_calls":0,"provider":"fake","ready_replicas":1,"service_type":"ClusterIP","before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name llm-gateway --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-llm-gateway@sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a --wait-seconds 600)"
+  write_payload "$(jq -c '. + {bedrock_calls:0,provider:"fake",ready_replicas:1,service_type:"ClusterIP",before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_orchestrator() {
   kubectl --kubeconfig "$kubeconfig" scale deployment/speech-orchestrator --namespace medzen --replicas=1
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/speech-orchestrator --namespace medzen --timeout=10m
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace medzen --name speech-orchestrator --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-orchestrator@sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa --wait-seconds 600)"
   expected='["sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087","sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a","sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d","sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5","sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa","sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c"]'
-  actual="$(kubectl --kubeconfig "$kubeconfig" get pods --namespace medzen -l medzen.io/classification=synthetic-integration-only -o json | jq -c '[.items[] | (.status.initContainerStatuses[]?,.status.containerStatuses[]?) | .imageID | capture("(?<digest>sha256:[0-9a-f]{64})$").digest] | unique | sort')"
-  [[ "$actual" == "$expected" ]]
-  write_payload '{"authentication_loaded":true,"mode":"deployed_http_ssm","ready_replicas":1,"registry_snapshot":"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81","workload_child_digests_verified":6,"before_private_endpoints":true}'
+  images="$(.venv/bin/python scripts/b6_6_k8s_stability.py pod-images --kubeconfig "$kubeconfig" --namespace medzen --selector medzen.io/classification=synthetic-integration-only --expected-digest sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087 --expected-digest sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a --expected-digest sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d --expected-digest sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5 --expected-digest sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa --expected-digest sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c --wait-seconds 600)"
+  [[ "$(jq -c '.resident_child_digests' <<<"$images")" == "$expected" ]]
+  write_payload "$(jq -nc --argjson stable "$stable" --argjson images "$images" '$stable + $images + {authentication_loaded:true,mode:"deployed_http_ssm",ready_replicas:1,registry_snapshot:"d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",workload_child_digests_verified:6,before_private_endpoints:true}')"
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-028-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-029-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -248,19 +251,18 @@ stage_controller_window() {
 
 stage_controller_ready() {
   kubectl --kubeconfig "$kubeconfig" rollout status deployment/aws-load-balancer-controller --namespace kube-system --timeout=10m
-  image="$(kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
-  [[ "$image" == "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller@sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f" ]]
-  write_payload '{"controller_replicas_ready":1,"digest_pinned":true,"namespace_watch":"medzen","before_private_endpoints":true}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py deployment --kubeconfig "$kubeconfig" --namespace kube-system --name aws-load-balancer-controller --replicas 1 --expected-image 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-aws-load-balancer-controller@sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f --wait-seconds 600)"
+  write_payload "$(jq -c '. + {controller_replicas_ready:1,digest_pinned:true,namespace_watch:"medzen",before_private_endpoints:true}' <<<"$stable")"
 }
 
 stage_pre_endpoint_images() {
   .venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
-  payload="$(.venv/bin/python scripts/b6_6_pre_endpoint_images.py pre --kubeconfig "$kubeconfig")"
+  payload="$(.venv/bin/python scripts/b6_6_pre_endpoint_images.py pre --kubeconfig "$kubeconfig" --wait-seconds 600)"
   write_payload "$payload"
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-028-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-029-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
@@ -341,10 +343,16 @@ run_local_probe() {
   pid=$!
   trap 'kill "$pid" >/dev/null 2>&1 || true' RETURN
   ready=0
+  stable_ready=0
   for _ in {1..60}; do
     if curl --fail --silent --max-time 2 http://127.0.0.1:18080/readyz >/dev/null 2>&1; then
-      ready=1
-      break
+      stable_ready=$((stable_ready + 1))
+      if [[ "$stable_ready" == "2" ]]; then
+        ready=1
+        break
+      fi
+    else
+      stable_ready=0
     fi
     sleep 1
   done
@@ -389,12 +397,7 @@ stage_failure_drills() {
   fi
   kubectl --kubeconfig "$kubeconfig" patch service/rag-index --namespace medzen --type merge \
     -p '{"spec":{"selector":{"medzen.io/failure-drill":"unavailable"}}}' >/dev/null
-  for _ in {1..60}; do
-    endpoint_count="$(kubectl --kubeconfig "$kubeconfig" get endpoints/rag-index --namespace medzen -o json 2>/dev/null | jq '[.subsets[]?.addresses[]?] | length')"
-    [[ "$endpoint_count" == "0" ]] && break
-    sleep 2
-  done
-  [[ "${endpoint_count:-unknown}" == "0" ]]
+  unavailable_stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py endpoints --kubeconfig "$kubeconfig" --namespace medzen --name rag-index --count 0 --wait-seconds 120)"
   set +e
   dependency="$(run_local_probe dependency-refusal)"
   probe_status=$?
@@ -405,20 +408,14 @@ stage_failure_drills() {
   fi
   kubectl --kubeconfig "$kubeconfig" patch service/rag-index --namespace medzen --type merge \
     -p '{"spec":{"selector":{"app.kubernetes.io/name":"rag-index","medzen.io/classification":"synthetic-integration-only","medzen.io/failure-drill":null}}}' >/dev/null
-  for _ in {1..60}; do
-    endpoint_count="$(kubectl --kubeconfig "$kubeconfig" get endpoints/rag-index --namespace medzen -o json 2>/dev/null | jq '[.subsets[]?.addresses[]?] | length')"
-    [[ "$endpoint_count" == "1" ]] && break
-    sleep 2
-  done
-  [[ "${endpoint_count:-unknown}" == "1" ]]
-  payload="$(jq -nc --argjson controls "$controls" --argjson dependency "$dependency" '{status:"PASS",controlled_refusals:$controls,rag_unavailable:$dependency,rag_pod_recreated:false,local_provider_drills:"PREPROVEN_BY_PINNED_SUITES_NO_REAL_PROVIDER_CALLS"}')"
+  restored_stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py endpoints --kubeconfig "$kubeconfig" --namespace medzen --name rag-index --count 1 --wait-seconds 120)"
+  payload="$(jq -nc --argjson controls "$controls" --argjson dependency "$dependency" --argjson unavailable "$unavailable_stable" --argjson restored "$restored_stable" '{status:"PASS",controlled_refusals:$controls,rag_unavailable:$dependency,rag_unavailable_stability:$unavailable,rag_restored_stability:$restored,rag_pod_recreated:false,local_provider_drills:"PREPROVEN_BY_PINNED_SUITES_NO_REAL_PROVIDER_CALLS"}')"
   write_payload "$payload"
 }
 
 stage_isolation() {
-  [[ "$(kubectl --kubeconfig "$kubeconfig" get services --namespace medzen -o json | jq -r '[.items[] | select(.metadata.name=="asr-runtime" or .metadata.name=="rag-index" or .metadata.name=="llm-gateway" or .metadata.name=="tts-gateway" or .metadata.name=="speech-orchestrator") | .spec.type] | unique | join(",")')" == "ClusterIP" ]]
-  [[ "$(kubectl --kubeconfig "$kubeconfig" get ingress --namespace medzen -o json | jq '[.items[] | select(.metadata.name=="speech-orchestrator-b6-window")] | length')" == "1" ]]
-  write_payload '{"alb_ingress_source":"sg-0a83abae6ab954543","dependency_ingresses":0,"dependency_service_type":"ClusterIP","orchestrator_ingresses":1,"public_load_balancers":0}'
+  stable="$(.venv/bin/python scripts/b6_6_k8s_stability.py isolation --kubeconfig "$kubeconfig" --wait-seconds 120)"
+  write_payload "$(jq -c '. + {alb_ingress_source:"sg-0a83abae6ab954543",public_load_balancers:0}' <<<"$stable")"
 }
 
 case "$stage" in

@@ -286,7 +286,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-028-A{context.attempt}-LIVE"
+            / f"B6-2026-029-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -375,7 +375,7 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-028-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-029-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -401,6 +401,7 @@ class RealOperations:
             "new_gate_injected_failure_runs",
             "proof_diagnostic_injected_failure_runs",
             "pre_deadline_cleanup_injected_failure_runs",
+            "credential_visibility_transient_injection_runs",
             "enumerated_stages",
             "runner_source_hashes",
             "scenario_results_sha256",
@@ -413,6 +414,8 @@ class RealOperations:
             "new_gate_rehearsal",
             "proof_diagnostic_rehearsal",
             "pre_deadline_cleanup_rehearsal",
+            "credential_visibility_rehearsal",
+            "post_mutation_stability_audit",
             "empirical_connectivity_gate",
             "terraform_description_charset_lint",
             "aws_read_fixture_fidelity",

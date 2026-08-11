@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import time
 from pathlib import Path
 from typing import Any, Callable
 
@@ -34,6 +35,9 @@ EXPECTED = {
     },
 }
 PULL_FAILURE_REASONS = {"ErrImagePull", "ImagePullBackOff", "RegistryUnavailable"}
+STABLE_OBSERVATIONS = 3
+POLL_SECONDS = 5
+MAXIMUM_WAIT_SECONDS = 600
 
 
 class ImageReadinessRefusal(RuntimeError):
@@ -189,14 +193,61 @@ def _pods(kubeconfig: Path, runner: Callable[..., subprocess.CompletedProcess] =
     return value["items"]
 
 
+def wait_pre_endpoint(
+    kubeconfig: Path,
+    wait_seconds: int,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess] = subprocess.run,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    if wait_seconds < 1 or wait_seconds > MAXIMUM_WAIT_SECONDS:
+        raise ImageReadinessRefusal("pre-endpoint image wait boundary differs")
+    stop = monotonic() + wait_seconds
+    previous: str | None = None
+    consecutive = 0
+    polls = 0
+    while True:
+        polls += 1
+        try:
+            result = verify_pre_endpoint(_pods(kubeconfig, runner))
+            encoded = json.dumps(result, sort_keys=True, separators=(",", ":"))
+            if encoded == previous:
+                consecutive += 1
+            else:
+                previous = encoded
+                consecutive = 1
+            if consecutive == STABLE_OBSERVATIONS:
+                return {
+                    **result,
+                    "stable_observations": consecutive,
+                    "verification_polls": polls,
+                    "poll_interval_seconds": POLL_SECONDS,
+                }
+        except (
+            ImageReadinessRefusal,
+            OSError,
+            json.JSONDecodeError,
+            subprocess.SubprocessError,
+        ):
+            previous = None
+            consecutive = 0
+        if monotonic() >= stop:
+            raise ImageReadinessRefusal(
+                "pre-endpoint image proof did not become stable"
+            )
+        sleep(POLL_SECONDS)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("pre", "post-failure"))
     parser.add_argument("--kubeconfig", type=Path, required=True)
+    parser.add_argument("--wait-seconds", type=int, default=MAXIMUM_WAIT_SECONDS)
     args = parser.parse_args()
     try:
         if args.mode == "pre":
-            result = verify_pre_endpoint(_pods(args.kubeconfig))
+            result = wait_pre_endpoint(args.kubeconfig, args.wait_seconds)
             code = 0
         else:
             result = classify_post_endpoint_failure(_pods(args.kubeconfig))

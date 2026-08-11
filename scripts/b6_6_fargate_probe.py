@@ -40,6 +40,7 @@ PROBE_REQUEST_TIMEOUT_SECONDS = 5
 PROBE_DNS_EXIT_CODE = 21
 PROBE_CONNECT_EXIT_CODE = 22
 PROBE_BAD_STATUS_EXIT_CODE = 23
+TASK_TERMINAL_STABLE_OBSERVATIONS = 2
 PROBE_PROGRAM = "\n".join(
     [
         "import http.client, json, os, socket, sys, time, urllib.error, urllib.request",
@@ -78,6 +79,20 @@ QUALIFICATION_COMMAND = [
 
 class ProbeRefusal(RuntimeError):
     pass
+
+
+def _described_task_or_pending(response: dict[str, Any]) -> dict[str, Any] | None:
+    failures = response.get("failures", [])
+    tasks = response.get("tasks", [])
+    if failures:
+        if all(item.get("reason") in {"MISSING", "RESOURCE_NOT_FOUND"} for item in failures):
+            return None
+        raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
+    if tasks == []:
+        return None
+    if not isinstance(tasks, list) or len(tasks) != 1:
+        raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
+    return tasks[0]
 
 
 def _hash(value: str) -> str:
@@ -239,12 +254,12 @@ def run_isolated_probe(
     if not isinstance(task_arn, str) or not task_arn:
         raise ProbeRefusal("RUN_TASK_RESPONSE_HAS_NO_TASK_ARN")
     stop = monotonic() + wait_seconds
+    stable_result: dict[str, Any] | None = None
+    consecutive_terminal = 0
     while True:
         described = ecs.describe_tasks(cluster=CLUSTER, tasks=[task_arn])
-        if described.get("failures") or len(described.get("tasks", [])) != 1:
-            raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
-        task = described["tasks"][0]
-        if task.get("lastStatus") == "STOPPED":
+        task = _described_task_or_pending(described)
+        if task is not None and task.get("lastStatus") == "STOPPED":
             result = _safe_task_result(task)
             if result.get("status") == "PASS":
                 result["reason_code"] = "ISOLATED_IMAGE_PULL_AND_PROCESS_EXIT_PASSED"
@@ -257,7 +272,19 @@ def run_isolated_probe(
                     "probe_exclusive_endpoint_security_group": True,
                 }
             )
-            return result
+            if result == stable_result:
+                consecutive_terminal += 1
+            else:
+                stable_result = result
+                consecutive_terminal = 1
+            if consecutive_terminal == TASK_TERMINAL_STABLE_OBSERVATIONS:
+                return {
+                    **result,
+                    "stable_terminal_observations": consecutive_terminal,
+                }
+        else:
+            stable_result = None
+            consecutive_terminal = 0
         if monotonic() >= stop:
             return {
                 "status": "REFUSED",
@@ -325,16 +352,28 @@ def run_probe(
     if not isinstance(task_arn, str) or not task_arn:
         raise ProbeRefusal("RUN_TASK_RESPONSE_HAS_NO_TASK_ARN")
     stop = monotonic() + wait_seconds
+    stable_result: dict[str, Any] | None = None
+    consecutive_terminal = 0
     while True:
         described = ecs.describe_tasks(cluster=CLUSTER, tasks=[task_arn])
-        if described.get("failures") or len(described.get("tasks", [])) != 1:
-            raise ProbeRefusal("PROBE_TASK_READBACK_DIFFERS")
-        task = described["tasks"][0]
-        if task.get("lastStatus") == "STOPPED":
+        task = _described_task_or_pending(described)
+        if task is not None and task.get("lastStatus") == "STOPPED":
             result = _safe_task_result(task)
             result["probe_task_security_group_count"] = 2
             result["probe_exclusive_endpoint_security_group"] = True
-            return result
+            if result == stable_result:
+                consecutive_terminal += 1
+            else:
+                stable_result = result
+                consecutive_terminal = 1
+            if consecutive_terminal == TASK_TERMINAL_STABLE_OBSERVATIONS:
+                return {
+                    **result,
+                    "stable_terminal_observations": consecutive_terminal,
+                }
+        else:
+            stable_result = None
+            consecutive_terminal = 0
         if monotonic() >= stop:
             return {
                 "status": "REFUSED",

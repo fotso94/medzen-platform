@@ -30,6 +30,12 @@ ALB_SECURITY_GROUP = "sg-0f0f6c66852830013"
 TARGET_HEALTH_WAIT_SECONDS = 900
 TARGET_HEALTH_POLL_SECONDS = 10
 TARGET_HEALTH_STABLE_OBSERVATIONS = 3
+RUNTIME_SHAPE_STABLE_OBSERVATIONS = 3
+RUNTIME_SHAPE_POLL_SECONDS = 5
+RUNTIME_SHAPE_WAIT_SECONDS = 120
+TAG_CLASSIFICATION_STABLE_OBSERVATIONS = 3
+TAG_CLASSIFICATION_POLL_SECONDS = 5
+TAG_CLASSIFICATION_WAIT_SECONDS = 120
 RETRYABLE_INITIAL_REASONS = {
     "Elb.InitialHealthChecking",
     "Elb.RegistrationInProgress",
@@ -59,6 +65,10 @@ TIMESTAMP = re.compile(r"(?P<time>20\d\d-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z)")
 
 
 class RuntimeEvidenceRefusal(RuntimeError):
+    pass
+
+
+class RuntimeEvidencePending(RuntimeError):
     pass
 
 
@@ -338,6 +348,56 @@ def verify_live(client: Any) -> dict[str, Any]:
     }
 
 
+def wait_for_stable_live_shape(
+    client: Any,
+    wait_seconds: int = RUNTIME_SHAPE_WAIT_SECONDS,
+    *,
+    stable_observations: int = RUNTIME_SHAPE_STABLE_OBSERVATIONS,
+    poll_seconds: int = RUNTIME_SHAPE_POLL_SECONDS,
+    monotonic: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> dict[str, Any]:
+    if (
+        wait_seconds < 1
+        or wait_seconds > RUNTIME_SHAPE_WAIT_SECONDS
+        or stable_observations != RUNTIME_SHAPE_STABLE_OBSERVATIONS
+        or poll_seconds != RUNTIME_SHAPE_POLL_SECONDS
+    ):
+        raise RuntimeEvidenceRefusal("ALB live-shape wait boundary differs")
+    deadline = monotonic() + wait_seconds
+    consecutive = 0
+    polls = 0
+    stable_hash: str | None = None
+    last_error: RuntimeEvidenceRefusal | None = None
+    while True:
+        polls += 1
+        try:
+            observed = verify_live(client)
+            observed_hash = canonical_sha256(observed)
+            if observed_hash == stable_hash:
+                consecutive += 1
+            else:
+                stable_hash = observed_hash
+                consecutive = 1
+            last_error = None
+            if consecutive == stable_observations:
+                return {
+                    **observed,
+                    "stable_runtime_shape_observations": consecutive,
+                    "runtime_shape_verification_polls": polls,
+                    "runtime_shape_poll_interval_seconds": poll_seconds,
+                }
+        except RuntimeEvidenceRefusal as exc:
+            consecutive = 0
+            stable_hash = None
+            last_error = exc
+        if monotonic() >= deadline:
+            if last_error is not None:
+                raise last_error
+            raise RuntimeEvidenceRefusal("ALB live shape did not remain stable")
+        sleep(poll_seconds)
+
+
 def parse_denials(raw: str) -> list[dict[str, str]]:
     observations: list[dict[str, str]] = []
     for line in raw.splitlines():
@@ -422,8 +482,61 @@ def _controller_logs(kubeconfig: Path, since_time: str) -> str:
         text=True,
     )
     if process.returncode != 0:
-        raise RuntimeEvidenceRefusal("controller logs are unavailable")
+        raise RuntimeEvidencePending("controller logs are unavailable")
     return process.stdout
+
+
+def wait_for_stable_tag_classification(
+    *,
+    kubeconfig: Path,
+    since_time: str,
+    receipt: dict[str, Any],
+    receipt_sha256: str,
+    fargate_receipt: dict[str, Any],
+    fargate_receipt_sha256: str,
+    wait_seconds: int = TAG_CLASSIFICATION_WAIT_SECONDS,
+    monotonic: Any = time.monotonic,
+    sleep: Any = time.sleep,
+) -> dict[str, Any]:
+    if wait_seconds < 1 or wait_seconds > TAG_CLASSIFICATION_WAIT_SECONDS:
+        raise RuntimeEvidenceRefusal("tag classification wait boundary differs")
+    deadline = monotonic() + wait_seconds
+    previous: str | None = None
+    consecutive = 0
+    polls = 0
+    while True:
+        polls += 1
+        try:
+            result = classify_runtime(
+                receipt=receipt,
+                receipt_sha256=receipt_sha256,
+                fargate_receipt=fargate_receipt,
+                fargate_receipt_sha256=fargate_receipt_sha256,
+                controller_logs=_controller_logs(kubeconfig, since_time),
+            )
+            encoded = json.dumps(result, sort_keys=True, separators=(",", ":"))
+            if encoded == previous:
+                consecutive += 1
+            else:
+                previous = encoded
+                consecutive = 1
+            if consecutive == TAG_CLASSIFICATION_STABLE_OBSERVATIONS:
+                return {
+                    **result,
+                    "stable_tag_classification_observations": consecutive,
+                    "tag_classification_verification_polls": polls,
+                    "tag_classification_poll_interval_seconds": (
+                        TAG_CLASSIFICATION_POLL_SECONDS
+                    ),
+                }
+        except RuntimeEvidencePending:
+            previous = None
+            consecutive = 0
+        if monotonic() >= deadline:
+            raise RuntimeEvidenceRefusal(
+                "tag classification did not remain stable before timeout"
+            )
+        sleep(TAG_CLASSIFICATION_POLL_SECONDS)
 
 
 def main() -> int:
@@ -447,7 +560,7 @@ def main() -> int:
                 readiness = wait_for_stable_target_health(
                     client, wait_seconds=args.wait_seconds
                 )
-                result = {**verify_live(client), **readiness}
+                result = {**wait_for_stable_live_shape(client), **readiness}
             else:
                 result = verify_live(client)
         else:
@@ -461,14 +574,21 @@ def main() -> int:
             since_time = controller.get("recorded_utc")
             if not isinstance(since_time, str) or not since_time.endswith("Z"):
                 raise RuntimeEvidenceRefusal("controller receipt timestamp is malformed")
-            result = classify_runtime(
+            result = wait_for_stable_tag_classification(
+                kubeconfig=args.kubeconfig,
+                since_time=since_time,
                 receipt=receipt,
                 receipt_sha256=hashlib.sha256(encoded).hexdigest(),
                 fargate_receipt=fargate_receipt,
                 fargate_receipt_sha256=hashlib.sha256(fargate_encoded).hexdigest(),
-                controller_logs=_controller_logs(args.kubeconfig, since_time),
             )
-    except (ClientError, OSError, json.JSONDecodeError, RuntimeEvidenceRefusal) as exc:
+    except (
+        ClientError,
+        OSError,
+        json.JSONDecodeError,
+        RuntimeEvidencePending,
+        RuntimeEvidenceRefusal,
+    ) as exc:
         reason_code = getattr(exc, "reason_code", "ALB_RUNTIME_BOUNDARY_REFUSED")
         print(json.dumps({"status": "REFUSED", "reason_code": reason_code}))
         return 2
