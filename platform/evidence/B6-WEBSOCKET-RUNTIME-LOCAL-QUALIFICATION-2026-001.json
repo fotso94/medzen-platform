@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "evidence_id": "B6-WEBSOCKET-RUNTIME-LOCAL-QUALIFICATION-2026-001",
+  "recorded_utc": "2026-08-11T14:40:15Z",
+  "status": "PASS_LOCAL_ECR_SCAN_NOT_AUTHORIZED",
+  "source": {
+    "git_commit": "f631d70ca093b39af27f073a91e297c045e88353",
+    "branch": "codex/b6-websocket-runtime-fix",
+    "worktree_at_build": "CLEAN",
+    "base_image": "python:3.12-alpine3.22@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322",
+    "dockerfile_sha256": "570d09dd9f13b6fe9aea94e5d03f049f87b30c2003d2e4056a19770916b4c946",
+    "requirements_sha256": "07587a01cdf0a27b0e07d1873b4152859f5d05ddbebf13df2026e5bb5441f7bc",
+    "deployed_requirements_sha256": "573745f52f1bb9d0645ef7f64d4c2b040821677036efdaab4e9008d252f85152",
+    "qualification_checker_sha256": "4e5f151d6c11330318820d53bd2828a8d5f042dd704c18240a951f18fc9692aa",
+    "qualification_builder_sha256": "3c3a7e0093b5be0a546938ebc33db5102acb107b0951bd07338ed9c63be879d4",
+    "hardening_standard_v2_sha256": "def3aacc11c0b173c20dc1d03ce4190888fab0823a6f0d3a9be9d0cd5a86020b"
+  },
+  "image": {
+    "repository": "medzen-orchestrator",
+    "local_tag": "medzen-orchestrator:b6-ws-f631d70",
+    "proposed_ecr_tag": "b6-ws-f631d70",
+    "platform": "linux/amd64",
+    "local_deployable_child": "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed",
+    "config_digest": "sha256:7fe1c01dcbac9272bde87f5b7ba83c9441b2a65bec2dea0051c6903875ca4961",
+    "size_bytes": 37265807,
+    "oci_archive_sha256": "99805d9418d0dc55dae4b6bd2c92e8088a2d6031ddc7c316690965fd124aca6c",
+    "runtime_receipt": {
+      "path": "platform/evidence/b6-websocket-runtime/medzen-orchestrator.runtime.json",
+      "sha256": "08bae0b6b23b97d7d7eab459a6529c72f166172c53469b0d4dd87db6078d360e"
+    },
+    "local_scan_receipt": {
+      "path": "platform/evidence/b6-websocket-runtime/medzen-orchestrator.scout.sarif.json",
+      "sha256": "8c188b753f906160f3f204a9586e1cd3964d06027a7763f945e71781d0524ab7",
+      "scanner": "Docker Scout 1.18.3",
+      "packages_indexed": 25,
+      "critical_findings": 0,
+      "high_findings": 0
+    }
+  },
+  "runtime_qualification": {
+    "fixed_identity": "10001:10001",
+    "read_only_root": true,
+    "package_manager_records": 0,
+    "language_installers": 0,
+    "websocket_backend": "websockets==17.0.1",
+    "websocket_path": "/v1/conversations/stream",
+    "websocket_transport": "REAL_TCP_RFC6455",
+    "websocket_http_status": 101,
+    "network_binding": "LOOPBACK_EPHEMERAL",
+    "fixture_mounts": "READ_ONLY_SYNTHETIC_ONLY",
+    "testclient_used_as_runtime_qualification": false
+  },
+  "tests": {
+    "canonical_local_suite": {
+      "passed": 1504,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 7,
+      "warnings": 1
+    },
+    "known_warning": "Starlette TestClient httpx deprecation warning",
+    "diff_check": "PASS",
+    "python_compile": "PASS",
+    "shell_syntax": "PASS"
+  },
+  "live_read_only_preconditions": {
+    "aws_account": "558069890522",
+    "caller_arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1",
+    "repository_exists": true,
+    "repository_tag_mutability": "IMMUTABLE",
+    "repository_scan_on_push": true,
+    "repository_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "registry_scan_rule_matches_repository": true,
+    "proposed_tag_absent": true,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "production_registry_pointer": "ABSENT",
+    "approved_asr_objects": 0
+  },
+  "aws_boundary": {
+    "ecr_authentications": 0,
+    "images_tagged_for_ecr": 0,
+    "images_pushed": 0,
+    "ecr_configuration_changes": 0,
+    "deployments": 0,
+    "node_scale_changes": 0,
+    "production_changes": 0
+  },
+  "next_boundary": "Independent review and exact owner approval of B6 AWS change packet 2026-031 are required before ECR authentication or push. PASS_SCAN_ONLY for the exact child is required before any deployment-window rebind."
+}
