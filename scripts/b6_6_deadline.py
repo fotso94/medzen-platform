@@ -15,7 +15,7 @@ REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
 # Each approved attempt receives one independent 4,500-second deadline. Packet
-# 2026-019 requests two such attempts; unused time from one attempt is never
+# 2026-028 requests two such attempts; unused time from one attempt is never
 # allowed to lengthen the other.
 WINDOW_SECONDS = 4500
 GROUPS = {
@@ -35,6 +35,12 @@ GROUPS = {
 
 
 class DeadlineRefusal(RuntimeError):
+    pass
+
+
+class DeadlineBoundaryRefusal(DeadlineRefusal):
+    """Non-transient deadline state that must refuse without polling."""
+
     pass
 
 
@@ -130,6 +136,20 @@ class DeadlineControl:
         return {"status": "PASS", "deadline_utc": deadlines.pop().isoformat().replace("+00:00", "Z")}
 
     def disarm_after_zero(self) -> dict[str, Any]:
+        self._assert_zero()
+        for name, binding in GROUPS.items():
+            actions = self._actions(name)
+            if len(actions) != 1 or actions[0].get("ScheduledActionName") != binding["action"]:
+                raise DeadlineRefusal(f"exact {name} deadline is absent before disarm")
+            self.autoscaling.delete_scheduled_action(
+                AutoScalingGroupName=binding["asg"],
+                ScheduledActionName=binding["action"],
+            )
+        if any(self._actions(name) for name in GROUPS):
+            raise DeadlineRefusal("a B6.6 deadline remains")
+        return {"status": "PASS", "cpu_zero": True, "gpu_zero": True, "deadlines_removed_after_zero": True}
+
+    def _assert_zero(self) -> None:
         for name, binding in GROUPS.items():
             nodegroup = self.eks.describe_nodegroup(
                 clusterName=CLUSTER, nodegroupName=binding["nodegroup"]
@@ -144,17 +164,42 @@ class DeadlineControl:
                 or not self._zero(self._group(name), binding["maximum"])
             ):
                 raise DeadlineRefusal(f"{name} is not proven zero")
+
+    def cleanup_after_zero(self, deadline_receipt_status: str) -> dict[str, Any]:
+        """Reconcile only exact actions that actually exist after zero capacity."""
+        if deadline_receipt_status not in {"PASS", "REFUSED", "ABSENT"}:
+            raise DeadlineBoundaryRefusal("deadline receipt status is unknown")
+        self._assert_zero()
+        present: dict[str, bool] = {}
         for name, binding in GROUPS.items():
             actions = self._actions(name)
-            if len(actions) != 1 or actions[0].get("ScheduledActionName") != binding["action"]:
-                raise DeadlineRefusal(f"exact {name} deadline is absent before disarm")
-            self.autoscaling.delete_scheduled_action(
-                AutoScalingGroupName=binding["asg"],
-                ScheduledActionName=binding["action"],
-            )
+            if len(actions) > 1 or any(
+                action.get("ScheduledActionName") != binding["action"]
+                for action in actions
+            ):
+                raise DeadlineBoundaryRefusal(
+                    f"{name} scheduled-action boundary differs"
+                )
+            present[name] = len(actions) == 1
+        for name, binding in GROUPS.items():
+            if present[name]:
+                self.autoscaling.delete_scheduled_action(
+                    AutoScalingGroupName=binding["asg"],
+                    ScheduledActionName=binding["action"],
+                )
         if any(self._actions(name) for name in GROUPS):
             raise DeadlineRefusal("a B6.6 deadline remains")
-        return {"status": "PASS", "cpu_zero": True, "gpu_zero": True, "deadlines_removed_after_zero": True}
+        return {
+            "status": "PASS",
+            "cpu_zero": True,
+            "gpu_zero": True,
+            "deadline_receipt_status": deadline_receipt_status,
+            "deadline_actions_before": sum(present.values()),
+            "deadline_actions_removed": sum(present.values()),
+            "deadline_actions_after": 0,
+            "pre_deadline_refusal_supported": deadline_receipt_status
+            in {"REFUSED", "ABSENT"},
+        }
 
 
 def _clients() -> tuple[Any, Any]:
@@ -169,8 +214,11 @@ def _clients() -> tuple[Any, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("arm", "verify", "disarm"))
+    parser.add_argument("mode", choices=("arm", "verify", "disarm", "cleanup"))
     parser.add_argument("--wait-seconds", type=int, default=1800)
+    parser.add_argument(
+        "--deadline-receipt-status", choices=("PASS", "REFUSED", "ABSENT")
+    )
     args = parser.parse_args()
     try:
         autoscaling, eks = _clients()
@@ -179,12 +227,26 @@ def main() -> int:
             result = control.arm(datetime.now(timezone.utc))
         elif args.mode == "verify":
             result = control.verify(datetime.now(timezone.utc))
-        else:
+        elif args.mode == "disarm":
             stop = time.monotonic() + args.wait_seconds
             while True:
                 try:
                     result = control.disarm_after_zero()
                     break
+                except DeadlineRefusal:
+                    if time.monotonic() >= stop:
+                        raise
+                    time.sleep(15)
+        else:
+            if args.deadline_receipt_status is None:
+                raise DeadlineRefusal("deadline receipt status is required for cleanup")
+            stop = time.monotonic() + args.wait_seconds
+            while True:
+                try:
+                    result = control.cleanup_after_zero(args.deadline_receipt_status)
+                    break
+                except DeadlineBoundaryRefusal:
+                    raise
                 except DeadlineRefusal:
                     if time.monotonic() >= stop:
                         raise

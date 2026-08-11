@@ -64,6 +64,13 @@ FORBIDDEN_KEYS = {
 }
 SAFE_STAGE = re.compile(r"[a-z][a-z0-9_]*")
 SAFE_SHA256 = re.compile(r"[0-9a-f]{64}")
+SYNTHETIC_DIAGNOSTIC_STAGES = {
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+}
+SYNTHETIC_DIAGNOSTIC_MAX_UTF8_BYTES = 1024
 
 
 class ReceiptRefusal(RuntimeError):
@@ -101,6 +108,45 @@ def _walk(value: Any, path: tuple[str, ...] = ()) -> None:
         lowered = value.lower()
         if "bearer " in lowered or "authorization:" in lowered:
             raise ReceiptRefusal("credential-like receipt value is prohibited")
+
+
+def _validate_synthetic_diagnostic(
+    stage: str, status: str, payload: dict[str, Any]
+) -> None:
+    diagnostics: list[dict[str, Any]] = []
+
+    def collect(value: Any) -> None:
+        if isinstance(value, dict):
+            if "sanitized_response_body" in value:
+                diagnostics.append(value)
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+
+    collect(payload)
+    if not diagnostics:
+        return
+    if stage not in SYNTHETIC_DIAGNOSTIC_STAGES or status != "REFUSED":
+        raise ReceiptRefusal("synthetic proof diagnostic is outside its approved stage")
+    if len(diagnostics) != 1:
+        raise ReceiptRefusal("synthetic proof diagnostic cardinality differs")
+    diagnostic = diagnostics[0]
+    body = diagnostic.get("sanitized_response_body")
+    if (
+        not isinstance(body, str)
+        or len(body.encode("utf-8")) > SYNTHETIC_DIAGNOSTIC_MAX_UTF8_BYTES
+        or diagnostic.get("synthetic_only") is not True
+        or diagnostic.get("phi_present") is not False
+        or not isinstance(diagnostic.get("failed_assertion"), str)
+        or not isinstance(diagnostic.get("probe_exit_code"), int)
+        or re.fullmatch(
+            r"[0-9a-f]{64}", str(diagnostic.get("response_body_sha256"))
+        )
+        is None
+    ):
+        raise ReceiptRefusal("synthetic proof diagnostic boundary differs")
 
 
 def write_once(path: Path, value: dict[str, Any]) -> str:
@@ -173,6 +219,7 @@ class ReceiptStore:
         self.path(stage)
         if status not in STATUSES:
             raise ReceiptRefusal("unknown consolidated B6.6 receipt status")
+        _validate_synthetic_diagnostic(stage, status, payload)
         dependency_hashes = dependencies or {}
         if any(
             dependency not in ALL_STAGES

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed unless packet 2026-027 binds the stable-ALB window exactly."""
+"""Fail closed unless packet 2026-028 binds the diagnostic window exactly."""
 from __future__ import annotations
 
 import hashlib
@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any
 
 
-AUTH_ID = "B6-AWS-AUTH-2026-027"
-PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-027"
-COLD_PATH = "platform/evidence/receipts/B6-2026-027-COLD/cold_rehearsal.json"
+AUTH_ID = "B6-AWS-AUTH-2026-028"
+PACKET_ID = "B6-AWS-CHANGE-PACKET-2026-028"
+COLD_PATH = "platform/evidence/receipts/B6-2026-028-COLD/cold_rehearsal.json"
 DESCRIPTION_PROJECTION_PATH = (
     "platform/evidence/B6-RENDERED-TERRAFORM-DESCRIPTIONS-2026-001.json"
 )
@@ -33,6 +33,9 @@ REQUIRED_SOURCES = {
     "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
     "platform/decisions/B6-ENDPOINT-VERIFIER-2026-002-empirical.json",
     "platform/decisions/B6-ALB-PROBE-STABILITY-2026-001.json",
+    "platform/decisions/B6-PROOF-DIAGNOSTIC-CLEANUP-2026-001.json",
+    "platform/decisions/B6-AWS-CHANGE-PACKET-2026-027-alb-probe-stability.md",
+    "platform/decisions/B6-AWS-AUTH-2026-027-window.json",
     "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
     "platform/evidence/B6-BACKEND-TASK-ENI-SG-EGRESS-READBACK-2026-001.json",
     DESCRIPTION_PROJECTION_PATH,
@@ -73,6 +76,9 @@ REQUIRED_SOURCES = {
     "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-003.json",
     "platform/evidence/B6-COST-RECONCILIATION-2026-005.json",
     "platform/evidence/B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE.json",
+    "platform/evidence/B6-PACKET-2026-027-ATTEMPT-1-REFUSED-FILE-PROOF.json",
+    "platform/evidence/B6-PACKET-2026-027-ATTEMPT-1-PACKET-PATH-CORRECTION.json",
+    "platform/evidence/B6-PACKET-2026-027-TERMINAL-FILE-PROOF-AND-STAGE0-REFUSALS.json",
     "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-001.json",
     "platform/evidence/B6-R5-VERIFIER-AUDIT-2026-002.json",
     "platform/decisions/B6-AWS-CHANGE-PACKET-2026-025-per-rule-verifier.md",
@@ -100,6 +106,7 @@ REQUIRED_SOURCES = {
     "platform/k8s/b6-6/integration-window.yaml",
     "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
     "platform/runtime-receipt-policy-v2.yaml",
+    "platform/runtime-receipt-policy-v3.yaml",
     "platform/testdata/orchestrator/synthetic-file-request.wav",
     COLD_PATH,
     "scripts/b6_6_bindings.py",
@@ -124,6 +131,8 @@ REQUIRED_SOURCES = {
     "scripts/check_b6_6_window_plan.py",
     "scripts/terraform_medzen.sh",
     "tests/test_b6_6_consolidated_window.py",
+    "tests/test_b6_6_predeadline_cleanup.py",
+    "tests/test_b6_6_proof_diagnostics.py",
     "tests/test_b6_6_alb_target_readiness.py",
     "tests/test_b6_6_fargate_boundary.py",
     "tests/test_b6_6_r5_verifier_audit.py",
@@ -173,15 +182,15 @@ def sha256_file(path: Path) -> str:
 
 def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
     if re.fullmatch(r"[0-9a-f]{64}", packet_sha256) is None:
-        raise BindingRefusal("exact packet-2026-027 SHA-256 is required")
+        raise BindingRefusal("exact packet-2026-028 SHA-256 is required")
     try:
         value = json.loads(path.read_bytes())
     except Exception as exc:
-        raise BindingRefusal("packet-2026-027 authorization is absent") from exc
+        raise BindingRefusal("packet-2026-028 authorization is absent") from exc
     if value.get("id") != AUTH_ID or value.get("status") != "owner-approved":
-        raise BindingRefusal("packet 2026-027 is not owner-approved")
+        raise BindingRefusal("packet 2026-028 is not owner-approved")
     if value.get("packet") != {"id": PACKET_ID, "sha256": packet_sha256}:
-        raise BindingRefusal("packet-2026-027 binding differs")
+        raise BindingRefusal("packet-2026-028 binding differs")
     review = value.get("independent_review", {})
     reviewed_commit = review.get("reviewed_repository_commit")
     if (
@@ -191,7 +200,7 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         or re.fullmatch(r"[0-9a-f]{40}", str(reviewed_commit)) is None
         or value.get("prepared_repository_commit") != reviewed_commit
     ):
-        raise BindingRefusal("independent packet-2026-027 review is absent")
+        raise BindingRefusal("independent packet-2026-028 review is absent")
     if value.get("allowance") != {
         "aggregate_project_ceiling_usd": 300.0,
         "recognized_committed_guardrail_usd": 64.4286064216,
@@ -206,7 +215,7 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "attempt_2_requires_attempt_1_refusal_and_zero_state": True,
         "pass_terminates_packet": True,
     }:
-        raise BindingRefusal("packet-2026-027 allowance binding differs")
+        raise BindingRefusal("packet-2026-028 allowance binding differs")
     if value.get("stage_a_reuse") != {
         "source_packet": "B6-AWS-CHANGE-PACKET-2026-026",
         "source_packet_sha256": "c39130c456b36b128f3c52fab22a533243c9d8e235128c574c3c56f892634702",
@@ -223,7 +232,7 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "cleanup_complete": True,
         "rerun_permitted": False,
     }:
-        raise BindingRefusal("packet-2026-027 Stage A reuse binding differs")
+        raise BindingRefusal("packet-2026-028 Stage A reuse binding differs")
     if value.get("persistent_secret") != {
         "bridge_receipt_required_before_attempt_1": True,
         "create_or_delete_during_window": False,
@@ -241,12 +250,20 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         "sha256": sha256_file(root / COLD_PATH),
         "status": "PASS_COLD_REHEARSAL",
         "full_pass_runs": 1,
-        "injected_failure_runs": 27,
+        "injected_failure_runs": 42,
         "stage_injected_failure_runs": 23,
         "new_gate_injected_failure_runs": 4,
+        "proof_diagnostic_injected_failure_runs": 13,
+        "pre_deadline_cleanup_injected_failure_runs": 2,
         "stage_a_full_pass_runs": 1,
         "stage_a_injected_failure_runs": 7,
         "new_gate_rehearsal": bound_cold.get("new_gate_rehearsal"),
+        "proof_diagnostic_rehearsal": bound_cold.get(
+            "proof_diagnostic_rehearsal"
+        ),
+        "pre_deadline_cleanup_rehearsal": bound_cold.get(
+            "pre_deadline_cleanup_rehearsal"
+        ),
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"
         ],
@@ -265,18 +282,18 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         },
         "aws_read_fixture_fidelity": aws_read_fixture_fidelity,
     }:
-        raise BindingRefusal("cold-rehearsal binding differs")
+        raise BindingRefusal("packet-2026-028 cold-rehearsal binding differs")
     sources = value.get("source_bindings")
     if not isinstance(sources, dict) or set(sources) != REQUIRED_SOURCES:
-        raise BindingRefusal("packet-2026-027 source binding set differs")
+        raise BindingRefusal("packet-2026-028 source binding set differs")
     for relative, expected in sorted(sources.items()):
         if relative.startswith("/") or ".." in Path(relative).parts:
-            raise BindingRefusal("packet-2026-027 source path is unsafe")
+            raise BindingRefusal("packet-2026-028 source path is unsafe")
         target = root / relative
         if (
             re.fullmatch(r"[0-9a-f]{64}", str(expected)) is None
             or not target.is_file()
             or sha256_file(target) != expected
         ):
-            raise BindingRefusal(f"packet-2026-027 source hash differs: {relative}")
+            raise BindingRefusal(f"packet-2026-028 source hash differs: {relative}")
     return value

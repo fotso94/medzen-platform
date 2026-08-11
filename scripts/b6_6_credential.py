@@ -7,6 +7,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import stat
 from datetime import datetime, timezone
@@ -187,6 +188,13 @@ def session(profile: str):
     return boto3.Session(profile_name=profile, region_name=REGION)
 
 
+def safe_exception_text(exc: Exception) -> str:
+    """Bound pre-model diagnostic text; credential material is never included."""
+    value = re.sub(r"[\x00-\x1f\x7f]+", " ", str(exc)).strip()
+    value = re.sub(r"(?i)bearer\s+[^\s,;]+", "[CREDENTIAL_REDACTED]", value)
+    return value[:512] or type(exc).__name__
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--token-file", type=Path, required=True)
@@ -198,7 +206,17 @@ def main() -> int:
             args.token_file,
         )
     except Exception as exc:
-        print(json.dumps({"status": "REFUSED", "reason_code": type(exc).__name__}))
+        print(
+            json.dumps(
+                {
+                    "status": "REFUSED",
+                    "reason_code": type(exc).__name__,
+                    "safe_error_text": safe_exception_text(exc),
+                    "pre_model_and_audio": True,
+                },
+                sort_keys=True,
+            )
+        )
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0
