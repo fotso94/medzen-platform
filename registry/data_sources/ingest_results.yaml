@@ -91,3 +91,24 @@ soreva_2026_08_11:
        campaign data model; EC2 runs had silently skipped schema validation
        because the staged tarball omitted schemas/ — now closed)"
     - "run locally on the Mac (~403MB), no EC2, no teardown needed"
+
+# --- 2026-08-11 owner-supplied archives (local ingest, $0 compute) ---
+yemba_egra_2026_08_11:
+  train: {clips: 8019, hours: 2.25, prefix: curated/yemba/asr/egra/gb1/}
+  source: owner-supplied YembaEGRA archive (child word-reads, ~70 speakers)
+  tier: permissive (owner authority; licence documentation is the owner's)
+  note: "first Yemba TRAINING data; SOREVA soreva-v1 is its frozen eval;
+         A3 duration floor made domain-aware (0.3s for asr_words)"
+aaf_2026_08_11:
+  train:
+    clips: 12929
+    hours: 14.99
+    configs: {yaounde: 10.59, ca16_read: 2.49, niger_dev: 0.96,
+              ca16_conv: 0.54, ca16_devtest: 0.41}
+    prefix: curated/french/asr/aaf_*/gb1/
+  eval: {clips: 475, hours: 0.30, prefix: eval/french/asr/aaf-test-v1/}
+  source: OpenSLR-57 African Accented French (owner-supplied archive)
+  tier: permissive (Apache-2.0, verified openslr.org/57)
+  note: "the Cameroon-French seed: yaounde alone is 10.6h of Cameroonian
+         French; one false start (non-canonical licence key hit the
+         unknown->eval_only fail-safe) fixed and junk prefix cleared"
