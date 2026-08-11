@@ -87,6 +87,101 @@ SAFE_ALB_REFUSAL_CODES = {
     "ALB_TARGET_STABLE_HEALTH_TIMEOUT",
     "ALB_TARGET_TERMINAL_UNHEALTHY",
 }
+SAFE_STAGE0_REFUSAL_CODES = {
+    "STAGE0_BINDING_REFUSED",
+    "STAGE0_LOCAL_PATH_REFUSED",
+    "STAGE0_CREDENTIAL_ROTATION_REFUSED",
+    "STAGE0_AWS_IDENTITY_REFUSED",
+    "STAGE0_TEST_REGISTRY_REFUSED",
+    "STAGE0_PRODUCTION_POINTER_REFUSED",
+    "STAGE0_WORKLOAD_NODE_ZERO_REFUSED",
+    "STAGE0_SYNTHETIC_POD_ZERO_REFUSED",
+    "STAGE0_CONTROLLER_ABSENCE_REFUSED",
+    "STAGE0_DRA_ABSENCE_REFUSED",
+    "STAGE0_ENDPOINT_ABSENCE_REFUSED",
+}
+SAFE_PROOF_STAGES = {
+    "file_proof",
+    "websocket_proof",
+    "cancellation_proof",
+    "failure_drills",
+}
+
+
+def safe_stage0_refusal(path: Path, command_exit_code: int) -> dict[str, Any] | None:
+    """Return bounded pre-model detail from the exact stage-0 payload."""
+    try:
+        value = json.loads(path.read_bytes())
+    except Exception:
+        return None
+    reason = value.get("reason_code")
+    assertion = value.get("failed_assertion")
+    detail = value.get("safe_error_text")
+    exit_code = value.get("stage_exit_code")
+    if (
+        value.get("status") != "REFUSED"
+        or reason not in SAFE_STAGE0_REFUSAL_CODES
+        or re.fullmatch(r"[A-Z0-9_]{1,96}", str(assertion)) is None
+        or not isinstance(detail, str)
+        or len(detail.encode("utf-8")) > 1024
+        or not isinstance(exit_code, int)
+        or exit_code != command_exit_code
+        or not 1 <= exit_code <= 125
+    ):
+        return None
+    return {
+        "reason_code": reason,
+        "failed_assertion": assertion,
+        "stage_exit_code": exit_code,
+        "safe_error_text": detail,
+        "pre_model_and_audio": True,
+    }
+
+
+def safe_proof_refusal(path: Path, command_exit_code: int) -> dict[str, Any] | None:
+    """Return the reviewed synthetic-only proof diagnostic fields."""
+    from scripts.b6_6_probe import DIAGNOSTIC_MAX_UTF8_BYTES, PROOF_EXIT_CODES
+
+    try:
+        value = json.loads(path.read_bytes())
+    except Exception:
+        return None
+    assertion = value.get("failed_assertion")
+    body = value.get("sanitized_response_body")
+    http_status = value.get("http_status")
+    safe_error = value.get("safe_error_text")
+    if (
+        value.get("status") != "REFUSED"
+        or value.get("reason_code") != "SYNTHETIC_PROOF_ASSERTION_REFUSED"
+        or assertion not in PROOF_EXIT_CODES
+        or value.get("probe_exit_code") != PROOF_EXIT_CODES.get(assertion)
+        or command_exit_code != value.get("probe_exit_code")
+        or not isinstance(body, str)
+        or len(body.encode("utf-8")) > DIAGNOSTIC_MAX_UTF8_BYTES
+        or not isinstance(value.get("response_body_truncated"), bool)
+        or re.fullmatch(r"[0-9a-f]{64}", str(value.get("response_body_sha256"))) is None
+        or not isinstance(safe_error, str)
+        or len(safe_error.encode("utf-8")) > 512
+        or value.get("synthetic_only") is not True
+        or value.get("phi_present") is not False
+        or (http_status is not None and (not isinstance(http_status, int) or not 100 <= http_status <= 599))
+    ):
+        return None
+    lowered = body.lower()
+    if "authorization:" in lowered or "bearer " in lowered:
+        return None
+    return {
+        "reason_code": value["reason_code"],
+        "failed_assertion": assertion,
+        "probe_exit_code": value["probe_exit_code"],
+        "http_status": http_status,
+        "sanitized_response_body": body,
+        "response_body_truncated": value["response_body_truncated"],
+        "response_body_sha256": value["response_body_sha256"],
+        "safe_error_text": safe_error,
+        "synthetic_only": True,
+        "phi_present": False,
+    }
 
 
 def safe_fargate_refusal(path: Path) -> dict[str, Any] | None:
@@ -191,7 +286,7 @@ class RealOperations:
         expected_directory = (
             ROOT
             / "platform/evidence/receipts"
-            / f"B6-2026-027-A{context.attempt}-LIVE"
+            / f"B6-2026-028-A{context.attempt}-LIVE"
         )
         if context.receipts_dir != expected_directory or context.receipts_dir.exists():
             raise StageFailure("EXECUTION_RECEIPT_DIRECTORY_DIFFERS")
@@ -280,7 +375,7 @@ class RealOperations:
         ):
             raise StageFailure("PASSING_STAGE_A_RECEIPT_REQUIRED")
 
-        with tempfile.TemporaryDirectory(prefix="medzen-b6-027-pre-attempt-cold-") as temporary:
+        with tempfile.TemporaryDirectory(prefix="medzen-b6-028-pre-attempt-cold-") as temporary:
             cold_directory = Path(temporary) / "receipt"
             completed = subprocess.run(
                 [
@@ -304,6 +399,8 @@ class RealOperations:
             "injected_failure_runs",
             "stage_injected_failure_runs",
             "new_gate_injected_failure_runs",
+            "proof_diagnostic_injected_failure_runs",
+            "pre_deadline_cleanup_injected_failure_runs",
             "enumerated_stages",
             "runner_source_hashes",
             "scenario_results_sha256",
@@ -314,6 +411,8 @@ class RealOperations:
             "stage_a_full_pass_runs",
             "stage_a_injected_failure_runs",
             "new_gate_rehearsal",
+            "proof_diagnostic_rehearsal",
+            "pre_deadline_cleanup_rehearsal",
             "empirical_connectivity_gate",
             "terraform_description_charset_lint",
             "aws_read_fixture_fidelity",
@@ -357,6 +456,18 @@ class RealOperations:
                     alb_refusal = safe_alb_refusal(payload_path)
                     if alb_refusal is not None:
                         diagnosis["alb_refusal"] = alb_refusal
+                if stage == "stage0":
+                    stage0_refusal = safe_stage0_refusal(
+                        payload_path, completed.returncode
+                    )
+                    if stage0_refusal is not None:
+                        diagnosis["stage0_refusal"] = stage0_refusal
+                if stage in SAFE_PROOF_STAGES:
+                    proof_refusal = safe_proof_refusal(
+                        payload_path, completed.returncode
+                    )
+                    if proof_refusal is not None:
+                        diagnosis["proof_refusal"] = proof_refusal
                 if self.endpoints_enabled and stage != "cleanup":
                     post = subprocess.run(
                         [

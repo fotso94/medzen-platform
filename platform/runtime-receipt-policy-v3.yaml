@@ -1,0 +1,81 @@
+schema: medzen.runtime_receipt_policy/v3
+id: RUNTIME-RECEIPTS-2026-003
+status: prospective-standing-rule-pending-packet-2026-028-approval
+effective_scope: b6-synthetic-integration-window-and-future-synthetic-runtime-proofs
+supersedes_by_reference:
+  path: platform/runtime-receipt-policy-v2.yaml
+  sha256: 58cce1151f4c077c88f3ca3a1697ed99c97429c11388c47fdf5c87e9d5d06bdd
+historical_effect: none
+purpose: >-
+  Retain enough bounded diagnostic evidence to identify every synthetic proof
+  assertion failure while preserving the existing write-once, credential-safe
+  and fail-closed receipt boundary.
+
+base_rules_retained:
+  - Persist every stage receipt at its terminal outcome before cleanup begins.
+  - Use exclusive atomic fsync-backed writes and never overwrite a receipt.
+  - Missing, malformed, duplicated or unknown evidence fails closed.
+  - Credentials, secrets, real client data, patient data and PHI remain prohibited.
+
+pre_model_stage0_diagnostic:
+  required_fields:
+    - reason_code
+    - failed_assertion
+    - stage_exit_code
+    - safe_error_text
+    - pre_model_and_audio
+  maximum_safe_error_utf8_bytes: 512
+  distinct_exit_code_per_assertion: true
+  raw_credential_material_permitted: false
+  rationale: >-
+    Stage zero executes before workers, models or audio exist. Its exact bounded
+    refusal reason is safe and necessary for deterministic diagnosis.
+
+synthetic_proof_diagnostic_exception:
+  allowed_stages:
+    - file_proof
+    - websocket_proof
+    - cancellation_proof
+    - failure_drills
+  required_classification: B6_6_SYNTHETIC_INTEGRATION_ONLY
+  required_fields:
+    - http_status
+    - sanitized_response_body
+    - response_body_truncated
+    - response_body_sha256
+    - failed_assertion
+    - probe_exit_code
+    - safe_error_text
+    - synthetic_only
+    - phi_present
+  maximum_sanitized_response_utf8_bytes: 1024
+  maximum_safe_error_utf8_bytes: 512
+  distinct_exit_code_per_assertion: true
+  sanitizer:
+    - Redact authorization, bearer, token, key, secret and client-key values.
+    - Redact transcript, reply-text, citation-text, content, snippet, quote and audio values.
+    - Preserve response structure, status, model versions, backend labels and counts.
+    - Replace non-printable characters and truncate on a valid UTF-8 boundary.
+  required_flags:
+    synthetic_only: true
+    phi_present: false
+  raw_request_audio_permitted: false
+  raw_request_headers_permitted: false
+  raw_credentials_permitted: false
+  raw_service_logs_permitted: false
+  rationale: >-
+    The integration-window request and response are synthetic by construction,
+    so a bounded sanitized response body cannot contain PHI. Content fields are
+    still redacted to preserve the standing no-transcript/no-reply-content rule.
+
+cleanup_rule:
+  - Reconcile deadline actions only after CPU and GPU zero state is proven.
+  - Select cleanup behavior from the persisted deadline receipt status and the
+    exact scheduled actions that actually exist.
+  - An absent or REFUSED deadline receipt with zero actions is already disarmed.
+  - A partial exact action from a refused arm is removed after zero state.
+  - Unknown action names, malformed receipt states or nonzero capacity fail closed.
+
+non_retroactivity: >-
+  This rule does not modify or reinterpret any receipt produced under v1 or v2,
+  including either packet-2026-027 attempt.

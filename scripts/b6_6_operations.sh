@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical operation dispatcher for prospective packet 2026-027.
+# Canonical operation dispatcher for prospective packet 2026-028.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,10 +20,27 @@ attempt="$7"
 payload_path="$8"
 manifest="platform/k8s/b6-6/integration-window.yaml"
 wav="platform/testdata/orchestrator/synthetic-file-request.wav"
-alb_hostname_file="/private/tmp/b6-027-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-028-attempt-${attempt}-alb-hostname"
 
 write_payload() {
   jq -c . <<<"$1" >"$payload_path"
+}
+
+stage0_refuse() {
+  local reason_code="$1"
+  local failed_assertion="$2"
+  local stage_exit_code="$3"
+  local detail="$4"
+  local safe_error_text
+  safe_error_text="$(LC_ALL=C printf '%s' "$detail" | LC_ALL=C tr '\r\n\t' '   ' | LC_ALL=C tr -cd ' -~' | cut -c1-512)"
+  [[ -n "$safe_error_text" ]] || safe_error_text="$reason_code"
+  write_payload "$(jq -nc \
+    --arg reason_code "$reason_code" \
+    --arg failed_assertion "$failed_assertion" \
+    --argjson stage_exit_code "$stage_exit_code" \
+    --arg safe_error_text "$safe_error_text" \
+    '{status:"REFUSED",reason_code:$reason_code,failed_assertion:$failed_assertion,stage_exit_code:$stage_exit_code,safe_error_text:$safe_error_text,pre_model_and_audio:true}')"
+  return "$stage_exit_code"
 }
 
 terraform_plan_receipt() {
@@ -41,22 +58,118 @@ terraform_plan_receipt() {
 [[ "$attempt" == "1" || "$attempt" == "2" ]] || { echo "REFUSING: attempt must be 1 or 2" >&2; exit 2; }
 
 stage_stage0() {
-  .venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" <<'PY'
+  local binding_output credential_output credential_payload command_status observed
+  set +e
+  binding_output="$(.venv/bin/python - "$authorization" "$packet_sha256" "$repo_root" 2>&1 <<'PY'
 import sys
 from pathlib import Path
 from scripts.b6_6_bindings import validate
 validate(Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3]))
 PY
-  [[ ! -e "$token_file" && ! -e "$alb_hostname_file" ]]
-  credential_payload="$(.venv/bin/python scripts/b6_6_credential.py --token-file "$token_file" --profile medzen)"
-  [[ "$(aws sts get-caller-identity --profile medzen --query Account --output text)" == "558069890522" ]]
-  [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81 --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters)' --output text)" == "3" ]]
-  [[ "$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters[?Name==`/medzen/registry/serving/current`])' --output text)" == "0" ]]
-  [[ "$(kubectl --kubeconfig "$kubeconfig" get nodes -l 'workload in (cpu,gpu)' --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
-  [[ "$(kubectl --kubeconfig "$kubeconfig" get pods -n medzen -l medzen.io/classification=synthetic-integration-only --request-timeout=15s -o json | jq '.items | length')" == "0" ]]
-  ! kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system --request-timeout=15s >/dev/null 2>&1
-  ! kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --request-timeout=15s >/dev/null 2>&1
-  .venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen >/dev/null
+  )"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]]; then
+    stage0_refuse STAGE0_BINDING_REFUSED SOURCE_BINDINGS_AND_AUTHORIZATION_VALID 31 "$binding_output"
+    return $?
+  fi
+
+  if [[ -e "$token_file" || -e "$alb_hostname_file" ]]; then
+    stage0_refuse STAGE0_LOCAL_PATH_REFUSED LOCAL_EPHEMERAL_PATHS_ABSENT 32 "preexisting local token or ALB hostname path"
+    return $?
+  fi
+
+  set +e
+  credential_output="$(.venv/bin/python scripts/b6_6_credential.py --token-file "$token_file" --profile medzen 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]] || ! credential_payload="$(jq -ce 'select(.status == "PASS")' <<<"$credential_output" 2>/dev/null)"; then
+    observed="$(jq -r '.safe_error_text // .reason_code // "credential rotation output malformed"' <<<"$credential_output" 2>/dev/null || printf '%s' "$credential_output")"
+    stage0_refuse STAGE0_CREDENTIAL_ROTATION_REFUSED FRESH_SYNTHETIC_CREDENTIAL_ROTATED 33 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(aws sts get-caller-identity --profile medzen --query Account --output text 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" || "$observed" != "558069890522" ]]; then
+    stage0_refuse STAGE0_AWS_IDENTITY_REFUSED AWS_ACCOUNT_IS_558069890522 34 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(aws ssm get-parameters-by-path --path /medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81 --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters)' --output text 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" || "$observed" != "3" ]]; then
+    stage0_refuse STAGE0_TEST_REGISTRY_REFUSED TEST_REGISTRY_PARAMETER_COUNT_IS_THREE 35 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(aws ssm get-parameters-by-path --path /medzen/registry/serving --recursive --with-decryption --region eu-central-1 --profile medzen --query 'length(Parameters[?Name==`/medzen/registry/serving/current`])' --output text 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" || "$observed" != "0" ]]; then
+    stage0_refuse STAGE0_PRODUCTION_POINTER_REFUSED PRODUCTION_SERVING_POINTER_IS_ABSENT 36 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(kubectl --kubeconfig "$kubeconfig" get nodes -l 'workload in (cpu,gpu)' --request-timeout=15s -o json 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]]; then
+    stage0_refuse STAGE0_WORKLOAD_NODE_ZERO_REFUSED WORKLOAD_NODE_COUNT_IS_ZERO 37 "$observed"
+    return $?
+  fi
+  observed="$(jq -r '.items | length' <<<"$observed" 2>/dev/null || printf 'malformed node response')"
+  if [[ "$observed" != "0" ]]; then
+    stage0_refuse STAGE0_WORKLOAD_NODE_ZERO_REFUSED WORKLOAD_NODE_COUNT_IS_ZERO 37 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(kubectl --kubeconfig "$kubeconfig" get pods -n medzen -l medzen.io/classification=synthetic-integration-only --request-timeout=15s -o json 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]]; then
+    stage0_refuse STAGE0_SYNTHETIC_POD_ZERO_REFUSED SYNTHETIC_POD_COUNT_IS_ZERO 38 "$observed"
+    return $?
+  fi
+  observed="$(jq -r '.items | length' <<<"$observed" 2>/dev/null || printf 'malformed pod response')"
+  if [[ "$observed" != "0" ]]; then
+    stage0_refuse STAGE0_SYNTHETIC_POD_ZERO_REFUSED SYNTHETIC_POD_COUNT_IS_ZERO 38 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(kubectl --kubeconfig "$kubeconfig" get deployment/aws-load-balancer-controller --namespace kube-system --ignore-not-found --request-timeout=15s -o name 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" || -n "$observed" ]]; then
+    stage0_refuse STAGE0_CONTROLLER_ABSENCE_REFUSED WINDOW_CONTROLLER_IS_ABSENT 39 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(kubectl --kubeconfig "$kubeconfig" get daemonset/dra-driver-nvidia-gpu-kubelet-plugin --namespace nvidia-dra-driver --ignore-not-found --request-timeout=15s -o name 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" || -n "$observed" ]]; then
+    stage0_refuse STAGE0_DRA_ABSENCE_REFUSED WINDOW_DRA_IS_ABSENT 40 "$observed"
+    return $?
+  fi
+
+  set +e
+  observed="$(.venv/bin/python scripts/b6_6_probe_endpoints.py absent --profile medzen 2>&1)"
+  command_status=$?
+  set -e
+  if [[ "$command_status" != "0" ]]; then
+    stage0_refuse STAGE0_ENDPOINT_ABSENCE_REFUSED WINDOW_ENDPOINTS_ARE_ABSENT 41 "$observed"
+    return $?
+  fi
   write_payload "$(jq -nc --argjson credential "$credential_payload" --arg attempt "$attempt" '{authorization_record:"HASH_BOUND_OWNER_APPROVED",cost_registry:"COST-REGISTRY-2026-005",attempt:($attempt|tonumber),source_bindings_verified:true,credential:$credential}')"
 }
 
@@ -118,7 +231,7 @@ stage_orchestrator() {
 }
 
 stage_controller_window() {
-  plan="/private/tmp/b6-027-controller-$PPID.tfplan"
+  plan="/private/tmp/b6-028-controller-$PPID.tfplan"
   scripts/terraform_medzen.sh plan -input=false -out="$plan" \
     -var=account_id=558069890522 \
     -var=registry_publisher_principal_arn=arn:aws:iam::558069890522:user/s.fotso \
@@ -147,7 +260,7 @@ stage_pre_endpoint_images() {
 }
 
 stage_terraform_window() {
-  plan="/private/tmp/b6-027-endpoints-$PPID.tfplan"
+  plan="/private/tmp/b6-028-endpoints-$PPID.tfplan"
   targets=(
     -target=helm_release.b6_load_balancer_controller
     -target=aws_security_group.b6_probe_endpoints
@@ -227,20 +340,53 @@ run_local_probe() {
   kubectl --kubeconfig "$kubeconfig" port-forward --namespace medzen service/speech-orchestrator 18080:8080 >/dev/null 2>&1 &
   pid=$!
   trap 'kill "$pid" >/dev/null 2>&1 || true' RETURN
+  ready=0
   for _ in {1..60}; do
-    curl --fail --silent --max-time 2 http://127.0.0.1:18080/readyz >/dev/null 2>&1 && break
+    if curl --fail --silent --max-time 2 http://127.0.0.1:18080/readyz >/dev/null 2>&1; then
+      ready=1
+      break
+    fi
     sleep 1
   done
-  kill -0 "$pid"
+  if ! kill -0 "$pid" >/dev/null 2>&1; then
+    jq -nc '{status:"REFUSED",reason_code:"SYNTHETIC_PROOF_ASSERTION_REFUSED",failed_assertion:"LOCAL_PORT_FORWARD_PROCESS_ALIVE",probe_exit_code:100,http_status:null,sanitized_response_body:"",response_body_truncated:false,response_body_sha256:"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",safe_error_text:"local port-forward process exited",synthetic_only:true,phi_present:false}'
+    return 100
+  fi
+  if [[ "$ready" != "1" ]]; then
+    jq -nc '{status:"REFUSED",reason_code:"SYNTHETIC_PROOF_ASSERTION_REFUSED",failed_assertion:"LOCAL_PORT_FORWARD_READYZ",probe_exit_code:101,http_status:null,sanitized_response_body:"",response_body_truncated:false,response_body_sha256:"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",safe_error_text:"local port-forward readyz did not pass within 60 seconds",synthetic_only:true,phi_present:false}'
+    return 101
+  fi
   .venv/bin/python scripts/b6_6_probe.py "$mode" --base-url http://127.0.0.1:18080 --token-file "$token_file" --wav "$wav"
 }
 
-stage_file_proof() { payload="$(run_local_probe file)"; write_payload "$payload"; }
-stage_websocket_proof() { payload="$(run_local_probe websocket)"; write_payload "$payload"; }
-stage_cancellation_proof() { payload="$(run_local_probe cancellation)"; write_payload "$payload"; }
+run_probe_stage() {
+  local mode="$1"
+  local payload probe_status
+  set +e
+  payload="$(run_local_probe "$mode")"
+  probe_status=$?
+  set -e
+  if ! jq -e 'type == "object" and (.status == "PASS" or .status == "REFUSED")' <<<"$payload" >/dev/null 2>&1; then
+    payload="$(jq -nc '{status:"REFUSED",reason_code:"SYNTHETIC_PROOF_ASSERTION_REFUSED",failed_assertion:"PROBE_DIAGNOSTIC_JSON_VALID",probe_exit_code:102,http_status:null,sanitized_response_body:"",response_body_truncated:false,response_body_sha256:"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",safe_error_text:"probe diagnostic output is malformed",synthetic_only:true,phi_present:false}')"
+    probe_status=102
+  fi
+  write_payload "$payload"
+  [[ "$probe_status" == "0" ]] || return "$probe_status"
+}
+
+stage_file_proof() { run_probe_stage file; }
+stage_websocket_proof() { run_probe_stage websocket; }
+stage_cancellation_proof() { run_probe_stage cancellation; }
 
 stage_failure_drills() {
+  set +e
   controls="$(run_local_probe refusals)"
+  probe_status=$?
+  set -e
+  if [[ "$probe_status" != "0" ]]; then
+    write_payload "$controls"
+    return "$probe_status"
+  fi
   kubectl --kubeconfig "$kubeconfig" patch service/rag-index --namespace medzen --type merge \
     -p '{"spec":{"selector":{"medzen.io/failure-drill":"unavailable"}}}' >/dev/null
   for _ in {1..60}; do
@@ -249,7 +395,14 @@ stage_failure_drills() {
     sleep 2
   done
   [[ "${endpoint_count:-unknown}" == "0" ]]
+  set +e
   dependency="$(run_local_probe dependency-refusal)"
+  probe_status=$?
+  set -e
+  if [[ "$probe_status" != "0" ]]; then
+    write_payload "$dependency"
+    return "$probe_status"
+  fi
   kubectl --kubeconfig "$kubeconfig" patch service/rag-index --namespace medzen --type merge \
     -p '{"spec":{"selector":{"app.kubernetes.io/name":"rag-index","medzen.io/classification":"synthetic-integration-only","medzen.io/failure-drill":null}}}' >/dev/null
   for _ in {1..60}; do

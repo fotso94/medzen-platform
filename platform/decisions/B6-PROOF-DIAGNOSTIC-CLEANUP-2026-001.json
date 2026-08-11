@@ -1,0 +1,120 @@
+{
+  "id": "B6-PROOF-DIAGNOSTIC-CLEANUP-2026-001",
+  "revision": 1,
+  "status": "OWNER_DIRECTED_LOCAL_CONTROL_PENDING_PACKET_2026_028_APPROVAL",
+  "recorded_date": "2026-08-11",
+  "purpose": "Make every synthetic conversation and stage-zero refusal diagnosable, and make cleanup reconcile only deadline actions that actually exist.",
+  "predecessor": {
+    "terminal_evidence_path": "platform/evidence/B6-PACKET-2026-027-TERMINAL-FILE-PROOF-AND-STAGE0-REFUSALS.json",
+    "terminal_evidence_sha256": "3bcc1775fee62310701346621a05ef06407c98e1a8cb41372f54f47556d3dec6",
+    "repository_commit": "59efe6587e8e6070e1098959a1c40e8650bda02f",
+    "exit_review": "PASS",
+    "packet_2026_027_attempts_remaining": 0
+  },
+  "proof_diagnostic_control": {
+    "classification": "B6_6_SYNTHETIC_INTEGRATION_ONLY",
+    "on_every_refusal_required": [
+      "http_status_or_null_when_no_HTTP_response_exists",
+      "sanitized_response_body",
+      "response_body_truncated",
+      "response_body_sha256",
+      "failed_assertion",
+      "distinct_probe_exit_code",
+      "bounded_safe_error_text"
+    ],
+    "maximum_sanitized_response_utf8_bytes": 1024,
+    "maximum_safe_error_utf8_bytes": 512,
+    "content_redaction_required": true,
+    "credential_redaction_required": true,
+    "raw_audio_permitted": false,
+    "raw_headers_permitted": false,
+    "raw_credentials_permitted": false,
+    "raw_service_logs_permitted": false,
+    "unknown_or_malformed_diagnostic": "REFUSE_WITHOUT_PROPAGATION",
+    "payload_must_persist_before_nonzero_return": true
+  },
+  "stage0_control": {
+    "model_or_audio_exists": false,
+    "required_fields": [
+      "reason_code",
+      "failed_assertion",
+      "stage_exit_code",
+      "safe_error_text",
+      "pre_model_and_audio"
+    ],
+    "maximum_safe_error_utf8_bytes": 512,
+    "distinct_exit_code_per_assertion": true,
+    "substage_reason_codes": [
+      "STAGE0_BINDING_REFUSED",
+      "STAGE0_LOCAL_PATH_REFUSED",
+      "STAGE0_CREDENTIAL_ROTATION_REFUSED",
+      "STAGE0_AWS_IDENTITY_REFUSED",
+      "STAGE0_TEST_REGISTRY_REFUSED",
+      "STAGE0_PRODUCTION_POINTER_REFUSED",
+      "STAGE0_WORKLOAD_NODE_ZERO_REFUSED",
+      "STAGE0_SYNTHETIC_POD_ZERO_REFUSED",
+      "STAGE0_CONTROLLER_ABSENCE_REFUSED",
+      "STAGE0_DRA_ABSENCE_REFUSED",
+      "STAGE0_ENDPOINT_ABSENCE_REFUSED"
+    ]
+  },
+  "cleanup_control": {
+    "zero_capacity_required_before_deadline_mutation": true,
+    "deadline_receipt_states": [
+      "PASS",
+      "REFUSED",
+      "ABSENT"
+    ],
+    "pass_behavior": "Inspect actual actions, delete only the exact approved CPU and GPU actions that exist, then require zero actions.",
+    "refused_or_absent_behavior": "Treat zero actions as already disarmed; remove an exact partial approved action if one exists after zero capacity; refuse unknown actions.",
+    "unknown_receipt_state": "REFUSE",
+    "unexpected_action_name": "REFUSE",
+    "fixed_wait_for_nonexistent_action": false
+  },
+  "receipt_policy": {
+    "path": "platform/runtime-receipt-policy-v3.yaml",
+    "sha256": "049dc6336f2507f037f6bbcc7e1784db66f0c274227d833bc761a1b7ab197a54",
+    "historical_effect": "NONE"
+  },
+  "implementation_bindings": {
+    "pipeline/b6_integration_receipts.py": "2cf3b800edb631aa9fc43bb010552913a1da434025cbe025bb91c21ac4208166",
+    "scripts/b6_6_cleanup.sh": "bc31173e8bab932c43eb7bb9acf34f87d64576510989271358eb867a0fad0c7c",
+    "scripts/b6_6_cold_rehearsal.py": "d56d94888e42992a1331b6d50c436f5c37c4b1ad918e7081d9c2ddb7c533f7fb",
+    "scripts/b6_6_credential.py": "545dcc3629ecef5da0710d4b90b71fb2ff08f0c8be1938c1b4919d87f3de257d",
+    "scripts/b6_6_deadline.py": "242ff3ab0b4fc7e1805f837eff4ac8ab97c356cbb435fd77f19133f11fff711b",
+    "scripts/b6_6_operations.sh": "cf20b8beba48308101de7adaf01ba86ae6074a35866a9bc72c861889dc5b0469",
+    "scripts/b6_6_probe.py": "89ae0ba1a4be8b4a98dedf17b5440166772a2539d284bd1f1c33080735d0590a",
+    "scripts/b6_6_runner.py": "74ba6ebdeb1edb9275b92e781791f21db37db269aa72a31f9c56fc6345c1aaff",
+    "tests/test_b6_6_consolidated_window.py": "98d40f08bb6c933a941b43f7881af82c5e5bd6b60f5a0e7229e388674baa9fc2",
+    "tests/test_b6_6_predeadline_cleanup.py": "e0407e822fbd082bb3450bda8fd3d59423dae8b69ce9b38864a16d22c69a5fe8",
+    "tests/test_b6_6_proof_diagnostics.py": "c63ec8b08122dfa431ff7a37aa062221221e2abc94e5323575588d4004691493"
+  },
+  "cold_rehearsal_requirements": {
+    "every_file_conversation_assertion_injected": true,
+    "distinct_exit_codes_verified": true,
+    "sanitizer_redaction_and_truncation_injected": true,
+    "stage0_exact_reason_retained": true,
+    "no_deadline_receipt_and_zero_actions_injected": true,
+    "refused_deadline_with_partial_exact_action_injected": true,
+    "real_aws_calls": 0,
+    "real_kubectl_calls": 0
+  },
+  "allowed_now": [
+    "local implementation",
+    "local tests",
+    "cold rehearsal with fakes and recorded read fixtures",
+    "successor packet preparation",
+    "Git branch, commit, push and pull request"
+  ],
+  "prohibited_until_new_exact_approval": [
+    "AWS mutation",
+    "Kubernetes mutation",
+    "worker scale-up",
+    "GPU execution",
+    "production SSM publication",
+    "approved ASR publication",
+    "model registration",
+    "production traffic"
+  ],
+  "deviations": []
+}

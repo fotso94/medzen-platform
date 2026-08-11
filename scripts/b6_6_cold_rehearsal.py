@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import sys
@@ -33,6 +34,7 @@ from scripts.b6_6_fargate_probe import (
     PROBE_DNS_EXIT_CODE,
     _safe_task_result,
 )
+from scripts.b6_6_deadline import DeadlineControl, GROUPS
 from scripts.b6_6_lbc_runtime import (
     ALB_NAME,
     ALB_SECURITY_GROUP,
@@ -51,12 +53,20 @@ from scripts.b6_6_stage_a import (
     StageARefusal,
     StageARunner,
 )
+from scripts.b6_6_probe import (
+    DIAGNOSTIC_MAX_UTF8_BYTES,
+    PROOF_EXIT_CODES,
+    REGISTRY,
+    ProbeRefusal as ConversationProbeRefusal,
+    evaluate_file_response,
+    sanitize_response_body,
+)
 from scripts.check_b6_6_window_plan import lint_rendered_plan_description_charset
 
 
 RUNNER_SOURCES = tuple(sorted(REQUIRED_SOURCES - {COLD_PATH}))
 GUARDS = {
-    "stage0": ["persistent_secret", "operator_deny", "token_shape", "fresh_version"],
+    "stage0": ["persistent_secret", "operator_deny", "token_shape", "fresh_version", "exact_safe_refusal_reason"],
     "deadline": ["deadline_first_4500_seconds"],
     "workers_ready": ["bounded_worker_registration_1200_seconds"],
     "dra_ready": ["digest_pinned_dra_before_endpoints"],
@@ -73,12 +83,12 @@ GUARDS = {
     "alb_ready": ["hostname_active_three_stable_healthy_target_observations"],
     "fargate_probe": ["private_probe_24_attempt_layer_specific_retry"],
     "alb_tag_mutation_warning": ["bounded_nonfatal_tag_rule_always_fatal_list"],
-    "file_proof": ["synthetic_file_contract"],
+    "file_proof": ["synthetic_file_contract", "assertion_specific_sanitized_diagnostic"],
     "websocket_proof": ["synthetic_websocket_contract"],
     "cancellation_proof": ["cancel_within_250ms"],
     "failure_drills": ["dependency_refusal_without_pod_recreation"],
     "isolation_proof": ["orchestrator_only_ingress_dependencies_clusterip"],
-    "cleanup": ["zero_state_before_deadline_disarm_persistent_secret_retained"],
+    "cleanup": ["zero_state_before_status_keyed_deadline_reconciliation_persistent_secret_retained"],
 }
 
 
@@ -279,6 +289,229 @@ def _new_gate_rehearsal() -> dict[str, Any]:
     }
 
 
+def _passing_file_response() -> dict[str, Any]:
+    return {
+        "reply": {
+            "tts_backend": "text_only",
+            "text": "synthetic reply",
+            "citations": [
+                {"id": "one", "snippet": "synthetic one"},
+                {"id": "two", "snippet": "synthetic two"},
+                {"id": "three", "snippet": "synthetic three"},
+            ],
+        },
+        "model_versions": {
+            "asr": "v0",
+            "registry_snapshot": REGISTRY,
+            "llm": "fake-bedrock-local-v1",
+            "rag": "embedded-synthetic-v1",
+            "tts": None,
+        },
+    }
+
+
+def _file_assertion_injections() -> list[tuple[int, bytes, str]]:
+    good = _passing_file_response()
+    encoded = lambda value: json.dumps(value, sort_keys=True).encode()
+    cases: list[tuple[int, bytes, str]] = [
+        (503, encoded(good), "FILE_HTTP_STATUS_IS_200"),
+        (200, b"{not-json", "FILE_RESPONSE_IS_JSON"),
+        (200, b"[]", "FILE_RESPONSE_IS_OBJECT"),
+        (200, encoded({**good, "reply": None}), "FILE_REPLY_IS_OBJECT"),
+        (
+            200,
+            encoded({**good, "reply": {**good["reply"], "tts_backend": "fish"}}),
+            "FILE_TTS_BACKEND_IS_TEXT_ONLY",
+        ),
+        (
+            200,
+            encoded({**good, "reply": {**good["reply"], "citations": "three"}}),
+            "FILE_CITATIONS_IS_LIST",
+        ),
+        (
+            200,
+            encoded({**good, "reply": {**good["reply"], "citations": [{}, {}]}}),
+            "FILE_CITATION_COUNT_IS_THREE",
+        ),
+        (200, encoded({**good, "model_versions": []}), "FILE_MODEL_VERSIONS_IS_OBJECT"),
+    ]
+    wrong_keys = copy.deepcopy(good)
+    wrong_keys["model_versions"]["extra"] = "wrong"
+    cases.append((200, encoded(wrong_keys), "FILE_MODEL_VERSION_KEYS_ARE_EXACT"))
+    for assertion, key, value in (
+        ("FILE_REGISTRY_SNAPSHOT_MATCHES", "registry_snapshot", "wrong"),
+        ("FILE_ASR_VERSION_IS_V0", "asr", "v1"),
+        ("FILE_LLM_VERSION_IS_FAKE_LOCAL", "llm", "real-provider"),
+        ("FILE_TTS_VERSION_IS_NULL", "tts", "fish"),
+    ):
+        changed = copy.deepcopy(good)
+        changed["model_versions"][key] = value
+        cases.append((200, encoded(changed), assertion))
+    return cases
+
+
+def _proof_diagnostic_rehearsal() -> dict[str, Any]:
+    passing_raw = json.dumps(_passing_file_response(), sort_keys=True).encode()
+    if evaluate_file_response(200, passing_raw).get("status") != "PASS":
+        raise AssertionError("passing file proof did not pass")
+    failures: list[dict[str, Any]] = []
+    exit_codes: set[int] = set()
+    for status, raw, expected_assertion in _file_assertion_injections():
+        try:
+            evaluate_file_response(status, raw)
+        except ConversationProbeRefusal as exc:
+            diagnostic = exc.diagnostic()
+        else:
+            raise AssertionError(f"file assertion injection passed: {expected_assertion}")
+        if (
+            diagnostic.get("failed_assertion") != expected_assertion
+            or diagnostic.get("probe_exit_code")
+            != PROOF_EXIT_CODES[expected_assertion]
+            or diagnostic.get("http_status") != status
+            or len(diagnostic.get("sanitized_response_body", "").encode("utf-8"))
+            > DIAGNOSTIC_MAX_UTF8_BYTES
+            or diagnostic.get("synthetic_only") is not True
+            or diagnostic.get("phi_present") is not False
+        ):
+            raise AssertionError("file assertion diagnostic boundary differs")
+        exit_codes.add(diagnostic["probe_exit_code"])
+        failures.append(
+            {
+                "failed_assertion": diagnostic["failed_assertion"],
+                "probe_exit_code": diagnostic["probe_exit_code"],
+                "http_status": diagnostic["http_status"],
+                "sanitized_response_body_sha256": hashlib.sha256(
+                    diagnostic["sanitized_response_body"].encode()
+                ).hexdigest(),
+                "outcome": "REFUSED",
+            }
+        )
+    if len(exit_codes) != len(failures):
+        raise AssertionError("file assertion exit codes are not distinct")
+    sanitized, truncated = sanitize_response_body(
+        b'Bearer forbidden "token":"forbidden" ' + b"x" * 3000
+    )
+    if (
+        not truncated
+        or "forbidden" in sanitized
+        or len(sanitized.encode()) > DIAGNOSTIC_MAX_UTF8_BYTES
+    ):
+        raise AssertionError("synthetic response sanitizer boundary differs")
+    return {
+        "status": "PASS",
+        "passing_file_proofs": 1,
+        "injected_assertion_failures": len(failures),
+        "distinct_exit_codes": len(exit_codes),
+        "failures": failures,
+        "diagnostic_max_utf8_bytes": DIAGNOSTIC_MAX_UTF8_BYTES,
+        "sanitizer_redaction_and_truncation_cases": 1,
+        "real_aws_calls": 0,
+        "real_kubectl_calls": 0,
+    }
+
+
+class _RecordedDeadlineAutoscaling:
+    def __init__(self, actions: dict[str, list[dict[str, Any]]]) -> None:
+        self.actions = actions
+        self.group_fixtures = {
+            name: json.loads(
+                (
+                    ROOT
+                    / f"tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-{name}.json"
+                ).read_bytes()
+            )
+            for name in GROUPS
+        }
+
+    def describe_auto_scaling_groups(self, AutoScalingGroupNames: list[str]) -> dict[str, Any]:
+        name = next(
+            key for key, binding in GROUPS.items() if binding["asg"] == AutoScalingGroupNames[0]
+        )
+        return copy.deepcopy(self.group_fixtures[name])
+
+    def describe_scheduled_actions(self, AutoScalingGroupName: str) -> dict[str, Any]:
+        name = next(
+            key for key, binding in GROUPS.items() if binding["asg"] == AutoScalingGroupName
+        )
+        return {"ScheduledUpdateGroupActions": copy.deepcopy(self.actions[name])}
+
+    def delete_scheduled_action(
+        self, AutoScalingGroupName: str, ScheduledActionName: str
+    ) -> None:
+        name = next(
+            key for key, binding in GROUPS.items() if binding["asg"] == AutoScalingGroupName
+        )
+        if ScheduledActionName != GROUPS[name]["action"]:
+            raise AssertionError("cold cleanup attempted an unexpected deadline")
+        self.actions[name] = []
+
+
+class _RecordedDeadlineEks:
+    def __init__(self) -> None:
+        self.fixtures = {
+            name: json.loads(
+                (
+                    ROOT
+                    / f"tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-{name}.json"
+                ).read_bytes()
+            )
+            for name in GROUPS
+        }
+
+    def describe_nodegroup(self, clusterName: str, nodegroupName: str) -> dict[str, Any]:
+        if clusterName != "medzen-speech":
+            raise AssertionError("cold cleanup cluster differs")
+        return copy.deepcopy(self.fixtures[nodegroupName])
+
+
+def _pre_deadline_cleanup_rehearsal() -> dict[str, Any]:
+    empty_fixture_paths = {
+        name: ROOT
+        / f"tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-{name}.json"
+        for name in GROUPS
+    }
+    empty_actions = {
+        name: json.loads(path.read_bytes())["ScheduledUpdateGroupActions"]
+        for name, path in empty_fixture_paths.items()
+    }
+    absent = DeadlineControl(
+        _RecordedDeadlineAutoscaling(copy.deepcopy(empty_actions)),
+        _RecordedDeadlineEks(),
+    ).cleanup_after_zero("ABSENT")
+    partial_actions = copy.deepcopy(empty_actions)
+    partial_actions["cpu"] = [
+        {"ScheduledActionName": GROUPS["cpu"]["action"]}
+    ]
+    refused = DeadlineControl(
+        _RecordedDeadlineAutoscaling(partial_actions),
+        _RecordedDeadlineEks(),
+    ).cleanup_after_zero("REFUSED")
+    if (
+        absent.get("deadline_actions_before") != 0
+        or absent.get("deadline_actions_after") != 0
+        or refused.get("deadline_actions_before") != 1
+        or refused.get("deadline_actions_removed") != 1
+        or refused.get("deadline_actions_after") != 0
+    ):
+        raise AssertionError("pre-deadline cleanup reconciliation differs")
+    return {
+        "status": "PASS",
+        "injected_paths": [
+            "NO_DEADLINE_RECEIPT_NO_ACTIONS",
+            "REFUSED_DEADLINE_RECEIPT_ONE_EXACT_PARTIAL_ACTION",
+        ],
+        "absent_receipt_result": absent,
+        "refused_receipt_result": refused,
+        "recorded_fixture_hashes": {
+            str(path.relative_to(ROOT)): sha256_file(path)
+            for path in empty_fixture_paths.values()
+        },
+        "real_aws_calls": 0,
+        "real_kubectl_calls": 0,
+        "aws_mutations": 0,
+    }
+
+
 class FakeSecretClient:
     def __init__(self, historical_versions: int = 7):
         self.versions = {
@@ -370,6 +603,19 @@ class FakeOperations:
                 "invariants_verified": GUARDS[stage],
             }
         if self.fail_stage == stage:
+            if stage == "stage0":
+                raise StageFailure(
+                    "STAGE0_CREDENTIAL_OR_PREFLIGHT_REFUSED",
+                    {
+                        "stage0_refusal": {
+                            "reason_code": "STAGE0_TEST_REGISTRY_REFUSED",
+                            "failed_assertion": "TEST_REGISTRY_PARAMETER_COUNT_IS_THREE",
+                            "stage_exit_code": 35,
+                            "safe_error_text": "injected safe stage-zero detail",
+                            "pre_model_and_audio": True,
+                        }
+                    },
+                )
             raise StageFailure(
                 "INJECTED_COLD_REHEARSAL_FAILURE",
                 {"injected_stage": stage, "guards_invoked": GUARDS[stage]},
@@ -525,6 +771,13 @@ def _scenario(root: Path, name: str, fail_stage: str | None) -> dict[str, Any]:
         expected_cleanup = "REFUSED" if fail_stage == "cleanup" else "PASS"
         if cleanup["status"] != expected_cleanup or not operations.zero_state:
             raise AssertionError("injected failure cleanup did not complete")
+        if fail_stage == "stage0":
+            stage0 = runner.store.load("stage0").get("payload", {})
+            if (
+                stage0.get("stage0_refusal", {}).get("safe_error_text")
+                != "injected safe stage-zero detail"
+            ):
+                raise AssertionError("stage-zero refusal lost exact safe detail")
     if fail_stage is None:
         expected_guards = set(WINDOW_STAGES)
     else:
@@ -555,6 +808,8 @@ def run(output_dir: Path) -> dict[str, Any]:
     terraform_description_charset_lint = _terraform_description_charset_lint()
     aws_read_fixture_fidelity = _aws_read_fixture_fidelity()
     new_gate_rehearsal = _new_gate_rehearsal()
+    proof_diagnostic_rehearsal = _proof_diagnostic_rehearsal()
+    pre_deadline_cleanup_rehearsal = _pre_deadline_cleanup_rehearsal()
     with tempfile.TemporaryDirectory(prefix="medzen-b6-cold-") as temporary:
         root = Path(temporary)
         scenarios = [_scenario(root, "full-pass", None)]
@@ -575,6 +830,8 @@ def run(output_dir: Path) -> dict[str, Any]:
                 "window": scenarios,
                 "stage_a": stage_a_scenarios,
                 "new_gates": new_gate_rehearsal,
+                "proof_diagnostics": proof_diagnostic_rehearsal,
+                "pre_deadline_cleanup": pre_deadline_cleanup_rehearsal,
             }
         )
     ).hexdigest()
@@ -584,10 +841,18 @@ def run(output_dir: Path) -> dict[str, Any]:
         "status": "PASS_COLD_REHEARSAL",
         "full_pass_runs": 1,
         "injected_failure_runs": len(WINDOW_STAGES)
-        + len(new_gate_rehearsal["injected_failures"]),
+        + len(new_gate_rehearsal["injected_failures"])
+        + proof_diagnostic_rehearsal["injected_assertion_failures"]
+        + len(pre_deadline_cleanup_rehearsal["injected_paths"]),
         "stage_injected_failure_runs": len(WINDOW_STAGES),
         "new_gate_injected_failure_runs": len(
             new_gate_rehearsal["injected_failures"]
+        ),
+        "proof_diagnostic_injected_failure_runs": proof_diagnostic_rehearsal[
+            "injected_assertion_failures"
+        ],
+        "pre_deadline_cleanup_injected_failure_runs": len(
+            pre_deadline_cleanup_rehearsal["injected_paths"]
         ),
         "enumerated_stages": list(WINDOW_STAGES),
         "runner_source_hashes": source_hashes,
@@ -597,6 +862,8 @@ def run(output_dir: Path) -> dict[str, Any]:
         "stage_a_injected_failure_runs": len(stage_a_scenarios) - 1,
         "stage_a_scenarios": stage_a_scenarios,
         "new_gate_rehearsal": new_gate_rehearsal,
+        "proof_diagnostic_rehearsal": proof_diagnostic_rehearsal,
+        "pre_deadline_cleanup_rehearsal": pre_deadline_cleanup_rehearsal,
         "empirical_connectivity_gate": aws_read_fixture_fidelity[
             "network_reduction"
         ],

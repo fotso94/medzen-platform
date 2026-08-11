@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Canonical persistent-secret cleanup for prospective packet 2026-027.
+# Canonical persistent-secret cleanup for prospective packet 2026-028.
 set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,7 +18,7 @@ receipts_dir="$4"
 token_file="$5"
 attempt="$6"
 payload_path="$7"
-alb_hostname_file="/private/tmp/b6-027-attempt-${attempt}-alb-hostname"
+alb_hostname_file="/private/tmp/b6-028-attempt-${attempt}-alb-hostname"
 
 [[ "${AWS_PROFILE:-}" == "medzen" ]] || { echo "REFUSING: AWS_PROFILE=medzen is required" >&2; exit 2; }
 [[ -f "$kubeconfig" && -f "$authorization" ]] || { echo "REFUSING: cleanup binding file is absent" >&2; exit 2; }
@@ -68,7 +68,7 @@ kubectl --kubeconfig "$kubeconfig" delete \
 kubectl --kubeconfig "$kubeconfig" delete -f platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml --ignore-not-found --wait=true --timeout=10m || true
 
 cleanup_step="terraform_window"
-cleanup_plan="/private/tmp/b6-027-cleanup-$PPID.tfplan"
+cleanup_plan="/private/tmp/b6-028-cleanup-$PPID.tfplan"
 targets=(
   -target=helm_release.b6_load_balancer_controller
   -target=aws_security_group.b6_probe_endpoints
@@ -113,7 +113,16 @@ aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name gp
 aws eks update-nodegroup-config --cluster-name medzen-speech --nodegroup-name cpu --scaling-config minSize=0,maxSize=4,desiredSize=0 --region eu-central-1 --profile medzen >/dev/null
 aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name gpu --region eu-central-1 --profile medzen
 aws eks wait nodegroup-active --cluster-name medzen-speech --nodegroup-name cpu --region eu-central-1 --profile medzen
-.venv/bin/python scripts/b6_6_deadline.py disarm --wait-seconds 1800
+deadline_receipt_status="ABSENT"
+if [[ -e "$receipts_dir/deadline.json" ]]; then
+  deadline_receipt_status="$(jq -r '.status // empty' "$receipts_dir/deadline.json")"
+  [[ "$deadline_receipt_status" == "PASS" || "$deadline_receipt_status" == "REFUSED" ]] || {
+    echo "REFUSING: deadline receipt status is malformed" >&2
+    exit 2
+  }
+fi
+deadline_cleanup_payload="$(.venv/bin/python scripts/b6_6_deadline.py cleanup \
+  --deadline-receipt-status "$deadline_receipt_status" --wait-seconds 1800)"
 
 cleanup_step="local_token_removal_persistent_secret_retention"
 if [[ -e "$token_file" ]]; then
@@ -152,4 +161,4 @@ else:
 PY
 
 cleanup_step="payload"
-jq -nc '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_alb_hostname_removed:true,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"
+jq -nc --argjson deadline_cleanup "$deadline_cleanup_payload" '{alb_count:0,approved_asr_changes:0,cpu_asg_instances:0,cpu_desired:0,deadline_actions:0,deadline_cleanup:$deadline_cleanup,deployments:0,endpoint_security_groups:0,gpu_asg_instances:0,gpu_desired:0,ingresses:0,local_alb_hostname_removed:true,local_token_removed:true,probe_vpc_endpoints:0,production_ssm_pointer_changes:0,persistent_synthetic_secret:"RETAINED_OPERATOR_DENIED",window_terraform_resources:0}' >"$payload_path"
