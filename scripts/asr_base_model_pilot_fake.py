@@ -17,6 +17,11 @@ if str(PACKAGE) not in sys.path:
 from medzen_asr_eval.backends import Transcript  # noqa: E402
 from medzen_asr_eval.harness import canonical_json  # noqa: E402
 from medzen_asr_eval.pilot import run_pilot  # noqa: E402
+from scripts.asr_base_model_ecr_scanning import (  # noqa: E402
+    canonical_configuration,
+    merge_scan_on_push_filter,
+    validate_configuration,
+)
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal  # noqa: E402
 
 
@@ -43,6 +48,31 @@ class FakeSampler:
     def stop(self) -> None: pass
 
 
+class FakeRegistryScanning:
+    """ECR fake that enforces AWS's one-rule-per-frequency constraint."""
+
+    def __init__(self):
+        fixture = ROOT / (
+            "tests/fixtures/aws/"
+            "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
+        )
+        self.configuration = validate_configuration(
+            json.loads(fixture.read_bytes())["scanningConfiguration"]
+        )
+        self.initial = canonical_configuration(self.configuration)
+        self.put_calls = 0
+
+    def get(self) -> dict[str, Any]:
+        return json.loads(json.dumps(self.configuration))
+
+    def put(self, value: dict[str, Any]) -> None:
+        self.configuration = validate_configuration(value)
+        self.put_calls += 1
+
+    def restored(self) -> bool:
+        return canonical_configuration(self.configuration) == self.initial
+
+
 class FakeOperations:
     def __init__(self, *, inject: str | None = None):
         self.inject = inject
@@ -60,6 +90,7 @@ class FakeOperations:
             "staging": False,
         }
         self.aggregate: dict[str, Any] | None = None
+        self.registry_scanning = FakeRegistryScanning()
 
     def _enter(self, stage: str) -> None:
         self.stage_order.append(stage)
@@ -83,7 +114,32 @@ class FakeOperations:
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("image_publication_and_scan")
         self.state["ecr"] = True
-        return {"status": "PASS_IMAGE_PUBLICATION_AND_SCAN", "critical": 0, "accepted_high": 4}
+        updated, changed = merge_scan_on_push_filter(
+            self.registry_scanning.get(), "medzen-asr-eval-runtime"
+        )
+        if not changed:
+            raise OperationRefusal(
+                "FAKE_SCAN_FILTER_ALREADY_PRESENT",
+                "cold rehearsal expected a pre-merge registry scanning fixture",
+            )
+        self.registry_scanning.put(updated)
+        scan_rules = [
+            rule
+            for rule in self.registry_scanning.get()["rules"]
+            if rule["scanFrequency"] == "SCAN_ON_PUSH"
+        ]
+        if len(scan_rules) != 1:
+            raise OperationRefusal(
+                "FAKE_DUPLICATE_SCAN_FREQUENCY",
+                "fake ECR accepted more than one SCAN_ON_PUSH rule",
+            )
+        return {
+            "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
+            "critical": 0,
+            "accepted_high": 4,
+            "scan_on_push_rules": len(scan_rules),
+            "filter_merged_into_existing_rule": True,
+        }
 
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("artifact_stage")
@@ -161,10 +217,14 @@ class FakeOperations:
         self.stage_order.append("cleanup_and_expiry")
         for key in ("deadline", "reservation", "endpoints", "strict_cni", "gpu", "volume", "namespace", "staging"):
             self.state[key] = 0 if key == "gpu" else False
+        if not self.registry_scanning.restored():
+            self.registry_scanning.put(
+                json.loads(self.registry_scanning.initial)
+            )
         if self.inject == "cleanup_and_expiry":
             raise OperationRefusal("INJECTED_CLEANUP_AND_EXPIRY", "injected cleanup receipt failure after zero state")
         return {"status": "PASS_CLEANUP_AND_EXPIRY", "cpu": 0, "gpu": 0, "endpoints": 0, "namespace": 0, "volume": 0}
 
     def zero_state(self) -> bool:
         transient = ("deadline", "reservation", "endpoints", "strict_cni", "gpu", "volume", "namespace", "staging")
-        return all(not self.state[key] for key in transient)
+        return all(not self.state[key] for key in transient) and self.registry_scanning.restored()

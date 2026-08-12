@@ -53,26 +53,26 @@ def _bindings() -> dict[str, Any]:
 def rehearse(output: Path) -> dict[str, Any]:
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
-    plan_result = validate_plan(exact_plan(bindings, 2), bindings, 2)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 2)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 2)
+    plan_result = validate_plan(exact_plan(bindings, 3), bindings, 3)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 3)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 3)
     authorization_result = validate_authorization_payload(
         {
-            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002B",
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
             "attempts": {
-                "authorized_numbers": [2],
+                "authorized_numbers": [3],
                 "maximum": 1,
                 "seconds_each": 10800,
                 "non_transferable": True,
             },
         },
-        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002B",
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
-        attempt=2,
+        attempt=3,
     )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
@@ -81,7 +81,7 @@ def rehearse(output: Path) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=2,
+                attempt=3,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -97,6 +97,8 @@ def rehearse(output: Path) -> dict[str, Any]:
                 "receipt_count": len(receipt_files),
                 "receipt_chain_sha256": hashlib.sha256("".join(_sha(path) for path in receipt_files).encode()).hexdigest(),
                 "zero_state": ops.zero_state(),
+                "ecr_scan_configuration_put_calls": ops.registry_scanning.put_calls,
+                "ecr_scan_configuration_restored": ops.registry_scanning.restored(),
             }
     source_paths = [
         ROOT / "scripts/asr_base_model_pilot_runner.py",
@@ -118,6 +120,12 @@ def rehearse(output: Path) -> dict[str, Any]:
         "full_pass_runs": 1,
         "injected_failure_runs": 3,
         "injected_paths": ["isolation_probe", "deadline", "cleanup"],
+        "ecr_scan_rule_constraint": {
+            "status": "PASS_ONE_RULE_PER_FREQUENCY_ENFORCED",
+            "fixture": "tests/fixtures/aws/ecr-get-registry-scanning-configuration-basic-before-asr-eval.json",
+            "merge_target": "existing SCAN_ON_PUSH rule",
+            "exact_prior_filter_list_restored_after_every_scenario": True,
+        },
         "enumerated_stages": list(STAGES),
         "execution_asset_completeness": {
             stage: {

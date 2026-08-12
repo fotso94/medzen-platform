@@ -30,6 +30,11 @@ from scripts.asr_base_model_pilot_assets import (
     sha256_file,
     stage_assets,
 )
+from scripts.asr_base_model_ecr_scanning import (
+    canonical_configuration,
+    merge_scan_on_push_filter,
+    validate_configuration,
+)
 from scripts.asr_base_model_pilot_k8s import render as render_k8s
 from scripts.asr_base_model_pilot_plan import (
     ACCOUNT,
@@ -400,6 +405,29 @@ class LiveOperations:
             time.sleep(10)
         raise OperationRefusal("AUTHORITATIVE_SCAN_TIMEOUT", "ECR scan did not complete")
 
+    def _wait_registry_scanning_configuration(
+        self, expected: dict[str, Any], *, timeout_seconds: int = 120
+    ) -> dict[str, Any]:
+        expected_canonical = canonical_configuration(expected)
+        stop = time.monotonic() + timeout_seconds
+        stable = 0
+        observed: dict[str, Any] = {}
+        while time.monotonic() < stop:
+            observed = self.ecr.get_registry_scanning_configuration()[
+                "scanningConfiguration"
+            ]
+            if canonical_configuration(observed) == expected_canonical:
+                stable += 1
+                if stable == 2:
+                    return observed
+            else:
+                stable = 0
+            time.sleep(2)
+        raise OperationRefusal(
+            "ECR_SCAN_CONFIGURATION_STABILITY_TIMEOUT",
+            "ECR scanning configuration did not reach two stable exact observations",
+        )
+
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         image = context.bindings["image"]
         local = _run(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
@@ -410,26 +438,26 @@ class LiveOperations:
         try:
             repository = self.ecr.describe_repositories(repositoryNames=[ECR_REPOSITORY])["repositories"][0]
         except self.ecr.exceptions.RepositoryNotFoundException:
-            repository = self.ecr.create_repository(
-                repositoryName=ECR_REPOSITORY,
-                imageTagMutability="IMMUTABLE",
-                encryptionConfiguration={"encryptionType": "KMS", "kmsKey": context.bindings["aws"]["ecr_kms_key_arn"]},
-                imageScanningConfiguration={"scanOnPush": True},
-                tags=[{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}],
-            )["repository"]
-            state["ecr_repository_created"] = True
-            self._save_state(context, state)
+            raise OperationRefusal(
+                "ECR_EVALUATION_REPOSITORY_ABSENT",
+                "the packet-2026-002A evaluation repository does not exist",
+            )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
         registry = self.ecr.get_registry_scanning_configuration()["scanningConfiguration"]
         state["scan_configuration_before"] = registry
         self._save_state(context, state)
-        rules = registry.get("rules", [])
-        exact_filter = {"filter": ECR_REPOSITORY, "filterType": "WILDCARD"}
-        if not any(exact_filter in rule.get("repositoryFilters", []) for rule in rules):
-            updated = json.loads(json.dumps(rules))
-            updated.append({"scanFrequency": "SCAN_ON_PUSH", "repositoryFilters": [exact_filter]})
-            self.ecr.put_registry_scanning_configuration(scanType=registry["scanType"], rules=updated)
+        try:
+            updated, changed = merge_scan_on_push_filter(registry, ECR_REPOSITORY)
+        except ValueError as exc:
+            raise OperationRefusal(
+                "ECR_SCAN_CONFIGURATION_AMBIGUOUS", str(exc)
+            ) from exc
+        if changed:
+            self.ecr.put_registry_scanning_configuration(
+                scanType=updated["scanType"], rules=updated["rules"]
+            )
+            self._wait_registry_scanning_configuration(updated)
         uri = repository["repositoryUri"]
         remote_tag = f"{uri}:{image['tag']}"
         existing = self.ecr.batch_get_image(repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": image["tag"]}], acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"])
@@ -846,6 +874,19 @@ class LiveOperations:
                 self._kubectl(context, "set", "env", "daemonset/aws-node", "-n", "kube-system", assignment)
             except Exception as exc:
                 errors.append(f"cni:{type(exc).__name__}")
+        if state.get("scan_configuration_before") is not None:
+            try:
+                before = validate_configuration(state["scan_configuration_before"])
+                current = self.ecr.get_registry_scanning_configuration()[
+                    "scanningConfiguration"
+                ]
+                if canonical_configuration(current) != canonical_configuration(before):
+                    self.ecr.put_registry_scanning_configuration(
+                        scanType=before["scanType"], rules=before["rules"]
+                    )
+                    self._wait_registry_scanning_configuration(before)
+            except Exception as exc:
+                errors.append(f"ecr-scan-config:{type(exc).__name__}")
         if state.get("deadline_action"):
             try:
                 self.asg.delete_scheduled_action(AutoScalingGroupName=GPU_ASG, ScheduledActionName=state["deadline_action"])

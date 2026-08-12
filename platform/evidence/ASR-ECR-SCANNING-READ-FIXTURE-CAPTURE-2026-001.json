@@ -1,0 +1,33 @@
+{
+  "record": "ASR_ECR_SCANNING_READ_FIXTURE_CAPTURE",
+  "id": "ASR-ECR-SCANNING-READ-FIXTURE-CAPTURE-2026-001",
+  "revision": 1,
+  "status": "PASS_READ_ONLY_REAL_RESPONSE_CAPTURE",
+  "recorded_utc": "2026-08-12T03:26:06Z",
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "api": "ecr:GetRegistryScanningConfiguration",
+    "mutations": 0,
+    "contains_credentials_or_phi": false
+  },
+  "fixture": {
+    "path": "tests/fixtures/aws/ecr-get-registry-scanning-configuration-basic-before-asr-eval.json",
+    "sha256": "91501916d7e4e5755ad428dd94f57befabc83cd9e592f95a08bfcf9d7909dae7",
+    "canonical_scanning_configuration_sha256": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88",
+    "live_response_byte_equivalent_after_canonical_json": true,
+    "scan_type": "BASIC",
+    "rule_count": 1,
+    "scan_on_push_rule_count": 1,
+    "repository_filter_count": 8,
+    "eval_repository_filter_present": false
+  },
+  "purpose": "Bind the real AWS response shape that packet 2026-002B must merge without creating a duplicate scan-frequency rule, and restore exactly during cleanup.",
+  "historical_failure": {
+    "record_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002A-ATTEMPT-2-IMAGE-SCAN-REFUSAL.json",
+    "record_sha256": "ce93ccb24047ac2bca0bd7abe38828fb7e529998254177973f24c682b80705cf",
+    "cloudtrail_event_id": "cda77ee3-bdd9-424e-b3b6-dc313696261c",
+    "failure_class": "duplicate SCAN_ON_PUSH rules"
+  }
+}

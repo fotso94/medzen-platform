@@ -21,7 +21,12 @@ from medzen_asr_eval.harness import EvaluationRefusal
 from medzen_asr_eval.metrics import aggregate, error_counts, normalize_text
 from medzen_asr_eval.network_probe import probe_network
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore, STAGES
-from scripts.asr_base_model_pilot_fake import FakeOperations
+from scripts.asr_base_model_pilot_fake import FakeOperations, FakeRegistryScanning
+from scripts.asr_base_model_ecr_scanning import (
+    canonical_configuration,
+    merge_scan_on_push_filter,
+    validate_configuration,
+)
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
@@ -137,10 +142,85 @@ def test_network_probe_fails_if_public_control_is_reachable(tmp_path: Path, monk
 def test_plan_is_exact_and_rejects_prohibited_drift() -> None:
     plan = exact_plan(bindings(), 1)
     assert validate_plan(plan, bindings(), 1)["status"] == "PASS_EXACT_EXECUTION_PLAN"
+    assert plan["permanent_create_only"] == [
+        "s3:medzen-speech/research/asr-base-model/pilot/" + "2" * 64 + "/**"
+    ]
+    assert "ecr:repository/medzen-asr-eval-runtime" in plan["read_only_existing"]
+    assert plan["permanent_bounded_update"] == []
+    assert (
+        "ecr:registry-scanning-configuration/"
+        "merge-exact-filter-then-restore-prior-filter-list"
+        in plan["temporary_create_then_delete"]
+    )
     drifted = json.loads(json.dumps(plan))
     drifted["temporary_create_then_delete"].append("iam:role/unreviewed")
     with pytest.raises(ValueError, match="exact allowlist"):
         validate_plan(drifted, bindings(), 1)
+
+
+def test_real_ecr_scanning_response_merges_into_one_rule_and_is_idempotent() -> None:
+    fixture_path = ROOT / (
+        "tests/fixtures/aws/"
+        "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
+    )
+    before = json.loads(fixture_path.read_bytes())["scanningConfiguration"]
+    updated, changed = merge_scan_on_push_filter(
+        before, "medzen-asr-eval-runtime"
+    )
+    assert changed is True
+    assert canonical_configuration(before) != canonical_configuration(updated)
+    scan_on_push = [
+        rule for rule in updated["rules"]
+        if rule["scanFrequency"] == "SCAN_ON_PUSH"
+    ]
+    assert len(scan_on_push) == 1
+    assert scan_on_push[0]["repositoryFilters"][:-1] == before["rules"][0][
+        "repositoryFilters"
+    ]
+    assert scan_on_push[0]["repositoryFilters"][-1] == {
+        "filter": "medzen-asr-eval-runtime",
+        "filterType": "WILDCARD",
+    }
+    repeated, repeated_changed = merge_scan_on_push_filter(
+        updated, "medzen-asr-eval-runtime"
+    )
+    assert repeated_changed is False
+    assert canonical_configuration(repeated) == canonical_configuration(updated)
+
+
+def test_ecr_fake_rejects_duplicate_scan_frequency_like_aws() -> None:
+    fixture_path = ROOT / (
+        "tests/fixtures/aws/"
+        "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
+    )
+    value = json.loads(fixture_path.read_bytes())["scanningConfiguration"]
+    value["rules"].append({
+        "scanFrequency": "SCAN_ON_PUSH",
+        "repositoryFilters": [{
+            "filter": "medzen-asr-eval-runtime",
+            "filterType": "WILDCARD",
+        }],
+    })
+    fake = FakeRegistryScanning()
+    with pytest.raises(ValueError, match="duplicate ECR scan frequency"):
+        fake.put(value)
+
+
+def test_ecr_merge_refuses_ambiguous_existing_repository_filter() -> None:
+    fixture_path = ROOT / (
+        "tests/fixtures/aws/"
+        "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
+    )
+    value = json.loads(fixture_path.read_bytes())["scanningConfiguration"]
+    value["rules"].append({
+        "scanFrequency": "MANUAL",
+        "repositoryFilters": [{
+            "filter": "medzen-asr-eval-runtime",
+            "filterType": "WILDCARD",
+        }],
+    })
+    with pytest.raises(ValueError, match="ambiguous frequency"):
+        merge_scan_on_push_filter(value, "medzen-asr-eval-runtime")
 
 
 def test_k8s_workload_is_digest_pinned_non_serving_and_network_first() -> None:
@@ -294,3 +374,43 @@ def test_pre_gpu_cleanup_does_not_issue_nodegroup_mutation() -> None:
     guard = cleanup.index('if state.get("gpu_scaled"):')
     read_only = cleanup.index("group = self._nodegroup(GPU_NODEGROUP)", mutation)
     assert guard < mutation < read_only
+
+
+def test_cleanup_restores_exact_prior_ecr_scanning_configuration() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(
+        encoding="utf-8"
+    )
+    cleanup = source[source.index("    def cleanup_and_expiry(") :]
+    assert 'state.get("scan_configuration_before") is not None' in cleanup
+    assert "canonical_configuration(current)" in cleanup
+    assert "canonical_configuration(before)" in cleanup
+    assert "self._wait_registry_scanning_configuration(before)" in cleanup
+
+
+def test_successor_requires_the_existing_empty_evaluation_repository() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(
+        encoding="utf-8"
+    )
+    image_stage = source[
+        source.index("    def image_publication_and_scan(") :
+        source.index("    def artifact_stage(")
+    ]
+    assert "self.ecr.create_repository" not in image_stage
+    assert "ECR_EVALUATION_REPOSITORY_ABSENT" in image_stage
+
+
+def test_scan_configuration_post_mutation_checks_use_stable_polling() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def _wait_registry_scanning_configuration(" in source
+    assert "if stable == 2:" in source
+    assert "self._wait_registry_scanning_configuration(updated)" in source
+    assert "self._wait_registry_scanning_configuration(before)" in source
+
+
+def test_untyped_pre_model_aws_exception_retains_safe_service_text() -> None:
+    assert _safe_reason(ValueError("duplicate scan frequency from service")) == {
+        "reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+        "safe_error_text": "duplicate scan frequency from service",
+    }

@@ -141,7 +141,7 @@ def _safe_reason(exc: Exception) -> dict[str, str]:
     # by package name through the operations module. Attribute-based handling
     # preserves a typed refusal across that module-identity boundary.
     code = getattr(exc, "reason_code", "UNEXPECTED_STAGE_EXCEPTION")
-    detail = getattr(exc, "detail", type(exc).__name__)
+    detail = getattr(exc, "detail", str(exc) or type(exc).__name__)
     if re.fullmatch(r"[A-Z0-9_]{1,96}", code) is None:
         code = "MALFORMED_REASON_CODE"
     detail = " ".join(str(detail).split())[:512]
@@ -206,8 +206,8 @@ def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
 
 
 def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in {1, 2} or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2 at 10800 seconds are permitted")
+    if context.attempt not in {1, 2, 3} or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2/3 at 10800 seconds are permitted")
     context.workdir.mkdir(parents=True, exist_ok=True)
     envelope = write_attempt_envelope(context)
     stage_hashes: dict[str, str] = {}

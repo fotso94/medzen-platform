@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in {1, 2}:
-        raise ValueError("attempt must be 1 or 2")
+    if attempt not in {1, 2, 3}:
+        raise ValueError("attempt must be 1, 2 or 3")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     bundle_sha = bindings.get("pilot_bundle", {}).get("sha256")
     if not isinstance(image_digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest) is None:
@@ -40,14 +40,12 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "cluster": CLUSTER,
         "vpc": VPC,
         "permanent_create_only": [
-            "ecr:repository/medzen-asr-eval-runtime",
             f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
         ],
-        "permanent_bounded_update": [
-            "ecr:registry-scanning-configuration/add-exact-medzen-asr-eval-runtime-filter",
-        ],
+        "permanent_bounded_update": [],
         "temporary_create_then_delete": [
             "autoscaling:scheduled-action/medzen-asr-eval-2026-001-deadline-scale-zero",
+            "ecr:registry-scanning-configuration/merge-exact-filter-then-restore-prior-filter-list",
             "ec2:gp3-volume/medzen-asr-eval-60gib-kms-encrypted",
             "ec2:volume-attachment/gpu-node:/var/lib/medzen-asr-eval",
             "ec2:security-group/medzen-asr-eval-vpce",
@@ -70,6 +68,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         ],
         "read_only_existing": [
             f"ec2:security-group/{NODE_SG}",
+            "ecr:repository/medzen-asr-eval-runtime",
             "ecr:repository/medzen-nvidia-dra",
             "s3:medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/**",
             "s3:medzen-speech/eval/**",
