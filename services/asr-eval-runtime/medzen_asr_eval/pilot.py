@@ -13,7 +13,7 @@ from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
-from .backends import Backend, Transcript, load_backend
+from .backends import Backend, Transcript
 from .conditioning import language_id, load_conditioning
 from .harness import EvaluationRefusal, canonical_json, write_once
 from .identity import CANDIDATES
@@ -190,11 +190,15 @@ def run_pilot(
     receipt_root: Path,
     aggregate_path: Path,
     conditioning_path: Path | None = None,
-    backend_loader: Callable[[str, str, str | None, Path], Backend] = load_backend,
+    backend_loader: Callable[[str, str, str | None, Path], Backend] | None = None,
     model_verifier: Callable[[Path, Path], dict[str, Any]] = verify_model_root,
     sampler: GpuMemorySampler | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
+    if backend_loader is None:
+        from .backends import load_backend
+
+        backend_loader = load_backend
     rows = load_runtime_rows(rows_path)
     model_identity = model_verifier(model_root, model_binding_path)
     conditioning = load_conditioning(conditioning_path)

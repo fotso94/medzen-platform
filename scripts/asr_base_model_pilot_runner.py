@@ -28,10 +28,11 @@ from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan  # noqa:
 
 
 class OperationRefusal(RuntimeError):
-    def __init__(self, reason_code: str, detail: str):
+    def __init__(self, reason_code: str, detail: str, *, outcome: str | None = None):
         super().__init__(detail)
         self.reason_code = reason_code
         self.detail = detail
+        self.outcome = outcome
 
 
 class Operations(Protocol):
@@ -182,7 +183,11 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
                 failure_stage = stage
                 receipt = context.receipts.persist(stage, "REFUSED", _safe_reason(exc), dependencies=())
                 stage_hashes[stage] = receipt["receipt_sha256"]
-                outcome = OUTCOME_BY_STAGE.get(stage, "FAILED_CLOSED_EXECUTION")
+                outcome = (
+                    exc.outcome
+                    if isinstance(exc, OperationRefusal) and exc.outcome is not None
+                    else OUTCOME_BY_STAGE.get(stage, "FAILED_CLOSED_EXECUTION")
+                )
                 break
     finally:
         try:

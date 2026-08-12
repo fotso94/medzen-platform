@@ -147,7 +147,7 @@ def test_k8s_workload_is_digest_pinned_non_serving_and_network_first() -> None:
     docs = list(yaml.safe_load_all(rendered))
     assert [value["kind"] for value in docs] == ["Namespace", "ResourceClaimTemplate", "NetworkPolicy", "NetworkPolicy", "Job"]
     command = docs[-1]["spec"]["template"]["spec"]["containers"][0]["args"][0]
-    assert command.index("network-probe") < command.index("network-release") < command.index(" pilot ")
+    assert command.index("network-probe") < command.index("inbound-listener-ready") < command.index("network-release") < command.index(" pilot ")
 
 
 def test_stage_map_implements_every_claimed_stage() -> None:

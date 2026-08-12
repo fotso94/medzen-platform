@@ -88,7 +88,9 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                             "command": ["/bin/sh", "-ec"],
                             "args": [
                                 "python -m medzen_asr_eval network-probe --binding /input/network-binding.json --receipt /output/network-probe.json && "
-                                "while [ ! -f /input/network-release ]; do sleep 1; done && "
+                                "python -c 'import pathlib,socket,time; s=socket.socket(); s.bind((\"0.0.0.0\",8080)); s.listen(1); "
+                                "pathlib.Path(\"/output/inbound-listener-ready\").write_text(\"READY\\n\"); "
+                                "[(time.sleep(1)) for _ in iter(int,1) if not pathlib.Path(\"/input/network-release\").exists()]; s.close()' && "
                                 "python -m medzen_asr_eval pilot --rows /input/runtime-rows.json --model-root /input/models --model-binding /input/model-bindings.json "
                                 "--conditioning /opt/medzen/assets/language-conditioning-v1.json --receipt-root /output/rows --aggregate-receipt /output/aggregate.json"
                             ],
@@ -132,7 +134,7 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
     command = " ".join(container["args"])
     if command.index("network-probe") > command.index(" pilot "):
         raise ValueError("network probe does not precede pilot import path")
-    if "network-release" not in command or command.index("network-probe") > command.index("network-release") or command.index("network-release") > command.index(" pilot "):
+    if "inbound-listener-ready" not in command or "network-release" not in command or command.index("network-probe") > command.index("network-release") or command.index("network-release") > command.index(" pilot "):
         raise ValueError("cross-pod isolation release gate differs")
     if job["metadata"]["name"] != f"asr-base-model-pilot-a{attempt}":
         raise ValueError("attempt job identity differs")

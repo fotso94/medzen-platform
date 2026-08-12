@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 
-from .backends import load_backend
 from .harness import EvaluationRefusal, canonical_json, sha256_bytes, validate_mode, write_once
 from .identity import CANDIDATES, SOURCE_IDENTITY
 
@@ -78,6 +77,8 @@ def main() -> int:
                 aggregate_path=args.aggregate_receipt,
             )
         else:
+            from .backends import load_backend
+
             validate_mode(args.candidate, args.mode, args.language_id)
             audio = args.audio.read_bytes()
             if sha256_bytes(audio) != args.audio_sha256:

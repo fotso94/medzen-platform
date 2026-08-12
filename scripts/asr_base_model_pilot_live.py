@@ -171,6 +171,7 @@ class LiveOperations:
                 "instance_id": None,
                 "node_name": None,
                 "staging_path": None,
+                "dra_installed": False,
             }
         return json.loads(snapshots[-1].read_bytes())
 
@@ -334,6 +335,11 @@ class LiveOperations:
             group = self._nodegroup(name)
             if group["status"] != "ACTIVE" or group["scalingConfig"]["desiredSize"] != 0 or group.get("health", {}).get("issues"):
                 raise OperationRefusal("NODEGROUP_ZERO_STATE_DIFFERS", f"{name} nodegroup is not healthy at desired zero")
+        self._update_kubeconfig(context)
+        namespaces = self._kubectl(context, "get", "namespaces", json_output=True)
+        names = {item["metadata"]["name"] for item in namespaces.get("items", [])}
+        if NAMESPACE in names or "nvidia-dra-driver" in names:
+            raise OperationRefusal("KUBERNETES_ZERO_STATE_DIFFERS", "evaluation or DRA namespace already exists")
         endpoints = self.ec2.describe_vpc_endpoints(Filters=[{"Name": "vpc-id", "Values": [VPC]}, {"Name": "tag:MedZenPurpose", "Values": ["asr-base-model-eval"]}])["VpcEndpoints"]
         if endpoints:
             raise OperationRefusal("TEMPORARY_ENDPOINT_RESIDUALS", "evaluation VPC endpoints already exist")
@@ -445,6 +451,7 @@ class LiveOperations:
             resources = [
                 f"arn:aws:s3:::{BUCKET}/research/asr-base-model/pilot/{prefix}/*",
                 f"arn:aws:s3:::{BUCKET}/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/*",
+                "arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*",
             ]
             statement = [{"Effect": "Allow", "Principal": "*", "Action": ["s3:GetObject"], "Resource": resources}]
         else:
@@ -550,6 +557,8 @@ class LiveOperations:
         ])
         dra = (self.root / DRA_MANIFEST).read_bytes()
         self._kubectl(context, "apply", "-f", "-", stdin=dra)
+        state["dra_installed"] = True
+        self._save_state(context, state)
         from scripts.run_b6a_003c_c_proof import wait_for_stable_dra
         readiness = wait_for_stable_dra(kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600)
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
@@ -657,19 +666,19 @@ class LiveOperations:
                 pod_name = pod["metadata"]["name"]
                 pod_ip = pod.get("status", {}).get("podIP")
                 if pod_ip:
-                    network = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/network-probe.json", f"cat {state['staging_path']}/output/network-probe.json"], timeout_seconds=60)
+                    network = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/network-probe.json", f"test -s {state['staging_path']}/output/inbound-listener-ready", f"cat {state['staging_path']}/output/network-probe.json"], timeout_seconds=60)
                     try:
                         network_value = json.loads(network["stdout"])
                     except Exception as exc:
-                        raise OperationRefusal("NETWORK_PROBE_RECEIPT_MALFORMED", "pre-torch network receipt is not JSON") from exc
+                        raise OperationRefusal("NETWORK_PROBE_RECEIPT_MALFORMED", "pre-torch network receipt is not JSON", outcome="BLOCKED_NETWORK_ISOLATION") from exc
                     if network_value.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH" or network_value.get("torch_imported") is not False:
-                        raise OperationRefusal("NETWORK_PROBE_REFUSED", "pre-torch private-endpoint probe did not pass")
+                        raise OperationRefusal("NETWORK_PROBE_REFUSED", "pre-torch private-endpoint probe did not pass", outcome="BLOCKED_NETWORK_ISOLATION")
                     inbound = self._cross_pod_refusal(context, pod_ip)
                     self._ssm(state["instance_id"], [f"sudo touch {state['staging_path']}/input/network-release", f"sudo chown 10001:10001 {state['staging_path']}/input/network-release", f"sudo chmod 0444 {state['staging_path']}/input/network-release"])
                     break
             time.sleep(5)
         else:
-            raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed")
+            raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
         waited = _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
         if waited.returncode != 0:
             raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
@@ -701,7 +710,20 @@ class LiveOperations:
             raise OperationRefusal("AGGREGATE_STATUS_DIFFERS", "aggregate status differs")
         expected_rows = context.bindings["input_freeze"]["pilot_rows"]
         minimum = expected_rows * 3
-        if value.get("runtime_rows") != expected_rows or value.get("completed_inferences", 0) < minimum:
+        selection = json.loads((context.workdir / "pilot-selection.json").read_bytes())
+        conditioning = json.loads((self.root / "services/asr-eval-runtime/assets/language-conditioning-v1.json").read_bytes())["languages"]
+        conditioned = sum(
+            int(conditioning[row["language"]][provider] is not None)
+            for row in selection["rows"]
+            for provider in ("whisper", "meta_llm")
+        )
+        expected_completed = minimum + conditioned
+        expected_not_applicable = expected_rows * 2 - conditioned
+        if (
+            value.get("runtime_rows") != expected_rows
+            or value.get("completed_inferences") != expected_completed
+            or value.get("not_applicable") != expected_not_applicable
+        ):
             raise OperationRefusal("AGGREGATE_COMPLETENESS_DIFFERS", "required unconditioned rows are incomplete")
         output = context.workdir / "aggregate-report.json"
         write_exclusive(output, canonical_json(value))
@@ -712,8 +734,10 @@ class LiveOperations:
         errors = []
         try:
             self._update_kubeconfig(context)
-            _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", NAMESPACE, "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
-            _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", "nvidia-dra-driver", "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
+            if state.get("namespace"):
+                _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", NAMESPACE, "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
+            if state.get("dra_installed"):
+                _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", "nvidia-dra-driver", "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
         except Exception as exc:
             errors.append(f"kubernetes:{type(exc).__name__}")
         if state.get("instance_id"):
