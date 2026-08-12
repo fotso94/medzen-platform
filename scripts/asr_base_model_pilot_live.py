@@ -368,8 +368,19 @@ class LiveOperations:
                 findings = response.get("imageScanFindings", {}).get("enhancedFindings") or response.get("imageScanFindings", {}).get("findings", [])
                 normalized = set()
                 for finding in findings:
-                    package = (finding.get("packageVulnerabilityDetails", {}).get("vulnerablePackages") or [{}])[0]
-                    normalized.add((finding.get("name") or finding.get("packageVulnerabilityDetails", {}).get("vulnerabilityId"), package.get("name"), package.get("version"), finding.get("severity")))
+                    details = finding.get("packageVulnerabilityDetails", {})
+                    package = (details.get("vulnerablePackages") or [{}])[0]
+                    attributes = {
+                        item.get("key"): item.get("value")
+                        for item in finding.get("attributes", [])
+                        if isinstance(item, dict)
+                    }
+                    normalized.add((
+                        finding.get("name") or details.get("vulnerabilityId"),
+                        package.get("name") or attributes.get("package_name"),
+                        package.get("version") or attributes.get("package_version"),
+                        finding.get("severity"),
+                    ))
                 critical = {value for value in normalized if value[3] == "CRITICAL"}
                 high = {value for value in normalized if value[3] == "HIGH"}
                 if critical or high != EXPECTED_HIGHS:

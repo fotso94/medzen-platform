@@ -212,7 +212,7 @@ def run_pilot(
     receipts: list[dict[str, Any]] = []
     not_applicable = 0
     try:
-        for candidate in CANDIDATES:
+        for candidate in sorted(CANDIDATES):
             load_started = clock()
             load_receipt = receipt_root / f"backend-load-{candidate}.json"
             try:
