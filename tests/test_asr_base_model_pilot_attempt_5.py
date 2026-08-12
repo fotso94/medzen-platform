@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -11,6 +13,9 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_eval_digest_rescan import validate_security_binding
+from pipeline.asr_base_model_pilot_receipts import ReceiptStore
+from scripts.asr_base_model_pilot_fake import FakeOperations
+from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal, execute_attempt
 
 
 BINDINGS = ROOT / "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-001.json"
@@ -38,3 +43,23 @@ def test_attempt_5_security_binding_matches_executable_gate_exactly() -> None:
     assert validate_security_binding(bindings["security_gate"])["status"] == (
         "PASS_EXACT_SECURITY_GATE_BINDING"
     )
+
+
+def test_attempt_5_missing_scout_auth_refuses_before_attempt_envelope_or_aws(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
+    bindings = _plan_bindings()
+    ops = FakeOperations()
+    context = AttemptContext(
+        attempt=5,
+        bindings=bindings,
+        receipts=ReceiptStore(tmp_path / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
+        workdir=tmp_path,
+    )
+    with pytest.raises(OperationRefusal) as captured:
+        execute_attempt(ops, context)
+    assert captured.value.reason_code == "SCOUT_AUTHENTICATION_ABSENT"
+    assert ops.stage_order == []
+    assert not (tmp_path / "attempt-envelope.json").exists()

@@ -208,6 +208,15 @@ def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
 def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
     if context.attempt not in {1, 2, 3, 4, 5} or context.deadline_seconds != 10800:
         raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2/3/4/5 at 10800 seconds are permitted")
+    if context.attempt == 5:
+        try:
+            from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
+
+            validate_scout_prerequisites()
+        except Exception as exc:
+            if getattr(exc, "reason_code", None) is not None:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            raise
     context.workdir.mkdir(parents=True, exist_ok=True)
     envelope = write_attempt_envelope(context)
     stage_hashes: dict[str, str] = {}

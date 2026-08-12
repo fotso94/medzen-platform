@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -69,6 +70,10 @@ def _bindings() -> dict[str, Any]:
 
 
 def rehearse(output: Path) -> dict[str, Any]:
+    prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
+    prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
+    os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"
+    os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
     plan_result = validate_plan(exact_plan(bindings, 5), bindings, 5)
@@ -177,6 +182,14 @@ def rehearse(output: Path) -> dict[str, Any]:
         "scenarios": scenarios,
         "runner_source_hashes": {str(path.relative_to(ROOT)): _sha(path) for path in source_paths},
     }
+    if prior_user is None:
+        os.environ.pop("DOCKER_SCOUT_HUB_USER", None)
+    else:
+        os.environ["DOCKER_SCOUT_HUB_USER"] = prior_user
+    if prior_password is None:
+        os.environ.pop("DOCKER_SCOUT_HUB_PASSWORD", None)
+    else:
+        os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = prior_password
     write_exclusive(output, canonical_json(receipt))
     return {**receipt, "sha256": _sha(output)}
 
