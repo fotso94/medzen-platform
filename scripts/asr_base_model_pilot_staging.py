@@ -200,6 +200,7 @@ class ManagedMultipartCreateOnlyStore:
         self.uploaded_objects = 0
         self.reused_objects = 0
         self.part_retries = 0
+        self.verified_bytes = 0
 
     def download(self, bucket: str, key: str, destination: Path) -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -216,9 +217,16 @@ class ManagedMultipartCreateOnlyStore:
         part_number: int | None = None,
         part_bytes: int = 0,
         attempt: int | None = None,
+        object_completed_bytes: int | None = None,
     ) -> None:
         now = self.clock()
-        if status in {"PART_COMPLETE", "OBJECT_REUSED", "OBJECT_COMPLETE"}:
+        if status in {
+            "PART_COMPLETE",
+            "OBJECT_REUSED",
+            "OBJECT_COMPLETE",
+            "READBACK_PROGRESS",
+            "READBACK_COMPLETE",
+        }:
             self.last_progress = now
         _atomic_replace(
             self.heartbeat_path,
@@ -232,7 +240,9 @@ class ManagedMultipartCreateOnlyStore:
                 "part_number": part_number,
                 "part_bytes": part_bytes,
                 "part_attempt": attempt,
+                "object_completed_bytes": object_completed_bytes,
                 "completed_bytes": self.completed_bytes,
+                "verified_bytes": self.verified_bytes,
                 "seconds_since_byte_progress": round(now - self.last_progress, 3),
                 "zero_progress_watchdog_seconds": self.zero_progress_seconds,
             },
@@ -303,14 +313,36 @@ class ManagedMultipartCreateOnlyStore:
         response = self.s3.get_object(Bucket=bucket, Key=key, VersionId=version_id)
         measured = hashlib.sha256()
         measured_bytes = 0
+        self._heartbeat(
+            status="READBACK_STARTED",
+            bucket=bucket,
+            key=key,
+            object_bytes=size,
+        )
         for block in iter(lambda: response["Body"].read(8 * 1024 * 1024), b""):
             measured.update(block)
             measured_bytes += len(block)
+            self.verified_bytes += len(block)
+            self._heartbeat(
+                status="READBACK_PROGRESS",
+                bucket=bucket,
+                key=key,
+                object_bytes=size,
+                part_bytes=len(block),
+                object_completed_bytes=measured_bytes,
+            )
+            self._assert_progress_bound()
         if measured.hexdigest() != digest or measured_bytes != size:
             raise StagingRefusal(
                 "PRESTAGED_OBJECT_FULL_READBACK_DIFFERS",
                 "full-object readback differs from the local SHA-256",
             )
+        self._heartbeat(
+            status="READBACK_COMPLETE",
+            bucket=bucket,
+            key=key,
+            object_bytes=size,
+        )
 
     def upload_create_only(self, source: Path, bucket: str, key: str, sha256: str) -> str:
         digest, size = sha256_file(source)
@@ -470,6 +502,7 @@ class ManagedMultipartCreateOnlyStore:
             "reused_objects": self.reused_objects,
             "reused_bytes": self.reused_bytes,
             "part_retries": self.part_retries,
+            "verified_bytes": self.verified_bytes,
             "elapsed_seconds": round(elapsed, 3),
             "measured_uplink_bits_per_second": round(measured, 2),
             "heartbeat_path_external": True,
