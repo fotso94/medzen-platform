@@ -1,0 +1,65 @@
+{
+  "record": "ASR_EVALUATION_EXECUTOR_SUCCESSOR_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-004",
+  "status": "PASS_ATTEMPT_2_AUTHORIZATION_AND_DIAGNOSTIC_CORRECTION_LOCAL_ONLY",
+  "recorded_utc": "2026-08-12T02:25:06Z",
+  "scope": "Local-only qualification of the representation and invocation correction required after packet 2026-002 attempt 1 refused before mutation.",
+  "historical_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL.json",
+    "sha256": "cd7ee9e9abd089ea4b5fddde1bddd3ff94cd856f95ab4ea71f92c6f933def215",
+    "edited": false
+  },
+  "correction_source": {
+    "commit": "53b8354bba91d6cd26ed4febcda98bec75101dd0",
+    "runner_sha256": "f2514851d535364bbbebfb244c50843d46ccbb6daca0b28fbe71a98e21d05b76",
+    "live_operations_sha256": "285369326c5f617b051b2478d90941510ff16963c46194cefbb9975a3cb5367e",
+    "cold_rehearsal_script_sha256": "69c251a9acff2174489ab8b1b42214f5b71a453baae8711f57a7e5275bd239c3"
+  },
+  "corrections": [
+    "A single validator requires a top-level attempts object, an explicit authorized_numbers list, exactly 10,800 seconds, non-transferability and membership of the requested attempt.",
+    "Reason and outcome extraction is attribute-based so a duplicate Python module identity cannot erase a typed refusal code or safe detail.",
+    "The successor authorizes only numbered attempt 2; attempt 1 cannot be reused.",
+    "The live runner is invoked as python -m scripts.asr_base_model_pilot_runner.",
+    "The dependency interpreter remains outside the reviewed worktree; the worktree must have an empty porcelain status before mutation."
+  ],
+  "cold_rehearsal": {
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD/cold-rehearsal.json",
+    "sha256": "5f144facaefe459dd6cd2184919bbc54b2fe2bbe4d257bb37558adc3ddf4235a",
+    "runs": 2,
+    "byte_identical": true,
+    "attempt": 2,
+    "authorization_schema": "PASS_AUTHORIZATION_SCHEMA",
+    "full_pass_runs": 1,
+    "injected_failure_runs": 3,
+    "zero_state_after_every_scenario": true,
+    "aws_calls": 0,
+    "kubectl_calls": 0
+  },
+  "tests": {
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "deselected": 0,
+    "new_regressions": [
+      "duplicate-module typed refusal retains reason code and safe text",
+      "attempt-2-only authorization accepts attempt 2 and refuses attempt 1",
+      "missing top-level attempts refuses with AUTHORIZATION_ATTEMPTS_ABSENT"
+    ]
+  },
+  "image_and_risk_identity": {
+    "image_context_changed_since_source_commit_5d1b8a0": false,
+    "rescan_required_by_this_executor_only_change": false,
+    "risk_acceptance_path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266"
+  },
+  "execution": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_2_started": false,
+    "owner_approval_required": true
+  }
+}
