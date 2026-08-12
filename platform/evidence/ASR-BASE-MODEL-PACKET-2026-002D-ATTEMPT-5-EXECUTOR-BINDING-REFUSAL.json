@@ -1,0 +1,88 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_EXECUTOR_BINDING_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002D-ATTEMPT-5-EXECUTOR-BINDING-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T17:29:50Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "terminal_outcome": "FAILED_CLOSED_EXECUTION",
+  "attempt": 5,
+  "attempt_consumed": true,
+  "failure_stage": "deadline_identity_and_acceptance",
+  "reason_code": "EXECUTOR_SOURCE_HASH_DIFFERS",
+  "root_cause": "The reviewed 002D pilot bindings omitted executor.oci_publication_sha256 while LiveOperations.deadline_identity_and_acceptance still requires that exact field and file hash for every attempt. Attempt 5 skips image publication, but the shared source-integrity guard remained unconditional. The runner correctly refused before creating the AWS deadline action.",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002D.json",
+    "sha256": "9f8dd983178b8b0f07782996d8ae769ed992cffd20d3b57145ebd3c2fec47fc6",
+    "attempts_authorized": [5],
+    "attempts_remaining": []
+  },
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002D-attempt-5.md",
+    "sha256": "1c6859219369a0f7d8d39ca05760f5c7610cb7a00e02cddff84e47ff5fa64aa9",
+    "reviewed_commit": "1914d1ca24e085d03aa2891a019bf0b37acc1fc8"
+  },
+  "source_integrity_comparison": {
+    "runner": {
+      "bound": "a1957530f803245505d8cf5b65316a6d06c988f7760cea1a5ad319371f2854ee",
+      "measured": "a1957530f803245505d8cf5b65316a6d06c988f7760cea1a5ad319371f2854ee",
+      "matches": true
+    },
+    "live_operations": {
+      "bound": "3655bc9a69d693c5a6bfc8bd585d99ef1d38017c08576d3e41b3ee4616ae1f10",
+      "measured": "3655bc9a69d693c5a6bfc8bd585d99ef1d38017c08576d3e41b3ee4616ae1f10",
+      "matches": true
+    },
+    "oci_publication": {
+      "bound": null,
+      "measured": "a7f3f287990114b660873122cd4a557dfde79ec0e177afada740fad1c7369405",
+      "matches": false,
+      "attempt_5_publication_used": false
+    }
+  },
+  "scanner_prerequisite": {
+    "status": "PASS_SCOUT_AUTHENTICATED",
+    "scanner": "Docker Scout CLI 1.18.3",
+    "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "local_exact_image_packages_indexed": 305,
+    "local_exact_image_vulnerability_count": 4,
+    "credentials_recorded_or_persisted": false
+  },
+  "immutable_receipts": {
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002D-A5-LIVE/attempt-envelope.json",
+      "sha256": "ab1af9f7c5ccdbc1ac4ad5386f0ebda90c370589a243420af50a6305ed7d099b"
+    },
+    "deadline_identity_and_acceptance": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002D-A5-LIVE/receipts/deadline_identity_and_acceptance.json",
+      "sha256": "e8bb37e9bc83c8daab8e084be914c1feca31afc61196501ced51027e15aa4172"
+    },
+    "cleanup_and_expiry": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002D-A5-LIVE/receipts/cleanup_and_expiry.json",
+      "sha256": "ab5fc37441d1d1688205f0e3fd4b9def176e392a850edbd07688778831c56e8a"
+    },
+    "terminal_result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002D-A5-LIVE/result.json",
+      "sha256": "c16443d7234cfd79d7c52a8248880f211f1eb7c5e19174265556cf42d226732a"
+    }
+  },
+  "cleanup_and_scope": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "deadline_actions": 0,
+    "evaluation_endpoints": 0,
+    "evaluation_volumes": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "ecr_rescan_started": false,
+    "image_uploads": 0,
+    "model_or_audio_staged": false,
+    "production_touched": false
+  },
+  "required_successor": {
+    "binding_fix": "Either restore the exact oci_publication_sha256 binding because the shared integrity gate checks it, or prospectively make the integrity gate attempt-aware and bind/test that behavior. Do not weaken source-integrity verification silently.",
+    "regression_test": "Run deadline_identity_and_acceptance against the exact real successor bindings object, not a reduced fixture, and prove all required source keys before approval.",
+    "governance": "Packet 2026-002D, AUTH-2026-002D, attempt 5 and these receipts are write-once. Any retry requires a new reviewed packet, write-once authorization and fresh non-transferable allowance."
+  }
+}
