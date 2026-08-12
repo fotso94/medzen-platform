@@ -74,7 +74,7 @@ not an image, CVE, risk-acceptance, storage, timeout or authentication change.
 
 All 13 live executor modules are bound unconditionally in
 `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.json`, SHA-256
-`87a1548fd72c461399338af5bd2040fdd9448272b552e18db723a9f4e1c832c7`.
+`ac40dd143ecf271f16ff3130b022998751ad40d6c7d0db8c9314fbb1cc04ece6`.
 No module can be omitted conditionally.
 
 ## $0 real-execution Scout preflight
@@ -96,14 +96,15 @@ execution environment:
 - AWS calls/mutations, kubectl calls, GPU and cost: all zero
 
 The later bindings changes only populate the diagnosis/preflight hashes, bind
-the preflight receipt, and bind the final rehearsal. Image, scanner, security
-gate and execution scope did not change.
+the preflight receipt, bind the final rehearsal, and bind the runner change
+that enforces the preflight before the attempt envelope. Image, scanner,
+security gate and AWS execution scope did not change.
 
 ## Final committed-bindings cold rehearsal
 
 The final cold rehearsal is
-`platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v3/cold-rehearsal.json`,
-SHA-256 `0fbd3b6fac5da94e692530a300cb585d792c20093950fee6c82f30d53356bcb8`.
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v4/cold-rehearsal.json`,
+SHA-256 `519795cce24f02c43cb534c80d336a79a85ae176513938b415d83233deead8ff`.
 
 It loads the committed 002F bindings, validates all 13 module hashes, exercises
 all 11 stages with one full PASS and five injected refusal paths, proves the
