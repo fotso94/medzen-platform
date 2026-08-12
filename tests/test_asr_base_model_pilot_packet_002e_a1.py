@@ -78,6 +78,6 @@ def test_packet_is_not_executable_and_requires_a_fresh_complete_dry_run() -> Non
     assert "NOT EXECUTABLE" in text
     assert "continuing unconsumed numbered attempt 6" in text
     assert "No AWS execution is authorized" in text
-    assert "new committed read-only run" in text
+    assert "new\ncommitted read-only run" in text
     assert "No live\nexecutor source changed" in text
     assert "no seventh attempt" in text
