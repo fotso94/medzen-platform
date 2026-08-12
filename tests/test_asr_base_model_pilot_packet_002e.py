@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,6 +15,7 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_pilot_integrity import (
     EXECUTOR_MODULE_PATHS,
+    LEGACY_EXECUTOR_MODULE_PATHS,
     read_committed_artifact,
     validate_executor_module_bindings,
 )
@@ -35,10 +37,13 @@ def _bindings() -> dict:
 
 def test_attempt_six_binds_every_live_module_unconditionally() -> None:
     value = _bindings()
-    assert tuple(value["executor_modules"]) == EXECUTOR_MODULE_PATHS
-    assert validate_executor_module_bindings(ROOT, value["executor_modules"])["status"] == (
-        "PASS_ALL_EXECUTOR_MODULE_HASHES"
-    )
+    assert tuple(value["executor_modules"]) == LEGACY_EXECUTOR_MODULE_PATHS
+    reviewed = value["executor_source_commit"]
+    for relative, expected in value["executor_modules"].items():
+        body = subprocess.run(
+            ["git", "show", f"{reviewed}:{relative}"], cwd=ROOT, capture_output=True, check=True
+        ).stdout
+        assert hashlib.sha256(body).hexdigest() == expected
     assert value["executor_integrity_policy"] == {
         "all_module_hashes_required_on_every_attempt": True,
         "conditional_integrity_guards_permitted": False,
@@ -57,7 +62,7 @@ def test_rehearsal_loaded_the_actual_committed_bindings_not_a_fixture() -> None:
         "sha256": _sha(BINDINGS),
     }
     assert read_committed_artifact(ROOT, BINDINGS) == BINDINGS.read_bytes()
-    assert value["executor_module_integrity"]["module_count"] == len(EXECUTOR_MODULE_PATHS)
+    assert value["executor_module_integrity"]["module_count"] == len(LEGACY_EXECUTOR_MODULE_PATHS)
     assert value["attempt_6_security_rehearsal"]["aligned_pass"] is True
     assert value["full_pass_runs"] == 1
     assert value["injected_failure_runs"] == 5

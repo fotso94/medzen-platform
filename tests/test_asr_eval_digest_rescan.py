@@ -19,6 +19,7 @@ from scripts.asr_eval_digest_rescan import (
     OCI_INDEX,
     OCI_MANIFEST,
     reconstruct_exact_child,
+    create_docker_archive,
     validate_basic_scan,
     validate_scout_sarif,
     validate_security_binding,
@@ -126,6 +127,30 @@ def test_aligned_digest_reconstruction_and_dual_scan_pass(tmp_path: Path) -> Non
         "imageScanFindings": {"findings": [], "findingSeverityCounts": {}},
     })["status"] == "PASS_ECR_BASIC_OS_GATE"
     assert validate_scout_sarif(scout_sarif())["status"] == "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE"
+
+
+def test_verified_ecr_child_becomes_a_scout_readable_docker_archive(tmp_path: Path) -> None:
+    ecr = FakeEcr()
+    image = {**ecr.image, "local_tag": "medzen-asr-eval-runtime:pilot-exact"}
+    layout = tmp_path / "oci"
+    reconstruct_exact_child(ecr, "medzen-asr-eval-runtime", image, layout, downloader=ecr.download)
+    result = create_docker_archive(layout, tmp_path / "exact.tar", image)
+    assert result["status"] == "PASS_EXACT_DOCKER_ARCHIVE"
+    assert result["child_digest"] == image["linux_amd64_digest"]
+    assert result["all_payload_objects_from_verified_ecr_layout"] is True
+    assert not (layout / "manifest.json").exists()
+
+
+def test_docker_archive_refuses_a_corrupt_verified_layout_payload(tmp_path: Path) -> None:
+    ecr = FakeEcr()
+    image = {**ecr.image, "local_tag": "medzen-asr-eval-runtime:pilot-exact"}
+    layout = tmp_path / "oci"
+    reconstruct_exact_child(ecr, "medzen-asr-eval-runtime", image, layout, downloader=ecr.download)
+    layer = layout / "blobs/sha256" / ecr.layer["digest"].removeprefix("sha256:")
+    layer.write_bytes(layer.read_bytes() + b"corrupt")
+    with pytest.raises(DigestRescanRefusal) as captured:
+        create_docker_archive(layout, tmp_path / "exact.tar", image)
+    assert captured.value.reason_code == "SCOUT_ARCHIVE_PAYLOAD_BYTES_DIFFER"
 
 
 def test_wrong_digest_refuses_before_scout(tmp_path: Path) -> None:

@@ -23,6 +23,7 @@ from typing import Any
 
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
+from scripts.asr_external_tool import ExternalToolTimeout, run_external
 from scripts.asr_base_model_pilot_assets import (
     AssetRefusal,
     ObjectStore,
@@ -88,19 +89,21 @@ def _sha(path: Path) -> str:
 
 
 def _run(command: list[str], *, cwd: Path | None = None, stdin: bytes | None = None,
-         timeout: int = 900, check: bool = True) -> subprocess.CompletedProcess[bytes]:
-    completed = subprocess.run(
-        command,
-        cwd=cwd,
-        input=stdin,
-        capture_output=True,
-        check=False,
-        timeout=timeout,
-    )
+         timeout: int = 900, check: bool = True,
+         journal_path: Path | None = None) -> subprocess.CompletedProcess[bytes]:
+    try:
+        completed, diagnostic = run_external(
+            command, cwd=cwd, input=stdin, timeout=timeout, journal_path=journal_path
+        )
+    except ExternalToolTimeout as exc:
+        raise OperationRefusal(
+            "BOUNDED_COMMAND_TIMEOUT",
+            f"{Path(command[0]).name} timed out: {canonical_json(exc.diagnostic).decode().strip()}",
+        ) from exc
     if check and completed.returncode != 0:
         raise OperationRefusal(
             "BOUNDED_COMMAND_REFUSED",
-            f"{Path(command[0]).name} exited {completed.returncode}",
+            f"{Path(command[0]).name} refused: {canonical_json(diagnostic).decode().strip()}",
         )
     return completed
 
@@ -505,7 +508,7 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt in {5, 6}:
+        if context.attempt in {5, 6, 7}:
             exact = self._existing_exact_image(image)
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))

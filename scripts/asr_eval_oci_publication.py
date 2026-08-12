@@ -19,6 +19,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable
 
+from scripts.asr_external_tool import ExternalToolTimeout, run_external
+
 
 OCI_INDEX = "application/vnd.oci.image.index.v1+json"
 OCI_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
@@ -194,15 +196,19 @@ def extract_oci_archive(archive: Path, destination: Path) -> None:
 
 
 def export_exact_image(local_tag: str, destination: Path, *, runner=subprocess.run) -> None:
-    completed = runner(
-        ["docker", "image", "save", "--output", str(destination), local_tag],
-        capture_output=True,
-        check=False,
-        timeout=3600,
-    )
+    command = ["docker", "image", "save", "--output", str(destination), local_tag]
+    try:
+        if runner is subprocess.run:
+            completed, diagnostic = run_external(command, timeout=3600)
+        else:
+            completed = runner(command, capture_output=True, check=False, timeout=3600)
+            diagnostic = {"returncode": completed.returncode}
+    except ExternalToolTimeout as exc:
+        raise OciPublicationRefusal(
+            "OCI_EXPORT_TIMEOUT", f"docker image save timed out: {exc.diagnostic}"
+        ) from exc
     if completed.returncode != 0:
-        stderr = " ".join(completed.stderr.decode(errors="replace").split())[:512]
-        raise OciPublicationRefusal("OCI_EXPORT_REFUSED", f"docker image save exited {completed.returncode}: {stderr}")
+        raise OciPublicationRefusal("OCI_EXPORT_REFUSED", f"docker image save refused: {diagnostic}")
 
 
 def _chunks(stream: BinaryIO, size: int = ECR_PART_BYTES) -> Iterable[tuple[int, bytes]]:

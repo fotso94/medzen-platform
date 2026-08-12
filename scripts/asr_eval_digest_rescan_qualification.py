@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +16,7 @@ from scripts.asr_eval_digest_rescan import (
     scan_exact_ecr_child,
     validate_security_binding,
 )
+from scripts.asr_external_tool import run_external
 
 
 ACCOUNT = "558069890522"
@@ -38,12 +38,19 @@ def _write_once(path: Path, body: bytes) -> None:
 
 
 def _git_head_and_clean(root: Path) -> str:
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], cwd=root, text=True, capture_output=True, check=True
-    ).stdout.strip()
-    status = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=root, text=True, capture_output=True, check=True
-    ).stdout
+    head_result, head_diagnostic = run_external(
+        ["git", "rev-parse", "HEAD"], cwd=root, text=True, timeout=60
+    )
+    status_result, status_diagnostic = run_external(
+        ["git", "status", "--porcelain"], cwd=root, text=True, timeout=60
+    )
+    if head_result.returncode != 0 or status_result.returncode != 0:
+        raise DigestRescanRefusal(
+            "QUALIFICATION_REPOSITORY_UNREADABLE",
+            f"qualification git prerequisite refused: {head_diagnostic} {status_diagnostic}",
+        )
+    head = head_result.stdout.strip()
+    status = status_result.stdout
     if status:
         raise DigestRescanRefusal("QUALIFICATION_WORKTREE_DIRTY", "qualification requires a clean worktree")
     return head

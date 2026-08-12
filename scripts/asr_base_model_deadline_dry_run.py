@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,7 @@ from pipeline.asr_base_model_pilot_receipts import ReceiptStore, canonical_json,
 from scripts.asr_base_model_pilot_live import CALLER, LiveOperations
 from scripts.asr_base_model_pilot_integrity import read_committed_artifact
 from scripts.asr_base_model_pilot_runner import AttemptContext, stage_deadline_identity_and_acceptance
+from scripts.asr_external_tool import run_external
 
 
 def _sha(path: Path) -> str:
@@ -22,9 +22,12 @@ def _sha(path: Path) -> str:
 
 
 def _git(root: Path, *args: str) -> str:
-    return subprocess.run(
-        ["git", *args], cwd=root, text=True, capture_output=True, check=True
-    ).stdout.strip()
+    completed, diagnostic = run_external(
+        ["git", *args], cwd=root, text=True, timeout=60
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"git dry-run prerequisite refused: {diagnostic}")
+    return completed.stdout.strip()
 
 
 def dry_run(

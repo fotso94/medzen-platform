@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 
@@ -38,7 +39,15 @@ def test_packet_binds_diagnosis_roundtrip_qualification_and_rehearsal() -> None:
     assert bindings["exact_image_upload_proof"]["sha256"] == sha(ROUNDTRIP)
     assert bindings["qualification"]["sha256"] == sha(QUALIFICATION)
     assert bindings["executor"]["cold_rehearsal_receipt_sha256"] == sha(COLD)
-    assert bindings["executor"]["oci_publication_sha256"] == sha(OCI_PUBLISHER)
+    # Packet 002C is write-once history: compare its binding to the committed
+    # source at its reviewed commit, not to a later successor's worktree bytes.
+    committed = subprocess.run(
+        ["git", "show", f"67215b0:{OCI_PUBLISHER.relative_to(ROOT)}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout
+    assert bindings["executor"]["oci_publication_sha256"] == hashlib.sha256(committed).hexdigest()
 
 
 def test_diagnosis_names_layer_and_does_not_overclaim_transport_trigger() -> None:

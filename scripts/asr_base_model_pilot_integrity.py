@@ -4,12 +4,13 @@
 from __future__ import annotations
 
 import hashlib
-import subprocess
 from pathlib import Path
 from typing import Any
 
+from scripts.asr_external_tool import run_external
 
-EXECUTOR_MODULE_PATHS = (
+
+LEGACY_EXECUTOR_MODULE_PATHS = (
     "pipeline/asr_base_model_pilot_receipts.py",
     "scripts/asr_base_model_pilot_assets.py",
     "scripts/asr_base_model_ecr_scanning.py",
@@ -21,6 +22,13 @@ EXECUTOR_MODULE_PATHS = (
     "scripts/asr_base_model_pilot_runner.py",
     "scripts/asr_eval_digest_rescan.py",
     "scripts/asr_eval_oci_publication.py",
+)
+EXECUTOR_MODULE_PATHS = (
+    *LEGACY_EXECUTOR_MODULE_PATHS[:9],
+    "scripts/asr_external_tool.py",
+    *LEGACY_EXECUTOR_MODULE_PATHS[9:10],
+    "scripts/asr_eval_scout_preflight.py",
+    *LEGACY_EXECUTOR_MODULE_PATHS[10:],
 )
 
 
@@ -49,11 +57,10 @@ def read_committed_artifact(root: Path, path: Path) -> bytes:
             "COMMITTED_ARTIFACT_ABSENT",
             f"committed artifact is absent: {relative}",
         )
-    completed = subprocess.run(
+    completed, _ = run_external(
         ["git", "show", f"HEAD:{relative}"],
         cwd=root,
-        capture_output=True,
-        check=False,
+        timeout=60,
     )
     if completed.returncode != 0:
         raise PilotIntegrityRefusal(
@@ -74,13 +81,18 @@ def validate_executor_module_bindings(
     bindings: Any,
 ) -> dict[str, Any]:
     """Require a complete, exact hash map for every live executor module."""
-    if not isinstance(bindings, dict) or set(bindings) != set(EXECUTOR_MODULE_PATHS):
+    allowed = (
+        LEGACY_EXECUTOR_MODULE_PATHS
+        if isinstance(bindings, dict) and set(bindings) == set(LEGACY_EXECUTOR_MODULE_PATHS)
+        else EXECUTOR_MODULE_PATHS
+    )
+    if not isinstance(bindings, dict) or set(bindings) != set(allowed):
         raise PilotIntegrityRefusal(
             "EXECUTOR_MODULE_SET_DIFFERS",
             "executor module binding set is missing, extra or ambiguous",
         )
     measured: dict[str, str] = {}
-    for relative in EXECUTOR_MODULE_PATHS:
+    for relative in allowed:
         expected = bindings.get(relative)
         path = root / relative
         if not isinstance(expected, str) or len(expected) != 64 or not path.is_file():
@@ -104,12 +116,11 @@ def validate_executor_module_bindings(
 
 
 def _git(root: Path, *arguments: str) -> str:
-    completed = subprocess.run(
+    completed, _ = run_external(
         ["git", *arguments],
         cwd=root,
         text=True,
-        capture_output=True,
-        check=False,
+        timeout=60,
     )
     if completed.returncode != 0:
         raise PilotIntegrityRefusal(
@@ -128,11 +139,10 @@ def validate_governance_commit_boundary(
 ) -> dict[str, Any]:
     """Allow only the reviewed authorization and dry-run receipt after review."""
     head = _git(root, "rev-parse", "HEAD").strip()
-    ancestor = subprocess.run(
+    ancestor, _ = run_external(
         ["git", "merge-base", "--is-ancestor", reviewed_commit, head],
         cwd=root,
-        capture_output=True,
-        check=False,
+        timeout=60,
     )
     if ancestor.returncode != 0:
         raise PilotIntegrityRefusal(

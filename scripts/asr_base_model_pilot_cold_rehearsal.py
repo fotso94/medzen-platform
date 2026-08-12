@@ -36,6 +36,7 @@ from scripts.asr_base_model_pilot_runner import (
     validate_authorization_payload,
 )
 from scripts.asr_eval_digest_rescan import validate_security_binding
+from scripts.asr_external_tool import run_external
 
 
 SCENARIOS = {
@@ -53,22 +54,26 @@ def _sha(path: Path) -> str:
 
 
 def _committed_clean_head() -> str:
-    status = subprocess.run(
+    status_result, status_diagnostic = run_external(
         ["git", "status", "--porcelain=v1"],
         cwd=ROOT,
         text=True,
-        capture_output=True,
-        check=True,
-    ).stdout
+        timeout=60,
+    )
+    if status_result.returncode != 0:
+        raise RuntimeError(f"cold-rehearsal git status refused: {status_diagnostic}")
+    status = status_result.stdout
     if status:
         raise RuntimeError("cold rehearsal requires a clean committed worktree")
-    return subprocess.run(
+    completed, diagnostic = run_external(
         ["git", "rev-parse", "HEAD"],
         cwd=ROOT,
         text=True,
-        capture_output=True,
-        check=True,
-    ).stdout.strip()
+        timeout=60,
+    )
+    if completed.returncode != 0:
+        raise RuntimeError(f"cold-rehearsal git prerequisite refused: {diagnostic}")
+    return completed.stdout.strip()
 
 
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
@@ -96,26 +101,28 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     source_integrity = validate_executor_module_bindings(
         ROOT, bindings.get("executor_modules")
     )
-    plan_result = validate_plan(exact_plan(bindings, 6), bindings, 6)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 6)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 6)
+    attempt = bindings["attempts"]["authorized_numbers"][0]
+    authorization_id = bindings["authorization"]["id"]
+    plan_result = validate_plan(exact_plan(bindings, attempt), bindings, attempt)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], attempt)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], attempt)
     authorization_result = validate_authorization_payload(
         {
-            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002E",
+            "id": authorization_id,
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
             "attempts": {
-                "authorized_numbers": [6],
+                "authorized_numbers": [attempt],
                 "maximum": 1,
                 "seconds_each": 10800,
                 "non_transferable": True,
             },
         },
-        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002E",
+        expected_id=authorization_id,
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
-        attempt=6,
+        attempt=attempt,
     )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
@@ -124,7 +131,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=6,
+                attempt=attempt,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -166,7 +173,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "fixture_used": False,
         },
         "rehearsal_source_commit": rehearsal_commit,
-        "attempt_6_security_rehearsal": {
+        f"attempt_{attempt}_security_rehearsal": {
             "aligned_pass": True,
             "wrong_digest_refuses": True,
             "extra_finding_refuses": True,
@@ -227,7 +234,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002E.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.json",
     )
     args = parser.parse_args()
     try:

@@ -25,6 +25,7 @@ from pipeline.asr_base_model_pilot_receipts import (  # noqa: E402
     write_exclusive,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan  # noqa: E402
+from scripts.asr_external_tool import configure_external_tool_journal  # noqa: E402
 
 
 class OperationRefusal(RuntimeError):
@@ -228,8 +229,18 @@ def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
 
 
 def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in {1, 2, 3, 4, 5, 6} or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2/3/4/5/6 at 10800 seconds are permitted")
+    prior_journal = configure_external_tool_journal(
+        context.workdir / "external-tool-diagnostics"
+    )
+    try:
+        return _execute_attempt(ops, context)
+    finally:
+        configure_external_tool_journal(prior_journal)
+
+
+def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
+    if context.attempt not in {1, 2, 3, 4, 5, 6, 7} or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 7 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(
@@ -255,7 +266,7 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
                 "COMMITTED_STAGE_ONE_DRY_RUN_BINDING_DIFFERS",
                 "committed deadline dry-run receipt differs from execution artifacts",
             )
-    if context.attempt in {5, 6}:
+    if context.attempt in {5, 6, 7}:
         try:
             from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
 

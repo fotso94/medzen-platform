@@ -12,6 +12,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable
 
+from scripts.asr_external_tool import ExternalToolTimeout, run_external
+
 
 OCI_INDEX = "application/vnd.oci.image.index.v1+json"
 OCI_MANIFEST = "application/vnd.oci.image.manifest.v1+json"
@@ -292,7 +294,11 @@ def validate_scout_prerequisites(
     *,
     runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
 ) -> dict[str, Any]:
-    version = runner(["docker", "scout", "version"], capture_output=True, check=False, timeout=60)
+    command = ["docker", "scout", "version"]
+    if runner is subprocess.run:
+        version, _ = run_external(command, timeout=60)
+    else:
+        version = runner(command, capture_output=True, check=False, timeout=60)
     version_text = (version.stdout + version.stderr).decode(errors="replace")
     if (
         version.returncode != 0
@@ -323,33 +329,134 @@ def validate_scout_prerequisites(
 def run_scout(
     layout: Path,
     output: Path,
+    image: dict[str, Any],
     *,
     runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+    diagnostics_path: Path | None = None,
 ) -> dict[str, Any]:
     prerequisites = validate_scout_prerequisites(runner=runner)
-    completed = runner(
-        [
-            "docker", "scout", "cves", "--format", "sarif",
-            "--only-severity", "critical,high", "--output", str(output),
-            f"oci-dir://{layout}",
-        ],
-        capture_output=True,
-        check=False,
-        timeout=1800,
+    archive = output.parent / "exact-ecr-child.docker.tar"
+    docker_archive = create_docker_archive(layout, archive, image)
+    scan = scan_archive_with_scout(
+        archive,
+        output,
+        runner=runner,
+        diagnostics_path=diagnostics_path,
     )
+    return {
+        **scan,
+        "scanned_oci_layout": str(layout),
+        "artifact_mode": "DOCKER_ARCHIVE_OF_DIGEST_VERIFIED_ECR_CHILD",
+        "remote_reconstruction": {
+            "path": str(layout),
+            "verified_before_local_archive": True,
+        },
+        "docker_archive": docker_archive,
+        "prerequisites": prerequisites,
+    }
+
+
+def scan_archive_with_scout(
+    archive: Path,
+    output: Path,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+    diagnostics_path: Path | None = None,
+) -> dict[str, Any]:
+    """Execute the pinned scanner and retain a bounded diagnostic on every outcome."""
+    command = [
+        "docker", "scout", "cves", "--format", "sarif",
+        "--only-severity", "critical,high", "--output", str(output),
+        f"archive://{archive}",
+    ]
+    try:
+        if runner is subprocess.run:
+            completed, diagnostic = run_external(command, timeout=1800)
+        else:
+            completed = runner(command, capture_output=True, check=False, timeout=1800)
+            stdout = completed.stdout or b""
+            stderr = completed.stderr or b""
+            diagnostic = {
+                "status": "PASS" if completed.returncode == 0 else "NONZERO_EXIT",
+                "returncode": completed.returncode,
+                "stdout_bytes": len(stdout),
+                "stderr_bytes": len(stderr),
+            }
+    except ExternalToolTimeout as exc:
+        diagnostic = exc.diagnostic
+        if diagnostics_path is not None:
+            diagnostics_path.write_bytes(canonical_json(diagnostic))
+        raise DigestRescanRefusal(
+            "SCOUT_EXECUTION_TIMEOUT",
+            f"Docker Scout exceeded its timeout: {canonical_json(diagnostic).decode().strip()}",
+        ) from exc
+    if diagnostics_path is not None:
+        diagnostics_path.write_bytes(canonical_json(diagnostic))
     if completed.returncode not in {0, 2} or not output.is_file():
         raise DigestRescanRefusal(
             "SCOUT_EXECUTION_REFUSED",
-            "Docker Scout digest rescan did not produce SARIF",
+            f"Docker Scout digest rescan did not produce SARIF: {canonical_json(diagnostic).decode().strip()}",
         )
     value = json.loads(output.read_bytes())
     result = validate_scout_sarif(value)
     return {
         **result,
         "sarif_sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
-        "scanned_oci_layout": str(layout),
         "scan_mode": "LIVE_DOCKER_SCOUT_CVES",
-        "prerequisites": prerequisites,
+        "external_tool_diagnostic": diagnostic,
+    }
+
+
+def create_docker_archive(layout: Path, archive: Path, image: dict[str, Any]) -> dict[str, Any]:
+    """Add Docker's metadata file without changing any verified image bytes."""
+    child = json.loads(
+        (layout / "blobs" / "sha256" / image["linux_amd64_digest"].removeprefix("sha256:")).read_bytes()
+    )
+    child_path = layout / "blobs" / "sha256" / image["linux_amd64_digest"].removeprefix("sha256:")
+    if hashlib.sha256(child_path.read_bytes()).hexdigest() != image["linux_amd64_digest"].removeprefix("sha256:"):
+        raise DigestRescanRefusal("SCOUT_ARCHIVE_CHILD_BYTES_DIFFER", "ECR child bytes differ")
+    config = child.get("config", {})
+    layers = child.get("layers")
+    if config.get("digest") != image["config_digest"] or not isinstance(layers, list):
+        raise DigestRescanRefusal(
+            "SCOUT_ARCHIVE_BINDING_DIFFERS", "verified ECR child cannot form the exact Docker archive"
+        )
+    for descriptor in [config, *layers]:
+        digest, size = _descriptor(descriptor)
+        path = layout / "blobs" / "sha256" / digest.removeprefix("sha256:")
+        if not path.is_file() or path.stat().st_size != size or hashlib.sha256(path.read_bytes()).hexdigest() != digest.removeprefix("sha256:"):
+            raise DigestRescanRefusal("SCOUT_ARCHIVE_PAYLOAD_BYTES_DIFFER", f"Docker archive payload differs: {digest}")
+    manifest = [{
+        "Config": f"blobs/sha256/{image['config_digest'].removeprefix('sha256:')}",
+        "RepoTags": [image["local_tag"]],
+        "Layers": [f"blobs/sha256/{item['digest'].removeprefix('sha256:')}" for item in layers],
+    }]
+    manifest_path = layout / "manifest.json"
+    manifest_path.write_bytes(json.dumps(manifest, separators=(",", ":")).encode())
+    command = [
+        "tar", "-cf", str(archive), "-C", str(layout),
+        "oci-layout", "index.json", "manifest.json", "blobs",
+    ]
+    try:
+        completed, diagnostic = run_external(command, timeout=1800)
+    except ExternalToolTimeout as exc:
+        raise DigestRescanRefusal(
+            "SCOUT_ARCHIVE_TIMEOUT", f"Docker archive creation timed out: {canonical_json(exc.diagnostic).decode().strip()}"
+        ) from exc
+    finally:
+        manifest_path.unlink(missing_ok=True)
+    if completed.returncode != 0 or not archive.is_file():
+        raise DigestRescanRefusal(
+            "SCOUT_ARCHIVE_REFUSED", f"Docker archive creation refused: {canonical_json(diagnostic).decode().strip()}"
+        )
+    return {
+        "status": "PASS_EXACT_DOCKER_ARCHIVE",
+        "archive_bytes": archive.stat().st_size,
+        "child_digest": image["linux_amd64_digest"],
+        "config_digest": image["config_digest"],
+        "layer_count": len(layers),
+        "all_payload_objects_from_verified_ecr_layout": True,
+        "generated_metadata_only": ["manifest.json"],
     }
 
 
@@ -374,7 +481,13 @@ def scan_exact_ecr_child(
             imageId={"imageDigest": image["linux_amd64_digest"]},
         )
     )
-    scout = run_scout(layout, workdir / "docker-scout.sarif.json", runner=scout_runner)
+    scout = run_scout(
+        layout,
+        workdir / "docker-scout.sarif.json",
+        image,
+        runner=scout_runner,
+        diagnostics_path=workdir / "docker-scout-diagnostic.json",
+    )
     return {
         "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
         "prerequisites": prerequisites,
