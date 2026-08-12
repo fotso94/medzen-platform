@@ -1,0 +1,106 @@
+{
+  "record": "ASR_EVALUATION_EXECUTOR_ECR_SCAN_RULE_SUCCESSOR_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-005",
+  "revision": 5,
+  "status": "PASS_ECR_SCAN_RULE_MERGE_AND_EXACT_RESTORATION_LOCAL_ONLY",
+  "recorded_utc": "2026-08-12T03:30:00Z",
+  "scope": "Local-only qualification of the ECR Basic Scanning rule correction required after packet 2026-002A attempt 2 refused before image publication or compute.",
+  "historical_attempt_2": {
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002A-ATTEMPT-2-IMAGE-SCAN-REFUSAL.json",
+    "refusal_sha256": "ce93ccb24047ac2bca0bd7abe38828fb7e529998254177973f24c682b80705cf",
+    "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+    "edited": false,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0
+  },
+  "correction_source": {
+    "commit": "f29ea243ca1c77d9f245cfc1cfbc7e43e6b5d9ab",
+    "runner_sha256": "cdcfa0d66f3183201f3359fccc1442604a0a1f08fcfbc714da4d30bb3b337559",
+    "live_operations_sha256": "35b494afa8675cabdf3091677881b83a03d161767fa2dfaafe9a2535a1ee0c77",
+    "scan_rule_helper_sha256": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
+    "fake_operations_sha256": "f5ddd7a235e9b8fc360aa4f8b7655943e319ca401216512d266c041563965758",
+    "plan_sha256": "13f26c6173e91496b60dd0b7a8bdd2cdaa49fc7002c39300c6750e2cf9f1fa94",
+    "kubernetes_renderer_sha256": "417fb03c0a21ce5c2a13e26d2b1d1e5de9be02c471dd50723bd57fd8c6a21f2c",
+    "cold_rehearsal_script_sha256": "71d1947dd20a06aea375b0f08dba5bd336c882c5417abe48af2731bae2fbedda",
+    "focused_test_source_sha256": "f211c1bd0c6a0265f5cf249533701465f04dcd2dfb658ca2330c9336a7b1f525"
+  },
+  "corrections": [
+    "Validate the ECR Basic Scanning response fail-closed with no duplicate scan frequencies or repository filters.",
+    "Merge medzen-asr-eval-runtime into the existing SCAN_ON_PUSH rule instead of appending a second rule with the same frequency.",
+    "Persist the exact pre-mutation scanning configuration before the merge.",
+    "Verify both the merged configuration and the restored configuration using two stable exact read-back observations.",
+    "Restore the exact prior filter list during cleanup for every terminal outcome, including later-stage refusal.",
+    "Treat the empty immutable KMS-encrypted evaluation ECR repository created by attempt 2 as read-only existing state.",
+    "Retain bounded safe service error text for untyped pre-model exceptions."
+  ],
+  "real_response_fixture": {
+    "capture_record_path": "platform/evidence/ASR-ECR-SCANNING-READ-FIXTURE-CAPTURE-2026-001.json",
+    "capture_record_sha256": "f0fdc59f2616e6319a410b60a9e6ca594cf714c8474035435bdd50a13089ec7c",
+    "fixture_path": "tests/fixtures/aws/ecr-get-registry-scanning-configuration-basic-before-asr-eval.json",
+    "fixture_sha256": "91501916d7e4e5755ad428dd94f57befabc83cd9e592f95a08bfcf9d7909dae7",
+    "canonical_scanning_configuration_sha256": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88",
+    "live_read_only_capture": true,
+    "aws_mutations": 0
+  },
+  "cold_rehearsal": {
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-COLD/cold-rehearsal.json",
+    "sha256": "c663dd77df2de9af8a00ba14e869a5bc5b68fb5a92654f28caa4e40d43423444",
+    "runs": 2,
+    "byte_identical": true,
+    "attempt": 3,
+    "authorization_schema": "PASS_AUTHORIZATION_SCHEMA",
+    "full_pass_runs": 1,
+    "injected_failure_runs": 3,
+    "one_rule_per_frequency_enforced": true,
+    "exact_prior_configuration_restored_after_every_scenario": true,
+    "aws_calls": 0,
+    "kubectl_calls": 0,
+    "mutations": 0
+  },
+  "tests": {
+    "scoped": {
+      "passed": 73,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "repository_baseline": {
+      "passed": 1568,
+      "failed": 59,
+      "skipped": 0,
+      "deselected": 7,
+      "classification": "PRE_EXISTING_STALE_GENERATED_LANGUAGE_AND_B5_SCOPE_FAILURES_DISCLOSED_BY_INDEPENDENT_REVIEW",
+      "caused_by_this_change": false,
+      "bundled_fix_prohibited": true
+    },
+    "new_regressions": [
+      "real response merges into the existing SCAN_ON_PUSH rule and remains idempotent",
+      "rehearsal fake rejects duplicate scan-frequency rules",
+      "ambiguous existing repository filters refuse",
+      "cleanup restores the exact prior scanning configuration",
+      "post-mutation checks require stable polling",
+      "successor refuses if the existing evaluation repository is absent",
+      "untyped pre-model service errors retain bounded safe text"
+    ]
+  },
+  "image_and_risk_identity": {
+    "image_context_changed_since_source_commit_5d1b8a0": false,
+    "files_changed_under_services_asr_eval_runtime": 0,
+    "image_rebuild_required_by_this_executor_only_change": false,
+    "risk_acceptance_path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+    "continuation_requires_owner_approval": true
+  },
+  "execution": {
+    "aws_calls": 1,
+    "aws_calls_classification": "read-only GetRegistryScanningConfiguration fixture confirmation",
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_3_started": false,
+    "authorization_created": false,
+    "independent_review_and_exact_owner_approval_required": true
+  }
+}
