@@ -1,0 +1,120 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_PREFLIGHT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-001-PREFLIGHT-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T00:17:37Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "failure_stage": "deadline_identity_and_acceptance",
+  "reason_code": "REVIEWED_EXECUTION_ASSETS_ABSENT",
+  "reason": "The reviewed commit contains the evaluation image, input audit, risk record and packet, but no packet-bound AWS runner, exact infrastructure plan verifier, network-isolated Kubernetes workload, complete pilot-loop entrypoint, aggregate/resource measurement implementation or deterministic cleanup runner. Improvising those assets after approval would change the reviewed source and image identity and would void the exact-image risk acceptance.",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-001.json",
+    "sha256": "30446fb7a603e03a31007dffd14cdac3ef89056d175df2caf30045820ec9d31f",
+    "commit": "a6b7b0988c286903b1348d3cbf8a403a991633c0",
+    "owner_approval_captured": true,
+    "independent_review_pass_captured": true
+  },
+  "reviewed_bindings": {
+    "commit": "8a04e105850057cec4a83011d455624f0d1485b9",
+    "packet_sha256": "2aea086984e973fed5a51a0e2cecd5d48fc2ad35038cd26fb300e0038ae796b2",
+    "risk_record_sha256": "7c6b07fd6db18f888a18ea5bf4f7c278167fd8b021d4e0790c461e9dc1fcabb9",
+    "qualification_sha256": "ee5b07d20d5eee91b3224987848c562793bff70788d6f8ca76ff3691e8a57de1"
+  },
+  "preflight_results": {
+    "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "desired": 0,
+      "instances": 0,
+      "health_issues": 0
+    },
+    "evaluation_ecr_repository": "ABSENT",
+    "temporary_evaluation_endpoints": 0,
+    "vpc_cni": {
+      "version": "v1.22.3-eksbuild.1",
+      "status": "ACTIVE",
+      "configuration_values": null
+    },
+    "approved_asr_objects": 0,
+    "production_registry_pointer": "ABSENT",
+    "local_image": {
+      "oci_index_sha256": "7080c0015db46141faeffcbd0363728ce6ebc75d2b0cce1a376346cd4552ad8d",
+      "source_label": "bd8e14c8c4401916412b00ac899a64a03b2514ef",
+      "classification": "offline-evaluation-only"
+    }
+  },
+  "fresh_input_freeze_reproduction": {
+    "runs": 2,
+    "status": "PASS_INPUT_FREEZE",
+    "byte_identical": true,
+    "canonical_sha256_each": "b1a341e9d1acc43bffe2b94df5fa721588cf7203041eace458346f030b7973a2",
+    "manifests": 64,
+    "rows": 24230,
+    "languages": 49,
+    "prospective_manifests": 54,
+    "prospective_rows": 23768,
+    "prospective_languages": 47,
+    "duplicate_audio_sha256": 0,
+    "asr_train_rows_in_eval": 0,
+    "missing_license_tier_rows": 0,
+    "non_test_split_rows": 0,
+    "audio_downloaded": false
+  },
+  "implementation_gap_evidence": {
+    "runtime_entrypoint": {
+      "path": "services/asr-eval-runtime/medzen_asr_eval/__main__.py",
+      "sha256": "d32e4b3f67b0c0582efaa0254d32ad48f3963c8201579ab7cef82844069d5b3d",
+      "available_commands": [
+        "qualify",
+        "transcribe"
+      ],
+      "transcribe_scope": "one row and one candidate/mode per process; constructs and loads the backend for that invocation"
+    },
+    "backend_source_sha256": "896c67fef7d4f215803aba0870beb9706828bbf9cb96ee138f0fe0c339ca8ccc",
+    "harness_source_sha256": "17d19ca6bfd46f96f7930d115569f839bf6e543d961e60b88385b5b9d6340bb8",
+    "missing_required_capabilities": [
+      "packet-bound deadline and attempt runner",
+      "exact AWS resource plan and plan guard",
+      "strict-network-policy Kubernetes workload and endpoint renderer",
+      "pre-torch positive and negative network-isolation probe",
+      "single-load multi-row candidate/mode pilot loop",
+      "reviewed language-conditioning identifier map",
+      "WER and CER normalization and aggregation",
+      "latency, RTF and peak GPU-memory aggregation",
+      "receipt-per-stage AWS orchestration and deterministic cleanup"
+    ]
+  },
+  "safety_outcome": {
+    "aws_mutations": 0,
+    "ecr_pushes": 0,
+    "model_downloads": 0,
+    "audio_downloads": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0,
+    "reservation_opened": false,
+    "attempts_consumed": 0,
+    "temporary_resources_created": 0,
+    "training_started": false,
+    "inference_started": false,
+    "approved_asr_changes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0,
+    "language_registry_changes": 0
+  },
+  "required_successor": {
+    "action": "Implement and locally qualify the complete execution assets, rebuild and rescan the changed evaluation image, refresh the exact-image risk acceptance, bind a successor packet, and obtain independent review plus a new exact owner approval before AWS mutation.",
+    "current_packet_reusable_for_execution": false,
+    "current_attempt_allowance_consumed": false,
+    "historical_packet_risk_and_authorization_records_must_remain_unchanged": true
+  }
+}
