@@ -95,7 +95,9 @@ paths restore the exact prior configuration. The cleanup-refusal scenario
 first reaches zero state and restores ECR configuration, then emits its
 deliberate refusal receipt.
 
-- scoped suites: **73 passed, 0 failed, 0 skipped, 0 deselected**;
+- executor qualification suites: **73 passed, 0 failed, 0 skipped, 0 deselected**;
+- executor plus packet-binding suites at the committed packet tree: **81 passed,
+  0 failed, 0 skipped, 0 deselected**;
 - cold rehearsal: one full PASS plus deadline, isolation, and cleanup injected
   refusals; zero real AWS/kubectl calls and zero mutations;
 - repository suite: **1,568 passed, 59 failed, 0 skipped, 7 deselected**.
