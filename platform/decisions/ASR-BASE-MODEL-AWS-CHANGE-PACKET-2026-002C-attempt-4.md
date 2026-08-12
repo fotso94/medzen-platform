@@ -76,10 +76,10 @@ child, attestation, and top-level index.
 
 | Binding | Value |
 |---|---|
-| Pre-packet executor commit | `1797ec56f9e8e681cecec0e186bb2e7e0e79f1a1` |
-| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `f0caaf6267b5008705d5324e09bea0b81ff6649b2169f020fe50c5dff525c65a` |
-| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `20feeda92db674ad4deb8b313b326aac86e14d4f87faecebcfe296246aad9ba4` |
-| Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json`, SHA-256 `3c307c3e6cd896ea6bd891bd3ac8123e563b3d8d60f1289a19fa7d8087754d63` |
+| Pre-packet executor commit | `d533fb67a0d96ab144112aa0fd368902899f4a22` |
+| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `a2e12588bf90d94d8999e774511bd1c93b958ef732e6d4847f3e39b0423883b3` |
+| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `509c751da0de0c0b83ab45bc5b6c6350bd55a08833163f1fcf1f1d98259f5880` |
+| Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json`, SHA-256 `ab3ede21558e0120d5f5c7059db75e731f1ea70eaef325b982a1077f5b39c109` |
 | Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c` |
 | Input freeze | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
 | Pilot bundle | `1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee` |
@@ -94,7 +94,7 @@ Executor source bindings:
 | `scripts/asr_eval_oci_publication.py` | `a7f3f287990114b660873122cd4a557dfde79ec0e177afada740fad1c7369405` |
 | `scripts/asr_base_model_ecr_scanning.py` | `6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7` |
 | `scripts/asr_base_model_pilot_fake.py` | `8d701cb55e111e8640ebc1ce864623de77a69bd16dc3db5e58274ce43fc612a6` |
-| `scripts/asr_base_model_pilot_plan.py` | `8152edbd6242b4cf518e7c208ddee4d5de1048c170152c1d160fb358d53e4c97` |
+| `scripts/asr_base_model_pilot_plan.py` | `e93e12e1e16e579175753cf16ba27cf8d6b0dbb2549911d3023059adbfe351ca` |
 | `scripts/asr_base_model_pilot_k8s.py` | `0ab123f3b14c54d294a6ad993db03ff93a712ef6462b293796806c93bb567bfc` |
 | `scripts/asr_base_model_pilot_cold_rehearsal.py` | `91daaa030a8529979183b05fd6c99d9937fc24658dda3f9b951b1777fae90810` |
 

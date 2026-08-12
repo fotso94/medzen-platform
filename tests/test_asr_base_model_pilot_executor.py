@@ -143,7 +143,9 @@ def test_plan_is_exact_and_rejects_prohibited_drift() -> None:
     plan = exact_plan(bindings(), 1)
     assert validate_plan(plan, bindings(), 1)["status"] == "PASS_EXACT_EXECUTION_PLAN"
     assert plan["permanent_create_only"] == [
+        "ecr:repository/medzen-asr-eval-runtime:oci-index/sha256:" + "0" * 64,
         "ecr:repository/medzen-asr-eval-runtime:tag/pilot-exact",
+        "ecr:repository/medzen-asr-eval-runtime:content-addressed-blobs/from-verified-oci-layout",
         "s3:medzen-speech/research/asr-base-model/pilot/" + "2" * 64 + "/**",
     ]
     assert "ecr:repository/medzen-asr-eval-runtime" in plan["read_only_existing"]

@@ -25,11 +25,19 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
     if attempt not in {1, 2, 3, 4}:
         raise ValueError("attempt must be 1, 2, 3 or 4")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
+    image_index = bindings.get("image", {}).get("oci_index_digest")
+    image_tag = bindings.get("image", {}).get("tag")
     bundle_sha = bindings.get("pilot_bundle", {}).get("sha256")
     if not isinstance(image_digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest) is None:
         raise ValueError("deployable image digest is absent")
     if not isinstance(bundle_sha, str) or SHA_RE.fullmatch(bundle_sha) is None:
         raise ValueError("pilot bundle hash is absent")
+    if image_index is None:
+        image_index = "sha256:" + "0" * 64
+    if not isinstance(image_index, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image_index) is None:
+        raise ValueError("OCI index digest is malformed")
+    if not isinstance(image_tag, str) or re.fullmatch(r"[a-zA-Z0-9_.-]{1,300}", image_tag) is None:
+        raise ValueError("immutable image tag is absent or malformed")
     return {
         "schema_version": 1,
         "classification": "OFFLINE_EVALUATION_ONLY",
@@ -40,7 +48,9 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "cluster": CLUSTER,
         "vpc": VPC,
         "permanent_create_only": [
-            f"ecr:repository/medzen-asr-eval-runtime:tag/{bindings['image'].get('tag', 'packet-bound-tag')}",
+            f"ecr:repository/medzen-asr-eval-runtime:oci-index/{image_index}",
+            f"ecr:repository/medzen-asr-eval-runtime:tag/{image_tag}",
+            "ecr:repository/medzen-asr-eval-runtime:content-addressed-blobs/from-verified-oci-layout",
             f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
         ],
         "permanent_bounded_update": [],

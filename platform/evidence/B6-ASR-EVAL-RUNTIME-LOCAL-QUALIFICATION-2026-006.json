@@ -33,12 +33,12 @@
     "image_identity_changed": false
   },
   "correction_source": {
-    "commit": "1797ec56f9e8e681cecec0e186bb2e7e0e79f1a1",
+    "commit": "d533fb67a0d96ab144112aa0fd368902899f4a22",
     "runner_sha256": "62c87eeb0695f76a1c8c372da6d646f0eecb765f6fb4f52d5f9184f6a7a67961",
     "live_operations_sha256": "cf5328f25fa190abd0ea420e892575e0869134bd50fff2dba5e8a45095eea691",
     "scan_rule_helper_sha256": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
     "fake_operations_sha256": "8d701cb55e111e8640ebc1ce864623de77a69bd16dc3db5e58274ce43fc612a6",
-    "plan_sha256": "8152edbd6242b4cf518e7c208ddee4d5de1048c170152c1d160fb358d53e4c97",
+    "plan_sha256": "e93e12e1e16e579175753cf16ba27cf8d6b0dbb2549911d3023059adbfe351ca",
     "kubernetes_renderer_sha256": "0ab123f3b14c54d294a6ad993db03ff93a712ef6462b293796806c93bb567bfc",
     "cold_rehearsal_script_sha256": "91daaa030a8529979183b05fd6c99d9937fc24658dda3f9b951b1777fae90810",
     "oci_publication_sha256": "a7f3f287990114b660873122cd4a557dfde79ec0e177afada740fad1c7369405"
@@ -56,7 +56,7 @@
   ],
   "cold_rehearsal": {
     "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json",
-    "sha256": "3c307c3e6cd896ea6bd891bd3ac8123e563b3d8d60f1289a19fa7d8087754d63",
+    "sha256": "ab3ede21558e0120d5f5c7059db75e731f1ea70eaef325b982a1077f5b39c109",
     "runs": 2,
     "byte_identical": true,
     "attempt": 4,
