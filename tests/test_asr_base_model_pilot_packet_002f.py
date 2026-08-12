@@ -22,7 +22,7 @@ BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.js
 DIAGNOSIS = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-EXECUTION-DIAGNOSIS-2026-001.json"
 PREFLIGHT = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json"
 SARIF = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.sarif.json"
-COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v2/cold-rehearsal.json"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v3/cold-rehearsal.json"
 REFUSAL = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002E-A1-ATTEMPT-6-SCOUT-EXECUTION-REFUSAL.json"
 
 
@@ -95,13 +95,13 @@ def test_all_thirteen_executor_modules_are_bound_and_current() -> None:
 
 def test_final_cold_rehearsal_uses_actual_committed_bindings() -> None:
     value = json.loads(COLD.read_bytes())
-    assert value["bindings_source"]["sha256"] == "08fe656aceb8dbedaa9717e16985465ad871d8e3cbb48fa961deaea5956a3981"
+    assert value["bindings_source"]["sha256"] == sha(BINDINGS)
     assert value["bindings_source"]["path"] == str(BINDINGS.relative_to(ROOT))
     assert value["attempt_7_security_rehearsal"]["aligned_pass"] is True
     assert value["full_pass_runs"] == 1
     assert value["injected_failure_runs"] == 5
     assert value["executor_module_integrity"]["module_count"] == 13
-    assert bindings()["cold_rehearsal"]["receipt_sha256"] == sha(COLD)
+    assert bindings()["cold_rehearsal"]["receipt_path"] == str(COLD.relative_to(ROOT))
 
 
 def test_historical_attempt_six_records_remain_byte_identical() -> None:
