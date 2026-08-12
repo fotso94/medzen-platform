@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -18,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline.asr_base_model_pilot_receipts import ReceiptStore, STAGES, canonical_json, write_exclusive
+from pipeline.asr_base_model_pilot_receipts import STAGES, canonical_json, write_exclusive
 import pipeline.asr_base_model_pilot_receipts as receipt_module
 from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_k8s import render, verify
@@ -30,13 +29,13 @@ from scripts.asr_base_model_pilot_integrity import (
 )
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_base_model_pilot_runner import (
-    AttemptContext,
     STAGE_FUNCTIONS,
+    build_attempt_context,
     execute_attempt,
     validate_authorization_payload,
+    validate_clean_reviewed_worktree,
 )
 from scripts.asr_eval_digest_rescan import validate_security_binding
-from scripts.asr_external_tool import run_external
 
 
 SCENARIOS = {
@@ -54,26 +53,7 @@ def _sha(path: Path) -> str:
 
 
 def _committed_clean_head() -> str:
-    status_result, status_diagnostic = run_external(
-        ["git", "status", "--porcelain=v1"],
-        cwd=ROOT,
-        text=True,
-        timeout=60,
-    )
-    if status_result.returncode != 0:
-        raise RuntimeError(f"cold-rehearsal git status refused: {status_diagnostic}")
-    status = status_result.stdout
-    if status:
-        raise RuntimeError("cold rehearsal requires a clean committed worktree")
-    completed, diagnostic = run_external(
-        ["git", "rev-parse", "HEAD"],
-        cwd=ROOT,
-        text=True,
-        timeout=60,
-    )
-    if completed.returncode != 0:
-        raise RuntimeError(f"cold-rehearsal git prerequisite refused: {diagnostic}")
-    return completed.stdout.strip()
+    return validate_clean_reviewed_worktree(ROOT)
 
 
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
@@ -130,11 +110,13 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         for name, (injection, expected) in SCENARIOS.items():
             directory = base / name
             ops = FakeOperations(inject=injection)
-            context = AttemptContext(
+            context = build_attempt_context(
+                root=ROOT,
+                workdir=directory,
                 attempt=attempt,
                 bindings=bindings,
-                receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
-                workdir=directory,
+                packet_sha256="0" * 64,
+                authorization_sha256="a" * 64,
             )
             result = execute_attempt(ops, context)
             if result["outcome"] != expected or not ops.zero_state():
@@ -149,6 +131,10 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "zero_state": ops.zero_state(),
                 "ecr_scan_configuration_put_calls": ops.registry_scanning.put_calls,
                 "ecr_scan_configuration_restored": ops.registry_scanning.restored(),
+                "filesystem_side_effect_order": result["filesystem_side_effect_order"],
+                "external_workdir_classification": "TEMPORARY_EXTERNAL_TO_REVIEWED_WORKTREE",
+                "external_to_reviewed_worktree": True,
+                "receipt_store_relative_path": "receipts",
             }
     rehearsal_source_paths = [
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
@@ -209,6 +195,17 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "required_porcelain_status": "empty",
             "dependency_interpreter_location": "outside reviewed worktree",
             "runner_invocation": "python -m scripts.asr_base_model_pilot_runner",
+            "workdir_location": "outside reviewed worktree",
+            "receipt_commit_timing": "only after terminal run",
+        },
+        "fidelity_boundary": {
+            "policy": "EVERYTHING_EXCEPT_PAID_EXTERNAL_CALLS",
+            "shared_context_builder": "scripts.asr_base_model_pilot_runner.build_attempt_context",
+            "shared_execution_runner": "scripts.asr_base_model_pilot_runner.execute_attempt",
+            "shared_receipt_store": "pipeline.asr_base_model_pilot_receipts.ReceiptStore",
+            "shared_filesystem_side_effect_ordering": True,
+            "fake_boundary": ["AWS calls", "kubectl calls"],
+            "filesystem_side_effects_faked": False,
         },
         "kubernetes_workload": workload_result,
         "scenarios": scenarios,

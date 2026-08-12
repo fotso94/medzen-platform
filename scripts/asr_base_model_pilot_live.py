@@ -508,7 +508,7 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt in {5, 6, 7}:
+        if context.attempt in {5, 6, 7, 8}:
             exact = self._existing_exact_image(image)
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))

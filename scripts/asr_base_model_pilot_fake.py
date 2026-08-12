@@ -220,7 +220,7 @@ class FakeOperations:
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("image_publication_and_scan")
         self.state["ecr"] = True
-        if context.attempt in {5, 6, 7}:
+        if context.attempt in {5, 6, 7, 8}:
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
             except DigestRescanRefusal as exc:

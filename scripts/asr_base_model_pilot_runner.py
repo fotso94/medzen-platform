@@ -8,7 +8,7 @@ import hashlib
 import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Protocol
@@ -25,7 +25,7 @@ from pipeline.asr_base_model_pilot_receipts import (  # noqa: E402
     write_exclusive,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan  # noqa: E402
-from scripts.asr_external_tool import configure_external_tool_journal  # noqa: E402
+from scripts.asr_external_tool import configure_external_tool_journal, run_external  # noqa: E402
 
 
 class OperationRefusal(RuntimeError):
@@ -67,6 +67,86 @@ class AttemptContext:
     packet_path: Path | None = None
     dry_run_path: Path | None = None
     bindings_sha256: str | None = None
+    reviewed_worktree_root: Path | None = None
+    filesystem_events: list[str] = field(default_factory=list)
+
+
+def validate_external_workdir(root: Path, workdir: Path) -> Path:
+    """Require all live/rehearsal side effects to remain outside reviewed Git."""
+    reviewed_root = root.resolve()
+    candidate = workdir.resolve()
+    try:
+        candidate.relative_to(reviewed_root)
+    except ValueError:
+        return candidate
+    raise OperationRefusal(
+        "EXECUTION_WORKDIR_INSIDE_REVIEWED_WORKTREE",
+        "execution workdir must be outside the reviewed worktree",
+    )
+
+
+def build_attempt_context(
+    *,
+    root: Path,
+    workdir: Path,
+    attempt: int,
+    bindings: dict[str, Any],
+    packet_sha256: str,
+    authorization_sha256: str,
+    authorization_path: Path | None = None,
+    packet_path: Path | None = None,
+    dry_run_path: Path | None = None,
+    bindings_sha256: str | None = None,
+) -> AttemptContext:
+    """Canonical, side-effect-free bootstrap shared by live and rehearsal."""
+    external = validate_external_workdir(root, workdir)
+    return AttemptContext(
+        attempt=attempt,
+        bindings=bindings,
+        receipts=ReceiptStore(
+            external / "receipts",
+            packet_sha256=packet_sha256,
+            authorization_sha256=authorization_sha256,
+        ),
+        workdir=external,
+        authorization_path=authorization_path,
+        packet_path=packet_path,
+        dry_run_path=dry_run_path,
+        bindings_sha256=bindings_sha256,
+        reviewed_worktree_root=root.resolve(),
+    )
+
+
+def validate_clean_reviewed_worktree(root: Path) -> str:
+    """Read-only clean-HEAD gate shared by live and cold-rehearsal execution."""
+    completed, diagnostic = run_external(
+        ["git", "status", "--porcelain=v1"],
+        cwd=root,
+        text=True,
+        timeout=60,
+    )
+    if completed.returncode != 0:
+        raise OperationRefusal(
+            "REVIEWED_WORKTREE_STATUS_UNREADABLE",
+            f"reviewed worktree status could not be read: {diagnostic}",
+        )
+    if completed.stdout:
+        raise OperationRefusal(
+            "REVIEWED_CLEAN_COMMIT_REQUIRED",
+            "execution requires a clean worktree before runtime evidence exists",
+        )
+    head, diagnostic = run_external(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        text=True,
+        timeout=60,
+    )
+    if head.returncode != 0:
+        raise OperationRefusal(
+            "REVIEWED_WORKTREE_HEAD_UNREADABLE",
+            f"reviewed worktree HEAD could not be read: {diagnostic}",
+        )
+    return head.stdout.strip()
 
 
 def _pass(payload: dict[str, Any], expected: str) -> dict[str, Any]:
@@ -229,6 +309,19 @@ def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
 
 
 def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
+    reviewed_root = context.reviewed_worktree_root or ROOT
+    context.workdir = validate_external_workdir(reviewed_root, context.workdir)
+    if context.receipts.directory.resolve() != context.workdir / "receipts":
+        raise OperationRefusal(
+            "RECEIPT_STORE_PATH_DIFFERS",
+            "receipt store must be the receipts directory under the external workdir",
+        )
+    context.filesystem_events.append("external_workdir_validated_before_side_effects")
+    if context.reviewed_worktree_root is not None:
+        validate_clean_reviewed_worktree(reviewed_root)
+        context.filesystem_events.append("reviewed_worktree_clean_before_side_effects")
+        context.workdir.mkdir(parents=True, exist_ok=False)
+        context.filesystem_events.append("external_workdir_created")
     prior_journal = configure_external_tool_journal(
         context.workdir / "external-tool-diagnostics"
     )
@@ -239,8 +332,8 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in {1, 2, 3, 4, 5, 6, 7} or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 7 at 10800 seconds are permitted")
+    if context.attempt not in {1, 2, 3, 4, 5, 6, 7, 8} or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 8 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(
@@ -267,11 +360,11 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
                 "committed deadline dry-run receipt differs from execution artifacts",
             )
     preflight = context.bindings.get("scout_real_execution_preflight")
-    if context.attempt == 7:
+    if context.attempt in {7, 8}:
         if not isinstance(preflight, dict):
             raise OperationRefusal(
                 "COMMITTED_SCOUT_PREFLIGHT_ABSENT",
-                "attempt 7 requires the committed exact-image Scout preflight",
+                "attempt 7 or 8 requires the committed exact-image Scout preflight",
             )
         path = ROOT / str(preflight.get("path", ""))
         try:
@@ -298,7 +391,7 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
                 "COMMITTED_SCOUT_PREFLIGHT_BINDING_DIFFERS",
                 "committed exact-image Scout preflight differs from attempt 7 bindings",
             )
-    if context.attempt in {5, 6, 7}:
+    if context.attempt in {5, 6, 7, 8}:
         try:
             from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
 
@@ -307,8 +400,9 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
             if getattr(exc, "reason_code", None) is not None:
                 raise OperationRefusal(exc.reason_code, exc.detail) from exc
             raise
-    context.workdir.mkdir(parents=True, exist_ok=True)
+    context.filesystem_events.append("pre_envelope_prerequisites_passed")
     envelope = write_attempt_envelope(context)
+    context.filesystem_events.append("attempt_envelope_persisted")
     stage_hashes: dict[str, str] = {}
     failure_stage: str | None = None
     outcome = "PASS_PILOT"
@@ -319,12 +413,14 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
                 payload = STAGE_FUNCTIONS[stage](ops, context)
                 status = "INCOMPLETE_MEASUREMENT" if payload.get("status") == "INCOMPLETE_MEASUREMENT" else "PASS"
                 receipt = context.receipts.persist(stage, status, payload)
+                context.filesystem_events.append(f"stage_receipt_persisted:{stage}:{status}")
                 stage_hashes[stage] = receipt["receipt_sha256"]
                 if status == "INCOMPLETE_MEASUREMENT":
                     aggregate_status = status
             except Exception as exc:
                 failure_stage = stage
                 receipt = context.receipts.persist(stage, "REFUSED", _safe_reason(exc), dependencies=())
+                context.filesystem_events.append(f"stage_receipt_persisted:{stage}:REFUSED")
                 stage_hashes[stage] = receipt["receipt_sha256"]
                 outcome = _refusal_outcome(exc) or OUTCOME_BY_STAGE.get(stage, "FAILED_CLOSED_EXECUTION")
                 break
@@ -332,10 +428,12 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         try:
             cleanup = stage_cleanup_and_expiry(ops, context)
             receipt = context.receipts.persist("cleanup_and_expiry", "PASS", cleanup, dependencies=())
+            context.filesystem_events.append("stage_receipt_persisted:cleanup_and_expiry:PASS")
             stage_hashes["cleanup_and_expiry"] = receipt["receipt_sha256"]
         except Exception as exc:
             failure_stage = failure_stage or "cleanup_and_expiry"
             receipt = context.receipts.persist("cleanup_and_expiry", "REFUSED", _safe_reason(exc), dependencies=())
+            context.filesystem_events.append("stage_receipt_persisted:cleanup_and_expiry:REFUSED")
             stage_hashes["cleanup_and_expiry"] = receipt["receipt_sha256"]
             outcome = "FAILED_CLOSED_EXECUTION"
     if outcome == "PASS_PILOT" and aggregate_status == "INCOMPLETE_MEASUREMENT":
@@ -347,6 +445,10 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         "attempt_envelope_sha256": envelope["sha256"],
         "failure_stage": failure_stage,
         "stage_receipts": stage_hashes,
+        "filesystem_side_effect_order": [
+            *context.filesystem_events,
+            "terminal_result_persisted",
+        ],
     }
     write_exclusive(context.workdir / "result.json", canonical_json(result))
     return result
@@ -367,11 +469,13 @@ def main() -> int:
     validate_plan(plan, bindings, args.attempt)
     from scripts.asr_base_model_pilot_live import LiveOperations
 
-    context = AttemptContext(
+    context = build_attempt_context(
+        root=ROOT,
+        workdir=args.workdir,
         attempt=args.attempt,
         bindings=bindings,
-        receipts=ReceiptStore(args.workdir / "receipts", packet_sha256=packet_sha, authorization_sha256=auth_sha),
-        workdir=args.workdir,
+        packet_sha256=packet_sha,
+        authorization_sha256=auth_sha,
         authorization_path=args.authorization,
         packet_path=args.packet,
         dry_run_path=ROOT / bindings["authorization"]["deadline_dry_run_path"],
