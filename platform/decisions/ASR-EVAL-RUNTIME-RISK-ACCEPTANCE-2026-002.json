@@ -18,13 +18,13 @@
   "immutable_subject": {
     "qualification_record": {
       "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json",
-      "sha256": "75cca590ceca32a5a37c99bd5a6460ccfc8c4d54fbe735978cb2058973cc2a24"
+      "sha256": "ab01acd5d6e9df1f297e7a197538e4dd135117913dd21ede177b89849364ea86"
     },
-    "source_commit": "2d109eac01f34a1f344808a715240d95974c7ec1",
+    "source_commit": "e000ccf49f942bc9955fb225bb341053eeef628e",
     "image_classification": "offline-evaluation-only",
-    "oci_index_sha256": "df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691",
-    "linux_amd64_manifest_sha256": "41bda7e740bf71d9fde0e14d2f827d16f52bb8313e30a109dd6bd26ab939eece",
-    "config_sha256": "4b8a762404ef8e1dbf4f7e3101dc9596ea5f8b31e59878fbb8b2e0a73a8afad1",
+    "oci_index_sha256": "694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c",
+    "linux_amd64_manifest_sha256": "6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6",
+    "config_sha256": "7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a",
     "package": "torch",
     "package_version": "2.8.0+cu128",
     "local_scan": {

@@ -7,7 +7,7 @@ Status: **DRAFT — INDEPENDENT REVIEW AND NEW EXACT OWNER APPROVAL REQUIRED —
 Usable only after independent review PASS of the committed packet, execution
 assets, qualification and risk-acceptance hashes:
 
-> Approve ASR base-model AWS change packet 2026-002 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 28e3f8b653ea73c57e8fd32a70c91772cf9de207b4a1ffad85cfa77e79fb2c27 and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.
+> Approve ASR base-model AWS change packet 2026-002 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 dc40fc0eaad8bbd546478cab231c03fda55aa8a0c9b5084f03b462f7c4361579 and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.
 
 This draft is not authorization. A new write-once authorization record must
 capture the exact post-review phrase and its timestamp before any AWS mutation.
@@ -42,24 +42,24 @@ and image identities differ.
 
 | Binding | Value |
 |---|---|
-| Prepared source commit | `2d109eac01f34a1f344808a715240d95974c7ec1` |
+| Prepared source commit | `e000ccf49f942bc9955fb225bb341053eeef628e` |
 | Input-freeze canonical SHA-256 | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
 | Pilot manifests / rows / languages | `54 / 540 / 47` |
 | Pilot row-list SHA-256 | `2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6` |
 | Pilot bundle identity SHA-256 | `1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee` |
-| Qualification record | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json`, SHA-256 `75cca590ceca32a5a37c99bd5a6460ccfc8c4d54fbe735978cb2058973cc2a24` |
-| Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `28e3f8b653ea73c57e8fd32a70c91772cf9de207b4a1ffad85cfa77e79fb2c27` |
+| Qualification record | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json`, SHA-256 `ab01acd5d6e9df1f297e7a197538e4dd135117913dd21ede177b89849364ea86` |
+| Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `dc40fc0eaad8bbd546478cab231c03fda55aa8a0c9b5084f03b462f7c4361579` |
 | Cost registry | `platform/finance/COST-REGISTRY-2026-006.json`, SHA-256 `d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da` |
 
 ### Exact image
 
 | Binding | Value |
 |---|---|
-| Local tag | `medzen-asr-eval-runtime:pilot-2d109ea` |
-| OCI index | `sha256:df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691` |
-| Linux/amd64 child | `sha256:41bda7e740bf71d9fde0e14d2f827d16f52bb8313e30a109dd6bd26ab939eece` |
-| Config | `sha256:4b8a762404ef8e1dbf4f7e3101dc9596ea5f8b31e59878fbb8b2e0a73a8afad1` |
-| Attestation | `sha256:3aff7405d94f208a0ac906123bc7e9d62fa90f97e74901e367698471f5e7224d` |
+| Local tag | `medzen-asr-eval-runtime:pilot-e000ccf` |
+| OCI index | `sha256:694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c` |
+| Linux/amd64 child | `sha256:6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6` |
+| Config | `sha256:7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a` |
+| Attestation | `sha256:45a8c91b455fb3d88aba9f3b0bb68789516699f6ce1bf4594eac69bcd56bebf9` |
 | Image size | `7,296,787,640` bytes |
 | Local scan | `platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json`, SHA-256 `fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a` |
 | Finding gate | `0 critical`, exactly the four risk-record high tuples |
