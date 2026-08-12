@@ -17,6 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore, STAGES, canonical_json, write_exclusive
+import pipeline.asr_base_model_pilot_receipts as receipt_module
 from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
@@ -45,6 +46,7 @@ def _bindings() -> dict[str, Any]:
 
 
 def rehearse(output: Path) -> dict[str, Any]:
+    receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
     plan_result = validate_plan(exact_plan(bindings, 1), bindings, 1)
     workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 1)
