@@ -278,3 +278,9 @@ def test_authorization_without_top_level_attempts_refuses_precisely() -> None:
             attempt=2,
         )
     assert captured.value.reason_code == "AUTHORIZATION_ATTEMPTS_ABSENT"
+
+
+def test_live_executor_never_requires_dependencies_inside_reviewed_worktree() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(encoding="utf-8")
+    assert '.venv/bin/python' not in source
+    assert 'sys.executable, "scripts/audit_asr_base_model_eval_inputs.py"' in source

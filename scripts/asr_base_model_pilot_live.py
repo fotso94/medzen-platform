@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from datetime import datetime, timedelta, timezone
@@ -275,6 +276,13 @@ class LiveOperations:
             risk_sha256=bindings["risk_acceptance_sha256"],
             attempt=context.attempt,
         )
+        executor = bindings.get("executor")
+        if (
+            not isinstance(executor, dict)
+            or executor.get("runner_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_runner.py")
+            or executor.get("live_operations_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_live.py")
+        ):
+            raise OperationRefusal("EXECUTOR_SOURCE_HASH_DIFFERS", "reviewed executor source hash differs")
         expires = datetime.fromisoformat(authorization["expires_utc"].replace("Z", "+00:00"))
         if _utc() >= expires:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")
@@ -311,7 +319,7 @@ class LiveOperations:
         outputs = []
         for run in (1, 2):
             completed = _run([
-                str(self.root / ".venv/bin/python"), "scripts/audit_asr_base_model_eval_inputs.py",
+                sys.executable, "scripts/audit_asr_base_model_eval_inputs.py",
                 "--manifest-root", str(manifest_root),
                 "--data-commit", binding["data_commit"],
                 "--source-inventory-sha256", binding["source_inventory_sha256"],
