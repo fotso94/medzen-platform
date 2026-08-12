@@ -1,0 +1,88 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_PREFLIGHT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T02:16:17Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 1,
+  "failure_stage": "deadline_identity_and_acceptance",
+  "reason_code": "AUTHORIZATION_BINDING_DIFFERS",
+  "reason_reconstruction": "The write-once authorization correctly recorded the owner-approved attempt limits under owner_approval, but the reviewed executor expects a top-level attempts object with maximum=2 and seconds_each=10800. The top-level object was absent. The executor refused before arming the AWS deadline or making any mutation.",
+  "receipt_diagnostic_limitation": {
+    "persisted_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+    "persisted_safe_error_text": "OperationRefusal",
+    "cause": "The runner was invoked by file path, loading its OperationRefusal class once as __main__ and once through scripts.asr_base_model_pilot_runner; the safe-reason isinstance check therefore lost the typed reason.",
+    "evidence_basis_for_reconstructed_reason": "Read-only evaluation of every branch in deadline_identity_and_acceptance against the bound authorization, packet, bindings, caller, time and reviewed worktree state identified the missing top-level attempts object as the first failing predicate."
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002.json",
+    "sha256": "22bff1fb34f161ea86ab123d14f176080689e3e19fb501b35f4a1850529532f0",
+    "commit": "2ac6ac8c16db7b9c33cd670fde1862d788ec3efb",
+    "owner_approval_captured": true,
+    "independent_review_pass_captured": true,
+    "historical_record_to_remain_unchanged": true
+  },
+  "reviewed_bindings": {
+    "commit": "0d51c7e46df34a54d0464f7486db10686acc475b",
+    "packet_sha256": "8485592d0b082a84c9405304774128cf907d7b0c7f0f99d227fae20b562c29d9",
+    "risk_record_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "qualification_sha256": "3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191",
+    "scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266"
+  },
+  "immutable_receipts": {
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002-A1-LIVE/attempt-envelope.json",
+      "sha256": "e7466b9f549ac9f2188da8a56fb58961b5b9fd02aeb3e9e7a5b5e35658d31980"
+    },
+    "refusal": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002-A1-LIVE/deadline_identity_and_acceptance.json",
+      "sha256": "20aa683ef6f89c5003d7e33b9ccd851167e5641f9cbb9f7e04281ffaa2403127"
+    },
+    "cleanup": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002-A1-LIVE/cleanup_and_expiry.json",
+      "sha256": "478059d38415c9bd7c6a022c5ad27f98f61bd69277f720e06c99f07eb3aa522f",
+      "status": "PASS"
+    },
+    "result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002-A1-LIVE/result.json",
+      "sha256": "98d2fa128e16180101fa0da56ef279d1f6c239dacb9b41ae873af686b5b07c4c"
+    }
+  },
+  "safety_outcome": {
+    "aws_mutations": 0,
+    "deadline_actions_created": 0,
+    "ecr_repositories_created": 0,
+    "ecr_pushes": 0,
+    "model_downloads": 0,
+    "audio_downloads": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0,
+    "reservation_opened": false,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0
+  },
+  "attempt_accounting": {
+    "attempt_number_declared": 1,
+    "authorized_gpu_seconds_consumed": 0,
+    "authorized_spend_consumed_usd": 0.0,
+    "attempt_reuse_permitted": false,
+    "unused_second_attempt_not_executable_until_successor_review_and_owner_direction": true
+  },
+  "required_successor": {
+    "authorization": "Create a new write-once successor authorization containing the executor-required top-level attempts representation; do not edit ASR-BASE-MODEL-AWS-AUTH-2026-002.",
+    "invocation": "Invoke the runner as a module so the exception class has one identity and keep environment dependencies outside the reviewed worktree so git cleanliness remains exact.",
+    "tests": "Add local regression coverage for authorization schema compatibility, typed refusal retention and a clean reviewed worktree.",
+    "approval": "Independent review and explicit owner direction are required before using the one remaining numbered attempt."
+  },
+  "secondary_preflight_finding": {
+    "reason_code_if_authorization_had_passed": "REVIEWED_CLEAN_COMMIT_REQUIRED",
+    "finding": "The temporary .venv symlink used to reach the shared dependency environment was untracked inside the detached reviewed worktree.",
+    "correction": "Remove the symlink and invoke the external virtual-environment interpreter with PYTHONPATH set to the reviewed worktree; no dependency artifact may be created inside the reviewed tree."
+  }
+}
