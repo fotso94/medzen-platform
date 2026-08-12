@@ -74,7 +74,7 @@ not an image, CVE, risk-acceptance, storage, timeout or authentication change.
 
 All 13 live executor modules are bound unconditionally in
 `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.json`, SHA-256
-`ac40dd143ecf271f16ff3130b022998751ad40d6c7d0db8c9314fbb1cc04ece6`.
+`223f0092d20f20c49649524186fbebf583569c620a15486f31f48d02dd7ac028`.
 No module can be omitted conditionally.
 
 ## $0 real-execution Scout preflight
@@ -103,8 +103,8 @@ security gate and AWS execution scope did not change.
 ## Final committed-bindings cold rehearsal
 
 The final cold rehearsal is
-`platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v4/cold-rehearsal.json`,
-SHA-256 `519795cce24f02c43cb534c80d336a79a85ae176513938b415d83233deead8ff`.
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v5/cold-rehearsal.json`,
+SHA-256 `PENDING_FINAL_CLEAN_COMMIT_REHEARSAL`.
 
 It loads the committed 002F bindings, validates all 13 module hashes, exercises
 all 11 stages with one full PASS and five injected refusal paths, proves the
