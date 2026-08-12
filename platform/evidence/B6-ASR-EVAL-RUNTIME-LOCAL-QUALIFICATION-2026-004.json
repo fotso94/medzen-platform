@@ -9,10 +9,15 @@
     "sha256": "cd7ee9e9abd089ea4b5fddde1bddd3ff94cd856f95ab4ea71f92c6f933def215",
     "edited": false
   },
+  "factual_addendum": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL-ADDENDUM-001.json",
+    "sha256": "3787f5a5e31c097c75e25113c10b909223c29a0e6c02c2a37b2c1be12c19a954",
+    "correction": "Attempt 1 made one no-op UpdateNodegroupConfig cleanup call; it created no resource and started no capacity."
+  },
   "correction_source": {
-    "commit": "53b8354bba91d6cd26ed4febcda98bec75101dd0",
+    "commit": "b2252dd703150dda3f9c6eb0618c4724f9e4118b",
     "runner_sha256": "f2514851d535364bbbebfb244c50843d46ccbb6daca0b28fbe71a98e21d05b76",
-    "live_operations_sha256": "285369326c5f617b051b2478d90941510ff16963c46194cefbb9975a3cb5367e",
+    "live_operations_sha256": "aafdca971741d50906eb230ad03b3df32db2720ba24b7d939e74cc03fa5e2586",
     "cold_rehearsal_script_sha256": "69c251a9acff2174489ab8b1b42214f5b71a453baae8711f57a7e5275bd239c3"
   },
   "corrections": [
@@ -23,8 +28,8 @@
     "The dependency interpreter remains outside the reviewed worktree; the worktree must have an empty porcelain status before mutation."
   ],
   "cold_rehearsal": {
-    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD/cold-rehearsal.json",
-    "sha256": "5f144facaefe459dd6cd2184919bbc54b2fe2bbe4d257bb37558adc3ddf4235a",
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD-002/cold-rehearsal.json",
+    "sha256": "78d009db1197231fdf4ed21e7f84ea3268c084b2c32f3837caf4e644b473dd1a",
     "runs": 2,
     "byte_identical": true,
     "attempt": 2,
@@ -36,7 +41,7 @@
     "kubectl_calls": 0
   },
   "tests": {
-    "passed": 54,
+    "passed": 55,
     "failed": 0,
     "skipped": 0,
     "deselected": 0,
@@ -44,6 +49,7 @@
       "duplicate-module typed refusal retains reason code and safe text",
       "attempt-2-only authorization accepts attempt 2 and refuses attempt 1",
       "missing top-level attempts refuses with AUTHORIZATION_ATTEMPTS_ABSENT"
+      ,"pre-GPU cleanup performs read-only zero verification and no node-group mutation"
     ]
   },
   "image_and_risk_identity": {

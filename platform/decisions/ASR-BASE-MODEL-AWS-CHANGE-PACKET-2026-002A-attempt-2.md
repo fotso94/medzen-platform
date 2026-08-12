@@ -31,21 +31,24 @@ claimed.
 | Packet 2026-002 | `8485592d0b082a84c9405304774128cf907d7b0c7f0f99d227fae20b562c29d9` | Unchanged |
 | Authorization 2026-002 | `22bff1fb34f161ea86ab123d14f176080689e3e19fb501b35f4a1850529532f0` | Unchanged and not reused |
 | Attempt-1 refusal | `cd7ee9e9abd089ea4b5fddde1bddd3ff94cd856f95ab4ea71f92c6f933def215` | Valid terminal evidence |
+| Attempt-1 factual addendum | `3787f5a5e31c097c75e25113c10b909223c29a0e6c02c2a37b2c1be12c19a954` | Corrects mutation-call count without altering the refusal |
 | Risk acceptance 2026-002 | `06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c` | Continued for the unchanged image, subject to original expiry rules |
 | Scan subject 2026-004 | `d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266` | Unchanged |
 
 Attempt 1 created no AWS resource, opened no reservation, started no GPU and
-incurred no compute cost. Its cleanup receipt is PASS with CPU/GPU desired
-zero, endpoints zero and volumes zero.
+incurred no compute cost. Cleanup did issue one no-op
+`UpdateNodegroupConfig(0,1,0)` enforcement call, documented by the factual
+addendum and its CloudTrail event. Its cleanup receipt is PASS with CPU/GPU
+desired zero, endpoints zero and volumes zero.
 
 ## Exact successor bindings
 
 | Binding | Value |
 |---|---|
-| Reviewed executor commit | `53b8354bba91d6cd26ed4febcda98bec75101dd0` |
-| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002A.json`, SHA-256 `e4a00afb65070765d64a94788a1083799c81b9e75d49c803ef702581e68c692f` |
-| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-004.json`, SHA-256 `4f438ffa03875bdaf11c4b509348d557ac95e4f37a5a1abc149666fc96380a54` |
-| Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD/cold-rehearsal.json`, SHA-256 `5f144facaefe459dd6cd2184919bbc54b2fe2bbe4d257bb37558adc3ddf4235a` |
+| Reviewed executor commit | `b2252dd703150dda3f9c6eb0618c4724f9e4118b` |
+| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002A.json`, SHA-256 `569f77fd44514a006015e1422cf7b99cc16555d360967669d96462e63226c40c` |
+| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-004.json`, SHA-256 `31e877fe319964ef7972a74bfdbd68191a293a0d92f6c7a846922d54a2265b41` |
+| Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD-002/cold-rehearsal.json`, SHA-256 `78d009db1197231fdf4ed21e7f84ea3268c084b2c32f3837caf4e644b473dd1a` |
 | Input freeze | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
 | Pilot bundle | `1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee` |
 | Cost registry | `platform/finance/COST-REGISTRY-2026-006.json`, SHA-256 `d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da` |
@@ -81,6 +84,9 @@ All three classes are corrected prospectively:
 3. Execution uses `python -m scripts.asr_base_model_pilot_runner` with the
    dependency interpreter outside the reviewed worktree. No symlink or other
    dependency artifact exists inside it.
+4. Pre-GPU cleanup uses read-only zero verification. It calls
+   `UpdateNodegroupConfig` only when durable state proves the attempt scaled
+   the GPU, eliminating the no-op mutation found in attempt 1.
 
 The successor authorization must contain exactly:
 
@@ -97,7 +103,7 @@ The successor authorization must contain exactly:
 
 ## Qualification
 
-Focused suites: **54 passed, 0 failed, 0 skipped, 0 deselected**.
+Focused suites: **55 passed, 0 failed, 0 skipped, 0 deselected**.
 
 Two cold-rehearsal runs were byte-identical. They prove:
 
