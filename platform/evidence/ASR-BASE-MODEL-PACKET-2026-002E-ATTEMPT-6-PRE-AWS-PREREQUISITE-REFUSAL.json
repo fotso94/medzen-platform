@@ -1,0 +1,66 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_PRE_AWS_PREREQUISITE_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002E-ATTEMPT-6-PRE-AWS-PREREQUISITE-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T18:00:19Z",
+  "status": "REFUSED_PRE_AWS",
+  "attempt": 6,
+  "attempt_started": false,
+  "attempt_consumed": false,
+  "reason_code": "SECURITY_GATE_BINDING_DIFFERS",
+  "safe_error_text": "The actual committed top-level security_gate contains descriptive keys in addition to the exact five-field executable gate. The cold rehearsal replaced it with the nested digest-rescan gate before executing, while the live runner passes it unchanged to validate_security_binding. Attempt 6 would deterministically refuse at image_publication_and_scan.",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002E.json",
+    "sha256": "aa2366d3dffa70229a2e105990fb5f5be57d6ec771dce90ddc80a92aade38faf",
+    "authorization_commit": "c66c8908d96123c754689738953589a36bafcfcd",
+    "authorized_attempts_remaining": [6]
+  },
+  "committed_complete_stage_one_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002E.json",
+    "sha256": "ebd21c0ac90c148659c18c726ee817dd2793f80c7e6f122cfce1fd6abd0b71f0",
+    "validation_commit": "ba09638f9c2645d8826b385a1e3860350f30a636",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002E-attempt-6.md",
+    "sha256": "131182330b04920474f1e99a38935a1694d8c324b7d2c8a98f078dd65dba03da",
+    "reviewed_commit": "019abae1c9ec2d62fb72c8d32e6a304cea45e13c"
+  },
+  "diagnosis": {
+    "live_validator": "scripts.asr_eval_digest_rescan.validate_security_binding",
+    "live_input": "bindings.security_gate unchanged",
+    "rehearsal_behavior": "scripts.asr_base_model_pilot_cold_rehearsal copied only the five executable fields from digest_rescan_bindings.security_gate before calling execute_attempt",
+    "root_cause_class": "REAL_BINDINGS_VERSUS_REHEARSAL_NORMALIZATION_DRIFT",
+    "why_stage_one_did_not_detect_it": "deadline_identity_and_acceptance validates executor source and governance artifacts but the security_gate is consumed by the later image_publication_and_scan stage",
+    "required_successor": [
+      "Remove the rehearsal-only normalization and pass the actual committed bindings object through the full fake runner.",
+      "Make bindings.security_gate exactly equal to the executable five-field gate; keep descriptive material outside that exact executable object.",
+      "Add a regression asserting the actual committed top-level security_gate passes validate_security_binding byte-for-byte.",
+      "Run a fresh cold rehearsal from the actual committed successor bindings and repeat the committed complete stage-one dry run after successor authorization."
+    ]
+  },
+  "scanner_environment": {
+    "docker_scout_cli": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "docker_credential_store_login_present": true,
+    "runner_environment_bridge_attempted": false,
+    "credential_values_read": false,
+    "credential_values_recorded_or_persisted": false
+  },
+  "boundary_proof": {
+    "attempt_workdir_exists": false,
+    "attempt_envelope_written": false,
+    "stage_receipts_written": 0,
+    "aws_calls_by_runner": 0,
+    "aws_mutations": 0,
+    "kubectl_calls": 0,
+    "gpu_desired": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "image_rescan_started": false,
+    "model_or_audio_staged": false,
+    "production_touched": false
+  },
+  "governance": "Packet 2026-002E, AUTH-2026-002E and the committed stage-one dry-run receipt remain write-once. Attempt 6 was not started or consumed. A corrected successor packet requires independent review and exact owner approval before execution."
+}
