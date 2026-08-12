@@ -389,7 +389,7 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         ):
             raise OperationRefusal(
                 "COMMITTED_SCOUT_PREFLIGHT_BINDING_DIFFERS",
-                "committed exact-image Scout preflight differs from attempt 7 bindings",
+                "committed exact-image Scout preflight differs from attempt 7 or 8 bindings",
             )
     if context.attempt in {5, 6, 7, 8}:
         try:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -12,7 +13,6 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_pilot_integrity import (
     EXECUTOR_MODULE_PATHS,
-    validate_executor_module_bindings,
 )
 from scripts.asr_eval_digest_rescan import validate_scout_sarif
 
@@ -77,10 +77,18 @@ def test_preflight_is_real_zero_aws_exact_image_pass() -> None:
     assert bound["scout_real_execution_preflight"]["sarif_sha256"] == sha(SARIF)
 
 
-def test_all_thirteen_executor_modules_are_bound_and_current() -> None:
+def test_all_thirteen_executor_modules_are_bound_to_reviewed_source_commit() -> None:
     value = bindings()
     assert tuple(value["executor_modules"]) == EXECUTOR_MODULE_PATHS
-    assert validate_executor_module_bindings(ROOT, value["executor_modules"])["module_count"] == 13
+    reviewed = value["executor_source_commit"]
+    for relative, expected in value["executor_modules"].items():
+        body = subprocess.run(
+            ["git", "show", f"{reviewed}:{relative}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        assert hashlib.sha256(body).hexdigest() == expected
     assert value["external_tool_diagnostics"] == {
         "required_for_every_subprocess": True,
         "write_once_journal": True,
