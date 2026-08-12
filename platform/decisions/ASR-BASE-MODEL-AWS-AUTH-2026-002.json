@@ -1,0 +1,104 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AWS_AUTHORIZATION",
+  "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-12T02:13:41Z",
+  "expires_utc": "2026-08-19T02:13:41Z",
+  "prepared_repository_commit": "0d51c7e46df34a54d0464f7486db10686acc475b",
+  "packet": {
+    "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002-pilot-successor.md",
+    "sha256": "8485592d0b082a84c9405304774128cf907d7b0c7f0f99d227fae20b562c29d9"
+  },
+  "risk_acceptance": {
+    "id": "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002",
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "scope": "offline evaluation runtime only",
+    "accepted_high_findings": 4,
+    "serving_precedent": false
+  },
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings": 0,
+    "reviewed_repository_commit": "0d51c7e46df34a54d0464f7486db10686acc475b",
+    "reviewed_packet_sha256": "8485592d0b082a84c9405304774128cf907d7b0c7f0f99d227fae20b562c29d9",
+    "reviewed_risk_record_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "reviewed_qualification_sha256": "3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191",
+    "reviewed_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+    "reviewed_cold_rehearsal_sha256": "23d64c263a16ed8ff7e8633be0d3f3d51f7431c07d1f0f30ca172e8af60112dd",
+    "review_statement": "Final independent review PASS: scan-subject HOLD resolved; all five bindings verified; final-source cold rehearsal reproduced byte-identically; no post-scan source drift; write-once history intact."
+  },
+  "owner_approval": {
+    "status": "APPROVED",
+    "exact_phrase": "Approve ASR base-model AWS change packet 2026-002 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.",
+    "maximum_attempts": 2,
+    "maximum_seconds_per_attempt": 10800,
+    "attempt_seconds_transferable": false
+  },
+  "allowance": {
+    "aggregate_project_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 74.4286064216,
+    "new_reservation_usd": 10.0,
+    "headroom_after_reservation_usd": 215.5713935784,
+    "maximum_gpu_nodes": 1,
+    "maximum_aggregate_gpu_seconds": 21600,
+    "maximum_attempts": 2,
+    "maximum_seconds_per_attempt": 10800,
+    "attempts_non_transferable": true
+  },
+  "immutable_bindings": {
+    "qualification": {
+      "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json",
+      "sha256": "3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191"
+    },
+    "scan_subject": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json",
+      "sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266"
+    },
+    "cold_rehearsal": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002-COLD-002/cold-rehearsal.json",
+      "sha256": "23d64c263a16ed8ff7e8633be0d3f3d51f7431c07d1f0f30ca172e8af60112dd"
+    },
+    "cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-006.json",
+      "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+    },
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e"
+  },
+  "authorized_operations": [
+    "Run the packet-bound input-freeze and no-PHI preflight",
+    "Open one 10 USD reservation against the versioned cost guardrail",
+    "Create and retain the immutable medzen-asr-eval-runtime ECR repository and exact scan-qualified image",
+    "Create-only stage the exact packet-bound research models, tokenizer and 540-row pilot bundle",
+    "Create and remove the exact temporary S3 and ECR endpoints, endpoint security group and evaluation volume",
+    "Temporarily enable strict VPC CNI network-policy enforcement and restore its exact prior state",
+    "Scale only the existing GPU node group from zero to one for at most two bounded attempts",
+    "Run only the packet-bound Whisper large-v3, Meta CTC-1B-v2 and Meta LLM-1B-v2 offline pilot",
+    "Persist immutable per-stage, per-row, aggregate and cleanup evidence",
+    "Destroy all temporary runtime resources and return CPU and GPU capacity to zero after every outcome"
+  ],
+  "prohibited_operations": [
+    "Any serving, production, traffic-facing, training or full-suite use of the evaluation image",
+    "Any third attempt, duration transfer, duration extension or reservation increase",
+    "Any IAM or KMS creation or modification",
+    "Any production SSM, approved/asr, MLflow registration, model-stage or language-registry mutation",
+    "Any inbound route, public internet egress, PHI, user audio or untrusted input",
+    "Any image, source, input, model, tokenizer, scan-finding or severity drift",
+    "Any use of this risk acceptance as precedent for a serving image"
+  ],
+  "permitted_terminal_outcomes": [
+    "PASS_PILOT",
+    "INCOMPLETE_MEASUREMENT",
+    "BLOCKED_INPUT_FREEZE",
+    "BLOCKED_IMAGE_SCAN",
+    "BLOCKED_NETWORK_ISOLATION",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "execution_permitted": true
+}
