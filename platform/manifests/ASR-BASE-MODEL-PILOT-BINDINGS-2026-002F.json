@@ -74,7 +74,7 @@
     "local_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
     "image_context_changed": false
   },
-  "executor_source_commit": "beb56eef0375854f2e59490ac333024a47d61905",
+  "executor_source_commit": "6abaa88576c7ef68fed1c004a5bbd6b9369b43e5",
   "executor_modules": {
     "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
     "scripts/asr_base_model_pilot_assets.py": "c9d0fa257620e68984d6b5d23395540b2a5d6ff2067a5b8b5d20026fdef0bb97",
@@ -111,7 +111,7 @@
     "bindings_source_required": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.json",
     "committed_bindings_required": true,
     "fixture_bindings_permitted": false,
-    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v3/cold-rehearsal.json",
+    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v4/cold-rehearsal.json",
     "script_sha256": "900739f6b7c8d5d5714cbb972fc75d510a599d6a5c784865e26729dfa0494e90"
   },
   "ecr_existing_image": {

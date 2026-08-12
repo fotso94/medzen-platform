@@ -22,7 +22,7 @@ BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.js
 DIAGNOSIS = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-EXECUTION-DIAGNOSIS-2026-001.json"
 PREFLIGHT = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json"
 SARIF = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.sarif.json"
-COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v3/cold-rehearsal.json"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v4/cold-rehearsal.json"
 REFUSAL = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002E-A1-ATTEMPT-6-SCOUT-EXECUTION-REFUSAL.json"
 
 
