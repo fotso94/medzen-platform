@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -50,7 +51,27 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _committed_clean_head() -> str:
+    status = subprocess.run(
+        ["git", "status", "--porcelain=v1"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    if status:
+        raise RuntimeError("cold rehearsal requires a clean committed worktree")
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
+    rehearsal_commit = _committed_clean_head()
     prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
     prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
     os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"
@@ -61,11 +82,21 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
+    digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
+    digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
+    if hashlib.sha256(digest_bindings_body).hexdigest() != bindings[
+        "digest_rescan_bindings"
+    ]["sha256"]:
+        raise RuntimeError("committed digest-rescan bindings hash differs")
+    security_gate = json.loads(digest_bindings_body)["security_gate"]
+    if any(bindings["security_gate"][key] != value for key, value in security_gate.items()):
+        raise RuntimeError("pilot and digest-rescan security gates differ")
+    execution_bindings = {**bindings, "security_gate": security_gate}
     source_integrity = validate_executor_module_bindings(
         ROOT, bindings.get("executor_modules")
     )
-    plan_result = validate_plan(exact_plan(bindings, 6), bindings, 6)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 6)
+    plan_result = validate_plan(exact_plan(execution_bindings, 6), execution_bindings, 6)
+    workload = render(execution_bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 6)
     workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 6)
     authorization_result = validate_authorization_payload(
         {
@@ -93,7 +124,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
                 attempt=6,
-                bindings=bindings,
+                bindings=execution_bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
             )
@@ -133,6 +164,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "loaded_from_committed_head": True,
             "fixture_used": False,
         },
+        "rehearsal_source_commit": rehearsal_commit,
         "attempt_6_security_rehearsal": {
             "aligned_pass": True,
             "wrong_digest_refuses": True,
