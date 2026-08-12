@@ -104,7 +104,7 @@ security gate and AWS execution scope did not change.
 
 The final cold rehearsal is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v5/cold-rehearsal.json`,
-SHA-256 `PENDING_FINAL_CLEAN_COMMIT_REHEARSAL`.
+SHA-256 `01f26d58932bae21823592bac01654ba059f5888e8890826cca5f3647584dd2c`.
 
 It loads the committed 002F bindings, validates all 13 module hashes, exercises
 all 11 stages with one full PASS and five injected refusal paths, proves the
