@@ -142,3 +142,25 @@ def test_attempt_six_refuses_dry_run_bound_to_different_artifacts(
         execute_attempt(FakeOperations(), context)
     assert captured.value.reason_code == "COMMITTED_STAGE_ONE_DRY_RUN_BINDING_DIFFERS"
     assert not (tmp_path / "attempt-envelope.json").exists()
+
+
+def test_attempt_seven_refuses_missing_committed_scout_preflight_before_envelope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DOCKER_SCOUT_HUB_USER", "synthetic")
+    monkeypatch.setenv("DOCKER_SCOUT_HUB_PASSWORD", "synthetic")
+    context = AttemptContext(
+        attempt=7,
+        bindings={
+            "image": {"linux_amd64_digest": "sha256:" + "1" * 64, "tag": "pilot"},
+            "pilot_bundle": {"sha256": "2" * 64},
+        },
+        receipts=ReceiptStore(
+            tmp_path / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64
+        ),
+        workdir=tmp_path,
+    )
+    with pytest.raises(OperationRefusal) as captured:
+        execute_attempt(FakeOperations(), context)
+    assert captured.value.reason_code == "COMMITTED_SCOUT_PREFLIGHT_ABSENT"
+    assert not (tmp_path / "attempt-envelope.json").exists()

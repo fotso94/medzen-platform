@@ -266,6 +266,38 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
                 "COMMITTED_STAGE_ONE_DRY_RUN_BINDING_DIFFERS",
                 "committed deadline dry-run receipt differs from execution artifacts",
             )
+    preflight = context.bindings.get("scout_real_execution_preflight")
+    if context.attempt == 7:
+        if not isinstance(preflight, dict):
+            raise OperationRefusal(
+                "COMMITTED_SCOUT_PREFLIGHT_ABSENT",
+                "attempt 7 requires the committed exact-image Scout preflight",
+            )
+        path = ROOT / str(preflight.get("path", ""))
+        try:
+            value = json.loads(path.read_bytes())
+        except Exception as exc:
+            raise OperationRefusal(
+                "COMMITTED_SCOUT_PREFLIGHT_MALFORMED",
+                "committed exact-image Scout preflight is absent or malformed",
+            ) from exc
+        if (
+            hashlib.sha256(path.read_bytes()).hexdigest() != preflight.get("sha256")
+            or value.get("status") != "PASS_EXACT_IMAGE_SCOUT_REAL_EXECUTION_PREFLIGHT"
+            or value.get("scope", {}).get("aws_calls") != 0
+            or value.get("scope", {}).get("aws_mutations") != 0
+            or value.get("scope", {}).get("gpu_started") is not False
+            or value.get("image", {}).get("oci_index_digest")
+            != context.bindings.get("image", {}).get("oci_index_digest")
+            or value.get("image", {}).get("linux_amd64_digest")
+            != context.bindings.get("image", {}).get("linux_amd64_digest")
+            or value.get("scan", {}).get("status")
+            != "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE"
+        ):
+            raise OperationRefusal(
+                "COMMITTED_SCOUT_PREFLIGHT_BINDING_DIFFERS",
+                "committed exact-image Scout preflight differs from attempt 7 bindings",
+            )
     if context.attempt in {5, 6, 7}:
         try:
             from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
