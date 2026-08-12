@@ -84,7 +84,7 @@
     "scripts/asr_base_model_pilot_k8s.py": "8b347fb3c4bbd346feaa521ef92c8952b6781f6fdbf1e37151e3a4e06ca7fcf8",
     "scripts/asr_base_model_pilot_live.py": "d0d30485e63d62ec323ae9839872858ae0d4a33ce579095d688dcf1490999538",
     "scripts/asr_base_model_pilot_plan.py": "bce6b343d9915812f2ca76a886276a95114786760f7167d2883ca8d1e841485a",
-    "scripts/asr_base_model_pilot_runner.py": "b075974f9b59471dae925ffe95e55d96969225385bcc12dab5b36935fe9a31ff",
+    "scripts/asr_base_model_pilot_runner.py": "4391d09dd8e6f84661af7de76092844301968c940a73154cf4941735e964acb2",
     "scripts/asr_external_tool.py": "7b0868be9cda141c86059b9e7ec252080be99fadaffe7219f8bd196a5638514f",
     "scripts/asr_eval_digest_rescan.py": "64a113c5cfbed0dc7981bf4f77d3c0edb363ed9d8121429397e5048642e5cb5d",
     "scripts/asr_eval_scout_preflight.py": "7d2e97df6d4135b2d997309e6eba3fd04a0661fe8539a976237e11ad4be78b0e",
