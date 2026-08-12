@@ -1,0 +1,55 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_PRE_AWS_PREREQUISITE_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002D-ATTEMPT-5-PRE-AWS-PREREQUISITE-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T14:05:00Z",
+  "status": "REFUSED_PRE_AWS",
+  "attempt": 5,
+  "attempt_started": false,
+  "attempt_consumed": false,
+  "reason_code": "SCOUT_AUTHENTICATION_ABSENT",
+  "safe_error_text": "pinned Docker Scout credentials are absent from the execution environment",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002D.json",
+    "sha256": "9f8dd983178b8b0f07782996d8ae769ed992cffd20d3b57145ebd3c2fec47fc6",
+    "authorization_commit": "8954b5441ecfc0ad1997cb7104131f6820e42b78",
+    "authorized_attempts_remaining": [5]
+  },
+  "committed_authorization_validation": {
+    "path": "platform/evidence/ASR-BASE-MODEL-AUTH-2026-002D-VALIDATION-001.json",
+    "sha256": "a0ed1f75c445e53342c91c93d490ae36f9ce0f294d6e968aec11be853924d345",
+    "validation_commit": "866a37c7ae59f63725560d069829a39610e83fff",
+    "status": "PASS_COMMITTED_AUTHORIZATION_VALIDATION"
+  },
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002D-attempt-5.md",
+    "sha256": "1c6859219369a0f7d8d39ca05760f5c7610cb7a00e02cddff84e47ff5fa64aa9",
+    "reviewed_commit": "1914d1ca24e085d03aa2891a019bf0b37acc1fc8"
+  },
+  "precondition": {
+    "validator": "scripts.asr_eval_digest_rescan.validate_scout_prerequisites",
+    "scanner": "Docker Scout CLI 1.18.3",
+    "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "required_environment_names": [
+      "DOCKER_SCOUT_HUB_USER",
+      "DOCKER_SCOUT_HUB_PASSWORD"
+    ],
+    "credential_values_recorded": false,
+    "credential_values_persisted": false,
+    "retry_permitted_after_precondition_is_satisfied": true
+  },
+  "boundary_proof": {
+    "attempt_envelope_written": false,
+    "stage_receipts_written": 0,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "kubectl_calls": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "image_uploads": 0,
+    "model_or_audio_staged": false,
+    "production_touched": false
+  },
+  "resume_condition": "Authenticate Docker Scout locally without committing credentials, export the two required variables only into the runner process, re-run the prerequisite, and start numbered attempt 5 only after it passes."
+}
