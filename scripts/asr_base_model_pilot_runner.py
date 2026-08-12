@@ -136,12 +136,56 @@ OUTCOME_BY_STAGE = {
 
 
 def _safe_reason(exc: Exception) -> dict[str, str]:
-    code = exc.reason_code if isinstance(exc, OperationRefusal) else "UNEXPECTED_STAGE_EXCEPTION"
-    detail = exc.detail if isinstance(exc, OperationRefusal) else type(exc).__name__
+    # The runner can be invoked either with ``python -m`` or by file path. In
+    # the latter case Python may load this module once as ``__main__`` and once
+    # by package name through the operations module. Attribute-based handling
+    # preserves a typed refusal across that module-identity boundary.
+    code = getattr(exc, "reason_code", "UNEXPECTED_STAGE_EXCEPTION")
+    detail = getattr(exc, "detail", type(exc).__name__)
     if re.fullmatch(r"[A-Z0-9_]{1,96}", code) is None:
         code = "MALFORMED_REASON_CODE"
     detail = " ".join(str(detail).split())[:512]
     return {"reason_code": code, "safe_error_text": detail}
+
+
+def _refusal_outcome(exc: Exception) -> str | None:
+    value = getattr(exc, "outcome", None)
+    return value if isinstance(value, str) and value else None
+
+
+def validate_authorization_payload(
+    authorization: dict[str, Any],
+    *,
+    expected_id: str,
+    packet_sha256: str,
+    risk_sha256: str,
+    attempt: int,
+) -> dict[str, Any]:
+    attempts = authorization.get("attempts")
+    if not isinstance(attempts, dict):
+        raise OperationRefusal("AUTHORIZATION_ATTEMPTS_ABSENT", "top-level attempt authorization is absent")
+    numbers = attempts.get("authorized_numbers")
+    if (
+        authorization.get("id") != expected_id
+        or authorization.get("status") != "owner-approved"
+        or authorization.get("packet", {}).get("sha256") != packet_sha256
+        or authorization.get("risk_acceptance", {}).get("sha256") != risk_sha256
+        or not isinstance(numbers, list)
+        or any(isinstance(value, bool) or not isinstance(value, int) for value in numbers)
+        or len(numbers) != len(set(numbers))
+        or attempts.get("maximum") != len(numbers)
+        or attempts.get("seconds_each") != 10800
+        or attempts.get("non_transferable") is not True
+        or attempt not in numbers
+    ):
+        raise OperationRefusal("AUTHORIZATION_BINDING_DIFFERS", "successor owner authorization differs")
+    return {
+        "status": "PASS_AUTHORIZATION_SCHEMA",
+        "attempt": attempt,
+        "authorized_numbers": numbers,
+        "seconds_each": attempts["seconds_each"],
+        "non_transferable": True,
+    }
 
 
 def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
@@ -183,11 +227,7 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
                 failure_stage = stage
                 receipt = context.receipts.persist(stage, "REFUSED", _safe_reason(exc), dependencies=())
                 stage_hashes[stage] = receipt["receipt_sha256"]
-                outcome = (
-                    exc.outcome
-                    if isinstance(exc, OperationRefusal) and exc.outcome is not None
-                    else OUTCOME_BY_STAGE.get(stage, "FAILED_CLOSED_EXECUTION")
-                )
+                outcome = _refusal_outcome(exc) or OUTCOME_BY_STAGE.get(stage, "FAILED_CLOSED_EXECUTION")
                 break
     finally:
         try:

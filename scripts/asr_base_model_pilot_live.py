@@ -42,7 +42,11 @@ from scripts.asr_base_model_pilot_plan import (
     exact_plan,
     validate_plan,
 )
-from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
+from scripts.asr_base_model_pilot_runner import (
+    AttemptContext,
+    OperationRefusal,
+    validate_authorization_payload,
+)
 
 
 CALLER = f"arn:aws:iam::{ACCOUNT}:user/s.fotso"
@@ -264,15 +268,13 @@ class LiveOperations:
         except Exception as exc:
             raise OperationRefusal("AUTHORIZATION_MALFORMED", "successor authorization is unreadable") from exc
         expected_auth = bindings["authorization"]
-        if (
-            authorization.get("id") != expected_auth["id"]
-            or authorization.get("status") != "owner-approved"
-            or authorization.get("packet", {}).get("sha256") != context.receipts.packet_sha256
-            or authorization.get("risk_acceptance", {}).get("sha256") != bindings["risk_acceptance_sha256"]
-            or authorization.get("attempts", {}).get("maximum") != 2
-            or authorization.get("attempts", {}).get("seconds_each") != 10800
-        ):
-            raise OperationRefusal("AUTHORIZATION_BINDING_DIFFERS", "successor owner authorization differs")
+        validate_authorization_payload(
+            authorization,
+            expected_id=expected_auth["id"],
+            packet_sha256=context.receipts.packet_sha256,
+            risk_sha256=bindings["risk_acceptance_sha256"],
+            attempt=context.attempt,
+        )
         expires = datetime.fromisoformat(authorization["expires_utc"].replace("Z", "+00:00"))
         if _utc() >= expires:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")

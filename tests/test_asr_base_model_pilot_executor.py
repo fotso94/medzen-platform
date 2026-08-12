@@ -27,8 +27,11 @@ from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_base_model_pilot_runner import (
     AttemptContext,
+    OperationRefusal,
     STAGE_FUNCTIONS,
+    _safe_reason,
     execute_attempt,
+    validate_authorization_payload,
 )
 
 
@@ -220,3 +223,58 @@ def test_scan_subject_and_successor_hash_chain_are_self_identifying() -> None:
     assert digest(qualification_path) in packet
     assert digest(risk_path) in packet
     assert digest(subject_path) in packet
+
+
+def test_refusal_reason_survives_duplicate_module_class_identity() -> None:
+    class ForeignOperationRefusal(RuntimeError):
+        reason_code = "AUTHORIZATION_ATTEMPTS_ABSENT"
+        detail = "top-level attempt authorization is absent"
+        outcome = "FAILED_CLOSED_EXECUTION"
+
+    assert _safe_reason(ForeignOperationRefusal()) == {
+        "reason_code": "AUTHORIZATION_ATTEMPTS_ABSENT",
+        "safe_error_text": "top-level attempt authorization is absent",
+    }
+
+
+def test_successor_authorization_allows_only_explicit_remaining_attempt() -> None:
+    authorization = {
+        "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+        "status": "owner-approved",
+        "packet": {"sha256": "b" * 64},
+        "risk_acceptance": {"sha256": "c" * 64},
+        "attempts": {
+            "authorized_numbers": [2],
+            "maximum": 1,
+            "seconds_each": 10800,
+            "non_transferable": True,
+        },
+    }
+    result = validate_authorization_payload(
+        authorization,
+        expected_id=authorization["id"],
+        packet_sha256="b" * 64,
+        risk_sha256="c" * 64,
+        attempt=2,
+    )
+    assert result["status"] == "PASS_AUTHORIZATION_SCHEMA"
+    with pytest.raises(OperationRefusal, match="successor owner authorization differs"):
+        validate_authorization_payload(
+            authorization,
+            expected_id=authorization["id"],
+            packet_sha256="b" * 64,
+            risk_sha256="c" * 64,
+            attempt=1,
+        )
+
+
+def test_authorization_without_top_level_attempts_refuses_precisely() -> None:
+    with pytest.raises(OperationRefusal) as captured:
+        validate_authorization_payload(
+            {"id": "ASR-BASE-MODEL-AWS-AUTH-2026-002A", "status": "owner-approved"},
+            expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+            packet_sha256="b" * 64,
+            risk_sha256="c" * 64,
+            attempt=2,
+        )
+    assert captured.value.reason_code == "AUTHORIZATION_ATTEMPTS_ABSENT"

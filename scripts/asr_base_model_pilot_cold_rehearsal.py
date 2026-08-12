@@ -22,7 +22,12 @@ from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
-from scripts.asr_base_model_pilot_runner import AttemptContext, STAGE_FUNCTIONS, execute_attempt
+from scripts.asr_base_model_pilot_runner import (
+    AttemptContext,
+    STAGE_FUNCTIONS,
+    execute_attempt,
+    validate_authorization_payload,
+)
 
 
 SCENARIOS = {
@@ -48,9 +53,27 @@ def _bindings() -> dict[str, Any]:
 def rehearse(output: Path) -> dict[str, Any]:
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
-    plan_result = validate_plan(exact_plan(bindings, 1), bindings, 1)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 1)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 1)
+    plan_result = validate_plan(exact_plan(bindings, 2), bindings, 2)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 2)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 2)
+    authorization_result = validate_authorization_payload(
+        {
+            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+            "status": "owner-approved",
+            "packet": {"sha256": "0" * 64},
+            "risk_acceptance": {"sha256": "3" * 64},
+            "attempts": {
+                "authorized_numbers": [2],
+                "maximum": 1,
+                "seconds_each": 10800,
+                "non_transferable": True,
+            },
+        },
+        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+        packet_sha256="0" * 64,
+        risk_sha256="3" * 64,
+        attempt=2,
+    )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
         base = Path(temporary)
@@ -58,7 +81,7 @@ def rehearse(output: Path) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=1,
+                attempt=2,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -105,6 +128,13 @@ def rehearse(output: Path) -> dict[str, Any]:
             for stage in STAGES
         },
         "exact_plan": plan_result,
+        "authorization_schema": authorization_result,
+        "reviewed_worktree_boundary": {
+            "required_head": "packet-bound reviewed commit",
+            "required_porcelain_status": "empty",
+            "dependency_interpreter_location": "outside reviewed worktree",
+            "runner_invocation": "python -m scripts.asr_base_model_pilot_runner",
+        },
         "kubernetes_workload": workload_result,
         "scenarios": scenarios,
         "runner_source_hashes": {str(path.relative_to(ROOT)): _sha(path) for path in source_paths},
