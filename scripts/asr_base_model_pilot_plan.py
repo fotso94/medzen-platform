@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in {1, 2, 3}:
-        raise ValueError("attempt must be 1, 2 or 3")
+    if attempt not in {1, 2, 3, 4}:
+        raise ValueError("attempt must be 1, 2, 3 or 4")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     bundle_sha = bindings.get("pilot_bundle", {}).get("sha256")
     if not isinstance(image_digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest) is None:
@@ -40,6 +40,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "cluster": CLUSTER,
         "vpc": VPC,
         "permanent_create_only": [
+            f"ecr:repository/medzen-asr-eval-runtime:tag/{bindings['image'].get('tag', 'packet-bound-tag')}",
             f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
         ],
         "permanent_bounded_update": [],

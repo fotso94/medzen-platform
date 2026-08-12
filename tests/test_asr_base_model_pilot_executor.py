@@ -46,7 +46,7 @@ IMAGE = "sha256:" + "1" * 64
 
 def bindings() -> dict:
     return {
-        "image": {"linux_amd64_digest": IMAGE},
+        "image": {"linux_amd64_digest": IMAGE, "tag": "pilot-exact"},
         "pilot_bundle": {"sha256": "2" * 64},
     }
 
@@ -143,7 +143,8 @@ def test_plan_is_exact_and_rejects_prohibited_drift() -> None:
     plan = exact_plan(bindings(), 1)
     assert validate_plan(plan, bindings(), 1)["status"] == "PASS_EXACT_EXECUTION_PLAN"
     assert plan["permanent_create_only"] == [
-        "s3:medzen-speech/research/asr-base-model/pilot/" + "2" * 64 + "/**"
+        "ecr:repository/medzen-asr-eval-runtime:tag/pilot-exact",
+        "s3:medzen-speech/research/asr-base-model/pilot/" + "2" * 64 + "/**",
     ]
     assert "ecr:repository/medzen-asr-eval-runtime" in plan["read_only_existing"]
     assert plan["permanent_bounded_update"] == []
@@ -397,6 +398,41 @@ def test_successor_requires_the_existing_empty_evaluation_repository() -> None:
     ]
     assert "self.ecr.create_repository" not in image_stage
     assert "ECR_EVALUATION_REPOSITORY_ABSENT" in image_stage
+
+
+def test_image_stage_uses_verified_multipart_publication_not_docker_push() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(
+        encoding="utf-8"
+    )
+    image_stage = source[
+        source.index("    def image_publication_and_scan(") :
+        source.index("    def artifact_stage(")
+    ]
+    assert "publish_exact_image(" in image_stage
+    assert '"docker", "push"' not in image_stage
+    assert '"docker", "login"' not in image_stage
+    assert "OciPublicationRefusal" in image_stage
+
+
+@pytest.mark.parametrize(
+    ("injection", "reason_code"),
+    [
+        ("image_upload_part_truncation", "ECR_PART_CONTINUITY_DIFFERS"),
+        ("image_manifest_readback_drift", "ECR_MANIFEST_BYTES_DIFFER"),
+    ],
+)
+def test_cold_image_publication_failures_are_receipted_and_restore_scan_rules(
+    tmp_path: Path, injection: str, reason_code: str
+) -> None:
+    ops = FakeOperations(inject=injection)
+    result = execute_attempt(ops, context(tmp_path))
+    receipt = json.loads(
+        (tmp_path / "receipts/image_publication_and_scan.json").read_bytes()
+    )
+    assert result["outcome"] == "BLOCKED_IMAGE_SCAN"
+    assert receipt["status"] == "REFUSED"
+    assert receipt["payload"]["reason_code"] == reason_code
+    assert ops.registry_scanning.restored() is True
 
 
 def test_scan_configuration_post_mutation_checks_use_stable_polling() -> None:

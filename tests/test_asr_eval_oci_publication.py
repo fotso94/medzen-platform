@@ -19,6 +19,7 @@ from scripts.asr_eval_oci_publication import (
     OciLayout,
     OciPublicationRefusal,
     publish_exact_layout,
+    publish_exact_image,
 )
 
 
@@ -36,6 +37,7 @@ def _json_blob(root: Path, value: dict, media_type: str) -> dict:
 
 
 def layout_fixture(tmp_path: Path, *, layer_bytes: bytes = b"verified-layer") -> tuple[OciLayout, dict]:
+    tmp_path.mkdir(parents=True, exist_ok=True)
     (tmp_path / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}\n')
     config = _json_blob(tmp_path, {"architecture": "amd64", "os": "linux"}, "application/vnd.oci.image.config.v1+json")
     layer = {**_write_blob(tmp_path, layer_bytes), "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip"}
@@ -96,7 +98,8 @@ class FakeEcr:
         return {"image": {"imageId": {"imageDigest": measured}}}
 
     def batch_get_image(self, **kwargs):
-        digest = self.tag.get(kwargs["imageIds"][0]["imageTag"])
+        image_id = kwargs["imageIds"][0]
+        digest = self.tag.get(image_id["imageTag"]) if "imageTag" in image_id else image_id.get("imageDigest")
         if digest is None:
             return {"images": [], "failures": []}
         return {"images": [{"imageId": {"imageDigest": digest}, "imageManifest": self.manifests[digest]}], "failures": []}
@@ -127,7 +130,12 @@ def test_multipart_publication_preserves_exact_index_and_blob_bytes(tmp_path: Pa
     uploaded_layer = next(item for item in result["uploaded"] if item["digest"] == refs["layer"]["digest"])
     assert uploaded_layer["parts"] == 2
     assert ecr.tag["pilot-exact"] == refs["index"]["digest"]
-    assert result["index_readback_byte_identical"] is True
+    assert result["all_manifest_readbacks_byte_identical"] is True
+    assert result["readback_manifest_digests"] == [
+        refs["child"]["digest"],
+        refs["attestation"]["digest"],
+        refs["index"]["digest"],
+    ]
 
 
 def test_multipart_publication_refuses_a_truncated_part_before_completion(tmp_path: Path) -> None:
@@ -143,3 +151,33 @@ def test_multipart_publication_reuses_only_ecr_proven_available_blobs(tmp_path: 
     result = publish_exact_layout(ecr, "medzen-asr-eval-runtime", layout, tag="pilot-exact")
     assert result["reused_digests"] == [refs["config"]["digest"]]
     assert refs["config"]["digest"] not in {item["digest"] for item in result["uploaded"]}
+
+
+def test_exact_image_wrapper_deletes_export_after_success(tmp_path: Path) -> None:
+    source = tmp_path / "source"
+    layout, refs = layout_fixture(source)
+
+    def exporter(local_tag: str, archive: Path) -> None:
+        assert local_tag == "image:bound"
+        import tarfile
+        with tarfile.open(archive, "w") as stream:
+            for path in source.rglob("*"):
+                if path.is_file():
+                    stream.add(path, arcname=str(path.relative_to(source)))
+
+    result = publish_exact_image(
+        FakeEcr(),
+        "medzen-asr-eval-runtime",
+        {
+            "local_tag": "image:bound",
+            "tag": "pilot-exact",
+            "oci_index_digest": refs["index"]["digest"],
+            "linux_amd64_digest": refs["child"]["digest"],
+            "config_digest": refs["config"]["digest"],
+            "attestation_digest": refs["attestation"]["digest"],
+        },
+        work_parent=tmp_path / "work",
+        exporter=exporter,
+    )
+    assert result["temporary_export_removed_after_verification"] is True
+    assert list((tmp_path / "work").iterdir()) == []

@@ -91,6 +91,11 @@ class FakeOperations:
         }
         self.aggregate: dict[str, Any] | None = None
         self.registry_scanning = FakeRegistryScanning()
+        self.multipart_publication = {
+            "source_objects_verified": 21,
+            "parts_contiguous": True,
+            "manifests_byte_identical": True,
+        }
 
     def _enter(self, stage: str) -> None:
         self.stage_order.append(stage)
@@ -133,12 +138,26 @@ class FakeOperations:
                 "FAKE_DUPLICATE_SCAN_FREQUENCY",
                 "fake ECR accepted more than one SCAN_ON_PUSH rule",
             )
+        if self.inject == "image_upload_part_truncation":
+            raise OperationRefusal(
+                "ECR_PART_CONTINUITY_DIFFERS",
+                "injected ECR lastByteReceived differs before layer completion",
+            )
+        if self.inject == "image_manifest_readback_drift":
+            raise OperationRefusal(
+                "ECR_MANIFEST_BYTES_DIFFER",
+                "injected ECR child manifest read-back bytes differ",
+            )
         return {
             "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
             "critical": 0,
             "accepted_high": 4,
             "scan_on_push_rules": len(scan_rules),
             "filter_merged_into_existing_rule": True,
+            "publication": {
+                "status": "PASS_EXACT_MULTIPART_ECR_PUBLICATION",
+                **self.multipart_publication,
+            },
         }
 
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:

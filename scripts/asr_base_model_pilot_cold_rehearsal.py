@@ -32,6 +32,8 @@ from scripts.asr_base_model_pilot_runner import (
 
 SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
+    "image_upload_part_truncation": ("image_upload_part_truncation", "BLOCKED_IMAGE_SCAN"),
+    "image_manifest_readback_drift": ("image_manifest_readback_drift", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
@@ -45,7 +47,7 @@ def _sha(path: Path) -> str:
 def _bindings() -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "image": {"linux_amd64_digest": "sha256:" + "1" * 64},
+        "image": {"linux_amd64_digest": "sha256:" + "1" * 64, "tag": "pilot-exact"},
         "pilot_bundle": {"sha256": "2" * 64},
     }
 
@@ -53,26 +55,26 @@ def _bindings() -> dict[str, Any]:
 def rehearse(output: Path) -> dict[str, Any]:
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
-    plan_result = validate_plan(exact_plan(bindings, 3), bindings, 3)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 3)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 3)
+    plan_result = validate_plan(exact_plan(bindings, 4), bindings, 4)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 4)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 4)
     authorization_result = validate_authorization_payload(
         {
-            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002B",
+            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002C",
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
             "attempts": {
-                "authorized_numbers": [3],
+                "authorized_numbers": [4],
                 "maximum": 1,
                 "seconds_each": 10800,
                 "non_transferable": True,
             },
         },
-        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002B",
+        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002C",
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
-        attempt=3,
+        attempt=4,
     )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
@@ -81,7 +83,7 @@ def rehearse(output: Path) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=3,
+                attempt=4,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -107,6 +109,7 @@ def rehearse(output: Path) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_k8s.py",
         ROOT / "scripts/asr_base_model_pilot_live.py",
         ROOT / "scripts/asr_base_model_pilot_assets.py",
+        ROOT / "scripts/asr_eval_oci_publication.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/pilot.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
     ]
@@ -118,8 +121,8 @@ def rehearse(output: Path) -> dict[str, Any]:
         "aws_mutations": 0,
         "kubernetes_mutations": 0,
         "full_pass_runs": 1,
-        "injected_failure_runs": 3,
-        "injected_paths": ["isolation_probe", "deadline", "cleanup"],
+        "injected_failure_runs": 5,
+        "injected_paths": ["image_upload_part_truncation", "image_manifest_readback_drift", "isolation_probe", "deadline", "cleanup"],
         "ecr_scan_rule_constraint": {
             "status": "PASS_ONE_RULE_PER_FREQUENCY_ENFORCED",
             "fixture": "tests/fixtures/aws/ecr-get-registry-scanning-configuration-basic-before-asr-eval.json",

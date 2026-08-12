@@ -14,6 +14,7 @@ import json
 import re
 import subprocess
 import tarfile
+import tempfile
 import urllib.request
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable
@@ -224,18 +225,21 @@ def publish_exact_layout(
     """Publish verified blobs in bounded parts, then exact manifests."""
     verified = layout.verify()
     descriptors = layout.content_descriptors()
-    availability = ecr.batch_check_layer_availability(
-        repositoryName=repository,
-        layerDigests=[item["digest"] for item in descriptors],
-    )
-    failures = availability.get("failures", [])
-    if failures:
-        raise OciPublicationRefusal("ECR_LAYER_AVAILABILITY_REFUSED", "ECR layer availability returned failures")
-    available = {
-        item["layerDigest"]
-        for item in availability.get("layers", [])
-        if item.get("layerAvailability") == "AVAILABLE"
-    }
+    available: set[str] = set()
+    for offset in range(0, len(descriptors), 100):
+        requested = [item["digest"] for item in descriptors[offset:offset + 100]]
+        availability = ecr.batch_check_layer_availability(
+            repositoryName=repository,
+            layerDigests=requested,
+        )
+        failures = availability.get("failures", [])
+        if failures:
+            raise OciPublicationRefusal("ECR_LAYER_AVAILABILITY_REFUSED", "ECR layer availability returned failures")
+        available.update(
+            item["layerDigest"]
+            for item in availability.get("layers", [])
+            if item.get("layerAvailability") == "AVAILABLE"
+        )
     uploaded: list[dict[str, Any]] = []
     reused: list[str] = []
     for descriptor in descriptors:
@@ -292,16 +296,20 @@ def publish_exact_layout(
             raise OciPublicationRefusal("ECR_MANIFEST_DIGEST_DIFFERS", f"ECR manifest digest differs: {digest}")
         manifests.append({"digest": digest, "tagged": kind == "index"})
 
-    readback = ecr.batch_get_image(
-        repositoryName=repository,
-        imageIds=[{"imageTag": tag}],
-        acceptedMediaTypes=[OCI_INDEX],
-    )
-    images = readback.get("images", [])
-    if len(images) != 1 or images[0].get("imageId", {}).get("imageDigest") != layout.expected_index:
-        raise OciPublicationRefusal("ECR_INDEX_READBACK_DIFFERS", "ECR index read-back differs")
-    if hashlib.sha256(images[0].get("imageManifest", "").encode()).hexdigest() != _hex_digest(layout.expected_index):
-        raise OciPublicationRefusal("ECR_INDEX_BYTES_DIFFER", "ECR index read-back bytes differ")
+    readback_digests: list[str] = []
+    for digest, manifest, kind in layout.manifest_sequence():
+        image_id = {"imageTag": tag} if kind == "index" else {"imageDigest": digest}
+        readback = ecr.batch_get_image(
+            repositoryName=repository,
+            imageIds=[image_id],
+            acceptedMediaTypes=[manifest["mediaType"]],
+        )
+        images = readback.get("images", [])
+        if len(images) != 1 or images[0].get("imageId", {}).get("imageDigest") != digest:
+            raise OciPublicationRefusal("ECR_MANIFEST_READBACK_DIFFERS", f"ECR manifest read-back differs: {digest}")
+        if hashlib.sha256(images[0].get("imageManifest", "").encode()).hexdigest() != _hex_digest(digest):
+            raise OciPublicationRefusal("ECR_MANIFEST_BYTES_DIFFER", f"ECR manifest read-back bytes differ: {digest}")
+        readback_digests.append(digest)
     return {
         "status": "PASS_EXACT_MULTIPART_ECR_PUBLICATION",
         "oci_verification": verified,
@@ -313,8 +321,48 @@ def publish_exact_layout(
         "reused_digests": sorted(reused),
         "manifest_count": len(manifests),
         "manifests": manifests,
-        "index_readback_byte_identical": True,
+        "readback_manifest_digests": readback_digests,
+        "all_manifest_readbacks_byte_identical": True,
     }
+
+
+def publish_exact_image(
+    ecr: Any,
+    repository: str,
+    image: dict[str, Any],
+    *,
+    work_parent: Path,
+    exporter=export_exact_image,
+) -> dict[str, Any]:
+    """Export, fully verify, and publish one exact locally bound image."""
+    required = {
+        "local_tag",
+        "tag",
+        "oci_index_digest",
+        "linux_amd64_digest",
+        "config_digest",
+        "attestation_digest",
+    }
+    if set(image) < required:
+        raise OciPublicationRefusal("IMAGE_BINDING_INCOMPLETE", "exact image publication binding is incomplete")
+    work_parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="exact-oci-publication-", dir=work_parent) as temporary:
+        root = Path(temporary)
+        archive = root / "image.oci.tar"
+        extracted = root / "layout"
+        extracted.mkdir()
+        exporter(image["local_tag"], archive)
+        extract_oci_archive(archive, extracted)
+        layout = OciLayout(
+            extracted,
+            expected_index=image["oci_index_digest"],
+            expected_child=image["linux_amd64_digest"],
+            expected_config=image["config_digest"],
+            expected_attestation=image["attestation_digest"],
+        )
+        result = publish_exact_layout(ecr, repository, layout, tag=image["tag"])
+        result["temporary_export_removed_after_verification"] = True
+        return result
 
 
 def verify_distribution_roundtrip(

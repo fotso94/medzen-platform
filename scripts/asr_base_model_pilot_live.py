@@ -35,6 +35,10 @@ from scripts.asr_base_model_ecr_scanning import (
     merge_scan_on_push_filter,
     validate_configuration,
 )
+from scripts.asr_eval_oci_publication import (  # noqa: E402
+    OciPublicationRefusal,
+    publish_exact_image,
+)
 from scripts.asr_base_model_pilot_k8s import render as render_k8s
 from scripts.asr_base_model_pilot_plan import (
     ACCOUNT,
@@ -286,6 +290,7 @@ class LiveOperations:
             not isinstance(executor, dict)
             or executor.get("runner_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_runner.py")
             or executor.get("live_operations_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_live.py")
+            or executor.get("oci_publication_sha256") != _sha(self.root / "scripts/asr_eval_oci_publication.py")
         ):
             raise OperationRefusal("EXECUTOR_SOURCE_HASH_DIFFERS", "reviewed executor source hash differs")
         expires = datetime.fromisoformat(authorization["expires_utc"].replace("Z", "+00:00"))
@@ -458,21 +463,27 @@ class LiveOperations:
                 scanType=updated["scanType"], rules=updated["rules"]
             )
             self._wait_registry_scanning_configuration(updated)
-        uri = repository["repositoryUri"]
-        remote_tag = f"{uri}:{image['tag']}"
         existing = self.ecr.batch_get_image(repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": image["tag"]}], acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"])
+        publication: dict[str, Any]
         if existing.get("images"):
             if len(existing["images"]) != 1 or existing["images"][0]["imageId"]["imageDigest"] != image["oci_index_digest"]:
                 raise OperationRefusal("IMMUTABLE_IMAGE_TAG_OCCUPIED", "evaluation tag exists with a different image")
+            publication = {
+                "status": "PASS_EXACT_IMAGE_ALREADY_PRESENT",
+                "oci_index_digest": image["oci_index_digest"],
+                "uploaded_blob_count": 0,
+                "reused_existing_exact_tag": True,
+            }
         else:
-            password = _run(["aws", "--profile", PROFILE, "--region", REGION, "ecr", "get-login-password"]).stdout
-            registry_host = uri.split("/")[0]
             try:
-                _run(["docker", "login", "--username", "AWS", "--password-stdin", registry_host], stdin=password)
-                _run(["docker", "tag", image["local_tag"], remote_tag])
-                _run(["docker", "push", remote_tag], timeout=3600)
-            finally:
-                _run(["docker", "logout", registry_host], check=False)
+                publication = publish_exact_image(
+                    self.ecr,
+                    ECR_REPOSITORY,
+                    image,
+                    work_parent=context.workdir,
+                )
+            except OciPublicationRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
         response = self.ecr.batch_get_image(repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": image["tag"]}], acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"])
         index = response.get("images", [])
         if len(index) != 1 or index[0]["imageId"]["imageDigest"] != image["oci_index_digest"]:
@@ -482,7 +493,7 @@ class LiveOperations:
         if len(children) != 1 or children[0]["digest"] != image["linux_amd64_digest"]:
             raise OperationRefusal("ECR_CHILD_DIGEST_DIFFERS", "scan subject differs from the bound linux/amd64 child")
         scan = self._image_scan(ECR_REPOSITORY, children[0]["digest"])
-        return {"status": "PASS_IMAGE_PUBLICATION_AND_SCAN", "repository": ECR_REPOSITORY, "oci_index_digest": image["oci_index_digest"], "linux_amd64_digest": children[0]["digest"], **scan}
+        return {"status": "PASS_IMAGE_PUBLICATION_AND_SCAN", "repository": ECR_REPOSITORY, "oci_index_digest": image["oci_index_digest"], "linux_amd64_digest": children[0]["digest"], "publication": publication, **scan}
 
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
         selection = json.loads((context.workdir / "pilot-selection.json").read_bytes())
