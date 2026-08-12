@@ -1,0 +1,181 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AUTHORITATIVE_SCAN_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002C-ATTEMPT-4-AUTHORITATIVE-SCAN-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T12:51:57Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+  "attempt": 4,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "AUTHORITATIVE_SCAN_FINDINGS_DIFFER",
+  "reason": "The exact OCI publication completed and AWS ECR Basic Scanning completed successfully on the bound linux/amd64 child, but its critical/high finding set was empty. The continuing risk acceptance requires the exact four accepted PyTorch HIGH tuples to be present. An absent accepted finding is drift under that record, so the runner stopped before artifact staging or compute.",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002C.json",
+    "sha256": "ea15bb9a6bfead18770fd97579828112774a37f8a2e9122ae61eb79a1eca4141",
+    "commit": "fe6bb0d2b60fbe0478a8131df85f847547f6c5af",
+    "packet_sha256": "3728a07deb9f1cf5f67b9eea7cdb86adf8aceeab1d7fd6628c26826fe17d9282",
+    "reviewed_packet_commit": "67215b062b5bf133110790527a0efdd697ec5478",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "committed_dry_validation_sha256": "288e74e519401c53fbd82ba4ee57db6ad5a8acb92135600810b84225b903d493",
+    "dry_validation_commit": "c7a7268fe07c82f6799d122ce6a9ab9fe931629f"
+  },
+  "passed_stages": [
+    "deadline_identity_and_acceptance",
+    "input_freeze_and_no_phi",
+    "cost_and_zero_state",
+    "cleanup_and_expiry"
+  ],
+  "input_freeze": {
+    "status": "PASS_INPUT_FREEZE_AND_NO_PHI",
+    "runs": 2,
+    "byte_identical": true,
+    "inventory_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "contains_phi": false
+  },
+  "exact_image_publication": {
+    "status": "PASS_EXACT_MULTIPART_ECR_PUBLICATION_BEFORE_SCAN_REFUSAL",
+    "repository": "medzen-asr-eval-runtime",
+    "repository_mutability": "IMMUTABLE",
+    "repository_encryption": "KMS",
+    "tag": "pilot-5d1b8a0",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "logical_image_bytes": 7296783632,
+    "uploaded_blob_count": 1,
+    "uploaded_blob_digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+    "uploaded_blob_bytes": 4329542888,
+    "uploaded_part_count": 207,
+    "first_byte": 0,
+    "last_byte": 4329542887,
+    "part_ranges_contiguous": true,
+    "reused_existing_blob_count": 17,
+    "complete_layer_upload": {
+      "status": "PASS",
+      "cloudtrail_event_id": "79a0fc3c-55c5-4cb5-90e6-cdaaa2af135e",
+      "error_code": null
+    },
+    "put_image": {
+      "count": 3,
+      "linux_amd64_event_id": "170a613a-2847-4d72-8a0d-6e0f5bd79480",
+      "attestation_event_id": "8947c7fe-036d-493d-ab4f-f4b47d0701d2",
+      "oci_index_event_id": "ec71fad0-f694-4ab0-99c9-dfa7ccbc9bcf",
+      "errors": 0
+    },
+    "manifest_readback": {
+      "count": 3,
+      "all_returned_digests_match": true,
+      "all_manifest_bytes_hash_to_bound_digest": true
+    },
+    "prior_attempt_3_transfer_failure_class_closed": true
+  },
+  "authoritative_scan": {
+    "scanner": "AWS ECR Basic Scanning",
+    "subject_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "status": "COMPLETE",
+    "service_description": "The scan was completed successfully.",
+    "finding_severity_counts": {},
+    "basic_finding_count": 0,
+    "enhanced_finding_count": 0,
+    "observed_critical": 0,
+    "observed_high": 0,
+    "risk_record_required_critical": 0,
+    "risk_record_required_high": 4,
+    "required_high_tuples": [
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH"
+    ],
+    "missing_required_high_count": 4,
+    "classification": "REFUSED_ABSENT_ACCEPTED_FINDINGS",
+    "interpretation": "This does not prove that the four locally detected PyTorch vulnerabilities were remediated. The image identity is unchanged. It proves only that the packet-bound authoritative ECR response did not reproduce the accepted tuple set, which the existing risk record explicitly treats as refusal-worthy drift.",
+    "coverage_difference_root_cause": "NOT_YET_ESTABLISHED"
+  },
+  "registry_scan_configuration": {
+    "merge_status": "PASS",
+    "merged_rule_count": 1,
+    "merged_filter_count": 9,
+    "restore_status": "PASS",
+    "restored_rule_count": 1,
+    "restored_filter_count": 8,
+    "canonical_sha256_after": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88",
+    "matches_pre_attempt_configuration": true
+  },
+  "scope_preservation": {
+    "artifact_staging_started": false,
+    "research_prefix_objects": 0,
+    "model_or_audio_on_node": false,
+    "gpu_scaled": false,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "gpu_compute_cost_usd": 0.0,
+    "pilot_rows_executed": 0,
+    "base_model_results_produced": 0,
+    "serving_or_production_changes": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0
+  },
+  "cleanup": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "verified_live_after_runner": true,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "attempt_temporary_endpoints": 0,
+    "attempt_temporary_volumes": 0,
+    "evaluation_namespaces": 0,
+    "deadline_actions": 0,
+    "research_prefix_objects": 0,
+    "scan_configuration_restored": true,
+    "retained_create_only_evaluation_image": true
+  },
+  "cost_and_attempt_accounting": {
+    "recognized_committed_guardrail_usd_before": 74.4286064216,
+    "attempt_ceiling_usd": 10.0,
+    "gpu_cost_usd": 0.0,
+    "ecr_storage_and_api_billing": "PENDING_NORMAL_AWS_BILLING_INGESTION",
+    "runner_reservation_marker_closed": true,
+    "attempt_4_started": true,
+    "attempt_4_reuse_permitted": false,
+    "authorized_attempts_remaining": 0
+  },
+  "immutable_receipts": {
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/attempt-envelope.json",
+      "sha256": "e1956989e56eff239ecec151f2e61b368fed0168874d0e8cc732ebcfa6c591df"
+    },
+    "deadline_identity_and_acceptance": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/deadline_identity_and_acceptance.json",
+      "sha256": "0270e3b11d0f527983cf1cdefa09dd55a24afa36b4cb7765577746694521193f"
+    },
+    "input_freeze_and_no_phi": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/input_freeze_and_no_phi.json",
+      "sha256": "00744462c357cee9a5a509b305b8bff50f31fd91c3eba2132f077d7fb803a691"
+    },
+    "cost_and_zero_state": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/cost_and_zero_state.json",
+      "sha256": "6551356a0c533be9f4f55258ab47498076ac76c704836aab8d402b64665f607e"
+    },
+    "image_publication_and_scan": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/image_publication_and_scan.json",
+      "sha256": "7a3b9692baaa018990a2bdffa2cd910d898fa4f6d30c206b427c0873be76edbb"
+    },
+    "cleanup_and_expiry": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/cleanup_and_expiry.json",
+      "sha256": "b40431ceffcccf8a28e6a2e2e8a9071c75f1faa5c5c6a4a38a5725023217c229"
+    },
+    "terminal_result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-A4-LIVE/result.json",
+      "sha256": "b61cf5882fa1e6a1cacaeb0396034e42dd2da786bce50cbbbfd1d1c58b34ed18"
+    }
+  },
+  "required_successor": {
+    "scanner_coverage_diagnosis": "Establish why the packet-bound AWS ECR Basic response is empty while the image-bound Docker Scout evidence contains four PyTorch HIGH findings. Preserve both observations; do not call the image clean or silently discard the accepted tuples.",
+    "gate_design": "Any future run must prospectively bind a security gate whose scanner and tuple representation can actually verify the accepted Python-package findings, while continuing to fail on added, missing or severity-drifted findings.",
+    "qualification": "Rehearse the exact real AWS response shape that produced this refusal and both aligned-pass and drift-refusal paths before another packet.",
+    "governance": "Packet 2026-002C, AUTH-2026-002C and this terminal attempt are write-once. Attempt 4 is consumed; any further live execution requires a new reviewed packet, a new write-once owner authorization, and a fresh non-transferable allowance."
+  }
+}
