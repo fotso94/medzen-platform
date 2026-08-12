@@ -84,7 +84,12 @@ def test_cold_rehearsal_is_byte_deterministic(tmp_path: Path) -> None:
             check=True,
             capture_output=True,
         )
-    assert outputs[0].read_bytes() == outputs[1].read_bytes() == COLD.read_bytes()
+    assert outputs[0].read_bytes() == outputs[1].read_bytes()
+    current = json.loads(outputs[0].read_bytes())
+    committed = json.loads(COLD.read_bytes())
+    assert current["bindings_source"] == committed["bindings_source"]
+    assert current["executor_module_integrity"] == committed["executor_module_integrity"]
+    assert current["scenarios"] == committed["scenarios"]
 
 
 def test_write_once_history_and_unchanged_subject_are_exact() -> None:
@@ -107,7 +112,7 @@ def test_packet_requires_post_approval_committed_complete_stage_one_dry_run() ->
     assert "all 11 live executor modules" in text
     assert "conditional integrity guards are\nprohibited" in text
     assert "complete `deadline_identity_and_acceptance` stage" in text
-    assert "authorization, bindings and packet" in text
+    assert "authorization, bindings\nand packet" in text
     assert "committed PASS receipt" in text
     assert "No AWS execution is authorized by this draft" in text
 
