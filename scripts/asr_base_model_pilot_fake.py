@@ -192,10 +192,21 @@ class FakeOperations:
         if self.inject == stage:
             raise OperationRefusal(f"INJECTED_{stage.upper()}", f"injected failure at {stage}")
 
-    def deadline_identity_and_acceptance(self, context: AttemptContext) -> dict[str, Any]:
+    def deadline_identity_and_acceptance(
+        self,
+        context: AttemptContext,
+        *,
+        dry_run: bool = False,
+        caller_arn: str | None = None,
+    ) -> dict[str, Any]:
         self._enter("deadline_identity_and_acceptance")
-        self.state["deadline"] = True
-        return {"status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE", "caller": "arn:aws:iam::558069890522:user/s.fotso", "deadline_seconds": 10800}
+        self.state["deadline"] = not dry_run
+        return {
+            "status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE",
+            "caller": caller_arn or "arn:aws:iam::558069890522:user/s.fotso",
+            "deadline_seconds": 10800,
+            "dry_run": dry_run,
+        }
 
     def input_freeze_and_no_phi(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("input_freeze_and_no_phi")
@@ -209,7 +220,7 @@ class FakeOperations:
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("image_publication_and_scan")
         self.state["ecr"] = True
-        if context.attempt == 5:
+        if context.attempt in {5, 6}:
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
             except DigestRescanRefusal as exc:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import subprocess
 from pathlib import Path
 
 
@@ -69,11 +70,18 @@ def test_rehearsal_covers_required_scan_paths_and_no_scan_mutation() -> None:
 
 def test_packet_source_hash_table_matches_files() -> None:
     text = PACKET.read_text()
+    reviewed_commit = json.loads(BINDINGS.read_bytes())["executor"]["reviewed_source_commit"]
     rows = re.findall(r"\| `([^`]+)` \| `([0-9a-f]{64})` \|", text)
     checked = 0
     for relative, expected in rows:
         path = ROOT / relative
         if path.is_file():
-            assert sha(path) == expected
+            historical = subprocess.run(
+                ["git", "show", f"{reviewed_commit}:{relative}"],
+                cwd=ROOT,
+                capture_output=True,
+                check=True,
+            ).stdout
+            assert hashlib.sha256(historical).hexdigest() == expected
             checked += 1
     assert checked >= 8

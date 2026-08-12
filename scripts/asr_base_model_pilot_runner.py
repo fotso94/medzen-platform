@@ -36,7 +36,13 @@ class OperationRefusal(RuntimeError):
 
 
 class Operations(Protocol):
-    def deadline_identity_and_acceptance(self, context: "AttemptContext") -> dict[str, Any]: ...
+    def deadline_identity_and_acceptance(
+        self,
+        context: "AttemptContext",
+        *,
+        dry_run: bool = False,
+        caller_arn: str | None = None,
+    ) -> dict[str, Any]: ...
     def input_freeze_and_no_phi(self, context: "AttemptContext") -> dict[str, Any]: ...
     def cost_and_zero_state(self, context: "AttemptContext") -> dict[str, Any]: ...
     def image_publication_and_scan(self, context: "AttemptContext") -> dict[str, Any]: ...
@@ -58,6 +64,8 @@ class AttemptContext:
     deadline_seconds: int = 10800
     authorization_path: Path | None = None
     packet_path: Path | None = None
+    dry_run_path: Path | None = None
+    bindings_sha256: str | None = None
 
 
 def _pass(payload: dict[str, Any], expected: str) -> dict[str, Any]:
@@ -66,8 +74,22 @@ def _pass(payload: dict[str, Any], expected: str) -> dict[str, Any]:
     return payload
 
 
-def stage_deadline_identity_and_acceptance(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    return _pass(ops.deadline_identity_and_acceptance(context), "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE")
+def stage_deadline_identity_and_acceptance(
+    ops: Operations,
+    context: AttemptContext,
+    *,
+    dry_run: bool = False,
+    caller_arn: str | None = None,
+) -> dict[str, Any]:
+    if dry_run or caller_arn is not None:
+        payload = ops.deadline_identity_and_acceptance(
+            context,
+            dry_run=dry_run,
+            caller_arn=caller_arn,
+        )
+    else:
+        payload = ops.deadline_identity_and_acceptance(context)
+    return _pass(payload, "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE")
 
 
 def stage_input_freeze_and_no_phi(ops: Operations, context: AttemptContext) -> dict[str, Any]:
@@ -206,9 +228,34 @@ def write_attempt_envelope(context: AttemptContext) -> dict[str, Any]:
 
 
 def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in {1, 2, 3, 4, 5} or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2/3/4/5 at 10800 seconds are permitted")
-    if context.attempt == 5:
+    if context.attempt not in {1, 2, 3, 4, 5, 6} or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1/2/3/4/5/6 at 10800 seconds are permitted")
+    if context.dry_run_path is not None:
+        if not context.dry_run_path.is_file():
+            raise OperationRefusal(
+                "COMMITTED_STAGE_ONE_DRY_RUN_ABSENT",
+                "committed deadline dry-run receipt is absent",
+            )
+        try:
+            dry_run = json.loads(context.dry_run_path.read_bytes())
+        except Exception as exc:
+            raise OperationRefusal(
+                "COMMITTED_STAGE_ONE_DRY_RUN_MALFORMED",
+                "committed deadline dry-run receipt is malformed",
+            ) from exc
+        if (
+            dry_run.get("status") != "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+            or dry_run.get("attempt") != context.attempt
+            or dry_run.get("packet_sha256") != context.receipts.packet_sha256
+            or dry_run.get("authorization_sha256") != context.receipts.authorization_sha256
+            or dry_run.get("bindings_sha256") != context.bindings_sha256
+            or dry_run.get("result", {}).get("status") != "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE"
+        ):
+            raise OperationRefusal(
+                "COMMITTED_STAGE_ONE_DRY_RUN_BINDING_DIFFERS",
+                "committed deadline dry-run receipt differs from execution artifacts",
+            )
+    if context.attempt in {5, 6}:
         try:
             from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
 
@@ -284,6 +331,8 @@ def main() -> int:
         workdir=args.workdir,
         authorization_path=args.authorization,
         packet_path=args.packet,
+        dry_run_path=ROOT / bindings["authorization"]["deadline_dry_run_path"],
+        bindings_sha256=hashlib.sha256(args.bindings.read_bytes()).hexdigest(),
     )
     result = execute_attempt(LiveOperations(ROOT), context)
     print(json.dumps(result, sort_keys=True))

@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in {1, 2, 3, 4, 5}:
-        raise ValueError("attempt must be 1, 2, 3, 4 or 5")
+    if attempt not in {1, 2, 3, 4, 5, 6}:
+        raise ValueError("attempt must be 1, 2, 3, 4, 5 or 6")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")

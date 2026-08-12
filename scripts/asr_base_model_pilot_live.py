@@ -45,6 +45,11 @@ from scripts.asr_eval_oci_publication import (  # noqa: E402
     publish_exact_image,
 )
 from scripts.asr_base_model_pilot_k8s import render as render_k8s
+from scripts.asr_base_model_pilot_integrity import (
+    PilotIntegrityRefusal,
+    validate_executor_module_bindings,
+    validate_governance_commit_boundary,
+)
 from scripts.asr_base_model_pilot_plan import (
     ACCOUNT,
     CLUSTER,
@@ -272,11 +277,20 @@ class LiveOperations:
             time.sleep(2)
         raise OperationRefusal("SSM_COMMAND_TIMEOUT", f"SSM command {command_id} exceeded its bound")
 
-    def deadline_identity_and_acceptance(self, context: AttemptContext) -> dict[str, Any]:
+    def deadline_identity_and_acceptance(
+        self,
+        context: AttemptContext,
+        *,
+        dry_run: bool = False,
+        caller_arn: str | None = None,
+    ) -> dict[str, Any]:
         if context.authorization_path is None or context.packet_path is None:
             raise OperationRefusal("AUTHORIZATION_PATH_ABSENT", "authorization and packet paths are required")
         bindings = context.bindings
-        if self.session.region_name != REGION or self.sts.get_caller_identity()["Arn"] != CALLER:
+        observed_caller = caller_arn
+        if observed_caller is None and not dry_run:
+            observed_caller = self.sts.get_caller_identity()["Arn"]
+        if self.session.region_name != REGION or observed_caller != CALLER:
             raise OperationRefusal("AWS_IDENTITY_DIFFERS", "AWS account, principal or region differs")
         try:
             authorization = json.loads(context.authorization_path.read_bytes())
@@ -290,23 +304,42 @@ class LiveOperations:
             risk_sha256=bindings["risk_acceptance_sha256"],
             attempt=context.attempt,
         )
-        executor = bindings.get("executor")
-        if (
-            not isinstance(executor, dict)
-            or executor.get("runner_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_runner.py")
-            or executor.get("live_operations_sha256") != _sha(self.root / "scripts/asr_base_model_pilot_live.py")
-            or executor.get("oci_publication_sha256") != _sha(self.root / "scripts/asr_eval_oci_publication.py")
-        ):
-            raise OperationRefusal("EXECUTOR_SOURCE_HASH_DIFFERS", "reviewed executor source hash differs")
+        try:
+            source_integrity = validate_executor_module_bindings(
+                self.root,
+                bindings.get("executor_modules"),
+            )
+        except PilotIntegrityRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
         expires = datetime.fromisoformat(authorization["expires_utc"].replace("Z", "+00:00"))
         if _utc() >= expires:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")
         if _sha(context.packet_path) != context.receipts.packet_sha256 or _sha(context.authorization_path) != context.receipts.authorization_sha256:
             raise OperationRefusal("REVIEWED_FILE_HASH_DIFFERS", "packet or authorization changed after binding")
-        head = _run(["git", "rev-parse", "HEAD"], cwd=self.root).stdout.decode().strip()
-        dirty = _run(["git", "status", "--porcelain=v1"], cwd=self.root).stdout.decode()
-        if head != authorization.get("prepared_repository_commit") or dirty:
-            raise OperationRefusal("REVIEWED_CLEAN_COMMIT_REQUIRED", "execution requires the exact reviewed clean commit")
+        try:
+            lineage = validate_governance_commit_boundary(
+                self.root,
+                reviewed_commit=authorization["reviewed_repository_commit"],
+                authorization_path=context.authorization_path,
+                deadline_dry_run_path=self.root / authorization["pre_execution_dry_run"]["path"],
+            )
+        except PilotIntegrityRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        common = {
+            "status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE",
+            "caller": CALLER,
+            "attempt": context.attempt,
+            "dry_run": dry_run,
+            "source_integrity": source_integrity,
+            "reviewed_commit_lineage": lineage,
+        }
+        if dry_run:
+            return {
+                **common,
+                "aws_calls": 0,
+                "aws_mutations": 0,
+                "scheduled_action_created": False,
+            }
         state = self._state(context)
         action = f"medzen-asr-eval-a{context.attempt}-deadline"
         deadline = _utc() + timedelta(seconds=context.deadline_seconds)
@@ -321,7 +354,7 @@ class LiveOperations:
         readback = self.asg.describe_scheduled_actions(AutoScalingGroupName=GPU_ASG, ScheduledActionNames=[action])["ScheduledUpdateGroupActions"]
         if len(readback) != 1 or readback[0].get("DesiredCapacity") != 0:
             raise OperationRefusal("DEADLINE_READBACK_DIFFERS", "deadline scheduled action is not exact")
-        return {"status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE", "caller": CALLER, "attempt": context.attempt, "deadline_utc": deadline.isoformat()}
+        return {**common, "deadline_utc": deadline.isoformat()}
 
     def input_freeze_and_no_phi(self, context: AttemptContext) -> dict[str, Any]:
         binding = context.bindings["input_freeze"]
@@ -472,7 +505,7 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt == 5:
+        if context.attempt in {5, 6}:
             exact = self._existing_exact_image(image)
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))

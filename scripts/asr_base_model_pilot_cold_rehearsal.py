@@ -22,6 +22,11 @@ import pipeline.asr_base_model_pilot_receipts as receipt_module
 from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
+from scripts.asr_base_model_pilot_integrity import (
+    EXECUTOR_MODULE_PATHS,
+    read_committed_artifact,
+    validate_executor_module_bindings,
+)
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_base_model_pilot_runner import (
     AttemptContext,
@@ -45,57 +50,40 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _bindings() -> dict[str, Any]:
-    return {
-        "schema_version": 1,
-        "image": {
-            "linux_amd64_digest": "sha256:" + "1" * 64,
-            "oci_index_digest": "sha256:" + "4" * 64,
-            "tag": "pilot-exact",
-        },
-        "security_gate": {
-            "registry_scanning_mutation_permitted": False,
-            "inspector_enhanced_scanning_permitted": False,
-            "docker_scout_version": "1.18.3",
-            "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
-            "accepted_high_tuples": [
-                "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
-                "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
-                "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
-                "CVE-2026-4538|torch|2.8.0+cu128|HIGH",
-            ],
-        },
-        "pilot_bundle": {"sha256": "2" * 64},
-    }
-
-
-def rehearse(output: Path) -> dict[str, Any]:
+def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
     prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
     os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
-    bindings = _bindings()
-    plan_result = validate_plan(exact_plan(bindings, 5), bindings, 5)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 5)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 5)
+    bindings_path = bindings_path or (
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002E.json"
+    )
+    bindings_body = read_committed_artifact(ROOT, bindings_path)
+    bindings = json.loads(bindings_body)
+    source_integrity = validate_executor_module_bindings(
+        ROOT, bindings.get("executor_modules")
+    )
+    plan_result = validate_plan(exact_plan(bindings, 6), bindings, 6)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 6)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 6)
     authorization_result = validate_authorization_payload(
         {
-            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002D",
+            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002E",
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
             "attempts": {
-                "authorized_numbers": [5],
+                "authorized_numbers": [6],
                 "maximum": 1,
                 "seconds_each": 10800,
                 "non_transferable": True,
             },
         },
-        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002D",
+        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002E",
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
-        attempt=5,
+        attempt=6,
     )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
@@ -104,7 +92,7 @@ def rehearse(output: Path) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=5,
+                attempt=6,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -123,15 +111,9 @@ def rehearse(output: Path) -> dict[str, Any]:
                 "ecr_scan_configuration_put_calls": ops.registry_scanning.put_calls,
                 "ecr_scan_configuration_restored": ops.registry_scanning.restored(),
             }
-    source_paths = [
-        ROOT / "scripts/asr_base_model_pilot_runner.py",
+    rehearsal_source_paths = [
+        ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
-        ROOT / "scripts/asr_base_model_pilot_plan.py",
-        ROOT / "scripts/asr_base_model_pilot_k8s.py",
-        ROOT / "scripts/asr_base_model_pilot_live.py",
-        ROOT / "scripts/asr_base_model_pilot_assets.py",
-        ROOT / "scripts/asr_eval_oci_publication.py",
-        ROOT / "scripts/asr_eval_digest_rescan.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/pilot.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
     ]
@@ -145,7 +127,13 @@ def rehearse(output: Path) -> dict[str, Any]:
         "full_pass_runs": 1,
         "injected_failure_runs": 5,
         "injected_paths": ["security_wrong_digest", "security_extra_finding", "isolation_probe", "deadline", "cleanup"],
-        "attempt_5_security_rehearsal": {
+        "bindings_source": {
+            "path": str(bindings_path.relative_to(ROOT)),
+            "sha256": hashlib.sha256(bindings_body).hexdigest(),
+            "loaded_from_committed_head": True,
+            "fixture_used": False,
+        },
+        "attempt_6_security_rehearsal": {
             "aligned_pass": True,
             "wrong_digest_refuses": True,
             "extra_finding_refuses": True,
@@ -170,6 +158,8 @@ def rehearse(output: Path) -> dict[str, Any]:
             }
             for stage in STAGES
         },
+        "executor_module_integrity": source_integrity,
+        "executor_module_paths": list(EXECUTOR_MODULE_PATHS),
         "exact_plan": plan_result,
         "authorization_schema": authorization_result,
         "reviewed_worktree_boundary": {
@@ -180,7 +170,9 @@ def rehearse(output: Path) -> dict[str, Any]:
         },
         "kubernetes_workload": workload_result,
         "scenarios": scenarios,
-        "runner_source_hashes": {str(path.relative_to(ROOT)): _sha(path) for path in source_paths},
+        "rehearsal_source_hashes": {
+            str(path.relative_to(ROOT)): _sha(path) for path in rehearsal_source_paths
+        },
     }
     if prior_user is None:
         os.environ.pop("DOCKER_SCOUT_HUB_USER", None)
@@ -197,9 +189,14 @@ def rehearse(output: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--bindings",
+        type=Path,
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002E.json",
+    )
     args = parser.parse_args()
     try:
-        result = rehearse(args.output)
+        result = rehearse(args.output.resolve(), args.bindings.resolve())
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "exception_class": type(exc).__name__}, sort_keys=True))
         return 2
