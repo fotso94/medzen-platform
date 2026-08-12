@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import subprocess
 import urllib.request
@@ -287,9 +288,7 @@ def validate_scout_sarif(value: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def run_scout(
-    layout: Path,
-    output: Path,
+def validate_scout_prerequisites(
     *,
     runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
 ) -> dict[str, Any]:
@@ -304,6 +303,30 @@ def run_scout(
             "SCOUT_VERSION_DIFFERS",
             "pinned Docker Scout version and source commit are unavailable",
         )
+    if not (
+        os.environ.get("DOCKER_SCOUT_HUB_USER")
+        and os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
+    ):
+        raise DigestRescanRefusal(
+            "SCOUT_AUTHENTICATION_ABSENT",
+            "pinned Docker Scout credentials are absent from the execution environment",
+        )
+    return {
+        "status": "PASS_SCOUT_PREREQUISITES",
+        "scanner_version": SCOUT_VERSION,
+        "scanner_git_commit": SCOUT_GIT_COMMIT,
+        "credentials_present": True,
+        "credentials_persisted": False,
+    }
+
+
+def run_scout(
+    layout: Path,
+    output: Path,
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+) -> dict[str, Any]:
+    prerequisites = validate_scout_prerequisites(runner=runner)
     completed = runner(
         [
             "docker", "scout", "cves", "--format", "sarif",
@@ -315,13 +338,18 @@ def run_scout(
         timeout=1800,
     )
     if completed.returncode not in {0, 2} or not output.is_file():
-        raise DigestRescanRefusal("SCOUT_EXECUTION_REFUSED", "Docker Scout digest rescan did not produce SARIF")
+        raise DigestRescanRefusal(
+            "SCOUT_EXECUTION_REFUSED",
+            "Docker Scout digest rescan did not produce SARIF",
+        )
     value = json.loads(output.read_bytes())
     result = validate_scout_sarif(value)
     return {
         **result,
         "sarif_sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
         "scanned_oci_layout": str(layout),
+        "scan_mode": "LIVE_DOCKER_SCOUT_CVES",
+        "prerequisites": prerequisites,
     }
 
 
@@ -334,6 +362,7 @@ def scan_exact_ecr_child(
     downloader: Callable[[str, Path], None] = _default_download,
     scout_runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
 ) -> dict[str, Any]:
+    prerequisites = validate_scout_prerequisites(runner=scout_runner)
     workdir.mkdir(parents=True, exist_ok=True)
     if any(workdir.iterdir()):
         raise DigestRescanRefusal("ECR_RESCAN_WORKDIR_NOT_EMPTY", "digest-rescan work directory is not empty")
@@ -348,6 +377,7 @@ def scan_exact_ecr_child(
     scout = run_scout(layout, workdir / "docker-scout.sarif.json", runner=scout_runner)
     return {
         "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
+        "prerequisites": prerequisites,
         "reconstruction": reconstruction,
         "ecr_basic": basic,
         "docker_scout": scout,

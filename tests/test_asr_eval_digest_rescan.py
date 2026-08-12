@@ -19,10 +19,10 @@ from scripts.asr_eval_digest_rescan import (
     OCI_INDEX,
     OCI_MANIFEST,
     reconstruct_exact_child,
-    run_scout,
     validate_basic_scan,
     validate_scout_sarif,
     validate_security_binding,
+    validate_scout_prerequisites,
 )
 
 
@@ -189,15 +189,38 @@ def test_attempt_4_real_basic_scan_response_is_supplementary_os_pass() -> None:
     }
 
 
-def test_scout_source_commit_drift_refuses(tmp_path: Path) -> None:
+def test_scout_source_commit_drift_refuses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DOCKER_SCOUT_HUB_USER", "synthetic")
+    monkeypatch.setenv("DOCKER_SCOUT_HUB_PASSWORD", "synthetic-secret")
     def runner(command, **kwargs):
         if command[2] == "version":
             return subprocess.CompletedProcess(command, 0, b"version: v1.18.3 (go1.24.6)\ngit commit: wrong\n", b"")
         raise AssertionError("scan must not start when the pinned scanner identity differs")
 
     with pytest.raises(DigestRescanRefusal) as captured:
-        run_scout(tmp_path / "image.oci", tmp_path / "scan.sarif.json", runner=runner)
+        validate_scout_prerequisites(runner=runner)
     assert captured.value.reason_code == "SCOUT_VERSION_DIFFERS"
+
+
+def test_scout_authentication_absent_refuses_before_scan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
+
+    def runner(command, **kwargs):
+        if command[2] == "version":
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                b"version: v1.18.3 (go1.24.6)\ngit commit: aa68fc25c596bea659d54867443238fd30218d23\n",
+                b"",
+            )
+        raise AssertionError("scan must not start without explicit scanner credentials")
+
+    with pytest.raises(DigestRescanRefusal) as captured:
+        validate_scout_prerequisites(runner=runner)
+    assert captured.value.reason_code == "SCOUT_AUTHENTICATION_ABSENT"
 
 
 def test_security_binding_is_exact_and_fail_closed() -> None:
