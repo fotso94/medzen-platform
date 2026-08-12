@@ -1,0 +1,68 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_LOCAL_SCAN_SUBJECT",
+  "id": "ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004",
+  "status": "PASS_SCAN_SUBJECT_IDENTIFIED_SCOPED_RISK_ACCEPTANCE_REQUIRED",
+  "recorded_utc": "2026-08-12T01:58:26Z",
+  "scan_subject": {
+    "local_reference": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "platform": "linux/amd64",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_child_manifest_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_manifest_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "image_size_bytes": 7296787645,
+    "classification_label": "offline-evaluation-only"
+  },
+  "scan_execution": {
+    "scanner": "Docker Scout CLI 1.18.3",
+    "command": [
+      "docker",
+      "scout",
+      "cves",
+      "--platform",
+      "linux/amd64",
+      "--only-severity",
+      "critical,high",
+      "--format",
+      "sarif",
+      "local://medzen-asr-eval-runtime:pilot-5d1b8a0"
+    ],
+    "completed": true,
+    "packages_indexed": 305,
+    "provenance_obtained_from_attestation": true,
+    "security_waiver_used": false
+  },
+  "normalized_sarif": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json",
+    "sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "new_scan_output_byte_identical_to_committed_sarif": true,
+    "statement": "The committed SARIF is the byte-identical normalized Docker Scout output produced when scanning the exact scan_subject above. The pre-rebuild and post-rebuild normalized outputs are identical because SARIF contains package findings but no OCI subject identity; this companion record supplies that missing immutable identity binding."
+  },
+  "result": {
+    "critical": 0,
+    "high": 4,
+    "affected_package": "torch",
+    "affected_package_version": "2.8.0+cu128",
+    "findings": [
+      "CVE-2025-55551",
+      "CVE-2025-55552",
+      "CVE-2026-4538",
+      "CVE-2026-24747"
+    ]
+  },
+  "identity_proof": {
+    "index_and_child_resolved_from_the_same_local_reference_before_and_after_scan": true,
+    "child_selection": "OCI child whose platform is exactly linux/amd64",
+    "source_commit_verified_from_oci_label": "org.opencontainers.image.revision",
+    "qualification_must_bind_this_record_by_sha256": true,
+    "ecr_authoritative_scan_still_required_before_compute": true
+  },
+  "execution": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "gpu_started": false,
+    "pilot_execution_started": false
+  }
+}

@@ -7,7 +7,7 @@ Status: **DRAFT — INDEPENDENT REVIEW AND NEW EXACT OWNER APPROVAL REQUIRED —
 Usable only after independent review PASS of the committed packet, execution
 assets, qualification and risk-acceptance hashes:
 
-> Approve ASR base-model AWS change packet 2026-002 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 dc40fc0eaad8bbd546478cab231c03fda55aa8a0c9b5084f03b462f7c4361579 and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.
+> Approve ASR base-model AWS change packet 2026-002 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.
 
 This draft is not authorization. A new write-once authorization record must
 capture the exact post-review phrase and its timestamp before any AWS mutation.
@@ -42,27 +42,35 @@ and image identities differ.
 
 | Binding | Value |
 |---|---|
-| Prepared source commit | `e000ccf49f942bc9955fb225bb341053eeef628e` |
+| Prepared source commit | `5d1b8a0d87539a50a1d98915893a2ed640207304` |
 | Input-freeze canonical SHA-256 | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
 | Pilot manifests / rows / languages | `54 / 540 / 47` |
 | Pilot row-list SHA-256 | `2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6` |
 | Pilot bundle identity SHA-256 | `1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee` |
-| Qualification record | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json`, SHA-256 `ab01acd5d6e9df1f297e7a197538e4dd135117913dd21ede177b89849364ea86` |
-| Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `dc40fc0eaad8bbd546478cab231c03fda55aa8a0c9b5084f03b462f7c4361579` |
+| Qualification record | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json`, SHA-256 `3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191` |
+| Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c` |
 | Cost registry | `platform/finance/COST-REGISTRY-2026-006.json`, SHA-256 `d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da` |
 
 ### Exact image
 
 | Binding | Value |
 |---|---|
-| Local tag | `medzen-asr-eval-runtime:pilot-e000ccf` |
-| OCI index | `sha256:694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c` |
-| Linux/amd64 child | `sha256:6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6` |
-| Config | `sha256:7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a` |
-| Attestation | `sha256:45a8c91b455fb3d88aba9f3b0bb68789516699f6ce1bf4594eac69bcd56bebf9` |
-| Image size | `7,296,787,640` bytes |
+| Local tag | `medzen-asr-eval-runtime:pilot-5d1b8a0` |
+| OCI index | `sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa` |
+| Linux/amd64 child | `sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e` |
+| Config | `sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a` |
+| Attestation | `sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1` |
+| Image size | `7,296,787,645` bytes |
 | Local scan | `platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json`, SHA-256 `fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a` |
+| Self-identifying scan subject | `platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json`, SHA-256 `d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266` |
 | Finding gate | `0 critical`, exactly the four risk-record high tuples |
+
+Docker Scout scanned the exact `pilot-5d1b8a0` local reference for
+`linux/amd64`. Its normalized SARIF is byte-identical to the earlier committed
+SARIF because that format records package findings but no OCI subject. The new
+companion record binds that scan execution to the OCI index and deployable
+child digests above; qualification and risk acceptance bind the companion by
+SHA-256. This removes tag-only or pre-rebuild ambiguity.
 
 The image is non-root `10001:10001`, read-only with `/tmp` tmpfs, contains no
 pip/build tools, and is classified `offline-evaluation-only`. The authoritative
@@ -108,7 +116,7 @@ all three implementations, or if the committed source hash differs.
 
 ## Local qualification and cold rehearsal
 
-Canonical focused suites: **23 passed, 0 failed, 0 skipped, 0 deselected**.
+Canonical focused suites: **50 passed, 0 failed, 0 skipped, 0 deselected**.
 
 The deterministic cold rehearsal invokes the complete runner with fake
 AWS/kubectl operations:
@@ -120,10 +128,11 @@ AWS/kubectl operations:
   is already zero;
 - `0` real AWS calls, `0` real kubectl calls and `0` mutations.
 
-The immutable cold receipt is
-`platform/evidence/receipts/ASR-BASE-MODEL-2026-002-COLD/cold-rehearsal.json`,
-SHA-256 `08f5c3497a3a4183edad705b1871031ae0bce30eea18015fbb87719999148b04`.
-Two final runs were byte-identical.
+The final-source immutable cold receipt is
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002-COLD-002/cold-rehearsal.json`,
+SHA-256 `23d64c263a16ed8ff7e8633be0d3f3d51f7431c07d1f0f30ca172e8af60112dd`.
+Two final runs were byte-identical. The earlier cold receipt remains unchanged
+as historical draft evidence and is not the packet binding.
 
 ## Exact input, conditioning and measurement behavior
 

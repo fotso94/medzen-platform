@@ -2,7 +2,7 @@
   "record": "ASR_EVALUATION_RUNTIME_LOCAL_QUALIFICATION",
   "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003",
   "status": "PASS_COMPLETE_EXECUTOR_LOCAL_QUALIFICATION_WITH_SCOPED_RISK_ACCEPTANCE_REQUIRED",
-  "recorded_utc": "2026-08-12T01:00:00Z",
+  "recorded_utc": "2026-08-12T01:58:26Z",
   "supersedes_for_prospective_image_identity_only": {
     "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json",
     "sha256": "ee5b07d20d5eee91b3224987848c562793bff70788d6f8ca76ff3691e8a57de1",
@@ -16,12 +16,12 @@
   },
   "scope": "Local-only qualification of the complete successor executor. No model or audio download, inference, AWS mutation, ECR push or GPU use occurred.",
   "image": {
-    "local_tag": "medzen-asr-eval-runtime:pilot-e000ccf",
-    "oci_index_sha256": "694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c",
-    "linux_amd64_manifest_sha256": "6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6",
-    "config_sha256": "7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a",
-    "attestation_manifest_sha256": "45a8c91b455fb3d88aba9f3b0bb68789516699f6ce1bf4594eac69bcd56bebf9",
-    "attested_source_commit": "e000ccf49f942bc9955fb225bb341053eeef628e",
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_sha256": "5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_manifest_sha256": "c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "attested_source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
     "platform": "linux/amd64",
     "size_bytes": 7296787645,
     "classification_label": "offline-evaluation-only",
@@ -74,7 +74,7 @@
   "reachable_source_inspection": {
     "files": {
       "/opt/medzen/medzen_asr_eval/backends.py": "f4644320b8a0e9502b9369a9e77ce47eff18f180e0042140c1acadd5e299a6c7",
-      "/opt/medzen/medzen_asr_eval/pilot.py": "f15ab7194461a542a55a9e5fd9f121e8911eeef8ed383d4c2e8f1d2f49b16328",
+      "/opt/medzen/medzen_asr_eval/pilot.py": "7f02a4c321ceddff66170b9f33ea88651bfdbba7d5c56d145cab88744dce8f4a",
       "/opt/venv/lib/python3.12/site-packages/fairseq2/io.py": "565f94d918fa37a9e29d6d633b956433299afb091b99f046b1f26b39ba4bcd89",
       "/opt/venv/lib/python3.12/site-packages/omnilingual_asr/models/inference/pipeline.py": "766728688901376dfce1b36115b8e780c1dfc3055798ab49d78a4b9df41fd863"
     },
@@ -88,9 +88,14 @@
   "local_scan": {
     "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json",
     "sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "subject_record": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json",
+      "sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266"
+    },
     "scanner": "Docker Scout CLI 1.18.3",
-    "runs": 2,
-    "byte_identical": true,
+    "post_rebuild_runs": 1,
+    "byte_identical_to_committed_normalized_sarif": true,
+    "scan_subject_self_identified": true,
     "critical": 0,
     "high": 4,
     "findings": ["CVE-2026-24747", "CVE-2026-4538", "CVE-2025-55552", "CVE-2025-55551"],

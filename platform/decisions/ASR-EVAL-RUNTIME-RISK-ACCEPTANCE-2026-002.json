@@ -3,7 +3,7 @@
   "id": "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002",
   "revision": 2,
   "status": "DRAFT_FOR_INDEPENDENT_REVIEW_OWNER_REACCEPTANCE_REQUIRED_NOT_EFFECTIVE",
-  "recorded_utc": "2026-08-12T01:00:00Z",
+  "recorded_utc": "2026-08-12T01:58:26Z",
   "owner_decision": {
     "decision": "Scoped risk acceptance for the PyTorch findings, offline evaluation runtime only.",
     "conditions": [
@@ -18,21 +18,25 @@
   "immutable_subject": {
     "qualification_record": {
       "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json",
-      "sha256": "ab01acd5d6e9df1f297e7a197538e4dd135117913dd21ede177b89849364ea86"
+      "sha256": "3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191"
     },
-    "source_commit": "e000ccf49f942bc9955fb225bb341053eeef628e",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
     "image_classification": "offline-evaluation-only",
-    "oci_index_sha256": "694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c",
-    "linux_amd64_manifest_sha256": "6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6",
-    "config_sha256": "7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_sha256": "5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
     "package": "torch",
     "package_version": "2.8.0+cu128",
     "local_scan": {
       "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json",
       "sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+      "subject_record_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json",
+      "subject_record_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+      "scanned_oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "scanned_linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
       "scanner": "Docker Scout CLI 1.18.3",
-      "scan_runs": 2,
-      "byte_identical": true,
+      "post_rebuild_scan_runs": 1,
+      "byte_identical_to_committed_normalized_sarif": true,
       "critical": 0,
       "high": 4
     },

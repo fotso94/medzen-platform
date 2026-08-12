@@ -14,16 +14,17 @@
     "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-001-PREFLIGHT-REFUSAL.json",
     "refusal_sha256": "64ff34b122765b98be7a5fada9966a8adb87a4ae255643d1febdd34fa37b1e39"
   },
-  "risk_acceptance_sha256": "dc40fc0eaad8bbd546478cab231c03fda55aa8a0c9b5084f03b462f7c4361579",
+  "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
   "image": {
-    "local_tag": "medzen-asr-eval-runtime:pilot-e000ccf",
-    "tag": "pilot-e000ccf",
-    "source_commit": "e000ccf49f942bc9955fb225bb341053eeef628e",
-    "oci_index_digest": "sha256:694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c",
-    "linux_amd64_digest": "sha256:6829d6f9b634b0a3c75023fb273be4b715e847bb8d9260d28402a03bf16317b6",
-    "config_digest": "sha256:7f2d6b19d99f3a2a6c1a6e858cb6df2e9ddb48d2e809709232f9212db3ef2c7a",
-    "attestation_digest": "sha256:45a8c91b455fb3d88aba9f3b0bb68789516699f6ce1bf4594eac69bcd56bebf9",
-    "local_scan_sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a"
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "tag": "pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "local_scan_sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "local_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266"
   },
   "input_freeze": {
     "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",

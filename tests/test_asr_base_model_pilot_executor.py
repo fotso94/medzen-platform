@@ -189,3 +189,34 @@ def test_receipts_are_write_once(tmp_path: Path) -> None:
     store.persist(STAGES[0], "PASS", {"status": "PASS"})
     with pytest.raises(Exception, match="overwrite"):
         store.persist(STAGES[0], "PASS", {"status": "PASS"})
+
+
+def test_scan_subject_and_successor_hash_chain_are_self_identifying() -> None:
+    scan_path = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json"
+    subject_path = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json"
+    qualification_path = ROOT / "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json"
+    risk_path = ROOT / "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json"
+    bindings_path = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002.json"
+    packet_path = ROOT / "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002-pilot-successor.md"
+
+    digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+    subject = json.loads(subject_path.read_bytes())
+    qualification = json.loads(qualification_path.read_bytes())
+    risk = json.loads(risk_path.read_bytes())
+    bound = json.loads(bindings_path.read_bytes())
+    packet = packet_path.read_text(encoding="utf-8")
+
+    assert subject["status"] == "PASS_SCAN_SUBJECT_IDENTIFIED_SCOPED_RISK_ACCEPTANCE_REQUIRED"
+    assert subject["normalized_sarif"]["sha256"] == digest(scan_path)
+    assert subject["normalized_sarif"]["new_scan_output_byte_identical_to_committed_sarif"] is True
+    assert subject["scan_execution"]["command"][-1] == "local://medzen-asr-eval-runtime:pilot-5d1b8a0"
+    assert subject["scan_subject"]["oci_index_digest"] == bound["image"]["oci_index_digest"]
+    assert subject["scan_subject"]["linux_amd64_child_manifest_digest"] == bound["image"]["linux_amd64_digest"]
+    assert subject["scan_subject"]["source_commit"] == bound["image"]["source_commit"]
+    assert qualification["local_scan"]["subject_record"]["sha256"] == digest(subject_path)
+    assert risk["immutable_subject"]["qualification_record"]["sha256"] == digest(qualification_path)
+    assert risk["immutable_subject"]["local_scan"]["subject_record_sha256"] == digest(subject_path)
+    assert bound["risk_acceptance_sha256"] == digest(risk_path)
+    assert digest(qualification_path) in packet
+    assert digest(risk_path) in packet
+    assert digest(subject_path) in packet
