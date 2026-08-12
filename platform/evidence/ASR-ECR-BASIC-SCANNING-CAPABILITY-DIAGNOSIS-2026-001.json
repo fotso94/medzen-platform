@@ -1,0 +1,107 @@
+{
+  "record": "ASR_ECR_BASIC_SCANNING_CAPABILITY_DIAGNOSIS",
+  "id": "ASR-ECR-BASIC-SCANNING-CAPABILITY-DIAGNOSIS-2026-001",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T13:07:30Z",
+  "status": "CONFIRMED_SCANNER_CAPABILITY_MISMATCH",
+  "scope": "The immutable offline ASR evaluation image used by packet 2026-002C attempt 4.",
+  "subject": {
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-5d1b8a0",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "image_identity_changed": false
+  },
+  "official_capability_boundary": {
+    "basic_scanning": {
+      "provider": "Amazon ECR",
+      "coverage": "Operating-system package vulnerabilities only",
+      "programming_language_package_coverage": false,
+      "source": {
+        "title": "Scan images for software vulnerabilities in Amazon ECR",
+        "url": "https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning.html",
+        "supporting_statement": "AWS documents Basic scanning as OS scans and Enhanced scanning as OS plus programming-language package scanning."
+      }
+    },
+    "enhanced_scanning": {
+      "provider": "Amazon Inspector integrated with Amazon ECR",
+      "coverage": "Operating-system and programming-language package vulnerabilities",
+      "python_supported": true,
+      "source": {
+        "title": "Scan images for OS and programming language package vulnerabilities in Amazon ECR",
+        "url": "https://docs.aws.amazon.com/AmazonECR/latest/userguide/image-scanning-enhanced.html",
+        "supporting_statement": "AWS documents Enhanced scanning as an Inspector integration that scans both operating systems and programming-language packages."
+      }
+    },
+    "registry_scope_fact": {
+      "source": {
+        "title": "Automated scan types in Amazon Inspector",
+        "url": "https://docs.aws.amazon.com/inspector/latest/user/scanning-resources.html",
+        "supporting_statement": "Activating ECR scanning in Inspector converts the private registry from Basic to Enhanced scanning."
+      },
+      "pilot_decision": "DO_NOT_ENABLE_INSPECTOR_ENHANCED_SCANNING",
+      "reason": "It would introduce a registry-wide scanning-mode mutation and Inspector lifecycle/cost scope not approved for this pilot."
+    }
+  },
+  "empirical_attempt_4_proof": {
+    "refusal_record": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002C-ATTEMPT-4-AUTHORITATIVE-SCAN-REFUSAL.json",
+      "sha256": "23751027f8bd2717a4aff4b99a7bea50517b9c7989eb869c415edfb6d473bfab"
+    },
+    "ecr_basic_scan": {
+      "subject_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "status": "COMPLETE",
+      "service_description": "The scan was completed successfully.",
+      "finding_severity_counts": {},
+      "critical": 0,
+      "high": 0,
+      "finding_count": 0
+    },
+    "docker_scout_scan": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json",
+      "sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+      "subject_record_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-004.json",
+      "subject_record_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+      "scanner_version": "1.18.3",
+      "package_type": "pypi",
+      "package": "torch",
+      "version": "2.8.0+cu128",
+      "critical": 0,
+      "high": 4,
+      "high_cves": [
+        "CVE-2026-24747",
+        "CVE-2026-4538",
+        "CVE-2025-55552",
+        "CVE-2025-55551"
+      ]
+    },
+    "conclusion": "The empty ECR Basic result is expected coverage behavior, not evidence that the pip-installed torch findings were remediated. The unchanged image and digest-bound Docker Scout scan prove that the two scanners observed different package ecosystems."
+  },
+  "prospective_gate_correction": {
+    "ecr_basic_role": "Supplementary OS-package gate; require COMPLETE with zero CRITICAL and zero HIGH.",
+    "python_package_role": "Authoritative accepted-risk tuple gate; reconstruct the exact child from ECR by digest, verify every descriptor byte and manifest digest, and run Docker Scout 1.18.3 against those pulled bytes.",
+    "docker_scout_required_result": [
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH"
+    ],
+    "fail_closed_conditions": [
+      "wrong index, child, config, attestation or layer digest",
+      "missing or extra CRITICAL/HIGH finding",
+      "severity, package or package-version drift",
+      "scanner version drift",
+      "incomplete ECR Basic scan",
+      "any ECR Basic CRITICAL or HIGH OS finding"
+    ],
+    "image_upload_required": false,
+    "risk_acceptance_changed": false,
+    "historical_records_changed": false
+  },
+  "future_work": {
+    "item": "Evaluate Amazon Inspector Enhanced scanning for the serving-image pipeline under a separate platform-wide design and authorization.",
+    "pilot_blocker": false,
+    "authorized_by_this_record": false
+  }
+}
