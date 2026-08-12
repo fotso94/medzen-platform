@@ -48,8 +48,15 @@ from scripts.asr_eval_oci_publication import (  # noqa: E402
 from scripts.asr_base_model_pilot_k8s import render as render_k8s
 from scripts.asr_base_model_pilot_integrity import (
     PilotIntegrityRefusal,
+    read_committed_artifact,
     validate_executor_module_bindings,
     validate_governance_commit_boundary,
+)
+from scripts.asr_base_model_pilot_staging import (
+    StagingRefusal,
+    validate_prestage_proof,
+    validate_window_budget,
+    verify_prestaged_bundle,
 )
 from scripts.asr_base_model_pilot_plan import (
     ACCOUNT,
@@ -124,7 +131,11 @@ def _utc() -> datetime:
 
 
 class S3CreateOnlyStore(ObjectStore):
-    """Conditional PutObject store; callers split everything below 5 GiB."""
+    """Legacy attempt-8 store retained only for historical diagnosis tests.
+
+    Live timed attempts no longer construct this store. All large transfers
+    occur through the pre-staging module before authorization.
+    """
 
     def __init__(self, s3: Any, kms_key_arn: str):
         self.s3 = s3
@@ -319,6 +330,38 @@ class LiveOperations:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")
         if _sha(context.packet_path) != context.receipts.packet_sha256 or _sha(context.authorization_path) != context.receipts.authorization_sha256:
             raise OperationRefusal("REVIEWED_FILE_HASH_DIFFERS", "packet or authorization changed after binding")
+        if context.attempt == 9:
+            prestage_binding = bindings.get("artifact_prestage_proof")
+            if not isinstance(prestage_binding, dict):
+                raise OperationRefusal(
+                    "COMMITTED_PRESTAGE_PROOF_ABSENT",
+                    "attempt 9 requires the committed complete-bundle pre-stage proof",
+                )
+            prestage_path = self.root / str(prestage_binding.get("path", ""))
+            try:
+                prestage_body = read_committed_artifact(self.root, prestage_path)
+                if hashlib.sha256(prestage_body).hexdigest() != prestage_binding.get("sha256"):
+                    raise StagingRefusal("PRESTAGE_PROOF_HASH_DIFFERS", "pre-stage proof hash differs")
+                prestage = json.loads(prestage_body)
+                structure = validate_prestage_proof(
+                    prestage,
+                    expected_bundle_sha256=bindings["pilot_bundle"]["sha256"],
+                )
+                budget = validate_window_budget(
+                    prestage,
+                    deadline_seconds=context.deadline_seconds,
+                    expected_bundle_sha256=bindings["pilot_bundle"]["sha256"],
+                )
+            except (PilotIntegrityRefusal, StagingRefusal) as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            except Exception as exc:
+                raise OperationRefusal(
+                    "COMMITTED_PRESTAGE_PROOF_MALFORMED",
+                    "committed complete-bundle pre-stage proof is malformed",
+                ) from exc
+        else:
+            structure = {"status": "NOT_APPLICABLE_HISTORICAL_ATTEMPT"}
+            budget = {"status": "NOT_APPLICABLE_HISTORICAL_ATTEMPT"}
         try:
             lineage = validate_governance_commit_boundary(
                 self.root,
@@ -335,6 +378,8 @@ class LiveOperations:
             "dry_run": dry_run,
             "source_integrity": source_integrity,
             "reviewed_commit_lineage": lineage,
+            "artifact_prestage": structure,
+            "window_budget": budget,
         }
         if dry_run:
             return {
@@ -508,7 +553,7 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt in {5, 6, 7, 8}:
+        if context.attempt in {5, 6, 7, 8, 9}:
             exact = self._existing_exact_image(image)
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
@@ -586,24 +631,36 @@ class LiveOperations:
         return {"status": "PASS_IMAGE_PUBLICATION_AND_SCAN", "repository": ECR_REPOSITORY, "oci_index_digest": image["oci_index_digest"], "linux_amd64_digest": children[0]["digest"], "publication": publication, **scan}
 
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
-        selection = json.loads((context.workdir / "pilot-selection.json").read_bytes())
         expected = context.bindings["pilot_bundle"]
-        prefix = f"research/asr-base-model/pilot/{expected['sha256']}/"
-        page = self.s3.list_objects_v2(Bucket=BUCKET, Prefix=prefix, MaxKeys=1)
-        if page.get("KeyCount"):
-            raise OperationRefusal("RESEARCH_PREFIX_NOT_EMPTY", "content-addressed research prefix is occupied")
-        store = S3CreateOnlyStore(self.s3, context.bindings["aws"]["s3_kms_key_arn"])
-        bundle = stage_assets(selection, store, context.workdir / "asset-staging", prefix)
-        if bundle["bundle_identity"]["sha256"] != expected["sha256"]:
-            raise OperationRefusal("PILOT_BUNDLE_HASH_DIFFERS", "staged bundle differs from packet binding")
+        proof_binding = context.bindings["artifact_prestage_proof"]
+        proof_path = self.root / proof_binding["path"]
         bundle_path = context.workdir / "pilot-bundle.json"
-        write_exclusive(bundle_path, canonical_json(bundle))
-        digest, _ = sha256_file(bundle_path)
-        version = store.upload_create_only(bundle_path, BUCKET, prefix + "pilot-bundle.json", digest)
+        try:
+            proof_body = read_committed_artifact(self.root, proof_path)
+            if hashlib.sha256(proof_body).hexdigest() != proof_binding["sha256"]:
+                raise StagingRefusal("PRESTAGE_PROOF_HASH_DIFFERS", "pre-stage proof hash differs")
+            proof = json.loads(proof_body)
+            verification = verify_prestaged_bundle(
+                self.s3,
+                proof,
+                expected_bundle_sha256=expected["sha256"],
+                destination=bundle_path,
+            )
+        except (PilotIntegrityRefusal, StagingRefusal) as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
         state = self._state(context)
-        state["artifact_prefix"] = prefix
+        state["artifact_prefix"] = proof["prefix"].removeprefix(f"s3://{BUCKET}/")
         self._save_state(context, state)
-        return {"status": "PASS_ARTIFACT_STAGE", "prefix": f"s3://{BUCKET}/{prefix}", "bundle_sha256": bundle["bundle_identity"]["sha256"], "bundle_receipt_sha256": bundle["receipt_sha256"], "bundle_object_sha256": digest, "bundle_version_id": version, "object_count": len(bundle["objects"]) + 1, "create_only": True, "hashes_verified": True}
+        return {
+            "status": "PASS_ARTIFACT_STAGE",
+            "mode": "VERIFY_ONLY_PRESTAGED_BUNDLE",
+            "prefix": proof["prefix"],
+            "bundle_sha256": expected["sha256"],
+            "prestage_proof_sha256": proof_binding["sha256"],
+            "create_only": True,
+            "hashes_verified": True,
+            **verification,
+        }
 
     def _endpoint_policy(self, context: AttemptContext, service: str) -> str:
         prefix = context.bindings["pilot_bundle"]["sha256"]

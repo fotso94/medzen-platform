@@ -220,7 +220,7 @@ class FakeOperations:
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("image_publication_and_scan")
         self.state["ecr"] = True
-        if context.attempt in {5, 6, 7, 8}:
+        if context.attempt in {5, 6, 7, 8, 9}:
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
             except DigestRescanRefusal as exc:
@@ -306,7 +306,13 @@ class FakeOperations:
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("artifact_stage")
         self.state["artifacts"] = True
-        return {"status": "PASS_ARTIFACT_STAGE", "create_only": True, "hashes_verified": True}
+        return {
+            "status": "PASS_ARTIFACT_STAGE",
+            "mode": "VERIFY_ONLY_PRESTAGED_BUNDLE",
+            "artifact_upload_bytes": 0,
+            "create_only": True,
+            "hashes_verified": True,
+        }
 
     def private_endpoint_and_policy_gate(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("private_endpoint_and_policy_gate")

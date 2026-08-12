@@ -25,6 +25,7 @@ LEGACY_EXECUTOR_MODULE_PATHS = (
 )
 EXECUTOR_MODULE_PATHS = (
     *LEGACY_EXECUTOR_MODULE_PATHS[:9],
+    "scripts/asr_base_model_pilot_staging.py",
     "scripts/asr_external_tool.py",
     *LEGACY_EXECUTOR_MODULE_PATHS[9:10],
     "scripts/asr_eval_scout_preflight.py",

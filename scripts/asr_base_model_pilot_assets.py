@@ -192,24 +192,44 @@ def _upload_parts(
             part_path = workdir / "upload-parts" / logical_name / f"part-{part_number:04d}"
             part_path.parent.mkdir(parents=True, exist_ok=True)
             remaining = min(MAX_CREATE_ONLY_PART_BYTES, size - stream.tell())
-            with part_path.open("xb") as output:
-                while remaining:
-                    block = stream.read(min(8 * 1024 * 1024, remaining))
-                    if not block:
-                        raise AssetRefusal(f"unexpected EOF splitting asset: {logical_name}")
-                    output.write(block)
-                    remaining -= len(block)
-            part_sha, part_size = sha256_file(part_path)
-            key = prefix + f"bundles/{logical_name}.parts/part-{part_number:04d}"
-            version = store.upload_create_only(part_path, "medzen-speech", key, part_sha)
-            records.append({"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version})
+            # A model smaller than the logical-object ceiling can be uploaded
+            # directly. Larger models retain the historical 4-GiB logical
+            # object layout, but temporary split files are removed as soon as
+            # their independently managed multipart transfer completes.
+            direct = stream.tell() == 0 and remaining == size
+            upload_path = source if direct else part_path
+            if not direct:
+                with part_path.open("xb") as output:
+                    while remaining:
+                        block = stream.read(min(8 * 1024 * 1024, remaining))
+                        if not block:
+                            raise AssetRefusal(f"unexpected EOF splitting asset: {logical_name}")
+                        output.write(block)
+                        remaining -= len(block)
+            else:
+                stream.seek(size)
+            try:
+                part_sha, part_size = sha256_file(upload_path)
+                key = prefix + f"bundles/{logical_name}.parts/part-{part_number:04d}"
+                version = store.upload_create_only(upload_path, "medzen-speech", key, part_sha)
+                records.append({"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version})
+            finally:
+                if not direct and part_path.exists():
+                    part_path.unlink()
             part_number += 1
     if not records or sum(value["bytes"] for value in records) != size:
         raise AssetRefusal(f"asset split differs: {logical_name}")
     return records, digest, size
 
 
-def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, prefix: str) -> dict[str, Any]:
+def stage_assets(
+    selection: dict[str, Any],
+    store: ObjectStore,
+    workdir: Path,
+    prefix: str,
+    *,
+    model_cache: Path | None = None,
+) -> dict[str, Any]:
     if selection.get("status") != "PASS_DETERMINISTIC_PILOT_SELECTION":
         raise AssetRefusal("pilot selection is not PASS")
     if not prefix.startswith("research/asr-base-model/pilot/") or not prefix.endswith("/"):
@@ -222,7 +242,15 @@ def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, p
 
     for name, expected in META_ASSETS.items():
         path = workdir / "models" / name
-        download_https(expected["url"], path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cached = model_cache / name if model_cache is not None else None
+        if cached is not None and cached.is_file():
+            try:
+                os.link(cached, path)
+            except OSError:
+                shutil.copyfile(cached, path)
+        else:
+            download_https(expected["url"], path)
         digest, size = sha256_file(path)
         if digest != expected["sha256"] or (expected["bytes"] is not None and size != expected["bytes"]):
             raise AssetRefusal(f"Meta asset identity differs: {name}")

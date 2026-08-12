@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "record": "ASR_BASE_MODEL_ARTIFACT_STAGING_DESIGN_DIAGNOSIS",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-DIAGNOSIS",
+  "status": "CONFIRMED_DESIGN_DEFECT_SUCCESSOR_REQUIRED",
+  "attempt": 8,
+  "historical_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-STALL-REFUSAL.json",
+    "sha256": "773b3761646438196a3eb81aa30b6991f4e6b53cf52fb4e37881b3c691ac6c8b"
+  },
+  "root_cause": {
+    "classification": "UNWINNABLE_TIMED_WINDOW_BY_DESIGN",
+    "implementation_at_attempt_8": "scripts/asr_base_model_pilot_live.py:S3CreateOnlyStore.upload_create_only",
+    "mechanism": "Each multi-gigabyte logical object used one synchronous s3.put_object call. The call exposed no bounded byte-progress heartbeat or part-level retry and occupied the timed attempt while uploading.",
+    "observed_uplink_bits_per_second_approx": 10000000,
+    "completed_checkpoint_bytes": 3902956068,
+    "estimated_seconds_for_completed_checkpoint_at_observed_uplink": 3123,
+    "model_checkpoint_bytes_total": 13021689920,
+    "estimated_seconds_for_model_checkpoints_at_observed_uplink": 10418,
+    "attempt_window_seconds": 10800,
+    "conclusion": "Model checkpoint upload alone consumed nearly the complete attempt allowance before input staging, endpoints, GPU startup, inference and cleanup. The executor could not complete the authorized work even if the second synchronous request remained alive."
+  },
+  "correction": {
+    "prestage_before_attempt": true,
+    "timed_artifact_stage": "VERIFY_ONLY",
+    "managed_multipart_with_part_retry": true,
+    "external_byte_progress_heartbeat": true,
+    "zero_progress_watchdog": true,
+    "uplink_measurement_and_window_budget_refusal": true,
+    "existing_exact_create_only_objects_reused_by_version_and_hash": true
+  },
+  "immutability": {
+    "attempt_8_record_modified": false,
+    "attempt_8_reuse_permitted": false,
+    "attempt_9_authorized": false
+  }
+}
