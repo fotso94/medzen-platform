@@ -597,29 +597,33 @@ class LiveOperations:
                 continue
             url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key, "VersionId": item["version_id"]}, ExpiresIn=900)
             destination = f"$base/input/{relative}"
+            concrete_destination = destination.replace("$base", f"/var/lib/medzen-asr-eval/attempt-{context.attempt}")
+            parent = str(Path(concrete_destination).parent)
             commands.extend([
-                f"sudo -u '#10001' mkdir -p \"$(dirname \"{destination}\")\"",
-                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o \"{destination}\"",
-                f"test \"$(sha256sum \"{destination}\" | cut -d' ' -f1)\" = {item['sha256']}",
-                f"test \"$(stat -c %s \"{destination}\")\" = {item['bytes']}",
+                f"sudo install -d -o 10001 -g 10001 {json.dumps(parent)}",
+                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o {json.dumps(concrete_destination)}",
+                f"test \"$(sha256sum {json.dumps(concrete_destination)} | cut -d' ' -f1)\" = {item['sha256']}",
+                f"test \"$(stat -c %s {json.dumps(concrete_destination)})\" = {item['bytes']}",
             ])
             node_objects.append({"key": key, "sha256": item["sha256"], "bytes": item["bytes"]})
         for name, assembly in bundle["assemblies"].items():
-            parts = " ".join(f"$base/input/parts/{item['key'].removeprefix(prefix + 'models/')}" for item in assembly["parts"])
-            destination = f"$base/input/models/{name}"
+            root = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"
+            parts = " ".join(json.dumps(f"{root}/input/parts/{item['key'].removeprefix(prefix + 'models/')}") for item in assembly["parts"])
+            destination = f"{root}/input/models/{name}"
             commands.extend([
-                f"sudo -u '#10001' sh -c 'cat {parts} > {destination}'",
-                f"test \"$(sha256sum {destination} | cut -d' ' -f1)\" = {assembly['sha256']}",
-                f"test \"$(stat -c %s {destination})\" = {assembly['bytes']}",
+                f"sudo -u '#10001' sh -c {json.dumps(f'cat {parts} > {destination}')}",
+                f"test \"$(sha256sum {json.dumps(destination)} | cut -d' ' -f1)\" = {assembly['sha256']}",
+                f"test \"$(stat -c %s {json.dumps(destination)})\" = {assembly['bytes']}",
             ])
         whisper_prefix = "b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/"
         model_bindings = json.loads((context.workdir / "asset-staging/model-bindings.json").read_bytes())
         for relative, item in sorted(model_bindings["whisper_files"].items()):
             url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": whisper_prefix + relative}, ExpiresIn=900)
-            destination = f"$base/input/models/whisper-large-v3-ct2/{relative}"
+            destination = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}/input/models/whisper-large-v3-ct2/{relative}"
             commands.extend([
-                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o {destination}",
-                f"test \"$(sha256sum {destination} | cut -d' ' -f1)\" = {item['sha256']}",
+                f"sudo install -d -o 10001 -g 10001 {json.dumps(str(Path(destination).parent))}",
+                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o {json.dumps(destination)}",
+                f"test \"$(sha256sum {json.dumps(destination)} | cut -d' ' -f1)\" = {item['sha256']}",
             ])
         network = base64.b64encode((context.workdir / "network-binding.json").read_bytes()).decode()
         commands.extend([
