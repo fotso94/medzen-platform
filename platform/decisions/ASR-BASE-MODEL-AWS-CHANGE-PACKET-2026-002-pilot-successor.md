@@ -147,6 +147,14 @@ Metrics include WER/CER micro, language-macro, per-language/source, EOS/caps,
 latency median/p95, RTF median/p95, load time and numeric GPU-memory
 baseline/peak/sample count.
 
+The 540 audio files are assembled locally into one deterministic tar archive,
+then divided into conditional-create parts smaller than S3's 5 GiB PutObject
+limit. Meta checkpoints use the same bounded-part mechanism. The node receives
+only a small fixed set of short-lived exact presigned URLs, verifies every
+part and assembled SHA-256, safely extracts the audio archive and removes it.
+This is required to remain below SSM command-payload limits; no credential or
+URL enters the evaluation container.
+
 ## Network and workload boundary
 
 Before workload creation the runner creates temporary private ECR API/DKR

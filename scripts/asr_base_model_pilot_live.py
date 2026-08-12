@@ -619,10 +619,8 @@ class LiveOperations:
             key = item["key"]
             if key.endswith(("runtime-rows.json", "model-bindings.json")):
                 relative = key.removeprefix(prefix)
-            elif "/audio/" in key:
-                relative = "audio/" + key.rsplit("/", 1)[1]
-            elif "/models/" in key:
-                relative = "parts/" + key.removeprefix(prefix + "models/")
+            elif "/bundles/" in key:
+                relative = "parts/" + key.removeprefix(prefix + "bundles/")
             else:
                 continue
             url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key, "VersionId": item["version_id"]}, ExpiresIn=900)
@@ -638,13 +636,20 @@ class LiveOperations:
             node_objects.append({"key": key, "sha256": item["sha256"], "bytes": item["bytes"]})
         for name, assembly in bundle["assemblies"].items():
             root = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"
-            parts = " ".join(json.dumps(f"{root}/input/parts/{item['key'].removeprefix(prefix + 'models/')}") for item in assembly["parts"])
-            destination = f"{root}/input/models/{name}"
+            parts = " ".join(json.dumps(f"{root}/input/parts/{item['key'].removeprefix(prefix + 'bundles/')}") for item in assembly["parts"])
+            destination = f"{root}/input/{assembly['destination']}"
             commands.extend([
+                f"sudo install -d -o 10001 -g 10001 {json.dumps(str(Path(destination).parent))}",
                 f"sudo -u '#10001' sh -c {json.dumps(f'cat {parts} > {destination}')}",
                 f"test \"$(sha256sum {json.dumps(destination)} | cut -d' ' -f1)\" = {assembly['sha256']}",
                 f"test \"$(stat -c %s {json.dumps(destination)})\" = {assembly['bytes']}",
             ])
+            if assembly.get("archive"):
+                commands.extend([
+                    f"sudo -u '#10001' tar --extract --file {json.dumps(destination)} --directory {json.dumps(root + '/input')} --no-same-owner --no-same-permissions",
+                    f"test \"$(find {json.dumps(root + '/input/audio')} -type f | wc -l)\" = {assembly['files']}",
+                    f"sudo rm -f {json.dumps(destination)}",
+                ])
         whisper_prefix = "b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/"
         model_bindings = json.loads((context.workdir / "asset-staging/model-bindings.json").read_bytes())
         for relative, item in sorted(model_bindings["whisper_files"].items()):

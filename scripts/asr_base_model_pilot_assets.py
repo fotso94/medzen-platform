@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import tarfile
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -180,6 +181,34 @@ def download_https(url: str, destination: Path) -> None:
         shutil.copyfileobj(response, output, length=8 * 1024 * 1024)
 
 
+def _upload_parts(
+    source: Path, store: ObjectStore, prefix: str, logical_name: str, workdir: Path
+) -> tuple[list[dict[str, Any]], str, int]:
+    digest, size = sha256_file(source)
+    records = []
+    with source.open("rb") as stream:
+        part_number = 0
+        while stream.tell() < size:
+            part_path = workdir / "upload-parts" / logical_name / f"part-{part_number:04d}"
+            part_path.parent.mkdir(parents=True, exist_ok=True)
+            remaining = min(MAX_CREATE_ONLY_PART_BYTES, size - stream.tell())
+            with part_path.open("xb") as output:
+                while remaining:
+                    block = stream.read(min(8 * 1024 * 1024, remaining))
+                    if not block:
+                        raise AssetRefusal(f"unexpected EOF splitting asset: {logical_name}")
+                    output.write(block)
+                    remaining -= len(block)
+            part_sha, part_size = sha256_file(part_path)
+            key = prefix + f"bundles/{logical_name}.parts/part-{part_number:04d}"
+            version = store.upload_create_only(part_path, "medzen-speech", key, part_sha)
+            records.append({"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version})
+            part_number += 1
+    if not records or sum(value["bytes"] for value in records) != size:
+        raise AssetRefusal(f"asset split differs: {logical_name}")
+    return records, digest, size
+
+
 def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, prefix: str) -> dict[str, Any]:
     if selection.get("status") != "PASS_DETERMINISTIC_PILOT_SELECTION":
         raise AssetRefusal("pilot selection is not PASS")
@@ -197,30 +226,17 @@ def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, p
         digest, size = sha256_file(path)
         if digest != expected["sha256"] or (expected["bytes"] is not None and size != expected["bytes"]):
             raise AssetRefusal(f"Meta asset identity differs: {name}")
-        part_records = []
-        with path.open("rb") as source:
-            part_number = 0
-            while source.tell() < size:
-                part_path = workdir / "upload-parts" / name / f"part-{part_number:04d}"
-                part_path.parent.mkdir(parents=True, exist_ok=True)
-                remaining = min(MAX_CREATE_ONLY_PART_BYTES, size - source.tell())
-                with part_path.open("xb") as output:
-                    while remaining:
-                        block = source.read(min(8 * 1024 * 1024, remaining))
-                        if not block:
-                            raise AssetRefusal(f"unexpected EOF splitting Meta asset: {name}")
-                        output.write(block)
-                        remaining -= len(block)
-                part_sha, part_size = sha256_file(part_path)
-                key = prefix + f"models/{name}.parts/part-{part_number:04d}"
-                version = store.upload_create_only(part_path, "medzen-speech", key, part_sha)
-                record = {"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version}
-                objects.append(record)
-                part_records.append(record)
-                part_number += 1
-        if not part_records or sum(value["bytes"] for value in part_records) != size:
+        part_records, split_digest, split_size = _upload_parts(path, store, prefix, name, workdir)
+        if split_digest != digest or split_size != size:
             raise AssetRefusal(f"Meta asset split differs: {name}")
-        assemblies[name] = {"sha256": digest, "bytes": size, "parts": part_records}
+        objects.extend(part_records)
+        assemblies[name] = {
+            "sha256": digest,
+            "bytes": size,
+            "parts": part_records,
+            "destination": f"models/{name}",
+            "archive": False,
+        }
 
     whisper_manifest = workdir / "whisper-MANIFEST.json"
     store.download("medzen-speech", WHISPER_PREFIX + "MANIFEST.json", whisper_manifest)
@@ -258,9 +274,6 @@ def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, p
         digest, size = sha256_file(path)
         if digest != row["audio_checksum_sha256"]:
             raise AssetRefusal("audio identity differs after download")
-        key = prefix + "audio/" + filename
-        version = store.upload_create_only(path, "medzen-speech", key, digest)
-        objects.append({"key": key, "sha256": digest, "bytes": size, "version_id": version})
         runtime_rows.append({
             "manifest": row["manifest"],
             "language": row["language"],
@@ -272,6 +285,29 @@ def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, p
             "reference_sha256": row["reference_sha256"],
             "selection_ordinal": row["selection_ordinal"],
         })
+
+    audio_archive = workdir / "audio-bundle.tar"
+    with tarfile.open(audio_archive, "x") as archive:
+        for path in sorted((workdir / "audio").iterdir(), key=lambda value: value.name):
+            info = tarfile.TarInfo(name=f"audio/{path.name}")
+            info.size = path.stat().st_size
+            info.mode = 0o444
+            info.uid = info.gid = 10001
+            info.uname = info.gname = "medzen"
+            info.mtime = 0
+            with path.open("rb") as source:
+                archive.addfile(info, source)
+    audio_parts, audio_sha, audio_bytes = _upload_parts(audio_archive, store, prefix, "audio-bundle.tar", workdir)
+    objects.extend(audio_parts)
+    assemblies["audio-bundle.tar"] = {
+        "sha256": audio_sha,
+        "bytes": audio_bytes,
+        "parts": audio_parts,
+        "destination": "audio-bundle.tar",
+        "archive": True,
+        "extract_to": ".",
+        "files": len(runtime_rows),
+    }
 
     metadata = {
         "runtime-rows.json": {"schema_version": 1, "classification": "PUBLIC_RESEARCH_NO_PHI", "rows": runtime_rows},
