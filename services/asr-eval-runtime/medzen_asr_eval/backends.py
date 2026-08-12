@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -9,8 +10,16 @@ from .harness import EvaluationRefusal, validate_mode
 from .identity import CANDIDATES
 
 
+@dataclass(frozen=True)
+class Transcript:
+    text: str
+    eos_observed: bool
+    cap_hit: bool
+    termination_evidence: str
+
+
 class Backend(Protocol):
-    def transcribe(self, audio: Path, language_id: str | None) -> str: ...
+    def transcribe(self, audio: Path, language_id: str | None) -> Transcript: ...
 
 
 class WhisperBackend:
@@ -19,7 +28,7 @@ class WhisperBackend:
 
         self._model = WhisperModel(str(model_dir), device="cuda", compute_type="float16")
 
-    def transcribe(self, audio: Path, language_id: str | None) -> str:
+    def transcribe(self, audio: Path, language_id: str | None) -> Transcript:
         segments, _ = self._model.transcribe(
             str(audio),
             language=language_id,
@@ -27,8 +36,17 @@ class WhisperBackend:
             best_of=1,
             condition_on_previous_text=False,
             vad_filter=False,
+            max_new_tokens=448,
         )
-        return " ".join(segment.text.strip() for segment in segments).strip()
+        materialized = list(segments)
+        text = " ".join(segment.text.strip() for segment in materialized).strip()
+        tokens = sum(len(segment.tokens) for segment in materialized)
+        return Transcript(
+            text=text,
+            eos_observed=tokens < 448,
+            cap_hit=tokens >= 448,
+            termination_evidence="faster-whisper completed iterator; token count compared with max_new_tokens=448",
+        )
 
 
 class MetaBackend:
@@ -42,12 +60,18 @@ class MetaBackend:
             dtype=torch.bfloat16,
         )
 
-    def transcribe(self, audio: Path, language_id: str | None) -> str:
+    def transcribe(self, audio: Path, language_id: str | None) -> Transcript:
         languages = None if language_id is None else [language_id]
         values = self._pipeline.transcribe([str(audio)], lang=languages, batch_size=1)
         if len(values) != 1 or not isinstance(values[0], str):
             raise EvaluationRefusal("Meta backend returned a malformed prediction")
-        return values[0].strip()
+        text = values[0].strip()
+        return Transcript(
+            text=text,
+            eos_observed=True,
+            cap_hit=False,
+            termination_evidence="Omnilingual synchronous API completed; backend exposes no truncation flag",
+        )
 
 
 def load_backend(candidate_name: str, mode: str, language_id: str | None, model_root: Path) -> Backend:

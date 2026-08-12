@@ -40,6 +40,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("qualify")
+    network = subparsers.add_parser("network-probe")
+    network.add_argument("--binding", type=Path, required=True)
+    network.add_argument("--receipt", type=Path, required=True)
+    pilot = subparsers.add_parser("pilot")
+    pilot.add_argument("--rows", type=Path, required=True)
+    pilot.add_argument("--model-root", type=Path, default=Path("/models"))
+    pilot.add_argument("--model-binding", type=Path, required=True)
+    pilot.add_argument("--conditioning", type=Path)
+    pilot.add_argument("--receipt-root", type=Path, required=True)
+    pilot.add_argument("--aggregate-receipt", type=Path, required=True)
     transcribe = subparsers.add_parser("transcribe")
     transcribe.add_argument("--candidate", required=True)
     transcribe.add_argument("--mode", required=True)
@@ -52,6 +62,21 @@ def main() -> int:
     try:
         if args.command == "qualify":
             result = qualify()
+        elif args.command == "network-probe":
+            from .network_probe import probe_network
+
+            result = probe_network(args.binding, args.receipt)
+        elif args.command == "pilot":
+            from .pilot import run_pilot
+
+            result = run_pilot(
+                rows_path=args.rows,
+                model_root=args.model_root,
+                model_binding_path=args.model_binding,
+                conditioning_path=args.conditioning,
+                receipt_root=args.receipt_root,
+                aggregate_path=args.aggregate_receipt,
+            )
         else:
             validate_mode(args.candidate, args.mode, args.language_id)
             audio = args.audio.read_bytes()
@@ -60,14 +85,17 @@ def main() -> int:
             backend = load_backend(
                 args.candidate, args.mode, args.language_id, args.model_root
             )
-            prediction = backend.transcribe(args.audio, args.language_id)
+            transcript = backend.transcribe(args.audio, args.language_id)
             result = {
                 "status": "PASS_ROW_INFERENCE",
                 "candidate": args.candidate,
                 "mode": args.mode,
                 "language_id": args.language_id,
                 "audio_sha256": args.audio_sha256,
-                "prediction": prediction,
+                "prediction": transcript.text,
+                "eos_observed": transcript.eos_observed,
+                "cap_hit": transcript.cap_hit,
+                "termination_evidence": transcript.termination_evidence,
             }
             write_once(args.receipt, result)
     except (EvaluationRefusal, FileExistsError) as exc:

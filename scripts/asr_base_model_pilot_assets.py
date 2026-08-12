@@ -1,0 +1,298 @@
+#!/usr/bin/env python3
+"""Deterministically select and stage the exact offline-pilot inputs."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import shutil
+import urllib.request
+from dataclasses import dataclass
+from pathlib import Path, PurePosixPath
+from typing import Any, Protocol
+
+
+PROSPECTIVE_VERSIONS = {"aaf-test-v1", "cv17-test-v1", "fleurs-v1", "soreva-v1"}
+SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+META_ASSETS = {
+    "omniASR-CTC-1B-v2.pt": {
+        "url": "https://dl.fbaipublicfiles.com/mms/omniASR-CTC-1B-v2.pt",
+        "bytes": 3_902_956_068,
+        "sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+    },
+    "omniASR-LLM-1B-v2.pt": {
+        "url": "https://dl.fbaipublicfiles.com/mms/omniASR-LLM-1B-v2.pt",
+        "bytes": 9_118_733_852,
+        "sha256": "cceb4d9ebac3d168a6af6b26c62ce11bafc562b38976c6bfa87e7d60422c6da5",
+    },
+    "omniASR_tokenizer_written_v2.model": {
+        "url": "https://dl.fbaipublicfiles.com/mms/omniASR_tokenizer_written_v2.model",
+        "bytes": None,
+        "sha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e",
+    },
+}
+WHISPER_PREFIX = "b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/"
+WHISPER_TREE = "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e"
+MAX_CREATE_ONLY_PART_BYTES = 4 * 1024 * 1024 * 1024
+
+
+class AssetRefusal(RuntimeError):
+    pass
+
+
+def canonical_json(value: Any) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False) + "\n").encode()
+
+
+def sha256_file(path: Path) -> tuple[str, int]:
+    digest = hashlib.sha256()
+    size = 0
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+            digest.update(block)
+            size += len(block)
+    return digest.hexdigest(), size
+
+
+def selected_manifests(root: Path) -> list[Path]:
+    result = []
+    for directory in sorted(path for path in root.glob("*/asr/*") if path.is_dir()):
+        original = directory / "manifest.jsonl"
+        corrected = directory / "manifest.r2.jsonl"
+        if corrected.exists() and not original.exists():
+            raise AssetRefusal("orphan manifest.r2.jsonl")
+        if original.exists() and directory.name in PROSPECTIVE_VERSIONS:
+            result.append(corrected if corrected.exists() else original)
+    if not result:
+        raise AssetRefusal("prospective manifests are absent")
+    return result
+
+
+def pilot_bundle_identity(selection_sha256: str) -> dict[str, Any]:
+    if SHA_RE.fullmatch(selection_sha256) is None:
+        raise AssetRefusal("selection hash is malformed")
+    identity = {
+        "schema_version": 1,
+        "selection_sha256": selection_sha256,
+        "meta_assets": {
+            name: {"sha256": value["sha256"], "bytes": value["bytes"]}
+            for name, value in sorted(META_ASSETS.items())
+        },
+        "whisper_tree_sha256": WHISPER_TREE,
+        "classification": "PUBLIC_RESEARCH_NO_PHI",
+    }
+    return {**identity, "sha256": hashlib.sha256(canonical_json(identity)).hexdigest()}
+
+
+def select_pilot_rows(root: Path) -> dict[str, Any]:
+    selected: list[dict[str, Any]] = []
+    identities: set[str] = set()
+    manifests = selected_manifests(root)
+    for path in manifests:
+        relative = path.relative_to(root).as_posix()
+        language = relative.split("/", 1)[0]
+        candidates = []
+        for number, line in enumerate(path.read_bytes().splitlines(), 1):
+            try:
+                row = json.loads(line)
+            except Exception as exc:
+                raise AssetRefusal(f"malformed manifest row: {relative}:{number}") from exc
+            checksum = row.get("audio_checksum_sha256")
+            uses = row.get("allowed_use")
+            if (
+                not isinstance(checksum, str)
+                or SHA_RE.fullmatch(checksum) is None
+                or row.get("primary_language") != language
+                or row.get("split") != "test"
+                or not isinstance(uses, list)
+                or "asr_eval" not in uses
+                or "asr_train" in uses
+                or row.get("license_tier") is None
+            ):
+                raise AssetRefusal(f"row is outside the frozen evaluation boundary: {relative}:{number}")
+            audio_uri = row.get("audio_filepath")
+            reference = row.get("text_normalized")
+            duration = row.get("duration_s")
+            if (
+                not isinstance(audio_uri, str)
+                or not audio_uri.startswith("s3://medzen-speech/")
+                or not isinstance(reference, str)
+                or not reference.strip()
+                or isinstance(duration, bool)
+                or not isinstance(duration, (int, float))
+                or not 0 < float(duration) <= 30
+            ):
+                raise AssetRefusal(f"row payload differs: {relative}:{number}")
+            candidates.append({
+                "manifest": f"eval/{relative}",
+                "manifest_line": number,
+                "language": language,
+                "source_id": str(row["source_id"]),
+                "audio_s3_uri": audio_uri,
+                "audio_checksum_sha256": checksum,
+                "duration_s": float(duration),
+                "reference": reference,
+                "reference_sha256": hashlib.sha256(reference.encode()).hexdigest(),
+            })
+        for ordinal, row in enumerate(sorted(candidates, key=lambda value: value["audio_checksum_sha256"])[:10], 1):
+            checksum = row["audio_checksum_sha256"]
+            if checksum in identities:
+                raise AssetRefusal("pilot selection has duplicate audio identity")
+            identities.add(checksum)
+            selected.append({**row, "selection_ordinal": ordinal})
+    if not 1 <= len(selected) <= 540:
+        raise AssetRefusal("pilot selection is outside the 540-row maximum")
+    public_rows = [
+        {key: value for key, value in row.items() if key != "reference"}
+        for row in selected
+    ]
+    public_sha = hashlib.sha256(canonical_json(public_rows)).hexdigest()
+    return {
+        "schema_version": 1,
+        "status": "PASS_DETERMINISTIC_PILOT_SELECTION",
+        "classification": "PUBLIC_RESEARCH_NO_PHI",
+        "manifest_count": len(manifests),
+        "rows": selected,
+        "public_row_list_sha256": public_sha,
+    }
+
+
+class ObjectStore(Protocol):
+    def download(self, bucket: str, key: str, destination: Path) -> None: ...
+    def upload_create_only(self, source: Path, bucket: str, key: str, sha256: str) -> str: ...
+
+
+def parse_s3(uri: str) -> tuple[str, str]:
+    if not uri.startswith("s3://"):
+        raise AssetRefusal("S3 URI is malformed")
+    bucket, separator, key = uri[5:].partition("/")
+    if not separator or bucket != "medzen-speech" or not key or ".." in PurePosixPath(key).parts:
+        raise AssetRefusal("S3 URI leaves the exact bucket boundary")
+    return bucket, key
+
+
+def download_https(url: str, destination: Path) -> None:
+    request = urllib.request.Request(url, headers={"User-Agent": "MedZen-ASR-offline-eval/1"})
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(request, timeout=120) as response, destination.open("xb") as output:
+        shutil.copyfileobj(response, output, length=8 * 1024 * 1024)
+
+
+def stage_assets(selection: dict[str, Any], store: ObjectStore, workdir: Path, prefix: str) -> dict[str, Any]:
+    if selection.get("status") != "PASS_DETERMINISTIC_PILOT_SELECTION":
+        raise AssetRefusal("pilot selection is not PASS")
+    if not prefix.startswith("research/asr-base-model/pilot/") or not prefix.endswith("/"):
+        raise AssetRefusal("research staging prefix differs")
+    if workdir.exists():
+        raise AssetRefusal("asset staging directory already exists")
+    workdir.mkdir(parents=True)
+    objects: list[dict[str, Any]] = []
+    assemblies: dict[str, dict[str, Any]] = {}
+
+    for name, expected in META_ASSETS.items():
+        path = workdir / "models" / name
+        download_https(expected["url"], path)
+        digest, size = sha256_file(path)
+        if digest != expected["sha256"] or (expected["bytes"] is not None and size != expected["bytes"]):
+            raise AssetRefusal(f"Meta asset identity differs: {name}")
+        part_records = []
+        with path.open("rb") as source:
+            part_number = 0
+            while source.tell() < size:
+                part_path = workdir / "upload-parts" / name / f"part-{part_number:04d}"
+                part_path.parent.mkdir(parents=True, exist_ok=True)
+                remaining = min(MAX_CREATE_ONLY_PART_BYTES, size - source.tell())
+                with part_path.open("xb") as output:
+                    while remaining:
+                        block = source.read(min(8 * 1024 * 1024, remaining))
+                        if not block:
+                            raise AssetRefusal(f"unexpected EOF splitting Meta asset: {name}")
+                        output.write(block)
+                        remaining -= len(block)
+                part_sha, part_size = sha256_file(part_path)
+                key = prefix + f"models/{name}.parts/part-{part_number:04d}"
+                version = store.upload_create_only(part_path, "medzen-speech", key, part_sha)
+                record = {"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version}
+                objects.append(record)
+                part_records.append(record)
+                part_number += 1
+        if not part_records or sum(value["bytes"] for value in part_records) != size:
+            raise AssetRefusal(f"Meta asset split differs: {name}")
+        assemblies[name] = {"sha256": digest, "bytes": size, "parts": part_records}
+
+    whisper_manifest = workdir / "whisper-MANIFEST.json"
+    store.download("medzen-speech", WHISPER_PREFIX + "MANIFEST.json", whisper_manifest)
+    manifest = json.loads(whisper_manifest.read_bytes())
+    if manifest.get("artifact", {}).get("tree_sha256") != WHISPER_TREE:
+        raise AssetRefusal("Whisper manifest tree differs")
+    whisper_files = manifest["artifact"]["files"]
+    model_bindings = {
+        "schema_version": 1,
+        "whisper_tree_sha256": WHISPER_TREE,
+        "whisper_files": whisper_files,
+        "meta_files": {
+            name: {"sha256": expected["sha256"], "bytes": expected["bytes"]}
+            for name, expected in META_ASSETS.items()
+        },
+    }
+    for relative, expected in sorted(whisper_files.items()):
+        path = workdir / "models/whisper-large-v3-ct2" / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        store.download("medzen-speech", WHISPER_PREFIX + relative, path)
+        digest, size = sha256_file(path)
+        if digest != expected["sha256"] or size != expected["bytes"]:
+            raise AssetRefusal(f"Whisper file identity differs: {relative}")
+
+    runtime_rows = []
+    for row in selection["rows"]:
+        source_bucket, source_key = parse_s3(row["audio_s3_uri"])
+        suffix = Path(source_key).suffix.lower()
+        if suffix not in {".wav", ".flac", ".mp3", ".ogg", ".opus", ".m4a"}:
+            suffix = ".audio"
+        filename = row["audio_checksum_sha256"] + suffix
+        path = workdir / "audio" / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        store.download(source_bucket, source_key, path)
+        digest, size = sha256_file(path)
+        if digest != row["audio_checksum_sha256"]:
+            raise AssetRefusal("audio identity differs after download")
+        key = prefix + "audio/" + filename
+        version = store.upload_create_only(path, "medzen-speech", key, digest)
+        objects.append({"key": key, "sha256": digest, "bytes": size, "version_id": version})
+        runtime_rows.append({
+            "manifest": row["manifest"],
+            "language": row["language"],
+            "source_id": row["source_id"],
+            "audio_local_path": "/input/audio/" + filename,
+            "audio_checksum_sha256": digest,
+            "duration_s": row["duration_s"],
+            "reference": row["reference"],
+            "reference_sha256": row["reference_sha256"],
+            "selection_ordinal": row["selection_ordinal"],
+        })
+
+    metadata = {
+        "runtime-rows.json": {"schema_version": 1, "classification": "PUBLIC_RESEARCH_NO_PHI", "rows": runtime_rows},
+        "model-bindings.json": model_bindings,
+    }
+    for name, value in metadata.items():
+        path = workdir / name
+        path.write_bytes(canonical_json(value))
+        digest, size = sha256_file(path)
+        key = prefix + name
+        version = store.upload_create_only(path, "medzen-speech", key, digest)
+        objects.append({"key": key, "sha256": digest, "bytes": size, "version_id": version})
+
+    bundle = {
+        "schema_version": 1,
+        "classification": "PUBLIC_RESEARCH_NO_PHI",
+        "selection_sha256": selection["public_row_list_sha256"],
+        "objects": sorted(objects, key=lambda value: value["key"]),
+        "assemblies": assemblies,
+        "whisper": {"read_only_source_prefix": WHISPER_PREFIX, "tree_sha256": WHISPER_TREE},
+    }
+    bundle["bundle_identity"] = pilot_bundle_identity(selection["public_row_list_sha256"])
+    bundle["receipt_sha256"] = hashlib.sha256(canonical_json(bundle)).hexdigest()
+    return bundle
