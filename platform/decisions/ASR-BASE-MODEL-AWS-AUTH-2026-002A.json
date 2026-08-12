@@ -1,0 +1,122 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AWS_AUTHORIZATION",
+  "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002A",
+  "revision": 1,
+  "status": "owner-approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-12T03:00:34Z",
+  "expires_utc": "2026-08-19T02:13:41Z",
+  "prepared_repository_commit": "909da7116684ec82040c7af4a41b4ba270987172",
+  "packet": {
+    "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002A",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002A-attempt-2.md",
+    "sha256": "9d1ca8be5c7fecb6e0ca1d7ae9e7f1ba374de9ebdf9749a1516da81c73b3bd27"
+  },
+  "risk_acceptance": {
+    "id": "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002",
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "scope": "offline evaluation runtime only",
+    "accepted_high_findings": 4,
+    "serving_precedent": false
+  },
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings": 0,
+    "reviewed_repository_commit": "909da7116684ec82040c7af4a41b4ba270987172",
+    "reviewed_packet_sha256": "9d1ca8be5c7fecb6e0ca1d7ae9e7f1ba374de9ebdf9749a1516da81c73b3bd27",
+    "reviewed_risk_record_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "reviewed_qualification_sha256": "31e877fe319964ef7972a74bfdbd68191a293a0d92f6c7a846922d54a2265b41",
+    "reviewed_bindings_sha256": "569f77fd44514a006015e1422cf7b99cc16555d360967669d96462e63226c40c",
+    "reviewed_cold_rehearsal_sha256": "78d009db1197231fdf4ed21e7f84ea3268c084b2c32f3837caf4e644b473dd1a",
+    "review_statement": "PASS with one execution condition: commit a read-only validation of this actual committed authorization record against validate_authorization_payload before live invocation."
+  },
+  "owner_approval": {
+    "status": "APPROVED",
+    "exact_phrase": "Approve ASR base-model AWS change packet 2026-002A only, authorizing numbered attempt 2 for one non-transferable 10,800-second offline evaluation attempt within the existing $10 reservation and continuing ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002 at SHA-256 06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c.",
+    "attempt_number": 2,
+    "maximum_attempts": 1,
+    "maximum_seconds_per_attempt": 10800,
+    "attempt_seconds_transferable": false
+  },
+  "attempts": {
+    "authorized_numbers": [2],
+    "maximum": 1,
+    "seconds_each": 10800,
+    "non_transferable": true
+  },
+  "allowance": {
+    "aggregate_project_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 74.4286064216,
+    "existing_reservation_usd": 10.0,
+    "new_reservation_usd": 0.0,
+    "maximum_gpu_nodes": 1,
+    "maximum_additional_gpu_seconds": 10800,
+    "attempt_1_reuse_permitted": false,
+    "attempt_2_non_transferable": true
+  },
+  "immutable_bindings": {
+    "bindings_manifest": {
+      "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002A.json",
+      "sha256": "569f77fd44514a006015e1422cf7b99cc16555d360967669d96462e63226c40c"
+    },
+    "qualification": {
+      "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-004.json",
+      "sha256": "31e877fe319964ef7972a74bfdbd68191a293a0d92f6c7a846922d54a2265b41"
+    },
+    "cold_rehearsal": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-COLD-002/cold-rehearsal.json",
+      "sha256": "78d009db1197231fdf4ed21e7f84ea3268c084b2c32f3837caf4e644b473dd1a"
+    },
+    "attempt_1_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL.json",
+      "sha256": "cd7ee9e9abd089ea4b5fddde1bddd3ff94cd856f95ab4ea71f92c6f933def215"
+    },
+    "attempt_1_addendum": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL-ADDENDUM-001.json",
+      "sha256": "3787f5a5e31c097c75e25113c10b909223c29a0e6c02c2a37b2c1be12c19a954"
+    },
+    "cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-006.json",
+      "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+    },
+    "evaluation_image_source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e"
+  },
+  "pre_execution_condition": {
+    "requirement": "Run and commit read-only validation of this actual committed authorization record through validate_authorization_payload before live invocation.",
+    "status": "PENDING_COMMITTED_VALIDATION_RECEIPT",
+    "aws_permitted_before_satisfaction": false
+  },
+  "authorized_operations": [
+    "Run only numbered attempt 2 under packet 2026-002A and the unchanged packet-2026-002 scientific and AWS boundaries",
+    "Use at most one GPU node for at most 10,800 non-transferable seconds",
+    "Create and retain only the immutable evaluation ECR repository and scan-qualified image",
+    "Create-only stage the exact packet-bound research assets and 540-row pilot bundle",
+    "Create and remove the exact temporary endpoints, endpoint security group and evaluation volume",
+    "Temporarily enable strict VPC CNI network-policy enforcement and restore the exact prior state",
+    "Persist immutable per-stage, per-row, aggregate and cleanup evidence",
+    "Destroy all temporary runtime resources and return CPU and GPU capacity to zero after every outcome"
+  ],
+  "prohibited_operations": [
+    "Reuse of attempt 1 or any third attempt",
+    "Any duration transfer, extension or reservation increase",
+    "Any serving, production, traffic-facing, training or full-suite use of the evaluation image",
+    "Any IAM or KMS creation or modification",
+    "Any production SSM, approved/asr, MLflow registration, model-stage or language-registry mutation",
+    "Any inbound route, public internet egress, PHI, user audio or untrusted input",
+    "Any image, source, input, model, tokenizer, scan-finding or severity drift",
+    "Any use of the risk acceptance as precedent for a serving image"
+  ],
+  "permitted_terminal_outcomes": [
+    "PASS_PILOT",
+    "INCOMPLETE_MEASUREMENT",
+    "BLOCKED_INPUT_FREEZE",
+    "BLOCKED_IMAGE_SCAN",
+    "BLOCKED_NETWORK_ISOLATION",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "execution_permitted": true
+}
