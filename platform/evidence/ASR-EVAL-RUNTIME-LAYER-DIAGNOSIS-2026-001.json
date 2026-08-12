@@ -1,0 +1,108 @@
+{
+  "record": "ASR_EVAL_RUNTIME_OCI_LAYER_DIAGNOSIS",
+  "id": "ASR-EVAL-RUNTIME-LAYER-DIAGNOSIS-2026-001",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T05:24:32Z",
+  "status": "CONFIRMED_UPLOAD_PATH_TRUNCATION",
+  "scope": "Read-only diagnosis of the exact packet-2026-002B evaluation image after attempt 3 refused at ECR CompleteLayerUpload. No AWS mutation, image rebuild, model access, audio access, GPU start, or compute occurred during this diagnosis.",
+  "historical_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002B-ATTEMPT-3-IMAGE-PUBLICATION-REFUSAL.json",
+    "sha256": "65cefdf67de29025960646dd085e773a48df7d354375613b04ae5cac1cf28289",
+    "edited": false,
+    "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+    "attempt_consumed": true
+  },
+  "exact_image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_manifest_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "child_layers": 15,
+    "child_compressed_bytes": 7296764995
+  },
+  "corrupt_layer_named": {
+    "descriptor_digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+    "descriptor_bytes": 4329542888,
+    "rootfs_diff_id": "sha256:873a87fcf1b2f1f5e448cf33735998b6fccd6fd6c689926ce2c45238254a91e4",
+    "dockerfile_instruction": "COPY --from=eval-builder /opt/venv /opt/venv",
+    "dockerfile_path": "services/asr-eval-runtime/Dockerfile",
+    "dockerfile_line": 54,
+    "logical_uncompressed_history_bytes": 8030000000,
+    "classification": "SOURCE_BYTES_CORRECT_REMOTE_UPLOAD_TRUNCATED"
+  },
+  "per_boundary_results": {
+    "docker_content_store": {
+      "status": "PASS",
+      "reason": "The exact local tag resolves to the packet-bound OCI index and linux/amd64 child; the exported rejected-layer bytes hash to their descriptor digest."
+    },
+    "oci_export": {
+      "status": "PASS",
+      "archive_bytes": 7296860160,
+      "archive_sha256": "f39bde78be5d23551747aa28b7b163ce1aa263c493cd9aad989d05763b4c07f3",
+      "reachable_content_addressed_objects": 21,
+      "objects_with_matching_digest_and_size": 21,
+      "rejected_layer_export_sha256_matches_descriptor": true
+    },
+    "local_distribution_upload_and_readback": {
+      "status": "PASS",
+      "registry_image": "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+      "registry_bind": "127.0.0.1:5005",
+      "objects_read_back": 21,
+      "bytes_read_back": 7296838446,
+      "all_content_digests_match": true,
+      "runs": 2,
+      "runs_byte_identical": true,
+      "canonical_result_sha256": "bdadf2c4321120e774f1bcbe2754773603a111162bc09e732eb8a97b38180743"
+    },
+    "attempt_3_ecr_upload": {
+      "status": "REFUSED_TRUNCATED",
+      "cloudtrail_complete_event_id": "10c48053-fae0-4a63-907b-91dc6a3a4139",
+      "cloudtrail_request_id": "a091a4b9-9866-400d-924c-ebfec21c712a",
+      "ecr_error_code": "InvalidLayerException",
+      "safe_service_error": "None of the provided layer digests match the calculated layer digest",
+      "declared_bytes": 4329542888,
+      "received_first_byte": 0,
+      "received_last_byte": 2272854015,
+      "received_bytes": 2272854016,
+      "missing_bytes": 2056688872,
+      "received_fraction": 0.5249616809,
+      "other_completed_layers": 17,
+      "put_image_events": 0
+    }
+  },
+  "root_cause": {
+    "confirmed_failure_boundary": "REMOTE_DOCKER_TO_ECR_LAYER_UPLOAD_PATH",
+    "proximate_cause": "The opaque Docker registry push delivered only 2,272,854,016 of the bound layer's 4,329,542,888 compressed bytes, then requested CompleteLayerUpload with the full digest. ECR correctly rejected the calculated digest.",
+    "systemic_cause": "The executor used one opaque, long-running Docker push for a 4.33 GB compressed layer without independently verifying source blobs, upload-part continuity, or manifest read-back before completion.",
+    "lower_level_transport_trigger": "NOT_PROVABLE_FROM_RETAINED_LOGS",
+    "false_claims_prohibited": [
+      "The Docker content store was corrupt",
+      "The OCI export was corrupt",
+      "ECR's digest verifier was wrong",
+      "A specific network reset occurred without retained evidence"
+    ]
+  },
+  "required_correction": {
+    "image_identity_change": false,
+    "publication_method": "VERIFY_EXACT_OCI_EXPORT_THEN_ECR_MULTIPART_API",
+    "part_size_bytes": 20971520,
+    "requirements": [
+      "Verify every reachable OCI descriptor's SHA-256 and size before mutation.",
+      "Upload unavailable content blobs through bounded ECR parts with exact first/last-byte continuity checks.",
+      "Refuse before CompleteLayerUpload if any returned lastByteReceived differs.",
+      "Publish the exact exported child, attestation, and index bytes in dependency order.",
+      "Read back and rehash the exact tagged OCI index before authoritative child scanning.",
+      "Retain bounded safe service error text in the pre-model stage receipt."
+    ]
+  },
+  "governance": {
+    "aws_calls_during_diagnosis": 0,
+    "aws_mutations_during_diagnosis": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "new_attempt_authorized": false,
+    "packet_2026_002b_or_authorization_edited": false
+  }
+}

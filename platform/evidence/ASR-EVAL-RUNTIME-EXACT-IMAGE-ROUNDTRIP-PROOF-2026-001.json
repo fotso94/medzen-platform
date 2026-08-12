@@ -1,0 +1,65 @@
+{
+  "record": "ASR_EVAL_RUNTIME_EXACT_IMAGE_BYTE_CORRECT_UPLOAD_PROOF",
+  "id": "ASR-EVAL-RUNTIME-EXACT-IMAGE-ROUNDTRIP-PROOF-2026-001",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T05:24:32Z",
+  "status": "PASS_EXACT_LOCAL_REGISTRY_ROUNDTRIP",
+  "classification": "LOCAL_ONLY_NON_SERVING_NO_AWS",
+  "purpose": "Committed proof that the exact packet-bound image can be exported, uploaded to an OCI Distribution registry, read back, and verified byte-for-byte without changing its identity.",
+  "subject": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1"
+  },
+  "export": {
+    "format": "OCI_LAYOUT_DOCKER_IMAGE_SAVE",
+    "archive_bytes": 7296860160,
+    "archive_sha256": "f39bde78be5d23551747aa28b7b163ce1aa263c493cd9aad989d05763b4c07f3",
+    "verified_reachable_objects": 21,
+    "child_layers": 15,
+    "child_compressed_bytes": 7296764995,
+    "all_descriptor_sizes_match": true,
+    "all_descriptor_sha256_values_match": true
+  },
+  "roundtrip": {
+    "registry_implementation": "registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+    "network_scope": "LOOPBACK_ONLY_127_0_0_1",
+    "repository": "medzen-asr-eval-runtime",
+    "objects_read_back": 21,
+    "bytes_read_back": 7296838446,
+    "all_content_digests_match": true,
+    "manifest_digest_headers_match": true,
+    "rejected_layer_readback": {
+      "digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+      "bytes": 4329542888,
+      "sha256_matches": true
+    },
+    "runs": 2,
+    "runs_byte_identical": true,
+    "canonical_result_sha256": "bdadf2c4321120e774f1bcbe2754773603a111162bc09e732eb8a97b38180743"
+  },
+  "verifier": {
+    "path": "scripts/asr_eval_oci_publication.py",
+    "sha256": "36ba31c24a4dfa4533d0b83ba61bc7c840d812cc1ae7d68fb939b4f4e993addd",
+    "rules": [
+      "Reject unsafe archive members.",
+      "Verify every content-addressed object before upload.",
+      "Use the manifest API for index, child, and attestation read-back.",
+      "Use the blob API for config, layers, and attestation payload read-back.",
+      "Stream SHA-256 verification so multi-gigabyte layers are never trusted by size alone."
+    ]
+  },
+  "execution": {
+    "real_aws_calls": 0,
+    "real_aws_mutations": 0,
+    "gpu_started": false,
+    "models_loaded": false,
+    "audio_loaded": false,
+    "image_rebuilt": false,
+    "image_identity_changed": false,
+    "new_attempt_authorized": false
+  }
+}
