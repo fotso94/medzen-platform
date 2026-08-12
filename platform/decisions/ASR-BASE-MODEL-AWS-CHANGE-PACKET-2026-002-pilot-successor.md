@@ -120,9 +120,10 @@ AWS/kubectl operations:
   is already zero;
 - `0` real AWS calls, `0` real kubectl calls and `0` mutations.
 
-The immutable cold receipt is generated after all source bindings in this
-packet are final and is attached to the review commit. Two runs must be
-byte-identical.
+The immutable cold receipt is
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002-COLD/cold-rehearsal.json`,
+SHA-256 `08f5c3497a3a4183edad705b1871031ae0bce30eea18015fbb87719999148b04`.
+Two final runs were byte-identical.
 
 ## Exact input, conditioning and measurement behavior
 
