@@ -165,6 +165,7 @@ class LiveOperations:
                 "endpoint_security_group": None,
                 "cni_addon_before": None,
                 "cni_daemonset_env_before": None,
+                "cni_changed": False,
                 "namespace": False,
                 "gpu_scaled": False,
                 "volume_id": None,
@@ -420,11 +421,20 @@ class LiveOperations:
             updated.append({"scanFrequency": "SCAN_ON_PUSH", "repositoryFilters": [exact_filter]})
             self.ecr.put_registry_scanning_configuration(scanType=registry["scanType"], rules=updated)
         uri = repository["repositoryUri"]
-        password = _run(["aws", "--profile", PROFILE, "--region", REGION, "ecr", "get-login-password"]).stdout
-        _run(["docker", "login", "--username", "AWS", "--password-stdin", uri.split("/")[0]], stdin=password)
         remote_tag = f"{uri}:{image['tag']}"
-        _run(["docker", "tag", image["local_tag"], remote_tag])
-        _run(["docker", "push", remote_tag], timeout=3600)
+        existing = self.ecr.batch_get_image(repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": image["tag"]}], acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"])
+        if existing.get("images"):
+            if len(existing["images"]) != 1 or existing["images"][0]["imageId"]["imageDigest"] != image["oci_index_digest"]:
+                raise OperationRefusal("IMMUTABLE_IMAGE_TAG_OCCUPIED", "evaluation tag exists with a different image")
+        else:
+            password = _run(["aws", "--profile", PROFILE, "--region", REGION, "ecr", "get-login-password"]).stdout
+            registry_host = uri.split("/")[0]
+            try:
+                _run(["docker", "login", "--username", "AWS", "--password-stdin", registry_host], stdin=password)
+                _run(["docker", "tag", image["local_tag"], remote_tag])
+                _run(["docker", "push", remote_tag], timeout=3600)
+            finally:
+                _run(["docker", "logout", registry_host], check=False)
         response = self.ecr.batch_get_image(repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": image["tag"]}], acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"])
         index = response.get("images", [])
         if len(index) != 1 or index[0]["imageId"]["imageDigest"] != image["oci_index_digest"]:
@@ -466,8 +476,16 @@ class LiveOperations:
             ]
             statement = [{"Effect": "Allow", "Principal": "*", "Action": ["s3:GetObject"], "Resource": resources}]
         else:
-            repos = [ECR_REPOSITORY, "medzen-nvidia-dra"]
-            repository_arns = [f"arn:aws:ecr:{REGION}:{ACCOUNT}:repository/{name}" for name in repos]
+            repositories = [
+                (ACCOUNT, ECR_REPOSITORY),
+                (ACCOUNT, "medzen-nvidia-dra"),
+                ("602401143452", "amazon-k8s-cni-init"),
+                ("602401143452", "amazon-k8s-cni"),
+                ("602401143452", "amazon/aws-network-policy-agent"),
+                ("602401143452", "eks/eks-pod-identity-agent"),
+                ("602401143452", "eks/kube-proxy"),
+            ]
+            repository_arns = [f"arn:aws:ecr:{REGION}:{account}:repository/{name}" for account, name in repositories]
             statement = [
                 {"Effect": "Allow", "Principal": "*", "Action": ["ecr:GetAuthorizationToken"], "Resource": "*"},
                 {"Effect": "Allow", "Principal": "*", "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"], "Resource": repository_arns},
@@ -493,6 +511,7 @@ class LiveOperations:
         state["endpoint_ids"] = endpoint_ids
         addon = self.eks.describe_addon(clusterName=CLUSTER, addonName="vpc-cni")["addon"]
         state["cni_addon_before"] = addon.get("configurationValues")
+        state["cni_changed"] = True
         self._save_state(context, state)
         config = json.loads(addon.get("configurationValues") or "{}")
         config["enableNetworkPolicy"] = "true"
@@ -792,7 +811,7 @@ class LiveOperations:
                 self.ec2.delete_security_group(GroupId=state["endpoint_security_group"])
             except Exception as exc:
                 errors.append(f"endpoint-sg:{type(exc).__name__}")
-        if state.get("cni_addon_before") is not None:
+        if state.get("cni_changed"):
             try:
                 self.eks.update_addon(clusterName=CLUSTER, addonName="vpc-cni", configurationValues=state["cni_addon_before"] or "{}", resolveConflicts="PRESERVE")
                 self._update_kubeconfig(context)

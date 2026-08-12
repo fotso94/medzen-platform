@@ -56,10 +56,13 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
             "ec2:vpc-endpoint/com.amazonaws.eu-central-1.s3",
             "eks:addon-configuration/vpc-cni-network-policy-strict",
             "kubernetes:namespace/medzen-asr-eval",
+            "kubernetes:namespace/nvidia-dra-driver",
+            "kubernetes:nvidia-dra-driver/exact-locked-manifest",
             "kubernetes:resourceclaimtemplate/asr-eval-gpu",
             "kubernetes:networkpolicy/asr-eval-default-deny",
             "kubernetes:networkpolicy/asr-eval-private-egress",
             "kubernetes:job/asr-base-model-pilot",
+            "kubernetes:pod/asr-eval-inbound-control",
             "node-local:/var/lib/medzen-asr-eval/attempt",
         ],
         "bounded_capacity_change": [

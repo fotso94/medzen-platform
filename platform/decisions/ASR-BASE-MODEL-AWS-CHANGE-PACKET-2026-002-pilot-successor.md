@@ -151,7 +151,9 @@ baseline/peak/sample count.
 Before workload creation the runner creates temporary private ECR API/DKR
 interface endpoints and an S3 gateway endpoint. Policies allow only:
 
-- pulling the exact evaluation and retained DRA repositories;
+- pulling the exact evaluation and retained DRA repositories, plus the exact
+  current EKS system-image repositories required for CNI, network-policy,
+  Pod Identity and kube-proxy readiness after worker scale-up;
 - reading the content-addressed pilot and read-only Whisper prefixes; and
 - reading ECR layer bytes from the regional starport S3 bucket.
 
