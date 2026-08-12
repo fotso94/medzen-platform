@@ -1,0 +1,112 @@
+{
+  "record": "ASR_EVAL_RUNTIME_SCOUT_EXECUTION_DIAGNOSIS",
+  "id": "ASR-EVAL-RUNTIME-SCOUT-EXECUTION-DIAGNOSIS-2026-001",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T19:02:00Z",
+  "status": "ROOT_CAUSE_CONFIRMED",
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "trigger": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002E-A1-ATTEMPT-6-SCOUT-EXECUTION-REFUSAL.json",
+    "sha256": "095d2e08b22056714e069e0c1299e550dbbc839990f36fd3724088d0b6a4ba26",
+    "attempt": 6,
+    "reason_code": "SCOUT_EXECUTION_REFUSED"
+  },
+  "exact_subject": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "verified_content_addressed_objects": 21,
+    "child_layer_count": 15,
+    "child_compressed_bytes": 7296764995,
+    "largest_layer": {
+      "digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+      "bytes": 4329542888
+    }
+  },
+  "reproduction": {
+    "scanner": "Docker Scout",
+    "version": "1.18.3",
+    "git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "failing_command": "docker scout cves --format sarif --only-severity critical,high --output <OUTPUT> oci-dir://<EXACT_LAYOUT>",
+    "failing_result": {
+      "returncode": 1,
+      "elapsed_seconds": 1.11,
+      "sarif_created": false,
+      "stdout_sanitized": "ERROR Status: could not generate SBOM for image library/pilot-5d1b8a0, Code: 1",
+      "stderr_sanitized": "OCI directory read; image stored for indexing; no SARIF produced"
+    },
+    "passing_command": "docker scout cves --format sarif --only-severity critical,high --output <OUTPUT> archive://<EXACT_DOCKER_ARCHIVE>",
+    "passing_result": {
+      "returncode": 0,
+      "elapsed_seconds_cold": 216.937,
+      "sarif_created": true,
+      "packages_indexed": 305,
+      "critical": 0,
+      "high": 4,
+      "high_tuples": [
+        "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+        "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+        "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+        "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+      ]
+    }
+  },
+  "hypotheses": {
+    "missing_home": {
+      "result": "RULED_OUT",
+      "evidence": "HOME was present in both the refusing OCI-directory execution and passing archive execution."
+    },
+    "missing_docker_configuration_or_authentication": {
+      "result": "RULED_OUT",
+      "evidence": "Docker configuration existed, the credential helper returned an authenticated identity without persisting values, Scout passed its pinned prerequisite gate, and the archive command succeeded."
+    },
+    "insufficient_temporary_or_disk_space": {
+      "result": "RULED_OUT",
+      "evidence": "154798366720 free bytes existed before reproduction and 105395904512 before the committed preflight, both above the 20 GiB floor."
+    },
+    "scan_timeout": {
+      "result": "RULED_OUT",
+      "evidence": "The failure occurred in 1.11 seconds against an 1800-second bound; the cold archive scan completed in 216.937 seconds."
+    },
+    "image_reference_or_image_corruption": {
+      "result": "RULED_OUT",
+      "evidence": "The export verified the exact bound index, linux/amd64 child, config, attestation, all 21 reachable objects and all 15 child layers; both local tag and local digest scan references passed."
+    },
+    "oci_directory_ingestion": {
+      "result": "CONFIRMED",
+      "evidence": "The exact same verified image bytes fail only through oci-dir:// at SBOM generation and pass through archive:// with the exact accepted four-tuple finding set."
+    }
+  },
+  "root_cause": {
+    "class": "DOCKER_SCOUT_1_18_3_OCI_DIRECTORY_SBOM_GENERATION_DEFECT",
+    "statement": "Docker Scout 1.18.3 reads and indexes the reconstructed OCI directory but cannot generate its SBOM. The exact payload bytes are valid and scan successfully when supplied as a Docker archive.",
+    "image_security_state_changed": false,
+    "risk_acceptance_changed": false
+  },
+  "correction": {
+    "live_gate": "Reconstruct the exact ECR child by digest, verify every descriptor, generate only Docker manifest.json metadata, archive those verified bytes, and scan archive:// with the pinned Scout command.",
+    "preflight": "A committed $0 real-execution preflight exports and verifies the exact local image and runs the actual archive:// Scout command before any successor attempt.",
+    "diagnostics": "Every executor external-tool invocation now writes a bounded sanitized journal containing command, exit code or timeout, elapsed time, stdout/stderr byte counts and hashes, and at most 4096 sanitized characters from each stream.",
+    "credential_values_recorded": false,
+    "raw_unbounded_tool_output_committed": false
+  },
+  "committed_preflight": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json",
+    "sha256": "cabd8497de52e02f180c5f9caf455413be7de6006fb281a65c122c109fb3bf4b",
+    "sarif_path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.sarif.json",
+    "sarif_sha256": "d42135a4647b6878cddc5490e2d6ab2c8b7b513d7356c909c86b9424e23fc30c",
+    "status": "PASS_EXACT_IMAGE_SCOUT_REAL_EXECUTION_PREFLIGHT",
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "cost_usd": 0.0
+  },
+  "history": {
+    "packet_2026_002e_a1_edited": false,
+    "authorization_2026_002e_a1_edited": false,
+    "attempt_6_refusal_edited": false,
+    "attempt_6_consumed": true
+  }
+}
