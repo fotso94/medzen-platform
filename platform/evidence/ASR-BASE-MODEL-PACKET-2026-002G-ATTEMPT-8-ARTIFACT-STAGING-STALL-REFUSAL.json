@@ -1,0 +1,92 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-STALL-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 8,
+  "attempt_consumed": true,
+  "failure_stage": "artifact_stage",
+  "reason_code": "ARTIFACT_STAGE_STALLED_NO_PROGRESS",
+  "reviewed_repository_commit": "b963eae9eb13652214c60b98112326c92478a09f",
+  "execution_head": "ae103d5d1cb87c4499baab1269e928d4ff0a1dbd",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002G-attempt-8.md",
+    "sha256": "8db07e56f8a8daaaf2d800f9d32d98afa6b81adbab729875c628e76a3b666b78"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002G.json",
+    "sha256": "cc1c7662e41b1f52b890bd51cfab2a9738c7dc8d7b15b879d0f8c81799cf9df5"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002G.json",
+    "sha256": "ff2fd9c3ac598eb2d179aac1a276fd3b406a917f68cb702f4783cacb89952c98"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002G.json",
+    "sha256": "a52dde21907d23e7e6da1b17ee0fabaa6145800c85b5ba66090a1bd8f829e2d8",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-12T20:45:48Z",
+    "hard_deadline_utc": "2026-08-12T23:45:48Z",
+    "reviewer_observed_no_staging_progress_since_utc": "2026-08-12T21:49:00Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "REFUSED",
+    "private_endpoint_and_policy_gate": "NOT_RUN",
+    "gpu_and_sampler_gate": "NOT_RUN",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "stalled_operation": {
+    "safe_operation": "S3CreateOnlyStore.upload_create_only",
+    "research_prefix_objects": 1,
+    "research_prefix_bytes": 3902956068,
+    "active_multipart_uploads": 0,
+    "temporary_endpoints_at_refusal": 0,
+    "cpu_desired_at_refusal": 0,
+    "gpu_desired_at_refusal": 0,
+    "remaining_stages_could_complete_before_deadline": false,
+    "extension_retry_or_improvisation_used": false
+  },
+  "live_receipts": {
+    "result_sha256": "3e0b900602425235a9ad750f30bbae12a5ac500bdbbed72e4eb947b56a8f0b83",
+    "deadline_identity_and_acceptance_sha256": "27ac7c67cdfe75572f15df688dbe653f8e415d139520e2e9f86aea8115149492",
+    "input_freeze_and_no_phi_sha256": "78ce16459185540f65d1202ba54727a075d34774a500de54a020bccd7e6423b4",
+    "cost_and_zero_state_sha256": "058a9afaf2338266f6afacaeb5d796c2792a38d8cacd994bb523231d1ef5e42b",
+    "image_publication_and_scan_sha256": "3a5f739b8ae5e400029faf33c4b513aac6893708202f3a7fb2fe5c499ed666bb",
+    "artifact_stage_sha256": "5fd334b65813537e6b0c2d9350e080dbfb86531bfecc87eed03da93d3cd2b05f",
+    "cleanup_and_expiry_sha256": "c14c73a25c111b68f6d967c20a1ae978aba40e8f501106de4ca8360a2cb1a616"
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "active_multipart_uploads": 0,
+    "evaluation_namespaces": 0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "historical_records_modified": false,
+  "attempt_8_reuse_permitted": false,
+  "ninth_attempt_authorized": false
+}
