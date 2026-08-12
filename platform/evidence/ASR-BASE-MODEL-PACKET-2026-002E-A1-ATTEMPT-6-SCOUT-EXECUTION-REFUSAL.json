@@ -1,0 +1,94 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_SCOUT_EXECUTION_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002E-A1-ATTEMPT-6-SCOUT-EXECUTION-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T18:17:00Z",
+  "status": "BLOCKED_IMAGE_SCAN",
+  "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+  "attempt": 6,
+  "attempt_started": true,
+  "attempt_consumed": true,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "SCOUT_EXECUTION_REFUSED",
+  "safe_error_text": "Docker Scout digest rescan did not produce SARIF",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002E-A1.json",
+    "sha256": "b6bec5cc2c8dbd4c19da9bf391fcfb37ec67e1d4c28a12488193c0fcabb7d7ff",
+    "authorization_commit": "9cf867d20c6b6acf20bdb328eec2b4d26bcf9402",
+    "authorized_attempts_remaining": []
+  },
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002E-A1-attempt-6.md",
+    "sha256": "12f64861dd848b8f4f52861f6fef5c1f6fccbcf5b969bdcb7260f473ac08b375",
+    "reviewed_commit": "dcfea9a61345cf605813c4cbfba1d2cbdc50bfe2"
+  },
+  "committed_complete_stage_one_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002E-A1.json",
+    "sha256": "4357a50a9135c1c41252a2db7b7831d8c01ab2270d49a45283619181d47d613e",
+    "validation_commit": "bcef8cebd32ab2fa3bc38b079c24c56d511cac21",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "passed_stages": [
+    {
+      "stage": "deadline_identity_and_acceptance",
+      "receipt_sha256": "9d10142c11d7fbe58e2462bc5beac5ee4a1a3cbec7a7e099b0bb58959eb5406e"
+    },
+    {
+      "stage": "input_freeze_and_no_phi",
+      "receipt_sha256": "1f73b3f88b11661aa2f78007ca72400153fcc369071f3a1ed06ba713220ba9d8"
+    },
+    {
+      "stage": "cost_and_zero_state",
+      "receipt_sha256": "5e2ec5bbf6c56ddd9fb564eaac49a59ae60842541fac3979c62fa6f3bc51861b"
+    },
+    {
+      "stage": "cleanup_and_expiry",
+      "receipt_sha256": "8d80dc9998f25bcb5dd69ceb64a84a2d2d1a42f76b53b1359ba50fdef39a066c"
+    }
+  ],
+  "refused_stage": {
+    "stage": "image_publication_and_scan",
+    "receipt_sha256": "ced596864bd0c465cfe35ac93be6c113da8afa8e3de9cc8c81e334c35934094a"
+  },
+  "terminal_result": {
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002E-A1-A6-LIVE/result.json",
+    "sha256": "5b42ab4390f62923124d847467fb94172f694842f6301af41c774db2c41ce316"
+  },
+  "observations": {
+    "all_11_executor_module_hashes": "PASS",
+    "actual_top_level_security_gate": "PASS_EXACT_SECURITY_GATE_BINDING",
+    "input_freeze_runs": 2,
+    "input_freeze_runs_byte_identical": true,
+    "frozen_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "exact_ecr_reconstruction_completed_before_scout_invocation": true,
+    "reconstruction_temporary_directory_removed_by_stage_finally": true,
+    "docker_scout_sarif_created": false,
+    "docker_scout_exit_code": "NOT_RETAINED_BY_CURRENT_RUNNER",
+    "docker_scout_stderr": "NOT_RETAINED_BY_CURRENT_RUNNER",
+    "finding_set_evaluated": false,
+    "diagnostic_limit": "run_scout maps nonzero/no-output to SCOUT_EXECUTION_REFUSED but currently does not retain the subprocess return code or bounded sanitized stderr in the stage receipt. Root cause beyond no-SARIF is therefore undiagnosed."
+  },
+  "cleanup_and_scope": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "deadline_actions": 0,
+    "evaluation_endpoints": 0,
+    "evaluation_volumes": 0,
+    "evaluation_namespace": 0,
+    "staging_objects": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "model_or_audio_staged": false,
+    "production_touched": false
+  },
+  "required_successor": {
+    "diagnostic_correction": "Retain Docker Scout return code and bounded sanitized stdout/stderr when the offline pre-model scan refuses, with no credential material.",
+    "local_reproduction": "Reconstruct or reuse a byte-identical local OCI layout outside an AWS attempt and reproduce the exact Scout command interactively to identify and fix the actual failure.",
+    "qualification": "Require one local exact-image Scout PASS producing the exact four accepted tuples before any successor attempt.",
+    "governance": "Packet 002E-A1, AUTH-002E-A1, attempt 6 and all receipts are write-once. Any retry requires a newly numbered attempt, fresh non-transferable allowance, independent review and exact owner approval."
+  }
+}
