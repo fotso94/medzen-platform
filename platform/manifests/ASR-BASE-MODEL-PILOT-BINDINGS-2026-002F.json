@@ -111,7 +111,8 @@
     "bindings_source_required": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002F.json",
     "committed_bindings_required": true,
     "fixture_bindings_permitted": false,
-    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD/cold-rehearsal.json",
+    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD-v2/cold-rehearsal.json",
+    "receipt_sha256": "257598f6b5ba5a123e3e5b301a797167a4a1e25341848b239f8d36b8e5a1fb1d",
     "script_sha256": "900739f6b7c8d5d5714cbb972fc75d510a599d6a5c784865e26729dfa0494e90"
   },
   "ecr_existing_image": {
