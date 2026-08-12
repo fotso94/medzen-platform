@@ -1,0 +1,126 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_WORKTREE_BOUNDARY_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002F-ATTEMPT-7-WORKTREE-BOUNDARY-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T19:56:13Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "terminal_outcome": "FAILED_CLOSED_EXECUTION",
+  "attempt": 7,
+  "attempt_started": true,
+  "attempt_consumed": true,
+  "authorized_attempts_remaining": [],
+  "failure_stage": "deadline_identity_and_acceptance",
+  "reason_code": "REVIEWED_CLEAN_COMMIT_REQUIRED",
+  "safe_error_text": "execution requires a clean worktree",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002F.json",
+    "sha256": "4353319ce1c7c2e0ca047a603701a420525c7f0325017f2ff9f91992d72d8792",
+    "authorization_commit": "b669611c8ae192d68e338072802459b7309eab25",
+    "expires_utc": "2026-08-19T19:51:26Z"
+  },
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002F-attempt-7.md",
+    "sha256": "3905dd6c95a0a1addb46b8fb75a44cdde35ae5e98a9d10bb0b06134bdeb64265",
+    "reviewed_commit": "c8b4a96993675978e11cad5bf59c0c9a57ca636e",
+    "independent_review": "PASS",
+    "owner_approval": "EXACT_PHRASE_VERIFIED"
+  },
+  "committed_complete_stage_one_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002F.json",
+    "sha256": "6ccfe3eff879b23449e8d816cc143eb65b169a61c85ee48caa1282506f52ab1b",
+    "validation_commit": "ad38c808540e2df243271876564e4ac8b8e508fe",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "aws_calls": 0,
+    "aws_mutations": 0
+  },
+  "live_evidence": {
+    "root": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-A7-LIVE",
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-A7-LIVE/attempt-envelope.json",
+      "sha256": "c747857924a9321084ad53b6afd233e8cfd3a3bf12a1008989d68938845cc493"
+    },
+    "terminal_result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-A7-LIVE/result.json",
+      "sha256": "5940b6db20677975b9d96fdf63184fc4626c55e8ffad68d1d4680d10fce8edbf"
+    },
+    "refused_stage": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-A7-LIVE/receipts/deadline_identity_and_acceptance.json",
+      "sha256": "4b013cd62a8b8521559c896227af6548e68090ff55fbcb102744fc85559cc885"
+    },
+    "cleanup_stage": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-A7-LIVE/receipts/cleanup_and_expiry.json",
+      "sha256": "319fd23cfe060c85c5848dd5bb73a376d0f2601ba633d3809071179b3ed8ee5d",
+      "status": "PASS"
+    },
+    "external_tool_diagnostic_sha256": [
+      "8b0dd66eb12e800621cc087d7e7f00c3bb7001b894cc00347e5f35055d080428",
+      "e4d1929a60c7be9255a13e35de91f4cafe11c87dd7a38248843067bf1a898dcc",
+      "7dd821fa31c169ae93f46361680dd5aeb1b24d4876fa14b5418d2ae7f1372e74",
+      "c0943e1a6717746c7f0a27da1a34c67ac2726bd79d22d2bf9000a53ea9a77407",
+      "e447e86a4fa598da0464c76209bfbc7d0abcd977e050dc178f3b3a8b769db1d0"
+    ]
+  },
+  "root_cause": {
+    "class": "LIVE_EVIDENCE_WORKDIR_CREATED_INSIDE_REVIEWED_WORKTREE_BEFORE_CLEANLINESS_GATE",
+    "confirmed_by": "The retained git-status diagnostic reports only the untracked A7 live-evidence directory. The authorization-only stage-1 dry validation passed from the immediately preceding clean commit.",
+    "mechanism": "The live runner configured its diagnostics journal and created the attempt work directory and envelope below the repository before deadline_identity_and_acceptance called validate_governance_commit_boundary. The gate therefore correctly refused its own untracked runtime output.",
+    "aws_drift": false,
+    "authorization_drift": false,
+    "packet_or_binding_drift": false,
+    "scout_prerequisite_drift": false
+  },
+  "passed_pre_envelope_prerequisites": {
+    "committed_stage_one_dry_run": true,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "docker_scout_credentials_present_in_process": true,
+    "docker_scout_credentials_persisted": false,
+    "all_13_executor_module_hashes_bound": true
+  },
+  "stages_not_executed": [
+    "input_freeze_and_no_phi",
+    "cost_and_zero_state",
+    "image_publication_and_scan",
+    "artifact_stage",
+    "private_endpoint_and_policy_gate",
+    "gpu_and_sampler_gate",
+    "node_local_input_stage",
+    "pilot_rows",
+    "aggregate_report"
+  ],
+  "cleanup_and_scope": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "aws_read_only_calls_occurred": true,
+    "aws_mutations": 0,
+    "kubectl_mutations": 0,
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "deadline_actions": 0,
+    "evaluation_endpoints": 0,
+    "evaluation_volumes": 0,
+    "evaluation_namespaces": 0,
+    "staging_objects": 0,
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0,
+    "model_or_audio_staged": false,
+    "production_touched": false
+  },
+  "independent_live_zero_state_readback": {
+    "identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1",
+    "cpu_nodegroup": "ACTIVE_DESIRED_0_NO_ISSUES",
+    "gpu_nodegroup": "ACTIVE_DESIRED_0_NO_ISSUES",
+    "temporary_endpoint_count": 0,
+    "temporary_volume_count": 0,
+    "deadline_action_count": 0,
+    "evaluation_namespace_count": 0,
+    "pilot_prefix_object_version_count": 0,
+    "pilot_prefix_delete_marker_count": 0
+  },
+  "required_successor": {
+    "execution_boundary_correction": "Run live evidence and work directories outside the reviewed repository until the clean-worktree gate passes, then copy immutable receipts into the repository only after the terminal outcome; alternatively introduce an independently reviewed ordering design that proves the same boundary.",
+    "regression_proof": "The complete live entry path must prove that its own diagnostic/workdir creation cannot dirty the reviewed worktree before the cleanliness gate.",
+    "governance": "Packet 2026-002F, AUTH-2026-002F, attempt 7, its stage-1 dry run and all live receipts are write-once. No retry is authorized; any successor requires a new numbered attempt, fresh non-transferable allowance, independent review and exact owner approval."
+  }
+}
