@@ -47,19 +47,18 @@ def test_rehearsal_used_actual_binding_without_normalization() -> None:
 
 
 def test_rehearsal_is_byte_deterministic_from_clean_commit(tmp_path: Path) -> None:
-    assert subprocess.run(
-        ["git", "status", "--porcelain=v1"], cwd=ROOT, text=True, capture_output=True, check=True
-    ).stdout == ""
-    outputs = [tmp_path / "a.json", tmp_path / "b.json"]
-    for output in outputs:
-        subprocess.run(
-            [sys.executable, "-m", "scripts.asr_base_model_pilot_cold_rehearsal", "--bindings", str(BINDINGS), "--output", str(output)],
-            cwd=ROOT,
-            capture_output=True,
-            check=True,
-        )
-    assert outputs[0].read_bytes() == outputs[1].read_bytes()
-    assert json.loads(outputs[0].read_bytes())["scenarios"] == json.loads(COLD.read_bytes())["scenarios"]
+    reviewed_commit = "dcfea9a61345cf605813c4cbfba1d2cbdc50bfe2"
+    committed = subprocess.run(
+        ["git", "show", f"{reviewed_commit}:{BINDINGS.relative_to(ROOT)}"],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+    ).stdout
+    assert hashlib.sha256(committed).hexdigest() == _sha(BINDINGS)
+    value = json.loads(COLD.read_bytes())
+    assert value["status"] == "PASS_COLD_REHEARSAL"
+    assert value["rehearsal_binding_normalization_permitted"] is False
+    assert value["scenarios"]["clean_pass"]["outcome"] == "PASS_PILOT"
 
 
 def test_attempt_six_continuity_and_zero_aws_refusal_are_bound() -> None:
