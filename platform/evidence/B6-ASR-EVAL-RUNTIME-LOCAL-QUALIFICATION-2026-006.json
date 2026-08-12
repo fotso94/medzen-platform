@@ -33,7 +33,7 @@
     "image_identity_changed": false
   },
   "correction_source": {
-    "commit": "d533fb67a0d96ab144112aa0fd368902899f4a22",
+    "commit": "9e7f575aa30062b03af7b0466c2eb5fc6741a39d",
     "runner_sha256": "62c87eeb0695f76a1c8c372da6d646f0eecb765f6fb4f52d5f9184f6a7a67961",
     "live_operations_sha256": "cf5328f25fa190abd0ea420e892575e0869134bd50fff2dba5e8a45095eea691",
     "scan_rule_helper_sha256": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",

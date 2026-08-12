@@ -76,9 +76,9 @@ child, attestation, and top-level index.
 
 | Binding | Value |
 |---|---|
-| Pre-packet executor commit | `d533fb67a0d96ab144112aa0fd368902899f4a22` |
-| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `a2e12588bf90d94d8999e774511bd1c93b958ef732e6d4847f3e39b0423883b3` |
-| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `509c751da0de0c0b83ab45bc5b6c6350bd55a08833163f1fcf1f1d98259f5880` |
+| Pre-packet executor commit | `9e7f575aa30062b03af7b0466c2eb5fc6741a39d` |
+| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `20d0c90260d2a036dba8fbc6f387c29e0402c4e59ec87a9e06ef3dbf3449e1cf` |
+| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `5982cf98afe6a442c4d79738d4107445cd9ecfad748e7827e4c8e234f122c0c8` |
 | Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json`, SHA-256 `ab3ede21558e0120d5f5c7059db75e731f1ea70eaef325b982a1077f5b39c109` |
 | Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c` |
 | Input freeze | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
