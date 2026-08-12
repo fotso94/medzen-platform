@@ -16,6 +16,18 @@ SOURCE_EVIDENCE = (
     / "evidence"
     / "B6-ASR-BASE-MODEL-SOURCES-2026-001.json"
 )
+RISK_ACCEPTANCE = (
+    ROOT
+    / "platform"
+    / "decisions"
+    / "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-001.json"
+)
+LOCAL_QUALIFICATION_V2 = (
+    ROOT
+    / "platform"
+    / "evidence"
+    / "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json"
+)
 
 
 def packet() -> str:
@@ -32,12 +44,11 @@ def sources() -> dict:
 
 def test_packet_is_explicitly_non_executable() -> None:
     value = packet()
-    assert "INPUT FREEZE PASSED" in value
-    assert "BLOCKED_LOCAL_IMAGE_SCAN" in value
     assert "NOT EXECUTABLE" in value
-    assert "NO APPROVAL REQUESTED" in value
-    assert "approval phrase is intentionally unavailable" in value
-    assert "Stage 0 remains mandatory" in value
+    assert "AWAITING INDEPENDENT REVIEW AND EXACT OWNER APPROVAL" in value
+    assert "The owner decision is recorded but is not executable authorization" in value
+    assert "Approve ASR base-model AWS change packet 2026-001 only" in value
+    assert "No AWS" in value
 
 
 def test_packet_binds_the_reproduced_passed_freeze() -> None:
@@ -57,7 +68,7 @@ def test_packet_applies_r2_preference_and_owner_boundary() -> None:
     assert "select `manifest.r2.jsonl`" in value
     assert "must never count both" in value
     assert "manifest namespace `eval/<language>/**`" in value
-    assert "audio object layout is not a leakage signal" in value
+    assert "Audio object layout elsewhere" in value
     assert "PASS_INPUT_FREEZE` records" in value
 
 
@@ -97,7 +108,7 @@ def test_packet_binds_source_evidence_and_model_trio() -> None:
 
 
 def test_pilot_selection_and_modes_are_deterministic() -> None:
-    value = packet()
+    value = compact_packet()
     assert "select the first 10" in value
     assert "hard maximum is 540 distinct rows" in value
     assert "primary mode: unconditioned/audio-only" in value
@@ -107,14 +118,74 @@ def test_pilot_selection_and_modes_are_deterministic() -> None:
 
 
 def test_packet_requires_local_qualification_and_authoritative_scan() -> None:
-    value = packet()
-    assert "run the real container read-only as its non-root user" in value
-    assert "separate scan-only packet" in value
-    assert "scan-passed `linux/amd64` child digest" in value
-    assert "zero critical/high findings" in value
-    assert "No vulnerability waiver" in value
-    assert "0 critical and 4 high findings" in value
-    assert "fairseq2n 0.6" in value
+    value = compact_packet()
+    assert "read-only root" in value
+    assert "Deployable linux/amd64 child" in value
+    assert "zero critical findings and exactly the four tuple-identical highs" in value
+    assert "0 critical / 4 high" in value
+    assert "CVE-2026-24747" in value
+    assert "CVE-2026-4538" in value
+    assert "CVE-2025-55552" in value
+    assert "CVE-2025-55551" in value
+
+
+def test_owner_acceptance_is_exact_expiring_and_non_precedential() -> None:
+    record = json.loads(RISK_ACCEPTANCE.read_text(encoding="utf-8"))
+    assert record["status"] == (
+        "DRAFT_FOR_INDEPENDENT_REVIEW_OWNER_DECISION_RECORDED_NOT_EFFECTIVE"
+    )
+    assert record["signature_and_review"]["execution_permitted"] is False
+    assert record["time_box"]["maximum_attempts"] == 2
+    assert record["time_box"]["maximum_seconds_per_attempt"] == 10800
+    assert record["time_box"]["absolute_acceptance_lifetime_after_exact_owner_approval"] == "P7D"
+    assert record["non_precedential_boundary"]["serving_images"].startswith(
+        "EXCLUDED"
+    )
+    assert record["non_precedential_boundary"]["traffic_facing_workloads"] == (
+        "EXCLUDED"
+    )
+    assert {risk["cve"] for risk in record["risks"]} == {
+        "CVE-2026-24747",
+        "CVE-2026-4538",
+        "CVE-2025-55552",
+        "CVE-2025-55551",
+    }
+    assert all(risk["attack_vector_absent_in_this_context_because"] for risk in record["risks"])
+    assert all(risk["owner"] == "platform-owner" for risk in record["risks"])
+
+
+def test_risk_record_binds_clean_source_image_and_exact_scan() -> None:
+    record = json.loads(RISK_ACCEPTANCE.read_text(encoding="utf-8"))
+    qualification = json.loads(LOCAL_QUALIFICATION_V2.read_text(encoding="utf-8"))
+    assert record["immutable_subject"]["qualification_record"]["sha256"] == hashlib.sha256(
+        LOCAL_QUALIFICATION_V2.read_bytes()
+    ).hexdigest()
+    assert qualification["image"]["source_worktree_clean_at_build"] is True
+    assert qualification["image"]["attested_source_commit"] == (
+        "bd8e14c8c4401916412b00ac899a64a03b2514ef"
+    )
+    assert qualification["local_scan"]["critical"] == 0
+    assert qualification["local_scan"]["high"] == 4
+    expected = {
+        f'{item["id"]}|{item["package"]}|{item["installed"]}|{item["severity"]}'
+        for item in qualification["local_scan"]["findings"]
+    }
+    assert set(record["binding_controls"]["scan_gate"]["allowed_high_findings_exactly"]) == expected
+
+
+def test_network_boundary_is_strict_private_and_no_inbound() -> None:
+    value = compact_packet()
+    record = json.loads(RISK_ACCEPTANCE.read_text(encoding="utf-8"))
+    network = record["binding_controls"]["network_isolation"]
+    assert "NETWORK_POLICY_ENFORCING_MODE=strict" in network["required_execution_mode"]
+    assert "hostNetwork=false" in network["workload_shape"]
+    assert "automountServiceAccountToken=false" in network["workload_shape"]
+    assert "no Pod Identity" in network["workload_shape"]
+    assert "S3" in " ".join(network["allowed_egress"])
+    assert "ECR" in " ".join(network["allowed_egress"])
+    assert "public internet" in network["prohibited_egress"]
+    assert "no Kubernetes Service" in value
+    assert "No PHI" in packet()
 
 
 def test_measurement_set_is_complete_and_fail_closed() -> None:
@@ -132,14 +203,14 @@ def test_measurement_set_is_complete_and_fail_closed() -> None:
 
 
 def test_cost_request_is_bounded_and_scale_to_zero() -> None:
-    value = packet()
+    value = compact_packet()
     assert "`$74.4286064216` committed" in value
     assert "`$225.5713935784` headroom" in value
     assert "`$1.0064/hour`" in value
     assert "one new `$10.00` conservative reservation" in value
     assert "two non-transferable attempts of 10,800 seconds each" in value
     assert "21,600 seconds = 6 hours = `$6.0384`" in value
-    assert "scale GPU desired size to 0" in value
+    assert "scale GPU to zero" in value
 
 
 def test_promotion_and_full_suite_remain_prohibited() -> None:
@@ -148,7 +219,7 @@ def test_promotion_and_full_suite_remain_prohibited() -> None:
         "Writes to `approved/asr/`",
         "production SSM",
         "language `approved_version`",
-        "full-suite scoring",
+        "Full-suite scoring",
         "does not declare a winning model",
     ):
         assert expected in value

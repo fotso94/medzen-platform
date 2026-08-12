@@ -1,6 +1,6 @@
 # PLAN-2026-015 — Whisper versus Meta Omnilingual ASR
 
-Status: **PROPOSED — INPUT FREEZE PASSED TWICE — LOCAL RUNTIME QUALIFIED — IMAGE SCAN BLOCKED ON META-PINNED PYTORCH — NO MODEL SCORING AUTHORIZED**
+Status: **PROPOSED — INPUT FREEZE PASSED TWICE — CLEAN-SOURCE RUNTIME QUALIFIED — OWNER ACCEPTED EXACT FOUR-HIGH OFFLINE RISK — INDEPENDENT REVIEW AND PACKET APPROVAL PENDING — NO MODEL SCORING AUTHORIZED**
 
 Owner purpose: evaluate the existing Whisper large-v3 base against production-realistic Meta Omnilingual ASR candidates on the expanded African-language evaluation inventory, without changing B4/B5 history, language scope, promotion gates, or production state.
 
@@ -90,9 +90,24 @@ The shared v2 written tokenizer SHA-256 is `8aa11a1092142ef472537476ef6e76541123
 
 The local `linux/amd64` image qualifies functionally and structurally: it runs read-only as UID/GID 10001, imports the exact three adapters offline, binds the Meta source commit and internal version, and contains no compiler, source-control client, or Python package installer. The result is bound by `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-001.json`, SHA-256 `737bb22ec59c88f6d2daf20f688bfd17021c20053711db891c2ae2a8168a86a5`. Its local-build attestation identifies pre-commit source `79d2a25f35950e74ac07bf93f909651edcaafa9c`; because the qualification changes were uncommitted at build time, this diagnostic image is explicitly ineligible for publication even apart from its scan findings.
 
-The image does **not** pass the mandatory local scan. Updating PyArrow from 20.0.0 to 23.0.1 removed its high finding, but the supported Meta runtime still has four high findings in `torch==2.8.0+cu128`. A tested upgrade to PyTorch 2.11 was rejected at startup by `fairseq2n 0.6`, which pins and enforces PyTorch 2.8. The released Omnilingual source bounds fairseq2 to 0.5.2–0.6.0. No unsupported override and no vulnerability waiver was used.
+The clean-source image at commit `bd8e14c8c4401916412b00ac899a64a03b2514ef`
+passes its functional and structural qualification but reports exactly four
+high findings in `torch==2.8.0+cu128` and zero critical findings. The v2 local
+record is
+`platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json`,
+SHA-256 `ee5b07d20d5eee91b3224987848c562793bff70788d6f8ca76ff3691e8a57de1`.
+Updating PyArrow removed its finding. A tested upgrade to PyTorch 2.11 remains
+incompatible with `fairseq2n 0.6`, which pins and enforces PyTorch 2.8; no
+unsupported override is used.
 
-Therefore no ECR push, authoritative scan, model download, GPU start, or pilot execution is permitted. This is an upstream security/compatibility blocker, not an input-freeze or data-quality failure. Resolution requires either a scan-clean upstream-compatible Meta/fairseq2 release or a new, independently reviewed decision to build and validate a compatible runtime from source before this pilot packet can advance.
+The owner has prospectively accepted only these four findings for the exact
+offline pilot, subject to the CVE-specific, expiring, non-precedential and
+network-isolated controls in
+`ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-001`. The decision does not make the
+image scan-clean and does not affect the serving-image zero-critical/high
+rule. Execution remains prohibited until independent review PASS, an
+authoritative child scan returns zero critical plus exactly the accepted four
+high tuples, and the owner uses the exact pilot approval phrase.
 
 ## 4. Preliminary compatibility result
 
@@ -182,21 +197,27 @@ After `PASS_INPUT_FREEZE`, present a small pilot packet binding:
 
 The packet must stop before the full suite. The full run needs a second authorization based on pilot evidence and a new cost estimate.
 
-The current draft pilot packet is `platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md`. It remains non-executable because the local image has four unwaived high findings; an authoritative image scan cannot be requested yet.
+The current pilot packet is
+`platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md`. It is
+presented for independent review but remains non-executable until review PASS
+and exact owner approval. Its first billable-predecessor gates require the
+authoritative ECR child scan to return zero critical and exactly the four
+owner-accepted high tuples, and require strict S3/ECR-only network isolation
+before PyTorch starts.
 
 ## 9. Exit semantics
 
 Planning can conclude as `BASE_MODEL_EVALUATION_INPUT_FREEZE_PASSED`.
 
-Scoring is `BLOCKED_LOCAL_IMAGE_SCAN` today. A later evaluation may conclude `WHISPER_RECOMMENDED`, `OMNILINGUAL_CTC_RECOMMENDED`, `OMNILINGUAL_LLM_RECOMMENDED`, `NO_CANDIDATE_ELIGIBLE`, or `OWNER_DECISION_REQUIRED`. None of those states changes B5, activates a training language, promotes a model, or authorizes production use.
+Scoring is `AWAITING_INDEPENDENT_RISK_AND_PACKET_REVIEW` today. A later evaluation may conclude `WHISPER_RECOMMENDED`, `OMNILINGUAL_CTC_RECOMMENDED`, `OMNILINGUAL_LLM_RECOMMENDED`, `NO_CANDIDATE_ELIGIBLE`, or `OWNER_DECISION_REQUIRED`. None of those states changes B5, activates a training language, promotes a model, or authorizes production use.
 
 ## 10. Immediate next actions
 
-1. Obtain a scan-clean Meta-compatible runtime or approve a separate, reviewable source-built compatibility qualification track; no waiver is proposed.
-2. Rebuild and require a local zero-critical/high scan.
-3. Only after local PASS, present a separate authoritative ECR scan-only packet.
-4. Bind the scan-passed `linux/amd64` child digest and a clean source commit into the pilot packet for independent review.
-5. Only after the exact owner approval may the bounded pilot run measured inference.
+1. Independently review the CVE-specific risk-acceptance record and updated pilot packet.
+2. If review passes, obtain the exact owner approval phrase and publish a separate immutable signature/authorization record; do not edit the reviewed risk record.
+3. Execute the packet's precompute scan stage and require an authoritative ECR child result of zero critical and exactly the accepted four highs; any drift stops before GPU.
+4. Prove strict-mode no-inbound and private S3/ECR-only egress before importing PyTorch.
+5. Only then may the two bounded, non-transferable pilot attempts run measured inference. A full-suite run requires a new current scan, risk decision, budget and packet.
 
 Official references:
 

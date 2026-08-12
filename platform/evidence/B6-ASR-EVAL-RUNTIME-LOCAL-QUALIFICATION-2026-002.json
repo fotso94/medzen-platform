@@ -1,0 +1,127 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002",
+  "status": "PASS_LOCAL_RUNTIME_WITH_OWNER_ACCEPTANCE_REQUIRED_FOR_FOUR_HIGHS",
+  "recorded_utc": "2026-08-11T23:51:06Z",
+  "supersedes_for_prospective_image_identity_only": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-001.json",
+    "sha256": "737bb22ec59c88f6d2daf20f688bfd17021c20053711db891c2ae2a8168a86a5",
+    "historical_record_edited": false
+  },
+  "scope": "Clean-source linux/amd64 rebuild, non-root read-only-container qualification, exact reachable-source inspection and local critical/high scan. No model weights, audio, inference, AWS mutation or GPU were used.",
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-bd8e14c",
+    "oci_index_sha256": "7080c0015db46141faeffcbd0363728ce6ebc75d2b0cce1a376346cd4552ad8d",
+    "linux_amd64_manifest_sha256": "1eb6a90efe2773abefa6a470b85e46c4f59f1ae1bdc19f0148b4f9eb0dc6aac8",
+    "config_sha256": "b5616797277916cff480eae7f51c26bb4dba84289dbb42c354c528880ef710cd",
+    "attestation_manifest_sha256": "b7ed3844901cf53326fdf20af28ce419ff6a6b81ccbc5fd7a1ed6b52ac9b74b6",
+    "attested_source_commit": "bd8e14c8c4401916412b00ac899a64a03b2514ef",
+    "source_worktree_clean_at_build": true,
+    "platform": "linux/amd64",
+    "size_bytes": 7296779906,
+    "base_image": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+    "classification_label": "offline-evaluation-only"
+  },
+  "qualification": {
+    "status": "PASS_LOCAL_RUNTIME_IMPORT_QUALIFICATION",
+    "container_read_only": true,
+    "tmpfs_only": "/tmp",
+    "uid": 10001,
+    "gid": 10001,
+    "build_tools_absent": [
+      "gcc",
+      "g++",
+      "cmake",
+      "git",
+      "pip",
+      "pip3"
+    ],
+    "python_pip_module_absent": true,
+    "candidate_adapters": [
+      "whisper-large-v3",
+      "omniASR_CTC_1B_v2",
+      "omniASR_LLM_1B_v2"
+    ],
+    "versions": {
+      "fairseq2": "0.6",
+      "faster-whisper": "1.2.1",
+      "omnilingual_asr_internal": "0.1.0",
+      "omnilingual_asr_release_tag": "0.2.0",
+      "pyarrow": "23.0.1",
+      "torch": "2.8.0+cu128",
+      "torchaudio": "2.8.0+cu128"
+    },
+    "source_commit": "145a12a668aace6c1d0d290128c1225571fc1955"
+  },
+  "reachable_source_inspection": {
+    "method": "Exact-string scan of the in-image MedZen adapter, Omnilingual inference package and fairseq2 package; this is a scoped code-path control, not a claim that the vulnerable package is patched.",
+    "files": {
+      "/opt/medzen/medzen_asr_eval/backends.py": "896c67fef7d4f215803aba0870beb9706828bbf9cb96ee138f0fe0c339ca8ccc",
+      "/opt/venv/lib/python3.12/site-packages/fairseq2/io.py": "565f94d918fa37a9e29d6d633b956433299afb091b99f046b1f26b39ba4bcd89",
+      "/opt/venv/lib/python3.12/site-packages/omnilingual_asr/models/inference/pipeline.py": "766728688901376dfce1b36115b8e780c1dfc3055798ab49d78a4b9df41fd863"
+    },
+    "prohibited_api_occurrences": {
+      "torch.export.load": 0,
+      "torch.linalg.lu": 0,
+      "torch.rot90": 0,
+      "torch.randn_like": 0
+    },
+    "checkpoint_loader_observation": "fairseq2/io.py calls torch.load with weights_only=restrict; restrict defaults to true. This does not remediate CVE-2026-24747, so exact checkpoint provenance and SHA-256 verification remain mandatory risk controls."
+  },
+  "local_scan": {
+    "scanner": "Docker Scout CLI 1.18.3",
+    "analyzed_packages": 305,
+    "critical": 0,
+    "high": 4,
+    "medium_requested": false,
+    "low_requested": false,
+    "security_exception_applied_during_scan": false,
+    "findings": [
+      {
+        "id": "CVE-2026-24747",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.10.0",
+        "fixed": "2.10.0",
+        "cvss": 8.8
+      },
+      {
+        "id": "CVE-2026-4538",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<=2.10.0",
+        "fixed": "NOT_AVAILABLE_IN_SCANNER_RECORD",
+        "cvss": 7.8
+      },
+      {
+        "id": "CVE-2025-55552",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.9.0",
+        "fixed": "2.9.0",
+        "cvss": 7.5
+      },
+      {
+        "id": "CVE-2025-55551",
+        "severity": "HIGH",
+        "package": "torch",
+        "installed": "2.8.0+cu128",
+        "affected": "<2.9.0",
+        "fixed": "2.9.0",
+        "cvss": 7.5
+      }
+    ]
+  },
+  "execution": {
+    "model_weights_downloaded": false,
+    "audio_downloaded": false,
+    "inference_started": false,
+    "gpu_started": false,
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "pilot_permitted_without_reviewed_risk_acceptance_and_packet_approval": false
+  }
+}

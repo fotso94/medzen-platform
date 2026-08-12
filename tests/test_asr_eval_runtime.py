@@ -14,6 +14,12 @@ EVIDENCE = (
     / "evidence"
     / "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-001.json"
 )
+EVIDENCE_V2 = (
+    ROOT
+    / "platform"
+    / "evidence"
+    / "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json"
+)
 sys.path.insert(0, str(PACKAGE))
 
 from medzen_asr_eval.harness import (  # noqa: E402
@@ -145,3 +151,23 @@ def test_local_qualification_evidence_refuses_the_scan_without_a_waiver() -> Non
     assert record["execution"]["aws_mutations"] == 0
     assert record["execution"]["ecr_push_attempted"] is False
     assert record["execution"]["pilot_permitted"] is False
+
+
+def test_clean_source_qualification_preserves_the_exact_four_findings() -> None:
+    record = json.loads(EVIDENCE_V2.read_text())
+    assert record["status"] == (
+        "PASS_LOCAL_RUNTIME_WITH_OWNER_ACCEPTANCE_REQUIRED_FOR_FOUR_HIGHS"
+    )
+    assert record["image"]["source_worktree_clean_at_build"] is True
+    assert record["image"]["classification_label"] == "offline-evaluation-only"
+    assert record["local_scan"]["critical"] == 0
+    assert record["local_scan"]["high"] == 4
+    assert {item["id"] for item in record["local_scan"]["findings"]} == {
+        "CVE-2026-24747",
+        "CVE-2026-4538",
+        "CVE-2025-55552",
+        "CVE-2025-55551",
+    }
+    assert set(record["reachable_source_inspection"]["prohibited_api_occurrences"].values()) == {0}
+    assert record["execution"]["aws_mutations"] == 0
+    assert record["execution"]["pilot_permitted_without_reviewed_risk_acceptance_and_packet_approval"] is False
