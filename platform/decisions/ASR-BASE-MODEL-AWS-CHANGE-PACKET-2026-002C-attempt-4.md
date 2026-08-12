@@ -77,8 +77,8 @@ child, attestation, and top-level index.
 | Binding | Value |
 |---|---|
 | Pre-packet executor commit | `1797ec56f9e8e681cecec0e186bb2e7e0e79f1a1` |
-| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `03fc5f4ddc9b77270497ef11a8fe6439ed1a01ccb318d8af676111029511388c` |
-| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `88fbc0b1323020d4c18ec63487d27c908262cac3b5c83f8ec0a73f15b94bbe9f` |
+| Bindings manifest | `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002C.json`, SHA-256 `e0ef286b458750caaf257c1db40729123dfd76e59ed383f029ac9dda6024caf6` |
+| Qualification | `platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json`, SHA-256 `378f9892954abd68b700a4e3c2e681503fa2ed15a59c740c481df453036bf1b1` |
 | Cold rehearsal | `platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json`, SHA-256 `51089cb9fb1e54a02b20127f86f8ae323664f6f84bc5062aa47c3e4b5a647832` |
 | Risk acceptance | `platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json`, SHA-256 `06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c` |
 | Input freeze | `f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad` |
@@ -150,11 +150,14 @@ drift, isolation probe, deadline, and cleanup. Every scenario returns to zero
 state and restores the exact original ECR scan configuration; no real AWS or
 kubectl call occurs.
 
-- focused OCI/executor/plan suites: **45 passed, 0 failed, 0 skipped, 0 deselected**;
+- scoped ASR input/runtime/OCI/executor/plan/packet suites: **97 passed, 0 failed, 0 skipped, 0 deselected**;
 - cold rehearsal: **1 PASS + 5 injected refusals**, byte-identical twice;
-- full scoped and repository suite counts will be recorded at the final packet
-  commit; the separately disclosed stale generated-language/B5 failures remain
-  out of scope and must not be bundled here.
+- repository suite: **1,546 passed, 79 failed, 13 skipped, 6 deselected**.
+  Of the failures, 59 are the independently disclosed stale generated-language
+  and B5-scope mainline failures; 20 require heavyweight optional local
+  packages (`transformers`, MLflow, or PEFT) absent from this shell. None is in
+  the packet-002C scoped suite. These separate issues remain out of scope and
+  must not be bundled here.
 
 ## Attempt-4 boundary
 

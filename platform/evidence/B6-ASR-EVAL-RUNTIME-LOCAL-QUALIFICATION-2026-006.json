@@ -77,10 +77,20 @@
   },
   "tests": {
     "focused": {
-      "passed": 45,
+      "passed": 97,
       "failed": 0,
       "skipped": 0,
       "deselected": 0
+    },
+    "repository_baseline": {
+      "passed": 1546,
+      "failed": 79,
+      "skipped": 13,
+      "deselected": 6,
+      "pre_existing_stale_generated_language_and_b5_scope_failures": 59,
+      "missing_heavy_optional_local_dependency_failures": 20,
+      "caused_by_this_change": false,
+      "bundled_fix_prohibited": true
     },
     "new_regressions": [
       "all reachable OCI blobs verify against descriptor digest and size",

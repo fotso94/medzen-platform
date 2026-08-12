@@ -36,7 +36,7 @@
   "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
   "qualification": {
     "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json",
-    "sha256": "88fbc0b1323020d4c18ec63487d27c908262cac3b5c83f8ec0a73f15b94bbe9f"
+    "sha256": "378f9892954abd68b700a4e3c2e681503fa2ed15a59c740c481df453036bf1b1"
   },
   "image": {
     "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
