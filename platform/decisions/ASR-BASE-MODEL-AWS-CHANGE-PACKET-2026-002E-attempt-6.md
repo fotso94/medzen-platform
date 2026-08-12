@@ -119,9 +119,10 @@ The receipt proves:
 - no image upload or registry-scanning mutation;
 - zero real AWS calls and zero kubectl calls.
 
-Focused test results at presentation are recorded after the final packet tests.
-They include omission, extra-module, changed-module, uncommitted-artifact,
-missing dry-run and artifact-mismatch refusals.
+Focused ASR suite at presentation: **140 passed, 0 failed, 0 skipped, 0
+deselected**, with one non-blocking pre-existing Starlette/httpx deprecation
+warning. Coverage includes omission, extra-module, changed-module,
+uncommitted-artifact, missing dry-run and artifact-mismatch refusals.
 
 ## Unchanged image, scan, risk and scientific scope
 
@@ -182,4 +183,3 @@ Attempt 5 spent $0 and does not change the recognized total.
 
 None. The user and reviewer requirements are implemented directly. Historical
 records remain unchanged.
-
