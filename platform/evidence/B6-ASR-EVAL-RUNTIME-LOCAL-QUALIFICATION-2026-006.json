@@ -1,0 +1,114 @@
+{
+  "record": "ASR_EVALUATION_EXECUTOR_EXACT_MULTIPART_PUBLICATION_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006",
+  "revision": 6,
+  "status": "PASS_EXACT_IMAGE_MULTIPART_PUBLICATION_LOCAL_ONLY",
+  "recorded_utc": "2026-08-12T05:45:00Z",
+  "scope": "Local-only qualification of the exact OCI verification and bounded ECR multipart publication correction required after packet 2026-002B attempt 3 refused before scan or compute.",
+  "historical_attempt_3": {
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002B-ATTEMPT-3-IMAGE-PUBLICATION-REFUSAL.json",
+    "refusal_sha256": "65cefdf67de29025960646dd085e773a48df7d354375613b04ae5cac1cf28289",
+    "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+    "edited": false,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0
+  },
+  "diagnosis": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-LAYER-DIAGNOSIS-2026-001.json",
+    "sha256": "e5bbadc75f691d8199e3c5a39d9803c1baebe035491432e2d60c570f28098736",
+    "corrupt_layer_digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+    "confirmed_failure_boundary": "REMOTE_DOCKER_TO_ECR_LAYER_UPLOAD_PATH",
+    "content_store_status": "PASS",
+    "oci_export_status": "PASS",
+    "attempt_3_ecr_upload_status": "REFUSED_TRUNCATED"
+  },
+  "exact_image_upload_proof": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-EXACT-IMAGE-ROUNDTRIP-PROOF-2026-001.json",
+    "sha256": "4cfb2445df035724b68381d36f34702d22a3107dd4a5cdab0a1ac51ec9b61955",
+    "status": "PASS_EXACT_LOCAL_REGISTRY_ROUNDTRIP",
+    "objects_read_back": 21,
+    "bytes_read_back": 7296838446,
+    "runs": 2,
+    "runs_byte_identical": true,
+    "image_identity_changed": false
+  },
+  "correction_source": {
+    "commit": "1797ec56f9e8e681cecec0e186bb2e7e0e79f1a1",
+    "runner_sha256": "62c87eeb0695f76a1c8c372da6d646f0eecb765f6fb4f52d5f9184f6a7a67961",
+    "live_operations_sha256": "cf5328f25fa190abd0ea420e892575e0869134bd50fff2dba5e8a45095eea691",
+    "scan_rule_helper_sha256": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
+    "fake_operations_sha256": "3f4e4cb1dd14317318c085cfd4847de3397d5d12d855de44f82563c6ef0a833d",
+    "plan_sha256": "8152edbd6242b4cf518e7c208ddee4d5de1048c170152c1d160fb358d53e4c97",
+    "kubernetes_renderer_sha256": "0ab123f3b14c54d294a6ad993db03ff93a712ef6462b293796806c93bb567bfc",
+    "cold_rehearsal_script_sha256": "91daaa030a8529979183b05fd6c99d9937fc24658dda3f9b951b1777fae90810",
+    "oci_publication_sha256": "a7f3f287990114b660873122cd4a557dfde79ec0e177afada740fad1c7369405"
+  },
+  "corrections": [
+    "Export the exact locally bound image to a temporary OCI layout before ECR mutation.",
+    "Verify SHA-256 and descriptor size for all 21 reachable content-addressed objects.",
+    "Query ECR layer availability and upload only unavailable blobs.",
+    "Upload in consecutive parts no larger than 20 MiB and verify each returned lastByteReceived before continuing.",
+    "Refuse before CompleteLayerUpload on any byte-range discontinuity.",
+    "Publish exact child, attestation and index bytes in dependency order.",
+    "Read back and hash all three manifests, including the tagged index, before authoritative child scanning.",
+    "Retain bounded safe service error text in the immutable pre-model receipt.",
+    "Remove the temporary OCI export after the verified publication attempt."
+  ],
+  "cold_rehearsal": {
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json",
+    "sha256": "51089cb9fb1e54a02b20127f86f8ae323664f6f84bc5062aa47c3e4b5a647832",
+    "runs": 2,
+    "byte_identical": true,
+    "attempt": 4,
+    "authorization_schema": "PASS_AUTHORIZATION_SCHEMA",
+    "full_pass_runs": 1,
+    "injected_failure_runs": 5,
+    "injected_paths": [
+      "image_upload_part_truncation",
+      "image_manifest_readback_drift",
+      "isolation_probe",
+      "deadline",
+      "cleanup"
+    ],
+    "exact_prior_scan_configuration_restored_after_every_scenario": true,
+    "aws_calls": 0,
+    "kubectl_calls": 0,
+    "mutations": 0
+  },
+  "tests": {
+    "focused": {
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0,
+      "deselected": 0
+    },
+    "new_regressions": [
+      "all reachable OCI blobs verify against descriptor digest and size",
+      "one corrupt local layer byte refuses before publication",
+      "bounded multipart publication preserves exact manifest identities",
+      "truncated returned part range refuses before completion",
+      "only ECR-proven available blobs are reused",
+      "temporary exact-image export is removed after success",
+      "live image stage has no docker login or docker push path",
+      "truncation and manifest-readback failures are receipted and restore scan rules"
+    ]
+  },
+  "image_and_risk_identity": {
+    "image_context_changed_since_source_commit_5d1b8a0": false,
+    "files_changed_under_services_asr_eval_runtime": 0,
+    "image_rebuild_required": false,
+    "risk_acceptance_path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_manifest_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "continuation_requires_independent_review_and_exact_owner_approval": true
+  },
+  "execution": {
+    "real_aws_calls": 0,
+    "real_aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_4_started": false,
+    "authorization_created": false,
+    "packet_2026_002b_or_authorization_edited": false
+  }
+}
