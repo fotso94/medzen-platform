@@ -1,0 +1,54 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_PREFLIGHT_REFUSAL_FACTUAL_ADDENDUM",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL-ADDENDUM-001",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T02:30:00Z",
+  "status": "FACTUAL_CORRECTION_NO_RESOURCE_OR_COST_IMPACT",
+  "original_record": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002-ATTEMPT-1-PREFLIGHT-REFUSAL.json",
+    "sha256": "cd7ee9e9abd089ea4b5fddde1bddd3ff94cd856f95ab4ea71f92c6f933def215",
+    "edited": false
+  },
+  "correction": {
+    "original_field": "safety_outcome.aws_mutations",
+    "original_value": 0,
+    "corrected_value": 1,
+    "scope": "One no-op EKS UpdateNodegroupConfig cleanup enforcement call",
+    "reason": "The cleanup implementation always issued the desired-zero configuration call even when the preflight failed before GPU scale-up. The request restated the existing min=0, max=1 and desired=0 values."
+  },
+  "cloudtrail_evidence": {
+    "event_time_utc": "2026-08-12T02:15:11Z",
+    "event_name": "UpdateNodegroupConfig",
+    "event_source": "eks.amazonaws.com",
+    "event_id": "256121c3-ef3a-4977-ba4c-ee404d601a75",
+    "request_id": "106c6ec9-3641-497f-ba47-5be231019998",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cluster": "medzen-speech",
+    "nodegroup": "gpu",
+    "requested_scaling": {
+      "minSize": 0,
+      "maxSize": 1,
+      "desiredSize": 0
+    },
+    "update_id": "6d50e0ae-00df-3756-b9f0-351a5b2e03c1"
+  },
+  "verified_effect": {
+    "gpu_desired_before": 0,
+    "gpu_desired_after": 0,
+    "gpu_instances_started": 0,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0,
+    "cpu_desired_after": 0,
+    "temporary_endpoints_after": 0,
+    "temporary_volumes_after": 0,
+    "deadline_actions_after": 0,
+    "evaluation_namespaces_after": 0,
+    "ecr_repository_created": false,
+    "model_or_audio_downloaded": false
+  },
+  "prospective_correction": {
+    "rule": "Cleanup may call UpdateNodegroupConfig only when durable state proves this attempt scaled the GPU. A pre-GPU refusal performs read-only zero-state verification.",
+    "attempt_2_not_started": true,
+    "review_required_before_attempt_2": true
+  }
+}

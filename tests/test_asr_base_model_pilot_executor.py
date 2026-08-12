@@ -284,3 +284,13 @@ def test_live_executor_never_requires_dependencies_inside_reviewed_worktree() ->
     source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(encoding="utf-8")
     assert '.venv/bin/python' not in source
     assert 'sys.executable, "scripts/audit_asr_base_model_eval_inputs.py"' in source
+
+
+def test_pre_gpu_cleanup_does_not_issue_nodegroup_mutation() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(encoding="utf-8")
+    cleanup = source[source.index("    def cleanup_and_expiry(") :]
+    assert 'if state.get("gpu_scaled"):' in cleanup
+    mutation = cleanup.index("self.eks.update_nodegroup_config")
+    guard = cleanup.index('if state.get("gpu_scaled"):')
+    read_only = cleanup.index("group = self._nodegroup(GPU_NODEGROUP)", mutation)
+    assert guard < mutation < read_only

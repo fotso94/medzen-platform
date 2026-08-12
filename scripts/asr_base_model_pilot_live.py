@@ -804,8 +804,18 @@ class LiveOperations:
             except Exception as exc:
                 errors.append(f"volume:{type(exc).__name__}")
         try:
-            self.eks.update_nodegroup_config(clusterName=CLUSTER, nodegroupName=GPU_NODEGROUP, scalingConfig={"minSize": 0, "maxSize": 1, "desiredSize": 0})
-            self._wait_nodegroup(0)
+            if state.get("gpu_scaled"):
+                self.eks.update_nodegroup_config(clusterName=CLUSTER, nodegroupName=GPU_NODEGROUP, scalingConfig={"minSize": 0, "maxSize": 1, "desiredSize": 0})
+                self._wait_nodegroup(0)
+            else:
+                group = self._nodegroup(GPU_NODEGROUP)
+                scaling = group["scalingConfig"]
+                if (
+                    group["status"] != "ACTIVE"
+                    or scaling["desiredSize"] != 0
+                    or group.get("health", {}).get("issues")
+                ):
+                    raise RuntimeError("GPU node group is not safely zero")
         except Exception as exc:
             errors.append(f"gpu:{type(exc).__name__}")
         if state.get("endpoint_ids"):
