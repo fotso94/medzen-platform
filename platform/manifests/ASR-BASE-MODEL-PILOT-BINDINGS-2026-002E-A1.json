@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "authorization": {
+    "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002E-A1",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002E-A1.json",
+    "status_required": "owner-approved",
+    "deadline_dry_run_id": "ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002E-A1",
+    "deadline_dry_run_path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002E-A1.json",
+    "complete_committed_stage_dry_run_required_before_attempt": true
+  },
+  "successor_packet": {
+    "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002E-A1",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002E-A1-attempt-6.md"
+  },
+  "write_once_history": {
+    "packet_2026_002d": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002D-attempt-5.md",
+      "sha256": "1c6859219369a0f7d8d39ca05760f5c7610cb7a00e02cddff84e47ff5fa64aa9"
+    },
+    "authorization_2026_002d": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002D.json",
+      "sha256": "9f8dd983178b8b0f07782996d8ae769ed992cffd20d3b57145ebd3c2fec47fc6"
+    },
+    "bindings_2026_002d": {
+      "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002D.json",
+      "sha256": "b846739200e3513b7170d80d44b73c2f3572e5ecec71d0410dcf7daeb60a9a13"
+    },
+    "attempt_5_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002D-ATTEMPT-5-EXECUTOR-BINDING-REFUSAL.json",
+      "sha256": "777a16cad922d5d0932c9e0066bb0e46f85cfaeb9713f6affd64a4e8b7bf8c6a"
+    },
+    "packet_2026_002e": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002E-attempt-6.md",
+      "sha256": "131182330b04920474f1e99a38935a1694d8c324b7d2c8a98f078dd65dba03da"
+    },
+    "authorization_2026_002e": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002E.json",
+      "sha256": "aa2366d3dffa70229a2e105990fb5f5be57d6ec771dce90ddc80a92aade38faf"
+    },
+    "deadline_dry_run_2026_002e": {
+      "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002E.json",
+      "sha256": "ebd21c0ac90c148659c18c726ee817dd2793f80c7e6f122cfce1fd6abd0b71f0"
+    },
+    "attempt_6_pre_aws_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002E-ATTEMPT-6-PRE-AWS-PREREQUISITE-REFUSAL.json",
+      "sha256": "69455cd2a4ff5831aef0487e8d13c8887c5f2274ec682d2dd82f5268e7795ff0"
+    }
+  },
+  "scanner_capability_diagnosis": {
+    "path": "platform/evidence/ASR-ECR-BASIC-SCANNING-CAPABILITY-DIAGNOSIS-2026-001.json",
+    "sha256": "e27ccbb75aec0694a1cab2e1eacaac8f06aa0ad86258f748e7df279a64445962"
+  },
+  "digest_rescan_bindings": {
+    "path": "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-001.json",
+    "sha256": "82f352517995151c66cb6221f651398d1e4320678674bdded4ee47c0b38fe717"
+  },
+  "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+  "qualification": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json",
+    "sha256": "5982cf98afe6a442c4d79738d4107445cd9ecfad748e7827e4c8e234f122c0c8"
+  },
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "tag": "pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "local_scan_sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "local_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+    "image_context_changed": false
+  },
+  "executor_source_commit": "d6d194a3d205712c4320e3f5c452c32ef3e7a68f",
+  "executor_modules": {
+    "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
+    "scripts/asr_base_model_pilot_assets.py": "c9d0fa257620e68984d6b5d23395540b2a5d6ff2067a5b8b5d20026fdef0bb97",
+    "scripts/asr_base_model_ecr_scanning.py": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
+    "scripts/asr_base_model_deadline_dry_run.py": "1d733a0a12498b1f4d799c835420ec9bd0cd0743d9002071296fb380d36b5493",
+    "scripts/asr_base_model_pilot_integrity.py": "30bc31c53d55b42205e846792643a7f705aa18ccd2f386e4a63048add591c768",
+    "scripts/asr_base_model_pilot_k8s.py": "5385706da620e5e72e0cff306242001bb13a0417b25b15db0a8a7acb11d39aa5",
+    "scripts/asr_base_model_pilot_live.py": "4a4d6233df9cc3e8ed77956cac261b13cd70c6ea79ce0c808dbf534e0546c31d",
+    "scripts/asr_base_model_pilot_plan.py": "7c500d28e1640112b4147611da3966ddacc12aa5bb90cde567ff2302199ad2e4",
+    "scripts/asr_base_model_pilot_runner.py": "083e5aa37fc9ad47c9053d6e3b92daf4511468dbca7716c9021209fa52218a90",
+    "scripts/asr_eval_digest_rescan.py": "52cf1bec00ca82c28cd7d6f2a69ec67369facab56fb899974e0e0f0b59c6ed29",
+    "scripts/asr_eval_oci_publication.py": "a7f3f287990114b660873122cd4a557dfde79ec0e177afada740fad1c7369405"
+  },
+  "executor_integrity_policy": {
+    "all_module_hashes_required_on_every_attempt": true,
+    "conditional_integrity_guards_permitted": false,
+    "missing_or_extra_module_bindings_refuse": true,
+    "changed_module_bytes_refuse": true
+  },
+  "cold_rehearsal": {
+    "script_path": "scripts/asr_base_model_pilot_cold_rehearsal.py",
+    "bindings_source_required": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002E-A1.json",
+    "committed_bindings_required": true,
+    "fixture_bindings_permitted": false,
+    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002E-A1-COLD/cold-rehearsal.json",
+    "script_sha256": "fe973bc715ab1d89f408a467c5b35362d48cf1bef741f120b1bf54d55631d0ef"
+  },
+  "ecr_existing_image": {
+    "repository": "medzen-asr-eval-runtime",
+    "repository_state": "EXISTING_EXACT_IMAGE_IMMUTABLE_KMS_ENCRYPTED",
+    "publication_method_live_proven_by_attempt_4": "VERIFIED_EXACT_OCI_MULTIPART_API",
+    "attempt_6_upload_required": false,
+    "exact_tag_index_child_config_attestation_readback_required": true
+  },
+  "security_gate": {
+    "registry_scanning_mutation_permitted": false,
+    "inspector_enhanced_scanning_permitted": false,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "accepted_high_tuples": [
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+    ]
+  },
+  "input_freeze": {
+    "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",
+    "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+    "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+    "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
+    "recorded_utc": "2026-08-11T22:25:25Z",
+    "canonical_sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_manifests": 54,
+    "pilot_rows": 540,
+    "pilot_languages": 47,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6"
+  },
+  "pilot_bundle": {
+    "sha256": "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee",
+    "s3_prefix": "s3://medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/"
+  },
+  "cost_registry": {
+    "path": "platform/finance/COST-REGISTRY-2026-006.json",
+    "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "vpc_id": "vpc-051aa9df8b64bf141",
+    "private_subnet_ids": [
+      "subnet-00232b25bc1ac407a",
+      "subnet-05029419c6c61a536",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "private_route_table_ids": [
+      "rtb-0c6eb6874ce0565dc"
+    ],
+    "ecr_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "s3_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "ebs_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:alias/aws/ebs",
+    "gpu_root_volume_gib": 20,
+    "temporary_eval_volume_gib": 60
+  },
+  "attempts": {
+    "authorized_numbers": [
+      6
+    ],
+    "maximum": 1,
+    "seconds_each": 10800,
+    "non_transferable": true,
+    "maximum_gpu_nodes": 1,
+    "cost_ceiling_usd": 10.0,
+    "attempt_1_reuse_permitted": false,
+    "attempt_2_reuse_permitted": false,
+    "attempt_3_reuse_permitted": false,
+    "attempt_4_reuse_permitted": false,
+    "attempt_5_reuse_permitted": false
+  }
+}
