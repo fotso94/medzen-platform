@@ -1,0 +1,150 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_IMAGE_SCAN_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002A-ATTEMPT-2-IMAGE-SCAN-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T03:11:23Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+  "attempt": 2,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "ECR_DUPLICATE_SCAN_FREQUENCY_RULE",
+  "reason": "The executor appended a second SCAN_ON_PUSH rule to the existing ECR Basic Scanning configuration. ECR requires repository filters with the same scan frequency to share one rule and rejected the update before image publication.",
+  "cloudtrail_confirmation": {
+    "event_time_utc": "2026-08-12T03:05:30Z",
+    "event_name": "PutRegistryScanningConfiguration",
+    "event_id": "cda77ee3-bdd9-424e-b3b6-dc313696261c",
+    "request_id": "5a00a8d9-489c-4fc8-87bb-7ceffaa8eddd",
+    "error_code": "InvalidParameterException",
+    "safe_error_text": "Invalid input. Contains duplicate scan frequencies: [SCAN_ON_PUSH]",
+    "requested_rule_shape": {
+      "existing_scan_on_push_rules": 1,
+      "appended_scan_on_push_rules": 1,
+      "resulting_duplicate_frequency": true
+    }
+  },
+  "receipt_diagnostic_limitation": {
+    "persisted_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+    "persisted_safe_error_text": "InvalidParameterException",
+    "missing_detail": "The receipt did not retain the AWS service error text even though the failure occurred before any model or audio artifact existed on the node.",
+    "reconstruction_basis": "CloudTrail event cda77ee3-bdd9-424e-b3b6-dc313696261c records the exact rejected request and AWS error."
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002A.json",
+    "sha256": "52dd378b92b5950dfefd1b1283742290cb11d13c594b4b465a485bcf063297f7",
+    "commit": "1d008bd9a3a90392e25ce0403f89b714c330cbbd",
+    "packet_sha256": "9d1ca8be5c7fecb6e0ca1d7ae9e7f1ba374de9ebdf9749a1516da81c73b3bd27",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "committed_dry_validation_sha256": "47c02ed31441a902ad5efe80b38d9a62e84af49c3e111101e345c8965182e810"
+  },
+  "passed_stages": [
+    "deadline_identity_and_acceptance",
+    "input_freeze_and_no_phi",
+    "cost_and_zero_state"
+  ],
+  "input_freeze": {
+    "status": "PASS_INPUT_FREEZE_AND_NO_PHI",
+    "canonical_sha256_run_1": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "canonical_sha256_run_2": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "contains_phi": false
+  },
+  "authorized_persistent_change": {
+    "ecr_repository_created": true,
+    "repository_arn": "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-asr-eval-runtime",
+    "created_utc": "2026-08-12T03:05:30Z",
+    "cloudtrail_event_id": "8aec56be-ac5c-4f2c-92bf-1bc319cc0d61",
+    "image_tag_mutability": "IMMUTABLE",
+    "scan_on_push_repository_flag": true,
+    "encryption": "KMS",
+    "image_count": 0,
+    "stored_image_bytes": 0,
+    "retention": "Retained as explicitly authorized by packet 2026-002A."
+  },
+  "registry_scan_configuration": {
+    "changed": false,
+    "canonical_sha256_before": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88",
+    "canonical_sha256_after": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88"
+  },
+  "deadline_control": {
+    "created_event_id": "2e3a8859-802d-4f63-a8c9-20a4dadb990b",
+    "created_utc": "2026-08-12T03:05:15Z",
+    "deleted_event_id": "71343e3e-7f37-476a-a5c8-b42cf8e6016f",
+    "deleted_utc": "2026-08-12T03:05:32Z",
+    "remaining_actions": 0
+  },
+  "kms_service_side_effect": {
+    "description": "ECR created two repository-scoped grants on the existing packet-bound encryption key as part of repository creation; no key, key policy or IAM policy was created or modified.",
+    "grantee": "ecr.eu-central-1.amazonaws.com",
+    "operations": [
+      "Decrypt",
+      "GenerateDataKey"
+    ],
+    "grant_ids": [
+      "650a844dec9e8e643a7af5c0786aaabc086835ec7e0c3805eb51cab0801513b5",
+      "de5b1d6e832902b22ac85cb39a60af70cc1f0152a96e4477230f81ba4f758307"
+    ]
+  },
+  "cleanup": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "evaluation_namespaces": 0,
+    "deadline_actions": 0,
+    "research_prefix_objects": 0,
+    "published_images": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0
+  },
+  "cost_and_attempt_accounting": {
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "gpu_compute_cost_usd": 0.0,
+    "image_storage_bytes": 0,
+    "control_plane_request_billing": "pending normal AWS billing ingestion",
+    "new_reservation_created": false,
+    "runner_reservation_marker_closed": true,
+    "attempt_2_started": true,
+    "attempt_2_reuse_permitted": false,
+    "authorized_attempts_remaining": 0
+  },
+  "immutable_receipts": {
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/attempt-envelope.json",
+      "sha256": "a859da2bd3ebf95ab37673712c34bb5cacb5e42b7fbb2be855a7898da19b12a5"
+    },
+    "deadline_identity_and_acceptance": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/deadline_identity_and_acceptance.json",
+      "sha256": "e8a4ba519988582eaf857b7347a7a2b4221150f4b19952c61d1ee8a97a961a3e"
+    },
+    "input_freeze_and_no_phi": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/input_freeze_and_no_phi.json",
+      "sha256": "375f448474636fcb9cd7634eccfa9e05aa8d6a8778b7833f349052de91675f5e"
+    },
+    "cost_and_zero_state": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/cost_and_zero_state.json",
+      "sha256": "f8996b9b132801d6e32760e83135cbcf8f94cae2f107d1960cbf6c56d235c702"
+    },
+    "image_publication_and_scan": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/image_publication_and_scan.json",
+      "sha256": "559bcecb440558a60c3d06d80ecf8cc8bd8d6d426bd28f5d9909b0a47d22e5bb"
+    },
+    "cleanup_and_expiry": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/cleanup_and_expiry.json",
+      "sha256": "94a5d39b190e74d52d16bddc0868318877962049943fce425e2f939aad94f0ec"
+    },
+    "terminal_result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002A-A2-LIVE/result.json",
+      "sha256": "700c8deffb6119930ce463aa1ca08db0433b463faba23a2143dfdb63827f2e9e"
+    }
+  },
+  "required_successor": {
+    "code": "Merge the exact medzen-asr-eval-runtime filter into the existing SCAN_ON_PUSH rule rather than appending a duplicate-frequency rule; preserve all existing filters and refuse on ambiguous rule structure.",
+    "tests": "Use a recorded real GetRegistryScanningConfiguration response; prove deterministic merge, idempotence, preservation of existing filters, duplicate-frequency refusal and unchanged cleanup behavior.",
+    "diagnostics": "Retain the bounded safe AWS service error text for pre-model stage exceptions.",
+    "governance": "Packet 2026-002A and this terminal attempt remain write-once. Any further live execution requires a new reviewed packet, a new write-once owner authorization and a fresh non-transferable attempt allowance."
+  }
+}
