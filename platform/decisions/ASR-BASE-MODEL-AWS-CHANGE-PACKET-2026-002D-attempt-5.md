@@ -151,9 +151,10 @@ zero real AWS calls and zero kubectl calls in rehearsal. Missing Scout
 credentials separately refuse before attempt-envelope creation or any staged
 operation.
 
-Scoped packet suite at presentation: **56 passed, 0 failed, 0 skipped, 0
-deselected**. Cold rehearsal: **1 PASS + 5 injected refusals**, byte-identical
-twice.
+Scoped packet suite at presentation: **61 passed, 0 failed, 0 skipped, 0
+deselected**. The broader focused ASR evaluation suite is **115 passed, 0
+failed, 0 skipped, 0 deselected**. Cold rehearsal: **1 PASS + 5 injected
+refusals**, byte-identical twice.
 
 ## Execution stages and exact implementations
 
