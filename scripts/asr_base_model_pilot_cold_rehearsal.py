@@ -32,8 +32,8 @@ from scripts.asr_base_model_pilot_runner import (
 
 SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
-    "image_upload_part_truncation": ("image_upload_part_truncation", "BLOCKED_IMAGE_SCAN"),
-    "image_manifest_readback_drift": ("image_manifest_readback_drift", "BLOCKED_IMAGE_SCAN"),
+    "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
+    "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
@@ -47,7 +47,23 @@ def _sha(path: Path) -> str:
 def _bindings() -> dict[str, Any]:
     return {
         "schema_version": 1,
-        "image": {"linux_amd64_digest": "sha256:" + "1" * 64, "tag": "pilot-exact"},
+        "image": {
+            "linux_amd64_digest": "sha256:" + "1" * 64,
+            "oci_index_digest": "sha256:" + "4" * 64,
+            "tag": "pilot-exact",
+        },
+        "security_gate": {
+            "registry_scanning_mutation_permitted": False,
+            "inspector_enhanced_scanning_permitted": False,
+            "docker_scout_version": "1.18.3",
+            "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+            "accepted_high_tuples": [
+                "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+                "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+                "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+                "CVE-2026-4538|torch|2.8.0+cu128|HIGH",
+            ],
+        },
         "pilot_bundle": {"sha256": "2" * 64},
     }
 
@@ -55,26 +71,26 @@ def _bindings() -> dict[str, Any]:
 def rehearse(output: Path) -> dict[str, Any]:
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings = _bindings()
-    plan_result = validate_plan(exact_plan(bindings, 4), bindings, 4)
-    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 4)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 4)
+    plan_result = validate_plan(exact_plan(bindings, 5), bindings, 5)
+    workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 5)
+    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], 5)
     authorization_result = validate_authorization_payload(
         {
-            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002C",
+            "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002D",
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
             "attempts": {
-                "authorized_numbers": [4],
+                "authorized_numbers": [5],
                 "maximum": 1,
                 "seconds_each": 10800,
                 "non_transferable": True,
             },
         },
-        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002C",
+        expected_id="ASR-BASE-MODEL-AWS-AUTH-2026-002D",
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
-        attempt=4,
+        attempt=5,
     )
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
@@ -83,7 +99,7 @@ def rehearse(output: Path) -> dict[str, Any]:
             directory = base / name
             ops = FakeOperations(inject=injection)
             context = AttemptContext(
-                attempt=4,
+                attempt=5,
                 bindings=bindings,
                 receipts=ReceiptStore(directory / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
                 workdir=directory,
@@ -110,6 +126,7 @@ def rehearse(output: Path) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_live.py",
         ROOT / "scripts/asr_base_model_pilot_assets.py",
         ROOT / "scripts/asr_eval_oci_publication.py",
+        ROOT / "scripts/asr_eval_digest_rescan.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/pilot.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
     ]
@@ -122,12 +139,22 @@ def rehearse(output: Path) -> dict[str, Any]:
         "kubernetes_mutations": 0,
         "full_pass_runs": 1,
         "injected_failure_runs": 5,
-        "injected_paths": ["image_upload_part_truncation", "image_manifest_readback_drift", "isolation_probe", "deadline", "cleanup"],
-        "ecr_scan_rule_constraint": {
-            "status": "PASS_ONE_RULE_PER_FREQUENCY_ENFORCED",
-            "fixture": "tests/fixtures/aws/ecr-get-registry-scanning-configuration-basic-before-asr-eval.json",
-            "merge_target": "existing SCAN_ON_PUSH rule",
-            "exact_prior_filter_list_restored_after_every_scenario": True,
+        "injected_paths": ["security_wrong_digest", "security_extra_finding", "isolation_probe", "deadline", "cleanup"],
+        "attempt_5_security_rehearsal": {
+            "aligned_pass": True,
+            "wrong_digest_refuses": True,
+            "extra_finding_refuses": True,
+            "existing_exact_image_upload_skipped": True,
+            "registry_scanning_mutations": 0,
+        },
+        "registry_scanning_boundary": {
+            "status": "PASS_NO_REGISTRY_SCANNING_MUTATION",
+            "inspector_enhanced_scanning_adopted": False,
+            "maximum_put_calls_per_scenario": max(
+                value["ecr_scan_configuration_put_calls"] for value in scenarios.values()
+            ),
+            "ecr_basic_role": "SUPPLEMENTARY_OS_GATE",
+            "docker_scout_role": "DIGEST_VERIFIED_PYTHON_PACKAGE_GATE",
         },
         "enumerated_stages": list(STAGES),
         "execution_asset_completeness": {

@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in {1, 2, 3, 4}:
-        raise ValueError("attempt must be 1, 2, 3 or 4")
+    if attempt not in {1, 2, 3, 4, 5}:
+        raise ValueError("attempt must be 1, 2, 3, 4 or 5")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -38,6 +38,38 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         raise ValueError("OCI index digest is malformed")
     if not isinstance(image_tag, str) or re.fullmatch(r"[a-zA-Z0-9_.-]{1,300}", image_tag) is None:
         raise ValueError("immutable image tag is absent or malformed")
+    permanent_create_only = [
+        f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
+    ]
+    temporary_create_then_delete = [
+        "autoscaling:scheduled-action/medzen-asr-eval-2026-001-deadline-scale-zero",
+        "ec2:gp3-volume/medzen-asr-eval-60gib-kms-encrypted",
+        "ec2:volume-attachment/gpu-node:/var/lib/medzen-asr-eval",
+        "ec2:security-group/medzen-asr-eval-vpce",
+        "ec2:vpc-endpoint/com.amazonaws.eu-central-1.ecr.api",
+        "ec2:vpc-endpoint/com.amazonaws.eu-central-1.ecr.dkr",
+        "ec2:vpc-endpoint/com.amazonaws.eu-central-1.s3",
+        "eks:addon-configuration/vpc-cni-network-policy-strict",
+        "kubernetes:namespace/medzen-asr-eval",
+        "kubernetes:namespace/nvidia-dra-driver",
+        "kubernetes:nvidia-dra-driver/exact-locked-manifest",
+        "kubernetes:resourceclaimtemplate/asr-eval-gpu",
+        "kubernetes:networkpolicy/asr-eval-default-deny",
+        "kubernetes:networkpolicy/asr-eval-private-egress",
+        "kubernetes:job/asr-base-model-pilot",
+        "kubernetes:pod/asr-eval-inbound-control",
+        "node-local:/var/lib/medzen-asr-eval/attempt",
+    ]
+    if attempt < 5:
+        permanent_create_only[:0] = [
+            f"ecr:repository/medzen-asr-eval-runtime:oci-index/{image_index}",
+            f"ecr:repository/medzen-asr-eval-runtime:tag/{image_tag}",
+            "ecr:repository/medzen-asr-eval-runtime:content-addressed-blobs/from-verified-oci-layout",
+        ]
+        temporary_create_then_delete.insert(
+            1,
+            "ecr:registry-scanning-configuration/merge-exact-filter-then-restore-prior-filter-list",
+        )
     return {
         "schema_version": 1,
         "classification": "OFFLINE_EVALUATION_ONLY",
@@ -47,33 +79,9 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "profile": PROFILE,
         "cluster": CLUSTER,
         "vpc": VPC,
-        "permanent_create_only": [
-            f"ecr:repository/medzen-asr-eval-runtime:oci-index/{image_index}",
-            f"ecr:repository/medzen-asr-eval-runtime:tag/{image_tag}",
-            "ecr:repository/medzen-asr-eval-runtime:content-addressed-blobs/from-verified-oci-layout",
-            f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
-        ],
+        "permanent_create_only": permanent_create_only,
         "permanent_bounded_update": [],
-        "temporary_create_then_delete": [
-            "autoscaling:scheduled-action/medzen-asr-eval-2026-001-deadline-scale-zero",
-            "ecr:registry-scanning-configuration/merge-exact-filter-then-restore-prior-filter-list",
-            "ec2:gp3-volume/medzen-asr-eval-60gib-kms-encrypted",
-            "ec2:volume-attachment/gpu-node:/var/lib/medzen-asr-eval",
-            "ec2:security-group/medzen-asr-eval-vpce",
-            "ec2:vpc-endpoint/com.amazonaws.eu-central-1.ecr.api",
-            "ec2:vpc-endpoint/com.amazonaws.eu-central-1.ecr.dkr",
-            "ec2:vpc-endpoint/com.amazonaws.eu-central-1.s3",
-            "eks:addon-configuration/vpc-cni-network-policy-strict",
-            "kubernetes:namespace/medzen-asr-eval",
-            "kubernetes:namespace/nvidia-dra-driver",
-            "kubernetes:nvidia-dra-driver/exact-locked-manifest",
-            "kubernetes:resourceclaimtemplate/asr-eval-gpu",
-            "kubernetes:networkpolicy/asr-eval-default-deny",
-            "kubernetes:networkpolicy/asr-eval-private-egress",
-            "kubernetes:job/asr-base-model-pilot",
-            "kubernetes:pod/asr-eval-inbound-control",
-            "node-local:/var/lib/medzen-asr-eval/attempt",
-        ],
+        "temporary_create_then_delete": temporary_create_then_delete,
         "bounded_capacity_change": [
             f"autoscaling:{GPU_ASG}/desired=1-then-0",
         ],

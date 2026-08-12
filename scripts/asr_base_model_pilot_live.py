@@ -35,6 +35,11 @@ from scripts.asr_base_model_ecr_scanning import (
     merge_scan_on_push_filter,
     validate_configuration,
 )
+from scripts.asr_eval_digest_rescan import (
+    DigestRescanRefusal,
+    scan_exact_ecr_child,
+    validate_security_binding,
+)
 from scripts.asr_eval_oci_publication import (  # noqa: E402
     OciPublicationRefusal,
     publish_exact_image,
@@ -433,12 +438,30 @@ class LiveOperations:
             "ECR scanning configuration did not reach two stable exact observations",
         )
 
+    def _existing_exact_image(self, image: dict[str, Any]) -> dict[str, Any]:
+        response = self.ecr.batch_get_image(
+            repositoryName=ECR_REPOSITORY,
+            imageIds=[{"imageTag": image["tag"]}],
+            acceptedMediaTypes=["application/vnd.oci.image.index.v1+json"],
+        )
+        index = response.get("images", [])
+        if len(index) != 1 or index[0]["imageId"]["imageDigest"] != image["oci_index_digest"]:
+            raise OperationRefusal("IMMUTABLE_IMAGE_TAG_OCCUPIED", "evaluation tag is absent or bound to a different image")
+        raw = index[0].get("imageManifest", "").encode()
+        if hashlib.sha256(raw).hexdigest() != image["oci_index_digest"].removeprefix("sha256:"):
+            raise OperationRefusal("ECR_INDEX_BYTES_DIFFER", "ECR index bytes differ from the bound digest")
+        manifest = json.loads(raw)
+        children = [
+            item for item in manifest["manifests"]
+            if item.get("platform", {}).get("os") == "linux"
+            and item.get("platform", {}).get("architecture") == "amd64"
+        ]
+        if len(children) != 1 or children[0]["digest"] != image["linux_amd64_digest"]:
+            raise OperationRefusal("ECR_CHILD_DIGEST_DIFFERS", "ECR child differs from the bound linux/amd64 digest")
+        return {"status": "PASS_EXACT_IMAGE_ALREADY_PRESENT", "index": index[0], "child": children[0]}
+
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         image = context.bindings["image"]
-        local = _run(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
-        labels = json.loads(local.stdout)
-        if labels.get("org.opencontainers.image.revision") != image["source_commit"] or labels.get("io.medzen.classification") != "offline-evaluation-only":
-            raise OperationRefusal("LOCAL_IMAGE_LABELS_DIFFER", "local image provenance labels differ")
         state = self._state(context)
         try:
             repository = self.ecr.describe_repositories(repositoryNames=[ECR_REPOSITORY])["repositories"][0]
@@ -449,6 +472,37 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
+        if context.attempt == 5:
+            exact = self._existing_exact_image(image)
+            try:
+                gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
+                with tempfile.TemporaryDirectory(prefix="digest-rescan-", dir=context.workdir) as temporary:
+                    scan = scan_exact_ecr_child(
+                        self.ecr,
+                        ECR_REPOSITORY,
+                        image,
+                        Path(temporary),
+                    )
+                    retained_sarif = context.workdir / "docker-scout-ecr-rescan.sarif.json"
+                    source_sarif = Path(temporary) / "docker-scout.sarif.json"
+                    write_exclusive(retained_sarif, source_sarif.read_bytes())
+                    scan["docker_scout"]["sarif_path"] = str(retained_sarif)
+                    scan["docker_scout"].pop("scanned_oci_layout", None)
+            except DigestRescanRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            return {
+                "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
+                "repository": ECR_REPOSITORY,
+                "oci_index_digest": image["oci_index_digest"],
+                "linux_amd64_digest": exact["child"]["digest"],
+                "publication": {"status": "SKIPPED_EXISTING_EXACT_IMAGE", "aws_image_mutations": 0},
+                "security_gate_binding": gate_binding,
+                "security_gate": scan,
+            }
+        local = _run(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
+        labels = json.loads(local.stdout)
+        if labels.get("org.opencontainers.image.revision") != image["source_commit"] or labels.get("io.medzen.classification") != "offline-evaluation-only":
+            raise OperationRefusal("LOCAL_IMAGE_LABELS_DIFFER", "local image provenance labels differ")
         registry = self.ecr.get_registry_scanning_configuration()["scanningConfiguration"]
         state["scan_configuration_before"] = registry
         self._save_state(context, state)

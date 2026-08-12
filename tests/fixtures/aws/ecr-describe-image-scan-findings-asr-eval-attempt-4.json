@@ -1,0 +1,17 @@
+{
+  "imageScanFindings": {
+    "findings": [],
+    "imageScanCompletedAt": "2026-08-12T08:44:21-04:00",
+    "vulnerabilitySourceUpdatedAt": "2026-08-12T08:44:21-04:00",
+    "findingSeverityCounts": {}
+  },
+  "registryId": "558069890522",
+  "repositoryName": "medzen-asr-eval-runtime",
+  "imageId": {
+    "imageDigest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e"
+  },
+  "imageScanStatus": {
+    "status": "COMPLETE",
+    "description": "The scan was completed successfully."
+  }
+}

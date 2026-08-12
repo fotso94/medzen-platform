@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "capability_diagnosis": {
+    "path": "platform/evidence/ASR-ECR-BASIC-SCANNING-CAPABILITY-DIAGNOSIS-2026-001.json",
+    "sha256": "e27ccbb75aec0694a1cab2e1eacaac8f06aa0ad86258f748e7df279a64445962"
+  },
+  "attempt_4_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002C-ATTEMPT-4-AUTHORITATIVE-SCAN-REFUSAL.json",
+    "sha256": "23751027f8bd2717a4aff4b99a7bea50517b9c7989eb869c415edfb6d473bfab"
+  },
+  "image": {
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1"
+  },
+  "security_gate": {
+    "registry_scanning_mutation_permitted": false,
+    "inspector_enhanced_scanning_permitted": false,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "accepted_high_tuples": [
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+    ]
+  },
+  "ecr_basic_scan_fixture": {
+    "path": "tests/fixtures/aws/ecr-describe-image-scan-findings-asr-eval-attempt-4.json",
+    "sha256": "e24b4aebd2785ed1d02d396eb421459e0355d951c0507a92052d04321af03981"
+  }
+}

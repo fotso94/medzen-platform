@@ -24,6 +24,7 @@ from scripts.asr_base_model_ecr_scanning import (  # noqa: E402
     validate_configuration,
 )
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal  # noqa: E402
+from scripts.asr_eval_digest_rescan import DigestRescanRefusal, validate_security_binding  # noqa: E402
 from scripts.asr_eval_oci_publication import (  # noqa: E402
     ECR_PART_BYTES,
     OCI_INDEX,
@@ -208,6 +209,46 @@ class FakeOperations:
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         self._enter("image_publication_and_scan")
         self.state["ecr"] = True
+        if context.attempt == 5:
+            try:
+                gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
+            except DigestRescanRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            if self.inject in {"security_wrong_digest", "security_extra_finding"}:
+                code = (
+                    "ECR_RESCAN_CHILD_BINDING_DIFFERS"
+                    if self.inject == "security_wrong_digest"
+                    else "SCOUT_FINDINGS_DIFFER"
+                )
+                raise OperationRefusal(code, f"injected attempt-5 security refusal: {self.inject}")
+            return {
+                "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
+                "publication": {
+                    "status": "SKIPPED_EXISTING_EXACT_IMAGE",
+                    "aws_image_mutations": 0,
+                },
+                "security_gate_binding": gate_binding,
+                "security_gate": {
+                    "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
+                    "reconstruction": {
+                        "status": "PASS_EXACT_ECR_CHILD_RECONSTRUCTION",
+                        "all_downloaded_descriptors_byte_verified": True,
+                    },
+                    "ecr_basic": {
+                        "status": "PASS_ECR_BASIC_OS_GATE",
+                        "coverage": "OPERATING_SYSTEM_PACKAGES_ONLY",
+                        "critical": 0,
+                        "high": 0,
+                    },
+                    "docker_scout": {
+                        "status": "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE",
+                        "scanner_version": "1.18.3",
+                        "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+                        "critical": 0,
+                        "high": 4,
+                    },
+                },
+            }
         updated, changed = merge_scan_on_push_filter(
             self.registry_scanning.get(), "medzen-asr-eval-runtime"
         )
