@@ -1,0 +1,97 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AWS_AUTHORIZATION",
+  "id": "ASR-BASE-MODEL-AWS-AUTH-2026-001",
+  "revision": 1,
+  "status": "OWNER_APPROVED_AFTER_INDEPENDENT_REVIEW_PASS",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-12T00:12:33Z",
+  "expires_utc": "2026-08-19T00:12:33Z",
+  "prepared_repository_commit": "8a04e105850057cec4a83011d455624f0d1485b9",
+  "packet": {
+    "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md",
+    "sha256": "2aea086984e973fed5a51a0e2cecd5d48fc2ad35038cd26fb300e0038ae796b2"
+  },
+  "risk_acceptance": {
+    "id": "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-001",
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-001.json",
+    "sha256": "7c6b07fd6db18f888a18ea5bf4f7c278167fd8b021d4e0790c461e9dc1fcabb9",
+    "scope": "offline evaluation runtime only",
+    "accepted_high_findings": 4,
+    "serving_precedent": false
+  },
+  "independent_review": {
+    "reviewer": "independent architecture reviewer (Claude)",
+    "status": "PASS",
+    "findings": 0,
+    "reviewed_repository_commit": "8a04e105850057cec4a83011d455624f0d1485b9",
+    "reviewed_packet_sha256": "2aea086984e973fed5a51a0e2cecd5d48fc2ad35038cd26fb300e0038ae796b2",
+    "reviewed_risk_record_sha256": "7c6b07fd6db18f888a18ea5bf4f7c278167fd8b021d4e0790c461e9dc1fcabb9",
+    "review_statement": "All four owner conditions are met; the strict-mode default-deny network-isolation design with positive and negative reachability proofs before torch import exceeds the requirement."
+  },
+  "owner_approval": {
+    "status": "APPROVED",
+    "exact_phrase": "Approve ASR base-model AWS change packet 2026-001 only, including ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-001 at SHA-256 7c6b07fd6db18f888a18ea5bf4f7c278167fd8b021d4e0790c461e9dc1fcabb9 and two non-transferable 10,800-second offline evaluation attempts within the $10 reservation.",
+    "maximum_attempts": 2,
+    "maximum_seconds_per_attempt": 10800,
+    "attempt_seconds_transferable": false
+  },
+  "allowance": {
+    "aggregate_project_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 74.4286064216,
+    "new_reservation_usd": 10.0,
+    "headroom_after_reservation_usd": 215.5713935784,
+    "maximum_gpu_nodes": 1,
+    "maximum_aggregate_gpu_seconds": 21600,
+    "maximum_attempts": 2,
+    "maximum_seconds_per_attempt": 10800,
+    "attempts_non_transferable": true
+  },
+  "immutable_bindings": {
+    "local_qualification": {
+      "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json",
+      "sha256": "ee5b07d20d5eee91b3224987848c562793bff70788d6f8ca76ff3691e8a57de1"
+    },
+    "cost_registry": {
+      "path": "platform/finance/COST-REGISTRY-2026-006.json",
+      "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+    },
+    "runtime_dockerfile_sha256": "6fbfaabc738193ee64c89627d6613cacbc6e3c47e019626c6a07befa645f05f0",
+    "model_manifest_sha256": "35457ff0ad16e1daac85ed63eec8e693122592c9727776b66d5b32c2975b6d80",
+    "runtime_identity_sha256": "76e75758e8a27c4321b986aeed454a7e8e1598c88def86311e32b5ddb647dac0",
+    "input_audit_script_sha256": "9213e8258c24b68e8808746ed5651d6ad6df80024c8877689e37313d579509be",
+    "evaluation_image_source_commit": "bd8e14c8c4401916412b00ac899a64a03b2514ef",
+    "omnilingual_upstream_source_commit": "145a12a668aace6c1d0d290128c1225571fc1955",
+    "linux_amd64_manifest_sha256": "1eb6a90efe2773abefa6a470b85e46c4f59f1ae1bdc19f0148b4f9eb0dc6aac8"
+  },
+  "authorized_operations": [
+    "Run the packet-bound input-freeze and no-PHI preflight",
+    "Open one 10 USD reservation in the cost registry",
+    "Create and retain the immutable medzen-asr-eval-runtime ECR repository and exact scan-qualified image",
+    "Create-only stage the exact packet-bound research models, tokenizer and pilot bundle",
+    "Create and remove the exact temporary S3 and ECR endpoints and endpoint security group",
+    "Temporarily enable strict VPC CNI network-policy enforcement and restore its exact prior state",
+    "Scale only the existing GPU node group from zero to one for at most two bounded attempts",
+    "Run only the packet-bound 540-row maximum offline evaluation pilot",
+    "Persist immutable per-stage, per-row, aggregate and cleanup evidence",
+    "Destroy all temporary runtime resources and return CPU and GPU capacity to zero after every outcome"
+  ],
+  "prohibited_operations": [
+    "Any serving, production, traffic-facing, training or full-suite use of the evaluation image",
+    "Any third attempt, duration transfer, duration extension or reservation increase",
+    "Any IAM role creation or modification",
+    "Any production SSM, approved/asr, MLflow registration, model-stage or language-registry mutation",
+    "Any inbound route, public internet egress, PHI, user audio or untrusted input",
+    "Any image, source, input, model, tokenizer, scan-finding or severity drift",
+    "Any use of this risk acceptance as precedent for a serving image"
+  ],
+  "permitted_terminal_outcomes": [
+    "PASS_PILOT",
+    "INCOMPLETE_MEASUREMENT",
+    "BLOCKED_INPUT_FREEZE",
+    "BLOCKED_IMAGE_SCAN",
+    "BLOCKED_NETWORK_ISOLATION",
+    "FAILED_CLOSED_EXECUTION"
+  ],
+  "execution_permitted": true
+}
