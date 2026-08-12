@@ -1,0 +1,141 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_IMAGE_PUBLICATION_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002B-ATTEMPT-3-IMAGE-PUBLICATION-REFUSAL",
+  "revision": 1,
+  "recorded_utc": "2026-08-12T04:51:36Z",
+  "status": "FAILED_CLOSED_EXECUTION",
+  "terminal_outcome": "BLOCKED_IMAGE_SCAN",
+  "attempt": 3,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "ECR_LAYER_DIGEST_MISMATCH",
+  "reason": "ECR received the final bytes for one large image layer but refused CompleteLayerUpload because the calculated digest did not match the declared layer digest. No OCI index or image tag was committed, so authoritative scanning could not start and the runner stopped before artifact staging or compute.",
+  "receipt_diagnostic": {
+    "persisted_reason_code": "BOUNDED_COMMAND_REFUSED",
+    "persisted_safe_error_text": "docker exited 1",
+    "cloudtrail_refinement": "The bounded receipt proves the Docker command failed; CloudTrail event 10c48053-fae0-4a63-907b-91dc6a3a4139 identifies the AWS-side cause as InvalidLayerException.",
+    "not_a_timeout": true
+  },
+  "cloudtrail_confirmation": {
+    "event_time_utc": "2026-08-12T04:34:49Z",
+    "event_name": "CompleteLayerUpload",
+    "event_id": "10c48053-fae0-4a63-907b-91dc6a3a4139",
+    "request_id": "a091a4b9-9866-400d-924c-ebfec21c712a",
+    "error_code": "InvalidLayerException",
+    "safe_error_text": "None of the provided layer digests match the calculated layer digest",
+    "declared_layer_digest": "sha256:1ef81fd1e44444eb44c30a37e6485d8cb605c0288699e7016f8ca53c308dcbfd",
+    "uploaded_part_first_byte": 0,
+    "uploaded_part_last_byte": 2272854015,
+    "uploaded_part_bytes": 2272854016,
+    "complete_layer_upload_events": 18,
+    "successful_complete_layer_upload_events": 17,
+    "refused_complete_layer_upload_events": 1,
+    "put_image_events": 0
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002B.json",
+    "sha256": "90e5eaf25f4109b49aa26cbd1df0b424d2e8d844d497a6953b220cbeb741386d",
+    "commit": "944faaf51836f91944f777db05af25c0c48376a9",
+    "packet_sha256": "6ae7a9af79c99d68ff8178951833b9ffbb914bf17f1d230ee2de14535acafaed",
+    "reviewed_packet_commit": "293ac12113a6f3f319507c20b95c05f6b343ab00",
+    "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "committed_dry_validation_sha256": "e32bdb9d1e285f973c650a904072e02a87e1ed69389c43e20d3f10ba75d79371",
+    "dry_validation_commit": "5b8d137f6c948796d1df8e74e65626dfde52f31d"
+  },
+  "passed_stages": [
+    "deadline_identity_and_acceptance",
+    "input_freeze_and_no_phi",
+    "cost_and_zero_state",
+    "cleanup_and_expiry"
+  ],
+  "input_freeze": {
+    "status": "PASS_INPUT_FREEZE_AND_NO_PHI",
+    "canonical_sha256_run_1": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "canonical_sha256_run_2": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "contains_phi": false
+  },
+  "image": {
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-5d1b8a0",
+    "bound_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "bound_linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "published_images": 0,
+    "stored_image_bytes": 0,
+    "authoritative_scan_started": false,
+    "risk_acceptance_exercised_on_compute": false
+  },
+  "registry_scan_configuration": {
+    "merge_event_id": "4c56c3f7-123b-4a6a-929c-a0407c026127",
+    "merge_status": "PASS",
+    "merged_rule_count": 1,
+    "merged_filter_count": 9,
+    "restore_event_id": "9c2bc04a-f980-4327-ae84-e635a38ae14f",
+    "restore_status": "PASS",
+    "restored_rule_count": 1,
+    "restored_filter_count": 8,
+    "canonical_sha256_after": "4b05e0d75d86932de6b79e2de8d84600fdb3ffc55fd230668112b46f9caa5f88",
+    "matches_pre_attempt_configuration": true
+  },
+  "cleanup": {
+    "status": "PASS_CLEANUP_AND_EXPIRY",
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "attempt_temporary_endpoints": 0,
+    "attempt_temporary_volumes": 0,
+    "evaluation_namespaces": 0,
+    "deadline_actions": 0,
+    "research_prefix_objects": 0,
+    "published_images": 0,
+    "approved_asr_changes": 0,
+    "production_ssm_changes": 0,
+    "model_registrations": 0
+  },
+  "cost_and_attempt_accounting": {
+    "gpu_nodes_started": 0,
+    "gpu_seconds": 0,
+    "gpu_compute_cost_usd": 0.0,
+    "image_storage_bytes": 0,
+    "control_plane_and_data_transfer_billing": "pending normal AWS billing ingestion",
+    "runner_reservation_marker_closed": true,
+    "attempt_3_started": true,
+    "attempt_3_reuse_permitted": false,
+    "authorized_attempts_remaining": 0
+  },
+  "immutable_receipts": {
+    "attempt_envelope": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/attempt-envelope.json",
+      "sha256": "3a9369f26fdcff0d9a97a5ecf93fee24bfecfc7ef9e12aae3b39ae0035df799b"
+    },
+    "deadline_identity_and_acceptance": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/deadline_identity_and_acceptance.json",
+      "sha256": "0ad16dddd30b11afeadfe409bda881c347fc72793c6265cfe57bee9c2da1d55a"
+    },
+    "input_freeze_and_no_phi": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/input_freeze_and_no_phi.json",
+      "sha256": "2f6322f928ea429855c48f0e41b0b3957dc14bd832ce09f3cc70d9e9360e6448"
+    },
+    "cost_and_zero_state": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/cost_and_zero_state.json",
+      "sha256": "8d1d735d5caaf3c367d6e275ec636ee2ff90caab7e438c9438fd8363f6529eca"
+    },
+    "image_publication_and_scan": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/image_publication_and_scan.json",
+      "sha256": "cbe820cb437a6c5e2ca404b770a7ef13701d38fb4becfb6bcb92d52f97b6c0de"
+    },
+    "cleanup_and_expiry": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/cleanup_and_expiry.json",
+      "sha256": "c61b23ce0a446180b71375845516f5ead5b5a0975bf1afb9ee67c5a7151ecb80"
+    },
+    "terminal_result": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002B-A3-LIVE/result.json",
+      "sha256": "8466c69d7712e8b13af0afc89c4f328ac577ec537153b0fe207110f867fab971"
+    }
+  },
+  "required_successor": {
+    "diagnosis": "Reproduce and isolate the failed layer digest using the exact local image. Determine whether the mismatch originates in the Docker content store, OCI packaging/export, or the upload path; do not infer the source from the ECR refusal alone.",
+    "qualification": "Before another packet, prove a byte-correct upload of the exact bound OCI index and linux/amd64 child to a non-serving scan-qualified location, or rebuild and fully rebind image qualification and risk acceptance if any image identity changes.",
+    "diagnostics": "Retain sanitized Docker stderr for this pre-model stage and preserve the exact ECR service error in the stage receipt so a future failure does not require CloudTrail reconstruction.",
+    "governance": "Packet 2026-002B, AUTH-2026-002B and this terminal attempt are write-once. Attempt 3 is consumed; any further live execution requires a new reviewed packet, a new write-once owner authorization and a fresh non-transferable allowance."
+  }
+}
