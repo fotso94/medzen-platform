@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,14 @@ from scripts.asr_base_model_ecr_scanning import (  # noqa: E402
     validate_configuration,
 )
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal  # noqa: E402
+from scripts.asr_eval_oci_publication import (  # noqa: E402
+    ECR_PART_BYTES,
+    OCI_INDEX,
+    OCI_MANIFEST,
+    OciLayout,
+    OciPublicationRefusal,
+    publish_exact_layout,
+)
 
 
 class FakeBackend:
@@ -73,6 +82,91 @@ class FakeRegistryScanning:
         return canonical_configuration(self.configuration) == self.initial
 
 
+def _blob(root: Path, content: bytes, media_type: str) -> dict[str, Any]:
+    digest = "sha256:" + hashlib.sha256(content).hexdigest()
+    path = root / "blobs/sha256" / digest.removeprefix("sha256:")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content)
+    return {"digest": digest, "size": len(content), "mediaType": media_type}
+
+
+def _json_blob(root: Path, value: dict[str, Any], media_type: str) -> dict[str, Any]:
+    return _blob(root, json.dumps(value, sort_keys=True, separators=(",", ":")).encode(), media_type)
+
+
+def _fake_oci_layout(root: Path) -> tuple[OciLayout, dict[str, str]]:
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}\n')
+    config = _json_blob(root, {"architecture": "amd64", "os": "linux"}, "application/vnd.oci.image.config.v1+json")
+    layer = _blob(root, b"x" * (ECR_PART_BYTES + 7), "application/vnd.oci.image.layer.v1.tar+gzip")
+    child_value = {"schemaVersion": 2, "mediaType": OCI_MANIFEST, "config": config, "layers": [layer]}
+    child = {**_json_blob(root, child_value, OCI_MANIFEST), "platform": {"os": "linux", "architecture": "amd64"}}
+    attestation_config = _json_blob(root, {"architecture": "unknown", "os": "unknown"}, "application/vnd.oci.image.config.v1+json")
+    predicate = _blob(root, b"attestation", "application/vnd.in-toto+json")
+    attestation_value = {"schemaVersion": 2, "mediaType": OCI_MANIFEST, "config": attestation_config, "layers": [predicate]}
+    attestation = {**_json_blob(root, attestation_value, OCI_MANIFEST), "platform": {"os": "unknown", "architecture": "unknown"}}
+    index_value = {"schemaVersion": 2, "mediaType": OCI_INDEX, "manifests": [child, attestation]}
+    index = _json_blob(root, index_value, OCI_INDEX)
+    (root / "index.json").write_text(json.dumps({"schemaVersion": 2, "mediaType": OCI_INDEX, "manifests": [index]}))
+    return OciLayout(
+        root,
+        expected_index=index["digest"],
+        expected_child=child["digest"],
+        expected_config=config["digest"],
+        expected_attestation=attestation["digest"],
+    ), {"child": child["digest"]}
+
+
+class FakeMultipartEcr:
+    """Compact fake enforcing the exact ECR byte-continuity contract."""
+
+    def __init__(self, *, truncate_part: bool = False, drift_manifest: str | None = None):
+        self.truncate_part = truncate_part
+        self.drift_manifest = drift_manifest
+        self.uploads: dict[str, bytearray] = {}
+        self.manifests: dict[str, str] = {}
+        self.tags: dict[str, str] = {}
+
+    def batch_check_layer_availability(self, **kwargs: Any) -> dict[str, Any]:
+        return {"layers": [], "failures": []}
+
+    def initiate_layer_upload(self, **kwargs: Any) -> dict[str, Any]:
+        upload_id = f"upload-{len(self.uploads)}"
+        self.uploads[upload_id] = bytearray()
+        return {"uploadId": upload_id, "partSize": ECR_PART_BYTES}
+
+    def upload_layer_part(self, **kwargs: Any) -> dict[str, Any]:
+        upload = self.uploads[kwargs["uploadId"]]
+        if kwargs["partFirstByte"] != len(upload):
+            raise RuntimeError("fake received a non-consecutive part")
+        upload.extend(kwargs["layerPartBlob"])
+        last = kwargs["partLastByte"] - int(self.truncate_part)
+        return {"uploadId": kwargs["uploadId"], "lastByteReceived": last}
+
+    def complete_layer_upload(self, **kwargs: Any) -> dict[str, Any]:
+        digest = "sha256:" + hashlib.sha256(self.uploads[kwargs["uploadId"]]).hexdigest()
+        if kwargs["layerDigests"] != [digest]:
+            raise RuntimeError("fake completed digest differs")
+        return {"layerDigest": digest}
+
+    def put_image(self, **kwargs: Any) -> dict[str, Any]:
+        digest = "sha256:" + hashlib.sha256(kwargs["imageManifest"].encode()).hexdigest()
+        if digest != kwargs["imageDigest"]:
+            raise RuntimeError("fake manifest digest differs")
+        self.manifests[digest] = kwargs["imageManifest"]
+        if "imageTag" in kwargs:
+            self.tags[kwargs["imageTag"]] = digest
+        return {"image": {"imageId": {"imageDigest": digest}}}
+
+    def batch_get_image(self, **kwargs: Any) -> dict[str, Any]:
+        image_id = kwargs["imageIds"][0]
+        digest = self.tags[image_id["imageTag"]] if "imageTag" in image_id else image_id["imageDigest"]
+        body = self.manifests[digest]
+        if digest == self.drift_manifest:
+            body += "\n"
+        return {"images": [{"imageId": {"imageDigest": digest}, "imageManifest": body}], "failures": []}
+
+
 class FakeOperations:
     def __init__(self, *, inject: str | None = None):
         self.inject = inject
@@ -91,11 +185,6 @@ class FakeOperations:
         }
         self.aggregate: dict[str, Any] | None = None
         self.registry_scanning = FakeRegistryScanning()
-        self.multipart_publication = {
-            "source_objects_verified": 21,
-            "parts_contiguous": True,
-            "manifests_byte_identical": True,
-        }
 
     def _enter(self, stage: str) -> None:
         self.stage_order.append(stage)
@@ -138,16 +227,18 @@ class FakeOperations:
                 "FAKE_DUPLICATE_SCAN_FREQUENCY",
                 "fake ECR accepted more than one SCAN_ON_PUSH rule",
             )
-        if self.inject == "image_upload_part_truncation":
-            raise OperationRefusal(
-                "ECR_PART_CONTINUITY_DIFFERS",
-                "injected ECR lastByteReceived differs before layer completion",
+        with tempfile.TemporaryDirectory(prefix="medzen-fake-oci-", dir=context.workdir) as temporary:
+            layout, refs = _fake_oci_layout(Path(temporary))
+            ecr = FakeMultipartEcr(
+                truncate_part=self.inject == "image_upload_part_truncation",
+                drift_manifest=refs["child"] if self.inject == "image_manifest_readback_drift" else None,
             )
-        if self.inject == "image_manifest_readback_drift":
-            raise OperationRefusal(
-                "ECR_MANIFEST_BYTES_DIFFER",
-                "injected ECR child manifest read-back bytes differ",
-            )
+            try:
+                publication = publish_exact_layout(
+                    ecr, "medzen-asr-eval-runtime", layout, tag="pilot-exact"
+                )
+            except OciPublicationRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
         return {
             "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
             "critical": 0,
@@ -155,8 +246,8 @@ class FakeOperations:
             "scan_on_push_rules": len(scan_rules),
             "filter_merged_into_existing_rule": True,
             "publication": {
-                "status": "PASS_EXACT_MULTIPART_ECR_PUBLICATION",
-                **self.multipart_publication,
+                **publication,
+                "fake_aws_service": True,
             },
         }
 

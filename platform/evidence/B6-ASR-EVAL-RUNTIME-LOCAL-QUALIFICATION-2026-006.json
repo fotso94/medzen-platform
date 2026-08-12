@@ -37,7 +37,7 @@
     "runner_sha256": "62c87eeb0695f76a1c8c372da6d646f0eecb765f6fb4f52d5f9184f6a7a67961",
     "live_operations_sha256": "cf5328f25fa190abd0ea420e892575e0869134bd50fff2dba5e8a45095eea691",
     "scan_rule_helper_sha256": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
-    "fake_operations_sha256": "3f4e4cb1dd14317318c085cfd4847de3397d5d12d855de44f82563c6ef0a833d",
+    "fake_operations_sha256": "8d701cb55e111e8640ebc1ce864623de77a69bd16dc3db5e58274ce43fc612a6",
     "plan_sha256": "8152edbd6242b4cf518e7c208ddee4d5de1048c170152c1d160fb358d53e4c97",
     "kubernetes_renderer_sha256": "0ab123f3b14c54d294a6ad993db03ff93a712ef6462b293796806c93bb567bfc",
     "cold_rehearsal_script_sha256": "91daaa030a8529979183b05fd6c99d9937fc24658dda3f9b951b1777fae90810",
@@ -56,7 +56,7 @@
   ],
   "cold_rehearsal": {
     "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002C-COLD/cold-rehearsal.json",
-    "sha256": "51089cb9fb1e54a02b20127f86f8ae323664f6f84bc5062aa47c3e4b5a647832",
+    "sha256": "3c307c3e6cd896ea6bd891bd3ac8123e563b3d8d60f1289a19fa7d8087754d63",
     "runs": 2,
     "byte_identical": true,
     "attempt": 4,
@@ -101,7 +101,8 @@
       "temporary exact-image export is removed after success",
       "live image stage has no docker login or docker push path",
       "truncation and manifest-readback failures are receipted and restore scan rules"
-    ]
+    ],
+    "cold_rehearsal_uses_actual_publisher_core": true
   },
   "image_and_risk_identity": {
     "image_context_changed_since_source_commit_5d1b8a0": false,
