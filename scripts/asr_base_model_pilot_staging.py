@@ -569,6 +569,7 @@ def prestage(
     expected_bundle_sha256: str,
     kms_key_arn: str,
     model_cache: Path | None,
+    audio_cache: Path | None,
 ) -> dict[str, Any]:
     if workdir.exists():
         raise StagingRefusal("PRESTAGE_WORKDIR_EXISTS", "pre-stage workdir must be fresh")
@@ -603,6 +604,7 @@ def prestage(
         workdir / "assets",
         prefix,
         model_cache=model_cache,
+        audio_cache=audio_cache,
     )
     if bundle["bundle_identity"]["sha256"] != expected_bundle_sha256:
         raise StagingRefusal("PRESTAGED_BUNDLE_IDENTITY_DIFFERS", "staged bundle identity differs")
@@ -692,6 +694,7 @@ def main() -> int:
     parser.add_argument("--expected-bundle-sha256", required=True)
     parser.add_argument("--kms-key-arn", required=True)
     parser.add_argument("--model-cache", type=Path)
+    parser.add_argument("--audio-cache", type=Path)
     args = parser.parse_args()
     try:
         value = prestage(
@@ -701,6 +704,7 @@ def main() -> int:
             expected_bundle_sha256=args.expected_bundle_sha256,
             kms_key_arn=args.kms_key_arn,
             model_cache=args.model_cache,
+            audio_cache=args.audio_cache,
         )
     except Exception as exc:
         print(json.dumps({"status": "REFUSED", "reason_code": getattr(exc, "reason_code", type(exc).__name__)}, sort_keys=True))

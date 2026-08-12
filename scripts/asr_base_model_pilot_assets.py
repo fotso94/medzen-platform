@@ -229,6 +229,7 @@ def stage_assets(
     prefix: str,
     *,
     model_cache: Path | None = None,
+    audio_cache: Path | None = None,
 ) -> dict[str, Any]:
     if selection.get("status") != "PASS_DETERMINISTIC_PILOT_SELECTION":
         raise AssetRefusal("pilot selection is not PASS")
@@ -298,7 +299,14 @@ def stage_assets(
         filename = row["audio_checksum_sha256"] + suffix
         path = workdir / "audio" / filename
         path.parent.mkdir(parents=True, exist_ok=True)
-        store.download(source_bucket, source_key, path)
+        cached_audio = audio_cache / filename if audio_cache is not None else None
+        if cached_audio is not None and cached_audio.is_file():
+            try:
+                os.link(cached_audio, path)
+            except OSError:
+                shutil.copyfile(cached_audio, path)
+        else:
+            store.download(source_bucket, source_key, path)
         digest, size = sha256_file(path)
         if digest != row["audio_checksum_sha256"]:
             raise AssetRefusal("audio identity differs after download")
