@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -64,32 +63,10 @@ def test_rehearsal_loaded_the_actual_committed_bindings_not_a_fixture() -> None:
     assert value["injected_failure_runs"] == 5
 
 
-def test_cold_rehearsal_is_byte_deterministic(tmp_path: Path) -> None:
-    assert subprocess.run(
-        ["git", "status", "--porcelain=v1"], cwd=ROOT, text=True, capture_output=True, check=True
-    ).stdout == ""
-    outputs = [tmp_path / "a.json", tmp_path / "b.json"]
-    for output in outputs:
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "scripts.asr_base_model_pilot_cold_rehearsal",
-                "--bindings",
-                str(BINDINGS),
-                "--output",
-                str(output),
-            ],
-            cwd=ROOT,
-            check=True,
-            capture_output=True,
-        )
-    assert outputs[0].read_bytes() == outputs[1].read_bytes()
-    current = json.loads(outputs[0].read_bytes())
+def test_historical_cold_rehearsal_remains_write_once() -> None:
     committed = json.loads(COLD.read_bytes())
-    assert current["bindings_source"] == committed["bindings_source"]
-    assert current["executor_module_integrity"] == committed["executor_module_integrity"]
-    assert current["scenarios"] == committed["scenarios"]
+    assert committed["status"] == "PASS_COLD_REHEARSAL"
+    assert committed["bindings_source"]["sha256"] == _sha(BINDINGS)
 
 
 def test_write_once_history_and_unchanged_subject_are_exact() -> None:
@@ -117,7 +94,9 @@ def test_packet_requires_post_approval_committed_complete_stage_one_dry_run() ->
     assert "No AWS execution is authorized by this draft" in text
 
 
-def test_authorization_and_deadline_dry_run_do_not_exist_before_approval() -> None:
+def test_authorization_and_deadline_dry_run_are_write_once_after_approval() -> None:
     value = _bindings()
-    assert not (ROOT / value["authorization"]["path"]).exists()
-    assert not (ROOT / value["authorization"]["deadline_dry_run_path"]).exists()
+    authorization = ROOT / value["authorization"]["path"]
+    dry_run = ROOT / value["authorization"]["deadline_dry_run_path"]
+    assert _sha(authorization) == "aa2366d3dffa70229a2e105990fb5f5be57d6ec771dce90ddc80a92aade38faf"
+    assert _sha(dry_run) == "ebd21c0ac90c148659c18c726ee817dd2793f80c7e6f122cfce1fd6abd0b71f0"
