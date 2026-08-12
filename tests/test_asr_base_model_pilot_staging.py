@@ -209,6 +209,27 @@ def test_zero_progress_watchdog_aborts_the_upload(tmp_path: Path) -> None:
     assert json.loads((tmp_path / "progress.json").read_bytes())["status"] == "UPLOAD_REFUSED"
 
 
+def test_watchdog_resets_at_each_object_boundary(tmp_path: Path) -> None:
+    source = tmp_path / "source.bin"
+    source.write_bytes(b"a" * (5 * 1024 * 1024))
+    digest = hashlib.sha256(source.read_bytes()).hexdigest()
+    clock = Clock(upload_seconds=1)
+    clock.value = 1_000
+    fake = FakeMultipartS3(clock=clock)
+    store = ManagedMultipartCreateOnlyStore(
+        fake,
+        "arn:aws:kms:eu-central-1:558069890522:key/test",
+        tmp_path / "progress.json",
+        part_bytes=5 * 1024 * 1024,
+        zero_progress_seconds=10,
+        clock=clock,
+        sleeper=lambda _: None,
+    )
+    # Simulate a long model/audio preparation interval between objects.
+    clock.value += 300
+    assert store.upload_create_only(source, "medzen-speech", "research/test", digest) == "version-1"
+
+
 def test_prestage_proof_requires_zero_in_attempt_upload_bytes() -> None:
     assert validate_prestage_proof(proof(), expected_bundle_sha256="2" * 64)["status"] == "PASS_PRESTAGE_PROOF_STRUCTURE"
     with pytest.raises(StagingRefusal) as refused:

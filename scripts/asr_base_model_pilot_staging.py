@@ -348,6 +348,9 @@ class ManagedMultipartCreateOnlyStore:
         digest, size = sha256_file(source)
         if digest != sha256 or size <= 0:
             raise AssetRefusal("multipart source size or digest differs")
+        # The watchdog is scoped to a transfer, never to CPU work or source
+        # downloads that occur between objects.
+        self.last_progress = self.clock()
         existing = self._exact_existing(bucket, key, digest, size)
         if existing is not None:
             self._verify_full_bytes(bucket, key, existing["VersionId"], digest, size)
