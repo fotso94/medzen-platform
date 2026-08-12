@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "authorization": {
+    "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002.json",
+    "status_required": "owner-approved"
+  },
+  "historical_predecessor": {
+    "packet_path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-001-pilot.md",
+    "packet_sha256": "2aea086984e973fed5a51a0e2cecd5d48fc2ad35038cd26fb300e0038ae796b2",
+    "authorization_path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-001.json",
+    "authorization_sha256": "30446fb7a603e03a31007dffd14cdac3ef89056d175df2caf30045820ec9d31f",
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-001-PREFLIGHT-REFUSAL.json",
+    "refusal_sha256": "64ff34b122765b98be7a5fada9966a8adb87a4ae255643d1febdd34fa37b1e39"
+  },
+  "risk_acceptance_sha256": "28e3f8b653ea73c57e8fd32a70c91772cf9de207b4a1ffad85cfa77e79fb2c27",
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-2d109ea",
+    "tag": "pilot-2d109ea",
+    "source_commit": "2d109eac01f34a1f344808a715240d95974c7ec1",
+    "oci_index_digest": "sha256:df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691",
+    "linux_amd64_digest": "sha256:41bda7e740bf71d9fde0e14d2f827d16f52bb8313e30a109dd6bd26ab939eece",
+    "config_digest": "sha256:4b8a762404ef8e1dbf4f7e3101dc9596ea5f8b31e59878fbb8b2e0a73a8afad1",
+    "attestation_digest": "sha256:3aff7405d94f208a0ac906123bc7e9d62fa90f97e74901e367698471f5e7224d",
+    "local_scan_sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a"
+  },
+  "input_freeze": {
+    "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",
+    "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+    "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+    "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
+    "recorded_utc": "2026-08-11T22:25:25Z",
+    "canonical_sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_manifests": 54,
+    "pilot_rows": 540,
+    "pilot_languages": 47,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6"
+  },
+  "pilot_bundle": {
+    "sha256": "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee",
+    "s3_prefix": "s3://medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/"
+  },
+  "cost_registry": {
+    "path": "platform/finance/COST-REGISTRY-2026-006.json",
+    "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "vpc_id": "vpc-051aa9df8b64bf141",
+    "private_subnet_ids": [
+      "subnet-00232b25bc1ac407a",
+      "subnet-05029419c6c61a536",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "private_route_table_ids": ["rtb-0c6eb6874ce0565dc"],
+    "ecr_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "s3_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "ebs_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:alias/aws/ebs",
+    "gpu_root_volume_gib": 20,
+    "temporary_eval_volume_gib": 60
+  },
+  "attempts": {
+    "maximum": 2,
+    "seconds_each": 10800,
+    "non_transferable": true,
+    "reservation_usd": 10.0
+  }
+}

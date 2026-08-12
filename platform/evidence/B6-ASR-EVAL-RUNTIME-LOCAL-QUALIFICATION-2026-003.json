@@ -1,0 +1,108 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003",
+  "status": "PASS_COMPLETE_EXECUTOR_LOCAL_QUALIFICATION_WITH_SCOPED_RISK_ACCEPTANCE_REQUIRED",
+  "recorded_utc": "2026-08-12T01:00:00Z",
+  "supersedes_for_prospective_image_identity_only": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-002.json",
+    "sha256": "ee5b07d20d5eee91b3224987848c562793bff70788d6f8ca76ff3691e8a57de1",
+    "historical_record_edited": false
+  },
+  "historical_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-001-PREFLIGHT-REFUSAL.json",
+    "sha256": "64ff34b122765b98be7a5fada9966a8adb87a4ae255643d1febdd34fa37b1e39",
+    "edited": false,
+    "authorization_preserved": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-001.json"
+  },
+  "scope": "Local-only qualification of the complete successor executor. No model or audio download, inference, AWS mutation, ECR push or GPU use occurred.",
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-2d109ea",
+    "oci_index_sha256": "df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691",
+    "linux_amd64_manifest_sha256": "41bda7e740bf71d9fde0e14d2f827d16f52bb8313e30a109dd6bd26ab939eece",
+    "config_sha256": "4b8a762404ef8e1dbf4f7e3101dc9596ea5f8b31e59878fbb8b2e0a73a8afad1",
+    "attestation_manifest_sha256": "3aff7405d94f208a0ac906123bc7e9d62fa90f97e74901e367698471f5e7224d",
+    "attested_source_commit": "2d109eac01f34a1f344808a715240d95974c7ec1",
+    "platform": "linux/amd64",
+    "size_bytes": 7296787645,
+    "classification_label": "offline-evaluation-only",
+    "base_image": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc"
+  },
+  "runtime_qualification": {
+    "status": "PASS_COMPLETE_EXECUTOR_IMPORT_PRE_TORCH",
+    "container_read_only": true,
+    "tmpfs_only": "/tmp",
+    "uid": 10001,
+    "gid": 10001,
+    "build_tools_absent": ["gcc", "g++", "cmake", "git", "pip", "pip3"],
+    "python_pip_module_absent": true,
+    "conditioning_languages": 49,
+    "network_gate_imported_torch": false,
+    "candidate_adapters": ["whisper-large-v3", "omniASR_CTC_1B_v2", "omniASR_LLM_1B_v2"]
+  },
+  "complete_executor": {
+    "stages": 11,
+    "missing_capabilities_from_refusal": 9,
+    "implemented_capabilities": [
+      "packet-bound deadline and attempt runner",
+      "exact AWS resource plan and plan guard",
+      "strict-network-policy Kubernetes workload and endpoint renderer",
+      "pre-torch positive and negative network-isolation probe",
+      "single-load multi-row candidate/mode pilot loop",
+      "reviewed language-conditioning identifier map",
+      "WER and CER normalization and aggregation",
+      "latency, RTF and peak GPU-memory aggregation",
+      "receipt-per-stage AWS orchestration and deterministic cleanup"
+    ],
+    "cold_rehearsal": {
+      "full_pass_runs": 1,
+      "injected_failure_runs": 3,
+      "injected_paths": ["isolation_probe", "deadline", "cleanup"],
+      "real_aws_calls": 0,
+      "real_kubectl_calls": 0,
+      "zero_state_after_every_scenario": true
+    }
+  },
+  "input_identity": {
+    "freeze_canonical_sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_manifests": 54,
+    "pilot_rows": 540,
+    "pilot_languages": 47,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "pilot_bundle_identity_sha256": "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee",
+    "audio_downloaded": false
+  },
+  "reachable_source_inspection": {
+    "files": {
+      "/opt/medzen/medzen_asr_eval/backends.py": "f4644320b8a0e9502b9369a9e77ce47eff18f180e0042140c1acadd5e299a6c7",
+      "/opt/medzen/medzen_asr_eval/pilot.py": "f15ab7194461a542a55a9e5fd9f121e8911eeef8ed383d4c2e8f1d2f49b16328",
+      "/opt/venv/lib/python3.12/site-packages/fairseq2/io.py": "565f94d918fa37a9e29d6d633b956433299afb091b99f046b1f26b39ba4bcd89",
+      "/opt/venv/lib/python3.12/site-packages/omnilingual_asr/models/inference/pipeline.py": "766728688901376dfce1b36115b8e780c1dfc3055798ab49d78a4b9df41fd863"
+    },
+    "prohibited_api_occurrences": {
+      "torch.export.load": 0,
+      "torch.linalg.lu": 0,
+      "torch.rot90": 0,
+      "torch.randn_like": 0
+    }
+  },
+  "local_scan": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json",
+    "sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "scanner": "Docker Scout CLI 1.18.3",
+    "runs": 2,
+    "byte_identical": true,
+    "critical": 0,
+    "high": 4,
+    "findings": ["CVE-2026-24747", "CVE-2026-4538", "CVE-2025-55552", "CVE-2025-55551"],
+    "security_exception_applied_during_scan": false
+  },
+  "execution": {
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "model_weights_downloaded": false,
+    "audio_downloaded": false,
+    "inference_started": false,
+    "gpu_started": false,
+    "successor_packet_executable_before_review_and_owner_approval": false
+  }
+}
