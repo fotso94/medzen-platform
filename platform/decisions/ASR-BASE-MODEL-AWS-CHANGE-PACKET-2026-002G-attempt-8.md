@@ -97,7 +97,8 @@ The prospective bindings are:
 All 13 executor module hashes are required on attempt 8. Conditional omission
 or normalization is prohibited. The final receipt path is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002G-COLD/cold-rehearsal.json`;
-its SHA-256 will be bound here only after the final clean-commit rehearsal.
+its SHA-256 is
+`c07b48ba12355a1fbf45c7b3a283de2be80e41d66a51a901e44c089cb799460c`.
 
 ## Unchanged security and evaluation subject
 
@@ -172,4 +173,3 @@ After exact owner approval:
 
 None. Historical records remain write-once. The only external behavior change
 is the location and shared ordering of runtime evidence filesystem effects.
-
