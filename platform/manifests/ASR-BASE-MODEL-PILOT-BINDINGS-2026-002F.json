@@ -33,13 +33,18 @@
   },
   "scout_execution_diagnosis": {
     "path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-EXECUTION-DIAGNOSIS-2026-001.json",
-    "sha256": "PENDING_DIAGNOSIS_SHA256"
+    "sha256": "24aac86d00585679965894ed20b2d85642b18f7f12f4a272a0a3932412608ac0"
   },
   "scout_real_execution_preflight": {
     "path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json",
-    "sha256": "PENDING_PREFLIGHT_SHA256",
+    "sha256": "cabd8497de52e02f180c5f9caf455413be7de6006fb281a65c122c109fb3bf4b",
     "sarif_path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.sarif.json",
-    "sarif_sha256": "PENDING_PREFLIGHT_SARIF_SHA256",
+    "sarif_sha256": "d42135a4647b6878cddc5490e2d6ab2c8b7b513d7356c909c86b9424e23fc30c",
+    "executed_against_committed_bindings": {
+      "commit": "60ac26e38e66e2e37938074d257c2363f7a924a9",
+      "sha256": "18f5f32d1e52905e7550cf0348d09fca6ed1eb5b311614ff1fd036d0d9e80037"
+    },
+    "post_preflight_binding_delta": "Only the diagnosis and preflight evidence hashes were populated; image, security gate, executor modules and execution scope are byte-identical.",
     "required_before_attempt_envelope": true,
     "aws_calls": 0,
     "aws_mutations": 0
@@ -107,7 +112,6 @@
     "committed_bindings_required": true,
     "fixture_bindings_permitted": false,
     "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002F-COLD/cold-rehearsal.json",
-    "receipt_sha256": "PENDING_COLD_SHA256",
     "script_sha256": "900739f6b7c8d5d5714cbb972fc75d510a599d6a5c784865e26729dfa0494e90"
   },
   "ecr_existing_image": {
