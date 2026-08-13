@@ -85,7 +85,7 @@ All are hash-bound in
 The committed receipt is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002I-COLD/cold-rehearsal.json`,
 SHA-256
-`dd0d00511b1192a4860fb2e7b3e5826948e8b71ccee780174b89a88e62ae5f97`.
+`7e86781d13b273270b60b9720c6159fa15bb541c69ed4d3ca3a50d306221d657`.
 
 It records:
 
