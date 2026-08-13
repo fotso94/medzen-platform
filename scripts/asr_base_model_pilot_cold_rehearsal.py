@@ -222,6 +222,12 @@ def _scenario_repository(
         bindings["cost_registry"]["path"]: (
             ROOT / bindings["cost_registry"]["path"]
         ).read_bytes(),
+        bindings["local_resource_policy"]["path"]: (
+            ROOT / bindings["local_resource_policy"]["path"]
+        ).read_bytes(),
+        bindings["local_resource_qualification"]["path"]: (
+            ROOT / bindings["local_resource_qualification"]["path"]
+        ).read_bytes(),
         "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml": (
             ROOT / "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml"
         ).read_bytes(),
