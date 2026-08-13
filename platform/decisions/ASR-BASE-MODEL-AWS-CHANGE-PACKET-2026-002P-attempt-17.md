@@ -172,8 +172,10 @@ language mutation.
 
 ## Local verification and receipt-last rehearsal
 
-The focused hardening and cost suites pass `12/12`. The broader packet suite
-and final counts are populated only after the packet/bindings are committed.
+The focused pre-rehearsal packet, hardening, boundary and cost suites pass
+`26/26` with the receipt-dependent test deselected. After the immutable cold
+receipt was written, the complete ASR base-model suite passes `234/234` with
+zero failures, skips or deselections.
 
 The cold rehearsal executes real `LiveOperations`, real local filesystem
 composition and the same node-staging/workload code as live. Only paid
@@ -192,7 +194,8 @@ shapes. In addition to all standing scenarios, it includes:
   call resolved against the shared contract;
 - final bindings SHA-256:
   `6eb8134abcb6948774dd02e2b7d7ac4dd5bc7e9ffbbf0cf209603b6611adf40c`;
-- final receipt-last cold-rehearsal SHA-256: `PENDING_RECEIPT_LAST`.
+- final receipt-last cold-rehearsal SHA-256:
+  `b4c36e26ddd2faf1a4cddfde3dc8ea1e4b23eab53a8d7b1d649bcde73fb1f23a`.
 
 ## Post-approval order
 
