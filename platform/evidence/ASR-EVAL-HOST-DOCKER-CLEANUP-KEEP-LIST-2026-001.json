@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-001",
+  "recorded_at_utc": "2026-08-13T14:52:12Z",
+  "status": "COMMITTED_BEFORE_ANY_DELETION",
+  "purpose": "Conservative local Docker cleanup before the attempt-13 successor packet. This record is the recovery and authorization boundary: no retained object named here may be removed.",
+  "reviewed_worktree": {
+    "repository": "/Users/stephanefotso/Documents/medzen-platform",
+    "branch": "codex/asr-base-model-evaluation",
+    "head_before_record": "596ce419c6d837cf4b1bce565ee2bfd066dd7625",
+    "worktree_was_clean_before_record": true
+  },
+  "active_packet_scope": {
+    "latest_completed_attempt_packet": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002K",
+    "next_packet": "successor for attempt 13; not yet authorized",
+    "b6_status": "FORMALLY_COMPLETE",
+    "b5_status": "BLOCKED",
+    "finding": "Only the offline ASR evaluation image is bound by the active packet lineage. Completed B6 images and unrelated local Docker projects are not deletion targets under this cleanup."
+  },
+  "ecr_read_only_identity_verification": {
+    "verified_at_utc": "2026-08-13T14:49:00Z",
+    "aws_account": "558069890522",
+    "region": "eu-central-1",
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-5d1b8a0",
+    "ecr_reported_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "computed_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "oci_index_bytes": 856,
+    "linux_amd64_child_from_index": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "computed_linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "linux_amd64_child_bytes": 3157,
+    "result": "PASS_EXACT_ECR_IDENTITY"
+  },
+  "keep_list": [
+    {
+      "repository_tags": [
+        "medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "localhost:5005/medzen-asr-eval-runtime:pilot-5d1b8a0"
+      ],
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "local_repo_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "local_unpacked_size_bytes": 7296787645,
+      "reason": "Packet-bound, qualified offline evaluation image; required for attempt 13 and covered by the active scoped risk acceptance."
+    },
+    {
+      "repository_tags": [
+        "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04"
+      ],
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "local_repo_digest": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "reason": "Both Dockerfile stages use this exact digest; retaining it preserves the option to rebuild the qualified image without deleting its pinned base."
+    }
+  ],
+  "pre_cleanup_measurement": {
+    "measured_at_utc": "2026-08-13T14:52:12Z",
+    "filesystem_available_kib": 14000904,
+    "filesystem_available_bytes": 14336925696,
+    "filesystem_available_gib": 13.35,
+    "docker": {
+      "images_total": 102,
+      "images_size": "184.8GB",
+      "images_reclaimable": "56GB",
+      "containers_total": 7,
+      "containers_active": 6,
+      "containers_size": "4.301MB",
+      "containers_reclaimable": "16.38kB",
+      "volumes_total": 4,
+      "volumes_active": 4,
+      "volumes_size": "17.62GB",
+      "volumes_reclaimable": "0B",
+      "build_cache_records": 248,
+      "build_cache_size": "38.91GB",
+      "build_cache_reclaimable": "12.86GB",
+      "build_cache_id_manifest": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-BUILD-CACHE-BEFORE-2026-001.txt",
+      "build_cache_id_manifest_sha256": "cf25a7e76b77a3107e6c4bad3d648205e3dd2476b5e3339701fc59099a05492e"
+    }
+  },
+  "authorized_deletion_scope": {
+    "superseded_eval_tags": [
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-bd8e14c",
+        "image_id": "sha256:7080c0015db46141faeffcbd0363728ce6ebc75d2b0cce1a376346cd4552ad8d",
+        "local_unpacked_size_bytes": 7296779906
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-2d109ea",
+        "image_id": "sha256:df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691",
+        "local_unpacked_size_bytes": 7296787645
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-e000ccf",
+        "image_id": "sha256:694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c",
+        "local_unpacked_size_bytes": 7296787645
+      }
+    ],
+    "dangling_images": [],
+    "stopped_containers": [
+      {
+        "container_id": "bad4b05a25df4634874af1dc6106565d83c6b8260ff5bbc94acc5c19230b470b",
+        "image": "freqtradeorg/freqtrade:stable",
+        "name": "freqtrade",
+        "state": "Exited (137)"
+      }
+    ],
+    "unused_volumes": [],
+    "build_cache": {
+      "operation": "docker builder prune --all --force",
+      "authorized_ids": 248,
+      "id_manifest_sha256": "cf25a7e76b77a3107e6c4bad3d648205e3dd2476b5e3339701fc59099a05492e"
+    }
+  },
+  "prohibited_deletions": [
+    "Any keep-list image, tag, digest or pinned base",
+    "Any running container",
+    "Any active volume",
+    "Any non-evaluation image not explicitly named above",
+    "Any ECR image or other AWS object"
+  ],
+  "post_cleanup_acceptance": {
+    "minimum_filesystem_available_bytes": 42949672960,
+    "minimum_filesystem_available_gib": 40,
+    "keep_list_must_be_reverified": true,
+    "ecr_must_be_reverified_read_only": true,
+    "exact_deleted_objects_must_be_recorded": true
+  }
+}
