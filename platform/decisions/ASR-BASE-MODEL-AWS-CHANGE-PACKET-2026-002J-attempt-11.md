@@ -98,12 +98,18 @@ All 17 live/rehearsal modules are unconditionally hash-bound in
 extra or changed modules refuse. The response-capture utility is separately
 reviewable but is not executable in the paid attempt.
 
-The final receipt will be written last at
+The final receipt was written last at
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-COLD/cold-rehearsal.json`.
-It must record one full `PASS_PILOT` rehearsal, all standing injected refusal
-paths, 22/22 API coverage, 40 hash-bound response fixtures, zero invented
-fields, zero real AWS/kubectl calls, and zero residual state. Its SHA-256 is
-inserted here only after the source and bindings have stopped changing.
+Its SHA-256 is
+`91959181680c88a107b183f36d1f8e0134ed3c1d9ea4107dfb838c69ea85afba`.
+Two clean executions reproduced that hash byte-for-byte. It records one full
+`PASS_PILOT` rehearsal, eight injected refusal checks, 22/22 API coverage, 40
+hash-bound response fixtures, zero invented fields, zero real AWS/kubectl
+calls, and zero residual state.
+
+The packet-bound bindings manifest SHA-256 is
+`b8ab38f43e0b0f426730e74c368f17deaf1a3562bd846088cacaf47d43c23c00`.
+Focused ASR pilot validation reports `126 passed, 0 failed`.
 
 ## Unchanged subject and safety boundary
 

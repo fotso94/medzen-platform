@@ -31,6 +31,7 @@ PACKET = ROOT / "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002J-a
 BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json"
 CAPTURE = ROOT / "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json"
 REFUSAL = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002I-ATTEMPT-10-NETWORK-ISOLATION-REFUSAL.json"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-COLD/cold-rehearsal.json"
 
 
 def sha(path: Path) -> str:
@@ -141,3 +142,19 @@ def test_attempt_eleven_plan_reuses_image_and_prestaged_bundle_read_only() -> No
     assert plan["permanent_create_only"] == []
     assert "ecr:repository/medzen-asr-eval-runtime" in plan["read_only_existing"]
     assert "s3:" + value["pilot_bundle"]["s3_prefix"].removeprefix("s3://") + "**" in plan["read_only_existing"]
+
+
+def test_final_rehearsal_receipt_binds_real_shapes_and_is_in_packet() -> None:
+    receipt = json.loads(COLD.read_bytes())
+    assert receipt["status"] == "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS"
+    assert receipt["bindings_source"]["sha256"] == sha(BINDINGS)
+    assert receipt["full_pass_runs"] == 1
+    assert receipt["injected_failure_runs"] == 8
+    assert receipt["aws_read_fixture_coverage"]["runtime_read_api_count"] == 22
+    assert receipt["aws_read_fixture_coverage"]["fixture_count"] == 40
+    assert receipt["aws_read_dynamic_paths"]["invented_field_count"] == 0
+    assert receipt["scenarios"]["clean_pass"]["outcome"] == "PASS_PILOT"
+    assert all(item["zero_state"] is True for item in receipt["scenarios"].values())
+    packet = PACKET.read_text(encoding="utf-8")
+    assert sha(COLD) in packet
+    assert sha(BINDINGS) in packet
