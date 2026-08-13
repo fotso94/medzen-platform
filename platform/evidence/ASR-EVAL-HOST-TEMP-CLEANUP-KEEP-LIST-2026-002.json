@@ -1,0 +1,61 @@
+{
+  "record": "ASR_EVAL_HOST_TEMP_CLEANUP_KEEP_LIST",
+  "id": "ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-002",
+  "schema_version": 1,
+  "status": "COMMITTED_BEFORE_ANY_DELETION",
+  "purpose": "Restore the standing 40-GiB pre-envelope floor for the attempt-15 sampler successor by removing only the completed Scout diagnosis scratch whose results are committed, while preserving all active packet artifacts.",
+  "pre_cleanup_measurement": {
+    "filesystem_available_kib": 41775236,
+    "filesystem_available_bytes": 42777841664,
+    "minimum_required_bytes": 42949672960,
+    "shortfall_bytes": 171831296
+  },
+  "keep_list": [
+    {
+      "artifact": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "reason": "Packet-bound qualified image; local/ECR index identities were reverified before this record."
+    },
+    {
+      "artifact": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04",
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "reason": "Pinned build base retained for any independently reviewed rebuild."
+    },
+    {
+      "artifact": "platform/evidence/**",
+      "reason": "Committed immutable evidence; outside the deletion target."
+    },
+    {
+      "artifact": "s3://medzen-speech/research/asr-base-model/pilot/**",
+      "reason": "Hash-verified create-only prestage; no AWS deletion authorized."
+    }
+  ],
+  "authorized_exact_local_deletion_scope": [
+    {
+      "path": "/private/tmp/medzen-asr-scout-diagnosis-2026-001",
+      "measured_file_bytes": 43781083318,
+      "classification": "completed superseded Scout diagnosis scratch with five redundant full image representations",
+      "committed_replacement_evidence_path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-EXECUTION-DIAGNOSIS-2026-001.json",
+      "committed_replacement_evidence_sha256": "24aac86d00585679965894ed20b2d85642b18f7f12f4a272a0a3932412608ac0",
+      "exact_scan_preflight_path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json",
+      "exact_scan_preflight_sha256": "cabd8497de52e02f180c5f9caf455413be7de6006fb281a65c122c109fb3bf4b"
+    }
+  ],
+  "prohibited_deletions": [
+    "Any Docker image, container or volume",
+    "Any path other than the one exact scratch directory listed above",
+    "Any repository file or evidence",
+    "Any AWS object or resource",
+    "Any active external workdir"
+  ],
+  "post_cleanup_acceptance": {
+    "minimum_filesystem_available_bytes": 42949672960,
+    "exact_target_must_be_absent": true,
+    "keep_list_local_and_ecr_digests_must_be_reverified": true
+  },
+  "aws_read_calls_before_record": 2,
+  "aws_mutations_before_record": 0,
+  "deletion_performed_before_record": false
+}
