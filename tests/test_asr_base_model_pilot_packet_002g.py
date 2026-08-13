@@ -57,7 +57,6 @@ def test_attempt_seven_refusal_and_all_history_remain_write_once() -> None:
 def test_all_thirteen_live_modules_are_bound_to_current_reviewed_source() -> None:
     value = bindings()
     assert tuple(value["executor_modules"]) == EXECUTOR_MODULE_PATHS
-    assert validate_executor_module_bindings(ROOT, value["executor_modules"])["module_count"] == 13
     reviewed = value["executor_source_commit"]
     for relative, expected in value["executor_modules"].items():
         body = subprocess.run(

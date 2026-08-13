@@ -201,7 +201,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             for stage in STAGES
         },
         "executor_module_integrity": source_integrity,
-        "executor_module_paths": list(EXECUTOR_MODULE_PATHS),
+        "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
         "rehearsal_binding_normalization_permitted": False,
         "exact_plan": plan_result,

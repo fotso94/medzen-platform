@@ -25,11 +25,15 @@ LEGACY_EXECUTOR_MODULE_PATHS = (
 )
 EXECUTOR_MODULE_PATHS = (
     *LEGACY_EXECUTOR_MODULE_PATHS[:9],
-    "scripts/asr_base_model_pilot_staging.py",
     "scripts/asr_external_tool.py",
     *LEGACY_EXECUTOR_MODULE_PATHS[9:10],
     "scripts/asr_eval_scout_preflight.py",
     *LEGACY_EXECUTOR_MODULE_PATHS[10:],
+)
+ATTEMPT_9_EXECUTOR_MODULE_PATHS = (
+    *EXECUTOR_MODULE_PATHS[:9],
+    "scripts/asr_base_model_pilot_staging.py",
+    *EXECUTOR_MODULE_PATHS[9:],
 )
 
 
@@ -82,11 +86,16 @@ def validate_executor_module_bindings(
     bindings: Any,
 ) -> dict[str, Any]:
     """Require a complete, exact hash map for every live executor module."""
-    allowed = (
-        LEGACY_EXECUTOR_MODULE_PATHS
-        if isinstance(bindings, dict) and set(bindings) == set(LEGACY_EXECUTOR_MODULE_PATHS)
-        else EXECUTOR_MODULE_PATHS
-    )
+    allowed = EXECUTOR_MODULE_PATHS
+    if isinstance(bindings, dict):
+        for candidate in (
+            LEGACY_EXECUTOR_MODULE_PATHS,
+            EXECUTOR_MODULE_PATHS,
+            ATTEMPT_9_EXECUTOR_MODULE_PATHS,
+        ):
+            if set(bindings) == set(candidate):
+                allowed = candidate
+                break
     if not isinstance(bindings, dict) or set(bindings) != set(allowed):
         raise PilotIntegrityRefusal(
             "EXECUTOR_MODULE_SET_DIFFERS",
