@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-002",
+  "recorded_at_utc": "2026-08-13T16:38:11Z",
+  "status": "PASS_CONSERVATIVE_DOCKER_CLEANUP",
+  "keep_list": {
+    "path": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-002.json",
+    "sha256": "2c54dec0b8f430f2767b9ab949a727d7e1bb5f33b3027e01037e2227da9f0021",
+    "committed_before_deletion": true
+  },
+  "deleted_local_objects": [
+    {
+      "tag": "medzen-asr-eval-runtime:pilot-a5d8320",
+      "image_id": "sha256:28e47152ea23c77f90927c0d1e26921127c81b1649d4dea1c6f1ceaa0a5adc97"
+    },
+    {
+      "tag": "medzen-asr-eval-runtime:pilot-38a4038",
+      "image_id": "sha256:9e87035c1708f377d8d1aec9bcfd149695646a287042d5f551e24cbb4aec05b6"
+    },
+    {
+      "tag": "medzen-asr-eval-runtime:pilot-c0ad51b",
+      "image_id": "sha256:28b6105500e62508085b11e48314ea385e80a076fd863c3759769f23df451dc6"
+    },
+    {
+      "tag": "medzen-asr-eval-runtime:local-qualification",
+      "image_id": "sha256:5249b40dac223d8394718b9b75f04810636fd987f323bb9b2c0cf2128580c2a1"
+    }
+  ],
+  "host_reclamation": {
+    "method": "docker/desktop-reclaim-space documented Docker Desktop host-compaction helper",
+    "temporary_helper_container_removed": true,
+    "temporary_helper_image_removed": true,
+    "additional_project_images_removed": 0
+  },
+  "filesystem_measurement": {
+    "before_available_bytes": 35439763456,
+    "after_available_bytes": 43789705216,
+    "after_available_gib": 40.78,
+    "increase_bytes": 8349941760,
+    "minimum_required_bytes": 42949672960,
+    "headroom_over_minimum_bytes": 840032256,
+    "target_met": true
+  },
+  "keep_list_post_cleanup_verification": {
+    "qualified_eval_image": {
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "result": "PASS_INTACT_LOCAL_AND_ECR"
+    },
+    "pinned_base_image": {
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "result": "PASS_INTACT_LOCAL"
+    }
+  },
+  "scope": {
+    "aws_profile_used_for_read_only_verification": "medzen",
+    "aws_calls": 2,
+    "aws_mutations": 0,
+    "aws_objects_deleted": 0,
+    "running_containers_deleted": 0,
+    "active_volumes_deleted": 0,
+    "images_outside_keep_list_authorization_deleted": 0
+  }
+}
