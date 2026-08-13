@@ -40,7 +40,7 @@
     },
     "attempt_9_refusal": {
       "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002H-ATTEMPT-9-ARTIFACT-STATUS-CONTRACT-REFUSAL.json",
-      "sha256": "dbbcf000a3db01e5da8c9fbe2ff0a82db2f35f392260b4351df99325f3f95d3a"
+      "sha256": "dbbcf000a3db5501bb9fe63139bc12fa01253a110c58716eef81cfe989d2a2cf"
     },
     "attempt_9_live_rehearsal_divergence_diagnosis": {
       "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002H-ATTEMPT-9-LIVE-REHEARSAL-DIVERGENCE-DIAGNOSIS.json",

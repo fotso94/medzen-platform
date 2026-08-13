@@ -22,7 +22,7 @@ wrapper then correctly refused because the live operation returned the nested
 cleanup closed the reservation and confirmed zero state.
 
 - attempt-9 refusal SHA-256:
-  `dbbcf000a3db01e5da8c9fbe2ff0a82db2f35f392260b4351df99325f3f95d3a`
+  `dbbcf000a3db5501bb9fe63139bc12fa01253a110c58716eef81cfe989d2a2cf`
 - live/rehearsal divergence diagnosis SHA-256:
   `57d8271db3f8e50afb45b7611a1f1af2b75bb1ac0e4f6175e2f1cbec5355bbe3`
 - historical packet, authorization, dry validation, receipts and refusal are
