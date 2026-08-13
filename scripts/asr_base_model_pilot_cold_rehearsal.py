@@ -69,6 +69,11 @@ def _normalized_receipt_chain(paths: list[Path], workdir: Path) -> str:
 
     def normalize(value: Any, key: str | None = None) -> Any:
         if isinstance(value, dict):
+            if key == "dependencies":
+                return {
+                    item: "<normalized-dependency-receipt-sha256>"
+                    for item in value
+                }
             return {item: normalize(body, item) for item, body in value.items()}
         if isinstance(value, list):
             return [normalize(item) for item in value]
