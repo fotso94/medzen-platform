@@ -1,0 +1,22 @@
+{
+  "schema_version":1,
+  "record_id":"ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-001",
+  "recorded_at_utc":"2026-08-13T18:20:00Z",
+  "status":"COMMITTED_BEFORE_ANY_DELETION",
+  "purpose":"Restore the standing 40-GiB pre-envelope floor for the attempt-15 successor by removing only closed-run external temporary workdirs; preserve active packet images, repository evidence and all AWS objects.",
+  "reviewed_worktree":{"repository":"/Users/stephanefotso/Documents/medzen-platform","branch":"codex/asr-base-model-evaluation","head_before_record":"b5d26d60755fea367810ffa095619f13cfaef19b","worktree_was_clean_before_new_successor_edits":true},
+  "keep_list":[
+    {"artifact":"558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime:pilot-5d1b8a0","local_image_id":"sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa","linux_amd64_child_digest":"sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e","reason":"Packet-bound qualified eval image."},
+    {"artifact":"nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04","local_image_id":"sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc","reason":"Pinned build base."},
+    {"artifact":"platform/evidence/**","reason":"Committed immutable evidence; outside deletion paths."},
+    {"artifact":"s3://medzen-speech/research/asr-base-model/pilot/**","reason":"Hash-verified create-only prestage; no AWS deletion authorized."}
+  ],
+  "authorized_exact_local_deletion_scope":[
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002G-A8-live","measured_kib":20762876,"terminal_evidence_path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-STALL-REFUSAL.json","terminal_evidence_sha256":"773b3761646438196a3eb81aa30b6991f4e6b53cf52fb4e37881b3c691ac6c8b","classification":"closed attempt-8 external workdir"},
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002H-prestage-v2","measured_kib":3204004,"replacement_proof_path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json","replacement_proof_sha256":"72af317af42a4f49195aa5d22019f41939beb9c0be04979b457a1278ea621168","classification":"superseded local prestage scratch"},
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002H-prestage-v3","measured_kib":3111192,"replacement_proof_path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json","replacement_proof_sha256":"72af317af42a4f49195aa5d22019f41939beb9c0be04979b457a1278ea621168","classification":"completed prestage scratch; immutable S3 proof retained"}
+  ],
+  "pre_cleanup_measurement":{"filesystem_available_kib":31125744,"filesystem_available_bytes":31872761856,"filesystem_available_gib":29.68,"minimum_required_bytes":42949672960},
+  "prohibited_deletions":["Any Docker image or base on the keep-list","Any path not listed exactly above","Any repository file or evidence","Any AWS object","Any running container or active volume"],
+  "post_cleanup_acceptance":{"minimum_filesystem_available_bytes":42949672960,"keep_list_must_be_reverified":true,"exact_paths_must_be_absent":true}
+}
