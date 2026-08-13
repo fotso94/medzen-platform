@@ -90,7 +90,8 @@ evidence, not a bypass.
 The sole stage implementation remains `LiveOperations`; rehearsal fakes only
 AWS/kubectl/Scout boundaries and executes the real pre-envelope filesystem
 ordering. All 18 executor modules are unconditionally bound in
-`platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json`.
+`platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json`, SHA-256
+`7ac57fccb3dfed577f06b7c7fd74877e899c8e1ed1e8d83ba40ffdb4fc8b4177`.
 
 The receipt-last cold rehearsal is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002L-COLD/cold-rehearsal.json`,
