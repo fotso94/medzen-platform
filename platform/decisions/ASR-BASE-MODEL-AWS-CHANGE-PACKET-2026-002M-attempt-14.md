@@ -83,11 +83,11 @@ The gate remeasures immediately before live execution; this receipt is not a byp
 All 20 executor modules, including the new shared boundary source and the
 byte-preserved historical DRA helper, are bound in
 `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json`, SHA-256
-`364d85d6f468a4ecbbb2a616241eb18a17e49b5b0fa00f15500ce46c2d0218a4`.
+`8dde048f85aea35696adebdb0bdb13cd481065944fa37e6432840472742d39c4`.
 
 The receipt-last cold rehearsal is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002M-COLD/cold-rehearsal.json`,
-SHA-256 `6731376fd1db7a5adf37bd57229bb519c650bf448089c7d24a4128cb2e4eaecf`.
+SHA-256 `875d06e3e22b68dc4c32a882f2a780e36bc0fa9f6ce7e91e280b9a7376182ec4`.
 It records:
 
 - two full PASS paths, including delayed GPU registration;
