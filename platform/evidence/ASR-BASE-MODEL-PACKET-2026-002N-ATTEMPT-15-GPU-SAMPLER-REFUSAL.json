@@ -1,0 +1,174 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002N-ATTEMPT-15-GPU-SAMPLER-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 15,
+  "attempt_consumed": true,
+  "failure_stage": "gpu_and_sampler_gate",
+  "reason_code": "GPU_SAMPLER_DRIVER_LIBRARY_NOT_FOUND",
+  "executor_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "The bounded sampler produced nonnumeric NVIDIA-SMI output because libnvidia-ml.so was not found in the sampler execution context.",
+  "reviewed_repository_commit": "968441e33dfc6dd8d79a0ab3740c96a00be5e23f",
+  "authorization_commit": "8c9f3a4cf128cfe8dd69f71cc339767451958083",
+  "dry_validation_commit": "e11713faeab184c71dd9e105ea0b42be454b593b",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002N-attempt-15.md",
+    "sha256": "fd66ec7a0f09a688ccffcefae1e7d4aebd5220d2e5c42348f7ff026894cc7f4f"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002N.json",
+    "sha256": "802e91fb1ee332567a1498fe02b72f6088221f136b42074d58befe13d253c5d7"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002N.json",
+    "sha256": "2f8aeb35e57d4de8fc0219a05b08a8f00c2e1258847bdd5ce3415c2f5c22f3bc"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002N.json",
+    "sha256": "2f4e3eab28ac4ef314b9cc54051e6cfedd1d72c1a9a61d5e775b7fcd7dacbb6d",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "executor_module_hashes": 20,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "attempt_started": false
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false,
+    "single_temporary_image_representation_removed_by_context_cleanup": true
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T18:51:58Z",
+    "hard_deadline_utc": "2026-08-13T21:51:58Z",
+    "gpu_instance_launch_utc": "2026-08-13T19:07:27Z",
+    "refusal_recorded_utc": "2026-08-13T19:09:13Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T19:10:53Z",
+    "terminal_cleanup_utc": "2026-08-13T19:20:15Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "PASS",
+    "gpu_and_sampler_gate": "REFUSED",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "pre_envelope_local_resources_status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "pre_envelope_available_bytes": 55501877248,
+    "pre_envelope_required_bytes": 42949672960,
+    "pre_envelope_headroom_bytes": 12552204288,
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "exact_ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "exact_ecr_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "single_representation_archive_bytes": 7296808960,
+    "docker_scout_critical": 0,
+    "docker_scout_high": 4,
+    "docker_scout_accepted_tuple_count": 4,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "artifact_object_count": 9,
+    "artifact_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "temporary_private_endpoints_ready": 3,
+    "strict_network_policy_configured": true,
+    "dra_api_egress_policy_applied": true,
+    "gpu_node_reached_two_consecutive_ready_observations": true,
+    "encrypted_temporary_volume_created": true,
+    "dra_installed": true,
+    "dra_reached_stable_readiness": true,
+    "sampler_command_started": true,
+    "sampler_command_return_code": 0,
+    "sampler_numeric_observations": 0,
+    "evaluation_started": false
+  },
+  "observed_refusal": {
+    "classification": "LIVE_GPU_SAMPLER_EXECUTION_CONTEXT_CANNOT_LOAD_DRIVER_LIBRARY",
+    "caller": "scripts/asr_base_model_pilot_live.py:gpu_and_sampler_gate",
+    "sampler_command": "/driver-root/usr/bin/nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits",
+    "sampler_container": "gpus",
+    "driver_root_mount": "/driver-root",
+    "retained_diagnostic": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-A15-LIVE/diagnostics/0027.json",
+    "retained_diagnostic_sha256": "36a19ba18574ae7880735fe9ae01a46371a6d78222d5236befd10f94c2c248f2",
+    "retained_stdout_sha256": "fb85970009efe202d1c000ef8cf620aa91d59448d4d54e97b904d682bdb96506",
+    "observed_condition": "The DRA Pod reached the readiness gate, but every one of the 120 sampler iterations emitted NVIDIA-SMI's libnvidia-ml.so-not-found message instead of a numeric memory value. The command itself returned zero; float parsing then refused the stage.",
+    "bounded_conclusion": "The attempt-14 DRA readiness failure is corrected and live-proven. The remaining failure is the sampler invocation context, which runs the driver-root binary without entering the mounted driver root. No model or evaluation workload started, so no model-quality conclusion is possible.",
+    "b6_proven_comparison": {
+      "receipt": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/gpu_memory_measurement.json",
+      "receipt_sha256": "2a5f4d508efb5d5c033e4bb272cac2c0341bd1baec7449798c933341fd5dc73e",
+      "sampling_path": "nvidia-dra:/busybox/chroot:/driver-root/usr/bin/nvidia-smi",
+      "relevance": "B6A's proven sampler entered /driver-root with busybox chroot before invoking /usr/bin/nvidia-smi; attempt 15 invoked /driver-root/usr/bin/nvidia-smi directly. This is the evidence-backed diagnosis and must be locally qualified before any successor packet."
+    },
+    "no_unproven_model_or_driver_failure_claim": true
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-A15-LIVE",
+    "attempt_envelope_sha256": "71f03ef752c48bf43a439116881547d90bb4393523c0b138b99690e78f0dc3f0",
+    "result_sha256": "aa2dd79540ebd3f80a882a647b1bdf45422d92c1cf04665930fedf03b5eefba9",
+    "docker_scout_sarif_sha256": "3b2a0bbaafb22c7158a6f5eaf44cb22b12a40719f976ff131d6b06aca46d0045",
+    "deadline_identity_and_acceptance_sha256": "7cad5389c9aae3e27e92d8f35be0baf58abe43fcc62a46e4264f941a01f45a6f",
+    "input_freeze_and_no_phi_sha256": "e4dd5e2c16e672ff9bf1108e3374c79c357565147c7117a8d87f7a388e7165eb",
+    "cost_and_zero_state_sha256": "01aaef9381400f75350ea59a1f6f819eb1d77b53b2976c5c72daaa1c0cd2798d",
+    "image_publication_and_scan_sha256": "0f2d951b4d89ef115f474b17eede702673a0e0fafc3bd2a7a1f01d880e80960e",
+    "artifact_stage_sha256": "d790d1110a86e10109a48f1c1c1cbac5a1c28e50bde497d2c99335447e591454",
+    "private_endpoint_and_policy_gate_sha256": "5ff55d3d6c0036064b839fdcd1c3cd1a41c8d6513a1c312dc469f3bb10adea34",
+    "gpu_and_sampler_gate_sha256": "d979b4cc7a415c5882a8d53e02e0dcd62f365c24957f70314e5a9a669b13540c",
+    "cleanup_and_expiry_sha256": "c9a233574b62dea46487fdbf7690a09674627d62ea040e256fe1ed0cf2297269",
+    "sanitized_external_tool_diagnostic_count": 31
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "temporary_security_groups": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "vpc_cni_configuration_restored": true,
+    "vpc_cni_enforcement_mode_restored": "standard",
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instance_id": "i-0bfd0425f8a5ff76e",
+    "gpu_instance_launch_utc": "2026-08-13T19:07:27Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T19:10:53Z",
+    "bounded_gpu_runtime_seconds_before_termination_initiated": 206,
+    "actual_billed_cost_usd": "PENDING_AWS_BILLING_INGESTION",
+    "incidental_endpoint_volume_and_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_15_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "required_successor_work": [
+    "Locally qualify the exact B6A-proven busybox-chroot sampler invocation through the DRA driver-root mount and require 120 numeric observations before presenting a successor packet.",
+    "Replace the generic parser exception with a typed sampler refusal that retains bounded sanitized stdout, stderr, exit code and numeric-observation count.",
+    "Rehearse the retained libnvidia-ml.so failure and the corrected numeric PASS path through real LiveOperations with boundary fakes.",
+    "Audit every sampler invocation for execution-context drift against the B6A-proven sampler and bind one shared implementation rather than copying shell literals.",
+    "Reconcile attempt-15 actual AWS billing in a new non-destructive cost-registry revision when usage lands.",
+    "Present a new versioned packet and fresh owner allowance; attempt 15 is consumed."
+  ]
+}
