@@ -411,7 +411,7 @@ class ExternalCommandBoundary:
         return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=b"")
 
     def __call__(self, command: list[str], *, cwd: Path | None = None, stdin: bytes | None = None, timeout: int = 900, check: bool = True, journal_path: Path | None = None) -> subprocess.CompletedProcess[bytes]:
-        del stdin, timeout, check, journal_path
+        del stdin, check, journal_path
         self.state.command_calls += 1
         executable = Path(command[0]).name
         if executable == "aws":
