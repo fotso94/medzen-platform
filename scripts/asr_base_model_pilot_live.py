@@ -24,6 +24,11 @@ from typing import Any, Callable
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
 from scripts.asr_external_tool import ExternalToolTimeout, run_external
+from scripts.asr_base_model_boundary_contracts import (
+    DRA_WAIT_TIMEOUT_SECONDS,
+    invoke_dra_waiter,
+    validate_boundary_parameters,
+)
 from scripts.asr_base_model_pilot_assets import (
     AssetRefusal,
     ObjectStore,
@@ -231,6 +236,7 @@ class LiveOperations:
         check: bool = True,
         journal_path: Path | None = None,
     ) -> subprocess.CompletedProcess[bytes]:
+        validate_boundary_parameters("external_command", timeout=timeout)
         return self._command_runner(
             command,
             cwd=cwd,
@@ -292,6 +298,7 @@ class LiveOperations:
 
     def _kubectl(self, context: AttemptContext, *args: str, stdin: bytes | None = None,
                  timeout: int = 900, json_output: bool = False) -> dict[str, Any] | bytes:
+        validate_boundary_parameters("kubectl", timeout=timeout)
         if self._kubectl_runner is not None:
             return self._kubectl_runner(
                 context,
@@ -316,6 +323,9 @@ class LiveOperations:
         return self.eks.describe_nodegroup(clusterName=CLUSTER, nodegroupName=name)["nodegroup"]
 
     def _wait_nodegroup(self, desired: int, timeout_seconds: int = 1200) -> dict[str, Any]:
+        validate_boundary_parameters(
+            "nodegroup", desired=desired, timeout_seconds=timeout_seconds
+        )
         stop = time.monotonic() + timeout_seconds
         stable = 0
         last: dict[str, Any] = {}
@@ -392,11 +402,12 @@ class LiveOperations:
         poll_interval_seconds: int = GPU_NODE_READY_POLL_INTERVAL_SECONDS,
         required_observations: int = GPU_NODE_READY_STABLE_OBSERVATIONS,
     ) -> dict[str, Any]:
-        if timeout_seconds <= 0 or poll_interval_seconds <= 0 or required_observations < 2:
-            raise OperationRefusal(
-                "GPU_NODE_READY_BOUND_MALFORMED",
-                "GPU node readiness requires a positive fixed interval and timeout plus at least two observations",
-            )
+        validate_boundary_parameters(
+            "gpu_node_readiness",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+            required_observations=required_observations,
+        )
         deadline = self._monotonic() + timeout_seconds
         observations = 0
         consecutive = 0
@@ -455,6 +466,7 @@ class LiveOperations:
         )
 
     def _ssm(self, instance_id: str, commands: list[str], *, timeout_seconds: int = 900) -> dict[str, Any]:
+        validate_boundary_parameters("ssm", timeout_seconds=timeout_seconds)
         if self._ssm_runner is not None:
             return self._ssm_runner(
                 instance_id, commands, timeout_seconds=timeout_seconds
@@ -481,6 +493,20 @@ class LiveOperations:
                 raise OperationRefusal("SSM_COMMAND_REFUSED", f"SSM command {command_id} ended {status}")
             self._sleeper(2)
         raise OperationRefusal("SSM_COMMAND_TIMEOUT", f"SSM command {command_id} exceeded its bound")
+
+    def _dra_readiness(
+        self,
+        waiter: Callable[..., dict[str, Any]],
+        *,
+        kubeconfig: Path,
+        timeout_seconds: int = DRA_WAIT_TIMEOUT_SECONDS,
+    ) -> dict[str, Any]:
+        """Single validated entry point shared by real and injected waiters."""
+        return invoke_dra_waiter(
+            waiter,
+            kubeconfig=kubeconfig,
+            timeout_seconds=timeout_seconds,
+        )
 
     def deadline_identity_and_acceptance(
         self,
@@ -690,6 +716,9 @@ class LiveOperations:
     def _wait_registry_scanning_configuration(
         self, expected: dict[str, Any], *, timeout_seconds: int = 120
     ) -> dict[str, Any]:
+        validate_boundary_parameters(
+            "registry_scan_configuration", timeout_seconds=timeout_seconds
+        )
         expected_canonical = canonical_configuration(expected)
         stop = time.monotonic() + timeout_seconds
         stable = 0
@@ -999,7 +1028,7 @@ class LiveOperations:
         self.eks.update_nodegroup_config(clusterName=CLUSTER, nodegroupName=GPU_NODEGROUP, scalingConfig={"minSize": 0, "maxSize": 1, "desiredSize": 1})
         state["gpu_scaled"] = True
         self._save_state(context, state)
-        stable = self._wait_nodegroup(1)
+        stable = self._wait_nodegroup(desired=1)
         instance_id = stable["instance_ids"][0]
         state["instance_id"] = instance_id
         self._save_state(context, state)
@@ -1031,14 +1060,14 @@ class LiveOperations:
         self._save_state(context, state)
         if self._dra_waiter is None:
             from scripts.run_b6a_003c_c_proof import wait_for_stable_dra
-
-            readiness = wait_for_stable_dra(
-                kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600
-            )
+            waiter = wait_for_stable_dra
         else:
-            readiness = self._dra_waiter(
-                kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600
-            )
+            waiter = self._dra_waiter
+        readiness = self._dra_readiness(
+            waiter,
+            kubeconfig=context.workdir / "kubeconfig",
+            timeout_seconds=DRA_WAIT_TIMEOUT_SECONDS,
+        )
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
         sample = self._command([
             "kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "exec", "-n", "nvidia-dra-driver", dra_pod, "-c", "gpus", "--",

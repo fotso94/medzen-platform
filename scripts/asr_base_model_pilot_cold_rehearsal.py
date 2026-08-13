@@ -50,6 +50,7 @@ from scripts.asr_base_model_pilot_staging import (
     validate_prestage_proof,
     validate_window_budget,
 )
+from scripts.asr_base_model_boundary_contracts import audit_bounded_helper_calls
 from scripts.asr_eval_digest_rescan import validate_security_binding
 
 
@@ -307,7 +308,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -337,6 +338,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     source_integrity = validate_executor_module_bindings(
         ROOT, bindings.get("executor_modules")
     )
+    boundary_contract_audit = audit_bounded_helper_calls(ROOT)
     real_only = assert_no_parallel_stage_implementation()
     attempt = bindings["attempts"]["authorized_numbers"][0]
     plan_result = validate_plan(exact_plan(bindings, attempt), bindings, attempt)
@@ -557,6 +559,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         },
         "stage_implementation_guard": real_only,
         "executor_module_integrity": source_integrity,
+        "bounded_helper_contract_audit": boundary_contract_audit,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
         "aws_read_fixture_coverage": aws_read_fixture_coverage,
@@ -604,7 +607,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json",
     )
     args = parser.parse_args()
     try:

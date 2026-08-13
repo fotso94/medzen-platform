@@ -48,6 +48,10 @@ LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS = (
     *RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS,
     "scripts/asr_base_model_local_resources.py",
 )
+SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS = (
+    *LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_boundary_contracts.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -108,6 +112,7 @@ def validate_executor_module_bindings(
             BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS,
             RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS,
             LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS,
+            SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

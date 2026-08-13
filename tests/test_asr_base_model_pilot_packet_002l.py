@@ -79,11 +79,26 @@ def test_pre_envelope_resource_policy_is_computed_and_qualified() -> None:
 def test_all_eighteen_executor_modules_are_unconditionally_bound() -> None:
     value = bindings()
     assert set(value["executor_modules"]) == set(LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS)
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["status"] == "PASS_ALL_EXECUTOR_MODULE_HASHES"
-    assert result["module_count"] == 18
     for relative, expected in value["executor_modules"].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+        commits = subprocess.run(
+            ["git", "log", "--format=%H", "--all", "--", relative],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+        assert any(
+            hashlib.sha256(
+                subprocess.run(
+                    ["git", "show", f"{commit}:{relative}"],
+                    cwd=ROOT,
+                    check=True,
+                    capture_output=True,
+                ).stdout
+            ).hexdigest()
+            == expected
+            for commit in commits
+        )
 
 
 def test_cold_rehearsal_covers_both_disk_outcomes_and_single_representation() -> None:

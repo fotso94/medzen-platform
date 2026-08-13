@@ -11,6 +11,11 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from scripts.asr_base_model_boundary_contracts import (
+    DRA_WAIT_MAX_SECONDS,
+    validate_boundary_parameters,
+)
+
 try:
     from scripts import run_b6a_003c_b_proof as base
 except ModuleNotFoundError:  # Direct execution from scripts/.
@@ -20,7 +25,7 @@ except ModuleNotFoundError:  # Direct execution from scripts/.
 AUTH_ID = "B6A-AWS-AUTH-2026-003C-C"
 STABLE_READS = 3
 POLL_SECONDS = 2
-MAX_WAIT_SECONDS = 300
+MAX_WAIT_SECONDS = DRA_WAIT_MAX_SECONDS
 
 
 class StableDRARefusal(base.ProofRefusal):
@@ -135,13 +140,19 @@ def _json(command: list[str]) -> dict[str, Any]:
 
 def wait_for_stable_dra(
     *, kubeconfig: Path, timeout_seconds: int = MAX_WAIT_SECONDS,
-    poll_seconds: float = POLL_SECONDS,
+    poll_seconds: int = POLL_SECONDS,
     reader: Callable[[list[str]], dict[str, Any]] = _json,
     sleeper: Callable[[float], None] = time.sleep,
     clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
-    if not 1 <= timeout_seconds <= MAX_WAIT_SECONDS:
-        raise StableDRARefusal("DRA wait must be between one second and five minutes")
+    try:
+        validate_boundary_parameters(
+            "dra_wait",
+            timeout_seconds=timeout_seconds,
+            poll_seconds=poll_seconds,
+        )
+    except Exception as exc:
+        raise StableDRARefusal(str(exc)) from exc
     kubectl = ["kubectl", "--kubeconfig", str(kubeconfig)]
     commands = (
         kubectl + ["get", "daemonset", "dra-driver-nvidia-gpu-kubelet-plugin",
