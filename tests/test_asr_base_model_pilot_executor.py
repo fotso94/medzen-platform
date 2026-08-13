@@ -409,6 +409,19 @@ def test_artifact_stage_wrapper_preserves_outer_and_nested_statuses(tmp_path: Pa
     assert payload["status"] == "PASS_ARTIFACT_STAGE"
     assert payload["verification"]["status"] == "PASS_PRESTAGED_BUNDLE_VERIFY_ONLY"
     assert payload["artifact_upload_bytes"] == 0
+    assert payload["local_model_bindings"] == {
+        "key": (
+            "research/asr-base-model/pilot/"
+            "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/"
+            "model-bindings.json"
+        ),
+        "version_id": "KbUgIfO3pnQuwyBSGSTcIGbYLRU8heRa",
+        "sha256": "b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c",
+        "bytes": 1065,
+    }
+    assert (tmp_path / "asset-staging/model-bindings.json").read_bytes() == (
+        ROOT / "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json"
+    ).read_bytes()
 
 
 def test_scan_configuration_post_mutation_checks_use_stable_polling() -> None:

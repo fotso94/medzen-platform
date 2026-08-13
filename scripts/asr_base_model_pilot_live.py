@@ -721,6 +721,35 @@ class LiveOperations:
                 expected_bundle_sha256=expected["sha256"],
                 destination=bundle_path,
             )
+            bundle = json.loads(bundle_path.read_bytes())
+            model_bindings = [
+                item
+                for item in bundle.get("objects", [])
+                if item.get("key", "").endswith("/model-bindings.json")
+            ]
+            if len(model_bindings) != 1:
+                raise StagingRefusal(
+                    "MODEL_BINDINGS_OBJECT_AMBIGUOUS",
+                    "the verified pilot bundle must bind exactly one model-bindings object",
+                )
+            model_binding = model_bindings[0]
+            model_binding_path = context.workdir / "asset-staging/model-bindings.json"
+            model_binding_path.parent.mkdir(parents=True, exist_ok=True)
+            with model_binding_path.open("xb") as stream:
+                self.s3.download_fileobj(
+                    BUCKET,
+                    model_binding["key"],
+                    stream,
+                    ExtraArgs={"VersionId": model_binding["version_id"]},
+                )
+            if (
+                model_binding_path.stat().st_size != model_binding["bytes"]
+                or _sha(model_binding_path) != model_binding["sha256"]
+            ):
+                raise StagingRefusal(
+                    "MODEL_BINDINGS_OBJECT_DIFFERS",
+                    "downloaded model bindings differ from the verified bundle",
+                )
         except (PilotIntegrityRefusal, StagingRefusal) as exc:
             raise OperationRefusal(exc.reason_code, exc.detail) from exc
         state = self._state(context)
@@ -735,6 +764,12 @@ class LiveOperations:
             "create_only": True,
             "hashes_verified": True,
             "verification": verification,
+            "local_model_bindings": {
+                "key": model_binding["key"],
+                "version_id": model_binding["version_id"],
+                "sha256": model_binding["sha256"],
+                "bytes": model_binding["bytes"],
+            },
             "artifact_upload_bytes": verification["artifact_upload_bytes"],
             "aws_mutations": verification["aws_mutations"],
         }

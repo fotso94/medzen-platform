@@ -35,6 +35,7 @@ FIXTURE_ROOT = ROOT / "tests/fixtures/asr_base_model_pilot"
 MANIFEST_ARCHIVE = FIXTURE_ROOT / "eval-manifests-2026-08-11.tar.gz"
 PILOT_BUNDLE = FIXTURE_ROOT / "pilot-bundle-2026-001.json"
 RUNTIME_ROWS = FIXTURE_ROOT / "runtime-rows-2026-001.json"
+MODEL_BINDINGS = FIXTURE_ROOT / "model-bindings-2026-001.json"
 
 
 class MissingObject(Exception):
@@ -104,6 +105,11 @@ class BoundaryState:
                 for item in self._proof()["objects"]
                 if item["key"].endswith("runtime-rows.json")
             ): RUNTIME_ROWS.read_bytes(),
+            next(
+                item["key"]
+                for item in self._proof()["objects"]
+                if item["key"].endswith("model-bindings.json")
+            ): MODEL_BINDINGS.read_bytes(),
         }
 
     @staticmethod
