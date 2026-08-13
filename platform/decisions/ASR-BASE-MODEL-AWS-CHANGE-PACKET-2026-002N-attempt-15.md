@@ -85,13 +85,15 @@ failure does not create an attempt envelope or consume attempt 15.
 ## Execution completeness and cold rehearsal
 
 All 20 executor modules are hash-bound in
-`platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002N.json`.
+`platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002N.json`, SHA-256
+`53b6f5badacd3357241a010544fb1dbd038a80a33bd571b6c4147bb94521d2f3`.
 The exact plan has 0 permanent creates, 0 permanent bounded updates, 18
 temporary create/delete entries and one bounded GPU capacity change. The new
 NetworkPolicy is explicitly included in the temporary inventory.
 
 The receipt-last cold rehearsal is
-`platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-COLD/cold-rehearsal.json`.
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-COLD/cold-rehearsal.json`,
+SHA-256 `d5a1145f67cf3593faa928caf730993799e9a99449b484d271f256b3d83bcc76`.
 It executes real `LiveOperations` with fakes only at AWS, kubectl and scanner
 boundaries. It must record two full PASS paths and all refusal scenarios,
 including a DRA-not-ready run that persists bounded diagnostics before cleanup.
