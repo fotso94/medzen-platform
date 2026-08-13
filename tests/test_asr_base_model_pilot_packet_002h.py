@@ -105,4 +105,4 @@ def test_cold_rehearsal_defaults_to_current_committed_bindings() -> None:
     text = (ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py").read_text(
         encoding="utf-8"
     )
-    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json") == 2
+    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json") == 2

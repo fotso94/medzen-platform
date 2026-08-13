@@ -21,6 +21,7 @@ from typing import Any
 
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json
+from scripts.asr_base_model_aws_read_fixtures import FixtureCatalog
 from scripts.asr_base_model_pilot_live import (
     CALLER,
     CPU_NODEGROUP,
@@ -36,14 +37,15 @@ MANIFEST_ARCHIVE = FIXTURE_ROOT / "eval-manifests-2026-08-11.tar.gz"
 PILOT_BUNDLE = FIXTURE_ROOT / "pilot-bundle-2026-001.json"
 RUNTIME_ROWS = FIXTURE_ROOT / "runtime-rows-2026-001.json"
 MODEL_BINDINGS = FIXTURE_ROOT / "model-bindings-2026-001.json"
+DEFAULT_AWS_READ_FIXTURES = {
+    "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
+    "sha256": "e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0",
+}
 
 
 class MissingObject(Exception):
-    def __init__(self):
-        self.response = {
-            "Error": {"Code": "404"},
-            "ResponseMetadata": {"HTTPStatusCode": 404},
-        }
+    def __init__(self, response: dict[str, Any]):
+        self.response = copy.deepcopy(response)
 
 
 class _Body:
@@ -77,6 +79,9 @@ class BoundaryState:
     def __init__(self, bindings: dict[str, Any], injection: str | None):
         self.bindings = bindings
         self.injection = injection
+        self.fixtures = FixtureCatalog(
+            ROOT, bindings.get("aws_read_fixtures", DEFAULT_AWS_READ_FIXTURES)
+        )
         self.aws_calls = 0
         self.aws_mutations = 0
         self.kubectl_calls = 0
@@ -186,7 +191,7 @@ class StsBoundary:
         self.state.call()
         if self.state.injection == "deadline_identity_and_acceptance":
             raise OperationRefusal("INJECTED_DEADLINE_IDENTITY", "injected deadline refusal")
-        return {"Arn": CALLER}
+        return self.state.fixtures.payload("sts-get-caller-identity")
 
 
 class EksBoundary:
@@ -195,12 +200,19 @@ class EksBoundary:
     def describe_nodegroup(self, *, clusterName: str, nodegroupName: str) -> dict[str, Any]:
         self.state.call()
         desired = self.state.gpu_desired if nodegroupName == GPU_NODEGROUP else self.state.cpu_desired
-        resources = (
-            [{"name": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"}]
-            if nodegroupName == GPU_NODEGROUP
-            else []
+        name = "eks-describe-nodegroup-gpu" if nodegroupName == GPU_NODEGROUP else "eks-describe-nodegroup-cpu"
+        return self.state.fixtures.replay(
+            name,
+            {
+                "nodegroup.scalingConfig.desiredSize": desired,
+                "nodegroup.status": "ACTIVE",
+                "nodegroup.resources.autoScalingGroups.0.name": (
+                    "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
+                    if nodegroupName == GPU_NODEGROUP
+                    else "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
+                ),
+            },
         )
-        return {"nodegroup": {"status": "ACTIVE", "scalingConfig": {"minSize": 0, "maxSize": 1, "desiredSize": desired}, "health": {"issues": []}, "resources": {"autoScalingGroups": resources}}}
 
     def update_nodegroup_config(self, *, nodegroupName: str, scalingConfig: dict[str, int], **_: Any) -> dict[str, Any]:
         self.state.mutate()
@@ -210,7 +222,10 @@ class EksBoundary:
 
     def describe_addon(self, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return {"addon": {"configurationValues": self.state.cni_configuration}}
+        return self.state.fixtures.replay(
+            "eks-describe-addon-vpc-cni",
+            {"addon.configurationValues": self.state.cni_configuration, "addon.status": "ACTIVE"},
+        )
 
     def update_addon(self, *, configurationValues: str, **_: Any) -> dict[str, Any]:
         self.state.mutate()
@@ -230,7 +245,10 @@ class AutoscalingBoundary:
         actions = list(self.state.deadline_actions.values())
         if ScheduledActionNames:
             actions = [item for item in actions if item["ScheduledActionName"] in ScheduledActionNames]
-        return {"ScheduledUpdateGroupActions": copy.deepcopy(actions)}
+        return self.state.fixtures.replay(
+            "autoscaling-describe-scheduled-actions-empty",
+            {"ScheduledUpdateGroupActions": copy.deepcopy(actions)},
+        )
 
     def delete_scheduled_action(self, *, ScheduledActionName: str, **_: Any) -> None:
         self.state.mutate()
@@ -244,7 +262,13 @@ class AutoscalingBoundary:
     def describe_auto_scaling_groups(self, **_: Any) -> dict[str, Any]:
         self.state.call()
         instances = [] if self.state.gpu_desired == 0 else [{"InstanceId": self.state.instance_id}]
-        return {"AutoScalingGroups": [{"Instances": instances}]}
+        return self.state.fixtures.replay(
+            "autoscaling-describe-gpu-group",
+            {
+                "AutoScalingGroups.0.DesiredCapacity": self.state.gpu_desired,
+                "AutoScalingGroups.0.Instances": instances,
+            },
+        )
 
 
 class Ec2Boundary:
@@ -258,6 +282,8 @@ class Ec2Boundary:
         if Filters and any(item["Name"] == "vpc-endpoint-id" for item in Filters):
             requested = next(item["Values"] for item in Filters if item["Name"] == "vpc-endpoint-id")
             values = [value for value in values if value["VpcEndpointId"] in requested]
+        if not values:
+            return self.state.fixtures.payload("ec2-describe-eval-vpc-endpoints-empty")
         return {"VpcEndpoints": copy.deepcopy(values)}
 
     def create_security_group(self, **_: Any) -> dict[str, str]:
@@ -278,28 +304,69 @@ class Ec2Boundary:
                 outcome="BLOCKED_NETWORK_ISOLATION",
             )
         ordinal = len(self.state.endpoints) + 1
-        value = {
-            "VpcEndpointId": f"vpce-rehearsal-{ordinal}",
-            "VpcEndpointType": VpcEndpointType,
-            "State": "available",
-            "NetworkInterfaceIds": [f"eni-rehearsal-{ordinal}"] if VpcEndpointType == "Interface" else [],
-        }
-        if ServiceName.endswith(".s3"):
-            value["PrefixListId"] = "pl-rehearsal-s3"
+        if VpcEndpointType == "Interface":
+            payload = self.state.fixtures.replay(
+                "ec2-describe-vpc-endpoint-interface-template",
+                {
+                    "VpcEndpoints.0.VpcEndpointId": f"vpce-rehearsal-{ordinal}",
+                    "VpcEndpoints.0.ServiceName": ServiceName,
+                    "VpcEndpoints.0.NetworkInterfaceIds": [
+                        f"eni-rehearsal-{ordinal}-{az}" for az in range(1, 4)
+                    ],
+                    "VpcEndpoints.0.Groups.0.GroupId": "sg-rehearsal-endpoint",
+                    "VpcEndpoints.0.Groups.0.GroupName": "medzen-asr-eval-vpce",
+                    "VpcEndpoints.0.PolicyDocument": "{}",
+                    "VpcEndpoints.0.PrivateDnsEnabled": True,
+                    "VpcEndpoints.0.Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}],
+                },
+            )
+        else:
+            payload = self.state.fixtures.replay(
+                "ec2-describe-vpc-endpoint-gateway-template",
+                {
+                    "VpcEndpoints.0.VpcEndpointId": f"vpce-rehearsal-{ordinal}",
+                    "VpcEndpoints.0.ServiceName": ServiceName,
+                    "VpcEndpoints.0.RouteTableIds": ["rtb-0c6eb6874ce0565dc"],
+                    "VpcEndpoints.0.PolicyDocument": "{}",
+                    "VpcEndpoints.0.Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}],
+                    "VpcEndpoints.0.VpcId": "vpc-051aa9df8b64bf141",
+                    "VpcEndpoints.0.OwnerId": "558069890522",
+                    "VpcEndpoints.0.ServiceRegion": "eu-central-1",
+                },
+            )
+        value = payload["VpcEndpoints"][0]
         self.state.endpoints[value["VpcEndpointId"]] = value
         return {"VpcEndpoint": copy.deepcopy(value)}
 
     def describe_network_interfaces(self, *, NetworkInterfaceIds: list[str]) -> dict[str, Any]:
         self.state.call()
-        return {"NetworkInterfaces": [{"NetworkInterfaceId": value, "PrivateIpAddress": f"10.0.1.{index + 7}"} for index, value in enumerate(NetworkInterfaceIds)]}
+        replacements = {}
+        for index, identifier in enumerate(NetworkInterfaceIds):
+            replacements[f"NetworkInterfaces.{index}.NetworkInterfaceId"] = identifier
+            replacements[f"NetworkInterfaces.{index}.PrivateIpAddress"] = f"10.0.1.{index + 7}"
+        replayed = self.state.fixtures.replay(
+            "ec2-describe-network-interfaces-template", replacements
+        )
+        replayed["NetworkInterfaces"] = replayed["NetworkInterfaces"][: len(NetworkInterfaceIds)]
+        return replayed
+
+    def describe_prefix_lists(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return self.state.fixtures.payload("ec2-describe-prefix-lists-s3")
 
     def get_managed_prefix_list_entries(self, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return {"Entries": [{"Cidr": "52.219.0.0/16"}]}
+        return self.state.fixtures.payload("ec2-get-managed-prefix-list-entries-s3")
 
     def describe_instances(self, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return {"Reservations": [{"Instances": [{"Placement": {"AvailabilityZone": "eu-central-1a"}}]}]}
+        return self.state.fixtures.replay(
+            "ec2-describe-instance-template",
+            {
+                "Reservations.0.Instances.0.InstanceId": self.state.instance_id,
+                "Reservations.0.Instances.0.Placement.AvailabilityZone": "eu-central-1a",
+            },
+        )
 
     def create_volume(self, **_: Any) -> dict[str, str]:
         self.state.mutate()
@@ -308,7 +375,16 @@ class Ec2Boundary:
         return {"VolumeId": value}
 
     def get_waiter(self, _: str) -> Any:
-        return SimpleNamespace(wait=lambda **__: None)
+        state = self.state
+
+        def wait(**__: Any) -> None:
+            state.call()
+            if state.volumes:
+                state.fixtures.payload("ec2-describe-volume-template")
+            else:
+                state.fixtures.payload("ec2-describe-eval-volumes-empty")
+
+        return SimpleNamespace(wait=wait)
 
     def attach_volume(self, **_: Any) -> None: self.state.mutate()
     def detach_volume(self, **_: Any) -> None: self.state.mutate()
@@ -328,7 +404,22 @@ class Ec2Boundary:
 
     def describe_volumes(self, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return {"Volumes": [{"VolumeId": value} for value in sorted(self.state.volumes)]}
+        if not self.state.volumes:
+            return self.state.fixtures.payload("ec2-describe-eval-volumes-empty")
+        values = []
+        for value in sorted(self.state.volumes):
+            replayed = self.state.fixtures.replay(
+                "ec2-describe-volume-template",
+                {
+                    "Volumes.0.VolumeId": value,
+                    "Volumes.0.AvailabilityZone": "eu-central-1a",
+                    "Volumes.0.State": "available",
+                    "Volumes.0.Size": 60,
+                    "Volumes.0.Attachments": [],
+                },
+            )
+            values.append(replayed["Volumes"][0])
+        return {"Volumes": values}
 
 
 class EcrBoundary:
@@ -339,26 +430,44 @@ class EcrBoundary:
 
     def __init__(self, state: BoundaryState):
         self.state = state
-        self.index_body = (
-            FIXTURE_ROOT / "ecr-index-pilot-5d1b8a0.json"
-        ).read_text(encoding="utf-8")
 
     def describe_repositories(self, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return {"repositories": [{"imageTagMutability": "IMMUTABLE", "encryptionConfiguration": {"encryptionType": "KMS"}}]}
+        return self.state.fixtures.payload("ecr-describe-repository")
 
     def batch_get_image(self, *, imageIds: list[dict[str, str]], **_: Any) -> dict[str, Any]:
         self.state.call()
         image = self.state.bindings["image"]
         requested = imageIds[0]
-        digest = image["oci_index_digest"]
-        if requested.get("imageTag") != image["tag"] and requested.get("imageDigest") != digest:
-            return {"images": [], "failures": [{"failureCode": "ImageNotFound"}]}
-        return {"images": [{"imageId": {"imageDigest": digest}, "imageManifest": self.index_body, "imageManifestMediaType": "application/vnd.oci.image.index.v1+json"}], "failures": []}
+        if requested.get("imageTag") == image["tag"]:
+            return self.state.fixtures.payload("ecr-batch-get-index-by-tag")
+        names = {
+            image["oci_index_digest"]: "ecr-batch-get-index-by-digest",
+            image["linux_amd64_digest"]: "ecr-batch-get-child",
+            image["attestation_digest"]: "ecr-batch-get-attestation",
+        }
+        if requested.get("imageDigest") in names:
+            return self.state.fixtures.payload(names[requested["imageDigest"]])
+        raise AssertionError("unrecorded ECR BatchGetImage response requested")
 
     def get_registry_scanning_configuration(self) -> dict[str, Any]:
         self.state.call()
-        return {"scanningConfiguration": {"scanType": "BASIC", "rules": []}}
+        return self.state.fixtures.payload("ecr-get-registry-scanning-configuration")
+
+    def describe_image_scan_findings(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return self.state.fixtures.payload("ecr-describe-image-scan-findings")
+
+    def batch_check_layer_availability(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return self.state.fixtures.payload("ecr-batch-check-layer-availability")
+
+    def get_download_url_for_layer(self, *, layerDigest: str, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return self.state.fixtures.replay(
+            "ecr-get-download-url-template",
+            {"downloadUrl": "https://ecr.rehearsal.invalid/exact-layer", "layerDigest": layerDigest},
+        )
 
 
 class S3Boundary:
@@ -367,17 +476,35 @@ class S3Boundary:
     def head_object(self, *, Key: str, VersionId: str, **_: Any) -> dict[str, Any]:
         self.state.call()
         if self.state.injection == "prestage_object_absent" and Key == self.state._proof()["objects"][0]["key"]:
-            raise MissingObject()
+            raise MissingObject(self.state.fixtures.payload("s3-head-object-not-found"))
         value = self.state.prestage_objects.get((Key, VersionId))
         if value is None:
-            raise MissingObject()
-        return copy.deepcopy(value)
+            raise MissingObject(self.state.fixtures.payload("s3-head-object-not-found"))
+        ordinal = next(
+            index
+            for index, item in enumerate(self.state._proof()["objects"], 1)
+            if item["key"] == Key and item["version_id"] == VersionId
+        )
+        captured = self.state.fixtures.payload(f"s3-head-prestage-{ordinal:02d}")
+        # The proof values must equal the separately captured real HeadObject.
+        for field in ("ContentLength", "ChecksumSHA256", "ChecksumType", "ServerSideEncryption", "VersionId"):
+            if captured.get(field) != value.get(field):
+                raise AssertionError(f"prestage HeadObject fixture differs: {field}")
+        if captured.get("Metadata", {}).get("sha256") != value.get("Metadata", {}).get("sha256"):
+            raise AssertionError("prestage HeadObject metadata fixture differs")
+        return captured
 
     def download_fileobj(self, _: str, key: str, stream: Any, ExtraArgs: dict[str, Any] | None = None) -> None:
         self.state.call()
+        capture = (
+            "s3-get-model-bindings"
+            if key.endswith("/model-bindings.json")
+            else "s3-get-pilot-bundle"
+        )
+        self.state.fixtures.payload(capture)
         body = self.state.prestage_downloads.get(key)
         if body is None:
-            raise MissingObject()
+            raise MissingObject(self.state.fixtures.payload("s3-head-object-not-found"))
         stream.write(body)
 
     def generate_presigned_url(self, *_: Any, Params: dict[str, Any], **__: Any) -> str:
@@ -404,7 +531,19 @@ class SsmBoundary:
 
     def get_command_invocation(self, *, CommandId: str, **_: Any) -> dict[str, Any]:
         self.state.call()
-        return copy.deepcopy(self.state.ssm_commands[CommandId])
+        body = self.state.ssm_commands[CommandId]
+        return self.state.fixtures.replay(
+            "ssm-get-command-invocation-template",
+            {
+                "CommandId": CommandId,
+                "InstanceId": self.state.instance_id,
+                "Status": body["Status"],
+                "StatusDetails": body["Status"],
+                "ResponseCode": 0,
+                "StandardOutputContent": body.get("StandardOutputContent", ""),
+                "StandardErrorContent": "",
+            },
+        )
 
 
 class ExternalCommandBoundary:
@@ -423,10 +562,13 @@ class ExternalCommandBoundary:
         if executable == "aws":
             self.state.call()
             if "update-kubeconfig" in command:
+                self.state.fixtures.payload("eks-describe-cluster")
                 kubeconfig = Path(command[command.index("--kubeconfig") + 1])
                 kubeconfig.write_text("rehearsal\n", encoding="utf-8")
                 return self._completed(command)
             if "sync" in command:
+                self.state.fixtures.payload("s3-list-eval-manifests-template")
+                self.state.fixtures.payload("s3-get-eval-manifest-template")
                 destination = Path(command[command.index("sync") + 2])
                 with tarfile.open(MANIFEST_ARCHIVE, "r:gz") as archive:
                     archive.extractall(destination, filter="data")

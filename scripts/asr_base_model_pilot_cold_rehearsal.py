@@ -24,6 +24,10 @@ from scripts.asr_base_model_pilot_fake import (
     assert_no_parallel_stage_implementation,
     build_rehearsal_operations,
 )
+from scripts.asr_base_model_aws_read_fixtures import (
+    FixtureCatalog,
+    validate_dynamic_paths,
+)
 from scripts.asr_base_model_pilot_integrity import (
     read_committed_artifact,
     validate_executor_module_bindings,
@@ -158,6 +162,9 @@ def _scenario_repository(
     *,
     bindings_path: Path,
     bindings_body: bytes,
+    packet_relative: str,
+    authorization_relative: str,
+    dry_relative: str,
 ) -> tuple[Path, Path, Path]:
     """Commit exact synthetic governance artifacts for the real stage-one gate."""
     root = base / "reviewed"
@@ -188,10 +195,17 @@ def _scenario_repository(
         "scripts/audit_asr_base_model_eval_inputs.py": (
             ROOT / "scripts/audit_asr_base_model_eval_inputs.py"
         ).read_bytes(),
+        bindings["aws_read_fixtures"]["path"]: (
+            ROOT / bindings["aws_read_fixtures"]["path"]
+        ).read_bytes(),
     }
+    fixture_record = json.loads(
+        (ROOT / bindings["aws_read_fixtures"]["path"]).read_bytes()
+    )
+    for capture in fixture_record["captures"]:
+        tracked[capture["path"]] = (ROOT / capture["path"]).read_bytes()
     for relative in bindings["executor_modules"]:
         tracked[relative] = (ROOT / relative).read_bytes()
-    packet_relative = "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002I-attempt-10.md"
     tracked[packet_relative] = b"synthetic committed rehearsal packet\n"
     for relative, body in tracked.items():
         path = root / relative
@@ -207,17 +221,22 @@ def _scenario_repository(
     reviewed = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
     ).stdout.strip()
-    authorization_path = root / "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002I.json"
+    authorization_path = root / authorization_relative
     packet_path = root / packet_relative
-    dry_path = root / "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json"
+    dry_path = root / dry_relative
     packet_sha256 = hashlib.sha256(packet_path.read_bytes()).hexdigest()
     authorization = {
-        "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002I",
+        "id": bindings["authorization"]["id"],
         "status": "owner-approved",
         "expires_utc": "2099-01-01T00:00:00Z",
         "packet": {"sha256": packet_sha256},
         "risk_acceptance": {"sha256": bindings["risk_acceptance_sha256"]},
-        "attempts": {"authorized_numbers": [10], "maximum": 1, "seconds_each": 10800, "non_transferable": True},
+        "attempts": {
+            "authorized_numbers": bindings["attempts"]["authorized_numbers"],
+            "maximum": 1,
+            "seconds_each": 10800,
+            "non_transferable": True,
+        },
         "reviewed_repository_commit": reviewed,
         "pre_execution_dry_run": {"path": str(dry_path.relative_to(root))},
     }
@@ -243,10 +262,13 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
+    fixture_catalog = FixtureCatalog(ROOT, bindings["aws_read_fixtures"])
+    aws_read_fixture_coverage = fixture_catalog.summary()
+    aws_read_dynamic_paths = validate_dynamic_paths(fixture_catalog)
     rehearsal_commit = bindings["executor_source_commit"]
     digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
     digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
@@ -299,14 +321,17 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 base / f"{name}-repo",
                 bindings_path=bindings_path,
                 bindings_body=bindings_body,
+                packet_relative=bindings["successor_packet"]["path"],
+                authorization_relative=bindings["authorization"]["path"],
+                dry_relative=bindings["authorization"]["deadline_dry_run_path"],
             )
             scenario_bindings = json.loads(json.dumps(bindings))
             scenario_bindings["authorization"]["path"] = str(
                 authorization_path.relative_to(reviewed)
             )
-            scenario_bindings["authorization"]["id"] = "ASR-BASE-MODEL-AWS-AUTH-2026-002I"
+            scenario_bindings["authorization"]["id"] = bindings["authorization"]["id"]
             scenario_bindings["authorization"]["deadline_dry_run_path"] = str(
-                (reviewed / "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json").relative_to(reviewed)
+                (reviewed / bindings["authorization"]["deadline_dry_run_path"]).relative_to(reviewed)
             )
             scenario_bindings["artifact_prestage_proof"]["path"] = "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json"
             operations, boundary = build_rehearsal_operations(
@@ -364,6 +389,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
         ROOT / "scripts/asr_base_model_pilot_live.py",
+        ROOT / "scripts/asr_base_model_aws_read_fixtures.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -400,6 +426,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "executor_module_integrity": source_integrity,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
+        "aws_read_fixture_coverage": aws_read_fixture_coverage,
+        "aws_read_dynamic_paths": aws_read_dynamic_paths,
         "rehearsal_binding_normalization_permitted": False,
         "exact_plan": plan_result,
         "authorization_schema": authorization_result,
@@ -407,7 +435,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "policy": "ACTUAL_LIVE_OPERATIONS_WITH_EXTERNAL_BOUNDARY_FAKES_ONLY",
             "stage_class": "scripts.asr_base_model_pilot_live.LiveOperations",
             "parallel_stage_class": None,
-            "fake_boundary": ["AWS client calls", "kubectl calls", "external Docker Scout response"],
+            "fake_boundary": ["AWS client calls replaying hash-bound real response shapes", "kubectl calls", "external Docker Scout response"],
+            "aws_response_shape_policy": "EVERY_EXECUTOR_AWS_READ_HAS_COMMITTED_REAL_RESPONSE_FIXTURE_NO_INVENTED_FIELDS",
             "real_local_operations": ["stage composition", "state snapshots", "receipt ordering", "input-freeze audit", "artifact wrapper", "cleanup composition"],
             "filesystem_side_effects_faked": False,
         },
@@ -435,7 +464,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json",
     )
     args = parser.parse_args()
     try:

@@ -843,7 +843,25 @@ class LiveOperations:
         eni_ids = [eni for item in interfaces for eni in item["NetworkInterfaceIds"]]
         enis = self.ec2.describe_network_interfaces(NetworkInterfaceIds=eni_ids)["NetworkInterfaces"]
         endpoint_ips = sorted(item["PrivateIpAddress"] for item in enis)
-        prefix_list_id = next(item["PrefixListId"] for item in described if item["VpcEndpointType"] == "Gateway")
+        prefix_lists = self.ec2.describe_prefix_lists(
+            Filters=[
+                {
+                    "Name": "prefix-list-name",
+                    "Values": [f"com.amazonaws.{REGION}.s3"],
+                }
+            ]
+        )["PrefixLists"]
+        if len(prefix_lists) != 1:
+            raise OperationRefusal(
+                "S3_PREFIX_LIST_AMBIGUOUS",
+                "the regional S3 managed prefix list is absent or ambiguous",
+            )
+        prefix_list_id = prefix_lists[0].get("PrefixListId")
+        if not isinstance(prefix_list_id, str) or not prefix_list_id:
+            raise OperationRefusal(
+                "S3_PREFIX_LIST_ID_ABSENT",
+                "the regional S3 managed prefix-list response has no identifier",
+            )
         prefix_entries = self.ec2.get_managed_prefix_list_entries(PrefixListId=prefix_list_id)["Entries"]
         s3_cidrs = sorted(item["Cidr"] for item in prefix_entries)
         workload = render_k8s(context.bindings, endpoint_ips, s3_cidrs, context.attempt)

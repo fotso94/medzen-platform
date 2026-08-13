@@ -40,6 +40,10 @@ BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS = (
     "scripts/asr_base_model_pilot_fake.py",
     "scripts/asr_base_model_pilot_cold_rehearsal.py",
 )
+RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS = (
+    *BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_aws_read_fixtures.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -98,6 +102,7 @@ def validate_executor_module_bindings(
             EXECUTOR_MODULE_PATHS,
             ATTEMPT_9_EXECUTOR_MODULE_PATHS,
             BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS,
+            RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

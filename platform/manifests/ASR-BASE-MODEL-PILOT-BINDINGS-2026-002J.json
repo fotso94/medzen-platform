@@ -1,0 +1,254 @@
+{
+  "schema_version": 1,
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "authorization": {
+    "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002J",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002J.json",
+    "status_required": "owner-approved",
+    "deadline_dry_run_id": "ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002J",
+    "deadline_dry_run_path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002J.json",
+    "complete_committed_stage_dry_run_required_before_attempt": true
+  },
+  "successor_packet": {
+    "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002J",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002J-attempt-11.md"
+  },
+  "write_once_history": {
+    "packet_2026_002g": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002G-attempt-8.md",
+      "sha256": "8db07e56f8a8daaaf2d800f9d32d98afa6b81adbab729875c628e76a3b666b78"
+    },
+    "authorization_2026_002g": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002G.json",
+      "sha256": "cc1c7662e41b1f52b890bd51cfab2a9738c7dc8d7b15b879d0f8c81799cf9df5"
+    },
+    "attempt_8_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-STALL-REFUSAL.json",
+      "sha256": "773b3761646438196a3eb81aa30b6991f4e6b53cf52fb4e37881b3c691ac6c8b"
+    },
+    "attempt_8_diagnosis": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002G-ATTEMPT-8-ARTIFACT-STAGING-DIAGNOSIS.json",
+      "sha256": "57ff209d9ca3a3e5357d249b2f8c70fe325b6747d4eb82b4fd0e0a03f003cf9f"
+    },
+    "packet_2026_002h": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002H-attempt-9.md",
+      "sha256": "59058e851fa4d5bc0e5f8f0a8a13f22047ebc7059c8940833e3789e8f08c4573"
+    },
+    "authorization_2026_002h": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002H.json",
+      "sha256": "938d85949813cb9c6065b041596f842e4aadf25bab4165756a035e57a3f4f970"
+    },
+    "attempt_9_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002H-ATTEMPT-9-ARTIFACT-STATUS-CONTRACT-REFUSAL.json",
+      "sha256": "dbbcf000a3db5501bb9fe63139bc12fa01253a110c58716eef81cfe989d2a2cf"
+    },
+    "attempt_9_live_rehearsal_divergence_diagnosis": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002H-ATTEMPT-9-LIVE-REHEARSAL-DIVERGENCE-DIAGNOSIS.json",
+      "sha256": "57d8271db3f8e50afb45b7611a1f1af2b75bb1ac0e4f6175e2f1cbec5355bbe3"
+    },
+    "packet_2026_002i": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002I-attempt-10.md",
+      "sha256": "2b683ea87dd0dc4b5dc1fabd293694ab62c3d9487eb22a47ea52e2e459ceedc9"
+    },
+    "authorization_2026_002i": {
+      "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002I.json",
+      "sha256": "f715ccc7d4b3eb2eb06a31ac6a498aaf7a8c3617d6090258eb24d9aed33f7fdb"
+    },
+    "attempt_10_dry_validation": {
+      "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json",
+      "sha256": "dedc261ce6127c2fde7b826d130f17656b109f94347b956ddad3ee8055ad0772"
+    },
+    "attempt_10_refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002I-ATTEMPT-10-NETWORK-ISOLATION-REFUSAL.json",
+      "sha256": "b11912d94f3d3c723b68318b6528d7024111085d9c44486d1d5a60075806b565"
+    }
+  },
+  "artifact_prestage_proof": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json",
+    "sha256": "72af317af42a4f49195aa5d22019f41939beb9c0be04979b457a1278ea621168",
+    "required_status": "PASS_COMPLETE_MODEL_BUNDLE_PRESTAGED",
+    "object_count": 9,
+    "object_bytes": 13116686091,
+    "in_attempt_upload_bytes": 0,
+    "artifact_stage_mode": "VERIFY_ONLY"
+  },
+  "scout_real_execution_preflight": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.json",
+    "sha256": "cabd8497de52e02f180c5f9caf455413be7de6006fb281a65c122c109fb3bf4b",
+    "sarif_path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-001.sarif.json",
+    "sarif_sha256": "d42135a4647b6878cddc5490e2d6ab2c8b7b513d7356c909c86b9424e23fc30c",
+    "required_before_attempt_envelope": true,
+    "aws_calls": 0,
+    "aws_mutations": 0
+  },
+  "digest_rescan_bindings": {
+    "path": "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-001.json",
+    "sha256": "82f352517995151c66cb6221f651398d1e4320678674bdded4ee47c0b38fe717"
+  },
+  "risk_acceptance_sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+  "qualification": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json",
+    "sha256": "5982cf98afe6a442c4d79738d4107445cd9ecfad748e7827e4c8e234f122c0c8"
+  },
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "tag": "pilot-5d1b8a0",
+    "source_commit": "5d1b8a0d87539a50a1d98915893a2ed640207304",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "config_digest": "sha256:5cdc428267ae873aaea299c1e64fd6fbdf1d84119c4c0b2ee8d307f722e2ff9a",
+    "attestation_digest": "sha256:c8ad9bbae25dda5dbd3db33114fac380b9436076857aaa416b9ca33074e112e1",
+    "local_scan_sha256": "fdeb1de1dc1a5100be0ace067cca516557ca90b93620d354a0626371da8a907a",
+    "local_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
+    "image_context_changed": false
+  },
+  "executor_source_commit": "PENDING_REVIEWED_COMMIT",
+  "executor_modules": {
+    "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
+    "scripts/asr_base_model_pilot_assets.py": "36f45bcc804c6433c5f013f49e29e5d21b19a5b03e102a30e6bf560020046399",
+    "scripts/asr_base_model_ecr_scanning.py": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
+    "scripts/asr_base_model_deadline_dry_run.py": "3bebfa16fa773bbdf90d43eedbfd2cde9d45b612b2aab96c4a5fd521ee945ca9",
+    "scripts/asr_base_model_pilot_integrity.py": "8408212f0238ee83f0ef059d3fe1250a974b3a490cdb47b3d6b53387a613926d",
+    "scripts/asr_base_model_pilot_k8s.py": "548b2c18d437253285d225359170a6c320ea8f2b3b6dd9fddeea8e4a2d8113d0",
+    "scripts/asr_base_model_pilot_live.py": "66f9005e176ab821c5d489a2019332f0458920230cdd4bd6b3fbab5c825a6ccc",
+    "scripts/asr_base_model_pilot_plan.py": "cd366c637f74df7f5610a321582b74019253086e776176e80cb9483f3a6b3782",
+    "scripts/asr_base_model_pilot_runner.py": "44bcabe085887ed3cdf2068ed0e39be78c0f931ca024da204feae13841f80db4",
+    "scripts/asr_base_model_pilot_staging.py": "7a351deb847d2eafb87c8c0444753c40955be7e12c98f4afc7dc1e3faa18f5b2",
+    "scripts/asr_external_tool.py": "7b0868be9cda141c86059b9e7ec252080be99fadaffe7219f8bd196a5638514f",
+    "scripts/asr_eval_digest_rescan.py": "64a113c5cfbed0dc7981bf4f77d3c0edb363ed9d8121429397e5048642e5cb5d",
+    "scripts/asr_eval_scout_preflight.py": "7d2e97df6d4135b2d997309e6eba3fd04a0661fe8539a976237e11ad4be78b0e",
+    "scripts/asr_eval_oci_publication.py": "e686f1b0db781af418d5403a8857780f5fd25998d8d2af8e4239f648cb190749",
+    "scripts/asr_base_model_pilot_fake.py": "622ed779adbbb66c32217158450b80e760be5440d9c6ecf65a93a4b1d1f4894b",
+    "scripts/asr_base_model_pilot_cold_rehearsal.py": "bc891de4938eaef13eb52df562bcb36c1ebaafc107efb7b9c5a1d5e199c4fa3a",
+    "scripts/asr_base_model_aws_read_fixtures.py": "236a1a8c0837c68927639f07bb5469544f3fc56dfd5181d1eb907ada8d8927c7"
+  },
+  "executor_integrity_policy": {
+    "all_module_hashes_required_on_every_attempt": true,
+    "conditional_integrity_guards_permitted": false,
+    "missing_or_extra_module_bindings_refuse": true,
+    "changed_module_bytes_refuse": true
+  },
+  "security_gate": {
+    "registry_scanning_mutation_permitted": false,
+    "inspector_enhanced_scanning_permitted": false,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "accepted_high_tuples": [
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+    ]
+  },
+  "input_freeze": {
+    "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",
+    "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+    "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+    "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
+    "recorded_utc": "2026-08-11T22:25:25Z",
+    "canonical_sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+    "pilot_manifests": 54,
+    "pilot_rows": 540,
+    "pilot_languages": 47,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6"
+  },
+  "pilot_bundle": {
+    "sha256": "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee",
+    "s3_prefix": "s3://medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/"
+  },
+  "cost_registry": {
+    "path": "platform/finance/COST-REGISTRY-2026-006.json",
+    "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
+  },
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "cluster": "medzen-speech",
+    "vpc_id": "vpc-051aa9df8b64bf141",
+    "private_subnet_ids": [
+      "subnet-00232b25bc1ac407a",
+      "subnet-05029419c6c61a536",
+      "subnet-01fb2fc3f56bce55e"
+    ],
+    "private_route_table_ids": [
+      "rtb-0c6eb6874ce0565dc"
+    ],
+    "ecr_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "s3_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "ebs_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:alias/aws/ebs",
+    "gpu_root_volume_gib": 20,
+    "temporary_eval_volume_gib": 60
+  },
+  "attempts": {
+    "authorized_numbers": [
+      11
+    ],
+    "maximum": 1,
+    "seconds_each": 10800,
+    "non_transferable": true,
+    "maximum_gpu_nodes": 1,
+    "cost_ceiling_usd": 10.0,
+    "attempts_1_through_10_reuse_permitted": false
+  },
+  "execution_workdir_policy": {
+    "required_location": "OUTSIDE_REVIEWED_WORKTREE",
+    "validated_before_any_runtime_side_effect": true,
+    "receipt_store": "<external-workdir>/receipts",
+    "runtime_evidence_commit_timing": "AFTER_TERMINAL_RUN_ONLY",
+    "inside_worktree_refusal_code": "EXECUTION_WORKDIR_INSIDE_REVIEWED_WORKTREE"
+  },
+  "rehearsal_fidelity_boundary": {
+    "policy": "ACTUAL_LIVE_OPERATIONS_WITH_HASH_BOUND_RECORDED_REAL_EXTERNAL_RESPONSE_SHAPES",
+    "stage_implementation": "scripts.asr_base_model_pilot_live.LiveOperations",
+    "parallel_fake_stage_implementation_permitted": false,
+    "fake_only": [
+      "AWS client calls replaying hash-bound recorded-real response shapes",
+      "kubectl calls",
+      "external Docker Scout response"
+    ],
+    "local_python_and_filesystem_composition_faked": false,
+    "aws_read_fixture_evidence": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
+    "aws_read_fixture_evidence_sha256": "e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0",
+    "invented_aws_response_fields_permitted": false
+  },
+  "aws_read_fixtures": {
+    "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
+    "sha256": "e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0",
+    "status_required": "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_ASR_EXECUTOR_COVERAGE",
+    "runtime_read_api_count": 22,
+    "fixture_count": 40,
+    "aws_mutations": 0,
+    "uncovered_read_apis": 0,
+    "dynamic_value_policy": "ONLY_DECLARED_EXISTING_PATHS_NO_KEY_INSERTION"
+  },
+  "recorded_boundary_fixtures": {
+    "eval_manifest_archive": {
+      "path": "tests/fixtures/asr_base_model_pilot/eval-manifests-2026-08-11.tar.gz",
+      "sha256": "5e1ef06c7f7ddadbfe8b88e432b3beb6e03c96ec554d16ff65d741f0109ed944"
+    },
+    "ecr_index": {
+      "path": "tests/fixtures/asr_base_model_pilot/ecr-index-pilot-5d1b8a0.json",
+      "sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa"
+    },
+    "pilot_bundle": {
+      "path": "tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json",
+      "sha256": "b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"
+    },
+    "runtime_rows": {
+      "path": "tests/fixtures/asr_base_model_pilot/runtime-rows-2026-001.json",
+      "sha256": "0cfe61948ce6b83cca85cd8c552d646c5e2128bcf0a593e46a012c01d5d1adbc"
+    },
+    "model_bindings": {
+      "path": "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json",
+      "sha256": "b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c",
+      "s3_version_id": "KbUgIfO3pnQuwyBSGSTcIGbYLRU8heRa"
+    }
+  },
+  "cold_rehearsal": {
+    "script_path": "scripts/asr_base_model_pilot_cold_rehearsal.py",
+    "bindings_source_required": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json",
+    "committed_bindings_required": true,
+    "fixture_bindings_permitted": false,
+    "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-COLD/cold-rehearsal.json"
+  }
+}
