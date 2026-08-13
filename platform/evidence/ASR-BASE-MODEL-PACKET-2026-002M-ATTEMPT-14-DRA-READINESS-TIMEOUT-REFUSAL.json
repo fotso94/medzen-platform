@@ -1,0 +1,163 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 14,
+  "attempt_consumed": true,
+  "failure_stage": "gpu_and_sampler_gate",
+  "reason_code": "DRA_STABLE_READINESS_TIMEOUT",
+  "executor_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "DRA stable readiness timed out: DRA DaemonSet is not exactly one ready and available Pod",
+  "reviewed_repository_commit": "f46688d52c95cc6a7bbb5dd38c5b218653db664f",
+  "authorization_commit": "167c64ab30ec2b8940a72ecbca805f5bc57e9c5b",
+  "dry_validation_commit": "20d03bc80a23375f4733713d6efc28f6c4ea92ed",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002M-attempt-14.md",
+    "sha256": "90d6517ad684209f96f887e601d87b37aca44ec0bf2ddc9c5508829646352d75"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002M.json",
+    "sha256": "f765481b1b2055fab61d5bbd89686c3a06d1047ea6445c35ffcf26e0858ee75e"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json",
+    "sha256": "fe59c3b10213ffc58a8722a517c16a92240ee6f90ba47bdc6b9198edbd263075"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002M.json",
+    "sha256": "d3cb303ab1c82d78e6e521f8e5f3b579daa82b3a322878783c5bc9ada6e50ac6",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "executor_module_hashes": 20,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "attempt_started": false
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false,
+    "single_temporary_image_representation_removed_by_context_cleanup": true
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T17:04:22Z",
+    "hard_deadline_utc": "2026-08-13T20:04:22Z",
+    "gpu_instance_launch_utc": "2026-08-13T17:18:58Z",
+    "refusal_recorded_utc": "2026-08-13T17:25:39Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T17:27:29Z",
+    "terminal_cleanup_utc": "2026-08-13T17:38:05Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "PASS",
+    "gpu_and_sampler_gate": "REFUSED",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "pre_envelope_local_resources_status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "pre_envelope_available_bytes": 44713447424,
+    "pre_envelope_required_bytes": 42949672960,
+    "pre_envelope_headroom_bytes": 1763774464,
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "exact_ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "exact_ecr_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "single_representation_archive_bytes": 7296808960,
+    "docker_scout_critical": 0,
+    "docker_scout_high": 4,
+    "docker_scout_accepted_tuple_count": 4,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "artifact_object_count": 9,
+    "artifact_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "temporary_private_endpoints_ready": 3,
+    "strict_network_policy_configured": true,
+    "gpu_node_reached_two_consecutive_ready_observations": true,
+    "encrypted_temporary_volume_created": true,
+    "dra_installed": true,
+    "dra_wait_timeout_seconds": 300,
+    "dra_daemonset_observed_pod_count": 1,
+    "dra_daemonset_observed_ready_pods_at_timeout": 0,
+    "gpu_sampler_started": false,
+    "evaluation_started": false
+  },
+  "observed_refusal": {
+    "classification": "LIVE_DRA_DAEMONSET_DID_NOT_REACH_STABLE_READINESS_WITHIN_BOUND",
+    "caller": "scripts/asr_base_model_pilot_live.py:gpu_and_sampler_gate",
+    "shared_validator": "scripts/asr_base_model_boundary_contracts.py",
+    "waiter": "scripts/run_b6a_003c_c_proof.py:wait_for_stable_dra",
+    "validated_timeout_seconds": 300,
+    "observed_condition": "The digest-pinned DRA DaemonSet had exactly one Running Pod, but the Pod remained 0/1 Ready through the complete five-minute wait.",
+    "bounded_conclusion": "The attempt-13 caller/callee parameter mismatch is fixed and the shared boundary was exercised live. The remaining failure is DRA runtime readiness within the approved five-minute limit. No model or evaluation workload started, so no model-quality conclusion is possible.",
+    "underlying_container_readiness_cause": "NOT_CAPTURED_BEFORE_NAMESPACE_CLEANUP",
+    "no_unproven_root_cause_claim": true
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002M-A14-LIVE",
+    "attempt_envelope_sha256": "049d01cd89f3398e56f43f1c15179c168baa4e79fad9daaf10a1e47412b7fa8b",
+    "result_sha256": "22e1ca31581cefc79f790207ea18467e3677d92f4264e2b81ab333be4c0754db",
+    "docker_scout_sarif_sha256": "3b2a0bbaafb22c7158a6f5eaf44cb22b12a40719f976ff131d6b06aca46d0045",
+    "deadline_identity_and_acceptance_sha256": "8547159cb095c575a400041e3aad65a1e56ae01ea08aaa44561f22b924a4a086",
+    "input_freeze_and_no_phi_sha256": "e4550dafff53d508303bdeba3e958a2478d6a203c9f16ff031c0de51894594ec",
+    "cost_and_zero_state_sha256": "37bccf0c91084945837e383b70cf0a04e4c5a47792dca560220c9e8714717986",
+    "image_publication_and_scan_sha256": "67a5290a838770b262fb285eb3fc4cfe858c03963d32225127f6537ce173898d",
+    "artifact_stage_sha256": "69dc24b9e468681f5f93df84269f084c87d20ea1d2b00b1809159bf1de6dceb9",
+    "private_endpoint_and_policy_gate_sha256": "b7ef4d8322fe46602306fce013b0e870ae618ba6af3e5074bdc3bbcd5dacc901",
+    "gpu_and_sampler_gate_sha256": "5b9304e5e9ad6d4829e47b85a21f492f1bcd92c095cba8c1eee6f289f7a70547",
+    "cleanup_and_expiry_sha256": "96ab498ee179c6cb475d1b187dbca3e37893efd79577c56c29b83fb9297d66a0",
+    "sanitized_external_tool_diagnostic_count": 29
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "temporary_security_groups": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "vpc_cni_configuration_restored": true,
+    "vpc_cni_enforcement_mode_restored": "standard",
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_id": "i-086621d2df2996009",
+    "gpu_instance_launch_utc": "2026-08-13T17:18:58Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T17:27:29Z",
+    "bounded_gpu_runtime_seconds_before_termination_initiated": 511,
+    "actual_billed_cost_usd": "PENDING_AWS_BILLING_INGESTION",
+    "incidental_endpoint_volume_and_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_14_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "required_successor_work": [
+    "Capture the exact DRA Pod status, readiness condition, events and bounded sanitized container logs before namespace cleanup on every DRA refusal.",
+    "Diagnose why the digest-pinned DRA Pod remained Running but 0/1 Ready for the complete 300-second wait; do not widen the bound without evidence and independent review.",
+    "Rehearse the observed not-ready condition through the real LiveOperations composition and shared boundary validator.",
+    "Reconcile attempt-14 actual AWS billing in a new non-destructive cost-registry revision when usage lands.",
+    "Present a new versioned packet and fresh owner allowance; attempt 14 is consumed."
+  ]
+}
