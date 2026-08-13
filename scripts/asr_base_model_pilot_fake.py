@@ -454,7 +454,7 @@ class KubectlBoundary:
     def __init__(self, state: BoundaryState): self.state = state
 
     def __call__(self, _: AttemptContext, *args: str, stdin: bytes | None = None, timeout: int = 900, json_output: bool = False) -> dict[str, Any] | bytes:
-        del stdin, timeout
+        del timeout
         self.state.kubectl_calls += 1
         if args[:2] == ("get", "namespaces"):
             return {"items": [{"metadata": {"name": value}} for value in sorted(self.state.namespaces)]}
