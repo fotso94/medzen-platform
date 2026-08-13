@@ -91,7 +91,7 @@ invented.
 
 All 17 live/rehearsal modules are unconditionally hash-bound in
 `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json`, SHA-256
-`81e7592c156965b1e1862b5c218ba71c6b2918cd717b2a7334094d1fc017ba38`.
+`1a27429f566f322cd4f932a197c9c1d0cb2ca1442d74b5f0b69dd3bcc93e96cd`.
 Missing, extra or changed modules refuse.
 
 All 11 stage mappings remain unchanged:
@@ -205,4 +205,3 @@ mutation or spend.
 
 Historical records remain write-once. No AWS execution is authorized by this
 draft.
-
