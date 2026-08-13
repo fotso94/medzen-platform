@@ -6,6 +6,7 @@ import hashlib
 import json
 import sys
 import tempfile
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,11 @@ from scripts.asr_base_model_ecr_scanning import (  # noqa: E402
     validate_configuration,
 )
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal  # noqa: E402
+from scripts.asr_base_model_pilot_staging import (  # noqa: E402
+    StagingRefusal,
+    validate_prestage_proof,
+    validate_window_budget,
+)
 from scripts.asr_eval_digest_rescan import DigestRescanRefusal, validate_security_binding  # noqa: E402
 from scripts.asr_eval_oci_publication import (  # noqa: E402
     ECR_PART_BYTES,
@@ -200,6 +206,26 @@ class FakeOperations:
         caller_arn: str | None = None,
     ) -> dict[str, Any]:
         self._enter("deadline_identity_and_acceptance")
+        if context.attempt == 9:
+            proof = deepcopy(context.bindings["rehearsal_artifact_prestage_proof"])
+            if self.inject == "prestage_object_absent":
+                proof["objects"][0]["version_id"] = ""
+            elif self.inject == "prestage_in_attempt_upload":
+                proof["timed_window"]["in_attempt_upload_bytes"] = 1
+            elif self.inject == "uplink_window_infeasible":
+                proof["timed_window"]["in_attempt_upload_bytes"] = 13_021_689_920
+            try:
+                validate_prestage_proof(
+                    proof,
+                    expected_bundle_sha256=context.bindings["pilot_bundle"]["sha256"],
+                )
+                validate_window_budget(
+                    proof,
+                    deadline_seconds=context.deadline_seconds,
+                    expected_bundle_sha256=context.bindings["pilot_bundle"]["sha256"],
+                )
+            except StagingRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
         self.state["deadline"] = not dry_run
         return {
             "status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE",

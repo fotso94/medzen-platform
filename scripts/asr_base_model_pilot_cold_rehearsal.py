@@ -45,6 +45,9 @@ SCENARIOS = {
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
+    "prestage_object_absent": ("prestage_object_absent", "FAILED_CLOSED_EXECUTION"),
+    "prestage_in_attempt_upload": ("prestage_in_attempt_upload", "FAILED_CLOSED_EXECUTION"),
+    "uplink_window_infeasible": ("uplink_window_infeasible", "FAILED_CLOSED_EXECUTION"),
 }
 
 
@@ -68,6 +71,19 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
+    if bindings["attempts"]["authorized_numbers"] == [9]:
+        prestage_path = ROOT / bindings["artifact_prestage_proof"]["path"]
+        prestage_body = read_committed_artifact(ROOT, prestage_path)
+        if hashlib.sha256(prestage_body).hexdigest() != bindings["artifact_prestage_proof"]["sha256"]:
+            raise RuntimeError("committed pre-stage proof hash differs")
+        bindings["rehearsal_artifact_prestage_proof"] = json.loads(prestage_body)
+    else:
+        for name in (
+            "prestage_object_absent",
+            "prestage_in_attempt_upload",
+            "uplink_window_infeasible",
+        ):
+            SCENARIOS.pop(name, None)
     digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
     digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
     if hashlib.sha256(digest_bindings_body).hexdigest() != bindings[
@@ -150,8 +166,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "aws_mutations": 0,
         "kubernetes_mutations": 0,
         "full_pass_runs": 1,
-        "injected_failure_runs": 5,
-        "injected_paths": ["security_wrong_digest", "security_extra_finding", "isolation_probe", "deadline", "cleanup"],
+        "injected_failure_runs": len(SCENARIOS) - 1,
+        "injected_paths": [name for name in SCENARIOS if name != "clean_pass"],
         "bindings_source": {
             "path": str(bindings_path.relative_to(ROOT)),
             "sha256": hashlib.sha256(bindings_body).hexdigest(),
