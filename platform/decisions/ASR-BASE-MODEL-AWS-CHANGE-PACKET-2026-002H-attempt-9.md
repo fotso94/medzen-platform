@@ -143,6 +143,26 @@ refusals for: wrong image digest, extra finding, isolation, deadline, cleanup,
 missing pre-staged object/version, any in-attempt upload byte, and infeasible
 uplink/window arithmetic. AWS and kubectl calls alone are faked.
 
+The committed rehearsal satisfies that gate:
+
+- receipt SHA-256:
+  `67d4dd0551ecf58d20dbce1aa2a6aba52a60b2869d0ffd1c9424b7dd5581acc0`;
+- committed bindings SHA-256:
+  `a8f9bfe9e4503f1c752f89c830336d2086d4e1032d95dfa7e7013bd08a98bc7b`;
+- rehearsal source commit:
+  `aa9980a653c98b81d52af1067746cd459bc28596`;
+- one clean PASS and eight injected fail-closed runs;
+- exact refusal reason retained for every injected failure;
+- zero real AWS calls, zero real kubectl calls and zero residual state.
+
+Focused successor tests: `52 passed, 0 failed`. The complete repository suite
+reported `1,667 passed, 59 failed, 7 deselected`. All 59 failures reproduce the
+separately reviewed pre-existing generated-language/B5-scope drift on this
+branch (stale generated records, missing historical promotion aliases and their
+downstream policy consumers); none is in the attempt-9 staging, runner,
+integrity, workdir-fidelity or packet tests. That separate registry correction
+is deliberately not bundled into this packet.
+
 After approval, write AUTH-2026-002H. Then run and commit the complete read-only
 `deadline_identity_and_acceptance` stage against the actual authorization,
 bindings and packet. It must validate all committed artifacts—including the
