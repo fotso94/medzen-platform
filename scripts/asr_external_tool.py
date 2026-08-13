@@ -16,6 +16,10 @@ from typing import Any, Sequence
 MAX_CAPTURE_BYTES = 4096
 SECRET_KEY_RE = re.compile(r"(?i)(password|secret|token|authorization|credential|api[-_]?key)")
 SECRET_VALUE_RE = re.compile(r"(?i)(bearer\s+|basic\s+)[A-Za-z0-9._~+/=-]+")
+PRESIGNED_QUERY_VALUE_RE = re.compile(
+    r"(?i)((?:X-Amz-(?:Algorithm|Credential|Date|Expires|Security-Token|Signature|SignedHeaders)|"
+    r"versionId)=)[^&\s]+"
+)
 _DEFAULT_JOURNAL_PATH: Path | None = None
 
 
@@ -40,6 +44,7 @@ def sanitize_bytes(raw: bytes | str | None) -> str:
     for home in sorted((value for value in homes if value), key=len, reverse=True):
         text = text.replace(home, "<HOME>")
     text = SECRET_VALUE_RE.sub(lambda match: f"{match.group(1)}<REDACTED>", text)
+    text = PRESIGNED_QUERY_VALUE_RE.sub(r"\1<REDACTED>", text)
     text = re.sub(
         r"(?i)((?:password|secret|token|authorization|credential|api[-_]?key)\s*[:=]\s*)\S+",
         r"\1<REDACTED>",

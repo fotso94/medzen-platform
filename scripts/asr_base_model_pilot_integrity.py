@@ -58,6 +58,12 @@ PROVEN_COMMAND_GATED_EXECUTOR_MODULE_PATHS = (
     "scripts/asr_base_model_proven_commands.py",
     "scripts/b6a_003c_e_ssm_sampler.sh",
 )
+ATTEMPT_17_EXECUTOR_MODULE_PATHS = (
+    *PROVEN_COMMAND_GATED_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_node_staging.py",
+    "scripts/asr_base_model_pilot_workload.py",
+    "scripts/qualify_asr_base_model_node_staging.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -120,6 +126,7 @@ def validate_executor_module_bindings(
             LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS,
             SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS,
             PROVEN_COMMAND_GATED_EXECUTOR_MODULE_PATHS,
+            ATTEMPT_17_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

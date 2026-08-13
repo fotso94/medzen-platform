@@ -1,0 +1,154 @@
+{
+  "record": "ASR_BASE_MODEL_PILOT_WORKLOAD_LESSONS_AUDIT",
+  "id": "ASR-BASE-MODEL-PILOT-WORKLOAD-LESSONS-AUDIT-2026-001",
+  "schema_version": 1,
+  "status": "PASS_ATTEMPT_1_THROUGH_16_LESSONS_APPLIED_TO_NEVER_RUN_WORKLOAD",
+  "review_scope": {
+    "command": "pilot workload Kubernetes Job container argv",
+    "historical_live_pass_receipts_found": 0,
+    "classification": "NOT_HISTORICALLY_PROVEN",
+    "may_be_described_as_live_proven": false,
+    "attempts_reviewed": 16,
+    "source_of_truth": "scripts/asr_base_model_pilot_workload.py",
+    "renderer": "scripts/asr_base_model_pilot_k8s.py",
+    "live_invoker": "scripts/asr_base_model_pilot_live.py:LiveOperations.pilot_rows"
+  },
+  "canonical_workload": {
+    "argv_sha256": "64255a2fc39890d5145937f59b1b66bf3b33a2634d43fa39d2303810c7f58997",
+    "command": ["/bin/sh", "-ec"],
+    "absolute_python": "/opt/venv/bin/python",
+    "absolute_python_invocations": 3,
+    "listener_timeout_seconds": 900,
+    "listener_timeout_exit_code": 71,
+    "job_active_deadline_seconds": 9000,
+    "termination_grace_seconds": 30,
+    "explicit_environment_keys": [
+      "HOME",
+      "PATH",
+      "PYTHONPATH",
+      "HF_HUB_OFFLINE",
+      "HF_HUB_DISABLE_XET",
+      "FAIRSEQ2_ASSET_DIR",
+      "FAIRSEQ2_CACHE_DIR"
+    ],
+    "account_name_lookups": 0,
+    "ambient_environment_reads": 0,
+    "final_pilot_process_uses_exec": true
+  },
+  "checklist": [
+    {
+      "attempt": 1,
+      "lesson": "Validate actual committed governance artifacts and preserve typed refusal detail before any mutation.",
+      "workload_application": "The argv source is hash-bound with all executor modules; pilot_rows writes the command binding before applying Kubernetes objects and retains bounded typed diagnostics on refusal.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 2,
+      "lesson": "Model real service constraints in rehearsal rather than allowing permissive fakes.",
+      "workload_application": "The renderer and verifier execute identically in live and rehearsal; workload invariants are enforced by one shared static audit.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 3,
+      "lesson": "Bind and verify exact bytes rather than relying on a transport label.",
+      "workload_application": "Deployment uses the exact scan-passed child digest and persists the NUL-delimited full container argv SHA-256 before execution.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 4,
+      "lesson": "A security tool's coverage must match the claimed gate.",
+      "workload_application": "No in-workload scan claim exists; the pod can run only after the supplementary ECR OS gate and digest-verified pinned Scout package gate pass.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 5,
+      "lesson": "Every executor module is bound unconditionally, including skipped stages.",
+      "workload_application": "Both the workload source and renderer are members of the unconditional attempt-17 executor module set.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 6,
+      "lesson": "External failures require bounded sanitized exit, stdout and stderr diagnostics.",
+      "workload_application": "Job refusal captures the wait return path plus sanitized bounded Job, Pod, Event and log diagnostics before cleanup; frozen inputs are public research and contain no PHI.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 7,
+      "lesson": "Runtime evidence must live outside the reviewed worktree until terminal evidence is committed.",
+      "workload_application": "Job command binding and diagnostics are written to the existing external attempt workdir and never to the reviewed tree during execution.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 8,
+      "lesson": "Slow transfers need pre-staging, progress and an explicit window budget.",
+      "workload_application": "The Job performs no remote model or audio download; all inputs are node-local, pre-staged and hash-verified before the Job starts.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 9,
+      "lesson": "Stage wrappers must preserve their exact outer status contract.",
+      "workload_application": "pilot_rows returns PASS_PILOT_ROWS only after Kubernetes completion and aggregate presence; refusal never aliases an inner status to PASS.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 10,
+      "lesson": "Rehearsal must run real composition code against recorded-real boundary shapes.",
+      "workload_application": "LiveOperations.pilot_rows is the only stage implementation; rehearsal fakes only AWS, kubectl and external client boundaries.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 11,
+      "lesson": "Read-after-create readiness needs bounded stable polling.",
+      "workload_application": "Pod discovery is bounded to 900 seconds and waits for exactly one pod with an IP; network isolation receipt and listener readiness must exist before release.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 12,
+      "lesson": "Local resource prerequisites must refuse before the attempt envelope.",
+      "workload_application": "The existing pre-envelope disk, memory, CPU, process-limit, tool and Docker gates remain mandatory before any workload path.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 13,
+      "lesson": "All bounded helper call sites must share one contract and undergo static audit.",
+      "workload_application": "The Job has an explicit 9,000-second active deadline, the listener has a 900-second monotonic timeout with exit 71, and the live wait uses the same 9,000-second contract.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 14,
+      "lesson": "A repeated readiness refusal must automatically capture describe, events and logs.",
+      "workload_application": "Every pilot_rows exception writes bounded Job, Pod, Event and container-log diagnostics before cleanup, including which typed gate refused.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 15,
+      "lesson": "Reuse byte-identical proven commands where successful historical evidence exists and disclose unproven commands honestly.",
+      "workload_application": "No successful historical workload exists, so the exact argv is bound and labeled NOT_HISTORICALLY_PROVEN; no proven claim is invented.",
+      "status": "PASS"
+    },
+    {
+      "attempt": 16,
+      "lesson": "Do not depend on account-name resolution, ambient environment or relative executables.",
+      "workload_application": "The pod uses numeric UID/GID 10001, an explicit environment, absolute /opt/venv/bin/python invocations, and no passwd/group lookup. The final pilot process replaces the shell with exec.",
+      "status": "PASS"
+    }
+  ],
+  "additional_fail_closed_controls": {
+    "automount_service_account_token": false,
+    "host_network": false,
+    "read_only_root_filesystem": true,
+    "allow_privilege_escalation": false,
+    "capabilities_dropped": ["ALL"],
+    "ingress_objects": 0,
+    "service_objects": 0,
+    "network_probe_before_torch": true,
+    "cross_pod_connection_must_refuse": true,
+    "input_mount_read_only": true,
+    "output_and_tmp_are_the_only_writable_mounts": true,
+    "model_registration_or_serving_operations": 0
+  },
+  "limitations": [
+    "The audit proves source, composition and local/rehearsal behavior; it does not claim a live workload PASS.",
+    "GPU inference, the full 540-row loop and aggregate collection remain first-live operations for a separately approved attempt."
+  ]
+}

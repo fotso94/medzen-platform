@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -81,6 +82,21 @@ from scripts.asr_base_model_pilot_plan import (
     VPC,
     exact_plan,
     validate_plan,
+)
+from scripts.asr_base_model_node_staging import (
+    STAGING_PRESIGNED_URL_SECONDS,
+    STAGING_SSM_TIMEOUT_SECONDS,
+    audit_staging_commands,
+    concatenate_files,
+    download_file,
+    extract_archive,
+    install_directory,
+    numeric_identity_command,
+    root_command,
+    staging_prelude,
+    verify_sha256,
+    verify_size,
+    write_base64,
 )
 from scripts.asr_base_model_pilot_runner import (
     AttemptContext,
@@ -473,34 +489,100 @@ class LiveOperations:
             f"labeled_nodes={last['labeled_node_count']} ready_nodes={len(last['ready_node_names'])}",
         )
 
-    def _ssm(self, instance_id: str, commands: list[str], *, timeout_seconds: int = 900) -> dict[str, Any]:
+    def _ssm(
+        self,
+        instance_id: str,
+        commands: list[str],
+        *,
+        timeout_seconds: int = 900,
+        diagnostic_path: Path | None = None,
+        pre_model_safe_output: bool = False,
+    ) -> dict[str, Any]:
         validate_boundary_parameters("ssm", timeout_seconds=timeout_seconds)
         if self._ssm_runner is not None:
-            return self._ssm_runner(
+            value = self._ssm_runner(
                 instance_id, commands, timeout_seconds=timeout_seconds
             )
-        response = self.ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            TimeoutSeconds=timeout_seconds,
-            Parameters={"commands": commands},
-        )
-        command_id = response["Command"]["CommandId"]
-        stop = time.monotonic() + timeout_seconds + 60
-        while time.monotonic() < stop:
-            try:
-                value = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
-            except self.ssm.exceptions.InvocationDoesNotExist:
+            terminal = {
+                "command_id": value["command_id"],
+                "status": value["status"],
+                "response_code": value.get("response_code", 0),
+                "stdout": value.get("stdout", ""),
+                "stderr": value.get("stderr", ""),
+            }
+        else:
+            response = self.ssm.send_command(
+                InstanceIds=[instance_id],
+                DocumentName="AWS-RunShellScript",
+                TimeoutSeconds=timeout_seconds,
+                Parameters={"commands": commands},
+            )
+            command_id = response["Command"]["CommandId"]
+            stop = time.monotonic() + timeout_seconds + 60
+            terminal = None
+            while time.monotonic() < stop:
+                try:
+                    observed = self.ssm.get_command_invocation(
+                        CommandId=command_id, InstanceId=instance_id
+                    )
+                except self.ssm.exceptions.InvocationDoesNotExist:
+                    self._sleeper(2)
+                    continue
+                status = observed["Status"]
+                if status in {"Success", "Cancelled", "TimedOut", "Failed", "Cancelling"}:
+                    terminal = {
+                        "command_id": command_id,
+                        "status": status,
+                        "response_code": observed.get("ResponseCode"),
+                        "stdout": observed.get("StandardOutputContent", ""),
+                        "stderr": observed.get("StandardErrorContent", ""),
+                    }
+                    break
                 self._sleeper(2)
-                continue
-            status = value["Status"]
-            if status == "Success":
-                stdout = value.get("StandardOutputContent", "")
-                return {"command_id": command_id, "status": status, "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout}
-            if status in {"Cancelled", "TimedOut", "Failed", "Cancelling"}:
-                raise OperationRefusal("SSM_COMMAND_REFUSED", f"SSM command {command_id} ended {status}")
-            self._sleeper(2)
-        raise OperationRefusal("SSM_COMMAND_TIMEOUT", f"SSM command {command_id} exceeded its bound")
+            if terminal is None:
+                raise OperationRefusal(
+                    "SSM_COMMAND_TIMEOUT", f"SSM command {command_id} exceeded its bound"
+                )
+        stdout = terminal["stdout"]
+        stderr = terminal["stderr"]
+        diagnostic = {
+            "schema_version": 1,
+            "classification": (
+                "PRE_MODEL_PRE_AUDIO_SAFE_DIAGNOSTICS"
+                if pre_model_safe_output
+                else "HASH_ONLY_POST_MODEL_DIAGNOSTICS"
+            ),
+            "command_id": terminal["command_id"],
+            "status": terminal["status"],
+            "response_code": terminal["response_code"],
+            "command_count": len(commands),
+            "command_values_recorded": False,
+            "stdout_bytes": len(stdout.encode()),
+            "stderr_bytes": len(stderr.encode()),
+            "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(),
+            "stderr_sha256": hashlib.sha256(stderr.encode()).hexdigest(),
+            "stdout_sanitized": sanitize_bytes(stdout) if pre_model_safe_output else None,
+            "stderr_sanitized": sanitize_bytes(stderr) if pre_model_safe_output else None,
+            "credentials_or_presigned_query_values_recorded": False,
+        }
+        if diagnostic_path is not None:
+            write_exclusive(diagnostic_path, canonical_json(diagnostic))
+        if terminal["status"] != "Success":
+            detail = f"SSM command {terminal['command_id']} ended {terminal['status']}"
+            if pre_model_safe_output and diagnostic["stderr_sanitized"]:
+                detail += f": {diagnostic['stderr_sanitized'][:256]}"
+            if diagnostic_path is not None:
+                detail += f"; diagnostic_sha256={_sha(diagnostic_path)}"
+            raise OperationRefusal("SSM_COMMAND_REFUSED", detail)
+        return {
+            "command_id": terminal["command_id"],
+            "status": terminal["status"],
+            "response_code": terminal["response_code"],
+            "stdout_sha256": diagnostic["stdout_sha256"],
+            "stderr_sha256": diagnostic["stderr_sha256"],
+            "stdout": stdout,
+            "diagnostic_sha256": _sha(diagnostic_path) if diagnostic_path else None,
+        }
 
     def _dra_readiness(
         self,
@@ -1352,13 +1434,16 @@ class LiveOperations:
         self.ec2.attach_volume(VolumeId=volume, InstanceId=instance_id, Device="/dev/sdf")
         volume_serial = volume.replace("-", "")
         mount_commands = [
+            "#!/bin/bash",
             "set -euo pipefail",
-            f"device=$(readlink -f /dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_{volume_serial})",
-            "test -b \"$device\"",
-            "sudo mkfs.ext4 -F \"$device\" >/dev/null",
-            "sudo mkdir -p /var/lib/medzen-asr-eval",
-            "sudo mount \"$device\" /var/lib/medzen-asr-eval",
-            "sudo chown 10001:10001 /var/lib/medzen-asr-eval",
+            "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "unset CDPATH ENV BASH_ENV USER LOGNAME",
+            f"device=$(/usr/bin/readlink -f /dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_{volume_serial})",
+            "/usr/bin/test -b \"$device\"",
+            "/usr/bin/sudo /usr/sbin/mkfs.ext4 -F \"$device\" >/dev/null",
+            "/usr/bin/sudo /usr/bin/mkdir -p /var/lib/medzen-asr-eval",
+            "/usr/bin/sudo /usr/bin/mount \"$device\" /var/lib/medzen-asr-eval",
+            "/usr/bin/sudo /usr/bin/chown 10001:10001 /var/lib/medzen-asr-eval",
         ]
         mount_commands_sha256 = hashlib.sha256(
             canonical_json(mount_commands)
@@ -1506,12 +1591,7 @@ class LiveOperations:
             raise OperationRefusal("GPU_INSTANCE_ID_ABSENT", "node-local staging requires the exact GPU instance")
         bundle = json.loads((context.workdir / "pilot-bundle.json").read_bytes())
         prefix = f"research/asr-base-model/pilot/{context.bindings['pilot_bundle']['sha256']}/"
-        commands = [
-            "set -euo pipefail",
-            f"base=/var/lib/medzen-asr-eval/attempt-{context.attempt}",
-            "sudo rm -rf \"$base\"",
-            "sudo install -d -o 10001 -g 10001 \"$base/input/audio\" \"$base/input/models/whisper-large-v3-ct2\" \"$base/output\"",
-        ]
+        commands, base = staging_prelude(context.attempt)
         node_objects: list[dict[str, Any]] = []
         for item in bundle["objects"]:
             key = item["key"]
@@ -1521,49 +1601,48 @@ class LiveOperations:
                 relative = "parts/" + key.removeprefix(prefix + "bundles/")
             else:
                 continue
-            url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key, "VersionId": item["version_id"]}, ExpiresIn=900)
-            destination = f"$base/input/{relative}"
-            concrete_destination = destination.replace("$base", f"/var/lib/medzen-asr-eval/attempt-{context.attempt}")
+            url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key, "VersionId": item["version_id"]}, ExpiresIn=STAGING_PRESIGNED_URL_SECONDS)
+            concrete_destination = f"{base}/input/{relative}"
             parent = str(Path(concrete_destination).parent)
             commands.extend([
-                f"sudo install -d -o 10001 -g 10001 {json.dumps(parent)}",
-                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o {json.dumps(concrete_destination)}",
-                f"test \"$(sha256sum {json.dumps(concrete_destination)} | cut -d' ' -f1)\" = {item['sha256']}",
-                f"test \"$(stat -c %s {json.dumps(concrete_destination)})\" = {item['bytes']}",
+                install_directory(parent),
+                download_file(url, concrete_destination),
+                verify_sha256(concrete_destination, item["sha256"]),
+                verify_size(concrete_destination, item["bytes"]),
             ])
             node_objects.append({"key": key, "sha256": item["sha256"], "bytes": item["bytes"]})
         for name, assembly in bundle["assemblies"].items():
-            root = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"
-            parts = " ".join(json.dumps(f"{root}/input/parts/{item['key'].removeprefix(prefix + 'bundles/')}") for item in assembly["parts"])
-            destination = f"{root}/input/{assembly['destination']}"
+            parts = [f"{base}/input/parts/{item['key'].removeprefix(prefix + 'bundles/')}" for item in assembly["parts"]]
+            destination = f"{base}/input/{assembly['destination']}"
             commands.extend([
-                f"sudo install -d -o 10001 -g 10001 {json.dumps(str(Path(destination).parent))}",
-                f"sudo -u '#10001' sh -c {json.dumps(f'cat {parts} > {destination}')}",
-                f"test \"$(sha256sum {json.dumps(destination)} | cut -d' ' -f1)\" = {assembly['sha256']}",
-                f"test \"$(stat -c %s {json.dumps(destination)})\" = {assembly['bytes']}",
+                install_directory(str(Path(destination).parent)),
+                concatenate_files(parts, destination),
+                verify_sha256(destination, assembly["sha256"]),
+                verify_size(destination, assembly["bytes"]),
             ])
             if assembly.get("archive"):
                 commands.extend([
-                    f"sudo -u '#10001' tar --extract --file {json.dumps(destination)} --directory {json.dumps(root + '/input')} --no-same-owner --no-same-permissions",
-                    f"test \"$(find {json.dumps(root + '/input/audio')} -type f | wc -l)\" = {assembly['files']}",
-                    f"sudo rm -f {json.dumps(destination)}",
+                    extract_archive(destination, f"{base}/input"),
+                    f"/usr/bin/test \"$(/usr/bin/find {shlex.quote(base + '/input/audio')} -type f | /usr/bin/wc -l)\" = {assembly['files']}",
+                    root_command("/usr/bin/sudo", "/usr/bin/rm", "-f", "--", destination),
                 ])
         whisper_prefix = "b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/"
         model_bindings = json.loads((context.workdir / "asset-staging/model-bindings.json").read_bytes())
         for relative, item in sorted(model_bindings["whisper_files"].items()):
-            url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": whisper_prefix + relative}, ExpiresIn=900)
-            destination = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}/input/models/whisper-large-v3-ct2/{relative}"
+            url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": whisper_prefix + relative}, ExpiresIn=STAGING_PRESIGNED_URL_SECONDS)
+            destination = f"{base}/input/models/whisper-large-v3-ct2/{relative}"
             commands.extend([
-                f"sudo install -d -o 10001 -g 10001 {json.dumps(str(Path(destination).parent))}",
-                f"sudo -u '#10001' curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 {json.dumps(url)} -o {json.dumps(destination)}",
-                f"test \"$(sha256sum {json.dumps(destination)} | cut -d' ' -f1)\" = {item['sha256']}",
+                install_directory(str(Path(destination).parent)),
+                download_file(url, destination),
+                verify_sha256(destination, item["sha256"]),
             ])
         network = base64.b64encode((context.workdir / "network-binding.json").read_bytes()).decode()
         commands.extend([
-            f"printf %s {json.dumps(network)} | base64 -d | sudo -u '#10001' tee \"$base/input/network-binding.json\" >/dev/null",
-            "sudo find \"$base/input\" -type d -exec chmod 0555 {} +",
-            "sudo find \"$base/input\" -type f -exec chmod 0444 {} +",
+            write_base64(network, f"{base}/input/network-binding.json"),
+            root_command("/usr/bin/sudo", "/usr/bin/find", f"{base}/input", "-type", "d", "-exec", "/usr/bin/chmod", "0555", "{}", "+"),
+            root_command("/usr/bin/sudo", "/usr/bin/find", f"{base}/input", "-type", "f", "-exec", "/usr/bin/chmod", "0444", "{}", "+"),
         ])
+        command_audit = audit_staging_commands(commands)
         command_bundle_sha256 = hashlib.sha256(canonical_json(commands)).hexdigest()
         write_exclusive(
             context.workdir / "node-local-input-command-binding.json",
@@ -1572,20 +1651,28 @@ class LiveOperations:
                 "status": "BOUND_FOR_FIRST_LIVE_PROOF_NOT_HISTORICALLY_PROVEN",
                 "command_count": len(commands),
                 "command_bundle_sha256": command_bundle_sha256,
+                "command_audit": command_audit,
                 "presigned_url_values_recorded": False,
                 "contains_credentials_phi_audio_reference_or_prediction": False,
             }),
         )
-        result = self._ssm(instance_id, commands, timeout_seconds=1800)
-        state["staging_path"] = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"
+        diagnostic_path = context.workdir / "node-local-input-ssm-diagnostic.json"
+        result = self._ssm(
+            instance_id,
+            commands,
+            timeout_seconds=STAGING_SSM_TIMEOUT_SECONDS,
+            diagnostic_path=diagnostic_path,
+            pre_model_safe_output=True,
+        )
+        state["staging_path"] = base
         self._save_state(context, state)
-        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "command_bundle_sha256": command_bundle_sha256, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
+        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "ssm_diagnostic_sha256": result["diagnostic_sha256"], "command_bundle_sha256": command_bundle_sha256, "command_audit": command_audit, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
 
     def _cross_pod_refusal(self, context: AttemptContext, pod_ip: str) -> dict[str, Any]:
         image = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@{context.bindings['image']['linux_amd64_digest']}"
         probe = {
             "apiVersion": "v1", "kind": "Pod", "metadata": {"name": "asr-eval-inbound-control", "namespace": NAMESPACE, "labels": {"app.kubernetes.io/name": "asr-eval-inbound-control"}},
-            "spec": {"automountServiceAccountToken": False, "restartPolicy": "Never", "nodeSelector": {"workload": "gpu"}, "tolerations": [{"key": "nvidia.com/gpu", "operator": "Equal", "value": "true", "effect": "NoSchedule"}], "containers": [{"name": "control", "image": image, "command": ["python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(3); rc=s.connect_ex((sys.argv[1],8080)); sys.exit(0 if rc else 9)", pod_ip], "securityContext": {"allowPrivilegeEscalation": False, "capabilities": {"drop": ["ALL"]}}}]},
+            "spec": {"automountServiceAccountToken": False, "restartPolicy": "Never", "nodeSelector": {"workload": "gpu"}, "tolerations": [{"key": "nvidia.com/gpu", "operator": "Equal", "value": "true", "effect": "NoSchedule"}], "containers": [{"name": "control", "image": image, "command": ["/opt/venv/bin/python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(3); rc=s.connect_ex((sys.argv[1],8080)); sys.exit(0 if rc else 9)", pod_ip], "securityContext": {"allowPrivilegeEscalation": False, "capabilities": {"drop": ["ALL"]}}}]},
         }
         encoded = canonical_json(probe)
         self._kubectl(context, "apply", "-f", "-", stdin=encoded)
@@ -1595,6 +1682,92 @@ class LiveOperations:
         if completed.returncode != 0:
             raise OperationRefusal("NETWORK_INBOUND_CONTROL_ACCEPTED", "cross-pod TCP connection unexpectedly succeeded")
         return {"status": "REFUSED_AS_REQUIRED", "target_port": 8080, "logs_sha256": logs_hash}
+
+    def _capture_pilot_workload_refusal_diagnostics(
+        self,
+        context: AttemptContext,
+        *,
+        pod_name: str | None,
+        failure: Exception,
+    ) -> dict[str, Any]:
+        """Persist bounded public-eval diagnostics before cleanup.
+
+        The pilot accepts only the frozen public research set and no PHI.  The
+        response text is still sanitized and truncated; credentials and
+        presigned URLs are never retained.
+        """
+
+        def capture_json(*args: str) -> dict[str, Any]:
+            try:
+                value = self._kubectl(context, *args, timeout=30, json_output=True)
+                raw = canonical_json(value if isinstance(value, dict) else {})
+                return {
+                    "status": "CAPTURED",
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "sanitized": sanitize_bytes(raw),
+                }
+            except Exception as exc:
+                return {
+                    "status": "UNAVAILABLE",
+                    "exception_class": type(exc).__name__,
+                    "safe_error": sanitize_bytes(str(exc)),
+                }
+
+        def capture_logs() -> dict[str, Any]:
+            if not pod_name:
+                return {"status": "NOT_APPLICABLE_NO_POD"}
+            try:
+                raw = self._kubectl(
+                    context,
+                    "logs",
+                    "-n",
+                    NAMESPACE,
+                    pod_name,
+                    timeout=30,
+                )
+                body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                return {
+                    "status": "CAPTURED",
+                    "bytes": len(body),
+                    "sha256": hashlib.sha256(body).hexdigest(),
+                    "sanitized": sanitize_bytes(body),
+                }
+            except Exception as exc:
+                return {
+                    "status": "UNAVAILABLE",
+                    "exception_class": type(exc).__name__,
+                    "safe_error": sanitize_bytes(str(exc)),
+                }
+
+        diagnostic = {
+            "schema_version": 1,
+            "status": "CAPTURED_BEFORE_CLEANUP",
+            "classification": "FROZEN_PUBLIC_RESEARCH_EVAL_NO_PHI_BOUNDED_DIAGNOSTICS",
+            "failure_exception_class": type(failure).__name__,
+            "failure_reason_code": getattr(failure, "reason_code", None),
+            "failure_safe_text": sanitize_bytes(str(failure)),
+            "pod_name": pod_name,
+            "job": capture_json(
+                "get",
+                "job",
+                f"asr-base-model-pilot-a{context.attempt}",
+                "-n",
+                NAMESPACE,
+            ),
+            "pod": (
+                capture_json("get", "pod", pod_name, "-n", NAMESPACE)
+                if pod_name
+                else {"status": "NOT_APPLICABLE_NO_POD"}
+            ),
+            "events": capture_json(
+                "get", "events", "-n", NAMESPACE, "--sort-by=.lastTimestamp"
+            ),
+            "logs": capture_logs(),
+            "credentials_presigned_urls_or_environment_values_recorded": False,
+        }
+        path = context.workdir / "pilot-workload-refusal-diagnostics.json"
+        write_exclusive(path, canonical_json(diagnostic))
+        return {"path": path, "sha256": _sha(path), **diagnostic}
 
     def pilot_rows(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
@@ -1618,38 +1791,65 @@ class LiveOperations:
                 "contains_credentials_phi_audio_reference_or_prediction": False,
             }),
         )
-        infrastructure = __import__("yaml").safe_dump_all(documents[:-1], sort_keys=False).encode()
-        job = __import__("yaml").safe_dump(documents[-1], sort_keys=False).encode()
-        self._kubectl(context, "apply", "-f", "-", stdin=infrastructure)
-        state["namespace"] = True
-        self._save_state(context, state)
-        self._kubectl(context, "apply", "-f", "-", stdin=job)
-        stop = time.monotonic() + 900
         pod_name = None
-        while time.monotonic() < stop:
-            pods = self._kubectl(context, "get", "pods", "-n", NAMESPACE, "-l", "app.kubernetes.io/name=asr-base-model-pilot", json_output=True)
-            if len(pods.get("items", [])) == 1:
-                pod = pods["items"][0]
-                pod_name = pod["metadata"]["name"]
-                pod_ip = pod.get("status", {}).get("podIP")
-                if pod_ip:
-                    network = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/network-probe.json", f"test -s {state['staging_path']}/output/inbound-listener-ready", f"cat {state['staging_path']}/output/network-probe.json"], timeout_seconds=60)
-                    try:
-                        network_value = json.loads(network["stdout"])
-                    except Exception as exc:
-                        raise OperationRefusal("NETWORK_PROBE_RECEIPT_MALFORMED", "pre-torch network receipt is not JSON", outcome="BLOCKED_NETWORK_ISOLATION") from exc
-                    if network_value.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH" or network_value.get("torch_imported") is not False:
-                        raise OperationRefusal("NETWORK_PROBE_REFUSED", "pre-torch private-endpoint probe did not pass", outcome="BLOCKED_NETWORK_ISOLATION")
-                    inbound = self._cross_pod_refusal(context, pod_ip)
-                    self._ssm(state["instance_id"], [f"sudo touch {state['staging_path']}/input/network-release", f"sudo chown 10001:10001 {state['staging_path']}/input/network-release", f"sudo chmod 0444 {state['staging_path']}/input/network-release"])
-                    break
-            self._sleeper(5)
-        else:
-            raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
-        waited = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
-        if waited.returncode != 0:
-            raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
-        aggregate = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/aggregate.json", f"sha256sum {state['staging_path']}/output/aggregate.json"])
+        try:
+            infrastructure = __import__("yaml").safe_dump_all(documents[:-1], sort_keys=False).encode()
+            job = __import__("yaml").safe_dump(documents[-1], sort_keys=False).encode()
+            self._kubectl(context, "apply", "-f", "-", stdin=infrastructure)
+            state["namespace"] = True
+            self._save_state(context, state)
+            self._kubectl(context, "apply", "-f", "-", stdin=job)
+            stop = time.monotonic() + 900
+            while time.monotonic() < stop:
+                pods = self._kubectl(context, "get", "pods", "-n", NAMESPACE, "-l", "app.kubernetes.io/name=asr-base-model-pilot", json_output=True)
+                if len(pods.get("items", [])) == 1:
+                    pod = pods["items"][0]
+                    pod_name = pod["metadata"]["name"]
+                    pod_ip = pod.get("status", {}).get("podIP")
+                    if pod_ip:
+                        staging = state["staging_path"]
+                        network = self._ssm(state["instance_id"], [
+                            root_command("/usr/bin/test", "-s", f"{staging}/output/network-probe.json"),
+                            root_command("/usr/bin/test", "-s", f"{staging}/output/inbound-listener-ready"),
+                            root_command("/usr/bin/cat", f"{staging}/output/network-probe.json"),
+                        ], timeout_seconds=60)
+                        try:
+                            network_value = json.loads(network["stdout"])
+                        except Exception as exc:
+                            raise OperationRefusal("NETWORK_PROBE_RECEIPT_MALFORMED", "pre-torch network receipt is not JSON", outcome="BLOCKED_NETWORK_ISOLATION") from exc
+                        if network_value.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH" or network_value.get("torch_imported") is not False:
+                            raise OperationRefusal("NETWORK_PROBE_REFUSED", "pre-torch private-endpoint probe did not pass", outcome="BLOCKED_NETWORK_ISOLATION")
+                        inbound = self._cross_pod_refusal(context, pod_ip)
+                        self._ssm(state["instance_id"], [
+                            root_command("/usr/bin/sudo", "/usr/bin/touch", f"{staging}/input/network-release"),
+                            root_command("/usr/bin/sudo", "/usr/bin/chown", "10001:10001", f"{staging}/input/network-release"),
+                            root_command("/usr/bin/sudo", "/usr/bin/chmod", "0444", f"{staging}/input/network-release"),
+                        ])
+                        break
+                self._sleeper(5)
+            else:
+                raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
+            waited = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
+            if waited.returncode != 0:
+                raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
+            aggregate = self._ssm(state["instance_id"], [
+                root_command("/usr/bin/test", "-s", f"{state['staging_path']}/output/aggregate.json"),
+                root_command("/usr/bin/sha256sum", f"{state['staging_path']}/output/aggregate.json"),
+            ])
+        except Exception as exc:
+            diagnostic = self._capture_pilot_workload_refusal_diagnostics(
+                context, pod_name=pod_name, failure=exc
+            )
+            if isinstance(exc, OperationRefusal):
+                raise OperationRefusal(
+                    exc.reason_code,
+                    f"{exc.detail}; pilot_diagnostic_sha256={diagnostic['sha256']}",
+                    outcome=exc.outcome,
+                ) from exc
+            raise OperationRefusal(
+                "PILOT_WORKLOAD_UNEXPECTED_EXCEPTION",
+                f"pilot workload raised {type(exc).__name__}; pilot_diagnostic_sha256={diagnostic['sha256']}",
+            ) from exc
         return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
     def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
@@ -1709,7 +1909,12 @@ class LiveOperations:
             errors.append(f"kubernetes:{type(exc).__name__}")
         if state.get("instance_id"):
             try:
-                self._ssm(state["instance_id"], [f"sudo rm -rf /var/lib/medzen-asr-eval/attempt-{context.attempt}", "mountpoint -q /var/lib/medzen-asr-eval && sudo umount /var/lib/medzen-asr-eval || true"], timeout_seconds=180)
+                self._ssm(state["instance_id"], [
+                    "#!/bin/bash",
+                    "set -euo pipefail",
+                    root_command("/usr/bin/sudo", "/usr/bin/rm", "-rf", "--", f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"),
+                    "/usr/bin/mountpoint -q /var/lib/medzen-asr-eval && /usr/bin/sudo /usr/bin/umount /var/lib/medzen-asr-eval || true",
+                ], timeout_seconds=180)
             except Exception as exc:
                 errors.append(f"staging:{type(exc).__name__}")
         if state.get("volume_id"):

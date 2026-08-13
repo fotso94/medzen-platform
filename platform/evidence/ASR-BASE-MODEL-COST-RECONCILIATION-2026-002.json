@@ -1,0 +1,137 @@
+{
+  "record": "ASR_BASE_MODEL_COST_RECONCILIATION",
+  "id": "ASR-BASE-MODEL-COST-RECONCILIATION-2026-002",
+  "schema_version": 1,
+  "status": "PASS_ACTUAL_DAILY_POOL_RECONCILED_ATTRIBUTION_LIMIT_RETAINED",
+  "recorded_utc": "2026-08-13T22:15:23Z",
+  "currency": "USD",
+  "scope": {
+    "attempts": [11, 12, 13, 14, 15, 16],
+    "workload_region": "eu-central-1",
+    "cost_explorer_region": "us-east-1",
+    "time_period": {
+      "start_inclusive": "2026-08-13",
+      "end_exclusive": "2026-08-14"
+    },
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen",
+    "default_profile_used": false,
+    "aws_mutations": 0
+  },
+  "cost_explorer_actual_observation": {
+    "granularity": "DAILY",
+    "hourly_granularity_available": false,
+    "hourly_refusal": "AccessDeniedException: Hourly data granularity is an opt-in only feature.",
+    "estimated": true,
+    "usage_type": "EUC1-BoxUsage:g6.xlarge",
+    "usage_quantity_hours": 0.031389,
+    "usage_quantity_seconds": 113.0004,
+    "gross_usage_unblended_usd": 0.0315898896,
+    "credit_unblended_usd": -0.0315898896,
+    "net_unblended_usd": 0.0,
+    "effective_gross_rate_usd_per_hour": 1.0064,
+    "query_response_sha256": "f3c2baca293816c8acb16342773bc03a5003db7567906465025dd127426789e0",
+    "raw_query_response_committed": false,
+    "query_response_contains_credentials": false
+  },
+  "receipt_runtime_cross_check": {
+    "basis": "Immutable attempt refusal records measure instance launch through termination request; this operational interval is not the same meter as the current Cost Explorer usage quantity.",
+    "total_observed_seconds": 1383,
+    "attempts": [
+      {
+        "attempt": 11,
+        "observed_seconds": 119,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002J-ATTEMPT-11-GPU-NODE-READINESS-REFUSAL.json",
+        "evidence_sha256": "90354a2d3a921be51f121c4b192b172d18c9a99403467ef5b3c78e4752acbaa1"
+      },
+      {
+        "attempt": 12,
+        "observed_seconds": 0,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002K-ATTEMPT-12-LOCAL-DISK-REFUSAL.json",
+        "evidence_sha256": "1ab4dfea19feb4924b9171d137d352d439c174db99d53d54bf958c2c3cb9dd6c"
+      },
+      {
+        "attempt": 13,
+        "observed_seconds": 188,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-WAIT-BOUNDARY-REFUSAL.json",
+        "evidence_sha256": "8126590e36ff13653d3db60733bb9cfd603db40ccb275ea2bbe5b221449485f6"
+      },
+      {
+        "attempt": 14,
+        "observed_seconds": 511,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL.json",
+        "evidence_sha256": "0782c3b972dbc85c10843fa7ac7b08af7849ae4119daf5ccb204fa2519736509"
+      },
+      {
+        "attempt": 15,
+        "observed_seconds": 206,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002N-ATTEMPT-15-GPU-SAMPLER-REFUSAL.json",
+        "evidence_sha256": "e26b1d686fc68a9e5b3a7a8e725745d90e0bbaf663460331a984b7926f51bbbe"
+      },
+      {
+        "attempt": 16,
+        "observed_seconds": 359,
+        "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002O-ATTEMPT-16-NODE-STAGING-REFUSAL.json",
+        "evidence_sha256": "4f32505301c25d57510465db35edd213c498834a7f1d12a7a12b0a3cf7d6f025"
+      }
+    ],
+    "difference_from_cost_explorer_seconds": 1269.9996,
+    "difference_classification": "AWS_DAILY_BILLING_REMAINS_ESTIMATED_OR_USES_A_DIFFERENT_METERING_INTERVAL",
+    "receipt_derived_dollar_estimate_reported_as_actual": false
+  },
+  "attribution": {
+    "actual_pool_attributed_to_attempt_family": "ASR-BASE-MODEL-EVALUATION-ATTEMPTS-11-THROUGH-16",
+    "per_attempt_dollar_allocation": "NOT_AVAILABLE",
+    "reason": "Cost Explorer hourly data is disabled and the g6.xlarge line is daily, so dividing the daily charge among attempts would fabricate precision.",
+    "attempt_12_gpu_actual": {
+      "receipt_seconds": 0,
+      "status": "PROVEN_NO_GPU_START_BUT_NO_SEPARATE_DAILY_DOLLAR_LINE"
+    },
+    "shared_vpc_endpoint_ebs_and_transfer_costs": "NOT_ATTRIBUTED_TO_ATTEMPTS",
+    "shared_service_reason": "Daily VPC, EBS and data-transfer usage types include unrelated account activity and no active project cost-allocation values or resource-level billing export is available.",
+    "credits_used_to_expand_budget_headroom": false
+  },
+  "control_totals": {
+    "conservative_guardrail_predecessor_usd": 124.4286064216,
+    "attempt_16_closed_ceiling_to_add_usd": 10.0,
+    "recognized_committed_guardrail_usd": 134.4286064216,
+    "actual_attempt_family_g6_gross_usd": 0.0315898896,
+    "actual_attempt_family_g6_credit_usd": -0.0315898896,
+    "actual_attempt_family_g6_net_usd": 0.0,
+    "guardrail_not_reduced_by_actual_credit": true
+  },
+  "source_records": [
+    {
+      "path": "platform/finance/COST-REGISTRY-2026-011.json",
+      "sha256": "4a66fec2362c62c29021cd253695c979fb0ea0e20dcf08587bed89e1765bb4b9"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-11-COST-OBSERVATION-2026-001.json",
+      "sha256": "77146f2eda71f69495b0d5baa65d50a487b9bb73cf5f0a9355e405a3b9f012c8"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-12-COST-OBSERVATION-2026-001.json",
+      "sha256": "c377b2a4193fb037339026993c9330a1974cf1d03606d5a45a29131ef9051707"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-13-COST-OBSERVATION-2026-001.json",
+      "sha256": "212f9ebd10b48f7a78d06a76f77a62ad078980eec0c6770e49a645aa49b906bc"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-14-COST-OBSERVATION-2026-001.json",
+      "sha256": "671ee8a7282dc2beda14446ae96f726cbc581ee765bfc5bc990cdac210addfa2"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-15-COST-OBSERVATION-2026-001.json",
+      "sha256": "2f009d1fbd5f68e306ddc92489825a10040938b4bc8c906e1f4b2dd7fbb7aeea"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-16-COST-OBSERVATION-2026-001.json",
+      "sha256": "266063399cfba297d1cc01fa538e3380c24b51bf0df95a6734dd9e7e8d3ec92f"
+    }
+  ],
+  "review": {
+    "independent_financial_or_owner_review_required": true,
+    "reconciliation_is_not_audited_financial_advice": true
+  }
+}

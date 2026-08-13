@@ -1,0 +1,118 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-012",
+  "revision": 12,
+  "status": "CURRENT_RECONCILED_ACTUAL_DAILY_POOL_AND_CONSERVATIVE_GUARDRAIL",
+  "recorded_utc": "2026-08-13T22:15:23Z",
+  "currency": "USD",
+  "supersedes": {
+    "path": "platform/finance/COST-REGISTRY-2026-011.json",
+    "sha256": "4a66fec2362c62c29021cd253695c979fb0ea0e20dcf08587bed89e1765bb4b9"
+  },
+  "reconciliation": {
+    "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-002.json",
+    "sha256": "bd4bfff912fd93b96a7336b0a564c8e329e38cdc08f5ae6b373243e2cc58153e",
+    "status": "PASS_ACTUAL_DAILY_POOL_RECONCILED_ATTRIBUTION_LIMIT_RETAINED"
+  },
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 134.4286064216,
+    "active_reservations_usd": 0.0,
+    "committed_plus_reserved_usd": 134.4286064216,
+    "guardrail_headroom_after_reservations_usd": 165.5713935784,
+    "incremental_recognized_guardrail_since_revision_011_usd": 10.0,
+    "attempts_11_through_16_actual_g6_gross_usd": 0.0315898896,
+    "attempts_11_through_16_actual_g6_credits_usd": -0.0315898896,
+    "attempts_11_through_16_actual_g6_net_usd": 0.0,
+    "actual_billing_granularity": "DAILY_ESTIMATED_POOL",
+    "claim_limit": "AWS now reports one estimated August 13 daily g6.xlarge pool for attempts 11 through 16. Hourly billing is disabled, so no per-attempt dollar split is claimed. The prior conservative ceilings are retained and credits do not expand headroom. Shared VPC endpoint, EBS and transfer lines remain unattributed."
+  },
+  "allocations": [
+    {
+      "allocation_id": "B4-MODEL-FACTORY",
+      "financial_state": "RECONCILED_COMMITTED",
+      "recognized_committed_usd": 22.5288,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-EKS-UPGRADE",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL",
+      "recognized_committed_usd": 25.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6A-SERVING-PROOF",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 15.0,
+      "active_reservation_usd": 0.0,
+      "conservative_observed_gpu_cost_usd": 0.9401
+    },
+    {
+      "allocation_id": "B6-5B-ECR-SCAN-ONLY-2026-001",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 1.0,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "B6-INTEGRATION-WINDOW-2026-001",
+      "financial_state": "RECONCILED_CONSERVATIVE_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 10.8998064216,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "ASR-BASE-MODEL-EVALUATION-ATTEMPTS-11-THROUGH-16",
+      "financial_state": "RECONCILED_DAILY_ACTUAL_POOL_CONSERVATIVE_GUARDRAIL_CLOSED",
+      "recognized_committed_usd": 60.0,
+      "active_reservation_usd": 0.0,
+      "attempt_numbers": [11, 12, 13, 14, 15, 16],
+      "gpu_instance_type": "g6.xlarge",
+      "receipt_observed_gpu_seconds": 1383,
+      "cost_explorer_usage_seconds": 113.0004,
+      "actual_direct_compute_gross_usd": 0.0315898896,
+      "actual_direct_compute_credits_usd": -0.0315898896,
+      "actual_direct_compute_net_usd": 0.0,
+      "per_attempt_actual_dollar_split": null,
+      "per_attempt_split_reason": "Hourly Cost Explorer is not enabled; daily pool is not divided into fabricated allocations."
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "CURRENT_BILLING_UNATTRIBUTED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS"
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0
+    }
+  ],
+  "allocation_tag_standard": {
+    "required_keys": [
+      "Project",
+      "Environment",
+      "CostCenter",
+      "Stage",
+      "Workstream",
+      "BudgetRegistry"
+    ],
+    "cost_explorer_activation_state": "PROJECT_VALUES_NOT_AVAILABLE",
+    "future_rule": "Do not describe a future charge as tag-attributable until the billing console returns the required allocation-tag values."
+  },
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "current_active_billable_reservations": 0,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_separated": true,
+    "credits_used_to_expand_headroom": false,
+    "attempt_16_reservation_closed": true,
+    "new_aws_resources_require_versioned_packet": true,
+    "next_reconciliation_creates_new_registry_revision": true,
+    "shared_service_costs_are_not_fabricated_as_attempt_costs": true,
+    "owner_or_qualified_financial_review_required": true
+  }
+}

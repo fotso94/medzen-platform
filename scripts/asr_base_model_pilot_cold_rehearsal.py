@@ -64,6 +64,11 @@ SCENARIOS = {
         "sampler_driver_library_missing",
         "FAILED_CLOSED_EXECUTION",
     ),
+    "node_staging_unknown_user": (
+        "node_staging_unknown_user",
+        "FAILED_CLOSED_EXECUTION",
+    ),
+    "pilot_job_refused": ("pilot_job_refused", "FAILED_CLOSED_EXECUTION"),
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
@@ -511,6 +516,25 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     if (directory / "gpu-sampler-self-test.json").is_file()
                     else None
                 ),
+                "node_staging_diagnostics": (
+                    {
+                        "persisted_before_cleanup": True,
+                        "sha256": _sha(directory / "node-local-input-ssm-diagnostic.json"),
+                        "status": json.loads((directory / "node-local-input-ssm-diagnostic.json").read_bytes())["status"],
+                        "stderr_sanitized": json.loads((directory / "node-local-input-ssm-diagnostic.json").read_bytes())["stderr_sanitized"],
+                    }
+                    if (directory / "node-local-input-ssm-diagnostic.json").is_file()
+                    else None
+                ),
+                "pilot_workload_diagnostics": (
+                    {
+                        "persisted_before_cleanup": True,
+                        "sha256": _sha(directory / "pilot-workload-refusal-diagnostics.json"),
+                        "status": json.loads((directory / "pilot-workload-refusal-diagnostics.json").read_bytes())["status"],
+                    }
+                    if (directory / "pilot-workload-refusal-diagnostics.json").is_file()
+                    else None
+                ),
             }
         insufficient_directory = base / "local-disk-insufficient"
         reviewed, authorization_path, packet_path = _scenario_repository(
@@ -565,6 +589,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_live.py",
         ROOT / "scripts/asr_base_model_aws_read_fixtures.py",
         ROOT / "scripts/asr_base_model_proven_commands.py",
+        ROOT / "scripts/asr_base_model_node_staging.py",
+        ROOT / "scripts/asr_base_model_pilot_workload.py",
     ]
     receipt = {
         "schema_version": 2,

@@ -669,6 +669,8 @@ class ExternalCommandBoundary:
             if "wait" in command:
                 if "pod/asr-eval-inbound-control" in command:
                     return self._completed(command)
+                if self.state.injection == "pilot_job_refused":
+                    return self._completed(command, returncode=1)
                 return self._completed(command)
             if "delete" in command and "namespace" in command:
                 namespace = command[command.index("namespace") + 1]
@@ -750,6 +752,19 @@ class KubectlBoundary:
             return {"items": []}
         if args[:2] == ("get", "pods"):
             return {"items": [{"metadata": {"name": "asr-pilot-rehearsal"}, "status": {"podIP": "10.0.2.21"}}]}
+        if args[:2] == ("get", "job"):
+            return {
+                "metadata": {"name": args[2]},
+                "status": {"failed": 1, "conditions": [{"type": "Failed", "status": "True", "reason": "SyntheticWorkloadRefusal"}]},
+            }
+        if args[:2] == ("get", "pod"):
+            return {
+                "metadata": {"name": args[2]},
+                "status": {
+                    "phase": "Failed",
+                    "containerStatuses": [{"name": "offline-evaluator", "state": {"terminated": {"exitCode": 72, "reason": "Error"}}}],
+                },
+            }
         if args[:2] == ("logs", "-n"):
             return b""
         if args[:2] == ("delete", "pod/asr-eval-inbound-control"):
@@ -768,11 +783,22 @@ class SsmCommandBoundary:
         self.state.mutate()
         self.state.ssm_counter += 1
         command_id = f"command-rehearsal-{self.state.ssm_counter}"
-        if any("network-probe.json" in command and command.startswith("cat ") for command in commands):
+        if self.state.injection == "node_staging_unknown_user" and any(
+            "/usr/sbin/chroot" in command for command in commands
+        ):
+            return {
+                "command_id": command_id,
+                "status": "Failed",
+                "response_code": 1,
+                "stdout_sha256": hashlib.sha256(b"").hexdigest(),
+                "stdout": "",
+                "stderr": "sudo: unknown user #10001",
+            }
+        if any("network-probe.json" in command and "/usr/bin/cat " in command for command in commands):
             stdout = canonical_json({"status": "PASS_NETWORK_ISOLATION_PRE_TORCH", "torch_imported": False}).decode()
         else:
             stdout = ""
-        return {"command_id": command_id, "status": "Success", "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout}
+        return {"command_id": command_id, "status": "Success", "response_code": 0, "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout, "stderr": ""}
 
 
 def digest_scan_boundary(injection: str | None):

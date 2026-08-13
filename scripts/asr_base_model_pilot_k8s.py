@@ -13,23 +13,21 @@ from typing import Any
 
 import yaml
 
+from scripts.asr_base_model_pilot_workload import (
+    JOB_ACTIVE_DEADLINE_SECONDS,
+    JOB_TERMINATION_GRACE_SECONDS,
+    PILOT_ENVIRONMENT,
+    PILOT_WORKLOAD_COMMAND,
+    PILOT_WORKLOAD_SCRIPT,
+    audit_pilot_workload,
+)
+
 
 NAMESPACE = "medzen-asr-eval"
 LABELS = {
     "app.kubernetes.io/name": "asr-base-model-pilot",
     "medzen.io/classification": "offline-evaluation-only",
 }
-PILOT_WORKLOAD_COMMAND = ("/bin/sh", "-ec")
-PILOT_WORKLOAD_SCRIPT = (
-    "python -m medzen_asr_eval network-probe --binding /input/network-binding.json --receipt /output/network-probe.json && "
-    "python -c 'import pathlib,socket,time; s=socket.socket(); s.bind((\"0.0.0.0\",8080)); s.listen(1); "
-    "pathlib.Path(\"/output/inbound-listener-ready\").write_text(\"READY\\n\"); "
-    "[(time.sleep(1)) for _ in iter(int,1) if not pathlib.Path(\"/input/network-release\").exists()]; s.close()' && "
-    "python -m medzen_asr_eval pilot --rows /input/runtime-rows.json --model-root /input/models --model-binding /input/model-bindings.json "
-    "--conditioning /opt/medzen/assets/language-conditioning-v1.json --receipt-root /output/rows --aggregate-receipt /output/aggregate.json"
-)
-
-
 def _cidr(value: str) -> str:
     return str(ipaddress.ip_network(value, strict=False))
 
@@ -38,8 +36,8 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     digest = bindings["image"]["linux_amd64_digest"]
     if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
         raise ValueError("image digest is malformed")
-    if attempt not in set(range(1, 17)):
-        raise ValueError("attempt must be 1 through 16")
+    if attempt not in set(range(1, 18)):
+        raise ValueError("attempt must be 1 through 17")
     endpoint_blocks = sorted({_cidr(f"{ip}/32") for ip in endpoint_ips})
     s3_blocks = sorted({_cidr(value) for value in s3_cidrs})
     if len(endpoint_blocks) < 2 or not s3_blocks:
@@ -80,6 +78,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
             "metadata": {"name": f"asr-base-model-pilot-a{attempt}", "namespace": NAMESPACE, "labels": LABELS},
             "spec": {
                 "backoffLimit": 0,
+                "activeDeadlineSeconds": JOB_ACTIVE_DEADLINE_SECONDS,
                 "ttlSecondsAfterFinished": 600,
                 "template": {
                     "metadata": {"labels": LABELS},
@@ -87,6 +86,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                         "automountServiceAccountToken": False,
                         "hostNetwork": False,
                         "restartPolicy": "Never",
+                        "terminationGracePeriodSeconds": JOB_TERMINATION_GRACE_SECONDS,
                         "nodeSelector": {"workload": "gpu"},
                         "tolerations": [{"key": "nvidia.com/gpu", "operator": "Equal", "value": "true", "effect": "NoSchedule"}],
                         "resourceClaims": [{"name": "gpu", "resourceClaimTemplateName": "asr-eval-gpu"}],
@@ -97,6 +97,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                             "imagePullPolicy": "IfNotPresent",
                             "command": list(PILOT_WORKLOAD_COMMAND),
                             "args": [PILOT_WORKLOAD_SCRIPT],
+                            "env": list(PILOT_ENVIRONMENT),
                             "resources": {"requests": {"cpu": "2", "memory": "14Gi"}, "limits": {"cpu": "4", "memory": "20Gi"}, "claims": [{"name": "gpu"}]},
                             "securityContext": {"allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True, "capabilities": {"drop": ["ALL"]}},
                             "volumeMounts": [
@@ -141,6 +142,13 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
         raise ValueError("cross-pod isolation release gate differs")
     if job["metadata"]["name"] != f"asr-base-model-pilot-a{attempt}":
         raise ValueError("attempt job identity differs")
+    workload_audit = audit_pilot_workload()
+    if job["spec"].get("activeDeadlineSeconds") != JOB_ACTIVE_DEADLINE_SECONDS:
+        raise ValueError("pilot job active deadline differs")
+    if pod.get("terminationGracePeriodSeconds") != JOB_TERMINATION_GRACE_SECONDS:
+        raise ValueError("pilot termination grace differs")
+    if container.get("env") != list(PILOT_ENVIRONMENT):
+        raise ValueError("pilot explicit environment differs")
     workload_argv = [*container["command"], *container["args"]]
     return {
         "status": "PASS_K8S_RENDER",
@@ -151,6 +159,7 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
         "pilot_workload_argv_sha256": hashlib.sha256(
             b"\0".join(value.encode() for value in workload_argv)
         ).hexdigest(),
+        "pilot_workload_audit": workload_audit,
     }
 
 
