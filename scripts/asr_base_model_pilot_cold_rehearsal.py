@@ -236,7 +236,7 @@ def _scenario_repository(
 
 
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
-    rehearsal_commit = _committed_clean_head()
+    _committed_clean_head()
     prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
     prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
     os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"
@@ -247,6 +247,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
+    rehearsal_commit = bindings["executor_source_commit"]
     digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
     digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
     if hashlib.sha256(digest_bindings_body).hexdigest() != bindings[
@@ -372,8 +373,11 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "real_stage_implementations": len(STAGES),
         "parallel_fake_stage_implementations": 0,
         "full_pass_runs": 1,
-        "injected_failure_runs": len(SCENARIOS) - 1,
-        "injected_paths": [name for name in SCENARIOS if name != "clean_pass"],
+        "injected_failure_runs": len(SCENARIOS) - 1 + len(pure_injections["refusals"]),
+        "live_stage_injected_paths": [
+            name for name in SCENARIOS if name != "clean_pass"
+        ],
+        "pure_input_injected_paths": sorted(pure_injections["refusals"]),
         "pure_input_refusal_checks": pure_injections,
         "artifact_wrapper_contract": wrapper,
         "bindings_source": {
