@@ -71,7 +71,7 @@ def test_shared_boundary_contract_is_bound_and_exhaustively_audited() -> None:
         SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS
     )
     result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == 19
+    assert result["module_count"] == 20
     audit = audit_bounded_helper_calls(ROOT)
     assert audit["status"] == "PASS_ALL_BOUNDED_HELPER_CALLS"
     assert audit["call_site_count"] == 43
@@ -111,7 +111,7 @@ def test_receipt_last_cold_rehearsal_embeds_the_complete_contract_audit() -> Non
     receipt = json.loads(COLD.read_bytes())
     assert receipt["status"] == "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS"
     assert receipt["bindings_source"]["sha256"] == sha(BINDINGS)
-    assert receipt["executor_module_integrity"]["module_count"] == 19
+    assert receipt["executor_module_integrity"]["module_count"] == 20
     assert receipt["bounded_helper_contract_audit"]["call_site_count"] == 43
     assert receipt["bounded_helper_contract_audit"]["fake_may_bypass_validation"] is False
 

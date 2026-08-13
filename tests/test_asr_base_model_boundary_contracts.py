@@ -94,6 +94,26 @@ def test_injected_boundaries_are_called_only_from_validating_wrappers() -> None:
     )
 
 
+def test_historical_dra_helper_remains_byte_compatible_and_is_executor_bound() -> None:
+    from scripts.asr_base_model_pilot_integrity import (
+        SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS,
+    )
+
+    assert "scripts/run_b6a_003c_c_proof.py" in SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS
+    assert (ROOT / "scripts/run_b6a_003c_c_proof.py").read_bytes() == (
+        __import__("subprocess").run(
+            [
+                "git",
+                "show",
+                "d0d2afc0f8a137b5819d1c84d3e9cdc48ec76676:scripts/run_b6a_003c_c_proof.py",
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+    )
+
+
 def test_every_boundary_rejects_below_and_above_its_integer_range() -> None:
     for boundary, parameters in BOUNDARY_CONTRACTS.items():
         baseline = {name: bound.default for name, bound in parameters.items()}

@@ -80,7 +80,8 @@ The gate remeasures immediately before live execution; this receipt is not a byp
 
 ## Rehearsal and execution completeness
 
-All 19 executor modules, including the new shared boundary source, are bound in
+All 20 executor modules, including the new shared boundary source and the
+byte-preserved historical DRA helper, are bound in
 `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json`, SHA-256
 `364d85d6f468a4ecbbb2a616241eb18a17e49b5b0fa00f15500ce46c2d0218a4`.
 
@@ -91,7 +92,7 @@ It records:
 
 - two full PASS paths, including delayed GPU registration;
 - nine injected refusal scenarios with status-keyed cleanup and zero state;
-- 19/19 executor hashes;
+- 20/20 executor hashes;
 - 43/43 bounded helper calls inside the shared contract;
 - DRA live and rehearsal timeout = 300 seconds;
 - no fake boundary more permissive than its live wrapper;

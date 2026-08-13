@@ -107,7 +107,7 @@ def test_wait_requires_three_stable_reads_after_transient_missing_slice(tmp_path
     kubeconfig = tmp_path / "kubeconfig"
     kubeconfig.write_text("test")
     result = wait_for_stable_dra(
-        kubeconfig=kubeconfig, timeout_seconds=2, poll_seconds=1,
+        kubeconfig=kubeconfig, timeout_seconds=1, poll_seconds=0,
         reader=reader, sleeper=lambda _: None,
     )
     assert result["status"] == "DRA_STABLE_READY"

@@ -51,6 +51,7 @@ LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS = (
 SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS = (
     *LOCAL_RESOURCE_GATED_EXECUTOR_MODULE_PATHS,
     "scripts/asr_base_model_boundary_contracts.py",
+    "scripts/run_b6a_003c_c_proof.py",
 )
 
 
