@@ -66,6 +66,40 @@ SCENARIOS = {
 }
 
 
+def _resource_snapshot(bindings: dict[str, Any], *, sufficient: bool) -> dict[str, Any]:
+    policy = bindings["local_resource_policy"]
+    required = max(
+        policy["disk"]["operating_floor_bytes"],
+        policy["disk"]["exact_archive_bytes"]
+        + policy["disk"]["scanner_scratch_reserve_bytes"]
+        + policy["disk"]["evidence_reserve_bytes"]
+        + policy["disk"]["safety_margin_bytes"],
+    )
+    return {
+        "schema_version": 1,
+        "disk": {
+            "measured_path": "<external-workdir-parent>",
+            "total_bytes": required * 4,
+            "available_bytes": required + 1024 if sufficient else required - 1,
+        },
+        "memory": {"physical_bytes": policy["minimum_memory_bytes"]},
+        "cpu": {"logical_count": policy["minimum_logical_cpus"]},
+        "process_limits": {
+            "open_files": {"soft": policy["minimum_open_files_soft"], "hard": policy["minimum_open_files_soft"]},
+            "processes": {"soft": policy["minimum_processes_soft"], "hard": policy["minimum_processes_soft"]},
+        },
+        "commands": {name: f"/synthetic/bin/{name}" for name in ("aws", "docker", "git", "kubectl")},
+        "environment": {
+            "home_present": True,
+            "workdir_parent_writable": True,
+            "scout_user_present": True,
+            "scout_password_present": True,
+            "credential_values_recorded": False,
+        },
+        "docker": {"daemon_reachable": True, "server_version_present": True},
+    }
+
+
 def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -267,7 +301,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -363,6 +397,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 authorization_sha256=authorization_hash,
                 authorization_path=authorization_path,
                 packet_path=packet_path,
+                local_resource_snapshot=_resource_snapshot(
+                    scenario_bindings, sufficient=True
+                ),
             )
             result = execute_attempt(operations, context)
             if result["outcome"] != expected or not boundary.zero_state():
@@ -372,6 +409,12 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 json.loads((directory / f"receipts/{result['failure_stage']}.json").read_bytes())
                 if result["failure_stage"] is not None
                 else None
+            )
+            image_receipt = directory / "receipts/image_publication_and_scan.json"
+            image_payload = (
+                json.loads(image_receipt.read_bytes()).get("payload", {})
+                if image_receipt.is_file()
+                else {}
             )
             scenarios[name] = {
                 "outcome": result["outcome"],
@@ -400,7 +443,54 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     "reads": boundary.gpu_node_reads,
                     "observation_sequence": boundary.gpu_node_observation_sequence,
                 },
+                "scan_representation": image_payload.get("security_gate", {}).get(
+                    "reconstruction"
+                ),
             }
+        insufficient_directory = base / "local-disk-insufficient"
+        reviewed, authorization_path, packet_path = _scenario_repository(
+            base / "local-disk-insufficient-repo",
+            bindings_path=bindings_path,
+            bindings_body=bindings_body,
+            packet_relative=bindings["successor_packet"]["path"],
+            authorization_relative=bindings["authorization"]["path"],
+            dry_relative=bindings["authorization"]["deadline_dry_run_path"],
+        )
+        scenario_bindings = json.loads(json.dumps(bindings))
+        operations, boundary = build_rehearsal_operations(
+            scenario_bindings, root=reviewed
+        )
+        context = build_attempt_context(
+            root=reviewed,
+            workdir=insufficient_directory,
+            attempt=attempt,
+            bindings=scenario_bindings,
+            packet_sha256=hashlib.sha256(packet_path.read_bytes()).hexdigest(),
+            authorization_sha256=hashlib.sha256(authorization_path.read_bytes()).hexdigest(),
+            authorization_path=authorization_path,
+            packet_path=packet_path,
+            local_resource_snapshot=_resource_snapshot(
+                scenario_bindings, sufficient=False
+            ),
+        )
+        try:
+            execute_attempt(operations, context)
+        except OperationRefusal as exc:
+            if exc.reason_code != "LOCAL_DISK_CAPACITY_INSUFFICIENT":
+                raise
+            if insufficient_directory.exists() or boundary.aws_calls or boundary.kubectl_calls:
+                raise RuntimeError("disk prerequisite refusal had runtime side effects")
+            prerequisite_refusal = {
+                "status": "PASS_PRE_ENVELOPE_RESOURCE_REFUSAL_REHEARSAL",
+                "reason_code": exc.reason_code,
+                "attempt_envelope_created": False,
+                "attempt_number_consumed": False,
+                "workdir_created": False,
+                "aws_boundary_calls": boundary.aws_calls,
+                "kubectl_boundary_calls": boundary.kubectl_calls,
+            }
+        else:
+            raise RuntimeError("insufficient local disk passed the pre-envelope gate")
     pure_injections = _pure_prestage_injections(
         proof, bindings["pilot_bundle"]["sha256"]
     )
@@ -432,6 +522,16 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ],
         "pure_input_injected_paths": sorted(pure_injections["refusals"]),
         "pure_input_refusal_checks": pure_injections,
+        "pre_envelope_resource_gate": {
+            "sufficient_capacity": "pre_envelope_local_resources_passed"
+            in scenarios["clean_pass"]["filesystem_side_effect_order"],
+            "insufficient_capacity": prerequisite_refusal,
+            "gate_runs_before_workdir_creation": True,
+            "gate_runs_before_attempt_envelope": True,
+        },
+        "single_representation_security_scan": scenarios["clean_pass"][
+            "scan_representation"
+        ],
         "artifact_wrapper_contract": wrapper,
         "bindings_source": {
             "path": str(bindings_path.relative_to(ROOT)),
@@ -471,7 +571,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "parallel_stage_class": None,
             "fake_boundary": ["AWS client calls replaying hash-bound real response shapes", "kubectl calls", "external Docker Scout response"],
             "aws_response_shape_policy": "EVERY_EXECUTOR_AWS_READ_HAS_COMMITTED_REAL_RESPONSE_FIXTURE_NO_INVENTED_FIELDS",
-            "real_local_operations": ["stage composition", "state snapshots", "receipt ordering", "input-freeze audit", "artifact wrapper", "cleanup composition"],
+            "real_local_operations": ["pre-envelope resource validation", "stage composition", "state snapshots", "receipt ordering", "input-freeze audit", "artifact wrapper", "cleanup composition"],
             "filesystem_side_effects_faked": False,
         },
         "kubernetes_workload": workload_result,
@@ -498,7 +598,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json",
     )
     args = parser.parse_args()
     try:

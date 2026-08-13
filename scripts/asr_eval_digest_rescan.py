@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import re
 import subprocess
+import tarfile
 import urllib.request
 from pathlib import Path
 from typing import Any, Callable
@@ -129,6 +131,211 @@ def _download_blob(
     if measured_size != size or measured.hexdigest() != _hex(digest):
         raise DigestRescanRefusal("ECR_RESCAN_BLOB_BYTES_DIFFER", f"downloaded ECR bytes differ: {digest}")
     return path
+
+
+class _VerifiedStream:
+    """Hash and count a descriptor while tarfile consumes it once."""
+
+    def __init__(self, stream: Any, digest: str, size: int):
+        self.stream = stream
+        self.expected_digest = _hex(digest)
+        self.expected_size = size
+        self.measured = hashlib.sha256()
+        self.measured_size = 0
+
+    def read(self, size: int = -1) -> bytes:
+        block = self.stream.read(size)
+        if block:
+            self.measured.update(block)
+            self.measured_size += len(block)
+        return block
+
+    def verify(self, digest: str) -> None:
+        if (
+            self.measured_size != self.expected_size
+            or self.measured.hexdigest() != self.expected_digest
+        ):
+            raise DigestRescanRefusal(
+                "ECR_RESCAN_BLOB_BYTES_DIFFER",
+                f"streamed ECR bytes differ: {digest}",
+            )
+
+
+def _default_opener(url: str) -> Any:
+    return urllib.request.urlopen(url, timeout=900)
+
+
+def _tar_info(name: str, size: int) -> tarfile.TarInfo:
+    info = tarfile.TarInfo(name=name)
+    info.size = size
+    info.mode = 0o644
+    info.uid = 0
+    info.gid = 0
+    info.mtime = 0
+    return info
+
+
+def _add_bytes(archive: tarfile.TarFile, name: str, raw: bytes) -> None:
+    archive.addfile(_tar_info(name, len(raw)), io.BytesIO(raw))
+
+
+def create_verified_docker_archive_from_ecr(
+    ecr: Any,
+    repository: str,
+    image: dict[str, Any],
+    archive_path: Path,
+    *,
+    opener: Callable[[str], Any] = _default_opener,
+) -> dict[str, Any]:
+    """Stream one byte-verified ECR child directly into one Docker archive.
+
+    No OCI layout is materialized. At all times the archive is the only full
+    local image representation; each remote descriptor is consumed once and
+    hash-verified as tarfile writes it.
+    """
+    if archive_path.exists():
+        raise DigestRescanRefusal(
+            "SCOUT_ARCHIVE_ALREADY_EXISTS", "exact-child archive path already exists"
+        )
+    tagged = ecr.batch_get_image(
+        repositoryName=repository,
+        imageIds=[{"imageTag": image["tag"]}],
+        acceptedMediaTypes=[OCI_INDEX],
+    )
+    tagged_images = tagged.get("images", [])
+    if (
+        tagged.get("failures")
+        or len(tagged_images) != 1
+        or tagged_images[0].get("imageId", {}).get("imageDigest")
+        != image["oci_index_digest"]
+    ):
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_TAG_BINDING_DIFFERS",
+            "immutable ECR tag does not select the bound index",
+        )
+    index_raw, index_media = _manifest_bytes(
+        ecr.batch_get_image(
+            repositoryName=repository,
+            imageIds=[{"imageDigest": image["oci_index_digest"]}],
+            acceptedMediaTypes=[OCI_INDEX],
+        ),
+        image["oci_index_digest"],
+    )
+    if index_media != OCI_INDEX:
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_INDEX_MEDIA_TYPE_DIFFERS", "ECR index media type differs"
+        )
+    source_index = json.loads(index_raw)
+    children = source_index.get("manifests", [])
+    linux = [item for item in children if item.get("digest") == image["linux_amd64_digest"]]
+    attestation = [item for item in children if item.get("digest") == image["attestation_digest"]]
+    if len(linux) != 1 or linux[0].get("platform") != {"architecture": "amd64", "os": "linux"}:
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_CHILD_BINDING_DIFFERS", "bound linux/amd64 child is absent or ambiguous"
+        )
+    if len(attestation) != 1:
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_ATTESTATION_BINDING_DIFFERS", "bound attestation is absent or ambiguous"
+        )
+    attestation_raw, attestation_media = _manifest_bytes(
+        ecr.batch_get_image(
+            repositoryName=repository,
+            imageIds=[{"imageDigest": image["attestation_digest"]}],
+            acceptedMediaTypes=[OCI_MANIFEST],
+        ),
+        image["attestation_digest"],
+    )
+    if attestation_media != OCI_MANIFEST or len(attestation_raw) != attestation[0].get("size"):
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_ATTESTATION_BYTES_DIFFER", "bound attestation bytes or media type differ"
+        )
+    child_raw, child_media = _manifest_bytes(
+        ecr.batch_get_image(
+            repositoryName=repository,
+            imageIds=[{"imageDigest": image["linux_amd64_digest"]}],
+            acceptedMediaTypes=[OCI_MANIFEST],
+        ),
+        image["linux_amd64_digest"],
+    )
+    if child_media != OCI_MANIFEST or len(child_raw) != linux[0].get("size"):
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_CHILD_BYTES_DIFFER", "bound child bytes or media type differ"
+        )
+    child = json.loads(child_raw)
+    config = child.get("config")
+    layers = child.get("layers")
+    if not isinstance(config, dict) or not isinstance(layers, list) or any(
+        not isinstance(item, dict) for item in layers
+    ):
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_DESCRIPTOR_MALFORMED", "child config or layers are absent"
+        )
+    if config.get("digest") != image["config_digest"]:
+        raise DigestRescanRefusal(
+            "ECR_RESCAN_CONFIG_BINDING_DIFFERS", "bound config digest differs"
+        )
+    descriptors = [config, *layers]
+    root_index = json.dumps(
+        {"schemaVersion": 2, "mediaType": OCI_INDEX, "manifests": [linux[0]]},
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    docker_manifest = json.dumps(
+        [{
+            "Config": f"blobs/sha256/{_hex(image['config_digest'])}",
+            "RepoTags": [image["local_tag"]],
+            "Layers": [f"blobs/sha256/{_hex(item['digest'])}" for item in layers],
+        }],
+        separators=(",", ":"),
+    ).encode()
+    downloaded: list[dict[str, Any]] = []
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with archive_path.open("xb") as raw_archive, tarfile.open(
+            fileobj=raw_archive, mode="w|", format=tarfile.PAX_FORMAT
+        ) as archive:
+            _add_bytes(archive, "oci-layout", b'{"imageLayoutVersion":"1.0.0"}\n')
+            _add_bytes(archive, "index.json", root_index)
+            _add_bytes(archive, "manifest.json", docker_manifest)
+            _add_bytes(archive, f"blobs/sha256/{_hex(image['linux_amd64_digest'])}", child_raw)
+            for descriptor in descriptors:
+                digest, size = _descriptor(descriptor)
+                response = ecr.get_download_url_for_layer(
+                    repositoryName=repository, layerDigest=digest
+                )
+                url = response.get("downloadUrl")
+                if not isinstance(url, str) or not url:
+                    raise DigestRescanRefusal(
+                        "ECR_RESCAN_DOWNLOAD_URL_ABSENT", "ECR layer download URL is absent"
+                    )
+                with opener(url) as source:
+                    verified = _VerifiedStream(source, digest, size)
+                    archive.addfile(
+                        _tar_info(f"blobs/sha256/{_hex(digest)}", size), verified
+                    )
+                    # Tar consumes exactly the descriptor size. Read once more
+                    # so a server returning an unexpected trailing payload also
+                    # fails the byte-identity gate.
+                    verified.read(1)
+                    verified.verify(digest)
+                downloaded.append({"digest": digest, "bytes": size})
+    except Exception:
+        archive_path.unlink(missing_ok=True)
+        raise
+    return {
+        "status": "PASS_SINGLE_REPRESENTATION_EXACT_DOCKER_ARCHIVE",
+        "source_index_digest": image["oci_index_digest"],
+        "child_digest": image["linux_amd64_digest"],
+        "config_digest": image["config_digest"],
+        "attestation_digest_bound_in_source_index": image["attestation_digest"],
+        "attestation_manifest_byte_verified": True,
+        "streamed_descriptor_count": len(downloaded),
+        "streamed_descriptor_bytes": sum(item["bytes"] for item in downloaded),
+        "all_streamed_descriptors_byte_verified": True,
+        "archive_bytes": archive_path.stat().st_size,
+        "simultaneous_full_image_representations": 1,
+        "oci_layout_materialized": False,
+    }
 
 
 def reconstruct_exact_child(
@@ -473,21 +680,62 @@ def scan_exact_ecr_child(
     workdir.mkdir(parents=True, exist_ok=True)
     if any(workdir.iterdir()):
         raise DigestRescanRefusal("ECR_RESCAN_WORKDIR_NOT_EMPTY", "digest-rescan work directory is not empty")
-    layout = workdir / "image.oci"
-    reconstruction = reconstruct_exact_child(ecr, repository, image, layout, downloader=downloader)
+    archive = workdir / "exact-ecr-child.docker.tar"
+
+    # Compatibility adapter for tests and callers that supply the historical
+    # URL-to-path downloader. Live execution uses the streaming opener and
+    # never creates a second full image representation.
+    if downloader is _default_download:
+        opener = _default_opener
+    else:
+        class _DownloadedBytes:
+            def __init__(self, raw: bytes):
+                self._stream = io.BytesIO(raw)
+
+            def __enter__(self):
+                return self._stream
+
+            def __exit__(self, *_: Any) -> None:
+                self._stream.close()
+
+        def opener(url: str) -> Any:
+            import tempfile
+
+            with tempfile.TemporaryDirectory(prefix="descriptor-") as temporary:
+                path = Path(temporary) / "descriptor"
+                downloader(url, path)
+                return _DownloadedBytes(path.read_bytes())
+
+    reconstruction = create_verified_docker_archive_from_ecr(
+        ecr,
+        repository,
+        image,
+        archive,
+        opener=opener,
+    )
     basic = validate_basic_scan(
         ecr.describe_image_scan_findings(
             repositoryName=repository,
             imageId={"imageDigest": image["linux_amd64_digest"]},
         )
     )
-    scout = run_scout(
-        layout,
+    scout = scan_archive_with_scout(
+        archive,
         workdir / "docker-scout.sarif.json",
-        image,
         runner=scout_runner,
         diagnostics_path=workdir / "docker-scout-diagnostic.json",
     )
+    scout.update({
+        "artifact_mode": "SINGLE_STREAMED_DOCKER_ARCHIVE_OF_DIGEST_VERIFIED_ECR_CHILD",
+        "docker_archive": {
+            "status": reconstruction["status"],
+            "archive_bytes": reconstruction["archive_bytes"],
+            "child_digest": reconstruction["child_digest"],
+            "config_digest": reconstruction["config_digest"],
+            "all_payload_objects_stream_verified_from_ecr": True,
+            "simultaneous_full_image_representations": 1,
+        },
+    })
     return {
         "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
         "prerequisites": prerequisites,

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import subprocess
 import sys
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -19,6 +21,7 @@ from scripts.asr_eval_digest_rescan import (
     OCI_INDEX,
     OCI_MANIFEST,
     reconstruct_exact_child,
+    create_verified_docker_archive_from_ecr,
     create_docker_archive,
     validate_basic_scan,
     validate_scout_sarif,
@@ -99,6 +102,19 @@ class FakeEcr:
     def download(self, url: str, destination: Path) -> None:
         destination.write_bytes(self.urls[url.removeprefix("memory://")])
 
+    def open(self, url: str):
+        class Source:
+            def __init__(self, raw: bytes):
+                self.stream = io.BytesIO(raw)
+
+            def __enter__(self):
+                return self.stream
+
+            def __exit__(self, *_):
+                self.stream.close()
+
+        return Source(self.urls[url.removeprefix("memory://")])
+
 
 def scout_sarif(tuples=EXPECTED_HIGH_TUPLES) -> dict:
     rules = []
@@ -139,6 +155,56 @@ def test_verified_ecr_child_becomes_a_scout_readable_docker_archive(tmp_path: Pa
     assert result["child_digest"] == image["linux_amd64_digest"]
     assert result["all_payload_objects_from_verified_ecr_layout"] is True
     assert not (layout / "manifest.json").exists()
+
+
+def test_ecr_child_streams_into_one_verified_archive_without_layout(tmp_path: Path) -> None:
+    ecr = FakeEcr()
+    image = {**ecr.image, "local_tag": "medzen-asr-eval-runtime:pilot-exact"}
+    archive = tmp_path / "exact.tar"
+    result = create_verified_docker_archive_from_ecr(
+        ecr,
+        "medzen-asr-eval-runtime",
+        image,
+        archive,
+        opener=ecr.open,
+    )
+    assert result["status"] == "PASS_SINGLE_REPRESENTATION_EXACT_DOCKER_ARCHIVE"
+    assert result["simultaneous_full_image_representations"] == 1
+    assert result["oci_layout_materialized"] is False
+    assert not (tmp_path / "image.oci").exists()
+    with tarfile.open(archive) as value:
+        names = set(value.getnames())
+    assert "manifest.json" in names
+    assert f"blobs/sha256/{ecr.config['digest'].removeprefix('sha256:')}" in names
+    assert f"blobs/sha256/{ecr.layer['digest'].removeprefix('sha256:')}" in names
+
+
+def test_streamed_archive_refuses_and_deletes_partial_on_corrupt_layer(tmp_path: Path) -> None:
+    ecr = FakeEcr()
+    image = {**ecr.image, "local_tag": "medzen-asr-eval-runtime:pilot-exact"}
+
+    def corrupt(url: str):
+        class Source:
+            def __enter__(self):
+                digest = url.removeprefix("memory://")
+                raw = ecr.urls[digest]
+                if digest == ecr.layer["digest"]:
+                    raw = bytes([raw[0] ^ 0xFF]) + raw[1:]
+                self.stream = io.BytesIO(raw)
+                return self.stream
+
+            def __exit__(self, *_):
+                self.stream.close()
+
+        return Source()
+
+    archive = tmp_path / "exact.tar"
+    with pytest.raises(DigestRescanRefusal) as captured:
+        create_verified_docker_archive_from_ecr(
+            ecr, "medzen-asr-eval-runtime", image, archive, opener=corrupt
+        )
+    assert captured.value.reason_code == "ECR_RESCAN_BLOB_BYTES_DIFFER"
+    assert not archive.exists()
 
 
 def test_docker_archive_refuses_a_corrupt_verified_layout_payload(tmp_path: Path) -> None:

@@ -68,6 +68,8 @@ class AttemptContext:
     dry_run_path: Path | None = None
     bindings_sha256: str | None = None
     reviewed_worktree_root: Path | None = None
+    local_resource_snapshot: dict[str, Any] | None = None
+    local_resource_validation: dict[str, Any] | None = None
     filesystem_events: list[str] = field(default_factory=list)
 
 
@@ -97,6 +99,7 @@ def build_attempt_context(
     packet_path: Path | None = None,
     dry_run_path: Path | None = None,
     bindings_sha256: str | None = None,
+    local_resource_snapshot: dict[str, Any] | None = None,
 ) -> AttemptContext:
     """Canonical, side-effect-free bootstrap shared by live and rehearsal."""
     external = validate_external_workdir(root, workdir)
@@ -114,6 +117,7 @@ def build_attempt_context(
         dry_run_path=dry_run_path,
         bindings_sha256=bindings_sha256,
         reviewed_worktree_root=root.resolve(),
+        local_resource_snapshot=local_resource_snapshot,
     )
 
 
@@ -320,6 +324,28 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
     if context.reviewed_worktree_root is not None:
         validate_clean_reviewed_worktree(reviewed_root)
         context.filesystem_events.append("reviewed_worktree_clean_before_side_effects")
+        if context.attempt >= 13:
+            try:
+                from scripts.asr_base_model_local_resources import (
+                    LocalResourceRefusal,
+                    collect_local_resource_snapshot,
+                    validate_local_resource_snapshot,
+                )
+
+                policy = context.bindings.get("local_resource_policy")
+                if not isinstance(policy, dict):
+                    raise OperationRefusal(
+                        "LOCAL_RESOURCE_POLICY_ABSENT",
+                        "a bound local resource policy is required before an attempt envelope",
+                    )
+                snapshot = context.local_resource_snapshot or collect_local_resource_snapshot(
+                    context.workdir
+                )
+                validation = validate_local_resource_snapshot(policy, snapshot)
+                context.filesystem_events.append("pre_envelope_local_resources_passed")
+                context.local_resource_validation = validation
+            except LocalResourceRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
         context.workdir.mkdir(parents=True, exist_ok=False)
         context.filesystem_events.append("external_workdir_created")
     prior_journal = configure_external_tool_journal(
@@ -332,8 +358,8 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in set(range(1, 13)) or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 12 at 10800 seconds are permitted")
+    if context.attempt not in set(range(1, 14)) or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 13 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(
@@ -444,6 +470,7 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         "attempt": context.attempt,
         "attempt_envelope_sha256": envelope["sha256"],
         "failure_stage": failure_stage,
+        "pre_envelope_local_resources": context.local_resource_validation,
         "stage_receipts": stage_hashes,
         "filesystem_side_effect_order": [
             *context.filesystem_events,

@@ -743,9 +743,22 @@ def digest_scan_boundary(injection: str | None):
         (workdir / "docker-scout.sarif.json").write_bytes(sarif.read_bytes())
         return {
             "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
-            "reconstruction": {"status": "PASS_EXACT_ECR_CHILD_RECONSTRUCTION", "child_digest": image["linux_amd64_digest"], "all_downloaded_descriptors_byte_verified": True},
+            "reconstruction": {
+                "status": "PASS_SINGLE_REPRESENTATION_EXACT_DOCKER_ARCHIVE",
+                "child_digest": image["linux_amd64_digest"],
+                "all_streamed_descriptors_byte_verified": True,
+                "simultaneous_full_image_representations": 1,
+                "oci_layout_materialized": False,
+            },
             "ecr_basic": {"status": "PASS_ECR_BASIC_OS_GATE", "coverage": "OPERATING_SYSTEM_PACKAGES_ONLY", "critical": 0, "high": 0},
-            "docker_scout": {"status": "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE", "scanner_version": "1.18.3", "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23", "critical": 0, "high": 4, "scanned_oci_layout": str(workdir / "image.oci")},
+            "docker_scout": {
+                "status": "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE",
+                "scanner_version": "1.18.3",
+                "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+                "critical": 0,
+                "high": 4,
+                "artifact_mode": "SINGLE_STREAMED_DOCKER_ARCHIVE_OF_DIGEST_VERIFIED_ECR_CHILD",
+            },
         }
 
     return scan

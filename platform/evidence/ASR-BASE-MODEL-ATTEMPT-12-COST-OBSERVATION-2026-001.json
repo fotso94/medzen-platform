@@ -1,0 +1,39 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_COST_OBSERVATION",
+  "id": "ASR-BASE-MODEL-ATTEMPT-12-COST-OBSERVATION-2026-001",
+  "schema_version": 1,
+  "status": "AWS_COST_EXPLORER_INGESTION_PENDING_NO_GPU_STARTED",
+  "recorded_utc": "2026-08-13T15:05:00Z",
+  "currency": "USD",
+  "attempt": 12,
+  "attempt_evidence": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002K-ATTEMPT-12-LOCAL-DISK-REFUSAL.json",
+    "sha256": "1ab4dfea19feb4924b9171d137d352d439c174db99d53d54bf958c2c3cb9dd6c",
+    "gpu_started": false,
+    "gpu_seconds": 0,
+    "temporary_endpoints_created": 0,
+    "cleanup_zero_state": true
+  },
+  "cost_explorer_query": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cost_explorer_region": "us-east-1",
+    "workload_region": "eu-central-1",
+    "time_period": {
+      "start_inclusive": "2026-08-13",
+      "end_exclusive": "2026-08-14"
+    },
+    "granularity": "DAILY",
+    "service": "Amazon Elastic Compute Cloud - Compute",
+    "record_types": ["Usage", "Credit"],
+    "estimated": true,
+    "g6_xlarge_groups": [],
+    "interpretation": "No g6.xlarge usage row is present. This is consistent with the live receipts showing zero GPU start, but the current day remains estimated and shared-account incidental API/transfer charges cannot yet be attributed exactly."
+  },
+  "controls": {
+    "aws_mutations": 0,
+    "historical_cost_records_modified": false,
+    "credits_used_to_expand_headroom": false,
+    "zero_total_attempt_cost_claimed": false,
+    "successor_registry_uses_conservative_full_ceiling": true
+  }
+}

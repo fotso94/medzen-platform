@@ -83,7 +83,7 @@ def qualify(
             bindings["image"],
             Path(temporary) / "scan",
         )
-        sarif = Path(result["docker_scout"]["scanned_oci_layout"]).parent / "docker-scout.sarif.json"
+        sarif = Path(temporary) / "scan/docker-scout.sarif.json"
         sarif_body = sarif.read_bytes()
         _write_once(sarif_output, sarif_body)
     after = ecr.get_registry_scanning_configuration().get("scanningConfiguration", {})
@@ -92,7 +92,6 @@ def qualify(
             "QUALIFICATION_REGISTRY_CONFIGURATION_DRIFT",
             "registry scanning configuration changed during read-only qualification",
         )
-    result["docker_scout"].pop("scanned_oci_layout", None)
     result["docker_scout"]["sarif_path"] = str(sarif_output.relative_to(root))
     result["docker_scout"]["sarif_sha256"] = hashlib.sha256(sarif_body).hexdigest()
     receipt = {
