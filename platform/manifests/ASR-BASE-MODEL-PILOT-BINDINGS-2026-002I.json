@@ -99,7 +99,7 @@
     "scripts/asr_eval_scout_preflight.py": "7d2e97df6d4135b2d997309e6eba3fd04a0661fe8539a976237e11ad4be78b0e",
     "scripts/asr_eval_oci_publication.py": "e686f1b0db781af418d5403a8857780f5fd25998d8d2af8e4239f648cb190749",
     "scripts/asr_base_model_pilot_fake.py": "6529149b31c06d6931644fe53505376c9350cb8474d30ad868cc53038bde0a93",
-    "scripts/asr_base_model_pilot_cold_rehearsal.py": "407b2dee2e75e658d13cfee237aa9c7409d3ba6aad9316cdd7e62095bbcaf3a5"
+    "scripts/asr_base_model_pilot_cold_rehearsal.py": "99b85f1647aa673953705816bc6d61fea93cb64b6ce13eb4ef6342b5801f894d"
   },
   "executor_integrity_policy": {
     "all_module_hashes_required_on_every_attempt": true,
