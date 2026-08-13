@@ -80,6 +80,9 @@ never-ready refusal, isolation refusal, digest and finding refusals, deadline,
 cleanup and prestage refusals. The receipt SHA-256 is populated only after the
 packet, bindings and executable source are final.
 
+- final bindings SHA-256:
+  `b529630f13fee9595dcfbbb8ff036f5a960fa9ef078204cdf643e1c298552b87`.
+
 ## Host capacity
 
 The standing 40-GiB pre-envelope disk rule remains unchanged. Before cleanup,
