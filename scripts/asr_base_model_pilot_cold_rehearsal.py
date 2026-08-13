@@ -130,7 +130,25 @@ def _normalized_receipt_chain(paths: list[Path], workdir: Path) -> str:
     return measured.hexdigest()
 
 
-def _committed_clean_head() -> str:
+def _committed_clean_head(*, output: Path | None = None) -> str:
+    """Allow only the committed output receipt to be absent while replacing it."""
+    if output is not None:
+        relative = output.resolve().relative_to(ROOT.resolve())
+        status_lines = subprocess.run(
+            ["git", "status", "--porcelain=v1"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.splitlines()
+        if status_lines == [f" D {relative}"]:
+            return subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
     return validate_clean_reviewed_worktree(ROOT)
 
 
@@ -301,7 +319,7 @@ def _scenario_repository(
 
 
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
-    _committed_clean_head()
+    _committed_clean_head(output=output)
     prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
     prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
     os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"

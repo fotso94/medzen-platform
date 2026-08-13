@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -101,7 +102,7 @@ def test_historical_dra_helper_remains_byte_compatible_and_is_executor_bound() -
 
     assert "scripts/run_b6a_003c_c_proof.py" in SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS
     assert (ROOT / "scripts/run_b6a_003c_c_proof.py").read_bytes() == (
-        __import__("subprocess").run(
+        subprocess.run(
             [
                 "git",
                 "show",
