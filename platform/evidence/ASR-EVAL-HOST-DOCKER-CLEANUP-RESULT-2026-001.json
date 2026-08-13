@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-001",
+  "executed_at_utc": "2026-08-13T14:53:00Z/2026-08-13T14:54:48Z",
+  "status": "PASS_TARGET_MET_KEEP_LIST_INTACT",
+  "authorization_boundary": {
+    "keep_list_record": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-001.json",
+    "keep_list_record_sha256": "7782ec57fdbe0a2135ca435bff8b323a8559f77bdd939248f30d1945a3834284",
+    "pre_deletion_commit": "b89ae9f",
+    "deletion_started_only_after_commit": true
+  },
+  "filesystem_measurement": {
+    "mount": "/System/Volumes/Data",
+    "before_available_kib": 14000904,
+    "before_available_bytes": 14336925696,
+    "before_available_gib": 13.35,
+    "after_available_kib": 46870136,
+    "after_available_bytes": 47995019264,
+    "after_available_gib": 44.7,
+    "increase_bytes": 33658093568,
+    "increase_gib": 31.35,
+    "minimum_target_bytes": 42949672960,
+    "minimum_target_gib": 40,
+    "target_met": true
+  },
+  "deleted": {
+    "superseded_eval_images": [
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-bd8e14c",
+        "image_id": "sha256:7080c0015db46141faeffcbd0363728ce6ebc75d2b0cce1a376346cd4552ad8d"
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-2d109ea",
+        "image_id": "sha256:df56d420e5e8e2a75ffd29551321e489648889c90e8fd0b1c37776f650d12691"
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-e000ccf",
+        "image_id": "sha256:694690cca82882f40bd9baf3442e715653772f271b206125292c655fbc1db14c"
+      }
+    ],
+    "stopped_containers": [
+      {
+        "container_id": "bad4b05a25df4634874af1dc6106565d83c6b8260ff5bbc94acc5c19230b470b",
+        "name": "freqtrade",
+        "prior_image": "freqtradeorg/freqtrade:stable"
+      }
+    ],
+    "build_cache": {
+      "deleted_record_count": 248,
+      "deleted_id_manifest": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-BUILD-CACHE-BEFORE-2026-001.txt",
+      "deleted_id_manifest_sha256": "cf25a7e76b77a3107e6c4bad3d648205e3dd2476b5e3339701fc59099a05492e",
+      "docker_reported_total_before": "38.91GB",
+      "docker_reported_reclaimable_before": "12.86GB",
+      "docker_reported_total_after": "0B",
+      "docker_reported_reclaimable_after": "0B"
+    },
+    "dangling_images_discovered_after_cache_prune": [
+      "sha256:8a301832f45c4f93340cadfc43449d282a6a824dbf6df1a4081a6cf9039ac06f",
+      "sha256:8dc6c4008d9c6a22387752be6f1a8df875e4f3d9bab934346a08664923917c7e",
+      "sha256:9f969c9718ad50c7141c2d58383cc1bb4e0134bbf5a216c095f82d7e187d7152",
+      "sha256:54c1ce643a8a7d9c9435cfe0beffeea9273f5a7857a4e22212a3783d3f72bcc3",
+      "sha256:adf4e306805c42176eedf794c682b74baf826eabe47038cb771ab541e9ee76d4",
+      "sha256:ac00c85c450cab65ebe41e3aafd01209a591d06f2fb67c00cb197752f8e3a3a6",
+      "sha256:34372bb228d6504435af9b8020773b69294e64c16f95856e672957bd292a18a8",
+      "sha256:3e7bc0f03349f2f9ab56ca41328debd7e08ff7786c9f6b8b3b4562f1765426f9",
+      "sha256:5561d7d5e3a5b85a3d0e87d245a760c632058645b98d33ec774c2cfcd01298a9",
+      "sha256:e2f00f74c0b5b89818c39f7d123764dfd5f17a6bbc8794dc691a37c66b0f1346",
+      "sha256:fec856463f561aa003fe51c53a6dd0b5fea08d490d9bae104dca08a5a5fd46a3",
+      "sha256:01a273a55a9c6c97dce2856d0dac98ee69f3cfb311937538d001f464d433b36f",
+      "sha256:8880d03ba2f2db29075eaf5c58072ebfb756c9358c21168490721f89d4c987dd",
+      "sha256:b808e2f055e57a22a1388e30f04fe958e7c26760ce8bfafd678d323acf733782",
+      "sha256:5d30a80552b8cd063002a74d3eba7cc7c660618d4197e7c19e8b0ad96d90e9b8",
+      "sha256:68d039e5fa568e49f052749177a1b68195b7b9aee5fe6bfd5e9bf385d905cacf"
+    ],
+    "dangling_image_reclaimed_bytes_reported_by_docker": 141300,
+    "unused_volumes": [],
+    "additional_stopped_containers": []
+  },
+  "post_cleanup_zero_checks": {
+    "dangling_images": 0,
+    "stopped_created_or_dead_containers": 0,
+    "dangling_volumes": 0,
+    "build_cache_records": 0
+  },
+  "keep_list_post_cleanup_verification": {
+    "qualified_eval_image": {
+      "all_three_local_tags_present": true,
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "local_repo_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_reported_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "computed_ecr_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "computed_ecr_linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "verified_at_utc": "2026-08-13T14:54:23.968737Z",
+      "result": "PASS_INTACT_LOCAL_AND_ECR"
+    },
+    "pinned_cuda_base": {
+      "local_tag_present": true,
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "local_repo_digest": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "result": "PASS_INTACT"
+    }
+  },
+  "aws_mutations": 0,
+  "gpu_hours": 0,
+  "cost_usd": 0.0,
+  "conclusion": "The conservative cleanup met the owner target without deleting any packet-bound artifact. Attempt 13 must still pass the new computed pre-envelope resource gate; cleanup alone is not authorization to execute."
+}
