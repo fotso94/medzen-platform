@@ -19,11 +19,17 @@ from scripts.asr_base_model_pilot_runner import (
     OperationRefusal,
     ReceiptStore,
 )
+from scripts.asr_base_model_pilot_integrity import validate_executor_module_bindings
+from scripts.asr_base_model_boundary_contracts import audit_bounded_helper_calls
 
 
 BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002N.json"
 POLICY = ROOT / "platform/k8s/asr-eval/nvidia-dra-api-egress.yaml"
 LOCKED_DRA = ROOT / "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml"
+PACKET = ROOT / "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002N-attempt-15.md"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-COLD/cold-rehearsal.json"
+COST = ROOT / "platform/finance/COST-REGISTRY-2026-010.json"
+QUALIFICATION = ROOT / "platform/evidence/ASR-BASE-MODEL-LOCAL-RESOURCE-QUALIFICATION-2026-003.json"
 B6_CLOSURE_DRA_SHA256 = "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897"
 
 
@@ -119,3 +125,53 @@ def test_attempt_fourteen_retained_diagnostics_gap_is_named() -> None:
     assert diagnosis["attempt_14_diagnostics_mining"]["readiness_probe_specifics_retained"] is False
     assert diagnosis["root_cause_assessment"]["classification"] == "EVIDENCE_BACKED_LEADING_CAUSE_NOT_LIVE_CONFIRMED"
     assert diagnosis["successor_correction"]["bounded_refusal_diagnostics_before_cleanup"] is True
+
+
+def test_attempt_fifteen_is_one_review_only_nontransferable_request() -> None:
+    text = PACKET.read_text(encoding="utf-8")
+    assert "NOT EXECUTABLE" in text
+    assert "Approve ASR base-model AWS change packet 2026-002N only" in text
+    assert bound()["attempts"] == {
+        "authorized_numbers": [15],
+        "maximum": 1,
+        "seconds_each": 10800,
+        "non_transferable": True,
+        "maximum_gpu_nodes": 1,
+        "cost_ceiling_usd": 10,
+        "attempts_1_through_14_reuse_permitted": False,
+    }
+
+
+def test_all_executor_modules_and_helper_calls_are_bound() -> None:
+    result = validate_executor_module_bindings(ROOT, bound()["executor_modules"])
+    assert result["module_count"] == 20
+    audit = audit_bounded_helper_calls(ROOT)
+    assert audit["status"] == "PASS_ALL_BOUNDED_HELPER_CALLS"
+    assert audit["call_site_count"] == 48
+    assert audit["fake_may_bypass_validation"] is False
+
+
+def test_resource_and_cost_records_are_conservatively_bound() -> None:
+    bindings = bound()
+    qualification = json.loads(QUALIFICATION.read_bytes())
+    cost = json.loads(COST.read_bytes())
+    assert bindings["local_resource_qualification"]["sha256"] == sha(QUALIFICATION)
+    assert qualification["validation"]["measured_available_bytes"] >= 40 * 1024**3
+    assert bindings["cost_registry"]["sha256"] == sha(COST)
+    summary = cost["guardrail_summary"]
+    assert summary["recognized_committed_guardrail_usd"] == 114.4286064216
+    assert summary["active_reservations_usd"] == 0.0
+    assert summary["attempt_14_actual_direct_compute_gross_usd"] is None
+
+
+def test_receipt_last_rehearsal_covers_dra_refusal_diagnostics() -> None:
+    receipt = json.loads(COLD.read_bytes())
+    assert receipt["status"] == "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS"
+    assert receipt["bindings_source"]["sha256"] == sha(BINDINGS)
+    assert receipt["executor_module_integrity"]["module_count"] == 20
+    assert receipt["bounded_helper_contract_audit"]["call_site_count"] == 48
+    dra = receipt["scenarios"]["dra_not_ready"]
+    assert dra["outcome"] == "FAILED_CLOSED_EXECUTION"
+    assert dra["failure_reason_code"] == "DRA_STABLE_READINESS_TIMEOUT"
+    assert dra["dra_refusal_diagnostics"]["persisted_before_cleanup"] is True
+    assert dra["zero_state"] is True
