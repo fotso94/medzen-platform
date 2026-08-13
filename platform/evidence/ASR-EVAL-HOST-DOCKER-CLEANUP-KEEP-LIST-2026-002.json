@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-002",
+  "recorded_at_utc": "2026-08-13T16:40:00Z",
+  "status": "COMMITTED_BEFORE_ANY_DELETION",
+  "purpose": "Restore at least 40 GiB of host headroom for the attempt-14 successor while preserving every image bound by the active offline-evaluation lineage.",
+  "reviewed_worktree": {
+    "repository": "/Users/stephanefotso/Documents/medzen-platform",
+    "branch": "codex/asr-base-model-evaluation",
+    "head_before_record": "5165059d68c39c744be237da114a678db8595f5c",
+    "worktree_was_clean_before_record": true
+  },
+  "aws_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "default_profile_was_not_used": true
+  },
+  "ecr_read_only_identity_verification": {
+    "verified_at_utc": "2026-08-13T16:39:00Z",
+    "region": "eu-central-1",
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-5d1b8a0",
+    "ecr_reported_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "local_oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "result": "PASS_EXACT_ECR_IDENTITY"
+  },
+  "keep_list": [
+    {
+      "repository_tags": [
+        "medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "localhost:5005/medzen-asr-eval-runtime:pilot-5d1b8a0"
+      ],
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "reason": "Packet-bound qualified offline-evaluation image; unchanged identity continues the scoped risk acceptance."
+    },
+    {
+      "repository_tags": [
+        "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04"
+      ],
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "reason": "Pinned base retained so a future independently reviewed rebuild remains possible."
+    }
+  ],
+  "pre_cleanup_measurement": {
+    "measured_at_utc": "2026-08-13T16:34:48Z",
+    "filesystem_available_kib": 34609144,
+    "filesystem_available_bytes": 35439763456,
+    "filesystem_available_gib": 33.01,
+    "minimum_required_bytes": 42949672960
+  },
+  "authorized_deletion_scope": {
+    "unbound_eval_qualification_tags": [
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-a5d8320",
+        "image_id": "sha256:28e47152ea23c77f90927c0d1e26921127c81b1649d4dea1c6f1ceaa0a5adc97",
+        "local_unpacked_size_bytes": 7296787640
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-38a4038",
+        "image_id": "sha256:9e87035c1708f377d8d1aec9bcfd149695646a287042d5f551e24cbb4aec05b6",
+        "local_unpacked_size_bytes": 7296787640
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:pilot-c0ad51b",
+        "image_id": "sha256:28b6105500e62508085b11e48314ea385e80a076fd863c3759769f23df451dc6",
+        "local_unpacked_size_bytes": 7296787616
+      },
+      {
+        "tag": "medzen-asr-eval-runtime:local-qualification",
+        "image_id": "sha256:5249b40dac223d8394718b9b75f04810636fd987f323bb9b2c0cf2128580c2a1",
+        "local_unpacked_size_bytes": 7296779774
+      }
+    ],
+    "active_packet_reference_count_for_each_target": 0,
+    "aws_objects_deleted": false
+  },
+  "prohibited_deletions": [
+    "Any keep-list image, tag, digest or pinned base",
+    "Any running container or active volume",
+    "Any image outside the four exact local evaluation tags named above",
+    "Any ECR image or other AWS object"
+  ],
+  "post_cleanup_acceptance": {
+    "minimum_filesystem_available_bytes": 42949672960,
+    "minimum_filesystem_available_gib": 40,
+    "keep_list_must_be_reverified": true,
+    "ecr_must_be_reverified_read_only": true,
+    "exact_deleted_objects_must_be_recorded": true
+  }
+}
