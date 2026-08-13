@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in set(range(1, 15)):
-        raise ValueError("attempt must be 1 through 14")
+    if attempt not in set(range(1, 16)):
+        raise ValueError("attempt must be 1 through 15")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -52,6 +52,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "eks:addon-configuration/vpc-cni-network-policy-strict",
         "kubernetes:namespace/medzen-asr-eval",
         "kubernetes:namespace/nvidia-dra-driver",
+        "kubernetes:networkpolicy/nvidia-dra-driver/medzen-dra-kubernetes-api-egress",
         "kubernetes:nvidia-dra-driver/exact-locked-manifest",
         "kubernetes:resourceclaimtemplate/asr-eval-gpu",
         "kubernetes:networkpolicy/asr-eval-default-deny",

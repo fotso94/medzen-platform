@@ -1,0 +1,24 @@
+{
+  "schema_version":1,
+  "record_id":"ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-001",
+  "recorded_at_utc":"2026-08-13T18:19:00Z",
+  "status":"PASS_EXACT_TEMP_CLEANUP_KEEP_LIST_INTACT",
+  "keep_list":{"path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-001.json","sha256":"249fc4a843c69cbe6e7e4f478d22ef0221e56ea92a4ee44261516dbd21650df7","committed_before_deletion_at":"1befa1f","timestamp_note":"The record's recorded_at_utc value is later than the deletion clock; the immutable Git commit time (2026-08-13T18:15:54Z) is the authoritative proof that scope was committed before deletion."},
+  "deleted_exact_paths":[
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002G-A8-live","classification":"closed attempt-8 external workdir","recoverable":false},
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002H-prestage-v2","classification":"superseded local prestage scratch","recoverable":false},
+    {"path":"/private/tmp/medzen-asr-base-model-2026-002H-prestage-v3","classification":"completed prestage scratch; immutable S3 proof retained","recoverable":false}
+  ],
+  "deletion_method":"find -depth -delete against the three exact committed paths",
+  "filesystem":{"pre_available_kib":31125744,"pre_available_bytes":31872761856,"pre_available_gib":29.68,"post_available_kib":54401936,"post_available_bytes":55707582464,"post_available_gib":51.88,"minimum_required_bytes":42949672960,"minimum_satisfied":true},
+  "keep_list_post_verification":{
+    "qualified_eval_local_image_id":"sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "qualified_eval_local_repo_digest":"558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime@sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "qualified_eval_ecr_digest":"sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "qualified_eval_ecr_image_size_bytes":7296783632,
+    "pinned_cuda_base_local_image_id":"sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+    "repository_evidence_deleted":false,
+    "aws_objects_deleted":false
+  },
+  "scope":{"deleted_path_count":3,"other_local_paths_deleted":0,"docker_images_deleted":0,"aws_calls":1,"aws_mutations":0,"gpu_started":false,"historical_records_modified":false}
+}

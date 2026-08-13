@@ -688,6 +688,10 @@ class KubectlBoundary:
             self.state.kubernetes_mutations += 1
             self.state.cni_mode = "standard" if assignment.endswith("-") else assignment.split("=", 1)[1]
             return b""
+        if args[:2] == ("create", "namespace"):
+            self.state.namespaces.add(args[2])
+            self.state.kubernetes_mutations += 1
+            return b""
         if args[:2] == ("get", "nodes"):
             return self.state.gpu_node_response()
         if args[:2] == ("apply", "-f"):
@@ -700,7 +704,37 @@ class KubectlBoundary:
                 self.state.namespaces.add("medzen-asr-eval")
             return b""
         if args[:2] == ("get", "pods") and "nvidia-dra-driver" in args:
-            return {"items": [{"metadata": {"name": "nvidia-dra-rehearsal"}}]}
+            return {"items": [{
+                "metadata": {"name": "nvidia-dra-rehearsal", "uid": "dra-rehearsal-uid"},
+                "spec": {"nodeName": "gpu-rehearsal", "containers": [{"name": "gpus"}]},
+                "status": {
+                    "phase": "Running",
+                    "conditions": [{"type": "Ready", "status": "False", "reason": "ContainersNotReady"}],
+                    "containerStatuses": [{"name": "gpus", "ready": False, "restartCount": 0, "state": {"running": {}}}],
+                },
+            }]}
+        if args[:2] == ("get", "daemonset"):
+            return {
+                "metadata": {"generation": 1},
+                "status": {
+                    "observedGeneration": 1,
+                    "desiredNumberScheduled": 1,
+                    "currentNumberScheduled": 1,
+                    "numberReady": 0,
+                    "numberAvailable": 0,
+                    "numberUnavailable": 1,
+                },
+            }
+        if args[:2] == ("get", "events"):
+            return {"items": [{
+                "type": "Warning", "reason": "Unhealthy", "count": 1,
+                "message": "synthetic DRA readiness probe refusal",
+                "involvedObject": {"kind": "Pod", "name": "nvidia-dra-rehearsal"},
+            }]}
+        if args[:2] == ("get", "deviceclass"):
+            return {"metadata": {"name": "gpu.nvidia.com"}}
+        if args[:2] == ("get", "resourceslices"):
+            return {"items": []}
         if args[:2] == ("get", "pods"):
             return {"items": [{"metadata": {"name": "asr-pilot-rehearsal"}, "status": {"podIP": "10.0.2.21"}}]}
         if args[:2] == ("logs", "-n"):
@@ -773,6 +807,17 @@ def build_rehearsal_operations(
     """Return the real stage class wired only to deterministic boundaries."""
     session = BoundarySession(bindings, injection, root=root)
     state = session.state
+    if injection == "dra_not_ready":
+        from scripts.run_b6a_003c_c_proof import StableDRARefusal
+
+        def dra_waiter(**_: Any) -> dict[str, Any]:
+            raise StableDRARefusal(
+                "DRA stable readiness timed out: synthetic not-ready condition"
+            )
+    else:
+        dra_waiter = lambda **_: {  # noqa: E731
+            "status": "PASS_STABLE_DRA_READINESS", "stable_observations": 3
+        }
     operations = LiveOperations(
         root,
         session=session,
@@ -780,7 +825,7 @@ def build_rehearsal_operations(
         kubectl_runner=KubectlBoundary(state),
         ssm_runner=SsmCommandBoundary(state),
         digest_scanner=digest_scan_boundary(injection),
-        dra_waiter=lambda **_: {"status": "PASS_STABLE_DRA_READINESS", "stable_observations": 3},
+        dra_waiter=dra_waiter,
         sleeper=state.sleep,
         monotonic=state.monotonic,
     )

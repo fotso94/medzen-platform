@@ -1,0 +1,11 @@
+{
+  "schema_version":1,
+  "id":"ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001",
+  "status":"PASS_READ_ONLY_CLUSTER_API_DESTINATION_CAPTURE",
+  "recorded_utc":"2026-08-13T18:23:00Z",
+  "purpose":"Bind the exact Kubernetes API ClusterIP admitted by the evaluation-only DRA egress policy without creating or changing cluster resources.",
+  "source":{"cluster":"medzen-speech","region":"eu-central-1","profile":"medzen","commands":["kubectl get service kubernetes -n default -o json","kubectl get endpoints kubernetes -n default -o json"]},
+  "service":{"name":"kubernetes","namespace":"default","cluster_ip":"10.100.0.1","protocol":"TCP","port":443,"normalized_response_sha256":"0f97e89a614a12450fcdc7f7e87c8e7023aa5249387cd9bfc81772f6f9e88a5b"},
+  "endpoint_observation":{"addresses":["172.31.15.109","172.31.44.197"],"protocol":"TCP","port":443,"normalized_response_sha256":"735e0633504c3e593bdda2b95598b11ac9c5877ef8728ca8d1d71e510f40c5fd","interpretation":"Endpoint addresses are observations, not policy bindings; the stable service ClusterIP is the admitted destination."},
+  "scope":{"aws_calls":1,"aws_mutations":0,"kubectl_read_calls":2,"kubectl_mutations":0,"gpu_started":false,"production_state_changed":false}
+}

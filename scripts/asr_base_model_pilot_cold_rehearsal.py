@@ -58,6 +58,7 @@ SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
     "gpu_node_delayed_ready": ("gpu_node_delayed_ready", "PASS_PILOT"),
     "gpu_node_never_ready": ("gpu_node_never_ready", "FAILED_CLOSED_EXECUTION"),
+    "dra_not_ready": ("dra_not_ready", "FAILED_CLOSED_EXECUTION"),
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
@@ -249,6 +250,9 @@ def _scenario_repository(
         ).read_bytes(),
         "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml": (
             ROOT / "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml"
+        ).read_bytes(),
+        bindings["dra_network_policy"]["path"]: (
+            ROOT / bindings["dra_network_policy"]["path"]
         ).read_bytes(),
         "services/asr-eval-runtime/assets/language-conditioning-v1.json": (
             ROOT / "services/asr-eval-runtime/assets/language-conditioning-v1.json"
@@ -471,6 +475,14 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 },
                 "scan_representation": image_payload.get("security_gate", {}).get(
                     "reconstruction"
+                ),
+                "dra_refusal_diagnostics": (
+                    {
+                        "persisted_before_cleanup": True,
+                        "sha256": _sha(directory / "dra-refusal-diagnostics.json"),
+                    }
+                    if (directory / "dra-refusal-diagnostics.json").is_file()
+                    else None
                 ),
             }
         insufficient_directory = base / "local-disk-insufficient"

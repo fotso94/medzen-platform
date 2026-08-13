@@ -1,0 +1,13 @@
+{
+  "record":"ASR_BASE_MODEL_ATTEMPT_COST_OBSERVATION",
+  "id":"ASR-BASE-MODEL-ATTEMPT-14-COST-OBSERVATION-2026-001",
+  "schema_version":1,
+  "status":"AWS_COST_EXPLORER_INGESTION_PENDING_GPU_511_SECONDS_OBSERVED",
+  "recorded_utc":"2026-08-13T18:06:00Z",
+  "currency":"USD",
+  "attempt":14,
+  "attempt_evidence":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL.json","sha256":"0782c3b972dbc85c10843fa7ac7b08af7849ae4119daf5ccb204fa2519736509","gpu_instance_type":"g6.xlarge","gpu_instance_id":"i-086621d2df2996009","gpu_instance_observed_lifetime_seconds_to_termination_request":511,"temporary_private_endpoints_created":3,"cleanup_zero_state":true},
+  "cost_explorer_query":{"caller":"arn:aws:iam::558069890522:user/s.fotso","profile":"medzen","default_profile_used":false,"cost_explorer_region":"us-east-1","workload_region":"eu-central-1","time_period":{"start_inclusive":"2026-08-13","end_exclusive":"2026-08-14"},"granularity":"DAILY","metrics":["UnblendedCost","NetUnblendedCost","UsageQuantity"],"filter":{"instance_type":"g6.xlarge"},"group_by":"USAGE_TYPE","estimated":true,"groups":[],"reported_unblended_cost_usd":0.0,"reported_net_unblended_cost_usd":0.0,"reported_usage_quantity":0.0},
+  "interpretation":{"actual_attempt_14_cost_available":false,"zero_is_finalized_actual":false,"reason":"AWS has not ingested the current-day g6.xlarge usage row into Cost Explorer. The live evidence proves 511 GPU seconds, so zero is not reported as actual cost.","shared_day_service_costs_not_attributed_to_attempt":true,"full_attempt_ceiling_recognized_in_successor_registry_usd":10.0,"required_follow_up":"Create another non-destructive registry revision when the August 13 g6.xlarge row lands; record gross, credits and net separately."},
+  "controls":{"aws_calls":3,"aws_mutations":0,"historical_cost_records_modified":false,"credits_used_to_expand_headroom":false,"zero_total_attempt_cost_claimed":false,"successor_registry_uses_conservative_full_ceiling":true}
+}

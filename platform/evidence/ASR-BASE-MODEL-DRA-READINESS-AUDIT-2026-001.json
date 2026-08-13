@@ -1,0 +1,63 @@
+{
+  "record": "ASR_BASE_MODEL_DRA_READINESS_HISTORY_AUDIT",
+  "id": "ASR-BASE-MODEL-DRA-READINESS-AUDIT-2026-001",
+  "schema_version": 1,
+  "status": "PASS_EVIDENCE_INVENTORY_NO_TIMEOUT_WIDENING",
+  "recorded_utc": "2026-08-13T18:10:00Z",
+  "purpose": "Test the reviewer's 25-receipt premise and decide whether B6 history supports widening the DRA readiness helper beyond 300 seconds.",
+  "measurement_definition": {
+    "start": "recorded_utc in the run's workers_ready receipt",
+    "end": "recorded_utc in the same run's dra_ready PASS receipt",
+    "limitations": "Stage receipts have whole-second resolution. The interval includes DRA apply, rollout and stable-read verification; it is an upper-bound proxy, not container-start telemetry. Runs without a dra_ready receipt cannot supply a time-to-Ready value."
+  },
+  "live_b6_receipt_inventory": {
+    "requested_count": 25,
+    "live_b6_attempt_directories_found": 23,
+    "independent_dra_ready_receipts_found": 13,
+    "measurable_worker_to_dra_pairs": 13,
+    "duplicate_embedded_copies_excluded": true,
+    "cold_rehearsal_receipts_excluded": true,
+    "stage_a_receipts_excluded": true,
+    "runs_stopping_before_dra_ready_excluded_from_timing": 10,
+    "finding": "The repository does not contain 25 independent B6 dra_ready receipts. It contains 13. No records were invented or duplicate-counted to satisfy the requested tally."
+  },
+  "timing_summary_seconds": {
+    "sample_count": 13,
+    "minimum": 12,
+    "median": 23,
+    "mean": 26.0,
+    "maximum": 61,
+    "nearest_rank_p95": 61,
+    "samples_over_300": 0
+  },
+  "timings": [
+    {"run":"B6-2026-010-LIVE","workers_ready_sha256":"26ca4ef907e7289fec481a850f7a1197d1e388f6ec1f726a8e4fa7a1694e6768","dra_ready_sha256":"343a84aeabe30e5f33c00b34f938a2c908e9a896a12291f2ede20d572dcf09d9","workers_ready_utc":"2026-08-09T22:01:24Z","dra_ready_utc":"2026-08-09T22:02:25Z","elapsed_seconds":61},
+    {"run":"B6-2026-013-LIVE","workers_ready_sha256":"e9c24143340796cfc0105bd670af3b992bb2d13bcaa703c077c6bd81bdcec7e2","dra_ready_sha256":"b074a98dd0420c9c33afb50e73431f1613fda596120d3cb021b182aae9736e4b","workers_ready_utc":"2026-08-10T03:34:29Z","dra_ready_utc":"2026-08-10T03:35:23Z","elapsed_seconds":54},
+    {"run":"B6-2026-020A-A1-LIVE","workers_ready_sha256":"1cf18c12b87ecea17dbdfedcd2678455833f09f1e5702460b6218d6e424ea081","dra_ready_sha256":"f69b8590151b84b54ebd7da03139a238729c71f2606c60cea215c7e6d9329c39","workers_ready_utc":"2026-08-10T17:55:30Z","dra_ready_utc":"2026-08-10T17:55:43Z","elapsed_seconds":13},
+    {"run":"B6-2026-021-A2-LIVE","workers_ready_sha256":"f499dc1e4f7627cf0817be2d9712ca8b101423a2955337bdc095efff20cefde4","dra_ready_sha256":"86942de63e9ad116633397731c16d35bd9f26e8bca3078f2adb5f17876b8eacf","workers_ready_utc":"2026-08-10T18:26:23Z","dra_ready_utc":"2026-08-10T18:26:35Z","elapsed_seconds":12},
+    {"run":"B6-2026-026-A1-LIVE","workers_ready_sha256":"7d6ad315edc2181ad73ba8ccdacdb6c17e60dcdaf973d4d21d09eb1bba58991d","dra_ready_sha256":"bce5f288f464e3d0ed27a4b735c91eccfb07ab7fa9d9ada174718dac7825aed5","workers_ready_utc":"2026-08-10T22:42:24Z","dra_ready_utc":"2026-08-10T22:42:37Z","elapsed_seconds":13},
+    {"run":"B6-2026-026-A2-LIVE","workers_ready_sha256":"8ed8a617aafa6db782b0b31c86a9b374c93613811a411e9777b56d815a292c0f","dra_ready_sha256":"4dc99197332824ccd04e2d6787498cb606b90ac4246ca116b8bde378f9442e31","workers_ready_utc":"2026-08-10T23:11:11Z","dra_ready_utc":"2026-08-10T23:11:40Z","elapsed_seconds":29},
+    {"run":"B6-2026-027-A1-LIVE","workers_ready_sha256":"f5f5bd6baa62f21dc9a513a159ce1b55d515fe85d00f1f022317ca607c7f509a","dra_ready_sha256":"55aeb563a39fe537574ca6792aae3be79e45178818cd1a134274a39703930050","workers_ready_utc":"2026-08-11T02:07:30Z","dra_ready_utc":"2026-08-11T02:07:43Z","elapsed_seconds":13},
+    {"run":"B6-2026-029-A1-LIVE","workers_ready_sha256":"125a92179b2c6c48fe47d650c6837615294f242edcd746f4cd2a50175f5fd552","dra_ready_sha256":"63bd868b8c11d8dd0ac81b653cef552be9d930adf73d57b6476b33db4cea63","workers_ready_utc":"2026-08-11T04:41:40Z","dra_ready_utc":"2026-08-11T04:42:03Z","elapsed_seconds":23},
+    {"run":"B6-2026-030-A1-LIVE","workers_ready_sha256":"64e2847c021a497036b1464970f9ca4aaaf6e88489817be402600820a9731756","dra_ready_sha256":"c12abe70d263d9dcd3bdf55f77895cbc0b8b86437000f605aa80ccb82f2ae415","workers_ready_utc":"2026-08-11T05:44:39Z","dra_ready_utc":"2026-08-11T05:45:03Z","elapsed_seconds":24},
+    {"run":"B6-2026-030A-A2-LIVE","workers_ready_sha256":"861c77ca6c822b24f2bb6d6b03fcc0b4480e02261f8d30b873022670846d2651","dra_ready_sha256":"6782413cb5092553b0675789cb85ca5723468c2149b3a75c67e44634c956e8d8","workers_ready_utc":"2026-08-11T09:19:02Z","dra_ready_utc":"2026-08-11T09:19:25Z","elapsed_seconds":23},
+    {"run":"B6-2026-032-A1-LIVE","workers_ready_sha256":"812f84c33e6c191ef86dc3f020184cc030c38b0af9ce70409ec6ae22e9bb670c","dra_ready_sha256":"89fb2c370abbe67ac4d73e4f139fcfae6c2ed21af41c735261cfcecbabd1bb1e","workers_ready_utc":"2026-08-11T15:20:57Z","dra_ready_utc":"2026-08-11T15:21:22Z","elapsed_seconds":25},
+    {"run":"B6-2026-032A-A2-LIVE","workers_ready_sha256":"5446c263fbba90805f436956acf8c6fddcf5d7afbd4b430ac0b2da089f3be4f9","dra_ready_sha256":"a59b6307ee7a6750581a4936ef3327526987e3feec3706e4b5c4dbb310f5c6ce","workers_ready_utc":"2026-08-11T16:24:20Z","dra_ready_utc":"2026-08-11T16:24:43Z","elapsed_seconds":23},
+    {"run":"B6-2026-034-A1-LIVE","workers_ready_sha256":"a9620877322677d07fb726e6461b6bd8ae070b6d3c87b84282cae89691efc08c","dra_ready_sha256":"563ccff8e443c81cc180cc425f5f022ae8f273b947d0168718e2680e5712e883","workers_ready_utc":"2026-08-11T17:59:24Z","dra_ready_utc":"2026-08-11T17:59:49Z","elapsed_seconds":25}
+  ],
+  "b6a_corroboration": {
+    "independent_stable_readiness_receipts": 3,
+    "poll_derived_seconds_before_successful_read": [24,20,26],
+    "receipt_sha256": [
+      "f5305c56f783fb92a064462e3aa1a178c72b28e0405afe2d3b4a623a44f59a9e",
+      "b7b19d1fd2ed7a1fe133f74d75c96c0e55939549b60f5d5f0cde3aee8884f521",
+      "41fef63a2f33f122454a24bc4a8f443f4b91fe2d977ba6ebe6a7b4e8d1456d28"
+    ]
+  },
+  "decision": {
+    "dra_wait_contract_seconds": 300,
+    "contract_widened": false,
+    "reason": "All 13 measurable B6 runs passed within 61 seconds of workers_ready, and all three B6A waiter receipts passed within 26 poll-derived seconds. The attempt-14 timeout is not normal DRA startup variance."
+  },
+  "scope": {"aws_calls":0,"aws_mutations":0,"gpu_started":false,"historical_records_modified":false}
+}

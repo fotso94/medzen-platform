@@ -1,0 +1,69 @@
+{
+  "record": "ASR_BASE_MODEL_DRA_REFUSAL_DIAGNOSIS",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-DIAGNOSIS-2026-001",
+  "schema_version": 1,
+  "status": "PASS_DIAGNOSIS_AND_SUCCESSOR_CORRECTION",
+  "recorded_utc": "2026-08-13T18:12:00Z",
+  "attempt_14_refusal": {"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL.json","sha256":"0782c3b972dbc85c10843fa7ac7b08af7849ae4119daf5ccb204fa2519736509","reason_code":"DRA_STABLE_READINESS_TIMEOUT","gpu_seconds":511,"cleanup_zero_state":true},
+  "b6_timing_audit": {"path":"platform/evidence/ASR-BASE-MODEL-DRA-READINESS-AUDIT-2026-001.json","sha256":"a663045cb79048900395723f2b5c9e32fe3c58d9dd0f317c58242bd1700df3aa","conclusion":"NO_TIMEOUT_WIDENING"},
+  "byte_diff": {
+    "b6_closure_commit":"c3876c995282",
+    "b6_proven_manifest_path":"platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
+    "b6_proven_manifest_sha256":"0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "attempt_14_manifest_path":"platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
+    "attempt_14_manifest_sha256":"0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+    "cmp_exit_code":0,
+    "byte_differences":0,
+    "image_digest":"sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+    "image_tag_drift":false,
+    "manifest_config_drift":false,
+    "namespace_manifest_drift":false
+  },
+  "execution_order_diff": {
+    "b6":"workers ready -> DRA manifest -> DRA ready -> temporary endpoints",
+    "attempt_14":"temporary endpoints -> VPC CNI network policy enabled and strict -> workers ready -> DRA manifest",
+    "attempt_14_dra_namespace_had_explicit_egress_policy":false,
+    "aws_documented_strict_mode_fact":"VPC CNI strict mode starts pods with default deny and requires a network policy for every endpoint a pod needs.",
+    "aws_documentation_url":"https://docs.aws.amazon.com/eks/latest/userguide/cni-network-policy-configure.html"
+  },
+  "attempt_14_diagnostics_mining": {
+    "external_tool_diagnostic_count":29,
+    "dra_apply_command_captured":true,
+    "dra_apply_returncode":0,
+    "dra_pod_count_at_timeout":1,
+    "dra_pod_phase_at_timeout":"Running",
+    "dra_ready_containers_at_timeout":0,
+    "readiness_probe_specifics_retained":false,
+    "pod_conditions_retained":false,
+    "events_retained":false,
+    "container_logs_retained":false,
+    "bounded_conclusion":"Attempt 14 proves apply success and one Running 0/1-ready DRA pod for 300 seconds. It does not retain the readiness-probe error, events, or logs, so an exact live root cause cannot be asserted after cleanup."
+  },
+  "root_cause_assessment": {
+    "classification":"EVIDENCE_BACKED_LEADING_CAUSE_NOT_LIVE_CONFIRMED",
+    "leading_cause":"The DRA pod started after strict/default-deny enforcement without an explicit policy allowing the Kubernetes API service, while the byte-identical B6 deployment started before that enforcement and routinely became Ready in 12-61 seconds.",
+    "why_not_timeout_variance":"No measurable B6 DRA-ready receipt exceeded 61 seconds and no B6A stable-readiness receipt exceeded 26 poll-derived seconds.",
+    "no_unproven_root_cause_claim":true
+  },
+  "successor_correction": {
+    "dra_wait_timeout_seconds":300,
+    "timeout_widened":false,
+    "locked_dra_manifest_changed":false,
+    "evaluation_only_policy_path":"platform/k8s/asr-eval/nvidia-dra-api-egress.yaml",
+    "evaluation_only_policy_sha256":"8913060ac5921b5ca4c2109ff5ebac2d28910e5578bf77a0f3da4c4d7f9421e7",
+    "policy_scope":"DRA kubelet-plugin pods only; TCP 443 to Kubernetes service IP 10.100.0.1/32 only",
+    "kubernetes_api_service_capture":{"path":"platform/evidence/ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001.json","sha256":"7e41d6306156428851f194dfb13d950b590051eee12c93d3858bc2ab9c0995a8"},
+    "model_workload_network_policy_changed":false,
+    "bounded_refusal_diagnostics_before_cleanup":true,
+    "diagnostics":"DaemonSet JSON and describe, pod conditions/container states, namespace events, DeviceClass, ResourceSlices, and up to 200 sanitized log lines per container; 30-second bound per query."
+  },
+  "host_precondition_restoration": {
+    "keep_list_path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-001.json",
+    "keep_list_sha256":"249fc4a843c69cbe6e7e4f478d22ef0221e56ea92a4ee44261516dbd21650df7",
+    "result_path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-001.json",
+    "result_sha256":"c03b96c410350104da6f92c72a4f2dcef01f93dc6781d8e21c46af118d50b4f8",
+    "post_cleanup_free_gib":51.88,
+    "minimum_40_gib_satisfied":true
+  },
+  "scope": {"aws_read_calls":6,"aws_mutations":0,"kubernetes_read_calls":1,"kubernetes_mutations":0,"gpu_started":false,"attempt_15_authorized":false,"historical_records_modified":false}
+}

@@ -23,7 +23,7 @@ from typing import Any, Callable
 
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
-from scripts.asr_external_tool import ExternalToolTimeout, run_external
+from scripts.asr_external_tool import ExternalToolTimeout, run_external, sanitize_bytes
 from scripts.asr_base_model_boundary_contracts import (
     DRA_WAIT_TIMEOUT_SECONDS,
     invoke_dra_waiter,
@@ -88,6 +88,7 @@ GPU_NODEGROUP = "gpu"
 CPU_NODEGROUP = "cpu"
 ECR_REPOSITORY = "medzen-asr-eval-runtime"
 DRA_MANIFEST = Path("platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml")
+DRA_NETWORK_POLICY = Path("platform/k8s/asr-eval/nvidia-dra-api-egress.yaml")
 EXPECTED_HIGHS = {
     ("CVE-2026-24747", "torch", "2.8.0+cu128", "HIGH"),
     ("CVE-2026-4538", "torch", "2.8.0+cu128", "HIGH"),
@@ -508,6 +509,257 @@ class LiveOperations:
             timeout_seconds=timeout_seconds,
         )
 
+    def _capture_dra_refusal_diagnostics(
+        self,
+        context: AttemptContext,
+        *,
+        readiness_error: Exception,
+    ) -> dict[str, Any]:
+        """Persist bounded pre-model DRA diagnostics before cleanup.
+
+        This stage runs before any evaluation Pod, model, audio, transcript or
+        prediction exists in Kubernetes. Policy v2 therefore permits the safe,
+        bounded status, event and log text retained here. Every query is best
+        effort: one unavailable diagnostic source must not prevent the other
+        sources, or the terminal refusal receipt, from being written.
+        """
+
+        def query_json(*args: str) -> dict[str, Any]:
+            try:
+                value = self._kubectl(
+                    context, *args, timeout=30, json_output=True
+                )
+                if isinstance(value, dict):
+                    return {"status": "CAPTURED", "response": value}
+                return {"status": "MALFORMED", "safe_error_text": "response is not an object"}
+            except Exception as exc:  # Diagnostics must remain best effort.
+                return {
+                    "status": "UNAVAILABLE",
+                    "safe_error_text": sanitize_bytes(str(exc)),
+                }
+
+        def describe(*args: str) -> dict[str, Any]:
+            try:
+                raw = self._kubectl(context, "describe", *args, timeout=30)
+                body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                return {
+                    "status": "CAPTURED",
+                    "raw_bytes": len(body),
+                    "raw_sha256": hashlib.sha256(body).hexdigest(),
+                    "sanitized_text": sanitize_bytes(body),
+                }
+            except Exception as exc:
+                return {
+                    "status": "UNAVAILABLE",
+                    "safe_error_text": sanitize_bytes(str(exc)),
+                }
+
+        def safe_conditions(values: Any) -> list[dict[str, Any]]:
+            if not isinstance(values, list):
+                return []
+            return [{
+                "type": item.get("type"),
+                "status": item.get("status"),
+                "reason": item.get("reason"),
+                "message": sanitize_bytes(item.get("message")),
+                "last_probe_time": item.get("lastProbeTime"),
+                "last_transition_time": item.get("lastTransitionTime"),
+            } for item in values[:16] if isinstance(item, dict)]
+
+        def safe_container_statuses(values: Any) -> list[dict[str, Any]]:
+            if not isinstance(values, list):
+                return []
+            result: list[dict[str, Any]] = []
+            for item in values[:16]:
+                if not isinstance(item, dict):
+                    continue
+                states: dict[str, Any] = {}
+                for state_name in ("waiting", "running", "terminated"):
+                    state = item.get("state", {}).get(state_name)
+                    if not isinstance(state, dict):
+                        continue
+                    states[state_name] = {
+                        key: sanitize_bytes(value) if key == "message" else value
+                        for key, value in state.items()
+                        if key in {
+                            "reason", "message", "exitCode", "signal",
+                            "startedAt", "finishedAt", "containerID",
+                        }
+                    }
+                result.append({
+                    "name": item.get("name"),
+                    "ready": item.get("ready"),
+                    "started": item.get("started"),
+                    "restart_count": item.get("restartCount"),
+                    "image": item.get("image"),
+                    "image_id": item.get("imageID"),
+                    "state": states,
+                })
+            return result
+
+        daemonset_raw = query_json(
+            "get", "daemonset", "dra-driver-nvidia-gpu-kubelet-plugin",
+            "-n", "nvidia-dra-driver",
+        )
+        pods_raw = query_json(
+            "get", "pods", "-n", "nvidia-dra-driver",
+            "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin",
+        )
+        events_raw = query_json(
+            "get", "events", "-n", "nvidia-dra-driver",
+            "--sort-by=.metadata.creationTimestamp",
+        )
+        device_class_raw = query_json("get", "deviceclass", "gpu.nvidia.com")
+        resource_slices_raw = query_json("get", "resourceslices")
+
+        daemonset: dict[str, Any] = {}
+        if daemonset_raw["status"] == "CAPTURED":
+            value = daemonset_raw["response"]
+            status = value.get("status", {}) if isinstance(value, dict) else {}
+            daemonset = {
+                "status": "CAPTURED",
+                "generation": value.get("metadata", {}).get("generation"),
+                "observed_generation": status.get("observedGeneration"),
+                "desired": status.get("desiredNumberScheduled"),
+                "current": status.get("currentNumberScheduled"),
+                "ready": status.get("numberReady"),
+                "available": status.get("numberAvailable"),
+                "unavailable": status.get("numberUnavailable"),
+                "conditions": safe_conditions(status.get("conditions")),
+            }
+        else:
+            daemonset = daemonset_raw
+
+        pods: list[dict[str, Any]] = []
+        pod_items = (
+            pods_raw.get("response", {}).get("items", [])
+            if pods_raw["status"] == "CAPTURED"
+            else []
+        )
+        logs: list[dict[str, Any]] = []
+        for pod in pod_items[:4]:
+            metadata = pod.get("metadata", {})
+            status = pod.get("status", {})
+            spec = pod.get("spec", {})
+            pod_name = metadata.get("name")
+            pods.append({
+                "name": pod_name,
+                "uid": metadata.get("uid"),
+                "deletion_timestamp": metadata.get("deletionTimestamp"),
+                "node_name": spec.get("nodeName"),
+                "phase": status.get("phase"),
+                "reason": status.get("reason"),
+                "message": sanitize_bytes(status.get("message")),
+                "conditions": safe_conditions(status.get("conditions")),
+                "init_container_statuses": safe_container_statuses(
+                    status.get("initContainerStatuses")
+                ),
+                "container_statuses": safe_container_statuses(
+                    status.get("containerStatuses")
+                ),
+            })
+            container_names = [
+                item.get("name")
+                for family in ("initContainers", "containers")
+                for item in spec.get(family, [])
+                if isinstance(item, dict) and isinstance(item.get("name"), str)
+            ]
+            for container_name in container_names[:8]:
+                try:
+                    raw = self._kubectl(
+                        context, "logs", "-n", "nvidia-dra-driver", str(pod_name),
+                        "-c", container_name, "--tail=200", "--timestamps=true",
+                        timeout=30,
+                    )
+                    body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                    logs.append({
+                        "pod": pod_name,
+                        "container": container_name,
+                        "status": "CAPTURED",
+                        "raw_bytes": len(body),
+                        "raw_sha256": hashlib.sha256(body).hexdigest(),
+                        "sanitized_text": sanitize_bytes(body),
+                    })
+                except Exception as exc:  # Preserve other diagnostics.
+                    logs.append({
+                        "pod": pod_name,
+                        "container": container_name,
+                        "status": "UNAVAILABLE",
+                        "safe_error_text": sanitize_bytes(str(exc)),
+                    })
+
+        events: list[dict[str, Any]] = []
+        if events_raw["status"] == "CAPTURED":
+            for item in events_raw.get("response", {}).get("items", [])[-100:]:
+                involved = item.get("involvedObject", {})
+                events.append({
+                    "type": item.get("type"),
+                    "reason": item.get("reason"),
+                    "count": item.get("count"),
+                    "first_timestamp": item.get("firstTimestamp"),
+                    "last_timestamp": item.get("lastTimestamp"),
+                    "event_time": item.get("eventTime"),
+                    "object_kind": involved.get("kind"),
+                    "object_name": involved.get("name"),
+                    "message": sanitize_bytes(item.get("message") or item.get("note")),
+                })
+
+        diagnostic = {
+            "schema_version": 1,
+            "status": "CAPTURED_BEFORE_DRA_CLEANUP",
+            "classification": "PRE_MODEL_PRE_AUDIO_SAFE_DIAGNOSTICS",
+            "readiness_error_class": type(readiness_error).__name__,
+            "readiness_error_text": sanitize_bytes(str(readiness_error)),
+            "daemonset": daemonset,
+            "daemonset_describe": describe(
+                "daemonset/dra-driver-nvidia-gpu-kubelet-plugin",
+                "-n", "nvidia-dra-driver",
+            ),
+            "pods_query_status": pods_raw["status"],
+            "pods": pods,
+            "events_query_status": events_raw["status"],
+            "events": events,
+            "device_class_query_status": device_class_raw["status"],
+            "device_class": (
+                {
+                    "name": device_class_raw["response"].get("metadata", {}).get("name")
+                }
+                if device_class_raw["status"] == "CAPTURED"
+                else device_class_raw
+            ),
+            "resource_slices_query_status": resource_slices_raw["status"],
+            "resource_slices": (
+                [{
+                    "name": item.get("metadata", {}).get("name"),
+                    "driver": item.get("spec", {}).get("driver"),
+                    "node_name": item.get("spec", {}).get("nodeName"),
+                    "device_count": len(item.get("spec", {}).get("devices", [])),
+                } for item in resource_slices_raw["response"].get("items", [])[:16]]
+                if resource_slices_raw["status"] == "CAPTURED"
+                else resource_slices_raw
+            ),
+            "logs": logs,
+            "bounds": {
+                "command_timeout_seconds": 30,
+                "maximum_pods": 4,
+                "maximum_containers_per_pod": 8,
+                "maximum_events": 100,
+                "maximum_log_lines_per_container": 200,
+                "maximum_sanitized_text_bytes_per_field": 4096,
+            },
+            "contains_model_audio_transcript_prediction_credentials_or_phi": False,
+        }
+        path = context.workdir / "dra-refusal-diagnostics.json"
+        write_exclusive(path, canonical_json(diagnostic))
+        return {
+            "path": str(path),
+            "sha256": _sha(path),
+            "status": diagnostic["status"],
+            "pod_count": len(pods),
+            "event_count": len(events),
+            "log_capture_count": len(logs),
+        }
+
     def deadline_identity_and_acceptance(
         self,
         context: AttemptContext,
@@ -542,6 +794,30 @@ class LiveOperations:
             )
         except PilotIntegrityRefusal as exc:
             raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        dra_policy_binding = bindings.get("dra_network_policy")
+        if not isinstance(dra_policy_binding, dict):
+            raise OperationRefusal(
+                "DRA_NETWORK_POLICY_BINDING_ABSENT",
+                "the evaluation-only DRA network-policy binding is absent",
+            )
+        dra_policy_path = self.root / str(dra_policy_binding.get("path", ""))
+        try:
+            dra_policy_body = read_committed_artifact(self.root, dra_policy_path)
+        except PilotIntegrityRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        if (
+            dra_policy_path.relative_to(self.root) != DRA_NETWORK_POLICY
+            or hashlib.sha256(dra_policy_body).hexdigest()
+            != dra_policy_binding.get("sha256")
+            or dra_policy_binding.get("kubernetes_api_service_ip") != "10.100.0.1"
+            or dra_policy_binding.get("allowed_protocol") != "TCP"
+            or dra_policy_binding.get("allowed_port") != 443
+            or dra_policy_binding.get("other_egress_permitted") is not False
+        ):
+            raise OperationRefusal(
+                "DRA_NETWORK_POLICY_BINDING_DIFFERS",
+                "the committed DRA API-egress policy differs from its reviewed binding",
+            )
         expires = datetime.fromisoformat(authorization["expires_utc"].replace("Z", "+00:00"))
         if _utc() >= expires:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")
@@ -594,6 +870,15 @@ class LiveOperations:
             "attempt": context.attempt,
             "dry_run": dry_run,
             "source_integrity": source_integrity,
+            "dra_network_policy": {
+                "status": "PASS_COMMITTED_DRA_API_EGRESS_BINDING",
+                "path": str(DRA_NETWORK_POLICY),
+                "sha256": hashlib.sha256(dra_policy_body).hexdigest(),
+                "kubernetes_api_service_ip": "10.100.0.1",
+                "allowed_protocol": "TCP",
+                "allowed_port": 443,
+                "other_egress_permitted": False,
+            },
             "reviewed_commit_lineage": lineage,
             "artifact_prestage": structure,
             "window_budget": budget,
@@ -1054,20 +1339,47 @@ class LiveOperations:
             "sudo mount \"$device\" /var/lib/medzen-asr-eval",
             "sudo chown 10001:10001 /var/lib/medzen-asr-eval",
         ])
-        dra = (self.root / DRA_MANIFEST).read_bytes()
-        self._kubectl(context, "apply", "-f", "-", stdin=dra)
+        # Mark the namespace as a possible cleanup target before its create
+        # call. A timeout after server-side creation can therefore never leak
+        # it merely because the client did not receive the success response.
         state["dra_installed"] = True
         self._save_state(context, state)
+        existing_namespaces = self._kubectl(
+            context, "get", "namespaces", json_output=True
+        )
+        if any(
+            item.get("metadata", {}).get("name") == "nvidia-dra-driver"
+            for item in existing_namespaces.get("items", [])
+        ):
+            raise OperationRefusal(
+                "DRA_NAMESPACE_PREEXISTED",
+                "the temporary DRA namespace existed before this attempt",
+            )
+        dra_policy = (self.root / DRA_NETWORK_POLICY).read_bytes()
+        self._kubectl(context, "apply", "-f", "-", stdin=dra_policy)
+        dra = (self.root / DRA_MANIFEST).read_bytes()
+        self._kubectl(context, "apply", "-f", "-", stdin=dra)
         if self._dra_waiter is None:
             from scripts.run_b6a_003c_c_proof import wait_for_stable_dra
             waiter = wait_for_stable_dra
         else:
             waiter = self._dra_waiter
-        readiness = self._dra_readiness(
-            waiter,
-            kubeconfig=context.workdir / "kubeconfig",
-            timeout_seconds=DRA_WAIT_TIMEOUT_SECONDS,
-        )
+        try:
+            readiness = self._dra_readiness(
+                waiter,
+                kubeconfig=context.workdir / "kubeconfig",
+                timeout_seconds=DRA_WAIT_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            diagnostic = self._capture_dra_refusal_diagnostics(
+                context, readiness_error=exc
+            )
+            raise OperationRefusal(
+                "DRA_STABLE_READINESS_TIMEOUT",
+                "DRA stable readiness refused: "
+                f"{sanitize_bytes(str(exc))[:256]}; bounded diagnostics persisted "
+                f"before cleanup sha256={diagnostic['sha256']}",
+            ) from exc
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
         sample = self._command([
             "kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "exec", "-n", "nvidia-dra-driver", dra_pod, "-c", "gpus", "--",
