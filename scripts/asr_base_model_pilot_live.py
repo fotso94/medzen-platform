@@ -89,6 +89,9 @@ EXPECTED_HIGHS = {
     ("CVE-2025-55552", "torch", "2.8.0+cu128", "HIGH"),
     ("CVE-2025-55551", "torch", "2.8.0+cu128", "HIGH"),
 }
+GPU_NODE_READY_POLL_INTERVAL_SECONDS = 10
+GPU_NODE_READY_TIMEOUT_SECONDS = 600
+GPU_NODE_READY_STABLE_OBSERVATIONS = 2
 
 
 def _sha(path: Path) -> str:
@@ -193,6 +196,7 @@ class LiveOperations:
         digest_scanner: Callable[..., dict[str, Any]] = scan_exact_ecr_child,
         dra_waiter: Callable[..., dict[str, Any]] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
+        monotonic: Callable[[], float] = time.monotonic,
     ):
         self.root = root
         if session is None:
@@ -208,6 +212,7 @@ class LiveOperations:
         self._digest_scanner = digest_scanner
         self._dra_waiter = dra_waiter
         self._sleeper = sleeper
+        self._monotonic = monotonic
         self.sts = self.session.client("sts")
         self.eks = self.session.client("eks")
         self.ec2 = self.session.client("ec2")
@@ -337,6 +342,117 @@ class LiveOperations:
                 return observed
             self._sleeper(10)
         raise OperationRefusal("GPU_NODEGROUP_STABILITY_TIMEOUT", "GPU nodegroup did not reach three stable observations")
+
+    @staticmethod
+    def _gpu_node_observation(value: dict[str, Any]) -> dict[str, Any]:
+        items = value.get("items")
+        if not isinstance(items, list):
+            raise OperationRefusal(
+                "GPU_NODE_RESPONSE_MALFORMED",
+                "the Kubernetes labeled-node response has no items list",
+            )
+        names: list[str] = []
+        ready_names: list[str] = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            metadata = item.get("metadata")
+            status = item.get("status")
+            if not isinstance(metadata, dict) or not isinstance(status, dict):
+                continue
+            name = metadata.get("name")
+            labels = metadata.get("labels")
+            conditions = status.get("conditions")
+            if not isinstance(name, str) or not name:
+                continue
+            names.append(name)
+            if (
+                isinstance(labels, dict)
+                and labels.get("workload") == "gpu"
+                and isinstance(conditions, list)
+                and any(
+                    isinstance(condition, dict)
+                    and condition.get("type") == "Ready"
+                    and condition.get("status") == "True"
+                    for condition in conditions
+                )
+            ):
+                ready_names.append(name)
+        return {
+            "labeled_node_count": len(items),
+            "node_names": sorted(names),
+            "ready_node_names": sorted(ready_names),
+        }
+
+    def _wait_gpu_node_ready(
+        self,
+        context: AttemptContext,
+        *,
+        timeout_seconds: int = GPU_NODE_READY_TIMEOUT_SECONDS,
+        poll_interval_seconds: int = GPU_NODE_READY_POLL_INTERVAL_SECONDS,
+        required_observations: int = GPU_NODE_READY_STABLE_OBSERVATIONS,
+    ) -> dict[str, Any]:
+        if timeout_seconds <= 0 or poll_interval_seconds <= 0 or required_observations < 2:
+            raise OperationRefusal(
+                "GPU_NODE_READY_BOUND_MALFORMED",
+                "GPU node readiness requires a positive fixed interval and timeout plus at least two observations",
+            )
+        deadline = self._monotonic() + timeout_seconds
+        observations = 0
+        consecutive = 0
+        stable_name: str | None = None
+        last = {
+            "labeled_node_count": 0,
+            "node_names": [],
+            "ready_node_names": [],
+        }
+        while self._monotonic() < deadline:
+            value = self._kubectl(
+                context,
+                "get",
+                "nodes",
+                "-l",
+                "workload=gpu",
+                json_output=True,
+            )
+            if not isinstance(value, dict):
+                raise OperationRefusal(
+                    "GPU_NODE_RESPONSE_MALFORMED",
+                    "the Kubernetes labeled-node response is not an object",
+                )
+            last = self._gpu_node_observation(value)
+            observations += 1
+            ready_names = last["ready_node_names"]
+            if last["labeled_node_count"] == 1 and len(ready_names) == 1:
+                observed_name = ready_names[0]
+                if observed_name == stable_name:
+                    consecutive += 1
+                else:
+                    stable_name = observed_name
+                    consecutive = 1
+                if consecutive >= required_observations:
+                    return {
+                        "status": "PASS_STABLE_GPU_NODE_READINESS",
+                        "node_name": observed_name,
+                        "observations": observations,
+                        "consecutive_ready_observations": consecutive,
+                        "required_consecutive_ready_observations": required_observations,
+                        "poll_interval_seconds": poll_interval_seconds,
+                        "timeout_seconds": timeout_seconds,
+                    }
+            else:
+                stable_name = None
+                consecutive = 0
+            remaining = deadline - self._monotonic()
+            if remaining <= poll_interval_seconds:
+                break
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "GPU_NODE_READY_TIMEOUT",
+            f"GPU node did not reach {required_observations} consecutive labeled Ready observations "
+            f"within {timeout_seconds} seconds after {observations} reads; "
+            f"labeled_nodes={last['labeled_node_count']} ready_nodes={len(last['ready_node_names'])}",
+        )
 
     def _ssm(self, instance_id: str, commands: list[str], *, timeout_seconds: int = 900) -> dict[str, Any]:
         if self._ssm_runner is not None:
@@ -888,10 +1004,8 @@ class LiveOperations:
         state["instance_id"] = instance_id
         self._save_state(context, state)
         self._update_kubeconfig(context)
-        node = self._kubectl(context, "get", "nodes", "-l", "workload=gpu", json_output=True)
-        if len(node.get("items", [])) != 1:
-            raise OperationRefusal("EXACT_GPU_NODE_ABSENT", "exactly one Kubernetes GPU node is required")
-        node_name = node["items"][0]["metadata"]["name"]
+        node_readiness = self._wait_gpu_node_ready(context)
+        node_name = node_readiness["node_name"]
         state["node_name"] = node_name
         self._save_state(context, state)
         instance = self.ec2.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
@@ -933,7 +1047,7 @@ class LiveOperations:
         samples = [float(line) for line in sample.stdout.decode().splitlines() if line.strip()]
         if len(samples) != 120 or any(value < 0 for value in samples):
             raise OperationRefusal("GPU_SAMPLER_SELF_TEST_REFUSED", "exactly 120 numeric sampler observations are required")
-        return {"status": "PASS_GPU_AND_SAMPLER_GATE", "gpu_node": node_name, "instance_id": instance_id, "volume_id": volume, "volume_gib": 60, "dra": readiness, "samples": len(samples), "baseline_mib": samples[0], "peak_mib": max(samples)}
+        return {"status": "PASS_GPU_AND_SAMPLER_GATE", "gpu_node": node_name, "node_readiness": node_readiness, "instance_id": instance_id, "volume_id": volume, "volume_gib": 60, "dra": readiness, "samples": len(samples), "baseline_mib": samples[0], "peak_mib": max(samples)}
 
     def node_local_input_stage(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)

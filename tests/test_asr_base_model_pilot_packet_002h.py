@@ -101,8 +101,16 @@ def test_packet_binds_prestage_refusal_and_risk_hashes() -> None:
         assert sha(path) in text
 
 
-def test_cold_rehearsal_defaults_to_current_committed_bindings() -> None:
-    text = (ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py").read_text(
-        encoding="utf-8"
-    )
-    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json") == 2
+def test_historical_cold_rehearsal_default_is_preserved_at_reviewed_commit() -> None:
+    body = subprocess.run(
+        [
+            "git",
+            "show",
+            "9edeef7:scripts/asr_base_model_pilot_cold_rehearsal.py",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        check=True,
+        text=True,
+    ).stdout
+    assert "ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json" in body

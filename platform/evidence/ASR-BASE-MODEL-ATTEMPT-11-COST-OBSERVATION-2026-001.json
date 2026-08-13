@@ -1,0 +1,56 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_COST_OBSERVATION",
+  "id": "ASR-BASE-MODEL-ATTEMPT-11-COST-OBSERVATION-2026-001",
+  "schema_version": 1,
+  "status": "AWS_COST_EXPLORER_INGESTION_PENDING",
+  "recorded_utc": "2026-08-13T06:15:00Z",
+  "currency": "USD",
+  "attempt": 11,
+  "attempt_evidence": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002J-ATTEMPT-11-GPU-NODE-READINESS-REFUSAL.json",
+    "sha256": "90354a2d3a921be51f121c4b192b172d18c9a99403467ef5b3c78e4752acbaa1",
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instance_observed_lifetime_seconds_to_termination_request": 119,
+    "cleanup_zero_state": true
+  },
+  "cost_explorer_query": {
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "cost_explorer_region": "us-east-1",
+    "workload_region": "eu-central-1",
+    "time_period": {
+      "start_inclusive": "2026-08-13",
+      "end_exclusive": "2026-08-14"
+    },
+    "granularity": "DAILY",
+    "metrics": [
+      "UnblendedCost",
+      "UsageQuantity"
+    ],
+    "filters": {
+      "service": "Amazon Elastic Compute Cloud - Compute",
+      "region": "eu-central-1",
+      "record_types": [
+        "Usage",
+        "Credit"
+      ]
+    },
+    "group_by": "USAGE_TYPE",
+    "estimated": true,
+    "groups": [],
+    "reported_unblended_cost_usd": 0.0,
+    "reported_usage_quantity": 0.0
+  },
+  "interpretation": {
+    "actual_attempt_11_cost_available": false,
+    "zero_is_finalized_actual": false,
+    "reason": "AWS has not yet ingested the current-day g6.xlarge usage row into Cost Explorer.",
+    "fabricated_attribution_permitted": false,
+    "required_follow_up": "Create a new non-destructive cost-registry revision when the August 13 g6.xlarge usage line lands; retain gross, credit and net values separately."
+  },
+  "controls": {
+    "aws_mutations": 0,
+    "historical_cost_records_modified": false,
+    "credits_used_to_expand_headroom": false,
+    "full_attempt_11_ceiling_carried_as_conservative_guardrail": true
+  }
+}

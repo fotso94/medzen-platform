@@ -55,6 +55,8 @@ from scripts.asr_eval_digest_rescan import validate_security_binding
 
 SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
+    "gpu_node_delayed_ready": ("gpu_node_delayed_ready", "PASS_PILOT"),
+    "gpu_node_never_ready": ("gpu_node_never_ready", "FAILED_CLOSED_EXECUTION"),
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
@@ -199,6 +201,9 @@ def _scenario_repository(
             ROOT / bindings["aws_read_fixtures"]["path"]
         ).read_bytes(),
     }
+    if "gpu_node_readiness_fixtures" in bindings:
+        relative = bindings["gpu_node_readiness_fixtures"]["path"]
+        tracked[relative] = (ROOT / relative).read_bytes()
     fixture_record = json.loads(
         (ROOT / bindings["aws_read_fixtures"]["path"]).read_bytes()
     )
@@ -262,13 +267,23 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
     fixture_catalog = FixtureCatalog(ROOT, bindings["aws_read_fixtures"])
     aws_read_fixture_coverage = fixture_catalog.summary()
     aws_read_dynamic_paths = validate_dynamic_paths(fixture_catalog)
+    gpu_fixture_binding = bindings.get("gpu_node_readiness_fixtures")
+    if not isinstance(gpu_fixture_binding, dict):
+        raise RuntimeError("GPU-node readiness fixture binding is absent")
+    gpu_fixture_path = ROOT / gpu_fixture_binding["path"]
+    gpu_fixture_body = read_committed_artifact(ROOT, gpu_fixture_path)
+    if hashlib.sha256(gpu_fixture_body).hexdigest() != gpu_fixture_binding["sha256"]:
+        raise RuntimeError("committed GPU-node readiness fixture hash differs")
+    gpu_fixture = json.loads(gpu_fixture_body)
+    if gpu_fixture.get("status") != "PASS_READ_ONLY_LIVE_GPU_NODE_TRANSITION_CAPTURE":
+        raise RuntimeError("committed GPU-node readiness fixture status differs")
     rehearsal_commit = bindings["executor_source_commit"]
     digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
     digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
@@ -381,6 +396,10 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "aws_boundary_calls": boundary.aws_calls,
                 "kubectl_boundary_calls": boundary.kubectl_calls,
                 "filesystem_side_effect_order": result["filesystem_side_effect_order"],
+                "gpu_node_readiness": {
+                    "reads": boundary.gpu_node_reads,
+                    "observation_sequence": boundary.gpu_node_observation_sequence,
+                },
             }
     pure_injections = _pure_prestage_injections(
         proof, bindings["pilot_bundle"]["sha256"]
@@ -398,10 +417,18 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "real_kubectl_calls": 0,
         "real_stage_implementations": len(STAGES),
         "parallel_fake_stage_implementations": 0,
-        "full_pass_runs": 1,
-        "injected_failure_runs": len(SCENARIOS) - 1 + len(pure_injections["refusals"]),
+        "full_pass_runs": sum(
+            expected == "PASS_PILOT" for _, expected in SCENARIOS.values()
+        ),
+        "injected_failure_runs": sum(
+            expected != "PASS_PILOT" for _, expected in SCENARIOS.values()
+        ) + len(pure_injections["refusals"]),
         "live_stage_injected_paths": [
-            name for name in SCENARIOS if name != "clean_pass"
+            name for name, (_, expected) in SCENARIOS.items() if expected != "PASS_PILOT"
+        ],
+        "live_stage_delayed_success_paths": [
+            name for name, (injection, expected) in SCENARIOS.items()
+            if injection is not None and expected == "PASS_PILOT"
         ],
         "pure_input_injected_paths": sorted(pure_injections["refusals"]),
         "pure_input_refusal_checks": pure_injections,
@@ -428,6 +455,13 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "security_gate_validation": security_gate_validation,
         "aws_read_fixture_coverage": aws_read_fixture_coverage,
         "aws_read_dynamic_paths": aws_read_dynamic_paths,
+        "gpu_node_readiness_fixtures": {
+            "path": gpu_fixture_binding["path"],
+            "sha256": gpu_fixture_binding["sha256"],
+            "status": gpu_fixture["status"],
+            "causal_classification": gpu_fixture["causal_timeline"]["classification"],
+            "invented_kubernetes_fields": 0,
+        },
         "rehearsal_binding_normalization_permitted": False,
         "exact_plan": plan_result,
         "authorization_schema": authorization_result,
@@ -464,7 +498,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json",
     )
     args = parser.parse_args()
     try:

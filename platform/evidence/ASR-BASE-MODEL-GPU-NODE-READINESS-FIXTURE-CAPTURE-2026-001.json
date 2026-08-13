@@ -1,0 +1,116 @@
+{
+  "record": "ASR_BASE_MODEL_GPU_NODE_READINESS_FIXTURE_CAPTURE",
+  "id": "ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001",
+  "schema_version": 1,
+  "status": "PASS_READ_ONLY_LIVE_GPU_NODE_TRANSITION_CAPTURE",
+  "captured_utc": "2026-08-13T06:08:09Z",
+  "account": "558069890522",
+  "region": "eu-central-1",
+  "cluster": "medzen-speech",
+  "caller_arn": "arn:aws:iam::558069890522:user/s.fotso",
+  "capture_method": {
+    "api": "CloudWatch Logs FilterLogEvents",
+    "log_group": "/aws/eks/medzen-speech/cluster",
+    "source": "EKS kube-apiserver audit log",
+    "window_utc": {
+      "start": "2026-08-13T05:08:00Z",
+      "end": "2026-08-13T05:22:00Z"
+    },
+    "aws_mutations": 0,
+    "kubernetes_mutations": 0,
+    "gpu_started_for_capture": false,
+    "credentials_or_phi_recorded": false
+  },
+  "attempt_11_empty_list": {
+    "source_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-A11-LIVE/diagnostics/kubectl-gpu-nodes-empty.json",
+    "source_sha256": "559a3f19293ed5083457e0c509989afe569b7541527f6b4293294c7c683571f6",
+    "observed_utc": "2026-08-13T05:09:58Z",
+    "response": {
+      "apiVersion": "v1",
+      "items": [],
+      "kind": "List",
+      "metadata": {
+        "resourceVersion": ""
+      }
+    }
+  },
+  "attempt_11_node_objects": {
+    "not_ready": {
+      "cloudwatch_event_id": "39842462486900283963804508623836617727199369578962223113",
+      "stage_timestamp": "2026-08-13T05:10:07.827809Z",
+      "verb": "create",
+      "request_uri": "/api/v1/nodes",
+      "node": {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "metadata": {
+          "labels": {
+            "workload": "gpu"
+          },
+          "name": "ip-172-31-20-53.eu-central-1.compute.internal"
+        },
+        "status": {
+          "conditions": [
+            {
+              "reason": "KubeletNotReady",
+              "status": "False",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    },
+    "ready": {
+      "cloudwatch_event_id": "39842463012551149038369826718439045378505290047436881963",
+      "stage_timestamp": "2026-08-13T05:10:30.965299Z",
+      "verb": "patch",
+      "request_uri": "/api/v1/nodes/ip-172-31-20-53.eu-central-1.compute.internal",
+      "node": {
+        "apiVersion": "v1",
+        "kind": "Node",
+        "metadata": {
+          "labels": {
+            "workload": "gpu"
+          },
+          "name": "ip-172-31-20-53.eu-central-1.compute.internal"
+        },
+        "status": {
+          "conditions": [
+            {
+              "reason": "KubeletReady",
+              "status": "True",
+              "type": "Ready"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "causal_timeline": {
+    "single_read_empty_utc": "2026-08-13T05:09:58Z",
+    "node_registered_not_ready_utc": "2026-08-13T05:10:07.827809Z",
+    "node_ready_utc": "2026-08-13T05:10:30.965299Z",
+    "seconds_empty_to_registration": 9.827809,
+    "seconds_empty_to_ready": 32.965299,
+    "classification": "KUBELET_REGISTRATION_AND_READINESS_RACE_CONFIRMED"
+  },
+  "replay_rule": {
+    "empty_list_envelope_source": "attempt_11_empty_list.response",
+    "node_payload_sources": [
+      "attempt_11_node_objects.not_ready.node",
+      "attempt_11_node_objects.ready.node"
+    ],
+    "invented_kubernetes_fields_permitted": false,
+    "delayed_success_sequence": [
+      "empty",
+      "not_ready",
+      "ready",
+      "ready"
+    ],
+    "never_ready_sequence": [
+      "empty",
+      "not_ready_repeated_until_timeout"
+    ]
+  },
+  "historical_evidence_modified": false
+}

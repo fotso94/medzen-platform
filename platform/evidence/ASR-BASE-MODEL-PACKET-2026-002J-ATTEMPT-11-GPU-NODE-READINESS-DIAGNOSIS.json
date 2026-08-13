@@ -1,0 +1,57 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_DIAGNOSIS",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002J-ATTEMPT-11-GPU-NODE-READINESS-DIAGNOSIS",
+  "schema_version": 1,
+  "status": "PASS_ROOT_CAUSE_CONFIRMED_KUBELET_REGISTRATION_RACE",
+  "attempt": 11,
+  "refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002J-ATTEMPT-11-GPU-NODE-READINESS-REFUSAL.json",
+    "sha256": "90354a2d3a921be51f121c4b192b172d18c9a99403467ef5b3c78e4752acbaa1",
+    "reason_code": "EXACT_GPU_NODE_ABSENT"
+  },
+  "read_only_live_capture": {
+    "path": "platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json",
+    "sha256": "34663d3ae7218f9423d15b4fa9aa11f4f4940022deaf87a409e6c0f4c91e5e56",
+    "aws_mutations": 0,
+    "gpu_started_for_capture": false
+  },
+  "observed_timeline": {
+    "single_kubectl_read_empty_utc": "2026-08-13T05:09:58Z",
+    "node_registered_not_ready_utc": "2026-08-13T05:10:07.827809Z",
+    "node_ready_utc": "2026-08-13T05:10:30.965299Z",
+    "seconds_empty_to_registration": 9.827809,
+    "seconds_empty_to_ready": 32.965299
+  },
+  "root_cause": {
+    "classification": "SINGLE_READ_BEFORE_KUBELET_REGISTRATION",
+    "statement": "The Auto Scaling instance was healthy and InService, but the executor queried the Kubernetes labeled-node list once before kubelet registration. EKS audit evidence from the same attempt shows that node registering NotReady 9.827809 seconds later and becoming Ready 32.965299 seconds after the refused read.",
+    "infrastructure_failure": false,
+    "kubernetes_api_failure": false,
+    "image_or_model_failure": false,
+    "evaluation_started": false
+  },
+  "correction": {
+    "gate": "BOUNDED_STABLE_LABELED_GPU_NODE_READINESS",
+    "selector": "workload=gpu",
+    "poll_interval_seconds": 10,
+    "hard_timeout_seconds": 600,
+    "required_consecutive_ready_observations": 2,
+    "same_node_identity_required_across_ready_observations": true,
+    "reset_on_empty_non_ready_multiple_or_changed_node": true,
+    "timeout_reason_code": "GPU_NODE_READY_TIMEOUT",
+    "malformed_response_reason_code": "GPU_NODE_RESPONSE_MALFORMED"
+  },
+  "rehearsal_requirements": {
+    "stage_implementation": "scripts.asr_base_model_pilot_live.LiveOperations._wait_gpu_node_ready",
+    "boundary_only_fakes": true,
+    "delayed_registration_then_ready": "PASS_REQUIRED",
+    "never_ready_timeout": "REFUSAL_REQUIRED",
+    "captured_live_empty_not_ready_and_ready_shapes_required": true
+  },
+  "history": {
+    "attempt_11_consumed": true,
+    "attempt_11_reuse_permitted": false,
+    "historical_records_modified": false,
+    "successor_requires_new_packet_and_owner_approval": true
+  }
+}

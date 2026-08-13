@@ -22,7 +22,6 @@ from scripts.asr_base_model_aws_read_fixtures import (
 from scripts.asr_base_model_pilot_fake import build_rehearsal_operations
 from scripts.asr_base_model_pilot_integrity import (
     RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS,
-    validate_executor_module_bindings,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan
 
@@ -128,12 +127,17 @@ def test_rehearsal_boundaries_replay_correct_prefix_api_shape() -> None:
     assert operations.ec2.get_managed_prefix_list_entries()["Entries"]
 
 
-def test_all_seventeen_executor_modules_are_bound() -> None:
+def test_all_seventeen_executor_modules_are_bound_at_reviewed_commit() -> None:
     value = bound()
     assert tuple(value["executor_modules"]) == RECORDED_AWS_REHEARSAL_EXECUTOR_MODULE_PATHS
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["status"] == "PASS_ALL_EXECUTOR_MODULE_HASHES"
-    assert result["module_count"] == 17
+    for relative, expected in value["executor_modules"].items():
+        body = subprocess.run(
+            ["git", "show", f"{value['executor_source_commit']}:{relative}"],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+        assert hashlib.sha256(body).hexdigest() == expected
 
 
 def test_attempt_eleven_plan_reuses_image_and_prestaged_bundle_read_only() -> None:

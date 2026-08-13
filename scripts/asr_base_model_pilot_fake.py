@@ -37,6 +37,17 @@ MANIFEST_ARCHIVE = FIXTURE_ROOT / "eval-manifests-2026-08-11.tar.gz"
 PILOT_BUNDLE = FIXTURE_ROOT / "pilot-bundle-2026-001.json"
 RUNTIME_ROWS = FIXTURE_ROOT / "runtime-rows-2026-001.json"
 MODEL_BINDINGS = FIXTURE_ROOT / "model-bindings-2026-001.json"
+GPU_NODE_READINESS_FIXTURE = (
+    ROOT
+    / "platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json"
+)
+GPU_NODE_READINESS_FIXTURE_SHA256 = (
+    "34663d3ae7218f9423d15b4fa9aa11f4f4940022deaf87a409e6c0f4c91e5e56"
+)
+DEFAULT_GPU_NODE_READINESS_FIXTURE = {
+    "path": str(GPU_NODE_READINESS_FIXTURE.relative_to(ROOT)),
+    "sha256": GPU_NODE_READINESS_FIXTURE_SHA256,
+}
 DEFAULT_AWS_READ_FIXTURES = {
     "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
     "sha256": "e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0",
@@ -59,8 +70,14 @@ class _Body:
 class BoundarySession:
     region_name = "eu-central-1"
 
-    def __init__(self, bindings: dict[str, Any], injection: str | None):
-        self.state = BoundaryState(bindings, injection)
+    def __init__(
+        self,
+        bindings: dict[str, Any],
+        injection: str | None,
+        *,
+        root: Path = ROOT,
+    ):
+        self.state = BoundaryState(bindings, injection, root=root)
         self.clients = {
             "sts": StsBoundary(self.state),
             "eks": EksBoundary(self.state),
@@ -76,7 +93,14 @@ class BoundarySession:
 
 
 class BoundaryState:
-    def __init__(self, bindings: dict[str, Any], injection: str | None):
+    def __init__(
+        self,
+        bindings: dict[str, Any],
+        injection: str | None,
+        *,
+        root: Path = ROOT,
+    ):
+        self.root = root
         self.bindings = bindings
         self.injection = injection
         self.fixtures = FixtureCatalog(
@@ -92,6 +116,9 @@ class BoundaryState:
         self.cpu_desired = 0
         self.instance_id = "i-rehearsal-gpu"
         self.node_name = "ip-rehearsal-gpu"
+        self.monotonic_seconds = 0.0
+        self.gpu_node_reads = 0
+        self.gpu_node_observation_sequence: list[str] = []
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
         self.volumes: set[str] = set()
@@ -116,6 +143,54 @@ class BoundaryState:
                 if item["key"].endswith("model-bindings.json")
             ): MODEL_BINDINGS.read_bytes(),
         }
+
+    def sleep(self, seconds: float) -> None:
+        self.monotonic_seconds += seconds
+
+    def monotonic(self) -> float:
+        return self.monotonic_seconds
+
+    def _gpu_node_fixture(self) -> dict[str, Any]:
+        binding = self.bindings.get(
+            "gpu_node_readiness_fixtures", DEFAULT_GPU_NODE_READINESS_FIXTURE
+        )
+        path = self.root / binding["path"]
+        if hashlib.sha256(path.read_bytes()).hexdigest() != binding["sha256"]:
+            raise AssertionError("GPU-node readiness fixture-capture hash differs")
+        fixture = json.loads(path.read_bytes())
+        if fixture.get("status") != "PASS_READ_ONLY_LIVE_GPU_NODE_TRANSITION_CAPTURE":
+            raise AssertionError("GPU-node readiness fixture-capture status differs")
+        return fixture
+
+    def _captured_gpu_node_list(self, state: str) -> dict[str, Any]:
+        fixture = self._gpu_node_fixture()
+        empty = copy.deepcopy(fixture["attempt_11_empty_list"]["response"])
+        if state == "empty":
+            return empty
+        if state not in {"not_ready", "ready"}:
+            raise AssertionError(f"unknown captured GPU-node state: {state}")
+        empty["items"] = [
+            copy.deepcopy(fixture["attempt_11_node_objects"][state]["node"])
+        ]
+        return empty
+
+    def gpu_node_response(self) -> dict[str, Any]:
+        self.gpu_node_reads += 1
+        if self.injection == "gpu_node_never_ready":
+            observed = "empty" if self.gpu_node_reads == 1 else "not_ready"
+        elif self.injection == "gpu_node_delayed_ready":
+            observed = ("empty", "not_ready", "ready", "ready")[
+                min(self.gpu_node_reads - 1, 3)
+            ]
+        else:
+            observed = "ready"
+        self.gpu_node_observation_sequence.append(
+            f"CAPTURED_ATTEMPT_11_{observed.upper()}"
+        )
+        response = self._captured_gpu_node_list(observed)
+        if response.get("items"):
+            self.node_name = response["items"][0]["metadata"]["name"]
+        return response
 
     @staticmethod
     def _proof() -> dict[str, Any]:
@@ -614,7 +689,7 @@ class KubectlBoundary:
             self.state.cni_mode = "standard" if assignment.endswith("-") else assignment.split("=", 1)[1]
             return b""
         if args[:2] == ("get", "nodes"):
-            return {"items": [{"metadata": {"name": self.state.node_name}}]}
+            return self.state.gpu_node_response()
         if args[:2] == ("apply", "-f"):
             self.state.kubernetes_mutations += 1
             body = (stdin or b"").decode(errors="replace")
@@ -683,7 +758,7 @@ def build_rehearsal_operations(
     root: Path = ROOT,
 ) -> tuple[LiveOperations, BoundaryState]:
     """Return the real stage class wired only to deterministic boundaries."""
-    session = BoundarySession(bindings, injection)
+    session = BoundarySession(bindings, injection, root=root)
     state = session.state
     operations = LiveOperations(
         root,
@@ -693,7 +768,8 @@ def build_rehearsal_operations(
         ssm_runner=SsmCommandBoundary(state),
         digest_scanner=digest_scan_boundary(injection),
         dra_waiter=lambda **_: {"status": "PASS_STABLE_DRA_READINESS", "stable_observations": 3},
-        sleeper=lambda _: None,
+        sleeper=state.sleep,
+        monotonic=state.monotonic,
     )
     return operations, state
 
