@@ -82,6 +82,8 @@ packet, bindings and executable source are final.
 
 - final bindings SHA-256:
   `b529630f13fee9595dcfbbb8ff036f5a960fa9ef078204cdf643e1c298552b87`.
+- final receipt-last cold-rehearsal SHA-256:
+  `ab71c4d99746831d57267ff67dc7713b2dedb570822bd4e77f630597040f5ed4`.
 
 ## Host capacity
 
