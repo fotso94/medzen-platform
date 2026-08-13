@@ -38,6 +38,7 @@ ATTEMPT_9_EXECUTOR_MODULE_PATHS = (
 BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS = (
     *ATTEMPT_9_EXECUTOR_MODULE_PATHS,
     "scripts/asr_base_model_pilot_fake.py",
+    "scripts/asr_base_model_pilot_cold_rehearsal.py",
 )
 
 
