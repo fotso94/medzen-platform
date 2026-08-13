@@ -428,7 +428,7 @@ class ExternalCommandBoundary:
             raise AssertionError(f"unhandled rehearsal AWS command: {command}")
         if executable == "kubectl":
             self.state.kubectl_calls += 1
-            if "--query-gpu=memory.used" in command:
+            if any("--query-gpu=memory.used" in argument for argument in command):
                 return self._completed(command, stdout=(b"100\n" * 120))
             if "wait" in command:
                 if "pod/asr-eval-inbound-control" in command:
