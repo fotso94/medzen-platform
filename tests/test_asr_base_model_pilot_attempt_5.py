@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_eval_digest_rescan import validate_security_binding
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore
-from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal, execute_attempt
 
 
@@ -51,7 +50,10 @@ def test_attempt_5_missing_scout_auth_refuses_before_attempt_envelope_or_aws(
     monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
     monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
     bindings = _plan_bindings()
-    ops = FakeOperations()
+    class MustNotRun:
+        pass
+
+    ops = MustNotRun()
     context = AttemptContext(
         attempt=5,
         bindings=bindings,
@@ -61,5 +63,4 @@ def test_attempt_5_missing_scout_auth_refuses_before_attempt_envelope_or_aws(
     with pytest.raises(OperationRefusal) as captured:
         execute_attempt(ops, context)
     assert captured.value.reason_code == "SCOUT_AUTHENTICATION_ABSENT"
-    assert ops.stage_order == []
     assert not (tmp_path / "attempt-envelope.json").exists()

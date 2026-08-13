@@ -35,6 +35,10 @@ ATTEMPT_9_EXECUTOR_MODULE_PATHS = (
     "scripts/asr_base_model_pilot_staging.py",
     *EXECUTOR_MODULE_PATHS[9:],
 )
+BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS = (
+    *ATTEMPT_9_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_pilot_fake.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -92,6 +96,7 @@ def validate_executor_module_bindings(
             LEGACY_EXECUTOR_MODULE_PATHS,
             EXECUTOR_MODULE_PATHS,
             ATTEMPT_9_EXECUTOR_MODULE_PATHS,
+            BOUNDARY_REHEARSAL_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cold-rehearse the entire pilot loop against fake AWS and kubectl operations."""
+"""Cold-rehearse the real ASR pilot composition with boundary fakes only."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import tempfile
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -17,23 +18,33 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from pipeline.asr_base_model_pilot_receipts import STAGES, canonical_json, write_exclusive
 import pipeline.asr_base_model_pilot_receipts as receipt_module
-from scripts.asr_base_model_pilot_fake import FakeOperations
-from scripts.asr_base_model_pilot_k8s import render, verify
-from scripts.asr_base_model_pilot_live import LiveOperations
+from pipeline.asr_base_model_pilot_receipts import STAGES, canonical_json, write_exclusive
+from scripts.asr_base_model_pilot_fake import (
+    assert_no_parallel_stage_implementation,
+    build_rehearsal_operations,
+)
 from scripts.asr_base_model_pilot_integrity import (
-    EXECUTOR_MODULE_PATHS,
     read_committed_artifact,
     validate_executor_module_bindings,
 )
+from scripts.asr_base_model_pilot_k8s import render, verify
+from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_base_model_pilot_runner import (
     STAGE_FUNCTIONS,
+    AttemptContext,
+    OperationRefusal,
     build_attempt_context,
     execute_attempt,
+    stage_artifact_stage,
     validate_authorization_payload,
     validate_clean_reviewed_worktree,
+)
+from scripts.asr_base_model_pilot_staging import (
+    StagingRefusal,
+    validate_prestage_proof,
+    validate_window_budget,
 )
 from scripts.asr_eval_digest_rescan import validate_security_binding
 
@@ -46,8 +57,6 @@ SCENARIOS = {
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
     "prestage_object_absent": ("prestage_object_absent", "FAILED_CLOSED_EXECUTION"),
-    "prestage_in_attempt_upload": ("prestage_in_attempt_upload", "FAILED_CLOSED_EXECUTION"),
-    "uplink_window_infeasible": ("uplink_window_infeasible", "FAILED_CLOSED_EXECUTION"),
 }
 
 
@@ -59,52 +68,165 @@ def _committed_clean_head() -> str:
     return validate_clean_reviewed_worktree(ROOT)
 
 
+def _wrapper_contract(bindings: dict[str, Any], directory: Path) -> dict[str, Any]:
+    operations, state = build_rehearsal_operations(bindings)
+    context = AttemptContext(
+        attempt=bindings["attempts"]["authorized_numbers"][0],
+        bindings=bindings,
+        receipts=receipt_module.ReceiptStore(
+            directory / "receipts",
+            packet_sha256="0" * 64,
+            authorization_sha256="a" * 64,
+        ),
+        workdir=directory,
+    )
+    directory.mkdir(parents=True)
+    payload = stage_artifact_stage(operations, context)
+    if (
+        payload.get("status") != "PASS_ARTIFACT_STAGE"
+        or payload.get("verification", {}).get("status")
+        != "PASS_PRESTAGED_BUNDLE_VERIFY_ONLY"
+        or payload.get("artifact_upload_bytes") != 0
+        or not state.zero_state()
+    ):
+        raise AssertionError("artifact wrapper contract differs")
+    return {
+        "status": "PASS_ARTIFACT_WRAPPER_CONTRACT",
+        "outer_status": payload["status"],
+        "nested_verification_status": payload["verification"]["status"],
+        "artifact_upload_bytes": payload["artifact_upload_bytes"],
+    }
+
+
+def _pure_prestage_injections(proof: dict[str, Any], bundle_sha: str) -> dict[str, Any]:
+    results = {}
+    in_attempt = json.loads(json.dumps(proof))
+    in_attempt["timed_window"]["in_attempt_upload_bytes"] = 1
+    try:
+        validate_prestage_proof(in_attempt, expected_bundle_sha256=bundle_sha)
+    except StagingRefusal as exc:
+        results["prestage_in_attempt_upload"] = exc.reason_code
+    else:
+        raise AssertionError("in-attempt upload injection passed")
+
+    infeasible = json.loads(json.dumps(proof))
+    infeasible["timed_window"]["estimated_fast_stage_seconds"] = 10_000
+    try:
+        validate_window_budget(
+            infeasible,
+            deadline_seconds=10800,
+            expected_bundle_sha256=bundle_sha,
+        )
+    except StagingRefusal as exc:
+        results["uplink_window_infeasible"] = exc.reason_code
+    else:
+        raise AssertionError("infeasible window injection passed")
+    return {
+        "status": "PASS_PURE_INPUT_REFUSAL_CHECKS",
+        "refusals": results,
+        "stage_implementation_replaced": False,
+    }
+
+
+def _scenario_repository(
+    base: Path,
+    *,
+    bindings_path: Path,
+    bindings_body: bytes,
+) -> tuple[Path, Path, Path]:
+    """Commit exact synthetic governance artifacts for the real stage-one gate."""
+    root = base / "reviewed"
+    root.mkdir(parents=True)
+    subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.name", "MedZen Rehearsal"], cwd=root, check=True)
+    subprocess.run(["git", "config", "user.email", "rehearsal@medzen.invalid"], cwd=root, check=True)
+    bindings = json.loads(bindings_body)
+    tracked = {
+        str(bindings_path.relative_to(ROOT)): bindings_body,
+        "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json": (
+            ROOT / "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json"
+        ).read_bytes(),
+        bindings["cost_registry"]["path"]: (
+            ROOT / bindings["cost_registry"]["path"]
+        ).read_bytes(),
+        "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml": (
+            ROOT / "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml"
+        ).read_bytes(),
+        "services/asr-eval-runtime/assets/language-conditioning-v1.json": (
+            ROOT / "services/asr-eval-runtime/assets/language-conditioning-v1.json"
+        ).read_bytes(),
+        "scripts/audit_asr_base_model_eval_inputs.py": (
+            ROOT / "scripts/audit_asr_base_model_eval_inputs.py"
+        ).read_bytes(),
+    }
+    for relative in bindings["executor_modules"]:
+        tracked[relative] = (ROOT / relative).read_bytes()
+    packet_relative = "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002I-attempt-10.md"
+    tracked[packet_relative] = b"synthetic committed rehearsal packet\n"
+    for relative, body in tracked.items():
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "reviewed source"], cwd=root, check=True)
+    reviewed = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    authorization_path = root / "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002I.json"
+    packet_path = root / packet_relative
+    dry_path = root / "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json"
+    packet_sha256 = hashlib.sha256(packet_path.read_bytes()).hexdigest()
+    authorization = {
+        "id": "ASR-BASE-MODEL-AWS-AUTH-2026-002I",
+        "status": "owner-approved",
+        "expires_utc": "2099-01-01T00:00:00Z",
+        "packet": {"sha256": packet_sha256},
+        "risk_acceptance": {"sha256": bindings["risk_acceptance_sha256"]},
+        "attempts": {"authorized_numbers": [10], "maximum": 1, "seconds_each": 10800, "non_transferable": True},
+        "reviewed_repository_commit": reviewed,
+        "pre_execution_dry_run": {"path": str(dry_path.relative_to(root))},
+    }
+    authorization_path.parent.mkdir(parents=True, exist_ok=True)
+    authorization_path.write_bytes(canonical_json(authorization))
+    dry_path.parent.mkdir(parents=True, exist_ok=True)
+    dry_path.write_text("{}\n", encoding="utf-8")
+    subprocess.run(["git", "add", "."], cwd=root, check=True)
+    subprocess.run(["git", "commit", "-qm", "authorization and dry run"], cwd=root, check=True)
+    return root, authorization_path, packet_path
+
+
 def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     rehearsal_commit = _committed_clean_head()
     prior_user = os.environ.get("DOCKER_SCOUT_HUB_USER")
     prior_password = os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
     os.environ["DOCKER_SCOUT_HUB_USER"] = "synthetic-cold-rehearsal"
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
-    receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
+    receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
-    if bindings["attempts"]["authorized_numbers"] == [9]:
-        prestage_path = ROOT / bindings["artifact_prestage_proof"]["path"]
-        prestage_body = read_committed_artifact(ROOT, prestage_path)
-        if hashlib.sha256(prestage_body).hexdigest() != bindings["artifact_prestage_proof"]["sha256"]:
-            raise RuntimeError("committed pre-stage proof hash differs")
-        bindings["rehearsal_artifact_prestage_proof"] = json.loads(prestage_body)
-    else:
-        for name in (
-            "prestage_object_absent",
-            "prestage_in_attempt_upload",
-            "uplink_window_infeasible",
-        ):
-            SCENARIOS.pop(name, None)
     digest_bindings_path = ROOT / bindings["digest_rescan_bindings"]["path"]
     digest_bindings_body = read_committed_artifact(ROOT, digest_bindings_path)
     if hashlib.sha256(digest_bindings_body).hexdigest() != bindings[
         "digest_rescan_bindings"
     ]["sha256"]:
         raise RuntimeError("committed digest-rescan bindings hash differs")
-    security_gate = json.loads(digest_bindings_body)["security_gate"]
-    if bindings.get("security_gate") != security_gate:
+    if bindings.get("security_gate") != json.loads(digest_bindings_body)["security_gate"]:
         raise RuntimeError("pilot and digest-rescan security gates differ")
     security_gate_validation = validate_security_binding(bindings["security_gate"])
     source_integrity = validate_executor_module_bindings(
         ROOT, bindings.get("executor_modules")
     )
+    real_only = assert_no_parallel_stage_implementation()
     attempt = bindings["attempts"]["authorized_numbers"][0]
-    authorization_id = bindings["authorization"]["id"]
     plan_result = validate_plan(exact_plan(bindings, attempt), bindings, attempt)
     workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], attempt)
     workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], attempt)
     authorization_result = validate_authorization_payload(
         {
-            "id": authorization_id,
+            "id": bindings["authorization"]["id"],
             "status": "owner-approved",
             "packet": {"sha256": "0" * 64},
             "risk_acceptance": {"sha256": "3" * 64},
@@ -115,27 +237,54 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "non_transferable": True,
             },
         },
-        expected_id=authorization_id,
+        expected_id=bindings["authorization"]["id"],
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
         attempt=attempt,
     )
+    proof_binding = bindings["artifact_prestage_proof"]
+    proof_body = read_committed_artifact(ROOT, ROOT / proof_binding["path"])
+    if hashlib.sha256(proof_body).hexdigest() != proof_binding["sha256"]:
+        raise RuntimeError("committed pre-stage proof hash differs")
+    proof = json.loads(proof_body)
+
     scenarios: dict[str, Any] = {}
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
         base = Path(temporary)
+        wrapper = _wrapper_contract(bindings, base / "wrapper-contract")
         for name, (injection, expected) in SCENARIOS.items():
             directory = base / name
-            ops = FakeOperations(inject=injection)
+            reviewed, authorization_path, packet_path = _scenario_repository(
+                base / f"{name}-repo",
+                bindings_path=bindings_path,
+                bindings_body=bindings_body,
+            )
+            scenario_bindings = json.loads(json.dumps(bindings))
+            scenario_bindings["authorization"]["path"] = str(
+                authorization_path.relative_to(reviewed)
+            )
+            scenario_bindings["authorization"]["id"] = "ASR-BASE-MODEL-AWS-AUTH-2026-002I"
+            scenario_bindings["authorization"]["deadline_dry_run_path"] = str(
+                (reviewed / "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json").relative_to(reviewed)
+            )
+            scenario_bindings["artifact_prestage_proof"]["path"] = "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json"
+            operations, boundary = build_rehearsal_operations(
+                scenario_bindings, injection=injection, root=reviewed
+            )
+            packet_hash = hashlib.sha256(packet_path.read_bytes()).hexdigest()
+            authorization_hash = hashlib.sha256(authorization_path.read_bytes()).hexdigest()
             context = build_attempt_context(
-                root=ROOT,
+                root=reviewed,
                 workdir=directory,
                 attempt=attempt,
-                bindings=bindings,
-                packet_sha256="0" * 64,
-                authorization_sha256="a" * 64,
+                bindings=scenario_bindings,
+                packet_sha256=packet_hash,
+                authorization_sha256=authorization_hash,
+                authorization_path=authorization_path,
+                packet_path=packet_path,
             )
-            result = execute_attempt(ops, context)
-            if result["outcome"] != expected or not ops.zero_state():
+            result = execute_attempt(operations, context)
+            if result["outcome"] != expected or not boundary.zero_state():
                 raise RuntimeError(f"cold rehearsal scenario differs: {name}")
             receipt_files = sorted((directory / "receipts").glob("*.json"))
             failure_receipt = (
@@ -151,86 +300,67 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     if failure_receipt is not None
                     else None
                 ),
-                "cleanup_status": json.loads((directory / "receipts/cleanup_and_expiry.json").read_bytes())["status"],
+                "cleanup_status": json.loads(
+                    (directory / "receipts/cleanup_and_expiry.json").read_bytes()
+                )["status"],
                 "receipt_count": len(receipt_files),
-                "receipt_chain_sha256": hashlib.sha256("".join(_sha(path) for path in receipt_files).encode()).hexdigest(),
-                "zero_state": ops.zero_state(),
-                "ecr_scan_configuration_put_calls": ops.registry_scanning.put_calls,
-                "ecr_scan_configuration_restored": ops.registry_scanning.restored(),
+                "receipt_chain_sha256": hashlib.sha256(
+                    "".join(_sha(path) for path in receipt_files).encode()
+                ).hexdigest(),
+                "zero_state": boundary.zero_state(),
+                "aws_boundary_calls": boundary.aws_calls,
+                "kubectl_boundary_calls": boundary.kubectl_calls,
                 "filesystem_side_effect_order": result["filesystem_side_effect_order"],
-                "external_workdir_classification": "TEMPORARY_EXTERNAL_TO_REVIEWED_WORKTREE",
-                "external_to_reviewed_worktree": True,
-                "receipt_store_relative_path": "receipts",
             }
+    pure_injections = _pure_prestage_injections(
+        proof, bindings["pilot_bundle"]["sha256"]
+    )
     rehearsal_source_paths = [
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
-        ROOT / "services/asr-eval-runtime/medzen_asr_eval/pilot.py",
-        ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
+        ROOT / "scripts/asr_base_model_pilot_live.py",
     ]
     receipt = {
-        "schema_version": 1,
-        "status": "PASS_COLD_REHEARSAL",
+        "schema_version": 2,
+        "status": "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS",
         "real_aws_calls": 0,
         "real_kubectl_calls": 0,
-        "aws_mutations": 0,
-        "kubernetes_mutations": 0,
+        "real_stage_implementations": len(STAGES),
+        "parallel_fake_stage_implementations": 0,
         "full_pass_runs": 1,
         "injected_failure_runs": len(SCENARIOS) - 1,
         "injected_paths": [name for name in SCENARIOS if name != "clean_pass"],
+        "pure_input_refusal_checks": pure_injections,
+        "artifact_wrapper_contract": wrapper,
         "bindings_source": {
             "path": str(bindings_path.relative_to(ROOT)),
             "sha256": hashlib.sha256(bindings_body).hexdigest(),
             "loaded_from_committed_head": True,
-            "fixture_used": False,
+            "fixture_bindings_permitted": False,
         },
         "rehearsal_source_commit": rehearsal_commit,
-        f"attempt_{attempt}_security_rehearsal": {
-            "aligned_pass": True,
-            "wrong_digest_refuses": True,
-            "extra_finding_refuses": True,
-            "existing_exact_image_upload_skipped": True,
-            "registry_scanning_mutations": 0,
-        },
-        "registry_scanning_boundary": {
-            "status": "PASS_NO_REGISTRY_SCANNING_MUTATION",
-            "inspector_enhanced_scanning_adopted": False,
-            "maximum_put_calls_per_scenario": max(
-                value["ecr_scan_configuration_put_calls"] for value in scenarios.values()
-            ),
-            "ecr_basic_role": "SUPPLEMENTARY_OS_GATE",
-            "docker_scout_role": "DIGEST_VERIFIED_PYTHON_PACKAGE_GATE",
-        },
         "enumerated_stages": list(STAGES),
         "execution_asset_completeness": {
             stage: {
                 "runner": f"scripts.asr_base_model_pilot_runner.{STAGE_FUNCTIONS[stage].__name__}",
-                "real_operation": f"scripts.asr_base_model_pilot_live.LiveOperations.{getattr(LiveOperations, stage).__name__}",
-                "fake_operation": f"scripts.asr_base_model_pilot_fake.FakeOperations.{getattr(FakeOperations, stage).__name__}",
+                "operation": f"scripts.asr_base_model_pilot_live.LiveOperations.{getattr(LiveOperations, stage).__name__}",
+                "same_operation_for_live_and_rehearsal": True,
             }
             for stage in STAGES
         },
+        "stage_implementation_guard": real_only,
         "executor_module_integrity": source_integrity,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
         "rehearsal_binding_normalization_permitted": False,
         "exact_plan": plan_result,
         "authorization_schema": authorization_result,
-        "reviewed_worktree_boundary": {
-            "required_head": "packet-bound reviewed commit",
-            "required_porcelain_status": "empty",
-            "dependency_interpreter_location": "outside reviewed worktree",
-            "runner_invocation": "python -m scripts.asr_base_model_pilot_runner",
-            "workdir_location": "outside reviewed worktree",
-            "receipt_commit_timing": "only after terminal run",
-        },
         "fidelity_boundary": {
-            "policy": "EVERYTHING_EXCEPT_PAID_EXTERNAL_CALLS",
-            "shared_context_builder": "scripts.asr_base_model_pilot_runner.build_attempt_context",
-            "shared_execution_runner": "scripts.asr_base_model_pilot_runner.execute_attempt",
-            "shared_receipt_store": "pipeline.asr_base_model_pilot_receipts.ReceiptStore",
-            "shared_filesystem_side_effect_ordering": True,
-            "fake_boundary": ["AWS calls", "kubectl calls"],
+            "policy": "ACTUAL_LIVE_OPERATIONS_WITH_EXTERNAL_BOUNDARY_FAKES_ONLY",
+            "stage_class": "scripts.asr_base_model_pilot_live.LiveOperations",
+            "parallel_stage_class": None,
+            "fake_boundary": ["AWS client calls", "kubectl calls", "external Docker Scout response"],
+            "real_local_operations": ["stage composition", "state snapshots", "receipt ordering", "input-freeze audit", "artifact wrapper", "cleanup composition"],
             "filesystem_side_effects_faked": False,
         },
         "kubernetes_workload": workload_result,
@@ -257,13 +387,18 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json",
     )
     args = parser.parse_args()
     try:
         result = rehearse(args.output.resolve(), args.bindings.resolve())
     except Exception as exc:
-        print(json.dumps({"status": "REFUSED", "exception_class": type(exc).__name__}, sort_keys=True))
+        print(
+            json.dumps(
+                {"status": "REFUSED", "exception_class": type(exc).__name__, "detail": str(exc)[:256]},
+                sort_keys=True,
+            )
+        )
         return 2
     print(json.dumps(result, sort_keys=True, separators=(",", ":")))
     return 0

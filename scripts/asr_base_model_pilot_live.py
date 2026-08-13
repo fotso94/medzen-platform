@@ -19,7 +19,7 @@ import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
@@ -174,13 +174,40 @@ class S3CreateOnlyStore(ObjectStore):
 
 
 class LiveOperations:
-    def __init__(self, root: Path):
+    """The only stage implementation used by live execution and rehearsal.
+
+    A cold rehearsal may inject deterministic clients at the external-call
+    boundary.  It may not replace or override any stage method.  This makes
+    stage composition, state persistence, cleanup ordering and wrapper status
+    checks identical to a live run.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        *,
+        session: Any | None = None,
+        command_runner: Callable[..., subprocess.CompletedProcess[bytes]] = _run,
+        kubectl_runner: Callable[..., dict[str, Any] | bytes] | None = None,
+        ssm_runner: Callable[..., dict[str, Any]] | None = None,
+        digest_scanner: Callable[..., dict[str, Any]] = scan_exact_ecr_child,
+        dra_waiter: Callable[..., dict[str, Any]] | None = None,
+        sleeper: Callable[[float], None] = time.sleep,
+    ):
         self.root = root
-        try:
-            import boto3
-        except Exception as exc:
-            raise OperationRefusal("BOTO3_ABSENT", "the reviewed AWS SDK is unavailable") from exc
-        self.session = boto3.Session(profile_name=PROFILE, region_name=REGION)
+        if session is None:
+            try:
+                import boto3
+            except Exception as exc:
+                raise OperationRefusal("BOTO3_ABSENT", "the reviewed AWS SDK is unavailable") from exc
+            session = boto3.Session(profile_name=PROFILE, region_name=REGION)
+        self.session = session
+        self._command_runner = command_runner
+        self._kubectl_runner = kubectl_runner
+        self._ssm_runner = ssm_runner
+        self._digest_scanner = digest_scanner
+        self._dra_waiter = dra_waiter
+        self._sleeper = sleeper
         self.sts = self.session.client("sts")
         self.eks = self.session.client("eks")
         self.ec2 = self.session.client("ec2")
@@ -188,6 +215,42 @@ class LiveOperations:
         self.s3 = self.session.client("s3")
         self.asg = self.session.client("autoscaling")
         self.ssm = self.session.client("ssm")
+
+    def _command(
+        self,
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        stdin: bytes | None = None,
+        timeout: int = 900,
+        check: bool = True,
+        journal_path: Path | None = None,
+    ) -> subprocess.CompletedProcess[bytes]:
+        return self._command_runner(
+            command,
+            cwd=cwd,
+            stdin=stdin,
+            timeout=timeout,
+            check=check,
+            journal_path=journal_path,
+        )
+
+    def _json_external_command(
+        self, command: list[str], *, cwd: Path | None = None, timeout: int = 900
+    ) -> dict[str, Any]:
+        completed = self._command(command, cwd=cwd, timeout=timeout)
+        try:
+            value = json.loads(completed.stdout)
+        except Exception as exc:
+            raise OperationRefusal(
+                "COMMAND_RESPONSE_MALFORMED",
+                f"{Path(command[0]).name} returned non-JSON",
+            ) from exc
+        if not isinstance(value, dict):
+            raise OperationRefusal(
+                "COMMAND_RESPONSE_MALFORMED", "command response is not an object"
+            )
+        return value
 
     def _state(self, context: AttemptContext) -> dict[str, Any]:
         directory = context.workdir / "state"
@@ -220,18 +283,26 @@ class LiveOperations:
         write_exclusive(directory / f"{sequence:04d}.json", canonical_json(state))
 
     def _aws(self, *args: str, timeout: int = 900) -> dict[str, Any]:
-        return _json_command(["aws", "--profile", PROFILE, "--region", REGION, *args, "--output", "json"], timeout=timeout)
+        return self._json_external_command(["aws", "--profile", PROFILE, "--region", REGION, *args, "--output", "json"], timeout=timeout)
 
     def _kubectl(self, context: AttemptContext, *args: str, stdin: bytes | None = None,
                  timeout: int = 900, json_output: bool = False) -> dict[str, Any] | bytes:
+        if self._kubectl_runner is not None:
+            return self._kubectl_runner(
+                context,
+                *args,
+                stdin=stdin,
+                timeout=timeout,
+                json_output=json_output,
+            )
         kubeconfig = context.workdir / "kubeconfig"
         command = ["kubectl", "--kubeconfig", str(kubeconfig), *args]
         if json_output:
-            return _json_command(command + ["-o", "json"], timeout=timeout)
-        return _run(command, stdin=stdin, timeout=timeout).stdout
+            return self._json_external_command(command + ["-o", "json"], timeout=timeout)
+        return self._command(command, stdin=stdin, timeout=timeout).stdout
 
     def _update_kubeconfig(self, context: AttemptContext) -> None:
-        _run([
+        self._command([
             "aws", "--profile", PROFILE, "--region", REGION, "eks", "update-kubeconfig",
             "--name", CLUSTER, "--kubeconfig", str(context.workdir / "kubeconfig"), "--alias", "medzen-asr-eval",
         ])
@@ -264,10 +335,14 @@ class LiveOperations:
                 last = observed
             if stable >= 3:
                 return observed
-            time.sleep(10)
+            self._sleeper(10)
         raise OperationRefusal("GPU_NODEGROUP_STABILITY_TIMEOUT", "GPU nodegroup did not reach three stable observations")
 
     def _ssm(self, instance_id: str, commands: list[str], *, timeout_seconds: int = 900) -> dict[str, Any]:
+        if self._ssm_runner is not None:
+            return self._ssm_runner(
+                instance_id, commands, timeout_seconds=timeout_seconds
+            )
         response = self.ssm.send_command(
             InstanceIds=[instance_id],
             DocumentName="AWS-RunShellScript",
@@ -280,7 +355,7 @@ class LiveOperations:
             try:
                 value = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
             except self.ssm.exceptions.InvocationDoesNotExist:
-                time.sleep(2)
+                self._sleeper(2)
                 continue
             status = value["Status"]
             if status == "Success":
@@ -288,7 +363,7 @@ class LiveOperations:
                 return {"command_id": command_id, "status": status, "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout}
             if status in {"Cancelled", "TimedOut", "Failed", "Cancelling"}:
                 raise OperationRefusal("SSM_COMMAND_REFUSED", f"SSM command {command_id} ended {status}")
-            time.sleep(2)
+            self._sleeper(2)
         raise OperationRefusal("SSM_COMMAND_TIMEOUT", f"SSM command {command_id} exceeded its bound")
 
     def deadline_identity_and_acceptance(
@@ -330,12 +405,12 @@ class LiveOperations:
             raise OperationRefusal("RISK_ACCEPTANCE_EXPIRED", "offline evaluation acceptance has expired")
         if _sha(context.packet_path) != context.receipts.packet_sha256 or _sha(context.authorization_path) != context.receipts.authorization_sha256:
             raise OperationRefusal("REVIEWED_FILE_HASH_DIFFERS", "packet or authorization changed after binding")
-        if context.attempt == 9:
+        if context.attempt >= 9:
             prestage_binding = bindings.get("artifact_prestage_proof")
             if not isinstance(prestage_binding, dict):
                 raise OperationRefusal(
                     "COMMITTED_PRESTAGE_PROOF_ABSENT",
-                    "attempt 9 requires the committed complete-bundle pre-stage proof",
+                    "attempt 9 or later requires the committed complete-bundle pre-stage proof",
                 )
             prestage_path = self.root / str(prestage_binding.get("path", ""))
             try:
@@ -408,13 +483,13 @@ class LiveOperations:
         binding = context.bindings["input_freeze"]
         manifest_root = context.workdir / "manifests"
         manifest_root.mkdir(parents=True, exist_ok=False)
-        _run([
+        self._command([
             "aws", "--profile", PROFILE, "--region", REGION, "s3", "sync",
             "s3://medzen-speech/eval/", str(manifest_root), "--exclude", "*", "--include", "*/asr/*/manifest*.jsonl",
         ], timeout=1800)
         outputs = []
         for run in (1, 2):
-            completed = _run([
+            completed = self._command([
                 sys.executable, "scripts/audit_asr_base_model_eval_inputs.py",
                 "--manifest-root", str(manifest_root),
                 "--data-commit", binding["data_commit"],
@@ -469,7 +544,7 @@ class LiveOperations:
             try:
                 response = self.ecr.describe_image_scan_findings(repositoryName=repository, imageId={"imageDigest": digest})
             except Exception:
-                time.sleep(10)
+                self._sleeper(10)
                 continue
             if response.get("imageScanStatus", {}).get("status") == "COMPLETE":
                 findings = response.get("imageScanFindings", {}).get("enhancedFindings") or response.get("imageScanFindings", {}).get("findings", [])
@@ -493,7 +568,7 @@ class LiveOperations:
                 if critical or high != EXPECTED_HIGHS:
                     raise OperationRefusal("AUTHORITATIVE_SCAN_FINDINGS_DIFFER", "authoritative critical/high tuple set differs")
                 return {"status": "COMPLETE", "critical": 0, "high": len(high), "high_tuples": sorted(high)}
-            time.sleep(10)
+            self._sleeper(10)
         raise OperationRefusal("AUTHORITATIVE_SCAN_TIMEOUT", "ECR scan did not complete")
 
     def _wait_registry_scanning_configuration(
@@ -513,7 +588,7 @@ class LiveOperations:
                     return observed
             else:
                 stable = 0
-            time.sleep(2)
+            self._sleeper(2)
         raise OperationRefusal(
             "ECR_SCAN_CONFIGURATION_STABILITY_TIMEOUT",
             "ECR scanning configuration did not reach two stable exact observations",
@@ -553,12 +628,12 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt in {5, 6, 7, 8, 9}:
+        if context.attempt >= 5:
             exact = self._existing_exact_image(image)
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
                 with tempfile.TemporaryDirectory(prefix="digest-rescan-", dir=context.workdir) as temporary:
-                    scan = scan_exact_ecr_child(
+                    scan = self._digest_scanner(
                         self.ecr,
                         ECR_REPOSITORY,
                         image,
@@ -580,7 +655,7 @@ class LiveOperations:
                 "security_gate_binding": gate_binding,
                 "security_gate": scan,
             }
-        local = _run(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
+        local = self._command(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
         labels = json.loads(local.stdout)
         if labels.get("org.opencontainers.image.revision") != image["source_commit"] or labels.get("io.medzen.classification") != "offline-evaluation-only":
             raise OperationRefusal("LOCAL_IMAGE_LABELS_DIFFER", "local image provenance labels differ")
@@ -659,7 +734,9 @@ class LiveOperations:
             "prestage_proof_sha256": proof_binding["sha256"],
             "create_only": True,
             "hashes_verified": True,
-            **verification,
+            "verification": verification,
+            "artifact_upload_bytes": verification["artifact_upload_bytes"],
+            "aws_mutations": verification["aws_mutations"],
         }
 
     def _endpoint_policy(self, context: AttemptContext, service: str) -> str:
@@ -724,7 +801,7 @@ class LiveOperations:
             described = self.ec2.describe_vpc_endpoints(VpcEndpointIds=endpoint_ids)["VpcEndpoints"]
             if len(described) == 3 and all(item["State"] == "available" for item in described):
                 break
-            time.sleep(10)
+            self._sleeper(10)
         else:
             raise OperationRefusal("PRIVATE_ENDPOINT_AVAILABILITY_TIMEOUT", "private endpoints did not become available")
         interfaces = [item for item in described if item["VpcEndpointType"] == "Interface"]
@@ -785,10 +862,18 @@ class LiveOperations:
         self._kubectl(context, "apply", "-f", "-", stdin=dra)
         state["dra_installed"] = True
         self._save_state(context, state)
-        from scripts.run_b6a_003c_c_proof import wait_for_stable_dra
-        readiness = wait_for_stable_dra(kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600)
+        if self._dra_waiter is None:
+            from scripts.run_b6a_003c_c_proof import wait_for_stable_dra
+
+            readiness = wait_for_stable_dra(
+                kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600
+            )
+        else:
+            readiness = self._dra_waiter(
+                kubeconfig=context.workdir / "kubeconfig", timeout_seconds=600
+            )
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
-        sample = _run([
+        sample = self._command([
             "kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "exec", "-n", "nvidia-dra-driver", dra_pod, "-c", "gpus", "--",
             "/busybox/sh", "-c", "i=0; while [ $i -lt 120 ]; do /driver-root/usr/bin/nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits; i=$((i+1)); /busybox/sleep 0.1; done",
         ], timeout=120)
@@ -875,7 +960,7 @@ class LiveOperations:
         }
         encoded = canonical_json(probe)
         self._kubectl(context, "apply", "-f", "-", stdin=encoded)
-        completed = _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=jsonpath={.status.phase}=Succeeded", "pod/asr-eval-inbound-control", "--timeout=60s"], check=False, timeout=90)
+        completed = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=jsonpath={.status.phase}=Succeeded", "pod/asr-eval-inbound-control", "--timeout=60s"], check=False, timeout=90)
         logs_hash = hashlib.sha256(self._kubectl(context, "logs", "-n", NAMESPACE, "pod/asr-eval-inbound-control") or b"").hexdigest()
         self._kubectl(context, "delete", "pod/asr-eval-inbound-control", "-n", NAMESPACE, "--wait=true")
         if completed.returncode != 0:
@@ -911,10 +996,10 @@ class LiveOperations:
                     inbound = self._cross_pod_refusal(context, pod_ip)
                     self._ssm(state["instance_id"], [f"sudo touch {state['staging_path']}/input/network-release", f"sudo chown 10001:10001 {state['staging_path']}/input/network-release", f"sudo chmod 0444 {state['staging_path']}/input/network-release"])
                     break
-            time.sleep(5)
+            self._sleeper(5)
         else:
             raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
-        waited = _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
+        waited = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
         if waited.returncode != 0:
             raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
         aggregate = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/aggregate.json", f"sha256sum {state['staging_path']}/output/aggregate.json"])
@@ -930,7 +1015,7 @@ class LiveOperations:
             try:
                 result = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=state["instance_id"])
             except self.ssm.exceptions.InvocationDoesNotExist:
-                time.sleep(2)
+                self._sleeper(2)
                 continue
             if result["Status"] == "Success":
                 try:
@@ -940,7 +1025,7 @@ class LiveOperations:
                 break
             if result["Status"] in {"Failed", "TimedOut", "Cancelled"}:
                 raise OperationRefusal("AGGREGATE_RECEIPT_UNREADABLE", "aggregate read failed")
-            time.sleep(2)
+            self._sleeper(2)
         if not isinstance(value, dict) or value.get("status") not in {"PASS_AGGREGATE", "INCOMPLETE_MEASUREMENT"}:
             raise OperationRefusal("AGGREGATE_STATUS_DIFFERS", "aggregate status differs")
         expected_rows = context.bindings["input_freeze"]["pilot_rows"]
@@ -970,9 +1055,9 @@ class LiveOperations:
         try:
             self._update_kubeconfig(context)
             if state.get("namespace"):
-                _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", NAMESPACE, "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
+                self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", NAMESPACE, "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
             if state.get("dra_installed"):
-                _run(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", "nvidia-dra-driver", "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
+                self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "delete", "namespace", "nvidia-dra-driver", "--ignore-not-found=true", "--wait=true", "--timeout=5m"], check=False, timeout=360)
         except Exception as exc:
             errors.append(f"kubernetes:{type(exc).__name__}")
         if state.get("instance_id"):
@@ -1012,7 +1097,7 @@ class LiveOperations:
                     remaining = self.ec2.describe_vpc_endpoints(Filters=[{"Name": "vpc-endpoint-id", "Values": state["endpoint_ids"]}])["VpcEndpoints"]
                     if not remaining:
                         break
-                    time.sleep(5)
+                    self._sleeper(5)
                 else:
                     raise RuntimeError("endpoint deletion timeout")
             except Exception as exc:

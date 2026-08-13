@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in {1, 2, 3, 4, 5, 6, 7, 8, 9}:
-        raise ValueError("attempt must be 1 through 9")
+    if attempt not in set(range(1, 11)):
+        raise ValueError("attempt must be 1 through 10")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -38,7 +38,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         raise ValueError("OCI index digest is malformed")
     if not isinstance(image_tag, str) or re.fullmatch(r"[a-zA-Z0-9_.-]{1,300}", image_tag) is None:
         raise ValueError("immutable image tag is absent or malformed")
-    permanent_create_only = [] if attempt == 9 else [
+    permanent_create_only = [] if attempt >= 9 else [
         f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
     ]
     temporary_create_then_delete = [

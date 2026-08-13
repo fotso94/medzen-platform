@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore
-from scripts.asr_base_model_pilot_fake import FakeOperations
 from scripts.asr_base_model_pilot_integrity import (
     EXECUTOR_MODULE_PATHS,
     PilotIntegrityRefusal,
@@ -101,7 +100,7 @@ def test_attempt_six_refuses_missing_committed_stage_one_dry_run_before_scout(
         bindings_sha256="b" * 64,
     )
     with pytest.raises(OperationRefusal) as captured:
-        execute_attempt(FakeOperations(), context)
+        execute_attempt(object(), context)
     assert captured.value.reason_code == "COMMITTED_STAGE_ONE_DRY_RUN_ABSENT"
     assert not (tmp_path / "attempt-envelope.json").exists()
 
@@ -139,7 +138,7 @@ def test_attempt_six_refuses_dry_run_bound_to_different_artifacts(
         bindings_sha256="b" * 64,
     )
     with pytest.raises(OperationRefusal) as captured:
-        execute_attempt(FakeOperations(), context)
+        execute_attempt(object(), context)
     assert captured.value.reason_code == "COMMITTED_STAGE_ONE_DRY_RUN_BINDING_DIFFERS"
     assert not (tmp_path / "attempt-envelope.json").exists()
 
@@ -161,6 +160,6 @@ def test_attempt_seven_refuses_missing_committed_scout_preflight_before_envelope
         workdir=tmp_path,
     )
     with pytest.raises(OperationRefusal) as captured:
-        execute_attempt(FakeOperations(), context)
+        execute_attempt(object(), context)
     assert captured.value.reason_code == "COMMITTED_SCOUT_PREFLIGHT_ABSENT"
     assert not (tmp_path / "attempt-envelope.json").exists()

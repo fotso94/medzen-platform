@@ -1,424 +1,563 @@
-"""Deterministic fake AWS/kubectl execution used by the cold rehearsal."""
+"""Boundary fakes for rehearsing the real ASR pilot stage implementation.
+
+This module deliberately contains no implementation of any pilot stage.  The
+cold rehearsal constructs :class:`LiveOperations` itself and injects these
+objects only where that class crosses an AWS or kubectl/external-tool
+boundary.  Therefore a stage return-value, state-ordering or cleanup defect in
+``LiveOperations`` cannot be hidden by a second implementation.
+"""
 
 from __future__ import annotations
 
+import copy
 import hashlib
+import io
 import json
-import sys
-import tempfile
-from copy import deepcopy
+import subprocess
+import tarfile
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 
+from pipeline.asr_base_model_pilot_receipts import canonical_json
+from scripts.asr_base_model_pilot_live import (
+    CALLER,
+    CPU_NODEGROUP,
+    GPU_NODEGROUP,
+    LiveOperations,
+)
+from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
+
+
 ROOT = Path(__file__).resolve().parents[1]
-PACKAGE = ROOT / "services" / "asr-eval-runtime"
-if str(PACKAGE) not in sys.path:
-    sys.path.insert(0, str(PACKAGE))
-
-from medzen_asr_eval.backends import Transcript  # noqa: E402
-from medzen_asr_eval.harness import canonical_json  # noqa: E402
-from medzen_asr_eval.pilot import run_pilot  # noqa: E402
-from scripts.asr_base_model_ecr_scanning import (  # noqa: E402
-    canonical_configuration,
-    merge_scan_on_push_filter,
-    validate_configuration,
-)
-from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal  # noqa: E402
-from scripts.asr_base_model_pilot_staging import (  # noqa: E402
-    StagingRefusal,
-    validate_prestage_proof,
-    validate_window_budget,
-)
-from scripts.asr_eval_digest_rescan import DigestRescanRefusal, validate_security_binding  # noqa: E402
-from scripts.asr_eval_oci_publication import (  # noqa: E402
-    ECR_PART_BYTES,
-    OCI_INDEX,
-    OCI_MANIFEST,
-    OciLayout,
-    OciPublicationRefusal,
-    publish_exact_layout,
-)
+FIXTURE_ROOT = ROOT / "tests/fixtures/asr_base_model_pilot"
+MANIFEST_ARCHIVE = FIXTURE_ROOT / "eval-manifests-2026-08-11.tar.gz"
+PILOT_BUNDLE = FIXTURE_ROOT / "pilot-bundle-2026-001.json"
+RUNTIME_ROWS = FIXTURE_ROOT / "runtime-rows-2026-001.json"
 
 
-class FakeBackend:
-    def __init__(self, candidate: str):
-        self.candidate = candidate
-
-    def transcribe(self, audio: Path, language_id: str | None) -> Transcript:
-        suffix = " conditioned" if language_id else ""
-        return Transcript(
-            text=f"synthetic reference{suffix}",
-            eos_observed=True,
-            cap_hit=False,
-            termination_evidence="fake backend completed",
-        )
-
-
-class FakeSampler:
+class MissingObject(Exception):
     def __init__(self):
-        self.samples = [100.0, 125.0, 120.0]
-        self.errors: list[str] = []
-
-    def start(self) -> None: pass
-    def stop(self) -> None: pass
-
-
-class FakeRegistryScanning:
-    """ECR fake that enforces AWS's one-rule-per-frequency constraint."""
-
-    def __init__(self):
-        fixture = ROOT / (
-            "tests/fixtures/aws/"
-            "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
-        )
-        self.configuration = validate_configuration(
-            json.loads(fixture.read_bytes())["scanningConfiguration"]
-        )
-        self.initial = canonical_configuration(self.configuration)
-        self.put_calls = 0
-
-    def get(self) -> dict[str, Any]:
-        return json.loads(json.dumps(self.configuration))
-
-    def put(self, value: dict[str, Any]) -> None:
-        self.configuration = validate_configuration(value)
-        self.put_calls += 1
-
-    def restored(self) -> bool:
-        return canonical_configuration(self.configuration) == self.initial
-
-
-def _blob(root: Path, content: bytes, media_type: str) -> dict[str, Any]:
-    digest = "sha256:" + hashlib.sha256(content).hexdigest()
-    path = root / "blobs/sha256" / digest.removeprefix("sha256:")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(content)
-    return {"digest": digest, "size": len(content), "mediaType": media_type}
-
-
-def _json_blob(root: Path, value: dict[str, Any], media_type: str) -> dict[str, Any]:
-    return _blob(root, json.dumps(value, sort_keys=True, separators=(",", ":")).encode(), media_type)
-
-
-def _fake_oci_layout(root: Path) -> tuple[OciLayout, dict[str, str]]:
-    root.mkdir(parents=True, exist_ok=True)
-    (root / "oci-layout").write_text('{"imageLayoutVersion":"1.0.0"}\n')
-    config = _json_blob(root, {"architecture": "amd64", "os": "linux"}, "application/vnd.oci.image.config.v1+json")
-    layer = _blob(root, b"x" * (ECR_PART_BYTES + 7), "application/vnd.oci.image.layer.v1.tar+gzip")
-    child_value = {"schemaVersion": 2, "mediaType": OCI_MANIFEST, "config": config, "layers": [layer]}
-    child = {**_json_blob(root, child_value, OCI_MANIFEST), "platform": {"os": "linux", "architecture": "amd64"}}
-    attestation_config = _json_blob(root, {"architecture": "unknown", "os": "unknown"}, "application/vnd.oci.image.config.v1+json")
-    predicate = _blob(root, b"attestation", "application/vnd.in-toto+json")
-    attestation_value = {"schemaVersion": 2, "mediaType": OCI_MANIFEST, "config": attestation_config, "layers": [predicate]}
-    attestation = {**_json_blob(root, attestation_value, OCI_MANIFEST), "platform": {"os": "unknown", "architecture": "unknown"}}
-    index_value = {"schemaVersion": 2, "mediaType": OCI_INDEX, "manifests": [child, attestation]}
-    index = _json_blob(root, index_value, OCI_INDEX)
-    (root / "index.json").write_text(json.dumps({"schemaVersion": 2, "mediaType": OCI_INDEX, "manifests": [index]}))
-    return OciLayout(
-        root,
-        expected_index=index["digest"],
-        expected_child=child["digest"],
-        expected_config=config["digest"],
-        expected_attestation=attestation["digest"],
-    ), {"child": child["digest"]}
-
-
-class FakeMultipartEcr:
-    """Compact fake enforcing the exact ECR byte-continuity contract."""
-
-    def __init__(self, *, truncate_part: bool = False, drift_manifest: str | None = None):
-        self.truncate_part = truncate_part
-        self.drift_manifest = drift_manifest
-        self.uploads: dict[str, bytearray] = {}
-        self.manifests: dict[str, str] = {}
-        self.tags: dict[str, str] = {}
-
-    def batch_check_layer_availability(self, **kwargs: Any) -> dict[str, Any]:
-        return {"layers": [], "failures": []}
-
-    def initiate_layer_upload(self, **kwargs: Any) -> dict[str, Any]:
-        upload_id = f"upload-{len(self.uploads)}"
-        self.uploads[upload_id] = bytearray()
-        return {"uploadId": upload_id, "partSize": ECR_PART_BYTES}
-
-    def upload_layer_part(self, **kwargs: Any) -> dict[str, Any]:
-        upload = self.uploads[kwargs["uploadId"]]
-        if kwargs["partFirstByte"] != len(upload):
-            raise RuntimeError("fake received a non-consecutive part")
-        upload.extend(kwargs["layerPartBlob"])
-        last = kwargs["partLastByte"] - int(self.truncate_part)
-        return {"uploadId": kwargs["uploadId"], "lastByteReceived": last}
-
-    def complete_layer_upload(self, **kwargs: Any) -> dict[str, Any]:
-        digest = "sha256:" + hashlib.sha256(self.uploads[kwargs["uploadId"]]).hexdigest()
-        if kwargs["layerDigests"] != [digest]:
-            raise RuntimeError("fake completed digest differs")
-        return {"layerDigest": digest}
-
-    def put_image(self, **kwargs: Any) -> dict[str, Any]:
-        digest = "sha256:" + hashlib.sha256(kwargs["imageManifest"].encode()).hexdigest()
-        if digest != kwargs["imageDigest"]:
-            raise RuntimeError("fake manifest digest differs")
-        self.manifests[digest] = kwargs["imageManifest"]
-        if "imageTag" in kwargs:
-            self.tags[kwargs["imageTag"]] = digest
-        return {"image": {"imageId": {"imageDigest": digest}}}
-
-    def batch_get_image(self, **kwargs: Any) -> dict[str, Any]:
-        image_id = kwargs["imageIds"][0]
-        digest = self.tags[image_id["imageTag"]] if "imageTag" in image_id else image_id["imageDigest"]
-        body = self.manifests[digest]
-        if digest == self.drift_manifest:
-            body += "\n"
-        return {"images": [{"imageId": {"imageDigest": digest}, "imageManifest": body}], "failures": []}
-
-
-class FakeOperations:
-    def __init__(self, *, inject: str | None = None):
-        self.inject = inject
-        self.stage_order: list[str] = []
-        self.state = {
-            "deadline": False,
-            "reservation": False,
-            "ecr": False,
-            "artifacts": False,
-            "endpoints": False,
-            "strict_cni": False,
-            "gpu": 0,
-            "volume": False,
-            "namespace": False,
-            "staging": False,
-        }
-        self.aggregate: dict[str, Any] | None = None
-        self.registry_scanning = FakeRegistryScanning()
-
-    def _enter(self, stage: str) -> None:
-        self.stage_order.append(stage)
-        if self.inject == stage:
-            raise OperationRefusal(f"INJECTED_{stage.upper()}", f"injected failure at {stage}")
-
-    def deadline_identity_and_acceptance(
-        self,
-        context: AttemptContext,
-        *,
-        dry_run: bool = False,
-        caller_arn: str | None = None,
-    ) -> dict[str, Any]:
-        self._enter("deadline_identity_and_acceptance")
-        if context.attempt == 9:
-            proof = deepcopy(context.bindings["rehearsal_artifact_prestage_proof"])
-            if self.inject == "prestage_object_absent":
-                proof["objects"][0]["version_id"] = ""
-            elif self.inject == "prestage_in_attempt_upload":
-                proof["timed_window"]["in_attempt_upload_bytes"] = 1
-            elif self.inject == "uplink_window_infeasible":
-                proof["timed_window"]["estimated_fast_stage_seconds"] = 10_000
-            try:
-                validate_prestage_proof(
-                    proof,
-                    expected_bundle_sha256=context.bindings["pilot_bundle"]["sha256"],
-                )
-                validate_window_budget(
-                    proof,
-                    deadline_seconds=context.deadline_seconds,
-                    expected_bundle_sha256=context.bindings["pilot_bundle"]["sha256"],
-                )
-            except StagingRefusal as exc:
-                raise OperationRefusal(exc.reason_code, exc.detail) from exc
-        self.state["deadline"] = not dry_run
-        return {
-            "status": "PASS_DEADLINE_IDENTITY_AND_ACCEPTANCE",
-            "caller": caller_arn or "arn:aws:iam::558069890522:user/s.fotso",
-            "deadline_seconds": 10800,
-            "dry_run": dry_run,
+        self.response = {
+            "Error": {"Code": "404"},
+            "ResponseMetadata": {"HTTPStatusCode": 404},
         }
 
-    def input_freeze_and_no_phi(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("input_freeze_and_no_phi")
-        return {"status": "PASS_INPUT_FREEZE_AND_NO_PHI", "runs": 2, "byte_identical": True, "rows": 24230, "phi": False}
 
-    def cost_and_zero_state(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("cost_and_zero_state")
-        self.state["reservation"] = True
-        return {"status": "PASS_COST_AND_ZERO_STATE", "reservation_usd": 10.0, "cpu": 0, "gpu": 0}
+class _Body:
+    def __init__(self, value: bytes):
+        self._stream = io.BytesIO(value)
 
-    def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("image_publication_and_scan")
-        self.state["ecr"] = True
-        if context.attempt in {5, 6, 7, 8, 9}:
-            try:
-                gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
-            except DigestRescanRefusal as exc:
-                raise OperationRefusal(exc.reason_code, exc.detail) from exc
-            if self.inject in {"security_wrong_digest", "security_extra_finding"}:
-                code = (
-                    "ECR_RESCAN_CHILD_BINDING_DIFFERS"
-                    if self.inject == "security_wrong_digest"
-                    else "SCOUT_FINDINGS_DIFFER"
-                )
-                raise OperationRefusal(code, f"injected attempt-5 security refusal: {self.inject}")
-            return {
-                "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
-                "publication": {
-                    "status": "SKIPPED_EXISTING_EXACT_IMAGE",
-                    "aws_image_mutations": 0,
-                },
-                "security_gate_binding": gate_binding,
-                "security_gate": {
-                    "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
-                    "reconstruction": {
-                        "status": "PASS_EXACT_ECR_CHILD_RECONSTRUCTION",
-                        "all_downloaded_descriptors_byte_verified": True,
-                    },
-                    "ecr_basic": {
-                        "status": "PASS_ECR_BASIC_OS_GATE",
-                        "coverage": "OPERATING_SYSTEM_PACKAGES_ONLY",
-                        "critical": 0,
-                        "high": 0,
-                    },
-                    "docker_scout": {
-                        "status": "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE",
-                        "scanner_version": "1.18.3",
-                        "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
-                        "critical": 0,
-                        "high": 4,
-                    },
-                },
+    def read(self, size: int = -1) -> bytes:
+        return self._stream.read(size)
+
+
+class BoundarySession:
+    region_name = "eu-central-1"
+
+    def __init__(self, bindings: dict[str, Any], injection: str | None):
+        self.state = BoundaryState(bindings, injection)
+        self.clients = {
+            "sts": StsBoundary(self.state),
+            "eks": EksBoundary(self.state),
+            "ec2": Ec2Boundary(self.state),
+            "ecr": EcrBoundary(self.state),
+            "s3": S3Boundary(self.state),
+            "autoscaling": AutoscalingBoundary(self.state),
+            "ssm": SsmBoundary(self.state),
+        }
+
+    def client(self, name: str) -> Any:
+        return self.clients[name]
+
+
+class BoundaryState:
+    def __init__(self, bindings: dict[str, Any], injection: str | None):
+        self.bindings = bindings
+        self.injection = injection
+        self.aws_calls = 0
+        self.aws_mutations = 0
+        self.kubectl_calls = 0
+        self.kubernetes_mutations = 0
+        self.command_calls = 0
+        self.deadline_actions: dict[str, dict[str, Any]] = {}
+        self.gpu_desired = 0
+        self.cpu_desired = 0
+        self.instance_id = "i-rehearsal-gpu"
+        self.node_name = "ip-rehearsal-gpu"
+        self.security_groups: set[str] = set()
+        self.endpoints: dict[str, dict[str, Any]] = {}
+        self.volumes: set[str] = set()
+        self.cni_configuration = "{}"
+        self.cni_mode = "standard"
+        self.namespaces: set[str] = set()
+        self.dra_installed = False
+        self.aggregate = self._aggregate()
+        self.ssm_commands: dict[str, dict[str, Any]] = {}
+        self.ssm_counter = 0
+        self.prestage_objects = self._prestage_objects()
+        self.prestage_downloads = {
+            self._proof()["pilot_bundle"]["object"]["key"]: PILOT_BUNDLE.read_bytes(),
+            next(
+                item["key"]
+                for item in self._proof()["objects"]
+                if item["key"].endswith("runtime-rows.json")
+            ): RUNTIME_ROWS.read_bytes(),
+        }
+
+    @staticmethod
+    def _proof() -> dict[str, Any]:
+        return json.loads(
+            (ROOT / "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json").read_bytes()
+        )
+
+    def _prestage_objects(self) -> dict[tuple[str, str], dict[str, Any]]:
+        values = {}
+        for item in self._proof()["objects"]:
+            values[(item["key"], item["version_id"])] = {
+                "ContentLength": item["bytes"],
+                "Metadata": {"sha256": item["sha256"]},
+                "ChecksumSHA256": item["s3_checksum_sha256"],
+                "ChecksumType": item["checksum_type"],
+                "ServerSideEncryption": "aws:kms",
+                "VersionId": item["version_id"],
             }
-        updated, changed = merge_scan_on_push_filter(
-            self.registry_scanning.get(), "medzen-asr-eval-runtime"
+        return values
+
+    def _aggregate(self) -> dict[str, Any]:
+        rows = json.loads(RUNTIME_ROWS.read_bytes())["rows"]
+        conditioning = json.loads(
+            (ROOT / "services/asr-eval-runtime/assets/language-conditioning-v1.json").read_bytes()
+        )["languages"]
+        conditioned = sum(
+            int(conditioning[row["language"]][provider] is not None)
+            for row in rows
+            for provider in ("whisper", "meta_llm")
         )
-        if not changed:
-            raise OperationRefusal(
-                "FAKE_SCAN_FILTER_ALREADY_PRESENT",
-                "cold rehearsal expected a pre-merge registry scanning fixture",
-            )
-        self.registry_scanning.put(updated)
-        scan_rules = [
-            rule
-            for rule in self.registry_scanning.get()["rules"]
-            if rule["scanFrequency"] == "SCAN_ON_PUSH"
-        ]
-        if len(scan_rules) != 1:
-            raise OperationRefusal(
-                "FAKE_DUPLICATE_SCAN_FREQUENCY",
-                "fake ECR accepted more than one SCAN_ON_PUSH rule",
-            )
-        with tempfile.TemporaryDirectory(prefix="medzen-fake-oci-", dir=context.workdir) as temporary:
-            layout, refs = _fake_oci_layout(Path(temporary))
-            ecr = FakeMultipartEcr(
-                truncate_part=self.inject == "image_upload_part_truncation",
-                drift_manifest=refs["child"] if self.inject == "image_manifest_readback_drift" else None,
-            )
-            try:
-                publication = publish_exact_layout(
-                    ecr, "medzen-asr-eval-runtime", layout, tag="pilot-exact"
-                )
-            except OciPublicationRefusal as exc:
-                raise OperationRefusal(exc.reason_code, exc.detail) from exc
         return {
-            "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
-            "critical": 0,
-            "accepted_high": 4,
-            "scan_on_push_rules": len(scan_rules),
-            "filter_merged_into_existing_rule": True,
-            "publication": {
-                **publication,
-                "fake_aws_service": True,
+            "status": "PASS_AGGREGATE",
+            "runtime_rows": len(rows),
+            "completed_inferences": len(rows) * 3 + conditioned,
+            "not_applicable": len(rows) * 2 - conditioned,
+            "aggregate": {
+                "groups": {"synthetic|unconditioned": {"wer": 0.5}},
+                "gpu_memory": {
+                    "unit": "MiB",
+                    "sample_count": 120,
+                    "baseline": 100.0,
+                    "peak": 125.0,
+                },
             },
         }
 
-    def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("artifact_stage")
-        self.state["artifacts"] = True
-        return {
-            "status": "PASS_ARTIFACT_STAGE",
-            "mode": "VERIFY_ONLY_PRESTAGED_BUNDLE",
-            "artifact_upload_bytes": 0,
-            "create_only": True,
-            "hashes_verified": True,
-        }
+    def call(self) -> None:
+        self.aws_calls += 1
 
-    def private_endpoint_and_policy_gate(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("private_endpoint_and_policy_gate")
-        self.state["endpoints"] = True
-        self.state["strict_cni"] = True
-        self.state["namespace"] = True
-        return {"status": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE", "allowed_probes": 3, "denied_probes": 4}
-
-    def gpu_and_sampler_gate(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("gpu_and_sampler_gate")
-        self.state["gpu"] = 1
-        self.state["volume"] = True
-        return {"status": "PASS_GPU_AND_SAMPLER_GATE", "samples": 120, "gpu": 1, "volume_gib": 60}
-
-    def node_local_input_stage(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("node_local_input_stage")
-        self.state["staging"] = True
-        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "bundle_hash_verified": True, "credentials_in_container": False}
-
-    def pilot_rows(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("pilot_rows")
-        synthetic = context.workdir / "synthetic-runtime"
-        synthetic.mkdir(parents=True, exist_ok=True)
-        audio = synthetic / "audio.wav"
-        audio.write_bytes(b"synthetic-audio")
-        checksum = hashlib.sha256(audio.read_bytes()).hexdigest()
-        reference = "synthetic reference"
-        rows = {
-            "schema_version": 1,
-            "classification": "PUBLIC_RESEARCH_NO_PHI",
-            "rows": [{
-                "manifest": "eval/english/asr/fleurs-v1/manifest.jsonl",
-                "language": "english",
-                "source_id": "synthetic",
-                "audio_local_path": str(audio),
-                "audio_checksum_sha256": checksum,
-                "duration_s": 1.0,
-                "reference": reference,
-                "reference_sha256": hashlib.sha256(reference.encode()).hexdigest(),
-                "selection_ordinal": 1,
-            }],
-        }
-        rows_path = synthetic / "runtime-rows.json"
-        rows_path.write_bytes(canonical_json(rows))
-        binding = synthetic / "model-bindings.json"
-        binding.write_bytes(b"{}\n")
-        self.aggregate = run_pilot(
-            rows_path=rows_path,
-            model_root=synthetic,
-            model_binding_path=binding,
-            conditioning_path=PACKAGE / "assets" / "language-conditioning-v1.json",
-            receipt_root=synthetic / "row-receipts",
-            aggregate_path=synthetic / "aggregate.json",
-            backend_loader=lambda candidate, mode, language, root: FakeBackend(candidate),
-            model_verifier=lambda root, path: {"status": "PASS_FAKE_MODEL_IDENTITY"},
-            sampler=FakeSampler(),
-            clock=iter([float(value) for value in range(1000)]).__next__,
-        )
-        if self.aggregate["status"] != "PASS_AGGREGATE":
-            raise OperationRefusal("FAKE_PILOT_DID_NOT_PASS", "local fake pilot aggregate differs")
-        return {"status": "PASS_PILOT_ROWS", "completed_inferences": self.aggregate["completed_inferences"], "not_applicable": self.aggregate["not_applicable"]}
-
-    def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
-        self._enter("aggregate_report")
-        if self.aggregate is None:
-            raise OperationRefusal("AGGREGATE_ABSENT", "pilot aggregate was not created")
-        return {"status": "PASS_AGGREGATE_REPORT", "runtime_status": self.aggregate["status"], "groups": len(self.aggregate["aggregate"]["groups"])}
-
-    def cleanup_and_expiry(self, context: AttemptContext) -> dict[str, Any]:
-        self.stage_order.append("cleanup_and_expiry")
-        for key in ("deadline", "reservation", "endpoints", "strict_cni", "gpu", "volume", "namespace", "staging"):
-            self.state[key] = 0 if key == "gpu" else False
-        if not self.registry_scanning.restored():
-            self.registry_scanning.put(
-                json.loads(self.registry_scanning.initial)
-            )
-        if self.inject == "cleanup_and_expiry":
-            raise OperationRefusal("INJECTED_CLEANUP_AND_EXPIRY", "injected cleanup receipt failure after zero state")
-        return {"status": "PASS_CLEANUP_AND_EXPIRY", "cpu": 0, "gpu": 0, "endpoints": 0, "namespace": 0, "volume": 0}
+    def mutate(self) -> None:
+        self.aws_calls += 1
+        self.aws_mutations += 1
 
     def zero_state(self) -> bool:
-        transient = ("deadline", "reservation", "endpoints", "strict_cni", "gpu", "volume", "namespace", "staging")
-        return all(not self.state[key] for key in transient) and self.registry_scanning.restored()
+        return (
+            not self.deadline_actions
+            and self.gpu_desired == 0
+            and self.cpu_desired == 0
+            and not self.security_groups
+            and not self.endpoints
+            and not self.volumes
+            and not self.namespaces
+            and not self.dra_installed
+            and self.cni_configuration == "{}"
+            and self.cni_mode == "standard"
+        )
+
+
+class StsBoundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def get_caller_identity(self) -> dict[str, str]:
+        self.state.call()
+        if self.state.injection == "deadline_identity_and_acceptance":
+            raise OperationRefusal("INJECTED_DEADLINE_IDENTITY", "injected deadline refusal")
+        return {"Arn": CALLER}
+
+
+class EksBoundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def describe_nodegroup(self, *, clusterName: str, nodegroupName: str) -> dict[str, Any]:
+        self.state.call()
+        desired = self.state.gpu_desired if nodegroupName == GPU_NODEGROUP else self.state.cpu_desired
+        resources = (
+            [{"name": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"}]
+            if nodegroupName == GPU_NODEGROUP
+            else []
+        )
+        return {"nodegroup": {"status": "ACTIVE", "scalingConfig": {"minSize": 0, "maxSize": 1, "desiredSize": desired}, "health": {"issues": []}, "resources": {"autoScalingGroups": resources}}}
+
+    def update_nodegroup_config(self, *, nodegroupName: str, scalingConfig: dict[str, int], **_: Any) -> dict[str, Any]:
+        self.state.mutate()
+        if nodegroupName == GPU_NODEGROUP:
+            self.state.gpu_desired = scalingConfig["desiredSize"]
+        return {"update": {"status": "Successful"}}
+
+    def describe_addon(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return {"addon": {"configurationValues": self.state.cni_configuration}}
+
+    def update_addon(self, *, configurationValues: str, **_: Any) -> dict[str, Any]:
+        self.state.mutate()
+        self.state.cni_configuration = configurationValues
+        return {"update": {"status": "Successful"}}
+
+
+class AutoscalingBoundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def put_scheduled_update_group_action(self, *, ScheduledActionName: str, DesiredCapacity: int, **_: Any) -> None:
+        self.state.mutate()
+        self.state.deadline_actions[ScheduledActionName] = {"ScheduledActionName": ScheduledActionName, "DesiredCapacity": DesiredCapacity}
+
+    def describe_scheduled_actions(self, *, ScheduledActionNames: list[str] | None = None, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        actions = list(self.state.deadline_actions.values())
+        if ScheduledActionNames:
+            actions = [item for item in actions if item["ScheduledActionName"] in ScheduledActionNames]
+        return {"ScheduledUpdateGroupActions": copy.deepcopy(actions)}
+
+    def delete_scheduled_action(self, *, ScheduledActionName: str, **_: Any) -> None:
+        self.state.mutate()
+        self.state.deadline_actions.pop(ScheduledActionName, None)
+        if self.state.injection == "cleanup_and_expiry":
+            raise OperationRefusal(
+                "INJECTED_CLEANUP_RECEIPT_REFUSAL",
+                "injected cleanup refusal after deadline removal",
+            )
+
+    def describe_auto_scaling_groups(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        instances = [] if self.state.gpu_desired == 0 else [{"InstanceId": self.state.instance_id}]
+        return {"AutoScalingGroups": [{"Instances": instances}]}
+
+
+class Ec2Boundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def describe_vpc_endpoints(self, *, VpcEndpointIds: list[str] | None = None, Filters: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+        self.state.call()
+        values = list(self.state.endpoints.values())
+        if VpcEndpointIds is not None:
+            values = [value for value in values if value["VpcEndpointId"] in VpcEndpointIds]
+        if Filters and any(item["Name"] == "vpc-endpoint-id" for item in Filters):
+            requested = next(item["Values"] for item in Filters if item["Name"] == "vpc-endpoint-id")
+            values = [value for value in values if value["VpcEndpointId"] in requested]
+        return {"VpcEndpoints": copy.deepcopy(values)}
+
+    def create_security_group(self, **_: Any) -> dict[str, str]:
+        self.state.mutate()
+        value = "sg-rehearsal-endpoint"
+        self.state.security_groups.add(value)
+        return {"GroupId": value}
+
+    def revoke_security_group_egress(self, **_: Any) -> None: self.state.mutate()
+    def authorize_security_group_ingress(self, **_: Any) -> None: self.state.mutate()
+
+    def create_vpc_endpoint(self, *, VpcEndpointType: str, ServiceName: str, **_: Any) -> dict[str, Any]:
+        self.state.mutate()
+        if self.state.injection == "private_endpoint_and_policy_gate":
+            raise OperationRefusal(
+                "INJECTED_PRIVATE_ENDPOINT_REFUSAL",
+                "injected private endpoint refusal",
+                outcome="BLOCKED_NETWORK_ISOLATION",
+            )
+        ordinal = len(self.state.endpoints) + 1
+        value = {
+            "VpcEndpointId": f"vpce-rehearsal-{ordinal}",
+            "VpcEndpointType": VpcEndpointType,
+            "State": "available",
+            "NetworkInterfaceIds": [f"eni-rehearsal-{ordinal}"] if VpcEndpointType == "Interface" else [],
+        }
+        if ServiceName.endswith(".s3"):
+            value["PrefixListId"] = "pl-rehearsal-s3"
+        self.state.endpoints[value["VpcEndpointId"]] = value
+        return {"VpcEndpoint": copy.deepcopy(value)}
+
+    def describe_network_interfaces(self, *, NetworkInterfaceIds: list[str]) -> dict[str, Any]:
+        self.state.call()
+        return {"NetworkInterfaces": [{"NetworkInterfaceId": value, "PrivateIpAddress": f"10.0.1.{index + 7}"} for index, value in enumerate(NetworkInterfaceIds)]}
+
+    def get_managed_prefix_list_entries(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return {"Entries": [{"Cidr": "52.219.0.0/16"}]}
+
+    def describe_instances(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return {"Reservations": [{"Instances": [{"Placement": {"AvailabilityZone": "eu-central-1a"}}]}]}
+
+    def create_volume(self, **_: Any) -> dict[str, str]:
+        self.state.mutate()
+        value = "vol-rehearsal"
+        self.state.volumes.add(value)
+        return {"VolumeId": value}
+
+    def get_waiter(self, _: str) -> Any:
+        return SimpleNamespace(wait=lambda **__: None)
+
+    def attach_volume(self, **_: Any) -> None: self.state.mutate()
+    def detach_volume(self, **_: Any) -> None: self.state.mutate()
+
+    def delete_volume(self, *, VolumeId: str) -> None:
+        self.state.mutate()
+        self.state.volumes.discard(VolumeId)
+
+    def delete_vpc_endpoints(self, *, VpcEndpointIds: list[str]) -> None:
+        self.state.mutate()
+        for value in VpcEndpointIds:
+            self.state.endpoints.pop(value, None)
+
+    def delete_security_group(self, *, GroupId: str) -> None:
+        self.state.mutate()
+        self.state.security_groups.discard(GroupId)
+
+    def describe_volumes(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return {"Volumes": [{"VolumeId": value} for value in sorted(self.state.volumes)]}
+
+
+class EcrBoundary:
+    class _Exceptions:
+        class RepositoryNotFoundException(Exception): pass
+
+    exceptions = _Exceptions()
+
+    def __init__(self, state: BoundaryState):
+        self.state = state
+        self.index_body = (
+            FIXTURE_ROOT / "ecr-index-pilot-5d1b8a0.json"
+        ).read_text(encoding="utf-8")
+
+    def describe_repositories(self, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return {"repositories": [{"imageTagMutability": "IMMUTABLE", "encryptionConfiguration": {"encryptionType": "KMS"}}]}
+
+    def batch_get_image(self, *, imageIds: list[dict[str, str]], **_: Any) -> dict[str, Any]:
+        self.state.call()
+        image = self.state.bindings["image"]
+        requested = imageIds[0]
+        digest = image["oci_index_digest"]
+        if requested.get("imageTag") != image["tag"] and requested.get("imageDigest") != digest:
+            return {"images": [], "failures": [{"failureCode": "ImageNotFound"}]}
+        return {"images": [{"imageId": {"imageDigest": digest}, "imageManifest": self.index_body, "imageManifestMediaType": "application/vnd.oci.image.index.v1+json"}], "failures": []}
+
+    def get_registry_scanning_configuration(self) -> dict[str, Any]:
+        self.state.call()
+        return {"scanningConfiguration": {"scanType": "BASIC", "rules": []}}
+
+
+class S3Boundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def head_object(self, *, Key: str, VersionId: str, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        if self.state.injection == "prestage_object_absent" and Key == self.state._proof()["objects"][0]["key"]:
+            raise MissingObject()
+        value = self.state.prestage_objects.get((Key, VersionId))
+        if value is None:
+            raise MissingObject()
+        return copy.deepcopy(value)
+
+    def download_fileobj(self, _: str, key: str, stream: Any, ExtraArgs: dict[str, Any] | None = None) -> None:
+        self.state.call()
+        body = self.state.prestage_downloads.get(key)
+        if body is None:
+            raise MissingObject()
+        stream.write(body)
+
+    def generate_presigned_url(self, *_: Any, Params: dict[str, Any], **__: Any) -> str:
+        self.state.call()
+        return f"https://s3.rehearsal.invalid/{Params['Key']}?versionId={Params.get('VersionId', '')}"
+
+
+class SsmBoundary:
+    class _Exceptions:
+        class InvocationDoesNotExist(Exception): pass
+
+    exceptions = _Exceptions()
+
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def send_command(self, **kwargs: Any) -> dict[str, Any]:
+        self.state.mutate()
+        self.state.ssm_counter += 1
+        command_id = f"command-rehearsal-{self.state.ssm_counter}"
+        commands = kwargs.get("Parameters", {}).get("commands", [])
+        stdout = canonical_json(self.state.aggregate).decode() if any("aggregate.json" in command and command.startswith("cat ") for command in commands) else ""
+        self.state.ssm_commands[command_id] = {"Status": "Success", "StandardOutputContent": stdout}
+        return {"Command": {"CommandId": command_id}}
+
+    def get_command_invocation(self, *, CommandId: str, **_: Any) -> dict[str, Any]:
+        self.state.call()
+        return copy.deepcopy(self.state.ssm_commands[CommandId])
+
+
+class ExternalCommandBoundary:
+    """Route only external AWS/kubectl/Docker calls; local Python remains real."""
+
+    def __init__(self, state: BoundaryState): self.state = state
+
+    @staticmethod
+    def _completed(command: list[str], *, stdout: bytes = b"", returncode: int = 0) -> subprocess.CompletedProcess[bytes]:
+        return subprocess.CompletedProcess(command, returncode, stdout=stdout, stderr=b"")
+
+    def __call__(self, command: list[str], *, cwd: Path | None = None, stdin: bytes | None = None, timeout: int = 900, check: bool = True, journal_path: Path | None = None) -> subprocess.CompletedProcess[bytes]:
+        del stdin, timeout, check, journal_path
+        self.state.command_calls += 1
+        executable = Path(command[0]).name
+        if executable == "aws":
+            self.state.call()
+            if "update-kubeconfig" in command:
+                kubeconfig = Path(command[command.index("--kubeconfig") + 1])
+                kubeconfig.write_text("rehearsal\n", encoding="utf-8")
+                return self._completed(command)
+            if "sync" in command:
+                destination = Path(command[command.index("sync") + 2])
+                with tarfile.open(MANIFEST_ARCHIVE, "r:gz") as archive:
+                    archive.extractall(destination, filter="data")
+                return self._completed(command)
+            raise AssertionError(f"unhandled rehearsal AWS command: {command}")
+        if executable == "kubectl":
+            self.state.kubectl_calls += 1
+            if "--query-gpu=memory.used" in command:
+                return self._completed(command, stdout=(b"100\n" * 120))
+            if "wait" in command:
+                if "pod/asr-eval-inbound-control" in command:
+                    return self._completed(command)
+                return self._completed(command)
+            if "delete" in command and "namespace" in command:
+                namespace = command[command.index("namespace") + 1]
+                self.state.namespaces.discard(namespace)
+                if namespace == "nvidia-dra-driver":
+                    self.state.dra_installed = False
+                self.state.kubernetes_mutations += 1
+                return self._completed(command)
+            raise AssertionError(f"unhandled rehearsal kubectl command: {command}")
+        # Local Python audit is the real executable and operates on the
+        # recorded manifest archive. This is intentionally not faked.
+        completed = subprocess.run(command, cwd=cwd, capture_output=True, timeout=timeout)
+        if completed.returncode != 0:
+            raise OperationRefusal("BOUNDED_COMMAND_REFUSED", f"{executable} refused in rehearsal")
+        return completed
+
+
+class KubectlBoundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def __call__(self, _: AttemptContext, *args: str, stdin: bytes | None = None, timeout: int = 900, json_output: bool = False) -> dict[str, Any] | bytes:
+        del stdin, timeout
+        self.state.kubectl_calls += 1
+        if args[:2] == ("get", "namespaces"):
+            return {"items": [{"metadata": {"name": value}} for value in sorted(self.state.namespaces)]}
+        if args[:2] == ("get", "daemonset/aws-node"):
+            return {"spec": {"template": {"spec": {"containers": [{"name": "aws-node", "env": []}]}}}}
+        if args[:2] == ("set", "env"):
+            assignment = args[-1]
+            self.state.kubernetes_mutations += 1
+            self.state.cni_mode = "standard" if assignment.endswith("-") else assignment.split("=", 1)[1]
+            return b""
+        if args[:2] == ("get", "nodes"):
+            return {"items": [{"metadata": {"name": self.state.node_name}}]}
+        if args[:2] == ("apply", "-f"):
+            self.state.kubernetes_mutations += 1
+            body = (stdin or b"").decode(errors="replace")
+            if "nvidia-dra-driver" in body:
+                self.state.dra_installed = True
+                self.state.namespaces.add("nvidia-dra-driver")
+            if "medzen-asr-eval" in body:
+                self.state.namespaces.add("medzen-asr-eval")
+            return b""
+        if args[:2] == ("get", "pods") and "nvidia-dra-driver" in args:
+            return {"items": [{"metadata": {"name": "nvidia-dra-rehearsal"}}]}
+        if args[:2] == ("get", "pods"):
+            return {"items": [{"metadata": {"name": "asr-pilot-rehearsal"}, "status": {"podIP": "10.0.2.21"}}]}
+        if args[:2] == ("logs", "-n"):
+            return b""
+        if args[:2] == ("delete", "pod/asr-eval-inbound-control"):
+            self.state.kubernetes_mutations += 1
+            return b""
+        if json_output:
+            raise AssertionError(f"unhandled rehearsal kubectl JSON call: {args}")
+        return b""
+
+
+class SsmCommandBoundary:
+    def __init__(self, state: BoundaryState): self.state = state
+
+    def __call__(self, _: str, commands: list[str], *, timeout_seconds: int = 900) -> dict[str, Any]:
+        del timeout_seconds
+        self.state.mutate()
+        self.state.ssm_counter += 1
+        command_id = f"command-rehearsal-{self.state.ssm_counter}"
+        if any("network-probe.json" in command and command.startswith("cat ") for command in commands):
+            stdout = canonical_json({"status": "PASS_NETWORK_ISOLATION_PRE_TORCH", "torch_imported": False}).decode()
+        else:
+            stdout = ""
+        return {"command_id": command_id, "status": "Success", "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout}
+
+
+def digest_scan_boundary(injection: str | None):
+    def scan(_: Any, __: str, image: dict[str, Any], workdir: Path) -> dict[str, Any]:
+        workdir.mkdir(parents=True, exist_ok=True)
+        if injection == "security_wrong_digest":
+            from scripts.asr_eval_digest_rescan import DigestRescanRefusal
+
+            raise DigestRescanRefusal("ECR_RESCAN_CHILD_BINDING_DIFFERS", "injected child digest drift")
+        if injection == "security_extra_finding":
+            from scripts.asr_eval_digest_rescan import DigestRescanRefusal
+
+            raise DigestRescanRefusal("SCOUT_FINDINGS_DIFFER", "injected extra finding")
+        sarif = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json"
+        (workdir / "docker-scout.sarif.json").write_bytes(sarif.read_bytes())
+        return {
+            "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
+            "reconstruction": {"status": "PASS_EXACT_ECR_CHILD_RECONSTRUCTION", "child_digest": image["linux_amd64_digest"], "all_downloaded_descriptors_byte_verified": True},
+            "ecr_basic": {"status": "PASS_ECR_BASIC_OS_GATE", "coverage": "OPERATING_SYSTEM_PACKAGES_ONLY", "critical": 0, "high": 0},
+            "docker_scout": {"status": "PASS_DOCKER_SCOUT_ACCEPTED_RISK_GATE", "scanner_version": "1.18.3", "scanner_git_commit": "aa68fc25c596bea659d54867443238fd30218d23", "critical": 0, "high": 4, "scanned_oci_layout": str(workdir / "image.oci")},
+        }
+
+    return scan
+
+
+def build_rehearsal_operations(
+    bindings: dict[str, Any],
+    *,
+    injection: str | None = None,
+    root: Path = ROOT,
+) -> tuple[LiveOperations, BoundaryState]:
+    """Return the real stage class wired only to deterministic boundaries."""
+    session = BoundarySession(bindings, injection)
+    state = session.state
+    operations = LiveOperations(
+        root,
+        session=session,
+        command_runner=ExternalCommandBoundary(state),
+        kubectl_runner=KubectlBoundary(state),
+        ssm_runner=SsmCommandBoundary(state),
+        digest_scanner=digest_scan_boundary(injection),
+        dra_waiter=lambda **_: {"status": "PASS_STABLE_DRA_READINESS", "stable_observations": 3},
+        sleeper=lambda _: None,
+    )
+    return operations, state
+
+
+def assert_no_parallel_stage_implementation() -> dict[str, Any]:
+    """Machine guard: no rehearsal class may define a pilot stage."""
+    from pipeline.asr_base_model_pilot_receipts import STAGES
+
+    offenders = []
+    for value in globals().values():
+        if isinstance(value, type) and value is not LiveOperations:
+            offenders.extend(f"{value.__name__}.{stage}" for stage in STAGES if stage in value.__dict__)
+    if offenders:
+        raise AssertionError(f"parallel rehearsal stages are prohibited: {sorted(offenders)}")
+    return {"status": "PASS_REAL_LIVE_OPERATIONS_ONLY", "parallel_stage_implementations": 0}

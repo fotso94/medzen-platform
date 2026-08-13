@@ -332,8 +332,8 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in {1, 2, 3, 4, 5, 6, 7, 8, 9} or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 9 at 10800 seconds are permitted")
+    if context.attempt not in set(range(1, 11)) or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 10 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(
@@ -360,11 +360,11 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
                 "committed deadline dry-run receipt differs from execution artifacts",
             )
     preflight = context.bindings.get("scout_real_execution_preflight")
-    if context.attempt in {7, 8, 9}:
+    if context.attempt >= 7:
         if not isinstance(preflight, dict):
             raise OperationRefusal(
                 "COMMITTED_SCOUT_PREFLIGHT_ABSENT",
-                "attempt 7, 8 or 9 requires the committed exact-image Scout preflight",
+                "attempt 7 or later requires the committed exact-image Scout preflight",
             )
         path = ROOT / str(preflight.get("path", ""))
         try:
@@ -389,9 +389,9 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         ):
             raise OperationRefusal(
                 "COMMITTED_SCOUT_PREFLIGHT_BINDING_DIFFERS",
-                "committed exact-image Scout preflight differs from attempt 7, 8 or 9 bindings",
+                "committed exact-image Scout preflight differs from attempt bindings",
             )
-    if context.attempt in {5, 6, 7, 8, 9}:
+    if context.attempt >= 5:
         try:
             from scripts.asr_eval_digest_rescan import validate_scout_prerequisites
 

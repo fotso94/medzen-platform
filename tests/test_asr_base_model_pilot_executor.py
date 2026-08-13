@@ -21,7 +21,10 @@ from medzen_asr_eval.harness import EvaluationRefusal
 from medzen_asr_eval.metrics import aggregate, error_counts, normalize_text
 from medzen_asr_eval.network_probe import probe_network
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore, STAGES
-from scripts.asr_base_model_pilot_fake import FakeOperations, FakeRegistryScanning
+from scripts.asr_base_model_pilot_fake import (
+    assert_no_parallel_stage_implementation,
+    build_rehearsal_operations,
+)
 from scripts.asr_base_model_ecr_scanning import (
     canonical_configuration,
     merge_scan_on_push_filter,
@@ -191,7 +194,7 @@ def test_real_ecr_scanning_response_merges_into_one_rule_and_is_idempotent() -> 
     assert canonical_configuration(repeated) == canonical_configuration(updated)
 
 
-def test_ecr_fake_rejects_duplicate_scan_frequency_like_aws() -> None:
+def test_ecr_model_rejects_duplicate_scan_frequency_like_aws() -> None:
     fixture_path = ROOT / (
         "tests/fixtures/aws/"
         "ecr-get-registry-scanning-configuration-basic-before-asr-eval.json"
@@ -204,9 +207,8 @@ def test_ecr_fake_rejects_duplicate_scan_frequency_like_aws() -> None:
             "filterType": "WILDCARD",
         }],
     })
-    fake = FakeRegistryScanning()
     with pytest.raises(ValueError, match="duplicate ECR scan frequency"):
-        fake.put(value)
+        validate_configuration(value)
 
 
 def test_ecr_merge_refuses_ambiguous_existing_repository_filter() -> None:
@@ -240,34 +242,15 @@ def test_stage_map_implements_every_claimed_stage() -> None:
     assert tuple(STAGE_FUNCTIONS) == STAGES
     assert all(callable(STAGE_FUNCTIONS[name]) for name in STAGES)
     assert all(callable(getattr(LiveOperations, name)) for name in STAGES)
-    assert all(callable(getattr(FakeOperations, name)) for name in STAGES)
+    assert assert_no_parallel_stage_implementation()["parallel_stage_implementations"] == 0
 
 
-@pytest.mark.parametrize(
-    ("injected_stage", "expected_outcome"),
-    [
-        (None, "PASS_PILOT"),
-        ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
-        ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
-        ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
-    ],
-)
-def test_cold_attempt_pass_and_injected_failures_cleanup(
-    tmp_path: Path, injected_stage: str | None, expected_outcome: str
-) -> None:
-    ops = FakeOperations(inject=injected_stage)
-    result = execute_attempt(ops, context(tmp_path))
-    assert result["outcome"] == expected_outcome
-    assert ops.zero_state()
-    cleanup = json.loads((tmp_path / "receipts/cleanup_and_expiry.json").read_bytes())
-    assert cleanup["status"] == ("REFUSED" if injected_stage == "cleanup_and_expiry" else "PASS")
-    if injected_stage is None:
-        assert result["failure_stage"] is None
-        assert ops.aggregate is not None
-        assert ops.aggregate["completed_inferences"] == 5
-        assert tuple(ops.stage_order) == STAGES
-    else:
-        assert result["failure_stage"] == injected_stage
+def test_boundary_harness_instantiates_real_live_operations() -> None:
+    current = json.loads((ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json").read_bytes())
+    operations, boundary = build_rehearsal_operations(current)
+    assert type(operations) is LiveOperations
+    assert boundary.zero_state()
+    assert assert_no_parallel_stage_implementation()["parallel_stage_implementations"] == 0
 
 
 def test_receipts_are_write_once(tmp_path: Path) -> None:
@@ -416,25 +399,16 @@ def test_image_stage_uses_verified_multipart_publication_not_docker_push() -> No
     assert "OciPublicationRefusal" in image_stage
 
 
-@pytest.mark.parametrize(
-    ("injection", "reason_code"),
-    [
-        ("image_upload_part_truncation", "ECR_PART_CONTINUITY_DIFFERS"),
-        ("image_manifest_readback_drift", "ECR_MANIFEST_BYTES_DIFFER"),
-    ],
-)
-def test_cold_image_publication_failures_are_receipted_and_restore_scan_rules(
-    tmp_path: Path, injection: str, reason_code: str
-) -> None:
-    ops = FakeOperations(inject=injection)
-    result = execute_attempt(ops, context(tmp_path))
-    receipt = json.loads(
-        (tmp_path / "receipts/image_publication_and_scan.json").read_bytes()
-    )
-    assert result["outcome"] == "BLOCKED_IMAGE_SCAN"
-    assert receipt["status"] == "REFUSED"
-    assert receipt["payload"]["reason_code"] == reason_code
-    assert ops.registry_scanning.restored() is True
+def test_artifact_stage_wrapper_preserves_outer_and_nested_statuses(tmp_path: Path) -> None:
+    from scripts.asr_base_model_pilot_runner import stage_artifact_stage
+
+    current = json.loads((ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json").read_bytes())
+    operations, _ = build_rehearsal_operations(current)
+    current_context = AttemptContext(attempt=10, bindings=current, receipts=ReceiptStore(tmp_path / "receipts", packet_sha256=ZERO, authorization_sha256="a" * 64), workdir=tmp_path)
+    payload = stage_artifact_stage(operations, current_context)
+    assert payload["status"] == "PASS_ARTIFACT_STAGE"
+    assert payload["verification"]["status"] == "PASS_PRESTAGED_BUNDLE_VERIFY_ONLY"
+    assert payload["artifact_upload_bytes"] == 0
 
 
 def test_scan_configuration_post_mutation_checks_use_stable_polling() -> None:
