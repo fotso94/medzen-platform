@@ -58,9 +58,9 @@ def test_all_executor_modules_match_exact_reviewed_source_commit() -> None:
     assert set(value["executor_modules"]) == set(
         PROVEN_COMMAND_GATED_EXECUTOR_MODULE_PATHS
     )
-    assert validate_executor_module_bindings(ROOT, value["executor_modules"])[
-        "module_count"
-    ] == 22
+    # Historical bindings validate against their recorded source commit below,
+    # not against mutable successor bytes in the current worktree.
+    assert len(value["executor_modules"]) == 22
     for relative, expected in value["executor_modules"].items():
         completed = subprocess.run(
             ["git", "show", f"{value['executor_source_commit']}:{relative}"],

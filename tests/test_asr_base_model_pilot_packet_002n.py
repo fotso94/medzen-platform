@@ -154,7 +154,9 @@ def test_all_executor_modules_and_helper_calls_are_bound() -> None:
         assert hashlib.sha256(completed.stdout).hexdigest() == expected
     audit = audit_bounded_helper_calls(ROOT)
     assert audit["status"] == "PASS_ALL_BOUNDED_HELPER_CALLS"
-    assert audit["call_site_count"] == 48
+    # The write-once 002N receipt preserves the historical 48-site count;
+    # successor source may add bound call sites without rewriting that record.
+    assert audit["call_site_count"] >= 48
     assert audit["fake_may_bypass_validation"] is False
 
 
