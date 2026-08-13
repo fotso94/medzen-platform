@@ -1,0 +1,116 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002H-ATTEMPT-9-ARTIFACT-STATUS-CONTRACT-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 9,
+  "attempt_consumed": true,
+  "failure_stage": "artifact_stage",
+  "reason_code": "STAGE_RESULT_DIFFERS",
+  "safe_error_text": "expected PASS_ARTIFACT_STAGE, got PASS_PRESTAGED_BUNDLE_VERIFY_ONLY",
+  "reviewed_repository_commit": "9edeef737ccdc60cb7e34075a6f02b803c34b695",
+  "authorization_commit": "dc7d5134448e5800cc98ecc62be7622c12d756e9",
+  "dry_validation_commit": "c9fda96b47657d6d0f9811e2f897e44dcba862ce",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002H-attempt-9.md",
+    "sha256": "59058e851fa4d5bc0e5f8f0a8a13f22047ebc7059c8940833e3789e8f08c4573"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002H.json",
+    "sha256": "938d85949813cb9c6065b041596f842e4aadf25bab4165756a035e57a3f4f970"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json",
+    "sha256": "a8f9bfe9e4503f1c752f89c830336d2086d4e1032d95dfa7e7013bd08a98bc7b"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002H.json",
+    "sha256": "d96edad98724003440ddd63a2d1333aaf8da8ea8b16bb94d309397632c7ce2af",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T01:19:09Z",
+    "hard_deadline_utc": "2026-08-13T04:19:09Z",
+    "terminal_cleanup_utc": "2026-08-13T01:31:36Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "REFUSED",
+    "private_endpoint_and_policy_gate": "NOT_RUN",
+    "gpu_and_sampler_gate": "NOT_RUN",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "exact_ecr_child_bytes_verified": 7296783632,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "docker_scout_critical": 0,
+    "docker_scout_accepted_high": 4,
+    "artifact_prestage_object_count": 9,
+    "artifact_prestage_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "pilot_bundle_sha256": "b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"
+  },
+  "root_cause": {
+    "classification": "EXECUTOR_STAGE_STATUS_COMPOSITION_DEFECT",
+    "verification_result": "verify_prestaged_bundle returned PASS_PRESTAGED_BUNDLE_VERIFY_ONLY after exact read-only verification",
+    "composition": "LiveOperations.artifact_stage constructed PASS_ARTIFACT_STAGE before unpacking the verification result; the later verification status overwrote the stage status",
+    "wrapper_contract": "stage_artifact_stage requires PASS_ARTIFACT_STAGE",
+    "artifact_identity_failure": false,
+    "s3_failure": false,
+    "security_failure": false,
+    "network_failure": false,
+    "gpu_or_model_failure": false,
+    "in_attempt_upload_attempted": false
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002H-A9-LIVE",
+    "attempt_envelope_sha256": "0c0cb905a846202789b394baab9bcb21e7a758be26b46a2053dd883933794453",
+    "result_sha256": "f973505f71617f01ef73ae14cb62118adff617b3a9f54b7545136e687c4d1913",
+    "deadline_identity_and_acceptance_sha256": "37f6f184f333390cab2bbfe8f80a9fa4098bc4286a5592eb4bf1bf1e9a58e591",
+    "input_freeze_and_no_phi_sha256": "895cfe71cbe3929be8ca6ecc14a3c0b5d99bb8cd461588fe3d13eac7f0d59e5b",
+    "cost_and_zero_state_sha256": "d065ea40fed841518683e58104f498d16e46ee5838e6b895edd0fa1f358fb787",
+    "image_publication_and_scan_sha256": "38c29752c6ffa5c1c1ecdec35478648bf1c1d6206af58aa2994ccb53562091d1",
+    "artifact_stage_sha256": "8689b90a9f2b3ef30c3be10263507d531952f55927c4b84919425972aba9993c",
+    "cleanup_and_expiry_sha256": "c5f36600555761e8a10933e83a587b81c24d1804238c6e8d78fa011044858a82"
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "active_multipart_uploads": 0,
+    "evaluation_namespaces": 0,
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "historical_records_modified": false,
+  "attempt_9_reuse_permitted": false,
+  "tenth_attempt_authorized": false,
+  "next_action": "Independent review of this immutable refusal, then a separately reviewed successor packet if the owner chooses to continue."
+}
