@@ -64,6 +64,26 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _normalized_receipt_chain(paths: list[Path], workdir: Path) -> str:
+    """Hash receipt semantics without temporary-path or wall-clock noise."""
+
+    def normalize(value: Any, key: str | None = None) -> Any:
+        if isinstance(value, dict):
+            return {item: normalize(body, item) for item, body in value.items()}
+        if isinstance(value, list):
+            return [normalize(item) for item in value]
+        if key == "deadline_utc":
+            return "<bounded-deadline-utc>"
+        if isinstance(value, str):
+            return value.replace(str(workdir), "<external-workdir>")
+        return value
+
+    measured = hashlib.sha256()
+    for path in paths:
+        measured.update(hashlib.sha256(canonical_json(normalize(json.loads(path.read_bytes())))).digest())
+    return measured.hexdigest()
+
+
 def _committed_clean_head() -> str:
     return validate_clean_reviewed_worktree(ROOT)
 
@@ -137,6 +157,11 @@ def _scenario_repository(
     """Commit exact synthetic governance artifacts for the real stage-one gate."""
     root = base / "reviewed"
     root.mkdir(parents=True)
+    commit_environment = {
+        **os.environ,
+        "GIT_AUTHOR_DATE": "2026-08-13T03:00:00Z",
+        "GIT_COMMITTER_DATE": "2026-08-13T03:00:00Z",
+    }
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.name", "MedZen Rehearsal"], cwd=root, check=True)
     subprocess.run(["git", "config", "user.email", "rehearsal@medzen.invalid"], cwd=root, check=True)
@@ -168,7 +193,12 @@ def _scenario_repository(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(body)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
-    subprocess.run(["git", "commit", "-qm", "reviewed source"], cwd=root, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "reviewed source"],
+        cwd=root,
+        check=True,
+        env=commit_environment,
+    )
     reviewed = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True, check=True
     ).stdout.strip()
@@ -191,7 +221,12 @@ def _scenario_repository(
     dry_path.parent.mkdir(parents=True, exist_ok=True)
     dry_path.write_text("{}\n", encoding="utf-8")
     subprocess.run(["git", "add", "."], cwd=root, check=True)
-    subprocess.run(["git", "commit", "-qm", "authorization and dry run"], cwd=root, check=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "authorization and dry run"],
+        cwd=root,
+        check=True,
+        env=commit_environment,
+    )
     return root, authorization_path, packet_path
 
 
@@ -304,9 +339,13 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     (directory / "receipts/cleanup_and_expiry.json").read_bytes()
                 )["status"],
                 "receipt_count": len(receipt_files),
-                "receipt_chain_sha256": hashlib.sha256(
-                    "".join(_sha(path) for path in receipt_files).encode()
-                ).hexdigest(),
+                "normalized_receipt_chain_sha256": _normalized_receipt_chain(
+                    receipt_files, directory
+                ),
+                "receipt_chain_normalization": [
+                    "external_workdir_path",
+                    "bounded_deadline_utc",
+                ],
                 "zero_state": boundary.zero_state(),
                 "aws_boundary_calls": boundary.aws_calls,
                 "kubectl_boundary_calls": boundary.kubectl_calls,
