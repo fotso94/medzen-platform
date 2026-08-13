@@ -1,0 +1,132 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002K-ATTEMPT-12-LOCAL-DISK-REFUSAL",
+  "schema_version": 1,
+  "status": "BLOCKED_IMAGE_SCAN",
+  "attempt": 12,
+  "attempt_consumed": true,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "LOCAL_EXECUTION_DISK_EXHAUSTED",
+  "executor_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "No space was available on the local execution volume while the exact-child Docker archive and OCI layout both existed for Docker Scout. The scan command did not begin.",
+  "reviewed_repository_commit": "134e9db258f60ed8d0b201c02ed3c93f3f0c2067",
+  "authorization_commit": "b0f24d9cccc7fad7958178413216a6acaa2e64d8",
+  "dry_validation_commit": "71ec822ded4176d2740cb514ee72e20eb4e0cd17",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002K-attempt-12.md",
+    "sha256": "1d72575e153f1606254e428a55324c66276ddeedcfee24ce37e8255d2186be9f"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002K.json",
+    "sha256": "d72771abce31ace400c44fbc6b3c4cc3acd15165fd71586f926979605ccd03e7"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002K.json",
+    "sha256": "1a27429f566f322cd4f932a197c9c1d0cb2ca1442d74b5f0b69dd3bcc93e96cd"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002K.json",
+    "sha256": "b7bfed97d82d76ae0b0700631ac3c17becc2227709610fefb307b01464f6dd54",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false,
+    "large_temporary_image_bytes_removed_by_context_cleanup": true
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T14:03:07Z",
+    "hard_deadline_utc": "2026-08-13T17:03:07Z",
+    "refusal_recorded_utc": "2026-08-13T14:16:06Z",
+    "terminal_cleanup_utc": "2026-08-13T14:16:09Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "REFUSED",
+    "artifact_stage": "NOT_RUN",
+    "private_endpoint_and_policy_gate": "NOT_RUN",
+    "gpu_and_sampler_gate": "NOT_RUN",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "exact_ecr_tag_and_child_binding_checked": true,
+    "exact_child_archive_command_status": "PASS",
+    "exact_child_archive_command_elapsed_seconds": 11.312,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "artifact_upload_bytes": 0,
+    "endpoints_created": 0,
+    "gpu_started": false,
+    "evaluation_started": false
+  },
+  "observed_refusal": {
+    "classification": "LOCAL_EXECUTION_CAPACITY_EXHAUSTION_BEFORE_SECURITY_SCAN",
+    "filesystem": "/System/Volumes/Data",
+    "filesystem_capacity_state_at_failure": "NO_SPACE_LEFT_ON_DEVICE",
+    "failure_write": "external-tool diagnostic for the next command",
+    "last_completed_external_tool": "exact-child tar archive creation",
+    "next_expected_external_tool": "docker scout cves against the exact-child archive",
+    "scan_invoked": false,
+    "security_verdict_produced": false,
+    "root_cause": "The rescan implementation materializes the 7.3 GB OCI layout and a second approximately 7.3 GB Docker archive concurrently, but the host volume had less free capacity than the required peak plus diagnostic headroom.",
+    "bounded_conclusion": "This is a local execution-capacity failure, not a new image finding and not an AWS, GPU, model or evaluation result."
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002K-A12-LIVE",
+    "attempt_envelope_sha256": "2252f7148c0c41c19f858b38bdcd541f7f6326840100cfed434f89a578a3790a",
+    "result_sha256": "95dce07dfe32b10e7ef64292a071e66c80fb9d8002b4f186a0026d2538af5941",
+    "deadline_identity_and_acceptance_sha256": "84a900e1820ee215041d56c62da2ecddceb1f4b38730a4ce850eae846a9f7e2c",
+    "input_freeze_and_no_phi_sha256": "e8918fecdcc51be51e78b6d243353f0786d70e361198fbd00fe709038a5f1afc",
+    "cost_and_zero_state_sha256": "c58b79cf5734c085e8f4f1e7470268c1afbaac37c4caf449a23fdaf812e2ba6d",
+    "image_publication_and_scan_sha256": "ea564d41153a0d865721ce716831fbab76c6e03608a1e9eed6ac13356fcd6359",
+    "cleanup_and_expiry_sha256": "be8aff08831362db25b9587eb210a5f8fa06a27d63ad8815794b43bafa7a0ea2"
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_seconds": 0,
+    "gpu_cost_usd": 0.0,
+    "incidental_aws_api_and_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_12_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "required_successor_work": [
+    "Add a read-only local capacity preflight that measures free bytes before the attempt envelope and refuses unless exact-image reconstruction, Docker archive, Scout workspace and diagnostic reserve fit with a conservative margin.",
+    "Eliminate the duplicate 7.3 GB peak by streaming or scanning a single byte-verified representation where Docker Scout supports it, without weakening the digest binding.",
+    "Rehearse both sufficient-capacity PASS and insufficient-capacity refusal paths using the real filesystem-ordering code.",
+    "Reconcile attempt-12 incidental AWS billing in a new non-destructive cost-registry revision when usage lands.",
+    "Present a new versioned packet and fresh owner allowance; attempt 12 is consumed."
+  ]
+}
