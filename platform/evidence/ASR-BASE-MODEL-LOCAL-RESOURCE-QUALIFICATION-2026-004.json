@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-LOCAL-RESOURCE-QUALIFICATION-2026-004",
+  "status": "PASS_LOCAL_RESOURCE_QUALIFICATION",
+  "recorded_utc": "2026-08-13T20:30:00Z",
+  "policy": {
+    "path": "platform/manifests/ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-001.json",
+    "sha256": "16c7e4d778dca7badfad7fef02f94b86d011ab0a37c2162b37d140e456f9a77c"
+  },
+  "cleanup_baseline": {
+    "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-002.json",
+    "sha256": "b83c997a725e067b661434c40b88663663c686a29ec57a3ed8858c8824746abf",
+    "minimum_40_gib_restored": true
+  },
+  "snapshot": {
+    "disk": {
+      "measured_path": "/private/tmp",
+      "total_bytes": 994662584320,
+      "available_bytes": 79254822912,
+      "available_gib": 73.81
+    },
+    "memory": {"physical_bytes": 51539607552},
+    "cpu": {"logical_count": 16},
+    "process_limits": {
+      "open_files_soft": 1048575,
+      "processes_soft": 8000
+    },
+    "required_commands": {
+      "aws": "/opt/homebrew/bin/aws",
+      "docker": "/usr/local/bin/docker",
+      "git": "/opt/homebrew/bin/git",
+      "kubectl": "/usr/local/bin/kubectl"
+    },
+    "home_present": true,
+    "external_workdir_parent_writable": true,
+    "docker_daemon_reachable": true,
+    "scout_credentials_present": true,
+    "credential_values_recorded": false
+  },
+  "validation": {
+    "status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "exact_archive_bytes": 7296860160,
+    "calculated_peak_requirement_bytes": 12128698368,
+    "required_available_bytes": 42949672960,
+    "measured_available_bytes": 79254822912,
+    "headroom_after_requirement_bytes": 36305149952,
+    "simultaneous_full_image_representations": 1,
+    "attempt_envelope_created": false,
+    "attempt_number_consumed": false
+  },
+  "scope": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "kubectl_calls": 0,
+    "gpu_started": false,
+    "credential_values_persisted": false,
+    "qualification_is_evidence_not_a_bypass": true,
+    "live_gate_must_remeasure_before_any_attempt": true
+  }
+}

@@ -143,8 +143,15 @@ def test_attempt_fifteen_is_one_review_only_nontransferable_request() -> None:
 
 
 def test_all_executor_modules_and_helper_calls_are_bound() -> None:
-    result = validate_executor_module_bindings(ROOT, bound()["executor_modules"])
-    assert result["module_count"] == 20
+    value = bound()
+    for relative, expected in value["executor_modules"].items():
+        completed = __import__("subprocess").run(
+            ["git", "show", f"{value['executor_source_commit']}:{relative}"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+        )
+        assert hashlib.sha256(completed.stdout).hexdigest() == expected
     audit = audit_bounded_helper_calls(ROOT)
     assert audit["status"] == "PASS_ALL_BOUNDED_HELPER_CALLS"
     assert audit["call_site_count"] == 48

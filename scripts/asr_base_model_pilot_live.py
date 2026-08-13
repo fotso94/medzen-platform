@@ -57,6 +57,13 @@ from scripts.asr_base_model_pilot_integrity import (
     validate_executor_module_bindings,
     validate_governance_commit_boundary,
 )
+from scripts.asr_base_model_proven_commands import (
+    B6A_PROVEN_NVIDIA_SMI_ARGV,
+    ProvenCommandRefusal,
+    canonical_argv_sha256,
+    sampler_shell_command,
+    validate_proven_command_bindings,
+)
 from scripts.asr_base_model_pilot_staging import (
     StagingRefusal,
     validate_prestage_proof,
@@ -794,6 +801,19 @@ class LiveOperations:
             )
         except PilotIntegrityRefusal as exc:
             raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        if context.attempt >= 16:
+            try:
+                proven_commands = validate_proven_command_bindings(
+                    self.root,
+                    bindings.get("proven_live_node_commands"),
+                )
+            except ProvenCommandRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        else:
+            proven_commands = {
+                "status": "NOT_APPLICABLE_HISTORICAL_ATTEMPT",
+                "attempt": context.attempt,
+            }
         dra_policy_binding = bindings.get("dra_network_policy")
         if not isinstance(dra_policy_binding, dict):
             raise OperationRefusal(
@@ -870,6 +890,7 @@ class LiveOperations:
             "attempt": context.attempt,
             "dry_run": dry_run,
             "source_integrity": source_integrity,
+            "proven_live_node_commands": proven_commands,
             "dra_network_policy": {
                 "status": "PASS_COMMITTED_DRA_API_EGRESS_BINDING",
                 "path": str(DRA_NETWORK_POLICY),
@@ -1330,7 +1351,7 @@ class LiveOperations:
         waiter.wait(VolumeIds=[volume], WaiterConfig={"Delay": 5, "MaxAttempts": 60})
         self.ec2.attach_volume(VolumeId=volume, InstanceId=instance_id, Device="/dev/sdf")
         volume_serial = volume.replace("-", "")
-        self._ssm(instance_id, [
+        mount_commands = [
             "set -euo pipefail",
             f"device=$(readlink -f /dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_{volume_serial})",
             "test -b \"$device\"",
@@ -1338,7 +1359,21 @@ class LiveOperations:
             "sudo mkdir -p /var/lib/medzen-asr-eval",
             "sudo mount \"$device\" /var/lib/medzen-asr-eval",
             "sudo chown 10001:10001 /var/lib/medzen-asr-eval",
-        ])
+        ]
+        mount_commands_sha256 = hashlib.sha256(
+            canonical_json(mount_commands)
+        ).hexdigest()
+        write_exclusive(
+            context.workdir / "gpu-node-mount-command-binding.json",
+            canonical_json({
+                "schema_version": 1,
+                "status": "BOUND_FOR_FIRST_SUCCESSFUL_LIVE_STAGE_NOT_HISTORICALLY_PROVEN",
+                "command_count": len(mount_commands),
+                "command_bundle_sha256": mount_commands_sha256,
+                "contains_credentials_phi_audio_reference_or_prediction": False,
+            }),
+        )
+        self._ssm(instance_id, mount_commands)
         # Mark the namespace as a possible cleanup target before its create
         # call. A timeout after server-side creation can therefore never leak
         # it merely because the client did not receive the success response.
@@ -1381,14 +1416,88 @@ class LiveOperations:
                 f"before cleanup sha256={diagnostic['sha256']}",
             ) from exc
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
-        sample = self._command([
+        sample_command = [
             "kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "exec", "-n", "nvidia-dra-driver", dra_pod, "-c", "gpus", "--",
-            "/busybox/sh", "-c", "i=0; while [ $i -lt 120 ]; do /driver-root/usr/bin/nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits; i=$((i+1)); /busybox/sleep 0.1; done",
-        ], timeout=120)
-        samples = [float(line) for line in sample.stdout.decode().splitlines() if line.strip()]
-        if len(samples) != 120 or any(value < 0 for value in samples):
-            raise OperationRefusal("GPU_SAMPLER_SELF_TEST_REFUSED", "exactly 120 numeric sampler observations are required")
-        return {"status": "PASS_GPU_AND_SAMPLER_GATE", "gpu_node": node_name, "node_readiness": node_readiness, "instance_id": instance_id, "volume_id": volume, "volume_gib": 60, "dra": readiness, "samples": len(samples), "baseline_mib": samples[0], "peak_mib": max(samples)}
+            "/busybox/sh", "-c", sampler_shell_command(),
+        ]
+        sample = self._command(sample_command, timeout=180, check=False)
+        stdout = sample.stdout or b""
+        stderr = sample.stderr or b""
+        combined = (stdout + b"\n" + stderr).decode(errors="replace")
+        parsed: list[tuple[int, int, int]] = []
+        malformed_lines = 0
+        for raw_line in stdout.decode(errors="replace").splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            fields = [field.strip() for field in line.split(",")]
+            if len(fields) != 3 or any(re.fullmatch(r"[0-9]+", field) is None for field in fields):
+                malformed_lines += 1
+                continue
+            parsed.append(tuple(int(field) for field in fields))
+        diagnostic = {
+            "schema_version": 1,
+            "classification": "PRE_MODEL_PRE_AUDIO_SAFE_DIAGNOSTICS",
+            "command_transport": "kubectl_exec_dra_gpus_container",
+            "proven_inner_argv": list(B6A_PROVEN_NVIDIA_SMI_ARGV),
+            "proven_inner_argv_sha256": canonical_argv_sha256(
+                B6A_PROVEN_NVIDIA_SMI_ARGV
+            ),
+            "returncode": sample.returncode,
+            "stdout_bytes": len(stdout),
+            "stderr_bytes": len(stderr),
+            "stdout_sha256": hashlib.sha256(stdout).hexdigest(),
+            "stderr_sha256": hashlib.sha256(stderr).hexdigest(),
+            "stdout_sanitized": sanitize_bytes(stdout),
+            "stderr_sanitized": sanitize_bytes(stderr),
+            "numeric_sample_count": len(parsed),
+            "malformed_nonempty_line_count": malformed_lines,
+            "contains_model_audio_transcript_prediction_credentials_or_phi": False,
+        }
+        if "libnvidia-ml.so" in combined:
+            reason_code = "GPU_SAMPLER_DRIVER_LIBRARY_NOT_FOUND"
+        elif sample.returncode != 0:
+            reason_code = "GPU_SAMPLER_COMMAND_REFUSED"
+        elif malformed_lines:
+            reason_code = "GPU_SAMPLER_NON_NUMERIC_SAMPLE"
+        elif len(parsed) != 120:
+            reason_code = "GPU_SAMPLER_INCOMPLETE_SAMPLE_SET"
+        elif any(index != 0 or used < 0 or total <= 0 or used > total for index, used, total in parsed):
+            reason_code = "GPU_SAMPLER_INVALID_SAMPLE"
+        elif len({total for _, _, total in parsed}) != 1:
+            reason_code = "GPU_SAMPLER_TOTAL_MEMORY_CHANGED"
+        else:
+            reason_code = None
+        diagnostic["status"] = "PASS_120_NUMERIC_SAMPLES" if reason_code is None else "REFUSED"
+        diagnostic["reason_code"] = reason_code
+        diagnostic_path = context.workdir / "gpu-sampler-self-test.json"
+        write_exclusive(diagnostic_path, canonical_json(diagnostic))
+        if reason_code is not None:
+            raise OperationRefusal(
+                reason_code,
+                "the receipt-bound B6A sampler invocation refused; bounded typed diagnostics persisted "
+                f"sha256={_sha(diagnostic_path)}",
+            )
+        used_samples = [used for _, used, _ in parsed]
+        return {
+            "status": "PASS_GPU_AND_SAMPLER_GATE",
+            "gpu_node": node_name,
+            "node_readiness": node_readiness,
+            "instance_id": instance_id,
+            "volume_id": volume,
+            "volume_gib": 60,
+            "dra": readiness,
+            "sampler_binding_status": "PASS_BYTE_IDENTICAL_HISTORICAL_ARGV",
+            "sampler_inner_argv_sha256": canonical_argv_sha256(
+                B6A_PROVEN_NVIDIA_SMI_ARGV
+            ),
+            "sampler_diagnostic_sha256": _sha(diagnostic_path),
+            "node_mount_command_bundle_sha256": mount_commands_sha256,
+            "samples": len(parsed),
+            "baseline_mib": min(used_samples),
+            "peak_mib": max(used_samples),
+            "total_mib": parsed[0][2],
+        }
 
     def node_local_input_stage(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
@@ -1455,10 +1564,22 @@ class LiveOperations:
             "sudo find \"$base/input\" -type d -exec chmod 0555 {} +",
             "sudo find \"$base/input\" -type f -exec chmod 0444 {} +",
         ])
+        command_bundle_sha256 = hashlib.sha256(canonical_json(commands)).hexdigest()
+        write_exclusive(
+            context.workdir / "node-local-input-command-binding.json",
+            canonical_json({
+                "schema_version": 1,
+                "status": "BOUND_FOR_FIRST_LIVE_PROOF_NOT_HISTORICALLY_PROVEN",
+                "command_count": len(commands),
+                "command_bundle_sha256": command_bundle_sha256,
+                "presigned_url_values_recorded": False,
+                "contains_credentials_phi_audio_reference_or_prediction": False,
+            }),
+        )
         result = self._ssm(instance_id, commands, timeout_seconds=1800)
         state["staging_path"] = f"/var/lib/medzen-asr-eval/attempt-{context.attempt}"
         self._save_state(context, state)
-        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "credentials_in_container": False, "urls_in_container": False}
+        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "command_bundle_sha256": command_bundle_sha256, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
 
     def _cross_pod_refusal(self, context: AttemptContext, pod_ip: str) -> dict[str, Any]:
         image = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@{context.bindings['image']['linux_amd64_digest']}"
@@ -1479,6 +1600,24 @@ class LiveOperations:
         state = self._state(context)
         workload = (context.workdir / "workload.yaml").read_bytes()
         documents = list(__import__("yaml").safe_load_all(workload))
+        pilot_container = documents[-1]["spec"]["template"]["spec"]["containers"][0]
+        pilot_workload_argv = [
+            *pilot_container["command"],
+            *pilot_container["args"],
+        ]
+        pilot_workload_argv_sha256 = hashlib.sha256(
+            b"\0".join(value.encode() for value in pilot_workload_argv)
+        ).hexdigest()
+        write_exclusive(
+            context.workdir / "pilot-workload-command-binding.json",
+            canonical_json({
+                "schema_version": 1,
+                "status": "BOUND_BEFORE_FIRST_LIVE_WORKLOAD_NOT_HISTORICALLY_PROVEN",
+                "container_argv_sha256": pilot_workload_argv_sha256,
+                "workload_sha256": hashlib.sha256(workload).hexdigest(),
+                "contains_credentials_phi_audio_reference_or_prediction": False,
+            }),
+        )
         infrastructure = __import__("yaml").safe_dump_all(documents[:-1], sort_keys=False).encode()
         job = __import__("yaml").safe_dump(documents[-1], sort_keys=False).encode()
         self._kubectl(context, "apply", "-f", "-", stdin=infrastructure)
@@ -1511,7 +1650,7 @@ class LiveOperations:
         if waited.returncode != 0:
             raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
         aggregate = self._ssm(state["instance_id"], [f"test -s {state['staging_path']}/output/aggregate.json", f"sha256sum {state['staging_path']}/output/aggregate.json"])
-        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"]}
+        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
     def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)

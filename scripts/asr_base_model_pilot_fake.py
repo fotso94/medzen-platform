@@ -119,6 +119,7 @@ class BoundaryState:
         self.monotonic_seconds = 0.0
         self.gpu_node_reads = 0
         self.gpu_node_observation_sequence: list[str] = []
+        self.last_sampler_command: list[str] | None = None
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
         self.volumes: set[str] = set()
@@ -651,8 +652,20 @@ class ExternalCommandBoundary:
             raise AssertionError(f"unhandled rehearsal AWS command: {command}")
         if executable == "kubectl":
             self.state.kubectl_calls += 1
-            if any("--query-gpu=memory.used" in argument for argument in command):
-                return self._completed(command, stdout=(b"100\n" * 120))
+            if any(
+                "--query-gpu=index,memory.used,memory.total" in argument
+                for argument in command
+            ):
+                self.state.last_sampler_command = list(command)
+                if self.state.injection == "sampler_driver_library_missing":
+                    return self._completed(
+                        command,
+                        stdout=(
+                            b"NVIDIA-SMI couldn't find libnvidia-ml.so library "
+                            b"in your system.\n" * 120
+                        ),
+                    )
+                return self._completed(command, stdout=(b"0, 100, 23034\n" * 120))
             if "wait" in command:
                 if "pod/asr-eval-inbound-control" in command:
                     return self._completed(command)

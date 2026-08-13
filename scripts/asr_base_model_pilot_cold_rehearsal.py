@@ -35,6 +35,7 @@ from scripts.asr_base_model_pilot_integrity import (
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
+from scripts.asr_base_model_proven_commands import validate_proven_command_bindings
 from scripts.asr_base_model_pilot_runner import (
     STAGE_FUNCTIONS,
     AttemptContext,
@@ -59,6 +60,10 @@ SCENARIOS = {
     "gpu_node_delayed_ready": ("gpu_node_delayed_ready", "PASS_PILOT"),
     "gpu_node_never_ready": ("gpu_node_never_ready", "FAILED_CLOSED_EXECUTION"),
     "dra_not_ready": ("dra_not_ready", "FAILED_CLOSED_EXECUTION"),
+    "sampler_driver_library_missing": (
+        "sampler_driver_library_missing",
+        "FAILED_CLOSED_EXECUTION",
+    ),
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
@@ -267,6 +272,11 @@ def _scenario_repository(
     if "gpu_node_readiness_fixtures" in bindings:
         relative = bindings["gpu_node_readiness_fixtures"]["path"]
         tracked[relative] = (ROOT / relative).read_bytes()
+    if "proven_live_node_commands" in bindings:
+        sampler = bindings["proven_live_node_commands"]["sampler"]
+        tracked[sampler["receipt_path"]] = (
+            ROOT / sampler["receipt_path"]
+        ).read_bytes()
     fixture_record = json.loads(
         (ROOT / bindings["aws_read_fixtures"]["path"]).read_bytes()
     )
@@ -330,7 +340,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002O.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -359,6 +369,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     security_gate_validation = validate_security_binding(bindings["security_gate"])
     source_integrity = validate_executor_module_bindings(
         ROOT, bindings.get("executor_modules")
+    )
+    proven_command_bindings = validate_proven_command_bindings(
+        ROOT, bindings.get("proven_live_node_commands")
     )
     boundary_contract_audit = audit_bounded_helper_calls(ROOT)
     real_only = assert_no_parallel_stage_implementation()
@@ -484,6 +497,20 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     if (directory / "dra-refusal-diagnostics.json").is_file()
                     else None
                 ),
+                "gpu_sampler_diagnostics": (
+                    {
+                        "persisted_before_cleanup": True,
+                        "sha256": _sha(directory / "gpu-sampler-self-test.json"),
+                        "status": json.loads(
+                            (directory / "gpu-sampler-self-test.json").read_bytes()
+                        )["status"],
+                        "reason_code": json.loads(
+                            (directory / "gpu-sampler-self-test.json").read_bytes()
+                        )["reason_code"],
+                    }
+                    if (directory / "gpu-sampler-self-test.json").is_file()
+                    else None
+                ),
             }
         insufficient_directory = base / "local-disk-insufficient"
         reviewed, authorization_path, packet_path = _scenario_repository(
@@ -537,6 +564,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_fake.py",
         ROOT / "scripts/asr_base_model_pilot_live.py",
         ROOT / "scripts/asr_base_model_aws_read_fixtures.py",
+        ROOT / "scripts/asr_base_model_proven_commands.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -590,6 +618,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "stage_implementation_guard": real_only,
         "executor_module_integrity": source_integrity,
         "bounded_helper_contract_audit": boundary_contract_audit,
+        "proven_live_node_command_bindings": proven_command_bindings,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
         "aws_read_fixture_coverage": aws_read_fixture_coverage,
@@ -637,7 +666,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002O.json",
     )
     args = parser.parse_args()
     try:

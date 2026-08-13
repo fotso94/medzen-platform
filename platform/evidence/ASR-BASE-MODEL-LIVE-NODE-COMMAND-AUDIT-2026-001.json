@@ -1,0 +1,85 @@
+{
+  "record": "ASR_BASE_MODEL_LIVE_NODE_COMMAND_AUDIT",
+  "id": "ASR-BASE-MODEL-LIVE-NODE-COMMAND-AUDIT-2026-001",
+  "schema_version": 1,
+  "status": "PASS_ONE_PROVEN_COMMAND_BOUND_TWO_FUTURE_COMMANDS_DISCLOSED",
+  "purpose": "Apply the standing rule that a live-node invocation found in successful historical evidence is reused byte-for-byte, while never inventing provenance for commands that have not passed live.",
+  "attempt_15_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002N-ATTEMPT-15-GPU-SAMPLER-REFUSAL.json",
+    "sha256": "e26b1d686fc68a9e5b3a7a8e725745d90e0bbaf663460331a984b7926f51bbbe",
+    "reason_code": "GPU_SAMPLER_DRIVER_LIBRARY_NOT_FOUND",
+    "typed_diagnostic_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002N-A15-LIVE/diagnostics/0027.json",
+    "typed_diagnostic_sha256": "36a19ba18574ae7880735fe9ae01a46371a6d78222d5236befd10f94c2c248f2"
+  },
+  "audit_scope": [
+    "gpu_and_sampler_gate sampler invocation",
+    "gpu_and_sampler_gate encrypted-volume mount preparation",
+    "node_local_input_stage SSM command bundle",
+    "pilot_rows Kubernetes workload command",
+    "pilot_rows network-release and aggregate-presence node commands",
+    "aggregate_report node receipt read",
+    "cleanup_and_expiry node-local removal and unmount"
+  ],
+  "commands": {
+    "gpu_sampler": {
+      "classification": "HISTORICALLY_PROVEN_AND_REQUIRED_BYTE_IDENTICAL",
+      "successful_receipt_path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/sampler_self_test.json",
+      "successful_receipt_sha256": "8848c206ecbf459e5e0ffd754352b8eb3086d0b1a750e40c471f890ad8cebde1",
+      "source_path": "scripts/b6a_003c_e_ssm_sampler.sh",
+      "source_sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+      "canonical_inner_argv": [
+        "/busybox/chroot",
+        "/driver-root",
+        "/usr/bin/nvidia-smi",
+        "--query-gpu=index,memory.used,memory.total",
+        "--format=csv,noheader,nounits"
+      ],
+      "canonical_nul_delimited_argv_sha256": "04e6d317a48f3602402b011289224cb686ab7313aab6726051d2f089ac5bd426",
+      "historical_sample_count": 120,
+      "executor_implementation": "scripts.asr_base_model_proven_commands.B6A_PROVEN_NVIDIA_SMI_ARGV",
+      "fail_closed_validation": "scripts.asr_base_model_proven_commands.validate_proven_command_bindings"
+    },
+    "node_local_input_stage": {
+      "classification": "NOT_HISTORICALLY_PROVEN",
+      "successful_live_pass_receipts_found": 0,
+      "finding": "Attempts 1 through 15 contain no non-rehearsal PASS_NODE_LOCAL_INPUT_STAGE receipt.",
+      "successor_control": "Persist a write-once canonical command-bundle hash before the first live SSM invocation and carry that hash into its stage receipt.",
+      "may_be_described_as_proven_before_live_pass": false
+    },
+    "pilot_workload": {
+      "classification": "NOT_HISTORICALLY_PROVEN",
+      "successful_live_pass_receipts_found": 0,
+      "finding": "Attempts 1 through 15 contain no non-rehearsal PASS_PILOT_ROWS receipt.",
+      "successor_control": "Render the workload from one module constant, record the NUL-delimited container argv hash in qualification, and bind the rendered workload hash before first live execution.",
+      "may_be_described_as_proven_before_live_pass": false
+    },
+    "other_eval_node_command_families": {
+      "classification": "AUDITED_NO_HISTORICALLY_SUCCESSFUL_STAGE_RECEIPT",
+      "families": [
+        "encrypted-volume format and mount preparation",
+        "pre-torch network-receipt read",
+        "network-release marker creation",
+        "aggregate-presence verification",
+        "aggregate receipt read",
+        "node-local cleanup and volume unmount"
+      ],
+      "finding": "No successful non-rehearsal eval stage receipt through attempt 15 proves these command families. Attempt 15 executed volume preparation, but its enclosing gpu_and_sampler_gate receipt is REFUSED and does not embed the command bytes, so it is not promoted to historical proof.",
+      "successor_control": "External-tool and SSM command IDs remain bounded and sanitized; the first successful live stage receipts must preserve their exact command-bundle identities before any later executor may cite them as proven.",
+      "may_be_described_as_proven_before_live_pass": false
+    }
+  },
+  "class_rule": {
+    "historically_proven_command_rederived_or_shortened_permitted": false,
+    "executor_to_historical_source_byte_comparison_required": true,
+    "successful_receipt_must_bind_historical_source_hash": true,
+    "unproven_command_may_be_labeled_historically_proven": false,
+    "first_live_pass_must_persist_exact_command_identity": true
+  },
+  "deviations": [
+    "The B6A receipt binds the successful script by path and SHA-256 rather than embedding the full command string. The executor therefore compares its canonical NUL-delimited argv bytes to the exact invocation extracted from the receipt-bound script; this is stronger than comparing to an unbound transcription.",
+    "Node-local staging and the pilot workload cannot be bound to successful historical receipts because no such receipts exist. They remain explicitly unproven and receive first-live command-identity receipts instead of fabricated provenance."
+  ],
+  "aws_calls": 0,
+  "aws_mutations": 0,
+  "historical_evidence_modified": false
+}
