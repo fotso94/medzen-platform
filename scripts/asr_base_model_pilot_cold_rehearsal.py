@@ -67,7 +67,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-12T01:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002E.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -138,9 +138,19 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             if result["outcome"] != expected or not ops.zero_state():
                 raise RuntimeError(f"cold rehearsal scenario differs: {name}")
             receipt_files = sorted((directory / "receipts").glob("*.json"))
+            failure_receipt = (
+                json.loads((directory / f"receipts/{result['failure_stage']}.json").read_bytes())
+                if result["failure_stage"] is not None
+                else None
+            )
             scenarios[name] = {
                 "outcome": result["outcome"],
                 "failure_stage": result["failure_stage"],
+                "failure_reason_code": (
+                    failure_receipt["payload"].get("reason_code")
+                    if failure_receipt is not None
+                    else None
+                ),
                 "cleanup_status": json.loads((directory / "receipts/cleanup_and_expiry.json").read_bytes())["status"],
                 "receipt_count": len(receipt_files),
                 "receipt_chain_sha256": hashlib.sha256("".join(_sha(path) for path in receipt_files).encode()).hexdigest(),
@@ -247,7 +257,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002G.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json",
     )
     args = parser.parse_args()
     try:

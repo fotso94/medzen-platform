@@ -90,3 +90,10 @@ def test_packet_binds_prestage_refusal_and_risk_hashes() -> None:
     text = PACKET.read_text(encoding="utf-8")
     for path in (PROOF, REFUSAL, RISK):
         assert sha(path) in text
+
+
+def test_cold_rehearsal_defaults_to_current_committed_bindings() -> None:
+    text = (ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py").read_text(
+        encoding="utf-8"
+    )
+    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json") == 2
