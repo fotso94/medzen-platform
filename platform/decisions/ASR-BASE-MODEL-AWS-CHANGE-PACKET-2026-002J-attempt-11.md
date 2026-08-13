@@ -109,7 +109,7 @@ calls, and zero residual state.
 
 The packet-bound bindings manifest SHA-256 is
 `b8ab38f43e0b0f426730e74c368f17deaf1a3562bd846088cacaf47d43c23c00`.
-Focused ASR pilot validation reports `126 passed, 0 failed`.
+Focused ASR pilot validation reports `127 passed, 0 failed`.
 
 ## Unchanged subject and safety boundary
 
