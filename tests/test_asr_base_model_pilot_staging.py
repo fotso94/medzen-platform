@@ -247,6 +247,18 @@ def test_uplink_budget_refuses_an_unwinnable_window() -> None:
     assert refused.value.reason_code == "WINDOW_BUDGET_INFEASIBLE"
 
 
+def test_window_budget_refuses_when_fast_stages_leave_no_cleanup_reserve() -> None:
+    value = proof()
+    value["timed_window"]["estimated_fast_stage_seconds"] = 10_000
+    with pytest.raises(StagingRefusal) as refused:
+        validate_window_budget(
+            value,
+            deadline_seconds=10800,
+            expected_bundle_sha256="2" * 64,
+        )
+    assert refused.value.reason_code == "WINDOW_BUDGET_INFEASIBLE"
+
+
 def test_attempt_nine_plan_and_executor_have_no_artifact_upload_path() -> None:
     live = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(encoding="utf-8")
     artifact = live[live.index("    def artifact_stage("):live.index("    def _endpoint_policy(")]

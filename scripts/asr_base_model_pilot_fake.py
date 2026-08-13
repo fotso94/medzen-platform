@@ -213,7 +213,7 @@ class FakeOperations:
             elif self.inject == "prestage_in_attempt_upload":
                 proof["timed_window"]["in_attempt_upload_bytes"] = 1
             elif self.inject == "uplink_window_infeasible":
-                proof["timed_window"]["in_attempt_upload_bytes"] = 13_021_689_920
+                proof["timed_window"]["estimated_fast_stage_seconds"] = 10_000
             try:
                 validate_prestage_proof(
                     proof,
