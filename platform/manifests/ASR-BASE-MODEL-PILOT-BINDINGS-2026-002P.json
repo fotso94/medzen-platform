@@ -105,7 +105,7 @@
   "executor_modules": {
     "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
     "scripts/asr_base_model_aws_read_fixtures.py": "236a1a8c0837c68927639f07bb5469544f3fc56dfd5181d1eb907ada8d8927c7",
-    "scripts/asr_base_model_boundary_contracts.py": "334b21943f43ad97dcb48fe0484dac234c172adad32574fb92140d98a7ee41e4",
+    "scripts/asr_base_model_boundary_contracts.py": "6246c7261452036810a5406dfa860327f813fc1a3e37e17c89051307820f24ba",
     "scripts/asr_base_model_deadline_dry_run.py": "3bebfa16fa773bbdf90d43eedbfd2cde9d45b612b2aab96c4a5fd521ee945ca9",
     "scripts/asr_base_model_ecr_scanning.py": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
     "scripts/asr_base_model_local_resources.py": "eaf2648e5020c82d34ae398cae05829617ad1928021a7dd079213faa38f7721f",
@@ -129,7 +129,7 @@
     "scripts/qualify_asr_base_model_node_staging.py": "9b8fedc0dac1c4c870cdb269ab692e1b9bcd809b8010fa071b28c86d3bfee6d6",
     "scripts/run_b6a_003c_c_proof.py": "c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3"
   },
-  "executor_source_commit": "8929fe85326919a10bc30c8f6740139846814702",
+  "executor_source_commit": "65bac67fb6cfa0c0f34c3d517889340e7e705371",
   "gpu_node_readiness_fixtures": {
     "capture_mutations": 0,
     "invented_kubernetes_fields_permitted": false,
@@ -321,7 +321,7 @@
       "cleanup composition"
     ],
     "shared_boundary_contract": {
-      "audited_call_site_count": 48,
+      "audited_call_site_count": 50,
       "dra_wait_contract_widened": false,
       "dra_wait_timeout_seconds": 300,
       "fake_more_permissive_than_real_permitted": false,

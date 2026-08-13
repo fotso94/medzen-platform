@@ -186,10 +186,12 @@ shapes. In addition to all standing scenarios, it includes:
 - clean PASS, deadline and cleanup paths.
 
 - executor source commit:
-  `8929fe85326919a10bc30c8f6740139846814702`;
+  `65bac67fb6cfa0c0f34c3d517889340e7e705371`;
 - 25 unconditionally bound executor modules;
+- static boundary audit: 50 call sites, including the 1,800-second staging SSM
+  call resolved against the shared contract;
 - final bindings SHA-256:
-  `5779875cd1c85fd486c43f1e93759f99206c19a317032e95c05087bb80e28d54`;
+  `6eb8134abcb6948774dd02e2b7d7ac4dd5bc7e9ffbbf0cf209603b6611adf40c`;
 - final receipt-last cold-rehearsal SHA-256: `PENDING_RECEIPT_LAST`.
 
 ## Post-approval order
