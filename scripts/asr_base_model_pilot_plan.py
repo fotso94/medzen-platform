@@ -52,7 +52,6 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "eks:addon-configuration/vpc-cni-network-policy-strict",
         "kubernetes:namespace/medzen-asr-eval",
         "kubernetes:namespace/nvidia-dra-driver",
-        "kubernetes:networkpolicy/nvidia-dra-driver/medzen-dra-kubernetes-api-egress",
         "kubernetes:nvidia-dra-driver/exact-locked-manifest",
         "kubernetes:resourceclaimtemplate/asr-eval-gpu",
         "kubernetes:networkpolicy/asr-eval-default-deny",
@@ -61,6 +60,13 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "kubernetes:pod/asr-eval-inbound-control",
         "node-local:/var/lib/medzen-asr-eval/attempt",
     ]
+    if attempt >= 15:
+        temporary_create_then_delete.insert(
+            temporary_create_then_delete.index(
+                "kubernetes:nvidia-dra-driver/exact-locked-manifest"
+            ),
+            "kubernetes:networkpolicy/nvidia-dra-driver/medzen-dra-kubernetes-api-egress",
+        )
     if attempt < 5:
         permanent_create_only[:0] = [
             f"ecr:repository/medzen-asr-eval-runtime:oci-index/{image_index}",

@@ -12,11 +12,9 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_boundary_contracts import (
     DRA_WAIT_MAX_SECONDS,
-    audit_bounded_helper_calls,
 )
 from scripts.asr_base_model_pilot_integrity import (
     SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS,
-    validate_executor_module_bindings,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan
 
@@ -70,13 +68,19 @@ def test_shared_boundary_contract_is_bound_and_exhaustively_audited() -> None:
     assert set(value["executor_modules"]) == set(
         SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS
     )
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == 20
-    audit = audit_bounded_helper_calls(ROOT)
-    assert audit["status"] == "PASS_ALL_BOUNDED_HELPER_CALLS"
-    assert audit["call_site_count"] == 43
-    assert audit["fake_may_bypass_validation"] is False
+    # This is write-once historical packet evidence. Validate its hashes at
+    # the packet-bound source commit rather than against a later successor's
+    # worktree bytes.
+    for relative, expected in value["executor_modules"].items():
+        completed = __import__("subprocess").run(
+            ["git", "show", f"{value['executor_source_commit']}:{relative}"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+        )
+        assert hashlib.sha256(completed.stdout).hexdigest() == expected
     contract = value["rehearsal_fidelity_boundary"]["shared_boundary_contract"]
+    assert contract["audited_call_site_count"] == 43
     assert contract["dra_wait_timeout_seconds"] == DRA_WAIT_MAX_SECONDS == 300
     assert contract["dra_wait_contract_widened"] is False
 
