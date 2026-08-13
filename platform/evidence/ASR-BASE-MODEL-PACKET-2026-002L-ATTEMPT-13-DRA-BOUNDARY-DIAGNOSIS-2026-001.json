@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-BOUNDARY-DIAGNOSIS-2026-001",
+  "recorded_at_utc": "2026-08-13T16:50:00Z",
+  "status": "PASS_DIAGNOSIS_AND_SUCCESSOR_CORRECTION",
+  "attempt_13_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-WAIT-BOUNDARY-REFUSAL.json",
+    "sha256": "8126590e36ff13653d3db60733bb9cfd603db40ccb275ea2bbe5b221449485f6",
+    "reason_code": "DRA_WAIT_BOUNDARY_MISMATCH",
+    "caller_timeout_seconds": 600,
+    "callee_maximum_seconds": 300
+  },
+  "root_cause": "The pilot called the reused DRA waiter with 600 seconds while that helper's public contract accepts at most 300 seconds. Rehearsal injected a permissive waiter without entering the helper's validator.",
+  "decision": {
+    "selected_timeout_seconds": 300,
+    "helper_contract_widened": false,
+    "reason": "The node became stably Ready in about 90 seconds and the DRA helper's established five-minute contract is sufficient. There is no evidence-based reason to widen it."
+  },
+  "structural_correction": {
+    "source_commit": "51650596ed2df79df8b6e32e62d20332033e4914",
+    "shared_contract_module": "scripts/asr_base_model_boundary_contracts.py",
+    "live_and_rehearsal_share_validator": true,
+    "fake_may_be_more_permissive_than_real": false,
+    "dra_timeout_seconds": 300,
+    "dra_poll_seconds": 2
+  },
+  "complete_reused_helper_audit": {
+    "status": "PASS_ALL_BOUNDED_HELPER_CALLS",
+    "audited_call_site_count": 43,
+    "audited_files": [
+      "scripts/asr_base_model_pilot_live.py",
+      "scripts/run_b6a_003c_c_proof.py",
+      "scripts/run_b6a_003c_d_sampler_self_test.py",
+      "scripts/run_b6a_003c_e_sampler_self_test.py",
+      "scripts/run_b6a_003c_f_sampler_self_test.py"
+    ],
+    "boundaries": [
+      "external_command",
+      "kubectl",
+      "ssm",
+      "nodegroup",
+      "gpu_node_readiness",
+      "registry_scan_configuration",
+      "dra_wait"
+    ],
+    "out_of_range_call_sites": 0,
+    "statically_unresolved_bounded_arguments": 0,
+    "direct_injected_boundaries_outside_validating_wrappers": 0
+  },
+  "regression_proof": {
+    "focused_tests_passed": 229,
+    "focused_tests_failed": 0,
+    "attempt_13_600_second_call_refuses_before_waiter_invocation": true,
+    "every_boundary_rejects_below_and_above_range": true,
+    "nodegroup_desired_capacity_zero_or_one_is_shared_contract": true,
+    "historical_records_modified": false
+  },
+  "scope": {
+    "local_only": true,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_14_authorized": false
+  }
+}
