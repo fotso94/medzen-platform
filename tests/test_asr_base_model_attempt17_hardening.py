@@ -22,6 +22,7 @@ from scripts.asr_base_model_node_staging import (
     numeric_identity_command,
     staging_prelude,
 )
+from scripts.asr_base_model_boundary_contracts import audit_bounded_helper_calls
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_workload import (
     JOB_ACTIVE_DEADLINE_SECONDS,
@@ -89,6 +90,18 @@ def test_presigned_query_values_are_sanitized() -> None:
     assert "abcdef" not in value
     assert "secret-version" not in value
     assert "X-Amz-Credential=<REDACTED>" in value
+
+
+def test_staging_ssm_timeout_is_resolved_by_the_shared_call_site_audit() -> None:
+    result = audit_bounded_helper_calls(ROOT)
+    staging_calls = [
+        item
+        for item in result["call_sites"]
+        if item["path"] == "scripts/asr_base_model_pilot_live.py"
+        and item["helper"] == "_ssm"
+        and item["parameters"]["timeout_seconds"] == STAGING_SSM_TIMEOUT_SECONDS
+    ]
+    assert len(staging_calls) == 1
 
 
 def test_pilot_workload_is_absolute_bounded_and_explicit() -> None:

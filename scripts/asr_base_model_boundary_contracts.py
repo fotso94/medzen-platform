@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
+from scripts.asr_base_model_node_staging import STAGING_SSM_TIMEOUT_SECONDS
+
 
 @dataclass(frozen=True)
 class IntegerBound:
@@ -206,6 +208,7 @@ def audit_bounded_helper_calls(root: Path) -> dict[str, Any]:
             "DRA_WAIT_TIMEOUT_SECONDS": DRA_WAIT_TIMEOUT_SECONDS,
             "DRA_WAIT_MAX_SECONDS": DRA_WAIT_MAX_SECONDS,
             "DRA_WAIT_POLL_SECONDS": DRA_WAIT_POLL_SECONDS,
+            "STAGING_SSM_TIMEOUT_SECONDS": STAGING_SSM_TIMEOUT_SECONDS,
             **_module_constants(tree),
         }
         functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
