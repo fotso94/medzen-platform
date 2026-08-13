@@ -1,0 +1,157 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-WAIT-BOUNDARY-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 13,
+  "attempt_consumed": true,
+  "failure_stage": "gpu_and_sampler_gate",
+  "reason_code": "DRA_WAIT_BOUNDARY_MISMATCH",
+  "executor_reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "DRA wait must be between one second and five minutes",
+  "reviewed_repository_commit": "9d76599c8ca14c06e20b3df3904ddc47c0d4b46f",
+  "authorization_commit": "98a3beff3793e7185c37c997781670c17304c082",
+  "dry_validation_commit": "a7ee1aef04a4d0947b0a7f234f98d1bfd0b24f8e",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002L-attempt-13.md",
+    "sha256": "67d0df9827372e1fd97c308fd572a7b7b85a5eaaa5b37bb982e52679695724fd"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002L.json",
+    "sha256": "f23a9746f244b116ba2466910e8bc7ef1afb78ad4013c678096e2e89a2765804"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002L.json",
+    "sha256": "7ac57fccb3dfed577f06b7c7fd74877e899c8e1ed1e8d83ba40ffdb4fc8b4177"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002L.json",
+    "sha256": "50f07c0ba3a3640806d753e9851679b1cb515da460c7be1c893afc9ce57ff3f1",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "attempt_started": false
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false,
+    "single_temporary_image_representation_removed_by_context_cleanup": true
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T15:38:24Z",
+    "hard_deadline_utc": "2026-08-13T18:38:24Z",
+    "refusal_recorded_utc": "2026-08-13T15:54:55Z",
+    "gpu_instance_launch_utc": "2026-08-13T15:53:25Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T15:56:33Z",
+    "terminal_cleanup_utc": "2026-08-13T16:06:34Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "PASS",
+    "gpu_and_sampler_gate": "REFUSED",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "pre_envelope_local_resources_status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "pre_envelope_available_bytes": 48016302080,
+    "pre_envelope_required_bytes": 42949672960,
+    "pre_envelope_headroom_bytes": 5066629120,
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "exact_ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "exact_ecr_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "single_representation_archive_bytes": 7296808960,
+    "docker_scout_critical": 0,
+    "docker_scout_high": 4,
+    "docker_scout_accepted_tuple_count": 4,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "artifact_object_count": 9,
+    "artifact_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "temporary_private_endpoints_ready": 3,
+    "strict_network_policy_configured": true,
+    "gpu_node_reached_two_consecutive_ready_observations": true,
+    "encrypted_temporary_volume_created": true,
+    "dra_installed": true,
+    "gpu_sampler_started": false,
+    "evaluation_started": false
+  },
+  "observed_refusal": {
+    "classification": "EXECUTOR_DRA_TIMEOUT_ARGUMENT_OUTSIDE_IMPORTED_HELPER_BOUNDARY",
+    "caller": "scripts/asr_base_model_pilot_live.py:gpu_and_sampler_gate",
+    "caller_timeout_seconds": 600,
+    "callee": "scripts/run_b6a_003c_c_proof.py:wait_for_stable_dra",
+    "callee_maximum_timeout_seconds": 300,
+    "root_cause": "The ASR pilot passed timeout_seconds=600 to the reused stable-DRA helper, whose enforced maximum is 300 seconds. The helper rejected immediately after installation before any sampler or evaluation work.",
+    "bounded_conclusion": "This is an execution-contract defect, not an image-security, network-isolation, GPU-capacity, model-quality or evaluation result."
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002L-A13-LIVE",
+    "attempt_envelope_sha256": "b189d4c4747e7b252c24fcec727540e187dbba50267af8e5d29b00ff64411afc",
+    "result_sha256": "6ad8b01961be2d8ce6e085e707f4548ed7fd8bb95f581b833ea912a0b2cf4553",
+    "docker_scout_sarif_sha256": "3b2a0bbaafb22c7158a6f5eaf44cb22b12a40719f976ff131d6b06aca46d0045",
+    "deadline_identity_and_acceptance_sha256": "3a9d4d05c32ecfe55bd5143dd17c623a0b89d0042c137199a257d0c8a4addb1c",
+    "input_freeze_and_no_phi_sha256": "50c94883969cb2e5a0e6ab70db52d0d3e9cf6390b5cd787756a6ce9dfcedbbf9",
+    "cost_and_zero_state_sha256": "566bda87c3e6d7ab3c4fa60e7614b5ff0db183ca4485114dc2c6aacbe80ca236",
+    "image_publication_and_scan_sha256": "7ad7fdcdf3a9539a4d10bc7782f71468784b4dfcd288b3b6adf759e42b26e763",
+    "artifact_stage_sha256": "0896a1901db7452068e72d2ed8c8dd4fa048f3d28abfad7081e2c1798dbb09d3",
+    "private_endpoint_and_policy_gate_sha256": "816a4656599544d71bd3b7bd9daab935a735914b7e65c65b780c39ad30be9a9f",
+    "gpu_and_sampler_gate_sha256": "574964da47335c62627ccf7c732059487d617897fcbfd5f6dfde3c38082ec186",
+    "cleanup_and_expiry_sha256": "f879316939d4fc078e7000112a88bf0017abf4e5c91a1ef776bc877f1a1562dc",
+    "sanitized_external_tool_diagnostic_count": 28
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "temporary_security_groups": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "ecr_scanning_configuration_restored": true,
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_id": "i-0b591d766422a8054",
+    "gpu_instance_launch_utc": "2026-08-13T15:53:25Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T15:56:33Z",
+    "bounded_gpu_runtime_seconds_before_termination_initiated": 188,
+    "actual_billed_cost_usd": "PENDING_AWS_BILLING_INGESTION",
+    "incidental_endpoint_volume_and_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_13_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "required_successor_work": [
+    "Align the pilot DRA wait with the imported helper's enforced 300-second maximum or introduce one versioned pilot-local boundary with a justified timeout; do not silently widen the reused helper.",
+    "Add a wrapper-contract regression proving every timeout passed to wait_for_stable_dra is within the helper's public boundary.",
+    "Run the real LiveOperations cold rehearsal through the default imported DRA helper boundary so the production call cannot diverge from the injected rehearsal waiter.",
+    "Class-audit all reused helper calls for caller/callee argument-boundary compatibility and record the result.",
+    "Reconcile attempt-13 actual AWS billing in a new non-destructive cost-registry revision when usage lands.",
+    "Present a new versioned packet and fresh owner allowance; attempt 13 is consumed."
+  ]
+}
