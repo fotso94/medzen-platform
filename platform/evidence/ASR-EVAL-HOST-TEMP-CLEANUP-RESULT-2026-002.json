@@ -1,0 +1,51 @@
+{
+  "record": "ASR_EVAL_HOST_TEMP_CLEANUP_RESULT",
+  "id": "ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-002",
+  "schema_version": 1,
+  "status": "PASS_EXACT_CLOSED_SCRATCH_REMOVED_KEEP_LIST_INTACT",
+  "keep_list": {
+    "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-002.json",
+    "sha256": "b8d1477560ad73d625c28c8586ec67ccb0b2de67c636894d504dc5e11d6825b1"
+  },
+  "deletion": {
+    "exact_path": "/private/tmp/medzen-asr-scout-diagnosis-2026-001",
+    "result": "ABSENT_AFTER_DELETE",
+    "recoverability": "NOT_LOCALLY_RECOVERABLE; immutable diagnosis and exact scan evidence remain committed",
+    "other_paths_deleted": 0,
+    "docker_images_deleted": 0,
+    "docker_containers_deleted": 0,
+    "docker_volumes_deleted": 0,
+    "aws_objects_deleted": 0,
+    "aws_resources_mutated": 0
+  },
+  "filesystem_measurement": {
+    "before_available_kib": 41775236,
+    "before_available_bytes": 42777841664,
+    "after_available_kib": 77401824,
+    "after_available_bytes": 79259467776,
+    "after_available_gib": 73.81,
+    "minimum_required_bytes": 42949672960,
+    "headroom_bytes": 36309794816,
+    "target_met": true
+  },
+  "keep_list_post_cleanup_verification": {
+    "qualified_eval_image": {
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "result": "PASS_INTACT_LOCAL_AND_ECR"
+    },
+    "cuda_base": {
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "result": "PASS_INTACT_LOCAL"
+    },
+    "repository_evidence": "PASS_UNCHANGED",
+    "s3_prestage": "NOT_MUTATED"
+  },
+  "scope": {
+    "aws_read_calls_after_cleanup": 1,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_consumed": false
+  }
+}
