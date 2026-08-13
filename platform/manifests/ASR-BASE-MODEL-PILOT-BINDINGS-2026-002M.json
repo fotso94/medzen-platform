@@ -182,7 +182,7 @@
     "local_scan_subject_sha256": "d5b95462e0421092b4b2cd21329c2217e781ab5542f8724c105479bbb8359266",
     "image_context_changed": false
   },
-  "executor_source_commit": "51650596ed2df79df8b6e32e62d20332033e4914",
+  "executor_source_commit": "2bb8a92dd62ab1a91cfbc2ef89b7bbd867674573",
   "executor_modules": {
     "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
     "scripts/asr_base_model_aws_read_fixtures.py": "236a1a8c0837c68927639f07bb5469544f3fc56dfd5181d1eb907ada8d8927c7",
