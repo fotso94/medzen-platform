@@ -1,0 +1,35 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_COST_OBSERVATION",
+  "id": "ASR-BASE-MODEL-ATTEMPT-16-COST-OBSERVATION-2026-001",
+  "schema_version": 1,
+  "status": "AWS_COST_EXPLORER_INGESTION_PENDING_GPU_359_SECONDS_OBSERVED",
+  "recorded_utc": "2026-08-13T21:29:12Z",
+  "aws_identity": "arn:aws:iam::558069890522:user/s.fotso",
+  "region": "eu-central-1",
+  "attempt_evidence": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002O-ATTEMPT-16-NODE-STAGING-REFUSAL.json",
+    "sha256": "4f32505301c25d57510465db35edd213c498834a7f1d12a7a12b0a3cf7d6f025",
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instance_id": "i-09ac1bebba2bdd905",
+    "gpu_instance_launch_utc": "2026-08-13T21:13:10Z",
+    "gpu_instance_termination_initiated_utc": "2026-08-13T21:19:09Z",
+    "gpu_instance_observed_lifetime_seconds_to_termination_request": 359,
+    "temporary_private_endpoints_created": 3,
+    "cleanup_zero_state": true
+  },
+  "cost_explorer_observation": {
+    "query_date": "2026-08-13",
+    "estimated": true,
+    "g6_xlarge_rows": 0,
+    "unblended_cost_usd_reported": "0",
+    "interpretation": "The current-day query has not ingested the proven GPU use. Zero is not claimed as actual cost."
+  },
+  "guardrail_treatment": {
+    "authorized_ceiling_usd": 10.0,
+    "recognized_committed_usd": 10.0,
+    "active_reservation_usd": 0.0,
+    "actual_billed_cost_usd": null,
+    "future_reconciliation_required": true,
+    "credits_expand_headroom": false
+  }
+}
