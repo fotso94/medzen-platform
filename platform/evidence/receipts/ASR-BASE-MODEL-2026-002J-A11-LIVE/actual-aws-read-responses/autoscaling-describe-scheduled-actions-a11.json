@@ -1,0 +1,12 @@
+{
+  "ScheduledUpdateGroupActions": [
+    {
+      "AutoScalingGroupName": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+      "ScheduledActionName": "medzen-asr-eval-a11-deadline",
+      "ScheduledActionARN": "arn:aws:autoscaling:eu-central-1:558069890522:scheduledUpdateGroupAction:6991b582-90e6-4a8d-bb39-dfafb6fb2d9a:autoScalingGroupName/eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26:scheduledActionName/medzen-asr-eval-a11-deadline",
+      "Time": "2026-08-13T07:53:49+00:00",
+      "StartTime": "2026-08-13T07:53:49+00:00",
+      "DesiredCapacity": 0
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002J-ATTEMPT-11-GPU-NODE-READINESS-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 11,
+  "attempt_consumed": true,
+  "failure_stage": "gpu_and_sampler_gate",
+  "reason_code": "EXACT_GPU_NODE_ABSENT",
+  "safe_error_text": "exactly one Kubernetes GPU node is required",
+  "reviewed_repository_commit": "f618a32ecf68f9aa1366e9c4598f32326abddf33",
+  "authorization_commit": "b181a84d1619733be0af0dd16b4714eca8b94daa",
+  "dry_validation_commit": "0ec97c4b7fb80692bcd6bd8acf8b6db9903d6f8d",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002J-attempt-11.md",
+    "sha256": "657117b7b7326cc292ddfc95404a40e231980a0ac22bef3d54d6f8a1d342dfa5"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002J.json",
+    "sha256": "4ea96016c76c241863135a055c1d171f297e74fcaf1e3fb5a7f6f0e0d1837456"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002J.json",
+    "sha256": "b8ab38f43e0b0f426730e74c368f17deaf1a3562bd846088cacaf47d43c23c00"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002J.json",
+    "sha256": "94eced2abd345387ec8267cbed035335385fa8894b0b797fef1930e7d8860c8c",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false
+  },
+  "pre_envelope_environment_refusal": {
+    "status": "NON_CONSUMING_PREREQUISITE_REFUSAL",
+    "reason_code": "SCOUT_AUTHENTICATION_ABSENT",
+    "safe_error_text": "pinned Docker Scout credentials are absent from the execution environment",
+    "attempt_envelope_written": false,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "gpu_started": false,
+    "attempt_11_consumed": false,
+    "resolution": "The already-authenticated Docker credential-helper values were exposed only to the successor runner process through the two required ephemeral environment variables; values were neither printed nor persisted.",
+    "credential_values_recorded": false
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T04:53:48Z",
+    "hard_deadline_utc": "2026-08-13T07:53:48Z",
+    "gpu_instance_launch_utc": "2026-08-13T05:09:27Z",
+    "refusal_recorded_utc": "2026-08-13T05:09:58Z",
+    "gpu_termination_initiated_utc": "2026-08-13T05:11:26Z",
+    "terminal_cleanup_utc": "2026-08-13T05:21:25Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "PASS",
+    "gpu_and_sampler_gate": "REFUSED",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "exact_ecr_child_bytes_verified": 7296783632,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "docker_scout_critical": 0,
+    "docker_scout_accepted_high": 4,
+    "artifact_prestage_object_count": 9,
+    "artifact_prestage_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "private_endpoint_gate": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE",
+    "network_policy_mode": "strict"
+  },
+  "observed_refusal": {
+    "classification": "KUBERNETES_GPU_NODE_READINESS_SINGLE_READ_EMPTY",
+    "auto_scaling_observation": {
+      "desired_capacity": 1,
+      "instance_count": 1,
+      "instance_type": "g6.xlarge",
+      "lifecycle_state": "InService",
+      "health_status": "Healthy"
+    },
+    "kubernetes_observation": {
+      "api": "kubectl get nodes -l workload=gpu -o json",
+      "items": 0,
+      "command_returncode": 0
+    },
+    "bounded_conclusion": "The Auto Scaling group had one healthy InService instance, but the immediately following Kubernetes read returned no node carrying the required workload=gpu label. The executor refused before volume creation, DRA installation, sampler execution or model work.",
+    "not_yet_determined": "Whether the empty Kubernetes result was caused by registration latency or delayed label visibility requires successor diagnosis; no cause is inferred beyond the recorded responses."
+  },
+  "reviewer_required_actual_response_retention": {
+    "status": "PASS_RETAINED_BOTH_ACTUAL_RESPONSES",
+    "deadline_action": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-A11-LIVE/actual-aws-read-responses/autoscaling-describe-scheduled-actions-a11.json",
+      "sha256": "c0798e71d6fb9c0865458872858fa438f509a82d9c96706b028cf740c9eafc45",
+      "scheduled_action_count": 1,
+      "response_metadata_removed": true
+    },
+    "asg_instance": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-A11-LIVE/actual-aws-read-responses/autoscaling-describe-auto-scaling-groups-a11.json",
+      "sha256": "34360015d43afb5a4b8e9db034f25323d6f9d8423fcf906efe939644dc45b7a5",
+      "instance_count": 1,
+      "response_metadata_removed": true
+    }
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002J-A11-LIVE",
+    "attempt_envelope_sha256": "52333c0120f83f35290d556c6de58d8d665ef475006a5c7578041b64e7f6cefb",
+    "result_sha256": "f6d08a1ce4c9ffd9988b6bf2b6099e4208716884099c96f1d4a08453014bbbac",
+    "deadline_identity_and_acceptance_sha256": "7afc16d689ebf271249c94c7727552497321bf376e543d579d1e1c6bba797ed1",
+    "input_freeze_and_no_phi_sha256": "ba0d518318e19a88488f89423795b06a1ffa9da1e11b32126b49c763584f2f8d",
+    "cost_and_zero_state_sha256": "0a96595cf76e32ce613514abc70d900aead2d2cab045591f97ed8db8f3232395",
+    "image_publication_and_scan_sha256": "48928ebe546a6c66cf28d05d21172c0de268671d47b8d5d16bb1db702e96c736",
+    "artifact_stage_sha256": "e953ef7486b439565207856ea69572764ee8da98b80439d28318c0de212f126e",
+    "private_endpoint_and_policy_gate_sha256": "24c99df636d72841adad0b7dc7b0416d4486d82e7e67178af80a7f8e109659e0",
+    "gpu_and_sampler_gate_sha256": "f81b2c107d6349ded94cc0944712c5feae974ffd138d8ede6cd17ea109a0655b",
+    "cleanup_and_expiry_sha256": "447d1bf7b7e46e2c805d06b3702ed13f9384ca0117e4d9697359d1049547abed",
+    "kubernetes_empty_node_read_diagnostic_sha256": "559a3f19293ed5083457e0c509989afe569b7541527f6b4293294c7c683571f6"
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instance_observed_lifetime_seconds_to_termination_request": 119,
+    "actual_billing": "PENDING_AWS_COST_EXPLORER_LAG",
+    "reservation_closed": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_11_reuse_permitted": false,
+    "attempt_12_authorized": false
+  }
+}
