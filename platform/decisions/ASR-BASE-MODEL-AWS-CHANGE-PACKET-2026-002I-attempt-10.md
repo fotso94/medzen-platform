@@ -162,6 +162,15 @@ SSM, MLflow registration or language-registry mutation.
 All 16 live/rehearsal modules are unconditionally hash-bound. Missing, extra
 or changed bindings refuse before mutation.
 
+Focused ASR validation reports `141 passed, 0 failed`. The repository suite in
+the pinned `.venv` reports `1,671 passed, 59 failed, 7 deselected`. The same 59
+pre-existing generated-language/B5-scope failures disclosed during review of
+packet 2026-002 remain: stale generated records after data-only language
+expansion, missing historical B5 aliases and downstream policy consumers.
+They are outside this packet and are not silently repaired here. Running with
+the unpinned system Python additionally lacks historical ML dependencies; that
+environment result is not used as the canonical suite.
+
 ## Budget and post-approval gates
 
 `COST-REGISTRY-2026-006`, SHA-256
