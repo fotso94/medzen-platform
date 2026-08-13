@@ -22,6 +22,8 @@ from scripts.asr_base_model_pilot_plan import exact_plan
 
 
 BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002M.json"
+PACKET = ROOT / "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002M-attempt-14.md"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002M-COLD/cold-rehearsal.json"
 REFUSAL = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-WAIT-BOUNDARY-REFUSAL.json"
 DIAGNOSIS = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002L-ATTEMPT-13-DRA-BOUNDARY-DIAGNOSIS-2026-001.json"
 KEEP = ROOT / "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-002.json"
@@ -40,6 +42,9 @@ def bound() -> dict:
 
 
 def test_attempt_fourteen_is_one_new_nontransferable_request() -> None:
+    text = PACKET.read_text(encoding="utf-8")
+    assert "NOT EXECUTABLE" in text
+    assert "Approve ASR base-model AWS change packet 2026-002M only" in text
     assert bound()["attempts"] == {
         "authorized_numbers": [14],
         "maximum": 1,
@@ -100,3 +105,28 @@ def test_cost_registry_recognizes_full_attempt_thirteen_ceiling() -> None:
     assert value["guardrail_summary"]["guardrail_headroom_after_reservations_usd"] == 195.5713935784
     assert value["guardrail_summary"]["attempt_13_actual_direct_compute_gross_usd"] is None
     assert value["attempt_13_cost_observation"]["sha256"] == sha(COST_OBSERVATION)
+
+
+def test_receipt_last_cold_rehearsal_embeds_the_complete_contract_audit() -> None:
+    receipt = json.loads(COLD.read_bytes())
+    assert receipt["status"] == "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS"
+    assert receipt["bindings_source"]["sha256"] == sha(BINDINGS)
+    assert receipt["executor_module_integrity"]["module_count"] == 19
+    assert receipt["bounded_helper_contract_audit"]["call_site_count"] == 43
+    assert receipt["bounded_helper_contract_audit"]["fake_may_bypass_validation"] is False
+
+
+def test_packet_binds_every_new_successor_evidence_hash() -> None:
+    text = PACKET.read_text(encoding="utf-8")
+    for path in (
+        BINDINGS,
+        COLD,
+        REFUSAL,
+        DIAGNOSIS,
+        KEEP,
+        CLEANUP,
+        QUALIFICATION,
+        COST_OBSERVATION,
+        COST,
+    ):
+        assert sha(path) in text
