@@ -110,10 +110,15 @@ All 11 stage mappings remain unchanged:
 | aggregate | `stage_aggregate_report` | `LiveOperations.aggregate_report` |
 | cleanup | `stage_cleanup_and_expiry` | `LiveOperations.cleanup_and_expiry` |
 
-The final cold-rehearsal receipt must be generated after this packet and
-bindings are committed, must be written last, and must be inserted here by
-SHA-256 before review. Until that receipt and final packet hash exist, this
-packet remains incomplete and non-executable.
+The receipt-last cold rehearsal is committed at
+`platform/evidence/receipts/ASR-BASE-MODEL-2026-002K-COLD/cold-rehearsal.json`,
+SHA-256
+`4f29aaebff23dd1e1f3bbdd35c3c5e2c57d04cd1fb7eb1d807db1a3d795e098b`.
+It records two full PASS rehearsals (immediate Ready and delayed registration),
+nine refusal checks including the never-Ready timeout, zero real AWS/kubectl
+calls, 22/22 AWS read-API fixture coverage, zero invented AWS or Kubernetes
+fields, and zero residual state in every scenario. A second run must reproduce
+the same receipt byte-for-byte before review.
 
 ## Cost reconciliation and requested ceiling
 
