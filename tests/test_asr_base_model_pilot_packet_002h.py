@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -74,9 +75,17 @@ def test_complete_prestage_proof_is_committed_and_bound() -> None:
 
 def test_attempt_nine_binds_every_current_executor_module() -> None:
     value = bound()
-    assert tuple(value["executor_modules"]) == ATTEMPT_9_EXECUTOR_MODULE_PATHS
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == len(ATTEMPT_9_EXECUTOR_MODULE_PATHS) == 14
+    # Historical 002H bindings remain write-once. Validate them against the
+    # exact reviewed source tree rather than the attempt-10 successor bytes.
+    reviewed = value["executor_source_commit"]
+    for relative in ATTEMPT_9_EXECUTOR_MODULE_PATHS:
+        completed = subprocess.run(
+            ["git", "show", f"{reviewed}:{relative}"],
+            cwd=ROOT,
+            capture_output=True,
+            check=True,
+        )
+        assert hashlib.sha256(completed.stdout).hexdigest() == value["executor_modules"][relative]
 
 
 def test_attempt_nine_plan_has_no_artifact_creation() -> None:
@@ -96,4 +105,4 @@ def test_cold_rehearsal_defaults_to_current_committed_bindings() -> None:
     text = (ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py").read_text(
         encoding="utf-8"
     )
-    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002H.json") == 2
+    assert text.count("ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json") == 2
