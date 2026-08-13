@@ -1,0 +1,126 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002I-ATTEMPT-10-NETWORK-ISOLATION-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 10,
+  "attempt_consumed": true,
+  "failure_stage": "private_endpoint_and_policy_gate",
+  "outcome": "BLOCKED_NETWORK_ISOLATION",
+  "reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "'PrefixListId'",
+  "reviewed_repository_commit": "e44c4f0c35c1fc0cd9f9a417fb28eddd047e797f",
+  "authorization_commit": "5c36e32430fd7da2772d4e3886974585deb8410d",
+  "dry_validation_commit": "c23565ff1841fda6c978e19f480267e2a0d56aab",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002I-attempt-10.md",
+    "sha256": "2b683ea87dd0dc4b5dc1fabd293694ab62c3d9487eb22a47ea52e2e459ceedc9"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002I.json",
+    "sha256": "f715ccc7d4b3eb2eb06a31ac6a498aaf7a8c3617d6090258eb24d9aed33f7fdb"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002I.json",
+    "sha256": "074c1f947a77d5a1ed48fe1baabaabd06c77bd1550918849b240aa9891c96fcd"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002I.json",
+    "sha256": "dedc261ce6127c2fde7b826d130f17656b109f94347b956ddad3ee8055ad0772",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN"
+  },
+  "external_workdir": {
+    "classification": "EXTERNAL_TO_REVIEWED_WORKTREE",
+    "path_committed": false,
+    "safe_receipts_copied_after_terminal_run": true,
+    "credentials_copied_or_persisted": false
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-13T02:53:13Z",
+    "hard_deadline_utc": "2026-08-13T05:53:13Z",
+    "refusal_recorded_utc": "2026-08-13T03:07:03Z",
+    "terminal_cleanup_utc": "2026-08-13T03:09:38Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "REFUSED",
+    "gpu_and_sampler_gate": "NOT_RUN",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "public_rows": 24230,
+    "pilot_rows": 540,
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "exact_ecr_child_bytes_verified": 7296783632,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "docker_scout_critical": 0,
+    "docker_scout_accepted_high": 4,
+    "artifact_prestage_object_count": 9,
+    "artifact_prestage_object_bytes": 13116686091,
+    "artifact_upload_bytes": 0,
+    "pilot_bundle_sha256": "b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"
+  },
+  "root_cause": {
+    "classification": "AWS_READ_RESPONSE_SHAPE_ASSUMPTION_IN_NETWORK_GATE",
+    "failing_source": "scripts/asr_base_model_pilot_live.py:846",
+    "failing_assumption": "The gateway object returned by EC2 DescribeVpcEndpoints contains PrefixListId.",
+    "actual_api_shape": "EC2 DescribeVpcEndpoints does not return PrefixListId for the S3 gateway endpoint.",
+    "correct_api": "EC2 DescribePrefixLists for com.amazonaws.eu-central-1.s3",
+    "boundary_fake_gap": "The rehearsal boundary fake injected PrefixListId into the gateway endpoint response and therefore did not reproduce the recorded real AWS response shape.",
+    "existing_precedent": {
+      "refusal_record": "platform/evidence/B6-PACKET-2026-025-STAGE-A-REFUSED-S3-ENDPOINT-API-SHAPE.json",
+      "real_endpoint_fixture": "tests/fixtures/aws/ec2-describe-vpc-endpoints-s3-gateway-vpce-09b2f7b21a4f625f3.json",
+      "real_prefix_list_fixture": "tests/fixtures/aws/ec2-describe-prefix-lists-s3-eu-central-1.json"
+    },
+    "network_policy_pass_claimed": false,
+    "gpu_or_model_failure": false,
+    "gpu_started": false,
+    "evaluation_started": false
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002I-A10-LIVE",
+    "attempt_envelope_sha256": "76136e9d21f505a01d049523e7db50e21779e2022b43cbec843d073364be474d",
+    "result_sha256": "e2a4be176215e28b6eadb2e13b41fa6086c96b7349e8ae401fb697fc7168a2c5",
+    "deadline_identity_and_acceptance_sha256": "db20ddddbdfc6d51fada32074ce1c772c4a7c272dc08db7edc455c7fb8a084ef",
+    "input_freeze_and_no_phi_sha256": "b5b37a5b213f5ed36f76c9c96b7b282abff01ed3e8991d15f8d56ca7f68d59ea",
+    "cost_and_zero_state_sha256": "0de0b285e2bb5b8ccb6292e9e37182eb28181cbb52e086d6a962f187544ff640",
+    "image_publication_and_scan_sha256": "98e909128e8059d199841aa3afa591c53a1a9d1bdec5a9d329e0296241a15a1e",
+    "artifact_stage_sha256": "2e1d8c6c28f8e5c40b3b05f608084a81c87369ef5959e7e96320aba30d85406c",
+    "private_endpoint_and_policy_gate_sha256": "2fd42296085f81c5bf46e7b12e02fe09da08449785e4866b16532c0419cb98aa",
+    "cleanup_and_expiry_sha256": "b344ad544be31d15e35f0b5ce46f9a5c5879d27c4ca8ea5905e55d8337caaafc"
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "temporary_endpoints": 0,
+    "temporary_endpoint_security_groups": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "vpc_cni_network_policy_mode": "standard",
+    "gpu_hours": 0,
+    "gpu_cost_usd": 0.0,
+    "temporary_endpoint_cost_reconciliation": "PENDING_AWS_BILLING",
+    "reservation_closed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "historical_records_modified": false,
+  "attempt_10_reuse_permitted": false,
+  "successor_attempt_authorized": false,
+  "next_action": "Independent review of this immutable refusal and root cause, followed only by a separately reviewed successor packet if the owner chooses to continue."
+}
