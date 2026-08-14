@@ -157,7 +157,7 @@
     "scripts/asr_base_model_local_resources.py": "6843ab9c1c4ff4a1ac068c14c9335206d54083c33cc178b32dece348adf966e1",
     "scripts/asr_base_model_node_staging.py": "284334523a0db3842b5c3ab4d143d4056e8a2c5dc8f3b66129235e467106c47a",
     "scripts/asr_base_model_pilot_assets.py": "5a331300cc813f9240197ef698db9b366a8db9c79b5275566fac9eb22dcc9034",
-    "scripts/asr_base_model_pilot_cold_rehearsal.py": "bf18b42372efbba3cb98d86bae04325f16d43fbfe01ab085f27052fa791a3c5a",
+    "scripts/asr_base_model_pilot_cold_rehearsal.py": "1152c95066cf0297a432e49e9d215bab4409344a4f40d6c725528e91f3e59d4c",
     "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
     "scripts/asr_base_model_pilot_fake.py": "4153eaa94cfa833615851d3ac6d17ac6d973034739a3349e89cb429bc6ba8673",
     "scripts/asr_base_model_pilot_integrity.py": "7b0e330626cb89d92d4cdb2513a3c56c2ff2b476e4e89e809c6efc69f089ba46",
@@ -180,7 +180,7 @@
     "scripts/asr_base_model_pod_lifecycle.py": "d07cc378e174fef5ada36bb46ae00f7e8aca927d1e9b8a5dcd8ec9a475926885",
     "services/asr-eval-runtime/medzen_asr_eval/network_probe.py": "bc68e8e9637f68bd1261ac3f2d872711256ecea6908eb19cc1b8c644aa9b1535"
   },
-  "executor_source_commit": "ea6bba4ae2c9466b717f5c24a48a92cc9cee0b44",
+  "executor_source_commit": "998b983b234f4df239d5eb682091184b3b336e50",
   "gpu_node_readiness_fixtures": {
     "capture_mutations": 0,
     "invented_kubernetes_fields_permitted": false,
@@ -410,7 +410,7 @@
   },
   "waiter_finalizer_audit": {
     "path": "platform/evidence/ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-001.json",
-    "sha256": "8fbc00a0a7a9896194d27aa86ad9e4b79dfb6e5cdb7e656f84cf96b843387773",
+    "sha256": "f1c34adda3b95ab3c6243ef84f7b2412d4620664ee51a23ae8155db622a8757e",
     "status_required": "PASS_SYSTEMIC_WAITER_FINALIZER_AUDIT",
     "waiter_site_count": 15,
     "instant_terminal_only_fakes_permitted": false
