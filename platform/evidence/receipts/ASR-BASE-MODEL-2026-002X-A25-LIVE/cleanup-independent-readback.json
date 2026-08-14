@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "record": "ASR_BASE_MODEL_ATTEMPT_INDEPENDENT_ZERO_STATE_READBACK",
+  "id": "ASR-BASE-MODEL-2026-002X-A25-CLEANUP-INDEPENDENT-READBACK",
+  "status": "PASS_INDEPENDENT_ZERO_STATE",
+  "recorded_utc": "2026-08-14T23:44:16Z",
+  "attempt": 25,
+  "profile": "medzen",
+  "region": "eu-central-1",
+  "compute": {
+    "running_cluster_instances": 0,
+    "cpu_nodegroup": {
+      "status": "ACTIVE",
+      "min_size": 0,
+      "max_size": 4,
+      "desired_size": 0,
+      "health_issues": 0
+    },
+    "gpu_nodegroup": {
+      "status": "ACTIVE",
+      "min_size": 0,
+      "max_size": 1,
+      "desired_size": 0,
+      "health_issues": 0,
+      "asg_instances": 0
+    },
+    "attempt_instance": {
+      "instance_id": "i-0599e810f6c642ff3",
+      "state": "terminated"
+    }
+  },
+  "temporary_state": {
+    "vpc_endpoints": 0,
+    "security_groups": 0,
+    "ebs_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "dra_namespaces": 0,
+    "exact_endpoint_ids_absent": 3,
+    "exact_security_group_absent": true,
+    "exact_volume_absent": true
+  },
+  "restoration": {
+    "vpc_cni_addon_status": "ACTIVE",
+    "vpc_cni_addon_configuration_values": "{}",
+    "vpc_cni_network_policy_mode": "standard",
+    "reservation_closed": true
+  },
+  "production_touched": false,
+  "contains_credentials_phi_audio_reference_or_prediction": false
+}
