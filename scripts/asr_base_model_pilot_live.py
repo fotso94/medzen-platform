@@ -1973,8 +1973,110 @@ class LiveOperations:
                     "safe_error": sanitize_bytes(str(exc)),
                 }
 
+        def capture_network_receipt() -> dict[str, Any]:
+            state = self._state(context)
+            instance_id = state.get("instance_id")
+            staging_path = state.get("staging_path")
+            if not isinstance(instance_id, str) or not isinstance(staging_path, str):
+                return {"status": "NOT_APPLICABLE_STAGING_UNAVAILABLE"}
+            path = f"{staging_path}/output/network-probe.json"
+            command = (
+                f"if /usr/bin/test -s {shlex.quote(path)}; then "
+                f"/usr/bin/printf '%s\\n' MEDZEN_NETWORK_RECEIPT_PRESENT; "
+                f"/usr/bin/cat {shlex.quote(path)}; else "
+                "/usr/bin/printf '%s\\n' MEDZEN_NETWORK_RECEIPT_ABSENT; fi"
+            )
+            try:
+                result = self._ssm(
+                    instance_id,
+                    [command],
+                    timeout_seconds=60,
+                    pre_model_safe_output=True,
+                )
+                body = result["stdout"]
+                marker, _, payload = body.partition("\n")
+                if marker == "MEDZEN_NETWORK_RECEIPT_ABSENT":
+                    return {"status": "ABSENT"}
+                if marker != "MEDZEN_NETWORK_RECEIPT_PRESENT" or not payload:
+                    return {
+                        "status": "MALFORMED_OBSERVATION",
+                        "stdout_sha256": result["stdout_sha256"],
+                    }
+                parsed = json.loads(payload)
+                raw = canonical_json(parsed)
+                return {
+                    "status": "CAPTURED",
+                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "receipt_status": parsed.get("status"),
+                    "reason_code": parsed.get("reason_code"),
+                    "sanitized": sanitize_bytes(raw),
+                }
+            except Exception as exc:
+                return {
+                    "status": "UNAVAILABLE",
+                    "exception_class": type(exc).__name__,
+                    "safe_error": sanitize_bytes(str(exc)),
+                }
+
+        def capture_network_policy_agent() -> dict[str, Any]:
+            state = self._state(context)
+            node_name = state.get("node_name")
+            if not isinstance(node_name, str) or not node_name:
+                return {"status": "NOT_APPLICABLE_NODE_UNAVAILABLE"}
+            try:
+                pods = self._kubectl(
+                    context,
+                    "get",
+                    "pods",
+                    "-n",
+                    "kube-system",
+                    "-l",
+                    "k8s-app=aws-node",
+                    timeout=30,
+                    json_output=True,
+                )
+                matches = [
+                    item
+                    for item in pods.get("items", [])
+                    if item.get("spec", {}).get("nodeName") == node_name
+                ]
+                if len(matches) != 1:
+                    return {
+                        "status": "UNAVAILABLE_AGENT_POD_AMBIGUOUS",
+                        "matching_pods": len(matches),
+                    }
+                name = matches[0].get("metadata", {}).get("name")
+                if not isinstance(name, str) or not name:
+                    return {"status": "UNAVAILABLE_AGENT_POD_NAME_ABSENT"}
+                raw = self._kubectl(
+                    context,
+                    "logs",
+                    "-n",
+                    "kube-system",
+                    name,
+                    "-c",
+                    "aws-network-policy-agent",
+                    "--since=10m",
+                    "--tail=300",
+                    timeout=30,
+                )
+                body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                return {
+                    "status": "CAPTURED",
+                    "pod": name,
+                    "bytes": len(body),
+                    "sha256": hashlib.sha256(body).hexdigest(),
+                    "sanitized": sanitize_bytes(body),
+                }
+            except Exception as exc:
+                return {
+                    "status": "UNAVAILABLE",
+                    "exception_class": type(exc).__name__,
+                    "safe_error": sanitize_bytes(str(exc)),
+                }
+
         diagnostic = {
-            "schema_version": 1,
+            "schema_version": 2,
             "status": "CAPTURED_BEFORE_CLEANUP",
             "classification": "FROZEN_PUBLIC_RESEARCH_EVAL_NO_PHI_BOUNDED_DIAGNOSTICS",
             "failure_exception_class": type(failure).__name__,
@@ -1997,6 +2099,8 @@ class LiveOperations:
                 "get", "events", "-n", NAMESPACE, "--sort-by=.lastTimestamp"
             ),
             "logs": capture_logs(),
+            "network_probe_receipt": capture_network_receipt(),
+            "network_policy_agent": capture_network_policy_agent(),
             "credentials_presigned_urls_or_environment_values_recorded": False,
         }
         path = context.workdir / "pilot-workload-refusal-diagnostics.json"

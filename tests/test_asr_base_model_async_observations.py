@@ -66,9 +66,13 @@ def test_receipt_parser_refuses_unknown_malformed_and_failed_values() -> None:
     assert malformed.value.reason_code == "NETWORK_PROBE_RECEIPT_MALFORMED"
     with pytest.raises(AsyncObservationRefusal) as refused:
         parse_network_receipt_observation(
-            f'{NETWORK_AND_LISTENER_PRESENT}\n{{"status":"FAIL","torch_imported":false}}\n'
+            f'{NETWORK_AND_LISTENER_PRESENT}\n'
+            '{"status":"REFUSED_NETWORK_ISOLATION_PRE_TORCH",'
+            '"reason_code":"POSITIVE_NETWORK_CONVERGENCE_TIMEOUT",'
+            '"torch_imported":false}\n'
         )
     assert refused.value.reason_code == "NETWORK_PROBE_REFUSED"
+    assert "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT" in refused.value.detail
 
 
 def test_delayed_receipt_reaches_two_stable_observations(tmp_path: Path) -> None:
@@ -126,6 +130,37 @@ def test_terminal_pod_refuses_before_another_receipt_read(tmp_path: Path) -> Non
     assert captured.value.outcome == "BLOCKED_NETWORK_ISOLATION"
     assert boundary.pilot_pod_reads == 1
     assert boundary.pilot_receipt_reads == 0
+
+
+def test_network_refusal_diagnostics_retain_receipt_and_policy_agent(
+    tmp_path: Path,
+) -> None:
+    operations, _, value = context(tmp_path, injection="pilot_job_refused")
+    state = operations._state(value)
+    state.update({
+        "instance_id": "i-rehearsal-gpu",
+        "node_name": "ip-rehearsal-gpu",
+        "staging_path": "/var/lib/medzen-asr-eval/attempt-20",
+    })
+    operations._save_state(value, state)
+
+    diagnostic = operations._capture_pilot_workload_refusal_diagnostics(
+        value,
+        pod_name="asr-pilot-rehearsal",
+        failure=OperationRefusal(
+            "NETWORK_PROBE_REFUSED",
+            "synthetic pre-torch refusal",
+        ),
+    )
+
+    assert diagnostic["status"] == "CAPTURED_BEFORE_CLEANUP"
+    assert diagnostic["network_probe_receipt"]["status"] == "CAPTURED"
+    assert diagnostic["network_probe_receipt"]["reason_code"] == (
+        "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT"
+    )
+    assert diagnostic["network_policy_agent"]["status"] == "CAPTURED"
+    assert diagnostic["network_policy_agent"]["pod"] == "aws-node-rehearsal"
+    assert diagnostic["credentials_presigned_urls_or_environment_values_recorded"] is False
 
 
 def test_pod_shape_and_entire_async_site_audit_fail_closed() -> None:

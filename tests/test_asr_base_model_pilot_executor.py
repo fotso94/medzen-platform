@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import errno
 import json
 import sys
 from pathlib import Path
@@ -115,14 +116,37 @@ def test_network_probe_proves_allow_and_deny_before_torch(tmp_path: Path, monkey
         ],
     }))
 
-    def connector(host: str, port: int, timeout: float) -> None:
-        if host in {"dl.fbaipublicfiles.com", "example.com", "169.254.169.254"}:
-            raise OSError("refused")
+    addresses = {
+        "bucket.s3.eu-central-1.amazonaws.com": ["10.0.1.10"],
+        "api.ecr.eu-central-1.amazonaws.com": ["10.0.1.11"],
+        "dkr.ecr.eu-central-1.amazonaws.com": ["10.0.1.12"],
+        "dl.fbaipublicfiles.com": ["198.51.100.10"],
+        "example.com": ["198.51.100.11"],
+        "169.254.169.254": ["169.254.169.254"],
+    }
 
-    value = probe_network(binding, tmp_path / "receipt.json", connector=connector)
+    def resolver(host: str, port: int) -> list[str]:
+        return addresses[host]
+
+    def connector(ip: str, port: int, timeout: float) -> None:
+        if ip.startswith("198.51.100.") or ip == "169.254.169.254":
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    value = probe_network(
+        binding,
+        tmp_path / "receipt.json",
+        resolver=resolver,
+        connector=connector,
+    )
     assert value["status"] == "PASS_NETWORK_ISOLATION_PRE_TORCH"
     assert len(value["positive_and_negative_proofs"]["allowed"]) == 3
     assert len(value["positive_and_negative_proofs"]["denied"]) == 3
+    assert value["positive_and_negative_proofs"]["allowed"][
+        "api.ecr.eu-central-1.amazonaws.com"
+    ]["resolved_ips"] == ["10.0.1.11"]
+    assert value["positive_and_negative_proofs"]["denied"][
+        "public_https_control"
+    ]["address_outcomes"][0]["errno"] == errno.ECONNREFUSED
 
 
 def test_network_probe_fails_if_public_control_is_reachable(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -134,12 +158,166 @@ def test_network_probe_fails_if_public_control_is_reachable(tmp_path: Path, monk
         "allowed_tcp_443_hosts": ["a.amazonaws.com", "b.amazonaws.com", "c.amazonaws.com"],
     }))
 
-    def connector(host: str, port: int, timeout: float) -> None:
-        if host in {"dl.fbaipublicfiles.com", "169.254.169.254"}:
-            raise OSError("refused")
+    addresses = {
+        "a.amazonaws.com": ["10.0.1.10"],
+        "b.amazonaws.com": ["10.0.1.11"],
+        "c.amazonaws.com": ["10.0.1.12"],
+        "dl.fbaipublicfiles.com": ["198.51.100.10"],
+        "example.com": ["198.51.100.11"],
+        "169.254.169.254": ["169.254.169.254"],
+    }
+
+    def resolver(host: str, port: int) -> list[str]:
+        return addresses[host]
+
+    def connector(ip: str, port: int, timeout: float) -> None:
+        if ip in {"198.51.100.10", "169.254.169.254"}:
+            raise OSError(errno.ECONNREFUSED, "refused")
 
     with pytest.raises(EvaluationRefusal, match="public_https_control"):
-        probe_network(binding, tmp_path / "receipt.json", connector=connector)
+        probe_network(
+            binding,
+            tmp_path / "receipt.json",
+            resolver=resolver,
+            connector=connector,
+        )
+    refusal = json.loads((tmp_path / "receipt.json").read_bytes())
+    assert refusal["reason_code"] == "PROHIBITED_NETWORK_DESTINATION_ACCEPTED"
+
+
+class _ProbeClock:
+    def __init__(self) -> None:
+        self.value = 0.0
+
+    def monotonic(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.value += seconds
+
+
+def _probe_binding(path: Path) -> None:
+    path.write_text(json.dumps({
+        "schema_version": 1,
+        "classification": "OFFLINE_EVALUATION_ONLY",
+        "allowed_tcp_443_hosts": [
+            "api.ecr.eu-central-1.amazonaws.com",
+            "dkr.ecr.eu-central-1.amazonaws.com",
+            "bucket.s3.eu-central-1.amazonaws.com",
+        ],
+    }))
+
+
+def _probe_resolver(host: str, port: int) -> list[str]:
+    values = {
+        "api.ecr.eu-central-1.amazonaws.com": ["10.0.1.10", "10.0.2.10"],
+        "dkr.ecr.eu-central-1.amazonaws.com": ["10.0.1.11"],
+        "bucket.s3.eu-central-1.amazonaws.com": ["10.0.1.12"],
+        "dl.fbaipublicfiles.com": ["198.51.100.10"],
+        "example.com": ["198.51.100.11"],
+        "169.254.169.254": ["169.254.169.254"],
+    }
+    return values[host]
+
+
+def test_network_probe_waits_for_policy_convergence_then_runs_full_battery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delitem(sys.modules, "torch", raising=False)
+    binding = tmp_path / "network.json"
+    receipt_path = tmp_path / "receipt.json"
+    _probe_binding(binding)
+    clock = _ProbeClock()
+    api_ip_calls = 0
+
+    def connector(ip: str, port: int, timeout: float) -> None:
+        nonlocal api_ip_calls
+        if ip in {"10.0.1.10", "10.0.2.10"}:
+            api_ip_calls += 1
+            if api_ip_calls <= 2:
+                raise OSError(errno.ECONNREFUSED, "policy not programmed")
+        if ip.startswith("198.51.100.") or ip == "169.254.169.254":
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    value = probe_network(
+        binding,
+        receipt_path,
+        resolver=_probe_resolver,
+        connector=connector,
+        sleeper=clock.sleep,
+        monotonic=clock.monotonic,
+    )
+    convergence = value["positive_and_negative_proofs"]["positive_convergence"]
+    assert len(convergence) == 2
+    assert convergence[0]["status"] == "CONNECT_REFUSED"
+    assert convergence[1]["status"] == "CONNECTED"
+    assert value["positive_and_negative_proofs"]["allowed"][
+        "api.ecr.eu-central-1.amazonaws.com"
+    ]["status"] == "CONNECTED"
+    assert value["positive_and_negative_proofs"]["denied"][
+        "meta_public_download"
+    ]["status"] == "REFUSED"
+
+
+def test_network_probe_never_converges_writes_typed_refusal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delitem(sys.modules, "torch", raising=False)
+    binding = tmp_path / "network.json"
+    receipt_path = tmp_path / "receipt.json"
+    _probe_binding(binding)
+    clock = _ProbeClock()
+
+    def connector(ip: str, port: int, timeout: float) -> None:
+        raise OSError(errno.ETIMEDOUT, "policy did not converge")
+
+    with pytest.raises(EvaluationRefusal, match="POSITIVE_NETWORK_CONVERGENCE_TIMEOUT"):
+        probe_network(
+            binding,
+            receipt_path,
+            resolver=_probe_resolver,
+            connector=connector,
+            sleeper=clock.sleep,
+            monotonic=clock.monotonic,
+        )
+    refusal = json.loads(receipt_path.read_bytes())
+    assert refusal["status"] == "REFUSED_NETWORK_ISOLATION_PRE_TORCH"
+    assert refusal["reason_code"] == "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT"
+    assert refusal["telemetry"]["positive_convergence"][-1][
+        "address_outcomes"
+    ][0]["errno"] == errno.ETIMEDOUT
+    assert clock.value == 120.0
+
+
+def test_network_probe_negative_check_failure_occurs_only_after_convergence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delitem(sys.modules, "torch", raising=False)
+    binding = tmp_path / "network.json"
+    receipt_path = tmp_path / "receipt.json"
+    _probe_binding(binding)
+    clock = _ProbeClock()
+
+    def connector(ip: str, port: int, timeout: float) -> None:
+        if ip in {"198.51.100.11", "169.254.169.254"}:
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    with pytest.raises(EvaluationRefusal, match="meta_public_download"):
+        probe_network(
+            binding,
+            receipt_path,
+            resolver=_probe_resolver,
+            connector=connector,
+            sleeper=clock.sleep,
+            monotonic=clock.monotonic,
+        )
+    refusal = json.loads(receipt_path.read_bytes())
+    assert refusal["reason_code"] == "PROHIBITED_NETWORK_DESTINATION_ACCEPTED"
+    assert refusal["telemetry"]["positive_convergence"][0]["status"] == "CONNECTED"
+    assert all(
+        result["status"] == "CONNECTED"
+        for result in refusal["telemetry"]["allowed"].values()
+    )
 
 
 def test_plan_is_exact_and_rejects_prohibited_drift() -> None:

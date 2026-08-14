@@ -798,6 +798,17 @@ class KubectlBoundary:
                     "containerStatuses": [{"name": "gpus", "ready": False, "restartCount": 0, "state": {"running": {}}}],
                 },
             }]}
+        if (
+            args[:2] == ("get", "pods")
+            and "kube-system" in args
+            and "k8s-app=aws-node" in args
+        ):
+            return {
+                "items": [{
+                    "metadata": {"name": "aws-node-rehearsal"},
+                    "spec": {"nodeName": self.state.node_name},
+                }]
+            }
         if args[:2] == ("get", "daemonset"):
             return {
                 "metadata": {"generation": 1},
@@ -852,6 +863,11 @@ class KubectlBoundary:
                 },
             }
         if args[:2] == ("logs", "-n"):
+            if "aws-network-policy-agent" in args:
+                return (
+                    b"level=info component=network-policy-agent "
+                    b"msg=synthetic-policy-converged\n"
+                )
             return b""
         if args[:2] == ("delete", "pod/asr-eval-inbound-control"):
             self.state.kubernetes_mutations += 1
@@ -902,6 +918,32 @@ class SsmCommandBoundary:
                         "torch_imported": False,
                     }).decode()
                 )
+        elif any("MEDZEN_NETWORK_RECEIPT_PRESENT" in command for command in commands):
+            stdout = (
+                "MEDZEN_NETWORK_RECEIPT_PRESENT\n"
+                + canonical_json({
+                    "schema_version": 2,
+                    "status": "REFUSED_NETWORK_ISOLATION_PRE_TORCH",
+                    "reason_code": "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT",
+                    "torch_imported": False,
+                    "telemetry": {
+                        "positive_convergence": [{
+                            "attempt": 1,
+                            "host": "api.ecr.eu-central-1.amazonaws.com",
+                            "resolved_ips": ["10.0.1.10"],
+                            "status": "CONNECT_REFUSED",
+                            "address_outcomes": [{
+                                "ip": "10.0.1.10",
+                                "status": "CONNECT_REFUSED",
+                                "errno": 111,
+                                "elapsed_seconds": 3.0,
+                            }],
+                        }],
+                        "allowed": {},
+                        "denied": {},
+                    },
+                }).decode()
+            )
         else:
             stdout = ""
         return {"command_id": command_id, "status": "Success", "response_code": 0, "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout, "stderr": ""}

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
 import json
 import os
@@ -15,10 +16,15 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+EVAL_RUNTIME_PACKAGE = ROOT / "services" / "asr-eval-runtime"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(EVAL_RUNTIME_PACKAGE) not in sys.path:
+    sys.path.insert(0, str(EVAL_RUNTIME_PACKAGE))
 
 import pipeline.asr_base_model_pilot_receipts as receipt_module
+from medzen_asr_eval.harness import EvaluationRefusal
+from medzen_asr_eval.network_probe import probe_network
 from pipeline.asr_base_model_pilot_receipts import STAGES, canonical_json, write_exclusive
 from scripts.asr_base_model_endpoint_policy import (
     EndpointPolicyRefusal,
@@ -328,6 +334,151 @@ def _endpoint_policy_injections(bindings: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+class _ProbeClock:
+    def __init__(self) -> None:
+        self.value = 0.0
+
+    def monotonic(self) -> float:
+        return self.value
+
+    def sleep(self, seconds: float) -> None:
+        self.value += seconds
+
+
+def _network_probe_rehearsal(base: Path) -> dict[str, Any]:
+    """Exercise policy convergence and refusal semantics with no network."""
+    base.mkdir(parents=True)
+    binding = base / "network-binding.json"
+    binding.write_bytes(canonical_json({
+        "schema_version": 1,
+        "classification": "OFFLINE_EVALUATION_ONLY",
+        "allowed_tcp_443_hosts": [
+            "api.ecr.eu-central-1.amazonaws.com",
+            "repository.dkr.ecr.eu-central-1.amazonaws.com",
+            "bucket.s3.eu-central-1.amazonaws.com",
+        ],
+    }))
+    addresses = {
+        "api.ecr.eu-central-1.amazonaws.com": ["10.0.1.10", "10.0.2.10"],
+        "repository.dkr.ecr.eu-central-1.amazonaws.com": ["10.0.1.11"],
+        "bucket.s3.eu-central-1.amazonaws.com": ["10.0.1.12"],
+        "dl.fbaipublicfiles.com": ["198.51.100.10"],
+        "example.com": ["198.51.100.11"],
+        "169.254.169.254": ["169.254.169.254"],
+    }
+
+    def resolver(host: str, port: int) -> list[str]:
+        del port
+        return addresses[host]
+
+    delayed_clock = _ProbeClock()
+    delayed_calls = 0
+
+    def delayed_connector(ip: str, port: int, timeout: float) -> None:
+        nonlocal delayed_calls
+        del port, timeout
+        if ip in {"10.0.1.10", "10.0.2.10"}:
+            delayed_calls += 1
+            if delayed_calls <= 2:
+                raise OSError(errno.ECONNREFUSED, "policy not programmed")
+        if ip.startswith("198.51.100.") or ip == "169.254.169.254":
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    delayed_path = base / "policy-delay-then-pass.json"
+    delayed = probe_network(
+        binding,
+        delayed_path,
+        resolver=resolver,
+        connector=delayed_connector,
+        sleeper=delayed_clock.sleep,
+        monotonic=delayed_clock.monotonic,
+    )
+    if (
+        delayed["status"] != "PASS_NETWORK_ISOLATION_PRE_TORCH"
+        or len(delayed["positive_and_negative_proofs"]["positive_convergence"]) != 2
+    ):
+        raise RuntimeError("policy-delay rehearsal did not converge as expected")
+
+    timeout_clock = _ProbeClock()
+
+    def timeout_connector(ip: str, port: int, timeout: float) -> None:
+        del ip, port, timeout
+        raise OSError(errno.ETIMEDOUT, "policy did not converge")
+
+    timeout_path = base / "policy-never-converges.json"
+    try:
+        probe_network(
+            binding,
+            timeout_path,
+            resolver=resolver,
+            connector=timeout_connector,
+            sleeper=timeout_clock.sleep,
+            monotonic=timeout_clock.monotonic,
+        )
+    except EvaluationRefusal as exc:
+        timeout = json.loads(timeout_path.read_bytes())
+        if (
+            timeout.get("reason_code") != "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT"
+            or "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT" not in str(exc)
+        ):
+            raise RuntimeError("never-converges rehearsal refused differently") from exc
+    else:
+        raise RuntimeError("never-converges rehearsal passed")
+
+    negative_clock = _ProbeClock()
+
+    def negative_connector(ip: str, port: int, timeout: float) -> None:
+        del port, timeout
+        if ip in {"198.51.100.11", "169.254.169.254"}:
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    negative_path = base / "post-convergence-negative-failure.json"
+    try:
+        probe_network(
+            binding,
+            negative_path,
+            resolver=resolver,
+            connector=negative_connector,
+            sleeper=negative_clock.sleep,
+            monotonic=negative_clock.monotonic,
+        )
+    except EvaluationRefusal as exc:
+        negative = json.loads(negative_path.read_bytes())
+        if (
+            negative.get("reason_code") != "PROHIBITED_NETWORK_DESTINATION_ACCEPTED"
+            or "meta_public_download" not in str(exc)
+        ):
+            raise RuntimeError("negative-check rehearsal refused differently") from exc
+    else:
+        raise RuntimeError("negative-check rehearsal passed")
+
+    return {
+        "status": "PASS_NETWORK_PROBE_CONVERGENCE_REHEARSAL",
+        "real_network_calls": 0,
+        "scenarios": {
+            "policy_propagation_delay_then_pass": {
+                "status": delayed["status"],
+                "convergence_attempts": len(
+                    delayed["positive_and_negative_proofs"]["positive_convergence"]
+                ),
+                "receipt_sha256": _sha(delayed_path),
+            },
+            "never_converges_timeout": {
+                "status": timeout["status"],
+                "reason_code": timeout["reason_code"],
+                "elapsed_seconds": timeout_clock.value,
+                "receipt_sha256": _sha(timeout_path),
+            },
+            "post_convergence_negative_check_failure": {
+                "status": negative["status"],
+                "reason_code": negative["reason_code"],
+                "allowed_battery_completed": len(negative["telemetry"]["allowed"]),
+                "receipt_sha256": _sha(negative_path),
+            },
+        },
+    }
+
+
 def _scenario_repository(
     base: Path,
     *,
@@ -525,6 +676,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="medzen-asr-pilot-cold-") as temporary:
         base = Path(temporary)
         wrapper = _wrapper_contract(bindings, base / "wrapper-contract")
+        network_probe_rehearsal = _network_probe_rehearsal(
+            base / "network-probe-rehearsal"
+        )
         for name, (injection, expected) in SCENARIOS.items():
             directory = base / name
             reviewed, authorization_path, packet_path = _scenario_repository(
@@ -670,6 +824,15 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                         "persisted_before_cleanup": True,
                         "sha256": _sha(directory / "pilot-workload-refusal-diagnostics.json"),
                         "status": json.loads((directory / "pilot-workload-refusal-diagnostics.json").read_bytes())["status"],
+                        "network_probe_receipt_status": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["network_probe_receipt"]["status"],
+                        "network_probe_reason_code": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["network_probe_receipt"].get("reason_code"),
+                        "network_policy_agent_status": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["network_policy_agent"]["status"],
                     }
                     if (directory / "pilot-workload-refusal-diagnostics.json").is_file()
                     else None
@@ -807,7 +970,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ),
         "injected_failure_runs": sum(
             expected != "PASS_PILOT" for _, expected in SCENARIOS.values()
-        ) + len(pure_injections["refusals"]),
+        ) + len(pure_injections["refusals"]) + 2,
         "live_stage_injected_paths": [
             name for name, (_, expected) in SCENARIOS.items() if expected != "PASS_PILOT"
         ],
@@ -848,6 +1011,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "scan_representation"
         ],
         "artifact_wrapper_contract": wrapper,
+        "network_probe_convergence": network_probe_rehearsal,
         "bindings_source": {
             "path": str(bindings_path.relative_to(ROOT)),
             "sha256": hashlib.sha256(bindings_body).hexdigest(),

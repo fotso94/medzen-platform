@@ -107,13 +107,18 @@ def parse_network_receipt_observation(stdout: str) -> dict[str, Any]:
             "NETWORK_PROBE_RECEIPT_MALFORMED",
             "present network receipt is not an object",
         )
-    if (
-        receipt.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH"
-        or receipt.get("torch_imported") is not False
-    ):
+    if receipt.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH":
+        reason_code = receipt.get("reason_code")
+        if not isinstance(reason_code, str) or not reason_code:
+            reason_code = "NETWORK_PROBE_REASON_ABSENT"
         raise AsyncObservationRefusal(
             "NETWORK_PROBE_REFUSED",
-            "pre-torch private-endpoint probe did not pass",
+            f"pre-torch private-endpoint probe did not pass; reason_code={reason_code}",
+        )
+    if receipt.get("torch_imported") is not False:
+        raise AsyncObservationRefusal(
+            "NETWORK_PROBE_REFUSED",
+            "pre-torch private-endpoint probe imported torch",
         )
     return {
         "status": (
