@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in set(range(1, 21)):
-        raise ValueError("attempt must be 1 through 20")
+    if attempt not in set(range(1, 22)):
+        raise ValueError("attempt must be 1 through 21")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -45,7 +45,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
             not isinstance(gpu_asg, str)
             or re.fullmatch(r"eks-gpu-[0-9a-f-]{36}", gpu_asg) is None
         ):
-            raise ValueError("attempt 20 requires the exact current GPU ASG binding")
+            raise ValueError("attempt 20 or later requires the exact current GPU ASG binding")
     permanent_create_only = [] if attempt >= 9 else [
         f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
     ]
