@@ -173,47 +173,60 @@ class IdempotentReadRetrier:
         self.started = monotonic()
 
     def run(self, operation: str, label: str, action: Callable[[], T]) -> tuple[T, dict[str, Any]]:
-        if operation not in READ_OPERATIONS:
-            raise ReadRetryConfigurationError(f"read operation is not allowlisted: {operation}")
+        return self.run_composed((operation,), label, action)
+
+    def run_composed(
+        self,
+        operations: tuple[str, ...],
+        label: str,
+        action: Callable[[], T],
+    ) -> tuple[T, dict[str, Any]]:
+        """Retry a read-only composition while retaining the exact fault type."""
+
+        if not operations or len(set(operations)) != len(operations) or any(
+            operation not in READ_OPERATIONS for operation in operations
+        ):
+            raise ReadRetryConfigurationError("composed read operations are absent or not allowlisted")
         if not label or any(value in label for value in ("http://", "https://", "?")):
             raise ReadRetryConfigurationError("read retry label is absent or may contain a URL")
         events: list[dict[str, Any]] = []
         for attempt in range(1, self.policy.maximum_attempts + 1):
             elapsed = self.monotonic() - self.started
             if elapsed >= self.policy.hard_cap_seconds:
-                audit = self._audit(operation, label, attempt - 1, events, "HARD_CAP_EXHAUSTED")
-                raise TransientReadRetryExhausted(operation, audit)
+                audit = self._audit(operations, label, attempt - 1, events, "HARD_CAP_EXHAUSTED")
+                raise TransientReadRetryExhausted("+".join(operations), audit)
             try:
                 value = action()
             except TransientReadFault as exc:
-                if exc.operation != operation:
-                    raise ReadRetryConfigurationError("typed transient operation differs") from exc
+                if exc.operation not in operations:
+                    raise ReadRetryConfigurationError("typed transient operation is outside the composition") from exc
                 events.append(
                     {
                         "attempt": attempt,
+                        "operation": exc.operation,
                         "classification": exc.category,
                         "retryable": True,
                     }
                 )
                 if attempt == self.policy.maximum_attempts:
                     raise TransientReadRetryExhausted(
-                        operation,
-                        self._audit(operation, label, attempt, events, "ATTEMPTS_EXHAUSTED"),
+                        "+".join(operations),
+                        self._audit(operations, label, attempt, events, "ATTEMPTS_EXHAUSTED"),
                     ) from exc
                 delay = self.policy.backoff_seconds[attempt - 1]
                 if self.monotonic() - self.started + delay >= self.policy.hard_cap_seconds:
                     raise TransientReadRetryExhausted(
-                        operation,
-                        self._audit(operation, label, attempt, events, "HARD_CAP_EXHAUSTED"),
+                        "+".join(operations),
+                        self._audit(operations, label, attempt, events, "HARD_CAP_EXHAUSTED"),
                     ) from exc
                 self.sleeper(delay)
                 continue
-            return value, self._audit(operation, label, attempt, events, "PASS")
+            return value, self._audit(operations, label, attempt, events, "PASS")
         raise AssertionError("unreachable read retry state")
 
     def _audit(
         self,
-        operation: str,
+        operations: tuple[str, ...],
         label: str,
         attempts: int,
         events: list[dict[str, Any]],
@@ -221,7 +234,7 @@ class IdempotentReadRetrier:
     ) -> dict[str, Any]:
         return {
             "status": outcome,
-            "operation": operation,
+            "operations": list(operations),
             "label": label,
             "attempts": attempts,
             "maximum_attempts": self.policy.maximum_attempts,
@@ -233,4 +246,3 @@ class IdempotentReadRetrier:
             "writes_or_mutations_retryable": False,
             "contains_urls_credentials_model_data_audio_or_phi": False,
         }
-

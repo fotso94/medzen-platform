@@ -304,6 +304,28 @@ class LiveOperations:
                 + canonical_json(exc.audit).decode().strip(),
             ) from exc
 
+    def _idempotent_read_composition(
+        self,
+        operations: tuple[str, ...],
+        label: str,
+        action: Callable[[], Any],
+        *,
+        hard_cap_seconds: float,
+    ) -> tuple[Any, dict[str, Any]]:
+        retrier = IdempotentReadRetrier(
+            RetryPolicy(hard_cap_seconds=hard_cap_seconds),
+            sleeper=self._sleeper,
+            monotonic=self._monotonic,
+        )
+        try:
+            return retrier.run_composed(operations, label, action)
+        except TransientReadRetryExhausted as exc:
+            raise OperationRefusal(
+                exc.reason_code,
+                "typed transient read retry exhausted: "
+                + canonical_json(exc.audit).decode().strip(),
+            ) from exc
+
     def _idempotent_read_command(
         self,
         operation: str,
@@ -1295,8 +1317,8 @@ class LiveOperations:
                         value["docker_scout"].pop("scanned_oci_layout", None)
                         return value
 
-                scan, scan_retry = self._idempotent_read(
-                    "ECR_PULL_BACK",
+                scan, scan_retry = self._idempotent_read_composition(
+                    ("ECR_PULL_BACK", "SCOUT_DATABASE_READ"),
                     "exact-child-and-scout-read",
                     scan_read,
                     hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,

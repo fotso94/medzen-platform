@@ -65,7 +65,7 @@ def test_reset_then_success_retries_exactly_once() -> None:
     assert calls == 2
     assert audit["attempts"] == 2
     assert audit["transient_events"] == [
-        {"attempt": 1, "classification": "CONNECTION_RESET", "retryable": True}
+        {"attempt": 1, "operation": "ECR_PULL_BACK", "classification": "CONNECTION_RESET", "retryable": True}
     ]
     assert clock.value == 1.0
 
@@ -100,6 +100,25 @@ def test_verification_failures_are_never_retried() -> None:
         retrier(clock).run("SCOUT_DATABASE_READ", "scout-db", verify)
     assert calls == 1
     assert clock.value == 0.0
+
+
+def test_composed_scan_keeps_scout_fault_distinct_from_ecr_pull() -> None:
+    clock = Clock()
+    calls = 0
+
+    def scan() -> str:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise TransientReadFault("SCOUT_DATABASE_READ", "DNS_BLIP")
+        return "pass"
+
+    value, audit = retrier(clock).run_composed(
+        ("ECR_PULL_BACK", "SCOUT_DATABASE_READ"), "digest-and-scout", scan
+    )
+    assert value == "pass"
+    assert audit["operations"] == ["ECR_PULL_BACK", "SCOUT_DATABASE_READ"]
+    assert audit["transient_events"][0]["operation"] == "SCOUT_DATABASE_READ"
 
 
 def test_only_allowlisted_reads_can_enter_retry_boundary() -> None:
