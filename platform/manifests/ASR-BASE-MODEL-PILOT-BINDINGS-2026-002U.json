@@ -181,8 +181,8 @@
   },
   "gpu_storage_policy": {
     "capacity_qualification": {
-      "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001.json",
-      "sha256": "1c2723537b9d157ee19dc3ad8aad5db55565b349b3db166bf18655902362a6d6"
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-002.json",
+      "sha256": "39c7d76c5237ee0d70b9a545879b8da17b8a07f217a9f5a8adab569017a47f66"
     },
     "classification": "PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE",
     "failure_semantics": {

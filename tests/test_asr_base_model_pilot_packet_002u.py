@@ -27,6 +27,7 @@ SCAN_SUBJECT = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-202
 SCOUT_PREFLIGHT = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-002.json"
 RESOURCE_POLICY = ROOT / "platform/manifests/ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002.json"
 RESOURCE_QUALIFICATION = ROOT / "platform/evidence/ASR-BASE-MODEL-LOCAL-RESOURCE-QUALIFICATION-2026-005.json"
+GPU_STORAGE_QUALIFICATION = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-002.json"
 COST = ROOT / "platform/finance/COST-REGISTRY-2026-017.json"
 COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-COLD/cold-rehearsal.json"
 
@@ -121,6 +122,13 @@ def test_network_convergence_and_local_resource_gates_are_bound() -> None:
     assert value["local_resource_qualification"]["scout_authentication_mode"] == (
         "DOCKER_CREDENTIAL_STORE"
     )
+    assert value["gpu_storage_policy"]["capacity_qualification"]["sha256"] == sha(
+        GPU_STORAGE_QUALIFICATION
+    )
+    assert value["gpu_storage_policy"]["image"] == {
+        "oci_index_digest": value["image"]["oci_index_digest"],
+        "linux_amd64_digest": value["image"]["linux_amd64_digest"],
+    }
 
 
 def test_attempt22_plan_includes_new_image_publication_and_exact_prohibitions() -> None:

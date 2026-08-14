@@ -71,6 +71,14 @@ the exact new image and pinned CUDA base. The measured packet qualification
 recorded 61,756,919,808 available bytes and 18,807,246,848 bytes of headroom
 above the 40 GiB requirement.
 
+GPU-root capacity was separately requalified against the new image in
+`ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-002`, SHA-256
+`39c7d76c5237ee0d70b9a545879b8da17b8a07f217a9f5a8adab569017a47f66`.
+Two deterministic apparent-rootfs measurements plus a one-GiB representation
+reserve and the standing 25-percent margin produce a 30 GiB calculated
+minimum; the already applied and live-read-back 40 GiB node-group floor leaves
+10.72 GiB above that conservative requirement.
+
 Docker Scout authentication is passed through Docker Desktop's credential
 store. The gate accepts either that configured helper or the complete
 environment pair, records only the mode, and never reads into evidence or

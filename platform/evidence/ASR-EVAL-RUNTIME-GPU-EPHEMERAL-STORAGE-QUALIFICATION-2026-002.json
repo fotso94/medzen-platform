@@ -1,0 +1,83 @@
+{
+  "record": "ASR_EVAL_RUNTIME_GPU_EPHEMERAL_STORAGE_QUALIFICATION",
+  "id": "ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-002",
+  "schema_version": 1,
+  "status": "PASS_MEASURED_CAPACITY_DIAGNOSIS",
+  "recorded_utc": "2026-08-14T15:45:00Z",
+  "source_repository_commit": "9987558620519118ae75fc1c2a4874112439c646",
+  "supersedes_for_prospective_image_identity_only": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001.json",
+    "sha256": "1c2723537b9d157ee19dc3ad8aad5db55565b349b3db166bf18655902362a6d6",
+    "historical_record_edited": false
+  },
+  "attempt_19_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+    "sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739",
+    "classification": "GPU_NODE_EPHEMERAL_STORAGE_EXHAUSTED_DURING_IMAGE_UNPACK_BEFORE_CONTAINER_START"
+  },
+  "qualified_image": {
+    "local_reference": "medzen-asr-eval-runtime:pilot-7efa6e8c",
+    "ecr_repository": "medzen-asr-eval-runtime",
+    "oci_index_digest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_child_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "docker_image_id": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "platform": "linux/amd64",
+    "image_identity_changed": true
+  },
+  "measurement": {
+    "method": "Run only /usr/bin/du as uid 0 in two stopped-after-measurement containers from the exact image, measure apparent root-filesystem bytes without starting the application, and add a one-GiB conservative archive-metadata, whiteout and overlay reserve.",
+    "application_entrypoint_executed": false,
+    "model_or_audio_loaded": false,
+    "network_access_used": false,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "exact_archive_bytes": 7300902912,
+    "exact_archive_evidence": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-001.json",
+      "sha256": "707e3cd3ffb2d06501cd6a40e03e9a32418d716e4cab963f6b664904f4389926"
+    },
+    "runs": [
+      {
+        "run": 1,
+        "apparent_rootfs_bytes": 12425747395,
+        "temporary_container_removed": true
+      },
+      {
+        "run": 2,
+        "apparent_rootfs_bytes": 12425747395,
+        "temporary_container_removed": true
+      }
+    ],
+    "byte_count_deterministic": true,
+    "archive_metadata_whiteout_overlay_reserve_bytes": 1073741824,
+    "conservative_unpacked_rootfs_upper_bound_bytes": 13499489219,
+    "temporary_containers_remaining": 0
+  },
+  "capacity_policy_derivation": {
+    "archive_bytes": 7300902912,
+    "unpacked_rootfs_bytes": 13499489219,
+    "pull_plus_unpack_peak_bytes": 20800392131,
+    "observed_system_and_eviction_reserve_bytes": 3292966534,
+    "workload_emptydir_reserve_bytes": 2147483648,
+    "safety_margin_basis": "25 percent of pull-plus-conservative-unpack peak, rounded upward",
+    "safety_margin_bytes": 5200098033,
+    "calculated_required_bytes": 31440940346,
+    "calculated_required_gib": 29.281657511368394,
+    "rounded_calculated_minimum_gib": 30,
+    "recommended_operational_floor_gib": 40,
+    "recommended_floor_bytes": 42949672960,
+    "headroom_above_calculated_requirement_bytes": 11508732614,
+    "current_40_gib_configuration_passes": true
+  },
+  "limitations": [
+    "The root-filesystem measurement is apparent-byte size rather than a streamed docker-export tar because Docker Desktop terminated repeated export streams without returning usable diagnostics; a full one-GiB representation reserve is added before the independent 25-percent safety margin.",
+    "Containerd overlay metadata and transient extraction behavior remain covered by the explicit reserves and the 40 GiB operational floor.",
+    "Any later image identity change requires another qualification and policy binding."
+  ],
+  "required_controls": [
+    "Validate the bound image archive bytes, conservative unpacked-rootfs upper bound, node root volume and operational floor before the attempt envelope.",
+    "Refuse without consuming an attempt when the configured GPU root volume is below the policy floor.",
+    "Keep model and evaluation artifacts on the separate encrypted 60 GiB work volume.",
+    "Do not change the 40 GiB managed node-group root volume without a reviewed AWS packet."
+  ]
+}
