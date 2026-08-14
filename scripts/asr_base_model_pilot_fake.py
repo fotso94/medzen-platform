@@ -386,8 +386,6 @@ class Ec2Boundary:
             )
         }
         if VpcEndpointType == "Gateway":
-            if self.state.injection == "endpoint_policy_missing_version_action":
-                actions.discard("s3:GetObjectVersion")
             required = {"s3:GetObject", "s3:GetObjectVersion"}
         else:
             required = {

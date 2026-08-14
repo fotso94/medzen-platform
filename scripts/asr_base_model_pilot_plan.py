@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in set(range(1, 18)):
-        raise ValueError("attempt must be 1 through 17")
+    if attempt not in set(range(1, 19)):
+        raise ValueError("attempt must be 1 through 18")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")

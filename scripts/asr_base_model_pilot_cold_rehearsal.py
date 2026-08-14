@@ -20,6 +20,13 @@ if str(ROOT) not in sys.path:
 
 import pipeline.asr_base_model_pilot_receipts as receipt_module
 from pipeline.asr_base_model_pilot_receipts import STAGES, canonical_json, write_exclusive
+from scripts.asr_base_model_endpoint_policy import (
+    EndpointPolicyRefusal,
+    build_call_inventory,
+    derive_policy,
+    validate_observed_s3_calls,
+    validate_policy_coverage,
+)
 from scripts.asr_base_model_pilot_fake import (
     assert_no_parallel_stage_implementation,
     build_rehearsal_operations,
@@ -34,6 +41,7 @@ from scripts.asr_base_model_pilot_integrity import (
 )
 from scripts.asr_base_model_pilot_k8s import render, verify
 from scripts.asr_base_model_pilot_live import LiveOperations
+from scripts.asr_base_model_pilot_live import PRIVATE_PULL_REPOSITORIES
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 from scripts.asr_base_model_proven_commands import validate_proven_command_bindings
 from scripts.asr_base_model_pilot_runner import (
@@ -72,10 +80,6 @@ SCENARIOS = {
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
-    "endpoint_policy_missing_version_action": (
-        "endpoint_policy_missing_version_action",
-        "BLOCKED_NETWORK_ISOLATION",
-    ),
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
     "prestage_object_absent": ("prestage_object_absent", "FAILED_CLOSED_EXECUTION"),
@@ -227,6 +231,85 @@ def _pure_prestage_injections(proof: dict[str, Any], bundle_sha: str) -> dict[st
     }
 
 
+def _endpoint_policy_injections(bindings: dict[str, Any]) -> dict[str, Any]:
+    """Exercise the shared call-inventory policy gate without altering the fake."""
+
+    pilot_bundle = json.loads(
+        (ROOT / "tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json").read_bytes()
+    )
+    model_bindings = json.loads(
+        (ROOT / "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json").read_bytes()
+    )
+    inventory = build_call_inventory(
+        bundle_sha256=bindings["pilot_bundle"]["sha256"],
+        pilot_bundle=pilot_bundle,
+        model_bindings=model_bindings,
+        account="558069890522",
+        region="eu-central-1",
+        ecr_repositories=PRIVATE_PULL_REPOSITORIES,
+    )
+    s3_policy = derive_policy(inventory, "s3")
+    coverage = validate_policy_coverage(inventory, s3_policy, "s3")
+    refusals: dict[str, str] = {}
+
+    missing_version = json.loads(json.dumps(s3_policy))
+    missing_version["Statement"] = [
+        row
+        for row in missing_version["Statement"]
+        if row.get("Action") != ["s3:GetObjectVersion"]
+    ]
+    try:
+        validate_policy_coverage(inventory, missing_version, "s3")
+    except EndpointPolicyRefusal as exc:
+        refusals["missing_get_object_version"] = exc.reason_code
+    else:
+        raise AssertionError("missing s3:GetObjectVersion passed policy coverage")
+
+    drifted = json.loads(json.dumps(inventory))
+    versioned = next(
+        row
+        for row in drifted["calls"]
+        if row["service"] == "s3"
+        and row["parameters"].get("version_id_present") is True
+    )
+    versioned["parameters"]["version_id_present"] = False
+    try:
+        derive_policy(drifted, "s3")
+    except EndpointPolicyRefusal as exc:
+        refusals["version_flag_action_drift"] = exc.reason_code
+    else:
+        raise AssertionError("version flag/action drift passed policy derivation")
+
+    observed = [
+        {
+            "operation": row["parameters"]["operation"],
+            "bucket": row["parameters"]["bucket"],
+            "key": row["parameters"]["key"],
+            "version_id_present": row["parameters"]["version_id_present"],
+        }
+        for row in inventory["calls"]
+        if row["service"] == "s3"
+    ]
+    observed[0]["version_id_present"] = not observed[0]["version_id_present"]
+    try:
+        validate_observed_s3_calls(inventory, observed)
+    except EndpointPolicyRefusal as exc:
+        refusals["observed_request_inventory_drift"] = exc.reason_code
+    else:
+        raise AssertionError("observed request/inventory drift passed")
+
+    return {
+        "status": "PASS_ENDPOINT_POLICY_STATIC_REHEARSAL",
+        "inventory_sha256": inventory["inventory_sha256"],
+        "inventory_call_count": len(inventory["calls"]),
+        "s3_coverage": coverage,
+        "required_actions": coverage["required_actions"],
+        "other_version_variant_actions": [],
+        "refusals": refusals,
+        "stage_implementation_replaced": False,
+    }
+
+
 def _scenario_repository(
     base: Path,
     *,
@@ -349,7 +432,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002P.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Q.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -468,6 +551,12 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 if image_receipt.is_file()
                 else {}
             )
+            endpoint_receipt = directory / "receipts/private_endpoint_and_policy_gate.json"
+            endpoint_payload = (
+                json.loads(endpoint_receipt.read_bytes()).get("payload", {})
+                if endpoint_receipt.is_file()
+                else {}
+            )
             scenarios[name] = {
                 "outcome": result["outcome"],
                 "failure_stage": result["failure_stage"],
@@ -497,6 +586,12 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 },
                 "scan_representation": image_payload.get("security_gate", {}).get(
                     "reconstruction"
+                ),
+                "endpoint_policy_coverage": endpoint_payload.get(
+                    "endpoint_policy_coverage"
+                ),
+                "endpoint_call_inventory_sha256": endpoint_payload.get(
+                    "endpoint_call_inventory_sha256"
                 ),
                 "dra_refusal_diagnostics": (
                     {
@@ -587,6 +682,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     pure_injections = _pure_prestage_injections(
         proof, bindings["pilot_bundle"]["sha256"]
     )
+    endpoint_policy_rehearsal = _endpoint_policy_injections(bindings)
     rehearsal_source_paths = [
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
@@ -618,6 +714,16 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ],
         "pure_input_injected_paths": sorted(pure_injections["refusals"]),
         "pure_input_refusal_checks": pure_injections,
+        "endpoint_policy_inventory": {
+            "static_rehearsal": endpoint_policy_rehearsal,
+            "live_composition_coverage": scenarios["clean_pass"][
+                "endpoint_policy_coverage"
+            ],
+            "live_composition_inventory_sha256": scenarios["clean_pass"][
+                "endpoint_call_inventory_sha256"
+            ],
+            "hand_written_action_lists_permitted": False,
+        },
         "pre_envelope_resource_gate": {
             "sufficient_capacity": "pre_envelope_local_resources_passed"
             in scenarios["clean_pass"]["filesystem_side_effect_order"],
@@ -696,7 +802,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002P.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Q.json",
     )
     args = parser.parse_args()
     try:

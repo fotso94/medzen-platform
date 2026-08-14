@@ -391,7 +391,7 @@ def validate_observed_s3_calls(
                 bool(call.get("version_id_present")),
             )
         )
-    if actual != expected:
+    if actual != expected or len(observed) != len(expected):
         raise EndpointPolicyRefusal(
             "ENDPOINT_OBSERVED_S3_CALLS_DIFFER",
             "node staging S3 requests differ from the policy-generating inventory",

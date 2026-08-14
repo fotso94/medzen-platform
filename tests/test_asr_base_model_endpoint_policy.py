@@ -148,6 +148,21 @@ def test_observed_node_requests_must_equal_policy_inventory() -> None:
         validate_observed_s3_calls(value, observed)
     assert captured.value.reason_code == "ENDPOINT_OBSERVED_S3_CALLS_DIFFER"
 
+    duplicate = [
+        {
+            "operation": row["parameters"]["operation"],
+            "bucket": row["parameters"]["bucket"],
+            "key": row["parameters"]["key"],
+            "version_id_present": row["parameters"]["version_id_present"],
+        }
+        for row in value["calls"]
+        if row["service"] == "s3"
+    ]
+    duplicate.append(dict(duplicate[0]))
+    with pytest.raises(EndpointPolicyRefusal) as captured:
+        validate_observed_s3_calls(value, duplicate)
+    assert captured.value.reason_code == "ENDPOINT_OBSERVED_S3_CALLS_DIFFER"
+
 
 def test_no_other_s3_version_variant_is_needed() -> None:
     result = validate_policy_coverage(inventory(), derive_policy(inventory(), "s3"), "s3")
