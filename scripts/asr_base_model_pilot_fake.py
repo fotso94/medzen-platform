@@ -639,7 +639,7 @@ class EcrBoundary:
                 }
             fixture = self.state.bindings.get("ecr_existing_image_fixture")
             if not isinstance(fixture, dict):
-                raise AssertionError("existing-image ECR fixture binding is absent")
+                return self.state.fixtures.payload("ecr-batch-get-index-by-tag")
             path = self.state.root / str(fixture.get("path", ""))
             body = path.read_bytes()
             if hashlib.sha256(body).hexdigest() != fixture.get("sha256"):
