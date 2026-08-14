@@ -124,6 +124,10 @@ resource "aws_eks_node_group" "gpu" {
   subnet_ids      = var.subnet_ids
   instance_types  = [var.gpu_instance_type]
   ami_type        = "AL2023_x86_64_NVIDIA"
+  # The exact scan-qualified offline-evaluation image needs 28.1 GiB after
+  # pull/unpack, kubelet reserve, workload scratch and the measured safety
+  # margin. Forty GiB is the independently reviewed operational floor.
+  disk_size = 40
 
   scaling_config {
     desired_size = var.gpu_desired_size
