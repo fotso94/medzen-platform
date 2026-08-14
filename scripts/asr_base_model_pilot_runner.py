@@ -37,6 +37,7 @@ class OperationRefusal(RuntimeError):
 
 
 class Operations(Protocol):
+    def gpu_storage_prerequisite(self, context: "AttemptContext") -> dict[str, Any]: ...
     def deadline_identity_and_acceptance(
         self,
         context: "AttemptContext",
@@ -70,6 +71,7 @@ class AttemptContext:
     reviewed_worktree_root: Path | None = None
     local_resource_snapshot: dict[str, Any] | None = None
     local_resource_validation: dict[str, Any] | None = None
+    gpu_storage_validation: dict[str, Any] | None = None
     filesystem_events: list[str] = field(default_factory=list)
 
 
@@ -346,6 +348,15 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
                 context.local_resource_validation = validation
             except LocalResourceRefusal as exc:
                 raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        if context.attempt >= 20:
+            payload = ops.gpu_storage_prerequisite(context)
+            if payload.get("status") != "PASS_PRE_ENVELOPE_GPU_STORAGE":
+                raise OperationRefusal(
+                    "GPU_STORAGE_PREREQUISITE_DIFFERS",
+                    "GPU storage prerequisite did not return its exact PASS status",
+                )
+            context.gpu_storage_validation = payload
+            context.filesystem_events.append("pre_envelope_gpu_storage_passed")
         context.workdir.mkdir(parents=True, exist_ok=False)
         context.filesystem_events.append("external_workdir_created")
     prior_journal = configure_external_tool_journal(
@@ -358,8 +369,8 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in set(range(1, 20)) or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 19 at 10800 seconds are permitted")
+    if context.attempt not in set(range(1, 21)) or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 20 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(
@@ -471,6 +482,7 @@ def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]
         "attempt_envelope_sha256": envelope["sha256"],
         "failure_stage": failure_stage,
         "pre_envelope_local_resources": context.local_resource_validation,
+        "pre_envelope_gpu_storage": context.gpu_storage_validation,
         "stage_receipts": stage_hashes,
         "filesystem_side_effect_order": [
             *context.filesystem_events,

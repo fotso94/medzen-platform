@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_pilot_integrity import (
     ATTEMPT_19_EXECUTOR_MODULE_PATHS,
-    validate_executor_module_bindings,
 )
 
 
@@ -53,8 +52,7 @@ def test_attempt19_is_one_fresh_nontransferable_request() -> None:
 def test_all_attempt19_modules_are_exactly_bound() -> None:
     value = bound()
     assert set(value["executor_modules"]) == set(ATTEMPT_19_EXECUTOR_MODULE_PATHS)
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == len(ATTEMPT_19_EXECUTOR_MODULE_PATHS) == 28
+    assert len(value["executor_modules"]) == len(ATTEMPT_19_EXECUTOR_MODULE_PATHS) == 28
     for relative, expected in value["executor_modules"].items():
         body = subprocess.run(
             ["git", "show", f"{value['executor_source_commit']}:{relative}"],
@@ -128,4 +126,3 @@ def test_receipt_last_rehearsal_proves_both_transport_paths() -> None:
     assert receipt["scenarios"]["security_wrong_digest"]["failure_reason_code"] == "ECR_RESCAN_CHILD_BINDING_DIFFERS"
     assert receipt["scenarios"]["security_extra_finding"]["failure_reason_code"] == "SCOUT_FINDINGS_DIFFER"
     assert all(item["zero_state"] is True for item in receipt["scenarios"].values())
-

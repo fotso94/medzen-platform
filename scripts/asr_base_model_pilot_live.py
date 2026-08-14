@@ -57,6 +57,10 @@ from scripts.asr_base_model_endpoint_policy import (
     validate_observed_s3_calls,
     validate_policy_coverage,
 )
+from scripts.asr_base_model_gpu_storage import (
+    GpuStorageRefusal,
+    validate_gpu_storage_prerequisite,
+)
 from scripts.asr_eval_digest_rescan import (
     DigestRescanRefusal,
     scan_exact_ecr_child,
@@ -89,7 +93,7 @@ from scripts.asr_base_model_pilot_staging import (
 from scripts.asr_base_model_pilot_plan import (
     ACCOUNT,
     CLUSTER,
-    GPU_ASG,
+    LEGACY_GPU_ASG,
     NAMESPACE,
     NODE_SG,
     PROFILE,
@@ -458,6 +462,28 @@ class LiveOperations:
 
     def _nodegroup(self, name: str) -> dict[str, Any]:
         return self.eks.describe_nodegroup(clusterName=CLUSTER, nodegroupName=name)["nodegroup"]
+
+    @staticmethod
+    def _gpu_asg(context: AttemptContext) -> str:
+        if context.attempt >= 20:
+            value = context.bindings.get("aws", {}).get("gpu_asg_name")
+            if not isinstance(value, str) or not value:
+                raise OperationRefusal(
+                    "GPU_ASG_BINDING_ABSENT", "current GPU ASG binding is absent"
+                )
+            return value
+        return LEGACY_GPU_ASG
+
+    def gpu_storage_prerequisite(self, context: AttemptContext) -> dict[str, Any]:
+        try:
+            return validate_gpu_storage_prerequisite(
+                self.root,
+                context.bindings.get("gpu_storage_policy"),
+                self._nodegroup(GPU_NODEGROUP),
+                expected_image=context.bindings.get("image", {}),
+            )
+        except GpuStorageRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
 
     def _wait_nodegroup(self, desired: int, timeout_seconds: int = 1200) -> dict[str, Any]:
         validate_boundary_parameters(
@@ -1109,15 +1135,16 @@ class LiveOperations:
         state = self._state(context)
         action = f"medzen-asr-eval-a{context.attempt}-deadline"
         deadline = _utc() + timedelta(seconds=context.deadline_seconds)
+        gpu_asg = self._gpu_asg(context)
         self.asg.put_scheduled_update_group_action(
-            AutoScalingGroupName=GPU_ASG,
+            AutoScalingGroupName=gpu_asg,
             ScheduledActionName=action,
             StartTime=deadline,
             DesiredCapacity=0,
         )
         state["deadline_action"] = action
         self._save_state(context, state)
-        readback = self.asg.describe_scheduled_actions(AutoScalingGroupName=GPU_ASG, ScheduledActionNames=[action])["ScheduledUpdateGroupActions"]
+        readback = self.asg.describe_scheduled_actions(AutoScalingGroupName=gpu_asg, ScheduledActionNames=[action])["ScheduledUpdateGroupActions"]
         if len(readback) != 1 or readback[0].get("DesiredCapacity") != 0:
             raise OperationRefusal("DEADLINE_READBACK_DIFFERS", "deadline scheduled action is not exact")
         return {**common, "deadline_utc": deadline.isoformat()}
@@ -2182,7 +2209,7 @@ class LiveOperations:
                 errors.append(f"ecr-scan-config:{type(exc).__name__}")
         if state.get("deadline_action"):
             try:
-                self.asg.delete_scheduled_action(AutoScalingGroupName=GPU_ASG, ScheduledActionName=state["deadline_action"])
+                self.asg.delete_scheduled_action(AutoScalingGroupName=self._gpu_asg(context), ScheduledActionName=state["deadline_action"])
             except Exception as exc:
                 errors.append(f"deadline:{type(exc).__name__}")
         gpu = self._nodegroup(GPU_NODEGROUP)["scalingConfig"]["desiredSize"]

@@ -1,0 +1,83 @@
+{
+  "record": "ASR_BASE_MODEL_COST_RECONCILIATION",
+  "id": "ASR-BASE-MODEL-COST-RECONCILIATION-2026-005",
+  "schema_version": 1,
+  "status": "PASS_ATTEMPT_19_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED",
+  "recorded_utc": "2026-08-14T05:30:00Z",
+  "currency": "USD",
+  "scope": {
+    "attempts": [19],
+    "workload_region": "eu-central-1",
+    "cost_explorer_region": "us-east-1",
+    "time_period": {
+      "start_inclusive": "2026-08-14",
+      "end_exclusive": "2026-08-15"
+    },
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen",
+    "default_profile_used": false,
+    "aws_mutations": 0
+  },
+  "cost_explorer_actual_observation": {
+    "granularity": "DAILY",
+    "estimated": true,
+    "usage_type": "EUC1-BoxUsage:g6.xlarge",
+    "august_14_usage_quantity_hours_reported": 0.0,
+    "august_14_unblended_usd_reported": 0.0,
+    "august_14_matching_groups": 0,
+    "attempt_19_actual_billed_cost_usd": null,
+    "interpretation": "Cost Explorer remains estimated and has not ingested a separately attributable current-day g6.xlarge row. The reported zero is not treated as final actual cost."
+  },
+  "receipt_runtime_cross_check": {
+    "gpu_instance_id": "i-00eff424af4f8669b",
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_nodes_started": 1,
+    "maximum_observed_instance_lifetime_seconds": 1297,
+    "evaluation_rows_started": 0,
+    "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+    "evidence_sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739",
+    "receipt_derived_dollar_estimate_reported_as_actual": false
+  },
+  "infrastructure_correction_cross_check": {
+    "packet": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003",
+    "gpu_compute_started": false,
+    "persistent_gpu_root_volume_gib": 40,
+    "evidence_path": "platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json",
+    "evidence_sha256": "d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2",
+    "incremental_direct_compute_cost_claimed": false
+  },
+  "attribution": {
+    "per_attempt_dollar_allocation": "PENDING_AWS_BILLING_INGESTION",
+    "shared_request_transfer_control_plane_and_persistent_storage_costs": "NOT_ATTRIBUTED_TO_ATTEMPT",
+    "credits_used_to_expand_budget_headroom": false,
+    "reason": "Daily estimated Cost Explorer data cannot yet isolate attempt 19. No fabricated actual allocation is made."
+  },
+  "control_totals": {
+    "conservative_guardrail_predecessor_usd": 154.4286064216,
+    "attempt_19_closed_ceiling_to_add_usd": 10.0,
+    "recognized_committed_guardrail_usd": 164.4286064216,
+    "active_reservations_usd": 0.0,
+    "project_ceiling_usd": 300.0,
+    "guardrail_headroom_usd": 135.5713935784,
+    "guardrail_not_reduced_by_pending_or_credited_actual": true
+  },
+  "source_records": [
+    {
+      "path": "platform/finance/COST-REGISTRY-2026-014.json",
+      "sha256": "d7130907559de5b86197e905f7e6431ca95327861dad2bf93a2a138e9795d496"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+      "sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json",
+      "sha256": "d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2"
+    }
+  ],
+  "review": {
+    "independent_financial_or_owner_review_required": true,
+    "reconciliation_is_not_audited_financial_advice": true,
+    "future_refresh_required_when_august_14_usage_lands": true
+  }
+}

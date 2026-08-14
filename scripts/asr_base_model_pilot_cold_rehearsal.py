@@ -369,6 +369,14 @@ def _scenario_repository(
             ROOT / bindings["aws_read_fixtures"]["path"]
         ).read_bytes(),
     }
+    if "gpu_storage_policy" in bindings:
+        for evidence_name in (
+            "capacity_qualification",
+            "storage_apply_evidence",
+            "live_fixture",
+        ):
+            relative = bindings["gpu_storage_policy"][evidence_name]["path"]
+            tracked[relative] = (ROOT / relative).read_bytes()
     if "gpu_node_readiness_fixtures" in bindings:
         relative = bindings["gpu_node_readiness_fixtures"]["path"]
         tracked[relative] = (ROOT / relative).read_bytes()
@@ -607,6 +615,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "endpoint_call_inventory_sha256": endpoint_payload.get(
                     "endpoint_call_inventory_sha256"
                 ),
+                "pre_envelope_gpu_storage": result.get(
+                    "pre_envelope_gpu_storage"
+                ),
                 "dra_refusal_diagnostics": (
                     {
                         "persisted_before_cleanup": True,
@@ -693,6 +704,65 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             }
         else:
             raise RuntimeError("insufficient local disk passed the pre-envelope gate")
+
+        gpu_insufficient_directory = base / "gpu-storage-insufficient"
+        reviewed, authorization_path, packet_path = _scenario_repository(
+            base / "gpu-storage-insufficient-repo",
+            bindings_path=bindings_path,
+            bindings_body=bindings_body,
+            packet_relative=bindings["successor_packet"]["path"],
+            authorization_relative=bindings["authorization"]["path"],
+            dry_relative=bindings["authorization"]["deadline_dry_run_path"],
+        )
+        scenario_bindings = json.loads(json.dumps(bindings))
+        operations, boundary = build_rehearsal_operations(
+            scenario_bindings,
+            injection="gpu_storage_below_floor",
+            root=reviewed,
+        )
+        context = build_attempt_context(
+            root=reviewed,
+            workdir=gpu_insufficient_directory,
+            attempt=attempt,
+            bindings=scenario_bindings,
+            packet_sha256=hashlib.sha256(packet_path.read_bytes()).hexdigest(),
+            authorization_sha256=hashlib.sha256(
+                authorization_path.read_bytes()
+            ).hexdigest(),
+            authorization_path=authorization_path,
+            packet_path=packet_path,
+            local_resource_snapshot=_resource_snapshot(
+                scenario_bindings, sufficient=True
+            ),
+        )
+        try:
+            execute_attempt(operations, context)
+        except OperationRefusal as exc:
+            if exc.reason_code != "GPU_ROOT_VOLUME_BELOW_OPERATIONAL_FLOOR":
+                raise
+            if (
+                gpu_insufficient_directory.exists()
+                or boundary.aws_calls != 1
+                or boundary.aws_mutations
+                or boundary.kubectl_calls
+            ):
+                raise RuntimeError(
+                    "GPU-storage prerequisite refusal had runtime side effects"
+                )
+            gpu_storage_refusal = {
+                "status": "PASS_PRE_ENVELOPE_GPU_STORAGE_REFUSAL_REHEARSAL",
+                "reason_code": exc.reason_code,
+                "attempt_envelope_created": False,
+                "attempt_number_consumed": False,
+                "workdir_created": False,
+                "aws_boundary_calls": boundary.aws_calls,
+                "aws_mutations": boundary.aws_mutations,
+                "kubectl_boundary_calls": boundary.kubectl_calls,
+            }
+        else:
+            raise RuntimeError(
+                "insufficient GPU storage passed the pre-envelope gate"
+            )
     pure_injections = _pure_prestage_injections(
         proof, bindings["pilot_bundle"]["sha256"]
     )
@@ -706,6 +776,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_node_staging.py",
         ROOT / "scripts/asr_base_model_pilot_workload.py",
         ROOT / "scripts/asr_idempotent_read_retry.py",
+        ROOT / "scripts/asr_base_model_gpu_storage.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -745,6 +816,16 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "insufficient_capacity": prerequisite_refusal,
             "gate_runs_before_workdir_creation": True,
             "gate_runs_before_attempt_envelope": True,
+        },
+        "pre_envelope_gpu_storage_gate": {
+            "sufficient_capacity": scenarios["clean_pass"][
+                "pre_envelope_gpu_storage"
+            ],
+            "insufficient_capacity": gpu_storage_refusal,
+            "gate_runs_before_workdir_creation": True,
+            "gate_runs_before_attempt_envelope": True,
+            "aws_read_calls": 1,
+            "aws_mutations": 0,
         },
         "single_representation_security_scan": scenarios["clean_pass"][
             "scan_representation"

@@ -163,6 +163,26 @@ class BoundaryState:
             raise AssertionError("GPU-node readiness fixture-capture status differs")
         return fixture
 
+    def gpu_storage_nodegroup_response(self) -> dict[str, Any]:
+        """Replay the exact post-replacement DescribeNodegroup response."""
+        binding = self.bindings.get("gpu_storage_policy", {}).get("live_fixture")
+        if not isinstance(binding, dict):
+            raise AssertionError("GPU storage live-fixture binding is absent")
+        relative = binding.get("path")
+        expected = binding.get("sha256")
+        if not isinstance(relative, str) or not isinstance(expected, str):
+            raise AssertionError("GPU storage live-fixture binding is malformed")
+        path = self.root / relative
+        body = path.read_bytes()
+        if hashlib.sha256(body).hexdigest() != expected:
+            raise AssertionError("GPU storage live-fixture hash differs")
+        response = json.loads(body)
+        if not isinstance(response, dict) or not isinstance(
+            response.get("nodegroup"), dict
+        ):
+            raise AssertionError("GPU storage live fixture is malformed")
+        return copy.deepcopy(response)
+
     def _captured_gpu_node_list(self, state: str) -> dict[str, Any]:
         fixture = self._gpu_node_fixture()
         empty = copy.deepcopy(fixture["attempt_11_empty_list"]["response"])
@@ -276,6 +296,20 @@ class EksBoundary:
     def describe_nodegroup(self, *, clusterName: str, nodegroupName: str) -> dict[str, Any]:
         self.state.call()
         desired = self.state.gpu_desired if nodegroupName == GPU_NODEGROUP else self.state.cpu_desired
+        if (
+            nodegroupName == GPU_NODEGROUP
+            and self.state.bindings.get("attempts", {}).get("authorized_numbers")
+            == [20]
+        ):
+            response = self.state.gpu_storage_nodegroup_response()
+            response["nodegroup"]["scalingConfig"]["desiredSize"] = desired
+            response["nodegroup"]["status"] = "ACTIVE"
+            response["nodegroup"]["resources"]["autoScalingGroups"][0]["name"] = (
+                self.state.bindings["aws"]["gpu_asg_name"]
+            )
+            if self.state.injection == "gpu_storage_below_floor":
+                response["nodegroup"]["diskSize"] = 20
+            return response
         name = "eks-describe-nodegroup-gpu" if nodegroupName == GPU_NODEGROUP else "eks-describe-nodegroup-cpu"
         return self.state.fixtures.replay(
             name,

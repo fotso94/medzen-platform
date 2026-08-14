@@ -15,15 +15,15 @@ REGION = "eu-central-1"
 PROFILE = "medzen"
 CLUSTER = "medzen-speech"
 VPC = "vpc-051aa9df8b64bf141"
-GPU_ASG = "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
+LEGACY_GPU_ASG = "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
 NODE_SG = "sg-070fc00321934eacb"
 NAMESPACE = "medzen-asr-eval"
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in set(range(1, 20)):
-        raise ValueError("attempt must be 1 through 19")
+    if attempt not in set(range(1, 21)):
+        raise ValueError("attempt must be 1 through 20")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -38,6 +38,14 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         raise ValueError("OCI index digest is malformed")
     if not isinstance(image_tag, str) or re.fullmatch(r"[a-zA-Z0-9_.-]{1,300}", image_tag) is None:
         raise ValueError("immutable image tag is absent or malformed")
+    gpu_asg = LEGACY_GPU_ASG
+    if attempt >= 20:
+        gpu_asg = bindings.get("aws", {}).get("gpu_asg_name")
+        if (
+            not isinstance(gpu_asg, str)
+            or re.fullmatch(r"eks-gpu-[0-9a-f-]{36}", gpu_asg) is None
+        ):
+            raise ValueError("attempt 20 requires the exact current GPU ASG binding")
     permanent_create_only = [] if attempt >= 9 else [
         f"s3:medzen-speech/research/asr-base-model/pilot/{bundle_sha}/**",
     ]
@@ -90,7 +98,7 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
         "permanent_bounded_update": [],
         "temporary_create_then_delete": temporary_create_then_delete,
         "bounded_capacity_change": [
-            f"autoscaling:{GPU_ASG}/desired=1-then-0",
+            f"autoscaling:{gpu_asg}/desired=1-then-0",
         ],
         "read_only_existing": [
             f"ec2:security-group/{NODE_SG}",
