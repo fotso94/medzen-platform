@@ -1,0 +1,88 @@
+{
+  "record": "ASR_EVAL_RUNTIME_GPU_EPHEMERAL_STORAGE_QUALIFICATION",
+  "id": "ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001",
+  "schema_version": 1,
+  "status": "PASS_MEASURED_CAPACITY_DIAGNOSIS",
+  "recorded_utc": "2026-08-14T04:36:50Z",
+  "source_repository_commit": "4546e5a126bf8f14167e1617cebb17879df8f398",
+  "attempt_19_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+    "sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739",
+    "classification": "GPU_NODE_EPHEMERAL_STORAGE_EXHAUSTED_DURING_IMAGE_UNPACK_BEFORE_CONTAINER_START"
+  },
+  "qualified_image": {
+    "local_reference": "medzen-asr-eval-runtime:pilot-5d1b8a0",
+    "ecr_repository": "medzen-asr-eval-runtime",
+    "oci_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "linux_amd64_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "docker_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "platform": "linux/amd64",
+    "image_identity_changed": false
+  },
+  "measurement": {
+    "method": "Create a stopped container from the exact local qualified image and stream docker export to a byte counter without writing a second full image representation.",
+    "container_executed": false,
+    "model_or_audio_loaded": false,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "archive_bytes_from_attempt_19_digest_rescan": 7296808960,
+    "local_docker_image_size_bytes": 7296787645,
+    "unpacked_merged_rootfs_tar_bytes": 12456463360,
+    "runs": [
+      {
+        "run": 1,
+        "elapsed_seconds": 56,
+        "unpacked_merged_rootfs_tar_bytes": 12456463360,
+        "temporary_container_removed": true
+      },
+      {
+        "run": 2,
+        "elapsed_seconds": 57,
+        "unpacked_merged_rootfs_tar_bytes": 12456463360,
+        "temporary_container_removed": true
+      }
+    ],
+    "byte_count_deterministic": true,
+    "temporary_containers_remaining": 0
+  },
+  "attempt_19_node_observation": {
+    "configured_root_volume_gib": 20,
+    "configured_root_volume_bytes": 21474836480,
+    "ephemeral_storage_capacity_kib": 20893676,
+    "ephemeral_storage_allocatable_bytes": 18181869946,
+    "configured_minus_allocatable_reserve_bytes": 3292966534,
+    "eviction_threshold_bytes": 2139512454,
+    "first_recorded_available_kib": 2060940,
+    "last_recorded_available_kib": 360052,
+    "container_started": false,
+    "kubernetes_reason": "Evicted"
+  },
+  "capacity_policy_derivation": {
+    "archive_bytes": 7296808960,
+    "unpacked_rootfs_bytes": 12456463360,
+    "pull_plus_unpack_peak_bytes": 19753272320,
+    "observed_system_and_eviction_reserve_bytes": 3292966534,
+    "workload_emptydir_reserve_bytes": 2147483648,
+    "safety_margin_basis": "25 percent of pull-plus-unpack peak",
+    "safety_margin_bytes": 4938318080,
+    "calculated_required_bytes": 30132040582,
+    "calculated_required_gib": 28.06264961324632,
+    "rounded_calculated_minimum_gib": 29,
+    "recommended_operational_floor_gib": 40,
+    "recommended_floor_bytes": 42949672960,
+    "headroom_above_calculated_requirement_bytes": 12817632378,
+    "current_20_gib_configuration_passes": false,
+    "recommended_40_gib_configuration_passes": true
+  },
+  "limitations": [
+    "docker export measures the merged root filesystem tar size; containerd overlay metadata and transient extraction behavior are covered by the explicit safety margin rather than measured separately.",
+    "The 40 GiB floor is a proposed review boundary, not an authorized AWS change.",
+    "A future image identity change requires a new measurement and policy binding."
+  ],
+  "required_controls": [
+    "Validate the bound image archive bytes, unpacked rootfs bytes, node root volume and operational floor before the attempt envelope.",
+    "Refuse without consuming an attempt when the configured GPU root volume is below the policy floor.",
+    "Keep model and evaluation artifacts on the separate encrypted 60 GiB work volume; the root-volume increase is for containerd and kubelet headroom only.",
+    "Require a reviewed AWS packet before replacing or modifying the managed GPU node group."
+  ]
+}
