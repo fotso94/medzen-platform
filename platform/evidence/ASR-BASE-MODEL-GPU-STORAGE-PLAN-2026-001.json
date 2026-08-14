@@ -1,0 +1,90 @@
+{
+  "record": "ASR_BASE_MODEL_GPU_STORAGE_PRE_APPLY_PLAN_QUALIFICATION",
+  "id": "ASR-BASE-MODEL-GPU-STORAGE-PLAN-2026-001",
+  "schema_version": 1,
+  "status": "PASS_PRE_APPLY_PLAN_QUALIFICATION",
+  "recorded_utc": "2026-08-14T04:46:30Z",
+  "source_commit": "d88dcfb08b28f02d06c3805efe42a84c7bf128a2",
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "live_pre_change_readback": {
+    "cluster": "medzen-speech",
+    "node_group": "gpu",
+    "status": "ACTIVE",
+    "disk_size_gib": 20,
+    "minimum": 0,
+    "desired": 0,
+    "maximum": 1,
+    "health_issues": 0,
+    "instance_types": [
+      "g6.xlarge"
+    ],
+    "ami_type": "AL2023_x86_64_NVIDIA"
+  },
+  "terraform": {
+    "configuration_validation": "PASS",
+    "refresh_live_state": true,
+    "saved_plan_path_at_preparation": "/private/tmp/medzen-asr-gpu-storage-final.ECIyP6/packet-2026-003.tfplan",
+    "saved_plan_sha256": "5be91449a2e8905bcced4cab28ebb915ca6b4cb41f00c543355db756b8a8d6b7",
+    "saved_plan_bytes": 85444,
+    "plan_json_sha256": "c64a8a360bda9e6a1e92e20dbf82ba1a0230a424815ac4a3d82137c514e91c9b",
+    "plan_json_bytes": 634908,
+    "plan_json_committed": false,
+    "plan_json_non_commit_reason": "A full Terraform plan JSON can expose sensitive state values. Only the fail-closed, non-sensitive summary is committed.",
+    "guard": {
+      "path": "scripts/check_asr_eval_gpu_storage_plan.py",
+      "status": "PASS_EXACT_ASR_BASE_MODEL_GPU_STORAGE_PACKET_2026_003",
+      "summary": {
+        "add": 1,
+        "change": 0,
+        "destroy": 1,
+        "replacement": 1
+      },
+      "resource_actions": {
+        "aws_eks_node_group.gpu": [
+          "delete",
+          "create"
+        ]
+      },
+      "replace_paths": [
+        [
+          "disk_size"
+        ]
+      ],
+      "field_transition": {
+        "disk_size_gib": {
+          "before": 20,
+          "after": 40
+        }
+      },
+      "all_other_effective_configuration_preserved": true,
+      "output_changes": 0
+    }
+  },
+  "capacity_basis": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001.json",
+    "sha256": "1c2723537b9d157ee19dc3ad8aad5db55565b349b3db166bf18655902362a6d6",
+    "calculated_minimum_gib": 29,
+    "operational_floor_gib": 40
+  },
+  "attempt_19_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+    "sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739"
+  },
+  "preparation_non_events": {
+    "terraform_apply": 0,
+    "aws_mutations": 0,
+    "gpu_instances_started": 0,
+    "kubernetes_mutations": 0,
+    "attempt_20_started": false
+  },
+  "authorization": {
+    "owner_approval_required": true,
+    "saved_preparation_plan_is_execution_authority": false,
+    "must_recreate_and_revalidate_plan_after_approval": true
+  }
+}
