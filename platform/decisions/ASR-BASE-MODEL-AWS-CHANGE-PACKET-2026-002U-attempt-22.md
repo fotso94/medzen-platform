@@ -140,7 +140,7 @@ machine plan.
 ## Binding and rehearsal gates
 
 Bindings `ASR-BASE-MODEL-PILOT-BINDINGS-2026-002U` pin executor source commit
-`9987558620519118ae75fc1c2a4874112439c646`, all 31 executor modules including
+`11d3ab4b6c07c3b4f85a226245a68a240f6091e7`, all 31 executor modules including
 `services/asr-eval-runtime/medzen_asr_eval/network_probe.py`, the exact image,
 qualification, scan, risk record, cost registry, host cleanup, prior write-once
 history and every standing control.
