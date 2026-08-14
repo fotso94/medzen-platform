@@ -1,0 +1,33 @@
+{
+  "record": "ASR_BASE_MODEL_ECR_EXISTING_IMAGE_FIXTURE_CAPTURE",
+  "id": "ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-001",
+  "schema_version": 1,
+  "status": "PASS_READ_ONLY_EXACT_EXISTING_IMAGE_RESPONSE_CAPTURE",
+  "recorded_utc": "2026-08-14T18:45:00Z",
+  "scope": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "profile": "medzen",
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-7efa6e8c",
+    "api": "ECR.BatchGetImage",
+    "accepted_media_type": "application/vnd.oci.image.index.v1+json",
+    "aws_read_calls": 1,
+    "aws_mutations": 0
+  },
+  "fixture": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-14/ecr-batch-get-current-index-by-tag.json",
+    "sha256": "14f24dd5fa8004261a95a93aec9e0c6b4862dec20c24ef5fd928bfb602857b77"
+  },
+  "observed_identity": {
+    "oci_index_digest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "attestation_digest": "sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23",
+    "matches_successor_binding": true
+  },
+  "fidelity_rule": {
+    "boundary_fake_must_replay_fixture_bytes": true,
+    "invented_response_fields_permitted": false,
+    "live_executor_security_verification_unchanged": true
+  }
+}

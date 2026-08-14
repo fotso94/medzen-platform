@@ -637,7 +637,14 @@ class EcrBoundary:
                     ],
                     "failures": [],
                 }
-            return self.state.fixtures.payload("ecr-batch-get-index-by-tag")
+            fixture = self.state.bindings.get("ecr_existing_image_fixture")
+            if not isinstance(fixture, dict):
+                raise AssertionError("existing-image ECR fixture binding is absent")
+            path = self.state.root / str(fixture.get("path", ""))
+            body = path.read_bytes()
+            if hashlib.sha256(body).hexdigest() != fixture.get("sha256"):
+                raise AssertionError("existing-image ECR fixture hash differs")
+            return json.loads(body)
         names = {
             image["oci_index_digest"]: "ecr-batch-get-index-by-digest",
             image["linux_amd64_digest"]: "ecr-batch-get-child",

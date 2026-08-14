@@ -1,0 +1,15 @@
+{
+  "images": [
+    {
+      "registryId": "558069890522",
+      "repositoryName": "medzen-asr-eval-runtime",
+      "imageId": {
+        "imageDigest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+        "imageTag": "pilot-7efa6e8c"
+      },
+      "imageManifest": "{\n  \"schemaVersion\": 2,\n  \"mediaType\": \"application/vnd.oci.image.index.v1+json\",\n  \"manifests\": [\n    {\n      \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n      \"digest\": \"sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841\",\n      \"size\": 3157,\n      \"platform\": {\n        \"architecture\": \"amd64\",\n        \"os\": \"linux\"\n      }\n    },\n    {\n      \"mediaType\": \"application/vnd.oci.image.manifest.v1+json\",\n      \"digest\": \"sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23\",\n      \"size\": 841,\n      \"annotations\": {\n        \"vnd.docker.reference.digest\": \"sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841\",\n        \"vnd.docker.reference.type\": \"attestation-manifest\"\n      },\n      \"platform\": {\n        \"architecture\": \"unknown\",\n        \"os\": \"unknown\"\n      }\n    }\n  ]\n}",
+      "imageManifestMediaType": "application/vnd.oci.image.index.v1+json"
+    }
+  ],
+  "failures": []
+}
