@@ -1,0 +1,51 @@
+{
+  "record": "ASR_BASE_MODEL_AWS_AUTHORIZATION",
+  "id": "ASR-BASE-MODEL-AWS-AUTH-2026-003",
+  "schema_version": 1,
+  "status": "AUTHORIZED",
+  "authorized_utc": "2026-08-14T05:12:05Z",
+  "authorization_source": {
+    "owner_exact_phrase": "Approve ASR base-model AWS change packet 2026-003 only.",
+    "owner_phrase_received_after_independent_review_pass": true
+  },
+  "independent_review": {
+    "review_id": "CLAUDE-REVIEW-2026-08-14-002",
+    "decision": "APPROVED",
+    "instructions_file_sha256": "de8d3ea91963a61abcfbd26fab3c29be18183fbcf9b75c27377da42847a55666",
+    "report_reviewed": "CODEX-REVIEW-REQUEST-2026-08-14-002A",
+    "review_request_sha256": "59129e714f8a95bf9c6255746b5e0511d1fa3882efcbcd4d73fb616b7facf5e4",
+    "corrections_required": 0
+  },
+  "packet": {
+    "id": "ASR base-model AWS change packet 2026-003",
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003-gpu-storage.md",
+    "sha256": "304569088f339a80d31830c2015e7039558e9dae0ebd205ae48aae33a868de07",
+    "implementation_commit": "d88dcfb08b28f02d06c3805efe42a84c7bf128a2",
+    "review_package_commit": "2abbc95e2e127f8c58873fca91b9b68a247c91ca"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "authorized_operations": [
+    "Re-read the exact caller and zero-sized live GPU node-group baseline.",
+    "Create a fresh live-state Terraform saved plan from the reviewed configuration.",
+    "Apply only a plan that passes PASS_EXACT_ASR_BASE_MODEL_GPU_STORAGE_PACKET_2026_003.",
+    "Replace aws_eks_node_group.gpu only so disk_size changes from 20 GiB to 40 GiB while scaling remains min=0 desired=0 max=1.",
+    "Wait for ACTIVE status, perform before/after live readback, require a residual NO_CHANGES plan and commit immutable evidence."
+  ],
+  "prohibited_operations": [
+    "Any Terraform resource or output delta other than the exact GPU node-group disk_size replacement.",
+    "Starting a CPU or GPU node, Kubernetes workload, endpoint or evaluation attempt.",
+    "IAM, KMS, S3, ECR, SSM, registry, language, model, B4, B5 or production mutation.",
+    "Automatic rollback to the proven-infeasible 20 GiB configuration.",
+    "Attempt 20 preparation or execution before this packet has verified completion evidence."
+  ],
+  "failure_boundary": {
+    "precondition_or_plan_guard_failure": "REFUSE_WITHOUT_APPLY",
+    "partial_apply_or_unhealthy_replacement": "STOP_AND_PUBLISH_REFUSAL_EVIDENCE",
+    "unreviewed_retry_or_recovery_permitted": false
+  }
+}
