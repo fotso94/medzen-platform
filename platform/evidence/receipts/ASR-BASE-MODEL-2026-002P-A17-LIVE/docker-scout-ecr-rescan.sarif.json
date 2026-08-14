@@ -1,0 +1,252 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Docker Scout",
+          "informationUri": "https://docker.com/products/docker-scout",
+          "name": "docker scout",
+          "rules": [
+            {
+              "id": "CVE-2025-55551",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-55551"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-55551?s=pypa&n=torch&t=pypi&vr=%3C2.9.0",
+              "help": {
+                "text": "An issue in the component torch.linalg.lu of pytorch v2.8.0 allows attackers to cause a Denial of Service (DoS) when performing a slice operation.\n",
+                "markdown": "> An issue in the component torch.linalg.lu of pytorch v2.8.0 allows attackers to cause a Denial of Service (DoS) when performing a slice operation.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.9.0                                       |\n| Fixed version  | 2.9.0                                        |\n| CVSS Score     |                                          7.5 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.0",
+                "cvssV3": 7.5,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "fixed_version": "2.9.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.5",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-55552",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-55552"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-55552?s=pypa&n=torch&t=pypi&vr=%3C2.9.0",
+              "help": {
+                "text": "pytorch v2.8.0 was discovered to display unexpected behavior when the components torch.rot90 and torch.randn_like are used together.\n",
+                "markdown": "> pytorch v2.8.0 was discovered to display unexpected behavior when the components torch.rot90 and torch.randn_like are used together.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.9.0                                       |\n| Fixed version  | 2.9.0                                        |\n| CVSS Score     |                                          7.5 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.0",
+                "cvssV3": 7.5,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "fixed_version": "2.9.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.5",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-4538",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-4538"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-4538?s=pypa&n=torch&t=pypi&vr=%3C%3D2.10.0",
+              "help": {
+                "text": "A vulnerability was identified in PyTorch 2.10.0. The affected element is an unknown function of the component pt2 Loading Handler. The manipulation leads to deserialization. The attack can only be performed from a local environment. The exploit is publicly available and might be used. The project was informed of the problem early through a pull request but has not reacted yet.\n",
+                "markdown": "> A vulnerability was identified in PyTorch 2.10.0. The affected element is an unknown function of the component pt2 Loading Handler. The manipulation leads to deserialization. The attack can only be performed from a local environment. The exploit is publicly available and might be used. The project was informed of the problem early through a pull request but has not reacted yet.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <=2.10.0                                     |\n| Fixed version  | not fixed                                    |\n| CVSS Score     |                                          7.8 |\n| CVSS Vector    | CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<=2.10.0",
+                "cvssV3": 7.8,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.8",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-24747",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-24747"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-24747?s=pypa&n=torch&t=pypi&vr=%3C2.10.0",
+              "help": {
+                "text": "PyTorch is a Python package that provides tensor computation. Prior to version 2.10.0, a vulnerability in PyTorch's `weights_only` unpickler allows an attacker to craft a malicious checkpoint file (`.pth`) that, when loaded with `torch.load(..., weights_only=True)`, can corrupt memory and potentially lead to arbitrary code execution. Version 2.10.0 fixes the issue.\n",
+                "markdown": "> PyTorch is a Python package that provides tensor computation. Prior to version 2.10.0, a vulnerability in PyTorch's `weights_only` unpickler allows an attacker to craft a malicious checkpoint file (`.pth`) that, when loaded with `torch.load(..., weights_only=True)`, can corrupt memory and potentially lead to arbitrary code execution. Version 2.10.0 fixes the issue.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.10.0                                      |\n| Fixed version  | 2.10.0                                       |\n| CVSS Score     |                                          8.8 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.10.0",
+                "cvssV3": 8.8,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+                "fixed_version": "2.10.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "8.8",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            }
+          ],
+          "version": "1.18.3"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2025-55551",
+          "ruleIndex": 0,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-55551                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.9.0                                        \n  Fixed version   : 2.9.0                                         \n  CVSS Score      : 7.5                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H  \n  EPSS Score      : 0.003910                                      \n  EPSS Percentile : 0.320470                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-55552",
+          "ruleIndex": 1,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-55552                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.9.0                                        \n  Fixed version   : 2.9.0                                         \n  CVSS Score      : 7.5                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H  \n  EPSS Score      : 0.003900                                      \n  EPSS Percentile : 0.319560                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-4538",
+          "ruleIndex": 2,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-4538                                 \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <=2.10.0                                      \n  Fixed version   : not fixed                                     \n  CVSS Score      : 7.8                                           \n  CVSS Vector     : CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H  \n  EPSS Score      : 0.002390                                      \n  EPSS Percentile : 0.151390                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-24747",
+          "ruleIndex": 3,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-24747                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.10.0                                       \n  Fixed version   : 2.10.0                                        \n  CVSS Score      : 8.8                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H  \n  EPSS Score      : 0.006950                                      \n  EPSS Percentile : 0.497230                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
