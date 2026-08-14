@@ -1,0 +1,73 @@
+{
+  "record": "ASR_BASE_MODEL_COST_RECONCILIATION",
+  "id": "ASR-BASE-MODEL-COST-RECONCILIATION-2026-007",
+  "schema_version": 1,
+  "status": "PASS_ATTEMPT_21_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED",
+  "recorded_utc": "2026-08-14T09:20:34Z",
+  "currency": "USD",
+  "scope": {
+    "attempts": [21],
+    "workload_region": "eu-central-1",
+    "cost_explorer_region": "us-east-1",
+    "time_period": {
+      "start_inclusive": "2026-08-14",
+      "end_exclusive": "2026-08-15"
+    },
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen",
+    "default_profile_used": false,
+    "aws_mutations": 0
+  },
+  "cost_explorer_actual_observation": {
+    "granularity": "DAILY",
+    "estimated": true,
+    "usage_type": "EUC1-BoxUsage:g6.xlarge",
+    "august_14_usage_quantity_hours_reported": 0.0,
+    "august_14_unblended_usd_reported": 0.0,
+    "august_14_matching_groups": 0,
+    "attempt_21_actual_billed_cost_usd": null,
+    "interpretation": "Cost Explorer has not ingested a separately attributable current-day g6.xlarge row. The reported zero is not treated as final actual cost."
+  },
+  "receipt_runtime_cross_check": {
+    "gpu_instance_id": "i-02f2657e83de51274",
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_nodes_started": 1,
+    "maximum_observed_instance_lifetime_seconds": 1371,
+    "evaluation_rows_started": 0,
+    "exact_image_pull_passed": true,
+    "network_probe_reached": true,
+    "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json",
+    "evidence_sha256": "6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6",
+    "receipt_derived_dollar_estimate_reported_as_actual": false
+  },
+  "attribution": {
+    "per_attempt_dollar_allocation": "PENDING_AWS_BILLING_INGESTION",
+    "shared_request_transfer_control_plane_and_persistent_storage_costs": "NOT_ATTRIBUTED_TO_ATTEMPT",
+    "credits_used_to_expand_budget_headroom": false,
+    "reason": "Daily estimated Cost Explorer data cannot yet isolate attempt 21. No fabricated actual allocation is made."
+  },
+  "control_totals": {
+    "conservative_guardrail_predecessor_usd": 174.4286064216,
+    "attempt_21_closed_ceiling_to_add_usd": 10.0,
+    "recognized_committed_guardrail_usd": 184.4286064216,
+    "active_reservations_usd": 0.0,
+    "project_ceiling_usd": 300.0,
+    "guardrail_headroom_usd": 115.5713935784,
+    "guardrail_not_reduced_by_pending_or_credited_actual": true
+  },
+  "source_records": [
+    {
+      "path": "platform/finance/COST-REGISTRY-2026-016.json",
+      "sha256": "dc607d547fabe467a3ad6933eb51d0f39cc4029252d4b058dae3e31c9b153c17"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json",
+      "sha256": "6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6"
+    }
+  ],
+  "review": {
+    "independent_financial_or_owner_review_required": true,
+    "reconciliation_is_not_audited_financial_advice": true,
+    "future_refresh_required_when_august_14_usage_lands": true
+  }
+}

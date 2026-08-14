@@ -1,0 +1,199 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL",
+  "schema_version": 1,
+  "status": "FAILED_CLOSED_EXECUTION",
+  "attempt": 21,
+  "attempt_consumed": true,
+  "failure_stage": "pilot_rows",
+  "reason_code": "PILOT_POD_TERMINAL_BEFORE_NETWORK_RECEIPT",
+  "safe_error_text": "The isolated evaluation pod pulled the exact scan-qualified image, then its pre-inference network probe refused because api.ecr.eu-central-1.amazonaws.com was unreachable. The rendered NetworkPolicy omitted one known ECR API endpoint ENI IP, 172.31.16.81, while the endpoint gate knew all three ECR API ENI IPs. DNS selected the omitted private address and egress was denied. No inference row or aggregate report was produced. Cleanup returned all temporary state to zero.",
+  "reviewed_repository_commit": "92cc776dd75c02968a9aa45a6d824a89f2531646",
+  "authorization_commit": "55ec7e917824ed99cc7c7a7e689a0f170a5ca961",
+  "dry_validation_commit": "f4a7c97d954ca6968c84315fe1f1bfb9de000ca9",
+  "live_receipts_commit": "a510e941d278336095ff328e3a7d9ce2f0b18bde",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002T-attempt-21.md",
+    "sha256": "e359c7a9a1933e720ab2131c6b2983a821eb29b9043b3acf8537497332b754a1"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002T.json",
+    "sha256": "c814b5616ed37028f2dbb7590419d1f183ce07683c882f7f78172811bfdece7f"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002T.json",
+    "sha256": "5fead4ce1f31e437ec17744f1d12aeb0eed45c9a2a00da6e837e7d362faa2959"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002T.json",
+    "sha256": "31dbb28724aa239c30cbdeab2eed6cd70d65e885b36a5dcc5926d997f6edd64f",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "module_bindings_verified": 30,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "attempt_started": false
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-14T07:36:28Z",
+    "deadline_receipt_utc": "2026-08-14T07:36:29Z",
+    "input_freeze_receipt_utc": "2026-08-14T07:36:39Z",
+    "cost_zero_state_receipt_utc": "2026-08-14T07:36:42Z",
+    "image_scan_receipt_utc": "2026-08-14T08:43:23Z",
+    "artifact_receipt_utc": "2026-08-14T08:43:25Z",
+    "endpoint_receipt_utc": "2026-08-14T08:44:25Z",
+    "gpu_sampler_receipt_utc": "2026-08-14T08:48:24Z",
+    "node_staging_receipt_utc": "2026-08-14T08:55:10Z",
+    "refusal_recorded_utc": "2026-08-14T08:59:11Z",
+    "terminal_cleanup_utc": "2026-08-14T09:10:08Z",
+    "independent_zero_state_readback_utc": "2026-08-14T09:11:57Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "PASS",
+    "artifact_stage": "PASS",
+    "private_endpoint_and_policy_gate": "PASS",
+    "gpu_and_sampler_gate": "PASS",
+    "node_local_input_stage": "PASS",
+    "pilot_rows": "REFUSED",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "pre_envelope_local_resources_status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "pre_envelope_available_bytes": 59333070848,
+    "pre_envelope_required_bytes": 42949672960,
+    "pre_envelope_headroom_bytes": 16383397888,
+    "pre_envelope_gpu_storage_status": "PASS_PRE_ENVELOPE_GPU_STORAGE",
+    "gpu_node_root_volume_gib": 40,
+    "gpu_calculated_minimum_gib": 29,
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "frozen_rows": 24230,
+    "pilot_rows_selected": 540,
+    "exact_ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "exact_ecr_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "image_scan_status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
+    "docker_scout_critical": 0,
+    "docker_scout_accepted_high": 4,
+    "ecr_basic_critical": 0,
+    "ecr_basic_high": 0,
+    "artifact_bundle_hash_verified": true,
+    "artifact_upload_bytes": 0,
+    "temporary_private_endpoints_created": 3,
+    "network_policy_gate": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE",
+    "gpu_node_readiness": "PASS_STABLE_GPU_NODE_READINESS",
+    "dra_status": "DRA_STABLE_READY",
+    "sampler_samples": 120,
+    "gpu_total_mib": 23034,
+    "node_staging_objects": 8,
+    "node_staging_status": "PASS_NODE_LOCAL_INPUT_STAGE",
+    "exact_image_pull_status": "PASS",
+    "exact_image_pull_elapsed": "3m17.357s",
+    "exact_image_size_bytes": 7296786789
+  },
+  "observed_refusal": {
+    "classification": "RENDERED_NETWORK_POLICY_ENDPOINT_IP_SET_INCOMPLETE",
+    "pod_name": "asr-base-model-pilot-a21-f7zp2",
+    "pod_phase": "Failed",
+    "container_terminated_count": 1,
+    "sanitized_container_log": "{\"reason\":\"allowed endpoint is unreachable: api.ecr.eu-central-1.amazonaws.com\",\"status\":\"REFUSED\"}",
+    "network_probe_receipt_produced": false,
+    "inference_rows_started": 0,
+    "aggregate_report_produced": false,
+    "endpoint_private_dns_enabled": true,
+    "ecr_api_endpoint_eni_ips_known_at_gate": [
+      "172.31.0.158",
+      "172.31.16.81",
+      "172.31.42.114"
+    ],
+    "ecr_api_endpoint_eni_ips_rendered_in_network_policy": [
+      "172.31.0.158",
+      "172.31.42.114"
+    ],
+    "omitted_ecr_api_endpoint_eni_ips": [
+      "172.31.16.81"
+    ],
+    "failure_mechanism": "Pod DNS selected 172.31.16.81; strict egress policy omitted that private endpoint address and denied the connection.",
+    "root_cause_status": "CONFIRMED_BY_LIVE_RECEIPTS_AND_INDEPENDENT_REVIEW",
+    "model_quality_or_model_runtime_failure_claim": false,
+    "diagnostic_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-A21-LIVE/pilot-workload-refusal-diagnostics.json",
+    "diagnostic_sha256": "f1410c1455c10da4bc062346990f993e44f17487b959fd2b8bde72c3e62902e1"
+  },
+  "gpu_window": {
+    "instance_type": "g6.xlarge",
+    "instance_id": "i-02f2657e83de51274",
+    "autoscaling_launch_start_utc": "2026-08-14T08:44:42.158Z",
+    "autoscaling_launch_complete_utc": "2026-08-14T08:44:50Z",
+    "autoscaling_termination_start_utc": "2026-08-14T09:00:08.109Z",
+    "autoscaling_termination_complete_utc": "2026-08-14T09:07:33Z",
+    "maximum_observed_instance_lifetime_seconds": 1371,
+    "authorized_maximum_seconds": 10800,
+    "inside_authorized_allowance": true
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-A21-LIVE",
+    "file_count": 99,
+    "tree_sha256": "5a1d1f102e127048b2bf115183b69889f2c76cfef403d3cde4004f8a4e0c0905",
+    "attempt_envelope_sha256": "b7a7a22c218900b4eafd79059ca95393a99f295a496d376a40272ff9c1c904f3",
+    "result_sha256": "d5496ed067606a640e455a3db36e3dc9ec7997bbc9af5fe56e4642fb89250cd4",
+    "pilot_rows_sha256": "9e7bdd3f9338c5a443258c6fe24166fb4adb03a24c1aabb39b26d5238c4dc90a",
+    "pilot_refusal_diagnostic_sha256": "f1410c1455c10da4bc062346990f993e44f17487b959fd2b8bde72c3e62902e1",
+    "cleanup_and_expiry_sha256": "7eb8b26fbcafb14531eadda26a0355a5d6a64dab222b667173c13690e31e3540",
+    "independent_cleanup_readback_sha256": "621b74f8c1a64f4e3b6c4d6cd3820335c1f3061f391f1788d070f42ac35263a1",
+    "sanitized_external_tool_diagnostic_count": 79
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_security_groups": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "dra_namespaces": 0,
+    "reservation_closed": true,
+    "independent_readback_performed": true,
+    "independent_readback_status": "PASS_INDEPENDENT_ZERO_STATE",
+    "production_touched": false,
+    "approved_asr_touched": false,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instances_started": 1,
+    "maximum_observed_instance_lifetime_seconds": 1371,
+    "actual_billed_cost_usd": "PENDING_AWS_BILLING_INGESTION",
+    "incidental_endpoint_volume_request_or_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_21_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "independent_review": {
+    "review_id": "CLAUDE-REVIEW-2026-08-14-006",
+    "decision": "CHANGES_REQUIRED",
+    "attempt_21_refusal_accepted_as_correct_fail_closed_behavior": true,
+    "attempt_20_waiter_fix_live_proven": true
+  },
+  "required_successor_work": [
+    "Fix the workload NetworkPolicy renderer to include every ENI IP for every temporary interface endpoint.",
+    "Before pod launch, require exact equality between the endpoint-IP set observed by the endpoint gate and the endpoint-IP set rendered into the workload egress allowlist.",
+    "Add a pod-equivalent VPC DNS resolution consistency gate and refuse before pod launch when any resolved allowed-host address is outside the rendered allowlist.",
+    "Confirm or refute the attempt-21 signature in attempt-20 retained pod diagnostics and publish the result.",
+    "Rehearse public-or-outside-allowlist DNS refusal, resolved-IP-in-allowlist PASS, and typed endpoint-unreachable-from-pod refusal.",
+    "Reconcile attempt-21 actual AWS billing in a new cost-registry revision after billing ingestion.",
+    "Present packet 2026-002U for independent review and fresh owner approval; attempt 21 is consumed."
+  ]
+}
