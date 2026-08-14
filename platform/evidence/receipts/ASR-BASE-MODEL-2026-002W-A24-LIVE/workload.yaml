@@ -1,0 +1,215 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: medzen-asr-eval
+  labels:
+    app.kubernetes.io/name: asr-base-model-pilot
+    medzen.io/classification: offline-evaluation-only
+---
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaimTemplate
+metadata:
+  name: asr-eval-gpu
+  namespace: medzen-asr-eval
+  labels:
+    app.kubernetes.io/name: asr-base-model-pilot
+    medzen.io/classification: offline-evaluation-only
+spec:
+  spec:
+    devices:
+      requests:
+      - name: gpu
+        exactly:
+          deviceClassName: gpu.nvidia.com
+          count: 1
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: asr-eval-default-deny
+  namespace: medzen-asr-eval
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: asr-base-model-pilot
+      medzen.io/classification: offline-evaluation-only
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress: []
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: asr-eval-private-egress
+  namespace: medzen-asr-eval
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: asr-base-model-pilot
+      medzen.io/classification: offline-evaluation-only
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 172.31.1.157/32
+    - ipBlock:
+        cidr: 172.31.21.79/32
+    - ipBlock:
+        cidr: 172.31.28.236/32
+    - ipBlock:
+        cidr: 172.31.3.30/32
+    - ipBlock:
+        cidr: 172.31.41.205/32
+    - ipBlock:
+        cidr: 172.31.47.234/32
+    - ipBlock:
+        cidr: 16.12.24.0/21
+    - ipBlock:
+        cidr: 16.12.32.0/22
+    - ipBlock:
+        cidr: 16.15.20.0/22
+    - ipBlock:
+        cidr: 3.5.120.0/22
+    - ipBlock:
+        cidr: 3.5.134.0/23
+    - ipBlock:
+        cidr: 3.5.136.0/22
+    - ipBlock:
+        cidr: 52.219.140.0/24
+    - ipBlock:
+        cidr: 52.219.168.0/22
+    - ipBlock:
+        cidr: 52.219.208.0/22
+    - ipBlock:
+        cidr: 52.219.218.0/24
+    - ipBlock:
+        cidr: 52.219.44.0/22
+    - ipBlock:
+        cidr: 52.219.72.0/22
+    ports:
+    - protocol: TCP
+      port: 443
+  - to:
+    - ipBlock:
+        cidr: 172.31.0.2/32
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: asr-base-model-pilot-a24
+  namespace: medzen-asr-eval
+  labels: &id001
+    app.kubernetes.io/name: asr-base-model-pilot
+    medzen.io/classification: offline-evaluation-only
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 9000
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels: *id001
+    spec:
+      automountServiceAccountToken: false
+      hostNetwork: false
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+        - 172.31.0.2
+      restartPolicy: Never
+      terminationGracePeriodSeconds: 30
+      nodeSelector:
+        workload: gpu
+      tolerations:
+      - key: nvidia.com/gpu
+        operator: Equal
+        value: 'true'
+        effect: NoSchedule
+      resourceClaims:
+      - name: gpu
+        resourceClaimTemplateName: asr-eval-gpu
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: offline-evaluator
+        image: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime@sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841
+        imagePullPolicy: IfNotPresent
+        command:
+        - /bin/sh
+        - -ec
+        args:
+        - "/opt/venv/bin/python -m medzen_asr_eval network-probe --binding /input/network-binding.json\
+          \ --receipt /output/network-probe.json && /opt/venv/bin/python -c 'import\
+          \ pathlib,socket,sys,time\nready=pathlib.Path('\"'\"'/output/inbound-listener-ready'\"\
+          '\"')\nrelease=pathlib.Path('\"'\"'/input/network-release'\"'\"')\ndeadline=time.monotonic()+900\n\
+          s=socket.socket()\ntry:\n    s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)\n\
+          \    s.bind(('\"'\"'0.0.0.0'\"'\"',8080))\n    s.listen(1)\n    ready.write_text('\"\
+          '\"'READY\\n'\"'\"',encoding='\"'\"'utf-8'\"'\"')\n    while not release.exists():\n\
+          \        if time.monotonic()>=deadline:\n            raise SystemExit(71)\n\
+          \        time.sleep(1)\nfinally:\n    try:\n        s.close()\n    except\
+          \ OSError:\n        pass\n' && exec /opt/venv/bin/python -m medzen_asr_eval\
+          \ pilot --rows /input/runtime-rows.json --model-root /input/models --model-binding\
+          \ /input/model-bindings.json --conditioning /opt/medzen/assets/language-conditioning-v1.json\
+          \ --receipt-root /output/rows --aggregate-receipt /output/aggregate.json"
+        env:
+        - name: HOME
+          value: /tmp
+        - name: PATH
+          value: /opt/venv/bin:/usr/local/bin:/usr/bin:/bin
+        - name: PYTHONPATH
+          value: /opt/medzen
+        - name: HF_HUB_OFFLINE
+          value: '1'
+        - name: HF_HUB_DISABLE_XET
+          value: '1'
+        - name: FAIRSEQ2_ASSET_DIR
+          value: /opt/medzen/assets
+        - name: FAIRSEQ2_CACHE_DIR
+          value: /tmp/fairseq2-cache
+        resources:
+          requests:
+            cpu: '2'
+            memory: 14Gi
+          limits:
+            cpu: '4'
+            memory: 20Gi
+          claims:
+          - name: gpu
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: input
+          mountPath: /input
+          readOnly: true
+        - name: output
+          mountPath: /output
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: input
+        hostPath:
+          path: /var/lib/medzen-asr-eval/attempt-24/input
+          type: Directory
+      - name: output
+        hostPath:
+          path: /var/lib/medzen-asr-eval/attempt-24/output
+          type: Directory
+      - name: tmp
+        emptyDir:
+          sizeLimit: 2Gi

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "record": "ASR_BASE_MODEL_ATTEMPT_SSM_VOLUME_ATTACHMENT_RACE_DIAGNOSIS",
+  "id": "ASR-BASE-MODEL-2026-002W-A24-SSM-VOLUME-ATTACHMENT-RACE-DIAGNOSIS",
+  "status": "CONFIRMED_VOLUME_ATTACHMENT_AND_GUEST_DEVICE_APPEARANCE_RACE",
+  "recorded_utc": "2026-08-14T21:48:12Z",
+  "attempt": 24,
+  "failure_stage": "gpu_and_sampler_gate",
+  "receipt_reason_code": "SSM_COMMAND_REFUSED",
+  "primary_failure_preserved": true,
+  "secondary_cleanup_masked_primary": false,
+  "instance_id": "i-0c37fe7cdca4c65a4",
+  "volume_id": "vol-064f6c6e7d52f50cb",
+  "device_request": "/dev/sdf",
+  "ssm": {
+    "command_id": "1987212b-9313-4489-b6ef-64cecd866876",
+    "document": "AWS-RunShellScript",
+    "status": "Failed",
+    "response_code": 1,
+    "requested_utc": "2026-08-14T21:18:38Z",
+    "safe_stderr": "failed to run commands: exit status 1",
+    "safe_stdout": "",
+    "contains_credentials_phi_audio_reference_or_prediction": false
+  },
+  "cloudtrail": {
+    "attach_volume": {
+      "event_id": "62ea8289-c30e-4323-b411-904883ed4d25",
+      "event_utc": "2026-08-14T21:18:37Z",
+      "response_attachment_state": "attaching",
+      "delete_on_termination": false
+    },
+    "send_command": {
+      "event_id": "731f692e-bad5-4d8f-87ac-3f71af2e2f4b",
+      "event_utc": "2026-08-14T21:18:38Z",
+      "response_status": "Pending"
+    },
+    "seconds_between_attach_event_and_send_command_event": 1
+  },
+  "bound_source": {
+    "path": "scripts/asr_base_model_pilot_live.py",
+    "attach_volume_line": 1939,
+    "ssm_mount_invocation_line": 1966,
+    "one_shot_device_readlink_line": 1946,
+    "one_shot_block_device_test_line": 1947,
+    "post_attach_ec2_attachment_wait_present": false,
+    "guest_device_appearance_poll_present": false
+  },
+  "root_cause": {
+    "classification": "EVENTUAL_CONSISTENCY_ONE_SHOT_OBSERVATION_DEFECT",
+    "ec2_control_plane": "AttachVolume returned attaching and no bounded stable attached-state waiter ran before SSM",
+    "guest_udev": "The remote mount bundle resolved and tested the NVMe by-id path once; guest device creation may lag the EC2 attachment state",
+    "packet_002w_regression": false,
+    "model_or_data_failure": false
+  },
+  "corroboration": {
+    "directive_id": "CLAUDE-DIRECTIVE-2026-08-14-003",
+    "directive_sha256": "75557ef89599b0a3218bdda042c52947bf4de4af2b406504fec108fbf9d39dc4",
+    "role": "advisory corroboration only; diagnosis independently reproduced from committed source, receipt, SSM and CloudTrail"
+  },
+  "required_successor_controls": [
+    "Deadline-aware bounded stable EC2 attachment-state waiter after attach_volume",
+    "Bounded in-guest device-appearance poll before filesystem creation and mount",
+    "Remote SSM asynchronous-observation audit with all sites enumerated",
+    "Delayed-device-appearance rehearsal with absent first and present later",
+    "Attempt-24 cost reconciliation and unchanged image, risk, budget and registry boundaries"
+  ]
+}
