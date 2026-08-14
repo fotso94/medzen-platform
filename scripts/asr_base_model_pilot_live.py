@@ -43,9 +43,16 @@ from scripts.asr_base_model_async_observations import (
     PILOT_RECEIPT_POLL_INTERVAL_SECONDS,
     PILOT_RECEIPT_STABLE_OBSERVATIONS,
     PILOT_RECEIPT_TIMEOUT_SECONDS,
+    VOLUME_ATTACHMENT_POLL_INTERVAL_SECONDS,
+    VOLUME_ATTACHMENT_STABLE_OBSERVATIONS,
+    VOLUME_ATTACHMENT_TIMEOUT_SECONDS,
+    VOLUME_DEVICE_TIMEOUT,
     network_receipt_observation_command,
+    observe_volume_attachment,
     parse_network_receipt_observation,
     pilot_pod_terminal_observation,
+    volume_mount_command_template,
+    volume_mount_commands,
 )
 from scripts.asr_base_model_pilot_assets import (
     AssetRefusal,
@@ -880,6 +887,66 @@ class LiveOperations:
             f"GPU node did not reach {required_observations} consecutive labeled Ready observations "
             f"within {timeout_seconds} seconds after {observations} reads; "
             f"labeled_nodes={last['labeled_node_count']} ready_nodes={len(last['ready_node_names'])}",
+        )
+
+    def _wait_volume_attachment(
+        self,
+        *,
+        volume_id: str,
+        instance_id: str,
+        timeout_seconds: int = VOLUME_ATTACHMENT_TIMEOUT_SECONDS,
+        poll_interval_seconds: int = VOLUME_ATTACHMENT_POLL_INTERVAL_SECONDS,
+        required_observations: int = VOLUME_ATTACHMENT_STABLE_OBSERVATIONS,
+    ) -> dict[str, Any]:
+        """Require stable EC2 attachment before observing the guest device."""
+
+        validate_boundary_parameters(
+            "volume_attachment",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+            required_observations=required_observations,
+        )
+        deadline = self._monotonic() + timeout_seconds
+        observations = 0
+        consecutive = 0
+        sequence: list[str] = []
+        last_state = "UNOBSERVED"
+        while self._monotonic() < deadline:
+            value = self.ec2.describe_volumes(VolumeIds=[volume_id])
+            try:
+                observed = observe_volume_attachment(
+                    value, volume_id=volume_id, instance_id=instance_id
+                )
+            except AsyncObservationRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            observations += 1
+            last_state = observed["attachment_state"]
+            sequence.append(last_state)
+            if observed["status"] == "READY":
+                consecutive += 1
+                if consecutive >= required_observations:
+                    return {
+                        "status": "PASS_STABLE_VOLUME_ATTACHMENT",
+                        "volume_id": volume_id,
+                        "instance_id": instance_id,
+                        "observations": observations,
+                        "stable_observations": consecutive,
+                        "required_stable_observations": required_observations,
+                        "observation_sequence": sequence,
+                        "poll_interval_seconds": poll_interval_seconds,
+                        "timeout_seconds": timeout_seconds,
+                    }
+            else:
+                consecutive = 0
+            remaining = deadline - self._monotonic()
+            if remaining <= poll_interval_seconds:
+                break
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "VOLUME_ATTACHMENT_TIMEOUT",
+            f"volume {volume_id} did not reach {required_observations} stable attached "
+            f"observations within {timeout_seconds} seconds after {observations} reads; "
+            f"last_state={last_state}",
         )
 
     def _ssm(
@@ -1937,19 +2004,20 @@ class LiveOperations:
         waiter = self.ec2.get_waiter("volume_available")
         waiter.wait(VolumeIds=[volume], WaiterConfig={"Delay": 5, "MaxAttempts": 60})
         self.ec2.attach_volume(VolumeId=volume, InstanceId=instance_id, Device="/dev/sdf")
-        volume_serial = volume.replace("-", "")
-        mount_commands = [
-            "#!/bin/bash",
-            "set -euo pipefail",
-            "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-            "unset CDPATH ENV BASH_ENV USER LOGNAME",
-            f"device=$(/usr/bin/readlink -f /dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_{volume_serial})",
-            "/usr/bin/test -b \"$device\"",
-            "/usr/bin/sudo /usr/sbin/mkfs.ext4 -F \"$device\" >/dev/null",
-            "/usr/bin/sudo /usr/bin/mkdir -p /var/lib/medzen-asr-eval",
-            "/usr/bin/sudo /usr/bin/mount \"$device\" /var/lib/medzen-asr-eval",
-            "/usr/bin/sudo /usr/bin/chown 10001:10001 /var/lib/medzen-asr-eval",
-        ]
+        attachment_readiness = self._wait_volume_attachment(
+            volume_id=volume, instance_id=instance_id
+        )
+        mount_template = volume_mount_command_template()
+        try:
+            mount_commands = volume_mount_commands(volume)
+        except AsyncObservationRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        mount_template_sha256 = hashlib.sha256(
+            canonical_json(mount_template)
+        ).hexdigest()
+        mount_parameter_sha256 = hashlib.sha256(
+            canonical_json({"volume_id": volume})
+        ).hexdigest()
         mount_commands_sha256 = hashlib.sha256(
             canonical_json(mount_commands)
         ).hexdigest()
@@ -1957,10 +2025,15 @@ class LiveOperations:
             context.workdir / "gpu-node-mount-command-binding.json",
             canonical_json({
                 "schema_version": 1,
-                "status": "BOUND_FOR_FIRST_SUCCESSFUL_LIVE_STAGE_NOT_HISTORICALLY_PROVEN",
+                "status": "BOUND_TEMPLATE_AND_PARAMETER_FOR_LIVE_PROVENANCE",
                 "command_count": len(mount_commands),
-                "command_bundle_sha256": mount_commands_sha256,
+                "command_template_sha256": mount_template_sha256,
+                "volume_parameter_sha256": mount_parameter_sha256,
+                "rendered_command_bundle_sha256": mount_commands_sha256,
+                "template_is_volume_independent": True,
                 "contains_credentials_phi_audio_reference_or_prediction": False,
+                "ec2_attachment_readiness": attachment_readiness,
+                "guest_device_timeout_marker": VOLUME_DEVICE_TIMEOUT,
             }),
         )
         self._ssm(instance_id, mount_commands)
@@ -2076,6 +2149,7 @@ class LiveOperations:
             "instance_id": instance_id,
             "volume_id": volume,
             "volume_gib": 60,
+            "volume_attachment_readiness": attachment_readiness,
             "dra": readiness,
             "sampler_binding_status": "PASS_BYTE_IDENTICAL_HISTORICAL_ARGV",
             "sampler_inner_argv_sha256": canonical_argv_sha256(
@@ -2083,6 +2157,8 @@ class LiveOperations:
             ),
             "sampler_diagnostic_sha256": _sha(diagnostic_path),
             "node_mount_command_bundle_sha256": mount_commands_sha256,
+            "node_mount_command_template_sha256": mount_template_sha256,
+            "node_mount_volume_parameter_sha256": mount_parameter_sha256,
             "samples": len(parsed),
             "baseline_mib": min(used_samples),
             "peak_mib": max(used_samples),

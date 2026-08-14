@@ -14,6 +14,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts.asr_base_model_async_observations import (
+    audit_remote_ssm_observation_sites,
+)
+
 
 POD_POLL_INTERVAL_SECONDS = 10
 POD_TERMINAL_TIMEOUT_SECONDS = 1200
@@ -269,10 +273,19 @@ def audit_waiter_and_finalizer_sites(root: Path) -> dict[str, Any]:
         {"site": "cleanup_endpoint_absence", "nonterminal_required": True},
         {"site": "cleanup_zero_state", "nonterminal_required": True},
     ]
+    remote_observations = audit_remote_ssm_observation_sites(root)
     return {
         "status": "PASS_SYSTEMIC_WAITER_FINALIZER_AUDIT",
         "waiter_site_count": len(waiters),
         "waiters": waiters,
+        "remote_observation_site_count": remote_observations["site_count"],
+        "remote_observation_sites": remote_observations["sites"],
+        "remote_asynchronous_one_shot_success_gates": remote_observations[
+            "asynchronous_one_shot_success_gates"
+        ],
+        "remote_unclassified_ssm_call_sites": remote_observations[
+            "unclassified_ssm_call_sites"
+        ],
         "finally_site_count": len(finally_sites),
         "finally_sites": finally_sites,
         "stage_local_blocking_pod_deletes": 0,

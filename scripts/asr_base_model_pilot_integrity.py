@@ -93,6 +93,7 @@ ATTEMPT_24_EXECUTOR_MODULE_PATHS = (
     *ATTEMPT_23_EXECUTOR_MODULE_PATHS,
     "scripts/asr_base_model_pod_lifecycle.py",
 )
+ATTEMPT_25_EXECUTOR_MODULE_PATHS = ATTEMPT_24_EXECUTOR_MODULE_PATHS
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -163,6 +164,7 @@ def validate_executor_module_bindings(
             ATTEMPT_22_EXECUTOR_MODULE_PATHS,
             ATTEMPT_23_EXECUTOR_MODULE_PATHS,
             ATTEMPT_24_EXECUTOR_MODULE_PATHS,
+            ATTEMPT_25_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

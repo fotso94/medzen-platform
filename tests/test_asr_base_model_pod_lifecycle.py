@@ -165,3 +165,6 @@ def test_systemic_waiter_finalizer_audit_is_enumerated() -> None:
     assert result["stage_local_blocking_pod_deletes"] == 0
     assert result["undefined_sleep_calls"] == 0
     assert result["rehearsal_waiters_with_instant_terminal_only"] == 0
+    assert result["remote_observation_site_count"] == 9
+    assert result["remote_asynchronous_one_shot_success_gates"] == 0
+    assert result["remote_unclassified_ssm_call_sites"] == 0

@@ -37,6 +37,8 @@ from scripts.asr_base_model_pilot_dns import (
 from scripts.asr_base_model_async_observations import (
     NETWORK_AND_LISTENER_PRESENT,
     NETWORK_RECEIPT_ABSENT,
+    VOLUME_DEVICE_READY,
+    VOLUME_DEVICE_TIMEOUT,
 )
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
 
@@ -151,12 +153,16 @@ class BoundaryState:
         self.endpoint_deletion_observation_sequence: list[str] = []
         self.dra_observation_sequence: list[str] = []
         self.ssm_observation_sequence: list[str] = []
+        self.volume_attachment_reads = 0
+        self.volume_attachment_observation_sequence: list[str] = []
+        self.volume_device_observation_sequence: list[str] = []
         self.dns_control_spec: dict[str, Any] | None = None
         self.inbound_control_spec: dict[str, Any] | None = None
         self.last_sampler_command: list[str] | None = None
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
         self.volumes: set[str] = set()
+        self.volume_attachments: dict[str, str] = {}
         self.cni_configuration = "{}"
         self.cni_mode = "standard"
         self.namespaces: set[str] = set()
@@ -583,7 +589,7 @@ class Ec2Boundary:
 
     def create_volume(self, **_: Any) -> dict[str, str]:
         self.state.mutate()
-        value = "vol-rehearsal"
+        value = "vol-0eeeeeeeeeeeeeeee"
         self.state.volumes.add(value)
         return {"VolumeId": value}
 
@@ -599,11 +605,17 @@ class Ec2Boundary:
 
         return SimpleNamespace(wait=wait)
 
-    def attach_volume(self, **_: Any) -> None: self.state.mutate()
-    def detach_volume(self, **_: Any) -> None: self.state.mutate()
+    def attach_volume(self, *, VolumeId: str, InstanceId: str, **_: Any) -> None:
+        self.state.mutate()
+        self.state.volume_attachments[VolumeId] = InstanceId
+
+    def detach_volume(self, *, VolumeId: str, **_: Any) -> None:
+        self.state.mutate()
+        self.state.volume_attachments.pop(VolumeId, None)
 
     def delete_volume(self, *, VolumeId: str) -> None:
         self.state.mutate()
+        self.state.volume_attachments.pop(VolumeId, None)
         self.state.volumes.discard(VolumeId)
 
     def delete_vpc_endpoints(self, *, VpcEndpointIds: list[str]) -> None:
@@ -623,14 +635,49 @@ class Ec2Boundary:
             return self.state.fixtures.payload("ec2-describe-eval-volumes-empty")
         values = []
         for value in sorted(self.state.volumes):
+            attached_instance = self.state.volume_attachments.get(value)
+            if attached_instance is not None:
+                self.state.volume_attachment_reads += 1
+                if self.state.volume_attachment_reads == 1:
+                    attachment_state = "absent"
+                elif self.state.injection == "volume_attachment_never_attached":
+                    attachment_state = "attaching"
+                else:
+                    attachment_state = (
+                        "attaching"
+                        if self.state.volume_attachment_reads == 2
+                        else "attached"
+                    )
+                self.state.volume_attachment_observation_sequence.append(
+                    attachment_state
+                )
+                if attachment_state == "absent":
+                    attachments = []
+                    volume_state = "available"
+                else:
+                    attachments = [
+                        {
+                            "AttachTime": "2026-08-14T00:00:00+00:00",
+                            "DeleteOnTermination": False,
+                            "Device": "/dev/sdf",
+                            "EbsCardIndex": 0,
+                            "InstanceId": attached_instance,
+                            "State": attachment_state,
+                            "VolumeId": value,
+                        }
+                    ]
+                    volume_state = "in-use"
+            else:
+                attachments = []
+                volume_state = "available"
             replayed = self.state.fixtures.replay(
                 "ec2-describe-volume-template",
                 {
                     "Volumes.0.VolumeId": value,
                     "Volumes.0.AvailabilityZone": "eu-central-1a",
-                    "Volumes.0.State": "available",
+                    "Volumes.0.State": volume_state,
                     "Volumes.0.Size": 60,
-                    "Volumes.0.Attachments": [],
+                    "Volumes.0.Attachments": attachments,
                 },
             )
             values.append(replayed["Volumes"][0])
@@ -1215,6 +1262,33 @@ class SsmCommandBoundary:
         self.state.mutate()
         self.state.ssm_counter += 1
         command_id = f"command-rehearsal-{self.state.ssm_counter}"
+        if any(VOLUME_DEVICE_READY in command for command in commands):
+            if not any("while [ \"$device_observation\" -lt" in command for command in commands):
+                raise AssertionError("volume-device SSM command lacks its bounded poll")
+            if self.state.injection == "volume_device_never_present":
+                self.state.volume_device_observation_sequence.extend(
+                    ["ABSENT", "TIMEOUT"]
+                )
+                return {
+                    "command_id": command_id,
+                    "status": "Failed",
+                    "response_code": 42,
+                    "stdout_sha256": hashlib.sha256(b"").hexdigest(),
+                    "stdout": "",
+                    "stderr": VOLUME_DEVICE_TIMEOUT,
+                }
+            self.state.volume_device_observation_sequence.extend(
+                ["ABSENT", "PRESENT"]
+            )
+            stdout = f"{VOLUME_DEVICE_READY}\n"
+            return {
+                "command_id": command_id,
+                "status": "Success",
+                "response_code": 0,
+                "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(),
+                "stdout": stdout,
+                "stderr": "",
+            }
         if self.state.injection == "node_staging_unknown_user" and any(
             "/usr/sbin/chroot" in command for command in commands
         ):

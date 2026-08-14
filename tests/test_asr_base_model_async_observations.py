@@ -17,9 +17,14 @@ from scripts.asr_base_model_async_observations import (
     NETWORK_AND_LISTENER_PRESENT,
     NETWORK_RECEIPT_ABSENT,
     audit_async_observation_sites,
+    audit_remote_ssm_observation_sites,
     network_receipt_observation_command,
+    observe_volume_attachment,
     parse_network_receipt_observation,
     pilot_pod_terminal_observation,
+    volume_device_poll_commands,
+    volume_mount_command_template,
+    volume_mount_commands,
 )
 from scripts.asr_base_model_pilot_fake import build_rehearsal_operations
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
@@ -172,3 +177,147 @@ def test_pod_shape_and_entire_async_site_audit_fail_closed() -> None:
     assert result["site_count"] == 7
     assert result["direct_one_shot_network_or_listener_reads"] == 0
     assert result["malformed_drift_or_terminal_state_retried"] is False
+
+
+def test_volume_attachment_shape_accepts_only_exact_progress_or_ready() -> None:
+    base = {
+        "Volumes": [
+            {
+                "VolumeId": "vol-a1",
+                "State": "in-use",
+                "Attachments": [
+                    {
+                        "VolumeId": "vol-a1",
+                        "InstanceId": "i-a1",
+                        "Device": "/dev/sdf",
+                        "State": "attaching",
+                    }
+                ],
+            }
+        ]
+    }
+    waiting = observe_volume_attachment(
+        base, volume_id="vol-a1", instance_id="i-a1"
+    )
+    assert waiting["status"] == "WAIT_ATTACHMENT"
+    base["Volumes"][0]["Attachments"] = []
+    absent = observe_volume_attachment(
+        base, volume_id="vol-a1", instance_id="i-a1"
+    )
+    assert absent["status"] == "WAIT_ATTACHMENT"
+    assert absent["attachment_state"] == "absent"
+    base["Volumes"][0]["Attachments"] = [
+        {
+            "VolumeId": "vol-a1",
+            "InstanceId": "i-a1",
+            "Device": "/dev/sdf",
+            "State": "attached",
+        }
+    ]
+    assert observe_volume_attachment(
+        base, volume_id="vol-a1", instance_id="i-a1"
+    )["status"] == "READY"
+    base["Volumes"][0]["Attachments"][0]["InstanceId"] = "i-wrong"
+    with pytest.raises(AsyncObservationRefusal) as captured:
+        observe_volume_attachment(base, volume_id="vol-a1", instance_id="i-a1")
+    assert captured.value.reason_code == "VOLUME_ATTACHMENT_TARGET_DIFFERS"
+
+
+def test_volume_device_poll_is_bounded_typed_and_has_no_private_literal() -> None:
+    commands = volume_device_poll_commands("vol-0a1b2c3d")
+    body = "\n".join(commands)
+    assert "while [ \"$device_observation\" -lt 60 ]" in body
+    assert "/usr/bin/sleep 2" in body
+    assert "MEDZEN_EBS_DEVICE_READY" in body
+    assert "MEDZEN_EBS_DEVICE_TIMEOUT" in body
+    assert "exit 42" in body
+    assert body.endswith('/usr/bin/test -b "$device"')
+    with pytest.raises(AsyncObservationRefusal) as captured:
+        volume_device_poll_commands("not-a-volume")
+    assert captured.value.reason_code == "VOLUME_ID_MALFORMED"
+
+
+def test_mount_template_hash_is_volume_independent_but_parameters_are_not() -> None:
+    template = volume_mount_command_template()
+    first = volume_mount_commands("vol-0a1b2c3d")
+    second = volume_mount_commands("vol-0d4c3b2a")
+    assert template == volume_mount_command_template()
+    assert first != second
+    assert len(template) == len(first) == len(second)
+    assert "vol0a1b2c3d" in "\n".join(first)
+    assert "vol0d4c3b2a" in "\n".join(second)
+    assert "__MEDZEN_EBS_VOLUME_SERIAL__" in "\n".join(template)
+    assert "__MEDZEN_EBS_VOLUME_SERIAL__" not in "\n".join(first + second)
+
+
+def test_attachment_wait_crosses_attaching_then_two_stable_reads(tmp_path: Path) -> None:
+    operations, boundary, _ = context(tmp_path, injection="volume_device_delayed_ready")
+    volume = operations.ec2.create_volume()
+    volume_id = volume["VolumeId"]
+    operations.ec2.attach_volume(
+        VolumeId=volume_id, InstanceId="i-rehearsal-gpu", Device="/dev/sdf"
+    )
+    result = operations._wait_volume_attachment(
+        volume_id=volume_id, instance_id="i-rehearsal-gpu"
+    )
+    assert result["status"] == "PASS_STABLE_VOLUME_ATTACHMENT"
+    assert result["observation_sequence"] == [
+        "absent",
+        "attaching",
+        "attached",
+        "attached",
+    ]
+    assert boundary.volume_attachment_observation_sequence == [
+        "absent",
+        "attaching",
+        "attached",
+        "attached",
+    ]
+
+
+def test_attachment_wait_refuses_when_attachment_never_stabilizes(tmp_path: Path) -> None:
+    operations, boundary, _ = context(
+        tmp_path, injection="volume_attachment_never_attached"
+    )
+    volume_id = operations.ec2.create_volume()["VolumeId"]
+    operations.ec2.attach_volume(
+        VolumeId=volume_id, InstanceId="i-rehearsal-gpu", Device="/dev/sdf"
+    )
+    with pytest.raises(OperationRefusal) as captured:
+        operations._wait_volume_attachment(
+            volume_id=volume_id, instance_id="i-rehearsal-gpu"
+        )
+    assert captured.value.reason_code == "VOLUME_ATTACHMENT_TIMEOUT"
+    assert boundary.monotonic_seconds < 300
+    assert set(boundary.volume_attachment_observation_sequence) == {
+        "absent",
+        "attaching",
+    }
+
+
+def test_remote_device_boundary_models_absent_then_present_and_timeout(
+    tmp_path: Path,
+) -> None:
+    commands = ["#!/bin/bash", "set -euo pipefail", *volume_device_poll_commands("vol-a1")]
+    passing, passed_boundary, _ = context(
+        tmp_path / "pass", injection="volume_device_delayed_ready"
+    )
+    assert passing._ssm("i-rehearsal-gpu", commands)["status"] == "Success"
+    assert passed_boundary.volume_device_observation_sequence == ["ABSENT", "PRESENT"]
+
+    refusing, refused_boundary, _ = context(
+        tmp_path / "refuse", injection="volume_device_never_present"
+    )
+    with pytest.raises(OperationRefusal) as captured:
+        refusing._ssm("i-rehearsal-gpu", commands, pre_model_safe_output=True)
+    assert captured.value.reason_code == "SSM_COMMAND_REFUSED"
+    assert "MEDZEN_EBS_DEVICE_TIMEOUT" in captured.value.detail
+    assert refused_boundary.volume_device_observation_sequence == ["ABSENT", "TIMEOUT"]
+
+
+def test_remote_ssm_observation_audit_classifies_every_site() -> None:
+    result = audit_remote_ssm_observation_sites(ROOT)
+    assert result["status"] == "PASS_REMOTE_SSM_OBSERVATION_AUDIT"
+    assert result["site_count"] == 9
+    assert result["asynchronous_one_shot_success_gates"] == 0
+    assert result["unclassified_ssm_call_sites"] == 0

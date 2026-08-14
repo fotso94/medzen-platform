@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import ast
 import json
+import re
 import shlex
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -19,9 +21,18 @@ PILOT_RECEIPT_POLL_INTERVAL_SECONDS = 10
 PILOT_RECEIPT_TIMEOUT_SECONDS = 300
 PILOT_RECEIPT_STABLE_OBSERVATIONS = 2
 
+VOLUME_ATTACHMENT_POLL_INTERVAL_SECONDS = 5
+VOLUME_ATTACHMENT_TIMEOUT_SECONDS = 300
+VOLUME_ATTACHMENT_STABLE_OBSERVATIONS = 2
+VOLUME_DEVICE_POLL_INTERVAL_SECONDS = 2
+VOLUME_DEVICE_TIMEOUT_SECONDS = 120
+
 NETWORK_RECEIPT_ABSENT = "MEDZEN_NETWORK_PROBE_RECEIPT_ABSENT"
 LISTENER_RECEIPT_ABSENT = "MEDZEN_INBOUND_LISTENER_RECEIPT_ABSENT"
 NETWORK_AND_LISTENER_PRESENT = "MEDZEN_NETWORK_AND_LISTENER_PRESENT"
+VOLUME_DEVICE_READY = "MEDZEN_EBS_DEVICE_READY"
+VOLUME_DEVICE_TIMEOUT = "MEDZEN_EBS_DEVICE_TIMEOUT"
+VOLUME_SERIAL_PARAMETER = "__MEDZEN_EBS_VOLUME_SERIAL__"
 
 
 class AsyncObservationRefusal(RuntimeError):
@@ -33,6 +44,130 @@ class AsyncObservationRefusal(RuntimeError):
 
 def _command(*values: str) -> str:
     return shlex.join(values)
+
+
+def observe_volume_attachment(
+    value: dict[str, Any], *, volume_id: str, instance_id: str
+) -> dict[str, Any]:
+    """Validate one DescribeVolumes observation for the exact attachment."""
+
+    volumes = value.get("Volumes") if isinstance(value, dict) else None
+    if not isinstance(volumes, list) or len(volumes) != 1:
+        raise AsyncObservationRefusal(
+            "VOLUME_ATTACHMENT_RESPONSE_MALFORMED",
+            "DescribeVolumes did not return exactly one volume",
+        )
+    volume = volumes[0]
+    if not isinstance(volume, dict) or volume.get("VolumeId") != volume_id:
+        raise AsyncObservationRefusal(
+            "VOLUME_ATTACHMENT_IDENTITY_DIFFERS",
+            "DescribeVolumes returned a different volume identity",
+        )
+    attachments = volume.get("Attachments")
+    if not isinstance(attachments, list) or len(attachments) > 1:
+        raise AsyncObservationRefusal(
+            "VOLUME_ATTACHMENT_SHAPE_DIFFERS",
+            "the exact volume attachment collection is malformed or ambiguous",
+        )
+    if not attachments:
+        return {
+            "status": "WAIT_ATTACHMENT",
+            "attachment_state": "absent",
+            "volume_state": volume.get("State"),
+            "device": None,
+        }
+    attachment = attachments[0]
+    if (
+        not isinstance(attachment, dict)
+        or attachment.get("VolumeId") != volume_id
+        or attachment.get("InstanceId") != instance_id
+    ):
+        raise AsyncObservationRefusal(
+            "VOLUME_ATTACHMENT_TARGET_DIFFERS",
+            "the volume attachment targets a different volume or instance",
+        )
+    state = attachment.get("State")
+    if state not in {"attaching", "attached"}:
+        raise AsyncObservationRefusal(
+            "VOLUME_ATTACHMENT_STATE_REFUSED",
+            f"the exact volume attachment entered a non-progress state: {state}",
+        )
+    return {
+        "status": "READY" if state == "attached" else "WAIT_ATTACHMENT",
+        "attachment_state": state,
+        "volume_state": volume.get("State"),
+        "device": attachment.get("Device"),
+    }
+
+
+def volume_device_poll_command_template() -> list[str]:
+    """Return the volume-independent bounded guest-device poll template."""
+
+    attempts = VOLUME_DEVICE_TIMEOUT_SECONDS // VOLUME_DEVICE_POLL_INTERVAL_SECONDS
+    return [
+        (
+            "device_path=/dev/disk/by-id/"
+            f"nvme-Amazon_Elastic_Block_Store_{VOLUME_SERIAL_PARAMETER}"
+        ),
+        'device=""',
+        "device_observation=0",
+        (
+            f'while [ "$device_observation" -lt {attempts} ]; do '
+            'candidate="$(/usr/bin/readlink -f "$device_path" 2>/dev/null || true)"; '
+            'if [ -n "$candidate" ] && /usr/bin/test -b "$candidate"; then '
+            'device="$candidate"; '
+            f'/usr/bin/printf \'%s\\n\' {VOLUME_DEVICE_READY}; break; fi; '
+            'device_observation=$((device_observation + 1)); '
+            f"/usr/bin/sleep {VOLUME_DEVICE_POLL_INTERVAL_SECONDS}; done"
+        ),
+        (
+            'if [ -z "$device" ]; then '
+            f'/usr/bin/printf \'%s\\n\' {VOLUME_DEVICE_TIMEOUT} >&2; '
+            "exit 42; fi"
+        ),
+        '/usr/bin/test -b "$device"',
+    ]
+
+
+def volume_mount_command_template() -> list[str]:
+    """Return the complete volume-independent mount SSM bundle template."""
+
+    return [
+        "#!/bin/bash",
+        "set -euo pipefail",
+        "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "unset CDPATH ENV BASH_ENV USER LOGNAME",
+        *volume_device_poll_command_template(),
+        '/usr/bin/sudo /usr/sbin/mkfs.ext4 -F "$device" >/dev/null',
+        "/usr/bin/sudo /usr/bin/mkdir -p /var/lib/medzen-asr-eval",
+        '/usr/bin/sudo /usr/bin/mount "$device" /var/lib/medzen-asr-eval',
+        "/usr/bin/sudo /usr/bin/chown 10001:10001 /var/lib/medzen-asr-eval",
+    ]
+
+
+def volume_mount_commands(volume_id: str) -> list[str]:
+    """Render the reviewed mount template with one validated volume parameter."""
+
+    if re.fullmatch(r"vol-[0-9a-f]+", volume_id) is None:
+        raise AsyncObservationRefusal(
+            "VOLUME_ID_MALFORMED", "the EBS volume identifier is malformed"
+        )
+    serial = volume_id.replace("-", "")
+    template = volume_mount_command_template()
+    rendered = [value.replace(VOLUME_SERIAL_PARAMETER, serial) for value in template]
+    if any(VOLUME_SERIAL_PARAMETER in value for value in rendered):
+        raise AsyncObservationRefusal(
+            "VOLUME_TEMPLATE_PARAMETER_UNRESOLVED",
+            "the rendered mount command retains its volume parameter token",
+        )
+    return rendered
+
+
+def volume_device_poll_commands(volume_id: str) -> list[str]:
+    """Compatibility helper returning only the rendered guest poll fragment."""
+
+    rendered = volume_mount_commands(volume_id)
+    return rendered[4:-4]
 
 
 def network_receipt_observation_command(staging_path: str) -> str:
@@ -289,4 +424,131 @@ def audit_async_observation_sites(root: Path) -> dict[str, Any]:
         "direct_one_shot_network_or_listener_reads": 0,
         "absence_is_only_retryable_receipt_state": True,
         "malformed_drift_or_terminal_state_retried": False,
+    }
+
+
+def audit_remote_ssm_observation_sites(root: Path) -> dict[str, Any]:
+    """Enumerate every SSM crossing and reject asynchronous one-shot gates."""
+
+    relative = Path("scripts/asr_base_model_pilot_live.py")
+    source = (root / relative).read_text(encoding="utf-8")
+    tree = ast.parse(source, filename=str(relative))
+    functions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    observed: list[tuple[str, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        kind = None
+        if node.func.attr == "_ssm":
+            kind = "_ssm"
+        elif node.func.attr == "send_command":
+            kind = "send_command"
+        if kind is None:
+            continue
+        owners = [
+            item
+            for item in functions
+            if item.lineno <= node.lineno <= (item.end_lineno or item.lineno)
+        ]
+        owner = max(owners, key=lambda item: item.lineno).name if owners else "<module>"
+        observed.append((owner, kind))
+
+    expected = Counter(
+        {
+            ("_ssm", "send_command"): 1,
+            ("gpu_and_sampler_gate", "_ssm"): 1,
+            ("node_local_input_stage", "_ssm"): 1,
+            ("capture_network_receipt", "_ssm"): 1,
+            ("_wait_pilot_network_receipts", "_ssm"): 1,
+            ("pilot_rows", "_ssm"): 2,
+            ("aggregate_report", "send_command"): 1,
+            ("cleanup_and_expiry", "_ssm"): 1,
+        }
+    )
+    if Counter(observed) != expected:
+        raise AsyncObservationRefusal(
+            "REMOTE_SSM_SITE_INVENTORY_DIFFERS",
+            "the executor SSM call-site inventory changed without an audit decision",
+        )
+    gpu = next(
+        node
+        for node in functions
+        if node.name == "gpu_and_sampler_gate"
+    )
+    gpu_source = ast.get_source_segment(source, gpu) or ""
+    required_mount_contract = (
+        "self._wait_volume_attachment(",
+        "volume_mount_command_template()",
+        "volume_mount_commands(volume)",
+        "VOLUME_DEVICE_TIMEOUT",
+    )
+    if any(value not in gpu_source for value in required_mount_contract):
+        raise AsyncObservationRefusal(
+            "REMOTE_VOLUME_WAIT_CONTRACT_INCOMPLETE",
+            "the volume mount path lacks its EC2 and guest-device bounded waits",
+        )
+    if 'device=$(/usr/bin/readlink -f' in gpu_source:
+        raise AsyncObservationRefusal(
+            "REMOTE_DEVICE_ONE_SHOT_PRESENT",
+            "the historical one-shot EBS device observation is still present",
+        )
+
+    sites = [
+        {
+            "site": "ssm_invocation_completion",
+            "owner": "_ssm",
+            "disposition": "BOUNDED_CONTROLLER_POLL",
+        },
+        {
+            "site": "volume_device_appearance_and_mount",
+            "owner": "gpu_and_sampler_gate",
+            "disposition": "EC2_STABLE_WAIT_PLUS_BOUNDED_REMOTE_POLL",
+        },
+        {
+            "site": "node_local_input_transfer_and_verification",
+            "owner": "node_local_input_stage",
+            "disposition": "BOUNDED_TRANSFER_RETRIES_THEN_SYNCHRONOUS_POSTCONDITIONS",
+        },
+        {
+            "site": "network_receipt_refusal_diagnostic",
+            "owner": "capture_network_receipt",
+            "disposition": "DIAGNOSTIC_ABSENCE_MARKER_NOT_A_SUCCESS_GATE",
+        },
+        {
+            "site": "network_and_listener_receipt_readiness",
+            "owner": "_wait_pilot_network_receipts",
+            "disposition": "BOUNDED_STABLE_CONTROLLER_POLL",
+        },
+        {
+            "site": "network_release_creation",
+            "owner": "pilot_rows",
+            "disposition": "MUTATION_WITHOUT_ASYNC_OBSERVATION",
+        },
+        {
+            "site": "aggregate_presence_and_hash",
+            "owner": "pilot_rows",
+            "disposition": "SYNCHRONOUS_POSTCONDITION_AFTER_TERMINAL_JOB",
+        },
+        {
+            "site": "aggregate_content_read",
+            "owner": "aggregate_report",
+            "disposition": "BOUNDED_SSM_COMPLETION_THEN_FAIL_CLOSED_SCHEMA_CHECK",
+        },
+        {
+            "site": "cleanup_unmount",
+            "owner": "cleanup_and_expiry",
+            "disposition": "BEST_EFFORT_STATUS_KEYED_CLEANUP_NOT_A_PASS_GATE",
+        },
+    ]
+    return {
+        "status": "PASS_REMOTE_SSM_OBSERVATION_AUDIT",
+        "audited_file": str(relative),
+        "site_count": len(sites),
+        "sites": sites,
+        "asynchronous_one_shot_success_gates": 0,
+        "unclassified_ssm_call_sites": 0,
     }

@@ -73,6 +73,18 @@ from scripts.asr_eval_digest_rescan import validate_security_binding
 
 SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
+    "volume_device_delayed_ready": (
+        "volume_device_delayed_ready",
+        "PASS_PILOT",
+    ),
+    "volume_attachment_never_attached": (
+        "volume_attachment_never_attached",
+        "FAILED_CLOSED_EXECUTION",
+    ),
+    "volume_device_never_present": (
+        "volume_device_never_present",
+        "FAILED_CLOSED_EXECUTION",
+    ),
     "gpu_node_delayed_ready": ("gpu_node_delayed_ready", "PASS_PILOT"),
     "gpu_node_never_ready": ("gpu_node_never_ready", "FAILED_CLOSED_EXECUTION"),
     "dra_not_ready": ("dra_not_ready", "FAILED_CLOSED_EXECUTION"),
@@ -292,6 +304,14 @@ def _validate_waiter_fidelity(scenarios: dict[str, Any]) -> dict[str, Any]:
         "private_endpoint_availability": (
             lifecycle["endpoint_availability_observation_sequence"],
             ["PENDING", "AVAILABLE"],
+        ),
+        "volume_attachment": (
+            lifecycle["volume_attachment_observation_sequence"],
+            ["absent", "attaching", "attached", "attached"],
+        ),
+        "volume_device_appearance": (
+            lifecycle["volume_device_observation_sequence"],
+            ["ABSENT", "PRESENT"],
         ),
         "dra_readiness": (
             lifecycle["dra_observation_sequence"],
@@ -958,6 +978,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     "endpoint_deletion_observation_sequence": boundary.endpoint_deletion_observation_sequence,
                     "dra_observation_sequence": boundary.dra_observation_sequence,
                     "ssm_observation_sequence": boundary.ssm_observation_sequence,
+                    "volume_attachment_observation_sequence": boundary.volume_attachment_observation_sequence,
+                    "volume_device_observation_sequence": boundary.volume_device_observation_sequence,
                 },
                 "secondary_cleanup_diagnostic": (
                     {

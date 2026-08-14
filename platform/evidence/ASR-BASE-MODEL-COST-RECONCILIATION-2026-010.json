@@ -1,0 +1,84 @@
+{
+  "record": "ASR_BASE_MODEL_COST_RECONCILIATION",
+  "id": "ASR-BASE-MODEL-COST-RECONCILIATION-2026-010",
+  "schema_version": 1,
+  "status": "PASS_ATTEMPT_24_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED",
+  "recorded_utc": "2026-08-14T22:08:00Z",
+  "currency": "USD",
+  "scope": {
+    "attempts": [22, 23, 24],
+    "workload_region": "eu-central-1",
+    "cost_explorer_region": "us-east-1",
+    "time_period": {
+      "start_inclusive": "2026-08-14",
+      "end_exclusive": "2026-08-15"
+    },
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen",
+    "default_profile_used": false,
+    "aws_mutations": 0
+  },
+  "cost_explorer_actual_observation": {
+    "granularity": "DAILY",
+    "estimated": true,
+    "usage_type": "EUC1-BoxUsage:g6.xlarge",
+    "august_14_usage_quantity_hours_reported": 0.336944,
+    "august_14_unblended_usd_reported": 0.0,
+    "august_14_matching_groups": 1,
+    "attempt_22_actual_billed_cost_usd": null,
+    "attempt_23_actual_billed_cost_usd": null,
+    "attempt_24_actual_billed_cost_usd": null,
+    "interpretation": "Cost Explorer still reports the same estimated current-day aggregate observed before attempt 24. It neither contains attempt 24's additional usage nor isolates attempts 22 through 24. The reported zero-dollar value is not final actual cost, and no per-attempt actual spend is fabricated."
+  },
+  "receipt_runtime_cross_checks": [
+    {
+      "attempt": 24,
+      "gpu_instance_id": "i-0c37fe7cdca4c65a4",
+      "gpu_instance_type": "g6.xlarge",
+      "maximum_observed_instance_lifetime_seconds": 553,
+      "evaluation_rows_started": 0,
+      "dra_installed": false,
+      "failure_stage": "gpu_and_sampler_gate",
+      "failure_reason_code": "SSM_COMMAND_REFUSED",
+      "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002W-ATTEMPT-24-VOLUME-DEVICE-RACE-REFUSAL.json",
+      "evidence_sha256": "76e1d786f1ecd3d075d7c07cdbe6cca8c1c2eacddae50115ed1b82e9a06fb1a1"
+    }
+  ],
+  "attribution": {
+    "per_attempt_dollar_allocation": "PENDING_AWS_BILLING_INGESTION",
+    "shared_request_transfer_control_plane_and_persistent_storage_costs": "NOT_ATTRIBUTED_TO_ATTEMPT",
+    "credits_used_to_expand_budget_headroom": false,
+    "receipt_derived_dollar_estimate_reported_as_actual": false,
+    "reason": "Daily estimated Cost Explorer data has not ingested attempt 24 and cannot isolate attempts 22 through 24. The conservative guardrail closes attempt 24 at its full ceiling until billing settles."
+  },
+  "control_totals": {
+    "conservative_guardrail_predecessor_usd": 204.4286064216,
+    "attempt_24_closed_ceiling_to_add_usd": 10.0,
+    "recognized_committed_guardrail_usd": 214.4286064216,
+    "active_reservations_usd": 0.0,
+    "project_ceiling_usd": 300.0,
+    "guardrail_headroom_usd": 85.5713935784,
+    "proposed_attempt_25_ceiling_usd": 10.0,
+    "guardrail_headroom_if_attempt_25_approved_usd": 75.5713935784,
+    "guardrail_not_reduced_by_pending_or_credited_actual": true
+  },
+  "source_records": [
+    {
+      "path": "platform/finance/COST-REGISTRY-2026-019.json",
+      "sha256": "ed2109dea142c867b141cad1f7b1ee09b00d75a9775f475ec81afd8d0920fc4e"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-009.json",
+      "sha256": "24dfe91f0d1f331709a646d27d99310c8ba6ea59def3149d1299bf302e2ee003"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002W-ATTEMPT-24-VOLUME-DEVICE-RACE-REFUSAL.json",
+      "sha256": "76e1d786f1ecd3d075d7c07cdbe6cca8c1c2eacddae50115ed1b82e9a06fb1a1"
+    }
+  ],
+  "review": {
+    "independent_financial_or_owner_review_required": true,
+    "reconciliation_is_not_audited_financial_advice": true,
+    "future_refresh_required_when_august_14_usage_lands": true
+  }
+}
