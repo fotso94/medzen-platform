@@ -45,7 +45,7 @@ All stage-local Pods now use one shared lifecycle module,
 
 The systemic audit enumerates 15 waiters and all remaining `finally` sites in
 `ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-001`, SHA-256
-`f1c34adda3b95ab3c6243ef84f7b2412d4620664ee51a23ae8155db622a8757e`.
+`6d0c1bdbf3d4f0a2950b8aee4bec2e630bda8c3cd19b9337f264514b5f7562c2`.
 It finds zero blocking stage-Pod deletes, zero undefined sleep calls, and zero
 instant-terminal-only rehearsal waiters.
 
@@ -87,7 +87,7 @@ boundaries are faked with hash-bound response shapes.
 | cleanup_and_expiry | `stage_cleanup_and_expiry` | `LiveOperations.cleanup_and_expiry` |
 
 Bindings `ASR-BASE-MODEL-PILOT-BINDINGS-2026-002W` pin source commit
-`998b983b234f4df239d5eb682091184b3b336e50` and all 33 executor modules.
+`b8643a571409ef9eab93b3c94e0c44e285dc1574` and all 33 executor modules.
 
 ## Exact unchanged image and risk continuation
 
