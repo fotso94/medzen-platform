@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-ATTEMPT-20-HOST-CLEANUP-KEEP-LIST",
+  "recorded_utc": "2026-08-14T06:06:29Z",
+  "scope": "local Docker storage only; pre-envelope; zero AWS calls",
+  "free_space_before_kib": 29854812,
+  "keep": [
+    {
+      "artifact": "packet-bound evaluation runtime",
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "oci_index_sha256": "506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "linux_amd64_child_sha256": "85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+      "ecr_digest_verified": true
+    },
+    {
+      "artifact": "qualified runtime base image",
+      "reference": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04",
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc"
+    }
+  ],
+  "delete": [
+    {
+      "artifact": "completed B6A converter intermediate",
+      "reference": "medzen-b6a-converter:b6a-local",
+      "local_image_id": "sha256:3da91fdf6d54668fb07e298b502163b9f95f3961130a0d8608d8c4ed0521a8cf",
+      "unique_size": "8.227GB",
+      "containers": 0,
+      "recoverability": "rebuildable from completed B6A source history"
+    },
+    {
+      "artifact": "superseded B6A converter intermediate",
+      "reference": "medzen-b6a-converter:prelock",
+      "local_image_id": "sha256:05bf0af3ec339442d48f74c00d7bcbc6d629ea21e524470eed794b6025ccf9bf",
+      "unique_size": "8.238GB",
+      "containers": 0,
+      "recoverability": "rebuildable from completed B6A source history"
+    }
+  ],
+  "prohibited": [
+    "packet-bound evaluation runtime deletion",
+    "CUDA base-image deletion",
+    "unrelated Docker image deletion",
+    "volume deletion",
+    "source-archive deletion",
+    "broad prune"
+  ]
+}

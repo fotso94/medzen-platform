@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-ATTEMPT-20-PILOT-CONTROLLER-SSM-DIAGNOSTIC",
+  "recorded_utc": "2026-08-14T06:51:35Z",
+  "classification": "FROZEN_PUBLIC_RESEARCH_EVAL_NO_PHI_BOUNDED_DIAGNOSTIC",
+  "command_id": "3bf16818-d3c2-4a36-8ab5-9adae206ab3a",
+  "instance_id": "i-0c2d19efc34392d60",
+  "status": "Failed",
+  "status_details": "Failed",
+  "response_code": 1,
+  "execution_elapsed_time": "PT0.029S",
+  "standard_output_content": "",
+  "standard_error_content": "/usr/bin/cat: /var/lib/medzen-asr-eval/attempt-20/output/network-probe.json: No such file or directory\nfailed to run commands: exit status 1",
+  "diagnosis": {
+    "root_cause": "ONE_SHOT_POST_CONTAINER_START_NETWORK_PROBE_RECEIPT_READ_RACE",
+    "image_pull_status": "PASS",
+    "image_pull_elapsed": "3m17.027s",
+    "image_size_bytes": 7296786789,
+    "network_probe_receipt_observed_before_read": false,
+    "read_retry_or_stable_observation_used": false,
+    "model_inference_started": false,
+    "pilot_rows_started": 0,
+    "model_quality_failure_claim": false
+  },
+  "credentials_phi_audio_reference_or_prediction_recorded": false,
+  "aws_mutations_for_diagnosis": 0
+}

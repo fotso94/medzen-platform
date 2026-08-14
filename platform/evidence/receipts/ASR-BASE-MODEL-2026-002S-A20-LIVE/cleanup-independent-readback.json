@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-ATTEMPT-20-INDEPENDENT-CLEANUP-READBACK",
+  "recorded_utc": "2026-08-14T06:51:35Z",
+  "status": "PASS_INDEPENDENT_ZERO_STATE",
+  "gpu_node_group": {
+    "status": "ACTIVE",
+    "disk_size_gib": 40,
+    "min": 0,
+    "desired": 0,
+    "max": 1,
+    "health_issues": 0,
+    "asg_instances": 0
+  },
+  "cpu_desired": 0,
+  "temporary_vpc_endpoints": 0,
+  "temporary_security_group": {
+    "id": "sg-00076e7c366340c89",
+    "status": "NOT_FOUND"
+  },
+  "temporary_volume": {
+    "id": "vol-005337e41e2fc2fee",
+    "status": "NOT_FOUND"
+  },
+  "deadline_actions": 0,
+  "evaluation_namespace": 0,
+  "dra_namespace": 0,
+  "network_policy_enforcing_mode": "standard",
+  "production_touched": false,
+  "approved_asr_touched": false,
+  "aws_mutations_for_readback": 0
+}
