@@ -189,7 +189,8 @@ committed. It must prove the standing scenarios plus:
 
 The committed receipt path is
 `platform/evidence/receipts/ASR-BASE-MODEL-2026-002X-COLD/cold-rehearsal.json`.
-Cold-rehearsal SHA-256: `PENDING_RECEIPT_LAST`.
+Cold-rehearsal SHA-256:
+`40fb1d18e5887bfad0888882339a0b672a20aa7c93205b307080454e6170c7fd`.
 No source or binding edit is permitted after receipt generation.
 
 ## Post-approval order
