@@ -1,0 +1,138 @@
+{
+  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_ATTEMPT_REFUSAL",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002Q-ATTEMPT-18-IMAGE-STREAM-REFUSAL",
+  "schema_version": 1,
+  "status": "BLOCKED_IMAGE_SCAN",
+  "attempt": 18,
+  "attempt_consumed": true,
+  "failure_stage": "image_publication_and_scan",
+  "reason_code": "UNEXPECTED_STAGE_EXCEPTION",
+  "safe_error_text": "The exact digest-bound ECR child was being streamed into the single Docker-archive scan representation when the local process received Connection reset by peer. The stage refused before the Scout result, artifact verification, endpoint creation, GPU scale-up or evaluation workload. Cleanup returned all temporary state to zero.",
+  "reviewed_repository_commit": "95d6d25fee3ee4956853c23efae15ea51c236327",
+  "authorization_commit": "1f97aff966e40adf83ad6f32ef1cd570265e7dc4",
+  "dry_validation_commit": "d1053477789b23e2abdb48a46066028ab93861e3",
+  "live_receipts_commit": "c5c661e77186875136a25d3ac88ac6eb29263a55",
+  "packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Q-attempt-18.md",
+    "sha256": "deff70880d61089e7f0d339173310b220841b1611a7012e87f1156cc47dfaadf"
+  },
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Q.json",
+    "sha256": "af076715b6c537cef1e7dd4b2b018e0754d67cc841ed242dd577e74b82054a88"
+  },
+  "bindings": {
+    "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Q.json",
+    "sha256": "8b07ec5392466664873eaa7f6dcbe207601a62817562e01ae8de84d1afec850b"
+  },
+  "risk_acceptance": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c"
+  },
+  "pre_execution_dry_run": {
+    "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Q.json",
+    "sha256": "dddc852553115df5923cadc651a9b7a44d6a2f45905c8760571682a79bf73382",
+    "status": "PASS_COMMITTED_DEADLINE_IDENTITY_DRY_RUN",
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "attempt_started": false
+  },
+  "timeline": {
+    "attempt_declared_utc": "2026-08-14T01:27:22Z",
+    "deadline_receipt_utc": "2026-08-14T01:27:24Z",
+    "input_freeze_receipt_utc": "2026-08-14T01:27:34Z",
+    "cost_zero_state_receipt_utc": "2026-08-14T01:27:37Z",
+    "refusal_recorded_utc": "2026-08-14T02:13:36Z",
+    "terminal_cleanup_utc": "2026-08-14T02:13:39Z",
+    "fail_closed_before_deadline": true
+  },
+  "stage_results": {
+    "deadline_identity_and_acceptance": "PASS",
+    "input_freeze_and_no_phi": "PASS",
+    "cost_and_zero_state": "PASS",
+    "image_publication_and_scan": "REFUSED",
+    "artifact_stage": "NOT_RUN",
+    "private_endpoint_and_policy_gate": "NOT_RUN",
+    "gpu_and_sampler_gate": "NOT_RUN",
+    "node_local_input_stage": "NOT_RUN",
+    "pilot_rows": "NOT_RUN",
+    "aggregate_report": "NOT_RUN",
+    "cleanup_and_expiry": "PASS"
+  },
+  "verified_before_refusal": {
+    "pre_envelope_local_resources_status": "PASS_PRE_ENVELOPE_LOCAL_RESOURCES",
+    "pre_envelope_available_bytes": 43324624896,
+    "pre_envelope_required_bytes": 42949672960,
+    "pre_envelope_headroom_bytes": 374951936,
+    "input_freeze_runs": 2,
+    "input_freeze_byte_identical": true,
+    "input_freeze_rows": 24230,
+    "pilot_rows_selected": 540,
+    "exact_ecr_index_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "exact_ecr_child_digest": "sha256:85a82f348f6157adb36016d5b8d6155866ee0c4d40ae1faf4d80df677d50d14e",
+    "image_upload_bytes": 0,
+    "artifact_upload_bytes": 0,
+    "temporary_private_endpoints_created": 0,
+    "gpu_nodes_started": 0,
+    "evaluation_started": false
+  },
+  "observed_refusal": {
+    "classification": "EXACT_ECR_CHILD_STREAM_CONNECTION_RESET_BEFORE_SCOUT_RESULT",
+    "caller": "scripts/asr_base_model_pilot_live.py:image_publication_and_scan",
+    "exception_class": "ConnectionResetError",
+    "exception_errno": 54,
+    "exception_safe_text": "Connection reset by peer",
+    "partial_archive_bytes_observed": 5035653120,
+    "expected_complete_archive_bytes": 7296860160,
+    "scout_result_produced": false,
+    "root_cause_status": "TRANSIENT_TCP_RESET_CONFIRMED_FIRST_STOCHASTIC_CAMPAIGN_FAILURE_NO_DESIGN_DEFECT",
+    "no_image_identity_risk_tuple_model_data_gpu_or_workload_failure_claim": true
+  },
+  "live_receipts": {
+    "directory": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002Q-A18-LIVE",
+    "file_count": 21,
+    "attempt_envelope_sha256": "42b96484796a913e2b37111fedddf788aadeb8e07d750f29b725bbbf4ab588d4",
+    "result_sha256": "0e97173f708854ef8fef9d7daac3249d2670d3f71ee0f6f1bf9be9d024e6a589",
+    "deadline_identity_and_acceptance_sha256": "60a8469586e83872a808eb98e72d5f483cbf9a7c3819037f175b00a3f894b39e",
+    "input_freeze_and_no_phi_sha256": "1195efe5b8e5895f54bc5ef6f3457923bed174139d6b5e64d0d779c1fdc7a20c",
+    "cost_and_zero_state_sha256": "12bfb78064a95444e4e1b1b8c2684ae788bf360ac9ce8c051004bb35e3251c86",
+    "image_publication_and_scan_sha256": "bdd8fa33081e4048c3ae56ef28d739ca826f3bc9e3dfdfe57356bc7450d58da1",
+    "cleanup_and_expiry_sha256": "8fd53d8951069b7379e196b72665de6a427b4b608b729ffb9e6cad3253027489",
+    "sanitized_external_tool_diagnostic_count": 14
+  },
+  "cleanup_zero_state": {
+    "cpu_desired": 0,
+    "gpu_desired": 0,
+    "gpu_asg_instances": 0,
+    "temporary_endpoints": 0,
+    "temporary_volumes": 0,
+    "deadline_actions": 0,
+    "evaluation_namespaces": 0,
+    "reservation_closed": true,
+    "independent_readback_performed": true,
+    "status": "PASS_CLEANUP_AND_EXPIRY"
+  },
+  "cost": {
+    "authorized_ceiling_usd": 10.0,
+    "gpu_instance_type": "g6.xlarge",
+    "gpu_instances_started": 0,
+    "gpu_runtime_seconds": 0,
+    "actual_billed_cost_usd": "PENDING_AWS_BILLING_INGESTION",
+    "incidental_request_or_transfer_billing": "PENDING_AWS_BILLING_INGESTION",
+    "reservation_closed": true,
+    "no_zero_total_cost_claim": true
+  },
+  "immutability": {
+    "historical_records_modified": false,
+    "attempt_18_reuse_permitted": false,
+    "successor_attempt_authorized": false
+  },
+  "required_successor_work": [
+    "Introduce typed transient-error classification for idempotent ECR pull-back, Scout database access and S3 read operations only: connection reset, timeout and DNS blip.",
+    "Use at most three attempts with exponential backoff and a hard cap inside the stage budget; do not retry writes, mutations or ambiguous operations.",
+    "Keep digest mismatch, finding drift, contract violations and every other verification failure immediately fail-closed with zero retries.",
+    "Retain bounded sanitized retry diagnostics without credentials, signed URLs, model data or audio.",
+    "Rehearse transient reset then success and persistent transient failure refusal through the real composition code.",
+    "Reconcile attempt-18 billing in a new cost-registry revision when AWS usage lands.",
+    "Present a new versioned packet and fresh owner allowance; attempt 18 is consumed."
+  ]
+}
