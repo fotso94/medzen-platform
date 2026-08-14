@@ -305,8 +305,7 @@ class EksBoundary:
         desired = self.state.gpu_desired if nodegroupName == GPU_NODEGROUP else self.state.cpu_desired
         if (
             nodegroupName == GPU_NODEGROUP
-            and self.state.bindings.get("attempts", {}).get("authorized_numbers")
-            == [20]
+            and isinstance(self.state.bindings.get("gpu_storage_policy"), dict)
         ):
             response = self.state.gpu_storage_nodegroup_response()
             response["nodegroup"]["scalingConfig"]["desiredSize"] = desired
