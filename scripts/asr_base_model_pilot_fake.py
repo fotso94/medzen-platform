@@ -135,6 +135,11 @@ class BoundaryState:
         self.cni_mode = "standard"
         self.namespaces: set[str] = set()
         self.dra_installed = False
+        self.image_published = False
+        self.scan_configuration_initial = self.fixtures.payload(
+            "ecr-get-registry-scanning-configuration"
+        )["scanningConfiguration"]
+        self.scan_configuration = copy.deepcopy(self.scan_configuration_initial)
         self.aggregate = self._aggregate()
         self.ssm_commands: dict[str, dict[str, Any]] = {}
         self.ssm_counter = 0
@@ -283,6 +288,7 @@ class BoundaryState:
             and not self.volumes
             and not self.namespaces
             and not self.dra_installed
+            and self.scan_configuration == self.scan_configuration_initial
             and self.cni_configuration == "{}"
             and self.cni_mode == "standard"
         )
@@ -585,6 +591,44 @@ class EcrBoundary:
         image = self.state.bindings["image"]
         requested = imageIds[0]
         if requested.get("imageTag") == image["tag"]:
+            if image.get("publication_required", False):
+                if not self.state.image_published:
+                    return {"images": [], "failures": []}
+                manifest = canonical_json(
+                    {
+                        "schemaVersion": 2,
+                        "mediaType": "application/vnd.oci.image.index.v1+json",
+                        "manifests": [
+                            {
+                                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                                "digest": image["linux_amd64_digest"],
+                                "size": 1,
+                                "platform": {"os": "linux", "architecture": "amd64"},
+                            },
+                            {
+                                "mediaType": "application/vnd.oci.image.manifest.v1+json",
+                                "digest": image["attestation_digest"],
+                                "size": 1,
+                                "platform": {"os": "unknown", "architecture": "unknown"},
+                            },
+                        ],
+                    }
+                ).decode().rstrip("\n")
+                return {
+                    "images": [
+                        {
+                            "imageId": {
+                                "imageDigest": image["oci_index_digest"],
+                                "imageTag": image["tag"],
+                            },
+                            "imageManifest": manifest,
+                            "imageManifestMediaType": "application/vnd.oci.image.index.v1+json",
+                            "registryId": "558069890522",
+                            "repositoryName": "medzen-asr-eval-runtime",
+                        }
+                    ],
+                    "failures": [],
+                }
             return self.state.fixtures.payload("ecr-batch-get-index-by-tag")
         names = {
             image["oci_index_digest"]: "ecr-batch-get-index-by-digest",
@@ -597,7 +641,17 @@ class EcrBoundary:
 
     def get_registry_scanning_configuration(self) -> dict[str, Any]:
         self.state.call()
-        return self.state.fixtures.payload("ecr-get-registry-scanning-configuration")
+        return {"scanningConfiguration": copy.deepcopy(self.state.scan_configuration)}
+
+    def put_registry_scanning_configuration(
+        self, *, scanType: str, rules: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        self.state.mutate()
+        self.state.scan_configuration = {
+            "scanType": scanType,
+            "rules": copy.deepcopy(rules),
+        }
+        return {"registryScanningConfiguration": copy.deepcopy(self.state.scan_configuration)}
 
     def describe_image_scan_findings(self, **_: Any) -> dict[str, Any]:
         self.state.call()
@@ -972,7 +1026,7 @@ def digest_scan_boundary(injection: str | None):
             from scripts.asr_eval_digest_rescan import DigestRescanRefusal
 
             raise DigestRescanRefusal("SCOUT_FINDINGS_DIFFER", "injected extra finding")
-        sarif = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-003.sarif.json"
+        sarif = ROOT / "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-004.sarif.json"
         (workdir / "docker-scout.sarif.json").write_bytes(sarif.read_bytes())
         return {
             "status": "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE",
@@ -995,6 +1049,58 @@ def digest_scan_boundary(injection: str | None):
         }
 
     return scan
+
+
+def oci_publication_boundary(state: BoundaryState):
+    """Rehearse the real stage while replacing only the paid upload boundary."""
+
+    def publish(
+        _: Any,
+        repository: str,
+        image: dict[str, Any],
+        *,
+        work_parent: Path,
+    ) -> dict[str, Any]:
+        if repository != "medzen-asr-eval-runtime":
+            raise AssertionError("unexpected rehearsal publication repository")
+        if work_parent.parent == ROOT or ROOT in work_parent.parents:
+            raise AssertionError("rehearsal publication workdir entered reviewed worktree")
+        if image != state.bindings["image"]:
+            raise AssertionError("rehearsal publication image differs from binding")
+        state.mutate()
+        state.image_published = True
+        return {
+            "status": "PASS_EXACT_MULTIPART_ECR_PUBLICATION",
+            "oci_verification": {
+                "status": "PASS_EXACT_OCI_LAYOUT",
+                "oci_index_digest": image["oci_index_digest"],
+                "linux_amd64_digest": image["linux_amd64_digest"],
+                "config_digest": image["config_digest"],
+                "attestation_digest": image["attestation_digest"],
+            },
+            "part_size_bytes": 20 * 1024 * 1024,
+            "uploaded_blob_count": 1,
+            "uploaded_bytes": 1,
+            "uploaded": [{"digest": "sha256:" + "0" * 64, "bytes": 1, "parts": 1}],
+            "reused_blob_count": 0,
+            "reused_digests": [],
+            "manifest_count": 3,
+            "manifests": [
+                {"digest": image["linux_amd64_digest"], "tagged": False},
+                {"digest": image["attestation_digest"], "tagged": False},
+                {"digest": image["oci_index_digest"], "tagged": True},
+            ],
+            "readback_manifest_digests": [
+                image["linux_amd64_digest"],
+                image["attestation_digest"],
+                image["oci_index_digest"],
+            ],
+            "all_manifest_readbacks_byte_identical": True,
+            "temporary_export_removed_after_verification": True,
+            "boundary_rehearsal": "PAID_ECR_AND_DOCKER_EXPORT_ONLY",
+        }
+
+    return publish
 
 
 def build_rehearsal_operations(
@@ -1024,6 +1130,7 @@ def build_rehearsal_operations(
         kubectl_runner=KubectlBoundary(state),
         ssm_runner=SsmCommandBoundary(state),
         digest_scanner=digest_scan_boundary(injection),
+        oci_publisher=oci_publication_boundary(state),
         dra_waiter=dra_waiter,
         sleeper=state.sleep,
         monotonic=state.monotonic,

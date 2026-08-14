@@ -154,6 +154,38 @@ def test_attempt22_plan_includes_new_image_publication_and_exact_prohibitions() 
         assert boundary in text
 
 
+def test_attempt22_rehearsal_uses_the_new_image_publication_path(tmp_path: Path) -> None:
+    from scripts.asr_base_model_pilot_fake import build_rehearsal_operations
+    from scripts.asr_base_model_pilot_runner import AttemptContext
+    from pipeline.asr_base_model_pilot_receipts import ReceiptStore
+
+    value = bound()
+    operations, state = build_rehearsal_operations(value)
+    context = AttemptContext(
+        attempt=22,
+        bindings=value,
+        receipts=ReceiptStore(
+            tmp_path / "receipts",
+            packet_sha256="0" * 64,
+            authorization_sha256="a" * 64,
+        ),
+        workdir=tmp_path / "work",
+    )
+    payload = operations.image_publication_and_scan(context)
+    assert payload["status"] == "PASS_IMAGE_PUBLICATION_AND_SCAN"
+    assert payload["publication"]["status"] == "PASS_EXACT_MULTIPART_ECR_PUBLICATION"
+    assert payload["ecr_basic"] == {
+        "status": "PASS_ECR_BASIC_OS_GATE",
+        "critical": 0,
+        "high": 0,
+        "high_tuples": [],
+    }
+    assert payload["security_gate"]["status"] == (
+        "PASS_DIGEST_VERIFIED_DUAL_SCAN_GATE"
+    )
+    assert state.image_published is True
+
+
 def test_cost_registry_017_is_conservative_and_request_fits() -> None:
     value = bound()
     assert value["cost_registry"]["sha256"] == sha(COST)

@@ -262,6 +262,7 @@ class LiveOperations:
         kubectl_runner: Callable[..., dict[str, Any] | bytes] | None = None,
         ssm_runner: Callable[..., dict[str, Any]] | None = None,
         digest_scanner: Callable[..., dict[str, Any]] = scan_exact_ecr_child,
+        oci_publisher: Callable[..., dict[str, Any]] = publish_exact_image,
         dra_waiter: Callable[..., dict[str, Any]] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         monotonic: Callable[[], float] = time.monotonic,
@@ -278,6 +279,7 @@ class LiveOperations:
         self._kubectl_runner = kubectl_runner
         self._ssm_runner = ssm_runner
         self._digest_scanner = digest_scanner
+        self._oci_publisher = oci_publisher
         self._dra_waiter = dra_waiter
         self._sleeper = sleeper
         self._monotonic = monotonic
@@ -1222,7 +1224,14 @@ class LiveOperations:
         self._save_state(context, state)
         return {"status": "PASS_COST_AND_ZERO_STATE", "reservation_usd": 10.0, "headroom_before_usd": headroom, "cpu": 0, "gpu": 0, "temporary_endpoints": 0}
 
-    def _image_scan(self, repository: str, digest: str) -> dict[str, Any]:
+    def _image_scan(
+        self,
+        repository: str,
+        digest: str,
+        *,
+        expected_highs: set[tuple[str, str, str, str]] | None = None,
+    ) -> dict[str, Any]:
+        expected = EXPECTED_HIGHS if expected_highs is None else expected_highs
         stop = time.monotonic() + 1800
         while time.monotonic() < stop:
             try:
@@ -1249,7 +1258,7 @@ class LiveOperations:
                     ))
                 critical = {value for value in normalized if value[3] == "CRITICAL"}
                 high = {value for value in normalized if value[3] == "HIGH"}
-                if critical or high != EXPECTED_HIGHS:
+                if critical or high != expected:
                     raise OperationRefusal("AUTHORITATIVE_SCAN_FINDINGS_DIFFER", "authoritative critical/high tuple set differs")
                 return {"status": "COMPLETE", "critical": 0, "high": len(high), "high_tuples": sorted(high)}
             self._sleeper(10)
@@ -1303,8 +1312,51 @@ class LiveOperations:
             raise OperationRefusal("ECR_CHILD_DIGEST_DIFFERS", "ECR child differs from the bound linux/amd64 digest")
         return {"status": "PASS_EXACT_IMAGE_ALREADY_PRESENT", "index": index[0], "child": children[0]}
 
+    def _digest_verified_security_gate(
+        self, context: AttemptContext, image: dict[str, Any]
+    ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+        """Run the packet-bound Scout gate against bytes pulled back from ECR."""
+        gate_binding = validate_security_binding(
+            context.bindings.get("security_gate", {})
+        )
+
+        def scan_read() -> dict[str, Any]:
+            with tempfile.TemporaryDirectory(
+                prefix="digest-rescan-", dir=context.workdir
+            ) as temporary:
+                value = self._digest_scanner(
+                    self.ecr,
+                    ECR_REPOSITORY,
+                    image,
+                    Path(temporary),
+                )
+                retained_sarif = context.workdir / "docker-scout-ecr-rescan.sarif.json"
+                source_sarif = Path(temporary) / "docker-scout.sarif.json"
+                retained_sarif.unlink(missing_ok=True)
+                write_exclusive(retained_sarif, source_sarif.read_bytes())
+                value["docker_scout"]["sarif_path"] = str(retained_sarif)
+                value["docker_scout"].pop("scanned_oci_layout", None)
+                return value
+
+        try:
+            scan, scan_retry = self._idempotent_read_composition(
+                ("ECR_PULL_BACK", "SCOUT_DATABASE_READ"),
+                "exact-child-and-scout-read",
+                scan_read,
+                hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
+            )
+        except DigestRescanRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        return gate_binding, scan, scan_retry
+
     def image_publication_and_scan(self, context: AttemptContext) -> dict[str, Any]:
         image = context.bindings["image"]
+        publication_required = image.get("publication_required", False)
+        if not isinstance(publication_required, bool):
+            raise OperationRefusal(
+                "IMAGE_PUBLICATION_REQUIREMENT_MALFORMED",
+                "image publication requirement must be boolean",
+            )
         state = self._state(context)
         try:
             repository_response, repository_retry = self._idempotent_read(
@@ -1323,44 +1375,16 @@ class LiveOperations:
             )
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
-        if context.attempt >= 5:
+        if context.attempt >= 5 and not publication_required:
             exact, identity_retry = self._idempotent_read(
                 "ECR_PULL_BACK",
                 "exact-image-identity-read",
                 lambda: self._existing_exact_image(image),
                 hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
             )
-            try:
-                gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
-
-                def scan_read() -> dict[str, Any]:
-                    with tempfile.TemporaryDirectory(
-                        prefix="digest-rescan-", dir=context.workdir
-                    ) as temporary:
-                        value = self._digest_scanner(
-                            self.ecr,
-                            ECR_REPOSITORY,
-                            image,
-                            Path(temporary),
-                        )
-                        retained_sarif = (
-                            context.workdir / "docker-scout-ecr-rescan.sarif.json"
-                        )
-                        source_sarif = Path(temporary) / "docker-scout.sarif.json"
-                        retained_sarif.unlink(missing_ok=True)
-                        write_exclusive(retained_sarif, source_sarif.read_bytes())
-                        value["docker_scout"]["sarif_path"] = str(retained_sarif)
-                        value["docker_scout"].pop("scanned_oci_layout", None)
-                        return value
-
-                scan, scan_retry = self._idempotent_read_composition(
-                    ("ECR_PULL_BACK", "SCOUT_DATABASE_READ"),
-                    "exact-child-and-scout-read",
-                    scan_read,
-                    hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
-                )
-            except DigestRescanRefusal as exc:
-                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            gate_binding, scan, scan_retry = self._digest_verified_security_gate(
+                context, image
+            )
             return {
                 "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
                 "repository": ECR_REPOSITORY,
@@ -1406,7 +1430,7 @@ class LiveOperations:
             }
         else:
             try:
-                publication = publish_exact_image(
+                publication = self._oci_publisher(
                     self.ecr,
                     ECR_REPOSITORY,
                     image,
@@ -1422,8 +1446,24 @@ class LiveOperations:
         children = [item for item in manifest["manifests"] if item.get("platform", {}).get("os") == "linux" and item.get("platform", {}).get("architecture") == "amd64"]
         if len(children) != 1 or children[0]["digest"] != image["linux_amd64_digest"]:
             raise OperationRefusal("ECR_CHILD_DIGEST_DIFFERS", "scan subject differs from the bound linux/amd64 child")
-        scan = self._image_scan(ECR_REPOSITORY, children[0]["digest"])
-        return {"status": "PASS_IMAGE_PUBLICATION_AND_SCAN", "repository": ECR_REPOSITORY, "oci_index_digest": image["oci_index_digest"], "linux_amd64_digest": children[0]["digest"], "publication": publication, **scan}
+        ecr_basic = self._image_scan(
+            ECR_REPOSITORY, children[0]["digest"], expected_highs=set()
+        )
+        ecr_basic["status"] = "PASS_ECR_BASIC_OS_GATE"
+        gate_binding, scan, scan_retry = self._digest_verified_security_gate(
+            context, image
+        )
+        return {
+            "status": "PASS_IMAGE_PUBLICATION_AND_SCAN",
+            "repository": ECR_REPOSITORY,
+            "oci_index_digest": image["oci_index_digest"],
+            "linux_amd64_digest": children[0]["digest"],
+            "publication": publication,
+            "ecr_basic": ecr_basic,
+            "security_gate_binding": gate_binding,
+            "security_gate": scan,
+            "read_retry_audit": {"repository": repository_retry, "scan": scan_retry},
+        }
 
     def artifact_stage(self, context: AttemptContext) -> dict[str, Any]:
         expected = context.bindings["pilot_bundle"]

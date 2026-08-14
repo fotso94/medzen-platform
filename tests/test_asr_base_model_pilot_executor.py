@@ -571,10 +571,25 @@ def test_image_stage_uses_verified_multipart_publication_not_docker_push() -> No
         source.index("    def image_publication_and_scan(") :
         source.index("    def artifact_stage(")
     ]
-    assert "publish_exact_image(" in image_stage
+    assert "self._oci_publisher(" in image_stage
     assert '"docker", "push"' not in image_stage
     assert '"docker", "login"' not in image_stage
     assert "OciPublicationRefusal" in image_stage
+
+
+def test_late_attempt_publishes_when_the_exact_image_binding_requires_it() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(
+        encoding="utf-8"
+    )
+    image_stage = source[
+        source.index("    def image_publication_and_scan(") :
+        source.index("    def artifact_stage(")
+    ]
+    assert 'publication_required = image.get("publication_required", False)' in image_stage
+    assert "context.attempt >= 5 and not publication_required" in image_stage
+    assert "IMAGE_PUBLICATION_REQUIREMENT_MALFORMED" in image_stage
+    assert "expected_highs=set()" in image_stage
+    assert "self._digest_verified_security_gate(" in image_stage
 
 
 def test_artifact_stage_wrapper_preserves_outer_and_nested_statuses(tmp_path: Path) -> None:
