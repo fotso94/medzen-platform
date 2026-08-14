@@ -448,7 +448,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002R.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002S.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -898,7 +898,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002R.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002S.json",
     )
     args = parser.parse_args()
     try:
