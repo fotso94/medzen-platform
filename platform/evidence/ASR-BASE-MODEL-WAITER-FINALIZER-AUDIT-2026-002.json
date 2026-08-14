@@ -1,0 +1,109 @@
+{
+  "record": "ASR_BASE_MODEL_WAITER_FINALIZER_AUDIT",
+  "id": "ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-002",
+  "schema_version": 2,
+  "status": "PASS_SYSTEMIC_WAITER_FINALIZER_AND_REMOTE_SSM_OBSERVATION_AUDIT",
+  "recorded_utc": "2026-08-14T22:12:00Z",
+  "source_commit": "16ea9ad8dec76070ce6c7b63495fa2c632820f39",
+  "scope": {
+    "live_operations_and_helpers": true,
+    "stage_local_pods": true,
+    "bounded_waiter_boundary_fakes": true,
+    "remote_ssm_observations": true,
+    "finalizers": true,
+    "audit_is_static_and_local_only": true,
+    "aws_calls": 0,
+    "kubectl_calls": 0
+  },
+  "source_bindings": {
+    "scripts/asr_base_model_pod_lifecycle.py": "a93de0cde84bdf208b7fefa114e044f68a78db30414df1df1979e2670dab35da",
+    "scripts/asr_base_model_async_observations.py": "d57be16554f5a4132d576b648a2b53192a2718cfa19168023d853e3c91072bfb",
+    "scripts/asr_base_model_pilot_live.py": "56e3f2ab76bdfd2d613f7b0c1707954392ceb23fc2b005b460ec45cb807b9ca7",
+    "scripts/asr_base_model_pilot_fake.py": "d87055d8fff65806999ef55fe3c548080a4ca14e453036689f26ae834f6f3325",
+    "scripts/asr_base_model_pilot_cold_rehearsal.py": "4798c1217c449bd411305e3f0265de3218ae6437a7fc6359c837d829fa14c2db",
+    "scripts/asr_base_model_pilot_runner.py": "aa3c39eb184979a8decfd1f0edd1618750b14960ec3ca42bdceca8d5550d5213",
+    "scripts/asr_base_model_pilot_assets.py": "5a331300cc813f9240197ef698db9b366a8db9c79b5275566fac9eb22dcc9034",
+    "scripts/asr_base_model_pilot_staging.py": "a8e2431e691c1be2861d3ba969f3e2dbf50c99c4521706dc5198c0aafd9270a2",
+    "scripts/asr_base_model_pilot_workload.py": "c702fd49f8380460c4ce95b56d51111aa0d4431151e467b6ea51ef787d2f9983",
+    "scripts/asr_base_model_boundary_contracts.py": "aed548b0f91a74503d4e70f3b33616addfc3743777b2339d0ca79e5aca1069d4"
+  },
+  "python_waiter_site_count": 15,
+  "python_waiters": [
+    {"site": "gpu_node_readiness", "nonterminal_required": true},
+    {"site": "registry_scan_configuration", "nonterminal_required": true},
+    {"site": "private_endpoint_availability", "nonterminal_required": true},
+    {"site": "dra_readiness", "nonterminal_required": true},
+    {"site": "image_prepull_terminal", "nonterminal_required": true},
+    {"site": "image_inventory_stability", "nonterminal_required": true},
+    {"site": "dns_control_terminal", "nonterminal_required": true},
+    {"site": "inbound_control_terminal", "nonterminal_required": true},
+    {"site": "stage_pod_stable_absence", "nonterminal_required": true},
+    {"site": "pilot_pod_discovery", "nonterminal_required": true},
+    {"site": "pilot_network_receipts", "nonterminal_required": true},
+    {"site": "pilot_job_completion", "nonterminal_required": true},
+    {"site": "aggregate_ssm_completion", "nonterminal_required": true},
+    {"site": "cleanup_endpoint_absence", "nonterminal_required": true},
+    {"site": "cleanup_zero_state", "nonterminal_required": true}
+  ],
+  "remote_ssm_observation_site_count": 9,
+  "remote_ssm_observation_sites": [
+    {"site": "ssm_invocation_completion", "owner": "_ssm", "disposition": "BOUNDED_CONTROLLER_POLL"},
+    {"site": "volume_device_appearance_and_mount", "owner": "gpu_and_sampler_gate", "disposition": "EC2_STABLE_WAIT_PLUS_BOUNDED_REMOTE_POLL"},
+    {"site": "node_local_input_transfer_and_verification", "owner": "node_local_input_stage", "disposition": "BOUNDED_TRANSFER_RETRIES_THEN_SYNCHRONOUS_POSTCONDITIONS"},
+    {"site": "network_receipt_refusal_diagnostic", "owner": "capture_network_receipt", "disposition": "DIAGNOSTIC_ABSENCE_MARKER_NOT_A_SUCCESS_GATE"},
+    {"site": "network_and_listener_receipt_readiness", "owner": "_wait_pilot_network_receipts", "disposition": "BOUNDED_STABLE_CONTROLLER_POLL"},
+    {"site": "network_release_creation", "owner": "pilot_rows", "disposition": "MUTATION_WITHOUT_ASYNC_OBSERVATION"},
+    {"site": "aggregate_presence_and_hash", "owner": "pilot_rows", "disposition": "SYNCHRONOUS_POSTCONDITION_AFTER_TERMINAL_JOB"},
+    {"site": "aggregate_content_read", "owner": "aggregate_report", "disposition": "BOUNDED_SSM_COMPLETION_THEN_FAIL_CLOSED_SCHEMA_CHECK"},
+    {"site": "cleanup_unmount", "owner": "cleanup_and_expiry", "disposition": "BEST_EFFORT_STATUS_KEYED_CLEANUP_NOT_A_PASS_GATE"}
+  ],
+  "finally_site_count": 3,
+  "finally_sites": [
+    {"path": "scripts/asr_base_model_pilot_runner.py", "line": 457, "owner": "_execute_attempt", "disposition": "CONTAINED_OR_NON_RAISING"},
+    {"path": "scripts/asr_base_model_pilot_assets.py", "line": 211, "owner": "_upload_parts", "disposition": "CONTAINED_OR_NON_RAISING"},
+    {"path": "scripts/asr_base_model_pilot_staging.py", "line": 69, "owner": "_atomic_replace", "disposition": "CONTAINED_OR_NON_RAISING"}
+  ],
+  "controls": {
+    "stage_local_blocking_pod_deletes": 0,
+    "undefined_sleep_calls": 0,
+    "rehearsal_waiters_with_instant_terminal_only": 0,
+    "remote_asynchronous_one_shot_success_gates": 0,
+    "remote_unclassified_ssm_call_sites": 0,
+    "volume_attachment_poll_interval_seconds": 5,
+    "volume_attachment_timeout_seconds": 300,
+    "volume_attachment_stable_observations": 2,
+    "guest_device_poll_interval_seconds": 2,
+    "guest_device_timeout_seconds": 120,
+    "primary_exception_authoritative": true,
+    "secondary_cleanup_failures_persisted_separately": true,
+    "all_stage_local_pod_deletes_nonblocking": true,
+    "all_stage_local_pod_absence_checks_deadline_aware": true,
+    "prepull_before_dns_required": true,
+    "prepull_digest_and_node_inventory_exact": true,
+    "prepull_progress_stall_detector_required": true
+  },
+  "mount_bundle_provenance": {
+    "volume_independent_template_hash_required": true,
+    "volume_parameter_hash_required": true,
+    "rendered_command_hash_required": true,
+    "historical_comparison_uses_template_hash": true,
+    "parameter_token": "__MEDZEN_EBS_VOLUME_SERIAL__"
+  },
+  "required_dynamic_rehearsal_proofs": [
+    "DescribeVolumes stale absence followed by attaching and two stable attached observations",
+    "guest device absent on the first observation followed by present",
+    "attachment never reaches attached and refuses at the fixed bound",
+    "guest device never appears and refuses with MEDZEN_EBS_DEVICE_TIMEOUT",
+    "every bounded waiter crosses at least one non-terminal observation before terminal success"
+  ],
+  "write_once_history": [
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-001.json",
+      "sha256": "6d0c1bdbf3d4f0a2950b8aee4bec2e630bda8c3cd19b9337f264514b5f7562c2"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002W-ATTEMPT-24-VOLUME-DEVICE-RACE-REFUSAL.json",
+      "sha256": "76e1d786f1ecd3d075d7c07cdbe6cca8c1c2eacddae50115ed1b82e9a06fb1a1"
+    }
+  ]
+}
