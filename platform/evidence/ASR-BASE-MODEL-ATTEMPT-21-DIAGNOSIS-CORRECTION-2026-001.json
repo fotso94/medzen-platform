@@ -1,0 +1,111 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_DIAGNOSIS_CORRECTION",
+  "id": "ASR-BASE-MODEL-ATTEMPT-21-DIAGNOSIS-CORRECTION-2026-001",
+  "schema_version": 1,
+  "status": "CORRECTS_UNSUPPORTED_ENDPOINT_ALLOWLIST_OMISSION_DIAGNOSIS",
+  "recorded_utc": "2026-08-14T09:27:00Z",
+  "attempt": 21,
+  "event_outcome_unchanged": "BLOCKED_NETWORK_ISOLATION",
+  "event_refusal_remains_valid": true,
+  "corrects_by_reference": [
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json",
+      "sha256": "6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6",
+      "fields_corrected": [
+        "safe_error_text root-cause clause",
+        "observed_refusal.classification",
+        "observed_refusal.ecr_api_endpoint_eni_ips_rendered_in_network_policy",
+        "observed_refusal.omitted_ecr_api_endpoint_eni_ips",
+        "observed_refusal.failure_mechanism",
+        "observed_refusal.root_cause_status"
+      ],
+      "historical_file_edited": false
+    },
+    {
+      "review_id": "CLAUDE-REVIEW-2026-08-14-006",
+      "source_sha256": "dda0676589566ed8d873a2b4e7a313fee08f435a4c2b3ac78569388ad0a7fb30",
+      "finding_corrected": "The addendum states that the rendered workload omitted 172.31.16.81. The preserved artifact and deterministic reconstruction prove that it did not.",
+      "source_edited": false
+    }
+  ],
+  "attempt_21_evidence": {
+    "endpoint_gate_receipt": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-A21-LIVE/receipts/private_endpoint_and_policy_gate.json",
+      "sha256": "98ca72cbcbf1597936ac79fa6f34de14bf281039e8c1b9b58a0258607a4de980",
+      "endpoint_ips": [
+        "172.31.0.158",
+        "172.31.16.81",
+        "172.31.26.212",
+        "172.31.3.172",
+        "172.31.37.51",
+        "172.31.42.114"
+      ],
+      "workload_sha256": "d2a7d620715d7407949fc0ad83f72a26a128f89b99de1bf74b825731c11cce9c"
+    },
+    "preserved_external_workload": {
+      "path_at_validation": "/private/tmp/medzen-asr-attempt21-20260814T0734-x7pZSd/live/workload.yaml",
+      "sha256": "d2a7d620715d7407949fc0ad83f72a26a128f89b99de1bf74b825731c11cce9c",
+      "matches_gate_receipt_hash": true,
+      "rendered_endpoint_cidrs": [
+        "172.31.0.158/32",
+        "172.31.16.81/32",
+        "172.31.26.212/32",
+        "172.31.3.172/32",
+        "172.31.37.51/32",
+        "172.31.42.114/32"
+      ],
+      "omitted_endpoint_cidrs": []
+    },
+    "deterministic_reconstruction": {
+      "renderer_path": "scripts/asr_base_model_pilot_k8s.py",
+      "renderer_sha256": "4ca6a5f162a2245cbb421ca4a001d64225c5fdc8694081053a89671e3286a40c",
+      "bindings_path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002T.json",
+      "bindings_sha256": "5fead4ce1f31e437ec17744f1d12aeb0eed45c9a2a00da6e837e7d362faa2959",
+      "reconstructed_workload_sha256": "d2a7d620715d7407949fc0ad83f72a26a128f89b99de1bf74b825731c11cce9c",
+      "matches_live_workload_and_gate_receipt": true,
+      "renderer_drops_endpoint_ips": false
+    }
+  },
+  "attempt_20_signature_check": {
+    "endpoint_gate_receipt": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-A20-LIVE/receipts/private_endpoint_and_policy_gate.json",
+      "sha256": "ee6ced459445dc6091981d612a2737766a6412e794d221dc0839dc97ef65e4b1",
+      "workload_sha256": "7ad9429b198ec754f4f6010b237d7a65f67e394ac17fae250170de6212c1ad6a",
+      "all_six_observed_endpoint_ips_present_in_preserved_workload": true
+    },
+    "pilot_diagnostics": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-A20-LIVE/pilot-workload-refusal-diagnostics.json",
+      "sha256": "bb10bb710d744f734f5a587512d3cbe199d809fd3a16bac5e9615cb663051c64",
+      "pod_log_bytes": 0,
+      "same_network_failure_confirmed": false,
+      "same_network_failure_refuted": false,
+      "classification": "NOT_DETERMINABLE_FROM_PRESERVED_ATTEMPT_20_DIAGNOSTICS"
+    }
+  },
+  "corrected_diagnosis": {
+    "failure_observed": "The pre-inference pod probe could not connect to api.ecr.eu-central-1.amazonaws.com.",
+    "endpoint_ip_set_rendering_status": "PASS_COMPLETE_SET",
+    "root_cause_status": "UNRESOLVED",
+    "remaining_hypotheses": [
+      "The hostname resolved inside the pod to an address outside the captured endpoint set.",
+      "The endpoint security group did not admit the pod-originated flow even though it admitted the node security group.",
+      "The strict VPC CNI NetworkPolicy datapath denied or failed to route the pod-originated interface-endpoint flow despite the rendered CIDR being present.",
+      "A transient endpoint, DNS or first-connection readiness condition occurred after controller-side availability checks."
+    ],
+    "unsupported_claims_prohibited": [
+      "Do not claim 172.31.16.81 was omitted from workload.yaml.",
+      "Do not claim DNS selected 172.31.16.81; the attempt-21 probe did not record resolved addresses.",
+      "Do not claim the exact failed link until a pod-context diagnostic records resolution and per-address connection results."
+    ]
+  },
+  "next_safe_action": {
+    "review_checkpoint_required": true,
+    "recommended_design": [
+      "Retain the exact-set renderer assertion because it is a useful invariant, while recognizing it already passes for attempt 21.",
+      "Extend the pre-inference probe to record sanitized DNS addresses and typed per-address connection outcomes before any model or audio is loaded.",
+      "Add a pod-context, pre-GPU qualification stage or equivalent network namespace test that exercises the exact NetworkPolicy and endpoint-security-group path before the timed evaluation workload.",
+      "Do not authorize another GPU attempt until the corrected diagnosis and successor test design receive independent review."
+    ],
+    "aws_execution_authorized": false
+  }
+}
