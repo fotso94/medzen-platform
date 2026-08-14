@@ -143,7 +143,7 @@ or any resource not in the exact machine plan.
 ## Binding and rehearsal gates
 
 Bindings `ASR-BASE-MODEL-PILOT-BINDINGS-2026-002V` pin executor source commit
-`d1e019f49871577b790e615c31cae761b17b6f7c`, all 32 executor modules including
+`748bd10891f901e60c0870f0cf68c54e1c843d93`, all 32 executor modules including
 the new shared DNS module, exact image and scan chain, risk record, cost
 registry, diagnosis and all prior write-once artifacts.
 

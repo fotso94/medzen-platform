@@ -125,6 +125,13 @@
     "s3_unversioned_calls": 5,
     "s3_versioned_calls": 8
   },
+  "ecr_existing_image_fixture": {
+    "capture_path": "platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-001.json",
+    "capture_sha256": "a00fdf308a7962995d231b5564231564043473cf731b672869f67d6110a2638a",
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-14/ecr-batch-get-current-index-by-tag.json",
+    "sha256": "14f24dd5fa8004261a95a93aec9e0c6b4862dec20c24ef5fd928bfb602857b77",
+    "status_required": "PASS_READ_ONLY_EXACT_EXISTING_IMAGE_RESPONSE_CAPTURE"
+  },
   "execution_workdir_policy": {
     "inside_worktree_refusal_code": "EXECUTION_WORKDIR_INSIDE_REVIEWED_WORKTREE",
     "receipt_store": "<external-workdir>/receipts",
@@ -152,7 +159,7 @@
     "scripts/asr_base_model_pilot_assets.py": "36f45bcc804c6433c5f013f49e29e5d21b19a5b03e102a30e6bf560020046399",
     "scripts/asr_base_model_pilot_cold_rehearsal.py": "8ec02f6a2df3a6577d5ee95f34b5846ff3687c260dd6912c56f397dbfc25ccc6",
     "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
-    "scripts/asr_base_model_pilot_fake.py": "d07d8be0da4a993728b226fe1453a60362fa2310b28cb785ce1ac0dd69c0b173",
+    "scripts/asr_base_model_pilot_fake.py": "05be6cb863bde00a1acd28e1fb7477f71d32cf3a93e98ccd7e7918c748969289",
     "scripts/asr_base_model_pilot_integrity.py": "802d4f4548aa8de75237157a4d90fa2fdbfbf42632276355df48c3d919c5d6de",
     "scripts/asr_base_model_pilot_k8s.py": "e40d731aec5014ff266b6355013edf653deb0c1fc1447c2e49164ae5598b140c",
     "scripts/asr_base_model_pilot_live.py": "2e3232ffa6da411bed9f613f1b69c74d41a600fd76e60091d4e666a68735ebe4",
@@ -172,7 +179,7 @@
     "scripts/run_b6a_003c_c_proof.py": "c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3",
     "services/asr-eval-runtime/medzen_asr_eval/network_probe.py": "bc68e8e9637f68bd1261ac3f2d872711256ecea6908eb19cc1b8c644aa9b1535"
   },
-  "executor_source_commit": "d1e019f49871577b790e615c31cae761b17b6f7c",
+  "executor_source_commit": "748bd10891f901e60c0870f0cf68c54e1c843d93",
   "gpu_node_readiness_fixtures": {
     "capture_mutations": 0,
     "invented_kubernetes_fields_permitted": false,

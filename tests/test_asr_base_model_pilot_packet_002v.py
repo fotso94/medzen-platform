@@ -23,6 +23,7 @@ PACKET = ROOT / "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002V-a
 RISK = ROOT / "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-003.json"
 COST = ROOT / "platform/finance/COST-REGISTRY-2026-018.json"
 DIAGNOSIS = ROOT / "platform/evidence/ASR-BASE-MODEL-ATTEMPT-22-DNS-DIAGNOSIS-CORRECTION-2026-001.json"
+ECR_FIXTURE_CAPTURE = ROOT / "platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-001.json"
 COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002V-COLD/cold-rehearsal.json"
 
 
@@ -75,6 +76,14 @@ def test_exact_existing_image_is_verify_only_and_risk_is_unchanged() -> None:
         "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841"
     )
     assert value["risk_acceptance_sha256"] == sha(RISK)
+    fixture = value["ecr_existing_image_fixture"]
+    assert fixture["capture_sha256"] == sha(ECR_FIXTURE_CAPTURE)
+    assert fixture["sha256"] == sha(ROOT / fixture["path"])
+    response = json.loads((ROOT / fixture["path"]).read_bytes())
+    assert response["images"][0]["imageId"] == {
+        "imageDigest": value["image"]["oci_index_digest"],
+        "imageTag": value["image"]["tag"],
+    }
 
 
 def test_dns_policy_and_controller_consistency_gate_are_exact() -> None:
