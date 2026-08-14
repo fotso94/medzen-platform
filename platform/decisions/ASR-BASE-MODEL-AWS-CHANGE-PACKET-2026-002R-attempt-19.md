@@ -139,9 +139,10 @@ attempt-18 history. The receipt-last cold rehearsal must prove:
   workload refusal paths through the actual `LiveOperations` composition.
 
 - final bindings SHA-256: `f05f0b3e013a6f14f83ce9c011ed19d6ed1ebed5faa259d3c8cb9f86a49003ad`;
-- receipt-last cold-rehearsal SHA-256: `PENDING_COLD_REHEARSAL_SHA256`;
-- deterministic comparison: pending two identical generations;
-- complete ASR base-model/evaluation suite: pending final count.
+- receipt-last cold-rehearsal SHA-256: `bf45c30e7555e41926c4e61eb66e52cdd3e2b88c1e77a67959dc619b42b2638e`;
+- deterministic comparison: two byte-identical generations required;
+- complete ASR base-model/evaluation suite: 299 passed, 0 failed, 0 skipped,
+  0 deselected.
 
 ## Post-approval order
 
