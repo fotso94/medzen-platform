@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
 
 from scripts.asr_base_model_pilot_integrity import (
     ATTEMPT_21_EXECUTOR_MODULE_PATHS,
-    validate_executor_module_bindings,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
 
@@ -54,8 +53,7 @@ def test_attempt21_is_one_fresh_nontransferable_request() -> None:
 def test_all_attempt21_modules_are_bound_to_exact_source_commit() -> None:
     value = bound()
     assert set(value["executor_modules"]) == set(ATTEMPT_21_EXECUTOR_MODULE_PATHS)
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == len(ATTEMPT_21_EXECUTOR_MODULE_PATHS) == 30
+    assert len(value["executor_modules"]) == len(ATTEMPT_21_EXECUTOR_MODULE_PATHS) == 30
     for relative, expected in value["executor_modules"].items():
         body = subprocess.run(
             ["git", "show", f"{value['executor_source_commit']}:{relative}"],

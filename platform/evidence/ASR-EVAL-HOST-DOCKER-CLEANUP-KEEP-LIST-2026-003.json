@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-003",
+  "recorded_at_utc": "2026-08-14T15:09:47Z",
+  "status": "COMMITTED_BEFORE_ANY_DELETION",
+  "purpose": "Conservative local Docker cleanup after the attempt-22 exact-image rebuild. This prospective record replaces the prior active keep-list boundary only after commit; historical cleanup records remain immutable.",
+  "supersedes_prospectively": {
+    "path": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-002.json",
+    "sha256": "2c54dec0b8f430f2767b9ab949a727d7e1bb5f33b3027e01037e2227da9f0021",
+    "historical_record_edited": false,
+    "reason": "The prospective packet subject is now the newly qualified 7efa6e8c image; the prior image remains recoverable byte-for-byte from ECR and no longer needs a duplicate local representation."
+  },
+  "reviewed_worktree": {
+    "repository": "/Users/stephanefotso/Documents/medzen-platform",
+    "branch": "codex/asr-base-model-evaluation",
+    "head_before_record": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "worktree_was_clean_before_record": false,
+    "reason_dirty": "Packet 2026-002U qualification, risk, evidence and executor range changes are intentionally in progress; this cleanup boundary is committed before deletion as an intermediate evidence checkpoint."
+  },
+  "active_packet_scope": {
+    "latest_completed_attempt_packet": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002T",
+    "next_packet": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002U attempt 22; not yet reviewed or authorized",
+    "required_available_bytes": 42949672960,
+    "finding": "The new exact offline-evaluation image and pinned CUDA base are the only local Docker artifacts required to build and present packet 2026-002U. Four exact superseded MedZen images are independently recoverable from ECR and may be removed locally."
+  },
+  "aws_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "arn": "arn:aws:iam::558069890522:user/s.fotso",
+    "verification_mode": "READ_ONLY",
+    "aws_mutations": 0
+  },
+  "keep_list": [
+    {
+      "repository_tags": [
+        "medzen-asr-eval-runtime:pilot-7efa6e8c"
+      ],
+      "local_image_id": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+      "linux_amd64_child_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+      "source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+      "reason": "Prospective packet 2026-002U exact, qualified, locally scan-passed image; not yet published to ECR."
+    },
+    {
+      "repository_tags": [
+        "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04"
+      ],
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "reason": "Both Dockerfile stages bind this exact base; retain for reproducible rebuild and because its layers are shared by the packet image."
+    }
+  ],
+  "read_only_recoverability_proof": [
+    {
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "ecr_repository": "medzen-asr-eval-runtime",
+      "ecr_tag": "pilot-5d1b8a0",
+      "ecr_digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "match": true
+    },
+    {
+      "local_image_id": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "ecr_repository": "medzen-model-loader",
+      "ecr_tag": "b6a-003a-4e386a0488fc",
+      "ecr_digest": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "match": true
+    },
+    {
+      "local_image_id": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "ecr_repository": "medzen-asr-runtime",
+      "ecr_tag": "b6a-003b-69bdce1",
+      "ecr_digest": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "match": true
+    },
+    {
+      "local_image_id": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "ecr_repository": "medzen-asr-runtime",
+      "ecr_tag": "b6a-003c-89f94d3",
+      "ecr_digest": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "match": true
+    }
+  ],
+  "authorized_local_deletion_scope_after_this_record_is_committed": [
+    "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+    "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+    "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+    "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+    "the single stopped docker/desktop-reclaim-space container 11adbd3cfc3f"
+  ],
+  "pre_cleanup_measurement": {
+    "filesystem_available_kib": 17719176,
+    "filesystem_available_bytes": 18144436224,
+    "filesystem_available_gib": 16.9,
+    "docker_build_cache_bytes": 0,
+    "dangling_images": 0,
+    "dangling_volumes": 0,
+    "stopped_containers": 1
+  },
+  "prohibited_deletions": [
+    "Either keep-list image, tag or digest",
+    "Any running container or active volume",
+    "Any local image not identified by exact digest in the authorized deletion scope",
+    "Any ECR image or other AWS object",
+    "Any non-MedZen or unrelated user artifact"
+  ],
+  "post_cleanup_acceptance": {
+    "minimum_filesystem_available_bytes": 42949672960,
+    "minimum_filesystem_available_gib": 40,
+    "keep_list_must_be_reverified": true,
+    "ecr_recoverability_must_be_reverified_read_only": true,
+    "exact_deleted_objects_must_be_recorded": true
+  }
+}

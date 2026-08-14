@@ -1,0 +1,153 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_EXACT_IMAGE_LOCAL_QUALIFICATION",
+  "id": "B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-007",
+  "revision": 7,
+  "status": "PASS_EXACT_REBUILT_IMAGE_LOCAL_QUALIFICATION_WITH_SCOPED_RISK_REACCEPTANCE_REQUIRED",
+  "recorded_utc": "2026-08-14T15:04:17Z",
+  "scope": "Local-only qualification of the exact rebuilt offline evaluation image containing the attempt-21 network-policy convergence correction. No AWS call, model or audio download, inference, ECR push or GPU use occurred.",
+  "supersedes_for_prospective_image_identity_only": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-003.json",
+    "sha256": "3310de29dc695e38c6e8bbfe293f0cacb3da2a87fa463b1d08c7c3bb2aceb191",
+    "historical_record_edited": false
+  },
+  "preserved_uploader_qualification": {
+    "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-006.json",
+    "sha256": "5982cf98afe6a442c4d79738d4107445cd9ecfad748e7827e4c8e234f122c0c8",
+    "historical_record_edited": false
+  },
+  "historical_attempt_21": {
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json",
+    "refusal_sha256": "6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6",
+    "diagnosis_correction_path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-21-DIAGNOSIS-CORRECTION-2026-001.json",
+    "diagnosis_correction_sha256": "9cac93c3f233ef46f4097122bb711429a54b9c0e3aecca6618aaa8da551748f6",
+    "terminal_outcome": "FAILED_CLOSED_EXECUTION",
+    "edited": false,
+    "cleanup": "PASS_INDEPENDENT_ZERO_STATE"
+  },
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-7efa6e8c",
+    "oci_index_sha256": "f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_manifest_sha256": "4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "config_sha256": "2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+    "attestation_manifest_sha256": "8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23",
+    "spdx_attestation_sha256": "3da28c95deef0aa97466904c2222481c4698b1fc53c0b539b9447d1f9d90af12",
+    "attested_source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "buildkit_vcs_revision": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "source_label_and_vcs_revision_match": true,
+    "platform": "linux/amd64",
+    "size_bytes": 7297094661,
+    "classification_label": "offline-evaluation-only",
+    "base_image": "nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc"
+  },
+  "runtime_qualification": {
+    "status": "PASS_LOCAL_RUNTIME_IMPORT_QUALIFICATION",
+    "container_read_only": true,
+    "tmpfs_only": "/tmp",
+    "uid": 10001,
+    "gid": 10001,
+    "build_tools_absent": [
+      "gcc",
+      "g++",
+      "cmake",
+      "git",
+      "pip",
+      "pip3"
+    ],
+    "python_modules_absent": [
+      "pip",
+      "wheel"
+    ],
+    "conditioning_languages": 49,
+    "candidate_adapters": [
+      "whisper-large-v3",
+      "omniASR_CTC_1B_v2",
+      "omniASR_LLM_1B_v2"
+    ],
+    "versions": {
+      "torch": "2.8.0+cu128",
+      "torchaudio": "2.8.0+cu128",
+      "fairseq2": "0.6",
+      "faster_whisper": "1.2.1",
+      "omnilingual_source_commit": "145a12a668aace6c1d0d290128c1225571fc1955",
+      "whisper_revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+      "tokenizer_sha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e"
+    }
+  },
+  "reachable_source_inspection": {
+    "files": {
+      "/opt/medzen/medzen_asr_eval/backends.py": "f4644320b8a0e9502b9369a9e77ce47eff18f180e0042140c1acadd5e299a6c7",
+      "/opt/medzen/medzen_asr_eval/pilot.py": "7f02a4c321ceddff66170b9f33ea88651bfdbba7d5c56d145cab88744dce8f4a",
+      "/opt/medzen/medzen_asr_eval/network_probe.py": "bc68e8e9637f68bd1261ac3f2d872711256ecea6908eb19cc1b8c644aa9b1535",
+      "/opt/venv/lib/python3.12/site-packages/fairseq2/io.py": "565f94d918fa37a9e29d6d633b956433299afb091b99f046b1f26b39ba4bcd89",
+      "/opt/venv/lib/python3.12/site-packages/omnilingual_asr/models/inference/pipeline.py": "766728688901376dfce1b36115b8e780c1dfc3055798ab49d78a4b9df41fd863"
+    },
+    "prohibited_api_occurrences": {
+      "torch.export.load": 0,
+      "torch.linalg.lu": 0,
+      "torch.rot90": 0,
+      "torch.randn_like": 0
+    }
+  },
+  "network_policy_convergence_correction": {
+    "positive_probe_retry_interval_seconds": 5,
+    "positive_probe_hard_timeout_seconds": 120,
+    "full_positive_and_negative_checks_start_only_after_convergence": true,
+    "receipts_retain_resolved_ips_errno_and_per_attempt_timing": true,
+    "policy_agent_diagnostics_best_effort": true,
+    "source_tests_passed": 51,
+    "source_tests_failed": 0,
+    "compileall": "PASS"
+  },
+  "local_scan": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-004.sarif.json",
+    "sha256": "7dd64ffd92762e9d9d633ef97bb7b1b79915115f546d6a005fd428c170fe99f7",
+    "subject_record": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-005.json",
+      "sha256": "3b7a9ed11817ad2b6d0a44c01a64fa7ae70ffdd035bbd03e05d8f7a4927a3979"
+    },
+    "scanner": "Docker Scout CLI 1.18.3",
+    "scanner_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "scan_method": "exact BuildKit SPDX attestation with in-toto subject equal to the linux/amd64 child manifest",
+    "scan_subject_self_identified": true,
+    "critical": 0,
+    "high": 4,
+    "findings": [
+      "CVE-2025-55551",
+      "CVE-2025-55552",
+      "CVE-2026-24747",
+      "CVE-2026-4538"
+    ],
+    "expected_findings_exact_match": true,
+    "security_exception_applied_during_scan": false
+  },
+  "local_scan_resource_handling": {
+    "initial_local_image_materialization_scan": "STOPPED_BEFORE_DISK_EXHAUSTION_NO_RESULT_USED",
+    "initial_scan_exit_code": 130,
+    "unused_build_cache_reclaimed_bytes": 24660000000,
+    "qualifying_scan_uses_existing_exact_attested_spdx_without_duplicate_full_image_representation": true,
+    "temporary_scan_material_contains_no_model_or_audio_payload": true
+  },
+  "repository_validation": {
+    "focused": {
+      "passed": 51,
+      "failed": 0
+    },
+    "compileall": "PASS",
+    "full_suite": {
+      "status": "STOPPED_AT_PRE_EXISTING_GENERATED_LANGUAGE_REGISTRY_FAILURE",
+      "failure": "KeyError: thresholds_ref",
+      "caused_by_this_change": false,
+      "bundled_fix_prohibited": true
+    }
+  },
+  "execution": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "model_weights_downloaded": false,
+    "audio_downloaded": false,
+    "inference_started": false,
+    "gpu_started": false,
+    "successor_packet_executable_before_review_and_exact_owner_approval": false
+  }
+}

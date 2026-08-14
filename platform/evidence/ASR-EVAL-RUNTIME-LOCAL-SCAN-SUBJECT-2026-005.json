@@ -1,0 +1,74 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_LOCAL_SCAN_SUBJECT",
+  "id": "ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-005",
+  "status": "PASS_SCAN_SUBJECT_IDENTIFIED_SCOPED_RISK_ACCEPTANCE_REQUIRED",
+  "recorded_utc": "2026-08-14T15:04:17Z",
+  "scan_subject": {
+    "local_reference": "medzen-asr-eval-runtime:pilot-7efa6e8c",
+    "source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "platform": "linux/amd64",
+    "oci_index_digest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_child_manifest_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "config_digest": "sha256:2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+    "attestation_manifest_digest": "sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23",
+    "spdx_attestation_layer_digest": "sha256:3da28c95deef0aa97466904c2222481c4698b1fc53c0b539b9447d1f9d90af12",
+    "spdx_subject_linux_amd64_manifest_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "image_size_bytes": 7297094661,
+    "classification_label": "offline-evaluation-only",
+    "source_label_matches_vcs_revision": true
+  },
+  "scan_execution": {
+    "scanner": "Docker Scout CLI 1.18.3",
+    "scanner_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "command_shape": [
+      "docker",
+      "scout",
+      "cves",
+      "--only-severity",
+      "critical,high",
+      "--format",
+      "sarif",
+      "sbom://<exact-child-bound-spdx-attestation>"
+    ],
+    "completed": true,
+    "packages_indexed": 241,
+    "provenance_obtained_from_attestation": true,
+    "attested_spdx_sha256_verified": true,
+    "security_waiver_used_during_scan": false
+  },
+  "normalized_sarif": {
+    "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-004.sarif.json",
+    "sha256": "7dd64ffd92762e9d9d633ef97bb7b1b79915115f546d6a005fd428c170fe99f7",
+    "statement": "The committed SARIF is the Docker Scout output produced from the exact BuildKit SPDX attestation whose in-toto subject is the linux/amd64 child manifest recorded above. This companion record supplies the immutable OCI subject identity that SARIF itself omits."
+  },
+  "result": {
+    "critical": 0,
+    "high": 4,
+    "affected_package": "torch",
+    "affected_package_version": "2.8.0+cu128",
+    "findings": [
+      "CVE-2025-55551",
+      "CVE-2025-55552",
+      "CVE-2026-24747",
+      "CVE-2026-4538"
+    ],
+    "expected_findings_exact_match": true,
+    "unexpected_findings": 0
+  },
+  "identity_proof": {
+    "index_child_attestation_and_spdx_resolved_from_one_build_record": "aq00fw2pupvsovfw43utfmfzg",
+    "child_selection": "OCI child whose platform is exactly linux/amd64",
+    "source_commit_verified_from_oci_label": "org.opencontainers.image.revision",
+    "source_commit_verified_from_buildkit_vcs_revision": true,
+    "spdx_subject_equals_linux_amd64_child": true,
+    "qualification_must_bind_this_record_by_sha256": true,
+    "ecr_basic_and_digest_verified_pulled_image_rescan_remain_required_before_compute": true
+  },
+  "execution": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "ecr_push_attempted": false,
+    "gpu_started": false,
+    "pilot_execution_started": false
+  }
+}

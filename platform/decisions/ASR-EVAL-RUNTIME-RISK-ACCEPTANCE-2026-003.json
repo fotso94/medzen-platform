@@ -1,0 +1,254 @@
+{
+  "record": "ASR_EVALUATION_RUNTIME_SECURITY_RISK_ACCEPTANCE",
+  "id": "ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-003",
+  "revision": 3,
+  "status": "DRAFT_FOR_INDEPENDENT_REVIEW_OWNER_REACCEPTANCE_REQUIRED_NOT_EFFECTIVE",
+  "recorded_utc": "2026-08-14T15:04:17Z",
+  "owner_decision": {
+    "decision": "Scoped risk acceptance for the PyTorch findings, offline evaluation runtime only.",
+    "conditions": [
+      "CVE-by-CVE exploitability record",
+      "time-boxed to the approved evaluation windows",
+      "non-precedential for serving images or anything that touches traffic",
+      "network-isolated execution with no inbound network and egress restricted to private S3 and ECR endpoints"
+    ],
+    "effective_now": false,
+    "reason_not_effective": "The corrected exact image has a new source and OCI identity and requires refreshed independent review plus the exact delegated owner approval phrase before attempt 22."
+  },
+  "immutable_subject": {
+    "qualification_record": {
+      "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-007.json",
+      "sha256": "04bf743b7ee5864f9560f87f232df13a0791a434dbe26d8fe081459ffb42dbe9"
+    },
+    "source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "image_classification": "offline-evaluation-only",
+    "oci_index_sha256": "f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_manifest_sha256": "4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "config_sha256": "2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+    "package": "torch",
+    "package_version": "2.8.0+cu128",
+    "local_scan": {
+      "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-004.sarif.json",
+      "sha256": "7dd64ffd92762e9d9d633ef97bb7b1b79915115f546d6a005fd428c170fe99f7",
+      "subject_record_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-005.json",
+      "subject_record_sha256": "3b7a9ed11817ad2b6d0a44c01a64fa7ae70ffdd035bbd03e05d8f7a4927a3979",
+      "scanned_oci_index_sha256": "f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+      "scanned_linux_amd64_manifest_sha256": "4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+      "scanner": "Docker Scout CLI 1.18.3",
+      "post_rebuild_scan_runs": 1,
+      "byte_identical_to_committed_normalized_sarif": true,
+      "critical": 0,
+      "high": 4,
+      "scan_method": "exact child-bound BuildKit SPDX attestation"
+    },
+    "drift_rule": "Any source, image, package, model, tokenizer, evaluation-input, finding-set or severity drift voids this acceptance before execution.",
+    "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+    "pilot_bundle_identity_sha256": "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee"
+  },
+  "risk_method": {
+    "matrix": {
+      "high_likelihood_high_impact": "CRITICAL",
+      "high_likelihood_medium_impact": "HIGH",
+      "high_likelihood_low_impact": "MEDIUM",
+      "medium_likelihood_high_impact": "HIGH",
+      "medium_likelihood_medium_impact": "MEDIUM",
+      "medium_likelihood_low_impact": "LOW",
+      "low_likelihood_high_impact": "MEDIUM",
+      "low_likelihood_medium_impact": "LOW",
+      "low_likelihood_low_impact": "LOW"
+    },
+    "rating_basis": "Residual likelihood is assessed only after every binding control below is proven. Package severity is never downgraded; the residual rating describes this exact offline pilot context."
+  },
+  "risks": [
+    {
+      "risk_id": "ASR-EVAL-PYTORCH-001",
+      "cve": "CVE-2026-24747",
+      "scanner_severity": "HIGH",
+      "description": "A malicious PyTorch checkpoint loaded with torch.load(..., weights_only=True) can corrupt memory and may execute code in the evaluation process.",
+      "attack_vector_in_general": "Attacker-controlled .pth/.pt checkpoint bytes reach the weights-only unpickler.",
+      "attack_vector_absent_in_this_context_because": [
+        "The runtime has no upload, request, socket listener, Service, Ingress or other untrusted-input path.",
+        "Only the three packet-bound model identities are accepted; the Meta checkpoint SHA-256 values are 354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c and cceb4d9ebac3d168a6af6b26c62ce11bafc562b38976c6bfa87e7d60422c6da5, and the Whisper artifact tree SHA-256 is 5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e.",
+        "Model objects are create-only in a non-serving research prefix and are SHA-256 and byte-length verified before PyTorch starts and again immediately before load.",
+        "Evaluation audio comes only from the hash-frozen PASS_INPUT_FREEZE inventory; no user or traffic input is accepted."
+      ],
+      "exploitability_record": "The exact fairseq2 path does call torch.load and therefore contains the vulnerable primitive. The acceptance relies on excluding attacker-controlled checkpoint bytes, not on claiming the primitive is patched or weights_only=True is sufficient.",
+      "residual_failure_scenario": "Compromise of the exact official model bytes before their recorded hashes were established, a SHA-256 verification defect, or a control bypass could permit code execution inside the bounded evaluation container.",
+      "likelihood": "LOW",
+      "impact": "HIGH",
+      "residual_risk_level": "MEDIUM",
+      "mitigation": "Exact official-source provenance, create-only object staging, two independent SHA-256 checks, no untrusted inputs, no inbound network, S3/ECR-only egress, read-only non-root container, no PHI, deadline-first window and mandatory destruction.",
+      "owner": "platform-owner",
+      "status": "OWNER_ACCEPTED_PENDING_INDEPENDENT_REVIEW_AND_SIGNATURE",
+      "references": [
+        "https://github.com/pytorch/pytorch/security/advisories/GHSA-63cw-57p8-fm3p",
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-24747"
+      ]
+    },
+    {
+      "risk_id": "ASR-EVAL-PYTORCH-002",
+      "cve": "CVE-2026-4538",
+      "scanner_severity": "HIGH",
+      "description": "The PyTorch pt2 loading path can deserialize untrusted data and may execute code.",
+      "attack_vector_in_general": "A local attacker supplies a malicious .pt2 archive to torch.export.load, including a pickle-enabled weights configuration or fallback path.",
+      "attack_vector_absent_in_this_context_because": [
+        "The pilot loads no .pt2 archive and the exact in-image MedZen, Omnilingual and fairseq2 Python sources contain zero torch.export.load occurrences.",
+        "The only permitted model files are the hash-pinned .pt Meta checkpoints and the existing content-addressed Whisper CTranslate2 tree.",
+        "There is no local-user, upload, inbound-network or traffic path through which another archive can be introduced."
+      ],
+      "exploitability_record": "Docker Scout conservatively marks torch 2.8.0+cu128 affected with range <=2.10.0. NVD currently describes the pt2 handler in 2.10.0. This acceptance preserves the scanner's broader classification and does not use the NVD difference to suppress the finding.",
+      "residual_failure_scenario": "A source or dispatch change that begins calling torch.export.load, or an unbound file entering the model root, would reintroduce the attack path and must fail the static and provenance gates.",
+      "likelihood": "LOW",
+      "impact": "HIGH",
+      "residual_risk_level": "MEDIUM",
+      "mitigation": "Static prohibited-API gate, exact model-format allowlist, immutable source hashes, frozen local files only, no inbound network, S3/ECR-only egress, non-root read-only execution and immediate teardown.",
+      "owner": "platform-owner",
+      "status": "OWNER_ACCEPTED_PENDING_INDEPENDENT_REVIEW_AND_SIGNATURE",
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2026-4538",
+        "https://github.com/pytorch/pytorch/pull/176791"
+      ]
+    },
+    {
+      "risk_id": "ASR-EVAL-PYTORCH-003",
+      "cve": "CVE-2025-55552",
+      "scanner_severity": "HIGH",
+      "description": "A torch.compile/Inductor path combining torch.rot90 and torch.randn_like can produce incorrect tensor behavior and is classified by the scanner as an availability risk.",
+      "attack_vector_in_general": "Attacker-controlled execution reaches the exact compiled rot90 plus randn_like operator combination.",
+      "attack_vector_absent_in_this_context_because": [
+        "The exact evaluation adapter, Omnilingual inference pipeline and fairseq2 source contain zero torch.rot90 and zero torch.randn_like occurrences.",
+        "The evaluation entrypoint does not call torch.compile or accept model code, expressions or operator selection from input.",
+        "Frozen audio can affect tensor values only; it cannot select new Python code or a new model graph."
+      ],
+      "exploitability_record": "The public reproducer requires the specific compiled operator combination. That combination is absent from the bound inference path; the static gate is rerun against the exact image before every window.",
+      "residual_failure_scenario": "A dependency or model-code change could introduce the vulnerable combination, causing incorrect output or bounded-process failure.",
+      "likelihood": "LOW",
+      "impact": "MEDIUM",
+      "residual_risk_level": "LOW",
+      "mitigation": "Exact source and image pinning, prohibited-API static gate, frozen inputs, per-row fail-closed receipts, deadline, one container and destruction after the window.",
+      "owner": "platform-owner",
+      "status": "OWNER_ACCEPTED_PENDING_INDEPENDENT_REVIEW_AND_SIGNATURE",
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-55552",
+        "https://github.com/pytorch/pytorch/issues/147847"
+      ]
+    },
+    {
+      "risk_id": "ASR-EVAL-PYTORCH-004",
+      "cve": "CVE-2025-55551",
+      "scanner_severity": "HIGH",
+      "description": "A torch.compile/Inductor path using torch.linalg.lu with slicing can cause denial of service.",
+      "attack_vector_in_general": "Attacker-controlled execution reaches a compiled torch.linalg.lu result followed by the triggering slice operation.",
+      "attack_vector_absent_in_this_context_because": [
+        "The exact evaluation adapter, Omnilingual inference pipeline and fairseq2 source contain zero torch.linalg.lu occurrences.",
+        "The evaluation entrypoint does not call torch.compile and accepts neither executable model code nor arbitrary operators.",
+        "No inbound request or user-controlled model can select this graph."
+      ],
+      "exploitability_record": "The public reproducer requires torch.linalg.lu and torch.compile; the bound inference path contains neither the LU operation nor an application-level compile call for this model path.",
+      "residual_failure_scenario": "A source or model-code drift could introduce the triggering compiled operation and terminate the bounded process.",
+      "likelihood": "LOW",
+      "impact": "MEDIUM",
+      "residual_risk_level": "LOW",
+      "mitigation": "Exact source and image pinning, prohibited-API static gate, frozen inputs, per-row fail-closed receipts, deadline and teardown.",
+      "owner": "platform-owner",
+      "status": "OWNER_ACCEPTED_PENDING_INDEPENDENT_REVIEW_AND_SIGNATURE",
+      "references": [
+        "https://nvd.nist.gov/vuln/detail/CVE-2025-55551",
+        "https://github.com/pytorch/pytorch/issues/151401"
+      ]
+    }
+  ],
+  "binding_controls": {
+    "input_and_data": {
+      "model_inputs": "Only exact packet-bound, create-only, SHA-256-verified model and tokenizer objects.",
+      "audio_inputs": "Only the 540 rows in pilot row-list SHA-256 2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6, selected from the twice-identical PASS_INPUT_FREEZE result; every local audio file is verified against its frozen SHA-256 before inference.",
+      "untrusted_inputs": "PROHIBITED",
+      "phi": "PROHIBITED; the packet classifies the frozen public/research evaluation inputs as no-PHI and refuses if that classification cannot be proven.",
+      "inbound_network": "PROHIBITED; no Service, Ingress, LoadBalancer or hostNetwork. A temporary port-8080 listener exists only before torch import to prove cross-pod refusal, then closes before model load; it is unreachable under ingress-empty NetworkPolicy."
+    },
+    "network_isolation": {
+      "vpc": "vpc-051aa9df8b64bf141",
+      "vpc_cidr": "172.31.0.0/16",
+      "eks_cluster": "medzen-speech",
+      "current_vpc_cni": "v1.22.3-eksbuild.1 with network-policy configuration currently absent",
+      "required_execution_mode": "Enable VPC CNI network policy and NETWORK_POLICY_ENFORCING_MODE=strict before creating the evaluation workload; standard-mode startup allow is prohibited.",
+      "workload_shape": "Controller-owned, hostNetwork=false evaluation workload with automountServiceAccountToken=false, no Pod Identity association, no Kubernetes Service and an ingress-empty NetworkPolicy.",
+      "allowed_egress": [
+        "TCP/443 to the temporary private ECR API and ECR DKR interface endpoint ENI IPs",
+        "TCP/443 to the current com.amazonaws.eu-central-1.s3 managed-prefix-list CIDRs through the temporary S3 gateway endpoint",
+        "UDP/TCP 53 to the VPC resolver solely to resolve those private AWS endpoints"
+      ],
+      "prohibited_egress": "All other CIDRs, ports, public internet, IMDS, STS and general AWS APIs.",
+      "proof": "Before importing torch, the exact workload polls the approved private ECR API endpoint for at most 120 seconds at fixed 5-second intervals. Only after convergence may it run the full positive and negative reachability set. Receipts retain resolved IPs, errno and per-attempt timing. The workload must then prove private S3/ECR endpoint reachability, refusal to the Meta public download host, a public HTTPS control and EC2 IMDS, and refusal of a cross-pod connection to a temporary pre-torch listener; any timeout or unexpected accepted flow refuses the window.",
+      "cleanup": "Delete the evaluation workload and policies, delete temporary endpoints and their security group, restore the exact pre-window VPC CNI configuration, replace or terminate the GPU node, and prove desired capacity zero."
+    },
+    "runtime": {
+      "non_root": "10001:10001",
+      "read_only_root": true,
+      "capabilities": "drop ALL",
+      "privilege_escalation": false,
+      "seccomp": "RuntimeDefault",
+      "maximum_gpu_nodes": 1,
+      "container_destroyed_after_each_window": true,
+      "node_scaled_to_zero_after_each_window": true
+    },
+    "scan_gate": {
+      "required_authoritative_state": "ECR Basic child-manifest scan COMPLETE at 0 critical/high as the supplementary OS-package gate, followed by digest-verified pullback of the exact child and Docker Scout 1.18.3 rescan requiring exactly the four accepted PyTorch findings",
+      "critical_required": 0,
+      "allowed_high_findings_exactly": [
+        "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+        "CVE-2026-4538|torch|2.8.0+cu128|HIGH",
+        "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+        "CVE-2025-55551|torch|2.8.0+cu128|HIGH"
+      ],
+      "fail_closed": "Any additional finding, absent expected finding, severity drift, package/version drift, incomplete scan or child-digest mismatch voids the acceptance and stops before compute.",
+      "ecr_basic_critical_required": 0,
+      "ecr_basic_high_required": 0,
+      "pulled_image_scout_high_required": 4
+    }
+  },
+  "time_box": {
+    "packet": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002U",
+    "maximum_attempts": 1,
+    "maximum_seconds_per_attempt": 10800,
+    "non_transferable_seconds": true,
+    "absolute_acceptance_lifetime_after_exact_owner_approval": "P7D",
+    "expires_at_earliest_of": [
+      "seven days after the exact delegated owner approval timestamp",
+      "the attempt-22 cleanup receipt",
+      "10800 aggregate authorized GPU seconds",
+      "packet closure, cancellation or refusal",
+      "any immutable-subject, input, CVE, severity or scan drift"
+    ],
+    "rerun_rule": "Any run after expiry requires a new scan and a new owner risk acceptance against that then-current scan. Unused attempts or seconds do not survive expiry.",
+    "aggregate_authorized_gpu_seconds": 10800,
+    "cost_ceiling_usd": 10
+  },
+  "non_precedential_boundary": {
+    "serving_images": "EXCLUDED; zero critical and zero high remains mandatory with no waiver.",
+    "traffic_facing_workloads": "EXCLUDED",
+    "production": "EXCLUDED",
+    "training": "EXCLUDED",
+    "model_promotion_or_registry_adoption": "EXCLUDED",
+    "future_full_suite": "EXCLUDED unless a new packet obtains a then-current scan and separate time-boxed acceptance.",
+    "citation_rule": "This record may be cited only as evidence for the exact offline pilot subject and may never justify a serving, production, training or traffic-facing exception."
+  },
+  "signature_and_review": {
+    "independent_reviewer": "PENDING",
+    "independent_review_status": "PENDING",
+    "owner_signature_status": "PENDING_EXACT_POST_REVIEW_DELEGATED_APPROVAL_PHRASE",
+    "signature_mechanism": "After independent review PASS, a new immutable authorization record must quote the exact delegated owner approval phrase and bind the committed revision-3 risk-record SHA-256, packet 2026-002U SHA-256, runtime source commit, executor source commit and approval timestamp. Historical risk and authorization records are never amended.",
+    "execution_permitted": false
+  },
+  "overall_residual_risk": {
+    "level": "MEDIUM",
+    "rationale": "The malicious-checkpoint vulnerability retains high impact, but the exact pilot removes attacker-controlled artifacts, inbound traffic and general internet access and bounds exposure to two short-lived offline windows. Acceptance is appropriate only under every listed control.",
+    "risk_owner": "platform-owner",
+    "status": "OWNER_ACCEPTED_PENDING_REFRESHED_INDEPENDENT_REVIEW_AND_SIGNATURE"
+  },
+  "supersedes_for_prospective_image_identity_only": {
+    "path": "platform/decisions/ASR-EVAL-RUNTIME-RISK-ACCEPTANCE-2026-002.json",
+    "sha256": "06189414e82c7e497fe7b45d5395af0f03de523bc54c17e1b1e3ae91229d744c",
+    "historical_record_edited": false
+  }
+}

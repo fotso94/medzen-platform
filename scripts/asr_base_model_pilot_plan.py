@@ -22,8 +22,8 @@ SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
-    if attempt not in set(range(1, 22)):
-        raise ValueError("attempt must be 1 through 21")
+    if attempt not in set(range(1, 23)):
+        raise ValueError("attempt must be 1 through 22")
     image_digest = bindings.get("image", {}).get("linux_amd64_digest")
     image_index = bindings.get("image", {}).get("oci_index_digest")
     image_tag = bindings.get("image", {}).get("tag")
@@ -75,7 +75,12 @@ def exact_plan(bindings: dict[str, Any], attempt: int) -> dict[str, Any]:
             ),
             "kubernetes:networkpolicy/nvidia-dra-driver/medzen-dra-kubernetes-api-egress",
         )
-    if attempt < 5:
+    image_publication_required = bindings.get("image", {}).get(
+        "publication_required", False
+    )
+    if not isinstance(image_publication_required, bool):
+        raise ValueError("image publication requirement must be boolean")
+    if attempt < 5 or image_publication_required:
         permanent_create_only[:0] = [
             f"ecr:repository/medzen-asr-eval-runtime:oci-index/{image_index}",
             f"ecr:repository/medzen-asr-eval-runtime:tag/{image_tag}",
