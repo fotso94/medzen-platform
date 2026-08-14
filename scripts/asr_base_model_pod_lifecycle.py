@@ -262,9 +262,11 @@ def audit_waiter_and_finalizer_sites(root: Path) -> dict[str, Any]:
         {"site": "dns_control_terminal", "nonterminal_required": True},
         {"site": "inbound_control_terminal", "nonterminal_required": True},
         {"site": "stage_pod_stable_absence", "nonterminal_required": True},
+        {"site": "pilot_pod_discovery", "nonterminal_required": True},
         {"site": "pilot_network_receipts", "nonterminal_required": True},
         {"site": "pilot_job_completion", "nonterminal_required": True},
         {"site": "aggregate_ssm_completion", "nonterminal_required": True},
+        {"site": "cleanup_endpoint_absence", "nonterminal_required": True},
         {"site": "cleanup_zero_state", "nonterminal_required": True},
     ]
     return {
