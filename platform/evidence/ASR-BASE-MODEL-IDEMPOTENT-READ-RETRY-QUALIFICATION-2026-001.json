@@ -1,0 +1,97 @@
+{
+  "record": "ASR_BASE_MODEL_IDEMPOTENT_READ_RETRY_QUALIFICATION",
+  "id": "ASR-BASE-MODEL-IDEMPOTENT-READ-RETRY-QUALIFICATION-2026-001",
+  "schema_version": 1,
+  "status": "PASS_TYPED_TRANSIENT_READ_RETRY_QUALIFICATION",
+  "source_commit": "ae32f5cde0ce35e4f2569d164d77df85b97aa23c",
+  "trigger": {
+    "attempt": 18,
+    "classification": "TRANSIENT_TCP_RESET_FIRST_STOCHASTIC_CAMPAIGN_FAILURE_NO_DESIGN_DEFECT",
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Q-ATTEMPT-18-IMAGE-STREAM-REFUSAL.json",
+    "refusal_sha256": "567b1ecc81dc3018ed4a03b76245be971e8f268c663cfebffa810a80b968d855",
+    "observed_exception": "ConnectionResetError errno 54",
+    "observed_stage": "image_publication_and_scan"
+  },
+  "policy": {
+    "allowlisted_operations": [
+      "ECR_PULL_BACK",
+      "SCOUT_DATABASE_READ",
+      "S3_READ"
+    ],
+    "allowlisted_transient_classes": [
+      "CONNECTION_RESET",
+      "TIMEOUT",
+      "DNS_BLIP"
+    ],
+    "maximum_attempts": 3,
+    "backoff_seconds": [1, 2],
+    "exponential_backoff": true,
+    "image_scan_hard_cap_seconds": 7200,
+    "local_s3_read_hard_cap_seconds": 3600,
+    "node_s3_read_hard_cap_seconds": 903,
+    "node_staging_stage_hard_cap_seconds": 1800,
+    "retry_boundary": "TYPED_TRANSPORT_FAULT_ONLY",
+    "writes_mutations_or_ambiguous_operations_retryable": false,
+    "digest_mismatch_retryable": false,
+    "finding_drift_retryable": false,
+    "contract_violation_retryable": false,
+    "unknown_exception_retryable": false
+  },
+  "coverage": {
+    "ecr_pull_back": [
+      "evaluation repository metadata",
+      "exact immutable image identity",
+      "digest-bound child stream"
+    ],
+    "scout_database_read": [
+      "pinned Docker Scout CVE database access during the exact archive scan"
+    ],
+    "s3_read": [
+      "frozen evaluation-manifest synchronization",
+      "pre-staged bundle verification",
+      "versioned model-bindings download",
+      "node-local versioned pilot objects",
+      "node-local unversioned Whisper-v0 objects"
+    ],
+    "retries_restart_idempotent_read_without_repeating_a_write": true,
+    "verification_occurs_outside_retry_classification": true
+  },
+  "sanitized_diagnostics": {
+    "fields": [
+      "operation",
+      "label",
+      "attempt",
+      "classification",
+      "backoff_seconds",
+      "hard_cap_seconds",
+      "outcome"
+    ],
+    "urls_recorded": false,
+    "credentials_recorded": false,
+    "model_data_audio_or_phi_recorded": false
+  },
+  "source_bindings": {
+    "scripts/asr_idempotent_read_retry.py": "0f78e1f6e9f73f4029680eea86b424e76a2989ee35157ee152ffff039e330552",
+    "scripts/asr_base_model_pilot_live.py": "6c1448ad1a77bec7b204fba444769b87bcd222dbdb6d8975da5d71715e87f739",
+    "scripts/asr_eval_digest_rescan.py": "ef2868fe9ab4a6dd4ea62536fee318e83ca2255624cb879444551e324e94c976",
+    "scripts/asr_base_model_node_staging.py": "284334523a0db3842b5c3ab4d143d4056e8a2c5dc8f3b66129235e467106c47a",
+    "tests/test_asr_idempotent_read_retry.py": "0afb1179aed99912d0f0acd26c6d0bb44cf59f6c882fe7e9179fb351c0413921"
+  },
+  "behavioral_tests": {
+    "test_file_cases": 12,
+    "passed": 12,
+    "failed": 0,
+    "reset_then_success": "PASS_ON_SECOND_READ",
+    "persistent_transient": "REFUSED_AFTER_EXACTLY_THREE_READS",
+    "scout_and_ecr_fault_types_remain_distinct": true,
+    "verification_failure_calls": 1,
+    "non_read_operation_refused_before_action": true,
+    "node_curl_non_transient_exit_retryable": false
+  },
+  "aws": {
+    "calls": 0,
+    "mutations": 0,
+    "gpu_seconds": 0,
+    "cost_usd": 0.0
+  }
+}
