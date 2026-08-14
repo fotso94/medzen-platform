@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-ATTEMPT-23-INDEPENDENT-CLEANUP-READBACK",
+  "recorded_utc": "2026-08-14T19:51:22Z",
+  "status": "PASS_INDEPENDENT_ZERO_STATE",
+  "gpu_node_group": {
+    "status": "ACTIVE",
+    "disk_size_gib": 40,
+    "min": 0,
+    "desired": 0,
+    "max": 1,
+    "health_issues": 0,
+    "asg": "eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8",
+    "asg_instances": 0
+  },
+  "cpu_node_group": {
+    "status": "ACTIVE",
+    "disk_size_gib": null,
+    "min": 0,
+    "desired": 0,
+    "max": 4,
+    "health_issues": 0,
+    "asg": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772",
+    "asg_instances": 0
+  },
+  "temporary_vpc_endpoints": [
+    {
+      "id": "vpce-0da9c6027d0b742a5",
+      "status": "NOT_FOUND"
+    },
+    {
+      "id": "vpce-06c3b5afb36df8e31",
+      "status": "NOT_FOUND"
+    },
+    {
+      "id": "vpce-09b1bf11bee0901bf",
+      "status": "NOT_FOUND"
+    }
+  ],
+  "temporary_security_group": {
+    "id": "sg-02a49a9f1b84fcf9e",
+    "status": "NOT_FOUND"
+  },
+  "temporary_volume": {
+    "id": "vol-028a9c6aeb363fa0f",
+    "status": "NOT_FOUND"
+  },
+  "deadline_actions": 0,
+  "evaluation_namespace": 0,
+  "dra_namespace": 0,
+  "ecr_scan_configuration_restored": {
+    "scan_type": "BASIC",
+    "scan_on_push_rule_count": 1,
+    "repository_filter_count": 8,
+    "evaluation_repository_filter_present": false
+  },
+  "vpc_cni_addon_configuration": "{}",
+  "network_policy_enforcing_mode": "standard",
+  "aws_node_containers": [
+    "aws-node",
+    "aws-eks-nodeagent"
+  ],
+  "reservation_closed": true,
+  "approved_asr_objects": 0,
+  "production_touched": false,
+  "approved_asr_touched": false,
+  "aws_mutations_for_readback": 0
+}
