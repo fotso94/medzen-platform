@@ -144,6 +144,14 @@ attempt-18 history. The receipt-last cold rehearsal must prove:
 - complete ASR base-model/evaluation suite: 299 passed, 0 failed, 0 skipped,
   0 deselected.
 
+A separate repository-wide diagnostic run reported 1,755 passed, 79 failed,
+13 skipped and 6 deselected. It is not represented as green. The failures are
+outside this packet: the previously disclosed stale generated language records
+after the data-only registry expansion, and local absence of optional B4
+training dependencies (`transformers`, `mlflow`, `peft`). This packet neither
+regenerates the language registry nor changes B4/training dependencies; those
+remain a separately reviewed mainline correction.
+
 ## Post-approval order
 
 1. write and commit authorization 002R;
