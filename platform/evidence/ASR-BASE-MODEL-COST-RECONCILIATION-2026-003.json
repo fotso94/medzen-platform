@@ -1,0 +1,80 @@
+{
+  "record": "ASR_BASE_MODEL_COST_RECONCILIATION",
+  "id": "ASR-BASE-MODEL-COST-RECONCILIATION-2026-003",
+  "schema_version": 1,
+  "status": "PASS_ATTEMPT_17_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED",
+  "recorded_utc": "2026-08-14T00:51:47Z",
+  "currency": "USD",
+  "scope": {
+    "attempts": [17],
+    "workload_region": "eu-central-1",
+    "cost_explorer_region": "us-east-1",
+    "time_period": {
+      "start_inclusive": "2026-08-13",
+      "end_exclusive": "2026-08-15"
+    },
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "profile": "medzen",
+    "default_profile_used": false,
+    "aws_mutations": 0
+  },
+  "cost_explorer_actual_observation": {
+    "granularity": "DAILY",
+    "estimated": true,
+    "usage_type": "EUC1-BoxUsage:g6.xlarge",
+    "august_13_pool_unchanged_from_prior_reconciliation": true,
+    "august_13_usage_quantity_hours": 0.031389,
+    "august_13_gross_usage_unblended_usd": 0.0315898896,
+    "august_13_credit_unblended_usd": -0.0315898896,
+    "august_13_net_unblended_usd": 0.0,
+    "august_14_usage_quantity_hours": 0.0,
+    "august_14_unblended_usd_reported": 0.0,
+    "august_14_rows": 0,
+    "attempt_17_actual_billed_cost_usd": null,
+    "interpretation": "Attempt 17 crossed midnight UTC and AWS has not ingested a separately attributable August 14 g6.xlarge row. Current-day zero is not claimed as actual cost."
+  },
+  "receipt_runtime_cross_check": {
+    "gpu_instance_id": "i-086b3a21312e03bf0",
+    "gpu_instance_type": "g6.xlarge",
+    "launch_utc": "2026-08-13T23:59:53Z",
+    "termination_request_utc": "2026-08-14T00:05:24Z",
+    "observed_seconds": 331,
+    "evidence_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002P-ATTEMPT-17-NODE-STAGING-REFUSAL.json",
+    "evidence_sha256": "7c13b45fa917ed0db79114ef15518959e7e8a58cb11b7ac614a3bf2d2ddbe102",
+    "receipt_derived_dollar_estimate_reported_as_actual": false
+  },
+  "attribution": {
+    "per_attempt_dollar_allocation": "PENDING_AWS_BILLING_INGESTION",
+    "shared_vpc_endpoint_ebs_and_transfer_costs": "NOT_ATTRIBUTED_TO_ATTEMPT",
+    "credits_used_to_expand_budget_headroom": false,
+    "reason": "Current-day Cost Explorer has no attempt-17 row and hourly data remains disabled. No fabricated actual allocation is made."
+  },
+  "control_totals": {
+    "conservative_guardrail_predecessor_usd": 134.4286064216,
+    "attempt_17_closed_ceiling_to_add_usd": 10.0,
+    "recognized_committed_guardrail_usd": 144.4286064216,
+    "active_reservations_usd": 0.0,
+    "project_ceiling_usd": 300.0,
+    "guardrail_headroom_usd": 155.5713935784,
+    "guardrail_not_reduced_by_pending_or_credited_actual": true
+  },
+  "source_records": [
+    {
+      "path": "platform/finance/COST-REGISTRY-2026-012.json",
+      "sha256": "747b8d47d7aa57029c9d10f24be8eb6a9656ff9cd6911391c3831ad196f3b972"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-17-COST-OBSERVATION-2026-001.json",
+      "sha256": "cba022488d8fc3e7ff7d0bcaff363e3a045ad0b1f99552f58fd4df555b02bdbc"
+    },
+    {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002P-ATTEMPT-17-NODE-STAGING-REFUSAL.json",
+      "sha256": "7c13b45fa917ed0db79114ef15518959e7e8a58cb11b7ac614a3bf2d2ddbe102"
+    }
+  ],
+  "review": {
+    "independent_financial_or_owner_review_required": true,
+    "reconciliation_is_not_audited_financial_advice": true,
+    "future_refresh_required_when_august_14_usage_lands": true
+  }
+}

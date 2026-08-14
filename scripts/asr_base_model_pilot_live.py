@@ -42,6 +42,13 @@ from scripts.asr_base_model_ecr_scanning import (
     merge_scan_on_push_filter,
     validate_configuration,
 )
+from scripts.asr_base_model_endpoint_policy import (
+    EndpointPolicyRefusal,
+    build_call_inventory,
+    derive_policy,
+    validate_observed_s3_calls,
+    validate_policy_coverage,
+)
 from scripts.asr_eval_digest_rescan import (
     DigestRescanRefusal,
     scan_exact_ecr_child,
@@ -118,6 +125,15 @@ EXPECTED_HIGHS = {
     ("CVE-2025-55552", "torch", "2.8.0+cu128", "HIGH"),
     ("CVE-2025-55551", "torch", "2.8.0+cu128", "HIGH"),
 }
+PRIVATE_PULL_REPOSITORIES = (
+    (ACCOUNT, ECR_REPOSITORY),
+    (ACCOUNT, "medzen-nvidia-dra"),
+    ("602401143452", "amazon-k8s-cni-init"),
+    ("602401143452", "amazon-k8s-cni"),
+    ("602401143452", "amazon/aws-network-policy-agent"),
+    ("602401143452", "eks/eks-pod-identity-agent"),
+    ("602401143452", "eks/kube-proxy"),
+)
 GPU_NODE_READY_POLL_INTERVAL_SECONDS = 10
 GPU_NODE_READY_TIMEOUT_SECONDS = 600
 GPU_NODE_READY_STABLE_OBSERVATIONS = 2
@@ -1307,35 +1323,45 @@ class LiveOperations:
             "aws_mutations": verification["aws_mutations"],
         }
 
-    def _endpoint_policy(self, context: AttemptContext, service: str) -> str:
-        prefix = context.bindings["pilot_bundle"]["sha256"]
-        if service == "s3":
-            resources = [
-                f"arn:aws:s3:::{BUCKET}/research/asr-base-model/pilot/{prefix}/*",
-                f"arn:aws:s3:::{BUCKET}/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/*",
-                "arn:aws:s3:::prod-eu-central-1-starport-layer-bucket/*",
-            ]
-            statement = [{"Effect": "Allow", "Principal": "*", "Action": ["s3:GetObject"], "Resource": resources}]
-        else:
-            repositories = [
-                (ACCOUNT, ECR_REPOSITORY),
-                (ACCOUNT, "medzen-nvidia-dra"),
-                ("602401143452", "amazon-k8s-cni-init"),
-                ("602401143452", "amazon-k8s-cni"),
-                ("602401143452", "amazon/aws-network-policy-agent"),
-                ("602401143452", "eks/eks-pod-identity-agent"),
-                ("602401143452", "eks/kube-proxy"),
-            ]
-            repository_arns = [f"arn:aws:ecr:{REGION}:{account}:repository/{name}" for account, name in repositories]
-            statement = [
-                {"Effect": "Allow", "Principal": "*", "Action": ["ecr:GetAuthorizationToken"], "Resource": "*"},
-                {"Effect": "Allow", "Principal": "*", "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"], "Resource": repository_arns},
-            ]
-        return json.dumps({"Version": "2012-10-17", "Statement": statement}, sort_keys=True)
+    def _endpoint_call_inventory(self, context: AttemptContext) -> dict[str, Any]:
+        try:
+            return build_call_inventory(
+                bundle_sha256=context.bindings["pilot_bundle"]["sha256"],
+                pilot_bundle=json.loads(
+                    (context.workdir / "pilot-bundle.json").read_bytes()
+                ),
+                model_bindings=json.loads(
+                    (context.workdir / "asset-staging/model-bindings.json").read_bytes()
+                ),
+                account=ACCOUNT,
+                region=REGION,
+                ecr_repositories=PRIVATE_PULL_REPOSITORIES,
+            )
+        except EndpointPolicyRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
 
     def private_endpoint_and_policy_gate(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
         aws = context.bindings["aws"]
+        inventory = self._endpoint_call_inventory(context)
+        try:
+            ecr_policy = derive_policy(inventory, "ecr")
+            s3_policy = derive_policy(inventory, "s3")
+            ecr_coverage = validate_policy_coverage(inventory, ecr_policy, "ecr")
+            s3_coverage = validate_policy_coverage(inventory, s3_policy, "s3")
+        except EndpointPolicyRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        inventory_record = {
+            **inventory,
+            "policy_coverage": {"ecr": ecr_coverage, "s3": s3_coverage},
+            "policy_scope": {
+                "pilot_prefix": inventory["pilot_prefix"],
+                "whisper_prefix": inventory["whisper_prefix"],
+                "broader_s3_prefix_permitted": False,
+            },
+        }
+        inventory_path = context.workdir / "endpoint-call-inventory.json"
+        write_exclusive(inventory_path, canonical_json(inventory_record))
         sg = self.ec2.create_security_group(GroupName=f"medzen-asr-eval-vpce-a{context.attempt}", Description="MedZen ASR offline evaluation endpoint TLS", VpcId=VPC, TagSpecifications=[{"ResourceType": "security-group", "Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}]}])["GroupId"]
         state["endpoint_security_group"] = sg
         self._save_state(context, state)
@@ -1343,11 +1369,11 @@ class LiveOperations:
         self.ec2.authorize_security_group_ingress(GroupId=sg, IpPermissions=[{"IpProtocol": "tcp", "FromPort": 443, "ToPort": 443, "UserIdGroupPairs": [{"GroupId": NODE_SG}]}])
         endpoint_ids = []
         for service in ("ecr.api", "ecr.dkr"):
-            value = self.ec2.create_vpc_endpoint(VpcEndpointType="Interface", VpcId=VPC, ServiceName=f"com.amazonaws.{REGION}.{service}", SubnetIds=aws["private_subnet_ids"], SecurityGroupIds=[sg], PrivateDnsEnabled=True, PolicyDocument=self._endpoint_policy(context, "ecr"), TagSpecifications=[{"ResourceType": "vpc-endpoint", "Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}]}])["VpcEndpoint"]
+            value = self.ec2.create_vpc_endpoint(VpcEndpointType="Interface", VpcId=VPC, ServiceName=f"com.amazonaws.{REGION}.{service}", SubnetIds=aws["private_subnet_ids"], SecurityGroupIds=[sg], PrivateDnsEnabled=True, PolicyDocument=json.dumps(ecr_policy, sort_keys=True), TagSpecifications=[{"ResourceType": "vpc-endpoint", "Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}]}])["VpcEndpoint"]
             endpoint_ids.append(value["VpcEndpointId"])
             state["endpoint_ids"] = list(endpoint_ids)
             self._save_state(context, state)
-        s3_endpoint = self.ec2.create_vpc_endpoint(VpcEndpointType="Gateway", VpcId=VPC, ServiceName=f"com.amazonaws.{REGION}.s3", RouteTableIds=aws["private_route_table_ids"], PolicyDocument=self._endpoint_policy(context, "s3"), TagSpecifications=[{"ResourceType": "vpc-endpoint", "Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}]}])["VpcEndpoint"]
+        s3_endpoint = self.ec2.create_vpc_endpoint(VpcEndpointType="Gateway", VpcId=VPC, ServiceName=f"com.amazonaws.{REGION}.s3", RouteTableIds=aws["private_route_table_ids"], PolicyDocument=json.dumps(s3_policy, sort_keys=True), TagSpecifications=[{"ResourceType": "vpc-endpoint", "Tags": [{"Key": "MedZenPurpose", "Value": "asr-base-model-eval"}]}])["VpcEndpoint"]
         endpoint_ids.append(s3_endpoint["VpcEndpointId"])
         state["endpoint_ids"] = endpoint_ids
         addon = self.eks.describe_addon(clusterName=CLUSTER, addonName="vpc-cni")["addon"]
@@ -1409,7 +1435,7 @@ class LiveOperations:
             ],
         }
         write_exclusive(context.workdir / "network-binding.json", canonical_json(network_binding))
-        return {"status": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE", "endpoint_ids": endpoint_ids, "endpoint_ips": endpoint_ips, "s3_prefix_list_id": prefix_list_id, "s3_cidrs": s3_cidrs, "cni_mode": "strict", "workload_sha256": _sha(context.workdir / "workload.yaml"), "empirical_pre_torch_probe_pending": True}
+        return {"status": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE", "endpoint_ids": endpoint_ids, "endpoint_ips": endpoint_ips, "s3_prefix_list_id": prefix_list_id, "s3_cidrs": s3_cidrs, "cni_mode": "strict", "workload_sha256": _sha(context.workdir / "workload.yaml"), "endpoint_call_inventory_sha256": _sha(inventory_path), "endpoint_policy_coverage": {"ecr": ecr_coverage, "s3": s3_coverage}, "empirical_pre_torch_probe_pending": True}
 
     def gpu_and_sampler_gate(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
@@ -1593,6 +1619,7 @@ class LiveOperations:
         prefix = f"research/asr-base-model/pilot/{context.bindings['pilot_bundle']['sha256']}/"
         commands, base = staging_prelude(context.attempt)
         node_objects: list[dict[str, Any]] = []
+        observed_s3_calls: list[dict[str, Any]] = []
         for item in bundle["objects"]:
             key = item["key"]
             if key.endswith(("runtime-rows.json", "model-bindings.json")):
@@ -1602,6 +1629,7 @@ class LiveOperations:
             else:
                 continue
             url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": key, "VersionId": item["version_id"]}, ExpiresIn=STAGING_PRESIGNED_URL_SECONDS)
+            observed_s3_calls.append({"operation": "GetObject", "bucket": BUCKET, "key": key, "version_id_present": True})
             concrete_destination = f"{base}/input/{relative}"
             parent = str(Path(concrete_destination).parent)
             commands.extend([
@@ -1630,6 +1658,7 @@ class LiveOperations:
         model_bindings = json.loads((context.workdir / "asset-staging/model-bindings.json").read_bytes())
         for relative, item in sorted(model_bindings["whisper_files"].items()):
             url = self.s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": whisper_prefix + relative}, ExpiresIn=STAGING_PRESIGNED_URL_SECONDS)
+            observed_s3_calls.append({"operation": "GetObject", "bucket": BUCKET, "key": whisper_prefix + relative, "version_id_present": False})
             destination = f"{base}/input/models/whisper-large-v3-ct2/{relative}"
             commands.extend([
                 install_directory(str(Path(destination).parent)),
@@ -1642,6 +1671,13 @@ class LiveOperations:
             root_command("/usr/bin/sudo", "/usr/bin/find", f"{base}/input", "-type", "d", "-exec", "/usr/bin/chmod", "0555", "{}", "+"),
             root_command("/usr/bin/sudo", "/usr/bin/find", f"{base}/input", "-type", "f", "-exec", "/usr/bin/chmod", "0444", "{}", "+"),
         ])
+        inventory = self._endpoint_call_inventory(context)
+        try:
+            observed_call_coverage = validate_observed_s3_calls(
+                inventory, observed_s3_calls
+            )
+        except EndpointPolicyRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
         command_audit = audit_staging_commands(commands)
         command_bundle_sha256 = hashlib.sha256(canonical_json(commands)).hexdigest()
         write_exclusive(
@@ -1652,6 +1688,8 @@ class LiveOperations:
                 "command_count": len(commands),
                 "command_bundle_sha256": command_bundle_sha256,
                 "command_audit": command_audit,
+                "endpoint_inventory_sha256": inventory["inventory_sha256"],
+                "observed_s3_call_coverage": observed_call_coverage,
                 "presigned_url_values_recorded": False,
                 "contains_credentials_phi_audio_reference_or_prediction": False,
             }),
@@ -1666,7 +1704,7 @@ class LiveOperations:
         )
         state["staging_path"] = base
         self._save_state(context, state)
-        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "ssm_diagnostic_sha256": result["diagnostic_sha256"], "command_bundle_sha256": command_bundle_sha256, "command_audit": command_audit, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
+        return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "ssm_diagnostic_sha256": result["diagnostic_sha256"], "command_bundle_sha256": command_bundle_sha256, "command_audit": command_audit, "endpoint_inventory_sha256": inventory["inventory_sha256"], "observed_s3_call_coverage": observed_call_coverage, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
 
     def _cross_pod_refusal(self, context: AttemptContext, pod_ip: str) -> dict[str, Any]:
         image = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@{context.bindings['image']['linux_amd64_digest']}"

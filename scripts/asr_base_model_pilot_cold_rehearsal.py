@@ -72,6 +72,10 @@ SCENARIOS = {
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
+    "endpoint_policy_missing_version_action": (
+        "endpoint_policy_missing_version_action",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
     "deadline_refusal": ("deadline_identity_and_acceptance", "FAILED_CLOSED_EXECUTION"),
     "cleanup_refusal": ("cleanup_and_expiry", "FAILED_CLOSED_EXECUTION"),
     "prestage_object_absent": ("prestage_object_absent", "FAILED_CLOSED_EXECUTION"),

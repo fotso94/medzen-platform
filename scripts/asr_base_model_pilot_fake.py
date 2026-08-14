@@ -372,6 +372,36 @@ class Ec2Boundary:
     def authorize_security_group_ingress(self, **_: Any) -> None: self.state.mutate()
 
     def create_vpc_endpoint(self, *, VpcEndpointType: str, ServiceName: str, **_: Any) -> dict[str, Any]:
+        policy_document = _.get("PolicyDocument")
+        if not isinstance(policy_document, str):
+            raise AssertionError("endpoint policy document is absent")
+        policy = json.loads(policy_document)
+        actions = {
+            action
+            for statement in policy.get("Statement", [])
+            for action in (
+                statement.get("Action", [])
+                if isinstance(statement.get("Action", []), list)
+                else [statement.get("Action")]
+            )
+        }
+        if VpcEndpointType == "Gateway":
+            if self.state.injection == "endpoint_policy_missing_version_action":
+                actions.discard("s3:GetObjectVersion")
+            required = {"s3:GetObject", "s3:GetObjectVersion"}
+        else:
+            required = {
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchCheckLayerAvailability",
+            }
+        if not required.issubset(actions):
+            raise OperationRefusal(
+                "ENDPOINT_POLICY_CALL_UNCOVERED",
+                "rehearsal endpoint policy omits an inventory-derived action",
+                outcome="BLOCKED_NETWORK_ISOLATION",
+            )
         self.state.mutate()
         if self.state.injection == "private_endpoint_and_policy_gate":
             raise OperationRefusal(

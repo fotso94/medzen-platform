@@ -261,7 +261,11 @@ def test_window_budget_refuses_when_fast_stages_leave_no_cleanup_reserve() -> No
 
 def test_attempt_nine_plan_and_executor_have_no_artifact_upload_path() -> None:
     live = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text(encoding="utf-8")
-    artifact = live[live.index("    def artifact_stage("):live.index("    def _endpoint_policy(")]
+    artifact = live[
+        live.index("    def artifact_stage(") : live.index(
+            "    def _endpoint_call_inventory("
+        )
+    ]
     assert "stage_assets(" not in artifact
     assert "upload_create_only(" not in artifact
     assert "verify_prestaged_bundle(" in artifact

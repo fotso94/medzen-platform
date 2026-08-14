@@ -1,0 +1,79 @@
+{
+  "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+  "id": "COST-REGISTRY-2026-013",
+  "revision": 13,
+  "status": "CURRENT_ATTEMPT_17_CONSERVATIVE_GUARDRAIL_BILLING_PENDING",
+  "recorded_utc": "2026-08-14T00:51:47Z",
+  "currency": "USD",
+  "supersedes": {
+    "path": "platform/finance/COST-REGISTRY-2026-012.json",
+    "sha256": "747b8d47d7aa57029c9d10f24be8eb6a9656ff9cd6911391c3831ad196f3b972"
+  },
+  "reconciliation": {
+    "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-003.json",
+    "sha256": "a170d02aa09d7b78f249f2b4b6df87b666bbbe7ae8e64aef764fff0786b4565a",
+    "status": "PASS_ATTEMPT_17_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED"
+  },
+  "guardrail_summary": {
+    "aggregate_ceiling_usd": 300.0,
+    "recognized_committed_guardrail_usd": 144.4286064216,
+    "active_reservations_usd": 0.0,
+    "committed_plus_reserved_usd": 144.4286064216,
+    "guardrail_headroom_after_reservations_usd": 155.5713935784,
+    "incremental_recognized_guardrail_since_revision_012_usd": 10.0,
+    "attempt_17_actual_direct_compute_usd": null,
+    "actual_billing_granularity": "DAILY_ESTIMATED_CURRENT_DAY_PENDING",
+    "claim_limit": "Attempt 17 has 331 receipt-observed GPU seconds, but AWS has not ingested a separately attributable August 14 g6.xlarge row. Its full $10 ceiling remains conservatively committed; current-day zero and credits do not expand headroom."
+  },
+  "allocations": [
+    {
+      "allocation_id": "PREDECESSOR-CONSOLIDATED-THROUGH-ATTEMPT-16",
+      "financial_state": "BOUND_TO_COST_REGISTRY_2026_012",
+      "recognized_committed_usd": 134.4286064216,
+      "active_reservation_usd": 0.0
+    },
+    {
+      "allocation_id": "ASR-BASE-MODEL-EVALUATION-ATTEMPT-17",
+      "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+      "recognized_committed_usd": 10.0,
+      "active_reservation_usd": 0.0,
+      "attempt_number": 17,
+      "gpu_instance_type": "g6.xlarge",
+      "receipt_observed_gpu_seconds": 331,
+      "actual_direct_compute_usd": null
+    },
+    {
+      "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+      "financial_state": "CURRENT_BILLING_UNATTRIBUTED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0,
+      "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS"
+    },
+    {
+      "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+      "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+      "recognized_committed_usd": null,
+      "active_reservation_usd": 0.0
+    }
+  ],
+  "allocation_tag_standard": {
+    "required_keys": ["Project", "Environment", "CostCenter", "Stage", "Workstream", "BudgetRegistry"],
+    "cost_explorer_activation_state": "PROJECT_VALUES_NOT_AVAILABLE",
+    "future_rule": "Do not describe a future charge as tag-attributable until the billing console returns the required allocation-tag values."
+  },
+  "controls": {
+    "historical_budget_records_edited": false,
+    "spend_reset_permitted": false,
+    "one_active_billable_reservation_at_a_time": true,
+    "current_active_billable_reservations": 0,
+    "reservation_is_aws_authorization": false,
+    "reserve_before_billable_execution": true,
+    "actual_and_conservative_amounts_separated": true,
+    "credits_used_to_expand_headroom": false,
+    "attempt_17_reservation_closed": true,
+    "new_aws_resources_require_versioned_packet": true,
+    "next_reconciliation_creates_new_registry_revision": true,
+    "shared_service_costs_are_not_fabricated_as_attempt_costs": true,
+    "owner_or_qualified_financial_review_required": true
+  }
+}
