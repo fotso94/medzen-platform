@@ -132,16 +132,16 @@ The successor binds source commit
 unchanged exact image and risk record, write-once attempts 1–20, the live
 40 GiB response, async-observation audit, and cost registry 016.
 
-- draft bindings SHA-256:
+- final bindings SHA-256:
   `5fead4ce1f31e437ec17744f1d12aeb0eed45c9a2a00da6e837e7d362faa2959`;
-- receipt-last cold-rehearsal SHA-256: **PENDING RECEIPT-LAST GENERATION**;
+- receipt-last cold-rehearsal SHA-256:
+  `e03b54926bbf238fc9556c5034736be0bd7a6bc8d5315ad53f98f911f40565f6`;
 - deterministic comparison: two byte-identical generations required;
-- current ASR base-model/evaluation suite: 277 passed, 0 failed before the
-  successor packet assertions are added.
+- final ASR base-model/evaluation suite: 283 passed, 0 failed.
 
-The final packet commit will replace only the pending rehearsal line with the
-exact committed receipt hash and final test counts. No executor source edit is
-permitted after receipt generation.
+The receipt was generated twice byte-identically from the committed bindings.
+No executor source was edited after receipt generation; this final packet
+change binds only the receipt hash and final validation counts.
 
 ## Post-approval order
 

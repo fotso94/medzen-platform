@@ -25,6 +25,7 @@ AUDIT = ROOT / "platform/evidence/ASR-BASE-MODEL-ASYNC-OBSERVATION-AUDIT-2026-00
 REFUSAL = ROOT / "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002S-ATTEMPT-20-NETWORK-PROBE-RECEIPT-RACE-REFUSAL.json"
 RECONCILIATION = ROOT / "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-006.json"
 COST = ROOT / "platform/finance/COST-REGISTRY-2026-016.json"
+COLD = ROOT / "platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-COLD/cold-rehearsal.json"
 
 
 def sha(path: Path) -> str:
@@ -116,3 +117,23 @@ def test_cost_registry_016_is_conservative_and_request_fits() -> None:
         str(summary["guardrail_headroom_after_reservations_usd"])
     )
     assert ceiling - committed - Decimal("10") == Decimal("115.5713935784")
+
+
+def test_receipt_last_rehearsal_covers_all_required_receipt_paths() -> None:
+    value = json.loads(COLD.read_bytes())
+    assert value["status"] == "PASS_COLD_REHEARSAL_REAL_LIVE_OPERATIONS"
+    assert value["bindings_source"]["sha256"] == sha(BINDINGS)
+    assert value["executor_module_integrity"]["module_count"] == 30
+    assert value["async_observation_audit"]["status"] == (
+        "PASS_ALL_POST_START_OBSERVATIONS_BOUNDED"
+    )
+    assert value["scenarios"]["network_receipt_delayed"]["outcome"] == (
+        "PASS_PILOT"
+    )
+    assert value["scenarios"]["network_receipt_timeout"][
+        "failure_reason_code"
+    ] == "NETWORK_PROBE_RECEIPT_TIMEOUT"
+    assert value["scenarios"]["network_receipt_pod_terminal"][
+        "failure_reason_code"
+    ] == "PILOT_POD_TERMINAL_BEFORE_NETWORK_RECEIPT"
+    assert all(item["zero_state"] is True for item in value["scenarios"].values())
