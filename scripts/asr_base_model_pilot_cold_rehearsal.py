@@ -290,7 +290,7 @@ def _validate_waiter_fidelity(scenarios: dict[str, Any]) -> dict[str, Any]:
             ["CAPTURED_ATTEMPT_11_EMPTY", "CAPTURED_ATTEMPT_11_READY"],
         ),
         "private_endpoint_availability": (
-            lifecycle["endpoint_availability_sequence"],
+            lifecycle["endpoint_availability_observation_sequence"],
             ["PENDING", "AVAILABLE"],
         ),
         "dra_readiness": (
