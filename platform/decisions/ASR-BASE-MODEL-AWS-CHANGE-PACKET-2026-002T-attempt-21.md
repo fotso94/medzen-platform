@@ -128,12 +128,12 @@ changes; or anything not enumerated above.
 ## Qualification and evidence bindings
 
 The successor binds source commit
-`6692f89962418600ae02523e6eff379b320375fd`, all 30 executor modules, the
+`3c18228837b9fd3233c657c3097b8be138e5807a`, all 30 executor modules, the
 unchanged exact image and risk record, write-once attempts 1–20, the live
 40 GiB response, async-observation audit, and cost registry 016.
 
 - draft bindings SHA-256:
-  `653724c14f9451e03d1cad5073f71f74d2824a285cdfb7c47b6d3f3ceaac816c`;
+  `5fead4ce1f31e437ec17744f1d12aeb0eed45c9a2a00da6e837e7d362faa2959`;
 - receipt-last cold-rehearsal SHA-256: **PENDING RECEIPT-LAST GENERATION**;
 - deterministic comparison: two byte-identical generations required;
 - current ASR base-model/evaluation suite: 277 passed, 0 failed before the
