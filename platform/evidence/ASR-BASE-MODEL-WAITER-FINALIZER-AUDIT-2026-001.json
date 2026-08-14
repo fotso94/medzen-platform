@@ -1,0 +1,85 @@
+{
+  "record": "ASR_BASE_MODEL_WAITER_FINALIZER_AUDIT",
+  "id": "ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-001",
+  "schema_version": 1,
+  "status": "PASS_SYSTEMIC_WAITER_FINALIZER_AUDIT",
+  "recorded_utc": "2026-08-14T20:22:34Z",
+  "source_commit": "ea6bba4ae2c9466b717f5c24a48a92cc9cee0b44",
+  "scope": {
+    "live_operations_and_helpers": true,
+    "stage_local_pods": true,
+    "bounded_waiter_boundary_fakes": true,
+    "finalizers": true,
+    "audit_is_static_and_local_only": true,
+    "aws_calls": 0,
+    "kubectl_calls": 0
+  },
+  "source_bindings": {
+    "scripts/asr_base_model_pod_lifecycle.py": "d07cc378e174fef5ada36bb46ae00f7e8aca927d1e9b8a5dcd8ec9a475926885",
+    "scripts/asr_base_model_pilot_live.py": "6b18994520d928fc94499784dd78c982b57b018b70452ef1e9ab71d31767bc49",
+    "scripts/asr_base_model_pilot_fake.py": "4153eaa94cfa833615851d3ac6d17ac6d973034739a3349e89cb429bc6ba8673",
+    "scripts/asr_base_model_pilot_cold_rehearsal.py": "bf18b42372efbba3cb98d86bae04325f16d43fbfe01ab085f27052fa791a3c5a",
+    "scripts/asr_base_model_pilot_runner.py": "58e95415ad83e9682e7ce6dcea5f3a2bc7dcbc771f2a01aeb1f5e1d09df1654a",
+    "scripts/asr_base_model_pilot_assets.py": "5a331300cc813f9240197ef698db9b366a8db9c79b5275566fac9eb22dcc9034",
+    "scripts/asr_base_model_pilot_staging.py": "a8e2431e691c1be2861d3ba969f3e2dbf50c99c4521706dc5198c0aafd9270a2",
+    "scripts/asr_base_model_pilot_workload.py": "c702fd49f8380460c4ce95b56d51111aa0d4431151e467b6ea51ef787d2f9983"
+  },
+  "waiter_site_count": 15,
+  "waiters": [
+    {"site": "gpu_node_readiness", "nonterminal_required": true},
+    {"site": "registry_scan_configuration", "nonterminal_required": true},
+    {"site": "private_endpoint_availability", "nonterminal_required": true},
+    {"site": "dra_readiness", "nonterminal_required": true},
+    {"site": "image_prepull_terminal", "nonterminal_required": true},
+    {"site": "image_inventory_stability", "nonterminal_required": true},
+    {"site": "dns_control_terminal", "nonterminal_required": true},
+    {"site": "inbound_control_terminal", "nonterminal_required": true},
+    {"site": "stage_pod_stable_absence", "nonterminal_required": true},
+    {"site": "pilot_pod_discovery", "nonterminal_required": true},
+    {"site": "pilot_network_receipts", "nonterminal_required": true},
+    {"site": "pilot_job_completion", "nonterminal_required": true},
+    {"site": "aggregate_ssm_completion", "nonterminal_required": true},
+    {"site": "cleanup_endpoint_absence", "nonterminal_required": true},
+    {"site": "cleanup_zero_state", "nonterminal_required": true}
+  ],
+  "finally_site_count": 3,
+  "finally_sites": [
+    {
+      "path": "scripts/asr_base_model_pilot_runner.py",
+      "line": 457,
+      "owner": "_execute_attempt",
+      "disposition": "CONTAINED_OR_NON_RAISING"
+    },
+    {
+      "path": "scripts/asr_base_model_pilot_assets.py",
+      "line": 211,
+      "owner": "_upload_parts",
+      "disposition": "CONTAINED_OR_NON_RAISING"
+    },
+    {
+      "path": "scripts/asr_base_model_pilot_staging.py",
+      "line": 69,
+      "owner": "_atomic_replace",
+      "disposition": "CONTAINED_OR_NON_RAISING"
+    }
+  ],
+  "controls": {
+    "stage_local_blocking_pod_deletes": 0,
+    "undefined_sleep_calls": 0,
+    "rehearsal_waiters_with_instant_terminal_only": 0,
+    "primary_exception_authoritative": true,
+    "secondary_cleanup_failures_persisted_separately": true,
+    "all_stage_local_pod_deletes_nonblocking": true,
+    "all_stage_local_pod_absence_checks_deadline_aware": true,
+    "prepull_before_dns_required": true,
+    "prepull_digest_and_node_inventory_exact": true,
+    "prepull_progress_stall_detector_required": true
+  },
+  "required_dynamic_rehearsal_proofs": [
+    "Pending image pre-pull followed by Succeeded",
+    "Pending DNS control followed by Succeeded",
+    "primary DNS refusal plus delete timeout retains primary reason code",
+    "image pull stall refuses with typed reason code",
+    "every bounded waiter crosses at least one non-terminal observation before terminal success"
+  ]
+}
