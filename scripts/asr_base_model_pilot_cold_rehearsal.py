@@ -1347,7 +1347,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002W.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002X.json",
     )
     args = parser.parse_args()
     try:
