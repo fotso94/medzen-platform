@@ -369,8 +369,8 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in set(range(1, 23)) or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 22 at 10800 seconds are permitted")
+    if context.attempt not in set(range(1, 24)) or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 23 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(

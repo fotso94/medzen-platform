@@ -19,6 +19,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import yaml
+
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json
 from scripts.asr_base_model_aws_read_fixtures import FixtureCatalog
@@ -27,6 +29,10 @@ from scripts.asr_base_model_pilot_live import (
     CPU_NODEGROUP,
     GPU_NODEGROUP,
     LiveOperations,
+)
+from scripts.asr_base_model_pilot_dns import (
+    VPC_DNS_RESOLVER,
+    validate_pod_dns_fields,
 )
 from scripts.asr_base_model_async_observations import (
     NETWORK_AND_LISTENER_PRESENT,
@@ -127,6 +133,8 @@ class BoundaryState:
         self.pilot_receipt_observation_sequence: list[str] = []
         self.pilot_pod_reads = 0
         self.pilot_job_wait_refused = False
+        self.dns_control_spec: dict[str, Any] | None = None
+        self.inbound_control_spec: dict[str, Any] | None = None
         self.last_sampler_command: list[str] | None = None
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
@@ -790,6 +798,15 @@ class ExternalCommandBoundary:
                     )
                 return self._completed(command, stdout=(b"0, 100, 23034\n" * 120))
             if "wait" in command:
+                if "pod/asr-eval-dns-control" in command:
+                    return self._completed(
+                        command,
+                        returncode=(
+                            1
+                            if self.state.injection == "dns_resolver_unreachable"
+                            else 0
+                        ),
+                    )
                 if "pod/asr-eval-inbound-control" in command:
                     return self._completed(command)
                 if self.state.injection == "pilot_job_refused":
@@ -801,6 +818,9 @@ class ExternalCommandBoundary:
                 self.state.namespaces.discard(namespace)
                 if namespace == "nvidia-dra-driver":
                     self.state.dra_installed = False
+                self.state.kubernetes_mutations += 1
+                return self._completed(command)
+            if "delete" in command and "pod/asr-eval-dns-control" in command:
                 self.state.kubernetes_mutations += 1
                 return self._completed(command)
             raise AssertionError(f"unhandled rehearsal kubectl command: {command}")
@@ -836,6 +856,16 @@ class KubectlBoundary:
         if args[:2] == ("apply", "-f"):
             self.state.kubernetes_mutations += 1
             body = (stdin or b"").decode(errors="replace")
+            for document in yaml.safe_load_all(body):
+                if not isinstance(document, dict) or document.get("kind") != "Pod":
+                    continue
+                name = document.get("metadata", {}).get("name")
+                if name == "asr-eval-dns-control":
+                    validate_pod_dns_fields(document["spec"])
+                    self.state.dns_control_spec = copy.deepcopy(document["spec"])
+                elif name == "asr-eval-inbound-control":
+                    validate_pod_dns_fields(document["spec"])
+                    self.state.inbound_control_spec = copy.deepcopy(document["spec"])
             if "nvidia-dra-driver" in body:
                 self.state.dra_installed = True
                 self.state.namespaces.add("nvidia-dra-driver")
@@ -860,7 +890,13 @@ class KubectlBoundary:
             return {
                 "items": [{
                     "metadata": {"name": "aws-node-rehearsal"},
-                    "spec": {"nodeName": self.state.node_name},
+                    "spec": {
+                        "nodeName": self.state.node_name,
+                        "containers": [
+                            {"name": "aws-node"},
+                            {"name": "aws-eks-nodeagent"},
+                        ],
+                    },
                 }]
             }
         if args[:2] == ("get", "daemonset"):
@@ -893,6 +929,17 @@ class KubectlBoundary:
                 "status": {"failed": 1, "conditions": [{"type": "Failed", "status": "True", "reason": "SyntheticWorkloadRefusal"}]},
             }
         if args[:2] == ("get", "pod"):
+            if args[2] == "asr-eval-dns-control":
+                return {
+                    "metadata": {"name": args[2]},
+                    "status": {
+                        "phase": (
+                            "Failed"
+                            if self.state.injection == "dns_resolver_unreachable"
+                            else "Succeeded"
+                        )
+                    },
+                }
             self.state.pilot_pod_reads += 1
             if (
                 self.state.injection != "network_receipt_pod_terminal"
@@ -917,7 +964,41 @@ class KubectlBoundary:
                 },
             }
         if args[:2] == ("logs", "-n"):
-            if "aws-network-policy-agent" in args:
+            if "pod/asr-eval-dns-control" in args:
+                hosts = [
+                    "558069890522.dkr.ecr.eu-central-1.amazonaws.com",
+                    "api.ecr.eu-central-1.amazonaws.com",
+                    "medzen-speech.s3.eu-central-1.amazonaws.com",
+                ]
+                if self.state.injection == "dns_resolver_unreachable":
+                    return canonical_json({
+                        "schema_version": 1,
+                        "status": "REFUSED",
+                        "reason_code": "DNS_RESOLVER_UNREACHABLE",
+                        "effective_nameservers": [VPC_DNS_RESOLVER],
+                        "resolution_errors": {
+                            host: {"exception_class": "gaierror", "errno": -3}
+                            for host in hosts
+                        },
+                        "attempts": 12,
+                        "torch_imported": False,
+                    })
+                resolved = {
+                    hosts[0]: ["10.0.1.10"],
+                    hosts[1]: ["10.0.1.7"],
+                    hosts[2]: ["16.12.24.1"],
+                }
+                if self.state.injection == "dns_resolved_ip_outside_allowlist":
+                    resolved[hosts[1]] = ["203.0.113.10"]
+                return canonical_json({
+                    "schema_version": 1,
+                    "status": "PASS_VPC_RESOLVER_CONSISTENCY",
+                    "effective_nameservers": [VPC_DNS_RESOLVER],
+                    "resolved_ips": resolved,
+                    "attempts": 1,
+                    "torch_imported": False,
+                })
+            if "aws-eks-nodeagent" in args or "aws-network-policy-agent" in args:
                 return (
                     b"level=info component=network-policy-agent "
                     b"msg=synthetic-policy-converged\n"

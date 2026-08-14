@@ -18,6 +18,7 @@ from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
 
 
 BINDINGS = ROOT / "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-001.json"
+CURRENT_BINDINGS = ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002U.json"
 
 
 def _plan_bindings() -> dict:
@@ -49,18 +50,68 @@ def test_attempt_5_missing_scout_auth_refuses_before_attempt_envelope_or_aws(
 ) -> None:
     monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
     monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
-    bindings = _plan_bindings()
+    empty_docker_config = tmp_path / "empty-docker-config"
+    empty_docker_config.mkdir()
+    monkeypatch.setenv("DOCKER_CONFIG", str(empty_docker_config))
+    monkeypatch.setattr(
+        "scripts.asr_base_model_pilot_runner.validate_clean_reviewed_worktree",
+        lambda _: "synthetic-clean-review-head",
+    )
+    bindings = json.loads(CURRENT_BINDINGS.read_bytes())
+    policy = bindings["local_resource_policy"]
+    local_snapshot = {
+        "schema_version": 1,
+        "disk": {
+            "measured_path": "<synthetic>",
+            "total_bytes": 100 * 1024**3,
+            "available_bytes": 50 * 1024**3,
+        },
+        "memory": {"physical_bytes": policy["minimum_memory_bytes"]},
+        "cpu": {"logical_count": policy["minimum_logical_cpus"]},
+        "process_limits": {
+            "open_files": {
+                "soft": policy["minimum_open_files_soft"],
+                "hard": policy["minimum_open_files_soft"],
+            },
+            "processes": {
+                "soft": policy["minimum_processes_soft"],
+                "hard": policy["minimum_processes_soft"],
+            },
+        },
+        "commands": {
+            name: f"/synthetic/{name}"
+            for name in ("aws", "docker", "git", "kubectl")
+        },
+        "environment": {
+            "home_present": True,
+            "workdir_parent_writable": True,
+            "scout_user_present": False,
+            "scout_password_present": False,
+            "scout_authentication": {
+                "status": "REFUSED",
+                "reason_code": "SCOUT_AUTHENTICATION_ABSENT",
+                "credentials_present": False,
+                "credentials_persisted": False,
+                "credential_values_recorded": False,
+            },
+            "credential_values_recorded": False,
+        },
+        "docker": {"daemon_reachable": True, "server_version_present": True},
+    }
     class MustNotRun:
         pass
 
     ops = MustNotRun()
+    workdir = tmp_path / "live"
     context = AttemptContext(
-        attempt=5,
+        attempt=22,
         bindings=bindings,
-        receipts=ReceiptStore(tmp_path / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
-        workdir=tmp_path,
+        receipts=ReceiptStore(workdir / "receipts", packet_sha256="0" * 64, authorization_sha256="a" * 64),
+        workdir=workdir,
+        reviewed_worktree_root=ROOT,
+        local_resource_snapshot=local_snapshot,
     )
     with pytest.raises(OperationRefusal) as captured:
         execute_attempt(ops, context)
-    assert captured.value.reason_code == "SCOUT_AUTHENTICATION_ABSENT"
-    assert not (tmp_path / "attempt-envelope.json").exists()
+    assert captured.value.reason_code == "LOCAL_EXECUTION_ENVIRONMENT_INCOMPLETE"
+    assert not (workdir / "attempt-envelope.json").exists()

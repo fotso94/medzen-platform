@@ -21,6 +21,11 @@ from scripts.asr_base_model_pilot_workload import (
     PILOT_WORKLOAD_SCRIPT,
     audit_pilot_workload,
 )
+from scripts.asr_base_model_pilot_dns import (
+    VPC_DNS_RESOLVER,
+    pod_dns_fields,
+    validate_pod_dns_fields,
+)
 
 
 NAMESPACE = "medzen-asr-eval"
@@ -36,8 +41,8 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     digest = bindings["image"]["linux_amd64_digest"]
     if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
         raise ValueError("image digest is malformed")
-    if attempt not in set(range(1, 23)):
-        raise ValueError("attempt must be 1 through 22")
+    if attempt not in set(range(1, 24)):
+        raise ValueError("attempt must be 1 through 23")
     endpoint_blocks = sorted({_cidr(f"{ip}/32") for ip in endpoint_ips})
     s3_blocks = sorted({_cidr(value) for value in s3_cidrs})
     if len(endpoint_blocks) < 2 or not s3_blocks:
@@ -48,7 +53,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
             "ports": [{"protocol": "TCP", "port": 443}],
         },
         {
-            "to": [{"ipBlock": {"cidr": "172.31.0.2/32"}}],
+            "to": [{"ipBlock": {"cidr": f"{VPC_DNS_RESOLVER}/32"}}],
             "ports": [
                 {"protocol": "UDP", "port": 53},
                 {"protocol": "TCP", "port": 53},
@@ -85,6 +90,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                     "spec": {
                         "automountServiceAccountToken": False,
                         "hostNetwork": False,
+                        **pod_dns_fields(),
                         "restartPolicy": "Never",
                         "terminationGracePeriodSeconds": JOB_TERMINATION_GRACE_SECONDS,
                         "nodeSelector": {"workload": "gpu"},
@@ -133,6 +139,10 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
     container = pod["containers"][0]
     if pod.get("automountServiceAccountToken") is not False or pod.get("hostNetwork") is not False:
         raise ValueError("pod identity or host network boundary differs")
+    try:
+        dns = validate_pod_dns_fields(pod)
+    except Exception as exc:
+        raise ValueError("pod DNS boundary differs") from exc
     if not container["image"].endswith("@" + digest) or container.get("ports"):
         raise ValueError("image pin or listening-port boundary differs")
     command = " ".join(container["args"])
@@ -160,6 +170,7 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
             b"\0".join(value.encode() for value in workload_argv)
         ).hexdigest(),
         "pilot_workload_audit": workload_audit,
+        "pod_dns": dns,
     }
 
 

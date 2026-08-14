@@ -93,6 +93,14 @@ SCENARIOS = {
         "network_receipt_pod_terminal",
         "BLOCKED_NETWORK_ISOLATION",
     ),
+    "dns_resolver_unreachable": (
+        "dns_resolver_unreachable",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
+    "dns_resolved_ip_outside_allowlist": (
+        "dns_resolved_ip_outside_allowlist",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
     "image_stream_reset_then_success": (
         "image_stream_reset_then_success",
         "PASS_PILOT",
@@ -811,6 +819,24 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     "observation_sequence": boundary.pilot_receipt_observation_sequence,
                     "pod_reads": boundary.pilot_pod_reads,
                 },
+                "pod_dns": {
+                    "dns_control": (
+                        {
+                            "dnsPolicy": boundary.dns_control_spec.get("dnsPolicy"),
+                            "dnsConfig": boundary.dns_control_spec.get("dnsConfig"),
+                        }
+                        if boundary.dns_control_spec is not None
+                        else None
+                    ),
+                    "inbound_control": (
+                        {
+                            "dnsPolicy": boundary.inbound_control_spec.get("dnsPolicy"),
+                            "dnsConfig": boundary.inbound_control_spec.get("dnsConfig"),
+                        }
+                        if boundary.inbound_control_spec is not None
+                        else None
+                    ),
+                },
                 "scan_representation": image_payload.get("security_gate", {}).get(
                     "reconstruction"
                 ),
@@ -1050,6 +1076,22 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ],
         "artifact_wrapper_contract": wrapper,
         "network_probe_convergence": network_probe_rehearsal,
+        "pod_dns_alignment": {
+            "status": "PASS_REAL_POD_SPEC_DNS_ALIGNMENT_REHEARSAL",
+            "resolver": "172.31.0.2",
+            "clean_pass_dns_control": scenarios["clean_pass"]["pod_dns"][
+                "dns_control"
+            ],
+            "clean_pass_inbound_control": scenarios["clean_pass"]["pod_dns"][
+                "inbound_control"
+            ],
+            "resolver_unreachable_reason_code": scenarios[
+                "dns_resolver_unreachable"
+            ]["failure_reason_code"],
+            "outside_allowlist_reason_code": scenarios[
+                "dns_resolved_ip_outside_allowlist"
+            ]["failure_reason_code"],
+        },
         "bindings_source": {
             "path": str(bindings_path.relative_to(ROOT)),
             "sha256": hashlib.sha256(bindings_body).hexdigest(),

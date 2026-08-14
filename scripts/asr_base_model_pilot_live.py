@@ -80,6 +80,14 @@ from scripts.asr_eval_oci_publication import (  # noqa: E402
     publish_exact_image,
 )
 from scripts.asr_base_model_pilot_k8s import render as render_k8s
+from scripts.asr_base_model_pilot_dns import (
+    DnsAlignmentRefusal,
+    VPC_DNS_RESOLVER,
+    pod_dns_fields,
+    validate_dns_resolution_receipt,
+    validate_pod_dns_fields,
+    workload_egress_allowlist,
+)
 from scripts.asr_base_model_pilot_integrity import (
     PilotIntegrityRefusal,
     read_committed_artifact,
@@ -1671,7 +1679,7 @@ class LiveOperations:
             ],
         }
         write_exclusive(context.workdir / "network-binding.json", canonical_json(network_binding))
-        return {"status": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE", "endpoint_ids": endpoint_ids, "endpoint_ips": endpoint_ips, "s3_prefix_list_id": prefix_list_id, "s3_cidrs": s3_cidrs, "cni_mode": "strict", "workload_sha256": _sha(context.workdir / "workload.yaml"), "endpoint_call_inventory_sha256": _sha(inventory_path), "endpoint_policy_coverage": {"ecr": ecr_coverage, "s3": s3_coverage}, "empirical_pre_torch_probe_pending": True}
+        return {"status": "PASS_PRIVATE_ENDPOINT_AND_POLICY_GATE", "endpoint_ids": endpoint_ids, "endpoint_ips": endpoint_ips, "s3_prefix_list_id": prefix_list_id, "s3_cidrs": s3_cidrs, "cni_mode": "strict", "workload_sha256": _sha(context.workdir / "workload.yaml"), "endpoint_call_inventory_sha256": _sha(inventory_path), "endpoint_policy_coverage": {"ecr": ecr_coverage, "s3": s3_coverage}, "pod_dns": {"dns_policy": "None", "nameservers": [VPC_DNS_RESOLVER], "cluster_dns_dependency": False}, "resolve_as_pod_consistency_gate_pending": True, "empirical_pre_torch_probe_pending": True}
 
     def gpu_and_sampler_gate(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
@@ -1946,8 +1954,12 @@ class LiveOperations:
         image = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@{context.bindings['image']['linux_amd64_digest']}"
         probe = {
             "apiVersion": "v1", "kind": "Pod", "metadata": {"name": "asr-eval-inbound-control", "namespace": NAMESPACE, "labels": {"app.kubernetes.io/name": "asr-eval-inbound-control"}},
-            "spec": {"automountServiceAccountToken": False, "restartPolicy": "Never", "nodeSelector": {"workload": "gpu"}, "tolerations": [{"key": "nvidia.com/gpu", "operator": "Equal", "value": "true", "effect": "NoSchedule"}], "containers": [{"name": "control", "image": image, "command": ["/opt/venv/bin/python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(3); rc=s.connect_ex((sys.argv[1],8080)); sys.exit(0 if rc else 9)", pod_ip], "securityContext": {"allowPrivilegeEscalation": False, "capabilities": {"drop": ["ALL"]}}}]},
+            "spec": {"automountServiceAccountToken": False, **pod_dns_fields(), "restartPolicy": "Never", "nodeSelector": {"workload": "gpu"}, "tolerations": [{"key": "nvidia.com/gpu", "operator": "Equal", "value": "true", "effect": "NoSchedule"}], "containers": [{"name": "control", "image": image, "command": ["/opt/venv/bin/python", "-c", "import socket,sys; s=socket.socket(); s.settimeout(3); rc=s.connect_ex((sys.argv[1],8080)); sys.exit(0 if rc else 9)", pod_ip], "securityContext": {"allowPrivilegeEscalation": False, "capabilities": {"drop": ["ALL"]}}}]},
         }
+        try:
+            validate_pod_dns_fields(probe["spec"])
+        except DnsAlignmentRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
         encoded = canonical_json(probe)
         self._kubectl(context, "apply", "-f", "-", stdin=encoded)
         completed = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=jsonpath={.status.phase}=Succeeded", "pod/asr-eval-inbound-control", "--timeout=60s"], check=False, timeout=90)
@@ -1956,6 +1968,203 @@ class LiveOperations:
         if completed.returncode != 0:
             raise OperationRefusal("NETWORK_INBOUND_CONTROL_ACCEPTED", "cross-pod TCP connection unexpectedly succeeded")
         return {"status": "REFUSED_AS_REQUIRED", "target_port": 8080, "logs_sha256": logs_hash}
+
+    def _dns_resolution_consistency_gate(
+        self, context: AttemptContext
+    ) -> dict[str, Any]:
+        """Resolve every allowed host from a policy-selected pod before launch."""
+
+        workload = (context.workdir / "workload.yaml").read_text(encoding="utf-8")
+        binding = json.loads((context.workdir / "network-binding.json").read_bytes())
+        hosts = binding.get("allowed_tcp_443_hosts")
+        if not isinstance(hosts, list) or not hosts or any(
+            not isinstance(value, str) or not value for value in hosts
+        ):
+            raise OperationRefusal(
+                "DNS_CONTROL_HOST_SET_DIFFERS",
+                "network binding has no exact allowed-host set",
+                outcome="BLOCKED_NETWORK_ISOLATION",
+            )
+        try:
+            allowlist = workload_egress_allowlist(workload)
+        except DnsAlignmentRefusal as exc:
+            raise OperationRefusal(
+                exc.reason_code, exc.detail, outcome="BLOCKED_NETWORK_ISOLATION"
+            ) from exc
+        image = (
+            f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@"
+            f"{context.bindings['image']['linux_amd64_digest']}"
+        )
+        script = (
+            "import json,pathlib,socket,sys,time\n"
+            "hosts=json.loads(sys.argv[1]); expected=sys.argv[2]\n"
+            "nameservers=[line.split()[1] for line in pathlib.Path('/etc/resolv.conf').read_text().splitlines() if line.startswith('nameserver ')]\n"
+            "def emit(value,code): print(json.dumps(value,sort_keys=True,separators=(',',':')),flush=True); raise SystemExit(code)\n"
+            "if nameservers != [expected]: emit({'schema_version':1,'status':'REFUSED','reason_code':'DNS_EFFECTIVE_RESOLVER_DIFFERS','effective_nameservers':nameservers,'torch_imported':False},70)\n"
+            "last_errors={}\n"
+            "for attempt in range(1,13):\n"
+            " resolved={}; errors={}\n"
+            " for host in hosts:\n"
+            "  try: resolved[host]=sorted({row[4][0] for row in socket.getaddrinfo(host,443,type=socket.SOCK_STREAM)})\n"
+            "  except OSError as exc: errors[host]={'exception_class':type(exc).__name__,'errno':getattr(exc,'errno',None)}\n"
+            " if len(resolved)==len(hosts) and all(resolved.values()): emit({'schema_version':1,'status':'PASS_VPC_RESOLVER_CONSISTENCY','effective_nameservers':nameservers,'resolved_ips':resolved,'attempts':attempt,'torch_imported':False},0)\n"
+            " last_errors=errors; time.sleep(5)\n"
+            "emit({'schema_version':1,'status':'REFUSED','reason_code':'DNS_RESOLVER_UNREACHABLE','effective_nameservers':nameservers,'resolution_errors':last_errors,'attempts':12,'torch_imported':False},71)\n"
+        )
+        pod = {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "name": "asr-eval-dns-control",
+                "namespace": NAMESPACE,
+                "labels": {
+                    "app.kubernetes.io/name": "asr-base-model-pilot",
+                    "medzen.io/classification": "offline-evaluation-only",
+                },
+            },
+            "spec": {
+                "automountServiceAccountToken": False,
+                "hostNetwork": False,
+                **pod_dns_fields(),
+                "restartPolicy": "Never",
+                "nodeSelector": {"workload": "gpu"},
+                "tolerations": [
+                    {
+                        "key": "nvidia.com/gpu",
+                        "operator": "Equal",
+                        "value": "true",
+                        "effect": "NoSchedule",
+                    }
+                ],
+                "securityContext": {
+                    "runAsNonRoot": True,
+                    "runAsUser": 10001,
+                    "runAsGroup": 10001,
+                    "seccompProfile": {"type": "RuntimeDefault"},
+                },
+                "containers": [
+                    {
+                        "name": "dns-control",
+                        "image": image,
+                        "imagePullPolicy": "IfNotPresent",
+                        "env": [
+                            {"name": "HOME", "value": "/tmp"},
+                            {"name": "PYTHONDONTWRITEBYTECODE", "value": "1"},
+                        ],
+                        "command": [
+                            "/opt/venv/bin/python",
+                            "-c",
+                            script,
+                            json.dumps(sorted(set(hosts)), separators=(",", ":")),
+                            VPC_DNS_RESOLVER,
+                        ],
+                        "securityContext": {
+                            "allowPrivilegeEscalation": False,
+                            "readOnlyRootFilesystem": True,
+                            "capabilities": {"drop": ["ALL"]},
+                        },
+                        "volumeMounts": [{"name": "tmp", "mountPath": "/tmp"}],
+                    }
+                ],
+                "volumes": [
+                    {
+                        "name": "tmp",
+                        "emptyDir": {"sizeLimit": "64Mi"},
+                    }
+                ],
+            },
+        }
+        try:
+            validate_pod_dns_fields(pod["spec"])
+        except DnsAlignmentRefusal as exc:
+            raise OperationRefusal(
+                exc.reason_code, exc.detail, outcome="BLOCKED_NETWORK_ISOLATION"
+            ) from exc
+        write_exclusive(
+            context.workdir / "dns-control-pod.json", canonical_json(pod)
+        )
+        applied = False
+        try:
+            self._kubectl(context, "apply", "-f", "-", stdin=canonical_json(pod))
+            applied = True
+            deadline = self._monotonic() + 600
+            phase = "Unknown"
+            while self._monotonic() < deadline:
+                observed = self._kubectl(
+                    context,
+                    "get",
+                    "pod",
+                    "asr-eval-dns-control",
+                    "-n",
+                    NAMESPACE,
+                    timeout=30,
+                    json_output=True,
+                )
+                phase = observed.get("status", {}).get("phase", "Unknown")
+                if phase in {"Succeeded", "Failed"}:
+                    break
+                self._sleep(5)
+            else:
+                raise OperationRefusal(
+                    "DNS_CONTROL_POD_TIMEOUT",
+                    "DNS control pod did not become terminal inside 600 seconds",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            raw = self._kubectl(
+                context, "logs", "-n", NAMESPACE, "pod/asr-eval-dns-control"
+            )
+            body = raw if isinstance(raw, bytes) else canonical_json(raw)
+            try:
+                receipt = json.loads(body)
+            except Exception as exc:
+                raise OperationRefusal(
+                    "DNS_CONTROL_RECEIPT_MALFORMED",
+                    "DNS control pod did not emit one valid JSON receipt",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                ) from exc
+            try:
+                result = validate_dns_resolution_receipt(
+                    receipt,
+                    expected_hosts=hosts,
+                    allowed_tcp_443_cidrs=allowlist["tcp_443_cidrs"],
+                )
+            except DnsAlignmentRefusal as exc:
+                raise OperationRefusal(
+                    exc.reason_code,
+                    exc.detail,
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                ) from exc
+            if phase != "Succeeded":
+                raise OperationRefusal(
+                    "DNS_CONTROL_POD_REFUSED",
+                    "DNS control pod did not reach Succeeded despite a valid receipt",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            result["control_pod_spec_sha256"] = _sha(
+                context.workdir / "dns-control-pod.json"
+            )
+            write_exclusive(
+                context.workdir / "dns-consistency-gate.json",
+                canonical_json(result),
+            )
+            return result
+        finally:
+            if applied:
+                self._command(
+                    [
+                        "kubectl",
+                        "--kubeconfig",
+                        str(context.workdir / "kubeconfig"),
+                        "delete",
+                        "pod/asr-eval-dns-control",
+                        "-n",
+                        NAMESPACE,
+                        "--ignore-not-found=true",
+                        "--wait=true",
+                    ],
+                    check=False,
+                    timeout=90,
+                )
 
     def _capture_pilot_workload_refusal_diagnostics(
         self,
@@ -2088,6 +2297,28 @@ class LiveOperations:
                 name = matches[0].get("metadata", {}).get("name")
                 if not isinstance(name, str) or not name:
                     return {"status": "UNAVAILABLE_AGENT_POD_NAME_ABSENT"}
+                container_names = [
+                    item.get("name")
+                    for item in matches[0].get("spec", {}).get("containers", [])
+                    if isinstance(item.get("name"), str)
+                ]
+                container = next(
+                    (
+                        candidate
+                        for candidate in (
+                            "aws-eks-nodeagent",
+                            "aws-network-policy-agent",
+                            "aws-node",
+                        )
+                        if candidate in container_names
+                    ),
+                    None,
+                )
+                if container is None:
+                    return {
+                        "status": "UNAVAILABLE_AGENT_CONTAINER_ABSENT",
+                        "container_names": sorted(container_names),
+                    }
                 raw = self._kubectl(
                     context,
                     "logs",
@@ -2095,7 +2326,7 @@ class LiveOperations:
                     "kube-system",
                     name,
                     "-c",
-                    "aws-network-policy-agent",
+                    container,
                     "--since=10m",
                     "--tail=300",
                     timeout=30,
@@ -2104,6 +2335,7 @@ class LiveOperations:
                 return {
                     "status": "CAPTURED",
                     "pod": name,
+                    "container": container,
                     "bytes": len(body),
                     "sha256": hashlib.sha256(body).hexdigest(),
                     "sanitized": sanitize_bytes(body),
@@ -2296,6 +2528,7 @@ class LiveOperations:
             self._kubectl(context, "apply", "-f", "-", stdin=infrastructure)
             state["namespace"] = True
             self._save_state(context, state)
+            dns_consistency = self._dns_resolution_consistency_gate(context)
             self._kubectl(context, "apply", "-f", "-", stdin=job)
             stop = time.monotonic() + 900
             while time.monotonic() < stop:
@@ -2343,7 +2576,7 @@ class LiveOperations:
                 "PILOT_WORKLOAD_UNEXPECTED_EXCEPTION",
                 f"pilot workload raised {type(exc).__name__}; pilot_diagnostic_sha256={diagnostic['sha256']}",
             ) from exc
-        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
+        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "dns_resolution_consistency": dns_consistency, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
     def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)

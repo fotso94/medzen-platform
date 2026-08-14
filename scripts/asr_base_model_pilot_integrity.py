@@ -85,6 +85,10 @@ ATTEMPT_22_EXECUTOR_MODULE_PATHS = (
     *ATTEMPT_21_EXECUTOR_MODULE_PATHS,
     "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
 )
+ATTEMPT_23_EXECUTOR_MODULE_PATHS = (
+    *ATTEMPT_22_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_pilot_dns.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -153,6 +157,7 @@ def validate_executor_module_bindings(
             ATTEMPT_20_EXECUTOR_MODULE_PATHS,
             ATTEMPT_21_EXECUTOR_MODULE_PATHS,
             ATTEMPT_22_EXECUTOR_MODULE_PATHS,
+            ATTEMPT_23_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate
