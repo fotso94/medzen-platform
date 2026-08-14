@@ -127,7 +127,7 @@ not enumerated by this packet.
 
 ## Local qualification and cold rehearsal
 
-The final bindings pin source commit `ae32f5cde0ce35e4f2569d164d77df85b97aa23c`,
+The final bindings pin source commit `96ba9dfd92ef7375545f2cc5c29bec021e334daf`,
 all 28 executor modules, the retry qualification, cost registry and immutable
 attempt-18 history. The receipt-last cold rehearsal must prove:
 
@@ -138,7 +138,7 @@ attempt-18 history. The receipt-last cold rehearsal must prove:
 - all standing deadline, isolation, cleanup, staging, GPU-readiness, policy and
   workload refusal paths through the actual `LiveOperations` composition.
 
-- final bindings SHA-256: `9fe9d66ab82e4a7a9696dc68f631782307557de8018ac0254d1f6f9aaabf8072`;
+- final bindings SHA-256: `f05f0b3e013a6f14f83ce9c011ed19d6ed1ebed5faa259d3c8cb9f86a49003ad`;
 - receipt-last cold-rehearsal SHA-256: `PENDING_COLD_REHEARSAL_SHA256`;
 - deterministic comparison: pending two identical generations;
 - complete ASR base-model/evaluation suite: pending final count.
