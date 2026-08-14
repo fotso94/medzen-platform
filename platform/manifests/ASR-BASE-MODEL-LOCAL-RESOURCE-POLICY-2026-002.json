@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002",
+  "classification": "PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE",
+  "disk": {
+    "exact_archive_bytes": 7300902912,
+    "scanner_scratch_reserve_bytes": 2147483648,
+    "evidence_reserve_bytes": 536870912,
+    "safety_margin_bytes": 2147483648,
+    "calculated_peak_requirement_bytes": 12132741120,
+    "operating_floor_bytes": 42949672960,
+    "required_available_bytes": 42949672960,
+    "simultaneous_full_image_representations": 1,
+    "basis": {
+      "exact_archive_evidence": "platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-001.json",
+      "exact_archive_evidence_sha256": "707e3cd3ffb2d06501cd6a40e03e9a32418d716e4cab963f6b664904f4389926",
+      "cleanup_baseline": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003.json",
+      "cleanup_baseline_sha256": "0b259b843d7a2f7b06b0366054b13fc2e409b07e6b25a9eef2a5d7519e12e1ba",
+      "owner_floor_gib": 40
+    }
+  },
+  "minimum_memory_bytes": 17179869184,
+  "minimum_logical_cpus": 4,
+  "minimum_open_files_soft": 1024,
+  "minimum_processes_soft": 512,
+  "required_commands": [
+    "aws",
+    "docker",
+    "git",
+    "kubectl"
+  ],
+  "required_environment": [
+    "HOME present",
+    "external workdir parent writable and searchable",
+    "Docker Scout authenticated by a complete environment pair or Docker credential-store handoff without retaining credential values",
+    "Docker daemon reachable"
+  ],
+  "failure_semantics": {
+    "attempt_envelope_created": false,
+    "attempt_number_consumed": false,
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "gpu_started": false
+  }
+}

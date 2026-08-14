@@ -138,6 +138,13 @@ def _resource_snapshot(bindings: dict[str, Any], *, sufficient: bool) -> dict[st
             "workdir_parent_writable": True,
             "scout_user_present": True,
             "scout_password_present": True,
+            "scout_authentication": {
+                "status": "PASS_SCOUT_AUTHENTICATION_HANDOFF",
+                "mode": "ENVIRONMENT_PAIR",
+                "credentials_present": True,
+                "credentials_persisted": False,
+                "credential_values_recorded": False,
+            },
             "credential_values_recorded": False,
         },
         "docker": {"daemon_reachable": True, "server_version_present": True},
@@ -371,6 +378,29 @@ def _network_probe_rehearsal(base: Path) -> dict[str, Any]:
         del port
         return addresses[host]
 
+    immediate_clock = _ProbeClock()
+
+    def immediate_connector(ip: str, port: int, timeout: float) -> None:
+        del port, timeout
+        if ip.startswith("198.51.100.") or ip == "169.254.169.254":
+            raise OSError(errno.ECONNREFUSED, "refused")
+
+    immediate_path = base / "policy-already-converged.json"
+    immediate = probe_network(
+        binding,
+        immediate_path,
+        resolver=resolver,
+        connector=immediate_connector,
+        sleeper=immediate_clock.sleep,
+        monotonic=immediate_clock.monotonic,
+    )
+    if (
+        immediate["status"] != "PASS_NETWORK_ISOLATION_PRE_TORCH"
+        or len(immediate["positive_and_negative_proofs"]["positive_convergence"])
+        != 1
+    ):
+        raise RuntimeError("already-converged rehearsal did not pass immediately")
+
     delayed_clock = _ProbeClock()
     delayed_calls = 0
 
@@ -456,6 +486,13 @@ def _network_probe_rehearsal(base: Path) -> dict[str, Any]:
         "status": "PASS_NETWORK_PROBE_CONVERGENCE_REHEARSAL",
         "real_network_calls": 0,
         "scenarios": {
+            "policy_already_converged_pass": {
+                "status": immediate["status"],
+                "convergence_attempts": len(
+                    immediate["positive_and_negative_proofs"]["positive_convergence"]
+                ),
+                "receipt_sha256": _sha(immediate_path),
+            },
             "policy_propagation_delay_then_pass": {
                 "status": delayed["status"],
                 "convergence_attempts": len(
@@ -957,6 +994,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_idempotent_read_retry.py",
         ROOT / "scripts/asr_base_model_gpu_storage.py",
         ROOT / "scripts/asr_base_model_async_observations.py",
+        ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -1080,7 +1118,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002T.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002U.json",
     )
     args = parser.parse_args()
     try:

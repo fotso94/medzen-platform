@@ -23,6 +23,7 @@ from scripts.asr_eval_digest_rescan import (
     reconstruct_exact_child,
     create_verified_docker_archive_from_ecr,
     create_docker_archive,
+    detect_scout_authentication,
     validate_basic_scan,
     validate_scout_sarif,
     validate_security_binding,
@@ -129,6 +130,27 @@ def scout_sarif(tuples=EXPECTED_HIGH_TUPLES) -> dict:
         })
         results.append({"ruleId": cve, "level": "error"})
     return {"runs": [{"tool": {"driver": {"rules": rules}}, "results": results}]}
+
+
+def test_scout_authentication_accepts_docker_credential_store_without_values(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
+    monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
+    monkeypatch.setenv("DOCKER_CONFIG", str(tmp_path))
+    (tmp_path / "config.json").write_text(
+        json.dumps(
+            {
+                "credsStore": "fixture",
+                "auths": {"https://index.docker.io/v1/": {}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr("scripts.asr_eval_digest_rescan.shutil.which", lambda _: "/bin/helper")
+    result = detect_scout_authentication()
+    assert result["mode"] == "DOCKER_CREDENTIAL_STORE"
+    assert result["credential_values_recorded"] is False
 
 
 def test_aligned_digest_reconstruction_and_dual_scan_pass(tmp_path: Path) -> None:
@@ -298,6 +320,7 @@ def test_scout_authentication_absent_refuses_before_scan(
 ) -> None:
     monkeypatch.delenv("DOCKER_SCOUT_HUB_USER", raising=False)
     monkeypatch.delenv("DOCKER_SCOUT_HUB_PASSWORD", raising=False)
+    monkeypatch.setenv("DOCKER_CONFIG", str(tmp_path / "empty-docker-config"))
 
     def runner(command, **kwargs):
         if command[2] == "version":

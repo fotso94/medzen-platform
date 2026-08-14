@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "record_id": "ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003",
+  "executed_at_utc": "2026-08-14T15:16:00Z",
+  "status": "PASS_TARGET_MET_KEEP_LIST_INTACT",
+  "authorization_boundary": {
+    "keep_list_record": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-003.json",
+    "keep_list_record_sha256": "8de1e0012196c08f7584237efe99a94985e647995a5e9a3968e57497d51f6a4e",
+    "pre_deletion_commit": "3cb1b710503612f6029b73ff74289e6f9a8edfda",
+    "deletion_started_only_after_commit": true
+  },
+  "filesystem_measurement": {
+    "mount": "/System/Volumes/Data",
+    "before_available_kib": 17719176,
+    "before_available_bytes": 18144436224,
+    "before_available_gib": 16.90,
+    "after_available_kib": 60244204,
+    "after_available_bytes": 61690064896,
+    "after_available_gib": 57.45,
+    "increase_bytes": 43545628672,
+    "increase_gib": 40.56,
+    "minimum_target_bytes": 42949672960,
+    "minimum_target_gib": 40,
+    "target_met": true
+  },
+  "local_operations": {
+    "explicitly_deleted_image": {
+      "local_image_id": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "removed_tags": [
+        "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "medzen-asr-eval-runtime:pilot-5d1b8a0",
+        "localhost:5005/medzen-asr-eval-runtime:pilot-5d1b8a0"
+      ],
+      "docker_reported_deleted": true
+    },
+    "additional_pre_authorized_images": [
+      {
+        "local_image_id": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+        "delete_command_result": "NO_SUCH_IMAGE_NO_DELETE_EFFECT",
+        "final_observation": "ABSENT",
+        "causal_attribution": "NOT_ASSERTED"
+      },
+      {
+        "local_image_id": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+        "delete_command_result": "NO_SUCH_IMAGE_NO_DELETE_EFFECT",
+        "final_observation": "ABSENT",
+        "causal_attribution": "NOT_ASSERTED"
+      },
+      {
+        "local_image_id": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+        "delete_command_result": "NO_SUCH_IMAGE_NO_DELETE_EFFECT",
+        "final_observation": "ABSENT",
+        "causal_attribution": "NOT_ASSERTED"
+      }
+    ],
+    "stopped_container": {
+      "container_id": "11adbd3cfc3f",
+      "image": "docker/desktop-reclaim-space",
+      "removed": true
+    },
+    "docker_desktop_space_compaction_run": true,
+    "unrelated_images_targeted": 0,
+    "active_volumes_targeted": 0
+  },
+  "keep_list_post_cleanup_verification": {
+    "prospective_eval_image": {
+      "local_tag_present": true,
+      "local_image_id": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+      "source_label": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+      "result": "PASS_INTACT"
+    },
+    "pinned_cuda_base": {
+      "local_tag_present": true,
+      "local_image_id": "sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc",
+      "result": "PASS_INTACT"
+    }
+  },
+  "remote_recoverability_post_cleanup": [
+    {
+      "repository": "medzen-asr-eval-runtime",
+      "tag": "pilot-5d1b8a0",
+      "digest": "sha256:506d6dd5933854fade34a05d5dfe6a35be7b97dc54da541f0814a3d3e4a6b2aa",
+      "result": "PASS_EXACT_ECR_IDENTITY"
+    },
+    {
+      "repository": "medzen-model-loader",
+      "tag": "b6a-003a-4e386a0488fc",
+      "digest": "sha256:4e386a0488fcab36bf3a39b76229a2178f2f86bec483851f9d58bb2d494e12a6",
+      "result": "PASS_EXACT_ECR_IDENTITY"
+    },
+    {
+      "repository": "medzen-asr-runtime",
+      "tag": "b6a-003b-69bdce1",
+      "digest": "sha256:cb0d783dbc9973ca4badf53871b5a54220e9e4de71c94d42c72b235a929d3ad0",
+      "result": "PASS_EXACT_ECR_IDENTITY"
+    },
+    {
+      "repository": "medzen-asr-runtime",
+      "tag": "b6a-003c-89f94d3",
+      "digest": "sha256:47d86776bb02dc9f06f40496a9905d89eb1fc25ab181607702743b06deb53a56",
+      "result": "PASS_EXACT_ECR_IDENTITY"
+    }
+  ],
+  "post_cleanup_zero_checks": {
+    "dangling_images": 0,
+    "stopped_created_or_dead_containers": 0,
+    "dangling_volumes": 0,
+    "build_cache_bytes": 0
+  },
+  "aws_calls": "READ_ONLY_ECR_IDENTITY_VERIFICATION_ONLY",
+  "aws_mutations": 0,
+  "gpu_hours": 0,
+  "cost_usd": 0.0,
+  "conclusion": "The committed successor cleanup boundary restored more than the 40 GiB pre-envelope floor while preserving the new exact packet image and pinned base. The prior image remains byte-recoverable from ECR."
+}

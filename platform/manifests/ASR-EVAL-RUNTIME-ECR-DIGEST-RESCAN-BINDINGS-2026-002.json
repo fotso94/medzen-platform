@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "classification": "OFFLINE_EVALUATION_ONLY",
+  "capability_diagnosis": {
+    "path": "platform/evidence/ASR-ECR-BASIC-SCANNING-CAPABILITY-DIAGNOSIS-2026-001.json",
+    "sha256": "e27ccbb75aec0694a1cab2e1eacaac8f06aa0ad86258f748e7df279a64445962"
+  },
+  "attempt_4_refusal": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002C-ATTEMPT-4-AUTHORITATIVE-SCAN-REFUSAL.json",
+    "sha256": "23751027f8bd2717a4aff4b99a7bea50517b9c7989eb869c415edfb6d473bfab"
+  },
+  "image": {
+    "repository": "medzen-asr-eval-runtime",
+    "tag": "pilot-7efa6e8c",
+    "source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366",
+    "oci_index_digest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "config_digest": "sha256:2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+    "attestation_digest": "sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23"
+  },
+  "security_gate": {
+    "registry_scanning_mutation_permitted": false,
+    "inspector_enhanced_scanning_permitted": false,
+    "docker_scout_version": "1.18.3",
+    "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+    "accepted_high_tuples": [
+      "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+      "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+      "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+    ]
+  },
+  "ecr_basic_scan_fixture": {
+    "path": "tests/fixtures/aws/ecr-describe-image-scan-findings-asr-eval-attempt-4.json",
+    "sha256": "e24b4aebd2785ed1d02d396eb421459e0355d951c0507a92052d04321af03981"
+  },
+  "local_exact_scan": {
+    "sarif_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-004.sarif.json",
+    "sarif_sha256": "7dd64ffd92762e9d9d633ef97bb7b1b79915115f546d6a005fd428c170fe99f7",
+    "subject_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-SUBJECT-2026-005.json",
+    "subject_sha256": "3b7a9ed11817ad2b6d0a44c01a64fa7ae70ffdd035bbd03e05d8f7a4927a3979",
+    "critical": 0,
+    "high": 4
+  }
+}

@@ -8,6 +8,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import tarfile
 import urllib.request
@@ -41,6 +42,70 @@ class DigestRescanRefusal(RuntimeError):
         super().__init__(detail)
         self.reason_code = reason_code
         self.detail = detail
+
+
+def detect_scout_authentication() -> dict[str, Any]:
+    """Detect a usable Scout authentication handoff without retaining secrets.
+
+    Docker Scout accepts either its documented environment-variable pair or
+    the Docker CLI credential-store handoff.  The latter is how Docker Desktop
+    exposes the already-authenticated session on this execution host.  Only
+    configuration shape and helper availability are retained; credential
+    values and usernames are never returned.
+    """
+    user_present = bool(os.environ.get("DOCKER_SCOUT_HUB_USER"))
+    password_present = bool(os.environ.get("DOCKER_SCOUT_HUB_PASSWORD"))
+    if user_present != password_present:
+        raise DigestRescanRefusal(
+            "SCOUT_AUTHENTICATION_PARTIAL",
+            "only one member of the Docker Scout environment credential pair is present",
+        )
+    if user_present and password_present:
+        return {
+            "status": "PASS_SCOUT_AUTHENTICATION_HANDOFF",
+            "mode": "ENVIRONMENT_PAIR",
+            "credentials_present": True,
+            "credentials_persisted": False,
+            "credential_values_recorded": False,
+        }
+
+    docker_config_root = Path(
+        os.environ.get("DOCKER_CONFIG", str(Path.home() / ".docker"))
+    )
+    config_path = docker_config_root / "config.json"
+    try:
+        config = json.loads(config_path.read_bytes())
+    except (OSError, ValueError, TypeError):
+        config = None
+    store = config.get("credsStore") if isinstance(config, dict) else None
+    auths = config.get("auths") if isinstance(config, dict) else None
+    docker_hub_entry_present = isinstance(auths, dict) and any(
+        key in auths
+        for key in (
+            "https://index.docker.io/v1/",
+            "https://index.docker.io/v1/access-token",
+            "https://index.docker.io/v1/refresh-token",
+        )
+    )
+    helper_present = bool(
+        isinstance(store, str)
+        and store
+        and shutil.which(f"docker-credential-{store}")
+    )
+    if helper_present and docker_hub_entry_present:
+        return {
+            "status": "PASS_SCOUT_AUTHENTICATION_HANDOFF",
+            "mode": "DOCKER_CREDENTIAL_STORE",
+            "credentials_present": True,
+            "credentials_persisted": False,
+            "credential_values_recorded": False,
+            "credential_store_helper_present": True,
+            "docker_hub_entry_present": True,
+        }
+    raise DigestRescanRefusal(
+        "SCOUT_AUTHENTICATION_ABSENT",
+        "neither a complete Docker Scout environment pair nor a Docker credential-store handoff is available",
+    )
 
 
 def validate_security_binding(value: dict[str, Any]) -> dict[str, Any]:
@@ -530,20 +595,15 @@ def validate_scout_prerequisites(
             "SCOUT_VERSION_DIFFERS",
             "pinned Docker Scout version and source commit are unavailable",
         )
-    if not (
-        os.environ.get("DOCKER_SCOUT_HUB_USER")
-        and os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")
-    ):
-        raise DigestRescanRefusal(
-            "SCOUT_AUTHENTICATION_ABSENT",
-            "pinned Docker Scout credentials are absent from the execution environment",
-        )
+    authentication = detect_scout_authentication()
     return {
         "status": "PASS_SCOUT_PREREQUISITES",
         "scanner_version": SCOUT_VERSION,
         "scanner_git_commit": SCOUT_GIT_COMMIT,
-        "credentials_present": True,
-        "credentials_persisted": False,
+        "credentials_present": authentication["credentials_present"],
+        "credentials_persisted": authentication["credentials_persisted"],
+        "authentication_mode": authentication["mode"],
+        "credential_values_recorded": False,
     }
 
 

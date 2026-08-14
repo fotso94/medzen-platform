@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "id": "ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-001",
+  "status": "PASS_EXACT_LOCAL_ARCHIVE_MEASUREMENT",
+  "recorded_utc": "2026-08-14T15:20:00Z",
+  "image": {
+    "local_tag": "medzen-asr-eval-runtime:pilot-7efa6e8c",
+    "oci_index_digest": "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+    "linux_amd64_manifest_digest": "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+    "config_digest": "sha256:2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+    "attestation_manifest_digest": "sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23",
+    "spdx_attestation_digest": "sha256:3da28c95deef0aa97466904c2222481c4698b1fc53c0b539b9447d1f9d90af12",
+    "source_commit": "7efa6e8c4be378e754e9edb8b64151aa89c0a366"
+  },
+  "archive": {
+    "command_shape": [
+      "docker",
+      "image",
+      "save",
+      "--output",
+      "<external-temporary-path>",
+      "medzen-asr-eval-runtime:pilot-7efa6e8c"
+    ],
+    "bytes": 7300902912,
+    "sha256": "4f67d533d3ac275e122090964f5e493255971ac3533bca99ef31ef963ac9d909",
+    "oci_layout_version": "1.0.0",
+    "root_index_contains_exact_bound_index": true,
+    "stream_verified_blob_digests": [
+      "sha256:f14fe88a7ebb2c68bf2ed772ad2ce8913c1fa8117b2da5305af55298f1d15505",
+      "sha256:4d1ccde955f5ae074ed6470d7edb6d74f9d49cc6a6f44f9f0a2b7397a0cd3841",
+      "sha256:2938427027f22b10f9dc5c89b3305b5689ea5c44b088839b85583e1575feeda3",
+      "sha256:8d96d7c4b5b6f4a3c1677dc93301e2829afd0923b20eb269272b5e19dbf57e23",
+      "sha256:3da28c95deef0aa97466904c2222481c4698b1fc53c0b539b9447d1f9d90af12"
+    ],
+    "all_stream_verified_digests_match": true,
+    "temporary_archive_destroyed_after_measurement": true
+  },
+  "disk_observation": {
+    "available_bytes_during_archive": 54385287168,
+    "available_gib_during_archive": 50.65,
+    "available_bytes_after_archive_destroy_and_compaction": 61689053184,
+    "available_gib_after_archive_destroy_and_compaction": 57.45,
+    "required_floor_bytes": 42949672960,
+    "required_floor_remained_satisfied": true
+  },
+  "execution": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "kubectl_calls": 0,
+    "gpu_started": false,
+    "model_or_audio_bytes_in_archive": false
+  }
+}

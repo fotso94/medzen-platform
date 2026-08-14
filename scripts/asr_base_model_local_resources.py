@@ -17,6 +17,11 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from scripts.asr_eval_digest_rescan import (
+    DigestRescanRefusal,
+    detect_scout_authentication,
+)
+
 
 GIB = 1024**3
 REQUIRED_COMMANDS = ("aws", "docker", "git", "kubectl")
@@ -95,6 +100,16 @@ def collect_local_resource_snapshot(workdir: Path) -> dict[str, Any]:
         text=True,
         timeout=60,
     ) if commands["docker"] else None
+    try:
+        scout_authentication = detect_scout_authentication()
+    except DigestRescanRefusal as exc:
+        scout_authentication = {
+            "status": "REFUSED",
+            "reason_code": exc.reason_code,
+            "credentials_present": False,
+            "credentials_persisted": False,
+            "credential_values_recorded": False,
+        }
     return {
         "schema_version": 1,
         "disk": {
@@ -114,6 +129,7 @@ def collect_local_resource_snapshot(workdir: Path) -> dict[str, Any]:
             "workdir_parent_writable": os.access(parent, os.W_OK | os.X_OK),
             "scout_user_present": bool(os.environ.get("DOCKER_SCOUT_HUB_USER")),
             "scout_password_present": bool(os.environ.get("DOCKER_SCOUT_HUB_PASSWORD")),
+            "scout_authentication": scout_authentication,
             "credential_values_recorded": False,
         },
         "docker": {
@@ -204,14 +220,28 @@ def validate_local_resource_snapshot(
     environment = snapshot.get("environment")
     if not isinstance(environment, dict) or any(
         environment.get(field) is not True
-        for field in (
-            "home_present",
-            "workdir_parent_writable",
-            "scout_user_present",
-            "scout_password_present",
-        )
+        for field in ("home_present", "workdir_parent_writable")
     ) or environment.get("credential_values_recorded") is not False:
         raise LocalResourceRefusal("LOCAL_EXECUTION_ENVIRONMENT_INCOMPLETE", "local execution environment is incomplete")
+    environment_pair = (
+        environment.get("scout_user_present") is True
+        and environment.get("scout_password_present") is True
+    )
+    scout_authentication = environment.get("scout_authentication")
+    credential_store = (
+        isinstance(scout_authentication, dict)
+        and scout_authentication.get("status")
+        == "PASS_SCOUT_AUTHENTICATION_HANDOFF"
+        and scout_authentication.get("mode") == "DOCKER_CREDENTIAL_STORE"
+        and scout_authentication.get("credentials_present") is True
+        and scout_authentication.get("credentials_persisted") is False
+        and scout_authentication.get("credential_values_recorded") is False
+    )
+    if not environment_pair and not credential_store:
+        raise LocalResourceRefusal(
+            "LOCAL_EXECUTION_ENVIRONMENT_INCOMPLETE",
+            "Docker Scout authentication handoff is absent",
+        )
     docker = snapshot.get("docker")
     if not isinstance(docker, dict) or docker.get("daemon_reachable") is not True or docker.get("server_version_present") is not True:
         raise LocalResourceRefusal("LOCAL_DOCKER_DAEMON_UNAVAILABLE", "Docker daemon is unavailable before the attempt envelope")
@@ -231,6 +261,11 @@ def validate_local_resource_snapshot(
             "minimum_processes_soft": minimum_nproc,
         },
         "required_commands": list(REQUIRED_COMMANDS),
+        "scout_authentication_mode": (
+            "ENVIRONMENT_PAIR"
+            if environment_pair
+            else "DOCKER_CREDENTIAL_STORE"
+        ),
         "docker_daemon_reachable": True,
         "attempt_envelope_created": False,
         "attempt_number_consumed": False,

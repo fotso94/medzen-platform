@@ -50,6 +50,13 @@ def snapshot(*, free_bytes: int = 42_949_672_960) -> dict:
             "workdir_parent_writable": True,
             "scout_user_present": True,
             "scout_password_present": True,
+            "scout_authentication": {
+                "status": "PASS_SCOUT_AUTHENTICATION_HANDOFF",
+                "mode": "ENVIRONMENT_PAIR",
+                "credentials_present": True,
+                "credentials_persisted": False,
+                "credential_values_recorded": False,
+            },
             "credential_values_recorded": False,
         },
         "docker": {"daemon_reachable": True, "server_version_present": True},
@@ -68,6 +75,25 @@ def test_sufficient_resources_pass_before_attempt_consumption() -> None:
     assert result["status"] == "PASS_PRE_ENVELOPE_LOCAL_RESOURCES"
     assert result["attempt_envelope_created"] is False
     assert result["attempt_number_consumed"] is False
+
+
+def test_docker_credential_store_handoff_is_accepted_without_env_pair() -> None:
+    measured = snapshot()
+    measured["environment"].update(
+        {
+            "scout_user_present": False,
+            "scout_password_present": False,
+            "scout_authentication": {
+                "status": "PASS_SCOUT_AUTHENTICATION_HANDOFF",
+                "mode": "DOCKER_CREDENTIAL_STORE",
+                "credentials_present": True,
+                "credentials_persisted": False,
+                "credential_values_recorded": False,
+            },
+        }
+    )
+    result = validate_local_resource_snapshot(policy(), measured)
+    assert result["scout_authentication_mode"] == "DOCKER_CREDENTIAL_STORE"
 
 
 def test_one_byte_below_disk_floor_refuses_fail_closed() -> None:
