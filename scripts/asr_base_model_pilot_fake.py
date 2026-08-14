@@ -126,6 +126,7 @@ class BoundaryState:
         self.pilot_receipt_reads = 0
         self.pilot_receipt_observation_sequence: list[str] = []
         self.pilot_pod_reads = 0
+        self.pilot_job_wait_refused = False
         self.last_sampler_command: list[str] | None = None
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
@@ -738,6 +739,7 @@ class ExternalCommandBoundary:
                 if "pod/asr-eval-inbound-control" in command:
                     return self._completed(command)
                 if self.state.injection == "pilot_job_refused":
+                    self.state.pilot_job_wait_refused = True
                     return self._completed(command, returncode=1)
                 return self._completed(command)
             if "delete" in command and "namespace" in command:
@@ -827,10 +829,10 @@ class KubectlBoundary:
             }
         if args[:2] == ("get", "pod"):
             self.state.pilot_pod_reads += 1
-            if self.state.injection not in {
-                "network_receipt_pod_terminal",
-                "pilot_job_refused",
-            }:
+            if (
+                self.state.injection != "network_receipt_pod_terminal"
+                and not self.state.pilot_job_wait_refused
+            ):
                 return {
                     "metadata": {"name": args[2]},
                     "status": {
