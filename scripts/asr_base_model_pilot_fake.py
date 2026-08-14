@@ -830,8 +830,20 @@ class SsmCommandBoundary:
 
 
 def digest_scan_boundary(injection: str | None):
+    read_attempts = 0
+
     def scan(_: Any, __: str, image: dict[str, Any], workdir: Path) -> dict[str, Any]:
+        nonlocal read_attempts
+        read_attempts += 1
         workdir.mkdir(parents=True, exist_ok=True)
+        if injection == "image_stream_reset_then_success" and read_attempts == 1:
+            from scripts.asr_idempotent_read_retry import TransientReadFault
+
+            raise TransientReadFault("ECR_PULL_BACK", "CONNECTION_RESET")
+        if injection == "image_stream_persistent_reset":
+            from scripts.asr_idempotent_read_retry import TransientReadFault
+
+            raise TransientReadFault("ECR_PULL_BACK", "CONNECTION_RESET")
         if injection == "security_wrong_digest":
             from scripts.asr_eval_digest_rescan import DigestRescanRefusal
 

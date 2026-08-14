@@ -46,6 +46,7 @@ REQUIRED_NODE_EXECUTABLES = (
     "/usr/bin/printf",
     "/usr/bin/rm",
     "/usr/bin/sha256sum",
+    "/usr/bin/sleep",
     "/usr/bin/stat",
     "/usr/bin/sudo",
     "/usr/bin/tar",
@@ -133,18 +134,52 @@ def install_directory(path: str) -> str:
 
 
 def download_file(url: str, destination: str) -> str:
-    inner = root_command(
+    curl = root_command(
         "/usr/bin/curl",
         "--fail",
         "--silent",
         "--show-error",
         "--location",
+        "--connect-timeout",
+        "15",
+        "--max-time",
+        "300",
         "--proto",
         "=https",
         "--tlsv1.2",
         url,
         "-o",
         destination,
+    )
+    # curl 6 = DNS, 28 = timeout, 56 = receive/reset.  HTTP failures (22),
+    # authentication, policy and all other errors fail immediately.  A partial
+    # destination is removed before the exact idempotent read is repeated.
+    inner = "\n".join(
+        (
+            "attempt=1",
+            "while /usr/bin/test \"$attempt\" -le 3; do",
+            "  set +e",
+            f"  {curl}",
+            "  code=$?",
+            "  set -e",
+            "  if /usr/bin/test \"$code\" = 0; then exit 0; fi",
+            "  case \"$code\" in",
+            "    6) category=DNS_BLIP ;;",
+            "    28) category=TIMEOUT ;;",
+            "    56) category=CONNECTION_RESET ;;",
+            "    *) exit \"$code\" ;;",
+            "  esac",
+            f"  /usr/bin/rm -f -- {shlex.quote(destination)}",
+            "  if /usr/bin/test \"$attempt\" = 3; then",
+            "    /usr/bin/printf 'MEDZEN_TRANSIENT_S3_READ_EXHAUSTED category=%s attempts=3\\n' \"$category\" >&2",
+            "    exit 86",
+            "  fi",
+            "  if /usr/bin/test \"$attempt\" = 1; then delay=1; else delay=2; fi",
+            "  /usr/bin/sleep \"$delay\"",
+            "  attempt=$((attempt + 1))",
+            "done",
+            "exit 86",
+        )
     )
     return numeric_identity_command(inner)
 
@@ -241,7 +276,7 @@ def audit_staging_commands(commands: list[str]) -> dict[str, Any]:
             for match in re.finditer(
                 r"(?<![/A-Za-z0-9_.-])"
                 r"(base64|cat|chmod|chown|chroot|curl|cut|env|find|id|install|"
-                r"printf|rm|sha256sum|stat|sudo|tar|tee|test|wc)"
+                r"printf|rm|sha256sum|sleep|stat|sudo|tar|tee|test|wc)"
                 r"(?=\s|$)",
                 body,
             )
@@ -292,6 +327,19 @@ def audit_staging_commands(commands: list[str]) -> dict[str, Any]:
         "ssm_timeout_seconds": STAGING_SSM_TIMEOUT_SECONDS,
         "presigned_url_seconds": STAGING_PRESIGNED_URL_SECONDS,
         "url_safety_margin_seconds": STAGING_URL_SAFETY_MARGIN_SECONDS,
+        "idempotent_s3_read_retry": {
+            "maximum_attempts": 3,
+            "backoff_seconds": [1, 2],
+            "curl_transient_exit_codes": {
+                "6": "DNS_BLIP",
+                "28": "TIMEOUT",
+                "56": "CONNECTION_RESET",
+            },
+            "per_attempt_max_seconds": 300,
+            "hard_cap_seconds": 903,
+            "other_exit_codes_retryable": False,
+            "verification_failures_retryable": False,
+        },
         "command_bundle_sha256": hashlib.sha256(
             json.dumps(commands, sort_keys=True, separators=(",", ":")).encode()
             + b"\n"

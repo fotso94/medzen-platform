@@ -77,6 +77,14 @@ SCENARIOS = {
         "FAILED_CLOSED_EXECUTION",
     ),
     "pilot_job_refused": ("pilot_job_refused", "FAILED_CLOSED_EXECUTION"),
+    "image_stream_reset_then_success": (
+        "image_stream_reset_then_success",
+        "PASS_PILOT",
+    ),
+    "image_stream_persistent_reset": (
+        "image_stream_persistent_reset",
+        "BLOCKED_IMAGE_SCAN",
+    ),
     "security_wrong_digest": ("security_wrong_digest", "BLOCKED_IMAGE_SCAN"),
     "security_extra_finding": ("security_extra_finding", "BLOCKED_IMAGE_SCAN"),
     "isolation_probe_refusal": ("private_endpoint_and_policy_gate", "BLOCKED_NETWORK_ISOLATION"),
@@ -432,7 +440,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     os.environ["DOCKER_SCOUT_HUB_PASSWORD"] = "synthetic-cold-rehearsal-secret"
     receipt_module.utc_now = lambda: "2026-08-13T03:00:00Z"
     bindings_path = bindings_path or (
-        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Q.json"
+        ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002R.json"
     )
     bindings_body = read_committed_artifact(ROOT, bindings_path)
     bindings = json.loads(bindings_body)
@@ -565,6 +573,11 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     if failure_receipt is not None
                     else None
                 ),
+                "failure_safe_error_text": (
+                    failure_receipt["payload"].get("safe_error_text")
+                    if failure_receipt is not None
+                    else None
+                ),
                 "cleanup_status": json.loads(
                     (directory / "receipts/cleanup_and_expiry.json").read_bytes()
                 )["status"],
@@ -587,6 +600,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "scan_representation": image_payload.get("security_gate", {}).get(
                     "reconstruction"
                 ),
+                "read_retry_audit": image_payload.get("read_retry_audit"),
                 "endpoint_policy_coverage": endpoint_payload.get(
                     "endpoint_policy_coverage"
                 ),
@@ -691,6 +705,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_proven_commands.py",
         ROOT / "scripts/asr_base_model_node_staging.py",
         ROOT / "scripts/asr_base_model_pilot_workload.py",
+        ROOT / "scripts/asr_idempotent_read_retry.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -802,7 +817,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Q.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002R.json",
     )
     args = parser.parse_args()
     try:

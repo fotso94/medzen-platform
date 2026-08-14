@@ -69,6 +69,10 @@ ATTEMPT_18_EXECUTOR_MODULE_PATHS = (
     "scripts/asr_base_model_endpoint_policy.py",
     "scripts/qualify_asr_base_model_endpoint_policy.py",
 )
+ATTEMPT_19_EXECUTOR_MODULE_PATHS = (
+    *ATTEMPT_18_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_idempotent_read_retry.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -132,7 +136,8 @@ def validate_executor_module_bindings(
             SHARED_BOUNDARY_GATED_EXECUTOR_MODULE_PATHS,
             PROVEN_COMMAND_GATED_EXECUTOR_MODULE_PATHS,
             ATTEMPT_17_EXECUTOR_MODULE_PATHS,
-            ATTEMPT_18_EXECUTOR_MODULE_PATHS,
+                ATTEMPT_18_EXECUTOR_MODULE_PATHS,
+                ATTEMPT_19_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

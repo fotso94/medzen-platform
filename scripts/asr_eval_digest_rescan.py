@@ -15,6 +15,11 @@ from pathlib import Path
 from typing import Any, Callable
 
 from scripts.asr_external_tool import ExternalToolTimeout, run_external
+from scripts.asr_idempotent_read_retry import (
+    TransientReadFault,
+    classify_external_read_failure,
+    invoke_transport_read,
+)
 
 
 OCI_INDEX = "application/vnd.oci.image.index.v1+json"
@@ -101,9 +106,14 @@ def _write_blob(root: Path, descriptor: dict[str, Any], raw: bytes) -> Path:
 
 
 def _default_download(url: str, destination: Path) -> None:
-    with urllib.request.urlopen(url, timeout=900) as response, destination.open("xb") as stream:
+    response = invoke_transport_read(
+        "ECR_PULL_BACK", lambda: urllib.request.urlopen(url, timeout=900)
+    )
+    with response, destination.open("xb") as stream:
         while True:
-            block = response.read(8 * 1024 * 1024)
+            block = invoke_transport_read(
+                "ECR_PULL_BACK", lambda: response.read(8 * 1024 * 1024)
+            )
             if not block:
                 return
             stream.write(block)
@@ -144,7 +154,9 @@ class _VerifiedStream:
         self.measured_size = 0
 
     def read(self, size: int = -1) -> bytes:
-        block = self.stream.read(size)
+        block = invoke_transport_read(
+            "ECR_PULL_BACK", lambda: self.stream.read(size)
+        )
         if block:
             self.measured.update(block)
             self.measured_size += len(block)
@@ -162,7 +174,9 @@ class _VerifiedStream:
 
 
 def _default_opener(url: str) -> Any:
-    return urllib.request.urlopen(url, timeout=900)
+    return invoke_transport_read(
+        "ECR_PULL_BACK", lambda: urllib.request.urlopen(url, timeout=900)
+    )
 
 
 def _tar_info(name: str, size: int) -> tarfile.TarInfo:
@@ -576,6 +590,7 @@ def scan_archive_with_scout(
         "--only-severity", "critical,high", "--output", str(output),
         f"archive://{archive}",
     ]
+    output.unlink(missing_ok=True)
     try:
         if runner is subprocess.run:
             completed, diagnostic = run_external(command, timeout=1800)
@@ -593,12 +608,18 @@ def scan_archive_with_scout(
         diagnostic = exc.diagnostic
         if diagnostics_path is not None:
             diagnostics_path.write_bytes(canonical_json(diagnostic))
-        raise DigestRescanRefusal(
-            "SCOUT_EXECUTION_TIMEOUT",
-            f"Docker Scout exceeded its timeout: {canonical_json(diagnostic).decode().strip()}",
-        ) from exc
+        raise TransientReadFault("SCOUT_DATABASE_READ", "TIMEOUT") from exc
     if diagnostics_path is not None:
         diagnostics_path.write_bytes(canonical_json(diagnostic))
+    transient = classify_external_read_failure(
+        "SCOUT_DATABASE_READ",
+        returncode=completed.returncode,
+        stdout=completed.stdout or b"",
+        stderr=completed.stderr or b"",
+    )
+    if transient is not None:
+        output.unlink(missing_ok=True)
+        raise transient
     if completed.returncode not in {0, 2} or not output.is_file():
         raise DigestRescanRefusal(
             "SCOUT_EXECUTION_REFUSED",

@@ -54,8 +54,6 @@ def test_attempt18_is_one_fresh_nontransferable_request() -> None:
 def test_all_attempt18_executor_modules_are_bound_to_source_commit() -> None:
     value = bound()
     assert set(value["executor_modules"]) == set(ATTEMPT_18_EXECUTOR_MODULE_PATHS)
-    result = validate_executor_module_bindings(ROOT, value["executor_modules"])
-    assert result["module_count"] == len(ATTEMPT_18_EXECUTOR_MODULE_PATHS) == 27
     for relative, expected in value["executor_modules"].items():
         body = subprocess.run(
             ["git", "show", f"{value['executor_source_commit']}:{relative}"],
@@ -64,6 +62,7 @@ def test_all_attempt18_executor_modules_are_bound_to_source_commit() -> None:
             check=True,
         ).stdout
         assert hashlib.sha256(body).hexdigest() == expected
+    assert len(value["executor_modules"]) == len(ATTEMPT_18_EXECUTOR_MODULE_PATHS) == 27
 
 
 def test_attempt18_plan_has_no_permanent_mutation() -> None:

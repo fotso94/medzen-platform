@@ -25,6 +25,14 @@ from typing import Any, Callable
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
 from scripts.asr_external_tool import ExternalToolTimeout, run_external, sanitize_bytes
+from scripts.asr_idempotent_read_retry import (
+    IdempotentReadRetrier,
+    RetryPolicy,
+    TransientReadFault,
+    TransientReadRetryExhausted,
+    classify_external_read_failure,
+    invoke_transport_read,
+)
 from scripts.asr_base_model_boundary_contracts import (
     DRA_WAIT_TIMEOUT_SECONDS,
     invoke_dra_waiter,
@@ -137,6 +145,8 @@ PRIVATE_PULL_REPOSITORIES = (
 GPU_NODE_READY_POLL_INTERVAL_SECONDS = 10
 GPU_NODE_READY_TIMEOUT_SECONDS = 600
 GPU_NODE_READY_STABLE_OBSERVATIONS = 2
+IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS = 7200
+S3_READ_RETRY_HARD_CAP_SECONDS = 3600
 
 
 def _sha(path: Path) -> str:
@@ -265,6 +275,71 @@ class LiveOperations:
         self.s3 = self.session.client("s3")
         self.asg = self.session.client("autoscaling")
         self.ssm = self.session.client("ssm")
+
+    def _idempotent_read(
+        self,
+        operation: str,
+        label: str,
+        action: Callable[[], Any],
+        *,
+        hard_cap_seconds: float,
+    ) -> tuple[Any, dict[str, Any]]:
+        """Retry only a boundary-typed transport failure on an approved read."""
+
+        retrier = IdempotentReadRetrier(
+            RetryPolicy(hard_cap_seconds=hard_cap_seconds),
+            sleeper=self._sleeper,
+            monotonic=self._monotonic,
+        )
+
+        def typed_action() -> Any:
+            return invoke_transport_read(operation, action)
+
+        try:
+            return retrier.run(operation, label, typed_action)
+        except TransientReadRetryExhausted as exc:
+            raise OperationRefusal(
+                exc.reason_code,
+                "typed transient read retry exhausted: "
+                + canonical_json(exc.audit).decode().strip(),
+            ) from exc
+
+    def _idempotent_read_command(
+        self,
+        operation: str,
+        label: str,
+        command: list[str],
+        *,
+        hard_cap_seconds: float = S3_READ_RETRY_HARD_CAP_SECONDS,
+    ) -> tuple[subprocess.CompletedProcess[bytes], dict[str, Any]]:
+        def action() -> subprocess.CompletedProcess[bytes]:
+            try:
+                completed = self._command(command, timeout=1800, check=False)
+            except OperationRefusal as exc:
+                if exc.reason_code == "BOUNDED_COMMAND_TIMEOUT":
+                    raise TransientReadFault(operation, "TIMEOUT") from exc
+                raise
+            transient = classify_external_read_failure(
+                operation,
+                returncode=completed.returncode,
+                stdout=completed.stdout or b"",
+                stderr=completed.stderr or b"",
+            )
+            if transient is not None:
+                raise transient
+            if completed.returncode != 0:
+                raise OperationRefusal(
+                    "IDEMPOTENT_READ_COMMAND_REFUSED",
+                    f"{Path(command[0]).name} read command refused without a typed transient transport fault",
+                )
+            return completed
+
+        return self._idempotent_read(
+            operation,
+            label,
+            action,
+            hard_cap_seconds=hard_cap_seconds,
+        )
 
     def _command(
         self,
@@ -1029,10 +1104,15 @@ class LiveOperations:
         binding = context.bindings["input_freeze"]
         manifest_root = context.workdir / "manifests"
         manifest_root.mkdir(parents=True, exist_ok=False)
-        self._command([
-            "aws", "--profile", PROFILE, "--region", REGION, "s3", "sync",
-            "s3://medzen-speech/eval/", str(manifest_root), "--exclude", "*", "--include", "*/asr/*/manifest*.jsonl",
-        ], timeout=1800)
+        _, sync_retry = self._idempotent_read_command(
+            "S3_READ",
+            "input-freeze-manifest-sync",
+            [
+                "aws", "--profile", PROFILE, "--region", REGION, "s3", "sync",
+                "s3://medzen-speech/eval/", str(manifest_root), "--exclude", "*", "--include", "*/asr/*/manifest*.jsonl",
+            ],
+            hard_cap_seconds=S3_READ_RETRY_HARD_CAP_SECONDS,
+        )
         outputs = []
         for run in (1, 2):
             completed = self._command([
@@ -1056,7 +1136,7 @@ class LiveOperations:
         if selection["public_row_list_sha256"] != binding["pilot_row_list_sha256"] or len(selection["rows"]) > 540:
             raise OperationRefusal("PILOT_ROW_LIST_DIFFERS", "deterministic pilot row list differs")
         write_exclusive(context.workdir / "pilot-selection.json", canonical_json(selection))
-        return {"status": "PASS_INPUT_FREEZE_AND_NO_PHI", "runs": 2, "byte_identical": True, "rows": audit["inventory"]["rows"], "pilot_rows": len(selection["rows"]), "pilot_row_list_sha256": selection["public_row_list_sha256"], "phi": False}
+        return {"status": "PASS_INPUT_FREEZE_AND_NO_PHI", "runs": 2, "byte_identical": True, "rows": audit["inventory"]["rows"], "pilot_rows": len(selection["rows"]), "pilot_row_list_sha256": selection["public_row_list_sha256"], "phi": False, "s3_read_retry": sync_retry}
 
     def cost_and_zero_state(self, context: AttemptContext) -> dict[str, Any]:
         for name in (CPU_NODEGROUP, GPU_NODEGROUP):
@@ -1169,7 +1249,15 @@ class LiveOperations:
         image = context.bindings["image"]
         state = self._state(context)
         try:
-            repository = self.ecr.describe_repositories(repositoryNames=[ECR_REPOSITORY])["repositories"][0]
+            repository_response, repository_retry = self._idempotent_read(
+                "ECR_PULL_BACK",
+                "evaluation-repository-read",
+                lambda: self.ecr.describe_repositories(
+                    repositoryNames=[ECR_REPOSITORY]
+                ),
+                hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
+            )
+            repository = repository_response["repositories"][0]
         except self.ecr.exceptions.RepositoryNotFoundException:
             raise OperationRefusal(
                 "ECR_EVALUATION_REPOSITORY_ABSENT",
@@ -1178,21 +1266,41 @@ class LiveOperations:
         if repository["imageTagMutability"] != "IMMUTABLE" or repository["encryptionConfiguration"]["encryptionType"] != "KMS":
             raise OperationRefusal("ECR_REPOSITORY_BOUNDARY_DIFFERS", "evaluation repository is not immutable and KMS-encrypted")
         if context.attempt >= 5:
-            exact = self._existing_exact_image(image)
+            exact, identity_retry = self._idempotent_read(
+                "ECR_PULL_BACK",
+                "exact-image-identity-read",
+                lambda: self._existing_exact_image(image),
+                hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
+            )
             try:
                 gate_binding = validate_security_binding(context.bindings.get("security_gate", {}))
-                with tempfile.TemporaryDirectory(prefix="digest-rescan-", dir=context.workdir) as temporary:
-                    scan = self._digest_scanner(
-                        self.ecr,
-                        ECR_REPOSITORY,
-                        image,
-                        Path(temporary),
-                    )
-                    retained_sarif = context.workdir / "docker-scout-ecr-rescan.sarif.json"
-                    source_sarif = Path(temporary) / "docker-scout.sarif.json"
-                    write_exclusive(retained_sarif, source_sarif.read_bytes())
-                    scan["docker_scout"]["sarif_path"] = str(retained_sarif)
-                    scan["docker_scout"].pop("scanned_oci_layout", None)
+
+                def scan_read() -> dict[str, Any]:
+                    with tempfile.TemporaryDirectory(
+                        prefix="digest-rescan-", dir=context.workdir
+                    ) as temporary:
+                        value = self._digest_scanner(
+                            self.ecr,
+                            ECR_REPOSITORY,
+                            image,
+                            Path(temporary),
+                        )
+                        retained_sarif = (
+                            context.workdir / "docker-scout-ecr-rescan.sarif.json"
+                        )
+                        source_sarif = Path(temporary) / "docker-scout.sarif.json"
+                        retained_sarif.unlink(missing_ok=True)
+                        write_exclusive(retained_sarif, source_sarif.read_bytes())
+                        value["docker_scout"]["sarif_path"] = str(retained_sarif)
+                        value["docker_scout"].pop("scanned_oci_layout", None)
+                        return value
+
+                scan, scan_retry = self._idempotent_read(
+                    "ECR_PULL_BACK",
+                    "exact-child-and-scout-read",
+                    scan_read,
+                    hard_cap_seconds=IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS,
+                )
             except DigestRescanRefusal as exc:
                 raise OperationRefusal(exc.reason_code, exc.detail) from exc
             return {
@@ -1203,6 +1311,11 @@ class LiveOperations:
                 "publication": {"status": "SKIPPED_EXISTING_EXACT_IMAGE", "aws_image_mutations": 0},
                 "security_gate_binding": gate_binding,
                 "security_gate": scan,
+                "read_retry_audit": {
+                    "repository": repository_retry,
+                    "identity": identity_retry,
+                    "scan": scan_retry,
+                },
             }
         local = self._command(["docker", "image", "inspect", image["local_tag"], "--format", "{{json .Config.Labels}}"])
         labels = json.loads(local.stdout)
@@ -1264,11 +1377,20 @@ class LiveOperations:
             if hashlib.sha256(proof_body).hexdigest() != proof_binding["sha256"]:
                 raise StagingRefusal("PRESTAGE_PROOF_HASH_DIFFERS", "pre-stage proof hash differs")
             proof = json.loads(proof_body)
-            verification = verify_prestaged_bundle(
-                self.s3,
-                proof,
-                expected_bundle_sha256=expected["sha256"],
-                destination=bundle_path,
+            def verify_bundle_read() -> dict[str, Any]:
+                bundle_path.unlink(missing_ok=True)
+                return verify_prestaged_bundle(
+                    self.s3,
+                    proof,
+                    expected_bundle_sha256=expected["sha256"],
+                    destination=bundle_path,
+                )
+
+            verification, bundle_retry = self._idempotent_read(
+                "S3_READ",
+                "pre-staged-bundle-verify",
+                verify_bundle_read,
+                hard_cap_seconds=S3_READ_RETRY_HARD_CAP_SECONDS,
             )
             bundle = json.loads(bundle_path.read_bytes())
             model_bindings = [
@@ -1284,13 +1406,25 @@ class LiveOperations:
             model_binding = model_bindings[0]
             model_binding_path = context.workdir / "asset-staging/model-bindings.json"
             model_binding_path.parent.mkdir(parents=True, exist_ok=True)
-            with model_binding_path.open("xb") as stream:
-                self.s3.download_fileobj(
-                    BUCKET,
-                    model_binding["key"],
-                    stream,
-                    ExtraArgs={"VersionId": model_binding["version_id"]},
-                )
+            model_binding_partial = model_binding_path.with_suffix(".json.partial")
+
+            def download_model_binding() -> None:
+                model_binding_partial.unlink(missing_ok=True)
+                with model_binding_partial.open("xb") as stream:
+                    self.s3.download_fileobj(
+                        BUCKET,
+                        model_binding["key"],
+                        stream,
+                        ExtraArgs={"VersionId": model_binding["version_id"]},
+                    )
+
+            _, model_binding_retry = self._idempotent_read(
+                "S3_READ",
+                "model-bindings-versioned-download",
+                download_model_binding,
+                hard_cap_seconds=S3_READ_RETRY_HARD_CAP_SECONDS,
+            )
+            model_binding_partial.replace(model_binding_path)
             if (
                 model_binding_path.stat().st_size != model_binding["bytes"]
                 or _sha(model_binding_path) != model_binding["sha256"]
@@ -1313,6 +1447,10 @@ class LiveOperations:
             "create_only": True,
             "hashes_verified": True,
             "verification": verification,
+            "s3_read_retry": {
+                "bundle": bundle_retry,
+                "model_bindings": model_binding_retry,
+            },
             "local_model_bindings": {
                 "key": model_binding["key"],
                 "version_id": model_binding["version_id"],
