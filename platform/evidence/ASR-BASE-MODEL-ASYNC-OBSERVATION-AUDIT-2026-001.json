@@ -1,0 +1,97 @@
+{
+  "record": "ASR_BASE_MODEL_ASYNC_OBSERVATION_AUDIT",
+  "id": "ASR-BASE-MODEL-ASYNC-OBSERVATION-AUDIT-2026-001",
+  "schema_version": 1,
+  "status": "PASS_ALL_POST_START_OBSERVATIONS_BOUNDED",
+  "recorded_utc": "2026-08-14T07:08:00Z",
+  "source_commit": "5fff1a0a6367a57b2e246579af4160edd46fb8fd",
+  "trigger": {
+    "attempt": 20,
+    "failure_classification": "ONE_SHOT_POST_CONTAINER_START_NETWORK_PROBE_RECEIPT_READ_RACE",
+    "refusal_path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002S-ATTEMPT-20-NETWORK-PROBE-RECEIPT-RACE-REFUSAL.json",
+    "refusal_sha256": "5e59589959e49702acc35fed77e28a821a474e05427d0e8535d594ac39fa5dfe",
+    "claude_review_id": "CLAUDE-REVIEW-2026-08-14-004"
+  },
+  "policy": {
+    "one_shot_post_async_observations_permitted": false,
+    "network_receipt_timeout_seconds": 300,
+    "poll_interval_seconds": 10,
+    "required_stable_observations": 2,
+    "receipt_absence_retryable": true,
+    "listener_absence_retryable_while_pod_non_terminal": true,
+    "malformed_receipt_retryable": false,
+    "receipt_hash_drift_retryable": false,
+    "terminal_pod_retryable": false,
+    "receipt_regression_retryable": false,
+    "sanitized_refusal_diagnostics_required_before_cleanup": true
+  },
+  "audit": {
+    "audited_file": "scripts/asr_base_model_pilot_live.py",
+    "audited_methods": [
+      "pilot_rows",
+      "_wait_pilot_network_receipts",
+      "aggregate_report",
+      "_cross_pod_refusal"
+    ],
+    "site_count": 7,
+    "sites": [
+      {
+        "site": "pilot_pod_identity_and_ip",
+        "contract": "bounded discovery loop; exact one-pod identity; terminal state checked by receipt waiter"
+      },
+      {
+        "site": "network_probe_receipt",
+        "contract": "300-second bound; 10-second interval; two identical present observations; absence only is retryable"
+      },
+      {
+        "site": "inbound_listener_receipt",
+        "contract": "same shared receipt poll; listener absence is readiness-only while the pod is non-terminal"
+      },
+      {
+        "site": "cross_pod_inbound_control",
+        "contract": "kubectl terminal Succeeded wait with 60-second server timeout and 90-second client timeout"
+      },
+      {
+        "site": "pilot_job_completion",
+        "contract": "kubectl condition=complete wait with 9000-second server timeout and 9060-second client timeout"
+      },
+      {
+        "site": "aggregate_receipt_presence",
+        "contract": "read only after job completion; test and hash required before PASS_PILOT_ROWS"
+      },
+      {
+        "site": "aggregate_receipt_content",
+        "contract": "depends on PASS_PILOT_ROWS; bounded 120-second SSM invocation poll; schema and completeness fail closed"
+      }
+    ],
+    "direct_one_shot_network_or_listener_reads": 0,
+    "absence_is_only_retryable_receipt_state": true,
+    "malformed_drift_or_terminal_state_retried": false,
+    "machine_guard": "scripts.asr_base_model_async_observations.audit_async_observation_sites"
+  },
+  "qualification": {
+    "focused_tests": {
+      "command": "pytest -q tests/test_asr_base_model_async_observations.py tests/test_asr_base_model_boundary_contracts.py",
+      "passed": 14,
+      "failed": 0
+    },
+    "asr_family_tests": {
+      "command": "pytest -q tests/test_asr_base_model*.py",
+      "passed": 277,
+      "failed": 0
+    },
+    "required_scenarios": {
+      "receipt_appears_late": "PASS_TWO_STABLE_OBSERVATIONS",
+      "receipt_never_appears": "REFUSED_NETWORK_PROBE_RECEIPT_TIMEOUT",
+      "pod_terminal_before_receipt": "REFUSED_PILOT_POD_TERMINAL_BEFORE_NETWORK_RECEIPT"
+    }
+  },
+  "scope": {
+    "aws_calls": 0,
+    "aws_mutations": 0,
+    "kubectl_calls": 0,
+    "image_changed": false,
+    "risk_acceptance_changed": false,
+    "historical_evidence_modified": false
+  }
+}
