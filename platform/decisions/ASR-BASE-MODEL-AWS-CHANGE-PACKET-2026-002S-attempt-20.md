@@ -118,11 +118,13 @@ unchanged exact image and risk record, write-once attempts 1–19, packet 2026-0
 and its completion evidence, the real 40 GiB response fixture, and cost
 registry 015.
 
-- final bindings SHA-256: `FINAL_BINDINGS_SHA_AFTER_SEAL`;
-- receipt-last cold-rehearsal SHA-256: `FINAL_COLD_REHEARSAL_SHA_AFTER_RUN`;
+- final bindings SHA-256: `94af6d6db5e13f498cc02f4de8f9e8a07394b255eb667408d82d796d4bceec90`;
+- receipt-last cold-rehearsal SHA-256: `55218c0f3078cfc1c591fe8899fc6238d12ad3c700dae34cd9f2d253c0cf40dd`;
 - deterministic comparison: two byte-identical generations required;
-- focused successor suite: final exact pass/fail/skip/deselection counts will
-  be recorded after receipt-last generation.
+- focused ASR base-model/evaluation suite: 330 passed, 0 failed, 0 skipped,
+  1 deselected. The deselected test is the long Docker-backed reproduction of
+  the unchanged, immutable node-equivalent qualification; this successor does
+  not alter that qualified command path.
 
 The complete stage mapping remains the eleven-stage runner-to-`LiveOperations`
 mapping already reviewed for packet 002R. Rehearsal executes that exact live
