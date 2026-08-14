@@ -1,0 +1,135 @@
+{
+  "record": "ASR_BASE_MODEL_GPU_STORAGE_AWS_APPLY_EVIDENCE",
+  "id": "ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001",
+  "schema_version": 1,
+  "status": "VERIFIED_COMPLETE",
+  "completed_utc": "2026-08-14T05:17:37Z",
+  "authorization": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003.json",
+    "sha256": "0c3cd05599aca463b84d988efaa5568d99e6a348b5925a9e9fc9b47cd13e48e8",
+    "git_commit": "afc0d589f86d1cb9a07ee0327957db0161fec22b"
+  },
+  "independent_review": {
+    "review_id": "CLAUDE-REVIEW-2026-08-14-002",
+    "decision": "APPROVED",
+    "instructions_file_sha256": "de8d3ea91963a61abcfbd26fab3c29be18183fbcf9b75c27377da42847a55666"
+  },
+  "change_packet": {
+    "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003-gpu-storage.md",
+    "sha256": "304569088f339a80d31830c2015e7039558e9dae0ebd205ae48aae33a868de07"
+  },
+  "execution_identity": {
+    "profile": "medzen",
+    "account": "558069890522",
+    "caller": "arn:aws:iam::558069890522:user/s.fotso",
+    "region": "eu-central-1"
+  },
+  "reviewed_saved_plan": {
+    "path_at_execution": "/private/tmp/medzen-asr-gpu-storage-approved.mym3Lw/packet-2026-003-approved.tfplan",
+    "sha256": "d01b8cdcbe19446be8ec5956ffb2dff2e2b57edfb82b37f90cb26da3d6906bb5",
+    "bytes": 86075,
+    "guard_path": "scripts/check_asr_eval_gpu_storage_plan.py",
+    "guard_sha256": "d5d838424a905933c2d3ebdbbc5928dba32a87db9b01f35a8045790e70a38a42",
+    "guard_output_sha256": "6b010c6fbae9535cc87dbe21e731f83c41a19ba436cb692b45a9e9763a936098",
+    "guard_status": "PASS_EXACT_ASR_BASE_MODEL_GPU_STORAGE_PACKET_2026_003",
+    "summary": {
+      "add": 1,
+      "change": 0,
+      "destroy": 1,
+      "replacement": 1
+    },
+    "resource_actions": {
+      "aws_eks_node_group.gpu": [
+        "delete",
+        "create"
+      ]
+    },
+    "replace_paths": [
+      [
+        "disk_size"
+      ]
+    ],
+    "field_transition": {
+      "disk_size_gib": {
+        "before": 20,
+        "after": 40
+      }
+    },
+    "output_changes": 0
+  },
+  "pre_apply_readback": {
+    "status": "ACTIVE",
+    "disk_size_gib": 20,
+    "minimum": 0,
+    "desired": 0,
+    "maximum": 1,
+    "health_issues": 0,
+    "instance_type": "g6.xlarge",
+    "ami_type": "AL2023_x86_64_NVIDIA",
+    "autoscaling_group": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26",
+    "autoscaling_instances": 0
+  },
+  "apply_result": {
+    "started_utc": "2026-08-14T05:14:49Z",
+    "completed_utc": "2026-08-14T05:16:30Z",
+    "terraform_summary": "Apply complete: Resources: 1 added, 0 changed, 1 destroyed.",
+    "apply_log_sha256": "55cf2a37e8892291db3433c8b794eebb758d9bfcb9f3f9cf9d51f3bb058b086b",
+    "applied_exact_saved_plan": true
+  },
+  "post_apply_readback": {
+    "status": "ACTIVE",
+    "disk_size_gib": 40,
+    "minimum": 0,
+    "desired": 0,
+    "maximum": 1,
+    "health_issues": 0,
+    "instance_type": "g6.xlarge",
+    "ami_type": "AL2023_x86_64_NVIDIA",
+    "autoscaling_group": "eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8",
+    "autoscaling_instances": 0,
+    "gpu_ec2_instances": 0,
+    "kubernetes_gpu_nodes": 0,
+    "cpu_minimum": 0,
+    "cpu_desired": 0,
+    "cpu_maximum": 4
+  },
+  "residual_plan": {
+    "status": "NO_CHANGES",
+    "detailed_exit_code": 0,
+    "saved_plan_sha256": "6a0d38df0dc80e56b45aa07a53dca562ee83aa485ab8a6a3682f111c6d40ce85",
+    "saved_plan_bytes": 84023,
+    "plan_json_sha256": "c759b01ab7c1513bff66e1dc4c22412f4e245f7e3c53bd0578bdb4ff776854b2",
+    "resource_changes": 0,
+    "output_changes": 0,
+    "plan_json_committed": false,
+    "plan_json_non_commit_reason": "A full Terraform plan JSON can expose sensitive state values. Only the non-sensitive verified summary is committed."
+  },
+  "explicit_non_events": {
+    "gpu_instances_started": 0,
+    "cpu_instances_started": 0,
+    "kubernetes_workload_mutations": 0,
+    "iam_changes": 0,
+    "kms_changes": 0,
+    "s3_changes": 0,
+    "ecr_changes": 0,
+    "ssm_changes": 0,
+    "endpoint_changes": 0,
+    "registry_or_language_changes": 0,
+    "model_publications_or_registrations": 0,
+    "production_changes": 0,
+    "attempt_20_started": false
+  },
+  "cost": {
+    "new_spend_reservation_usd": 0.0,
+    "gpu_compute_seconds": 0,
+    "node_root_volume_seconds": 0,
+    "incremental_metered_resources_started": 0,
+    "existing_eks_control_plane_unchanged": true
+  },
+  "conclusion": {
+    "packet_2026_003_complete": true,
+    "gpu_root_volume_gib": 40,
+    "attempt_20_authorized": false,
+    "next_boundary": "Prepare and independently review a separate attempt-20 packet binding 40 GiB and the pre-envelope capacity gate."
+  }
+}
