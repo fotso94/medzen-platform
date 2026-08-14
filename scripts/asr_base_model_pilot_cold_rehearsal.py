@@ -361,7 +361,7 @@ def _validate_waiter_fidelity(scenarios: dict[str, Any]) -> dict[str, Any]:
     primary_cleanup = scenarios["dns_primary_delete_timeout"]
     if (
         primary_cleanup["failure_reason_code"]
-        != "DNS_RESOLVED_IP_OUTSIDE_ENDPOINT_ALLOWLIST"
+        != "DNS_RESOLVED_IP_OUTSIDE_ALLOWLIST"
         or primary_cleanup["secondary_cleanup_diagnostic"] is None
     ):
         raise AssertionError(

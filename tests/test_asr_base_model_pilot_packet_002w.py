@@ -154,7 +154,7 @@ def test_receipt_last_rehearsal_covers_lifecycle_fidelity() -> None:
     )
     assert fidelity["site_count"] == 13
     assert fidelity["primary_exception_preservation"]["reason_code"] == (
-        "DNS_RESOLVED_IP_OUTSIDE_ENDPOINT_ALLOWLIST"
+        "DNS_RESOLVED_IP_OUTSIDE_ALLOWLIST"
     )
     assert fidelity["primary_exception_preservation"][
         "secondary_cleanup_diagnostic"
