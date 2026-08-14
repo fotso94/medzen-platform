@@ -116,9 +116,13 @@ cleanup, isolation, staging and workload failures. The final deterministic
 receipt SHA-256 and final bindings SHA-256 are sealed here only after the
 rehearsal is produced from a clean committed tree.
 
-- final bindings SHA-256: `PENDING_RECEIPT_LAST_SEAL`;
-- final cold-rehearsal SHA-256: `PENDING_RECEIPT_LAST_SEAL`;
-- final test counts: `PENDING_RECEIPT_LAST_SEAL`.
+- final bindings SHA-256:
+  `8b07ec5392466664873eaa7f6dcbe207601a62817562e01ae8de84d1afec850b`;
+- final receipt-last cold-rehearsal SHA-256:
+  `cd965235ba8b4d6601bb6b37d1666aafc6f3f287170a0b87b08cd1dbf08572ef`;
+- deterministic cold-rehearsal comparison: 2 identical generations;
+- complete ASR base-model/evaluation suite: 281 passed, 0 failed, 0 skipped,
+  0 deselected.
 
 ## Post-approval order
 
