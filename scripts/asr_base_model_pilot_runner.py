@@ -363,14 +363,24 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
         context.workdir / "external-tool-diagnostics"
     )
     try:
-        return _execute_attempt(ops, context)
-    finally:
+        result = _execute_attempt(ops, context)
+    except BaseException as primary:
+        try:
+            configure_external_tool_journal(prior_journal)
+        except Exception as secondary:
+            if hasattr(primary, "add_note"):
+                primary.add_note(
+                    f"secondary external-tool journal restore failure: {type(secondary).__name__}"
+                )
+        raise
+    else:
         configure_external_tool_journal(prior_journal)
+        return result
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in set(range(1, 24)) or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 23 at 10800 seconds are permitted")
+    if context.attempt not in set(range(1, 25)) or context.deadline_seconds != 10800:
+        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 24 at 10800 seconds are permitted")
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(

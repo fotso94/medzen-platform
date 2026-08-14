@@ -30,7 +30,10 @@ try:
             raise SystemExit(71)
         time.sleep(1)
 finally:
-    s.close()
+    try:
+        s.close()
+    except OSError:
+        pass
 """
 
 PILOT_WORKLOAD_SCRIPT = " && ".join(

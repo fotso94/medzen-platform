@@ -215,7 +215,13 @@ def _upload_parts(
                 records.append({"key": key, "sha256": part_sha, "bytes": part_size, "version_id": version})
             finally:
                 if not direct and part_path.exists():
-                    part_path.unlink()
+                    try:
+                        part_path.unlink()
+                    except OSError:
+                        # A local temporary-file cleanup must never replace an
+                        # upload/hash failure. The external evidence workdir is
+                        # removed after the run even when this unlink refuses.
+                        pass
             part_number += 1
     if not records or sum(value["bytes"] for value in records) != size:
         raise AssetRefusal(f"asset split differs: {logical_name}")

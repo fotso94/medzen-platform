@@ -14,6 +14,12 @@ from pathlib import Path
 from typing import Any, Callable
 
 from scripts.asr_base_model_node_staging import STAGING_SSM_TIMEOUT_SECONDS
+from scripts.asr_base_model_pod_lifecycle import (
+    POD_ABSENCE_STABLE_OBSERVATIONS,
+    POD_DELETE_TIMEOUT_SECONDS,
+    POD_POLL_INTERVAL_SECONDS,
+    POD_TERMINAL_TIMEOUT_SECONDS,
+)
 
 
 @dataclass(frozen=True)
@@ -40,6 +46,21 @@ BOUNDARY_CONTRACTS: dict[str, dict[str, IntegerBound]] = {
         "timeout_seconds": IntegerBound(1, 300, 300),
         "poll_interval_seconds": IntegerBound(1, 60, 10),
         "required_observations": IntegerBound(2, 10, 2),
+    },
+    "stage_pod_terminal": {
+        "timeout_seconds": IntegerBound(1, 1_200, POD_TERMINAL_TIMEOUT_SECONDS),
+        "poll_interval_seconds": IntegerBound(1, 60, POD_POLL_INTERVAL_SECONDS),
+    },
+    "stage_pod_absence": {
+        "timeout_seconds": IntegerBound(1, 300, POD_DELETE_TIMEOUT_SECONDS),
+        "poll_interval_seconds": IntegerBound(1, 30, 5),
+        "required_observations": IntegerBound(
+            2, 10, POD_ABSENCE_STABLE_OBSERVATIONS
+        ),
+    },
+    "pilot_job_completion": {
+        "timeout_seconds": IntegerBound(1, 9_000, 9_000),
+        "poll_interval_seconds": IntegerBound(1, 60, 10),
     },
     "registry_scan_configuration": {
         "timeout_seconds": IntegerBound(1, 300, 120)
@@ -145,6 +166,28 @@ _CALL_AUDIT = {
             "required_observations": "required_observations",
         },
     ),
+    "_wait_stage_pod_terminal": (
+        "stage_pod_terminal",
+        {
+            "timeout_seconds": "timeout_seconds",
+            "poll_interval_seconds": "poll_interval_seconds",
+        },
+    ),
+    "_wait_stage_pod_absent": (
+        "stage_pod_absence",
+        {
+            "timeout_seconds": "timeout_seconds",
+            "poll_interval_seconds": "poll_interval_seconds",
+            "required_observations": "required_observations",
+        },
+    ),
+    "_wait_pilot_job_complete": (
+        "pilot_job_completion",
+        {
+            "timeout_seconds": "timeout_seconds",
+            "poll_interval_seconds": "poll_interval_seconds",
+        },
+    ),
     "_wait_registry_scanning_configuration": (
         "registry_scan_configuration", {"timeout_seconds": "timeout_seconds"}
     ),
@@ -222,6 +265,10 @@ def audit_bounded_helper_calls(root: Path) -> dict[str, Any]:
             "DRA_WAIT_MAX_SECONDS": DRA_WAIT_MAX_SECONDS,
             "DRA_WAIT_POLL_SECONDS": DRA_WAIT_POLL_SECONDS,
             "STAGING_SSM_TIMEOUT_SECONDS": STAGING_SSM_TIMEOUT_SECONDS,
+            "POD_TERMINAL_TIMEOUT_SECONDS": POD_TERMINAL_TIMEOUT_SECONDS,
+            "POD_POLL_INTERVAL_SECONDS": POD_POLL_INTERVAL_SECONDS,
+            "POD_DELETE_TIMEOUT_SECONDS": POD_DELETE_TIMEOUT_SECONDS,
+            "POD_ABSENCE_STABLE_OBSERVATIONS": POD_ABSENCE_STABLE_OBSERVATIONS,
             **_module_constants(tree),
         }
         functions = [node for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]

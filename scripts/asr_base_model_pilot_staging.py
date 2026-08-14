@@ -69,7 +69,12 @@ def _atomic_replace(path: Path, value: dict[str, Any]) -> None:
     try:
         os.fsync(directory)
     finally:
-        os.close(directory)
+        try:
+            os.close(directory)
+        except OSError:
+            # Never replace the atomic-write result with a descriptor-close
+            # failure; the directory descriptor is process-local and bounded.
+            pass
 
 
 def validate_window_budget(
@@ -462,14 +467,24 @@ class ManagedMultipartCreateOnlyStore:
             self.uploaded_objects += 1
             self._heartbeat(status="OBJECT_COMPLETE", bucket=bucket, key=key, object_bytes=size)
             return exact["VersionId"]
-        except Exception:
+        except Exception as primary:
             try:
                 self.s3.abort_multipart_upload(
                     Bucket=bucket, Key=key, UploadId=upload_id
                 )
-            finally:
+            except Exception as secondary:
+                if hasattr(primary, "add_note"):
+                    primary.add_note(
+                        f"secondary multipart-abort failure: {type(secondary).__name__}"
+                    )
+            try:
                 self._heartbeat(status="UPLOAD_REFUSED", bucket=bucket, key=key, object_bytes=size)
-            raise
+            except Exception as secondary:
+                if hasattr(primary, "add_note"):
+                    primary.add_note(
+                        f"secondary heartbeat failure: {type(secondary).__name__}"
+                    )
+            raise primary
 
     def verify_bound_object(self, bucket: str, item: dict[str, Any]) -> dict[str, Any]:
         value = self._exact_existing(

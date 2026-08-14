@@ -88,6 +88,17 @@ from scripts.asr_base_model_pilot_dns import (
     validate_pod_dns_fields,
     workload_egress_allowlist,
 )
+from scripts.asr_base_model_pod_lifecycle import (
+    POD_ABSENCE_STABLE_OBSERVATIONS,
+    POD_DELETE_TIMEOUT_SECONDS,
+    POD_POLL_INTERVAL_SECONDS,
+    POD_PULL_STALL_SECONDS,
+    POD_TERMINAL_TIMEOUT_SECONDS,
+    PodLifecycleRefusal,
+    exact_image_in_node_inventory,
+    observe_named_pod_list,
+    observe_pod,
+)
 from scripts.asr_base_model_pilot_integrity import (
     PilotIntegrityRefusal,
     read_committed_artifact,
@@ -472,6 +483,230 @@ class LiveOperations:
         if json_output:
             return self._json_external_command(command + ["-o", "json"], timeout=timeout)
         return self._command(command, stdin=stdin, timeout=timeout).stdout
+
+    def _wait_stage_pod_terminal(
+        self,
+        context: AttemptContext,
+        *,
+        pod_name: str,
+        purpose: str,
+        timeout_seconds: int = POD_TERMINAL_TIMEOUT_SECONDS,
+        poll_interval_seconds: int = POD_POLL_INTERVAL_SECONDS,
+        stall_seconds: int | None = None,
+    ) -> dict[str, Any]:
+        """Poll one stage-local Pod and retain every safe phase transition."""
+
+        validate_boundary_parameters(
+            "stage_pod_terminal",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+        )
+        if stall_seconds is not None and (
+            stall_seconds <= poll_interval_seconds or stall_seconds >= timeout_seconds
+        ):
+            raise OperationRefusal(
+                "STAGE_POD_STALL_BOUNDARY_DIFFERS",
+                "stage-Pod stall bound must be shorter than its terminal bound",
+            )
+        started = self._monotonic()
+        deadline = started + timeout_seconds
+        last_progress_at = started
+        last_progress_sha256: str | None = None
+        observations = 0
+        phase_sequence: list[str] = []
+        progress_changes = 0
+        while self._monotonic() < deadline:
+            value = self._kubectl(
+                context,
+                "get",
+                "pod",
+                pod_name,
+                "-n",
+                NAMESPACE,
+                timeout=30,
+                json_output=True,
+            )
+            try:
+                observed = observe_pod(value)
+            except PodLifecycleRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            observations += 1
+            phase_sequence.append(observed["phase"])
+            if observed["progress_sha256"] != last_progress_sha256:
+                last_progress_sha256 = observed["progress_sha256"]
+                last_progress_at = self._monotonic()
+                progress_changes += 1
+            if observed["terminal"]:
+                return {
+                    "status": "PASS_STAGE_POD_TERMINAL_OBSERVATION",
+                    "purpose": purpose,
+                    "pod_name": pod_name,
+                    "phase": observed["phase"],
+                    "reason": observed["reason"],
+                    "containers": observed["containers"],
+                    "observations": observations,
+                    "phase_sequence": phase_sequence,
+                    "progress_changes": progress_changes,
+                    "sleep_branch_executed": observations > 1,
+                    "elapsed_seconds": round(self._monotonic() - started, 3),
+                    "timeout_seconds": timeout_seconds,
+                    "poll_interval_seconds": poll_interval_seconds,
+                    "stall_seconds": stall_seconds,
+                }
+            waiting_reasons = {
+                item.get("state", {}).get("reason")
+                for item in observed["containers"]
+                if item.get("state", {}).get("kind") == "waiting"
+            }
+            fatal_waiting = waiting_reasons & {
+                "ErrImagePull",
+                "ImagePullBackOff",
+                "InvalidImageName",
+                "CreateContainerConfigError",
+            }
+            if fatal_waiting:
+                raise OperationRefusal(
+                    "STAGE_POD_TERMINAL_REFUSED",
+                    f"{purpose} pod entered a fatal waiting state: {sorted(fatal_waiting)}",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            if (
+                stall_seconds is not None
+                and self._monotonic() - last_progress_at >= stall_seconds
+            ):
+                raise OperationRefusal(
+                    "IMAGE_PREPULL_PROGRESS_STALLED",
+                    f"{purpose} pod showed no bounded status progress for {stall_seconds} seconds; phase={observed['phase']}",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            remaining = deadline - self._monotonic()
+            if remaining <= poll_interval_seconds:
+                break
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "STAGE_POD_TERMINAL_TIMEOUT",
+            f"{purpose} pod did not become terminal inside {timeout_seconds} seconds after {observations} observations",
+            outcome="BLOCKED_NETWORK_ISOLATION",
+        )
+
+    def _wait_stage_pod_absent(
+        self,
+        context: AttemptContext,
+        *,
+        pod_name: str,
+        timeout_seconds: int = POD_DELETE_TIMEOUT_SECONDS,
+        poll_interval_seconds: int = 5,
+        required_observations: int = POD_ABSENCE_STABLE_OBSERVATIONS,
+    ) -> dict[str, Any]:
+        """Require stable absence after a non-blocking stage-Pod delete."""
+
+        validate_boundary_parameters(
+            "stage_pod_absence",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+            required_observations=required_observations,
+        )
+        deadline = self._monotonic() + timeout_seconds
+        observations = 0
+        consecutive_absent = 0
+        present_observations = 0
+        sequence: list[str] = []
+        while self._monotonic() < deadline:
+            value = self._kubectl(
+                context,
+                "get",
+                "pods",
+                "-n",
+                NAMESPACE,
+                f"--field-selector=metadata.name={pod_name}",
+                timeout=30,
+                json_output=True,
+            )
+            try:
+                observed = observe_named_pod_list(value, pod_name)
+            except PodLifecycleRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            observations += 1
+            if observed["present"]:
+                present_observations += 1
+                consecutive_absent = 0
+                sequence.append("PRESENT")
+            else:
+                consecutive_absent += 1
+                sequence.append("ABSENT")
+                if consecutive_absent >= required_observations:
+                    return {
+                        "status": "PASS_STABLE_STAGE_POD_ABSENCE",
+                        "pod_name": pod_name,
+                        "observations": observations,
+                        "present_observations": present_observations,
+                        "stable_absence_observations": consecutive_absent,
+                        "required_stable_absence_observations": required_observations,
+                        "observation_sequence": sequence,
+                    }
+            remaining = deadline - self._monotonic()
+            if remaining <= poll_interval_seconds:
+                break
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "STAGE_POD_DELETE_TIMEOUT",
+            f"{pod_name} did not reach {required_observations} stable absence observations inside {timeout_seconds} seconds",
+        )
+
+    def _delete_stage_pod(
+        self, context: AttemptContext, *, pod_name: str, purpose: str
+    ) -> dict[str, Any]:
+        """Best-effort non-blocking delete whose result can never mask a primary."""
+
+        try:
+            self._kubectl(
+                context,
+                "delete",
+                f"pod/{pod_name}",
+                "-n",
+                NAMESPACE,
+                "--ignore-not-found=true",
+                "--wait=false",
+                timeout=60,
+            )
+            absence = self._wait_stage_pod_absent(context, pod_name=pod_name)
+            return {
+                "status": "PASS_NONBLOCKING_DELETE_AND_STABLE_ABSENCE",
+                "purpose": purpose,
+                "delete_waited_server_side": False,
+                "absence": absence,
+            }
+        except Exception as exc:
+            return {
+                "status": "SECONDARY_STAGE_POD_CLEANUP_REFUSED",
+                "purpose": purpose,
+                "exception_class": type(exc).__name__,
+                "reason_code": getattr(exc, "reason_code", None),
+                "safe_error_text": sanitize_bytes(str(exc))[:512],
+            }
+
+    def _retain_secondary_pod_cleanup(
+        self,
+        context: AttemptContext,
+        *,
+        pod_name: str,
+        purpose: str,
+        primary: Exception,
+        cleanup: dict[str, Any],
+    ) -> dict[str, Any]:
+        value = {
+            "schema_version": 1,
+            "status": "PRIMARY_EXCEPTION_RETAINED_WITH_SECONDARY_CLEANUP_DIAGNOSTIC",
+            "purpose": purpose,
+            "pod_name": pod_name,
+            "primary_exception_class": type(primary).__name__,
+            "primary_reason_code": getattr(primary, "reason_code", None),
+            "primary_safe_error_text": sanitize_bytes(str(primary))[:512],
+            "cleanup": cleanup,
+        }
+        path = context.workdir / f"{pod_name}-secondary-cleanup-diagnostic.json"
+        write_exclusive(path, canonical_json(value))
+        return {**value, "sha256": _sha(path)}
 
     def _update_kubeconfig(self, context: AttemptContext) -> None:
         self._command([
@@ -1950,6 +2185,177 @@ class LiveOperations:
         self._save_state(context, state)
         return {"status": "PASS_NODE_LOCAL_INPUT_STAGE", "instance_id": instance_id, "bundle_hash_verified": True, "objects": len(node_objects), "ssm_command_id": result["command_id"], "ssm_diagnostic_sha256": result["diagnostic_sha256"], "command_bundle_sha256": command_bundle_sha256, "command_audit": command_audit, "endpoint_inventory_sha256": inventory["inventory_sha256"], "observed_s3_call_coverage": observed_call_coverage, "historical_live_pass_before_this_attempt": False, "credentials_in_container": False, "urls_in_container": False}
 
+    def _image_prepull_qualification(
+        self, context: AttemptContext
+    ) -> dict[str, Any]:
+        """Warm and prove the exact digest before any proof-control Pod runs."""
+
+        state = self._state(context)
+        node_name = state.get("node_name")
+        if not isinstance(node_name, str) or not node_name:
+            raise OperationRefusal(
+                "IMAGE_PREPULL_NODE_ABSENT",
+                "exact GPU node identity is absent before image pre-pull",
+            )
+        image = (
+            f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@"
+            f"{context.bindings['image']['linux_amd64_digest']}"
+        )
+        pod_name = "asr-eval-image-prepull"
+        pod = {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {
+                "name": pod_name,
+                "namespace": NAMESPACE,
+                "labels": {
+                    "app.kubernetes.io/name": "asr-eval-image-prepull",
+                    "medzen.io/classification": "offline-evaluation-only",
+                },
+            },
+            "spec": {
+                "automountServiceAccountToken": False,
+                "restartPolicy": "Never",
+                "nodeName": node_name,
+                "tolerations": [
+                    {
+                        "key": "nvidia.com/gpu",
+                        "operator": "Equal",
+                        "value": "true",
+                        "effect": "NoSchedule",
+                    }
+                ],
+                "securityContext": {
+                    "runAsNonRoot": True,
+                    "runAsUser": 10001,
+                    "runAsGroup": 10001,
+                    "seccompProfile": {"type": "RuntimeDefault"},
+                },
+                "containers": [
+                    {
+                        "name": "prepull",
+                        "image": image,
+                        "imagePullPolicy": "Always",
+                        "command": ["/opt/venv/bin/python", "-c", "pass"],
+                        "securityContext": {
+                            "allowPrivilegeEscalation": False,
+                            "readOnlyRootFilesystem": True,
+                            "capabilities": {"drop": ["ALL"]},
+                        },
+                    }
+                ],
+            },
+        }
+        spec_path = context.workdir / "image-prepull-pod.json"
+        write_exclusive(spec_path, canonical_json(pod))
+        applied = False
+        primary: Exception | None = None
+        result: dict[str, Any] | None = None
+        try:
+            self._kubectl(context, "apply", "-f", "-", stdin=canonical_json(pod))
+            applied = True
+            terminal = self._wait_stage_pod_terminal(
+                context,
+                pod_name=pod_name,
+                purpose="exact-image-prepull",
+                timeout_seconds=POD_TERMINAL_TIMEOUT_SECONDS,
+                poll_interval_seconds=POD_POLL_INTERVAL_SECONDS,
+                stall_seconds=POD_PULL_STALL_SECONDS,
+            )
+            if terminal["phase"] != "Succeeded":
+                raise OperationRefusal(
+                    "IMAGE_PREPULL_POD_REFUSED",
+                    f"exact-image pre-pull pod reached {terminal['phase']}",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            inventory_deadline = self._monotonic() + 180
+            inventory_observations = 0
+            stable_present = 0
+            inventory_sequence: list[str] = []
+            inventory: dict[str, Any] | None = None
+            while self._monotonic() < inventory_deadline:
+                node = self._kubectl(
+                    context,
+                    "get",
+                    "node",
+                    node_name,
+                    timeout=30,
+                    json_output=True,
+                )
+                try:
+                    inventory = exact_image_in_node_inventory(
+                        node, expected_node=node_name, expected_image=image
+                    )
+                except PodLifecycleRefusal as exc:
+                    raise OperationRefusal(exc.reason_code, exc.detail) from exc
+                inventory_observations += 1
+                if inventory["exact_image_present"]:
+                    stable_present += 1
+                    inventory_sequence.append("PRESENT")
+                    if stable_present >= 2:
+                        break
+                else:
+                    stable_present = 0
+                    inventory_sequence.append("ABSENT")
+                self._sleeper(5)
+            if inventory is None or stable_present < 2:
+                raise OperationRefusal(
+                    "IMAGE_PREPULL_NODE_INVENTORY_TIMEOUT",
+                    "exact digest did not reach two stable node-inventory observations",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            result = {
+                "schema_version": 1,
+                "status": "PASS_EXACT_IMAGE_PREPULL_QUALIFICATION",
+                "image": image,
+                "image_sha256": hashlib.sha256(image.encode()).hexdigest(),
+                "linux_amd64_digest": context.bindings["image"]["linux_amd64_digest"],
+                "node_name": node_name,
+                "pod_spec_sha256": _sha(spec_path),
+                "terminal_observation": terminal,
+                "measured_pull_duration_seconds": terminal["elapsed_seconds"],
+                "historical_pull_duration_seconds": 197.027,
+                "historical_pull_evidence": "ASR-BASE-MODEL-2026-002S-A20-LIVE",
+                "hard_timeout_seconds": POD_TERMINAL_TIMEOUT_SECONDS,
+                "stall_timeout_seconds": POD_PULL_STALL_SECONDS,
+                "progress_stall_detector_enabled": True,
+                "inventory": inventory,
+                "inventory_observations": inventory_observations,
+                "inventory_stable_present_observations": stable_present,
+                "inventory_observation_sequence": inventory_sequence,
+            }
+            write_exclusive(
+                context.workdir / "image-prepull-qualification.json",
+                canonical_json(result),
+            )
+        except Exception as exc:
+            primary = exc
+        cleanup = (
+            self._delete_stage_pod(
+                context, pod_name=pod_name, purpose="exact-image-prepull"
+            )
+            if applied
+            else {"status": "NOT_APPLICABLE_NOT_APPLIED"}
+        )
+        if primary is not None:
+            if cleanup["status"] == "SECONDARY_STAGE_POD_CLEANUP_REFUSED":
+                self._retain_secondary_pod_cleanup(
+                    context,
+                    pod_name=pod_name,
+                    purpose="exact-image-prepull",
+                    primary=primary,
+                    cleanup=cleanup,
+                )
+            raise primary
+        if cleanup["status"] != "PASS_NONBLOCKING_DELETE_AND_STABLE_ABSENCE":
+            raise OperationRefusal(
+                "IMAGE_PREPULL_FINALIZER_REFUSED",
+                "image pre-pull passed but its stage-local Pod cleanup refused",
+            )
+        assert result is not None
+        result["pod_cleanup"] = cleanup
+        return result
+
     def _cross_pod_refusal(self, context: AttemptContext, pod_ip: str) -> dict[str, Any]:
         image = f"{ACCOUNT}.dkr.ecr.{REGION}.amazonaws.com/{ECR_REPOSITORY}@{context.bindings['image']['linux_amd64_digest']}"
         probe = {
@@ -1961,13 +2367,62 @@ class LiveOperations:
         except DnsAlignmentRefusal as exc:
             raise OperationRefusal(exc.reason_code, exc.detail) from exc
         encoded = canonical_json(probe)
-        self._kubectl(context, "apply", "-f", "-", stdin=encoded)
-        completed = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=jsonpath={.status.phase}=Succeeded", "pod/asr-eval-inbound-control", "--timeout=60s"], check=False, timeout=90)
-        logs_hash = hashlib.sha256(self._kubectl(context, "logs", "-n", NAMESPACE, "pod/asr-eval-inbound-control") or b"").hexdigest()
-        self._kubectl(context, "delete", "pod/asr-eval-inbound-control", "-n", NAMESPACE, "--wait=true")
-        if completed.returncode != 0:
-            raise OperationRefusal("NETWORK_INBOUND_CONTROL_ACCEPTED", "cross-pod TCP connection unexpectedly succeeded")
-        return {"status": "REFUSED_AS_REQUIRED", "target_port": 8080, "logs_sha256": logs_hash}
+        pod_name = "asr-eval-inbound-control"
+        applied = False
+        primary: Exception | None = None
+        result: dict[str, Any] | None = None
+        try:
+            self._kubectl(context, "apply", "-f", "-", stdin=encoded)
+            applied = True
+            terminal = self._wait_stage_pod_terminal(
+                context,
+                pod_name=pod_name,
+                purpose="cross-pod-inbound-control",
+                timeout_seconds=90,
+                poll_interval_seconds=5,
+            )
+            logs = self._kubectl(
+                context, "logs", "-n", NAMESPACE, f"pod/{pod_name}"
+            ) or b""
+            body = logs if isinstance(logs, bytes) else canonical_json(logs)
+            if terminal["phase"] != "Succeeded":
+                raise OperationRefusal(
+                    "NETWORK_INBOUND_CONTROL_ACCEPTED",
+                    "cross-pod TCP connection unexpectedly succeeded",
+                )
+            result = {
+                "status": "REFUSED_AS_REQUIRED",
+                "target_port": 8080,
+                "logs_sha256": hashlib.sha256(body).hexdigest(),
+                "terminal_observation": terminal,
+            }
+        except Exception as exc:
+            primary = exc
+        cleanup = (
+            self._delete_stage_pod(
+                context, pod_name=pod_name, purpose="cross-pod-inbound-control"
+            )
+            if applied
+            else {"status": "NOT_APPLICABLE_NOT_APPLIED"}
+        )
+        if primary is not None:
+            if cleanup["status"] == "SECONDARY_STAGE_POD_CLEANUP_REFUSED":
+                self._retain_secondary_pod_cleanup(
+                    context,
+                    pod_name=pod_name,
+                    purpose="cross-pod-inbound-control",
+                    primary=primary,
+                    cleanup=cleanup,
+                )
+            raise primary
+        if cleanup["status"] != "PASS_NONBLOCKING_DELETE_AND_STABLE_ABSENCE":
+            raise OperationRefusal(
+                "INBOUND_CONTROL_FINALIZER_REFUSED",
+                "inbound control passed but its stage-local Pod cleanup refused",
+            )
+        assert result is not None
+        result["pod_cleanup"] = cleanup
+        return result
 
     def _dns_resolution_consistency_gate(
         self, context: AttemptContext
@@ -2084,32 +2539,18 @@ class LiveOperations:
             context.workdir / "dns-control-pod.json", canonical_json(pod)
         )
         applied = False
+        primary: Exception | None = None
+        result: dict[str, Any] | None = None
         try:
             self._kubectl(context, "apply", "-f", "-", stdin=canonical_json(pod))
             applied = True
-            deadline = self._monotonic() + 600
-            phase = "Unknown"
-            while self._monotonic() < deadline:
-                observed = self._kubectl(
-                    context,
-                    "get",
-                    "pod",
-                    "asr-eval-dns-control",
-                    "-n",
-                    NAMESPACE,
-                    timeout=30,
-                    json_output=True,
-                )
-                phase = observed.get("status", {}).get("phase", "Unknown")
-                if phase in {"Succeeded", "Failed"}:
-                    break
-                self._sleep(5)
-            else:
-                raise OperationRefusal(
-                    "DNS_CONTROL_POD_TIMEOUT",
-                    "DNS control pod did not become terminal inside 600 seconds",
-                    outcome="BLOCKED_NETWORK_ISOLATION",
-                )
+            terminal = self._wait_stage_pod_terminal(
+                context,
+                pod_name="asr-eval-dns-control",
+                purpose="dns-resolution-consistency",
+                timeout_seconds=300,
+                poll_interval_seconds=5,
+            )
             raw = self._kubectl(
                 context, "logs", "-n", NAMESPACE, "pod/asr-eval-dns-control"
             )
@@ -2134,7 +2575,7 @@ class LiveOperations:
                     exc.detail,
                     outcome="BLOCKED_NETWORK_ISOLATION",
                 ) from exc
-            if phase != "Succeeded":
+            if terminal["phase"] != "Succeeded":
                 raise OperationRefusal(
                     "DNS_CONTROL_POD_REFUSED",
                     "DNS control pod did not reach Succeeded despite a valid receipt",
@@ -2143,28 +2584,41 @@ class LiveOperations:
             result["control_pod_spec_sha256"] = _sha(
                 context.workdir / "dns-control-pod.json"
             )
+            result["terminal_observation"] = terminal
             write_exclusive(
                 context.workdir / "dns-consistency-gate.json",
                 canonical_json(result),
             )
-            return result
-        finally:
-            if applied:
-                self._command(
-                    [
-                        "kubectl",
-                        "--kubeconfig",
-                        str(context.workdir / "kubeconfig"),
-                        "delete",
-                        "pod/asr-eval-dns-control",
-                        "-n",
-                        NAMESPACE,
-                        "--ignore-not-found=true",
-                        "--wait=true",
-                    ],
-                    check=False,
-                    timeout=90,
+        except Exception as exc:
+            primary = exc
+        cleanup = (
+            self._delete_stage_pod(
+                context,
+                pod_name="asr-eval-dns-control",
+                purpose="dns-resolution-consistency",
+            )
+            if applied
+            else {"status": "NOT_APPLICABLE_NOT_APPLIED"}
+        )
+        if primary is not None:
+            if cleanup["status"] == "SECONDARY_STAGE_POD_CLEANUP_REFUSED":
+                self._retain_secondary_pod_cleanup(
+                    context,
+                    pod_name="asr-eval-dns-control",
+                    purpose="dns-resolution-consistency",
+                    primary=primary,
+                    cleanup=cleanup,
                 )
+            raise primary
+        if cleanup["status"] != "PASS_NONBLOCKING_DELETE_AND_STABLE_ABSENCE":
+            raise OperationRefusal(
+                "DNS_CONTROL_FINALIZER_REFUSED",
+                "DNS control passed but its stage-local Pod cleanup refused",
+                outcome="BLOCKED_NETWORK_ISOLATION",
+            )
+        assert result is not None
+        result["pod_cleanup"] = cleanup
+        return result
 
     def _capture_pilot_workload_refusal_diagnostics(
         self,
@@ -2499,6 +2953,77 @@ class LiveOperations:
             outcome="BLOCKED_NETWORK_ISOLATION",
         )
 
+    def _wait_pilot_job_complete(
+        self,
+        context: AttemptContext,
+        *,
+        timeout_seconds: int = 9000,
+        poll_interval_seconds: int = 10,
+    ) -> dict[str, Any]:
+        """Poll the real Job object so rehearsal must exercise active state."""
+
+        validate_boundary_parameters(
+            "pilot_job_completion",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+        )
+        deadline = self._monotonic() + timeout_seconds
+        observations = 0
+        state_sequence: list[str] = []
+        job_name = f"asr-base-model-pilot-a{context.attempt}"
+        while self._monotonic() < deadline:
+            job = self._kubectl(
+                context,
+                "get",
+                "job",
+                job_name,
+                "-n",
+                NAMESPACE,
+                timeout=30,
+                json_output=True,
+            )
+            status = job.get("status") if isinstance(job, dict) else None
+            if not isinstance(status, dict):
+                raise OperationRefusal(
+                    "PILOT_JOB_RESPONSE_MALFORMED",
+                    "pilot Job response has no status object",
+                )
+            observations += 1
+            conditions = status.get("conditions", [])
+            complete = any(
+                isinstance(item, dict)
+                and item.get("type") == "Complete"
+                and item.get("status") == "True"
+                for item in conditions
+            )
+            failed = any(
+                isinstance(item, dict)
+                and item.get("type") == "Failed"
+                and item.get("status") == "True"
+                for item in conditions
+            ) or bool(status.get("failed"))
+            observed_state = "COMPLETE" if complete else "FAILED" if failed else "ACTIVE"
+            state_sequence.append(observed_state)
+            if complete:
+                return {
+                    "status": "PASS_PILOT_JOB_COMPLETE",
+                    "observations": observations,
+                    "state_sequence": state_sequence,
+                    "sleep_branch_executed": observations > 1,
+                    "timeout_seconds": timeout_seconds,
+                    "poll_interval_seconds": poll_interval_seconds,
+                }
+            if failed:
+                raise OperationRefusal(
+                    "PILOT_JOB_REFUSED",
+                    "offline pilot Job reached a failed terminal state",
+                )
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "PILOT_JOB_TIMEOUT",
+            f"offline pilot Job did not complete inside {timeout_seconds} seconds",
+        )
+
     def pilot_rows(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
         workload = (context.workdir / "workload.yaml").read_bytes()
@@ -2528,6 +3053,7 @@ class LiveOperations:
             self._kubectl(context, "apply", "-f", "-", stdin=infrastructure)
             state["namespace"] = True
             self._save_state(context, state)
+            image_prepull = self._image_prepull_qualification(context)
             dns_consistency = self._dns_resolution_consistency_gate(context)
             self._kubectl(context, "apply", "-f", "-", stdin=job)
             stop = time.monotonic() + 900
@@ -2555,9 +3081,7 @@ class LiveOperations:
                 self._sleeper(5)
             else:
                 raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
-            waited = self._command(["kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "wait", "-n", NAMESPACE, "--for=condition=complete", f"job/asr-base-model-pilot-a{context.attempt}", "--timeout=9000s"], check=False, timeout=9060)
-            if waited.returncode != 0:
-                raise OperationRefusal("PILOT_JOB_REFUSED", "offline pilot job did not complete")
+            job_completion = self._wait_pilot_job_complete(context)
             aggregate = self._ssm(state["instance_id"], [
                 root_command("/usr/bin/test", "-s", f"{state['staging_path']}/output/aggregate.json"),
                 root_command("/usr/bin/sha256sum", f"{state['staging_path']}/output/aggregate.json"),
@@ -2576,7 +3100,7 @@ class LiveOperations:
                 "PILOT_WORKLOAD_UNEXPECTED_EXCEPTION",
                 f"pilot workload raised {type(exc).__name__}; pilot_diagnostic_sha256={diagnostic['sha256']}",
             ) from exc
-        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "dns_resolution_consistency": dns_consistency, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
+        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "image_prepull_qualification": image_prepull, "dns_resolution_consistency": dns_consistency, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "job_completion": job_completion, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
     def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
@@ -2644,14 +3168,18 @@ class LiveOperations:
             except Exception as exc:
                 errors.append(f"staging:{type(exc).__name__}")
         if state.get("volume_id"):
+            volume_errors: list[str] = []
             try:
-                try:
-                    self.ec2.detach_volume(VolumeId=state["volume_id"], Force=False)
-                    self.ec2.get_waiter("volume_available").wait(VolumeIds=[state["volume_id"]], WaiterConfig={"Delay": 5, "MaxAttempts": 60})
-                finally:
-                    self.ec2.delete_volume(VolumeId=state["volume_id"])
+                self.ec2.detach_volume(VolumeId=state["volume_id"], Force=False)
+                self.ec2.get_waiter("volume_available").wait(VolumeIds=[state["volume_id"]], WaiterConfig={"Delay": 5, "MaxAttempts": 60})
             except Exception as exc:
-                errors.append(f"volume:{type(exc).__name__}")
+                volume_errors.append(f"detach:{type(exc).__name__}")
+            try:
+                self.ec2.delete_volume(VolumeId=state["volume_id"])
+            except Exception as exc:
+                volume_errors.append(f"delete:{type(exc).__name__}")
+            if volume_errors:
+                errors.append("volume:" + ",".join(volume_errors))
         try:
             if state.get("gpu_scaled"):
                 self.eks.update_nodegroup_config(clusterName=CLUSTER, nodegroupName=GPU_NODEGROUP, scalingConfig={"minSize": 0, "maxSize": 1, "desiredSize": 0})

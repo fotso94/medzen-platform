@@ -132,7 +132,25 @@ class BoundaryState:
         self.pilot_receipt_reads = 0
         self.pilot_receipt_observation_sequence: list[str] = []
         self.pilot_pod_reads = 0
+        self.pilot_discovery_reads = 0
+        self.pilot_discovery_observation_sequence: list[str] = []
+        self.pilot_job_reads = 0
+        self.pilot_job_observation_sequence: list[str] = []
         self.pilot_job_wait_refused = False
+        self.stage_pods: dict[str, dict[str, Any]] = {}
+        self.stage_pod_reads: dict[str, int] = {}
+        self.stage_pod_absence_reads: dict[str, int] = {}
+        self.pod_terminal_observation_sequence: dict[str, list[str]] = {}
+        self.pod_absence_observation_sequence: dict[str, list[str]] = {}
+        self.node_image_inventory_reads = 0
+        self.node_image_inventory_sequence: list[str] = []
+        self.endpoint_availability_reads = 0
+        self.endpoint_availability_observation_sequence: list[str] = []
+        self.deleting_endpoints: dict[str, dict[str, Any]] = {}
+        self.endpoint_deletion_reads = 0
+        self.endpoint_deletion_observation_sequence: list[str] = []
+        self.dra_observation_sequence: list[str] = []
+        self.ssm_observation_sequence: list[str] = []
         self.dns_control_spec: dict[str, Any] | None = None
         self.inbound_control_spec: dict[str, Any] | None = None
         self.last_sampler_command: list[str] | None = None
@@ -225,7 +243,9 @@ class BoundaryState:
                 min(self.gpu_node_reads - 1, 3)
             ]
         else:
-            observed = "ready"
+            observed = ("empty", "ready", "ready")[
+                min(self.gpu_node_reads - 1, 2)
+            ]
         self.gpu_node_observation_sequence.append(
             f"CAPTURED_ATTEMPT_11_{observed.upper()}"
         )
@@ -293,9 +313,11 @@ class BoundaryState:
             and self.cpu_desired == 0
             and not self.security_groups
             and not self.endpoints
+            and not self.deleting_endpoints
             and not self.volumes
             and not self.namespaces
             and not self.dra_installed
+            and not self.stage_pods
             and self.scan_configuration == self.scan_configuration_initial
             and self.cni_configuration == "{}"
             and self.cni_mode == "standard"
@@ -413,9 +435,41 @@ class Ec2Boundary:
         if Filters and any(item["Name"] == "vpc-endpoint-id" for item in Filters):
             requested = next(item["Values"] for item in Filters if item["Name"] == "vpc-endpoint-id")
             values = [value for value in values if value["VpcEndpointId"] in requested]
+            if not values and any(
+                endpoint_id in self.state.deleting_endpoints
+                for endpoint_id in requested
+            ):
+                self.state.endpoint_deletion_reads += 1
+                if self.state.endpoint_deletion_reads == 1:
+                    values = [
+                        copy.deepcopy(self.state.deleting_endpoints[endpoint_id])
+                        for endpoint_id in requested
+                        if endpoint_id in self.state.deleting_endpoints
+                    ]
+                    self.state.endpoint_deletion_observation_sequence.append(
+                        "PRESENT_DELETING"
+                    )
+                else:
+                    self.state.endpoint_deletion_observation_sequence.append(
+                        "ABSENT"
+                    )
+                    self.state.deleting_endpoints.clear()
         if not values:
             return self.state.fixtures.payload("ec2-describe-eval-vpc-endpoints-empty")
-        return {"VpcEndpoints": copy.deepcopy(values)}
+        rendered = copy.deepcopy(values)
+        if VpcEndpointIds is not None and len(rendered) == 3:
+            self.state.endpoint_availability_reads += 1
+            if self.state.endpoint_availability_reads == 1:
+                for value in rendered:
+                    value["State"] = "pending"
+                self.state.endpoint_availability_observation_sequence.append(
+                    "PENDING"
+                )
+            else:
+                self.state.endpoint_availability_observation_sequence.append(
+                    "AVAILABLE"
+                )
+        return {"VpcEndpoints": rendered}
 
     def create_security_group(self, **_: Any) -> dict[str, str]:
         self.state.mutate()
@@ -555,7 +609,9 @@ class Ec2Boundary:
     def delete_vpc_endpoints(self, *, VpcEndpointIds: list[str]) -> None:
         self.state.mutate()
         for value in VpcEndpointIds:
-            self.state.endpoints.pop(value, None)
+            endpoint = self.state.endpoints.pop(value, None)
+            if endpoint is not None:
+                self.state.deleting_endpoints[value] = endpoint
 
     def delete_security_group(self, *, GroupId: str) -> None:
         self.state.mutate()
@@ -740,19 +796,26 @@ class SsmBoundary:
         command_id = f"command-rehearsal-{self.state.ssm_counter}"
         commands = kwargs.get("Parameters", {}).get("commands", [])
         stdout = canonical_json(self.state.aggregate).decode() if any("aggregate.json" in command and command.startswith("cat ") for command in commands) else ""
-        self.state.ssm_commands[command_id] = {"Status": "Success", "StandardOutputContent": stdout}
+        self.state.ssm_commands[command_id] = {
+            "Status": "Success",
+            "StandardOutputContent": stdout,
+            "reads": 0,
+        }
         return {"Command": {"CommandId": command_id}}
 
     def get_command_invocation(self, *, CommandId: str, **_: Any) -> dict[str, Any]:
         self.state.call()
         body = self.state.ssm_commands[CommandId]
+        body["reads"] += 1
+        status = "InProgress" if body["reads"] == 1 else body["Status"]
+        self.state.ssm_observation_sequence.append(status)
         return self.state.fixtures.replay(
             "ssm-get-command-invocation-template",
             {
                 "CommandId": CommandId,
                 "InstanceId": self.state.instance_id,
-                "Status": body["Status"],
-                "StatusDetails": body["Status"],
+                "Status": status,
+                "StatusDetails": status,
                 "ResponseCode": 0,
                 "StandardOutputContent": body.get("StandardOutputContent", ""),
                 "StandardErrorContent": "",
@@ -823,6 +886,8 @@ class ExternalCommandBoundary:
             if "delete" in command and "namespace" in command:
                 namespace = command[command.index("namespace") + 1]
                 self.state.namespaces.discard(namespace)
+                if namespace == "medzen-asr-eval":
+                    self.state.stage_pods.clear()
                 if namespace == "nvidia-dra-driver":
                     self.state.dra_installed = False
                 self.state.kubernetes_mutations += 1
@@ -867,6 +932,8 @@ class KubectlBoundary:
                 if not isinstance(document, dict) or document.get("kind") != "Pod":
                     continue
                 name = document.get("metadata", {}).get("name")
+                if isinstance(name, str):
+                    self.state.stage_pods[name] = copy.deepcopy(document)
                 if name == "asr-eval-dns-control":
                     validate_pod_dns_fields(document["spec"])
                     self.state.dns_control_spec = copy.deepcopy(document["spec"])
@@ -929,22 +996,134 @@ class KubectlBoundary:
         if args[:2] == ("get", "resourceslices"):
             return {"items": []}
         if args[:2] == ("get", "pods"):
+            selector = next(
+                (
+                    value.split("=", 2)[-1]
+                    for value in args
+                    if value.startswith("--field-selector=metadata.name=")
+                ),
+                None,
+            )
+            if selector is not None:
+                reads = self.state.stage_pod_absence_reads.get(selector, 0) + 1
+                self.state.stage_pod_absence_reads[selector] = reads
+                sequence = self.state.pod_absence_observation_sequence.setdefault(
+                    selector, []
+                )
+                keep_present = (
+                    self.state.injection == "dns_primary_delete_timeout"
+                    and selector == "asr-eval-dns-control"
+                )
+                present = keep_present or reads == 1
+                sequence.append("PRESENT" if present else "ABSENT")
+                return {
+                    "items": (
+                        [{"metadata": {"name": selector}}] if present else []
+                    )
+                }
+            self.state.pilot_discovery_reads += 1
+            if self.state.pilot_discovery_reads == 1:
+                self.state.pilot_discovery_observation_sequence.append("ABSENT")
+                return {"items": []}
+            self.state.pilot_discovery_observation_sequence.append("PRESENT")
             return {"items": [{"metadata": {"name": "asr-pilot-rehearsal"}, "status": {"podIP": "10.0.2.21"}}]}
         if args[:2] == ("get", "job"):
+            self.state.pilot_job_reads += 1
+            if self.state.pilot_job_reads == 1:
+                self.state.pilot_job_observation_sequence.append("ACTIVE")
+                return {
+                    "metadata": {"name": args[2]},
+                    "status": {"active": 1},
+                }
+            if self.state.injection != "pilot_job_refused":
+                self.state.pilot_job_observation_sequence.append("SUCCEEDED")
+                return {
+                    "metadata": {"name": args[2]},
+                    "status": {
+                        "succeeded": 1,
+                        "conditions": [
+                            {"type": "Complete", "status": "True"}
+                        ],
+                    },
+                }
+            self.state.pilot_job_wait_refused = True
+            self.state.pilot_job_observation_sequence.append("FAILED")
             return {
                 "metadata": {"name": args[2]},
                 "status": {"failed": 1, "conditions": [{"type": "Failed", "status": "True", "reason": "SyntheticWorkloadRefusal"}]},
             }
+        if args[:2] == ("get", "node"):
+            self.state.node_image_inventory_reads += 1
+            present = self.state.node_image_inventory_reads >= 2
+            self.state.node_image_inventory_sequence.append(
+                "PRESENT" if present else "ABSENT"
+            )
+            image = (
+                "558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+                "medzen-asr-eval-runtime@"
+                + self.state.bindings["image"]["linux_amd64_digest"]
+            )
+            return {
+                "metadata": {"name": args[2]},
+                "status": {
+                    "images": ([{"names": [image], "sizeBytes": 7296786789}] if present else [])
+                },
+            }
         if args[:2] == ("get", "pod"):
-            if args[2] == "asr-eval-dns-control":
+            if args[2] in {
+                "asr-eval-image-prepull",
+                "asr-eval-dns-control",
+                "asr-eval-inbound-control",
+            }:
+                name = args[2]
+                reads = self.state.stage_pod_reads.get(name, 0) + 1
+                self.state.stage_pod_reads[name] = reads
+                phase = "Pending" if reads == 1 else "Succeeded"
+                if (
+                    name == "asr-eval-image-prepull"
+                    and self.state.injection == "image_prepull_stall"
+                ):
+                    phase = "Pending"
+                if (
+                    name == "asr-eval-dns-control"
+                    and self.state.injection == "dns_resolver_unreachable"
+                    and reads > 1
+                ):
+                    phase = "Failed"
+                self.state.pod_terminal_observation_sequence.setdefault(
+                    name, []
+                ).append(phase)
                 return {
-                    "metadata": {"name": args[2]},
+                    "metadata": {"name": name},
                     "status": {
-                        "phase": (
-                            "Failed"
-                            if self.state.injection == "dns_resolver_unreachable"
-                            else "Succeeded"
-                        )
+                        "phase": phase,
+                        "containerStatuses": [
+                            {
+                                "name": "stage-control",
+                                "ready": phase == "Succeeded",
+                                "restartCount": 0,
+                                "imageID": (
+                                    "558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+                                    "medzen-asr-eval-runtime@"
+                                    + self.state.bindings["image"]["linux_amd64_digest"]
+                                ),
+                                "state": (
+                                    {
+                                        "waiting": {
+                                            "reason": "ContainerCreating",
+                                            "message": "Pulling exact digest",
+                                        }
+                                    }
+                                    if phase == "Pending"
+                                    else {
+                                        "terminated": {
+                                            "exitCode": 0 if phase == "Succeeded" else 71,
+                                            "reason": "Completed" if phase == "Succeeded" else "Error",
+                                        }
+                                    }
+                                ),
+                            }
+                        ],
                     },
                 }
             self.state.pilot_pod_reads += 1
@@ -995,7 +1174,10 @@ class KubectlBoundary:
                     hosts[1]: ["10.0.1.7"],
                     hosts[2]: ["16.12.24.1"],
                 }
-                if self.state.injection == "dns_resolved_ip_outside_allowlist":
+                if self.state.injection in {
+                    "dns_resolved_ip_outside_allowlist",
+                    "dns_primary_delete_timeout",
+                }:
                     resolved[hosts[1]] = ["203.0.113.10"]
                 return canonical_json({
                     "schema_version": 1,
@@ -1011,8 +1193,14 @@ class KubectlBoundary:
                     b"msg=synthetic-policy-converged\n"
                 )
             return b""
-        if args[:2] == ("delete", "pod/asr-eval-inbound-control"):
+        if args[:1] == ("delete",) and len(args) > 1 and args[1].startswith("pod/"):
+            name = args[1].removeprefix("pod/")
             self.state.kubernetes_mutations += 1
+            if not (
+                self.state.injection == "dns_primary_delete_timeout"
+                and name == "asr-eval-dns-control"
+            ):
+                self.state.stage_pods.pop(name, None)
             return b""
         if json_output:
             raise AssertionError(f"unhandled rehearsal kubectl JSON call: {args}")
@@ -1043,8 +1231,14 @@ class SsmCommandBoundary:
             if self.state.injection == "network_receipt_timeout":
                 observed = "ABSENT"
             elif (
-                self.state.injection == "network_receipt_delayed"
-                and self.state.pilot_receipt_reads <= 2
+                (
+                    self.state.injection == "network_receipt_delayed"
+                    and self.state.pilot_receipt_reads <= 2
+                )
+                or (
+                    self.state.injection != "network_receipt_pod_terminal"
+                    and self.state.pilot_receipt_reads == 1
+                )
             ):
                 observed = "ABSENT"
             else:
@@ -1208,9 +1402,16 @@ def build_rehearsal_operations(
                 "DRA stable readiness timed out: synthetic not-ready condition"
             )
     else:
-        dra_waiter = lambda **_: {  # noqa: E731
-            "status": "PASS_STABLE_DRA_READINESS", "stable_observations": 3
-        }
+        def dra_waiter(**_: Any) -> dict[str, Any]:
+            state.dra_observation_sequence.extend(
+                ["NOT_READY", "READY", "READY", "READY"]
+            )
+            state.sleep(6)
+            return {
+                "status": "PASS_STABLE_DRA_READINESS",
+                "stable_observations": 3,
+                "rehearsal_nonterminal_observations": 1,
+            }
     operations = LiveOperations(
         root,
         session=session,

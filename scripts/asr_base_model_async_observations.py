@@ -225,15 +225,15 @@ def audit_async_observation_sites(root: Path) -> dict[str, Any]:
             "NETWORK_RECEIPT_WAITER_CONTRACT_INCOMPLETE",
             "network-receipt waiter lacks a required bounded behavior",
         )
-    if "--for=jsonpath={.status.phase}=Succeeded" not in inbound_segment:
+    if "self._wait_stage_pod_terminal(" not in inbound_segment:
         raise AsyncObservationRefusal(
             "INBOUND_CONTROL_TERMINAL_WAIT_ABSENT",
-            "inbound control is not synchronized by a terminal wait",
+            "inbound control is not synchronized by the shared Pod terminal poll",
         )
-    if "--for=condition=complete" not in segment:
+    if "self._wait_pilot_job_complete(" not in segment:
         raise AsyncObservationRefusal(
             "PILOT_JOB_TERMINAL_WAIT_ABSENT",
-            "pilot job is not synchronized by a completion wait",
+            "pilot job is not synchronized by the shared Job completion poll",
         )
     if "output/aggregate.json" not in segment or "PASS_PILOT_ROWS" not in segment:
         raise AsyncObservationRefusal(
@@ -260,11 +260,11 @@ def audit_async_observation_sites(root: Path) -> dict[str, Any]:
         },
         {
             "site": "cross_pod_inbound_control",
-            "contract": "kubectl terminal Succeeded wait with 60-second server timeout and 90-second client timeout",
+            "contract": "shared Pod terminal poll; nonterminal observation required; 90-second hard bound",
         },
         {
             "site": "pilot_job_completion",
-            "contract": "kubectl condition=complete wait with 9000-second server timeout and 9060-second client timeout",
+            "contract": "shared Job object poll; active observation before complete; 9000-second hard bound",
         },
         {
             "site": "aggregate_receipt_presence",

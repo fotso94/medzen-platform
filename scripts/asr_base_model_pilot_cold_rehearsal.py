@@ -67,6 +67,7 @@ from scripts.asr_base_model_pilot_staging import (
 )
 from scripts.asr_base_model_boundary_contracts import audit_bounded_helper_calls
 from scripts.asr_base_model_async_observations import audit_async_observation_sites
+from scripts.asr_base_model_pod_lifecycle import audit_waiter_and_finalizer_sites
 from scripts.asr_eval_digest_rescan import validate_security_binding
 
 
@@ -99,6 +100,14 @@ SCENARIOS = {
     ),
     "dns_resolved_ip_outside_allowlist": (
         "dns_resolved_ip_outside_allowlist",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
+    "dns_primary_delete_timeout": (
+        "dns_primary_delete_timeout",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
+    "image_prepull_stall": (
+        "image_prepull_stall",
         "BLOCKED_NETWORK_ISOLATION",
     ),
     "image_stream_reset_then_success": (
@@ -267,6 +276,109 @@ def _pure_prestage_injections(proof: dict[str, Any], bundle_sha: str) -> dict[st
         "status": "PASS_PURE_INPUT_REFUSAL_CHECKS",
         "refusals": results,
         "stage_implementation_replaced": False,
+    }
+
+
+def _validate_waiter_fidelity(scenarios: dict[str, Any]) -> dict[str, Any]:
+    """Prove the rehearsal crosses a non-terminal state at every live waiter family."""
+
+    clean = scenarios["clean_pass"]
+    lifecycle = clean["stage_pod_lifecycle"]
+    expected_prefixes = {
+        "gpu_node_readiness": (
+            clean["gpu_node_readiness"]["observation_sequence"],
+            ["CAPTURED_ATTEMPT_11_EMPTY", "CAPTURED_ATTEMPT_11_READY"],
+        ),
+        "private_endpoint_availability": (
+            lifecycle["endpoint_availability_sequence"],
+            ["PENDING", "AVAILABLE"],
+        ),
+        "dra_readiness": (
+            lifecycle["dra_observation_sequence"],
+            ["NOT_READY", "READY"],
+        ),
+        "image_prepull_terminal": (
+            lifecycle["terminal_observation_sequences"].get(
+                "asr-eval-image-prepull", []
+            ),
+            ["Pending", "Succeeded"],
+        ),
+        "image_inventory_stability": (
+            lifecycle["node_image_inventory_sequence"],
+            ["ABSENT", "PRESENT", "PRESENT"],
+        ),
+        "dns_control_terminal": (
+            lifecycle["terminal_observation_sequences"].get(
+                "asr-eval-dns-control", []
+            ),
+            ["Pending", "Succeeded"],
+        ),
+        "inbound_control_terminal": (
+            lifecycle["terminal_observation_sequences"].get(
+                "asr-eval-inbound-control", []
+            ),
+            ["Pending", "Succeeded"],
+        ),
+        "stage_pod_stable_absence": (
+            lifecycle["absence_observation_sequences"].get(
+                "asr-eval-image-prepull", []
+            ),
+            ["PRESENT", "ABSENT", "ABSENT"],
+        ),
+        "pilot_pod_discovery": (
+            lifecycle["pilot_discovery_observation_sequence"],
+            ["ABSENT", "PRESENT"],
+        ),
+        "pilot_network_receipts": (
+            clean["pilot_receipt_readiness"]["observation_sequence"],
+            ["ABSENT", "READY", "READY"],
+        ),
+        "pilot_job_completion": (
+            lifecycle["pilot_job_observation_sequence"],
+            ["ACTIVE", "SUCCEEDED"],
+        ),
+        "aggregate_ssm_completion": (
+            lifecycle["ssm_observation_sequence"],
+            ["InProgress", "Success"],
+        ),
+        "cleanup_endpoint_absence": (
+            lifecycle["endpoint_deletion_observation_sequence"],
+            ["PRESENT_DELETING", "ABSENT"],
+        ),
+    }
+    verified: dict[str, Any] = {}
+    for site, (observed, expected_prefix) in expected_prefixes.items():
+        if observed[: len(expected_prefix)] != expected_prefix:
+            raise AssertionError(
+                f"waiter fidelity differs for {site}: "
+                f"observed={observed!r} expected_prefix={expected_prefix!r}"
+            )
+        verified[site] = {
+            "status": "PASS_NONTERMINAL_BEFORE_TERMINAL",
+            "observation_sequence": observed,
+        }
+
+    primary_cleanup = scenarios["dns_primary_delete_timeout"]
+    if (
+        primary_cleanup["failure_reason_code"]
+        != "DNS_RESOLVED_IP_OUTSIDE_ENDPOINT_ALLOWLIST"
+        or primary_cleanup["secondary_cleanup_diagnostic"] is None
+    ):
+        raise AssertionError(
+            "primary DNS refusal was masked by the injected delete timeout"
+        )
+    return {
+        "status": "PASS_ALL_BOUNDED_WAITER_FAKES_EXERCISE_NONTERMINAL_STATE",
+        "site_count": len(verified),
+        "sites": verified,
+        "primary_exception_preservation": {
+            "status": "PASS_PRIMARY_REFUSAL_RETAINED",
+            "scenario": "dns_primary_delete_timeout",
+            "reason_code": primary_cleanup["failure_reason_code"],
+            "secondary_cleanup_diagnostic": primary_cleanup[
+                "secondary_cleanup_diagnostic"
+            ],
+        },
     }
 
 
@@ -835,6 +947,38 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     "observation_sequence": boundary.pilot_receipt_observation_sequence,
                     "pod_reads": boundary.pilot_pod_reads,
                 },
+                "stage_pod_lifecycle": {
+                    "terminal_observation_sequences": boundary.pod_terminal_observation_sequence,
+                    "absence_observation_sequences": boundary.pod_absence_observation_sequence,
+                    "node_image_inventory_sequence": boundary.node_image_inventory_sequence,
+                    "pilot_job_reads": boundary.pilot_job_reads,
+                    "pilot_job_observation_sequence": boundary.pilot_job_observation_sequence,
+                    "pilot_discovery_observation_sequence": boundary.pilot_discovery_observation_sequence,
+                    "endpoint_availability_observation_sequence": boundary.endpoint_availability_observation_sequence,
+                    "endpoint_deletion_observation_sequence": boundary.endpoint_deletion_observation_sequence,
+                    "dra_observation_sequence": boundary.dra_observation_sequence,
+                    "ssm_observation_sequence": boundary.ssm_observation_sequence,
+                },
+                "secondary_cleanup_diagnostic": (
+                    {
+                        "path": "asr-eval-dns-control-secondary-cleanup-diagnostic.json",
+                        "sha256": _sha(
+                            directory
+                            / "asr-eval-dns-control-secondary-cleanup-diagnostic.json"
+                        ),
+                        "status": json.loads(
+                            (
+                                directory
+                                / "asr-eval-dns-control-secondary-cleanup-diagnostic.json"
+                            ).read_bytes()
+                        )["status"],
+                    }
+                    if (
+                        directory
+                        / "asr-eval-dns-control-secondary-cleanup-diagnostic.json"
+                    ).is_file()
+                    else None
+                ),
                 "pod_dns": {
                     "dns_control": (
                         {
@@ -1025,6 +1169,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     )
     endpoint_policy_rehearsal = _endpoint_policy_injections(bindings)
     async_observation_audit = audit_async_observation_sites(ROOT)
+    waiter_finalizer_audit = audit_waiter_and_finalizer_sites(ROOT)
+    waiter_fidelity = _validate_waiter_fidelity(scenarios)
     rehearsal_source_paths = [
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
@@ -1036,6 +1182,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_idempotent_read_retry.py",
         ROOT / "scripts/asr_base_model_gpu_storage.py",
         ROOT / "scripts/asr_base_model_async_observations.py",
+        ROOT / "scripts/asr_base_model_pod_lifecycle.py",
         ROOT / "services/asr-eval-runtime/medzen_asr_eval/network_probe.py",
     ]
     receipt = {
@@ -1128,6 +1275,8 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "executor_module_integrity": source_integrity,
         "bounded_helper_contract_audit": boundary_contract_audit,
         "async_observation_audit": async_observation_audit,
+        "waiter_finalizer_audit": waiter_finalizer_audit,
+        "bounded_waiter_rehearsal_fidelity": waiter_fidelity,
         "proven_live_node_command_bindings": proven_command_bindings,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,
@@ -1176,7 +1325,7 @@ def main() -> int:
     parser.add_argument(
         "--bindings",
         type=Path,
-        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002U.json",
+        default=ROOT / "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002W.json",
     )
     args = parser.parse_args()
     try:
