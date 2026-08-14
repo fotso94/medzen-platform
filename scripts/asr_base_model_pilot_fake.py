@@ -28,6 +28,10 @@ from scripts.asr_base_model_pilot_live import (
     GPU_NODEGROUP,
     LiveOperations,
 )
+from scripts.asr_base_model_async_observations import (
+    NETWORK_AND_LISTENER_PRESENT,
+    NETWORK_RECEIPT_ABSENT,
+)
 from scripts.asr_base_model_pilot_runner import AttemptContext, OperationRefusal
 
 
@@ -119,6 +123,9 @@ class BoundaryState:
         self.monotonic_seconds = 0.0
         self.gpu_node_reads = 0
         self.gpu_node_observation_sequence: list[str] = []
+        self.pilot_receipt_reads = 0
+        self.pilot_receipt_observation_sequence: list[str] = []
+        self.pilot_pod_reads = 0
         self.last_sampler_command: list[str] | None = None
         self.security_groups: set[str] = set()
         self.endpoints: dict[str, dict[str, Any]] = {}
@@ -820,6 +827,22 @@ class KubectlBoundary:
                 "status": {"failed": 1, "conditions": [{"type": "Failed", "status": "True", "reason": "SyntheticWorkloadRefusal"}]},
             }
         if args[:2] == ("get", "pod"):
+            self.state.pilot_pod_reads += 1
+            if self.state.injection not in {
+                "network_receipt_pod_terminal",
+                "pilot_job_refused",
+            }:
+                return {
+                    "metadata": {"name": args[2]},
+                    "status": {
+                        "phase": "Running",
+                        "containerStatuses": [{
+                            "name": "offline-evaluator",
+                            "ready": True,
+                            "state": {"running": {}},
+                        }],
+                    },
+                }
             return {
                 "metadata": {"name": args[2]},
                 "status": {
@@ -856,8 +879,28 @@ class SsmCommandBoundary:
                 "stdout": "",
                 "stderr": "sudo: unknown user #10001",
             }
-        if any("network-probe.json" in command and "/usr/bin/cat " in command for command in commands):
-            stdout = canonical_json({"status": "PASS_NETWORK_ISOLATION_PRE_TORCH", "torch_imported": False}).decode()
+        if any(NETWORK_AND_LISTENER_PRESENT in command for command in commands):
+            self.state.pilot_receipt_reads += 1
+            if self.state.injection == "network_receipt_timeout":
+                observed = "ABSENT"
+            elif (
+                self.state.injection == "network_receipt_delayed"
+                and self.state.pilot_receipt_reads <= 2
+            ):
+                observed = "ABSENT"
+            else:
+                observed = "READY"
+            self.state.pilot_receipt_observation_sequence.append(observed)
+            if observed == "ABSENT":
+                stdout = f"{NETWORK_RECEIPT_ABSENT}\n"
+            else:
+                stdout = (
+                    f"{NETWORK_AND_LISTENER_PRESENT}\n"
+                    + canonical_json({
+                        "status": "PASS_NETWORK_ISOLATION_PRE_TORCH",
+                        "torch_imported": False,
+                    }).decode()
+                )
         else:
             stdout = ""
         return {"command_id": command_id, "status": "Success", "response_code": 0, "stdout_sha256": hashlib.sha256(stdout.encode()).hexdigest(), "stdout": stdout, "stderr": ""}

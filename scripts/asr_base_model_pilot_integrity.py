@@ -77,6 +77,10 @@ ATTEMPT_20_EXECUTOR_MODULE_PATHS = (
     *ATTEMPT_19_EXECUTOR_MODULE_PATHS,
     "scripts/asr_base_model_gpu_storage.py",
 )
+ATTEMPT_21_EXECUTOR_MODULE_PATHS = (
+    *ATTEMPT_20_EXECUTOR_MODULE_PATHS,
+    "scripts/asr_base_model_async_observations.py",
+)
 
 
 class PilotIntegrityRefusal(RuntimeError):
@@ -143,6 +147,7 @@ def validate_executor_module_bindings(
             ATTEMPT_18_EXECUTOR_MODULE_PATHS,
             ATTEMPT_19_EXECUTOR_MODULE_PATHS,
             ATTEMPT_20_EXECUTOR_MODULE_PATHS,
+            ATTEMPT_21_EXECUTOR_MODULE_PATHS,
         ):
             if set(bindings) == set(candidate):
                 allowed = candidate

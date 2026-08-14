@@ -60,6 +60,7 @@ from scripts.asr_base_model_pilot_staging import (
     validate_window_budget,
 )
 from scripts.asr_base_model_boundary_contracts import audit_bounded_helper_calls
+from scripts.asr_base_model_async_observations import audit_async_observation_sites
 from scripts.asr_eval_digest_rescan import validate_security_binding
 
 
@@ -77,6 +78,15 @@ SCENARIOS = {
         "FAILED_CLOSED_EXECUTION",
     ),
     "pilot_job_refused": ("pilot_job_refused", "FAILED_CLOSED_EXECUTION"),
+    "network_receipt_delayed": ("network_receipt_delayed", "PASS_PILOT"),
+    "network_receipt_timeout": (
+        "network_receipt_timeout",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
+    "network_receipt_pod_terminal": (
+        "network_receipt_pod_terminal",
+        "BLOCKED_NETWORK_ISOLATION",
+    ),
     "image_stream_reset_then_success": (
         "image_stream_reset_then_success",
         "PASS_PILOT",
@@ -605,6 +615,11 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                     "reads": boundary.gpu_node_reads,
                     "observation_sequence": boundary.gpu_node_observation_sequence,
                 },
+                "pilot_receipt_readiness": {
+                    "reads": boundary.pilot_receipt_reads,
+                    "observation_sequence": boundary.pilot_receipt_observation_sequence,
+                    "pod_reads": boundary.pilot_pod_reads,
+                },
                 "scan_representation": image_payload.get("security_gate", {}).get(
                     "reconstruction"
                 ),
@@ -767,6 +782,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         proof, bindings["pilot_bundle"]["sha256"]
     )
     endpoint_policy_rehearsal = _endpoint_policy_injections(bindings)
+    async_observation_audit = audit_async_observation_sites(ROOT)
     rehearsal_source_paths = [
         ROOT / "scripts/asr_base_model_pilot_cold_rehearsal.py",
         ROOT / "scripts/asr_base_model_pilot_fake.py",
@@ -777,6 +793,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         ROOT / "scripts/asr_base_model_pilot_workload.py",
         ROOT / "scripts/asr_idempotent_read_retry.py",
         ROOT / "scripts/asr_base_model_gpu_storage.py",
+        ROOT / "scripts/asr_base_model_async_observations.py",
     ]
     receipt = {
         "schema_version": 2,
@@ -850,6 +867,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         "stage_implementation_guard": real_only,
         "executor_module_integrity": source_integrity,
         "bounded_helper_contract_audit": boundary_contract_audit,
+        "async_observation_audit": async_observation_audit,
         "proven_live_node_command_bindings": proven_command_bindings,
         "executor_module_paths": list(bindings["executor_modules"]),
         "security_gate_validation": security_gate_validation,

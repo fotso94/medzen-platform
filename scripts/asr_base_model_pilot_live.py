@@ -38,6 +38,15 @@ from scripts.asr_base_model_boundary_contracts import (
     invoke_dra_waiter,
     validate_boundary_parameters,
 )
+from scripts.asr_base_model_async_observations import (
+    AsyncObservationRefusal,
+    PILOT_RECEIPT_POLL_INTERVAL_SECONDS,
+    PILOT_RECEIPT_STABLE_OBSERVATIONS,
+    PILOT_RECEIPT_TIMEOUT_SECONDS,
+    network_receipt_observation_command,
+    parse_network_receipt_observation,
+    pilot_pod_terminal_observation,
+)
 from scripts.asr_base_model_pilot_assets import (
     AssetRefusal,
     ObjectStore,
@@ -1994,6 +2003,126 @@ class LiveOperations:
         write_exclusive(path, canonical_json(diagnostic))
         return {"path": path, "sha256": _sha(path), **diagnostic}
 
+    def _wait_pilot_network_receipts(
+        self,
+        context: AttemptContext,
+        *,
+        pod_name: str,
+        instance_id: str,
+        staging_path: str,
+        timeout_seconds: int = PILOT_RECEIPT_TIMEOUT_SECONDS,
+        poll_interval_seconds: int = PILOT_RECEIPT_POLL_INTERVAL_SECONDS,
+        required_observations: int = PILOT_RECEIPT_STABLE_OBSERVATIONS,
+    ) -> dict[str, Any]:
+        validate_boundary_parameters(
+            "pilot_receipt_readiness",
+            timeout_seconds=timeout_seconds,
+            poll_interval_seconds=poll_interval_seconds,
+            required_observations=required_observations,
+        )
+        try:
+            observation_command = network_receipt_observation_command(staging_path)
+        except AsyncObservationRefusal as exc:
+            raise OperationRefusal(exc.reason_code, exc.detail) from exc
+        deadline = self._monotonic() + timeout_seconds
+        observations = 0
+        stable = 0
+        stable_receipt_sha256: str | None = None
+        network_absent_observations = 0
+        listener_absent_observations = 0
+        last_phase = "Unknown"
+        while self._monotonic() < deadline:
+            pod = self._kubectl(
+                context,
+                "get",
+                "pod",
+                pod_name,
+                "-n",
+                NAMESPACE,
+                timeout=30,
+                json_output=True,
+            )
+            try:
+                pod_observation = pilot_pod_terminal_observation(pod)
+            except AsyncObservationRefusal as exc:
+                raise OperationRefusal(exc.reason_code, exc.detail) from exc
+            last_phase = pod_observation["phase"]
+            if pod_observation["terminal"]:
+                raise OperationRefusal(
+                    "PILOT_POD_TERMINAL_BEFORE_NETWORK_RECEIPT",
+                    "pilot pod became terminal before stable network/listener receipts; "
+                    f"phase={last_phase} terminated={len(pod_observation['terminated'])}",
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                )
+            result = self._ssm(
+                instance_id,
+                [observation_command],
+                timeout_seconds=60,
+                pre_model_safe_output=True,
+            )
+            observations += 1
+            try:
+                observed = parse_network_receipt_observation(result["stdout"])
+            except AsyncObservationRefusal as exc:
+                raise OperationRefusal(
+                    exc.reason_code,
+                    exc.detail,
+                    outcome="BLOCKED_NETWORK_ISOLATION",
+                ) from exc
+            if observed["status"] == "WAIT_NETWORK_RECEIPT":
+                if stable_receipt_sha256 is not None:
+                    raise OperationRefusal(
+                        "NETWORK_PROBE_RECEIPT_REGRESSED",
+                        "network receipt disappeared after a present observation",
+                        outcome="BLOCKED_NETWORK_ISOLATION",
+                    )
+                network_absent_observations += 1
+                stable = 0
+            else:
+                receipt_sha256 = hashlib.sha256(
+                    canonical_json(observed["network_receipt"])
+                ).hexdigest()
+                if stable_receipt_sha256 is None:
+                    stable_receipt_sha256 = receipt_sha256
+                elif receipt_sha256 != stable_receipt_sha256:
+                    raise OperationRefusal(
+                        "NETWORK_PROBE_RECEIPT_DRIFT",
+                        "network receipt changed between stable observations",
+                        outcome="BLOCKED_NETWORK_ISOLATION",
+                    )
+                if not observed["listener_ready"]:
+                    listener_absent_observations += 1
+                    stable = 0
+                else:
+                    stable += 1
+                    if stable >= required_observations:
+                        return {
+                            "status": "PASS_STABLE_NETWORK_AND_LISTENER_RECEIPTS",
+                            "network_receipt": observed["network_receipt"],
+                            "network_receipt_sha256": receipt_sha256,
+                            "observations": observations,
+                            "stable_observations": stable,
+                            "required_stable_observations": required_observations,
+                            "network_absent_observations": network_absent_observations,
+                            "listener_absent_observations": listener_absent_observations,
+                            "poll_interval_seconds": poll_interval_seconds,
+                            "timeout_seconds": timeout_seconds,
+                            "pod_phase": last_phase,
+                        }
+            remaining = deadline - self._monotonic()
+            if remaining <= poll_interval_seconds:
+                break
+            self._sleeper(poll_interval_seconds)
+        raise OperationRefusal(
+            "NETWORK_PROBE_RECEIPT_TIMEOUT",
+            "pilot pod remained non-terminal but stable network/listener receipts "
+            f"were not observed within {timeout_seconds} seconds after "
+            f"{observations} reads; phase={last_phase} "
+            f"network_absent={network_absent_observations} "
+            f"listener_absent={listener_absent_observations}",
+            outcome="BLOCKED_NETWORK_ISOLATION",
+        )
+
     def pilot_rows(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
         workload = (context.workdir / "workload.yaml").read_bytes()
@@ -2033,17 +2162,12 @@ class LiveOperations:
                     pod_ip = pod.get("status", {}).get("podIP")
                     if pod_ip:
                         staging = state["staging_path"]
-                        network = self._ssm(state["instance_id"], [
-                            root_command("/usr/bin/test", "-s", f"{staging}/output/network-probe.json"),
-                            root_command("/usr/bin/test", "-s", f"{staging}/output/inbound-listener-ready"),
-                            root_command("/usr/bin/cat", f"{staging}/output/network-probe.json"),
-                        ], timeout_seconds=60)
-                        try:
-                            network_value = json.loads(network["stdout"])
-                        except Exception as exc:
-                            raise OperationRefusal("NETWORK_PROBE_RECEIPT_MALFORMED", "pre-torch network receipt is not JSON", outcome="BLOCKED_NETWORK_ISOLATION") from exc
-                        if network_value.get("status") != "PASS_NETWORK_ISOLATION_PRE_TORCH" or network_value.get("torch_imported") is not False:
-                            raise OperationRefusal("NETWORK_PROBE_REFUSED", "pre-torch private-endpoint probe did not pass", outcome="BLOCKED_NETWORK_ISOLATION")
+                        network = self._wait_pilot_network_receipts(
+                            context,
+                            pod_name=pod_name,
+                            instance_id=state["instance_id"],
+                            staging_path=staging,
+                        )
                         inbound = self._cross_pod_refusal(context, pod_ip)
                         self._ssm(state["instance_id"], [
                             root_command("/usr/bin/sudo", "/usr/bin/touch", f"{staging}/input/network-release"),
@@ -2075,7 +2199,7 @@ class LiveOperations:
                 "PILOT_WORKLOAD_UNEXPECTED_EXCEPTION",
                 f"pilot workload raised {type(exc).__name__}; pilot_diagnostic_sha256={diagnostic['sha256']}",
             ) from exc
-        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
+        return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
     def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)

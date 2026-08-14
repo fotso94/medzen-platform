@@ -36,6 +36,11 @@ BOUNDARY_CONTRACTS: dict[str, dict[str, IntegerBound]] = {
         "poll_interval_seconds": IntegerBound(1, 60, 10),
         "required_observations": IntegerBound(2, 10, 2),
     },
+    "pilot_receipt_readiness": {
+        "timeout_seconds": IntegerBound(1, 300, 300),
+        "poll_interval_seconds": IntegerBound(1, 60, 10),
+        "required_observations": IntegerBound(2, 10, 2),
+    },
     "registry_scan_configuration": {
         "timeout_seconds": IntegerBound(1, 300, 120)
     },
@@ -126,6 +131,14 @@ _CALL_AUDIT = {
     ),
     "_wait_gpu_node_ready": (
         "gpu_node_readiness",
+        {
+            "timeout_seconds": "timeout_seconds",
+            "poll_interval_seconds": "poll_interval_seconds",
+            "required_observations": "required_observations",
+        },
+    ),
+    "_wait_pilot_network_receipts": (
+        "pilot_receipt_readiness",
         {
             "timeout_seconds": "timeout_seconds",
             "poll_interval_seconds": "poll_interval_seconds",
