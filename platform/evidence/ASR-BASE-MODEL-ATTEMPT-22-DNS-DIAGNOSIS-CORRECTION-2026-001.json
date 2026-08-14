@@ -1,0 +1,128 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_DNS_DIAGNOSIS_CORRECTION",
+  "id": "ASR-BASE-MODEL-ATTEMPT-22-DNS-DIAGNOSIS-CORRECTION-2026-001",
+  "schema_version": 1,
+  "status": "PASS_LIVE_ROOT_CAUSE_AND_LOCAL_SUCCESSOR_CORRECTION",
+  "recorded_utc": "2026-08-14T18:34:00Z",
+  "attempt": 22,
+  "event_outcome_unchanged": "BLOCKED_NETWORK_ISOLATION",
+  "event_refusal_remains_valid": true,
+  "attempt_22_evidence": {
+    "refusal": {
+      "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002U-ATTEMPT-22-DNS-ISOLATION-REFUSAL.json",
+      "sha256": "c364a1516e3e69add301444c090d14e996444bc66dd5840ad7871efdcdef8161",
+      "reason_code": "NETWORK_PROBE_REFUSED",
+      "detail_code": "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT",
+      "torch_imported": false,
+      "evaluation_rows_started": 0
+    },
+    "pilot_stage_receipt": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/receipts/pilot_rows.json",
+      "sha256": "7ea89ce4a29c2e76a8403a86a7096d666318058f55351083e28bc6f9fd3a4d3e"
+    },
+    "typed_diagnostics": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/pilot-workload-refusal-diagnostics.json",
+      "sha256": "1b9d39c41f6a1bf5f468b1389ec199d33528f0b8490ed1b526ac7dac5fdce035",
+      "dns_attempts": 5,
+      "exception_class": "gaierror",
+      "errno": -3
+    },
+    "rendered_workload": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/workload.yaml",
+      "sha256": "2f031a20fc8037e0754695281ecb4b42bedce4e1682efb794020f20abc1e7eda",
+      "observed_pod_dns_policy": "ClusterFirst",
+      "observed_pod_dns_config": null,
+      "network_policy_dns_target": "172.31.0.2/32"
+    },
+    "read_only_root_cause_capture": {
+      "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/dns-root-cause-readback.json",
+      "sha256": "6e84101514815098230415e36f70b285520fe867f24d80733837c85bf9a87ae1",
+      "kube_dns_service_ip": "10.100.0.10",
+      "kube_dns_ready_endpoint_count": 0,
+      "cpu_desired": 0,
+      "gpu_desired": 0,
+      "aws_mutations": 0,
+      "kubernetes_mutations": 0
+    },
+    "cleanup": {
+      "stage_receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/receipts/cleanup_and_expiry.json",
+      "stage_receipt_sha256": "04811f4dbe7ce7fb3de197598cb246cc15be8756258392903189e6f0e364b61b",
+      "independent_readback_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE/cleanup-independent-readback.json",
+      "independent_readback_sha256": "0ca8712f45082a7c88717709c9d0828dd7c1d7b945749a8d213635f10424bef7",
+      "status": "PASS_ZERO_STATE"
+    }
+  },
+  "root_cause": {
+    "classification": "CONFIRMED_POD_DNS_POLICY_AND_AVAILABLE_RESOLVER_MISMATCH",
+    "facts": [
+      "The live pilot pod used ClusterFirst and had no custom dnsConfig.",
+      "Strict workload egress allowed DNS only to the VPC resolver at 172.31.0.2/32.",
+      "The kube-dns Service had no ready endpoints because both managed node groups were at desired zero outside the window.",
+      "Five in-pod lookups returned EAI_AGAIN before Torch import and before any evaluation row."
+    ],
+    "unsupported_claims_prohibited": [
+      "Do not classify the refusal as endpoint-policy or endpoint-security-group failure.",
+      "Do not claim any evaluation model or row was executed.",
+      "Do not claim the VPC resolver itself was unreachable in attempt 22; the live pod did not use it directly."
+    ]
+  },
+  "successor_correction": {
+    "executor_source_commit": "d1e019f49871577b790e615c31cae761b17b6f7c",
+    "pod_dns": {
+      "pilot_and_inbound_control_dns_policy": "None",
+      "nameservers": ["172.31.0.2"],
+      "cluster_dns_dependency": false,
+      "strict_dns_egress_unchanged": true
+    },
+    "resolve_as_pod_gate": {
+      "execution_context": "policy-selected pod using the exact digest-pinned evaluation image",
+      "hostname_source": "network-binding.json allowed_tcp_443_hosts",
+      "allowlist_source": "rendered asr-eval-private-egress NetworkPolicy",
+      "required_result": "every VPC-resolved IP is inside the rendered TCP/443 allowlist",
+      "torch_imported": false,
+      "terminal_poll_timeout_seconds": 600,
+      "dns_retry_attempts": 12,
+      "dns_retry_interval_seconds": 5,
+      "typed_refusals": [
+        "DNS_RESOLVER_UNREACHABLE",
+        "DNS_EFFECTIVE_RESOLVER_DIFFERS",
+        "DNS_RESOLVED_IP_OUTSIDE_ALLOWLIST",
+        "DNS_CONTROL_POD_TIMEOUT"
+      ]
+    },
+    "diagnostic_container_discovery": {
+      "preferred_live_container": "aws-eks-nodeagent",
+      "historical_fallback": "aws-network-policy-agent",
+      "aws_node_fallback": "aws-node",
+      "invented_container_name_permitted": false
+    },
+    "source_bindings": {
+      "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
+      "scripts/asr_base_model_pilot_k8s.py": "e40d731aec5014ff266b6355013edf653deb0c1fc1447c2e49164ae5598b140c",
+      "scripts/asr_base_model_pilot_live.py": "2e3232ffa6da411bed9f613f1b69c74d41a600fd76e60091d4e666a68735ebe4",
+      "scripts/asr_base_model_pilot_fake.py": "d07d8be0da4a993728b226fe1453a60362fa2310b28cb785ce1ac0dd69c0b173",
+      "scripts/asr_base_model_pilot_cold_rehearsal.py": "8ec02f6a2df3a6577d5ee95f34b5846ff3687c260dd6912c56f397dbfc25ccc6"
+    }
+  },
+  "local_validation": {
+    "focused_test_count": 272,
+    "focused_test_failures": 0,
+    "python_compilation": "PASS",
+    "git_diff_check": "PASS",
+    "required_rehearsal_scenarios": [
+      "dnsPolicy None aligned PASS",
+      "VPC resolver unreachable REFUSED",
+      "resolved IP outside rendered allowlist REFUSED"
+    ],
+    "cold_rehearsal_receipt_pending_successor_bindings": true
+  },
+  "scope": {
+    "image_rebuild_required": false,
+    "image_identity_changed": false,
+    "risk_acceptance_2026_003_continuation_permitted": true,
+    "aws_mutations_for_diagnosis": 0,
+    "kubernetes_mutations_for_diagnosis": 0,
+    "attempt_23_authorized": false,
+    "historical_records_modified": false
+  }
+}
