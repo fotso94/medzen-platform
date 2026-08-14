@@ -596,6 +596,11 @@ def _scenario_repository(
     )
     for capture in fixture_record["captures"]:
         tracked[capture["path"]] = (ROOT / capture["path"]).read_bytes()
+    existing_image_fixture = bindings.get("ecr_existing_image_fixture")
+    if isinstance(existing_image_fixture, dict):
+        for key in ("capture_path", "path"):
+            relative = existing_image_fixture[key]
+            tracked[relative] = (ROOT / relative).read_bytes()
     for relative in bindings["executor_modules"]:
         tracked[relative] = (ROOT / relative).read_bytes()
     tracked[packet_relative] = b"synthetic committed rehearsal packet\n"
@@ -661,6 +666,17 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     fixture_catalog = FixtureCatalog(ROOT, bindings["aws_read_fixtures"])
     aws_read_fixture_coverage = fixture_catalog.summary()
     aws_read_dynamic_paths = validate_dynamic_paths(fixture_catalog)
+    existing_image_fixture = bindings.get("ecr_existing_image_fixture")
+    if not isinstance(existing_image_fixture, dict):
+        raise RuntimeError("existing-image ECR fixture binding is absent")
+    for path_key, hash_key in (
+        ("capture_path", "capture_sha256"),
+        ("path", "sha256"),
+    ):
+        path = ROOT / existing_image_fixture[path_key]
+        body = read_committed_artifact(ROOT, path)
+        if hashlib.sha256(body).hexdigest() != existing_image_fixture[hash_key]:
+            raise RuntimeError("existing-image ECR fixture binding differs")
     gpu_fixture_binding = bindings.get("gpu_node_readiness_fixtures")
     if not isinstance(gpu_fixture_binding, dict):
         raise RuntimeError("GPU-node readiness fixture binding is absent")
