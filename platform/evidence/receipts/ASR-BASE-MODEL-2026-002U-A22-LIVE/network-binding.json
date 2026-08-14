@@ -1,0 +1,1 @@
+{"allowed_tcp_443_hosts":["api.ecr.eu-central-1.amazonaws.com","558069890522.dkr.ecr.eu-central-1.amazonaws.com","medzen-speech.s3.eu-central-1.amazonaws.com"],"classification":"OFFLINE_EVALUATION_ONLY","schema_version":1}

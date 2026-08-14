@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "id": "ASR-BASE-MODEL-ATTEMPT-22-DNS-ROOT-CAUSE-READBACK",
+  "recorded_utc": "2026-08-14T18:18:58Z",
+  "status": "CONFIRMED_CLUSTERFIRST_WITH_ZERO_KUBE_DNS_ENDPOINTS",
+  "source": {
+    "kind": "READ_ONLY_LIVE_AND_PERSISTED_ATTEMPT_EVIDENCE",
+    "aws_mutations": 0,
+    "kubernetes_mutations": 0
+  },
+  "persisted_attempt_pod": {
+    "dns_policy": "ClusterFirst",
+    "dns_config": null,
+    "host_network": false,
+    "evidence_path": "pilot-workload-refusal-diagnostics.json",
+    "field_source": "sanitized Kubernetes Pod read response retained before cleanup"
+  },
+  "rendered_workload": {
+    "explicit_dns_policy_present": false,
+    "explicit_dns_config_present": false,
+    "effective_default_dns_policy": "ClusterFirst",
+    "dns_egress_cidr": "172.31.0.2/32",
+    "dns_egress_ports": [
+      "UDP/53",
+      "TCP/53"
+    ],
+    "evidence_path": "workload.yaml"
+  },
+  "live_kube_dns_readback_with_cpu_and_gpu_desired_zero": {
+    "service_cluster_ip": "10.100.0.10",
+    "endpoints_address_count": 0,
+    "endpoints_not_ready_address_count": 0,
+    "endpoint_slice_count": 1,
+    "endpoint_slice_ready_address_count": 0
+  },
+  "typed_workload_probe": {
+    "host": "api.ecr.eu-central-1.amazonaws.com",
+    "attempts": 5,
+    "window_seconds": 120,
+    "exception_class": "gaierror",
+    "errno": -3,
+    "resolved_ip_count": 0,
+    "reason_code": "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT",
+    "torch_imported": false,
+    "evaluation_rows_started": 0
+  },
+  "conclusion": {
+    "classification": "POD_DNS_POLICY_AND_AVAILABLE_RESOLVER_MISMATCH",
+    "confirmed_facts": [
+      "The persisted live pod used ClusterFirst and no custom dnsConfig.",
+      "The rendered NetworkPolicy permitted DNS only to the VPC resolver at 172.31.0.2/32.",
+      "The kube-dns Service had zero endpoints while both managed node groups were scaled to zero.",
+      "All five in-pod resolution attempts returned EAI_AGAIN before Torch import."
+    ],
+    "recommended_correction": "Set dnsPolicy=None and dnsConfig.nameservers=[172.31.0.2] on both evaluation pods, retain the strict DNS egress rule, and bind resolved private endpoint addresses to the rendered TCP/443 allowlist before pod launch."
+  }
+}
