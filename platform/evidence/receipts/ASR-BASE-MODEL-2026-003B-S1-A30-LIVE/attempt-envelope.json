@@ -1,0 +1,1 @@
+{"attempt":30,"authorization_sha256":"f61ba5e025607121e240790a76145ef3ee7d99da4fd067d2e49829ed25215160","declared_utc":"2026-08-15T20:14:25Z","hard_deadline_utc":"2026-08-15T23:14:25Z","maximum_seconds":10800,"packet_sha256":"ac315ccf6c3ee5bc459159d62401944453296a51de68a2a04594bd2bf8613ed5","schema_version":1,"status":"DEADLINE_DECLARED_BEFORE_MUTATION"}
