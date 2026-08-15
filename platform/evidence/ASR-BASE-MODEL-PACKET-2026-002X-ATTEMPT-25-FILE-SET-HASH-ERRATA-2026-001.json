@@ -1,0 +1,71 @@
+{
+  "record": "ASR_BASE_MODEL_ATTEMPT_EVIDENCE_FILE_SET_HASH_ERRATA",
+  "id": "ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-FILE-SET-HASH-ERRATA-2026-001",
+  "schema_version": 1,
+  "status": "PASS_CORRECTED_FILE_SET_HASH_BY_IMMUTABLE_ADDENDUM",
+  "recorded_utc": "2026-08-15T00:05:03Z",
+  "attempt": 25,
+  "corrects_by_reference": {
+    "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-PILOT-JOB-REFUSAL.json",
+    "sha256": "320f830a1e93b4328c2e027d835df93deea73c79962b38222ca12a529d341963",
+    "source_commit": "fba20af032de632036362ce3c2dd535be2a77e0c",
+    "field": "live_receipts.file_set_sha256",
+    "historical_file_edited": false
+  },
+  "evidence_directory": {
+    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002X-A25-LIVE",
+    "git_tree_object": "e79b17ee98d84eb35e7630a968207bea236f0c39",
+    "file_count": 131,
+    "claimed_file_set_sha256_in_historical_record": "3eefe4b47a478ca4c73066946879044e5f1e044b914ad2bb4d6925de87dd00c7",
+    "corrected_file_set_sha256": "b6cd95db9f38fc396a7e9d4bd5e0278ae3ded7d5f845c20e4029a0b6cda18873",
+    "hash_algorithm": "SHA256_OF_UTF8_CANONICAL_JSON_MAP_RELATIVE_PATH_TO_FILE_SHA256",
+    "canonical_json_rules": {
+      "key": "POSIX_RELATIVE_PATH_FROM_EVIDENCE_DIRECTORY",
+      "value": "LOWERCASE_HEX_SHA256_OF_EXACT_FILE_BYTES",
+      "json_sort_keys": true,
+      "json_separators": [
+        ",",
+        ":"
+      ],
+      "terminal_newline": false
+    },
+    "canonical_json_byte_count": 12178,
+    "repository_tree_matches_worktree": true
+  },
+  "individually_cited_hash_verification": {
+    "status": "PASS_ALL_NINE_CITED_HASHES",
+    "checked_count": 9,
+    "mismatched_count": 0,
+    "checked_fields": [
+      "attempt_envelope_sha256",
+      "result_sha256",
+      "gpu_and_sampler_gate_sha256",
+      "node_local_input_stage_sha256",
+      "image_prepull_qualification_sha256",
+      "dns_consistency_gate_sha256",
+      "pilot_rows_sha256",
+      "cleanup_and_expiry_sha256",
+      "independent_cleanup_readback_sha256"
+    ]
+  },
+  "drift_analysis": {
+    "specific_file_identified": false,
+    "reason": "The pre-commit path-to-hash map used to produce the historical aggregate was not retained, so the incorrect aggregate alone cannot identify a changed member. The committed directory is internally stable, its git tree matches disk, and every individually cited file hash matches.",
+    "bounded_conclusion": "The historical aggregate was computed from a byte set or serialization that was not the final committed 131-file canonical map. No claim is made about which member or intermediate operation differed.",
+    "class_correction_for_successor": "Persist the canonical path-to-hash inventory as evidence and recompute the aggregate from the committed tree before publication."
+  },
+  "event_semantics_unchanged": {
+    "attempt_consumed": true,
+    "outcome": "FAILED_CLOSED_EXECUTION",
+    "failure_stage": "pilot_rows",
+    "reason_code": "PILOT_JOB_REFUSED",
+    "root_cause": "UNDIAGNOSED",
+    "cleanup": "PASS_INDEPENDENT_ZERO_STATE",
+    "aws_reexecution_permitted": false
+  },
+  "review_binding": {
+    "review_id": "CLAUDE-REVIEW-2026-08-14-016",
+    "claude_instructions_sha256": "8a28685277779c7bc6a7ad368f5670425d113f321ea92634515c9096dfec0bb7",
+    "decision": "CHANGES_REQUIRED_ERRATA_ONLY"
+  }
+}
