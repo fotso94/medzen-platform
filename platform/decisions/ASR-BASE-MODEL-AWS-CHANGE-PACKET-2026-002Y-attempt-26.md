@@ -135,7 +135,7 @@ state with independent read-back. 0 permanent creates, 0 permanent updates,
 
 The committed-bindings cold rehearsal must be generated twice byte-identically
 from `platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Y.json`
-(SHA-256 `8297529bad3eb6158188b18965516ff677e818755ee16fd73e59d68ff1e25cf5`) and must cover the
+(SHA-256 `04699f0f7de3beb5ee8f4adfa60385e648af6dcd266d8532985ab1c7480d4bc8`) and must cover the
 PASS paths and injected refusals including delayed device, never-ready
 device, large-preamble tail retention, journal capture and termination-fact
 normalization, with every scenario reaching zero state. The independent
