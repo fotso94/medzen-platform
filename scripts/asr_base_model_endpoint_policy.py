@@ -87,12 +87,28 @@ def build_call_inventory(
         raise EndpointPolicyRefusal(
             "ENDPOINT_PILOT_OBJECTS_ABSENT", "verified pilot bundle has no objects"
         )
+    # Suite shard bundles reference the omniASR weights read-only from the
+    # hash-bound pilot prefix (the whisper pattern); the declared source
+    # prefix is admitted alongside the shard's own content-addressed prefix.
+    allowed_prefixes = [prefix]
+    meta_source = pilot_bundle.get("meta", {}).get("read_only_source_prefix")
+    if isinstance(meta_source, str):
+        if not meta_source.startswith(
+            "research/asr-base-model/pilot/"
+        ) or not meta_source.endswith("/"):
+            raise EndpointPolicyRefusal(
+                "ENDPOINT_META_SOURCE_PREFIX_INVALID",
+                "meta read-only source prefix is outside the research boundary",
+            )
+        allowed_prefixes.append(meta_source)
 
     calls: list[dict[str, Any]] = []
     for item in objects:
         key = item.get("key") if isinstance(item, dict) else None
         version_id = item.get("version_id") if isinstance(item, dict) else None
-        if not isinstance(key, str) or not key.startswith(prefix):
+        if not isinstance(key, str) or not any(
+            key.startswith(value) for value in allowed_prefixes
+        ):
             raise EndpointPolicyRefusal(
                 "ENDPOINT_PILOT_KEY_OUTSIDE_PREFIX",
                 "pilot object key is outside the exact content-addressed prefix",
