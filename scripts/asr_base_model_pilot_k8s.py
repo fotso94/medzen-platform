@@ -108,6 +108,11 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                             "securityContext": {"allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True, "capabilities": {"drop": ["ALL"]}},
                             "volumeMounts": [
                                 {"name": "input", "mountPath": "/input", "readOnly": True},
+                                # The image's fairseq2 asset cards bind model
+                                # checkpoints at absolute /models paths; the
+                                # staged weights must appear there or Meta
+                                # backend loads fail (attempt-25 refusal).
+                                {"name": "input", "mountPath": "/models", "subPath": "models", "readOnly": True},
                                 {"name": "output", "mountPath": "/output"},
                                 {"name": "tmp", "mountPath": "/tmp"},
                             ],
@@ -125,6 +130,54 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     rendered = yaml.safe_dump_all(documents, sort_keys=False)
     verify(rendered, digest, attempt)
     return rendered
+
+
+ASSET_CARD_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "services"
+    / "asr-eval-runtime"
+    / "assets"
+    / "models.yaml"
+)
+ASSET_CARD_FILE_FIELDS = ("checkpoint", "tokenizer")
+
+
+def asset_card_file_paths() -> list[str]:
+    """Absolute file paths the image's baked fairseq2 asset cards resolve."""
+    paths: list[str] = []
+    for document in yaml.safe_load_all(ASSET_CARD_PATH.read_text()):
+        if not isinstance(document, dict):
+            continue
+        for field in ASSET_CARD_FILE_FIELDS:
+            value = document.get(field)
+            if isinstance(value, str) and value.startswith("/"):
+                paths.append(value)
+    if not paths:
+        raise ValueError("asset cards declare no absolute file paths")
+    return sorted(set(paths))
+
+
+def validate_asset_card_mount_coverage(pod: dict[str, Any]) -> dict[str, Any]:
+    """Refuse unless every asset-card file path sits under a pod mount."""
+    mounts = [
+        item["mountPath"]
+        for item in pod["containers"][0].get("volumeMounts", [])
+        if isinstance(item, dict) and isinstance(item.get("mountPath"), str)
+    ]
+    uncovered = [
+        path
+        for path in asset_card_file_paths()
+        if not any(path == mount or path.startswith(mount.rstrip("/") + "/") for mount in mounts)
+    ]
+    if uncovered:
+        raise ValueError(
+            f"asset-card file paths are not covered by pod mounts: {uncovered}"
+        )
+    return {
+        "status": "PASS_ASSET_CARD_MOUNT_COVERAGE",
+        "card_paths": asset_card_file_paths(),
+        "mounts": sorted(mounts),
+    }
 
 
 def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
@@ -159,9 +212,11 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
         raise ValueError("pilot termination grace differs")
     if container.get("env") != list(PILOT_ENVIRONMENT):
         raise ValueError("pilot explicit environment differs")
+    card_coverage = validate_asset_card_mount_coverage(pod)
     workload_argv = [*container["command"], *container["args"]]
     return {
         "status": "PASS_K8S_RENDER",
+        "asset_card_mount_coverage": card_coverage,
         "kinds": kinds,
         "service_count": 0,
         "ingress_count": 0,

@@ -113,7 +113,7 @@ append_event("PILOT_START")
 try:
     result=pilot_module.run_pilot(
         rows_path=pathlib.Path("/input/runtime-rows.json"),
-        model_root=pathlib.Path("/input/models"),
+        model_root=pathlib.Path("/models"),
         model_binding_path=pathlib.Path("/input/model-bindings.json"),
         conditioning_path=pathlib.Path("/opt/medzen/assets/language-conditioning-v1.json"),
         receipt_root=receipt_root,

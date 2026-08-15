@@ -74,3 +74,49 @@ def test_runtime_vram_path_remains_bound_to_proven_b6a_argv() -> None:
     assert canonical_argv_sha256(B6A_PROVEN_NVIDIA_SMI_ARGV) == (
         "04e6d317a48f3602402b011289224cb686ab7313aab6726051d2f089ac5bd426"
     )
+
+
+def test_asset_cards_resolve_only_under_models_mount() -> None:
+    from scripts.asr_base_model_pilot_k8s import asset_card_file_paths
+
+    paths = asset_card_file_paths()
+    assert paths, "asset cards must declare absolute checkpoint/tokenizer paths"
+    assert all(path.startswith("/models/") for path in paths), paths
+
+
+def test_card_mount_coverage_refuses_without_models_mount() -> None:
+    import pytest
+
+    from scripts.asr_base_model_pilot_k8s import validate_asset_card_mount_coverage
+
+    pod_without = {
+        "containers": [
+            {
+                "volumeMounts": [
+                    {"name": "input", "mountPath": "/input", "readOnly": True},
+                    {"name": "output", "mountPath": "/output"},
+                ]
+            }
+        ]
+    }
+    with pytest.raises(ValueError, match="not covered by pod mounts"):
+        validate_asset_card_mount_coverage(pod_without)
+    pod_with = {
+        "containers": [
+            {
+                "volumeMounts": [
+                    {"name": "input", "mountPath": "/input", "readOnly": True},
+                    {"name": "input", "mountPath": "/models", "subPath": "models", "readOnly": True},
+                ]
+            }
+        ]
+    }
+    value = validate_asset_card_mount_coverage(pod_with)
+    assert value["status"] == "PASS_ASSET_CARD_MOUNT_COVERAGE"
+
+
+def test_pilot_driver_model_root_matches_card_layout() -> None:
+    from scripts.asr_base_model_pilot_workload import _PILOT_DRIVER_PROGRAM
+
+    assert 'model_root=pathlib.Path("/models")' in _PILOT_DRIVER_PROGRAM
+    assert "/input/models" not in _PILOT_DRIVER_PROGRAM
