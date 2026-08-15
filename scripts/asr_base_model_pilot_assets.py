@@ -87,10 +87,16 @@ def pilot_bundle_identity(selection_sha256: str) -> dict[str, Any]:
     return {**identity, "sha256": hashlib.sha256(canonical_json(identity)).hexdigest()}
 
 
-def select_pilot_rows(root: Path) -> dict[str, Any]:
-    selected: list[dict[str, Any]] = []
-    identities: set[str] = set()
+def _validated_language_candidates(
+    root: Path,
+) -> tuple[list[Path], dict[str, list[dict[str, Any]]]]:
+    """Collect every boundary-validated candidate row, keyed by language.
+
+    Shared by the pilot and suite selections; each language's candidates are
+    returned checksum-sorted so both selections are deterministic slices of
+    the same ordering."""
     manifests = selected_manifests(root)
+    by_language: dict[str, list[dict[str, Any]]] = {}
     for path in manifests:
         relative = path.relative_to(root).as_posix()
         language = relative.split("/", 1)[0]
@@ -137,14 +143,21 @@ def select_pilot_rows(root: Path) -> dict[str, Any]:
                 "reference": reference,
                 "reference_sha256": hashlib.sha256(reference.encode()).hexdigest(),
             })
-        for ordinal, row in enumerate(sorted(candidates, key=lambda value: value["audio_checksum_sha256"])[:10], 1):
-            checksum = row["audio_checksum_sha256"]
-            if checksum in identities:
-                raise AssetRefusal("pilot selection has duplicate audio identity")
-            identities.add(checksum)
-            selected.append({**row, "selection_ordinal": ordinal})
-    if not 1 <= len(selected) <= 540:
-        raise AssetRefusal("pilot selection is outside the 540-row maximum")
+        by_language.setdefault(language, []).extend(candidates)
+    for language in by_language:
+        by_language[language].sort(key=lambda value: value["audio_checksum_sha256"])
+    return manifests, by_language
+
+
+def _finalize_selection(
+    selected: list[dict[str, Any]],
+    *,
+    manifest_count: int,
+    status: str,
+) -> dict[str, Any]:
+    identities = {row["audio_checksum_sha256"] for row in selected}
+    if len(identities) != len(selected):
+        raise AssetRefusal("selection has duplicate audio identity")
     public_rows = [
         {key: value for key, value in row.items() if key != "reference"}
         for row in selected
@@ -152,12 +165,68 @@ def select_pilot_rows(root: Path) -> dict[str, Any]:
     public_sha = hashlib.sha256(canonical_json(public_rows)).hexdigest()
     return {
         "schema_version": 1,
-        "status": "PASS_DETERMINISTIC_PILOT_SELECTION",
+        "status": status,
         "classification": "PUBLIC_RESEARCH_NO_PHI",
-        "manifest_count": len(manifests),
+        "manifest_count": manifest_count,
         "rows": selected,
         "public_row_list_sha256": public_sha,
     }
+
+
+def select_pilot_rows(root: Path) -> dict[str, Any]:
+    manifests, by_language = _validated_language_candidates(root)
+    selected: list[dict[str, Any]] = []
+    for path in manifests:
+        relative = path.relative_to(root).as_posix()
+        language = relative.split("/", 1)[0]
+        manifest_key = f"eval/{relative}"
+        manifest_rows = [
+            row
+            for row in by_language[language]
+            if row["manifest"] == manifest_key
+        ]
+        for ordinal, row in enumerate(manifest_rows[:10], 1):
+            selected.append({**row, "selection_ordinal": ordinal})
+    if not 1 <= len(selected) <= 540:
+        raise AssetRefusal("pilot selection is outside the 540-row maximum")
+    return _finalize_selection(
+        selected,
+        manifest_count=len(manifests),
+        status="PASS_DETERMINISTIC_PILOT_SELECTION",
+    )
+
+
+SUITE_MAXIMUM_ROWS = 6000
+
+
+def select_suite_rows(root: Path, units: list[dict[str, Any]]) -> dict[str, Any]:
+    """Deterministic shard selection: checksum-sorted per-language slices.
+
+    Each unit is {"language", "row_start", "row_end"} from the committed
+    shard manifest; ranges index the language's checksum-sorted validated
+    candidates across ALL of its prospective manifests."""
+    manifests, by_language = _validated_language_candidates(root)
+    selected: list[dict[str, Any]] = []
+    for unit in sorted(units, key=lambda value: (value["language"], value["row_start"])):
+        language = unit["language"]
+        start, end = int(unit["row_start"]), int(unit["row_end"])
+        rows = by_language.get(language)
+        if rows is None:
+            raise AssetRefusal(f"suite unit references an absent language: {language}")
+        if not 0 <= start < end <= len(rows):
+            raise AssetRefusal(
+                f"suite unit range differs for {language}: "
+                f"[{start}:{end}] over {len(rows)} candidates"
+            )
+        for ordinal, row in enumerate(rows[start:end], start + 1):
+            selected.append({**row, "selection_ordinal": ordinal})
+    if not 1 <= len(selected) <= SUITE_MAXIMUM_ROWS:
+        raise AssetRefusal("suite selection is outside the shard maximum")
+    return _finalize_selection(
+        selected,
+        manifest_count=len(manifests),
+        status="PASS_DETERMINISTIC_SUITE_SELECTION",
+    )
 
 
 class ObjectStore(Protocol):

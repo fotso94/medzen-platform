@@ -154,3 +154,48 @@ def test_aggregate_readback_no_longer_uses_one_shot_cat() -> None:
 def test_fake_models_the_ssm_output_truncation() -> None:
     source = (ROOT / "scripts/asr_base_model_pilot_fake.py").read_text()
     assert "[:24000]" in source, "fake must model the StandardOutputContent cap"
+
+
+def _extracted_eval_manifests(tmp_path: Path) -> Path:
+    import tarfile
+
+    root = tmp_path / "eval"
+    root.mkdir()
+    with tarfile.open(
+        ROOT / "tests/fixtures/asr_base_model_pilot/eval-manifests-2026-08-11.tar.gz"
+    ) as archive:
+        archive.extractall(root)
+    inner = list(root.iterdir())
+    return inner[0] if len(inner) == 1 and inner[0].is_dir() else root
+
+
+def test_suite_selection_first_ten_equals_pilot_selection(tmp_path: Path) -> None:
+    from scripts.asr_base_model_pilot_assets import (
+        _validated_language_candidates,
+        select_pilot_rows,
+        select_suite_rows,
+    )
+
+    root = _extracted_eval_manifests(tmp_path)
+    pilot = select_pilot_rows(root)
+    _, by_language = _validated_language_candidates(root)
+    units = [
+        {"language": language, "row_start": 0, "row_end": min(10, len(rows))}
+        for language, rows in sorted(by_language.items())
+    ]
+    suite = select_suite_rows(root, units)
+    pilot_ids = {row["audio_checksum_sha256"] for row in pilot["rows"]}
+    suite_ids = {row["audio_checksum_sha256"] for row in suite["rows"]}
+    assert pilot_ids <= suite_ids or suite_ids <= pilot_ids
+
+
+def test_suite_selection_refuses_out_of_range_units(tmp_path: Path) -> None:
+    import pytest
+
+    from scripts.asr_base_model_pilot_assets import AssetRefusal, select_suite_rows
+
+    root = _extracted_eval_manifests(tmp_path)
+    with pytest.raises(AssetRefusal, match="range differs"):
+        select_suite_rows(root, [{"language": "yemba", "row_start": 0, "row_end": 10**6}])
+    with pytest.raises(AssetRefusal, match="absent language"):
+        select_suite_rows(root, [{"language": "no-such-language", "row_start": 0, "row_end": 1}])
