@@ -223,6 +223,7 @@ def build_call_inventory(
         "region": region,
         "pilot_prefix": prefix,
         "whisper_prefix": WHISPER_PREFIX,
+        "meta_source_prefix": meta_source if isinstance(meta_source, str) else None,
         "calls": calls,
     }
     inventory["inventory_sha256"] = hashlib.sha256(_canonical(inventory)).hexdigest()
@@ -249,6 +250,12 @@ def derive_policy(inventory: dict[str, Any], service: str) -> dict[str, Any]:
         whisper_resource = (
             f"arn:aws:s3:::{PILOT_BUCKET}/{inventory.get('whisper_prefix', '')}*"
         )
+        meta_source_prefix = inventory.get("meta_source_prefix")
+        meta_resource = (
+            f"arn:aws:s3:::{PILOT_BUCKET}/{meta_source_prefix}*"
+            if isinstance(meta_source_prefix, str) and meta_source_prefix
+            else None
+        )
         grouped: dict[str, set[str]] = {}
         for row in selected:
             derived = _s3_action(row.get("parameters", {}))
@@ -261,6 +268,8 @@ def derive_policy(inventory: dict[str, Any], service: str) -> dict[str, Any]:
                 scoped_resource = pilot_resource
             elif row["resource"].startswith(whisper_resource[:-1]):
                 scoped_resource = whisper_resource
+            elif meta_resource is not None and row["resource"].startswith(meta_resource[:-1]):
+                scoped_resource = meta_resource
             else:
                 raise EndpointPolicyRefusal(
                     "ENDPOINT_S3_RESOURCE_OUTSIDE_BOUND_PREFIXES",
