@@ -443,3 +443,183 @@ def stage_assets(
     bundle["bundle_identity"] = pilot_bundle_identity(selection["public_row_list_sha256"])
     bundle["receipt_sha256"] = hashlib.sha256(canonical_json(bundle)).hexdigest()
     return bundle
+
+
+def suite_bundle_identity(
+    selection_sha256: str, meta_source_prefix: str
+) -> dict[str, Any]:
+    if SHA_RE.fullmatch(selection_sha256) is None:
+        raise AssetRefusal("selection hash is malformed")
+    identity = {
+        "schema_version": 1,
+        "kind": "SUITE_SHARD",
+        "selection_sha256": selection_sha256,
+        "meta_source_prefix": meta_source_prefix,
+        "meta_assets": {
+            name: {"sha256": value["sha256"], "bytes": value["bytes"]}
+            for name, value in sorted(META_ASSETS.items())
+        },
+        "whisper_tree_sha256": WHISPER_TREE,
+        "classification": "PUBLIC_RESEARCH_NO_PHI",
+    }
+    return {**identity, "sha256": hashlib.sha256(canonical_json(identity)).hexdigest()}
+
+
+def stage_suite_assets(
+    selection: dict[str, Any],
+    store: ObjectStore,
+    workdir: Path,
+    prefix: str,
+    *,
+    meta_source_bundle: dict[str, Any],
+    audio_cache: Path | None = None,
+) -> dict[str, Any]:
+    """Stage one suite shard: audio + metadata only.
+
+    The 13 GB of omniASR weights are NOT re-uploaded: their hash-bound
+    part objects are referenced verbatim from the pilot bundle's prefix
+    (the established whisper read-only-source pattern), so every shard
+    bundle stays audio-sized."""
+    if selection.get("status") != "PASS_DETERMINISTIC_SUITE_SELECTION":
+        raise AssetRefusal("suite selection is not PASS")
+    if not prefix.startswith("research/asr-base-model/pilot/") or not prefix.endswith("/"):
+        raise AssetRefusal("research staging prefix differs")
+    if workdir.exists():
+        raise AssetRefusal("asset staging directory already exists")
+    source_assemblies = meta_source_bundle.get("assemblies")
+    source_objects = {
+        item["key"]: item for item in meta_source_bundle.get("objects", [])
+    }
+    if not isinstance(source_assemblies, dict):
+        raise AssetRefusal("meta source bundle assemblies are absent")
+    meta_source_prefix = None
+    meta_assemblies: dict[str, dict[str, Any]] = {}
+    meta_objects: list[dict[str, Any]] = []
+    for name, expected in META_ASSETS.items():
+        assembly = source_assemblies.get(name)
+        if (
+            not isinstance(assembly, dict)
+            or assembly.get("sha256") != expected["sha256"]
+            or (expected["bytes"] is not None and assembly.get("bytes") != expected["bytes"])
+        ):
+            raise AssetRefusal(f"meta source assembly identity differs: {name}")
+        parts = assembly.get("parts")
+        if not isinstance(parts, list) or not parts:
+            raise AssetRefusal(f"meta source assembly parts are absent: {name}")
+        for part in parts:
+            key = part.get("key")
+            recorded = source_objects.get(key)
+            if recorded is None or recorded.get("sha256") != part.get("sha256"):
+                raise AssetRefusal(f"meta source part is not hash-bound: {name}")
+            derived = key.rsplit("/", 1)[0] + "/"
+            if meta_source_prefix is None:
+                meta_source_prefix = derived
+            elif meta_source_prefix != derived:
+                raise AssetRefusal("meta source parts span multiple prefixes")
+            meta_objects.append(recorded)
+        meta_assemblies[name] = dict(assembly)
+    if meta_source_prefix is None:
+        raise AssetRefusal("meta source prefix could not be derived")
+
+    workdir.mkdir(parents=True)
+    objects: list[dict[str, Any]] = []
+    assemblies: dict[str, dict[str, Any]] = dict(meta_assemblies)
+
+    whisper_manifest = workdir / "whisper-MANIFEST.json"
+    store.download("medzen-speech", WHISPER_PREFIX + "MANIFEST.json", whisper_manifest)
+    manifest = json.loads(whisper_manifest.read_bytes())
+    if manifest.get("artifact", {}).get("tree_sha256") != WHISPER_TREE:
+        raise AssetRefusal("Whisper manifest tree differs")
+    whisper_files = manifest["artifact"]["files"]
+    model_bindings = {
+        "schema_version": 1,
+        "whisper_tree_sha256": WHISPER_TREE,
+        "whisper_files": whisper_files,
+        "meta_files": {
+            name: {"sha256": expected["sha256"], "bytes": expected["bytes"]}
+            for name, expected in META_ASSETS.items()
+        },
+    }
+
+    runtime_rows = []
+    for row in selection["rows"]:
+        source_bucket, source_key = parse_s3(row["audio_s3_uri"])
+        suffix = Path(source_key).suffix.lower()
+        if suffix not in {".wav", ".flac", ".mp3", ".ogg", ".opus", ".m4a"}:
+            suffix = ".audio"
+        filename = row["audio_checksum_sha256"] + suffix
+        path = workdir / "audio" / filename
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cached_audio = audio_cache / filename if audio_cache is not None else None
+        if cached_audio is not None and cached_audio.is_file():
+            try:
+                os.link(cached_audio, path)
+            except OSError:
+                shutil.copyfile(cached_audio, path)
+        else:
+            store.download(source_bucket, source_key, path)
+        digest, size = sha256_file(path)
+        if digest != row["audio_checksum_sha256"]:
+            raise AssetRefusal("audio identity differs after download")
+        runtime_rows.append({
+            "manifest": row["manifest"],
+            "language": row["language"],
+            "source_id": row["source_id"],
+            "audio_local_path": "/input/audio/" + filename,
+            "audio_checksum_sha256": digest,
+            "duration_s": row["duration_s"],
+            "reference": row["reference"],
+            "reference_sha256": row["reference_sha256"],
+            "selection_ordinal": row["selection_ordinal"],
+        })
+
+    audio_archive = workdir / "audio-bundle.tar"
+    with tarfile.open(audio_archive, "x") as archive:
+        for path in sorted((workdir / "audio").iterdir(), key=lambda value: value.name):
+            info = tarfile.TarInfo(name=f"audio/{path.name}")
+            info.size = path.stat().st_size
+            info.mode = 0o444
+            info.uid = info.gid = 10001
+            info.uname = info.gname = "medzen"
+            info.mtime = 0
+            with path.open("rb") as source:
+                archive.addfile(info, source)
+    audio_parts, audio_sha, audio_bytes = _upload_parts(audio_archive, store, prefix, "audio-bundle.tar", workdir)
+    objects.extend(audio_parts)
+    assemblies["audio-bundle.tar"] = {
+        "sha256": audio_sha,
+        "bytes": audio_bytes,
+        "parts": audio_parts,
+        "destination": "audio-bundle.tar",
+        "archive": True,
+        "extract_to": ".",
+        "files": len(runtime_rows),
+    }
+
+    metadata = {
+        "runtime-rows.json": {"schema_version": 1, "classification": "PUBLIC_RESEARCH_NO_PHI", "rows": runtime_rows},
+        "model-bindings.json": model_bindings,
+    }
+    for name, value in metadata.items():
+        path = workdir / name
+        path.write_bytes(canonical_json(value))
+        digest, size = sha256_file(path)
+        key = prefix + name
+        version = store.upload_create_only(path, "medzen-speech", key, digest)
+        objects.append({"key": key, "sha256": digest, "bytes": size, "version_id": version})
+
+    bundle = {
+        "schema_version": 1,
+        "classification": "PUBLIC_RESEARCH_NO_PHI",
+        "kind": "SUITE_SHARD",
+        "selection_sha256": selection["public_row_list_sha256"],
+        "objects": sorted(objects + meta_objects, key=lambda value: value["key"]),
+        "assemblies": assemblies,
+        "meta": {"read_only_source_prefix": meta_source_prefix},
+        "whisper": {"read_only_source_prefix": WHISPER_PREFIX, "tree_sha256": WHISPER_TREE},
+    }
+    bundle["bundle_identity"] = suite_bundle_identity(
+        selection["public_row_list_sha256"], meta_source_prefix
+    )
+    bundle["receipt_sha256"] = hashlib.sha256(canonical_json(bundle)).hexdigest()
+    return bundle
