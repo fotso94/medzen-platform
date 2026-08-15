@@ -133,7 +133,11 @@ def validate_prestage_proof(
     bundle = proof.get("pilot_bundle", {})
     if (
         proof.get("schema_version") != 1
-        or proof.get("status") != "PASS_COMPLETE_MODEL_BUNDLE_PRESTAGED"
+        or proof.get("status")
+        not in {
+            "PASS_COMPLETE_MODEL_BUNDLE_PRESTAGED",
+            "PASS_SUITE_SHARD_BUNDLE_PRESTAGED",
+        }
         or proof.get("classification") != "PUBLIC_RESEARCH_NO_PHI"
         or bundle.get("identity_sha256") != expected_bundle_sha256
         or not isinstance(objects, list)
