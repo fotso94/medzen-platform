@@ -375,10 +375,30 @@ def audit_async_observation_sites(root: Path) -> dict[str, Any]:
             "AGGREGATE_HANDOFF_CONTRACT_ABSENT",
             "pilot_rows does not verify the aggregate before its PASS handoff",
         )
-    if "get_command_invocation" not in aggregate_segment or "time.monotonic() + 120" not in aggregate_segment:
+    # Audit decision (attempt-27 correction): the aggregate is read through
+    # _ssm_read_file_chunked, whose bounded per-command poll lives in
+    # _ssm_capture_stdout; every command's output stays under the SSM
+    # 24,000-character StandardOutputContent cap and the reassembled file is
+    # verified against the node-side SHA-256 before parsing.
+    if "self._ssm_read_file_chunked(" not in aggregate_segment:
         raise AsyncObservationRefusal(
             "AGGREGATE_READ_POLL_ABSENT",
-            "aggregate_report is not protected by its bounded SSM poll",
+            "aggregate_report is not protected by the chunked bounded readback",
+        )
+    capture = methods.get("_ssm_capture_stdout")
+    chunked = methods.get("_ssm_read_file_chunked")
+    capture_segment = ast.get_source_segment(source, capture) if capture else ""
+    chunked_segment = ast.get_source_segment(source, chunked) if chunked else ""
+    if (
+        not capture_segment
+        or "get_command_invocation" not in capture_segment
+        or "time.monotonic() + timeout_seconds" not in capture_segment
+        or not chunked_segment
+        or "hashlib.sha256(body).hexdigest() != expected_sha256" not in chunked_segment
+    ):
+        raise AsyncObservationRefusal(
+            "AGGREGATE_READ_POLL_ABSENT",
+            "the chunked readback helpers lost their bounded poll or integrity check",
         )
     sites = [
         {
@@ -407,7 +427,7 @@ def audit_async_observation_sites(root: Path) -> dict[str, Any]:
         },
         {
             "site": "aggregate_receipt_content",
-            "contract": "depends on PASS_PILOT_ROWS; bounded 120-second SSM invocation poll; schema and completeness fail closed",
+            "contract": "depends on PASS_PILOT_ROWS; chunked bounded SSM readback under the 24,000-character output cap with node-side SHA-256 verification; schema and completeness fail closed",
         },
     ]
     return {
@@ -466,7 +486,13 @@ def audit_remote_ssm_observation_sites(root: Path) -> dict[str, Any]:
             ("_capture_phase_journal", "_ssm"): 1,
             ("_wait_pilot_network_receipts", "_ssm"): 1,
             ("pilot_rows", "_ssm"): 2,
-            ("aggregate_report", "send_command"): 1,
+            # Audit decision (attempt-27 correction): aggregate_report now
+            # reads through _ssm_capture_stdout, a bounded synchronous
+            # helper whose every command's output stays under the SSM
+            # 24,000-character cap; the chunked reader issues one identity
+            # probe plus one command per bounded chunk, each a complete
+            # stable read, not an asynchronous one-shot success gate.
+            ("_ssm_capture_stdout", "send_command"): 1,
             ("cleanup_and_expiry", "_ssm"): 1,
         }
     )

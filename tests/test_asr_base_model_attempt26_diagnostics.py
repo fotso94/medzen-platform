@@ -136,3 +136,21 @@ def test_whisper_token_budget_leaves_prompt_headroom() -> None:
     assert "max_new_tokens=WHISPER_MAX_NEW_TOKENS" in source
     assert "tokens < WHISPER_MAX_NEW_TOKENS" in source
     assert "tokens >= WHISPER_MAX_NEW_TOKENS" in source
+
+
+def test_chunked_readback_stays_under_the_ssm_output_cap() -> None:
+    from scripts.asr_base_model_pilot_live import SSM_READBACK_RAW_CHUNK_BYTES
+
+    encoded_chars = (SSM_READBACK_RAW_CHUNK_BYTES + 2) // 3 * 4
+    assert encoded_chars <= 24000 - 2000, "base64 chunk must clear the cap with margin"
+
+
+def test_aggregate_readback_no_longer_uses_one_shot_cat() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_live.py").read_text()
+    assert "_ssm_read_file_chunked" in source
+    assert 'f"cat {state[\'staging_path\']}/output/aggregate.json"' not in source
+
+
+def test_fake_models_the_ssm_output_truncation() -> None:
+    source = (ROOT / "scripts/asr_base_model_pilot_fake.py").read_text()
+    assert "[:24000]" in source, "fake must model the StandardOutputContent cap"

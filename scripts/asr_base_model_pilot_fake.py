@@ -10,7 +10,9 @@ boundary.  Therefore a stage return-value, state-ordering or cleanup defect in
 from __future__ import annotations
 
 import copy
+import base64
 import hashlib
+import re
 import io
 import json
 import subprocess
@@ -299,7 +301,10 @@ class BoundaryState:
             "completed_inferences": len(rows) * 3 + conditioned,
             "not_applicable": len(rows) * 2 - conditioned,
             "aggregate": {
-                "groups": {"synthetic|unconditioned": {"wer": 0.5}},
+                "groups": {
+                    **{f"synthetic-{index:03d}|unconditioned": {"wer": 0.5, "cer": 0.25, "rows": 10, "detail": "x" * 64} for index in range(220)},
+                    "synthetic|unconditioned": {"wer": 0.5},
+                },
                 "gpu_memory": {
                     "unit": "MiB",
                     "sample_count": 120,
@@ -846,7 +851,35 @@ class SsmBoundary:
         self.state.ssm_counter += 1
         command_id = f"command-rehearsal-{self.state.ssm_counter}"
         commands = kwargs.get("Parameters", {}).get("commands", [])
-        stdout = canonical_json(self.state.aggregate).decode() if any("aggregate.json" in command and command.startswith("cat ") for command in commands) else ""
+        stdout = ""
+        for command in commands:
+            if "aggregate.json" not in command:
+                continue
+            body = canonical_json(self.state.aggregate)
+            if command.startswith("cat "):
+                # Legacy one-shot read: the universal output cap in
+                # get_command_invocation models why this path was retired.
+                stdout = body.decode()
+            elif "wc -c" in command and "sha256sum" in command:
+                stdout = (
+                    f"{len(body)}\n"
+                    f"{hashlib.sha256(body).hexdigest()}  aggregate.json\n"
+                )
+            elif "tail -c +" in command and "base64" in command:
+                match = re.search(
+                    r"tail -c \+(\d+) .* head -c (\d+) ", command
+                )
+                if match is None:
+                    raise AssertionError(
+                        f"unhandled aggregate chunk command: {command}"
+                    )
+                offset = int(match.group(1)) - 1
+                length = int(match.group(2))
+                chunk = body[offset:offset + length]
+                if self.state.injection == "aggregate_chunk_integrity" and offset == 0 and chunk:
+                    chunk = bytes([chunk[0] ^ 0x01]) + chunk[1:]
+                stdout = base64.b64encode(chunk).decode()
+            break
         self.state.ssm_commands[command_id] = {
             "Status": "Success",
             "StandardOutputContent": stdout,
@@ -868,7 +901,10 @@ class SsmBoundary:
                 "Status": status,
                 "StatusDetails": status,
                 "ResponseCode": 0,
-                "StandardOutputContent": body.get("StandardOutputContent", ""),
+                # The real API truncates StandardOutputContent at 24,000
+                # characters (the attempt-27 refusal); the fake models the
+                # cap so any one-shot large read fails in rehearsal too.
+                "StandardOutputContent": body.get("StandardOutputContent", "")[:24000],
                 "StandardErrorContent": "",
             },
         )

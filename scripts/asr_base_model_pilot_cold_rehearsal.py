@@ -73,6 +73,10 @@ from scripts.asr_eval_digest_rescan import validate_security_binding
 
 SCENARIOS = {
     "clean_pass": (None, "PASS_PILOT"),
+    "aggregate_chunk_integrity": (
+        "aggregate_chunk_integrity",
+        "FAILED_CLOSED_EXECUTION",
+    ),
     "volume_device_delayed_ready": (
         "volume_device_delayed_ready",
         "PASS_PILOT",

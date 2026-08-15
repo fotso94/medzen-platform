@@ -169,6 +169,11 @@ BUCKET = "medzen-speech"
 GPU_NODEGROUP = "gpu"
 CPU_NODEGROUP = "cpu"
 ECR_REPOSITORY = "medzen-asr-eval-runtime"
+# SSM GetCommandInvocation truncates StandardOutputContent at 24,000
+# characters; 15,000 raw bytes encode to 20,000 base64 characters, keeping
+# every chunk safely under the cap (attempt-27 refusal).
+SSM_READBACK_RAW_CHUNK_BYTES = 15000
+AGGREGATE_READBACK_MAXIMUM_BYTES = 33_554_432
 DRA_MANIFEST = Path("platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml")
 DRA_NETWORK_POLICY = Path("platform/k8s/asr-eval/nvidia-dra-api-egress.yaml")
 EXPECTED_HIGHS = {
@@ -3554,27 +3559,119 @@ class LiveOperations:
             ) from exc
         return {"status": "PASS_PILOT_ROWS", "pod": pod_name, "image_prepull_qualification": image_prepull, "dns_resolution_consistency": dns_consistency, "network_probe": "PASS_PRE_TORCH", "network_receipt_readiness": {key: value for key, value in network.items() if key != "network_receipt"}, "inbound_control": inbound, "job_completion": job_completion, "aggregate_receipt_present": True, "aggregate_sha_command": aggregate["command_id"], "pilot_workload_argv_sha256": pilot_workload_argv_sha256, "historical_live_pass_before_this_attempt": False}
 
-    def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
-        state = self._state(context)
-        command = self.ssm.send_command(InstanceIds=[state["instance_id"]], DocumentName="AWS-RunShellScript", Parameters={"commands": [f"cat {state['staging_path']}/output/aggregate.json"]})
+    def _ssm_capture_stdout(
+        self, instance_id: str, command_text: str, *, timeout_seconds: int = 120
+    ) -> str:
+        """Run one bounded shell command via SSM and return its Success stdout.
+
+        The returned text is subject to the SSM API's 24,000-character
+        StandardOutputContent cap, so callers must keep every command's
+        output safely below it (see _ssm_read_file_chunked)."""
+        command = self.ssm.send_command(
+            InstanceIds=[instance_id],
+            DocumentName="AWS-RunShellScript",
+            Parameters={"commands": [command_text]},
+        )
         command_id = command["Command"]["CommandId"]
-        stop = time.monotonic() + 120
-        value = None
+        stop = time.monotonic() + timeout_seconds
         while time.monotonic() < stop:
             try:
-                result = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=state["instance_id"])
+                result = self.ssm.get_command_invocation(
+                    CommandId=command_id, InstanceId=instance_id
+                )
             except self.ssm.exceptions.InvocationDoesNotExist:
                 self._sleeper(2)
                 continue
             if result["Status"] == "Success":
-                try:
-                    value = json.loads(result["StandardOutputContent"])
-                except Exception as exc:
-                    raise OperationRefusal("AGGREGATE_RECEIPT_MALFORMED", "aggregate is not JSON") from exc
-                break
+                return result["StandardOutputContent"]
             if result["Status"] in {"Failed", "TimedOut", "Cancelled"}:
-                raise OperationRefusal("AGGREGATE_RECEIPT_UNREADABLE", "aggregate read failed")
+                raise OperationRefusal(
+                    "SSM_CAPTURE_COMMAND_REFUSED",
+                    f"bounded SSM capture ended {result['Status']}",
+                )
             self._sleeper(2)
+        raise OperationRefusal(
+            "SSM_CAPTURE_COMMAND_TIMEOUT",
+            f"bounded SSM capture exceeded {timeout_seconds} seconds",
+        )
+
+    def _ssm_read_file_chunked(
+        self, instance_id: str, path: str, *, maximum_bytes: int
+    ) -> tuple[bytes, dict[str, Any]]:
+        """Read a node file through SSM in bounded base64 chunks.
+
+        A single GetCommandInvocation truncates StandardOutputContent at
+        24,000 characters (the attempt-27 refusal), so the file is sliced
+        node-side into raw chunks whose base64 encoding stays below the cap,
+        reassembled locally, and verified against the node-side SHA-256
+        before any parsing."""
+        quoted = shlex.quote(path)
+        identity = self._ssm_capture_stdout(
+            instance_id,
+            f"/usr/bin/wc -c < {quoted}; /usr/bin/sha256sum {quoted}",
+        )
+        lines = [line for line in identity.splitlines() if line.strip()]
+        try:
+            expected_bytes = int(lines[0].strip())
+            expected_sha256 = lines[1].split()[0]
+        except (IndexError, ValueError) as exc:
+            raise OperationRefusal(
+                "FILE_READBACK_IDENTITY_MALFORMED",
+                "chunked readback size/sha probe output is malformed",
+            ) from exc
+        if not re.fullmatch(r"[0-9a-f]{64}", expected_sha256) or expected_bytes <= 0:
+            raise OperationRefusal(
+                "FILE_READBACK_IDENTITY_MALFORMED",
+                "chunked readback identity values are outside bounds",
+            )
+        if expected_bytes > maximum_bytes:
+            raise OperationRefusal(
+                "FILE_READBACK_TOO_LARGE",
+                f"file is {expected_bytes} bytes; the readback bound is {maximum_bytes}",
+            )
+        chunk_raw_bytes = SSM_READBACK_RAW_CHUNK_BYTES
+        chunk_count = (expected_bytes + chunk_raw_bytes - 1) // chunk_raw_bytes
+        parts: list[bytes] = []
+        for index in range(chunk_count):
+            offset = index * chunk_raw_bytes
+            encoded = self._ssm_capture_stdout(
+                instance_id,
+                f"/usr/bin/tail -c +{offset + 1} {quoted} | "
+                f"/usr/bin/head -c {chunk_raw_bytes} | "
+                "/usr/bin/base64 | /usr/bin/tr -d '\\n'",
+            )
+            try:
+                parts.append(base64.b64decode(encoded.strip(), validate=True))
+            except Exception as exc:
+                raise OperationRefusal(
+                    "FILE_READBACK_CHUNK_MALFORMED",
+                    f"chunk {index + 1} of {chunk_count} is not valid base64",
+                ) from exc
+        body = b"".join(parts)
+        if len(body) != expected_bytes or hashlib.sha256(body).hexdigest() != expected_sha256:
+            raise OperationRefusal(
+                "FILE_READBACK_INTEGRITY_DIFFERS",
+                "reassembled file differs from the node-side size or SHA-256",
+            )
+        return body, {
+            "bytes": expected_bytes,
+            "sha256": expected_sha256,
+            "chunk_count": chunk_count,
+            "chunk_raw_bytes": chunk_raw_bytes,
+            "window_policy": "CHUNKED_BASE64_UNDER_SSM_OUTPUT_CAP",
+        }
+
+    def aggregate_report(self, context: AttemptContext) -> dict[str, Any]:
+        state = self._state(context)
+        body, readback = self._ssm_read_file_chunked(
+            state["instance_id"],
+            f"{state['staging_path']}/output/aggregate.json",
+            maximum_bytes=AGGREGATE_READBACK_MAXIMUM_BYTES,
+        )
+        try:
+            value = json.loads(body)
+        except Exception as exc:
+            raise OperationRefusal("AGGREGATE_RECEIPT_MALFORMED", "aggregate is not JSON") from exc
         if not isinstance(value, dict) or value.get("status") not in {"PASS_AGGREGATE", "INCOMPLETE_MEASUREMENT"}:
             raise OperationRefusal("AGGREGATE_STATUS_DIFFERS", "aggregate status differs")
         expected_rows = context.bindings["input_freeze"]["pilot_rows"]
@@ -3596,7 +3693,7 @@ class LiveOperations:
             raise OperationRefusal("AGGREGATE_COMPLETENESS_DIFFERS", "required unconditioned rows are incomplete")
         output = context.workdir / "aggregate-report.json"
         write_exclusive(output, canonical_json(value))
-        return {"status": "PASS_AGGREGATE_REPORT" if value["status"] == "PASS_AGGREGATE" else "INCOMPLETE_MEASUREMENT", "aggregate_sha256": _sha(output), "runtime_rows": value["runtime_rows"], "completed_inferences": value["completed_inferences"], "not_applicable": value["not_applicable"], "gpu_memory": value["aggregate"]["gpu_memory"], "groups": len(value["aggregate"]["groups"])}
+        return {"status": "PASS_AGGREGATE_REPORT" if value["status"] == "PASS_AGGREGATE" else "INCOMPLETE_MEASUREMENT", "aggregate_sha256": _sha(output), "readback": readback, "runtime_rows": value["runtime_rows"], "completed_inferences": value["completed_inferences"], "not_applicable": value["not_applicable"], "gpu_memory": value["aggregate"]["gpu_memory"], "groups": len(value["aggregate"]["groups"])}
 
     def cleanup_and_expiry(self, context: AttemptContext) -> dict[str, Any]:
         state = self._state(context)
