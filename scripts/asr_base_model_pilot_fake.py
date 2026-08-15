@@ -867,7 +867,7 @@ class SsmBoundary:
                 )
             elif "tail -c +" in command and "base64" in command:
                 match = re.search(
-                    r"tail -c \+(\d+) .* head -c (\d+) ", command
+                    r"tail -c \+(\d+) .*head -c (\d+)", command
                 )
                 if match is None:
                     raise AssertionError(
