@@ -32,11 +32,11 @@ regression test guarding the headroom. Because the fix lives in the
 evaluation image, the image was rebuilt from that commit with the same
 Dockerfile, base digest and dependency set:
 
-- OCI index `sha256:6ea2fc5401a659cd4271c24c91f2b5f68619d47b897858053f6da4232cde645b`
-- linux/amd64 child `sha256:136a972859d970113b7a8bd4f41350ca1a2239cf617f38cb07cc95597c06fe84`
-- config `sha256:fb6b9c569a92122dd60564837fa1f5408c4a382b09d67a604ded8662185633fc`
-- attestation manifest `sha256:8097da8038cb0ee968e49444f3fb11b11637a3b11a181ca7bd65d105ba3819b0`
-- exact archive 7,301,067,264 bytes, SHA-256 `57c0eaa59287291fd12b02f414f371ab0fd957f15528cf0d9ee60e20ee183628`
+- OCI index `sha256:8b93dc5ba723da365452c048f2ef3acbef6876dc1bea69bede9da9b9f7e494b6`
+- linux/amd64 child `sha256:74b847f6c2e703ca5825701672291db8ec39eaa087dd9f2cb080794fc3f0570c`
+- config `sha256:5f15ce4e8c1813428a1b029870f0eae0cd72f7ef2040bbbe0914eeec628432d7`
+- attestation manifest `sha256:4b451ac2565074be9c08464d40fa77cf39dae2702419b4ffcabe597a77f6c9a0`
+- exact archive 7,301,067,264 bytes, SHA-256 `de21a616b7d128019bc04c7ce3c898b96cb77e8ea1903cde889c509b0f77a07a`
 
 The corrected backends.py and the `org.opencontainers.image.revision`
 label were verified inside the built layers before binding. Publication
