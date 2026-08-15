@@ -413,12 +413,29 @@ def _validate_waiter_fidelity(scenarios: dict[str, Any]) -> dict[str, Any]:
 def _endpoint_policy_injections(bindings: dict[str, Any]) -> dict[str, Any]:
     """Exercise the shared call-inventory policy gate without altering the fake."""
 
-    pilot_bundle = json.loads(
-        (ROOT / "tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json").read_bytes()
+    downloads = bindings.get("recorded_boundary_fixtures", {}).get(
+        "prestage_downloads"
     )
-    model_bindings = json.loads(
-        (ROOT / "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json").read_bytes()
-    )
+    if isinstance(downloads, dict):
+        # Suite packets: exercise the policy gate over the shard's own
+        # recorded bundle and model bindings.
+        bundle_fixture = next(
+            value for key, value in downloads.items()
+            if key.endswith("pilot-bundle.json")
+        )
+        binding_fixture = next(
+            value for key, value in downloads.items()
+            if key.endswith("model-bindings.json")
+        )
+        pilot_bundle = json.loads((ROOT / bundle_fixture["path"]).read_bytes())
+        model_bindings = json.loads((ROOT / binding_fixture["path"]).read_bytes())
+    else:
+        pilot_bundle = json.loads(
+            (ROOT / "tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json").read_bytes()
+        )
+        model_bindings = json.loads(
+            (ROOT / "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json").read_bytes()
+        )
     inventory = build_call_inventory(
         bundle_sha256=bindings["pilot_bundle"]["sha256"],
         pilot_bundle=pilot_bundle,
