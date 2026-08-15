@@ -934,7 +934,20 @@ class ExternalCommandBoundary:
                 self.state.fixtures.payload("s3-list-eval-manifests-template")
                 self.state.fixtures.payload("s3-get-eval-manifest-template")
                 destination = Path(command[command.index("sync") + 2])
-                with tarfile.open(MANIFEST_ARCHIVE, "r:gz") as archive:
+                # Each packet pins its own recorded eval-manifest archive so
+                # suite shards can rehearse against languages ingested after
+                # the pilot-era snapshot; the recorded-real hash still gates.
+                archive_path = MANIFEST_ARCHIVE
+                fixture = self.state.bindings.get("recorded_boundary_fixtures", {}).get(
+                    "eval_manifest_archive"
+                )
+                if isinstance(fixture, dict) and fixture.get("path"):
+                    candidate = ROOT / str(fixture["path"])
+                    digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+                    if digest != fixture.get("sha256"):
+                        raise AssertionError("recorded eval-manifest archive hash differs")
+                    archive_path = candidate
+                with tarfile.open(archive_path, "r:gz") as archive:
                     archive.extractall(destination, filter="data")
                 return self._completed(command)
             raise AssertionError(f"unhandled rehearsal AWS command: {command}")
