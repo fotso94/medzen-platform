@@ -88,7 +88,11 @@ def validate_window_budget(
     budget = proof.get("timed_window", {})
     remaining_upload_bytes = budget.get("in_attempt_upload_bytes")
     if (
-        proof.get("status") != "PASS_COMPLETE_MODEL_BUNDLE_PRESTAGED"
+        proof.get("status")
+        not in {
+            "PASS_COMPLETE_MODEL_BUNDLE_PRESTAGED",
+            "PASS_SUITE_SHARD_BUNDLE_PRESTAGED",
+        }
         or proof.get("pilot_bundle", {}).get("identity_sha256") != expected_bundle_sha256
         or isinstance(measured, bool)
         or not isinstance(measured, (int, float))
