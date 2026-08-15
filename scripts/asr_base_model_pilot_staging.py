@@ -26,6 +26,8 @@ from scripts.asr_base_model_pilot_assets import (
     pilot_bundle_identity,
     sha256_file,
     stage_assets,
+    stage_suite_assets,
+    suite_bundle_identity,
 )
 
 
@@ -701,6 +703,90 @@ def prestage(
     return {**proof, "sha256": _sha(output)}
 
 
+def prestage_suite(
+    *,
+    selection_path: Path,
+    meta_source_bundle_path: Path,
+    workdir: Path,
+    output: Path,
+    expected_bundle_sha256: str,
+    kms_key_arn: str,
+    audio_cache: Path | None,
+) -> dict[str, Any]:
+    """Suite-shard variant of prestage: audio-only bundle, shared model refs."""
+    if workdir.exists():
+        raise StagingRefusal("PRESTAGE_WORKDIR_EXISTS", "pre-stage workdir must be fresh")
+    workdir.mkdir(parents=True)
+    selection = json.loads(selection_path.read_bytes())
+    meta_source_bundle = json.loads(meta_source_bundle_path.read_bytes())
+    source_prefix = None
+    for name, assembly in meta_source_bundle.get("assemblies", {}).items():
+        for part in assembly.get("parts", []) if isinstance(assembly, dict) else []:
+            key = part.get("key", "")
+            if key:
+                source_prefix = key.rsplit("/", 1)[0] + "/"
+                break
+        if source_prefix:
+            break
+    if source_prefix is None:
+        raise StagingRefusal("PRESTAGE_META_SOURCE_MALFORMED", "meta source bundle has no part keys")
+    identity = suite_bundle_identity(selection["public_row_list_sha256"], source_prefix)
+    if identity["sha256"] != expected_bundle_sha256:
+        raise StagingRefusal("PRESTAGE_SELECTION_BINDING_DIFFERS", "selection and bundle identity differ")
+    try:
+        import boto3
+        from botocore.config import Config
+    except Exception as exc:
+        raise StagingRefusal("PRESTAGE_AWS_SDK_ABSENT", "the pinned AWS SDK is unavailable") from exc
+    session = boto3.Session(profile_name=PROFILE, region_name=REGION)
+    s3 = session.client(
+        "s3",
+        config=Config(
+            connect_timeout=10,
+            read_timeout=ZERO_PROGRESS_SECONDS,
+            retries={"mode": "standard", "total_max_attempts": 1},
+        ),
+    )
+    prefix = f"research/asr-base-model/pilot/{expected_bundle_sha256}/"
+    store = ManagedMultipartCreateOnlyStore(
+        s3,
+        kms_key_arn,
+        workdir / "progress" / "heartbeat.json",
+    )
+    bundle = stage_suite_assets(
+        selection,
+        store,
+        workdir / "assets",
+        prefix,
+        meta_source_bundle=meta_source_bundle,
+        audio_cache=audio_cache,
+    )
+    if bundle["bundle_identity"]["sha256"] != expected_bundle_sha256:
+        raise StagingRefusal("PRESTAGED_BUNDLE_IDENTITY_DIFFERS", "staged bundle identity differs")
+    bundle_path = workdir / "pilot-bundle.json"
+    write_exclusive(bundle_path, canonical_json(bundle))
+    bundle_digest, bundle_bytes = sha256_file(bundle_path)
+    bundle_key = prefix + "pilot-bundle.json"
+    bundle_version = store.upload_create_only(
+        bundle_path, BUCKET, bundle_key, bundle_digest
+    )
+    result = {
+        "status": "PASS_SUITE_SHARD_PRESTAGE",
+        "bundle_identity_sha256": expected_bundle_sha256,
+        "bundle_object": {
+            "key": bundle_key,
+            "sha256": bundle_digest,
+            "bytes": bundle_bytes,
+            "version_id": bundle_version,
+        },
+        "meta_source_prefix": source_prefix,
+        "objects_uploaded": len(bundle["objects"]),
+        "rows": len(selection["rows"]),
+    }
+    write_exclusive(output, canonical_json(result))
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--selection", type=Path, required=True)
@@ -710,8 +796,21 @@ def main() -> int:
     parser.add_argument("--kms-key-arn", required=True)
     parser.add_argument("--model-cache", type=Path)
     parser.add_argument("--audio-cache", type=Path)
+    parser.add_argument("--meta-source-bundle", type=Path)
     args = parser.parse_args()
     try:
+        if args.meta_source_bundle is not None:
+            value = prestage_suite(
+                selection_path=args.selection,
+                meta_source_bundle_path=args.meta_source_bundle,
+                workdir=args.workdir,
+                output=args.output,
+                expected_bundle_sha256=args.expected_bundle_sha256,
+                kms_key_arn=args.kms_key_arn,
+                audio_cache=args.audio_cache,
+            )
+            print(json.dumps(value, sort_keys=True, separators=(",", ":")))
+            return 0
         value = prestage(
             selection_path=args.selection,
             workdir=args.workdir,
