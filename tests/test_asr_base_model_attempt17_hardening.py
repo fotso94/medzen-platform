@@ -130,7 +130,8 @@ def test_rendered_attempt17_workload_enforces_the_audit() -> None:
     job = list(yaml.safe_load_all(rendered))[-1]
     assert job["spec"]["activeDeadlineSeconds"] == JOB_ACTIVE_DEADLINE_SECONDS
     container = job["spec"]["template"]["spec"]["containers"][0]
-    assert container["env"] == list(PILOT_ENVIRONMENT)
+    assert container["env"][:-1] == list(PILOT_ENVIRONMENT)
+    assert container["env"][-1] == {"name": "MEDZEN_EXPECTED_ROWS", "value": "540"}
     assert "pilot-phase-journal.jsonl" in container["args"][0]
     assert "MODEL_LOAD_START" in container["args"][0]
 
