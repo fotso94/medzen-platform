@@ -182,19 +182,35 @@ class BoundaryState:
         self.ssm_commands: dict[str, dict[str, Any]] = {}
         self.ssm_counter = 0
         self.prestage_objects = self._prestage_objects()
-        self.prestage_downloads = {
-            self._proof()["pilot_bundle"]["object"]["key"]: PILOT_BUNDLE.read_bytes(),
-            next(
-                item["key"]
-                for item in self._proof()["objects"]
-                if item["key"].endswith("runtime-rows.json")
-            ): RUNTIME_ROWS.read_bytes(),
-            next(
-                item["key"]
-                for item in self._proof()["objects"]
-                if item["key"].endswith("model-bindings.json")
-            ): MODEL_BINDINGS.read_bytes(),
-        }
+        downloads = self.bindings.get("recorded_boundary_fixtures", {}).get(
+            "prestage_downloads"
+        )
+        if isinstance(downloads, dict):
+            # Suite packets bind their own recorded shard artifacts; each is
+            # hash-gated so the rehearsal replays the exact frozen bytes.
+            resolved = {}
+            for key, fixture in downloads.items():
+                body = (ROOT / str(fixture["path"])).read_bytes()
+                if hashlib.sha256(body).hexdigest() != fixture.get("sha256"):
+                    raise AssertionError(
+                        f"recorded prestage download hash differs: {key}"
+                    )
+                resolved[key] = body
+            self.prestage_downloads = resolved
+        else:
+            self.prestage_downloads = {
+                self._proof()["pilot_bundle"]["object"]["key"]: PILOT_BUNDLE.read_bytes(),
+                next(
+                    item["key"]
+                    for item in self._proof()["objects"]
+                    if item["key"].endswith("runtime-rows.json")
+                ): RUNTIME_ROWS.read_bytes(),
+                next(
+                    item["key"]
+                    for item in self._proof()["objects"]
+                    if item["key"].endswith("model-bindings.json")
+                ): MODEL_BINDINGS.read_bytes(),
+            }
 
     def sleep(self, seconds: float) -> None:
         self.monotonic_seconds += seconds
