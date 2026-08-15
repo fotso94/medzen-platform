@@ -109,6 +109,33 @@ def tracked_backend_loader(candidate,mode,language_id,model_root):
     return value
 
 pilot_module.write_once=tracked_write_once
+expected_rows=int(os.environ.get("MEDZEN_EXPECTED_ROWS","540"))
+original_load_runtime_rows=pilot_module.load_runtime_rows
+def bound_load_runtime_rows(path):
+    value=json.loads(pathlib.Path(path).read_bytes())
+    rows=value.get("rows") if isinstance(value,dict) else None
+    if not isinstance(rows,list) or len(rows)!=expected_rows:
+        append_event("ROW_BOUND_REFUSED",expected=expected_rows,observed=len(rows) if isinstance(rows,list) else None)
+        raise harness.EvaluationRefusal("runtime row count differs from the bound shard expectation")
+    if expected_rows<=540:
+        return original_load_runtime_rows(path)
+    validated=[]
+    seen=set()
+    for start in range(0,len(rows),540):
+        piece=dict(value)
+        piece["rows"]=rows[start:start+540]
+        probe=pathlib.Path("/tmp/medzen-row-slice.json")
+        probe.write_bytes(json.dumps(piece,sort_keys=True,separators=(",",":"),ensure_ascii=False).encode())
+        validated.extend(original_load_runtime_rows(probe))
+        probe.unlink()
+    for row in validated:
+        checksum=row["audio_checksum_sha256"]
+        if checksum in seen:
+            raise harness.EvaluationRefusal("runtime row checksums overlap across slices")
+        seen.add(checksum)
+    append_event("ROW_BOUND_VALIDATED",expected=expected_rows,slices=(len(rows)+539)//540)
+    return validated
+pilot_module.load_runtime_rows=bound_load_runtime_rows
 append_event("PILOT_START")
 try:
     result=pilot_module.run_pilot(

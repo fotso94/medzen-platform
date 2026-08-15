@@ -103,7 +103,15 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
                             "imagePullPolicy": "IfNotPresent",
                             "command": list(PILOT_WORKLOAD_COMMAND),
                             "args": [PILOT_WORKLOAD_SCRIPT],
-                            "env": list(PILOT_ENVIRONMENT),
+                            "env": [
+                                *PILOT_ENVIRONMENT,
+                                {
+                                    "name": "MEDZEN_EXPECTED_ROWS",
+                                    "value": str(
+                                        bindings.get("input_freeze", {}).get("pilot_rows", 540)
+                                    ),
+                                },
+                            ],
                             "resources": {"requests": {"cpu": "2", "memory": "14Gi"}, "limits": {"cpu": "4", "memory": "20Gi"}, "claims": [{"name": "gpu"}]},
                             "securityContext": {"allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True, "capabilities": {"drop": ["ALL"]}},
                             "volumeMounts": [
@@ -210,7 +218,13 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
         raise ValueError("pilot job active deadline differs")
     if pod.get("terminationGracePeriodSeconds") != JOB_TERMINATION_GRACE_SECONDS:
         raise ValueError("pilot termination grace differs")
-    if container.get("env") != list(PILOT_ENVIRONMENT):
+    observed_env = container.get("env") or []
+    if (
+        observed_env[:-1] != list(PILOT_ENVIRONMENT)
+        or not observed_env
+        or observed_env[-1].get("name") != "MEDZEN_EXPECTED_ROWS"
+        or not str(observed_env[-1].get("value", "")).isdigit()
+    ):
         raise ValueError("pilot explicit environment differs")
     card_coverage = validate_asset_card_mount_coverage(pod)
     workload_argv = [*container["command"], *container["args"]]
