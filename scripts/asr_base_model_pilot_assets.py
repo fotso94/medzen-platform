@@ -472,6 +472,7 @@ def stage_suite_assets(
     prefix: str,
     *,
     meta_source_bundle: dict[str, Any],
+    meta_source_prefix: str,
     audio_cache: Path | None = None,
 ) -> dict[str, Any]:
     """Stage one suite shard: audio + metadata only.
@@ -492,7 +493,11 @@ def stage_suite_assets(
     }
     if not isinstance(source_assemblies, dict):
         raise AssetRefusal("meta source bundle assemblies are absent")
-    meta_source_prefix = None
+    if (
+        not meta_source_prefix.startswith("research/asr-base-model/pilot/")
+        or not meta_source_prefix.endswith("/")
+    ):
+        raise AssetRefusal("meta source prefix is outside the research boundary")
     meta_assemblies: dict[str, dict[str, Any]] = {}
     meta_objects: list[dict[str, Any]] = []
     for name, expected in META_ASSETS.items():
@@ -511,15 +516,12 @@ def stage_suite_assets(
             recorded = source_objects.get(key)
             if recorded is None or recorded.get("sha256") != part.get("sha256"):
                 raise AssetRefusal(f"meta source part is not hash-bound: {name}")
-            derived = key.rsplit("/", 1)[0] + "/"
-            if meta_source_prefix is None:
-                meta_source_prefix = derived
-            elif meta_source_prefix != derived:
-                raise AssetRefusal("meta source parts span multiple prefixes")
+            if not isinstance(key, str) or not key.startswith(meta_source_prefix):
+                raise AssetRefusal(
+                    f"meta source part is outside the declared prefix: {name}"
+                )
             meta_objects.append(recorded)
         meta_assemblies[name] = dict(assembly)
-    if meta_source_prefix is None:
-        raise AssetRefusal("meta source prefix could not be derived")
 
     workdir.mkdir(parents=True)
     objects: list[dict[str, Any]] = []

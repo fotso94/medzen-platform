@@ -723,8 +723,8 @@ def prestage_suite(
     for name, assembly in meta_source_bundle.get("assemblies", {}).items():
         for part in assembly.get("parts", []) if isinstance(assembly, dict) else []:
             key = part.get("key", "")
-            if key:
-                source_prefix = key.rsplit("/", 1)[0] + "/"
+            if key.startswith("research/asr-base-model/pilot/"):
+                source_prefix = "/".join(key.split("/", 4)[:4]) + "/"
                 break
         if source_prefix:
             break
@@ -759,6 +759,7 @@ def prestage_suite(
         workdir / "assets",
         prefix,
         meta_source_bundle=meta_source_bundle,
+        meta_source_prefix=source_prefix,
         audio_cache=audio_cache,
     )
     if bundle["bundle_identity"]["sha256"] != expected_bundle_sha256:
