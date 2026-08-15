@@ -63,6 +63,7 @@ from scripts.asr_base_model_pilot_assets import (
     AssetRefusal,
     ObjectStore,
     select_pilot_rows,
+    select_suite_rows,
     sha256_file,
     stage_assets,
 )
@@ -1593,9 +1594,21 @@ class LiveOperations:
         audit = json.loads(outputs[0])
         if audit.get("status") != "PASS_INPUT_FREEZE" or audit["inventory"]["rows"] != 24230:
             raise OperationRefusal("INPUT_FREEZE_NOT_PASS", "evaluation freeze is not PASS")
-        selection = select_pilot_rows(manifest_root)
-        if selection["public_row_list_sha256"] != binding["pilot_row_list_sha256"] or len(selection["rows"]) > 540:
-            raise OperationRefusal("PILOT_ROW_LIST_DIFFERS", "deterministic pilot row list differs")
+        suite = binding.get("suite_selection")
+        if suite is not None:
+            selection = select_suite_rows(manifest_root, suite["units"])
+            if (
+                selection["public_row_list_sha256"] != suite["row_list_sha256"]
+                or len(selection["rows"]) != suite["expected_rows"]
+            ):
+                raise OperationRefusal(
+                    "SUITE_ROW_LIST_DIFFERS",
+                    "deterministic suite shard row list differs",
+                )
+        else:
+            selection = select_pilot_rows(manifest_root)
+            if selection["public_row_list_sha256"] != binding["pilot_row_list_sha256"] or len(selection["rows"]) > 540:
+                raise OperationRefusal("PILOT_ROW_LIST_DIFFERS", "deterministic pilot row list differs")
         write_exclusive(context.workdir / "pilot-selection.json", canonical_json(selection))
         return {"status": "PASS_INPUT_FREEZE_AND_NO_PHI", "runs": 2, "byte_identical": True, "rows": audit["inventory"]["rows"], "pilot_rows": len(selection["rows"]), "pilot_row_list_sha256": selection["public_row_list_sha256"], "phi": False, "s3_read_retry": sync_retry}
 
