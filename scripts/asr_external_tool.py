@@ -14,6 +14,7 @@ from typing import Any, Sequence
 
 
 MAX_CAPTURE_BYTES = 4096
+MAX_TAIL_CAPTURE_BYTES = 4096
 SECRET_KEY_RE = re.compile(r"(?i)(password|secret|token|authorization|credential|api[-_]?key)")
 SECRET_VALUE_RE = re.compile(r"(?i)(bearer\s+|basic\s+)[A-Za-z0-9._~+/=-]+")
 PRESIGNED_QUERY_VALUE_RE = re.compile(
@@ -36,7 +37,7 @@ def configure_external_tool_journal(path: Path | None) -> Path | None:
     return prior
 
 
-def sanitize_bytes(raw: bytes | str | None) -> str:
+def _sanitize_text(raw: bytes | str | None) -> str:
     if raw is None:
         return ""
     text = raw if isinstance(raw, str) else raw.decode(errors="replace")
@@ -50,7 +51,47 @@ def sanitize_bytes(raw: bytes | str | None) -> str:
         r"\1<REDACTED>",
         text,
     )
-    return " ".join(text.split())[:MAX_CAPTURE_BYTES]
+    return " ".join(text.split())
+
+
+def sanitize_bytes(raw: bytes | str | None) -> str:
+    """Return the historical bounded head window used by existing receipts."""
+    return _sanitize_text(raw)[:MAX_CAPTURE_BYTES]
+
+
+def _bounded_utf8(value: str, limit: int, *, tail: bool = False) -> str:
+    encoded = value.encode("utf-8")
+    selected = encoded[-limit:] if tail else encoded[:limit]
+    return selected.decode("utf-8", errors="ignore")
+
+
+def sanitize_head_tail(
+    raw: bytes | str | None,
+    *,
+    head_bytes: int = MAX_CAPTURE_BYTES,
+    tail_bytes: int = MAX_TAIL_CAPTURE_BYTES,
+) -> dict[str, Any]:
+    """Retain independently bounded sanitized head and terminal tail windows.
+
+    Sanitization is applied to the complete value before either window is
+    selected, preventing a credential token from straddling the boundary.
+    The raw byte count and digest remain available without retaining raw
+    content.
+    """
+    body = _bytes(raw)
+    sanitized = _sanitize_text(raw)
+    sanitized_bytes = sanitized.encode("utf-8")
+    return {
+        "bytes": len(body),
+        "sha256": hashlib.sha256(body).hexdigest(),
+        "head_sanitized": _bounded_utf8(sanitized, head_bytes),
+        "tail_sanitized": _bounded_utf8(sanitized, tail_bytes, tail=True),
+        "head_window_bytes": head_bytes,
+        "tail_window_bytes": tail_bytes,
+        "sanitized_bytes": len(sanitized_bytes),
+        "truncated": len(sanitized_bytes) > head_bytes + tail_bytes,
+        "window_policy": "SANITIZED_HEAD_AND_TAIL",
+    }
 
 
 def sanitize_command(command: Sequence[str]) -> list[str]:

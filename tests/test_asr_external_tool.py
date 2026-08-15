@@ -10,7 +10,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from scripts.asr_external_tool import ExternalToolTimeout, run_external, sanitize_command
+from scripts.asr_external_tool import (
+    ExternalToolTimeout,
+    run_external,
+    sanitize_command,
+    sanitize_head_tail,
+)
 
 
 def test_external_tool_retains_bounded_sanitized_failure_diagnostic(tmp_path: Path) -> None:
@@ -48,3 +53,18 @@ def test_command_arguments_with_secret_keys_are_redacted() -> None:
     assert sanitize_command(["tool", "--password", "secret-value", "token=abc", "visible"]) == [
         "tool", "--password", "<REDACTED>", "token=<REDACTED>", "visible"
     ]
+
+
+def test_large_safe_preamble_cannot_evict_sanitized_terminal_tail() -> None:
+    raw = (
+        (b"safe-preamble " * 600)
+        + b"token=must-not-survive "
+        + b"RuntimeError: terminal model-load failure\n"
+    )
+    value = sanitize_head_tail(raw)
+    assert value["window_policy"] == "SANITIZED_HEAD_AND_TAIL"
+    assert value["truncated"] is True
+    assert "terminal model-load failure" not in value["head_sanitized"]
+    assert "terminal model-load failure" in value["tail_sanitized"]
+    assert "must-not-survive" not in value["head_sanitized"]
+    assert "must-not-survive" not in value["tail_sanitized"]

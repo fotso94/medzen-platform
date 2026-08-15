@@ -97,6 +97,10 @@ SCENARIOS = {
         "FAILED_CLOSED_EXECUTION",
     ),
     "pilot_job_refused": ("pilot_job_refused", "FAILED_CLOSED_EXECUTION"),
+    "pilot_large_preamble_terminal_tail": (
+        "pilot_large_preamble_terminal_tail",
+        "FAILED_CLOSED_EXECUTION",
+    ),
     "network_receipt_delayed": ("network_receipt_delayed", "PASS_PILOT"),
     "network_receipt_timeout": (
         "network_receipt_timeout",
@@ -930,6 +934,12 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 if endpoint_receipt.is_file()
                 else {}
             )
+            pilot_receipt = directory / "receipts/pilot_rows.json"
+            pilot_payload = (
+                json.loads(pilot_receipt.read_bytes()).get("payload", {})
+                if pilot_receipt.is_file()
+                else {}
+            )
             scenarios[name] = {
                 "outcome": result["outcome"],
                 "failure_stage": result["failure_stage"],
@@ -1032,6 +1042,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "pre_envelope_gpu_storage": result.get(
                     "pre_envelope_gpu_storage"
                 ),
+                "successful_runtime_resource_telemetry": pilot_payload.get(
+                    "job_completion", {}
+                ).get("runtime_resource_telemetry"),
                 "dra_refusal_diagnostics": (
                     {
                         "persisted_before_cleanup": True,
@@ -1078,11 +1091,56 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                         "network_policy_agent_status": json.loads(
                             (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
                         )["network_policy_agent"]["status"],
+                        "diagnostic_window_policy": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["diagnostic_window_policy"],
+                        "log_head_contains_terminal_error": "synthetic terminal model-load failure" in json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["logs"].get("head_sanitized", ""),
+                        "log_tail_contains_terminal_error": "synthetic terminal model-load failure" in json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["logs"].get("tail_sanitized", ""),
+                        "container_termination": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["container_termination"],
+                        "phase_journal": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["phase_journal"],
+                        "runtime_resource_telemetry": json.loads(
+                            (directory / "pilot-workload-refusal-diagnostics.json").read_bytes()
+                        )["runtime_resource_telemetry"],
                     }
                     if (directory / "pilot-workload-refusal-diagnostics.json").is_file()
                     else None
                 ),
             }
+        large_tail = scenarios["pilot_large_preamble_terminal_tail"][
+            "pilot_workload_diagnostics"
+        ]
+        if (
+            large_tail is None
+            or large_tail["diagnostic_window_policy"]
+            != "SANITIZED_HEAD_AND_TAIL_4096_BYTES_EACH"
+            or large_tail["log_head_contains_terminal_error"] is not False
+            or large_tail["log_tail_contains_terminal_error"] is not True
+            or large_tail["container_termination"].get("exit_code") != 86
+            or large_tail["container_termination"].get("reason") != "Error"
+            or large_tail["container_termination"].get("signal") != 0
+            or large_tail["container_termination"].get("oom_killed") is not False
+            or large_tail["phase_journal"].get("last_event", {}).get("phase")
+            != "PILOT_EXCEPTION"
+            or large_tail["phase_journal"].get("last_event", {}).get(
+                "exception_class"
+            )
+            != "RuntimeError"
+            or large_tail["runtime_resource_telemetry"].get(
+                "pass_sample_count"
+            )
+            < 2
+        ):
+            raise RuntimeError(
+                "large workload preamble evicted terminal or resource diagnostics"
+            )
         insufficient_directory = base / "local-disk-insufficient"
         reviewed, authorization_path, packet_path = _scenario_repository(
             base / "local-disk-insufficient-repo",

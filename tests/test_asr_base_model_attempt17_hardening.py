@@ -113,6 +113,9 @@ def test_pilot_workload_is_absolute_bounded_and_explicit() -> None:
     assert result["ambient_environment_reads"] == 0
     assert result["listener_timeout_exit_code"] == 71
     assert result["job_active_deadline_seconds"] == 9000
+    assert result["phase_journal_path"] == "/output/pilot-phase-journal.jsonl"
+    assert result["phase_journal_exception_class_and_safe_text"] is True
+    assert result["phase_journal_predictions_references_or_audio"] is False
     assert len(workload_argv_sha256()) == 64
 
 
@@ -128,9 +131,8 @@ def test_rendered_attempt17_workload_enforces_the_audit() -> None:
     assert job["spec"]["activeDeadlineSeconds"] == JOB_ACTIVE_DEADLINE_SECONDS
     container = job["spec"]["template"]["spec"]["containers"][0]
     assert container["env"] == list(PILOT_ENVIRONMENT)
-    assert container["args"][0].endswith(
-        "--aggregate-receipt /output/aggregate.json"
-    )
+    assert "pilot-phase-journal.jsonl" in container["args"][0]
+    assert "MODEL_LOAD_START" in container["args"][0]
 
 
 def test_node_equivalent_qualification_is_reproducible_when_docker_available(

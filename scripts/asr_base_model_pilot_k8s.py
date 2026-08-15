@@ -41,8 +41,8 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     digest = bindings["image"]["linux_amd64_digest"]
     if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
         raise ValueError("image digest is malformed")
-    if attempt not in set(range(1, 26)):
-        raise ValueError("attempt must be 1 through 25")
+    if attempt not in set(range(1, 27)):
+        raise ValueError("attempt must be 1 through 26")
     endpoint_blocks = sorted({_cidr(f"{ip}/32") for ip in endpoint_ips})
     s3_blocks = sorted({_cidr(value) for value in s3_cidrs})
     if len(endpoint_blocks) < 2 or not s3_blocks:
@@ -146,9 +146,9 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
     if not container["image"].endswith("@" + digest) or container.get("ports"):
         raise ValueError("image pin or listening-port boundary differs")
     command = " ".join(container["args"])
-    if command.index("network-probe") > command.index(" pilot "):
+    if command.index("network-probe") > command.index("pilot-phase-journal.jsonl"):
         raise ValueError("network probe does not precede pilot import path")
-    if "inbound-listener-ready" not in command or "network-release" not in command or command.index("network-probe") > command.index("network-release") or command.index("network-release") > command.index(" pilot "):
+    if "inbound-listener-ready" not in command or "network-release" not in command or command.index("network-probe") > command.index("network-release") or command.index("network-release") > command.index("pilot-phase-journal.jsonl"):
         raise ValueError("cross-pod isolation release gate differs")
     if job["metadata"]["name"] != f"asr-base-model-pilot-a{attempt}":
         raise ValueError("attempt job identity differs")

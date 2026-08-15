@@ -28,6 +28,10 @@ from scripts.asr_base_model_pilot_live import (
     CALLER,
     CPU_NODEGROUP,
     GPU_NODEGROUP,
+    PHASE_JOURNAL_ABSENT,
+    PHASE_JOURNAL_PRESENT,
+    PHASE_JOURNAL_TAIL,
+    RUNTIME_TELEMETRY_MARKER,
     LiveOperations,
 )
 from scripts.asr_base_model_pilot_dns import (
@@ -900,6 +904,15 @@ class ExternalCommandBoundary:
             raise AssertionError(f"unhandled rehearsal AWS command: {command}")
         if executable == "kubectl":
             self.state.kubectl_calls += 1
+            if any(RUNTIME_TELEMETRY_MARKER in argument for argument in command):
+                return self._completed(
+                    command,
+                    stdout=(
+                        f"{RUNTIME_TELEMETRY_MARKER}\n"
+                        "ram_kib=16384000,8388608\n"
+                        "0, 512, 23034\n"
+                    ).encode(),
+                )
             if any(
                 "--query-gpu=index,memory.used,memory.total" in argument
                 for argument in command
@@ -1082,7 +1095,10 @@ class KubectlBoundary:
                     "metadata": {"name": args[2]},
                     "status": {"active": 1},
                 }
-            if self.state.injection != "pilot_job_refused":
+            if self.state.injection not in {
+                "pilot_job_refused",
+                "pilot_large_preamble_terminal_tail",
+            }:
                 self.state.pilot_job_observation_sequence.append("SUCCEEDED")
                 return {
                     "metadata": {"name": args[2]},
@@ -1189,11 +1205,28 @@ class KubectlBoundary:
                         }],
                     },
                 }
+            terminal = {
+                "exitCode": (
+                    86
+                    if self.state.injection == "pilot_large_preamble_terminal_tail"
+                    else 72
+                ),
+                "reason": "Error",
+                "signal": 0,
+                "startedAt": "2026-08-14T23:26:47Z",
+                "finishedAt": "2026-08-14T23:30:21Z",
+                "message": "synthetic terminal workload refusal",
+            }
             return {
                 "metadata": {"name": args[2]},
                 "status": {
                     "phase": "Failed",
-                    "containerStatuses": [{"name": "offline-evaluator", "state": {"terminated": {"exitCode": 72, "reason": "Error"}}}],
+                    "containerStatuses": [{
+                        "name": "offline-evaluator",
+                        "ready": False,
+                        "restartCount": 0,
+                        "state": {"terminated": terminal},
+                    }],
                 },
             }
         if args[:2] == ("logs", "-n"):
@@ -1239,6 +1272,11 @@ class KubectlBoundary:
                     b"level=info component=network-policy-agent "
                     b"msg=synthetic-policy-converged\n"
                 )
+            if "asr-pilot-rehearsal" in args:
+                terminal = b"RuntimeError: synthetic terminal model-load failure\n"
+                if self.state.injection == "pilot_large_preamble_terminal_tail":
+                    return (b"synthetic-safe-preamble " * 600) + b"\n" + terminal
+                return terminal
             return b""
         if args[:1] == ("delete",) and len(args) > 1 and args[1].startswith("pod/"):
             name = args[1].removeprefix("pod/")
@@ -1300,7 +1338,37 @@ class SsmCommandBoundary:
                 "stdout": "",
                 "stderr": "sudo: unknown user #10001",
             }
-        if any(NETWORK_AND_LISTENER_PRESENT in command for command in commands):
+        if any(PHASE_JOURNAL_PRESENT in command for command in commands):
+            if self.state.injection not in {
+                "pilot_job_refused",
+                "pilot_large_preamble_terminal_tail",
+            }:
+                stdout = f"{PHASE_JOURNAL_ABSENT}\n"
+            else:
+                event = {
+                    "schema_version": 1,
+                    "sequence": 7,
+                    "phase": "PILOT_EXCEPTION",
+                    "completed_rows": 0,
+                    "current_model": "whisper-large-v3",
+                    "exception_class": "RuntimeError",
+                    "safe_error_text": "synthetic terminal model-load failure",
+                }
+                journal = canonical_json({
+                    "schema_version": 1,
+                    "sequence": 1,
+                    "phase": "PILOT_START",
+                    "completed_rows": 0,
+                    "current_model": None,
+                }) + canonical_json(event)
+                head = journal[:4096].decode()
+                tail = journal[-4096:].decode()
+                stdout = (
+                    f"{PHASE_JOURNAL_PRESENT}\n"
+                    f"{len(journal)} {hashlib.sha256(journal).hexdigest()}\n"
+                    f"{head}\n{PHASE_JOURNAL_TAIL}\n{tail}"
+                )
+        elif any(NETWORK_AND_LISTENER_PRESENT in command for command in commands):
             self.state.pilot_receipt_reads += 1
             if self.state.injection == "network_receipt_timeout":
                 observed = "ABSENT"

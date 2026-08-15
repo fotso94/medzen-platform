@@ -318,6 +318,6 @@ def test_remote_device_boundary_models_absent_then_present_and_timeout(
 def test_remote_ssm_observation_audit_classifies_every_site() -> None:
     result = audit_remote_ssm_observation_sites(ROOT)
     assert result["status"] == "PASS_REMOTE_SSM_OBSERVATION_AUDIT"
-    assert result["site_count"] == 9
+    assert result["site_count"] == 10
     assert result["asynchronous_one_shot_success_gates"] == 0
     assert result["unclassified_ssm_call_sites"] == 0

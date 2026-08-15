@@ -463,6 +463,7 @@ def audit_remote_ssm_observation_sites(root: Path) -> dict[str, Any]:
             ("gpu_and_sampler_gate", "_ssm"): 1,
             ("node_local_input_stage", "_ssm"): 1,
             ("capture_network_receipt", "_ssm"): 1,
+            ("_capture_phase_journal", "_ssm"): 1,
             ("_wait_pilot_network_receipts", "_ssm"): 1,
             ("pilot_rows", "_ssm"): 2,
             ("aggregate_report", "send_command"): 1,
@@ -517,6 +518,11 @@ def audit_remote_ssm_observation_sites(root: Path) -> dict[str, Any]:
             "site": "network_receipt_refusal_diagnostic",
             "owner": "capture_network_receipt",
             "disposition": "DIAGNOSTIC_ABSENCE_MARKER_NOT_A_SUCCESS_GATE",
+        },
+        {
+            "site": "pilot_phase_journal_refusal_diagnostic",
+            "owner": "_capture_phase_journal",
+            "disposition": "DIAGNOSTIC_HEAD_TAIL_CAPTURE_NOT_A_SUCCESS_GATE",
         },
         {
             "site": "network_and_listener_receipt_readiness",

@@ -24,7 +24,12 @@ from typing import Any, Callable
 
 
 from pipeline.asr_base_model_pilot_receipts import canonical_json, write_exclusive
-from scripts.asr_external_tool import ExternalToolTimeout, run_external, sanitize_bytes
+from scripts.asr_external_tool import (
+    ExternalToolTimeout,
+    run_external,
+    sanitize_bytes,
+    sanitize_head_tail,
+)
 from scripts.asr_idempotent_read_retry import (
     IdempotentReadRetrier,
     RetryPolicy,
@@ -186,6 +191,10 @@ GPU_NODE_READY_TIMEOUT_SECONDS = 600
 GPU_NODE_READY_STABLE_OBSERVATIONS = 2
 IMAGE_SCAN_READ_RETRY_HARD_CAP_SECONDS = 7200
 S3_READ_RETRY_HARD_CAP_SECONDS = 3600
+RUNTIME_TELEMETRY_MARKER = "MEDZEN_RUNTIME_TELEMETRY_V1"
+PHASE_JOURNAL_PRESENT = "MEDZEN_PHASE_JOURNAL_PRESENT"
+PHASE_JOURNAL_ABSENT = "MEDZEN_PHASE_JOURNAL_ABSENT"
+PHASE_JOURNAL_TAIL = "MEDZEN_PHASE_JOURNAL_TAIL"
 
 
 def _sha(path: Path) -> str:
@@ -225,6 +234,81 @@ def _json_command(command: list[str], *, cwd: Path | None = None, timeout: int =
 
 def _utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def normalize_container_termination(
+    pod: Any,
+    *,
+    container_name: str = "offline-evaluator",
+) -> dict[str, Any]:
+    """Extract the stable Kubernetes termination fields without shape guesses."""
+    status = pod.get("status") if isinstance(pod, dict) else None
+    statuses = status.get("containerStatuses") if isinstance(status, dict) else None
+    if not isinstance(statuses, list):
+        return {
+            "status": "UNAVAILABLE_CONTAINER_STATUSES_ABSENT",
+            "container_name": container_name,
+            "exit_code": None,
+            "reason": None,
+            "signal": None,
+            "oom_killed": None,
+            "started_at": None,
+            "finished_at": None,
+        }
+    matches = [
+        item
+        for item in statuses
+        if isinstance(item, dict) and item.get("name") == container_name
+    ]
+    if len(matches) != 1:
+        return {
+            "status": "UNAVAILABLE_CONTAINER_STATUS_AMBIGUOUS",
+            "container_name": container_name,
+            "matching_statuses": len(matches),
+            "exit_code": None,
+            "reason": None,
+            "signal": None,
+            "oom_killed": None,
+            "started_at": None,
+            "finished_at": None,
+        }
+    item = matches[0]
+    state = item.get("state") if isinstance(item.get("state"), dict) else {}
+    terminated = state.get("terminated")
+    if not isinstance(terminated, dict):
+        current_state = next(
+            (name for name in ("waiting", "running") if isinstance(state.get(name), dict)),
+            "unknown",
+        )
+        current = state.get(current_state) if isinstance(state.get(current_state), dict) else {}
+        return {
+            "status": "NOT_TERMINATED",
+            "container_name": container_name,
+            "current_state": current_state,
+            "current_reason": current.get("reason"),
+            "restart_count": item.get("restartCount"),
+            "ready": item.get("ready"),
+            "exit_code": None,
+            "reason": None,
+            "signal": None,
+            "oom_killed": False,
+            "started_at": None,
+            "finished_at": None,
+        }
+    reason = terminated.get("reason")
+    return {
+        "status": "TERMINATED",
+        "container_name": container_name,
+        "restart_count": item.get("restartCount"),
+        "ready": item.get("ready"),
+        "exit_code": terminated.get("exitCode"),
+        "reason": reason,
+        "signal": terminated.get("signal"),
+        "oom_killed": reason == "OOMKilled",
+        "started_at": terminated.get("startedAt"),
+        "finished_at": terminated.get("finishedAt"),
+        "message_sanitized": sanitize_bytes(terminated.get("message")),
+    }
 
 
 class S3CreateOnlyStore(ObjectStore):
@@ -463,6 +547,7 @@ class LiveOperations:
                 "node_name": None,
                 "staging_path": None,
                 "dra_installed": False,
+                "dra_pod": None,
             }
         return json.loads(snapshots[-1].read_bytes())
 
@@ -613,7 +698,8 @@ class LiveOperations:
             poll_interval_seconds=poll_interval_seconds,
             required_observations=required_observations,
         )
-        deadline = self._monotonic() + timeout_seconds
+        started = self._monotonic()
+        deadline = started + timeout_seconds
         observations = 0
         consecutive_absent = 0
         present_observations = 0
@@ -2079,6 +2165,9 @@ class LiveOperations:
                 f"before cleanup sha256={diagnostic['sha256']}",
             ) from exc
         dra_pod = self._kubectl(context, "get", "pods", "-n", "nvidia-dra-driver", "-l", "dra-driver-nvidia-gpu-component=kubelet-plugin", json_output=True)["items"][0]["metadata"]["name"]
+        state = self._state(context)
+        state["dra_pod"] = dra_pod
+        self._save_state(context, state)
         sample_command = [
             "kubectl", "--kubeconfig", str(context.workdir / "kubeconfig"), "exec", "-n", "nvidia-dra-driver", dra_pod, "-c", "gpus", "--",
             "/busybox/sh", "-c", sampler_shell_command(),
@@ -2696,6 +2785,252 @@ class LiveOperations:
         result["pod_cleanup"] = cleanup
         return result
 
+    @staticmethod
+    def _append_runtime_telemetry(path: Path, sample: dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        body = canonical_json(sample)
+        mode = "ab" if path.exists() else "xb"
+        with path.open(mode) as stream:
+            stream.write(body)
+            stream.flush()
+            os.fsync(stream.fileno())
+
+    def _sample_runtime_resources(
+        self,
+        context: AttemptContext,
+        *,
+        observation: int,
+        elapsed_seconds: float,
+    ) -> dict[str, Any]:
+        """Collect bounded node RAM and global GPU VRAM via the proven DRA path."""
+        state = self._state(context)
+        dra_pod = state.get("dra_pod")
+        node_name = state.get("node_name")
+        instance_id = state.get("instance_id")
+        sample_path = context.workdir / "runtime-resource-telemetry.jsonl"
+        base = {
+            "schema_version": 1,
+            "observation": observation,
+            "elapsed_seconds": round(elapsed_seconds, 3),
+            "node_name": node_name,
+            "instance_id": instance_id,
+            "capture_transport": "KUBECTL_EXEC_DRA_NODE_POD",
+            "proven_nvidia_smi_argv_sha256": canonical_argv_sha256(
+                B6A_PROVEN_NVIDIA_SMI_ARGV
+            ),
+            "contains_model_audio_transcript_prediction_credentials_or_phi": False,
+        }
+        if not all(isinstance(value, str) and value for value in (dra_pod, node_name, instance_id)):
+            sample = {**base, "status": "UNAVAILABLE_NODE_IDENTITY"}
+            self._append_runtime_telemetry(sample_path, sample)
+            return sample
+        sample_program = (
+            f"/busybox/printf '{RUNTIME_TELEMETRY_MARKER}\\n'; "
+            "/busybox/awk '/^MemTotal:/{total=$2} /^MemAvailable:/{available=$2} "
+            "END{printf \"ram_kib=%s,%s\\n\",total,available}' /proc/meminfo; "
+            + shlex.join(B6A_PROVEN_NVIDIA_SMI_ARGV)
+        )
+        command = [
+            "kubectl",
+            "--kubeconfig",
+            str(context.workdir / "kubeconfig"),
+            "exec",
+            "-n",
+            "nvidia-dra-driver",
+            dra_pod,
+            "-c",
+            "gpus",
+            "--",
+            "/busybox/sh",
+            "-ec",
+            sample_program,
+        ]
+        try:
+            completed = self._command(command, timeout=30, check=False)
+            stdout = completed.stdout or b""
+            stderr = completed.stderr or b""
+            lines = [line.strip() for line in stdout.decode(errors="replace").splitlines() if line.strip()]
+            ram = re.fullmatch(r"ram_kib=([0-9]+),([0-9]+)", lines[1]) if len(lines) > 1 else None
+            gpu = [field.strip() for field in lines[2].split(",")] if len(lines) > 2 else []
+            valid_gpu = len(gpu) == 3 and all(re.fullmatch(r"[0-9]+", field) for field in gpu)
+            if (
+                completed.returncode != 0
+                or len(lines) != 3
+                or lines[0] != RUNTIME_TELEMETRY_MARKER
+                or ram is None
+                or not valid_gpu
+            ):
+                sample = {
+                    **base,
+                    "status": "UNAVAILABLE_SAMPLE_REFUSED_OR_MALFORMED",
+                    "returncode": completed.returncode,
+                    "stdout": sanitize_head_tail(stdout),
+                    "stderr": sanitize_head_tail(stderr),
+                }
+            else:
+                memory_total_kib, memory_available_kib = map(int, ram.groups())
+                gpu_index, vram_used_mib, vram_total_mib = map(int, gpu)
+                if (
+                    memory_total_kib <= 0
+                    or memory_available_kib < 0
+                    or memory_available_kib > memory_total_kib
+                    or gpu_index != 0
+                    or vram_used_mib < 0
+                    or vram_total_mib <= 0
+                    or vram_used_mib > vram_total_mib
+                ):
+                    sample = {**base, "status": "UNAVAILABLE_SAMPLE_OUT_OF_RANGE"}
+                else:
+                    sample = {
+                        **base,
+                        "status": "PASS_NODE_RUNTIME_RESOURCE_SAMPLE",
+                        "memory_total_kib": memory_total_kib,
+                        "memory_available_kib": memory_available_kib,
+                        "gpu_index": gpu_index,
+                        "vram_used_mib": vram_used_mib,
+                        "vram_total_mib": vram_total_mib,
+                    }
+        except Exception as exc:
+            sample = {
+                **base,
+                "status": "UNAVAILABLE_SAMPLE_EXCEPTION",
+                "exception_class": type(exc).__name__,
+                "safe_error_text": sanitize_bytes(str(exc)),
+            }
+        self._append_runtime_telemetry(sample_path, sample)
+        return sample
+
+    @staticmethod
+    def _runtime_telemetry_summary(context: AttemptContext) -> dict[str, Any]:
+        path = context.workdir / "runtime-resource-telemetry.jsonl"
+        if not path.is_file():
+            return {"status": "ABSENT", "sample_count": 0, "pass_sample_count": 0}
+        values: list[dict[str, Any]] = []
+        malformed = 0
+        for line in path.read_bytes().splitlines():
+            try:
+                value = json.loads(line)
+            except Exception:
+                malformed += 1
+                continue
+            if isinstance(value, dict):
+                values.append(value)
+            else:
+                malformed += 1
+        passed = [
+            value
+            for value in values
+            if value.get("status") == "PASS_NODE_RUNTIME_RESOURCE_SAMPLE"
+        ]
+        return {
+            "status": "CAPTURED" if values else "MALFORMED_OR_EMPTY",
+            "path": path.name,
+            "sha256": _sha(path),
+            "sample_count": len(values),
+            "pass_sample_count": len(passed),
+            "unavailable_sample_count": len(values) - len(passed),
+            "malformed_line_count": malformed,
+            "minimum_memory_available_kib": (
+                min(value["memory_available_kib"] for value in passed)
+                if passed
+                else None
+            ),
+            "peak_vram_used_mib": (
+                max(value["vram_used_mib"] for value in passed) if passed else None
+            ),
+            "vram_total_mib": (
+                passed[-1]["vram_total_mib"] if passed else None
+            ),
+            "persisted_before_cleanup": True,
+        }
+
+    def _capture_phase_journal(self, context: AttemptContext) -> dict[str, Any]:
+        state = self._state(context)
+        instance_id = state.get("instance_id")
+        staging_path = state.get("staging_path")
+        if not isinstance(instance_id, str) or not isinstance(staging_path, str):
+            return {"status": "NOT_APPLICABLE_STAGING_UNAVAILABLE"}
+        path = f"{staging_path}/output/pilot-phase-journal.jsonl"
+        command = (
+            f"if /usr/bin/test -s {shlex.quote(path)}; then "
+            f"/usr/bin/printf '%s\\n' {PHASE_JOURNAL_PRESENT}; "
+            f"bytes=$(/usr/bin/wc -c < {shlex.quote(path)}); "
+            f"digest=$(/usr/bin/sha256sum {shlex.quote(path)}); digest=${{digest%% *}}; "
+            "/usr/bin/printf '%s %s\\n' \"$bytes\" \"$digest\"; "
+            f"/usr/bin/head -c 4096 {shlex.quote(path)}; "
+            f"/usr/bin/printf '\\n%s\\n' {PHASE_JOURNAL_TAIL}; "
+            f"/usr/bin/tail -c 4096 {shlex.quote(path)}; "
+            "else "
+            f"/usr/bin/printf '%s\\n' {PHASE_JOURNAL_ABSENT}; fi"
+        )
+        try:
+            result = self._ssm(
+                instance_id,
+                [command],
+                timeout_seconds=60,
+                pre_model_safe_output=True,
+            )
+            marker, separator, rest = result["stdout"].partition("\n")
+            if not separator:
+                return {"status": "MALFORMED_OBSERVATION"}
+            if marker == PHASE_JOURNAL_ABSENT:
+                return {"status": "ABSENT"}
+            metadata, separator, payload = rest.partition("\n")
+            if marker != PHASE_JOURNAL_PRESENT or not separator:
+                return {"status": "MALFORMED_OBSERVATION"}
+            fields = metadata.split()
+            head, tail_marker, tail = payload.partition(f"\n{PHASE_JOURNAL_TAIL}\n")
+            if (
+                len(fields) != 2
+                or re.fullmatch(r"[0-9]+", fields[0]) is None
+                or re.fullmatch(r"[0-9a-f]{64}", fields[1]) is None
+                or not tail_marker
+            ):
+                return {"status": "MALFORMED_OBSERVATION"}
+            last_event: dict[str, Any] | None = None
+            for line in reversed(tail.splitlines()):
+                try:
+                    candidate = json.loads(line)
+                except Exception:
+                    continue
+                if isinstance(candidate, dict):
+                    last_event = {
+                        key: candidate.get(key)
+                        for key in (
+                            "schema_version",
+                            "sequence",
+                            "phase",
+                            "completed_rows",
+                            "current_model",
+                            "exception_class",
+                            "safe_error_text",
+                            "reason_code",
+                        )
+                        if key in candidate
+                    }
+                    if "safe_error_text" in last_event:
+                        last_event["safe_error_text"] = sanitize_bytes(
+                            last_event["safe_error_text"]
+                        )
+                    break
+            return {
+                "status": "CAPTURED",
+                "bytes": int(fields[0]),
+                "sha256": fields[1],
+                "head_sanitized": sanitize_bytes(head),
+                "tail_sanitized": sanitize_bytes(tail),
+                "head_window_bytes": 4096,
+                "tail_window_bytes": 4096,
+                "window_policy": "SANITIZED_HEAD_AND_TAIL",
+                "last_event": last_event,
+            }
+        except Exception as exc:
+            return {
+                "status": "UNAVAILABLE",
+                "exception_class": type(exc).__name__,
+                "safe_error_text": sanitize_bytes(str(exc)),
+            }
+
     def _capture_pilot_workload_refusal_diagnostics(
         self,
         context: AttemptContext,
@@ -2710,15 +3045,24 @@ class LiveOperations:
         presigned URLs are never retained.
         """
 
-        def capture_json(*args: str) -> dict[str, Any]:
+        def capture_json(
+            *args: str,
+            normalize_termination: bool = False,
+        ) -> dict[str, Any]:
             try:
                 value = self._kubectl(context, *args, timeout=30, json_output=True)
                 raw = canonical_json(value if isinstance(value, dict) else {})
-                return {
+                windows = sanitize_head_tail(raw)
+                captured = {
                     "status": "CAPTURED",
-                    "sha256": hashlib.sha256(raw).hexdigest(),
-                    "sanitized": sanitize_bytes(raw),
+                    **windows,
+                    "sanitized": windows["head_sanitized"],
                 }
+                if normalize_termination:
+                    captured["container_termination"] = normalize_container_termination(
+                        value
+                    )
+                return captured
             except Exception as exc:
                 return {
                     "status": "UNAVAILABLE",
@@ -2736,14 +3080,15 @@ class LiveOperations:
                     "-n",
                     NAMESPACE,
                     pod_name,
+                    "--limit-bytes=65536",
                     timeout=30,
                 )
                 body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                windows = sanitize_head_tail(body)
                 return {
                     "status": "CAPTURED",
-                    "bytes": len(body),
-                    "sha256": hashlib.sha256(body).hexdigest(),
-                    "sanitized": sanitize_bytes(body),
+                    **windows,
+                    "sanitized": windows["head_sanitized"],
                 }
             except Exception as exc:
                 return {
@@ -2783,12 +3128,16 @@ class LiveOperations:
                     }
                 parsed = json.loads(payload)
                 raw = canonical_json(parsed)
+                windows = sanitize_head_tail(raw)
                 return {
                     "status": "CAPTURED",
-                    "sha256": hashlib.sha256(raw).hexdigest(),
+                    "sha256": windows["sha256"],
                     "receipt_status": parsed.get("status"),
                     "reason_code": parsed.get("reason_code"),
-                    "sanitized": sanitize_bytes(raw),
+                    "head_sanitized": windows["head_sanitized"],
+                    "tail_sanitized": windows["tail_sanitized"],
+                    "window_policy": windows["window_policy"],
+                    "sanitized": windows["head_sanitized"],
                 }
             except Exception as exc:
                 return {
@@ -2862,13 +3211,13 @@ class LiveOperations:
                     timeout=30,
                 )
                 body = raw if isinstance(raw, bytes) else canonical_json(raw)
+                windows = sanitize_head_tail(body)
                 return {
                     "status": "CAPTURED",
                     "pod": name,
                     "container": container,
-                    "bytes": len(body),
-                    "sha256": hashlib.sha256(body).hexdigest(),
-                    "sanitized": sanitize_bytes(body),
+                    **windows,
+                    "sanitized": windows["head_sanitized"],
                 }
             except Exception as exc:
                 return {
@@ -2878,7 +3227,7 @@ class LiveOperations:
                 }
 
         diagnostic = {
-            "schema_version": 2,
+            "schema_version": 3,
             "status": "CAPTURED_BEFORE_CLEANUP",
             "classification": "FROZEN_PUBLIC_RESEARCH_EVAL_NO_PHI_BOUNDED_DIAGNOSTICS",
             "failure_exception_class": type(failure).__name__,
@@ -2893,7 +3242,14 @@ class LiveOperations:
                 NAMESPACE,
             ),
             "pod": (
-                capture_json("get", "pod", pod_name, "-n", NAMESPACE)
+                capture_json(
+                    "get",
+                    "pod",
+                    pod_name,
+                    "-n",
+                    NAMESPACE,
+                    normalize_termination=True,
+                )
                 if pod_name
                 else {"status": "NOT_APPLICABLE_NO_POD"}
             ),
@@ -2901,10 +3257,17 @@ class LiveOperations:
                 "get", "events", "-n", NAMESPACE, "--sort-by=.lastTimestamp"
             ),
             "logs": capture_logs(),
+            "phase_journal": self._capture_phase_journal(context),
+            "runtime_resource_telemetry": self._runtime_telemetry_summary(context),
             "network_probe_receipt": capture_network_receipt(),
             "network_policy_agent": capture_network_policy_agent(),
+            "diagnostic_window_policy": "SANITIZED_HEAD_AND_TAIL_4096_BYTES_EACH",
             "credentials_presigned_urls_or_environment_values_recorded": False,
         }
+        diagnostic["container_termination"] = diagnostic["pod"].get(
+            "container_termination",
+            normalize_container_termination({}),
+        )
         path = context.workdir / "pilot-workload-refusal-diagnostics.json"
         write_exclusive(path, canonical_json(diagnostic))
         return {"path": path, "sha256": _sha(path), **diagnostic}
@@ -3043,7 +3406,8 @@ class LiveOperations:
             timeout_seconds=timeout_seconds,
             poll_interval_seconds=poll_interval_seconds,
         )
-        deadline = self._monotonic() + timeout_seconds
+        started = self._monotonic()
+        deadline = started + timeout_seconds
         observations = 0
         state_sequence: list[str] = []
         job_name = f"asr-base-model-pilot-a{context.attempt}"
@@ -3080,7 +3444,18 @@ class LiveOperations:
             ) or bool(status.get("failed"))
             observed_state = "COMPLETE" if complete else "FAILED" if failed else "ACTIVE"
             state_sequence.append(observed_state)
+            self._sample_runtime_resources(
+                context,
+                observation=observations,
+                elapsed_seconds=self._monotonic() - started,
+            )
             if complete:
+                telemetry = self._runtime_telemetry_summary(context)
+                if telemetry["pass_sample_count"] < 2:
+                    raise OperationRefusal(
+                        "RUNTIME_RESOURCE_TELEMETRY_INSUFFICIENT",
+                        "pilot Job completed without two bounded node RAM/VRAM samples",
+                    )
                 return {
                     "status": "PASS_PILOT_JOB_COMPLETE",
                     "observations": observations,
@@ -3088,6 +3463,7 @@ class LiveOperations:
                     "sleep_branch_executed": observations > 1,
                     "timeout_seconds": timeout_seconds,
                     "poll_interval_seconds": poll_interval_seconds,
+                    "runtime_resource_telemetry": telemetry,
                 }
             if failed:
                 raise OperationRefusal(
