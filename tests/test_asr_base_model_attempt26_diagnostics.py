@@ -120,3 +120,19 @@ def test_pilot_driver_model_root_matches_card_layout() -> None:
 
     assert 'model_root=pathlib.Path("/models")' in _PILOT_DRIVER_PROGRAM
     assert "/input/models" not in _PILOT_DRIVER_PROGRAM
+
+
+def test_whisper_token_budget_leaves_prompt_headroom() -> None:
+    import re
+
+    source = (
+        ROOT / "services/asr-eval-runtime/medzen_asr_eval/backends.py"
+    ).read_text()
+    match = re.search(r"WHISPER_MAX_NEW_TOKENS = (\d+)", source)
+    assert match, "Whisper token budget must be a named constant"
+    budget = int(match.group(1))
+    assert budget <= 448 - 4, "budget must leave >=4 tokens of prompt headroom"
+    assert "max_new_tokens=448" not in source
+    assert "max_new_tokens=WHISPER_MAX_NEW_TOKENS" in source
+    assert "tokens < WHISPER_MAX_NEW_TOKENS" in source
+    assert "tokens >= WHISPER_MAX_NEW_TOKENS" in source

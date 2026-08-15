@@ -22,6 +22,13 @@ class Backend(Protocol):
     def transcribe(self, audio: Path, language_id: str | None) -> Transcript: ...
 
 
+# Whisper's decoder max_length (448) covers the prompt AND generated tokens.
+# The forced decoder prompt is 3-4 tokens (<|sot|>, language, task, optional
+# no-timestamps), so max_new_tokens must stay below 448 minus that headroom
+# or faster-whisper raises ValueError on the first row (attempt-26 refusal).
+WHISPER_MAX_NEW_TOKENS = 440
+
+
 class WhisperBackend:
     def __init__(self, model_dir: Path) -> None:
         from faster_whisper import WhisperModel
@@ -36,16 +43,19 @@ class WhisperBackend:
             best_of=1,
             condition_on_previous_text=False,
             vad_filter=False,
-            max_new_tokens=448,
+            max_new_tokens=WHISPER_MAX_NEW_TOKENS,
         )
         materialized = list(segments)
         text = " ".join(segment.text.strip() for segment in materialized).strip()
         tokens = sum(len(segment.tokens) for segment in materialized)
         return Transcript(
             text=text,
-            eos_observed=tokens < 448,
-            cap_hit=tokens >= 448,
-            termination_evidence="faster-whisper completed iterator; token count compared with max_new_tokens=448",
+            eos_observed=tokens < WHISPER_MAX_NEW_TOKENS,
+            cap_hit=tokens >= WHISPER_MAX_NEW_TOKENS,
+            termination_evidence=(
+                "faster-whisper completed iterator; token count compared with "
+                f"max_new_tokens={WHISPER_MAX_NEW_TOKENS} (448 minus prompt headroom)"
+            ),
         )
 
 
