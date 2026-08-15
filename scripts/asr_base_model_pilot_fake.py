@@ -286,7 +286,34 @@ class BoundaryState:
         return values
 
     def _aggregate(self) -> dict[str, Any]:
-        rows = json.loads(RUNTIME_ROWS.read_bytes())["rows"]
+        suite = (
+            self.bindings.get("input_freeze", {}).get("suite_selection")
+            if isinstance(getattr(self, "bindings", None), dict)
+            else None
+        )
+        if suite is not None:
+            # Suite scenarios: derive the aggregate's completeness values
+            # from the SAME deterministic shard selection the rehearsal's
+            # freeze stage produces over the pinned manifest archive, so
+            # the aggregate stage's arithmetic gate proves consistency.
+            import tempfile
+
+            from scripts.asr_base_model_pilot_assets import select_suite_rows
+
+            fixture = self.bindings.get("recorded_boundary_fixtures", {}).get(
+                "eval_manifest_archive", {}
+            )
+            archive_path = ROOT / str(fixture.get("path"))
+            with tempfile.TemporaryDirectory(prefix="mz-fake-suite-") as scratch:
+                destination = Path(scratch)
+                with tarfile.open(archive_path, "r:gz") as archive:
+                    archive.extractall(destination, filter="data")
+                inner = [item for item in destination.iterdir() if item.is_dir()]
+                root = inner[0] if len(inner) == 1 else destination
+                selection = select_suite_rows(root, suite["units"])
+            rows = selection["rows"]
+        else:
+            rows = json.loads(RUNTIME_ROWS.read_bytes())["rows"]
         conditioning = json.loads(
             (ROOT / "services/asr-eval-runtime/assets/language-conditioning-v1.json").read_bytes()
         )["languages"]
