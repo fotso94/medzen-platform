@@ -687,8 +687,8 @@ def _scenario_repository(
     bindings = json.loads(bindings_body)
     tracked = {
         str(bindings_path.relative_to(ROOT)): bindings_body,
-        "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json": (
-            ROOT / "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json"
+        bindings["artifact_prestage_proof"]["path"]: (
+            ROOT / bindings["artifact_prestage_proof"]["path"]
         ).read_bytes(),
         bindings["cost_registry"]["path"]: (
             ROOT / bindings["cost_registry"]["path"]
@@ -898,7 +898,6 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             scenario_bindings["authorization"]["deadline_dry_run_path"] = str(
                 (reviewed / bindings["authorization"]["deadline_dry_run_path"]).relative_to(reviewed)
             )
-            scenario_bindings["artifact_prestage_proof"]["path"] = "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json"
             operations, boundary = build_rehearsal_operations(
                 scenario_bindings, injection=injection, root=reviewed
             )

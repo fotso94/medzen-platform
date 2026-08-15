@@ -266,10 +266,9 @@ class BoundaryState:
             self.node_name = response["items"][0]["metadata"]["name"]
         return response
 
-    @staticmethod
-    def _proof() -> dict[str, Any]:
+    def _proof(self) -> dict[str, Any]:
         return json.loads(
-            (ROOT / "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001.json").read_bytes()
+            (ROOT / self.bindings["artifact_prestage_proof"]["path"]).read_bytes()
         )
 
     def _prestage_objects(self) -> dict[tuple[str, str], dict[str, Any]]:
