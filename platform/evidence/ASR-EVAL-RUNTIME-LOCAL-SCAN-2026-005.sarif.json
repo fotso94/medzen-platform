@@ -1,0 +1,3474 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "fullName": "Docker Scout",
+          "informationUri": "https://docker.com/products/docker-scout",
+          "name": "docker scout",
+          "rules": [
+            {
+              "id": "CVE-2024-2236",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-2236"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2024-2236?s=ubuntu&n=libgcrypt20&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "A timing-based side-channel flaw was found in libgcrypt's RSA implementation. This issue may allow a remote attacker to initiate a Bleichenbacher-style attack, which can lead to the decryption of RSA ciphertexts.\n",
+                "markdown": "> A timing-based side-channel flaw was found in libgcrypt's RSA implementation. This issue may allow a remote attacker to initiate a Bleichenbacher-style attack, which can lead to the decryption of RSA ciphertexts.\n\n|                |                                                                                              |\n|----------------|----------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/libgcrypt20@1.10.3-2ubuntu0.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                          |\n| Fixed version  | not fixed                                                                                    |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "LOW",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/libgcrypt20@1.10.3-2ubuntu0.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "3.1",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2024-56433",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-56433"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2024-56433?s=ubuntu&n=shadow&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "shadow-utils (aka shadow) 4.4 through 4.17.0 establishes a default /etc/subuid behavior (e.g., uid 100000 through 165535 for the first user account) that can realistically conflict with the uids of users defined on locally administered networks, potentially leading to account takeover, e.g., by leveraging newuidmap for access to an NFS home directory (or same-host resources in the case of remote logins by these local network users). NOTE: it may also be argued that system administrators should not have assigned uids, within local networks, that are within the range that can occur in /etc/subuid.\n",
+                "markdown": "> shadow-utils (aka shadow) 4.4 through 4.17.0 establishes a default /etc/subuid behavior (e.g., uid 100000 through 165535 for the first user account) that can realistically conflict with the uids of users defined on locally administered networks, potentially leading to account takeover, e.g., by leveraging newuidmap for access to an NFS home directory (or same-host resources in the case of remote logins by these local network users). NOTE: it may also be argued that system administrators should not have assigned uids, within local networks, that are within the range that can occur in /etc/subuid.\n\n|                |                                                                                                   |\n|----------------|---------------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/shadow@1%3A4.13%2Bdfsg1-4ubuntu3.2?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                               |\n| Fixed version  | not fixed                                                                                         |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "LOW",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/shadow@1%3A4.13%2Bdfsg1-4ubuntu3.2?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "3.1",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-3000",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-3000: Improper Restriction of Operations within the Bounds of a Memory Buffer"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-3000?s=github&n=torch&t=pypi&vr=%3C%3D2.12.1",
+              "help": {
+                "text": "A vulnerability classified as critical has been found in PyTorch 2.6.0. This affects the function torch.jit.script. The manipulation leads to memory corruption. It is possible to launch the attack on the local host. The exploit has been disclosed to the public and may be used.\n",
+                "markdown": "> A vulnerability classified as critical has been found in PyTorch 2.6.0. This affects the function torch.jit.script. The manipulation leads to memory corruption. It is possible to launch the attack on the local host. The exploit has been disclosed to the public and may be used.\n\n|                |                                                                     |\n|----------------|---------------------------------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                                        |\n| Affected range | <=2.12.1                                                            |\n| Fixed version  | 2.13.0                                                              |\n| CVSS Score     |                                                                 1.9 |\n| CVSS Vector    | CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P |\n"
+              },
+              "properties": {
+                "affected_version": "<=2.12.1",
+                "cvssV3": 1.9,
+                "cvssV3_severity": "LOW",
+                "cvssV3_vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P",
+                "fixed_version": "2.13.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "1.9",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-3001",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-3001: Improper Restriction of Operations within the Bounds of a Memory Buffer"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-3001?s=github&n=torch&t=pypi&vr=%3C2.10.0",
+              "help": {
+                "text": "A vulnerability classified as critical was found in PyTorch 2.6.0. This vulnerability affects the function torch.lstm_cell. The manipulation leads to memory corruption. The attack needs to be approached locally. The exploit has been disclosed to the public and may be used.\n\nA patch is available through commit [999d94b](https://github.com/pytorch/pytorch/commit/999d94b5ede5f4ec111ba7dd144129e2c2725b03).\n",
+                "markdown": "> A vulnerability classified as critical was found in PyTorch 2.6.0. This vulnerability affects the function torch.lstm_cell. The manipulation leads to memory corruption. The attack needs to be approached locally. The exploit has been disclosed to the public and may be used.\n\nA patch is available through commit [999d94b](https://github.com/pytorch/pytorch/commit/999d94b5ede5f4ec111ba7dd144129e2c2725b03).\n\n|                |                                                                     |\n|----------------|---------------------------------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                                        |\n| Affected range | <2.10.0                                                             |\n| Fixed version  | 2.10.0                                                              |\n| CVSS Score     |                                                                 1.9 |\n| CVSS Vector    | CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P |\n"
+              },
+              "properties": {
+                "affected_version": "<2.10.0",
+                "cvssV3": 1.9,
+                "cvssV3_severity": "LOW",
+                "cvssV3_vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P",
+                "fixed_version": "2.10.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "1.9",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-40228",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-40228"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-40228?s=ubuntu&n=systemd&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "In systemd 259, systemd-journald can send ANSI escape sequences to the terminals of arbitrary users when a \"logger -p emerg\" command is executed, if ForwardToWall=yes is set.\n",
+                "markdown": "> In systemd 259, systemd-journald can send ANSI escape sequences to the terminals of arbitrary users when a \"logger -p emerg\" command is executed, if ForwardToWall=yes is set.\n\n|                |                                                                                          |\n|----------------|------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                      |\n| Fixed version  | not fixed                                                                                |\n| CVSS Score     |                                                                                      3.3 |\n| CVSS Vector    | CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N                                             |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3": 3.3,
+                "cvssV3_severity": "LOW",
+                "cvssV3_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "3.3",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-27171",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-27171"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-27171?s=ubuntu&n=zlib&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "zlib before 1.3.2 allows CPU consumption via crc32_combine64 and crc32_combine_gen64 because x2nmodp can do right shifts within a loop that has no termination condition.\n",
+                "markdown": "> zlib before 1.3.2 allows CPU consumption via crc32_combine64 and crc32_combine_gen64 because x2nmodp can do right shifts within a loop that has no termination condition.\n\n|                |                                                                                               |\n|----------------|-----------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/zlib@1%3A1.3.dfsg-3.1ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                           |\n| Fixed version  | not fixed                                                                                     |\n| CVSS Score     |                                                                                           5.5 |\n| CVSS Vector    | CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H                                                  |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3": 5.5,
+                "cvssV3_severity": "LOW",
+                "cvssV3_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/zlib@1%3A1.3.dfsg-3.1ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "5.5",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2024-50613",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2024-50613"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2024-50613?s=ubuntu&n=libsndfile&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "libsndfile through 1.2.2 has a reachable assertion, that may lead to application exit, in mpeg_l3_encode.c mpeg_l3_encoder_close.\n",
+                "markdown": "> libsndfile through 1.2.2 has a reachable assertion, that may lead to application exit, in mpeg_l3_encode.c mpeg_l3_encoder_close.\n\n|                |                                                                                                  |\n|----------------|--------------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                              |\n| Fixed version  | not fixed                                                                                        |\n| CVSS Score     |                                                                                              6.5 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H                                                     |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3": 6.5,
+                "cvssV3_severity": "LOW",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "6.5",
+                "tags": [
+                  "LOW"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-52194",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-52194"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-52194?s=ubuntu&n=libsndfile&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "A buffer overflow vulnerability exists in libsndfile version 1.2.2 and potentially earlier versions when processing malformed IRCAM audio files. The vulnerability occurs in the ircam_read_header function at src/ircam.c:164 during sample rate processing, leading to memory corruption and potential code execution.\n",
+                "markdown": "> A buffer overflow vulnerability exists in libsndfile version 1.2.2 and potentially earlier versions when processing malformed IRCAM audio files. The vulnerability occurs in the ircam_read_header function at src/ircam.c:164 during sample rate processing, leading to memory corruption and potential code execution.\n\n|                |                                                                                                  |\n|----------------|--------------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                              |\n| Fixed version  | not fixed                                                                                        |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "MEDIUM",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "4.1",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-13757",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-13757"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-13757?s=ubuntu&n=p11-kit&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "A flaw was found in p11-kit. The RPC message attribute parsing functions p11_rpc_message_get_attribute() and p11_rpc_message_get_attribute_array_value() form a mutually-recursive call chain with no recursion depth limit when processing nested CKA_WRAP_TEMPLATE, CKA_UNWRAP_TEMPLATE, and CKA_DERIVE_TEMPLATE attributes. An unauthenticated attacker with local access to the p11-kit RPC Unix domain socket can send a specially crafted request with deeply nested template attributes, causing stack exhaustion and crashing the p11-kit server process and its dependent services.\n",
+                "markdown": "> A flaw was found in p11-kit. The RPC message attribute parsing functions p11_rpc_message_get_attribute() and p11_rpc_message_get_attribute_array_value() form a mutually-recursive call chain with no recursion depth limit when processing nested CKA_WRAP_TEMPLATE, CKA_UNWRAP_TEMPLATE, and CKA_DERIVE_TEMPLATE attributes. An unauthenticated attacker with local access to the p11-kit RPC Unix domain socket can send a specially crafted request with deeply nested template attributes, causing stack exhaustion and crashing the p11-kit server process and its dependent services.\n\n|                |                                                                                          |\n|----------------|------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/p11-kit@0.25.3-4ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                      |\n| Fixed version  | not fixed                                                                                |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "MEDIUM",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/p11-kit@0.25.3-4ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "4.1",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-2219",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-2219"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-2219?s=ubuntu&n=dpkg&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "It was discovered that dpkg-deb (a component of dpkg, the Debian package management system) does not properly validate the end of the data stream when uncompressing a zstd-compressed .deb archive, which may result in denial of service (infinite loop spinning the CPU).\n",
+                "markdown": "> It was discovered that dpkg-deb (a component of dpkg, the Debian package management system) does not properly validate the end of the data stream when uncompressing a zstd-compressed .deb archive, which may result in denial of service (infinite loop spinning the CPU).\n\n|                |                                                                                     |\n|----------------|-------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/dpkg@1.22.6ubuntu6.6?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                 |\n| Fixed version  | not fixed                                                                           |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "MEDIUM",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/dpkg@1.22.6ubuntu6.6?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "4.1",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-27456",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-27456"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-27456?s=ubuntu&n=util-linux&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.\n",
+                "markdown": "> util-linux is a random collection of Linux utilities. Prior to version 2.41.4, a TOCTOU (Time-of-Check-Time-of-Use) vulnerability has been identified in the SUID binary /usr/bin/mount from util-linux. The mount binary, when setting up loop devices, validates the source file path with user privileges via fork() + setuid() + realpath(), but subsequently re-canonicalizes and opens it with root privileges (euid=0) without verifying that the path has not been replaced between both operations. Neither O_NOFOLLOW, nor inode comparison, nor post-open fstat() are employed. This allows a local unprivileged user to replace the source file with a symlink pointing to any root-owned file or device during the race window, causing the SUID binary to open and mount it as root. Exploitation requires an /etc/fstab entry with user,loop options whose path points to a directory where the attacker has write permission, and that /usr/bin/mount has the SUID bit set (the default configuration on virtually all Linux distributions). The impact is unauthorized read access to root-protected files and block devices, including backup images, disk volumes, and any file containing a valid filesystem. This issue has been patched in version 2.41.4.\n\n|                |                                                                                             |\n|----------------|---------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/util-linux@2.39.3-9ubuntu6.5?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                         |\n| Fixed version  | not fixed                                                                                   |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "MEDIUM",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/util-linux@2.39.3-9ubuntu6.5?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "4.1",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-37555",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-37555"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-37555?s=ubuntu&n=libsndfile&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "An issue was discovered in libsndfile 1.2.2 IMA ADPCM codec. The AIFF code path (line 241) was fixed with (sf_count_t) cast, but the WAV code path (line 235) and close path (line 167) were not. When samplesperblock (int) * blocks (int) exceeds INT_MAX, the 32-bit multiplication overflows before being assigned to sf.frames (sf_count_t/int64). With samplesperblock=50000 and blocks=50000, the product 2500000000 overflows to -1794967296. This causes incorrect frame count leading to heap buffer overflow or denial of service. Both values come from the WAV file header and are attacker-controlled. This issue was discovered after an incomplete fix for CVE-2022-33065.\n",
+                "markdown": "> An issue was discovered in libsndfile 1.2.2 IMA ADPCM codec. The AIFF code path (line 241) was fixed with (sf_count_t) cast, but the WAV code path (line 235) and close path (line 167) were not. When samplesperblock (int) * blocks (int) exceeds INT_MAX, the 32-bit multiplication overflows before being assigned to sf.frames (sf_count_t/int64). With samplesperblock=50000 and blocks=50000, the product 2500000000 overflows to -1794967296. This causes incorrect frame count leading to heap buffer overflow or denial of service. Both values come from the WAV file header and are attacker-controlled. This issue was discovered after an incomplete fix for CVE-2022-33065.\n\n|                |                                                                                                  |\n|----------------|--------------------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                              |\n| Fixed version  | not fixed                                                                                        |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3_severity": "MEDIUM",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "4.1",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-2999",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-2999: Improper Restriction of Operations within the Bounds of a Memory Buffer"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-2999?s=github&n=torch&t=pypi&vr=%3C2.9.1",
+              "help": {
+                "text": "A vulnerability was found in PyTorch 2.6.0. It has been rated as critical. Affected by this issue is the function torch.nn.utils.rnn.unpack_sequence. The manipulation leads to memory corruption. Attacking locally is a requirement. The exploit has been disclosed to the public and may be used.\n\nA patch is available through commit [4945180](https://github.com/pytorch/pytorch/commit/494518046816d29099b7d056a74ffa5c244fdcdd).\n",
+                "markdown": "> A vulnerability was found in PyTorch 2.6.0. It has been rated as critical. Affected by this issue is the function torch.nn.utils.rnn.unpack_sequence. The manipulation leads to memory corruption. Attacking locally is a requirement. The exploit has been disclosed to the public and may be used.\n\nA patch is available through commit [4945180](https://github.com/pytorch/pytorch/commit/494518046816d29099b7d056a74ffa5c244fdcdd).\n\n|                |                                                                 |\n|----------------|-----------------------------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                                    |\n| Affected range | <2.9.1                                                          |\n| Fixed version  | 2.9.1                                                           |\n| CVSS Score     |                                                             4.8 |\n| CVSS Vector    | CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.1",
+                "cvssV3": 4.8,
+                "cvssV3_severity": "MEDIUM",
+                "cvssV3_vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N",
+                "fixed_version": "2.9.1",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "4.8",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-55554",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-55554"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-55554?s=pypa&n=torch&t=pypi&vr=%3C2.9.0",
+              "help": {
+                "text": "pytorch v2.8.0 was discovered to contain an integer overflow in the component torch.nan_to_num-.long().\n",
+                "markdown": "> pytorch v2.8.0 was discovered to contain an integer overflow in the component torch.nan_to_num-.long().\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.9.0                                       |\n| Fixed version  | 2.9.0                                        |\n| CVSS Score     |                                          5.3 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.0",
+                "cvssV3": 5.3,
+                "cvssV3_severity": "MEDIUM",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L",
+                "fixed_version": "2.9.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "5.3",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-66382",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-66382"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-66382?s=ubuntu&n=expat&ns=ubuntu&t=deb&osn=ubuntu&osv=24.04&vr=%3E%3D0",
+              "help": {
+                "text": "In libexpat through 2.7.3, a crafted file with an approximate size of 2 MiB can lead to dozens of seconds of processing time.\n",
+                "markdown": "> In libexpat through 2.7.3, a crafted file with an approximate size of 2 MiB can lead to dozens of seconds of processing time.\n\n|                |                                                                                       |\n|----------------|---------------------------------------------------------------------------------------|\n| Package        | pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.4?os_distro=noble&os_name=ubuntu&os_version=24.04 |\n| Affected range | >=0                                                                                   |\n| Fixed version  | not fixed                                                                             |\n| CVSS Score     |                                                                                   5.5 |\n| CVSS Vector    | CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H                                          |\n"
+              },
+              "properties": {
+                "affected_version": ">=0",
+                "cvssV3": 5.5,
+                "cvssV3_severity": "MEDIUM",
+                "cvssV3_vector": "CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.4?os_distro=noble&os_name=ubuntu&os_version=24.04"
+                ],
+                "security-severity": "5.5",
+                "tags": [
+                  "MEDIUM"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-55551",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-55551"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-55551?s=pypa&n=torch&t=pypi&vr=%3C2.9.0",
+              "help": {
+                "text": "An issue in the component torch.linalg.lu of pytorch v2.8.0 allows attackers to cause a Denial of Service (DoS) when performing a slice operation.\n",
+                "markdown": "> An issue in the component torch.linalg.lu of pytorch v2.8.0 allows attackers to cause a Denial of Service (DoS) when performing a slice operation.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.9.0                                       |\n| Fixed version  | 2.9.0                                        |\n| CVSS Score     |                                          7.5 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.0",
+                "cvssV3": 7.5,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "fixed_version": "2.9.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.5",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2025-55552",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2025-55552"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2025-55552?s=pypa&n=torch&t=pypi&vr=%3C2.9.0",
+              "help": {
+                "text": "pytorch v2.8.0 was discovered to display unexpected behavior when the components torch.rot90 and torch.randn_like are used together.\n",
+                "markdown": "> pytorch v2.8.0 was discovered to display unexpected behavior when the components torch.rot90 and torch.randn_like are used together.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.9.0                                       |\n| Fixed version  | 2.9.0                                        |\n| CVSS Score     |                                          7.5 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.9.0",
+                "cvssV3": 7.5,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                "fixed_version": "2.9.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.5",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-4538",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-4538"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-4538?s=pypa&n=torch&t=pypi&vr=%3C%3D2.10.0",
+              "help": {
+                "text": "A vulnerability was identified in PyTorch 2.10.0. The affected element is an unknown function of the component pt2 Loading Handler. The manipulation leads to deserialization. The attack can only be performed from a local environment. The exploit is publicly available and might be used. The project was informed of the problem early through a pull request but has not reacted yet.\n",
+                "markdown": "> A vulnerability was identified in PyTorch 2.10.0. The affected element is an unknown function of the component pt2 Loading Handler. The manipulation leads to deserialization. The attack can only be performed from a local environment. The exploit is publicly available and might be used. The project was informed of the problem early through a pull request but has not reacted yet.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <=2.10.0                                     |\n| Fixed version  | not fixed                                    |\n| CVSS Score     |                                          7.8 |\n| CVSS Vector    | CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<=2.10.0",
+                "cvssV3": 7.8,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+                "fixed_version": "not fixed",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "7.8",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            },
+            {
+              "id": "CVE-2026-24747",
+              "name": "OsPackageVulnerability",
+              "shortDescription": {
+                "text": "CVE-2026-24747"
+              },
+              "helpUri": "https://scout.docker.com/v/CVE-2026-24747?s=pypa&n=torch&t=pypi&vr=%3C2.10.0",
+              "help": {
+                "text": "PyTorch is a Python package that provides tensor computation. Prior to version 2.10.0, a vulnerability in PyTorch's `weights_only` unpickler allows an attacker to craft a malicious checkpoint file (`.pth`) that, when loaded with `torch.load(..., weights_only=True)`, can corrupt memory and potentially lead to arbitrary code execution. Version 2.10.0 fixes the issue.\n",
+                "markdown": "> PyTorch is a Python package that provides tensor computation. Prior to version 2.10.0, a vulnerability in PyTorch's `weights_only` unpickler allows an attacker to craft a malicious checkpoint file (`.pth`) that, when loaded with `torch.load(..., weights_only=True)`, can corrupt memory and potentially lead to arbitrary code execution. Version 2.10.0 fixes the issue.\n\n|                |                                              |\n|----------------|----------------------------------------------|\n| Package        | pkg:pypi/torch@2.8.0%2Bcu128                 |\n| Affected range | <2.10.0                                      |\n| Fixed version  | 2.10.0                                       |\n| CVSS Score     |                                          8.8 |\n| CVSS Vector    | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H |\n"
+              },
+              "properties": {
+                "affected_version": "<2.10.0",
+                "cvssV3": 8.8,
+                "cvssV3_severity": "HIGH",
+                "cvssV3_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+                "fixed_version": "2.10.0",
+                "purls": [
+                  "pkg:pypi/torch@2.8.0%2Bcu128"
+                ],
+                "security-severity": "8.8",
+                "tags": [
+                  "HIGH"
+                ]
+              }
+            }
+          ],
+          "version": "1.18.3"
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-2236",
+          "ruleIndex": 0,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2024-2236                                                                                 \n  Severity        : LOW                                                                                           \n  Package         : pkg:deb/ubuntu/libgcrypt20@1.10.3-2ubuntu0.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                           \n  Fixed version   : not fixed                                                                                     \n  EPSS Score      : 0.011140                                                                                      \n  EPSS Percentile : 0.631590                                                                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libgcrypt20/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libgcrypt20:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libgcrypt.so.20.4.3"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libgcrypt20/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libgcrypt20/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/libgcrypt20/clean-up-unmanaged-libraries"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-56433",
+          "ruleIndex": 1,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2024-56433                                                                                     \n  Severity        : LOW                                                                                                \n  Package         : pkg:deb/ubuntu/shadow@1%3A4.13%2Bdfsg1-4ubuntu3.2?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                                \n  Fixed version   : not fixed                                                                                          \n  EPSS Score      : 0.004080                                                                                           \n  EPSS Percentile : 0.339030                                                                                           \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/login/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.conffiles"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.postinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.postrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.preinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/login.prerm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/passwd/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.conffiles"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.postinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.postrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.preinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/passwd.prerm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/login.defs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/login"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/faillog"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lastlog"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/login"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/newgrp"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/nologin"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/apport/package-hooks/source_shadow.py"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/login/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/login/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/login"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/default/useradd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/chfn"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/chpasswd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/chsh"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/newusers"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/passwd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/chage"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/chfn"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/chsh"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/expiry"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/gpasswd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/passwd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/tmpfiles.d/passwd.conf"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/chgpasswd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/chpasswd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/cppw"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/groupadd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/groupdel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/groupmems"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/groupmod"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/grpck"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/grpconv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/grpunconv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/newusers"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/pwck"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/pwconv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/pwunconv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/shadowconfig"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/useradd"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/userdel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/usermod"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/vipw"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/passwd/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/passwd/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/passwd"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-3000",
+          "ruleIndex": 2,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-3000                                                        \n  Severity        : LOW                                                                  \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                                         \n  Affected range  : <=2.12.1                                                             \n  Fixed version   : 2.13.0                                                               \n  CVSS Score      : 1.9                                                                  \n  CVSS Vector     : CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P  \n  EPSS Score      : 0.001900                                                             \n  EPSS Percentile : 0.088960                                                             \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-3001",
+          "ruleIndex": 3,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-3001                                                        \n  Severity        : LOW                                                                  \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                                         \n  Affected range  : <2.10.0                                                              \n  Fixed version   : 2.10.0                                                               \n  CVSS Score      : 1.9                                                                  \n  CVSS Vector     : CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N/E:P  \n  EPSS Score      : 0.001890                                                             \n  EPSS Percentile : 0.088060                                                             \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-40228",
+          "ruleIndex": 4,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-40228                                                                            \n  Severity        : LOW                                                                                       \n  Package         : pkg:deb/ubuntu/systemd@255.4-1ubuntu8.17?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                       \n  Fixed version   : not fixed                                                                                 \n  CVSS Score      : 3.3                                                                                       \n  CVSS Vector     : CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:L/A:N                                              \n  EPSS Score      : 0.001730                                                                                  \n  EPSS Percentile : 0.069760                                                                                  \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsystemd0/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libsystemd0:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libudev1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libudev1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libsystemd.so.0.38.0"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsystemd0/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsystemd0/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libudev.so.1.7.8"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libudev1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libudev1/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-27171",
+          "ruleIndex": 5,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-27171                                                                                 \n  Severity        : LOW                                                                                            \n  Package         : pkg:deb/ubuntu/zlib@1%3A1.3.dfsg-3.1ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                            \n  Fixed version   : not fixed                                                                                      \n  CVSS Score      : 5.5                                                                                            \n  CVSS Vector     : CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H                                                   \n  EPSS Score      : 0.002180                                                                                       \n  EPSS Percentile : 0.124270                                                                                       \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/zlib1g/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/zlib1g:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libz.so.1.3"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/zlib1g/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/zlib1g/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2024-50613",
+          "ruleIndex": 6,
+          "kind": "fail",
+          "level": "note",
+          "message": {
+            "text": "  Vulnerability   : CVE-2024-50613                                                                                    \n  Severity        : LOW                                                                                               \n  Package         : pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                               \n  Fixed version   : not fixed                                                                                         \n  CVSS Score      : 6.5                                                                                               \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H                                                      \n  EPSS Score      : 0.005090                                                                                          \n  EPSS Percentile : 0.409890                                                                                          \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libsndfile1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libsndfile.so.1.0.37"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-52194",
+          "ruleIndex": 7,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-52194                                                                                    \n  Severity        : MEDIUM                                                                                            \n  Package         : pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                               \n  Fixed version   : not fixed                                                                                         \n  EPSS Score      : 0.006280                                                                                          \n  EPSS Percentile : 0.470290                                                                                          \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libsndfile1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libsndfile.so.1.0.37"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-13757",
+          "ruleIndex": 8,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-13757                                                                            \n  Severity        : MEDIUM                                                                                    \n  Package         : pkg:deb/ubuntu/p11-kit@0.25.3-4ubuntu2.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                       \n  Fixed version   : not fixed                                                                                 \n  EPSS Score      : 0.001480                                                                                  \n  EPSS Percentile : 0.045440                                                                                  \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libp11-kit0/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libp11-kit0:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libp11-kit.so.0.3.1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libp11-kit0/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libp11-kit0/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-2219",
+          "ruleIndex": 9,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-2219                                                                        \n  Severity        : MEDIUM                                                                               \n  Package         : pkg:deb/ubuntu/dpkg@1.22.6ubuntu6.6?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                  \n  Fixed version   : not fixed                                                                            \n  EPSS Score      : 0.004180                                                                             \n  EPSS Percentile : 0.347410                                                                             \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/dpkg/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/dpkg.conffiles"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/dpkg.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/dpkg.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/dpkg.postinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/dpkg.postrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/alternatives/README"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/cron.daily/dpkg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/dpkg/dpkg.cfg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/logrotate.d/alternatives"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/logrotate.d/dpkg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-deb"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-divert"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-maintscript-helper"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-query"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-realpath"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-split"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-statoverride"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dpkg-trigger"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/update-alternatives"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/systemd/system/dpkg-db-backup.service"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/systemd/system/dpkg-db-backup.timer"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/libexec/dpkg/dpkg-db-backup"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/libexec/dpkg/dpkg-db-keeper"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/start-stop-daemon"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bug/dpkg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/dpkg/changelog.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/dpkg/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/dpkg/abitable"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/dpkg/cputable"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/dpkg/ostable"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/dpkg/sh/dpkg-error.sh"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/dpkg/tupletable"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/dpkg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/profiles/dpkg/main.profile"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/polkit-1/actions/org.dpkg.pkexec.update-alternatives.policy"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-27456",
+          "ruleIndex": 10,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-27456                                                                               \n  Severity        : MEDIUM                                                                                       \n  Package         : pkg:deb/ubuntu/util-linux@2.39.3-9ubuntu6.5?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                          \n  Fixed version   : not fixed                                                                                    \n  EPSS Score      : 0.001180                                                                                     \n  EPSS Percentile : 0.019980                                                                                     \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/bsdutils/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/bsdutils.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/bsdutils.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libblkid1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libblkid1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libmount1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libmount1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsmartcols1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libsmartcols1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libuuid1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libuuid1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/mount/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/mount.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/mount.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/util-linux/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.conffiles"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.list"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.postinst"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.postrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/util-linux.prerm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/logger"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/renice"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/script"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/scriptlive"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/scriptreplay"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/wall"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/logger"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/renice"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/script"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/scriptlive"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/scriptreplay"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/wall"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/bsdutils/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/bsdutils/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/bsdutils"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libblkid.so.1.1.0"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libblkid1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libblkid1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/libblkid1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libmount.so.1.1.0"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libmount1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/libmount1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libsmartcols.so.1.1.0"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsmartcols1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsmartcols1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/libsmartcols1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libuuid.so.1.3.0"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libuuid1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libuuid1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/mount"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/umount"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/losetup"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/swapoff"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/swapon"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/losetup"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mount"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/swapoff"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/swapon"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/umount"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/mount/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/mount"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/runuser"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/runuser-l"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/su"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/etc/pam.d/su-l"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/addpart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/choom"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/chrt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/delpart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/dmesg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/fallocate"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/findmnt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/flock"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/getopt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/hardlink"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/ionice"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/ipcmk"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/ipcrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/ipcs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/last"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lsblk"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lscpu"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lsipc"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lslocks"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lslogins"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lsmem"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/lsns"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/mcookie"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/mesg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/more"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/mountpoint"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/namei"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/nsenter"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/partx"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/prlimit"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/rename.ul"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/resizepart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/rev"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/setarch"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/setpriv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/setsid"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/setterm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/su"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/taskset"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/uclampset"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/unshare"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/utmpdump"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/wdctl"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/bin/whereis"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/mime/packages/util-linux"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/systemd/system/fstrim.service"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/systemd/system/fstrim.timer"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/agetty"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/blkdiscard"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/blkid"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/blkzone"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/blockdev"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/chcpu"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/chmem"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/ctrlaltdel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/findfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/fsck"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/fsck.cramfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/fsck.minix"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/fsfreeze"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/fstrim"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/isosize"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/ldattach"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/mkfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/mkfs.bfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/mkfs.cramfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/mkfs.minix"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/mkswap"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/pivot_root"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/readprofile"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/rtcwake"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/runuser"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/sulogin"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/swaplabel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/switch_root"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/wipefs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/sbin/zramctl"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/addpart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/blkdiscard"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/blkid"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/blkzone"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/blockdev"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/chcpu"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/chmem"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/chrt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ctrlaltdel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/delpart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/dmesg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fallocate"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/findfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/findmnt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/flock"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fsck"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fsck.cramfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fsck.minix"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fsfreeze"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/fstrim"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/getopt"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/hardlink"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ionice"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ipcmk"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ipcrm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ipcs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/isosize"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/last"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/ldattach"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lsblk"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lscpu"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lsipc"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lslocks"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lslogins"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lsmem"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/lsns"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mcookie"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mesg"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mkfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mkfs.bfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mkfs.cramfs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mkfs.minix"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mkswap"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/more"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/mountpoint"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/namei"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/nsenter"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/partx"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/pivot_root"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/prlimit"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/readprofile"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/resizepart"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/rev"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/rtcwake"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/setarch"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/setpriv"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/setsid"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/setterm"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/su"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/swaplabel"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/taskset"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/uclampset"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/unshare"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/utmpdump"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/wdctl"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/whereis"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/wipefs"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/bash-completion/completions/zramctl"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/util-linux/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/lintian/overrides/util-linux"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/util-linux/logcheck/ignore.d.server/util-linux"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-37555",
+          "ruleIndex": 11,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-37555                                                                                    \n  Severity        : MEDIUM                                                                                            \n  Package         : pkg:deb/ubuntu/libsndfile@1.2.2-1ubuntu5.24.04.1?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                               \n  Fixed version   : not fixed                                                                                         \n  EPSS Score      : 0.005040                                                                                          \n  EPSS Percentile : 0.406990                                                                                          \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libsndfile1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libsndfile.so.1.0.37"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libsndfile1/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-2999",
+          "ruleIndex": 12,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-2999                                                    \n  Severity        : MEDIUM                                                           \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                                     \n  Affected range  : <2.9.1                                                           \n  Fixed version   : 2.9.1                                                            \n  CVSS Score      : 4.8                                                              \n  CVSS Vector     : CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:L/VI:L/VA:L/SC:N/SI:N/SA:N  \n  EPSS Score      : 0.001890                                                         \n  EPSS Percentile : 0.088060                                                         \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-55554",
+          "ruleIndex": 13,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-55554                                \n  Severity        : MEDIUM                                        \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.9.0                                        \n  Fixed version   : 2.9.0                                         \n  CVSS Score      : 5.3                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L  \n  EPSS Score      : 0.002940                                      \n  EPSS Percentile : 0.217740                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-66382",
+          "ruleIndex": 14,
+          "kind": "fail",
+          "level": "warning",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-66382                                                                         \n  Severity        : MEDIUM                                                                                 \n  Package         : pkg:deb/ubuntu/expat@2.6.1-2ubuntu0.4?os_distro=noble&os_name=ubuntu&os_version=24.04  \n  Affected range  : >=0                                                                                    \n  Fixed version   : not fixed                                                                              \n  CVSS Score      : 5.5                                                                                    \n  CVSS Vector     : CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:N/I:N/A:H                                           \n  EPSS Score      : 0.002060                                                                               \n  EPSS Percentile : 0.108410                                                                               \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libexpat1/copyright"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/info/libexpat1:amd64.md5sums"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/var/lib/dpkg/status"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libexpat.so.1.9.1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/lib/x86_64-linux-gnu/libexpatw.so.1.9.1"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libexpat1/changelog.Debian.gz"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/usr/share/doc/libexpat1/copyright"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-55551",
+          "ruleIndex": 15,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-55551                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.9.0                                        \n  Fixed version   : 2.9.0                                         \n  CVSS Score      : 7.5                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H  \n  EPSS Score      : 0.003940                                      \n  EPSS Percentile : 0.325120                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2025-55552",
+          "ruleIndex": 16,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2025-55552                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.9.0                                        \n  Fixed version   : 2.9.0                                         \n  CVSS Score      : 7.5                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H  \n  EPSS Score      : 0.003900                                      \n  EPSS Percentile : 0.320480                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-4538",
+          "ruleIndex": 17,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-4538                                 \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <=2.10.0                                      \n  Fixed version   : not fixed                                     \n  CVSS Score      : 7.8                                           \n  CVSS Vector     : CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H  \n  EPSS Score      : 0.002390                                      \n  EPSS Percentile : 0.151450                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "CVE-2026-24747",
+          "ruleIndex": 18,
+          "kind": "fail",
+          "level": "error",
+          "message": {
+            "text": "  Vulnerability   : CVE-2026-24747                                \n  Severity        : HIGH                                          \n  Package         : pkg:pypi/torch@2.8.0%2Bcu128                  \n  Affected range  : <2.10.0                                       \n  Fixed version   : 2.10.0                                        \n  CVSS Score      : 8.8                                           \n  CVSS Vector     : CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H  \n  EPSS Score      : 0.006950                                      \n  EPSS Percentile : 0.498360                                      \n"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/METADATA"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/RECORD"
+                }
+              }
+            },
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "/opt/venv/lib/python3.12/site-packages/torch-2.8.0+cu128.dist-info/top_level.txt"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
