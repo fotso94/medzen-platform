@@ -101,11 +101,20 @@ REGISTRY: dict[str, Normalizer] = {
     "fula":    Normalizer("generic-norm-v1", _base),
     "luganda": Normalizer("generic-norm-v1", _base),
     "acholi":  Normalizer("generic-norm-v1", _base),
+    # round-1 training languages, assigned from corpus evidence
+    # (GB1-NORMALIZER-AUDIT-2026-001): kinyarwanda 0.04 combining marks per
+    # 1k chars -> generic; serer/pulaar Latin-extended (hook letters are
+    # LETTERS, not diacritics; _base keeps \w) -> generic; yemba 150
+    # combining marks per 1k chars, tone-marked Grassfields -> tonal.
+    "kinyarwanda": Normalizer("generic-norm-v1", _base),
+    "serer":       Normalizer("generic-norm-v1", _base),
+    "pulaar":      Normalizer("generic-norm-v1", _base),
     # tonal with phonemic diacritics
     "igbo":    Normalizer("tonal-norm-v1", _tonal, tonal=True),
     "yoruba":  Normalizer("tonal-norm-v1", _tonal, tonal=True),
     "akan":    Normalizer("tonal-norm-v1", _tonal, tonal=True),
     "ewe":     Normalizer("tonal-norm-v1", _tonal, tonal=True),
+    "yemba":   Normalizer("tonal-norm-v1", _tonal, tonal=True),
 }
 
 DEFAULT = Normalizer("generic-norm-v1", _base)
