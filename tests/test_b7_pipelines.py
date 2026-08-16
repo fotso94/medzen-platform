@@ -39,13 +39,43 @@ def test_no_static_aws_keys_anywhere():
             assert marker not in body, f"{path.name} references static AWS keys"
 
 
+MINIMAL = {"contents": "read", "id-token": "write"}
+# Job-level additions must be documented here and nowhere else: the plan job
+# posts the terraform plan for review; the drift job turns findings into
+# visible work items. Nothing ever gets write on contents.
+DOCUMENTED_JOB_ADDITIONS = {
+    "infra-pipeline.yml": {
+        "plan": {**MINIMAL, "pull-requests": "write"},
+        "drift": {**MINIMAL, "issues": "write"},
+    },
+}
+
+
 def test_permissions_are_minimal_everywhere():
     for path in _workflow_files():
         doc = yaml.safe_load(path.read_text())
-        perms = doc.get("permissions")
-        assert perms == {"contents": "read", "id-token": "write"}, (
-            f"{path.name}: permissions must be exactly contents:read + id-token:write"
+        assert doc.get("permissions") == MINIMAL, (
+            f"{path.name}: top-level permissions must be exactly contents:read + id-token:write"
         )
+        allowed = DOCUMENTED_JOB_ADDITIONS.get(path.name, {})
+        for job_name, job in doc.get("jobs", {}).items():
+            job_perms = job.get("permissions")
+            if job_perms is None:
+                continue
+            assert job_perms == allowed.get(job_name), (
+                f"{path.name}:{job_name}: undocumented job-level permissions {job_perms}"
+            )
+        for job_name, expected in allowed.items():
+            assert doc["jobs"][job_name].get("permissions") == expected
+
+
+def test_infra_apply_requires_the_protected_environment():
+    doc = yaml.safe_load((WORKFLOWS / "infra-pipeline.yml").read_text())
+    assert doc["jobs"]["apply"]["environment"] == "infrastructure"
+    for job_name in ("plan", "apply", "drift"):
+        assert "MEDZEN_CI_ROLE_ARN" in doc["jobs"][job_name]["if"]
+    assert "if" not in doc["jobs"]["fmt-validate"], "offline validation must always run"
+    assert "-auto-approve" not in str(doc["jobs"]["plan"]), "plan job must never apply"
 
 
 def test_aws_touching_jobs_ship_dark_until_the_ci_role_exists():
