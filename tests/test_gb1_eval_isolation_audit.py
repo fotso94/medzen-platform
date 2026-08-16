@@ -62,4 +62,5 @@ def test_research_only_licences_are_flagged(tmp_path):
     _manifest(tmp_path / "train/a.jsonl", [_row("alpha", "c1", "s1", "e1", "x", lic="afrispeech_nc_research")])
     _manifest(tmp_path / "eval/a.jsonl", [_row("alpha", "c2", "s2", "e2", "y")])
     report = audit({"a.jsonl": tmp_path / "train/a.jsonl"}, {"a.jsonl": tmp_path / "eval/a.jsonl"})
-    assert report["licence_inventory"]["a.jsonl"]["research_only_flag"] is True
+    assert report["licence_inventory"]["train:a.jsonl"]["research_only_flag"] is True
+    assert report["licence_inventory"]["eval:a.jsonl"]["research_only_flag"] is False

@@ -73,7 +73,7 @@ def audit(train_manifests: dict[str, Path], eval_manifests: dict[str, Path]) -> 
             if k["text"]:
                 bucket["texts"][k["text"]] += 1
             seen_lic[(str(k["license"]), str(k["consent"]), str(k["release"]))] += 1
-        licences[name] = {
+        licences[f"train:{name}"] = {
             "zone": "train",
             "rows": len(rows),
             "declarations": [
@@ -125,7 +125,7 @@ def audit(train_manifests: dict[str, Path], eval_manifests: dict[str, Path]) -> 
             if k["text"] and bucket["texts"].get(k["text"]):
                 entry["exact_text_collisions"] += 1
                 text_collisions_total += 1
-        licences[name] = {
+        licences[f"eval:{name}"] = {
             "zone": "eval",
             "rows": len(rows),
             "declarations": [
