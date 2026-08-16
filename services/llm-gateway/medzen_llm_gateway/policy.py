@@ -70,7 +70,24 @@ class PolicyStore:
         self.source_sha256 = hashlib.sha256(self.source_raw).hexdigest()
 
     def aliases(self) -> tuple[str, ...]:
-        return tuple(path.stem for path in sorted(self.registry_dir.glob("*.yaml")))
+        """Serving aliases: every generated record, EXCLUDING data_only
+        declarations. A data_only language holds evaluation data and no
+        capability (registry A4 rung below 'declared') — the platform
+        refuses it at request time rather than manufacturing a policy."""
+        serving = []
+        for path in sorted(self.registry_dir.glob("*.yaml")):
+            if self._is_data_only(path):
+                continue
+            serving.append(path.stem)
+        return tuple(serving)
+
+    @staticmethod
+    def _is_data_only(path: Path) -> bool:
+        try:
+            record = yaml.safe_load(path.read_bytes())
+        except (OSError, yaml.YAMLError, UnicodeDecodeError):
+            return False  # unreadable files keep failing closed in load()
+        return isinstance(record, dict) and record.get("status") == "data_only"
 
     def validate_all(self) -> dict[str, LanguagePolicy]:
         aliases = self.aliases()
@@ -87,6 +104,10 @@ class PolicyStore:
         if ALIAS_RE.fullmatch(alias) is None:
             raise PolicyRefusal("language alias is malformed")
         path = self.registry_dir / f"{alias}.yaml"
+        if path.is_file() and self._is_data_only(path):
+            raise PolicyRefusal(
+                "language holds evaluation data only — no serving capability"
+            )
         try:
             raw = path.read_bytes()
             language = yaml.safe_load(raw)
