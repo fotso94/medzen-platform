@@ -53,7 +53,7 @@ resource "aws_cloudwatch_metric_alarm" "error_rate" {
 
   metric_query {
     id          = "error_pct"
-    expression  = "100*(errors/MAX([requests,1]))"
+    expression  = "IF(requests > 0, 100 * errors / requests, 0)"
     label       = "5xx percentage"
     return_data = true
   }
@@ -124,6 +124,26 @@ resource "aws_cloudwatch_metric_alarm" "readiness" {
     TargetGroup  = var.b7_target_group_arn_suffix
   }
   alarm_actions = [aws_sns_topic.b7_canary[0].arn]
+}
+
+# EventBridge cannot publish to SNS without an explicit topic policy for
+# the events service principal — without this, activation would page nobody.
+resource "aws_sns_topic_policy" "b7_canary_events" {
+  count = var.b7_canary_enabled ? 1 : 0
+  arn   = aws_sns_topic.b7_canary[0].arn
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid       = "AllowEventBridgePublish"
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sns:Publish"
+      Resource  = aws_sns_topic.b7_canary[0].arn
+      Condition = {
+        ArnEquals = { "aws:SourceArn" = aws_cloudwatch_event_rule.b7_canary_alarm[0].arn }
+      }
+    }]
+  })
 }
 
 resource "aws_cloudwatch_event_rule" "b7_canary_alarm" {

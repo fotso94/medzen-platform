@@ -18,10 +18,16 @@ class StubSSM:
         self._versions = versions
         self.put_calls = []
 
-    def get_parameter_history(self, Name, WithDecryption):
-        return {"Parameters": [
-            {"Version": i + 1, "Value": v} for i, v in enumerate(self._versions)
-        ]}
+    PAGE = 50
+
+    def get_parameter_history(self, Name, WithDecryption, NextToken=None):
+        start = int(NextToken) if NextToken else 0
+        page = [{"Version": i + 1, "Value": v, "Type": "SecureString"}
+                for i, v in enumerate(self._versions)][start:start + self.PAGE]
+        response = {"Parameters": page}
+        if start + self.PAGE < len(self._versions):
+            response["NextToken"] = str(start + self.PAGE)
+        return response
 
     def put_parameter(self, **kwargs):
         self.put_calls.append(kwargs)
@@ -79,3 +85,25 @@ def test_tampered_readback_fails_closed():
     plan = plan_rollback(stub, ALIAS)
     with pytest.raises(RollbackRefusal, match="readback differs"):
         execute_rollback(stub, plan)
+
+
+def test_pagination_reaches_the_true_latest_version():
+    """A 60-version parameter must roll back to v59, not page-1's v49."""
+    stub = StubSSM([f"v{i}" for i in range(1, 61)])
+    plan = plan_rollback(stub, ALIAS)
+    assert plan["current_version"] == 60
+    assert plan["restore_value"] == "v59"
+
+
+def test_parameter_type_is_preserved_on_restore():
+    class StringTyped(StubSSM):
+        def get_parameter_history(self, Name, WithDecryption, NextToken=None):
+            response = super().get_parameter_history(Name, WithDecryption, NextToken)
+            for entry in response["Parameters"]:
+                entry["Type"] = "String"
+            return response
+
+    stub = StringTyped(["v1", "v2"])
+    plan = plan_rollback(stub, ALIAS)
+    execute_rollback(stub, plan)
+    assert stub.put_calls[0]["Type"] == "String"

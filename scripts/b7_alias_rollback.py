@@ -38,9 +38,17 @@ def plan_rollback(ssm_client: Any, parameter_name: str) -> dict[str, Any]:
         )
     if not parameter_name.startswith(REGISTRY_PREFIX):
         raise RollbackRefusal(f"{parameter_name} is outside {REGISTRY_PREFIX}")
-    history = ssm_client.get_parameter_history(
-        Name=parameter_name, WithDecryption=True
-    ).get("Parameters", [])
+    history: list[dict[str, Any]] = []
+    token: str | None = None
+    while True:
+        kwargs: dict[str, Any] = {"Name": parameter_name, "WithDecryption": True}
+        if token:
+            kwargs["NextToken"] = token
+        page = ssm_client.get_parameter_history(**kwargs)
+        history.extend(page.get("Parameters", []))
+        token = page.get("NextToken")
+        if not token:
+            break
     if len(history) < 2:
         raise RollbackRefusal(
             f"{parameter_name} has {len(history)} version(s) — nothing to roll back to"
@@ -53,6 +61,7 @@ def plan_rollback(ssm_client: Any, parameter_name: str) -> dict[str, Any]:
         )
     return {
         "parameter": parameter_name,
+        "parameter_type": current.get("Type", "SecureString"),
         "current_version": current["Version"],
         "previous_version": previous["Version"],
         "restore_value": previous["Value"],
@@ -64,7 +73,7 @@ def execute_rollback(ssm_client: Any, plan: dict[str, Any]) -> dict[str, Any]:
     response = ssm_client.put_parameter(
         Name=plan["parameter"],
         Value=plan["restore_value"],
-        Type="SecureString",
+        Type=plan["parameter_type"],
         Overwrite=True,
     )
     readback = ssm_client.get_parameter(Name=plan["parameter"], WithDecryption=True)
