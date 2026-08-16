@@ -14,14 +14,14 @@ class Candidate:
     conditioned: bool
 
 
+# whisper-large-v3 was REMOVED from the evaluated candidate set by owner
+# directive 2026-08-16 after 8,283 fully-covered rows across four unit-sets
+# proved it structurally unusable on the target languages (CER 55-127%,
+# WER above 100% everywhere, capped decodes on Ge'ez script) while
+# consuming ~75% of every shard's wall time. Its artifacts remain staged
+# and integrity-verified (verify_model_root is unchanged) so the historical
+# five-arm protocol stays reproducible from the same bundles.
 CANDIDATES = {
-    "whisper-large-v3": Candidate(
-        name="whisper-large-v3",
-        family="whisper_ct2",
-        model_sha256="5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e",
-        unconditioned=True,
-        conditioned=True,
-    ),
     "omniASR_CTC_1B_v2": Candidate(
         name="omniASR_CTC_1B_v2",
         family="meta_ctc",

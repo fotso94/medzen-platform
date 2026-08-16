@@ -44,7 +44,7 @@ class _FakeBackend:
 
     def transcribe(self, audio, language_id):
         capped = audio.read_bytes().startswith(b"CAP")
-        if capped and self.candidate == "whisper-large-v3":
+        if capped and self.candidate == "omniASR_LLM_1B_v2":
             return Transcript(
                 text="truncated runaway output",
                 eos_observed=False,
@@ -111,7 +111,7 @@ def _run(tmp_path, capped_flags):
 def test_single_cap_hit_is_scored_and_counted_not_fatal(tmp_path):
     result = _run(tmp_path, [True, False, False, False, False, False])
     groups = result["aggregate"]["groups"]
-    whisper = groups["whisper-large-v3|unconditioned"]
+    whisper = groups["omniASR_LLM_1B_v2|unconditioned"]
     assert whisper["rows"] == 6
     assert whisper["cap_hits"] == 1
     assert whisper["eos_failures"] == 1
@@ -137,4 +137,4 @@ def test_flagged_fraction_beyond_the_bound_fails_closed(tmp_path):
 
 def test_small_passes_never_trip_the_bound(tmp_path):
     result = _run(tmp_path, [True, False, False, False])
-    assert result["aggregate"]["groups"]["whisper-large-v3|unconditioned"]["cap_hits"] == 1
+    assert result["aggregate"]["groups"]["omniASR_LLM_1B_v2|unconditioned"]["cap_hits"] == 1
