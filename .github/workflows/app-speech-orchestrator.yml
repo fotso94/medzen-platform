@@ -1,0 +1,21 @@
+# B7 application pipeline instance for speech-orchestrator (generated pattern, edited by review).
+name: app-speech-orchestrator
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/speech-orchestrator/**"
+      - "platform/services.yaml"
+      - ".github/workflows/_service-pipeline.yml"
+      - ".github/workflows/app-speech-orchestrator.yml"
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: speech-orchestrator
+      context_path: services/speech-orchestrator
+      ecr_repository: medzen-speech-orchestrator
+      k8s_deployment: speech-orchestrator

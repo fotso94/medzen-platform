@@ -1,0 +1,21 @@
+# B7 application pipeline instance for rag-index (generated pattern, edited by review).
+name: app-rag-index
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/rag-index/**"
+      - "platform/services.yaml"
+      - ".github/workflows/_service-pipeline.yml"
+      - ".github/workflows/app-rag-index.yml"
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: rag-index
+      context_path: services/rag-index
+      ecr_repository: medzen-rag-index
+      k8s_deployment: rag-index

@@ -1,0 +1,21 @@
+# B7 application pipeline instance for asr-runtime (generated pattern, edited by review).
+name: app-asr-runtime
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/asr-runtime/**"
+      - "platform/services.yaml"
+      - ".github/workflows/_service-pipeline.yml"
+      - ".github/workflows/app-asr-runtime.yml"
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: asr-runtime
+      context_path: services/asr-runtime
+      ecr_repository: medzen-asr-runtime
+      k8s_deployment: asr-runtime

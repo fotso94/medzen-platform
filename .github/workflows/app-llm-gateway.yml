@@ -1,0 +1,21 @@
+# B7 application pipeline instance for llm-gateway (generated pattern, edited by review).
+name: app-llm-gateway
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/llm-gateway/**"
+      - "platform/services.yaml"
+      - ".github/workflows/_service-pipeline.yml"
+      - ".github/workflows/app-llm-gateway.yml"
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  pipeline:
+    uses: ./.github/workflows/_service-pipeline.yml
+    with:
+      service: llm-gateway
+      context_path: services/llm-gateway
+      ecr_repository: medzen-llm-gateway
+      k8s_deployment: llm-gateway
