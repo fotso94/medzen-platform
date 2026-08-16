@@ -119,6 +119,9 @@ def step_prestage(shard: int, state: dict) -> Path:
     summary = ROOT / f"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-DRIVER-S{shard}-SUMMARY.json"
     workdir = SCRATCH / f"driver-shard{shard}-prestage"
     if not summary.exists():
+        import time as _time
+        started = _time.monotonic()
+        state["prestage_elapsed_scope"] = "FULL_PRESTAGE_INCLUDING_SOURCE_DOWNLOAD_AND_BUNDLE_BUILD"
         _run([sys.executable, "scripts/asr_base_model_pilot_staging.py",
               "--selection", str(state["selection_path"]),
               "--meta-source-bundle", str(SCRATCH / "pilot-bundle-source.json"),
@@ -128,6 +131,7 @@ def step_prestage(shard: int, state: dict) -> Path:
               "--kms-key-arn", KMS,
               "--audio-cache", str(SCRATCH / "bulk")],
              env=None)
+        state["prestage_elapsed_seconds"] = round(_time.monotonic() - started, 1)
     return workdir
 
 
@@ -178,7 +182,9 @@ def step_proof(shard: int, state: dict, proof_number: str) -> Path:
                                     "version_id": bundle_head["VersionId"]},
                          "receipt_sha256": receipt["receipt_sha256"]},
         "prefix": prefix, "record": "ASR_BASE_MODEL_COMPLETE_BUNDLE_PRESTAGE_PROOF",
-        "recorded_utc": prev["recorded_utc"], "schema_version": 1,
+        "recorded_utc": __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "schema_version": 1,
         "scope": f"SUITE_SHARD_{shard}_AUDIO_AND_METADATA_WITH_META_SOURCE_REFERENCES",
         "source": {"meta_source_prefix": META_PREFIX,
                    "meta_source_proof": "ASR-BASE-MODEL-PRESTAGE-PROOF-2026-001",
@@ -188,6 +194,10 @@ def step_proof(shard: int, state: dict, proof_number: str) -> Path:
                          "deadline_seconds": 18000, "estimated_fast_stage_seconds": 7200,
                          "in_attempt_upload_bytes": 0},
         "transfer": dict(prev["transfer"],
+                         elapsed_seconds=state.get("prestage_elapsed_seconds", 0.0),
+                         elapsed_scope=state.get(
+                             "prestage_elapsed_scope",
+                             "PRESTAGE_PREVIOUSLY_COMPLETED_ELAPSED_UNMEASURED"),
                          uploaded_bytes=sum(e["bytes"] for e in objects
                                             if e["key"].startswith(prefix)),
                          uploaded_objects=4, reused_objects=5, verified_bytes=total),
