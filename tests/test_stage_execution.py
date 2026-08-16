@@ -8,7 +8,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import importlib.util
+
 import pytest
+
+_needs_mlflow = pytest.mark.skipif(
+    importlib.util.find_spec("mlflow") is None,
+    reason="mlflow is a training/runtime-host dependency, absent on the engineering host",
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -947,6 +954,7 @@ def test_real_tiny_whisper_lora_collate_save_reload_and_generate(tmp_path):
     assert extract_sequence(beam)[0] == cfg.decoder_start_token_id
 
 
+@_needs_mlflow
 def test_real_mlflow_parent_child_structure(tmp_path):
     tracker = CampaignTracker(tmp_path / "mlflow.db", "camp", "7")
     child = tracker.start_stage("sweep-lr-1e-4", {
@@ -987,6 +995,7 @@ def test_real_mlflow_parent_child_structure(tmp_path):
     assert tracker.client.search_registered_models() == []
 
 
+@_needs_mlflow
 def test_mlflow_recovery_reopens_exact_failed_runs_without_creating_new_runs(
         tmp_path):
     db = tmp_path / "mlflow.db"
@@ -1006,6 +1015,7 @@ def test_mlflow_recovery_reopens_exact_failed_runs_without_creating_new_runs(
     assert recovered.children == {"decode": child}
 
 
+@_needs_mlflow
 def test_mlflow_recovery_refuses_a_child_bound_to_another_stage(tmp_path):
     db = tmp_path / "mlflow.db"
     original = CampaignTracker(db, "camp", "7")
@@ -1016,6 +1026,7 @@ def test_mlflow_recovery_refuses_a_child_bound_to_another_stage(tmp_path):
             db, "camp", "7", original.parent_run_id, {"other": child})
 
 
+@_needs_mlflow
 def test_mlflow_recovery_can_add_the_next_sequential_child(tmp_path):
     db = tmp_path / "mlflow.db"
     original = CampaignTracker(db, "camp", "7")
@@ -1191,6 +1202,7 @@ def _diagnostic_metrics(value: float, languages=None):
     }
 
 
+@_needs_mlflow
 def test_artifactize_selects_precision_before_opening_holdout(
         monkeypatch, tmp_path):
     import peft
@@ -1308,6 +1320,7 @@ def test_artifactize_selects_precision_before_opening_holdout(
     assert calls == {"float16": 3, "int8_float16": 1}
 
 
+@_needs_mlflow
 def test_artifactize_never_opens_holdout_when_no_ct2_arm_passes(
         monkeypatch, tmp_path):
     import peft

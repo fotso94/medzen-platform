@@ -15,6 +15,11 @@ from pathlib import Path
 
 import pytest
 
+_needs_torch = pytest.mark.skipif(
+    importlib.util.find_spec("torch") is None,
+    reason="torch is a training/runtime-host dependency, absent on the engineering host",
+)
+
 ROOT = Path(__file__).resolve().parent.parent
 UD = ROOT / "pipeline/eval_userdata.sh"
 
@@ -645,11 +650,13 @@ def test_both_arms_get_identical_generation_flags():
     assert base == cand
 
 
+@_needs_torch
 def test_structured_result_sequence_is_extracted():
     ids = PROMPT_ + [1000, 1001, EOT_]
     assert G.extract_sequence(FakeSeq(ids)) == ids
 
 
+@_needs_torch
 def test_bare_tensor_is_refused_not_silently_accepted():
     """A plain tensor in this mode means prompt and EOS were stripped, so EOS
     and cap-hit numbers could not be true."""
@@ -667,6 +674,7 @@ def test_unexpected_contract_object_is_refused():
         G.extract_sequence(Weird())
 
 
+@_needs_torch
 def test_multiple_sequences_are_refused():
     import torch
 

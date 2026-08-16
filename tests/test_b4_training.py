@@ -10,7 +10,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import importlib.util
+
 import pytest
+
+_needs_transformers = pytest.mark.skipif(
+    importlib.util.find_spec("transformers") is None,
+    reason="transformers is a training/runtime-host dependency, absent on the engineering host",
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -816,6 +823,7 @@ def test_logging_cadence_yields_ten_losses_by_step_100():
     assert losses_by_100 >= 2 * window, f"only {losses_by_100} losses by step {gate_step}"
 
 
+@_needs_transformers
 def test_gate_evaluates_at_step_100_on_the_real_schedule():
     from pipeline.train_asr import make_descent_gate
     g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
@@ -826,6 +834,7 @@ def test_gate_evaluates_at_step_100_on_the_real_schedule():
     assert 100 in saves
 
 
+@_needs_transformers
 def test_abort_happens_on_save_after_the_checkpoint_not_on_log():
     """Trainer logs before it saves, so raising from on_log kills the very
     checkpoint that makes the abort recoverable."""
@@ -839,6 +848,7 @@ def test_abort_happens_on_save_after_the_checkpoint_not_on_log():
     assert "not descending" in msg and "LANG_TOKEN" in msg
 
 
+@_needs_transformers
 def test_abort_is_immediate_when_no_checkpoint_step_remains():
     """Deferring to a save that will never happen would let a doomed run finish."""
     from pipeline.train_asr import make_descent_gate
@@ -848,6 +858,7 @@ def test_abort_is_immediate_when_no_checkpoint_step_remains():
     assert "no checkpoint step remains" in msg
 
 
+@_needs_transformers
 def test_non_finite_aborts_on_the_real_schedule():
     from pipeline.train_asr import make_descent_gate
     g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
@@ -857,6 +868,7 @@ def test_non_finite_aborts_on_the_real_schedule():
     assert step == 100 and "non-finite" in msg
 
 
+@_needs_transformers
 def test_gate_does_not_judge_before_its_step():
     from pipeline.train_asr import make_descent_gate
     g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
@@ -865,6 +877,7 @@ def test_gate_does_not_judge_before_its_step():
     assert g.verdict is None, "must not judge before the gate step"
 
 
+@_needs_transformers
 def test_noisy_but_descending_passes():
     from pipeline.train_asr import make_descent_gate
     g = make_descent_gate(100, REAL_SAVE_EVERY, 600)
@@ -886,6 +899,7 @@ def test_descent_gate_registered_after_the_upload_callback():
 # --------------------------------------------------------------------------- #
 # the abort must not claim resumability the uploader never achieved
 # --------------------------------------------------------------------------- #
+@_needs_transformers
 def test_uploader_verifies_objects_are_readable_after_upload(tmp_path, monkeypatch):
     """upload_file returning without raising is not the same as the objects
     being readable afterwards."""
@@ -916,6 +930,7 @@ def test_uploader_verifies_objects_are_readable_after_upload(tmp_path, monkeypat
     assert cli.head_object.call_count == 2, "every uploaded object must be checked"
 
 
+@_needs_transformers
 def test_uploader_records_failure_when_objects_are_not_readable(tmp_path):
     """The real failure mode: PUT succeeds, the object is not there."""
     from unittest.mock import MagicMock, patch
@@ -942,6 +957,7 @@ def test_uploader_records_failure_when_objects_are_not_readable(tmp_path):
     assert "not readable after upload" in status.failed[100]
 
 
+@_needs_transformers
 def test_abort_message_reflects_a_confirmed_upload():
     from pipeline.train_asr import CheckpointStatus, make_descent_gate
     st = CheckpointStatus()
@@ -953,6 +969,7 @@ def test_abort_message_reflects_a_confirmed_upload():
     assert "--resume auto --resume-run" in msg
 
 
+@_needs_transformers
 def test_abort_says_not_resumable_when_no_upload_was_confirmed():
     """The gap: the gate previously asserted the run was resumable regardless."""
     from pipeline.train_asr import CheckpointStatus, make_descent_gate
@@ -968,6 +985,7 @@ def test_abort_says_not_resumable_when_no_upload_was_confirmed():
     assert "Resume with:" not in msg, "must not offer a resume command"
 
 
+@_needs_transformers
 def test_abort_names_the_newest_confirmed_checkpoint_when_the_latest_failed():
     from pipeline.train_asr import CheckpointStatus, make_descent_gate
     st = CheckpointStatus()
