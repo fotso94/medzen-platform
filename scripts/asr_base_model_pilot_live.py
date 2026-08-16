@@ -3431,17 +3431,38 @@ class LiveOperations:
         observations = 0
         state_sequence: list[str] = []
         job_name = f"asr-base-model-pilot-a{context.attempt}"
+        # Attempts 36 and 37 were both refused by ONE transient host-network
+        # failure of this read-only poll while the cluster Job ran on
+        # unharmed. A bounded tolerance absorbs isolated blips: up to three
+        # CONSECUTIVE poll failures are recorded and retried on the poll
+        # cadence; a fourth consecutive failure — or the deadline — still
+        # fails closed. The Job's own activeDeadlineSeconds and the
+        # scheduled teardown action remain the cost backstops throughout.
+        consecutive_poll_failures = 0
         while self._monotonic() < deadline:
-            job = self._kubectl(
-                context,
-                "get",
-                "job",
-                job_name,
-                "-n",
-                NAMESPACE,
-                timeout=30,
-                json_output=True,
-            )
+            try:
+                job = self._kubectl(
+                    context,
+                    "get",
+                    "job",
+                    job_name,
+                    "-n",
+                    NAMESPACE,
+                    timeout=30,
+                    json_output=True,
+                )
+            except OperationRefusal as exc:
+                if exc.reason_code != "BOUNDED_COMMAND_REFUSED":
+                    raise
+                consecutive_poll_failures += 1
+                state_sequence.append(
+                    f"POLL_TRANSIENT_FAILURE_{consecutive_poll_failures}"
+                )
+                if consecutive_poll_failures > 3:
+                    raise
+                self._sleeper(poll_interval_seconds)
+                continue
+            consecutive_poll_failures = 0
             status = job.get("status") if isinstance(job, dict) else None
             if not isinstance(status, dict):
                 raise OperationRefusal(
