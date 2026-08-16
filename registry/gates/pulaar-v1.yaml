@@ -1,0 +1,11 @@
+inherits: _defaults.yaml
+language: pulaar
+version: v1-initial
+rationale: |
+  Latin script (Senegal), Kallaama corpus (24.6h, gb1); closely related
+  to fula (fleurs-evaluated, omniASR pool language). Suite coverage
+  exists (149-row soreva eval in the 23,768-row pool). A5 defaults with
+  the low-resource WER ceiling.
+overrides:
+  asr:
+    absolute_wer_max: 0.20

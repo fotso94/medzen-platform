@@ -1,0 +1,12 @@
+inherits: _defaults.yaml
+language: serer
+version: v1-initial
+rationale: |
+  Latin script (Senegal), Kallaama corpus (32h, gb1). Not in the 47-
+  language evaluation pool, so the zero-shot baseline for the relative
+  gain gate is measured at fine-tune time from the frozen eval split of
+  the training corpus itself, speaker-disjoint per A3. A5 defaults;
+  Pidgin-class WER ceiling per the A5 low-resource row.
+overrides:
+  asr:
+    absolute_wer_max: 0.20

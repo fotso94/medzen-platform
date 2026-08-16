@@ -1,0 +1,12 @@
+inherits: _defaults.yaml
+language: kinyarwanda
+version: v1-initial
+rationale: |
+  Bantu language, Latin script without tone marks in the CV17 corpus.
+  Largest training corpus in gb1 (300h Common Voice, cc0) and the best-
+  measured language in the base-model suite (attempts 32+35: full
+  6,657-row coverage, omniASR LLM CER 7.8-8.3%). WER stays primary; the
+  suite baseline gives the zero-shot reference the relative gain is
+  measured against. A5 defaults apply; the agglutinative morphology
+  argues for tracking CER alongside WER without gating on it in v1.
+overrides: {}

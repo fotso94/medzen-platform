@@ -1,0 +1,15 @@
+inherits: _defaults.yaml
+language: yemba
+version: v1-initial
+rationale: |
+  Grassfields tonal language (Cameroon) written with tone diacritics —
+  the A5 tonal rule applies: CER is the gating metric (a single tone
+  mark scored as a whole-word error makes WER punitive), with the
+  tonal-language CER ceiling from the A5 table. Smallest gb1 corpus
+  (2.3h EGRA) — also the designated ~$2 trainer calibration language
+  (adaptation design T5). NFC-normalise; report diacritized AND
+  tone-stripped like yoruba.
+overrides:
+  asr:
+    absolute_wer_max: 0.30
+    absolute_cer_max: 0.10
