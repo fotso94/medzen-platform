@@ -15,5 +15,10 @@
 !platform/testdata/
 !platform/testdata/rag-index/
 !platform/testdata/rag-index/**
+!pipeline/
+!pipeline/__init__.py
+!pipeline/omniasr_lora.py
+!pipeline/omniasr_export.py
+!pipeline/licence_filter.py
 **/__pycache__/
 **/*.pyc
