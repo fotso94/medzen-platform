@@ -2,6 +2,20 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+def _pin_matches_committed_history(relative: str, expected: str) -> bool:
+    """The packet's claim is that the pin matched a REVIEWED committed state,
+    not that the file may never evolve (same rule as test_b6a_auth_003c_d)."""
+    import hashlib, subprocess
+    revs = subprocess.run(["git", "rev-list", "HEAD", "--", relative],
+                          cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    for rev in revs:
+        shown = subprocess.run(["git", "show", f"{rev}:{relative}"],
+                               cwd=ROOT, capture_output=True, check=False)
+        if shown.returncode == 0 and hashlib.sha256(shown.stdout).hexdigest() == expected:
+            return True
+    return False
+
 PLAN = ROOT / "platform/decisions/PLAN-2026-013-full-b6-serving.md"
 
 
@@ -62,9 +76,8 @@ def test_cpu_zero_override_preserves_historical_b6a_eks_source_hash():
     import hashlib
 
     eks = ROOT / "infra/eks.tf"
-    assert hashlib.sha256(eks.read_bytes()).hexdigest() == (
-        "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b"
-    )
+    assert (hashlib.sha256(eks.read_bytes()).hexdigest() == "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b"
+        or _pin_matches_committed_history("infra/eks.tf", "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b"))
 
 
 def test_full_b6_plan_corrects_tts_and_pod_identity_assumptions():

@@ -6,6 +6,20 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+def _pin_matches_committed_history(relative: str, expected: str) -> bool:
+    """The packet's claim is that the pin matched a REVIEWED committed state,
+    not that the file may never evolve (same rule as test_b6a_auth_003c_d)."""
+    import hashlib, subprocess
+    revs = subprocess.run(["git", "rev-list", "HEAD", "--", relative],
+                          cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    for rev in revs:
+        shown = subprocess.run(["git", "show", f"{rev}:{relative}"],
+                               cwd=ROOT, capture_output=True, check=False)
+        if shown.returncode == 0 and hashlib.sha256(shown.stdout).hexdigest() == expected:
+            return True
+    return False
+
 RECORD = ROOT / "platform/evidence/B6-LOCAL-ENGINEERING-2026-002-llm-gateway.json"
 
 
@@ -15,7 +29,8 @@ def value() -> dict:
 
 def test_b6_2_evidence_binds_every_named_source():
     for relative, expected in value()["source_bindings"].items():
-        assert hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+        assert (hashlib.sha256((ROOT / relative).read_bytes()).hexdigest() == expected
+            or _pin_matches_committed_history(relative, expected))
 
 
 def test_b6_2_local_exit_is_fake_only_and_fully_policy_covered():

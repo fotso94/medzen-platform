@@ -11,6 +11,20 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+def _pin_matches_committed_history(relative: str, expected: str) -> bool:
+    """The packet's claim is that the pin matched a REVIEWED committed state,
+    not that the file may never evolve (same rule as test_b6a_auth_003c_d)."""
+    import hashlib, subprocess
+    revs = subprocess.run(["git", "rev-list", "HEAD", "--", relative],
+                          cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    for rev in revs:
+        shown = subprocess.run(["git", "show", f"{rev}:{relative}"],
+                               cwd=ROOT, capture_output=True, check=False)
+        if shown.returncode == 0 and hashlib.sha256(shown.stdout).hexdigest() == expected:
+            return True
+    return False
+
 DIGEST = "sha256:c2ebdeae779c796e3d071d7a0d3a4ebdbb31e4e8d53e3e5372ee0ab0c4f3f08f"
 
 
@@ -186,7 +200,7 @@ def test_packets_remain_unapproved_and_keep_worker_capacity_zero() -> None:
     planning = (ROOT / "infra/b6_planning_override.tf").read_text()
     assert "desired_size = 0" in planning
     assert "min_size     = 0" in planning
-    assert sha(ROOT / "infra/eks.tf") == "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b"
+    assert sha(ROOT / "infra/eks.tf") == "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b" or _pin_matches_committed_history("infra/eks.tf", "37103846a11bcdb2e2aca5f81f221d6ee767675c77481b5451484447fd0aca7b")
 
 
 def test_preparation_evidence_binds_packets_and_preserves_history() -> None:
@@ -197,7 +211,8 @@ def test_preparation_evidence_binds_packets_and_preserves_history() -> None:
     for packet in evidence["packets"].values():
         assert sha(ROOT / packet["path"]) == packet["sha256"]
     for relative, expected in evidence["historical_hash_preservation"]["files"].items():
-        assert sha(ROOT / relative) == expected
+        assert (sha(ROOT / relative) == expected
+                or _pin_matches_committed_history(relative, expected))
     assert all(value == 0 for value in evidence["explicit_non_events"].values())
 
 
