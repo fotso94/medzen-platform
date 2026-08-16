@@ -17,5 +17,5 @@ jobs:
     with:
       service: speech-orchestrator
       context_path: services/speech-orchestrator
-      ecr_repository: medzen-speech-orchestrator
+      ecr_repository: medzen-orchestrator
       k8s_deployment: speech-orchestrator
