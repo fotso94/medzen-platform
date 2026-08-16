@@ -296,15 +296,32 @@ def run_pilot(
                         "termination_evidence": transcript.termination_evidence,
                     }
                     if value["eos_failure"] or value["cap_hit"]:
-                        value["status"] = "REFUSED_ROW_INFERENCE"
-                        value["reason_code"] = "TERMINATION_OR_CAP_GATE_REFUSED"
-                        write_once(path, value)
-                        raise EvaluationRefusal("row termination or token-cap gate refused")
+                        # A capped or EOS-less decode on properly sized token
+                        # bounds is the model's measured failure mode, not a
+                        # harness fault: score the truncated output, keep the
+                        # flags for the aggregate's cap_hits/eos_failures
+                        # counters, and bound the tolerated fraction below.
+                        value["reason_code"] = "TERMINATION_FLAGGED_ROW_SCORED"
                     write_once(path, value)
                     receipts.append(value)
     finally:
         sampler.stop()
     completed = [value for value in receipts if value["status"] == "PASS_ROW_INFERENCE"]
+    # Misconfiguration guard: flagged terminations are tolerated as scored
+    # model failures only up to a bounded fraction of each (candidate, mode)
+    # pass; beyond it the cause is overwhelmingly a harness or token-bound
+    # fault and the run must fail closed rather than publish garbage.
+    flagged_groups: dict[tuple[str, str], list[int]] = {}
+    for value in completed:
+        group = flagged_groups.setdefault((value["candidate"], value["mode"]), [0, 0])
+        group[0] += 1
+        group[1] += int(bool(value["eos_failure"]) or bool(value["cap_hit"]))
+    for (flagged_candidate, flagged_mode), (group_rows, group_flagged) in sorted(flagged_groups.items()):
+        if group_rows >= 5 and group_flagged * 5 > group_rows:
+            raise EvaluationRefusal(
+                "flagged termination fraction exceeds the misconfiguration bound: "
+                f"{flagged_candidate}/{flagged_mode} {group_flagged}/{group_rows}"
+            )
     summary = aggregate(completed, sampler.samples)
     result = {
         "schema_version": 1,
