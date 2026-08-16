@@ -383,12 +383,12 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
     if (
-        context.attempt not in set(range(1, 36))
+        context.attempt not in set(range(1, 37))
         or context.deadline_seconds != bound_attempt_window(context.bindings)["seconds_each"]
     ):
         raise OperationRefusal(
             "ATTEMPT_BOUNDARY_DIFFERS",
-            "only attempts 1 through 35 at the bindings-bound window are permitted",
+            "only attempts 1 through 36 at the bindings-bound window are permitted",
         )
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
