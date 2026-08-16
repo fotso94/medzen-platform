@@ -8,13 +8,7 @@
     "alias",
     "iso_code",
     "status",
-    "b4_b5_scope",
     "asr",
-    "llm",
-    "tts",
-    "thresholds_ref",
-    "fallback_language",
-    "provenance",
     "capabilities"
   ],
   "additionalProperties": false,
@@ -35,6 +29,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "data_only",
         "declared",
         "in_development",
         "gated",
@@ -64,15 +59,31 @@
         },
         "training_state": {
           "type": "string",
-          "enum": ["ACTIVE", "INACTIVE", "DEFERRED", "NOT_APPLICABLE"]
+          "enum": [
+            "ACTIVE",
+            "INACTIVE",
+            "DEFERRED",
+            "NOT_APPLICABLE"
+          ]
         },
         "validation_state": {
           "type": "string",
-          "enum": ["ACTIVE", "INACTIVE", "DEFERRED", "NOT_APPLICABLE"]
+          "enum": [
+            "ACTIVE",
+            "INACTIVE",
+            "DEFERRED",
+            "NOT_APPLICABLE"
+          ]
         },
         "promotion_state": {
           "type": "string",
-          "enum": ["PASS", "FAIL", "NOT_EVALUATED", "DEFERRED", "NOT_APPLICABLE"]
+          "enum": [
+            "PASS",
+            "FAIL",
+            "NOT_EVALUATED",
+            "DEFERRED",
+            "NOT_APPLICABLE"
+          ]
         }
       }
     },
@@ -99,100 +110,107 @@
           ]
         },
         "decode_strategy": {
-          "type": "object",
-          "required": [
-            "mode",
-            "chosen_by_run",
-            "frozen_eval"
-          ],
-          "additionalProperties": false,
-          "description": "CORRECTION 3 \u2014 never hard-coded. Chosen by the B3 experiment and re-run at every ASR promotion.",
-          "properties": {
-            "mode": {
-              "type": "string",
-              "enum": [
-                "pending_experiment",
-                "en_token",
-                "auto",
-                "learned"
-              ]
-            },
-            "chosen_by_run": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "description": "mlflow://experiment/run \u2014 evidence for the choice"
-            },
-            "frozen_eval": {
-              "type": [
-                "string",
-                "null"
-              ],
-              "pattern": "^s3://"
-            },
-            "candidates_compared": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "provisional": {
-              "type": "boolean",
-              "description": "True when the winning arm is NOT statistically distinguishable from the runner-up. A provisional strategy may be used, but MUST NOT be cited as settled and blocks status=production."
-            },
-            "evidence": {
+          "oneOf": [
+            {
               "type": "object",
+              "required": [
+                "mode",
+                "chosen_by_run",
+                "frozen_eval"
+              ],
               "additionalProperties": false,
-              "description": "Paired-bootstrap result behind the choice. An unpaired ranking is not evidence.",
+              "description": "CORRECTION 3 \u2014 never hard-coded. Chosen by the B3 experiment and re-run at every ASR promotion.",
               "properties": {
-                "runner_up": {
-                  "type": "string"
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "pending_experiment",
+                    "en_token",
+                    "auto",
+                    "learned"
+                  ]
                 },
-                "wer_winner": {
-                  "type": "number"
+                "chosen_by_run": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "mlflow://experiment/run \u2014 evidence for the choice"
                 },
-                "wer_runner_up": {
-                  "type": "number"
+                "frozen_eval": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "pattern": "^s3://"
                 },
-                "observed_diff": {
-                  "type": "number"
-                },
-                "paired_ci95": {
+                "candidates_compared": {
                   "type": "array",
                   "items": {
-                    "type": "number"
-                  },
-                  "minItems": 2,
-                  "maxItems": 2
+                    "type": "string"
+                  }
                 },
-                "p_winner_better": {
-                  "type": "number"
+                "provisional": {
+                  "type": "boolean",
+                  "description": "True when the winning arm is NOT statistically distinguishable from the runner-up. A provisional strategy may be used, but MUST NOT be cited as settled and blocks status=production."
                 },
-                "n_utterances": {
-                  "type": "integer"
-                },
-                "n_speakers": {
-                  "type": "integer"
-                },
-                "distinguishable": {
-                  "type": "boolean"
-                },
-                "confirm_on": {
-                  "type": "string",
-                  "description": "What must be measured before this stops being provisional."
-                },
-                "artifact_sha256": {
-                  "type": "string",
-                  "pattern": "^[a-f0-9]{64}$",
-                  "description": "Checksum of the evidence artifact, so a silent edit is detectable."
-                },
-                "superseded_by": {
-                  "type": "string"
+                "evidence": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "description": "Paired-bootstrap result behind the choice. An unpaired ranking is not evidence.",
+                  "properties": {
+                    "runner_up": {
+                      "type": "string"
+                    },
+                    "wer_winner": {
+                      "type": "number"
+                    },
+                    "wer_runner_up": {
+                      "type": "number"
+                    },
+                    "observed_diff": {
+                      "type": "number"
+                    },
+                    "paired_ci95": {
+                      "type": "array",
+                      "items": {
+                        "type": "number"
+                      },
+                      "minItems": 2,
+                      "maxItems": 2
+                    },
+                    "p_winner_better": {
+                      "type": "number"
+                    },
+                    "n_utterances": {
+                      "type": "integer"
+                    },
+                    "n_speakers": {
+                      "type": "integer"
+                    },
+                    "distinguishable": {
+                      "type": "boolean"
+                    },
+                    "confirm_on": {
+                      "type": "string",
+                      "description": "What must be measured before this stops being provisional."
+                    },
+                    "artifact_sha256": {
+                      "type": "string",
+                      "pattern": "^[a-f0-9]{64}$",
+                      "description": "Checksum of the evidence artifact, so a silent edit is detectable."
+                    },
+                    "superseded_by": {
+                      "type": "string"
+                    }
+                  }
                 }
               }
+            },
+            {
+              "const": "pending_experiment"
             }
-          }
+          ]
         }
       }
     },
@@ -325,8 +343,7 @@
     "capabilities": {
       "type": "object",
       "required": [
-        "asr",
-        "tts"
+        "asr"
       ],
       "additionalProperties": false,
       "description": "Derived from registry/sources.yaml. available=false means NO dataset provides that capability today \u2014 the platform must refuse it, not guess.",
@@ -334,8 +351,7 @@
         "asr": {
           "type": "object",
           "required": [
-            "available",
-            "sources"
+            "available"
           ],
           "additionalProperties": false,
           "properties": {
@@ -435,6 +451,198 @@
           }
         },
         "description": "A language in production MUST have a real artifact, an evidence-backed decode strategy, and an approved voice."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "data_only"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "asr": {
+            "properties": {
+              "artifact": {
+                "type": "null"
+              },
+              "approved_version": {
+                "type": "null"
+              },
+              "decode_strategy": {
+                "const": "pending_experiment"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "required": [
+          "alias",
+          "iso_code",
+          "status",
+          "b4_b5_scope",
+          "asr",
+          "llm",
+          "tts",
+          "thresholds_ref",
+          "fallback_language",
+          "provenance",
+          "capabilities"
+        ],
+        "properties": {
+          "capabilities": {
+            "type": "object",
+            "required": [
+              "asr",
+              "tts"
+            ],
+            "additionalProperties": false,
+            "description": "Derived from registry/sources.yaml. available=false means NO dataset provides that capability today \u2014 the platform must refuse it, not guess.",
+            "properties": {
+              "asr": {
+                "type": "object",
+                "required": [
+                  "available",
+                  "sources"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "tts": {
+                "type": "object",
+                "required": [
+                  "available",
+                  "sources"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "available": {
+                    "type": "boolean"
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "asr": {
+            "properties": {
+              "decode_strategy": {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "chosen_by_run",
+                  "frozen_eval"
+                ],
+                "additionalProperties": false,
+                "description": "CORRECTION 3 \u2014 never hard-coded. Chosen by the B3 experiment and re-run at every ASR promotion.",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "pending_experiment",
+                      "en_token",
+                      "auto",
+                      "learned"
+                    ]
+                  },
+                  "chosen_by_run": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "mlflow://experiment/run \u2014 evidence for the choice"
+                  },
+                  "frozen_eval": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "pattern": "^s3://"
+                  },
+                  "candidates_compared": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "provisional": {
+                    "type": "boolean",
+                    "description": "True when the winning arm is NOT statistically distinguishable from the runner-up. A provisional strategy may be used, but MUST NOT be cited as settled and blocks status=production."
+                  },
+                  "evidence": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "description": "Paired-bootstrap result behind the choice. An unpaired ranking is not evidence.",
+                    "properties": {
+                      "runner_up": {
+                        "type": "string"
+                      },
+                      "wer_winner": {
+                        "type": "number"
+                      },
+                      "wer_runner_up": {
+                        "type": "number"
+                      },
+                      "observed_diff": {
+                        "type": "number"
+                      },
+                      "paired_ci95": {
+                        "type": "array",
+                        "items": {
+                          "type": "number"
+                        },
+                        "minItems": 2,
+                        "maxItems": 2
+                      },
+                      "p_winner_better": {
+                        "type": "number"
+                      },
+                      "n_utterances": {
+                        "type": "integer"
+                      },
+                      "n_speakers": {
+                        "type": "integer"
+                      },
+                      "distinguishable": {
+                        "type": "boolean"
+                      },
+                      "confirm_on": {
+                        "type": "string",
+                        "description": "What must be measured before this stops being provisional."
+                      },
+                      "artifact_sha256": {
+                        "type": "string",
+                        "pattern": "^[a-f0-9]{64}$",
+                        "description": "Checksum of the evidence artifact, so a silent edit is detectable."
+                      },
+                      "superseded_by": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   ]

@@ -84,7 +84,14 @@ def test_all_languages_start_unapproved():
     """Nothing is trained yet — a language claiming otherwise is a bug."""
     for f in REG.glob("*.yaml"):
         d = yaml.safe_load(f.read_text())
-        assert d["status"] == "declared", f"{f.stem} claims status {d['status']}"
+        assert d["status"] in ("declared", "data_only"), \
+            f"{f.stem} claims status {d['status']}"
+        if d["status"] == "data_only":
+            # The rung below declared: evaluation data only, nothing shipped.
+            assert d["asr"]["artifact"] is None, f"{f.stem} claims an artifact"
+            assert d["asr"]["approved_version"] is None
+            assert d["asr"]["decode_strategy"] == "pending_experiment"
+            continue
         assert d["tts"]["approved"] is False, f"{f.stem} claims an approved voice"
         ds = d["asr"]["decode_strategy"]
         if ds["mode"] == "pending_experiment":

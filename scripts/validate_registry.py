@@ -57,6 +57,23 @@ def load_gates(ref: str) -> dict | None:
     return merged
 
 
+def data_only_assertions(lang: dict, name: str) -> None:
+    """The rung below 'declared': licensed evaluation data exists, nothing
+    ships. Such an entry may assert no capability, artifact or gate."""
+    asr = lang["asr"]
+    cap = lang.get("capabilities", {}).get("asr", {})
+    if cap.get("available") is True and not cap.get("sources"):
+        fail(f"{name}: data_only claims available data with no sources")
+    if asr.get("artifact") is not None or asr.get("approved_version") is not None:
+        fail(f"{name}: data_only may not carry an artifact or approved version")
+    if asr.get("decode_strategy") != "pending_experiment":
+        fail(f"{name}: data_only decode_strategy must stay pending_experiment")
+    for field in ("thresholds_ref", "tts", "provenance", "fallback_language"):
+        if field in lang:
+            fail(f"{name}: data_only may not carry '{field}' — promote to "
+                 f"'declared' with the full schema instead")
+
+
 def readiness(lang: dict, name: str, gates: dict | None) -> None:
     """The ladder. Each status asserts what must already be true."""
     st = lang["status"]
@@ -146,8 +163,15 @@ def main() -> int:
                 fail(f"duplicate {key} '{v}' in {seen[v]} and {n}")
             seen[v] = n
 
+    # data_only entries assert their own minimal rung and exit the ladder
+    data_only = {n for n, d in langs.items() if d.get("status") == "data_only"}
+    for n in sorted(data_only):
+        data_only_assertions(langs[n], n)
+
     # fallbacks resolve and do not cycle
     for n, d in langs.items():
+        if n in data_only:
+            continue
         fb = d.get("fallback_language")
         if fb is None:
             continue
@@ -164,6 +188,8 @@ def main() -> int:
 
     # readiness ladder
     for n, d in langs.items():
+        if n in data_only:
+            continue
         readiness(d, n, load_gates(d["thresholds_ref"]))
 
     # ---- report -----------------------------------------------------------
@@ -180,11 +206,16 @@ def main() -> int:
                    "listen only" if a_ok else
                    "speak only" if t_ok else "NEITHER")
         counts[profile] += 1
-        lic = d["provenance"]["licence_status"].values()
-        licsum = "clear" if all(v in COMMERCIAL_OK for v in lic) else "blocked"
+        if d.get("status") == "data_only":
+            licsum = "eval-data"
+            decode = str(d["asr"]["decode_strategy"])
+        else:
+            lic = d["provenance"]["licence_status"].values()
+            licsum = "clear" if all(v in COMMERCIAL_OK for v in lic) else "blocked"
+            decode = d["asr"]["decode_strategy"]["mode"]
         counts[f"licence:{licsum}"] += 1
         print(f"  {n:<10} {d['iso_code']:<5} {profile:<14} {d['status']:<12} "
-              f"{d['asr']['decode_strategy']['mode']:<20} {licsum}")
+              f"{decode:<20} {licsum}")
     print(f"\n  capability: {counts['full turn']} full turn · "
           f"{counts['listen only']} listen only · {counts['speak only']} speak only"
           f"{f' · {counts[chr(78)+chr(69)+chr(73)+chr(84)+chr(72)+chr(69)+chr(82)]} NEITHER' if counts['NEITHER'] else ''}")
