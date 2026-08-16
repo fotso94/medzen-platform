@@ -263,10 +263,22 @@ def main() -> int:
             return 1
         print(f"languages current ({len(files)} files)"); return 0
 
-    # remove languages no longer in scope
+    # remove languages no longer in scope — but NEVER the hand-authored
+    # data_only declarations: they are the A4 rung below 'declared', owned by
+    # the data branch, invisible to sources.yaml by design. Deleting them
+    # here destroyed evaluation-language records (idempotency failure caught
+    # by test_b2_ingest) and the same preserve-earned-state rule that guards
+    # status/tts/consent applies to their very existence.
     for f in OUT.glob("*.yaml"):
-        if f.stem not in scope:
-            f.unlink(); print(f"  removed {f.relative_to(ROOT)} (out of scope)")
+        if f.stem in scope:
+            continue
+        try:
+            existing = yaml.safe_load(f.read_text())
+        except yaml.YAMLError:
+            existing = None
+        if isinstance(existing, dict) and existing.get("status") == "data_only":
+            continue
+        f.unlink(); print(f"  removed {f.relative_to(ROOT)} (out of scope)")
     for p, c in files.items():
         p.parent.mkdir(parents=True, exist_ok=True); p.write_text(c)
     print(f"  wrote {len(files)} files for {len(scope)} languages")
