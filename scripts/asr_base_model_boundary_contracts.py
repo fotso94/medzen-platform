@@ -64,7 +64,9 @@ BOUNDARY_CONTRACTS: dict[str, dict[str, IntegerBound]] = {
         ),
     },
     "pilot_job_completion": {
-        "timeout_seconds": IntegerBound(1, 9_000, 9_000),
+        # Maximum tracks the largest bindable Job cap: the 21,600s window
+        # ceiling minus the fixed 1,800s host reserve.
+        "timeout_seconds": IntegerBound(1, 19_800, 9_000),
         "poll_interval_seconds": IntegerBound(1, 60, 10),
     },
     "registry_scan_configuration": {
@@ -258,6 +260,22 @@ def _integer_expression(node: ast.AST, constants: dict[str, int], defaults: dict
         return node.value
     if isinstance(node, ast.Name):
         return constants.get(node.id, defaults.get(node.id))
+    # bound_attempt_window(...)["job_active_deadline_seconds"] resolves
+    # statically to its worst case (the contract maximum): the resolver
+    # itself caps every bindable value at window ceiling minus reserve, and
+    # validate_boundary_parameters still validates the exact runtime value
+    # inside the waiter.
+    if (
+        isinstance(node, ast.Subscript)
+        and isinstance(node.slice, ast.Constant)
+        and node.slice.value == "job_active_deadline_seconds"
+        and isinstance(node.value, ast.Call)
+        and (
+            (isinstance(node.value.func, ast.Name) and node.value.func.id == "bound_attempt_window")
+            or (isinstance(node.value.func, ast.Attribute) and node.value.func.attr == "bound_attempt_window")
+        )
+    ):
+        return BOUNDARY_CONTRACTS["pilot_job_completion"]["timeout_seconds"].maximum
     return None
 
 

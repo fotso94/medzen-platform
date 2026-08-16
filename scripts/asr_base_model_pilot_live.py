@@ -163,6 +163,7 @@ from scripts.asr_base_model_pilot_runner import (
     OperationRefusal,
     validate_authorization_payload,
 )
+from scripts.asr_base_model_pilot_workload import bound_attempt_window
 
 
 CALLER = f"arn:aws:iam::{ACCOUNT}:user/s.fotso"
@@ -1427,6 +1428,7 @@ class LiveOperations:
             packet_sha256=context.receipts.packet_sha256,
             risk_sha256=bindings["risk_acceptance_sha256"],
             attempt=context.attempt,
+            expected_seconds_each=bound_attempt_window(bindings)["seconds_each"],
         )
         try:
             source_integrity = validate_executor_module_bindings(
@@ -3551,7 +3553,12 @@ class LiveOperations:
                 self._sleeper(5)
             else:
                 raise OperationRefusal("NETWORK_PROBE_RECEIPT_TIMEOUT", "pre-torch network receipt was not observed", outcome="BLOCKED_NETWORK_ISOLATION")
-            job_completion = self._wait_pilot_job_complete(context)
+            job_completion = self._wait_pilot_job_complete(
+                context,
+                timeout_seconds=bound_attempt_window(context.bindings)[
+                    "job_active_deadline_seconds"
+                ],
+            )
             aggregate = self._ssm(state["instance_id"], [
                 root_command("/usr/bin/test", "-s", f"{state['staging_path']}/output/aggregate.json"),
                 root_command("/usr/bin/sha256sum", f"{state['staging_path']}/output/aggregate.json"),

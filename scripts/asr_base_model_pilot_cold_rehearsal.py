@@ -46,6 +46,7 @@ from scripts.asr_base_model_pilot_integrity import (
     validate_executor_module_bindings,
 )
 from scripts.asr_base_model_pilot_k8s import render, verify
+from scripts.asr_base_model_pilot_workload import bound_attempt_window
 from scripts.asr_base_model_pilot_live import LiveOperations
 from scripts.asr_base_model_pilot_live import PRIVATE_PULL_REPOSITORIES
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan
@@ -244,6 +245,7 @@ def _wrapper_contract(bindings: dict[str, Any], directory: Path) -> dict[str, An
     context = AttemptContext(
         attempt=bindings["attempts"]["authorized_numbers"][0],
         bindings=bindings,
+        deadline_seconds=bound_attempt_window(bindings)["seconds_each"],
         receipts=receipt_module.ReceiptStore(
             directory / "receipts",
             packet_sha256="0" * 64,
@@ -269,7 +271,9 @@ def _wrapper_contract(bindings: dict[str, Any], directory: Path) -> dict[str, An
     }
 
 
-def _pure_prestage_injections(proof: dict[str, Any], bundle_sha: str) -> dict[str, Any]:
+def _pure_prestage_injections(
+    proof: dict[str, Any], bundle_sha: str, deadline_seconds: int
+) -> dict[str, Any]:
     results = {}
     in_attempt = json.loads(json.dumps(proof))
     in_attempt["timed_window"]["in_attempt_upload_bytes"] = 1
@@ -281,11 +285,11 @@ def _pure_prestage_injections(proof: dict[str, Any], bundle_sha: str) -> dict[st
         raise AssertionError("in-attempt upload injection passed")
 
     infeasible = json.loads(json.dumps(proof))
-    infeasible["timed_window"]["estimated_fast_stage_seconds"] = 10_000
+    infeasible["timed_window"]["estimated_fast_stage_seconds"] = deadline_seconds
     try:
         validate_window_budget(
             infeasible,
-            deadline_seconds=10800,
+            deadline_seconds=deadline_seconds,
             expected_bundle_sha256=bundle_sha,
         )
     except StagingRefusal as exc:
@@ -788,7 +792,7 @@ def _scenario_repository(
         "attempts": {
             "authorized_numbers": bindings["attempts"]["authorized_numbers"],
             "maximum": 1,
-            "seconds_each": 10800,
+            "seconds_each": bound_attempt_window(bindings)["seconds_each"],
             "non_transferable": True,
         },
         "reviewed_repository_commit": reviewed,
@@ -865,7 +869,13 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
     attempt = bindings["attempts"]["authorized_numbers"][0]
     plan_result = validate_plan(exact_plan(bindings, attempt), bindings, attempt)
     workload = render(bindings, ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], attempt)
-    workload_result = verify(workload, bindings["image"]["linux_amd64_digest"], attempt)
+    attempt_window = bound_attempt_window(bindings)
+    workload_result = verify(
+        workload,
+        bindings["image"]["linux_amd64_digest"],
+        attempt,
+        expected_job_active_deadline_seconds=attempt_window["job_active_deadline_seconds"],
+    )
     authorization_result = validate_authorization_payload(
         {
             "id": bindings["authorization"]["id"],
@@ -875,7 +885,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
             "attempts": {
                 "authorized_numbers": [attempt],
                 "maximum": 1,
-                "seconds_each": 10800,
+                "seconds_each": attempt_window["seconds_each"],
                 "non_transferable": True,
             },
         },
@@ -883,6 +893,7 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
         packet_sha256="0" * 64,
         risk_sha256="3" * 64,
         attempt=attempt,
+        expected_seconds_each=attempt_window["seconds_each"],
     )
     proof_binding = bindings["artifact_prestage_proof"]
     proof_body = read_committed_artifact(ROOT, ROOT / proof_binding["path"])
@@ -1265,7 +1276,9 @@ def rehearse(output: Path, bindings_path: Path | None = None) -> dict[str, Any]:
                 "insufficient GPU storage passed the pre-envelope gate"
             )
     pure_injections = _pure_prestage_injections(
-        proof, bindings["pilot_bundle"]["sha256"]
+        proof,
+        bindings["pilot_bundle"]["sha256"],
+        bound_attempt_window(bindings)["seconds_each"],
     )
     endpoint_policy_rehearsal = _endpoint_policy_injections(bindings)
     async_observation_audit = audit_async_observation_sites(ROOT)

@@ -14,6 +14,9 @@ PILOT_WORKLOAD_COMMAND = ("/bin/sh", "-ec")
 LISTENER_TIMEOUT_SECONDS = 900
 JOB_ACTIVE_DEADLINE_SECONDS = 9000
 JOB_TERMINATION_GRACE_SECONDS = 30
+ATTEMPT_WINDOW_DEFAULT_SECONDS = 10800
+ATTEMPT_WINDOW_MAXIMUM_SECONDS = 21600
+ATTEMPT_WINDOW_JOB_RESERVE_SECONDS = ATTEMPT_WINDOW_DEFAULT_SECONDS - JOB_ACTIVE_DEADLINE_SECONDS
 PHASE_JOURNAL_PATH = "/output/pilot-phase-journal.jsonl"
 PHASE_JOURNAL_PROGRESS_INTERVAL = 10
 
@@ -193,6 +196,42 @@ PILOT_ENVIRONMENT = (
 
 class PilotWorkloadRefusal(RuntimeError):
     pass
+
+
+def bound_attempt_window(bindings: dict[str, Any]) -> dict[str, Any]:
+    """Resolve the attempt window and Job deadline from committed bindings.
+
+    Bindings without an ``attempt_window`` block (all pilot-era packets and
+    history) keep the original 10,800s window with its 9,000s Job cap. A
+    present block must state both values explicitly, stay within the
+    10,800-21,600s envelope, and preserve the fixed 1,800s host reserve
+    between window and Job cap so cleanup always fits inside the window.
+    """
+    block = bindings.get("attempt_window")
+    if block is None:
+        return {
+            "seconds_each": ATTEMPT_WINDOW_DEFAULT_SECONDS,
+            "job_active_deadline_seconds": JOB_ACTIVE_DEADLINE_SECONDS,
+            "source": "DEFAULT_PILOT_WINDOW",
+        }
+    seconds = block.get("seconds_each") if isinstance(block, dict) else None
+    job_deadline = block.get("job_active_deadline_seconds") if isinstance(block, dict) else None
+    if (
+        not isinstance(block, dict)
+        or set(block) != {"seconds_each", "job_active_deadline_seconds"}
+        or isinstance(seconds, bool)
+        or not isinstance(seconds, int)
+        or isinstance(job_deadline, bool)
+        or not isinstance(job_deadline, int)
+        or not ATTEMPT_WINDOW_DEFAULT_SECONDS <= seconds <= ATTEMPT_WINDOW_MAXIMUM_SECONDS
+        or job_deadline != seconds - ATTEMPT_WINDOW_JOB_RESERVE_SECONDS
+    ):
+        raise PilotWorkloadRefusal("attempt window binding differs from the bounded contract")
+    return {
+        "seconds_each": seconds,
+        "job_active_deadline_seconds": job_deadline,
+        "source": "BINDINGS_ATTEMPT_WINDOW",
+    }
 
 
 def canonical_workload_argv() -> tuple[str, ...]:

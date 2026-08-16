@@ -25,6 +25,7 @@ from pipeline.asr_base_model_pilot_receipts import (  # noqa: E402
     write_exclusive,
 )
 from scripts.asr_base_model_pilot_plan import exact_plan, validate_plan  # noqa: E402
+from scripts.asr_base_model_pilot_workload import bound_attempt_window  # noqa: E402
 from scripts.asr_external_tool import configure_external_tool_journal, run_external  # noqa: E402
 
 
@@ -108,6 +109,7 @@ def build_attempt_context(
     return AttemptContext(
         attempt=attempt,
         bindings=bindings,
+        deadline_seconds=bound_attempt_window(bindings)["seconds_each"],
         receipts=ReceiptStore(
             external / "receipts",
             packet_sha256=packet_sha256,
@@ -269,6 +271,7 @@ def validate_authorization_payload(
     packet_sha256: str,
     risk_sha256: str,
     attempt: int,
+    expected_seconds_each: int = 10800,
 ) -> dict[str, Any]:
     attempts = authorization.get("attempts")
     if not isinstance(attempts, dict):
@@ -283,7 +286,7 @@ def validate_authorization_payload(
         or any(isinstance(value, bool) or not isinstance(value, int) for value in numbers)
         or len(numbers) != len(set(numbers))
         or attempts.get("maximum") != len(numbers)
-        or attempts.get("seconds_each") != 10800
+        or attempts.get("seconds_each") != expected_seconds_each
         or attempts.get("non_transferable") is not True
         or attempt not in numbers
     ):
@@ -379,8 +382,14 @@ def execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
 
 
 def _execute_attempt(ops: Operations, context: AttemptContext) -> dict[str, Any]:
-    if context.attempt not in set(range(1, 32)) or context.deadline_seconds != 10800:
-        raise OperationRefusal("ATTEMPT_BOUNDARY_DIFFERS", "only attempts 1 through 31 at 10800 seconds are permitted")
+    if (
+        context.attempt not in set(range(1, 33))
+        or context.deadline_seconds != bound_attempt_window(context.bindings)["seconds_each"]
+    ):
+        raise OperationRefusal(
+            "ATTEMPT_BOUNDARY_DIFFERS",
+            "only attempts 1 through 32 at the bindings-bound window are permitted",
+        )
     if context.dry_run_path is not None:
         if not context.dry_run_path.is_file():
             raise OperationRefusal(

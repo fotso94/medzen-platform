@@ -14,6 +14,7 @@ from pipeline.asr_base_model_pilot_receipts import ReceiptStore, canonical_json,
 from scripts.asr_base_model_pilot_live import CALLER, LiveOperations
 from scripts.asr_base_model_pilot_integrity import read_committed_artifact
 from scripts.asr_base_model_pilot_runner import AttemptContext, stage_deadline_identity_and_acceptance
+from scripts.asr_base_model_pilot_workload import bound_attempt_window
 from scripts.asr_external_tool import run_external
 
 
@@ -68,6 +69,7 @@ def dry_run(
     context = AttemptContext(
         attempt=attempt,
         bindings=bindings,
+        deadline_seconds=bound_attempt_window(bindings)["seconds_each"],
         receipts=ReceiptStore(
             output.parent / ".dry-run-unused-receipts",
             packet_sha256=packet_sha,

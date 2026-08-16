@@ -20,6 +20,7 @@ from scripts.asr_base_model_pilot_workload import (
     PILOT_WORKLOAD_COMMAND,
     PILOT_WORKLOAD_SCRIPT,
     audit_pilot_workload,
+    bound_attempt_window,
 )
 from scripts.asr_base_model_pilot_dns import (
     VPC_DNS_RESOLVER,
@@ -41,8 +42,9 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     digest = bindings["image"]["linux_amd64_digest"]
     if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
         raise ValueError("image digest is malformed")
-    if attempt not in set(range(1, 32)):
-        raise ValueError("attempt must be 1 through 31")
+    if attempt not in set(range(1, 33)):
+        raise ValueError("attempt must be 1 through 32")
+    attempt_window = bound_attempt_window(bindings)
     endpoint_blocks = sorted({_cidr(f"{ip}/32") for ip in endpoint_ips})
     s3_blocks = sorted({_cidr(value) for value in s3_cidrs})
     if len(endpoint_blocks) < 2 or not s3_blocks:
@@ -83,7 +85,7 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
             "metadata": {"name": f"asr-base-model-pilot-a{attempt}", "namespace": NAMESPACE, "labels": LABELS},
             "spec": {
                 "backoffLimit": 0,
-                "activeDeadlineSeconds": JOB_ACTIVE_DEADLINE_SECONDS,
+                "activeDeadlineSeconds": attempt_window["job_active_deadline_seconds"],
                 "ttlSecondsAfterFinished": 600,
                 "template": {
                     "metadata": {"labels": LABELS},
@@ -136,7 +138,12 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
         },
     ]
     rendered = yaml.safe_dump_all(documents, sort_keys=False)
-    verify(rendered, digest, attempt)
+    verify(
+        rendered,
+        digest,
+        attempt,
+        expected_job_active_deadline_seconds=attempt_window["job_active_deadline_seconds"],
+    )
     return rendered
 
 
@@ -188,7 +195,13 @@ def validate_asset_card_mount_coverage(pod: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
+def verify(
+    rendered: str,
+    digest: str,
+    attempt: int,
+    *,
+    expected_job_active_deadline_seconds: int = JOB_ACTIVE_DEADLINE_SECONDS,
+) -> dict[str, Any]:
     documents = [value for value in yaml.safe_load_all(rendered) if value]
     kinds = [value.get("kind") for value in documents]
     if kinds != ["Namespace", "ResourceClaimTemplate", "NetworkPolicy", "NetworkPolicy", "Job"]:
@@ -214,7 +227,7 @@ def verify(rendered: str, digest: str, attempt: int) -> dict[str, Any]:
     if job["metadata"]["name"] != f"asr-base-model-pilot-a{attempt}":
         raise ValueError("attempt job identity differs")
     workload_audit = audit_pilot_workload()
-    if job["spec"].get("activeDeadlineSeconds") != JOB_ACTIVE_DEADLINE_SECONDS:
+    if job["spec"].get("activeDeadlineSeconds") != expected_job_active_deadline_seconds:
         raise ValueError("pilot job active deadline differs")
     if pod.get("terminationGracePeriodSeconds") != JOB_TERMINATION_GRACE_SECONDS:
         raise ValueError("pilot termination grace differs")
