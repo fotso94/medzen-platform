@@ -59,3 +59,21 @@ tests handle supersession.
 3. Category B orchestrator goldens (needs focused review time).
 4. Category B b5_gates — bundle into B5 reactivation after the
    base-model decision record.
+
+## Addendum 2026-08-16 (later) — Category B b5_gates resolved
+
+The 24 `test_b5_gates` failures are refreshed on
+`codex/asr-base-model-evaluation`, bundled with the enforcement fix from
+CLAUDE-REVIEW-2026-08-16-035 (the tonal `asr.absolute_cer_max` gate was
+resolved and carried but never compared; `_absolute_cer_gate` now
+evaluates it at both WER measurement sites, skipping only a null
+registry threshold). Root cause of the staleness confirmed: the live
+registry grew hand-authored data-scope languages the frozen b5-scope
+groups never covered, so `evaluate_current_artifact` correctly fails
+closed on the live tree ("promotion scope does not cover registry
+aliases"). The refreshed suite covers both worlds: a byte-identical
+`promotion_root` fixture rebuilds the frozen scope (all hash bindings
+hold; refusal machinery stays behaviorally covered, FAIL count 0), and
+the live-tree refusal is asserted explicitly instead of papered over.
+72 tests green. The official committed gate report was NOT regenerated —
+that remains an owner act at B5 reactivation.

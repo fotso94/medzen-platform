@@ -248,6 +248,17 @@ def _compare(gate_id: str, measurement: Any, threshold: Any, operator: str,
         threshold={"operator": operator, "value": limit}, evidence=evidence)
 
 
+def _absolute_cer_gate(gate_id: str, measurement: Any, threshold: Any,
+                       evidence: Iterable[dict[str, Any]]) -> dict[str, Any] | None:
+    """A5 tonal rule: CER gates a language only when its frozen threshold is
+    numeric. A null threshold is the registry's affirmative declaration that
+    CER does not gate the language, so no gate row exists to emit; any other
+    threshold flows through the same fail-closed comparison as WER."""
+    if threshold is None:
+        return None
+    return _compare(gate_id, measurement, threshold, "<=", evidence)
+
+
 def resolve_thresholds(alias: str, root: Path = ROOT) -> dict[str, Any]:
     """Resolve one language deterministically and reject ambiguous overrides."""
     language_path = root / "registry/languages" / f"{alias}.yaml"
@@ -715,6 +726,15 @@ def _verified_report(root: Path) -> dict[str, Any]:
             gates.append(_compare("asr.absolute_wer", candidate_wer,
                                   asr_thresholds["absolute_wer_max"], "<=",
                                   conversion_ev + threshold_ev))
+            cer_measurements = selection_arm.get("cer")
+            cer_gate = _absolute_cer_gate(
+                "asr.absolute_cer",
+                cer_measurements.get(alias)
+                if isinstance(cer_measurements, dict) else None,
+                asr_thresholds["absolute_cer_max"],
+                conversion_ev + threshold_ev)
+            if cer_gate is not None:
+                gates.append(cer_gate)
             for missing_gate, key, operator in (
                     ("asr.slice_regression", "slice_regression_max", "<="),
                     ("asr.general_replay_regression", "general_replay_regression_max", "<="),
@@ -769,6 +789,13 @@ def _verified_report(root: Path) -> dict[str, Any]:
                     "asr.untouched_holdout.absolute_wer", holdout["candidate_wer"],
                     asr_thresholds["absolute_wer_max"], "<=",
                     conversion_ev + threshold_ev))
+                holdout_cer_gate = _absolute_cer_gate(
+                    "asr.untouched_holdout.absolute_cer",
+                    holdout.get("candidate_cer"),
+                    asr_thresholds["absolute_cer_max"],
+                    conversion_ev + threshold_ev)
+                if holdout_cer_gate is not None:
+                    gates.append(holdout_cer_gate)
                 if (_finite_number(holdout["candidate_eos_rate"], "holdout EOS") != 1.0
                         or _finite_number(holdout["candidate_cap_hit_rate"],
                                           "holdout cap rate") != 0.0):

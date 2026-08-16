@@ -1,8 +1,19 @@
-"""Behavioral B5 refusal, termination and promotion-boundary tests."""
+"""Behavioral B5 refusal, termination and promotion-boundary tests.
+
+Two worlds are exercised deliberately:
+
+- The *promotion world* (`promotion_root` fixture) is a byte-identical rebuild
+  of the registry exactly as the frozen B5 scope describes it, so every
+  behavioral property of the refusal machinery stays covered.
+- The *live tree* has since grown hand-authored data-scope languages that the
+  frozen scope never covered, so the engine correctly fails closed there; that
+  refusal is asserted explicitly rather than papered over.
+"""
 from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +31,7 @@ sys.path.insert(0, str(ROOT))
 from pipeline.b5_gates import (
     FailClosedError,
     GateState,
+    _absolute_cer_gate,
     _compare,
     _git_head,
     _verify_hash,
@@ -55,9 +67,74 @@ def _gates(report: dict, language: str) -> dict[str, dict]:
     return {row["gate"]: row for row in report["languages"][language]["gates"]}
 
 
+PROMOTION_WORLD_LANGUAGES = {
+    "acholi", "akan", "amharic", "english", "ewe", "french", "fula",
+    "hausa", "igbo", "lingala", "luganda", "oromo", "pidgin", "shona",
+    "swahili", "wolof", "yoruba",
+}
+
+
+def _control_referenced_paths(root: Path) -> set[str]:
+    """Every platform file the frozen B5 controls bind by path (and hash)."""
+    refs = {
+        "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json",
+        # fixed list read by build_current_artifact_dry_run_manifest
+        "platform/evidence/CAMPAIGNRUN-2026-012-failed.json",
+        "platform/evidence/CAMPAIGNRUN-2026-013-passed.json",
+        "platform/evidence/CAMPAIGNRUN-2026-014-passed.json",
+        "platform/evidence/B5-MLFLOW-RUN-RESOLUTION-2026-001.json",
+        "platform/evidence/VAL-2026-001-frozen-validation-sets.json",
+        "platform/evidence/VAL-2026-003-lingala-post-selection-holdout.json",
+        "platform/decisions/B4-SCOPE-2026-002-simplified-exit.json",
+    }
+    auth = json.loads((root / "platform/decisions/"
+                       "B5-AUTH-2026-001-refusal-engineering.json").read_bytes())
+    for binding in auth.get("b4_evidence_bindings", []):
+        refs.add(binding["path"])
+    scope = yaml.safe_load((root / "registry/gates/b5-scope-v1.yaml").read_text())
+    for group in (scope.get("candidate_evidence") or {}).values():
+        refs.add(group["path"])
+    for group in (scope.get("decision_references") or {}).values():
+        refs.add(group["path"])
+    termination = yaml.safe_load(
+        (root / "registry/gates/_termination-v1.yaml").read_text())
+    refs.add(termination["decision"]["path"])
+    return refs
+
+
 @pytest.fixture(scope="module")
-def report() -> dict:
-    return evaluate_current_artifact()
+def promotion_root(tmp_path_factory) -> Path:
+    """Rebuild the frozen promotion world the B5 controls still describe.
+
+    Every file is a byte-identical copy, so all hash bindings hold; only the
+    language registry is pruned back to the aliases the scope froze. The live
+    tree meanwhile grew data-scope languages the scope never covered, which
+    the engine refuses — see
+    test_live_registry_growth_is_refused_fail_closed.
+    """
+    root = tmp_path_factory.mktemp("b5-promotion-world")
+    shutil.copytree(ROOT / "registry", root / "registry")
+    for path in (root / "registry/languages").glob("*.yaml"):
+        if path.stem not in PROMOTION_WORLD_LANGUAGES:
+            path.unlink()
+    for rel in ("pipeline/b5_gates.py", "scripts/evaluate_gates.py"):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, root / rel)
+    for rel in sorted(_control_referenced_paths(ROOT)):
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / rel, root / rel)
+    # Minimal read-only .git metadata so the engine binds the real HEAD.
+    (root / ".git").mkdir()
+    (root / ".git/HEAD").write_text(_git_head(ROOT) + "\n")
+    return root
+
+
+@pytest.fixture(scope="module")
+def report(promotion_root) -> dict:
+    report = evaluate_current_artifact(promotion_root)
+    assert report["evaluation_purpose"] == "REFUSAL_ONLY_NEGATIVE_TEST_CASE", (
+        report["overall_reason"])
+    return report
 
 
 @pytest.fixture(scope="module")
@@ -98,6 +175,39 @@ def test_missing_provenance_returns_blocked_report(tmp_path):
     assert blocked["engine_errors"]
 
 
+def test_live_registry_growth_is_refused_fail_closed():
+    """The live registry grew languages the frozen scope never covered; the
+    engine must refuse the whole evaluation rather than improvise coverage."""
+    live = evaluate_current_artifact()
+    assert live["evaluation_purpose"] == "FAIL_CLOSED_ENGINE_ERROR"
+    assert live["overall"] == "BLOCKED"
+    assert live["languages"] == {}
+    assert live["gate_state_counts"]["FAIL"] == 1
+    assert any("promotion scope does not cover registry aliases" in error
+               for error in live["engine_errors"])
+    assert live["side_effects"]["models_registered"] == 0
+    assert live["side_effects"]["b6_status"] == "BLOCKED"
+
+
+def test_measured_promotion_group_stays_locked_until_reactivation(
+        promotion_root, tmp_path):
+    """A measured language cannot be evaluated by this engine build: the
+    refusal-only evaluation hard-refuses a non-empty measured group. This is
+    why the asr.absolute_cer wiring is asserted structurally rather than
+    end-to-end below."""
+    variant = tmp_path / "measured-variant"
+    shutil.copytree(promotion_root, variant)
+    scope_path = variant / "registry/gates/b5-scope-v1.yaml"
+    scope = yaml.safe_load(scope_path.read_text())
+    scope["promotion_languages"]["measured"] = ["yoruba"]
+    scope["promotion_languages"]["not_evaluated"].remove("yoruba")
+    scope_path.write_text(yaml.safe_dump(scope, sort_keys=False))
+    blocked = evaluate_current_artifact(variant)
+    assert blocked["evaluation_purpose"] == "FAIL_CLOSED_ENGINE_ERROR"
+    assert any("measured promotion group is not empty" in error
+               for error in blocked["engine_errors"])
+
+
 def test_hash_mismatch_refuses(tmp_path):
     path = tmp_path / "evidence.json"
     path.write_text("{}")
@@ -114,6 +224,78 @@ def test_threshold_inheritance_and_override_are_deterministic():
     assert pidgin["values"]["asr"]["code_switch_wer_ratio_max"] == 1.20
     assert pidgin["value_sources"]["asr.code_switch_wer_ratio_max"][
         "source"] == "registry/gates/pidgin-v1.yaml"
+
+
+@pytest.mark.parametrize("language", ["yoruba", "igbo", "akan", "ewe"])
+def test_tonal_languages_resolve_the_primary_cer_ceiling(language):
+    resolved = resolve_thresholds(language)
+    assert resolved["values"]["asr"]["absolute_cer_max"] == 0.10
+    assert resolved["value_sources"]["asr.absolute_cer_max"]["source"] == (
+        f"registry/gates/{language}-v1.yaml")
+
+
+def test_all_five_tonal_gate_files_freeze_the_cer_ceiling():
+    for language in ("yoruba", "igbo", "akan", "ewe", "yemba"):
+        gate = yaml.safe_load(
+            (ROOT / f"registry/gates/{language}-v1.yaml").read_text())
+        assert gate["overrides"]["asr"]["absolute_cer_max"] == 0.10, language
+        assert gate["overrides"]["asr"]["absolute_wer_max"] == 0.30, language
+
+
+def test_yemba_thresholds_stay_unresolvable_until_onboarding():
+    """yemba's A5 gate file is frozen, but its data-scope language document
+    deliberately carries no thresholds_ref: the engine must refuse to resolve
+    it until the owner scope record onboards the language."""
+    with pytest.raises(FailClosedError, match="ambiguous thresholds_ref"):
+        resolve_thresholds("yemba")
+
+
+@pytest.mark.parametrize("language", ["lingala", "hausa", "swahili", "wolof"])
+def test_non_tonal_languages_leave_the_cer_ceiling_null(language):
+    resolved = resolve_thresholds(language)
+    assert resolved["values"]["asr"]["absolute_cer_max"] is None
+    assert resolved["value_sources"]["asr.absolute_cer_max"]["source"] == (
+        "registry/gates/_defaults.yaml")
+
+
+def test_absolute_cer_gate_skips_only_a_null_registry_threshold():
+    assert _absolute_cer_gate("asr.absolute_cer", 0.08, None, []) is None
+    absent = _absolute_cer_gate("asr.absolute_cer", None, 0.10, [])
+    assert absent["state"] == "NOT_EVALUATED"
+    assert absent["required"] is True
+    assert absent["threshold"] == {"operator": "<=", "value": 0.10}
+
+
+def test_absolute_cer_gate_enforces_the_tonal_ceiling():
+    passing = _absolute_cer_gate("asr.absolute_cer", 0.0999, 0.10, [])
+    exact = _absolute_cer_gate("asr.absolute_cer", 0.10, 0.10, [])
+    failing = _absolute_cer_gate("asr.absolute_cer", 0.1001, 0.10, [])
+    assert passing["state"] == "PASS"
+    assert exact["state"] == "PASS"
+    assert failing["state"] == "FAIL"
+    assert failing["measurement"] == 0.1001
+    assert failing["threshold"] == {"operator": "<=", "value": 0.10}
+
+
+def test_absolute_cer_gate_malformed_values_fail_closed():
+    assert _absolute_cer_gate(
+        "asr.absolute_cer", float("nan"), 0.10, [])["state"] == "FAIL"
+    assert _absolute_cer_gate(
+        "asr.absolute_cer", "0.05", 0.10, [])["state"] == "FAIL"
+    assert _absolute_cer_gate(
+        "asr.absolute_cer", 0.05, "0.10", [])["state"] == "FAIL"
+
+
+def test_absolute_cer_gate_is_wired_into_both_wer_measurement_sites():
+    """CLAUDE-REVIEW-2026-08-16-035: absolute_cer_max was resolved and carried
+    but never compared. The measured branch is unreachable until B5
+    reactivation (the engine refuses a non-empty measured group), so the
+    wiring is asserted structurally so the gate cannot silently vanish
+    again."""
+    source = (ROOT / "pipeline/b5_gates.py").read_text()
+    assert '"asr.absolute_cer"' in source
+    assert '"asr.untouched_holdout.absolute_cer"' in source
+    assert source.count("_absolute_cer_gate(") == 3  # definition + two sites
 
 
 def test_current_artifact_is_blocked_with_no_engine_error(report):
@@ -248,8 +430,18 @@ def test_post_conversion_checksum_continuity_and_count():
 
 
 def test_generated_language_yaml_is_regenerated_from_sources():
+    """The generator owns exactly the sources.yaml scope; every other
+    registry language is a hand-authored addition and must stay hand-owned
+    (no GENERATED banner it did not earn)."""
+    sources = yaml.safe_load((ROOT / "registry/sources.yaml").read_text())
+    generated = set(sources["scope"])
     for path in (ROOT / "registry/languages").glob("*.yaml"):
-        assert path.read_text().startswith("# GENERATED by scripts/generate_languages.py")
+        text = path.read_text()
+        if path.stem in generated:
+            assert text.startswith(
+                "# GENERATED by scripts/generate_languages.py"), path
+        else:
+            assert not text.startswith("# GENERATED"), path
     result = subprocess.run(
         [sys.executable, str(ROOT / "scripts/generate_languages.py"), "--check"],
         cwd=ROOT, capture_output=True, text=True)
@@ -433,10 +625,11 @@ def test_dry_run_signature_cannot_verify_as_production_signature():
         sign_manifest(kms, manifest, key)
 
 
-def test_current_artifact_dry_run_binds_known_gaps_and_stays_blocked(report, tmp_path):
+def test_current_artifact_dry_run_binds_known_gaps_and_stays_blocked(
+        report, promotion_root, tmp_path):
     receipt = write_content_addressed_report(report, tmp_path)
     manifest = build_current_artifact_dry_run_manifest(
-        report, Path(receipt["path"]), ROOT)
+        report, Path(receipt["path"]), promotion_root)
     assert manifest["decision"]["outcome"] == "BLOCKED"
     assert manifest["artifact"]["processor_revision"]["state"] == "NOT_EVALUATED"
     assert manifest["decode"]["configuration"]["state"] == "NOT_EVALUATED"
