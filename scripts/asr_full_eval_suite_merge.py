@@ -37,24 +37,53 @@ class SuiteMergeRefusal(RuntimeError):
     pass
 
 
+def _verified_salvage(root: Path, directory: Path) -> Path | None:
+    """A refused attempt may still contribute if a committed salvage record
+    binds this directory's salvaged aggregate by SHA-256. Tampered or
+    unrecorded salvage never merges."""
+    salvage_path = directory / "salvaged-aggregate.json"
+    if not salvage_path.is_file():
+        return None
+    digest = hashlib.sha256(salvage_path.read_bytes()).hexdigest()
+    for record_path in sorted((root / "platform/evidence").glob("*SALVAGE*.json")):
+        record = json.loads(record_path.read_bytes())
+        if (
+            record.get("live_receipts", {}).get("directory") == str(directory.relative_to(root))
+            and record.get("salvage", {}).get("aggregate_sha256") == digest
+            and record.get("salvage", {}).get("aggregate_status") == "PASS_AGGREGATE"
+        ):
+            return salvage_path
+    return None
+
+
 def discover_pass_runs(root: Path, minimum_attempt: int) -> list[dict[str, Any]]:
     runs = []
     for directory in sorted(root.glob(RECEIPTS_GLOB)):
         result_path = directory / "result.json"
         aggregate_path = directory / "aggregate-report.json"
         selection_path = directory / "pilot-selection.json"
-        if not (result_path.is_file() and aggregate_path.is_file() and selection_path.is_file()):
+        if not (result_path.is_file() and selection_path.is_file()):
             continue
         result = json.loads(result_path.read_bytes())
-        if result.get("outcome") != "PASS_PILOT":
-            continue
         attempt = result.get("attempt")
         if not isinstance(attempt, int) or attempt < minimum_attempt:
             continue
+        salvage = None
+        if result.get("outcome") != "PASS_PILOT":
+            salvage = _verified_salvage(root, directory)
+            if salvage is None:
+                continue
+        elif not aggregate_path.is_file():
+            continue
+        source = salvage if salvage is not None else aggregate_path
+        aggregate = json.loads(source.read_bytes())
+        if salvage is not None:
+            aggregate = {"aggregate": aggregate["aggregate"]}
         runs.append({
             "attempt": attempt,
             "directory": str(directory.relative_to(root)),
-            "aggregate": json.loads(aggregate_path.read_bytes()),
+            "salvaged": salvage is not None,
+            "aggregate": aggregate,
             "selection": json.loads(selection_path.read_bytes()),
         })
     duplicates = defaultdict(list)
@@ -180,7 +209,8 @@ def build_report(root: Path, minimum_attempt: int) -> dict[str, Any]:
             "sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         },
         "source_runs": [
-            {"attempt": run["attempt"], "directory": run["directory"], "rows": len(run["selection"]["rows"])}
+            {"attempt": run["attempt"], "directory": run["directory"],
+             "rows": len(run["selection"]["rows"]), "salvaged": run.get("salvaged", False)}
             for run in runs
         ],
         "coverage": coverage,

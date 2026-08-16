@@ -99,3 +99,35 @@ def test_out_of_pool_language_refuses(tmp_path):
     _write_run(tmp_path, 32, [("gamma", 1)])
     with pytest.raises(SuiteMergeRefusal, match="outside the pool"):
         build_report(tmp_path, 32)
+
+
+def test_verified_salvage_merges_and_tampered_salvage_refuses(tmp_path):
+    import hashlib
+    _write_manifest(tmp_path)
+    _write_run(tmp_path, 32, [("alpha", 1), ("alpha", 2), ("alpha", 3), ("alpha", 4), ("beta", 1)])
+    # refused attempt with a salvaged aggregate covering the gap
+    directory = tmp_path / "platform/evidence/receipts/ASR-BASE-MODEL-TEST-A33-LIVE"
+    directory.mkdir(parents=True)
+    (directory / "result.json").write_text(json.dumps({"outcome": "FAILED_CLOSED_EXECUTION", "attempt": 33}))
+    (directory / "pilot-selection.json").write_text(json.dumps({
+        "rows": [{"language": "beta", "selection_ordinal": 2}]}))
+    salvage_body = json.dumps({"aggregate": {"per_language": {
+        "modelX|unconditioned|beta": {
+            "rows": 1, "character_errors": 5, "reference_characters": 100,
+            "word_errors": 2, "reference_words": 10, "cap_hits": 0, "eos_failures": 0,
+            "latency_median_seconds": 0.4, "latency_p95_seconds": 0.9,
+            "cer": 0.05, "wer": 0.2, "rtf_median": 0.1, "rtf_p95": 0.2}}, "groups": {}}})
+    (directory / "salvaged-aggregate.json").write_text(salvage_body)
+    record = {
+        "live_receipts": {"directory": "platform/evidence/receipts/ASR-BASE-MODEL-TEST-A33-LIVE"},
+        "salvage": {"aggregate_sha256": hashlib.sha256(salvage_body.encode()).hexdigest(),
+                    "aggregate_status": "PASS_AGGREGATE"},
+    }
+    (tmp_path / "platform/evidence/A33-SALVAGE.json").write_text(json.dumps(record))
+    report = build_report(tmp_path, 32)
+    assert report["status"] == "PASS_GAP_FREE_COVERAGE"
+    assert any(r["salvaged"] for r in report["source_runs"])
+    # tamper: aggregate no longer matches the recorded hash -> run drops out
+    (directory / "salvaged-aggregate.json").write_text(salvage_body + " ")
+    report = build_report(tmp_path, 32)
+    assert report["status"] == "COVERAGE_INCOMPLETE"

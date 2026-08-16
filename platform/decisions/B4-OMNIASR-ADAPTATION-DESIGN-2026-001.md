@@ -36,9 +36,10 @@ Exact target modules (verified names from the module tree):
 
 - **LLM variant** (mirrors the proven Whisper r=32 q/v recipe):
   `llama_decoder.layers.{0..11}.self_attn.q_proj` and `.v_proj`
-  → **6.3M trainable params** (0.28% of the model). Optional second
-  phase: encoder `layers.{0..47}.self_attn.{q_proj,v_proj}` for
-  acoustically distant languages.
+  → **6.29M trainable params** (0.28% of the model; verified against
+  real module dims — square 4096 projections, no GQA). Optional second
+  phase: encoder `layers.{0..47}.self_attn.{q_proj,v_proj}` (dim 1280,
+  +7.86M) for acoustically distant languages.
 - **CTC variant**: encoder `layers.{0..47}.self_attn.{q_proj,v_proj}`
   + full fine-tune of the small CTC head.
 
@@ -103,7 +104,7 @@ per-language audio capped at 100h (kinyarwanda's 300h subsampled).
 | CTC, 11 clear languages (~466h audio capped) | ~186 | ~$150 | ~$55 |
 | LLM, 11 clear languages | ~373 | ~$300 | ~$105 |
 | Both variants, clear languages | ~559 | ~$450 | ~$160 |
-| Add 5 SA-blocked languages after legal review (+499h capped ~340h) | +~400 | +~$320 | +~$115 |
+| Add 5 SA-blocked languages after legal review (+499h capped 320h) | +~384 | +~$309 | +~$108 |
 
 First calibration run (work item T5) measures the true audio-h/GPU-h on
 one small language (yemba 2.3h or wolof 10.1h, ~$2) and re-prices this
