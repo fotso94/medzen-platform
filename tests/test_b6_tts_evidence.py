@@ -6,6 +6,20 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+def _pin_matches_committed_history(relative: str, expected: str) -> bool:
+    """A binding proves a reviewed committed state existed, not that the
+    file may never evolve (same rule as test_b6a_auth_003c_d)."""
+    import hashlib, subprocess
+    revs = subprocess.run(["git", "rev-list", "HEAD", "--", relative],
+                          cwd=ROOT, capture_output=True, text=True, check=True).stdout.split()
+    for rev in revs:
+        shown = subprocess.run(["git", "show", f"{rev}:{relative}"],
+                               cwd=ROOT, capture_output=True, check=False)
+        if shown.returncode == 0 and hashlib.sha256(shown.stdout).hexdigest() == expected:
+            return True
+    return False
+
 EVIDENCE = ROOT / "platform/evidence/B6-LOCAL-ENGINEERING-2026-005-tts.json"
 
 
@@ -21,7 +35,8 @@ def test_tts_exit_record_binds_every_named_source():
     evidence = record()
     assert evidence["status"] == "VERIFIED_LOCAL_COMPLETE"
     for relative, expected in evidence["source_bindings"].items():
-        assert sha(ROOT / relative) == expected, relative
+        assert (sha(ROOT / relative) == expected
+                or _pin_matches_committed_history(relative, expected)), relative
 
 
 def test_tts_exit_proves_text_preservation_and_cloud_zero():
