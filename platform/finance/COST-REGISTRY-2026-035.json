@@ -1,0 +1,201 @@
+{
+ "allocation_tag_standard": {
+  "cost_explorer_activation_state": "PROJECT_VALUES_NOT_AVAILABLE",
+  "future_rule": "Do not describe a future charge as tag-attributable until the billing console returns the required allocation-tag values.",
+  "required_keys": [
+   "Project",
+   "Environment",
+   "CostCenter",
+   "Stage",
+   "Workstream",
+   "BudgetRegistry"
+  ]
+ },
+ "allocations": [
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "PREDECESSOR-CONSOLIDATED-THROUGH-ATTEMPT-23",
+   "financial_state": "BOUND_TO_COST_REGISTRY_2026_019",
+   "recognized_committed_usd": 204.4286064216
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "actual_direct_compute_usd": null,
+   "allocation_id": "ASR-BASE-MODEL-EVALUATION-ATTEMPT-24",
+   "attempt_number": 24,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 553,
+   "recognized_committed_usd": 10.0
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+   "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS",
+   "financial_state": "CURRENT_BILLING_UNATTRIBUTED",
+   "recognized_committed_usd": null
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+   "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+   "recognized_committed_usd": null
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-32-SHARD-1",
+   "attempt_number": 32,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 10100,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 1,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-33-SHARD-2",
+   "attempt_number": 33,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 2700,
+   "outcome": "FAILED_CLOSED_EXECUTION_TERMINATION_GATE",
+   "recognized_committed_usd": 10.0,
+   "shard": 2,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-34-SHARD-2-RETRY",
+   "attempt_number": 34,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 5100,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 2,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-35-SHARD-3",
+   "attempt_number": 35,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 9500,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 3,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-36-SHARD-3",
+   "attempt_number": 36,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 10500,
+   "outcome": "FAILED_CLOSED_EXECUTION_WITH_VERIFIED_SALVAGE",
+   "recognized_committed_usd": 10.0,
+   "shard": 3,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-37-SHARD-5",
+   "attempt_number": 37,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 6600,
+   "outcome": "FAILED_CLOSED_POLL_BLIP_JOB_DESTROYED_BY_CLEANUP",
+   "recognized_committed_usd": 10.0,
+   "shard": 5,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-38-SHARD-6-META-ONLY",
+   "attempt_number": 38,
+   "financial_state": "CLOSED_FAILED_EXECUTION_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "FAILED_CLOSED_VALIDATOR_DEFECT_RUN_COMPLETE: all 8,634 Meta-only inferences finished; the runner aggregate validator still demanded whisper-era counts (fixed in 6b9d09e); results destroyed by clean teardown",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 6,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 10.0,
+   "allocation_id": "B5-T5-CALIBRATION-YEMBA-SAGEMAKER",
+   "financial_state": "RESERVED_BEFORE_BILLABLE_EXECUTION",
+   "gpu_instance_type": "ml.g6.xlarge (SageMaker managed spot)",
+   "packet": "B5-T5-CALIBRATION-PACKET-2026-001",
+   "recognized_committed_usd": 10.0,
+   "worst_case_on_demand_usd": 6.4
+  }
+ ],
+ "controls": {
+  "actual_and_conservative_amounts_separated": true,
+  "attempt_24_reservation_closed": true,
+  "credits_used_to_expand_headroom": false,
+  "current_active_billable_reservations": "1",
+  "historical_budget_records_edited": false,
+  "new_aws_resources_require_versioned_packet": true,
+  "next_reconciliation_creates_new_registry_revision": true,
+  "one_active_billable_reservation_at_a_time": true,
+  "owner_or_qualified_financial_review_required": true,
+  "reservation_is_aws_authorization": false,
+  "reserve_before_billable_execution": true,
+  "shared_service_costs_are_not_fabricated_as_attempt_costs": true,
+  "spend_reset_permitted": false
+ },
+ "currency": "USD",
+ "guardrail_summary": {
+  "active_reservations_usd": 10.0,
+  "actual_billing_granularity": "DAILY_RECONCILED_THROUGH_2026-08-14_NET_ZERO_VIA_CREDITS_2026-08-15_PENDING",
+  "aggregate_ceiling_usd": 400.0,
+  "attempt_28_outcome": "PASS_PILOT",
+  "attempt_31_outcome": "FAILED_CLOSED_EXECUTION_JOB_DEADLINE_78_PERCENT_COMPLETE",
+  "attempt_32_outcome": "PASS_PILOT_SHARD_1_COMPLETE",
+  "attempt_33_outcome": "FAILED_CLOSED_EXECUTION_TERMINATION_GATE_AT_ROW_1203",
+  "attempt_34_outcome": "PASS_PILOT_SHARD_2_COMPLETE_TERMINATION_PROTOCOL_LIVE_PROVEN",
+  "attempt_35_outcome": "PASS_PILOT_MANIFEST_SHARD_4_UNITS_COMPLETE",
+  "attempt_36_outcome": "FAILED_CLOSED_HOST_OUTAGE_JOB_COMPLETED_SALVAGE_VERIFIED",
+  "attempt_37_outcome": "FAILED_CLOSED_POLL_BLIP_AT_62_PERCENT",
+  "attempt_38_outcome": "FAILED_CLOSED_VALIDATOR_DEFECT_RUN_COMPLETE",
+  "ceiling_raise_record": {
+   "authority": "owner standing budget delegation 2026-08-15 ('full power to approve or adjust increase' in dev)",
+   "basis": "shard manifest v4 prices the suite at 30.7h across 10 shards; 10 x $10 conservative ceilings on top of $284.43 recognized peaks at $384.43 if every shard consumes its full ceiling, exceeding $360; measured actual spend remains a few dollars per attempt, net $0.00 via credits (credits never expand headroom)",
+   "from_usd": 360.0,
+   "to_usd": 400.0
+  },
+  "claim_limit": "Attempt 38: ~2.7h GPU (~$2.2 actual); run COMPLETE, destroyed by validator defect. T5: SageMaker spot, $10 ceiling, $6.40 worst-case on-demand.",
+  "committed_plus_reserved_usd": 364.4286064216,
+  "guardrail_headroom_after_reservations_usd": 35.5713935784,
+  "incremental_recognized_guardrail_since_revision_026_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_027_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_028_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_029_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_030_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_031_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_032_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_033_usd": 10.0,
+  "recognized_committed_guardrail_usd": 364.4286064216,
+  "reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-011.json",
+   "sha256": "b229eb8fcc3b94c2e77e654232bd7ba08a96a4cbe287597299feeb30cd39fdca"
+  }
+ },
+ "id": "COST-REGISTRY-2026-035",
+ "reconciliation": {
+  "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-010.json",
+  "sha256": "5c771c02c36db68b1e22a9cd290b46e39f1c5e68c5e75d23e91d184f4587abcd",
+  "status": "PASS_ATTEMPT_24_BILLING_QUERIED_CURRENT_DAY_PENDING_CONSERVATIVE_GUARDRAIL_RETAINED"
+ },
+ "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+ "recorded_utc": "2026-08-17T03:12:19Z",
+ "revision": 35,
+ "status": "CURRENT_ATTEMPT_38_RESERVED_META_ONLY_PROTOCOL",
+ "supersedes": "COST-REGISTRY-2026-034"
+}
