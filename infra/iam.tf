@@ -60,6 +60,14 @@ resource "aws_iam_role_policy" "trainer" {
   policy = file("${local.iam_dir}/medzen-trainer-role.json")
 }
 
+# SageMaker execution delta the B4-era trainer role lacked
+# (B5-T5-CALIBRATION-PACKET-2026-001, mutation 6).
+resource "aws_iam_role_policy" "trainer_b5_t5_sagemaker" {
+  name   = "medzen-b5-t5-sagemaker"
+  role   = aws_iam_role.trainer.id
+  policy = file("${local.iam_dir}/medzen-b5-t5-sagemaker-policy.json")
+}
+
 # ---- GitHub Actions OIDC ---------------------------------------------------
 data "aws_iam_openid_connect_provider" "github" {
   count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
