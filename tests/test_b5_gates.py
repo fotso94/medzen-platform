@@ -242,12 +242,13 @@ def test_all_five_tonal_gate_files_freeze_the_cer_ceiling():
         assert gate["overrides"]["asr"]["absolute_wer_max"] == 0.30, language
 
 
-def test_yemba_thresholds_stay_unresolvable_until_onboarding():
-    """yemba's A5 gate file is frozen, but its data-scope language document
-    deliberately carries no thresholds_ref: the engine must refuse to resolve
-    it until the owner scope record onboards the language."""
-    with pytest.raises(FailClosedError, match="ambiguous thresholds_ref"):
-        resolve_thresholds("yemba")
+def test_yemba_thresholds_resolve_with_the_owner_approved_tonal_rule():
+    """yemba was onboarded by owner approval 2026-08-17 ("approve the
+    thresholds"): thresholds_ref is wired and the tonal rule binds —
+    WER ceiling 0.30 AND the 0.10 CER ceiling that forces tone fidelity."""
+    values = resolve_thresholds("yemba")["values"]["asr"]
+    assert values["absolute_wer_max"] == 0.30
+    assert values["absolute_cer_max"] == 0.10
 
 
 @pytest.mark.parametrize("language", ["lingala", "hausa", "swahili", "wolof"])

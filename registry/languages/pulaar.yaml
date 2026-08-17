@@ -12,3 +12,4 @@ asr:
   artifact: null
   approved_version: null
   decode_strategy: pending_experiment
+thresholds_ref: gates/pulaar-v1.yaml
