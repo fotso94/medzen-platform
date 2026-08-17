@@ -26,7 +26,8 @@ from pathlib import Path
 from typing import Iterator
 
 from . import green_common as gc
-from .base import TARGET_SR, SourceSpec, build_record, usable
+from .base import (TARGET_SR, ConflictingDuplicateAudioError, SourceSpec,
+                   build_record, usable)
 
 LICENSE_POLICY = "commercial_ok"          # owner authority; see module docstring
 RELEASE = "owner-supplied-yemba-egra-2026-08-11"
@@ -88,9 +89,17 @@ class YembaEGRAAdapter:
         spill = Path(sd.name)
         self._spill_dir = sd
         produced = 0
+        # gb1 shipped 8 byte-duplicate pairs: 4 same-word re-listings
+        # (occ_1/occ_2 of one recording) and 4 pairs where different word ids
+        # point at identical bytes — conflicting transcripts. A re-listing
+        # keeps its first appearance; conflicts are collected across the whole
+        # scan and raised at the end, so one failed run names every pair
+        # (mirrors curated/_versions/gb2/COMPLETE.json conflicting_label_pairs).
+        seen: dict[str, tuple[str, str]] = {}   # curated-wav sha -> (file, text)
+        conflicts: list[tuple[str, str, str, str, str]] = []
         for src in sorted(self.root.rglob("audio/**/*.wav")):
             if limit and produced >= limit:
-                return
+                break
             m = _FNAME.search(src.name)
             if not m:
                 continue
@@ -115,13 +124,21 @@ class YembaEGRAAdapter:
             buf = io.BytesIO()
             sf.write(buf, arr, TARGET_SR, format="WAV", subtype="PCM_16")
             wav = buf.getvalue()
+            wav_sha = hashlib.sha256(wav).hexdigest()
+            prev = seen.get(wav_sha)
+            if prev is not None:
+                if prev[1] == text:
+                    continue                    # same recording listed again
+                conflicts.append((wav_sha, prev[0], prev[1], src.name, text))
+                continue
+            seen[wav_sha] = (src.name, text)
             raw = src.read_bytes()
-            stem = (src.stem + "_" + hashlib.sha256(wav).hexdigest()[:12])
+            stem = f"{src.stem}_{wav_sha[:12]}"
             rp = spill / f"{stem}.raw"; wp = spill / f"{stem}.wav"
             rp.write_bytes(raw); wp.write_bytes(wav)
             rec = build_record(
                 audio_uri=f"s3://medzen-speech/curated/{base}/{self.version}/audio/{stem}.wav",
-                audio_sha256=hashlib.sha256(wav).hexdigest(),
+                audio_sha256=wav_sha,
                 duration_s=dur, sample_rate=TARGET_SR, channels=1,
                 text_verbatim=text, language=self.language,
                 speaker_id=f"egra_{spk}", session_id=f"egra_{spk}",
@@ -134,6 +151,8 @@ class YembaEGRAAdapter:
             yield {"record": rec, "raw_path": rp, "wav_path": wp,
                    "raw_ext": "wav", "stem": stem}
             produced += 1
+        if conflicts:
+            raise ConflictingDuplicateAudioError(conflicts)
 
     def rows(self, language: str | None = None,
              limit: int | None = None) -> Iterator[dict]:

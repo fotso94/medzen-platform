@@ -227,7 +227,23 @@ def main() -> int:
         print("--force-eval only if you accept invalidating prior results.")
         return 1
 
-    items = list(adapter.items(limit=a.limit))
+    # ---- byte-duplicate guard ---------------------------------------------
+    # One recording listed twice with the SAME text is a re-listing: keep the
+    # first. Identical bytes under DIFFERENT texts means at least one label is
+    # wrong — refuse before anything is validated or uploaded; the error names
+    # every pair so one failed run yields the full source-repair list.
+    from .adapters.base import ConflictingDuplicateAudioError, dedupe_byte_duplicates
+    try:
+        items = list(adapter.items(limit=a.limit))
+        kept = dedupe_byte_duplicates(items)
+    except ConflictingDuplicateAudioError as e:
+        print(f"\nREFUSING: {e}")
+        print("Nothing uploaded.")
+        return 1
+    if len(kept) < len(items):
+        print(f"  dropped {len(items) - len(kept)} byte-duplicate re-listing(s) "
+              f"(same audio bytes, same text — first listing kept)")
+    items = kept
     if not items:
         print("no usable rows produced"); return 1
     rows = [it["record"] for it in items]

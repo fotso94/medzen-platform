@@ -36,6 +36,53 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
+class ConflictingDuplicateAudioError(ValueError):
+    """Byte-identical audio listed under different transcripts.
+
+    The same bytes cannot carry two truths: at least one label is wrong, and
+    keeping either side silently poisons training or eval. Ingest must refuse
+    and the source must be repaired. `pairs` holds every offending
+    (audio_sha256, first_ref, first_text, second_ref, second_text) so the
+    error message doubles as the repair list.
+    """
+
+    def __init__(self, pairs: list[tuple[str, str, str, str, str]]):
+        self.pairs = list(pairs)
+        lines = [f"sha {sha[:16]}…: {ra} {ta!r}  vs  {rb} {tb!r}"
+                 for sha, ra, ta, rb, tb in self.pairs]
+        super().__init__(
+            f"{len(self.pairs)} byte-identical audio pair(s) carry conflicting "
+            "transcripts — repair the source:\n  " + "\n  ".join(lines))
+
+
+def dedupe_byte_duplicates(items: list[dict]) -> list[dict]:
+    """Byte-duplicate guard over adapter items, shared by every source.
+
+    Two rows with the same audio_checksum_sha256 are one recording listed
+    twice. Same normalized text -> a re-listing: keep the first, drop the
+    rest. Different text -> conflicting labels for identical bytes: raise
+    ConflictingDuplicateAudioError naming EVERY pair, so one failed run
+    yields the complete repair list (yemba_egra gb1 shipped 4 re-listings
+    AND 4 conflicting pairs; the hand-built gb2 had to drop the conflicts).
+    """
+    first: dict[str, dict] = {}
+    kept: list[dict] = []
+    conflicts: list[tuple[str, str, str, str, str]] = []
+    for it in items:
+        rec = it["record"]
+        prev = first.get(rec["audio_checksum_sha256"])
+        if prev is None:
+            first[rec["audio_checksum_sha256"]] = rec
+            kept.append(it)
+        elif rec["text_normalized"] != prev["text_normalized"]:
+            conflicts.append((rec["audio_checksum_sha256"],
+                              prev["audio_filepath"], prev["text_verbatim"],
+                              rec["audio_filepath"], rec["text_verbatim"]))
+    if conflicts:
+        raise ConflictingDuplicateAudioError(conflicts)
+    return kept
+
+
 def build_record(
     *, audio_uri: str, audio_sha256: str, duration_s: float,
     sample_rate: int, channels: int, text_verbatim: str, language: str,
