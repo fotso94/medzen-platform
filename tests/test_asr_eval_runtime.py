@@ -43,8 +43,9 @@ def row(checksum: str, reference: str = "synthetic reference") -> dict:
 
 
 def test_candidate_identity_is_exact() -> None:
+    # whisper removed from the evaluated set by owner directive 2026-08-16
+    # (Meta-only protocol); its artifacts remain staged and verified.
     assert set(CANDIDATES) == {
-        "whisper-large-v3",
         "omniASR_CTC_1B_v2",
         "omniASR_LLM_1B_v2",
     }
@@ -83,16 +84,16 @@ def test_historical_versions_are_not_selected() -> None:
 
 
 def test_conditioning_fails_closed() -> None:
-    validate_mode("whisper-large-v3", "unconditioned", None)
+    validate_mode("omniASR_CTC_1B_v2", "unconditioned", None)
     validate_mode("omniASR_LLM_1B_v2", "conditioned", "eng_Latn")
     with pytest.raises(EvaluationRefusal, match="NOT_APPLICABLE"):
         validate_mode("omniASR_CTC_1B_v2", "conditioned", "eng_Latn")
     with pytest.raises(EvaluationRefusal, match="requires an exact reviewed"):
         validate_mode("omniASR_LLM_1B_v2", "conditioned", None)
     with pytest.raises(EvaluationRefusal, match="forbids a language"):
-        validate_mode("whisper-large-v3", "unconditioned", "en")
+        validate_mode("omniASR_LLM_1B_v2", "unconditioned", "en")
     with pytest.raises(EvaluationRefusal, match="unknown candidate"):
-        validate_mode("invented", "unconditioned", None)
+        validate_mode("whisper-large-v3", "unconditioned", None)
 
 
 def test_receipt_is_fsynced_write_once(tmp_path: Path) -> None:
