@@ -1,0 +1,152 @@
+"""C2 tests: exact render, drift refusal, ceilings, gates. No AWS anywhere."""
+
+from __future__ import annotations
+
+import copy
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+
+from b5_sagemaker_job import (  # noqa: E402
+    JobRefusal,
+    render_request,
+    review_is_recorded,
+    validate_request,
+)
+
+
+def bindings() -> dict:
+    return {
+        "job_id": "t5-calibration-yemba",
+        "image_uri_with_digest": (
+            "558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+            "medzen-trainer-omniasr@sha256:" + "a" * 64),
+        "instance_type": "ml.g6.xlarge",
+        "kms_key_arn": ("arn:aws:kms:eu-central-1:558069890522:key/"
+                        "9c336116-c648-4548-95c6-1b926478ae57"),
+        "subnets": ["subnet-0000000000000aaaa"],
+        "security_group_ids": ["sg-0000000000000bbbb"],
+        "max_runtime_seconds": 14400,
+        "max_wait_seconds": 28800,
+        "cost_ceiling_usd": 10.0,
+        "volume_gb": 100,
+        "cost_registry_line": "ASR-EVAL-COST-REGISTRY line 035",
+        "environment": {
+            "MEDZEN_VARIANT": "ctc",
+            "MEDZEN_MANIFEST_VERSION": "v9",
+            "MEDZEN_LANGUAGES": "yemba",
+            "MEDZEN_SEED": "7",
+            "MEDZEN_MAX_STEPS": "600",
+        },
+    }
+
+
+def test_render_is_deterministic_and_exact():
+    a = json.dumps(render_request(bindings()), sort_keys=True)
+    b = json.dumps(render_request(bindings()), sort_keys=True)
+    assert a == b
+
+
+def test_rendered_request_carries_the_non_negotiables():
+    request = render_request(bindings())
+    assert request["EnableManagedSpotTraining"] is True
+    assert request["ResourceConfig"]["VolumeKmsKeyId"].startswith("arn:aws:kms:")
+    assert request["OutputDataConfig"]["KmsKeyId"].startswith("arn:aws:kms:")
+    assert request["CheckpointConfig"]["LocalPath"] == "/opt/ml/checkpoints"
+    assert request["VpcConfig"]["Subnets"]
+    assert request["StoppingCondition"]["MaxWaitTimeInSeconds"] >= \
+        request["StoppingCondition"]["MaxRuntimeInSeconds"]
+
+
+def test_validate_passes_the_exact_form_and_refuses_one_char_drift():
+    request = render_request(bindings())
+    result = validate_request(request, bindings())
+    assert result["status"] == "PASS_EXACT_TRAINING_REQUEST"
+    drifted = copy.deepcopy(request)
+    drifted["ResourceConfig"]["VolumeSizeInGB"] += 1
+    with pytest.raises(JobRefusal, match="differs"):
+        validate_request(drifted, bindings())
+
+
+def test_floating_tag_image_is_refused():
+    b = bindings()
+    b["image_uri_with_digest"] = (
+        "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer:latest")
+    with pytest.raises(JobRefusal, match="digest"):
+        render_request(b)
+
+
+def test_foreign_registry_image_is_refused():
+    b = bindings()
+    b["image_uri_with_digest"] = (
+        "999999999999.dkr.ecr.eu-central-1.amazonaws.com/x@sha256:" + "a" * 64)
+    with pytest.raises(JobRefusal, match="ECR"):
+        render_request(b)
+
+
+def test_instance_outside_allowlist_is_refused():
+    b = bindings()
+    b["instance_type"] = "ml.p4d.24xlarge"
+    with pytest.raises(JobRefusal, match="allowlist"):
+        render_request(b)
+
+
+def test_runtime_above_ceiling_is_refused_with_the_arithmetic():
+    b = bindings()
+    b["max_runtime_seconds"] = 360000  # 100h on-demand >> $10
+    b["max_wait_seconds"] = 720000
+    with pytest.raises(JobRefusal, match="ceiling"):
+        render_request(b)
+
+
+def test_wait_shorter_than_runtime_breaks_the_spot_contract():
+    b = bindings()
+    b["max_wait_seconds"] = b["max_runtime_seconds"] - 1
+    with pytest.raises(JobRefusal, match="spot"):
+        render_request(b)
+
+
+def test_llm_variant_cannot_be_launched():
+    b = bindings()
+    b["environment"]["MEDZEN_VARIANT"] = "llm"
+    with pytest.raises(JobRefusal, match="ctc"):
+        render_request(b)
+
+
+def test_missing_environment_keys_are_refused():
+    b = bindings()
+    del b["environment"]["MEDZEN_SEED"]
+    with pytest.raises(JobRefusal, match="MEDZEN_SEED"):
+        render_request(b)
+
+
+@pytest.mark.parametrize("key", ["job_id", "kms_key_arn", "subnets",
+                                 "security_group_ids", "cost_registry_line"])
+def test_absent_bindings_keys_are_refused(key):
+    b = bindings()
+    del b[key]
+    with pytest.raises(JobRefusal, match=key):
+        render_request(b)
+
+
+def test_launch_gate_needs_the_approval_phrase(tmp_path):
+    shared = tmp_path / "claude_instructions.txt"
+    shared.write_text("nothing relevant\n")
+    assert review_is_recorded("t5-calibration-yemba", shared) is False
+    shared.write_text(
+        "REVIEW ...\nDECISION: APPROVED — risk accepted, "
+        "authorizing training job t5-calibration-yemba per packet.\n")
+    assert review_is_recorded("t5-calibration-yemba", shared) is True
+
+
+def test_approval_phrase_without_approved_decision_fails(tmp_path):
+    shared = tmp_path / "claude_instructions.txt"
+    shared.write_text(
+        "DECISION: HOLD — do not launch\n"
+        "... authorizing training job t5-calibration-yemba pending fixes\n")
+    text_ok = review_is_recorded("t5-calibration-yemba", shared)
+    assert text_ok is False, "HOLD text before the phrase must not authorize"
