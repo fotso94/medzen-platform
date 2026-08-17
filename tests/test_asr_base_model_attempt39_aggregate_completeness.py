@@ -145,3 +145,22 @@ def test_short_row_count_still_refuses(tmp_path):
             "not_applicable": not_applicable,
             "aggregate": {"gpu_memory": {}, "groups": {}},
         }).run()
+
+
+def test_raw_aggregate_is_salvaged_before_validation_even_on_refusal(tmp_path):
+    """The attempt-38 lesson made structural: a refused aggregate must
+    already be on local disk when the refusal fires."""
+    rows = _selection(["english"] * 4)
+    aggregate = {
+        "status": "PASS_AGGREGATE",
+        "runtime_rows": len(rows),
+        "completed_inferences": 1,  # wrong on purpose -> refusal
+        "not_applicable": 0,
+        "aggregate": {"gpu_memory": {}, "groups": {}},
+    }
+    harness = _Harness(tmp_path, rows, aggregate)
+    with pytest.raises(OperationRefusal):
+        harness.run()
+    salvage = tmp_path / "aggregate-raw-prevalidation.json"
+    assert salvage.exists(), "refusal fired but no pre-validation salvage"
+    assert json.loads(salvage.read_bytes()) == aggregate

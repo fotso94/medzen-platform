@@ -3709,6 +3709,13 @@ class LiveOperations:
             f"{state['staging_path']}/output/aggregate.json",
             maximum_bytes=AGGREGATE_READBACK_MAXIMUM_BYTES,
         )
+        # Persist the raw readback BEFORE any validation. Attempt 38 completed
+        # every inference and a defective validator refusal let cleanup destroy
+        # the only copy; the pre-validation salvage file makes a wrong validator
+        # survivable — a refused aggregate is quarantined evidence, not a PASS.
+        salvage = context.workdir / "aggregate-raw-prevalidation.json"
+        if not salvage.exists():
+            salvage.write_bytes(body)
         try:
             value = json.loads(body)
         except Exception as exc:
