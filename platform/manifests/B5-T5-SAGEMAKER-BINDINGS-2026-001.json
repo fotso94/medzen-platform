@@ -15,7 +15,7 @@
  "image_tag": "t5-cal-2026-08-17b",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:337f9647f566ada5deeff544eaa51aa9d6c993ba9eb69461351cf9d68ff802e0",
  "instance_type": "ml.g6.xlarge",
- "job_id": "t5-calibration-yemba",
+ "job_id": "t5-calibration-yemba-r2",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "account spot-training quota for ml.g6.xlarge is 0; increase filed (d7bef45d...4lk3i, PENDING); on-demand quota is 1; ceiling arithmetic is on-demand-based so the $10 ceiling holds ($6.40 worst case)",

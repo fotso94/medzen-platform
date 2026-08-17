@@ -125,6 +125,11 @@ def render_request(bindings: dict) -> dict:
         "AlgorithmSpecification": {
             "TrainingImage": image,
             "TrainingInputMode": "File",
+            # Without an explicit entrypoint SageMaker appends its default
+            # 'train' argument to the image ENTRYPOINT — the first T5 attempt
+            # died in seconds on python trying to open a file named 'train'.
+            "ContainerEntrypoint": ["/opt/venv/bin/python"],
+            "ContainerArguments": ["-m", "pipeline.omniasr_train"],
         },
         "OutputDataConfig": {
             "S3OutputPath": f"s3://{BUCKET}/{prefix}/output",

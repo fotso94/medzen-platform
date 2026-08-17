@@ -210,3 +210,12 @@ def test_on_demand_with_leftover_max_wait_is_refused():
 def test_spot_remains_the_default():
     request = render_request(bindings())
     assert request["EnableManagedSpotTraining"] is True
+
+
+def test_container_entrypoint_runs_the_trainer_module():
+    """SageMaker's default appends 'train' to the image entrypoint; the
+    request must name the trainer module explicitly (first-launch lesson)."""
+    request = render_request(bindings())
+    spec = request["AlgorithmSpecification"]
+    assert spec["ContainerEntrypoint"] == ["/opt/venv/bin/python"]
+    assert spec["ContainerArguments"] == ["-m", "pipeline.omniasr_train"]

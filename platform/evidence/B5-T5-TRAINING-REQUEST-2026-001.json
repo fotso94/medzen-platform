@@ -1,11 +1,18 @@
 {
  "AlgorithmSpecification": {
+  "ContainerArguments": [
+   "-m",
+   "pipeline.omniasr_train"
+  ],
+  "ContainerEntrypoint": [
+   "/opt/venv/bin/python"
+  ],
   "TrainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:337f9647f566ada5deeff544eaa51aa9d6c993ba9eb69461351cf9d68ff802e0",
   "TrainingInputMode": "File"
  },
  "CheckpointConfig": {
   "LocalPath": "/opt/ml/checkpoints",
-  "S3Uri": "s3://medzen-speech/research/b5-training/t5-calibration-yemba/checkpoints"
+  "S3Uri": "s3://medzen-speech/research/b5-training/t5-calibration-yemba-r2/checkpoints"
  },
  "EnableManagedSpotTraining": false,
  "EnableNetworkIsolation": false,
@@ -21,7 +28,7 @@
  },
  "OutputDataConfig": {
   "KmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
-  "S3OutputPath": "s3://medzen-speech/research/b5-training/t5-calibration-yemba/output"
+  "S3OutputPath": "s3://medzen-speech/research/b5-training/t5-calibration-yemba-r2/output"
  },
  "ResourceConfig": {
   "InstanceCount": 1,
@@ -39,14 +46,14 @@
   },
   {
    "Key": "medzen:job",
-   "Value": "t5-calibration-yemba"
+   "Value": "t5-calibration-yemba-r2"
   },
   {
    "Key": "medzen:classification",
    "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
   }
  ],
- "TrainingJobName": "medzen-b5-t5-calibration-yemba",
+ "TrainingJobName": "medzen-b5-t5-calibration-yemba-r2",
  "VpcConfig": {
   "SecurityGroupIds": [
    "sg-0fee72d218ac002a7"
