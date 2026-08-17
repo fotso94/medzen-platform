@@ -54,7 +54,8 @@ def test_render_is_deterministic_and_exact():
 def test_rendered_request_carries_the_non_negotiables():
     request = render_request(bindings())
     assert request["EnableManagedSpotTraining"] is True
-    assert request["ResourceConfig"]["VolumeKmsKeyId"].startswith("arn:aws:kms:")
+    assert "VolumeKmsKeyId" not in request["ResourceConfig"], (
+        "g6 NVMe storage is hardware-encrypted; AWS refuses VolumeKmsKeyId")
     assert request["OutputDataConfig"]["KmsKeyId"].startswith("arn:aws:kms:")
     assert request["CheckpointConfig"]["LocalPath"] == "/opt/ml/checkpoints"
     assert request["VpcConfig"]["Subnets"]

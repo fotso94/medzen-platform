@@ -26,7 +26,6 @@
  "ResourceConfig": {
   "InstanceCount": 1,
   "InstanceType": "ml.g6.xlarge",
-  "VolumeKmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
   "VolumeSizeInGB": 100
  },
  "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",

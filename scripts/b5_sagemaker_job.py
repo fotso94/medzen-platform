@@ -32,6 +32,10 @@ REGION = "eu-central-1"
 BUCKET = "medzen-speech"
 ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/medzen-trainer-role"
 INSTANCE_ALLOWLIST = {"ml.g6.xlarge"}
+# g6 carries local NVMe instance storage: hardware-encrypted at rest by AWS,
+# and CreateTrainingJob REFUSES VolumeKmsKeyId for it (live refusal at T5
+# launch). S3 output KMS is separate and always required.
+NVME_LOCAL_STORAGE_TYPES = {"ml.g6.xlarge"}
 ON_DEMAND_USD_PER_HOUR = {"ml.g6.xlarge": 1.60}  # DELIBERATELY above any
 # published eu-central-1 SageMaker rate (~$1.2-1.3/h at last check; EC2
 # g6.xlarge is $0.805 in the B4 design table). This constant only converts
@@ -130,12 +134,13 @@ def render_request(bindings: dict) -> dict:
             "S3Uri": f"s3://{BUCKET}/{prefix}/checkpoints",
             "LocalPath": "/opt/ml/checkpoints",
         },
-        "ResourceConfig": {
-            "InstanceType": instance_type,
-            "InstanceCount": 1,
-            "VolumeSizeInGB": volume_gb,
-            "VolumeKmsKeyId": kms,
-        },
+        "ResourceConfig": (
+            {"InstanceType": instance_type, "InstanceCount": 1,
+             "VolumeSizeInGB": volume_gb}
+            if instance_type in NVME_LOCAL_STORAGE_TYPES else
+            {"InstanceType": instance_type, "InstanceCount": 1,
+             "VolumeSizeInGB": volume_gb, "VolumeKmsKeyId": kms}
+        ),
         "VpcConfig": {
             "SecurityGroupIds": list(security_groups),
             "Subnets": list(subnets),
