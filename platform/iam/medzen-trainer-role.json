@@ -1,268 +1,257 @@
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/raw/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "raw/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/curated/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "curated/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/eval/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "eval/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/candidates/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "candidates/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/mlflow/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "mlflow/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/models/*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech"
-      ],
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": [
-            "models/*"
-          ]
-        }
-      }
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecr:GetAuthorizationToken"
-      ],
-      "Resource": [
-        "*"
-      ]
-    },
-    {
-      "Effect": "Allow",
-      "Action": [
-        "ecr:BatchGetImage",
-        "ecr:GetDownloadUrlForLayer",
-        "ecr:BatchCheckLayerAvailability",
-        "ecr:DescribeImages"
-      ],
-      "Resource": [
-        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer"
-      ]
-    },
-    {
-      "Sid": "SseKmsFor9C336116C648",
-      "Effect": "Allow",
-      "Action": [
-        "kms:Decrypt",
-        "kms:DescribeKey",
-        "kms:GenerateDataKey"
-      ],
-      "Resource": [
-        "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
-      ]
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/eval/*"
-      ],
-      "Sid": "A3EvalSetsAreWriteDeniedToTrainingRole"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "secretsmanager:*"
-      ],
-      "Resource": [
-        "*"
-      ],
-      "Sid": "TrainingNeverHoldsProductionCredentials"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "bedrock:*"
-      ],
-      "Resource": [
-        "*"
-      ],
-      "Sid": "TrainingPlaneHasNoProductionModelAccess"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/models/*"
-      ],
-      "Sid": "BaseCheckpointsAreImmutableInputsWriteDen"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/raw/*"
-      ],
-      "Sid": "TrainingReadsSourceAudioAndNeverWritesIt"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "s3:PutObject",
-        "s3:DeleteObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::medzen-speech/curated/*"
-      ],
-      "Sid": "ATrainingJobMustNotBeAbleToRewriteItsO"
-    },
-    {
-      "Effect": "Deny",
-      "Action": [
-        "ecr:PutImage",
-        "ecr:InitiateLayerUpload",
-        "ecr:UploadLayerPart",
-        "ecr:CompleteLayerUpload",
-        "ecr:BatchDeleteImage"
-      ],
-      "Resource": [
-        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer"
-      ],
-      "Sid": "TrainingMustNeverPublishOrOverwriteTheIma"
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/raw/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "raw/*"
+     ]
     }
-  ]
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/curated/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "curated/*"
+     ]
+    }
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "eval/*"
+     ]
+    }
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject",
+    "s3:PutObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/candidates/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "candidates/*"
+     ]
+    }
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject",
+    "s3:PutObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/mlflow/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "mlflow/*"
+     ]
+    }
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/models/*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "models/*"
+     ]
+    }
+   }
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "ecr:GetAuthorizationToken"
+   ],
+   "Resource": [
+    "*"
+   ]
+  },
+  {
+   "Effect": "Allow",
+   "Action": [
+    "ecr:BatchGetImage",
+    "ecr:GetDownloadUrlForLayer",
+    "ecr:BatchCheckLayerAvailability",
+    "ecr:DescribeImages"
+   ],
+   "Resource": [
+    "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer"
+   ]
+  },
+  {
+   "Sid": "SseKmsFor9C336116C648",
+   "Effect": "Allow",
+   "Action": [
+    "kms:Decrypt",
+    "kms:DescribeKey",
+    "kms:GenerateDataKey"
+   ],
+   "Resource": [
+    "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+   ]
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "secretsmanager:*"
+   ],
+   "Resource": [
+    "*"
+   ],
+   "Sid": "TrainingNeverHoldsProductionCredentials"
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "bedrock:*"
+   ],
+   "Resource": [
+    "*"
+   ],
+   "Sid": "TrainingPlaneHasNoProductionModelAccess"
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "s3:PutObject",
+    "s3:DeleteObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/models/*"
+   ],
+   "Sid": "BaseCheckpointsAreImmutableInputsWriteDen"
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "s3:PutObject",
+    "s3:DeleteObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/raw/*"
+   ],
+   "Sid": "TrainingReadsSourceAudioAndNeverWritesIt"
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "s3:PutObject",
+    "s3:DeleteObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/curated/*"
+   ],
+   "Sid": "ATrainingJobMustNotBeAbleToRewriteItsO"
+  },
+  {
+   "Effect": "Deny",
+   "Action": [
+    "ecr:PutImage",
+    "ecr:InitiateLayerUpload",
+    "ecr:UploadLayerPart",
+    "ecr:CompleteLayerUpload",
+    "ecr:BatchDeleteImage"
+   ],
+   "Resource": [
+    "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer"
+   ],
+   "Sid": "TrainingMustNeverPublishOrOverwriteTheIma"
+  }
+ ]
 }
