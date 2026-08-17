@@ -7,7 +7,7 @@
   "LocalPath": "/opt/ml/checkpoints",
   "S3Uri": "s3://medzen-speech/research/b5-training/t5-calibration-yemba/checkpoints"
  },
- "EnableManagedSpotTraining": true,
+ "EnableManagedSpotTraining": false,
  "EnableNetworkIsolation": false,
  "Environment": {
   "MEDZEN_BATCH_SIZE": "2",
@@ -31,8 +31,7 @@
  },
  "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
  "StoppingCondition": {
-  "MaxRuntimeInSeconds": 14400,
-  "MaxWaitTimeInSeconds": 28800
+  "MaxRuntimeInSeconds": 14400
  },
  "Tags": [
   {

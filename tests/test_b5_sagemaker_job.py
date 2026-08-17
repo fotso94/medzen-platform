@@ -184,3 +184,28 @@ def test_zero_or_absurd_volume_is_refused():
     b["volume_gb"] = 5000
     with pytest.raises(JobRefusal, match="volume_gb"):
         render_request(b)
+
+
+def test_on_demand_opt_out_needs_explicit_flag_and_reason():
+    b = bindings()
+    b["managed_spot"] = False
+    with pytest.raises(JobRefusal, match="reason"):
+        render_request(b)
+    b["managed_spot_reason"] = "spot quota 0 at T5; increase filed"
+    del b["max_wait_seconds"]
+    request = render_request(b)
+    assert request["EnableManagedSpotTraining"] is False
+    assert "MaxWaitTimeInSeconds" not in request["StoppingCondition"]
+
+
+def test_on_demand_with_leftover_max_wait_is_refused():
+    b = bindings()
+    b["managed_spot"] = False
+    b["managed_spot_reason"] = "x"
+    with pytest.raises(JobRefusal, match="spot-only"):
+        render_request(b)
+
+
+def test_spot_remains_the_default():
+    request = render_request(bindings())
+    assert request["EnableManagedSpotTraining"] is True

@@ -80,9 +80,22 @@ def render_request(bindings: dict) -> dict:
     subnets = _require(bindings, "subnets")
     security_groups = _require(bindings, "security_group_ids")
     max_runtime_s = int(_require(bindings, "max_runtime_seconds"))
-    max_wait_s = int(_require(bindings, "max_wait_seconds"))
-    if max_wait_s < max_runtime_s:
-        raise JobRefusal("max_wait must cover max_runtime (spot contract)")
+    # Spot is the default and the campaign posture. Opting out requires BOTH
+    # an explicit false AND a written reason in bindings — added when the
+    # account's spot-training quota was 0 at T5 launch (increase filed);
+    # the ceiling arithmetic below is on-demand-based either way, so an
+    # on-demand run can never cost more than the ceiling contemplated.
+    managed_spot = bindings.get("managed_spot", True)
+    if not isinstance(managed_spot, bool):
+        raise JobRefusal("managed_spot must be a boolean when present")
+    if not managed_spot and not str(bindings.get("managed_spot_reason", "")).strip():
+        raise JobRefusal("opting out of spot requires managed_spot_reason")
+    if managed_spot:
+        max_wait_s = int(_require(bindings, "max_wait_seconds"))
+        if max_wait_s < max_runtime_s:
+            raise JobRefusal("max_wait must cover max_runtime (spot contract)")
+    elif bindings.get("max_wait_seconds") is not None:
+        raise JobRefusal("max_wait_seconds is a spot-only setting")
     ceiling_usd = float(_require(bindings, "cost_ceiling_usd"))
     worst_case = max_runtime_s / 3600.0 * ON_DEMAND_USD_PER_HOUR[instance_type]
     if worst_case > ceiling_usd:
@@ -127,11 +140,13 @@ def render_request(bindings: dict) -> dict:
             "SecurityGroupIds": list(security_groups),
             "Subnets": list(subnets),
         },
-        "StoppingCondition": {
-            "MaxRuntimeInSeconds": max_runtime_s,
-            "MaxWaitTimeInSeconds": max_wait_s,
-        },
-        "EnableManagedSpotTraining": True,
+        "StoppingCondition": (
+            {"MaxRuntimeInSeconds": max_runtime_s,
+             "MaxWaitTimeInSeconds": max_wait_s}
+            if managed_spot else
+            {"MaxRuntimeInSeconds": max_runtime_s}
+        ),
+        "EnableManagedSpotTraining": managed_spot,
         "EnableNetworkIsolation": False,
         "Environment": dict(sorted(environment.items())),
         "Tags": [
