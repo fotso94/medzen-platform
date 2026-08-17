@@ -327,22 +327,28 @@ def run_training_loop(
 # --------------------------------------------------------------------------
 
 def _load_model_and_tokenizer(config: TrainerConfig):
+    """Exactly the loading calls the pinned omnilingual-asr pipeline makes
+    (pipeline.py at 145a12a6): load_model from fairseq2.models.hub with the
+    card NAME, load_tokenizer resolving the tokenizer through the same card.
+    Verified against fairseq2 v0.6.0 source 2026-08-17."""
     import torch
-    from fairseq2.assets import default_asset_store
-    from fairseq2.data.text import load_text_tokenizer
-    from fairseq2.models import load_model
+    from fairseq2.data.tokenizers.hub import load_tokenizer
+    from fairseq2.models.hub import load_model
 
-    card = default_asset_store.retrieve_card(config.model_card)
-    model = load_model(card, dtype=torch.bfloat16)
-    tokenizer = load_text_tokenizer(CTC_TOKENIZER)
-    return model, tokenizer
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = load_model(config.model_card, device=device, dtype=torch.bfloat16)
+    tokenizer = load_tokenizer(config.model_card)
+    return model, tokenizer, device
 
 
 def _batch_loss(model, batch):
-    """CTC loss over one collated batch; the model owns the loss surface."""
-    return model(batch["seqs"], batch["padding_mask"],
+    """Wav2Vec2AsrModel.forward(seqs, seqs_layout, targets, targets_layout)
+    returns the sum-reduced CTC loss directly (fairseq2 v0.6.0 model.py);
+    normalize by batch size so the learning rate does not scale with it."""
+    loss = model(batch["seqs"], batch["seqs_layout"],
                  targets=batch["targets"],
-                 target_padding_mask=batch["target_padding_mask"]).loss
+                 targets_layout=batch["targets_layout"])
+    return loss / batch["seqs"].shape[0]
 
 
 def main() -> int:
@@ -362,7 +368,7 @@ def main() -> int:
 
     import torch
 
-    model, tokenizer = _load_model_and_tokenizer(config)
+    model, tokenizer, device = _load_model_and_tokenizer(config)
     wrap_audit = wrap_lora(
         model, rank=config.lora_rank, alpha=config.lora_alpha,
         dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX)
@@ -373,7 +379,8 @@ def main() -> int:
     from pipeline.omniasr_data import make_batch_source
     batches = make_batch_source(
         mix, tokenizer, config, s3(),
-        Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache")))
+        Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache")),
+        device=device)
 
     stop_flag = {"stop": False}
     signal.signal(signal.SIGTERM, lambda *_: stop_flag.__setitem__("stop", True))
