@@ -70,7 +70,8 @@ RUN python -m pip uninstall -y pip setuptools wheel
 FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc
 
 ENV PATH=/opt/venv/bin:$PATH \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
 # The upgrade must run in THIS stage: the shipped OS packages live here, and
 # a cached builder layer must never decide what CVE state ships (the first
 # T5 push carried six critical CVEs whose noble fixes existed — all because
@@ -78,8 +79,7 @@ ENV PATH=/opt/venv/bin:$PATH \
 RUN apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends libsndfile1 python3.12 \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd --uid 10001 --create-home trainer
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=trainer-venv /opt/venv /opt/venv
 COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/licence_filter.py pipeline/omniasr_train.py \
@@ -87,5 +87,8 @@ COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      /opt/medzen/pipeline/
 COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py
 ENV PYTHONPATH=/opt/medzen
-USER 10001
+# Root inside the container, deliberately: SageMaker training mounts
+# /opt/ml/model and /opt/ml/checkpoints root-owned into a managed
+# single-tenant VM (T5-r2 died on EACCES writing provenance as uid 10001).
+# The non-root posture belongs to the EKS serving images, not here.
 ENTRYPOINT ["/opt/venv/bin/python"]
