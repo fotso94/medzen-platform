@@ -71,7 +71,12 @@ FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1
+# The upgrade must run in THIS stage: the shipped OS packages live here, and
+# a cached builder layer must never decide what CVE state ships (the first
+# T5 push carried six critical CVEs whose noble fixes existed — all because
+# the apt layers were Docker-cache stale).
 RUN apt-get update \
+    && apt-get upgrade -y \
     && apt-get install -y --no-install-recommends libsndfile1 python3.12 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 10001 --create-home trainer
