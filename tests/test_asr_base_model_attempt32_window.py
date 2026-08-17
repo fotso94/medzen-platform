@@ -92,9 +92,9 @@ def test_render_without_a_window_block_keeps_the_pilot_deadline():
     assert verify(rendered, DIGEST, 32)["status"] == "PASS_K8S_RENDER"
 
 
-def test_attempt_44_refuses_in_render():
-    with pytest.raises(ValueError, match="attempt must be 1 through 43"):
-        render(_render_bindings(), ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 44)
+def test_attempt_45_refuses_in_render():
+    with pytest.raises(ValueError, match="attempt must be 1 through 44"):
+        render(_render_bindings(), ["10.0.1.7", "10.0.2.8"], ["52.219.0.0/16"], 45)
 
 
 def test_attempt_context_inherits_the_bound_window(tmp_path):

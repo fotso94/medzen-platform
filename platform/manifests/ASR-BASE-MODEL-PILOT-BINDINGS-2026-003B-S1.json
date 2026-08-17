@@ -8,8 +8,8 @@
   "raw_chunk_bytes": 15000
  },
  "artifact_prestage_proof": {
-  "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-011.json",
-  "sha256": "1de7e9ab41992605af17afec56256e80a435c1b4995fe980fc8058f001a0e714"
+  "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-006.json",
+  "sha256": "daecea16ab10a16e669a8eae04b3d2b4e1ca37bafe1a314507f7e95f4e075972"
  },
  "async_observation_audit": {
   "path": "platform/evidence/ASR-BASE-MODEL-ASYNC-OBSERVATION-AUDIT-2026-001.json",
@@ -32,9 +32,9 @@
   "seconds_each": 18000
  },
  "attempts": {
-  "attempts_1_through_42_reuse_permitted": false,
+  "attempts_1_through_43_reuse_permitted": false,
   "authorized_numbers": [
-   43
+   44
   ],
   "cost_ceiling_usd": 10,
   "maximum": 1,
@@ -74,9 +74,9 @@
   "aws_mutations": 0,
   "dynamic_value_policy": "ONLY_DECLARED_EXISTING_PATHS_NO_KEY_INSERTION",
   "fixture_count": 40,
-  "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-011.json",
+  "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-006.json",
   "runtime_read_api_count": 22,
-  "sha256": "ca90ff69736e910553e1d48c3dc5cc46d3f5da32fdc4ea0b3ff9f6585eadafd5",
+  "sha256": "7219f3e9a071357dd14496da0f475aba4923404a6e884e47a25569f3a59f895f",
   "status_required": "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_ASR_EXECUTOR_COVERAGE",
   "uncovered_read_apis": 0
  },
@@ -91,8 +91,8 @@
   "two_byte_identical_runs_required": true
  },
  "cost_registry": {
-  "path": "platform/finance/COST-REGISTRY-2026-042.json",
-  "sha256": "6d95365b54fb9420da3eb605ece4ae7b938ddc3f3167134127de4451c0bc62a1"
+  "path": "platform/finance/COST-REGISTRY-2026-043.json",
+  "sha256": "8d7d75f888306e7f845f93966e439dfe8344e8797228158f9003d474c8e85720"
  },
  "diagnostic_retention_policy": {
   "classification": "ATTEMPT_25_RETENTION_CORRECTION",
@@ -174,10 +174,10 @@
   "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
   "scripts/asr_base_model_pilot_fake.py": "fc5f1214f7f22f75288c697ca911a70567cbe03a35eb852810315378aff532c3",
   "scripts/asr_base_model_pilot_integrity.py": "e3d577329bff34f991b6cad8927092b78d8e4be798c5b5e19d17379e1dada97d",
-  "scripts/asr_base_model_pilot_k8s.py": "7e06181b6ac1d266ec053e29a3fff2781d8a9fefbd3c1e58af4520c47c2f7683",
+  "scripts/asr_base_model_pilot_k8s.py": "2d4ad42ef6f5dbac7d7f13658e1b0c0e877f044671fb3ce3b6f60b3f23da16ff",
   "scripts/asr_base_model_pilot_live.py": "f1dca326a4cfb113e77be42596c0ed1473545e6e21ac57b63f66f9f2c08eaac5",
-  "scripts/asr_base_model_pilot_plan.py": "6e660eca0f071fc2cd95ecced5a674a2046997fe1070df229f1aff66f6bf44a2",
-  "scripts/asr_base_model_pilot_runner.py": "783f0d023fc2947af91e8cf0c04ab717f481d2996ecbff5688d01777a1e3e3a8",
+  "scripts/asr_base_model_pilot_plan.py": "f0f1083475b54595ae839852be1e8eb70a093a4a6e7e5736a9bdcca9ad95a935",
+  "scripts/asr_base_model_pilot_runner.py": "bbae1a680f2a7363f15e12fdb804239f1f151f2166b6671a36cdba046a673596",
   "scripts/asr_base_model_pilot_staging.py": "37da0ab007d909e9c1b87bb35e8091a69f438e565f9a87297958c5a6bf2b1ed7",
   "scripts/asr_base_model_pilot_workload.py": "27a29e6ea90db78f6cab2ff8c8a89f2a4988b430a1aad73e8e3d917446d3daa3",
   "scripts/asr_base_model_pod_lifecycle.py": "a93de0cde84bdf208b7fefa114e044f68a78db30414df1df1979e2670dab35da",
@@ -297,56 +297,51 @@
   "pilot_languages": 47,
   "pilot_manifests": 54,
   "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
-  "pilot_rows": 1649,
+  "pilot_rows": 2162,
   "recorded_utc": "2026-08-11T22:25:25Z",
   "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
   "suite_selection": {
-   "expected_rows": 1649,
-   "row_list_sha256": "51100960265d0f1a5c300cf6509024ff7b2d5bbec5e144be81b21e2f57c155a4",
-   "shard": 10,
+   "expected_rows": 2162,
+   "row_list_sha256": "37167a44cc6a1d68bee326624f335abe16b450a13c1fb26402718c1076e46d48",
+   "shard": 5,
    "shard_manifest": {
     "path": "platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002.json",
     "sha256": "71cd99d6a1a784c1eccf9f3faa531616cab6abc17c0e53f487924b0ab37a8de0"
    },
    "units": [
     {
-     "language": "fulfulde",
-     "row_end": 122,
+     "language": "ewondo",
+     "row_end": 126,
      "row_start": 0
     },
     {
-     "language": "gbaya",
-     "row_end": 100,
+     "language": "fefe",
+     "row_end": 146,
      "row_start": 0
     },
     {
-     "language": "ghomala",
-     "row_end": 89,
+     "language": "malagasy",
+     "row_end": 146,
      "row_start": 0
     },
     {
-     "language": "isu",
-     "row_end": 147,
+     "language": "ngiemboon",
+     "row_end": 150,
      "row_start": 0
     },
     {
-     "language": "kwasio",
+     "language": "nomaande",
+     "row_end": 150,
+     "row_start": 0
+    },
+    {
+     "language": "shona",
+     "row_end": 1312,
+     "row_start": 0
+    },
+    {
+     "language": "yangben",
      "row_end": 132,
-     "row_start": 0
-    },
-    {
-     "language": "lingala",
-     "row_end": 792,
-     "row_start": 0
-    },
-    {
-     "language": "mundang",
-     "row_end": 125,
-     "row_start": 0
-    },
-    {
-     "language": "pidgin",
-     "row_end": 142,
      "row_start": 0
     }
    ]
@@ -474,7 +469,7 @@
   "status": "PASS_FAILURE_AND_FIX_NODE_EQUIVALENT_QUALIFICATION"
  },
  "pilot_bundle": {
-  "sha256": "57ac0e6bc05b86ef36a95f66334973b49ff60a8d429bedd12e4727ed4bc9d94b"
+  "sha256": "dadea5272174248bb2cf5258d86875b7f8e2060371d30cc90e814c754eb9b5b6"
  },
  "pilot_workload_lessons_audit": {
   "path": "platform/evidence/ASR-BASE-MODEL-PILOT-WORKLOAD-LESSONS-AUDIT-2026-001.json",
@@ -571,17 +566,17 @@
    "sha256": "b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"
   },
   "prestage_downloads": {
-   "research/asr-base-model/pilot/57ac0e6bc05b86ef36a95f66334973b49ff60a8d429bedd12e4727ed4bc9d94b/model-bindings.json": {
-    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s10-model-bindings.json",
+   "research/asr-base-model/pilot/dadea5272174248bb2cf5258d86875b7f8e2060371d30cc90e814c754eb9b5b6/model-bindings.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s5-model-bindings.json",
     "sha256": "b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c"
    },
-   "research/asr-base-model/pilot/57ac0e6bc05b86ef36a95f66334973b49ff60a8d429bedd12e4727ed4bc9d94b/pilot-bundle.json": {
-    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s10-pilot-bundle.json",
-    "sha256": "3e097502841e24616802818f44332d5382848afa7d30c878d4b4cae066a58c77"
+   "research/asr-base-model/pilot/dadea5272174248bb2cf5258d86875b7f8e2060371d30cc90e814c754eb9b5b6/pilot-bundle.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s5-pilot-bundle.json",
+    "sha256": "5de910c4150659e52a9537724b4b544e52759613ce2e3e36c3c3cf501c40db1f"
    },
-   "research/asr-base-model/pilot/57ac0e6bc05b86ef36a95f66334973b49ff60a8d429bedd12e4727ed4bc9d94b/runtime-rows.json": {
-    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s10-runtime-rows.json",
-    "sha256": "829948d958ca551aee8d809faac9f04a44da82f96b3650b4d375a86e85ede719"
+   "research/asr-base-model/pilot/dadea5272174248bb2cf5258d86875b7f8e2060371d30cc90e814c754eb9b5b6/runtime-rows.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s5-runtime-rows.json",
+    "sha256": "d5d2d5e6bb997090392b1d1b2437c27f31ef13d3333184b564d6e52ee824b52d"
    }
   },
   "runtime_rows": {
@@ -658,8 +653,8 @@
   "registry_scanning_mutation_permitted": false
  },
  "successor_packet": {
-  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S10-attempt-43.md",
-  "sha256": "a3104f89c92e3f6db19606172f73675d2d9afa9f80e6ef75e5078deb01b25774"
+  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S5-attempt-44.md",
+  "sha256": "356c7067d3e67d7c8e6374c8a0b9725f722ea9ce044cba753873c2530bfa5ebb"
  },
  "suite_shard": {
   "bundle_design": {
@@ -1250,6 +1245,14 @@
   "attempt_42_pass_aggregate": {
    "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-003B-S9-A42-LIVE/aggregate_report.json",
    "sha256": "942767c5b398c9ff0a9c9a0fff2caf6701d87ad8b07e9713fa9560e16e5c75dd"
+  },
+  "attempt_43_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-042.json",
+   "sha256": "6d95365b54fb9420da3eb605ece4ae7b938ddc3f3167134127de4451c0bc62a1"
+  },
+  "attempt_43_pass_aggregate": {
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-003B-S10-A43-LIVE/aggregate_report.json",
+   "sha256": "71164ab758442fe719074fa0628328e3bb656d469a5f3a8f0bd2677d89845120"
   },
   "attempts_11_through_16_cost_reconciliation": {
    "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-002.json",
