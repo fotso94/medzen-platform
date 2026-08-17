@@ -71,3 +71,22 @@ research/b5-training/<job>/** only; the T5 VPC endpoint + SG lifecycle.
 
 Remains trainer-refused until its own T5-class calibration run (owner
 go required; ~$5 on-demand, ceiling $105 under the +$100 rule).
+
+## 6. BOUND STATE (2026-08-17, owner decisions in)
+
+- APPROVED LIST (owner, exact phrase recorded): kinyarwanda, swahili,
+  ewe, fula, pulaar, french, wolof, lingala, yemba. akan/serer label
+  fix explicitly deferred by owner.
+- THRESHOLDS: owner-approved and wired; all 9 languages resolve.
+  kinyarwanda carries an explicit 0.30 WER override (the 0.20 registry
+  default was not what the owner approved — caught at wiring).
+- REAL NUMBERS (from B5-TRAINING-RECOMMENDATION-2026-001): 574.3
+  trainable hours -> ~154 GPU-h at the measured 7.48 audio-h/GPU-h ->
+  ~$246 on-demand -> **$346 budgeted ceiling** (owner rules).
+- REMAINING BEFORE LAUNCH (mechanical, in order): (1) gb3 training
+  version — all 9 languages in one adopted dataset, byte-duplicate
+  guard enforced, kallaama-'?' pulaar rows excluded by a recorded
+  deferral policy until source repair, adoption contemplating that
+  policy; (2) bindings + registry reservation at $346; (3) the standing
+  per-run launch discipline (review with numbered phrase, dry
+  validation, launch).
