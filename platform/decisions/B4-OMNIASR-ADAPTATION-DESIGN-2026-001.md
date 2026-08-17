@@ -144,3 +144,19 @@ Evidence: B5-T5-CALIBRATION-RESULT-2026-001.json (job r6: 600 steps,
 1,298 billable seconds, PASS_MERGED_EXPORT, model 9682b679...). The LLM
 variant remains refused in the trainer until its own T5-class
 calibration; its rows above carry the old 2x assumption explicitly.
+
+## 5c. OWNER-APPROVED campaign basis (2026-08-17)
+
+The owner approved the §5b measured table with two standing rules that
+now govern ALL MedZen cost planning: (1) on-demand pricing is always
+the basis; (2) +$100 buffer on every reported maximum. Approved
+budgeted ceilings:
+
+| Scenario | On-demand estimate | BUDGETED CEILING |
+|---|---|---|
+| CTC, 11 clear languages | ~$151 | **$251** |
+| Both variants, clear languages | ~$452 | **$552** |
+| +5 SA-blocked languages after legal review | +~$311 | **+$411** |
+
+CTC-first sequencing per the owner's earlier decision; the LLM variant
+stays refused in the trainer until its own T5-class calibration.
