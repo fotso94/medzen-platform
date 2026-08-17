@@ -16,6 +16,7 @@ import re
 import io
 import json
 import subprocess
+import sys
 import tarfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -332,16 +333,27 @@ class BoundaryState:
         conditioning = json.loads(
             (ROOT / "services/asr-eval-runtime/assets/language-conditioning-v1.json").read_bytes()
         )["languages"]
+        # Derive counts from the SAME candidate registry the live validator
+        # reads (attempt-38 postmortem): a roster change moves the fake and
+        # the validator together, never one without the other.
+        eval_runtime = str(ROOT / "services/asr-eval-runtime")
+        if eval_runtime not in sys.path:
+            sys.path.insert(0, eval_runtime)
+        from medzen_asr_eval.identity import CANDIDATES
+        provider_by_family = {"whisper_ct2": "whisper", "meta_llm": "meta_llm"}
+        unconditioned_passes = sum(1 for c in CANDIDATES.values() if c.unconditioned)
+        conditionable = [provider_by_family[c.family]
+                         for c in CANDIDATES.values() if c.conditioned]
         conditioned = sum(
             int(conditioning[row["language"]][provider] is not None)
             for row in rows
-            for provider in ("whisper", "meta_llm")
+            for provider in conditionable
         )
         return {
             "status": "PASS_AGGREGATE",
             "runtime_rows": len(rows),
-            "completed_inferences": len(rows) * 3 + conditioned,
-            "not_applicable": len(rows) * 2 - conditioned,
+            "completed_inferences": len(rows) * unconditioned_passes + conditioned,
+            "not_applicable": len(rows) * len(conditionable) - conditioned,
             "aggregate": {
                 "groups": {
                     **{f"synthetic-{index:03d}|unconditioned": {"wer": 0.5, "cer": 0.25, "rows": 10, "detail": "x" * 64} for index in range(220)},
