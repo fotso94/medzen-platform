@@ -1,7 +1,7 @@
 {
  "allowance": {
   "aggregate_project_ceiling_usd": 400.0,
-  "attempt_39_non_transferable": true,
+  "attempt_40_non_transferable": true,
   "attempt_cost_ceiling_usd": 10.0,
   "attempts_1_through_30_reuse_permitted": false,
   "fresh_reservation_usd": 10.0,
@@ -13,14 +13,14 @@
  },
  "attempts": {
   "authorized_numbers": [
-   39
+   40
   ],
   "maximum": 1,
   "non_transferable": true,
   "seconds_each": 18000
  },
  "authorization_basis": "delegated owner approval issued by the independent self-review under the owner's 2026-08-15 sole-engineer role transition, continuing the 2026-08-14 expanded delegation for all routine engineering approvals",
- "authorization_note": "Revision 12: attempt 39 \u2014 shard-6 re-run under the candidate-derived aggregate validator and pre-validation salvage (attempt-38 postmortem, review CLAUDE-REVIEW-2026-08-17-040); same frozen shard-6 selection, bundle and Meta-only image as attempt 38; registry 036 reservation.",
+ "authorization_note": "Revision 13: attempt 40 \u2014 shard 7 under registry 038.",
  "authorized_by_role": "platform-owner-delegate",
  "authorized_operations": [
   "Execute numbered attempt 38 only under packet 2026-003B-S6 (full-suite shard 6, Meta-only)",
@@ -35,7 +35,7 @@
   "Run the VPC-resolver DNS control gate before the workload with every resolved IP checked against the rendered TCP/443 allowlist",
   "Copy safe receipts into Git only after terminal cleanup and zero-state verification"
  ],
- "authorized_utc": "2026-08-17T05:29:00Z",
+ "authorized_utc": "2026-08-17T09:08:00Z",
  "execution_permitted_after_all_preconditions": true,
  "execution_workdir": {
   "receipt_store": "<external-workdir>/receipts",
@@ -92,15 +92,15 @@
  "independent_review": {
   "conditions": 0,
   "instructions_path": "/Users/stephanefotso/Documents/medzen-shared/claude_instructions.txt",
-  "instructions_sha256": "bef4329c99af04fa83b1b5d671fa4c06fc6a247cd703cb63add8e35651ceb1b2",
-  "review_id": "CLAUDE-REVIEW-2026-08-17-040",
-  "review_statement": "Attempt 39 shard-6 re-run reviewed under CLAUDE-REVIEW-2026-08-17-040: candidate-derived aggregate validator, pre-validation salvage, rehearsal fake registry-derived, cold rehearsal PASS byte-identical, registry 036 reservation.",
+  "instructions_sha256": "6bd9e795c282991fe443651b7648c1756c06e439eedb00c8e3b4fae6e7a22eff",
+  "review_id": "CLAUDE-REVIEW-2026-08-17-041",
+  "review_statement": "Attempt 40 shard 7 reviewed under CLAUDE-REVIEW-2026-08-17-041 on the attempt-39-proven validator stack; rehearsal byte-identical.",
   "reviewed_attempt_28_pass_sha256": "2503344c4eba47b98671cddf0a6a1dc089c26e157c43b7cb3e6158110cc98a2e",
-  "reviewed_bindings_sha256": "eae2a0d6ddef82a4f09f5211d18418c502e31425cfaf954bb5b1ede83a78e120",
-  "reviewed_cold_rehearsal_sha256": "49b62463fb9dc59e6c3d4f625ba5a59f5f81ef0002ec0b08bf467cd83c7f1d7c",
-  "reviewed_cost_registry_sha256": "2fd2b7a3eca32e60f4b556019632b950aa381aa3c464fce10e2d2b52fe69090b",
-  "reviewed_packet_sha256": "192ea4067cea2bc0f32830514a0e959df500e114db65ec7454b39d6d7fe51079",
-  "reviewed_repository_commit": "bb8633830db6c5084de74571e9cbaad700e46626",
+  "reviewed_bindings_sha256": "25dbfd5fbf12d0de7ecba54416b2357fab4b8105e7d75ffbb406d03cb3bf7ff0",
+  "reviewed_cold_rehearsal_sha256": "9ad6da2700e63c66e3859a2c577a9d89df83729e4687bda069fa8cffa3f9c445",
+  "reviewed_cost_registry_sha256": "a24c652e0e199ecd843f33790340c7d3e7d8f4e271f02fd6c7c6d38da7f47d09",
+  "reviewed_packet_sha256": "892cd3fd2f7d991ae6de33800e332ae652748e71b65a503a6f25167ca962f3f2",
+  "reviewed_repository_commit": "61c76ac3ddd3cb34a1f80c7026c173eb1790a32b",
   "reviewed_risk_acceptance_sha256": "43321489ce6f9f3a33f86445601b5bd65d99d2f1746747944b2a185742341034",
   "reviewer": "independent self-review (Claude, reviewer hat)",
   "status": "PASS"
@@ -122,8 +122,8 @@
  },
  "packet": {
   "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S1",
-  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-39.md",
-  "sha256": "192ea4067cea2bc0f32830514a0e959df500e114db65ec7454b39d6d7fe51079"
+  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S7-attempt-40.md",
+  "sha256": "892cd3fd2f7d991ae6de33800e332ae652748e71b65a503a6f25167ca962f3f2"
  },
  "permitted_terminal_outcomes": [
   "PASS_PILOT",
@@ -157,8 +157,8 @@
   "Any alteration of packet 2026-002X, risk acceptance 003 or historical authorization/refusal evidence"
  ],
  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AWS_AUTHORIZATION",
- "reviewed_repository_commit": "bb8633830db6c5084de74571e9cbaad700e46626",
- "revision": "12",
+ "reviewed_repository_commit": "61c76ac3ddd3cb34a1f80c7026c173eb1790a32b",
+ "revision": "13",
  "revision_note": "Revision 11 authorizes attempt 38 (shard 6, Meta-only protocol per owner directive; poll-tolerance fix) \u2014 review CLAUDE-REVIEW-2026-08-16-037.",
  "risk_acceptance": {
   "accepted_high_findings": 4,
