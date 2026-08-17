@@ -51,6 +51,13 @@ def test_partial_queue_drops_oldest_and_finals_never_dropped():
     while (item := buffer.partials.get()) is not None:
         kept.append(item["seq"])
     assert kept == [6, 7, 8, 9], "newest four survive"
+
+    assert not buffer.audio_upstream_paused
+    accepted = [buffer.offer_audio({"chunk": index}) for index in range(10)]
+    assert accepted == [True] * 8 + [False] * 2, "audio beyond 8 is refused"
+    assert buffer.audio_upstream_paused, "overflow pauses upstream, silently"
+    assert buffer.audio.dropped == 0, "pause_upstream never discards audio"
+
     for index in range(16):
         buffer.finals.put({"final": index})
     assert buffer.finals.dropped == 0, "finals are NEVER dropped"
@@ -63,14 +70,17 @@ def test_partial_queue_drops_oldest_and_finals_never_dropped():
 # --------------------------------------------------------------------------
 
 def test_drill_kill_fish_degrades_to_text_only():
-    """Fish dies outright (error then timeout): every response still carries
-    the full clinical text with tts_backend=text_only and no exception."""
-    gateway, provider = service(["error", "timeout", "error"])
-    for _ in range(3):
+    """Fish dies outright (unavailable, then timing out): every response
+    still carries the full clinical text with tts_backend=text_only, a
+    documented degradation reason, and no exception."""
+    gateway, provider = service(["unavailable", "timeout", "unavailable"])
+    expected_reasons = ["FISH_UNAVAILABLE", "FISH_TIMEOUT", "FISH_UNAVAILABLE"]
+    for reason in expected_reasons:
         response = gateway.synthesize(dict(REQUEST))
         assert response["tts_backend"] == "text_only"
         assert response["text"] == REQUEST["text"]
         assert response["audio_url"] is None
+        assert response["degradation_reason"] == reason
 
 
 # --------------------------------------------------------------------------
@@ -117,16 +127,24 @@ def test_drill_asr_death_mid_stream_errors_cleanly():
 def test_drill_open_llm_breaker_controlled_error():
     """With the bedrock breaker forced open, the turn fails with a controlled
     retryable error and NO invented clinical text (A6: no textual fallback
-    for understanding)."""
+    for understanding). The control arm first proves the same app succeeds
+    with the breaker closed, so the 503 is caused by the breaker alone."""
     from test_speech_orchestrator import local_app, request
 
-    app, service_obj = local_app(deterministic=True)
+    # not deterministic=True: its StepClock only covers one request, and
+    # this drill makes two (control + breaker-open); no golden is compared.
+    app, service_obj = local_app()
     breaker = service_obj.llm._gateway.breaker
-    while breaker.allow():
-        breaker.record_failure(timeout=False)
-    assert not breaker.allow(), "breaker must be open for the drill"
     with TestClient(app) as client:
-        response = request(client)
+        control = request(client)
+        assert control.status_code == 200, "control arm: healthy turn succeeds"
+        assert control.json()["reply"]["text"]
+
+        while breaker.allow():
+            breaker.record_failure(timeout=False)
+        assert not breaker.allow(), "breaker must be open for the drill"
+        response = request(
+            client, data={"request_id": "22222222-2222-4222-8222-222222222222"})
     assert response.status_code == 503
     payload = response.json()
     assert payload["error"]["code"] == "DEPENDENCY_UNAVAILABLE"

@@ -83,6 +83,12 @@ def test_streaming_limits_hardcode_the_same_numbers():
 
 # --------------------------------------------------------------------------
 # Layer 2 — every A6 concern maps to a living test
+#
+# Deliberately absent: a behavioral test for "retries: max 1, idempotent
+# only". No online service implements a retry loop (verified 2026-08-16),
+# so max_attempts=1 is trivially satisfied; the layer-1 config pin above is
+# the only meaningful guard. If a retry loop is ever added, it needs a
+# behavioral test AND a matrix entry here.
 # --------------------------------------------------------------------------
 
 MATRIX = {
