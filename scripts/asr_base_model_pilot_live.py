@@ -3716,16 +3716,33 @@ class LiveOperations:
         if not isinstance(value, dict) or value.get("status") not in {"PASS_AGGREGATE", "INCOMPLETE_MEASUREMENT"}:
             raise OperationRefusal("AGGREGATE_STATUS_DIFFERS", "aggregate status differs")
         expected_rows = context.bindings["input_freeze"]["pilot_rows"]
-        minimum = expected_rows * 3
+        # Derive the expected inference counts from the SAME candidate set the
+        # workload evaluates (medzen_asr_eval.identity.CANDIDATES) instead of
+        # hardcoding the roster. Attempt 38 was destroyed at 100% completion
+        # by this validator still demanding whisper-era counts (rows*3 and a
+        # ("whisper","meta_llm") conditioned sum) after the Meta-only
+        # directive removed whisper from the evaluated set.
+        eval_runtime = str(self.root / "services/asr-eval-runtime")
+        if eval_runtime not in sys.path:
+            sys.path.insert(0, eval_runtime)
+        from medzen_asr_eval.identity import CANDIDATES
+        conditioning_provider_by_family = {"whisper_ct2": "whisper", "meta_llm": "meta_llm"}
+        unconditioned_passes = sum(1 for c in CANDIDATES.values() if c.unconditioned)
+        conditionable = [
+            conditioning_provider_by_family[c.family]
+            for c in CANDIDATES.values()
+            if c.conditioned
+        ]
+        minimum = expected_rows * unconditioned_passes
         selection = json.loads((context.workdir / "pilot-selection.json").read_bytes())
         conditioning = json.loads((self.root / "services/asr-eval-runtime/assets/language-conditioning-v1.json").read_bytes())["languages"]
         conditioned = sum(
             int(conditioning[row["language"]][provider] is not None)
             for row in selection["rows"]
-            for provider in ("whisper", "meta_llm")
+            for provider in conditionable
         )
         expected_completed = minimum + conditioned
-        expected_not_applicable = expected_rows * 2 - conditioned
+        expected_not_applicable = expected_rows * len(conditionable) - conditioned
         if (
             value.get("runtime_rows") != expected_rows
             or value.get("completed_inferences") != expected_completed
