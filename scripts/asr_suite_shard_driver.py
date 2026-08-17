@@ -83,8 +83,12 @@ def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return result
 
 
-def _git_commit(message: str, paths: list[str] | None = None) -> None:
-    _run(["git", "add", "-A"] + (["--"] + paths if paths else []))
+def _git_commit(message: str, paths: list[str]) -> None:
+    # Explicit path list is mandatory: a bare `git add -A` sweep is exactly
+    # how commit bdcc112 captured another session's in-flight WIP.
+    if not paths:
+        raise DriverRefusal("refusing a sweep commit: pass the explicit path list")
+    _run(["git", "add", "--"] + paths)
     result = subprocess.run(["git", "commit", "-q", "-m",
                              message + "\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>"],
                             capture_output=True, text=True, cwd=ROOT)
