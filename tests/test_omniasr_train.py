@@ -398,3 +398,29 @@ def test_single_oversized_row_survives_the_cap_and_is_reported():
     capped = provenance["per_language_audio_cap"]["capped_languages"]["yemba"]
     assert capped["rows_after"] == 1
     assert capped["hours_after"] == 2.0, "the excess is reported, not hidden"
+
+
+def test_model_staging_verifies_and_refuses_drift(tmp_path):
+    from pipeline.omniasr_train import stage_model_artifacts
+
+    body = b"frozen-weights"
+    good = {"model.pt": hashlib.sha256(body).hexdigest()}
+
+    class Cli:
+        def download_fileobj(self, bucket, key, stream):
+            stream.write(body)
+
+    staged = stage_model_artifacts(Cli(), destination=tmp_path, artifacts=good)
+    assert staged == good
+    # cached file is REVERIFIED: corrupt it and staging must refuse
+    (tmp_path / "model.pt").write_bytes(b"tampered")
+    with pytest.raises(TrainerRefusal, match="drifted"):
+        stage_model_artifacts(Cli(), destination=tmp_path, artifacts=good)
+    assert not (tmp_path / "model.pt").exists(), "drifted file must be removed"
+
+
+def test_model_staging_pins_the_evaluated_identities():
+    from pipeline.omniasr_train import CTC_MODEL_ARTIFACTS, MODEL_ROOT_PREFIX
+    assert CTC_MODEL_ARTIFACTS["omniASR-CTC-1B-v2.pt"].startswith("354f9817")
+    assert CTC_MODEL_ARTIFACTS["omniASR_tokenizer_written_v2.model"].startswith("8aa11a10")
+    assert MODEL_ROOT_PREFIX.startswith("b6a/asr/v0/5adf7756")

@@ -86,6 +86,11 @@ COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
      /opt/medzen/pipeline/
 COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py
+# The SAME fairseq2 asset cards the evaluation runtime ships — model and
+# tokenizer identity resolve identically in training and evaluation
+# (r3 died on ModelNotKnownError because the trainer image lacked them).
+COPY services/asr-eval-runtime/assets /opt/medzen/assets
+ENV FAIRSEQ2_ASSET_DIR=/opt/medzen/assets
 ENV PYTHONPATH=/opt/medzen
 # Root inside the container, deliberately: SageMaker training mounts
 # /opt/ml/model and /opt/ml/checkpoints root-owned into a managed

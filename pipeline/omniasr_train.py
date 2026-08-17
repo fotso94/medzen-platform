@@ -56,6 +56,49 @@ CTC_SCOPE_PREFIX = "encoder."  # wav2vec2 attention lives under the encoder;
 # the llama_decoder default in wrap_lora belongs to the (refused) LLM variant.
 SIGTERM_EXIT = 42  # named: spot reclaim checkpointed and left cleanly
 
+# The frozen base-model identity the evaluation suite live-proved. The
+# fairseq2 cards (assets/models.yaml) reference these files at /models;
+# SageMaker containers start empty, so the trainer stages them itself and
+# refuses any byte drift from the evaluated artifacts.
+MODEL_ROOT_PREFIX = ("b6a/asr/v0/"
+                     "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/")
+CTC_MODEL_ARTIFACTS = {
+    "omniASR-CTC-1B-v2.pt":
+        "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+    "omniASR_tokenizer_written_v2.model":
+        "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e",
+}
+
+
+def stage_model_artifacts(cli, destination: Path = Path("/models"),
+                          artifacts: dict[str, str] | None = None) -> dict[str, str]:
+    """Fetch the frozen base-model files, verifying each against the
+    evaluation-suite identity. A cached file is reverified, never trusted."""
+    from pipeline.train_asr import BUCKET
+
+    artifacts = CTC_MODEL_ARTIFACTS if artifacts is None else artifacts
+    destination.mkdir(parents=True, exist_ok=True)
+    staged = {}
+    for name, expected_sha in artifacts.items():
+        local = destination / name
+        if not local.exists():
+            tmp = destination / (name + ".tmp")
+            with tmp.open("wb") as stream:
+                cli.download_fileobj(BUCKET, MODEL_ROOT_PREFIX + name, stream)
+            tmp.replace(local)
+        digest = hashlib.sha256()
+        with local.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1 << 22), b""):
+                digest.update(chunk)
+        actual = digest.hexdigest()
+        if actual != expected_sha:
+            local.unlink()
+            raise TrainerRefusal(
+                f"{name} hashes to {actual[:16]}, the evaluated identity is "
+                f"{expected_sha[:16]} — refusing to train on drifted weights")
+        staged[name] = actual
+    return staged
+
 
 @dataclass(frozen=True)
 class TrainerConfig:
@@ -365,6 +408,8 @@ def main() -> int:
         "mix_rows": len(mix),
         "mix_provenance": provenance,
     }, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode() + b"\n")
+
+    stage_model_artifacts(s3())
 
     import torch
 

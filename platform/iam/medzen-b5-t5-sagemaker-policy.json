@@ -4,36 +4,82 @@
   {
    "Sid": "PullTheT5TrainerImage",
    "Effect": "Allow",
-   "Action": ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer", "ecr:BatchCheckLayerAvailability"],
-   "Resource": ["arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer-omniasr"]
+   "Action": [
+    "ecr:BatchGetImage",
+    "ecr:GetDownloadUrlForLayer",
+    "ecr:BatchCheckLayerAvailability"
+   ],
+   "Resource": [
+    "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer-omniasr"
+   ]
   },
   {
    "Sid": "SageMakerTrainingLogs",
    "Effect": "Allow",
-   "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
-   "Resource": ["arn:aws:logs:eu-central-1:558069890522:log-group:/aws/sagemaker/TrainingJobs*"]
+   "Action": [
+    "logs:CreateLogGroup",
+    "logs:CreateLogStream",
+    "logs:PutLogEvents"
+   ],
+   "Resource": [
+    "arn:aws:logs:eu-central-1:558069890522:log-group:/aws/sagemaker/TrainingJobs*"
+   ]
   },
   {
    "Sid": "VpcModeNetworkInterfaces",
    "Effect": "Allow",
-   "Action": ["ec2:CreateNetworkInterface", "ec2:CreateNetworkInterfacePermission",
-              "ec2:DeleteNetworkInterface", "ec2:DeleteNetworkInterfacePermission",
-              "ec2:DescribeNetworkInterfaces", "ec2:DescribeVpcs",
-              "ec2:DescribeDhcpOptions", "ec2:DescribeSubnets", "ec2:DescribeSecurityGroups"],
-   "Resource": ["*"]
+   "Action": [
+    "ec2:CreateNetworkInterface",
+    "ec2:CreateNetworkInterfacePermission",
+    "ec2:DeleteNetworkInterface",
+    "ec2:DeleteNetworkInterfacePermission",
+    "ec2:DescribeNetworkInterfaces",
+    "ec2:DescribeVpcs",
+    "ec2:DescribeDhcpOptions",
+    "ec2:DescribeSubnets",
+    "ec2:DescribeSecurityGroups"
+   ],
+   "Resource": [
+    "*"
+   ]
   },
   {
    "Sid": "T5JobPrefixReadWrite",
    "Effect": "Allow",
-   "Action": ["s3:GetObject", "s3:PutObject"],
-   "Resource": ["arn:aws:s3:::medzen-speech/research/b5-training/*"]
+   "Action": [
+    "s3:GetObject",
+    "s3:PutObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/research/b5-training/*"
+   ]
   },
   {
    "Sid": "T5JobPrefixList",
    "Effect": "Allow",
-   "Action": ["s3:ListBucket"],
-   "Resource": ["arn:aws:s3:::medzen-speech"],
-   "Condition": {"StringLike": {"s3:prefix": ["research/b5-training/*"]}}
+   "Action": [
+    "s3:ListBucket"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech"
+   ],
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "research/b5-training/*"
+     ]
+    }
+   }
+  },
+  {
+   "Sid": "ReadTheFrozenBaseModel",
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/*"
+   ]
   }
  ]
 }
