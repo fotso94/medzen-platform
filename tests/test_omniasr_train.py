@@ -385,3 +385,16 @@ def test_stop_flag_checkpoints_and_reports_interruption(tmp_path):
         stop_flag={"stop": True})
     assert outcome["status"] == "INTERRUPTED_CHECKPOINTED"
     assert (tmp_path / "LATEST.json").exists()
+
+
+def test_single_oversized_row_survives_the_cap_and_is_reported():
+    """A row bigger than the whole cap is kept — a cap must never empty a
+    language — and the report shows hours_after above the cap so the
+    excess is visible, not hidden."""
+    rows = {"yemba": [_row("yemba", "cc0", seconds=7200.0, index=0),
+                      _row("yemba", "cc0", seconds=7200.0, index=1)]}
+    config = make_config(MEDZEN_AUDIO_CAP_HOURS="1")
+    _, provenance = build_gated_mix(config, client=FakeS3(rows))
+    capped = provenance["per_language_audio_cap"]["capped_languages"]["yemba"]
+    assert capped["rows_after"] == 1
+    assert capped["hours_after"] == 2.0, "the excess is reported, not hidden"
