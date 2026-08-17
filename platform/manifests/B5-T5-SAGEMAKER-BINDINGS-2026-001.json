@@ -11,9 +11,9 @@
   "MEDZEN_SEED": "20260817",
   "MEDZEN_VARIANT": "ctc"
  },
- "image_oci_index_digest": "sha256:ea774b7eba58830fb9865d90b81b3e6ee96608df5419019276e092f6a86052d6",
- "image_tag": "t5-cal-2026-08-17",
- "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5497a77533e30cd1edd2f2c3ae29af81c93c1bbd83c0a93d7b1716a0f038e351",
+ "image_oci_index_digest": "sha256:9010be9043dcc2ed108aea878a5f4dac5c8a5ac7ca14328261c6c07e61993e60",
+ "image_tag": "t5-cal-2026-08-17b",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:337f9647f566ada5deeff544eaa51aa9d6c993ba9eb69461351cf9d68ff802e0",
  "instance_type": "ml.g6.xlarge",
  "job_id": "t5-calibration-yemba",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",

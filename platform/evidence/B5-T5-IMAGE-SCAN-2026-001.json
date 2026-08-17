@@ -1,0 +1,13 @@
+{
+ "critical": 0,
+ "findings_total": 0,
+ "high": 0,
+ "history": "first push (ea774b7e index) scanned 13 CRITICAL / 94 HIGH from Docker-cache-stale apt layers; all six unique critical CVEs had released noble fixes, so per the void-when-fix-exists rule the image was REBUILT with an in-stage upgrade instead of waived; rescan returned zero findings of any severity",
+ "id": "B5-T5-IMAGE-SCAN-2026-001",
+ "oci_index_digest": "sha256:9010be9043dcc2ed108aea878a5f4dac5c8a5ac7ca14328261c6c07e61993e60",
+ "record": "B5_T5_TRAINER_IMAGE_SCAN_VERDICT",
+ "recorded_utc": "2026-08-17T03:28:48Z",
+ "repository": "medzen-trainer-omniasr",
+ "scan_type": "ECR_BASIC_OS_PACKAGES",
+ "scanned_digest_linux_amd64": "sha256:337f9647f566ada5deeff544eaa51aa9d6c993ba9eb69461351cf9d68ff802e0"
+}

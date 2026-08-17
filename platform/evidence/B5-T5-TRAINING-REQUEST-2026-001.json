@@ -1,6 +1,6 @@
 {
  "AlgorithmSpecification": {
-  "TrainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5497a77533e30cd1edd2f2c3ae29af81c93c1bbd83c0a93d7b1716a0f038e351",
+  "TrainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:337f9647f566ada5deeff544eaa51aa9d6c993ba9eb69461351cf9d68ff802e0",
   "TrainingInputMode": "File"
  },
  "CheckpointConfig": {
