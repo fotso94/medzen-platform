@@ -118,3 +118,13 @@ launch) begins only after batch-6 teardown completes.
 
 **ECR**: repository `medzen-trainer-omniasr` created (immutable tags,
 scan-on-push, KMS). Digest bound in the bindings file at push completion.
+
+**Mutation 6 (launch-time)**: inline policy `medzen-b5-t5-sagemaker` on
+`medzen-trainer-role` — exactly the SageMaker execution delta the B4-era
+role lacked: pull on the ONE trainer repo, /aws/sagemaker/TrainingJobs
+logs, VPC-mode ENI management, and read/write confined to
+research/b5-training/**. JSON committed at
+platform/iam/medzen-b5-t5-sagemaker-policy.json; iam.tf backport
+flagged as a follow-up. Also live-discovered at launch: spot quota 0
+(on-demand fallback under the unchanged ceiling; increase filed) and
+g6 NVMe taking no VolumeKmsKeyId (hardware-encrypted; renderer fixed).
