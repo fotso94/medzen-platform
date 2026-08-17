@@ -91,7 +91,9 @@ def load_mix(cli, temperature: float, seed: int,
              exclusions: dict[str, dict] | None = None,
              exclusions_sha256: str | None = None,
              exclusions_id: str | None = None,
-             adoption_key: str | None = None) -> tuple[list[dict], dict]:
+             adoption_key: str | None = None,
+             pool_gate=None,
+             per_language_audio_cap_s: float | None = None) -> tuple[list[dict], dict]:
     """Build the training mix with temperature sampling. FAILS CLOSED.
 
     Three refusals, each of which was a real hole:
@@ -281,6 +283,51 @@ def load_mix(cli, temperature: float, seed: int,
         raise SystemExit(f"REFUSING: no rows permit {require_use!r} at version "
                          f"{version!r}; nothing to train on")
 
+    # Optional pool-level gates (omniASR/B5 trainer). Both operate on the
+    # ELIGIBLE POOL, before per-language counts and temperature sampling, for
+    # the same reason exclusions do: a row removed after weights are taken has
+    # already distorted the schedule, and with replacement-sampling its removal
+    # count is not even well defined. Both default off; the B4 path is
+    # byte-identical when they are absent.
+    gate_report = None
+    if pool_gate is not None:
+        flat = [row for rows in per_lang.values() for row in rows]
+        gated, gate_report = pool_gate(flat)
+        per_lang = {}
+        for r in gated:
+            per_lang.setdefault(r["_lang"], []).append(r)
+        if not per_lang:
+            raise SystemExit(
+                "REFUSING: the pool gate removed every eligible row; "
+                "nothing to train on")
+    cap_report = None
+    if per_language_audio_cap_s is not None:
+        if per_language_audio_cap_s <= 0:
+            raise SystemExit("REFUSING: a non-positive audio cap is not a cap")
+        cap_report = {}
+        for lang, rows in sorted(per_lang.items()):
+            total_s = sum(float(r["duration_s"]) for r in rows)
+            if total_s <= per_language_audio_cap_s:
+                continue
+            # Deterministic per-language subsample: order by (seed, lang) so
+            # the kept set is a pure function of the run identity, then keep
+            # rows until the cap is reached. At least one row always remains.
+            pool = sorted(rows, key=lambda r: hashlib.sha256(
+                f"{seed}/{lang}/{r['audio_checksum_sha256']}".encode()).hexdigest())
+            kept, kept_s = [], 0.0
+            for r in pool:
+                if kept and kept_s + float(r["duration_s"]) > per_language_audio_cap_s:
+                    continue
+                kept.append(r)
+                kept_s += float(r["duration_s"])
+            per_lang[lang] = kept
+            cap_report[lang] = {
+                "hours_before": round(total_s / 3600, 3),
+                "hours_after": round(kept_s / 3600, 3),
+                "rows_before": len(rows),
+                "rows_after": len(kept),
+            }
+
     counts = {k: len(v) for k, v in per_lang.items()}
     weights = {k: n ** temperature for k, n in counts.items()}
     total_w = sum(weights.values())
@@ -324,6 +371,15 @@ def load_mix(cli, temperature: float, seed: int,
             "applied": "before temperature sampling",
         },
     }
+    if gate_report is not None:
+        provenance["pool_gate"] = dict(gate_report,
+                                       applied="before temperature sampling")
+    if cap_report is not None:
+        provenance["per_language_audio_cap"] = {
+            "cap_seconds": per_language_audio_cap_s,
+            "capped_languages": cap_report,
+            "applied": "before temperature sampling",
+        }
     print(f"  manifests   {len(sources)} at version {version}; "
           f"eligible rows {target}; rejected "
           f"{rejected['not_permitted']} not permitted, "
