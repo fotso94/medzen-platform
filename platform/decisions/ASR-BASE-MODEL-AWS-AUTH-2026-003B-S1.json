@@ -122,8 +122,8 @@
  },
  "packet": {
   "id": "ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S1",
-  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-38.md",
-  "sha256": "c3a6322dee8ee324dfe3d467ee206279fee4de2b6a21c1525482227dc032601e"
+  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-39.md",
+  "sha256": "192ea4067cea2bc0f32830514a0e959df500e114db65ec7454b39d6d7fe51079"
  },
  "permitted_terminal_outcomes": [
   "PASS_PILOT",
