@@ -1,0 +1,55 @@
+{
+ "fingerprint": "7878c110e1e5fc2e007ab74132b9cff812638a4f3cec240d40e9a066dfda92b4",
+ "provenance": {
+  "adoption_key": "curated/_versions/gb2/ADOPTION.json",
+  "complete_key": "curated/_versions/gb2/COMPLETE.json",
+  "complete_raw_sha256": "c54cb2620d557e48e8ee09fffbbe70f1be07f51939f0fdcbe6de0a2d728adf4a",
+  "eligible_rows": 8007,
+  "eligible_rows_before_exclusions": 8007,
+  "exclusions": {
+   "applied": "before temperature sampling",
+   "by_trigger": {},
+   "declared": 0,
+   "list_id": null,
+   "out_of_scope_declared": 0,
+   "policy_declared": 0,
+   "policy_sha256": null,
+   "removed_from_eligible_pool": 0
+  },
+  "manifest_version": "gb2",
+  "manifests": {
+   "yemba/asr/egra": {
+    "key": "curated/yemba/asr/egra/gb2/manifest.jsonl",
+    "manifest_sha256": "a92f7e3b8dd85e55d110737d1d2a9bf877e8748ccb06b3f033f215327952fdf1",
+    "version": "gb2"
+   }
+  },
+  "other_versions_present_but_unused": [
+   "gb1",
+   "v1",
+   "v2"
+  ],
+  "per_language_audio_cap": {
+   "applied": "before temperature sampling",
+   "cap_seconds": 360000.0,
+   "capped_languages": {}
+  },
+  "pool_gate": {
+   "allowed_policies": [
+    "cc0",
+    "cc_by_4_0",
+    "commercial_ok"
+   ],
+   "applied": "before temperature sampling",
+   "attribution_required": false,
+   "eligible_rows": 8007,
+   "excluded_rows_by_policy": {},
+   "status": "PASS_LICENCE_POLICY_GATE"
+  },
+  "rejected": {
+   "not_permitted": 0,
+   "wrong_split": 0
+  },
+  "require_allowed_use": "asr_train"
+ }
+}

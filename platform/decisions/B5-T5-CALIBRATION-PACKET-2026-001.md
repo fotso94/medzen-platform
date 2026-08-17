@@ -88,3 +88,33 @@ the re-priced table.
 - Spot wait exhausts max_wait: the job never started; zero GPU spend.
 - Any refusal from the trainer's gates: the container exits in seconds;
   fix the bindings, never the gates.
+
+## 7. Bind-time amendments (2026-08-17, owner go received)
+
+**Data**: `gb1` failed the trainer's own dedup gate live — the yemba EGRA
+manifest carried 8 byte-identical audio pairs, 4 of them with CONFLICTING
+transcripts. Curated version `gb2` (yemba only, from_version gb1) drops
+the 4 re-listings and BOTH rows of each conflicted pair (recorded in
+gb2/COMPLETE.json for source repair); 8,007 rows / 2.25h survive.
+`MEDZEN_MANIFEST_VERSION=gb2`. The live gate chain passes end-to-end on
+gb2 (evidence: platform/evidence/B5-T5-MIX-PROVENANCE-2026-001.json,
+run fingerprint 7878c110e1e5fc2e007ab74132b9cff812638a4f3cec240d40e9a066dfda92b4).
+Adapter-level fix routed to a separate session (task_8ffef221).
+
+**Mutation inventory additions** (the VPC's current ECR/S3 endpoints are
+attempt-38 TEMPORARY infrastructure and die with its teardown; SageMaker
+ENIs get no public IP, so T5 carries its own):
+
+| # | Mutation | Lifecycle |
+|---|---|---|
+| 4 | security-group `medzen-b5-t5-vpce` = sg-0fee72d218ac002a7 (443 self + S3 prefix list pl-6ea54007 only; default egress revoked) | CREATED at bind; deleted after T5 |
+| 5 | vpc-endpoints: s3 gateway + ecr.api + ecr.dkr + logs interface (subnet eu-central-1a subnet-00232b25bc1ac407a, private DNS on) | created at LAUNCH PREP — strictly after batch-6 teardown (s3 gateway per route table is exclusive); deleted after T5 |
+
+**Sequencing**: the cost registry enforces ONE active billable
+reservation; attempt 38 holds it. Registry revision 035 closes the
+attempt-38 reservation at its terminal and opens T5's $10 reservation in
+the same revision. T5 launch prep (endpoints -> dry validation re-run ->
+launch) begins only after batch-6 teardown completes.
+
+**ECR**: repository `medzen-trainer-omniasr` created (immutable tags,
+scan-on-push, KMS). Digest bound in the bindings file at push completion.
