@@ -404,14 +404,16 @@ def test_model_staging_verifies_and_refuses_drift(tmp_path):
     from pipeline.omniasr_train import stage_model_artifacts
 
     body = b"frozen-weights"
-    good = {"model.pt": hashlib.sha256(body).hexdigest()}
+    good = {"model.pt": {"sha256": hashlib.sha256(body).hexdigest(), "parts": 2}}
+    halves = [body[:6], body[6:]]
 
     class Cli:
         def download_fileobj(self, bucket, key, stream):
-            stream.write(body)
+            assert key.endswith(("part-0000", "part-0001")), key
+            stream.write(halves[int(key[-1])])
 
     staged = stage_model_artifacts(Cli(), destination=tmp_path, artifacts=good)
-    assert staged == good
+    assert staged == {"model.pt": good["model.pt"]["sha256"]}
     # cached file is REVERIFIED: corrupt it and staging must refuse
     (tmp_path / "model.pt").write_bytes(b"tampered")
     with pytest.raises(TrainerRefusal, match="drifted"):
@@ -421,6 +423,7 @@ def test_model_staging_verifies_and_refuses_drift(tmp_path):
 
 def test_model_staging_pins_the_evaluated_identities():
     from pipeline.omniasr_train import CTC_MODEL_ARTIFACTS, MODEL_ROOT_PREFIX
-    assert CTC_MODEL_ARTIFACTS["omniASR-CTC-1B-v2.pt"].startswith("354f9817")
-    assert CTC_MODEL_ARTIFACTS["omniASR_tokenizer_written_v2.model"].startswith("8aa11a10")
-    assert MODEL_ROOT_PREFIX.startswith("b6a/asr/v0/5adf7756")
+    assert CTC_MODEL_ARTIFACTS["omniASR-CTC-1B-v2.pt"]["sha256"].startswith("354f9817")
+    assert CTC_MODEL_ARTIFACTS["omniASR_tokenizer_written_v2.model"]["sha256"].startswith("8aa11a10")
+    assert MODEL_ROOT_PREFIX.startswith("research/asr-base-model/pilot/1cdca3e7")
+    assert MODEL_ROOT_PREFIX.endswith("bundles/")

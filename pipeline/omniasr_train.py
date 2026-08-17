@@ -57,34 +57,47 @@ CTC_SCOPE_PREFIX = "encoder."  # wav2vec2 attention lives under the encoder;
 SIGTERM_EXIT = 42  # named: spot reclaim checkpointed and left cleanly
 
 # The frozen base-model identity the evaluation suite live-proved. The
-# fairseq2 cards (assets/models.yaml) reference these files at /models;
-# SageMaker containers start empty, so the trainer stages them itself and
-# refuses any byte drift from the evaluated artifacts.
-MODEL_ROOT_PREFIX = ("b6a/asr/v0/"
-                     "5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/")
+# artifacts live as PART files under the meta-source bundle prefix
+# (r4 died on a 403 that was really a wrong-path 404: the b6a root holds
+# the whisper CT2 tree, not the Meta checkpoints). Part inventory pinned
+# from the meta-source pilot-bundle.json receipt; the assembled file is
+# verified against the same identity the eval suite proved.
+MODEL_ROOT_PREFIX = ("research/asr-base-model/pilot/"
+                     "1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/"
+                     "bundles/")
 CTC_MODEL_ARTIFACTS = {
-    "omniASR-CTC-1B-v2.pt":
-        "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
-    "omniASR_tokenizer_written_v2.model":
-        "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e",
+    "omniASR-CTC-1B-v2.pt": {
+        "sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+        "parts": 1,
+    },
+    "omniASR_tokenizer_written_v2.model": {
+        "sha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e",
+        "parts": 1,
+    },
 }
 
 
 def stage_model_artifacts(cli, destination: Path = Path("/models"),
-                          artifacts: dict[str, str] | None = None) -> dict[str, str]:
-    """Fetch the frozen base-model files, verifying each against the
-    evaluation-suite identity. A cached file is reverified, never trusted."""
+                          artifacts: dict[str, dict] | None = None) -> dict[str, str]:
+    """Assemble the frozen base-model files from their bundle parts,
+    verifying each assembled file against the evaluation-suite identity.
+    A cached file is reverified, never trusted."""
     from pipeline.train_asr import BUCKET
 
     artifacts = CTC_MODEL_ARTIFACTS if artifacts is None else artifacts
     destination.mkdir(parents=True, exist_ok=True)
     staged = {}
-    for name, expected_sha in artifacts.items():
+    for name, spec in artifacts.items():
+        expected_sha = spec["sha256"]
         local = destination / name
         if not local.exists():
             tmp = destination / (name + ".tmp")
             with tmp.open("wb") as stream:
-                cli.download_fileobj(BUCKET, MODEL_ROOT_PREFIX + name, stream)
+                for index in range(spec["parts"]):
+                    cli.download_fileobj(
+                        BUCKET,
+                        f"{MODEL_ROOT_PREFIX}{name}.parts/part-{index:04d}",
+                        stream)
             tmp.replace(local)
         digest = hashlib.sha256()
         with local.open("rb") as stream:

@@ -78,7 +78,7 @@
     "s3:GetObject"
    ],
    "Resource": [
-    "arn:aws:s3:::medzen-speech/b6a/asr/v0/5adf77568813513bc3697a1501ba354c04c7b93ea374fc5407cf4f6402f7431e/*"
+    "arn:aws:s3:::medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/bundles/*"
    ]
   }
  ]
