@@ -172,7 +172,7 @@
   "scripts/asr_base_model_pilot_assets.py": "0a59eda11db0120dfcde36c9c38587fe376b21918881fe0f3690b387e1351334",
   "scripts/asr_base_model_pilot_cold_rehearsal.py": "928ed9dd82324c6bee35951a31929aa8d5678b857fd4c112eab30f9ed62f3b11",
   "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
-  "scripts/asr_base_model_pilot_fake.py": "366fe43e758c50bf660aba26dcd01b674fe83357da528d9c08f5fb66cbd53ad4",
+  "scripts/asr_base_model_pilot_fake.py": "fc5f1214f7f22f75288c697ca911a70567cbe03a35eb852810315378aff532c3",
   "scripts/asr_base_model_pilot_integrity.py": "e3d577329bff34f991b6cad8927092b78d8e4be798c5b5e19d17379e1dada97d",
   "scripts/asr_base_model_pilot_k8s.py": "a33b7459f9bc7231a45f706be63371132975309b9376c978e730e20553c638fb",
   "scripts/asr_base_model_pilot_live.py": "f1dca326a4cfb113e77be42596c0ed1473545e6e21ac57b63f66f9f2c08eaac5",
