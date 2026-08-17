@@ -90,7 +90,10 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
                 audio = audio.mean(axis=1)
             waves.append(torch.from_numpy(audio))
             targets.append(encoder(row["text_normalized"]))
+        # The model loads in bf16; float32 audio dies in its first conv
+        # ("Input type (float) and bias type (c10::BFloat16)", run r5).
         seqs, seq_lens = _pad(waves, torch.float32)
+        seqs = seqs.to(torch.bfloat16)
         target_seqs, target_lens = _pad(targets, torch.int64)
         return {
             "seqs": seqs,
