@@ -150,3 +150,27 @@ def test_approval_phrase_without_approved_decision_fails(tmp_path):
         "... authorizing training job t5-calibration-yemba pending fixes\n")
     text_ok = review_is_recorded("t5-calibration-yemba", shared)
     assert text_ok is False, "HOLD text before the phrase must not authorize"
+
+
+def test_prohibited_scope_smuggled_through_environment_is_caught():
+    b = bindings()
+    b["environment"]["MEDZEN_EXCLUSIONS_REF"] = "s3://medzen-speech/eval/oops.json"
+    request = render_request(b)
+    with pytest.raises(JobRefusal, match="prohibited"):
+        validate_request(request, b)
+
+
+def test_approval_more_than_4000_chars_before_the_phrase_does_not_carry(tmp_path):
+    shared = tmp_path / "claude_instructions.txt"
+    shared.write_text(
+        "DECISION: APPROVED — some OTHER packet entirely\n"
+        + ("x" * 4100) + "\n"
+        + "notes mentioning authorizing training job t5-calibration-yemba later\n")
+    assert review_is_recorded("t5-calibration-yemba", shared) is False
+
+
+def test_ceiling_arithmetic_is_conservative_by_construction():
+    from b5_sagemaker_job import ON_DEMAND_USD_PER_HOUR
+    assert ON_DEMAND_USD_PER_HOUR["ml.g6.xlarge"] >= 1.5, (
+        "the ceiling rate must stay above any plausible published rate; "
+        "lowering it widens what a ceiling authorizes")

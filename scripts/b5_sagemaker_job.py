@@ -32,9 +32,11 @@ REGION = "eu-central-1"
 BUCKET = "medzen-speech"
 ROLE_ARN = f"arn:aws:iam::{ACCOUNT}:role/medzen-trainer-role"
 INSTANCE_ALLOWLIST = {"ml.g6.xlarge"}
-ON_DEMAND_USD_PER_HOUR = {"ml.g6.xlarge": 1.212}  # SageMaker eu-central-1 rate;
-# above the $0.805 EC2 rate the B4 design table used — the bindings ceiling
-# governs, this table only converts runtime to worst-case dollars.
+ON_DEMAND_USD_PER_HOUR = {"ml.g6.xlarge": 1.60}  # DELIBERATELY above any
+# published eu-central-1 SageMaker rate (~$1.2-1.3/h at last check; EC2
+# g6.xlarge is $0.805 in the B4 design table). This constant only converts
+# max_runtime into worst-case dollars for the ceiling refusal, so erring
+# high can only refuse too eagerly, never authorize too much.
 SHARED_REVIEWS = Path.home() / "Documents/medzen-shared/claude_instructions.txt"
 SHA_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 PROHIBITED_SUBSTRINGS = (
