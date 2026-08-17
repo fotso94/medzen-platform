@@ -1,0 +1,29 @@
+{
+ "cost_ceiling_usd": 10.0,
+ "cost_registry_line": "COST-REGISTRY-2026-035-T5-RESERVATION-OPENS-AT-ATTEMPT-38-CLOSE",
+ "environment": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "50",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_LANGUAGES": "yemba",
+  "MEDZEN_MANIFEST_VERSION": "gb2",
+  "MEDZEN_MAX_STEPS": "600",
+  "MEDZEN_SEED": "20260817",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:ea774b7eba58830fb9865d90b81b3e6ee96608df5419019276e092f6a86052d6",
+ "image_tag": "t5-cal-2026-08-17",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5497a77533e30cd1edd2f2c3ae29af81c93c1bbd83c0a93d7b1716a0f038e351",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "t5-calibration-yemba",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "max_runtime_seconds": 14400,
+ "max_wait_seconds": 28800,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100
+}

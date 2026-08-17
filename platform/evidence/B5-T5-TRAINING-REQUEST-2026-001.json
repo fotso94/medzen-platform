@@ -1,0 +1,60 @@
+{
+ "AlgorithmSpecification": {
+  "TrainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5497a77533e30cd1edd2f2c3ae29af81c93c1bbd83c0a93d7b1716a0f038e351",
+  "TrainingInputMode": "File"
+ },
+ "CheckpointConfig": {
+  "LocalPath": "/opt/ml/checkpoints",
+  "S3Uri": "s3://medzen-speech/research/b5-training/t5-calibration-yemba/checkpoints"
+ },
+ "EnableManagedSpotTraining": true,
+ "EnableNetworkIsolation": false,
+ "Environment": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "50",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_LANGUAGES": "yemba",
+  "MEDZEN_MANIFEST_VERSION": "gb2",
+  "MEDZEN_MAX_STEPS": "600",
+  "MEDZEN_SEED": "20260817",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "OutputDataConfig": {
+  "KmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "S3OutputPath": "s3://medzen-speech/research/b5-training/t5-calibration-yemba/output"
+ },
+ "ResourceConfig": {
+  "InstanceCount": 1,
+  "InstanceType": "ml.g6.xlarge",
+  "VolumeKmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "VolumeSizeInGB": 100
+ },
+ "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+ "StoppingCondition": {
+  "MaxRuntimeInSeconds": 14400,
+  "MaxWaitTimeInSeconds": 28800
+ },
+ "Tags": [
+  {
+   "Key": "medzen:cost-registry",
+   "Value": "COST-REGISTRY-2026-035-T5-RESERVATION-OPENS-AT-ATTEMPT-38-CLOSE"
+  },
+  {
+   "Key": "medzen:job",
+   "Value": "t5-calibration-yemba"
+  },
+  {
+   "Key": "medzen:classification",
+   "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
+  }
+ ],
+ "TrainingJobName": "medzen-b5-t5-calibration-yemba",
+ "VpcConfig": {
+  "SecurityGroupIds": [
+   "sg-0fee72d218ac002a7"
+  ],
+  "Subnets": [
+   "subnet-00232b25bc1ac407a"
+  ]
+ }
+}
