@@ -20,5 +20,12 @@
 !pipeline/omniasr_lora.py
 !pipeline/omniasr_export.py
 !pipeline/licence_filter.py
+!pipeline/omniasr_train.py
+!pipeline/omniasr_data.py
+!pipeline/train_asr.py
+!pipeline/languages.py
+!tests/
+!tests/test_omniasr_lora.py
+!tests/test_omniasr_train.py
 **/__pycache__/
 **/*.pyc

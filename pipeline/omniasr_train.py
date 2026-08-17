@@ -389,13 +389,21 @@ def main() -> int:
         with path.open("wb") as stream:
             torch.save({"step": step, "lora": lora_state_dict(model),
                         "optimizer": optimizer.state_dict(),
-                        "torch_rng": torch.get_rng_state()}, stream)
+                        "torch_rng": torch.get_rng_state(),
+                        # Without the device RNG, a resumed run with
+                        # lora_dropout > 0 silently diverges from the
+                        # uninterrupted trajectory on GPU.
+                        "cuda_rng": (torch.cuda.get_rng_state_all()
+                                     if torch.cuda.is_available() else None)},
+                       stream)
 
     def load_state(path: Path) -> int:
         state = torch.load(path, map_location="cpu", weights_only=False)
         model.load_state_dict(state["lora"], strict=False)
         optimizer.load_state_dict(state["optimizer"])
         torch.set_rng_state(state["torch_rng"])
+        if state.get("cuda_rng") is not None and torch.cuda.is_available():
+            torch.cuda.set_rng_state_all(state["cuda_rng"])
         return int(state["step"])
 
     outcome = run_training_loop(

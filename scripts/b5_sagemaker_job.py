@@ -97,6 +97,9 @@ def render_request(bindings: dict) -> dict:
     if environment["MEDZEN_VARIANT"] != "ctc":
         raise JobRefusal("only the calibrated ctc variant is launchable")
     registry_line = _require(bindings, "cost_registry_line")
+    volume_gb = int(bindings.get("volume_gb", 100))
+    if not 1 <= volume_gb <= 500:
+        raise JobRefusal(f"volume_gb {volume_gb} is outside 1..500")
 
     prefix = f"research/b5-training/{job_id}"
     return {
@@ -117,7 +120,7 @@ def render_request(bindings: dict) -> dict:
         "ResourceConfig": {
             "InstanceType": instance_type,
             "InstanceCount": 1,
-            "VolumeSizeInGB": int(bindings.get("volume_gb", 100)),
+            "VolumeSizeInGB": volume_gb,
             "VolumeKmsKeyId": kms,
         },
         "VpcConfig": {

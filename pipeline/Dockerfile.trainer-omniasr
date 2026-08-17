@@ -28,12 +28,44 @@ RUN pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cu128 \
         "torch==2.8.0" "torchaudio==2.8.0"
 COPY services/asr-eval-runtime/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt "soundfile==0.13.1"
+RUN pip install --no-cache-dir -r requirements.txt "soundfile==0.13.1" \
+        "boto3==1.43.58"
 RUN git clone --filter=blob:none https://github.com/facebookresearch/omnilingual-asr.git omnilingual-asr \
     && git -C omnilingual-asr checkout --detach "$OMNI_COMMIT" \
     && test "$(git -C omnilingual-asr rev-parse HEAD)" = "$OMNI_COMMIT" \
-    && pip install --no-cache-dir --no-deps ./omnilingual-asr \
-    && python -m pip uninstall -y pip setuptools wheel
+    && pip install --no-cache-dir --no-deps ./omnilingual-asr
+
+# Test stage: the torch-marked suites that skip on the engineering host run
+# HERE, on the exact dependency set the job will carry. Built with
+# --target trainer-test; never shipped (the final stage below does not
+# inherit from it, and its pytest never reaches the runtime image).
+FROM trainer-builder AS trainer-test
+RUN pip install --no-cache-dir "pytest==9.1.1"
+WORKDIR /opt/medzen
+COPY pipeline/__init__.py pipeline/omniasr_lora.py pipeline/omniasr_export.py \
+     pipeline/licence_filter.py pipeline/omniasr_train.py \
+     pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
+     ./pipeline/
+COPY tests/test_omniasr_lora.py tests/test_omniasr_train.py ./tests/
+ENV PYTHONPATH=/opt/medzen
+RUN python -m pytest tests/test_omniasr_lora.py tests/test_omniasr_train.py -q \
+    && python - <<'VERIFY'
+# fairseq2 contact-surface check: every name the trainer touches must
+# resolve on the pinned dependency set, and the model forward signature
+# must carry the (seqs, seqs_layout, targets, targets_layout) contract.
+import inspect
+from fairseq2.data.tokenizers.hub import load_tokenizer  # noqa: F401
+from fairseq2.models.hub import load_model  # noqa: F401
+from fairseq2.models.wav2vec2.asr import Wav2Vec2AsrModel
+from fairseq2.nn import BatchLayout  # noqa: F401
+parameters = list(inspect.signature(Wav2Vec2AsrModel.forward).parameters)
+assert parameters[1:5] == ["seqs", "seqs_layout", "targets", "targets_layout"], parameters
+print("fairseq2 contact surface: OK", parameters[1:5])
+VERIFY
+
+# Shipped venv keeps the original no-pip property; only trainer-test has pip.
+FROM trainer-builder AS trainer-venv
+RUN python -m pip uninstall -y pip setuptools wheel
 
 FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc
 
@@ -43,8 +75,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libsndfile1 python3.12 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --uid 10001 --create-home trainer
-COPY --from=trainer-builder /opt/venv /opt/venv
-COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py pipeline/licence_filter.py /opt/medzen/pipeline/
+COPY --from=trainer-venv /opt/venv /opt/venv
+COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
+     pipeline/licence_filter.py pipeline/omniasr_train.py \
+     pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
+     /opt/medzen/pipeline/
 COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py
 ENV PYTHONPATH=/opt/medzen
 USER 10001

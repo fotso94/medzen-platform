@@ -174,3 +174,13 @@ def test_ceiling_arithmetic_is_conservative_by_construction():
     assert ON_DEMAND_USD_PER_HOUR["ml.g6.xlarge"] >= 1.5, (
         "the ceiling rate must stay above any plausible published rate; "
         "lowering it widens what a ceiling authorizes")
+
+
+def test_zero_or_absurd_volume_is_refused():
+    b = bindings()
+    b["volume_gb"] = 0
+    with pytest.raises(JobRefusal, match="volume_gb"):
+        render_request(b)
+    b["volume_gb"] = 5000
+    with pytest.raises(JobRefusal, match="volume_gb"):
+        render_request(b)
