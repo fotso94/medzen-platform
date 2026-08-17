@@ -92,15 +92,15 @@
  "independent_review": {
   "conditions": 0,
   "instructions_path": "/Users/stephanefotso/Documents/medzen-shared/claude_instructions.txt",
-  "instructions_sha256": "39e8e26f15a0f05bc854a4fbf3b0e28d33c748bc3e14b8bebad3a0394d9b77dd",
-  "review_id": "CLAUDE-REVIEW-2026-08-16-037",
-  "review_statement": "PASS with no corrections; delegated owner approval issued for routine numbered attempt 29 (full-suite shard 1).",
+  "instructions_sha256": "bef4329c99af04fa83b1b5d671fa4c06fc6a247cd703cb63add8e35651ceb1b2",
+  "review_id": "CLAUDE-REVIEW-2026-08-17-040",
+  "review_statement": "Attempt 39 shard-6 re-run reviewed under CLAUDE-REVIEW-2026-08-17-040: candidate-derived aggregate validator, pre-validation salvage, rehearsal fake registry-derived, cold rehearsal PASS byte-identical, registry 036 reservation.",
   "reviewed_attempt_28_pass_sha256": "2503344c4eba47b98671cddf0a6a1dc089c26e157c43b7cb3e6158110cc98a2e",
-  "reviewed_bindings_sha256": "e9ab3d037851b5b57a66acbbbdb3d3f1e68c8622ff345b9747a4b0011f372cea",
-  "reviewed_cold_rehearsal_sha256": "8aa40de097be14dfb233744670005f05910f94690216a7f17b12fc886dac7694",
-  "reviewed_cost_registry_sha256": "942f82cd93e488c957c0c734fa3ab272de903499052908f726572b1d01d5db39",
-  "reviewed_packet_sha256": "2b19659cf483395b0d2a8fc855b0f43fc5d3e0c79b9c31289643f088d10907c2",
-  "reviewed_repository_commit": "a98f67847c1b82112e58201d296d8b2259fa7f2d",
+  "reviewed_bindings_sha256": "eae2a0d6ddef82a4f09f5211d18418c502e31425cfaf954bb5b1ede83a78e120",
+  "reviewed_cold_rehearsal_sha256": "49b62463fb9dc59e6c3d4f625ba5a59f5f81ef0002ec0b08bf467cd83c7f1d7c",
+  "reviewed_cost_registry_sha256": "2fd2b7a3eca32e60f4b556019632b950aa381aa3c464fce10e2d2b52fe69090b",
+  "reviewed_packet_sha256": "192ea4067cea2bc0f32830514a0e959df500e114db65ec7454b39d6d7fe51079",
+  "reviewed_repository_commit": "bb8633830db6c5084de74571e9cbaad700e46626",
   "reviewed_risk_acceptance_sha256": "43321489ce6f9f3a33f86445601b5bd65d99d2f1746747944b2a185742341034",
   "reviewer": "independent self-review (Claude, reviewer hat)",
   "status": "PASS"
@@ -157,7 +157,7 @@
   "Any alteration of packet 2026-002X, risk acceptance 003 or historical authorization/refusal evidence"
  ],
  "record": "ASR_BASE_MODEL_OFFLINE_PILOT_AWS_AUTHORIZATION",
- "reviewed_repository_commit": "a98f67847c1b82112e58201d296d8b2259fa7f2d",
+ "reviewed_repository_commit": "bb8633830db6c5084de74571e9cbaad700e46626",
  "revision": "12",
  "revision_note": "Revision 11 authorizes attempt 38 (shard 6, Meta-only protocol per owner directive; poll-tolerance fix) \u2014 review CLAUDE-REVIEW-2026-08-16-037.",
  "risk_acceptance": {
