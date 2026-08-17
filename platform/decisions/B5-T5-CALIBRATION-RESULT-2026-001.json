@@ -1,0 +1,46 @@
+{
+ "basis": "whole-job billable seconds INCLUDING container start, gates, verified 4GB model staging and export upload \u2014 the conservative figure billing actually sees; the pure training loop runs faster (~1.7s/step)",
+ "calibration_audio_hours_per_gpu_hour": 7.48,
+ "estimated_actual_cost_usd": {
+  "five_failures": 0.62,
+  "r6_success": 0.47,
+  "total": 1.09
+ },
+ "facts": {
+  "audio_hours_processed": 2.6976,
+  "batch_size": 2,
+  "billable_seconds_whole_job": 1298,
+  "export": {
+   "manifest_sha256": "fe4f1c476a89d9afd87442caaed4e62af8495f6ffd04531c8785d9169aa564ca",
+   "model_sha256": "9682b679fd9c1bcd1c620ceed96fbd95351dbcea3adcb67f1bba6327015c0b18",
+   "status": "PASS_MERGED_EXPORT",
+   "steps": 600
+  },
+  "gpu_hours_whole_job": 0.3606,
+  "grad_accum": 8,
+  "instance": "ml.g6.xlarge on-demand",
+  "mean_row_seconds": 1.0116,
+  "mix_audio_hours": 2.25,
+  "mix_rows": 8007,
+  "row_samples_processed": 9600,
+  "steps": 600
+ },
+ "failed_attempt_ledger_seconds": {
+  "r1": 240,
+  "r2": 326,
+  "r3": 336,
+  "r4": 405,
+  "r5": 405
+ },
+ "id": "B5-T5-CALIBRATION-RESULT-2026-001",
+ "job": "medzen-b5-t5-calibration-yemba-r6",
+ "packet": "B5-T5-CALIBRATION-PACKET-2026-001",
+ "record": "B5_T5_CALIBRATION_RESULT",
+ "recorded_utc": "2026-08-17T05:05:59Z",
+ "versus_assumption": {
+  "assumed": 5.0,
+  "band": "\u00b120% (4.0-6.0)",
+  "measured": 7.48,
+  "verdict": "OUTSIDE the band on the FAVORABLE side \u2014 per the packet, the campaign packet waits until the owner sees the re-priced table"
+ }
+}

@@ -124,3 +124,23 @@ table before any full campaign packet.
 Dependencies: T1–T4 are local and can start now; T5 needs a $10-class
 packet; the full campaign needs the decision record published and the
 ShareAlike review for the five blocked languages.
+
+## 5b. Re-priced from measurement (T5, 2026-08-17)
+
+T5 measured **7.48 audio-h/GPU-h** for the CTC variant on ml.g6.xlarge
+(whole-job basis including staging overhead; pure loop ~9.6) against the
+assumed 5.0 — training is ~50% faster than priced. §5 re-priced at the
+measured rate and SageMaker rates (~$1.21/h on-demand; spot pending the
+filed quota increase, ~35%):
+
+| Scenario | GPU-hours (was) | GPU-hours (measured) | On-demand | Spot |
+|---|---|---|---|---|
+| CTC, 11 clear languages (932 audio-h, 2 epochs) | ~186 | ~125 | ~$151 | ~$53 |
+| LLM, 11 clear languages (assume 2x CTC cost pending its own calibration) | ~373 | ~249 | ~$301 | ~$105 |
+| Both variants | ~559 | ~374 | ~$452 | ~$158 |
+| +5 SA-blocked languages after legal review | +~384 | +~257 | +~$311 | +~$109 |
+
+Evidence: B5-T5-CALIBRATION-RESULT-2026-001.json (job r6: 600 steps,
+1,298 billable seconds, PASS_MERGED_EXPORT, model 9682b679...). The LLM
+variant remains refused in the trainer until its own T5-class
+calibration; its rows above carry the old 2x assumption explicitly.
