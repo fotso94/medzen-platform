@@ -42,8 +42,8 @@ def render(bindings: dict[str, Any], endpoint_ips: list[str], s3_cidrs: list[str
     digest = bindings["image"]["linux_amd64_digest"]
     if re.fullmatch(r"sha256:[0-9a-f]{64}", digest) is None:
         raise ValueError("image digest is malformed")
-    if attempt not in set(range(1, 41)):
-        raise ValueError("attempt must be 1 through 40")
+    if attempt not in set(range(1, 42)):
+        raise ValueError("attempt must be 1 through 41")
     attempt_window = bound_attempt_window(bindings)
     endpoint_blocks = sorted({_cidr(f"{ip}/32") for ip in endpoint_ips})
     s3_blocks = sorted({_cidr(value) for value in s3_cidrs})
