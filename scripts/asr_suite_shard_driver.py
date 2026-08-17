@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import os
 import hashlib
 import json
 import re
@@ -77,6 +78,13 @@ def _sha(path: Path) -> str:
 
 
 def _run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
+    # Child scripts import the repo's pipeline/ package; PYTHONPATH must not
+    # depend on what the invoking shell happened to export (shard-8 prepare
+    # failed on a clean environment where shard-7's had worked by accident).
+    env = dict(os.environ, PYTHONPATH=str(ROOT))
+    kw.setdefault("env", env)
+    if kw["env"] is None:
+        kw["env"] = env
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT, **kw)
     if result.returncode != 0:
         raise DriverRefusal(f"{' '.join(cmd[:4])}... failed: {result.stderr[-400:]}")
