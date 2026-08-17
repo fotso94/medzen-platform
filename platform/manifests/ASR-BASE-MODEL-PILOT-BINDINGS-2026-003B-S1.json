@@ -1,1 +1,1288 @@
-{"aggregate_readback_policy":{"classification":"ATTEMPT_27_CONFIRMED_READBACK_CORRECTION","integrity":"NODE_SIDE_SHA256_VERIFIED_BEFORE_PARSE","maximum_bytes":33554432,"mechanism":"CHUNKED_BASE64_SSM_READBACK","output_cap_characters":24000,"raw_chunk_bytes":15000},"artifact_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-007.json","sha256":"0dd2089296c51094b3242086027e11d2dac92d0cc47bc654a2d309a9cc60d42b"},"async_observation_audit":{"path":"platform/evidence/ASR-BASE-MODEL-ASYNC-OBSERVATION-AUDIT-2026-001.json","sha256":"bd7bf06f5b32351b196953bcfda90608cfba11404e6f979c7daa0c78c55e9150","site_count":7,"status_required":"PASS_ALL_POST_START_OBSERVATIONS_BOUNDED"},"async_observation_policy":{"absence_is_only_retryable_receipt_state":true,"listener_absence_retryable_only_while_pod_non_terminal":true,"malformed_drift_terminal_or_regression_retryable":false,"network_receipt_timeout_seconds":300,"poll_interval_seconds":10,"required_stable_observations":2,"safe_refusal_diagnostics_before_cleanup":true,"shared_module":"scripts/asr_base_model_async_observations.py"},"attempt_window":{"job_active_deadline_seconds":16200,"seconds_each":18000},"attempts":{"attempts_1_through_37_reuse_permitted":false,"authorized_numbers":[38],"cost_ceiling_usd":10,"maximum":1,"maximum_gpu_nodes":1,"non_transferable":true,"seconds_each":18000},"authorization":{"complete_committed_stage_dry_run_required_before_attempt":true,"deadline_dry_run_id":"ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1","deadline_dry_run_path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1.json","id":"ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1","path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1.json","status_required":"owner-approved"},"aws":{"account":"558069890522","cluster":"medzen-speech","ebs_kms_key_arn":"arn:aws:kms:eu-central-1:558069890522:alias/aws/ebs","ecr_kms_key_arn":"arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57","gpu_asg_name":"eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8","gpu_root_volume_gib":40,"private_route_table_ids":["rtb-0c6eb6874ce0565dc"],"private_subnet_ids":["subnet-00232b25bc1ac407a","subnet-05029419c6c61a536","subnet-01fb2fc3f56bce55e"],"region":"eu-central-1","s3_kms_key_arn":"arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57","temporary_eval_volume_gib":60,"vpc_id":"vpc-051aa9df8b64bf141"},"aws_read_fixtures":{"aws_mutations":0,"dynamic_value_policy":"ONLY_DECLARED_EXISTING_PATHS_NO_KEY_INSERTION","fixture_count":40,"path":"platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-007.json","runtime_read_api_count":22,"sha256":"e8d2121a749378e5593723525299d289420ef465a011cb31428cbef8eb87296a","status_required":"PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_ASR_EXECUTOR_COVERAGE","uncovered_read_apis":0},"classification":"OFFLINE_EVALUATION_ONLY","cold_rehearsal":{"bindings_source_required":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-003B-S1.json","committed_bindings_required":true,"fixture_bindings_permitted":false,"receipt_last_required":true,"receipt_path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-003B-S1-COLD/cold-rehearsal.json","script_path":"scripts/asr_base_model_pilot_cold_rehearsal.py","two_byte_identical_runs_required":true},"cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-034.json","sha256":"3a2f5b684c3aa70ea5b9e2ea1ac32fbb8b29668680339f3604f339ec9d3ed387"},"diagnostic_retention_policy":{"classification":"ATTEMPT_25_RETENTION_CORRECTION","container_termination_facts":"NORMALIZED_STRUCTURED_BEFORE_CLEANUP","phase_journal":"FSYNC_JSONL_ON_HOST_MOUNTED_OUTPUT_READ_POSTMORTEM_VIA_SSM","runtime_telemetry":"BOUNDED_PERIODIC_RAM_VRAM_MIN_TWO_PASS_SAMPLES","sanitized_windows":"HEAD_4096_PLUS_TAIL_4096_AFTER_FULL_VALUE_SANITIZATION"},"digest_rescan_bindings":{"path":"platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-005.json","sha256":"543df338dc4a0598cd78e96ba68db9d61206b49a9dc50e1b36b9b47988d2435f"},"dra_deployment":{"b6_closure_commit":"c3876c995282","linux_amd64_image_digest":"sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246","locked_manifest_path":"platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml","locked_manifest_sha256":"0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897","manifest_byte_drift_from_b6_closure":false},"dra_network_policy":{"allowed_port":443,"allowed_protocol":"TCP","cluster_service_capture_path":"platform/evidence/ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001.json","cluster_service_capture_sha256":"7e41d6306156428851f194dfb13d950b590051eee12c93d3858bc2ab9c0995a8","kubernetes_api_service_ip":"10.100.0.1","other_egress_permitted":false,"path":"platform/k8s/asr-eval/nvidia-dra-api-egress.yaml","sha256":"8913060ac5921b5ca4c2109ff5ebac2d28910e5578bf77a0f3da4c4d7f9421e7"},"ecr_existing_image_fixture":{"capture_path":"platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-005.json","capture_sha256":"6820a4e407ebeaa284cd34322dd995292b20aa66e19d42a18423739371b0b91c","path":"tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/ecr-batch-get-existing-image-pilot-8f63996.json","sha256":"77948984d0c3d053df98781e68575670233de39b2521d31ebbe7a873b140f00d"},"endpoint_policy_derivation":{"ecr_calls":22,"exact_prefix_scope_only":true,"hand_written_action_lists_permitted":false,"inventory_total_calls":35,"observed_live_call_cross_check_required":true,"other_s3_version_variant_actions_required":[],"qualification_path":"platform/evidence/ASR-BASE-MODEL-ENDPOINT-POLICY-QUALIFICATION-2026-001.json","qualification_sha256":"cb0129ba36865f79ed16a1951679ccee1c6d68af4811f4b872c57a6149db1cab","required_s3_actions":["s3:GetObject","s3:GetObjectVersion"],"s3_calls":13,"s3_unversioned_calls":5,"s3_versioned_calls":8},"execution_workdir_policy":{"inside_worktree_refusal_code":"EXECUTION_WORKDIR_INSIDE_REVIEWED_WORKTREE","receipt_store":"<external-workdir>/receipts","required_location":"OUTSIDE_REVIEWED_WORKTREE","runtime_evidence_commit_timing":"AFTER_TERMINAL_RUN_ONLY","validated_before_any_runtime_side_effect":true},"executor_integrity_policy":{"all_module_hashes_required_on_every_attempt":true,"changed_module_bytes_refuse":true,"conditional_integrity_guards_permitted":false,"missing_or_extra_module_bindings_refuse":true},"executor_modules":{"pipeline/asr_base_model_pilot_receipts.py":"4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11","scripts/asr_base_model_async_observations.py":"a4e8da9b98b1686f4d7078f18fe7aa9e8dd6e6c848da0d456b17ba8d9b12f195","scripts/asr_base_model_aws_read_fixtures.py":"236a1a8c0837c68927639f07bb5469544f3fc56dfd5181d1eb907ada8d8927c7","scripts/asr_base_model_boundary_contracts.py":"52907199085b114ec61a682f96268fa1fe18ce1ac65f8722070f1767a16462b5","scripts/asr_base_model_deadline_dry_run.py":"369b9dff1e16fc677b7f98f97cd669d6d298e91bfbea74bf8ec4bd42e172b7bd","scripts/asr_base_model_ecr_scanning.py":"6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7","scripts/asr_base_model_endpoint_policy.py":"6e85132b077fca3ecf44e0a6ef89c9761645dfbc47b111c7a47722575663c767","scripts/asr_base_model_gpu_storage.py":"378031f0524f3f2536a89366ddf1e6e8ba0e0bf1922e97b0e22eca379f1508fe","scripts/asr_base_model_local_resources.py":"6843ab9c1c4ff4a1ac068c14c9335206d54083c33cc178b32dece348adf966e1","scripts/asr_base_model_node_staging.py":"284334523a0db3842b5c3ab4d143d4056e8a2c5dc8f3b66129235e467106c47a","scripts/asr_base_model_pilot_assets.py":"0a59eda11db0120dfcde36c9c38587fe376b21918881fe0f3690b387e1351334","scripts/asr_base_model_pilot_cold_rehearsal.py":"928ed9dd82324c6bee35951a31929aa8d5678b857fd4c112eab30f9ed62f3b11","scripts/asr_base_model_pilot_dns.py":"38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6","scripts/asr_base_model_pilot_fake.py":"366fe43e758c50bf660aba26dcd01b674fe83357da528d9c08f5fb66cbd53ad4","scripts/asr_base_model_pilot_integrity.py":"e3d577329bff34f991b6cad8927092b78d8e4be798c5b5e19d17379e1dada97d","scripts/asr_base_model_pilot_k8s.py":"cd7272d0f315ec263fb4b4e4d9a4bfbaf796c67ec8dd7c82498eed7427af9624","scripts/asr_base_model_pilot_live.py":"7570bd980253c3ec233cd805208b79c7bfd97e680a6d39ff89957936d780ea2a","scripts/asr_base_model_pilot_plan.py":"1a4ed79f7cd50cfe23526c4ba1d59c7fcf0291da0a4eb105c117487eb7c15e02","scripts/asr_base_model_pilot_runner.py":"91217dd0278899474384ad6b87bdb5835a6db1ae6becb287f9c980773ad0fa36","scripts/asr_base_model_pilot_staging.py":"37da0ab007d909e9c1b87bb35e8091a69f438e565f9a87297958c5a6bf2b1ed7","scripts/asr_base_model_pilot_workload.py":"27a29e6ea90db78f6cab2ff8c8a89f2a4988b430a1aad73e8e3d917446d3daa3","scripts/asr_base_model_pod_lifecycle.py":"a93de0cde84bdf208b7fefa114e044f68a78db30414df1df1979e2670dab35da","scripts/asr_base_model_proven_commands.py":"07d263708cd671f90976d7ea7809275b47ec41e6cf908040b5b7f9404ceafa5c","scripts/asr_eval_digest_rescan.py":"8d75676e519905303e59eb5a9123bb1ccd0f14465e4a69ce0cacfa2b4373cf09","scripts/asr_eval_oci_publication.py":"e686f1b0db781af418d5403a8857780f5fd25998d8d2af8e4239f648cb190749","scripts/asr_eval_scout_preflight.py":"7d2e97df6d4135b2d997309e6eba3fd04a0661fe8539a976237e11ad4be78b0e","scripts/asr_external_tool.py":"ffb728a012e5ef3568bf636f12f26c15ce6bc8034a5906478ccbb805ba943d6c","scripts/asr_idempotent_read_retry.py":"0f78e1f6e9f73f4029680eea86b424e76a2989ee35157ee152ffff039e330552","scripts/b6a_003c_e_ssm_sampler.sh":"b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96","scripts/qualify_asr_base_model_endpoint_policy.py":"2166314694b2bffe87ce6757bbee491942e42c9f5cd47acf58ab9218fbdd6fb4","scripts/qualify_asr_base_model_node_staging.py":"9b8fedc0dac1c4c870cdb269ab692e1b9bcd809b8010fa071b28c86d3bfee6d6","scripts/run_b6a_003c_c_proof.py":"c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3","services/asr-eval-runtime/medzen_asr_eval/network_probe.py":"bc68e8e9637f68bd1261ac3f2d872711256ecea6908eb19cc1b8c644aa9b1535"},"executor_source_commit":"4918b217c86b592706d110092e00edddf2b0a77a","gpu_node_readiness_fixtures":{"capture_mutations":0,"invented_kubernetes_fields_permitted":false,"path":"platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json","sha256":"34663d3ae7218f9423d15b4fa9aa11f4f4940022deaf87a409e6c0f4c91e5e56","status_required":"PASS_READ_ONLY_LIVE_GPU_NODE_TRANSITION_CAPTURE"},"gpu_storage_policy":{"capacity_qualification":{"path":"platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-005.json","sha256":"c58e13a51aa2376d1fae65c5328c1325b8f8377fe745a89d1a55ae34c0cccee4"},"classification":"PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE","failure_semantics":{"attempt_envelope_created":false,"attempt_number_consumed":false,"aws_mutations":0,"aws_read_calls":1,"gpu_started":false},"gpu_asg_name":"eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8","image":{"linux_amd64_digest":"sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555","oci_index_digest":"sha256:7f9938e04789592a5bc86f8223f04ccfc98fb5364c7a1c32d0acdf5be896033e"},"live_fixture":{"path":"tests/fixtures/asr_base_model_pilot/aws-live-2026-08-14/eks-describe-nodegroup-gpu-40gib.json","sha256":"787b620cbc9b7fb59058e49d63d15323818a8c091db932fc1c443c57958c074e"},"operational_floor_gib":40,"schema_version":1,"storage_apply_evidence":{"path":"platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json","sha256":"d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2"}},"host_cleanup":{"exact_archive_measurement":{"path":"platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-002.json","sha256":"10eb2b9180bc8eedaacf3ee3cd7da647ee214f9a80a0d6d8bdbc00a59459de8d"},"keep_list":{"path":"platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-003.json","sha256":"8de1e0012196c08f7584237efe99a94985e647995a5e9a3968e57497d51f6a4e"},"measured_free_bytes_at_qualification":61756919808,"minimum_free_bytes":42949672960,"result":{"path":"platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003.json","sha256":"0b259b843d7a2f7b06b0366054b13fc2e409b07e6b25a9eef2a5d7519e12e1ba"}},"idempotent_read_retry_policy":{"allowlisted_operations":["ECR_PULL_BACK","SCOUT_DATABASE_READ","S3_READ"],"allowlisted_transient_classes":["CONNECTION_RESET","TIMEOUT","DNS_BLIP"],"backoff_seconds":[1,2],"image_scan_hard_cap_seconds":7200,"local_s3_read_hard_cap_seconds":3600,"maximum_attempts":3,"node_s3_read_hard_cap_seconds":903,"sanitized_bounded_diagnostics_required":true,"verification_failures_retryable":false,"writes_mutations_or_ambiguous_operations_retryable":false},"idempotent_read_retry_qualification":{"path":"platform/evidence/ASR-BASE-MODEL-IDEMPOTENT-READ-RETRY-QUALIFICATION-2026-001.json","sha256":"ca3922b362d5d505d8d45a0696b167ff40e094b0a027382f94da8a2d31804477","status_required":"PASS_TYPED_TRANSIENT_READ_RETRY_QUALIFICATION"},"image":{"attestation_digest":"sha256:f23fb8b60f0caf5a71ffe1103085239be6f46c83277382f16ef36ba76d514d6c","config_digest":"sha256:2140eb4ffcb6f0ba6eec25197994f39ac15f4721f4541257ca73e6a0c111520d","image_context_changed":true,"linux_amd64_digest":"sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555","local_scan_sha256":"0fe4e623e48e3a9558c30da0449a2619198def5a9e1b541024d45b9aaee65f6a","local_scan_subject_sha256":"43ab6f07b4362742b3db224bcc25cf9f0bb5c68cef3a913f756c4aa151b512c8","local_tag":"medzen-asr-eval-runtime:pilot-8f63996","oci_index_digest":"sha256:7f9938e04789592a5bc86f8223f04ccfc98fb5364c7a1c32d0acdf5be896033e","publication_required":true,"repository":"medzen-asr-eval-runtime","source_commit":"8f639962c1509d6dc1b6ac0805566e05d07be36b","spdx_attestation_digest":"sha256:6f9d0ee2529328ea866b63374eb47c75873b6995fee2900923afaf4edde43bd9","tag":"pilot-8f63996"},"input_freeze":{"canonical_sha256":"f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad","correction_addendum_sha256":"4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f","correction_record_sha256":"91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad","data_commit":"46448c66e9068026552aa65262d689201c85fe7d","pilot_languages":47,"pilot_manifests":54,"pilot_row_list_sha256":"2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6","pilot_rows":2878,"recorded_utc":"2026-08-11T22:25:25Z","source_inventory_sha256":"f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953","suite_selection":{"expected_rows":2878,"row_list_sha256":"d834852a49446054297a8028f9c27c0ab4e2eb4c8152df732960c66167c4a71f","shard":6,"shard_manifest":{"path":"platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002.json","sha256":"71cd99d6a1a784c1eccf9f3faa531616cab6abc17c0e53f487924b0ab37a8de0"},"units":[{"language":"english","row_end":1040,"row_start":0},{"language":"igbo","row_end":1393,"row_start":0},{"language":"maka","row_end":148,"row_start":0},{"language":"pulaar","row_end":149,"row_start":0},{"language":"sepedi","row_end":148,"row_start":0}]}},"local_resource_policy":{"classification":"PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE","disk":{"basis":{"cleanup_baseline":"platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003.json","cleanup_baseline_sha256":"0b259b843d7a2f7b06b0366054b13fc2e409b07e6b25a9eef2a5d7519e12e1ba","exact_archive_evidence":"platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-001.json","exact_archive_evidence_sha256":"707e3cd3ffb2d06501cd6a40e03e9a32418d716e4cab963f6b664904f4389926","owner_floor_gib":16,"suite_mode_derivation":"publication_required=false, VERIFY_ONLY staging, no local export: measured peak is the 7.31GB digest-rescan archive + 2.1GB scanner scratch + 0.5GB evidence reserve + 2.1GB safety margin = 12.1GB calculated peak. The 16 GiB (17.18GB) floor retains 42% headroom over peak. Host context: the machine is shared with owner data (37GB Downloads) and a 108GB Docker VM; the executor fail-closes below the floor and the workdir consumes <0.1GB."},"calculated_peak_requirement_bytes":12132741120,"evidence_reserve_bytes":536870912,"exact_archive_bytes":7301068800,"operating_floor_bytes":17179869184,"required_available_bytes":17179869184,"safety_margin_bytes":2147483648,"scanner_scratch_reserve_bytes":2147483648,"simultaneous_full_image_representations":1},"failure_semantics":{"attempt_envelope_created":false,"attempt_number_consumed":false,"aws_calls":0,"aws_mutations":0,"gpu_started":false},"id":"ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002","minimum_logical_cpus":4,"minimum_memory_bytes":17179869184,"minimum_open_files_soft":1024,"minimum_processes_soft":512,"path":"platform/manifests/ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002.json","required_commands":["aws","docker","git","kubectl"],"required_environment":["HOME present","external workdir parent writable and searchable","Docker Scout authenticated by a complete environment pair or Docker credential-store handoff without retaining credential values","Docker daemon reachable"],"schema_version":1,"sha256":"15c79776abcf4a28470d7105a94f37f4dec41bd28f4d676584f8ae7ff1d8fd77"},"local_resource_qualification":{"attempt_consumed":false,"measured_available_bytes":61756919808,"path":"platform/evidence/ASR-BASE-MODEL-LOCAL-RESOURCE-QUALIFICATION-2026-005.json","required_available_bytes":42949672960,"scout_authentication_mode":"DOCKER_CREDENTIAL_STORE","sha256":"f20e948eedaca82008bb90249f1ef7ff3f4d18537b21ce0931069f9449f2280c","status_required":"PASS_LOCAL_RESOURCE_QUALIFICATION"},"model_card_mount_policy":{"asset_card_file_paths":["/models/omniASR-CTC-1B-v2.pt","/models/omniASR-LLM-1B-v2.pt","/models/omniASR_tokenizer_written_v2.model"],"asset_card_source":"services/asr-eval-runtime/assets/models.yaml","classification":"ATTEMPT_25_CONFIRMED_CARD_LAYOUT_CORRECTION","driver_model_root":"/models","mount_source":"input volume subPath models","pod_mount":"/models","read_only":true,"render_time_validator":"validate_asset_card_mount_coverage"},"network_policy_convergence":{"classification":"ATTEMPT_21_CORRECTIVE_CONTROL","full_positive_and_negative_checks_start_only_after_convergence":true,"policy_agent_diagnostics":"BEST_EFFORT_ON_REFUSAL","positive_probe_hard_timeout_seconds":120,"positive_probe_retry_interval_seconds":5,"receipt_telemetry":["resolved_ips","errno","exception_class","per_attempt_timing"],"torch_imported_before_pass_permitted":false,"typed_refusal_codes":["POSITIVE_NETWORK_CONVERGENCE_TIMEOUT","ALLOWED_ENDPOINT_RESOLUTION_REFUSED","ALLOWED_ENDPOINT_CONNECT_REFUSED","PROHIBITED_NETWORK_DESTINATION_ACCEPTED"]},"node_staging_policy":{"empty_environment":true,"gid":10001,"idempotent_s3_read_retry":{"backoff_seconds":[1,2],"curl_transient_exit_codes":{"28":"TIMEOUT","56":"CONNECTION_RESET","6":"DNS_BLIP"},"hard_cap_seconds":903,"maximum_attempts":3,"other_exit_codes_retryable":false,"verification_failures_retryable":false},"identity_mechanism":"CHROOT_NUMERIC_USERSPEC_NO_PASSWD_OR_GROUP_LOOKUP","presigned_url_seconds":3600,"sanitized_ssm_terminal_diagnostic_required_before_cleanup":true,"ssm_timeout_seconds":1800,"uid":10001,"url_safety_margin_seconds":600},"node_staging_qualification":{"path":"platform/evidence/ASR-BASE-MODEL-NODE-STAGING-QUALIFICATION-2026-001.json","sha256":"988463400ccf1b9d00128b20cb4176ebeb7819efe6de462e5085b1f64c53cc2d","status":"PASS_FAILURE_AND_FIX_NODE_EQUIVALENT_QUALIFICATION"},"pilot_bundle":{"sha256":"753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf"},"pilot_workload_lessons_audit":{"path":"platform/evidence/ASR-BASE-MODEL-PILOT-WORKLOAD-LESSONS-AUDIT-2026-001.json","sha256":"52171824d1a2d24dddf5bc0411cba5295e4dafa4358c80792e020552ee1a7236","status":"PASS_ATTEMPT_1_THROUGH_16_LESSONS_APPLIED_TO_NEVER_RUN_WORKLOAD"},"pilot_workload_policy":{"absolute_python":"/opt/venv/bin/python","canonical_argv_sha256":"da7255141082e4a1a1857e8153412e4c0152f40708db1c8a406c13570b8df61b","historical_live_pass":false,"job_active_deadline_seconds":9000,"listener_timeout_exit_code":71,"listener_timeout_seconds":900,"refusal_diagnostics_before_cleanup":true},"pod_dns_isolation":{"classification":"ATTEMPT_22_CONFIRMED_DNS_CORRECTION","cluster_dns_dependency":false,"dns_config_nameservers":["172.31.0.2"],"dns_egress_cidr":"172.31.0.2/32","dns_policy":"None","pilot_and_inbound_control_alignment_required":true,"resolve_as_pod_gate":{"allowed_ip_source":"RENDERED_ASR_EVAL_PRIVATE_EGRESS_NETWORK_POLICY","hostname_source":"NETWORK_BINDING_ALLOWED_TCP_443_HOSTS","policy_selected_control_pod":true,"resolved_ips_recorded":true,"torch_imported_before_pass_permitted":false},"typed_refusal_codes":["DNS_RESOLVER_UNREACHABLE","DNS_EFFECTIVE_RESOLVER_DIFFERS","DNS_RESOLVED_IP_OUTSIDE_ALLOWLIST","DNS_CONTROL_POD_TIMEOUT"]},"pod_lifecycle_policy":{"image_prepull":{"exact_gpu_node_name_required":true,"exact_linux_amd64_digest":"sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555","historical_attempt_20_pull_seconds":197.027,"image_pull_policy":"Always","poll_interval_seconds":10,"progress_stall_timeout_seconds":600,"required_before_dns_control":true,"stable_node_inventory_observations":2,"terminal_timeout_seconds":1200,"write_once_qualification_receipt":"<external-workdir>/image-prepull-qualification.json"},"primary_exception_authoritative":true,"secondary_cleanup_failure_persisted_separately":true,"shared_module":"scripts/asr_base_model_pod_lifecycle.py","stable_absence_observations":2,"stage_local_delete_mode":"NONBLOCKING_THEN_STABLE_ABSENCE","stage_local_delete_timeout_seconds":180,"undefined_sleep_member_permitted":false},"proven_live_node_commands":{"node_local_input_stage":"NUMERIC_IDENTITY_LIVE_PROVEN_DOWNLOAD_AUTHORIZATION_NOT_PROVEN","pilot_workload":"AUDITED_NOT_HISTORICALLY_PROVEN_FIRST_LIVE_ARGV_HASH_REQUIRED","sampler":{"canonical_inner_argv":["/busybox/chroot","/driver-root","/usr/bin/nvidia-smi","--query-gpu=index,memory.used,memory.total","--format=csv,noheader,nounits"],"canonical_inner_argv_sha256":"04e6d317a48f3602402b011289224cb686ab7313aab6726051d2f089ac5bd426","receipt_path":"platform/evidence/receipts/B6A-2026-003C-F-LIVE/sampler_self_test.json","receipt_sha256":"8848c206ecbf459e5e0ffd754352b8eb3086d0b1a750e40c471f890ad8cebde1","script_path":"scripts/b6a_003c_e_ssm_sampler.sh","script_sha256":"b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96"}},"qualification":{"path":"platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-007.json","sha256":"04bf743b7ee5864f9560f87f232df13a0791a434dbe26d8fe081459ffb42dbe9"},"recorded_boundary_fixtures":{"eval_manifest_archive":{"path":"tests/fixtures/asr_base_model_pilot/eval-manifests-2026-08-15.tar.gz","sha256":"d597c4a0f58e11961c37edda71c6e302366aa5bc7f27bbacffd9d3851c70dc89"},"model_bindings":{"path":"tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json","s3_version_id":"KbUgIfO3pnQuwyBSGSTcIGbYLRU8heRa","sha256":"b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c"},"pilot_bundle":{"path":"tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json","sha256":"b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"},"prestage_downloads":{"research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/model-bindings.json":{"path":"tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-model-bindings.json","sha256":"b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c"},"research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/pilot-bundle.json":{"path":"tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-pilot-bundle.json","sha256":"aa0d8a51346df5e19fd0bee6b9a0c798d6ed81a46433d771a2604fbe8bacbfcb"},"research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/runtime-rows.json":{"path":"tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-runtime-rows.json","sha256":"584f28081d8d7a753eae850d6e0fe532d4d472694ca11d3efa1b7eb64e4fee93"}},"runtime_rows":{"path":"tests/fixtures/asr_base_model_pilot/runtime-rows-2026-001.json","sha256":"0cfe61948ce6b83cca85cd8c552d646c5e2128bcf0a593e46a012c01d5d1adbc"}},"rehearsal_fidelity_boundary":{"aws_read_fixture_evidence":"platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json","aws_read_fixture_evidence_sha256":"e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0","endpoint_policy_inventory":{"live_observed_call_cross_check":true,"machine_derived_from_actual_calls":true,"module":"scripts/asr_base_model_endpoint_policy.py","request_parameters_included":true,"static_coverage_cross_check":true,"version_id_presence_included":true},"fake_only":["AWS client calls replaying hash-bound recorded-real response shapes","kubectl calls replaying hash-bound attempt-11 empty, NotReady and Ready shapes plus synthetic DRA refusal diagnostics","external Docker Scout response"],"gpu_node_response_evidence":"platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json","invented_aws_response_fields_permitted":false,"invented_kubernetes_response_fields_permitted":false,"local_python_and_filesystem_composition_faked":false,"parallel_fake_stage_implementation_permitted":false,"policy":"ACTUAL_LIVE_OPERATIONS_WITH_HASH_BOUND_RECORDED_REAL_EXTERNAL_RESPONSE_SHAPES","real_local_operations":["pre-envelope local resource collection and validation","single-representation archive composition","stage composition","state snapshots","receipt ordering","input-freeze audit","artifact wrapper","DRA policy application","DRA refusal diagnostic persistence","cleanup composition","pre-torch network policy convergence and isolation probe"],"shared_boundary_contract":{"audited_call_site_count":66,"dra_wait_contract_widened":false,"dra_wait_timeout_seconds":300,"fake_more_permissive_than_real_permitted":false,"live_and_rehearsal_use_identical_validation":true,"module":"scripts/asr_base_model_boundary_contracts.py","static_call_site_audit_required":true},"stage_implementation":"scripts.asr_base_model_pilot_live.LiveOperations"},"risk_acceptance_sha256":"43321489ce6f9f3a33f86445601b5bd65d99d2f1746747944b2a185742341034","schema_version":1,"scout_real_execution_preflight":{"path":"platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-006.json","required_before_attempt_envelope":true,"sarif_path":"platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-006.sarif.json","sarif_sha256":"0fe4e623e48e3a9558c30da0449a2619198def5a9e1b541024d45b9aaee65f6a","scan_input_mode":"SBOM_OF_BYTE_VERIFIED_BUILDKIT_SPDX_ATTESTATION","sha256":"e87f224408de8b82c3da3757235f37c2740363cfcccf1762345105bd16e44582"},"security_gate":{"accepted_high_tuples":["CVE-2025-55551|torch|2.8.0+cu128|HIGH","CVE-2025-55552|torch|2.8.0+cu128|HIGH","CVE-2026-24747|torch|2.8.0+cu128|HIGH","CVE-2026-4538|torch|2.8.0+cu128|HIGH"],"docker_scout_git_commit":"aa68fc25c596bea659d54867443238fd30218d23","docker_scout_version":"1.18.3","inspector_enhanced_scanning_permitted":false,"registry_scanning_mutation_permitted":false},"successor_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-38.md","sha256":"c3a6322dee8ee324dfe3d467ee206279fee4de2b6a21c1525482227dc032601e"},"suite_shard":{"bundle_design":{"path":"platform/decisions/ASR-FULL-EVAL-SUITE-BUNDLE-DESIGN-2026-001.json","sha256":"61ae485f76cb4ac20b0166248e883dfba6bffd31ea23a86d0d33686140d72f07"},"manifest":{"path":"platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002.json","sha256":"71cd99d6a1a784c1eccf9f3faa531616cab6abc17c0e53f487924b0ab37a8de0"},"scoping":{"path":"platform/decisions/ASR-FULL-EVAL-SUITE-SCOPING-2026-001.json","sha256":"1df25f73268dfb7254dfba30cdddc44cf6d39d399638f4958a3b85b07ae12401"},"shard":1},"volume_attachment_and_device_policy":{"attachment_api":"ec2:DescribeVolumes","attachment_poll_interval_seconds":5,"attachment_required_stable_observations":2,"attachment_required_state":"in-use/attached to the exact instance","attachment_timeout_seconds":300,"delayed_observation_rehearsal_required":true,"guest_device_poll_interval_seconds":2,"guest_device_ready_marker":"MEDZEN_EBS_DEVICE_READY","guest_device_timeout_marker":"MEDZEN_EBS_DEVICE_TIMEOUT","guest_device_timeout_seconds":120,"rendered_command_bundle_hash_required":true,"template_parameter_token":"__MEDZEN_EBS_VOLUME_SERIAL__","volume_independent_template_hash_required":true,"volume_parameter_hash_required":true},"waiter_finalizer_audit":{"instant_terminal_only_fakes_permitted":false,"path":"platform/evidence/ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-004.json","remote_asynchronous_one_shot_success_gates":0,"remote_ssm_observation_site_count":9,"sha256":"b3706f838f9952b8a231f05436d9abf2545a4c29d85bd35d240e0e5608ece05d","status_required":"PASS_SYSTEMIC_WAITER_FINALIZER_AND_REMOTE_SSM_OBSERVATION_AUDIT","waiter_site_count":15},"write_once_history":{"attempt_14_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002M.json","sha256":"f765481b1b2055fab61d5bbd89686c3a06d1047ea6445c35ffcf26e0858ee75e"},"attempt_14_cost_observation":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-14-COST-OBSERVATION-2026-001.json","sha256":"671ee8a7282dc2beda14446ae96f726cbc581ee765bfc5bc990cdac210addfa2"},"attempt_14_diagnosis":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-DIAGNOSIS-2026-001.json","sha256":"6718be3f2e697fdb3c98a25cfdd2c71d8745d8ef66bdcb5b221f07acfccfaada"},"attempt_14_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002M.json","sha256":"d3cb303ab1c82d78e6e521f8e5f3b579daa82b3a322878783c5bc9ada6e50ac6"},"attempt_14_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002M-attempt-14.md","sha256":"90d6517ad684209f96f887e601d87b37aca44ec0bf2ddc9c5508829646352d75"},"attempt_14_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL.json","sha256":"0782c3b972dbc85c10843fa7ac7b08af7849ae4119daf5ccb204fa2519736509"},"attempt_15_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002N.json","sha256":"802e91fb1ee332567a1498fe02b72f6088221f136b42074d58befe13d253c5d7"},"attempt_15_cost_observation":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-15-COST-OBSERVATION-2026-001.json","sha256":"2f009d1fbd5f68e306ddc92489825a10040938b4bc8c906e1f4b2dd7fbb7aeea"},"attempt_15_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002N.json","sha256":"2f4e3eab28ac4ef314b9cc54051e6cfedd1d72c1a9a61d5e775b7fcd7dacbb6d"},"attempt_15_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002N-attempt-15.md","sha256":"fd66ec7a0f09a688ccffcefae1e7d4aebd5220d2e5c42348f7ff026894cc7f4f"},"attempt_15_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002N-ATTEMPT-15-GPU-SAMPLER-REFUSAL.json","sha256":"e26b1d686fc68a9e5b3a7a8e725745d90e0bbaf663460331a984b7926f51bbbe"},"attempt_16_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002O.json","sha256":"a865018b32dc44faaae24064326050f913b7a9d4a3c52339729c5ea92f7c05b0"},"attempt_16_cleanup_keep_list":{"path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-002.json","sha256":"b8d1477560ad73d625c28c8586ec67ccb0b2de67c636894d504dc5e11d6825b1"},"attempt_16_cleanup_result":{"path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-002.json","sha256":"b83c997a725e067b661434c40b88663663c686a29ec57a3ed8858c8824746abf"},"attempt_16_cost_observation":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-16-COST-OBSERVATION-2026-001.json","sha256":"266063399cfba297d1cc01fa538e3380c24b51bf0df95a6734dd9e7e8d3ec92f"},"attempt_16_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002O.json","sha256":"62a2270eda2c7ae5b1c1cc3a2d67b01e3e47f075fe760ddaddf6e440c1c5ee4d"},"attempt_16_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002O-attempt-16.md","sha256":"0f210e90e594f240b781e1990b2574e4f3c0b3f34adc23bba621f4d1473f4c63"},"attempt_16_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002O-ATTEMPT-16-NODE-STAGING-REFUSAL.json","sha256":"4f32505301c25d57510465db35edd213c498834a7f1d12a7a12b0a3cf7d6f025"},"attempt_17_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002P.json","sha256":"815230c10ccbcf4bac622e439b8a8ffc2d4ec38be4b3f0efc4865637bccaea47"},"attempt_17_cost_observation":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-17-COST-OBSERVATION-2026-001.json","sha256":"cba022488d8fc3e7ff7d0bcaff363e3a045ad0b1f99552f58fd4df555b02bdbc"},"attempt_17_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-003.json","sha256":"a170d02aa09d7b78f249f2b4b6df87b666bbbe7ae8e64aef764fff0786b4565a"},"attempt_17_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002P.json","sha256":"e138a906aeb010e5480706b699dc00a733875f81e3ea2d72d629741b02afc1ec"},"attempt_17_live_receipts":{"commit":"ba943e327474ee40371fcbf228003c1050cd7b3a","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002P-A17-LIVE"},"attempt_17_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002P-attempt-17.md","sha256":"949129b8681cd3436be7b5107d3c58eead6f38ec42b12309152942f8b025f231"},"attempt_17_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002P-ATTEMPT-17-NODE-STAGING-REFUSAL.json","sha256":"7c13b45fa917ed0db79114ef15518959e7e8a58cb11b7ac614a3bf2d2ddbe102"},"attempt_18_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Q.json","sha256":"af076715b6c537cef1e7dd4b2b018e0754d67cc841ed242dd577e74b82054a88"},"attempt_18_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-004.json","sha256":"babc2f745a8b1743c88797f4c5649c3ebf7d6523387e29a0186b75ae440e7c1d"},"attempt_18_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Q.json","sha256":"dddc852553115df5923cadc651a9b7a44d6a2f45905c8760571682a79bf73382"},"attempt_18_live_receipts":{"commit":"c5c661e77186875136a25d3ac88ac6eb29263a55","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002Q-A18-LIVE"},"attempt_18_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Q-attempt-18.md","sha256":"deff70880d61089e7f0d339173310b220841b1611a7012e87f1156cc47dfaadf"},"attempt_18_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Q-ATTEMPT-18-IMAGE-STREAM-REFUSAL.json","sha256":"567b1ecc81dc3018ed4a03b76245be971e8f268c663cfebffa810a80b968d855"},"attempt_19_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002R.json","sha256":"c164dbde456be4c440a26787d87c672b5e032143a8f67bb60bcb7b97e9b83324"},"attempt_19_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-005.json","sha256":"4e087a2f80eaae293843b86e6b83f8f54a188f1ba843856542cde13480ed8e3e"},"attempt_19_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002R.json","sha256":"8c3949b33337f8ad3d19cfc9d7aaa1ce6242f5ef1a7474646a7dd2ef56fa3bc3"},"attempt_19_live_receipts":{"commit":"6399d42221eb04d6567f9caabe2a664f402ac4e1","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002R-A19-LIVE"},"attempt_19_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002R-attempt-19.md","sha256":"e4a8a19a30b62592c9e43678240351392fd504810ffdda03a2654aab2dac03d5"},"attempt_19_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json","sha256":"09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739"},"attempt_20_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002S.json","sha256":"d6a5bc3182c2c89a1ce7e1b3be1035359e9806ff06d4976f65a55a92dd2b3ffb"},"attempt_20_cold_rehearsal":{"path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-COLD/cold-rehearsal.json","sha256":"55218c0f3078cfc1c591fe8899fc6238d12ad3c700dae34cd9f2d253c0cf40dd"},"attempt_20_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-006.json","sha256":"98679fd4fa96ddc3523b94a7af2078cb2608f6bc688f3b76b3b7db30b7ad56b8"},"attempt_20_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002S.json","sha256":"af3035229450c3241a9db5684bfbd3ce28f40c6aa8063adbdfae1d2936974821"},"attempt_20_live_receipts":{"commit":"47dcb4ed66fac5f25d5aaac9342f22c5a3e45b35","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-A20-LIVE","tree_sha256":"4e5a0c7d16da808beea332b59b411091848b64301c18682e479e2f63ecc031ca"},"attempt_20_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002S-attempt-20.md","sha256":"248ed055d3d0833dbe8355d86d73ec8df4f8a1428dfcd34dfae44aa21d584a93"},"attempt_20_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002S-ATTEMPT-20-NETWORK-PROBE-RECEIPT-RACE-REFUSAL.json","sha256":"5e59589959e49702acc35fed77e28a821a474e05427d0e8535d594ac39fa5dfe"},"attempt_21_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002T.json","sha256":"c814b5616ed37028f2dbb7590419d1f183ce07683c882f7f78172811bfdece7f"},"attempt_21_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-007.json","sha256":"f42eda1110076a16b81036738b9e02e6a682f40393437d50a2f1588d4a882004"},"attempt_21_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-017.json","sha256":"974d1419e86299334bda8eee8a0b1f6025ecf8fef0d6c691a501ab393e9d60f1"},"attempt_21_diagnosis_correction":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-21-DIAGNOSIS-CORRECTION-2026-001.json","sha256":"9cac93c3f233ef46f4097122bb711429a54b9c0e3aecca6618aaa8da551748f6"},"attempt_21_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002T.json","sha256":"31dbb28724aa239c30cbdeab2eed6cd70d65e885b36a5dcc5926d997f6edd64f"},"attempt_21_live_receipts":{"commit":"a510e941d278336095ff328e3a7d9ce2f0b18bde","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-A21-LIVE"},"attempt_21_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002T-attempt-21.md","sha256":"e359c7a9a1933e720ab2131c6b2983a821eb29b9043b3acf8537497332b754a1"},"attempt_21_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json","sha256":"6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6"},"attempt_22_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002U.json","sha256":"c0d441bad5ca8a91bc158ef63f7473d180ad0bc5ed8122fead045276d986c526"},"attempt_22_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-008.json","sha256":"a80225a2c739342225791a2937dedee174427811718ef4cd5f5c87e02e119285"},"attempt_22_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-018.json","sha256":"a8a9935b3281cba3fb7cde6fc6cfa343cf5540a9dee55a86a64fdf4b866f6b2c"},"attempt_22_diagnosis_correction":{"path":"platform/evidence/ASR-BASE-MODEL-ATTEMPT-22-DNS-DIAGNOSIS-CORRECTION-2026-001.json","sha256":"6a5374db68ea763deaf5437a9022d69d084cd6e57de6bf326ec95f03d95f5c4f"},"attempt_22_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002U.json","sha256":"f61cd5f37ad3004f437a116c3fa4c9cab612e713f19265cc6879ba364af07fc8"},"attempt_22_live_receipts":{"commit":"5b33528a16da5ba0ec333b0de2508f3d2359e561","file_set_sha256":"0e9d6d3d14d83b282f11b048652eb6dd492520b95894f5fad2e537ac04177f72","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE"},"attempt_22_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002U-attempt-22.md","sha256":"d8308657278471f67f260d7db943593d02ae442c383785d39954c23b832df27f"},"attempt_22_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002U-ATTEMPT-22-DNS-ISOLATION-REFUSAL.json","sha256":"c364a1516e3e69add301444c090d14e996444bc66dd5840ad7871efdcdef8161"},"attempt_23_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002V.json","sha256":"3bdf25efb17095aafa368d63f55a33895eaaf52d86143f74e1befe99096b98f5"},"attempt_23_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002V.json","sha256":"970e1776a886c36330a78d0b72cac5f47b87179b88734824cc983e3191a7ffe4"},"attempt_23_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-009.json","sha256":"24dfe91f0d1f331709a646d27d99310c8ba6ea59def3149d1299bf302e2ee003"},"attempt_23_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-019.json","sha256":"ed2109dea142c867b141cad1f7b1ee09b00d75a9775f475ec81afd8d0920fc4e"},"attempt_23_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002V.json","sha256":"1e50823b6cfcf0f6cfd4ec4fa84134390cdd15a6af1dc0707bb986e15e9a9f34"},"attempt_23_live_receipts":{"commit":"2efdf6bf9ad9ff10b6ee76c64b9c060fdfc8ad42","file_set_sha256":"5c333b91970ac3f463cff40ad5bad8268de065915c1d7ae1f9f9e3b1a3ede0fc","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002V-A23-LIVE"},"attempt_23_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002V-attempt-23.md","sha256":"244dcbabc661121f41d83bc5caf892b91ef2cf0e30f5e3a189654e4727c94cbe"},"attempt_23_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002V-ATTEMPT-23-DNS-POLL-CONTROL-FLOW-REFUSAL.json","sha256":"fb90d200b10d8fbe1294461c2dba6539ed5df28231c2766779f5d631af94d8fb"},"attempt_24_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002W.json","sha256":"76f835959b939dc125c8b95ab54f05ec95c76fe03d527f712bae6270dbb3ec6a"},"attempt_24_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002W.json","sha256":"ea66d8c381b57e764dbc59a37902991722875b69bfc261c21f836df5fc666162"},"attempt_24_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-010.json","sha256":"5c771c02c36db68b1e22a9cd290b46e39f1c5e68c5e75d23e91d184f4587abcd"},"attempt_24_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-020.json","sha256":"285df935557d8f62ee106047ac86cb30c0d6d279ef1bc3b26ed51b77e4feb2d3"},"attempt_24_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002W.json","sha256":"08dd19c45170acd76c7a87336842852f7cb5982f510993819fed17397877feb1"},"attempt_24_live_receipts":{"commit":"133050082c3c2a2fac396872a01fd38328eff97f","file_set_sha256":"e2c1e0418c415aaee0a2d071bbc799476aaf7c63443e0150afbff889b8c440cf","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002W-A24-LIVE"},"attempt_24_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002W-attempt-24.md","sha256":"0e157e84db33bbb8e42da3411e05e181f173caebab8c0c091bba8e8090a7c1c0"},"attempt_24_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002W-ATTEMPT-24-VOLUME-DEVICE-RACE-REFUSAL.json","sha256":"76e1d786f1ecd3d075d7c07cdbe6cca8c1c2eacddae50115ed1b82e9a06fb1a1"},"attempt_25_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002X.json","sha256":"6e54d09fed3abf5450ca4cadd7f177b709eb3d6cdd82ac684490fd11ebcf97e2"},"attempt_25_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002X.json","sha256":"134278b5bfb24a530c26f6a64a786785580f00bf284281cc4779216ccc55c32b"},"attempt_25_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-020.json","sha256":"285df935557d8f62ee106047ac86cb30c0d6d279ef1bc3b26ed51b77e4feb2d3"},"attempt_25_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002X.json","sha256":"525a1adb216bad5fd824f8e4505c2206136a27731f829c041b70b3d559b185bc"},"attempt_25_file_set_errata":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-FILE-SET-HASH-ERRATA-2026-001.json","sha256":"c4bf979734950cd3c1867117fc06eba468970c5c4f880239d2f49971a0857da9"},"attempt_25_live_receipts":{"commit":"fba20af","file_set_sha256":"b6cd95db9f38fc396a7e9d4bd5e0278ae3ded7d5f845c20e4029a0b6cda18873","file_set_sha256_via_errata":true,"path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002X-A25-LIVE"},"attempt_25_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002X-attempt-25.md","sha256":"6250914bba3036acbf44cd48d174fde00fbd28cde9edd3bd71c24b0183321683"},"attempt_25_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-PILOT-JOB-REFUSAL.json","sha256":"320f830a1e93b4328c2e027d835df93deea73c79962b38222ca12a529d341963"},"attempt_26_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Y.json","sha256":"aeb50cd9efab8c028b62fb56c3ccdb4c32a0e973d71d131199aa96e7a50f13b6"},"attempt_26_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Y.json","sha256":"04699f0f7de3beb5ee8f4adfa60385e648af6dcd266d8532985ab1c7480d4bc8"},"attempt_26_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-021.json","sha256":"74f856a8772d2ef3d50b17857d36e1fb9eb2eaac3e0b76ae4cd09520d2494f35"},"attempt_26_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Y.json","sha256":"4d6f751731128b7c4b30cd607c613458e82bbe1df2a7ceff28c78d969a911452"},"attempt_26_live_receipts":{"commit":"e7bccc6","file_set_sha256":"0732acb64b12ee29a556ee80f70602c1616ece910d682281039d8b8f5070cae5","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002Y-A26-LIVE"},"attempt_26_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Y-attempt-26.md","sha256":"90a016b24ae404de05f455ddf9a84780f079f777b13dffc5f801ac563de5219e"},"attempt_26_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Y-ATTEMPT-26-WHISPER-TOKEN-BUDGET-REFUSAL.json","sha256":"ed2173dcfae69a86daf516743d1f9840e45d840009e8411e632fb854036222e5"},"attempt_27_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Z.json","sha256":"a6feea8705dbbf05b5374e31f8d9af33dd4f75fb1a978e8cdd581ce482e263e5"},"attempt_27_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Z.json","sha256":"f26d8e05dd1af9003e4ca5fcaad63782297050a28760b6554e118a1c88c764b8"},"attempt_27_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-022.json","sha256":"c79b1c680513345dbd2a2c99cff07088e320861edaa8213fdf7690db661d5c6e"},"attempt_27_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Z.json","sha256":"468c1ee7766a78137e9eef7261549dc04dec7674c845348e734b284fbd95d97d"},"attempt_27_live_receipts":{"commit":"63d7eae","file_set_sha256":"985b28af8ad165996a5b64a7efe72d572595ba4b43fb1f13e4bf0c01b08202c4","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-002Z-A27-LIVE"},"attempt_27_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Z-attempt-27.md","sha256":"37160f54f30556847c391dae2768b086855f489f1e24f8df9a15091f96ac4fe2"},"attempt_27_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Z-ATTEMPT-27-AGGREGATE-READBACK-TRUNCATION-REFUSAL.json","sha256":"5187742cdaf8456a542e6e6708d800ed53e95b72ad06e43a14320da539e7c648"},"attempt_28_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003A.json","sha256":"e19298ca259685d1375a86a07f883924f9814673f7e28ee1e6d4bf16d9dddb71"},"attempt_28_bindings":{"path":"platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-003A.json","sha256":"02c4bc49c6db691943ed41f22ac376072ad270dbd029ec203e0cd43cbbd49b36"},"attempt_28_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-024.json","sha256":"955c8b5c9fe5d5984c070df70eddf5777d5417cfa596a816ec6d6847900d1396"},"attempt_28_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003A.json","sha256":"d58bb5c189fa11520fcdefb4f1386115dc20e06cb601eb672279325535f221f2"},"attempt_28_live_receipts":{"commit":"6785599","file_set_sha256":"f14670f70eb81b6153916213d802409bc2de7b9309fc5884560fa34868ea08fa","path":"platform/evidence/receipts/ASR-BASE-MODEL-2026-003A-A28-LIVE"},"attempt_28_packet":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003A-attempt-28.md","sha256":"c72301e9528d9be8c8742601bc04a28093a90416144902198e1a5dc5009079bb"},"attempt_28_pass_record":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003A-ATTEMPT-28-PASS-PILOT.json","sha256":"2503344c4eba47b98671cddf0a6a1dc089c26e157c43b7cb3e6158110cc98a2e"},"attempt_29_authorization":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1.json","sha256":"78f521195fd9f94bb51735e781e6c12eca652b565ac8b9fb5265e347de04e36f"},"attempt_29_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-025.json","sha256":"976de6b3756ff09da133a5b774cf52a0a918fce535646d72fe171fda32c39236"},"attempt_29_dry_validation":{"path":"platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1.json","sha256":"4c25807644475812cafc1205d02cf7d22c3850adf12b96405dd70e1ca2b8e671"},"attempt_29_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-29-IMAGE-ROW-BOUND-REFUSAL.json","sha256":"ddabe58bf24edf6393a1361dc7026a6f980b5b6c29f8d71ad6a08a0f84cc076a"},"attempt_30_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-026.json","sha256":"f4dd509483cb94dc3a55e52bd1e5fe90d949af5f77f9b24d989eacd9f9ffbfda"},"attempt_30_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-30-HOST-DISK-EXHAUSTION-REFUSAL.json","sha256":"728b4d2cec4a4c85423819b6744ff0744a481ee965b25bbd7c0c5a528524051f"},"attempt_31_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-027.json","sha256":"942f82cd93e488c957c0c734fa3ab272de903499052908f726572b1d01d5db39"},"attempt_31_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-31-JOB-DEADLINE-REFUSAL.json","sha256":"84aaef62a84a673d3fa66fa5f8411b19c905f286dc9c6c6837590e1e415ec5d5"},"attempt_32_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-028.json","sha256":"76c80b412222cb9de9db894189f4b0d5ede7d07ab6406e6756ef8c9cb5d8363a"},"attempt_32_pass_record":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-32-SHARD-1-PASS.json","sha256":"146fb97b192238eb7d20aa484e4c5e99da374c667db77d8e51b9e5dab2d10fe7"},"attempt_33_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-029.json","sha256":"ca7901be6ca4d8e92f98052bd1970783f432f4886ed9145ed3fce4f3446bf450"},"attempt_33_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S2-ATTEMPT-33-TERMINATION-GATE-REFUSAL.json","sha256":"f675bd76ab5653efa447ab426d09bfe71cf4dd85788019ef42a131094e2252aa"},"attempt_34_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-030.json","sha256":"be776e6853b4a93f3ab834b90d7b681408d8687f15f57dfb01016491318199d0"},"attempt_34_pass_record":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S2-ATTEMPT-34-SHARD-2-PASS.json","sha256":"c68a5e1459f429c0431db6ef4016f3af3371c8d434897d58182f8afabfeb6219"},"attempt_35_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-031.json","sha256":"b70a1ff2d29e8c6dd4246a94dada97662559bed67f26a465ea81c0159c8abe7d"},"attempt_35_pass_record":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S3-ATTEMPT-35-MANIFEST-SHARD-4-UNITS-PASS.json","sha256":"58a4a1dde673a73a79d53f991fcbecd5d835a4ddeed8e156b59a59987bf377a7"},"attempt_36_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-032.json","sha256":"9001556b1cfe4801fd1ec30ea69d49660192da49612377ecdf727dbca0325533"},"attempt_36_refusal_with_salvage":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S3T-ATTEMPT-36-HOST-OUTAGE-REFUSAL-AND-SALVAGE.json","sha256":"1ddec84f9f15984a618e51fb878501c2e72b5de99d7f3daee01f5e50ad4cc91c"},"attempt_37_cost_registry":{"path":"platform/finance/COST-REGISTRY-2026-033.json","sha256":"3d3cbe623b9a9acac76afb7cea98e9742758ad6dfc054d194bac4f26858fbef3"},"attempt_37_refusal":{"path":"platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S5-ATTEMPT-37-POLL-BLIP-REFUSAL.json","sha256":"7de31dd7f8d05f516065b5017962e93214a10ff268b31630f002282d5b53e61a"},"attempts_11_through_16_cost_reconciliation":{"path":"platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-002.json","sha256":"bd4bfff912fd93b96a7336b0a564c8e329e38cdc08f5ae6b373243e2cc58153e"},"dra_readiness_audit":{"path":"platform/evidence/ASR-BASE-MODEL-DRA-READINESS-AUDIT-2026-001.json","sha256":"a663045cb79048900395723f2b5c9e32fe3c58d9dd0f317c58242bd1700df3aa"},"gpu_storage_apply_evidence":{"path":"platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json","sha256":"d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2"},"gpu_storage_authorization_2026_003":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003.json","sha256":"0c3cd05599aca463b84d988efaa5568d99e6a348b5925a9e9fc9b47cd13e48e8"},"gpu_storage_capacity_qualification":{"path":"platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001.json","sha256":"1c2723537b9d157ee19dc3ad8aad5db55565b349b3db166bf18655902362a6d6"},"gpu_storage_packet_2026_003":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003-gpu-storage.md","sha256":"304569088f339a80d31830c2015e7039558e9dae0ebd205ae48aae33a868de07"},"host_temp_cleanup_keep_list":{"path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-001.json","sha256":"249fc4a843c69cbe6e7e4f478d22ef0221e56ea92a4ee44261516dbd21650df7"},"host_temp_cleanup_result":{"path":"platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-001.json","sha256":"c03b96c410350104da6f92c72a4f2dcef01f93dc6781d8e21c46af118d50b4f8"},"kubernetes_api_service_capture":{"path":"platform/evidence/ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001.json","sha256":"7e41d6306156428851f194dfb13d950b590051eee12c93d3858bc2ab9c0995a8"},"live_node_command_audit":{"path":"platform/evidence/ASR-BASE-MODEL-LIVE-NODE-COMMAND-AUDIT-2026-001.json","sha256":"f3c3649ff49d71f07fa1d87890f5e5d55590da0f920a148d6fa97b87d5092177"},"meta_only_protocol_directive":{"path":"platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-38.md","sha256":"c3a6322dee8ee324dfe3d467ee206279fee4de2b6a21c1525482227dc032601e"},"pilot_0822ead_published_fixture":{"path":"platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-004.json","sha256":"50f3d22e827cd8e73701cebad772fac40ab532fb14e7c4dcf0c53c3ef590a5d8"},"pilot_0822ead_rescan_superseded":{"path":"platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-004.json","sha256":"f16964060f54503194cb9752ec26961887f25beaa2e044a4eafae345e3f98b24"},"pilot_5ebbaed_image_superseded":{"path":"platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-003.json","sha256":"16210dfa261fff7de8570d75778f1a947609eaa4d132c7c965710957d2305326"},"shard_1_prestage_proof_superseded_as_active":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-002.json","sha256":"3ccfb6d272be0bac56624553b6ba3c19d128dcf1076b81db3b14ce81dbcad145"},"shard_2_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-003.json","sha256":"4a0a13d19d04cc487c7dbe7710db13ce45dfbd4039cb3382b025d0c7e33a92d7"},"shard_3_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-004.json","sha256":"1d785b6c67b61da69fa7f424c98d7a8f62250d3a815ed3cf10f0e15f5c3e4464"},"shard_3_true_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-005.json","sha256":"371dc5f915bdf8ea28b27c76d31a8efb6eddafebfa225478f8ba5c153f81ce14"},"shard_5_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-006.json","sha256":"daecea16ab10a16e669a8eae04b3d2b4e1ca37bafe1a314507f7e95f4e075972"},"shard_6_prestage_proof":{"path":"platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-007.json","sha256":"0dd2089296c51094b3242086027e11d2dac92d0cc47bc654a2d309a9cc60d42b"},"suite_shard_manifest_v3_superseded":{"path":"platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-001.json","sha256":"fae626b8195bdfaa0a8ae71237a90e0c2c46627b14f9a42fc0757cdbb50b5217"},"termination_gate_local_scan_005":{"path":"platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-005.sarif.json","sha256":"2db5793422f2c48257106cbeba719fba0d4b0f90f70ae5ea2138ee3ec0229221"}}}
+{
+ "aggregate_readback_policy": {
+  "classification": "ATTEMPT_27_CONFIRMED_READBACK_CORRECTION",
+  "integrity": "NODE_SIDE_SHA256_VERIFIED_BEFORE_PARSE",
+  "maximum_bytes": 33554432,
+  "mechanism": "CHUNKED_BASE64_SSM_READBACK",
+  "output_cap_characters": 24000,
+  "raw_chunk_bytes": 15000
+ },
+ "artifact_prestage_proof": {
+  "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-007.json",
+  "sha256": "0dd2089296c51094b3242086027e11d2dac92d0cc47bc654a2d309a9cc60d42b"
+ },
+ "async_observation_audit": {
+  "path": "platform/evidence/ASR-BASE-MODEL-ASYNC-OBSERVATION-AUDIT-2026-001.json",
+  "sha256": "bd7bf06f5b32351b196953bcfda90608cfba11404e6f979c7daa0c78c55e9150",
+  "site_count": 7,
+  "status_required": "PASS_ALL_POST_START_OBSERVATIONS_BOUNDED"
+ },
+ "async_observation_policy": {
+  "absence_is_only_retryable_receipt_state": true,
+  "listener_absence_retryable_only_while_pod_non_terminal": true,
+  "malformed_drift_terminal_or_regression_retryable": false,
+  "network_receipt_timeout_seconds": 300,
+  "poll_interval_seconds": 10,
+  "required_stable_observations": 2,
+  "safe_refusal_diagnostics_before_cleanup": true,
+  "shared_module": "scripts/asr_base_model_async_observations.py"
+ },
+ "attempt_window": {
+  "job_active_deadline_seconds": 16200,
+  "seconds_each": 18000
+ },
+ "attempts": {
+  "attempts_1_through_37_reuse_permitted": false,
+  "authorized_numbers": [
+   39
+  ],
+  "cost_ceiling_usd": 10,
+  "maximum": 39,
+  "maximum_gpu_nodes": 1,
+  "non_transferable": true,
+  "seconds_each": 18000
+ },
+ "authorization": {
+  "complete_committed_stage_dry_run_required_before_attempt": true,
+  "deadline_dry_run_id": "ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1",
+  "deadline_dry_run_path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1.json",
+  "id": "ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1",
+  "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1.json",
+  "status_required": "owner-approved"
+ },
+ "aws": {
+  "account": "558069890522",
+  "cluster": "medzen-speech",
+  "ebs_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:alias/aws/ebs",
+  "ecr_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "gpu_asg_name": "eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8",
+  "gpu_root_volume_gib": 40,
+  "private_route_table_ids": [
+   "rtb-0c6eb6874ce0565dc"
+  ],
+  "private_subnet_ids": [
+   "subnet-00232b25bc1ac407a",
+   "subnet-05029419c6c61a536",
+   "subnet-01fb2fc3f56bce55e"
+  ],
+  "region": "eu-central-1",
+  "s3_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "temporary_eval_volume_gib": 60,
+  "vpc_id": "vpc-051aa9df8b64bf141"
+ },
+ "aws_read_fixtures": {
+  "aws_mutations": 0,
+  "dynamic_value_policy": "ONLY_DECLARED_EXISTING_PATHS_NO_KEY_INSERTION",
+  "fixture_count": 40,
+  "path": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-007.json",
+  "runtime_read_api_count": 22,
+  "sha256": "e8d2121a749378e5593723525299d289420ef465a011cb31428cbef8eb87296a",
+  "status_required": "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_ASR_EXECUTOR_COVERAGE",
+  "uncovered_read_apis": 0
+ },
+ "classification": "OFFLINE_EVALUATION_ONLY",
+ "cold_rehearsal": {
+  "bindings_source_required": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-003B-S1.json",
+  "committed_bindings_required": true,
+  "fixture_bindings_permitted": false,
+  "receipt_last_required": true,
+  "receipt_path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-003B-S1-COLD/cold-rehearsal.json",
+  "script_path": "scripts/asr_base_model_pilot_cold_rehearsal.py",
+  "two_byte_identical_runs_required": true
+ },
+ "cost_registry": {
+  "path": "platform/finance/COST-REGISTRY-2026-034.json",
+  "sha256": "3a2f5b684c3aa70ea5b9e2ea1ac32fbb8b29668680339f3604f339ec9d3ed387"
+ },
+ "diagnostic_retention_policy": {
+  "classification": "ATTEMPT_25_RETENTION_CORRECTION",
+  "container_termination_facts": "NORMALIZED_STRUCTURED_BEFORE_CLEANUP",
+  "phase_journal": "FSYNC_JSONL_ON_HOST_MOUNTED_OUTPUT_READ_POSTMORTEM_VIA_SSM",
+  "runtime_telemetry": "BOUNDED_PERIODIC_RAM_VRAM_MIN_TWO_PASS_SAMPLES",
+  "sanitized_windows": "HEAD_4096_PLUS_TAIL_4096_AFTER_FULL_VALUE_SANITIZATION"
+ },
+ "digest_rescan_bindings": {
+  "path": "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-005.json",
+  "sha256": "543df338dc4a0598cd78e96ba68db9d61206b49a9dc50e1b36b9b47988d2435f"
+ },
+ "dra_deployment": {
+  "b6_closure_commit": "c3876c995282",
+  "linux_amd64_image_digest": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+  "locked_manifest_path": "platform/k8s/b6a/nvidia-dra-003c-b.locked.yaml",
+  "locked_manifest_sha256": "0a03a12d34d94ef21f7c45a4041caadfbf9bd3bb2eab218186ef3d84b5c69897",
+  "manifest_byte_drift_from_b6_closure": false
+ },
+ "dra_network_policy": {
+  "allowed_port": 443,
+  "allowed_protocol": "TCP",
+  "cluster_service_capture_path": "platform/evidence/ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001.json",
+  "cluster_service_capture_sha256": "7e41d6306156428851f194dfb13d950b590051eee12c93d3858bc2ab9c0995a8",
+  "kubernetes_api_service_ip": "10.100.0.1",
+  "other_egress_permitted": false,
+  "path": "platform/k8s/asr-eval/nvidia-dra-api-egress.yaml",
+  "sha256": "8913060ac5921b5ca4c2109ff5ebac2d28910e5578bf77a0f3da4c4d7f9421e7"
+ },
+ "ecr_existing_image_fixture": {
+  "capture_path": "platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-005.json",
+  "capture_sha256": "6820a4e407ebeaa284cd34322dd995292b20aa66e19d42a18423739371b0b91c",
+  "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/ecr-batch-get-existing-image-pilot-8f63996.json",
+  "sha256": "77948984d0c3d053df98781e68575670233de39b2521d31ebbe7a873b140f00d"
+ },
+ "endpoint_policy_derivation": {
+  "ecr_calls": 22,
+  "exact_prefix_scope_only": true,
+  "hand_written_action_lists_permitted": false,
+  "inventory_total_calls": 35,
+  "observed_live_call_cross_check_required": true,
+  "other_s3_version_variant_actions_required": [],
+  "qualification_path": "platform/evidence/ASR-BASE-MODEL-ENDPOINT-POLICY-QUALIFICATION-2026-001.json",
+  "qualification_sha256": "cb0129ba36865f79ed16a1951679ccee1c6d68af4811f4b872c57a6149db1cab",
+  "required_s3_actions": [
+   "s3:GetObject",
+   "s3:GetObjectVersion"
+  ],
+  "s3_calls": 13,
+  "s3_unversioned_calls": 5,
+  "s3_versioned_calls": 8
+ },
+ "execution_workdir_policy": {
+  "inside_worktree_refusal_code": "EXECUTION_WORKDIR_INSIDE_REVIEWED_WORKTREE",
+  "receipt_store": "<external-workdir>/receipts",
+  "required_location": "OUTSIDE_REVIEWED_WORKTREE",
+  "runtime_evidence_commit_timing": "AFTER_TERMINAL_RUN_ONLY",
+  "validated_before_any_runtime_side_effect": true
+ },
+ "executor_integrity_policy": {
+  "all_module_hashes_required_on_every_attempt": true,
+  "changed_module_bytes_refuse": true,
+  "conditional_integrity_guards_permitted": false,
+  "missing_or_extra_module_bindings_refuse": true
+ },
+ "executor_modules": {
+  "pipeline/asr_base_model_pilot_receipts.py": "4636a94d0ee870aa336d9a71b9596b8e5fbcfc41980038ce3d3a37ec20ea5f11",
+  "scripts/asr_base_model_async_observations.py": "a4e8da9b98b1686f4d7078f18fe7aa9e8dd6e6c848da0d456b17ba8d9b12f195",
+  "scripts/asr_base_model_aws_read_fixtures.py": "236a1a8c0837c68927639f07bb5469544f3fc56dfd5181d1eb907ada8d8927c7",
+  "scripts/asr_base_model_boundary_contracts.py": "52907199085b114ec61a682f96268fa1fe18ce1ac65f8722070f1767a16462b5",
+  "scripts/asr_base_model_deadline_dry_run.py": "369b9dff1e16fc677b7f98f97cd669d6d298e91bfbea74bf8ec4bd42e172b7bd",
+  "scripts/asr_base_model_ecr_scanning.py": "6e67bc09aa49289d3e0a2c3307dfcd99b9fabefb9a23faa30ac1a58dbfdc27f7",
+  "scripts/asr_base_model_endpoint_policy.py": "6e85132b077fca3ecf44e0a6ef89c9761645dfbc47b111c7a47722575663c767",
+  "scripts/asr_base_model_gpu_storage.py": "378031f0524f3f2536a89366ddf1e6e8ba0e0bf1922e97b0e22eca379f1508fe",
+  "scripts/asr_base_model_local_resources.py": "6843ab9c1c4ff4a1ac068c14c9335206d54083c33cc178b32dece348adf966e1",
+  "scripts/asr_base_model_node_staging.py": "284334523a0db3842b5c3ab4d143d4056e8a2c5dc8f3b66129235e467106c47a",
+  "scripts/asr_base_model_pilot_assets.py": "0a59eda11db0120dfcde36c9c38587fe376b21918881fe0f3690b387e1351334",
+  "scripts/asr_base_model_pilot_cold_rehearsal.py": "928ed9dd82324c6bee35951a31929aa8d5678b857fd4c112eab30f9ed62f3b11",
+  "scripts/asr_base_model_pilot_dns.py": "38a5404ae7a570e54ee701a2113fbcb74fb34275b5d5e33aae68f7eed381a2d6",
+  "scripts/asr_base_model_pilot_fake.py": "366fe43e758c50bf660aba26dcd01b674fe83357da528d9c08f5fb66cbd53ad4",
+  "scripts/asr_base_model_pilot_integrity.py": "e3d577329bff34f991b6cad8927092b78d8e4be798c5b5e19d17379e1dada97d",
+  "scripts/asr_base_model_pilot_k8s.py": "cd7272d0f315ec263fb4b4e4d9a4bfbaf796c67ec8dd7c82498eed7427af9624",
+  "scripts/asr_base_model_pilot_live.py": "7570bd980253c3ec233cd805208b79c7bfd97e680a6d39ff89957936d780ea2a",
+  "scripts/asr_base_model_pilot_plan.py": "1a4ed79f7cd50cfe23526c4ba1d59c7fcf0291da0a4eb105c117487eb7c15e02",
+  "scripts/asr_base_model_pilot_runner.py": "91217dd0278899474384ad6b87bdb5835a6db1ae6becb287f9c980773ad0fa36",
+  "scripts/asr_base_model_pilot_staging.py": "37da0ab007d909e9c1b87bb35e8091a69f438e565f9a87297958c5a6bf2b1ed7",
+  "scripts/asr_base_model_pilot_workload.py": "27a29e6ea90db78f6cab2ff8c8a89f2a4988b430a1aad73e8e3d917446d3daa3",
+  "scripts/asr_base_model_pod_lifecycle.py": "a93de0cde84bdf208b7fefa114e044f68a78db30414df1df1979e2670dab35da",
+  "scripts/asr_base_model_proven_commands.py": "07d263708cd671f90976d7ea7809275b47ec41e6cf908040b5b7f9404ceafa5c",
+  "scripts/asr_eval_digest_rescan.py": "8d75676e519905303e59eb5a9123bb1ccd0f14465e4a69ce0cacfa2b4373cf09",
+  "scripts/asr_eval_oci_publication.py": "e686f1b0db781af418d5403a8857780f5fd25998d8d2af8e4239f648cb190749",
+  "scripts/asr_eval_scout_preflight.py": "7d2e97df6d4135b2d997309e6eba3fd04a0661fe8539a976237e11ad4be78b0e",
+  "scripts/asr_external_tool.py": "ffb728a012e5ef3568bf636f12f26c15ce6bc8034a5906478ccbb805ba943d6c",
+  "scripts/asr_idempotent_read_retry.py": "0f78e1f6e9f73f4029680eea86b424e76a2989ee35157ee152ffff039e330552",
+  "scripts/b6a_003c_e_ssm_sampler.sh": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96",
+  "scripts/qualify_asr_base_model_endpoint_policy.py": "2166314694b2bffe87ce6757bbee491942e42c9f5cd47acf58ab9218fbdd6fb4",
+  "scripts/qualify_asr_base_model_node_staging.py": "9b8fedc0dac1c4c870cdb269ab692e1b9bcd809b8010fa071b28c86d3bfee6d6",
+  "scripts/run_b6a_003c_c_proof.py": "c6c8df3c038f4be8858d1b5b7d1409274a2aaa554e93997db79fac133eaa2eb3",
+  "services/asr-eval-runtime/medzen_asr_eval/network_probe.py": "bc68e8e9637f68bd1261ac3f2d872711256ecea6908eb19cc1b8c644aa9b1535"
+ },
+ "executor_source_commit": "4918b217c86b592706d110092e00edddf2b0a77a",
+ "gpu_node_readiness_fixtures": {
+  "capture_mutations": 0,
+  "invented_kubernetes_fields_permitted": false,
+  "path": "platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json",
+  "sha256": "34663d3ae7218f9423d15b4fa9aa11f4f4940022deaf87a409e6c0f4c91e5e56",
+  "status_required": "PASS_READ_ONLY_LIVE_GPU_NODE_TRANSITION_CAPTURE"
+ },
+ "gpu_storage_policy": {
+  "capacity_qualification": {
+   "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-005.json",
+   "sha256": "c58e13a51aa2376d1fae65c5328c1325b8f8377fe745a89d1a55ae34c0cccee4"
+  },
+  "classification": "PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE",
+  "failure_semantics": {
+   "attempt_envelope_created": false,
+   "attempt_number_consumed": false,
+   "aws_mutations": 0,
+   "aws_read_calls": 1,
+   "gpu_started": false
+  },
+  "gpu_asg_name": "eks-gpu-14cfff59-42c6-46ad-8d59-37cd02daefa8",
+  "image": {
+   "linux_amd64_digest": "sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555",
+   "oci_index_digest": "sha256:7f9938e04789592a5bc86f8223f04ccfc98fb5364c7a1c32d0acdf5be896033e"
+  },
+  "live_fixture": {
+   "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-14/eks-describe-nodegroup-gpu-40gib.json",
+   "sha256": "787b620cbc9b7fb59058e49d63d15323818a8c091db932fc1c443c57958c074e"
+  },
+  "operational_floor_gib": 40,
+  "schema_version": 1,
+  "storage_apply_evidence": {
+   "path": "platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json",
+   "sha256": "d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2"
+  }
+ },
+ "host_cleanup": {
+  "exact_archive_measurement": {
+   "path": "platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-002.json",
+   "sha256": "10eb2b9180bc8eedaacf3ee3cd7da647ee214f9a80a0d6d8bdbc00a59459de8d"
+  },
+  "keep_list": {
+   "path": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-KEEP-LIST-2026-003.json",
+   "sha256": "8de1e0012196c08f7584237efe99a94985e647995a5e9a3968e57497d51f6a4e"
+  },
+  "measured_free_bytes_at_qualification": 61756919808,
+  "minimum_free_bytes": 42949672960,
+  "result": {
+   "path": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003.json",
+   "sha256": "0b259b843d7a2f7b06b0366054b13fc2e409b07e6b25a9eef2a5d7519e12e1ba"
+  }
+ },
+ "idempotent_read_retry_policy": {
+  "allowlisted_operations": [
+   "ECR_PULL_BACK",
+   "SCOUT_DATABASE_READ",
+   "S3_READ"
+  ],
+  "allowlisted_transient_classes": [
+   "CONNECTION_RESET",
+   "TIMEOUT",
+   "DNS_BLIP"
+  ],
+  "backoff_seconds": [
+   1,
+   2
+  ],
+  "image_scan_hard_cap_seconds": 7200,
+  "local_s3_read_hard_cap_seconds": 3600,
+  "maximum_attempts": 3,
+  "node_s3_read_hard_cap_seconds": 903,
+  "sanitized_bounded_diagnostics_required": true,
+  "verification_failures_retryable": false,
+  "writes_mutations_or_ambiguous_operations_retryable": false
+ },
+ "idempotent_read_retry_qualification": {
+  "path": "platform/evidence/ASR-BASE-MODEL-IDEMPOTENT-READ-RETRY-QUALIFICATION-2026-001.json",
+  "sha256": "ca3922b362d5d505d8d45a0696b167ff40e094b0a027382f94da8a2d31804477",
+  "status_required": "PASS_TYPED_TRANSIENT_READ_RETRY_QUALIFICATION"
+ },
+ "image": {
+  "attestation_digest": "sha256:f23fb8b60f0caf5a71ffe1103085239be6f46c83277382f16ef36ba76d514d6c",
+  "config_digest": "sha256:2140eb4ffcb6f0ba6eec25197994f39ac15f4721f4541257ca73e6a0c111520d",
+  "image_context_changed": true,
+  "linux_amd64_digest": "sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555",
+  "local_scan_sha256": "0fe4e623e48e3a9558c30da0449a2619198def5a9e1b541024d45b9aaee65f6a",
+  "local_scan_subject_sha256": "43ab6f07b4362742b3db224bcc25cf9f0bb5c68cef3a913f756c4aa151b512c8",
+  "local_tag": "medzen-asr-eval-runtime:pilot-8f63996",
+  "oci_index_digest": "sha256:7f9938e04789592a5bc86f8223f04ccfc98fb5364c7a1c32d0acdf5be896033e",
+  "publication_required": true,
+  "repository": "medzen-asr-eval-runtime",
+  "source_commit": "8f639962c1509d6dc1b6ac0805566e05d07be36b",
+  "spdx_attestation_digest": "sha256:6f9d0ee2529328ea866b63374eb47c75873b6995fee2900923afaf4edde43bd9",
+  "tag": "pilot-8f63996"
+ },
+ "input_freeze": {
+  "canonical_sha256": "f59692a7ab5da0a9b257792e04813ec2c4c2317ffb1d68d7e5586789afa9a0ad",
+  "correction_addendum_sha256": "4960d7611baf649ff4af484a1835c352ab95009ac2697268af6991d23219125f",
+  "correction_record_sha256": "91da523828a9d21d69b7f01a77c1edcce49ef4c5bab708696eb4e6177a1478ad",
+  "data_commit": "46448c66e9068026552aa65262d689201c85fe7d",
+  "pilot_languages": 47,
+  "pilot_manifests": 54,
+  "pilot_row_list_sha256": "2170eb450ae9b42c64e02f8753469eb7d74b7b3f2363ae3f770fbd3062e488b6",
+  "pilot_rows": 2878,
+  "recorded_utc": "2026-08-11T22:25:25Z",
+  "source_inventory_sha256": "f89b9e432a88db7eebe618c617f9c36f49fa2678b291ce16bebafa085b68c953",
+  "suite_selection": {
+   "expected_rows": 2878,
+   "row_list_sha256": "d834852a49446054297a8028f9c27c0ab4e2eb4c8152df732960c66167c4a71f",
+   "shard": 6,
+   "shard_manifest": {
+    "path": "platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002.json",
+    "sha256": "71cd99d6a1a784c1eccf9f3faa531616cab6abc17c0e53f487924b0ab37a8de0"
+   },
+   "units": [
+    {
+     "language": "english",
+     "row_end": 1040,
+     "row_start": 0
+    },
+    {
+     "language": "igbo",
+     "row_end": 1393,
+     "row_start": 0
+    },
+    {
+     "language": "maka",
+     "row_end": 148,
+     "row_start": 0
+    },
+    {
+     "language": "pulaar",
+     "row_end": 149,
+     "row_start": 0
+    },
+    {
+     "language": "sepedi",
+     "row_end": 148,
+     "row_start": 0
+    }
+   ]
+  }
+ },
+ "local_resource_policy": {
+  "classification": "PRE_ENVELOPE_NON_CONSUMING_PREREQUISITE",
+  "disk": {
+   "basis": {
+    "cleanup_baseline": "platform/evidence/ASR-EVAL-HOST-DOCKER-CLEANUP-RESULT-2026-003.json",
+    "cleanup_baseline_sha256": "0b259b843d7a2f7b06b0366054b13fc2e409b07e6b25a9eef2a5d7519e12e1ba",
+    "exact_archive_evidence": "platform/evidence/ASR-EVAL-RUNTIME-EXACT-ARCHIVE-MEASUREMENT-2026-001.json",
+    "exact_archive_evidence_sha256": "707e3cd3ffb2d06501cd6a40e03e9a32418d716e4cab963f6b664904f4389926",
+    "owner_floor_gib": 16,
+    "suite_mode_derivation": "publication_required=false, VERIFY_ONLY staging, no local export: measured peak is the 7.31GB digest-rescan archive + 2.1GB scanner scratch + 0.5GB evidence reserve + 2.1GB safety margin = 12.1GB calculated peak. The 16 GiB (17.18GB) floor retains 42% headroom over peak. Host context: the machine is shared with owner data (37GB Downloads) and a 108GB Docker VM; the executor fail-closes below the floor and the workdir consumes <0.1GB."
+   },
+   "calculated_peak_requirement_bytes": 12132741120,
+   "evidence_reserve_bytes": 536870912,
+   "exact_archive_bytes": 7301068800,
+   "operating_floor_bytes": 17179869184,
+   "required_available_bytes": 17179869184,
+   "safety_margin_bytes": 2147483648,
+   "scanner_scratch_reserve_bytes": 2147483648,
+   "simultaneous_full_image_representations": 1
+  },
+  "failure_semantics": {
+   "attempt_envelope_created": false,
+   "attempt_number_consumed": false,
+   "aws_calls": 0,
+   "aws_mutations": 0,
+   "gpu_started": false
+  },
+  "id": "ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002",
+  "minimum_logical_cpus": 4,
+  "minimum_memory_bytes": 17179869184,
+  "minimum_open_files_soft": 1024,
+  "minimum_processes_soft": 512,
+  "path": "platform/manifests/ASR-BASE-MODEL-LOCAL-RESOURCE-POLICY-2026-002.json",
+  "required_commands": [
+   "aws",
+   "docker",
+   "git",
+   "kubectl"
+  ],
+  "required_environment": [
+   "HOME present",
+   "external workdir parent writable and searchable",
+   "Docker Scout authenticated by a complete environment pair or Docker credential-store handoff without retaining credential values",
+   "Docker daemon reachable"
+  ],
+  "schema_version": 1,
+  "sha256": "15c79776abcf4a28470d7105a94f37f4dec41bd28f4d676584f8ae7ff1d8fd77"
+ },
+ "local_resource_qualification": {
+  "attempt_consumed": false,
+  "measured_available_bytes": 61756919808,
+  "path": "platform/evidence/ASR-BASE-MODEL-LOCAL-RESOURCE-QUALIFICATION-2026-005.json",
+  "required_available_bytes": 42949672960,
+  "scout_authentication_mode": "DOCKER_CREDENTIAL_STORE",
+  "sha256": "f20e948eedaca82008bb90249f1ef7ff3f4d18537b21ce0931069f9449f2280c",
+  "status_required": "PASS_LOCAL_RESOURCE_QUALIFICATION"
+ },
+ "model_card_mount_policy": {
+  "asset_card_file_paths": [
+   "/models/omniASR-CTC-1B-v2.pt",
+   "/models/omniASR-LLM-1B-v2.pt",
+   "/models/omniASR_tokenizer_written_v2.model"
+  ],
+  "asset_card_source": "services/asr-eval-runtime/assets/models.yaml",
+  "classification": "ATTEMPT_25_CONFIRMED_CARD_LAYOUT_CORRECTION",
+  "driver_model_root": "/models",
+  "mount_source": "input volume subPath models",
+  "pod_mount": "/models",
+  "read_only": true,
+  "render_time_validator": "validate_asset_card_mount_coverage"
+ },
+ "network_policy_convergence": {
+  "classification": "ATTEMPT_21_CORRECTIVE_CONTROL",
+  "full_positive_and_negative_checks_start_only_after_convergence": true,
+  "policy_agent_diagnostics": "BEST_EFFORT_ON_REFUSAL",
+  "positive_probe_hard_timeout_seconds": 120,
+  "positive_probe_retry_interval_seconds": 5,
+  "receipt_telemetry": [
+   "resolved_ips",
+   "errno",
+   "exception_class",
+   "per_attempt_timing"
+  ],
+  "torch_imported_before_pass_permitted": false,
+  "typed_refusal_codes": [
+   "POSITIVE_NETWORK_CONVERGENCE_TIMEOUT",
+   "ALLOWED_ENDPOINT_RESOLUTION_REFUSED",
+   "ALLOWED_ENDPOINT_CONNECT_REFUSED",
+   "PROHIBITED_NETWORK_DESTINATION_ACCEPTED"
+  ]
+ },
+ "node_staging_policy": {
+  "empty_environment": true,
+  "gid": 10001,
+  "idempotent_s3_read_retry": {
+   "backoff_seconds": [
+    1,
+    2
+   ],
+   "curl_transient_exit_codes": {
+    "28": "TIMEOUT",
+    "56": "CONNECTION_RESET",
+    "6": "DNS_BLIP"
+   },
+   "hard_cap_seconds": 903,
+   "maximum_attempts": 3,
+   "other_exit_codes_retryable": false,
+   "verification_failures_retryable": false
+  },
+  "identity_mechanism": "CHROOT_NUMERIC_USERSPEC_NO_PASSWD_OR_GROUP_LOOKUP",
+  "presigned_url_seconds": 3600,
+  "sanitized_ssm_terminal_diagnostic_required_before_cleanup": true,
+  "ssm_timeout_seconds": 1800,
+  "uid": 10001,
+  "url_safety_margin_seconds": 600
+ },
+ "node_staging_qualification": {
+  "path": "platform/evidence/ASR-BASE-MODEL-NODE-STAGING-QUALIFICATION-2026-001.json",
+  "sha256": "988463400ccf1b9d00128b20cb4176ebeb7819efe6de462e5085b1f64c53cc2d",
+  "status": "PASS_FAILURE_AND_FIX_NODE_EQUIVALENT_QUALIFICATION"
+ },
+ "pilot_bundle": {
+  "sha256": "753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf"
+ },
+ "pilot_workload_lessons_audit": {
+  "path": "platform/evidence/ASR-BASE-MODEL-PILOT-WORKLOAD-LESSONS-AUDIT-2026-001.json",
+  "sha256": "52171824d1a2d24dddf5bc0411cba5295e4dafa4358c80792e020552ee1a7236",
+  "status": "PASS_ATTEMPT_1_THROUGH_16_LESSONS_APPLIED_TO_NEVER_RUN_WORKLOAD"
+ },
+ "pilot_workload_policy": {
+  "absolute_python": "/opt/venv/bin/python",
+  "canonical_argv_sha256": "da7255141082e4a1a1857e8153412e4c0152f40708db1c8a406c13570b8df61b",
+  "historical_live_pass": false,
+  "job_active_deadline_seconds": 9000,
+  "listener_timeout_exit_code": 71,
+  "listener_timeout_seconds": 900,
+  "refusal_diagnostics_before_cleanup": true
+ },
+ "pod_dns_isolation": {
+  "classification": "ATTEMPT_22_CONFIRMED_DNS_CORRECTION",
+  "cluster_dns_dependency": false,
+  "dns_config_nameservers": [
+   "172.31.0.2"
+  ],
+  "dns_egress_cidr": "172.31.0.2/32",
+  "dns_policy": "None",
+  "pilot_and_inbound_control_alignment_required": true,
+  "resolve_as_pod_gate": {
+   "allowed_ip_source": "RENDERED_ASR_EVAL_PRIVATE_EGRESS_NETWORK_POLICY",
+   "hostname_source": "NETWORK_BINDING_ALLOWED_TCP_443_HOSTS",
+   "policy_selected_control_pod": true,
+   "resolved_ips_recorded": true,
+   "torch_imported_before_pass_permitted": false
+  },
+  "typed_refusal_codes": [
+   "DNS_RESOLVER_UNREACHABLE",
+   "DNS_EFFECTIVE_RESOLVER_DIFFERS",
+   "DNS_RESOLVED_IP_OUTSIDE_ALLOWLIST",
+   "DNS_CONTROL_POD_TIMEOUT"
+  ]
+ },
+ "pod_lifecycle_policy": {
+  "image_prepull": {
+   "exact_gpu_node_name_required": true,
+   "exact_linux_amd64_digest": "sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555",
+   "historical_attempt_20_pull_seconds": 197.027,
+   "image_pull_policy": "Always",
+   "poll_interval_seconds": 10,
+   "progress_stall_timeout_seconds": 600,
+   "required_before_dns_control": true,
+   "stable_node_inventory_observations": 2,
+   "terminal_timeout_seconds": 1200,
+   "write_once_qualification_receipt": "<external-workdir>/image-prepull-qualification.json"
+  },
+  "primary_exception_authoritative": true,
+  "secondary_cleanup_failure_persisted_separately": true,
+  "shared_module": "scripts/asr_base_model_pod_lifecycle.py",
+  "stable_absence_observations": 2,
+  "stage_local_delete_mode": "NONBLOCKING_THEN_STABLE_ABSENCE",
+  "stage_local_delete_timeout_seconds": 180,
+  "undefined_sleep_member_permitted": false
+ },
+ "proven_live_node_commands": {
+  "node_local_input_stage": "NUMERIC_IDENTITY_LIVE_PROVEN_DOWNLOAD_AUTHORIZATION_NOT_PROVEN",
+  "pilot_workload": "AUDITED_NOT_HISTORICALLY_PROVEN_FIRST_LIVE_ARGV_HASH_REQUIRED",
+  "sampler": {
+   "canonical_inner_argv": [
+    "/busybox/chroot",
+    "/driver-root",
+    "/usr/bin/nvidia-smi",
+    "--query-gpu=index,memory.used,memory.total",
+    "--format=csv,noheader,nounits"
+   ],
+   "canonical_inner_argv_sha256": "04e6d317a48f3602402b011289224cb686ab7313aab6726051d2f089ac5bd426",
+   "receipt_path": "platform/evidence/receipts/B6A-2026-003C-F-LIVE/sampler_self_test.json",
+   "receipt_sha256": "8848c206ecbf459e5e0ffd754352b8eb3086d0b1a750e40c471f890ad8cebde1",
+   "script_path": "scripts/b6a_003c_e_ssm_sampler.sh",
+   "script_sha256": "b6aa0e0621fca7fc6ee9e9a2bb9f59ff543efbb71b06a35e5497919d8a573d96"
+  }
+ },
+ "qualification": {
+  "path": "platform/evidence/B6-ASR-EVAL-RUNTIME-LOCAL-QUALIFICATION-2026-007.json",
+  "sha256": "04bf743b7ee5864f9560f87f232df13a0791a434dbe26d8fe081459ffb42dbe9"
+ },
+ "recorded_boundary_fixtures": {
+  "eval_manifest_archive": {
+   "path": "tests/fixtures/asr_base_model_pilot/eval-manifests-2026-08-15.tar.gz",
+   "sha256": "d597c4a0f58e11961c37edda71c6e302366aa5bc7f27bbacffd9d3851c70dc89"
+  },
+  "model_bindings": {
+   "path": "tests/fixtures/asr_base_model_pilot/model-bindings-2026-001.json",
+   "s3_version_id": "KbUgIfO3pnQuwyBSGSTcIGbYLRU8heRa",
+   "sha256": "b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c"
+  },
+  "pilot_bundle": {
+   "path": "tests/fixtures/asr_base_model_pilot/pilot-bundle-2026-001.json",
+   "sha256": "b11ec2dcf066fa57a6dd06149f74bef49b2680efb430b8e20f4afe7a93ad75c7"
+  },
+  "prestage_downloads": {
+   "research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/model-bindings.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-model-bindings.json",
+    "sha256": "b66c1c7f34375df1352a2be74fd9f975f2911c4a5366ff83f311802709477f2c"
+   },
+   "research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/pilot-bundle.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-pilot-bundle.json",
+    "sha256": "aa0d8a51346df5e19fd0bee6b9a0c798d6ed81a46433d771a2604fbe8bacbfcb"
+   },
+   "research/asr-base-model/pilot/753a23f6ba09772a0a0737e59f4d935a204987c10e47291283d0a3e48dd24bdf/runtime-rows.json": {
+    "path": "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-16/suite-s6-runtime-rows.json",
+    "sha256": "584f28081d8d7a753eae850d6e0fe532d4d472694ca11d3efa1b7eb64e4fee93"
+   }
+  },
+  "runtime_rows": {
+   "path": "tests/fixtures/asr_base_model_pilot/runtime-rows-2026-001.json",
+   "sha256": "0cfe61948ce6b83cca85cd8c552d646c5e2128bcf0a593e46a012c01d5d1adbc"
+  }
+ },
+ "rehearsal_fidelity_boundary": {
+  "aws_read_fixture_evidence": "platform/evidence/ASR-BASE-MODEL-AWS-READ-FIXTURE-CAPTURE-2026-001.json",
+  "aws_read_fixture_evidence_sha256": "e423ec4ba4f41e27a464a4a9d84a72d83cabe50184de08dafa8018dbecd4cfc0",
+  "endpoint_policy_inventory": {
+   "live_observed_call_cross_check": true,
+   "machine_derived_from_actual_calls": true,
+   "module": "scripts/asr_base_model_endpoint_policy.py",
+   "request_parameters_included": true,
+   "static_coverage_cross_check": true,
+   "version_id_presence_included": true
+  },
+  "fake_only": [
+   "AWS client calls replaying hash-bound recorded-real response shapes",
+   "kubectl calls replaying hash-bound attempt-11 empty, NotReady and Ready shapes plus synthetic DRA refusal diagnostics",
+   "external Docker Scout response"
+  ],
+  "gpu_node_response_evidence": "platform/evidence/ASR-BASE-MODEL-GPU-NODE-READINESS-FIXTURE-CAPTURE-2026-001.json",
+  "invented_aws_response_fields_permitted": false,
+  "invented_kubernetes_response_fields_permitted": false,
+  "local_python_and_filesystem_composition_faked": false,
+  "parallel_fake_stage_implementation_permitted": false,
+  "policy": "ACTUAL_LIVE_OPERATIONS_WITH_HASH_BOUND_RECORDED_REAL_EXTERNAL_RESPONSE_SHAPES",
+  "real_local_operations": [
+   "pre-envelope local resource collection and validation",
+   "single-representation archive composition",
+   "stage composition",
+   "state snapshots",
+   "receipt ordering",
+   "input-freeze audit",
+   "artifact wrapper",
+   "DRA policy application",
+   "DRA refusal diagnostic persistence",
+   "cleanup composition",
+   "pre-torch network policy convergence and isolation probe"
+  ],
+  "shared_boundary_contract": {
+   "audited_call_site_count": 66,
+   "dra_wait_contract_widened": false,
+   "dra_wait_timeout_seconds": 300,
+   "fake_more_permissive_than_real_permitted": false,
+   "live_and_rehearsal_use_identical_validation": true,
+   "module": "scripts/asr_base_model_boundary_contracts.py",
+   "static_call_site_audit_required": true
+  },
+  "stage_implementation": "scripts.asr_base_model_pilot_live.LiveOperations"
+ },
+ "risk_acceptance_sha256": "43321489ce6f9f3a33f86445601b5bd65d99d2f1746747944b2a185742341034",
+ "schema_version": 1,
+ "scout_real_execution_preflight": {
+  "path": "platform/evidence/ASR-EVAL-RUNTIME-SCOUT-PREFLIGHT-2026-006.json",
+  "required_before_attempt_envelope": true,
+  "sarif_path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-006.sarif.json",
+  "sarif_sha256": "0fe4e623e48e3a9558c30da0449a2619198def5a9e1b541024d45b9aaee65f6a",
+  "scan_input_mode": "SBOM_OF_BYTE_VERIFIED_BUILDKIT_SPDX_ATTESTATION",
+  "sha256": "e87f224408de8b82c3da3757235f37c2740363cfcccf1762345105bd16e44582"
+ },
+ "security_gate": {
+  "accepted_high_tuples": [
+   "CVE-2025-55551|torch|2.8.0+cu128|HIGH",
+   "CVE-2025-55552|torch|2.8.0+cu128|HIGH",
+   "CVE-2026-24747|torch|2.8.0+cu128|HIGH",
+   "CVE-2026-4538|torch|2.8.0+cu128|HIGH"
+  ],
+  "docker_scout_git_commit": "aa68fc25c596bea659d54867443238fd30218d23",
+  "docker_scout_version": "1.18.3",
+  "inspector_enhanced_scanning_permitted": false,
+  "registry_scanning_mutation_permitted": false
+ },
+ "successor_packet": {
+  "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-38.md",
+  "sha256": "c3a6322dee8ee324dfe3d467ee206279fee4de2b6a21c1525482227dc032601e"
+ },
+ "suite_shard": {
+  "bundle_design": {
+   "path": "platform/decisions/ASR-FULL-EVAL-SUITE-BUNDLE-DESIGN-2026-001.json",
+   "sha256": "61ae485f76cb4ac20b0166248e883dfba6bffd31ea23a86d0d33686140d72f07"
+  },
+  "manifest": {
+   "path": "platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002.json",
+   "sha256": "71cd99d6a1a784c1eccf9f3faa531616cab6abc17c0e53f487924b0ab37a8de0"
+  },
+  "scoping": {
+   "path": "platform/decisions/ASR-FULL-EVAL-SUITE-SCOPING-2026-001.json",
+   "sha256": "1df25f73268dfb7254dfba30cdddc44cf6d39d399638f4958a3b85b07ae12401"
+  },
+  "shard": 1
+ },
+ "volume_attachment_and_device_policy": {
+  "attachment_api": "ec2:DescribeVolumes",
+  "attachment_poll_interval_seconds": 5,
+  "attachment_required_stable_observations": 2,
+  "attachment_required_state": "in-use/attached to the exact instance",
+  "attachment_timeout_seconds": 300,
+  "delayed_observation_rehearsal_required": true,
+  "guest_device_poll_interval_seconds": 2,
+  "guest_device_ready_marker": "MEDZEN_EBS_DEVICE_READY",
+  "guest_device_timeout_marker": "MEDZEN_EBS_DEVICE_TIMEOUT",
+  "guest_device_timeout_seconds": 120,
+  "rendered_command_bundle_hash_required": true,
+  "template_parameter_token": "__MEDZEN_EBS_VOLUME_SERIAL__",
+  "volume_independent_template_hash_required": true,
+  "volume_parameter_hash_required": true
+ },
+ "waiter_finalizer_audit": {
+  "instant_terminal_only_fakes_permitted": false,
+  "path": "platform/evidence/ASR-BASE-MODEL-WAITER-FINALIZER-AUDIT-2026-004.json",
+  "remote_asynchronous_one_shot_success_gates": 0,
+  "remote_ssm_observation_site_count": 9,
+  "sha256": "b3706f838f9952b8a231f05436d9abf2545a4c29d85bd35d240e0e5608ece05d",
+  "status_required": "PASS_SYSTEMIC_WAITER_FINALIZER_AND_REMOTE_SSM_OBSERVATION_AUDIT",
+  "waiter_site_count": 15
+ },
+ "write_once_history": {
+  "attempt_14_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002M.json",
+   "sha256": "f765481b1b2055fab61d5bbd89686c3a06d1047ea6445c35ffcf26e0858ee75e"
+  },
+  "attempt_14_cost_observation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-14-COST-OBSERVATION-2026-001.json",
+   "sha256": "671ee8a7282dc2beda14446ae96f726cbc581ee765bfc5bc990cdac210addfa2"
+  },
+  "attempt_14_diagnosis": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-DIAGNOSIS-2026-001.json",
+   "sha256": "6718be3f2e697fdb3c98a25cfdd2c71d8745d8ef66bdcb5b221f07acfccfaada"
+  },
+  "attempt_14_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002M.json",
+   "sha256": "d3cb303ab1c82d78e6e521f8e5f3b579daa82b3a322878783c5bc9ada6e50ac6"
+  },
+  "attempt_14_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002M-attempt-14.md",
+   "sha256": "90d6517ad684209f96f887e601d87b37aca44ec0bf2ddc9c5508829646352d75"
+  },
+  "attempt_14_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002M-ATTEMPT-14-DRA-READINESS-TIMEOUT-REFUSAL.json",
+   "sha256": "0782c3b972dbc85c10843fa7ac7b08af7849ae4119daf5ccb204fa2519736509"
+  },
+  "attempt_15_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002N.json",
+   "sha256": "802e91fb1ee332567a1498fe02b72f6088221f136b42074d58befe13d253c5d7"
+  },
+  "attempt_15_cost_observation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-15-COST-OBSERVATION-2026-001.json",
+   "sha256": "2f009d1fbd5f68e306ddc92489825a10040938b4bc8c906e1f4b2dd7fbb7aeea"
+  },
+  "attempt_15_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002N.json",
+   "sha256": "2f4e3eab28ac4ef314b9cc54051e6cfedd1d72c1a9a61d5e775b7fcd7dacbb6d"
+  },
+  "attempt_15_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002N-attempt-15.md",
+   "sha256": "fd66ec7a0f09a688ccffcefae1e7d4aebd5220d2e5c42348f7ff026894cc7f4f"
+  },
+  "attempt_15_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002N-ATTEMPT-15-GPU-SAMPLER-REFUSAL.json",
+   "sha256": "e26b1d686fc68a9e5b3a7a8e725745d90e0bbaf663460331a984b7926f51bbbe"
+  },
+  "attempt_16_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002O.json",
+   "sha256": "a865018b32dc44faaae24064326050f913b7a9d4a3c52339729c5ea92f7c05b0"
+  },
+  "attempt_16_cleanup_keep_list": {
+   "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-002.json",
+   "sha256": "b8d1477560ad73d625c28c8586ec67ccb0b2de67c636894d504dc5e11d6825b1"
+  },
+  "attempt_16_cleanup_result": {
+   "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-002.json",
+   "sha256": "b83c997a725e067b661434c40b88663663c686a29ec57a3ed8858c8824746abf"
+  },
+  "attempt_16_cost_observation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-16-COST-OBSERVATION-2026-001.json",
+   "sha256": "266063399cfba297d1cc01fa538e3380c24b51bf0df95a6734dd9e7e8d3ec92f"
+  },
+  "attempt_16_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002O.json",
+   "sha256": "62a2270eda2c7ae5b1c1cc3a2d67b01e3e47f075fe760ddaddf6e440c1c5ee4d"
+  },
+  "attempt_16_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002O-attempt-16.md",
+   "sha256": "0f210e90e594f240b781e1990b2574e4f3c0b3f34adc23bba621f4d1473f4c63"
+  },
+  "attempt_16_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002O-ATTEMPT-16-NODE-STAGING-REFUSAL.json",
+   "sha256": "4f32505301c25d57510465db35edd213c498834a7f1d12a7a12b0a3cf7d6f025"
+  },
+  "attempt_17_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002P.json",
+   "sha256": "815230c10ccbcf4bac622e439b8a8ffc2d4ec38be4b3f0efc4865637bccaea47"
+  },
+  "attempt_17_cost_observation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-17-COST-OBSERVATION-2026-001.json",
+   "sha256": "cba022488d8fc3e7ff7d0bcaff363e3a045ad0b1f99552f58fd4df555b02bdbc"
+  },
+  "attempt_17_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-003.json",
+   "sha256": "a170d02aa09d7b78f249f2b4b6df87b666bbbe7ae8e64aef764fff0786b4565a"
+  },
+  "attempt_17_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002P.json",
+   "sha256": "e138a906aeb010e5480706b699dc00a733875f81e3ea2d72d629741b02afc1ec"
+  },
+  "attempt_17_live_receipts": {
+   "commit": "ba943e327474ee40371fcbf228003c1050cd7b3a",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002P-A17-LIVE"
+  },
+  "attempt_17_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002P-attempt-17.md",
+   "sha256": "949129b8681cd3436be7b5107d3c58eead6f38ec42b12309152942f8b025f231"
+  },
+  "attempt_17_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002P-ATTEMPT-17-NODE-STAGING-REFUSAL.json",
+   "sha256": "7c13b45fa917ed0db79114ef15518959e7e8a58cb11b7ac614a3bf2d2ddbe102"
+  },
+  "attempt_18_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Q.json",
+   "sha256": "af076715b6c537cef1e7dd4b2b018e0754d67cc841ed242dd577e74b82054a88"
+  },
+  "attempt_18_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-004.json",
+   "sha256": "babc2f745a8b1743c88797f4c5649c3ebf7d6523387e29a0186b75ae440e7c1d"
+  },
+  "attempt_18_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Q.json",
+   "sha256": "dddc852553115df5923cadc651a9b7a44d6a2f45905c8760571682a79bf73382"
+  },
+  "attempt_18_live_receipts": {
+   "commit": "c5c661e77186875136a25d3ac88ac6eb29263a55",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002Q-A18-LIVE"
+  },
+  "attempt_18_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Q-attempt-18.md",
+   "sha256": "deff70880d61089e7f0d339173310b220841b1611a7012e87f1156cc47dfaadf"
+  },
+  "attempt_18_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Q-ATTEMPT-18-IMAGE-STREAM-REFUSAL.json",
+   "sha256": "567b1ecc81dc3018ed4a03b76245be971e8f268c663cfebffa810a80b968d855"
+  },
+  "attempt_19_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002R.json",
+   "sha256": "c164dbde456be4c440a26787d87c672b5e032143a8f67bb60bcb7b97e9b83324"
+  },
+  "attempt_19_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-005.json",
+   "sha256": "4e087a2f80eaae293843b86e6b83f8f54a188f1ba843856542cde13480ed8e3e"
+  },
+  "attempt_19_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002R.json",
+   "sha256": "8c3949b33337f8ad3d19cfc9d7aaa1ce6242f5ef1a7474646a7dd2ef56fa3bc3"
+  },
+  "attempt_19_live_receipts": {
+   "commit": "6399d42221eb04d6567f9caabe2a664f402ac4e1",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002R-A19-LIVE"
+  },
+  "attempt_19_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002R-attempt-19.md",
+   "sha256": "e4a8a19a30b62592c9e43678240351392fd504810ffdda03a2654aab2dac03d5"
+  },
+  "attempt_19_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002R-ATTEMPT-19-EPHEMERAL-STORAGE-REFUSAL.json",
+   "sha256": "09c8d917f4bab9151c316e602ec94685c5c2a3eeef1fa78d4f110f9427e1f739"
+  },
+  "attempt_20_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002S.json",
+   "sha256": "d6a5bc3182c2c89a1ce7e1b3be1035359e9806ff06d4976f65a55a92dd2b3ffb"
+  },
+  "attempt_20_cold_rehearsal": {
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-COLD/cold-rehearsal.json",
+   "sha256": "55218c0f3078cfc1c591fe8899fc6238d12ad3c700dae34cd9f2d253c0cf40dd"
+  },
+  "attempt_20_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-006.json",
+   "sha256": "98679fd4fa96ddc3523b94a7af2078cb2608f6bc688f3b76b3b7db30b7ad56b8"
+  },
+  "attempt_20_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002S.json",
+   "sha256": "af3035229450c3241a9db5684bfbd3ce28f40c6aa8063adbdfae1d2936974821"
+  },
+  "attempt_20_live_receipts": {
+   "commit": "47dcb4ed66fac5f25d5aaac9342f22c5a3e45b35",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002S-A20-LIVE",
+   "tree_sha256": "4e5a0c7d16da808beea332b59b411091848b64301c18682e479e2f63ecc031ca"
+  },
+  "attempt_20_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002S-attempt-20.md",
+   "sha256": "248ed055d3d0833dbe8355d86d73ec8df4f8a1428dfcd34dfae44aa21d584a93"
+  },
+  "attempt_20_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002S-ATTEMPT-20-NETWORK-PROBE-RECEIPT-RACE-REFUSAL.json",
+   "sha256": "5e59589959e49702acc35fed77e28a821a474e05427d0e8535d594ac39fa5dfe"
+  },
+  "attempt_21_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002T.json",
+   "sha256": "c814b5616ed37028f2dbb7590419d1f183ce07683c882f7f78172811bfdece7f"
+  },
+  "attempt_21_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-007.json",
+   "sha256": "f42eda1110076a16b81036738b9e02e6a682f40393437d50a2f1588d4a882004"
+  },
+  "attempt_21_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-017.json",
+   "sha256": "974d1419e86299334bda8eee8a0b1f6025ecf8fef0d6c691a501ab393e9d60f1"
+  },
+  "attempt_21_diagnosis_correction": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-21-DIAGNOSIS-CORRECTION-2026-001.json",
+   "sha256": "9cac93c3f233ef46f4097122bb711429a54b9c0e3aecca6618aaa8da551748f6"
+  },
+  "attempt_21_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002T.json",
+   "sha256": "31dbb28724aa239c30cbdeab2eed6cd70d65e885b36a5dcc5926d997f6edd64f"
+  },
+  "attempt_21_live_receipts": {
+   "commit": "a510e941d278336095ff328e3a7d9ce2f0b18bde",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002T-A21-LIVE"
+  },
+  "attempt_21_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002T-attempt-21.md",
+   "sha256": "e359c7a9a1933e720ab2131c6b2983a821eb29b9043b3acf8537497332b754a1"
+  },
+  "attempt_21_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002T-ATTEMPT-21-ENDPOINT-ALLOWLIST-REFUSAL.json",
+   "sha256": "6735ebd5bb1c4a598a4d3c6f4e0b9dc1819542bae3d8a8849819a9146bf894c6"
+  },
+  "attempt_22_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002U.json",
+   "sha256": "c0d441bad5ca8a91bc158ef63f7473d180ad0bc5ed8122fead045276d986c526"
+  },
+  "attempt_22_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-008.json",
+   "sha256": "a80225a2c739342225791a2937dedee174427811718ef4cd5f5c87e02e119285"
+  },
+  "attempt_22_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-018.json",
+   "sha256": "a8a9935b3281cba3fb7cde6fc6cfa343cf5540a9dee55a86a64fdf4b866f6b2c"
+  },
+  "attempt_22_diagnosis_correction": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ATTEMPT-22-DNS-DIAGNOSIS-CORRECTION-2026-001.json",
+   "sha256": "6a5374db68ea763deaf5437a9022d69d084cd6e57de6bf326ec95f03d95f5c4f"
+  },
+  "attempt_22_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002U.json",
+   "sha256": "f61cd5f37ad3004f437a116c3fa4c9cab612e713f19265cc6879ba364af07fc8"
+  },
+  "attempt_22_live_receipts": {
+   "commit": "5b33528a16da5ba0ec333b0de2508f3d2359e561",
+   "file_set_sha256": "0e9d6d3d14d83b282f11b048652eb6dd492520b95894f5fad2e537ac04177f72",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002U-A22-LIVE"
+  },
+  "attempt_22_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002U-attempt-22.md",
+   "sha256": "d8308657278471f67f260d7db943593d02ae442c383785d39954c23b832df27f"
+  },
+  "attempt_22_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002U-ATTEMPT-22-DNS-ISOLATION-REFUSAL.json",
+   "sha256": "c364a1516e3e69add301444c090d14e996444bc66dd5840ad7871efdcdef8161"
+  },
+  "attempt_23_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002V.json",
+   "sha256": "3bdf25efb17095aafa368d63f55a33895eaaf52d86143f74e1befe99096b98f5"
+  },
+  "attempt_23_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002V.json",
+   "sha256": "970e1776a886c36330a78d0b72cac5f47b87179b88734824cc983e3191a7ffe4"
+  },
+  "attempt_23_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-009.json",
+   "sha256": "24dfe91f0d1f331709a646d27d99310c8ba6ea59def3149d1299bf302e2ee003"
+  },
+  "attempt_23_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-019.json",
+   "sha256": "ed2109dea142c867b141cad1f7b1ee09b00d75a9775f475ec81afd8d0920fc4e"
+  },
+  "attempt_23_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002V.json",
+   "sha256": "1e50823b6cfcf0f6cfd4ec4fa84134390cdd15a6af1dc0707bb986e15e9a9f34"
+  },
+  "attempt_23_live_receipts": {
+   "commit": "2efdf6bf9ad9ff10b6ee76c64b9c060fdfc8ad42",
+   "file_set_sha256": "5c333b91970ac3f463cff40ad5bad8268de065915c1d7ae1f9f9e3b1a3ede0fc",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002V-A23-LIVE"
+  },
+  "attempt_23_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002V-attempt-23.md",
+   "sha256": "244dcbabc661121f41d83bc5caf892b91ef2cf0e30f5e3a189654e4727c94cbe"
+  },
+  "attempt_23_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002V-ATTEMPT-23-DNS-POLL-CONTROL-FLOW-REFUSAL.json",
+   "sha256": "fb90d200b10d8fbe1294461c2dba6539ed5df28231c2766779f5d631af94d8fb"
+  },
+  "attempt_24_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002W.json",
+   "sha256": "76f835959b939dc125c8b95ab54f05ec95c76fe03d527f712bae6270dbb3ec6a"
+  },
+  "attempt_24_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002W.json",
+   "sha256": "ea66d8c381b57e764dbc59a37902991722875b69bfc261c21f836df5fc666162"
+  },
+  "attempt_24_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-010.json",
+   "sha256": "5c771c02c36db68b1e22a9cd290b46e39f1c5e68c5e75d23e91d184f4587abcd"
+  },
+  "attempt_24_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-020.json",
+   "sha256": "285df935557d8f62ee106047ac86cb30c0d6d279ef1bc3b26ed51b77e4feb2d3"
+  },
+  "attempt_24_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002W.json",
+   "sha256": "08dd19c45170acd76c7a87336842852f7cb5982f510993819fed17397877feb1"
+  },
+  "attempt_24_live_receipts": {
+   "commit": "133050082c3c2a2fac396872a01fd38328eff97f",
+   "file_set_sha256": "e2c1e0418c415aaee0a2d071bbc799476aaf7c63443e0150afbff889b8c440cf",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002W-A24-LIVE"
+  },
+  "attempt_24_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002W-attempt-24.md",
+   "sha256": "0e157e84db33bbb8e42da3411e05e181f173caebab8c0c091bba8e8090a7c1c0"
+  },
+  "attempt_24_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002W-ATTEMPT-24-VOLUME-DEVICE-RACE-REFUSAL.json",
+   "sha256": "76e1d786f1ecd3d075d7c07cdbe6cca8c1c2eacddae50115ed1b82e9a06fb1a1"
+  },
+  "attempt_25_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002X.json",
+   "sha256": "6e54d09fed3abf5450ca4cadd7f177b709eb3d6cdd82ac684490fd11ebcf97e2"
+  },
+  "attempt_25_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002X.json",
+   "sha256": "134278b5bfb24a530c26f6a64a786785580f00bf284281cc4779216ccc55c32b"
+  },
+  "attempt_25_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-020.json",
+   "sha256": "285df935557d8f62ee106047ac86cb30c0d6d279ef1bc3b26ed51b77e4feb2d3"
+  },
+  "attempt_25_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002X.json",
+   "sha256": "525a1adb216bad5fd824f8e4505c2206136a27731f829c041b70b3d559b185bc"
+  },
+  "attempt_25_file_set_errata": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-FILE-SET-HASH-ERRATA-2026-001.json",
+   "sha256": "c4bf979734950cd3c1867117fc06eba468970c5c4f880239d2f49971a0857da9"
+  },
+  "attempt_25_live_receipts": {
+   "commit": "fba20af",
+   "file_set_sha256": "b6cd95db9f38fc396a7e9d4bd5e0278ae3ded7d5f845c20e4029a0b6cda18873",
+   "file_set_sha256_via_errata": true,
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002X-A25-LIVE"
+  },
+  "attempt_25_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002X-attempt-25.md",
+   "sha256": "6250914bba3036acbf44cd48d174fde00fbd28cde9edd3bd71c24b0183321683"
+  },
+  "attempt_25_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002X-ATTEMPT-25-PILOT-JOB-REFUSAL.json",
+   "sha256": "320f830a1e93b4328c2e027d835df93deea73c79962b38222ca12a529d341963"
+  },
+  "attempt_26_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Y.json",
+   "sha256": "aeb50cd9efab8c028b62fb56c3ccdb4c32a0e973d71d131199aa96e7a50f13b6"
+  },
+  "attempt_26_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Y.json",
+   "sha256": "04699f0f7de3beb5ee8f4adfa60385e648af6dcd266d8532985ab1c7480d4bc8"
+  },
+  "attempt_26_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-021.json",
+   "sha256": "74f856a8772d2ef3d50b17857d36e1fb9eb2eaac3e0b76ae4cd09520d2494f35"
+  },
+  "attempt_26_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Y.json",
+   "sha256": "4d6f751731128b7c4b30cd607c613458e82bbe1df2a7ceff28c78d969a911452"
+  },
+  "attempt_26_live_receipts": {
+   "commit": "e7bccc6",
+   "file_set_sha256": "0732acb64b12ee29a556ee80f70602c1616ece910d682281039d8b8f5070cae5",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002Y-A26-LIVE"
+  },
+  "attempt_26_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Y-attempt-26.md",
+   "sha256": "90a016b24ae404de05f455ddf9a84780f079f777b13dffc5f801ac563de5219e"
+  },
+  "attempt_26_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Y-ATTEMPT-26-WHISPER-TOKEN-BUDGET-REFUSAL.json",
+   "sha256": "ed2173dcfae69a86daf516743d1f9840e45d840009e8411e632fb854036222e5"
+  },
+  "attempt_27_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-002Z.json",
+   "sha256": "a6feea8705dbbf05b5374e31f8d9af33dd4f75fb1a978e8cdd581ce482e263e5"
+  },
+  "attempt_27_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002Z.json",
+   "sha256": "f26d8e05dd1af9003e4ca5fcaad63782297050a28760b6554e118a1c88c764b8"
+  },
+  "attempt_27_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-022.json",
+   "sha256": "c79b1c680513345dbd2a2c99cff07088e320861edaa8213fdf7690db661d5c6e"
+  },
+  "attempt_27_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-002Z.json",
+   "sha256": "468c1ee7766a78137e9eef7261549dc04dec7674c845348e734b284fbd95d97d"
+  },
+  "attempt_27_live_receipts": {
+   "commit": "63d7eae",
+   "file_set_sha256": "985b28af8ad165996a5b64a7efe72d572595ba4b43fb1f13e4bf0c01b08202c4",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-002Z-A27-LIVE"
+  },
+  "attempt_27_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-002Z-attempt-27.md",
+   "sha256": "37160f54f30556847c391dae2768b086855f489f1e24f8df9a15091f96ac4fe2"
+  },
+  "attempt_27_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-002Z-ATTEMPT-27-AGGREGATE-READBACK-TRUNCATION-REFUSAL.json",
+   "sha256": "5187742cdaf8456a542e6e6708d800ed53e95b72ad06e43a14320da539e7c648"
+  },
+  "attempt_28_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003A.json",
+   "sha256": "e19298ca259685d1375a86a07f883924f9814673f7e28ee1e6d4bf16d9dddb71"
+  },
+  "attempt_28_bindings": {
+   "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-003A.json",
+   "sha256": "02c4bc49c6db691943ed41f22ac376072ad270dbd029ec203e0cd43cbbd49b36"
+  },
+  "attempt_28_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-024.json",
+   "sha256": "955c8b5c9fe5d5984c070df70eddf5777d5417cfa596a816ec6d6847900d1396"
+  },
+  "attempt_28_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003A.json",
+   "sha256": "d58bb5c189fa11520fcdefb4f1386115dc20e06cb601eb672279325535f221f2"
+  },
+  "attempt_28_live_receipts": {
+   "commit": "6785599",
+   "file_set_sha256": "f14670f70eb81b6153916213d802409bc2de7b9309fc5884560fa34868ea08fa",
+   "path": "platform/evidence/receipts/ASR-BASE-MODEL-2026-003A-A28-LIVE"
+  },
+  "attempt_28_packet": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003A-attempt-28.md",
+   "sha256": "c72301e9528d9be8c8742601bc04a28093a90416144902198e1a5dc5009079bb"
+  },
+  "attempt_28_pass_record": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003A-ATTEMPT-28-PASS-PILOT.json",
+   "sha256": "2503344c4eba47b98671cddf0a6a1dc089c26e157c43b7cb3e6158110cc98a2e"
+  },
+  "attempt_29_authorization": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003B-S1.json",
+   "sha256": "78f521195fd9f94bb51735e781e6c12eca652b565ac8b9fb5265e347de04e36f"
+  },
+  "attempt_29_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-025.json",
+   "sha256": "976de6b3756ff09da133a5b774cf52a0a918fce535646d72fe171fda32c39236"
+  },
+  "attempt_29_dry_validation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DEADLINE-IDENTITY-DRY-RUN-2026-003B-S1.json",
+   "sha256": "4c25807644475812cafc1205d02cf7d22c3850adf12b96405dd70e1ca2b8e671"
+  },
+  "attempt_29_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-29-IMAGE-ROW-BOUND-REFUSAL.json",
+   "sha256": "ddabe58bf24edf6393a1361dc7026a6f980b5b6c29f8d71ad6a08a0f84cc076a"
+  },
+  "attempt_30_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-026.json",
+   "sha256": "f4dd509483cb94dc3a55e52bd1e5fe90d949af5f77f9b24d989eacd9f9ffbfda"
+  },
+  "attempt_30_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-30-HOST-DISK-EXHAUSTION-REFUSAL.json",
+   "sha256": "728b4d2cec4a4c85423819b6744ff0744a481ee965b25bbd7c0c5a528524051f"
+  },
+  "attempt_31_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-027.json",
+   "sha256": "942f82cd93e488c957c0c734fa3ab272de903499052908f726572b1d01d5db39"
+  },
+  "attempt_31_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-31-JOB-DEADLINE-REFUSAL.json",
+   "sha256": "84aaef62a84a673d3fa66fa5f8411b19c905f286dc9c6c6837590e1e415ec5d5"
+  },
+  "attempt_32_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-028.json",
+   "sha256": "76c80b412222cb9de9db894189f4b0d5ede7d07ab6406e6756ef8c9cb5d8363a"
+  },
+  "attempt_32_pass_record": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S1-ATTEMPT-32-SHARD-1-PASS.json",
+   "sha256": "146fb97b192238eb7d20aa484e4c5e99da374c667db77d8e51b9e5dab2d10fe7"
+  },
+  "attempt_33_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-029.json",
+   "sha256": "ca7901be6ca4d8e92f98052bd1970783f432f4886ed9145ed3fce4f3446bf450"
+  },
+  "attempt_33_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S2-ATTEMPT-33-TERMINATION-GATE-REFUSAL.json",
+   "sha256": "f675bd76ab5653efa447ab426d09bfe71cf4dd85788019ef42a131094e2252aa"
+  },
+  "attempt_34_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-030.json",
+   "sha256": "be776e6853b4a93f3ab834b90d7b681408d8687f15f57dfb01016491318199d0"
+  },
+  "attempt_34_pass_record": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S2-ATTEMPT-34-SHARD-2-PASS.json",
+   "sha256": "c68a5e1459f429c0431db6ef4016f3af3371c8d434897d58182f8afabfeb6219"
+  },
+  "attempt_35_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-031.json",
+   "sha256": "b70a1ff2d29e8c6dd4246a94dada97662559bed67f26a465ea81c0159c8abe7d"
+  },
+  "attempt_35_pass_record": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S3-ATTEMPT-35-MANIFEST-SHARD-4-UNITS-PASS.json",
+   "sha256": "58a4a1dde673a73a79d53f991fcbecd5d835a4ddeed8e156b59a59987bf377a7"
+  },
+  "attempt_36_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-032.json",
+   "sha256": "9001556b1cfe4801fd1ec30ea69d49660192da49612377ecdf727dbca0325533"
+  },
+  "attempt_36_refusal_with_salvage": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S3T-ATTEMPT-36-HOST-OUTAGE-REFUSAL-AND-SALVAGE.json",
+   "sha256": "1ddec84f9f15984a618e51fb878501c2e72b5de99d7f3daee01f5e50ad4cc91c"
+  },
+  "attempt_37_cost_registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-033.json",
+   "sha256": "3d3cbe623b9a9acac76afb7cea98e9742758ad6dfc054d194bac4f26858fbef3"
+  },
+  "attempt_37_refusal": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PACKET-2026-003B-S5-ATTEMPT-37-POLL-BLIP-REFUSAL.json",
+   "sha256": "7de31dd7f8d05f516065b5017962e93214a10ff268b31630f002282d5b53e61a"
+  },
+  "attempts_11_through_16_cost_reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-002.json",
+   "sha256": "bd4bfff912fd93b96a7336b0a564c8e329e38cdc08f5ae6b373243e2cc58153e"
+  },
+  "dra_readiness_audit": {
+   "path": "platform/evidence/ASR-BASE-MODEL-DRA-READINESS-AUDIT-2026-001.json",
+   "sha256": "a663045cb79048900395723f2b5c9e32fe3c58d9dd0f317c58242bd1700df3aa"
+  },
+  "gpu_storage_apply_evidence": {
+   "path": "platform/evidence/ASR-BASE-MODEL-GPU-STORAGE-APPLY-2026-001.json",
+   "sha256": "d283df056f49f53340531f13d94a8c5ea1a016c2cf32477bcdd0a96600acc7c2"
+  },
+  "gpu_storage_authorization_2026_003": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-AUTH-2026-003.json",
+   "sha256": "0c3cd05599aca463b84d988efaa5568d99e6a348b5925a9e9fc9b47cd13e48e8"
+  },
+  "gpu_storage_capacity_qualification": {
+   "path": "platform/evidence/ASR-EVAL-RUNTIME-GPU-EPHEMERAL-STORAGE-QUALIFICATION-2026-001.json",
+   "sha256": "1c2723537b9d157ee19dc3ad8aad5db55565b349b3db166bf18655902362a6d6"
+  },
+  "gpu_storage_packet_2026_003": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003-gpu-storage.md",
+   "sha256": "304569088f339a80d31830c2015e7039558e9dae0ebd205ae48aae33a868de07"
+  },
+  "host_temp_cleanup_keep_list": {
+   "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-KEEP-LIST-2026-001.json",
+   "sha256": "249fc4a843c69cbe6e7e4f478d22ef0221e56ea92a4ee44261516dbd21650df7"
+  },
+  "host_temp_cleanup_result": {
+   "path": "platform/evidence/ASR-EVAL-HOST-TEMP-CLEANUP-RESULT-2026-001.json",
+   "sha256": "c03b96c410350104da6f92c72a4f2dcef01f93dc6781d8e21c46af118d50b4f8"
+  },
+  "kubernetes_api_service_capture": {
+   "path": "platform/evidence/ASR-BASE-MODEL-KUBERNETES-API-SERVICE-CAPTURE-2026-001.json",
+   "sha256": "7e41d6306156428851f194dfb13d950b590051eee12c93d3858bc2ab9c0995a8"
+  },
+  "live_node_command_audit": {
+   "path": "platform/evidence/ASR-BASE-MODEL-LIVE-NODE-COMMAND-AUDIT-2026-001.json",
+   "sha256": "f3c3649ff49d71f07fa1d87890f5e5d55590da0f920a148d6fa97b87d5092177"
+  },
+  "meta_only_protocol_directive": {
+   "path": "platform/decisions/ASR-BASE-MODEL-AWS-CHANGE-PACKET-2026-003B-S6-attempt-38.md",
+   "sha256": "c3a6322dee8ee324dfe3d467ee206279fee4de2b6a21c1525482227dc032601e"
+  },
+  "pilot_0822ead_published_fixture": {
+   "path": "platform/evidence/ASR-BASE-MODEL-ECR-EXISTING-IMAGE-FIXTURE-CAPTURE-2026-004.json",
+   "sha256": "50f3d22e827cd8e73701cebad772fac40ab532fb14e7c4dcf0c53c3ef590a5d8"
+  },
+  "pilot_0822ead_rescan_superseded": {
+   "path": "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-004.json",
+   "sha256": "f16964060f54503194cb9752ec26961887f25beaa2e044a4eafae345e3f98b24"
+  },
+  "pilot_5ebbaed_image_superseded": {
+   "path": "platform/manifests/ASR-EVAL-RUNTIME-ECR-DIGEST-RESCAN-BINDINGS-2026-003.json",
+   "sha256": "16210dfa261fff7de8570d75778f1a947609eaa4d132c7c965710957d2305326"
+  },
+  "shard_1_prestage_proof_superseded_as_active": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-002.json",
+   "sha256": "3ccfb6d272be0bac56624553b6ba3c19d128dcf1076b81db3b14ce81dbcad145"
+  },
+  "shard_2_prestage_proof": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-003.json",
+   "sha256": "4a0a13d19d04cc487c7dbe7710db13ce45dfbd4039cb3382b025d0c7e33a92d7"
+  },
+  "shard_3_prestage_proof": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-004.json",
+   "sha256": "1d785b6c67b61da69fa7f424c98d7a8f62250d3a815ed3cf10f0e15f5c3e4464"
+  },
+  "shard_3_true_prestage_proof": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-005.json",
+   "sha256": "371dc5f915bdf8ea28b27c76d31a8efb6eddafebfa225478f8ba5c153f81ce14"
+  },
+  "shard_5_prestage_proof": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-006.json",
+   "sha256": "daecea16ab10a16e669a8eae04b3d2b4e1ca37bafe1a314507f7e95f4e075972"
+  },
+  "shard_6_prestage_proof": {
+   "path": "platform/evidence/ASR-BASE-MODEL-PRESTAGE-PROOF-2026-007.json",
+   "sha256": "0dd2089296c51094b3242086027e11d2dac92d0cc47bc654a2d309a9cc60d42b"
+  },
+  "suite_shard_manifest_v3_superseded": {
+   "path": "platform/manifests/ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-001.json",
+   "sha256": "fae626b8195bdfaa0a8ae71237a90e0c2c46627b14f9a42fc0757cdbb50b5217"
+  },
+  "termination_gate_local_scan_005": {
+   "path": "platform/evidence/ASR-EVAL-RUNTIME-LOCAL-SCAN-2026-005.sarif.json",
+   "sha256": "2db5793422f2c48257106cbeba719fba0d4b0f90f70ae5ea2138ee3ec0229221"
+  }
+ }
+}
