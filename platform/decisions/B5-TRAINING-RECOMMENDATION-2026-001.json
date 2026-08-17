@@ -1,0 +1,817 @@
+{
+ "baseline_surface": "omniASR_CTC_1B_v2|unconditioned",
+ "coverage_status": "PASS_GAP_FREE_COVERAGE",
+ "decision_contract": "the OWNER approves or extends the campaign language list from this table; BLOCKED_PENDING_LEGAL languages cannot be added by approval alone",
+ "id": "B5-TRAINING-RECOMMENDATION-2026-001",
+ "languages": [
+  {
+   "attribution_required": false,
+   "basis": "300.002h trainable against a 41.0% WER / 9.7% CER baseline",
+   "eval_baseline": {
+    "cer": 0.096688,
+    "wer": 0.409818
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 300.002,
+    "never_train": 0.0
+   },
+   "language": "kinyarwanda",
+   "recommendation": "TRAIN",
+   "trainable_hours": 300.002
+  },
+  {
+   "attribution_required": false,
+   "basis": "88.96h trainable against a 13.7% WER / 3.5% CER baseline",
+   "eval_baseline": {
+    "cer": 0.035321,
+    "wer": 0.137355
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 88.96,
+    "never_train": 0.0
+   },
+   "language": "swahili",
+   "recommendation": "TRAIN",
+   "trainable_hours": 88.96
+  },
+  {
+   "attribution_required": false,
+   "basis": "79.399h trainable against a 96.3% WER / 29.8% CER baseline",
+   "eval_baseline": {
+    "cer": 0.297887,
+    "wer": 0.963068
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 79.399,
+    "never_train": 0.0
+   },
+   "language": "ewe",
+   "recommendation": "TRAIN",
+   "trainable_hours": 79.399
+  },
+  {
+   "attribution_required": false,
+   "basis": "48.974h trainable against a 53.2% WER / 14.7% CER baseline",
+   "eval_baseline": {
+    "cer": 0.14715,
+    "wer": 0.532289
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 98.109,
+    "clear": 48.974,
+    "never_train": 0.0
+   },
+   "language": "fula",
+   "recommendation": "TRAIN",
+   "trainable_hours": 48.974
+  },
+  {
+   "attribution_required": true,
+   "basis": "24.563h trainable against a 131.8% WER / 112.3% CER baseline",
+   "eval_baseline": {
+    "cer": 1.122908,
+    "wer": 1.317935
+   },
+   "hours": {
+    "attribution": 24.563,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "pulaar",
+   "recommendation": "TRAIN",
+   "trainable_hours": 24.563
+  },
+  {
+   "attribution_required": false,
+   "basis": "14.987h trainable against a 14.3% WER / 4.2% CER baseline",
+   "eval_baseline": {
+    "cer": 0.042427,
+    "wer": 0.143474
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 14.987,
+    "never_train": 0.0
+   },
+   "language": "french",
+   "recommendation": "TRAIN",
+   "trainable_hours": 14.987
+  },
+  {
+   "attribution_required": true,
+   "basis": "10.12h trainable against a 40.0% WER / 12.7% CER baseline",
+   "eval_baseline": {
+    "cer": 0.126568,
+    "wer": 0.399984
+   },
+   "hours": {
+    "attribution": 10.12,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "wolof",
+   "recommendation": "TRAIN",
+   "trainable_hours": 10.12
+  },
+  {
+   "attribution_required": false,
+   "basis": "4.993h trainable against a 17.4% WER / 5.1% CER baseline",
+   "eval_baseline": {
+    "cer": 0.051037,
+    "wer": 0.173894
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 67.999,
+    "clear": 4.993,
+    "never_train": 0.0
+   },
+   "language": "lingala",
+   "recommendation": "TRAIN",
+   "trainable_hours": 4.993
+  },
+  {
+   "attribution_required": false,
+   "basis": "2.254h trainable against a 102.6% WER / 49.6% CER baseline",
+   "eval_baseline": {
+    "cer": 0.496063,
+    "wer": 1.025641
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 2.254,
+    "never_train": 0.0
+   },
+   "language": "yemba",
+   "recommendation": "TRAIN",
+   "trainable_hours": 2.254
+  },
+  {
+   "basis": "19.75h exist but every trainable second is sharealike_review; the ShareAlike-on-weights legal review (Base v5 B9) must conclude before this language can train",
+   "eval_baseline": null,
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 19.75,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "acholi",
+   "recommendation": "BLOCKED_PENDING_LEGAL",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "189.536h exist but every trainable second is sharealike_review; the ShareAlike-on-weights legal review (Base v5 B9) must conclude before this language can train",
+   "eval_baseline": {
+    "cer": 0.075924,
+    "wer": 0.543268
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 189.536,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "amharic",
+   "recommendation": "BLOCKED_PENDING_LEGAL",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "24.832h exist but every trainable second is sharealike_review; the ShareAlike-on-weights legal review (Base v5 B9) must conclude before this language can train",
+   "eval_baseline": {
+    "cer": 0.077477,
+    "wer": 0.42944
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 24.832,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "luganda",
+   "recommendation": "BLOCKED_PENDING_LEGAL",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "189.482h exist but every trainable second is sharealike_review; the ShareAlike-on-weights legal review (Base v5 B9) must conclude before this language can train",
+   "eval_baseline": {
+    "cer": 0.204622,
+    "wer": 0.688839
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 189.482,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "oromo",
+   "recommendation": "BLOCKED_PENDING_LEGAL",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "75.675h exist but every trainable second is sharealike_review; the ShareAlike-on-weights legal review (Base v5 B9) must conclude before this language can train",
+   "eval_baseline": {
+    "cer": 0.037626,
+    "wer": 0.20894
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 75.675,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "shona",
+   "recommendation": "BLOCKED_PENDING_LEGAL",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "no CTC-unconditioned baseline in the merge report; the T6 gate would have nothing to beat",
+   "eval_baseline": null,
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 59.98,
+    "never_train": 0.0
+   },
+   "language": "akan",
+   "recommendation": "NO_EVAL_BASELINE",
+   "trainable_hours": 59.98
+  },
+  {
+   "basis": "no CTC-unconditioned baseline in the merge report; the T6 gate would have nothing to beat",
+   "eval_baseline": null,
+   "hours": {
+    "attribution": 32.013,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "serer",
+   "recommendation": "NO_EVAL_BASELINE",
+   "trainable_hours": 32.013
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.509207,
+    "wer": 0.982869
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "bafia",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.403704,
+    "wer": 0.896364
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "baka",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.408136,
+    "wer": 1.0401
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "bakoko",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.419815,
+    "wer": 0.905473
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "bamun",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.382332,
+    "wer": 0.862319
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "basaa",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.185852,
+    "wer": 0.746959
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "duala",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.436338,
+    "wer": 0.955556
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "ejagham",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.042891,
+    "wer": 0.117702
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "english",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.571429,
+    "wer": 0.976471
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "eton",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.526934,
+    "wer": 1.019231
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "ewondo",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.459219,
+    "wer": 0.974194
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "fefe",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.347102,
+    "wer": 0.901734
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "fulfulde",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.389252,
+    "wer": 0.86836
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "gbaya",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.645096,
+    "wer": 0.975741
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "ghomala",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.063748,
+    "wer": 0.241768
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "hausa",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.121525,
+    "wer": 0.436177
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "igbo",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 1.137888,
+    "wer": 1.276956
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "isu",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.230518,
+    "wer": 0.818575
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "kera",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.426411,
+    "wer": 0.899281
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "kom",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.407357,
+    "wer": 0.954315
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "kwasio",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.466799,
+    "wer": 1.011287
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "lamso",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.541667,
+    "wer": 1.0
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "maka",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.216,
+    "wer": 0.700581
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "malagasy",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.45641,
+    "wer": 0.997947
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "medumba",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.40097,
+    "wer": 0.975124
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "mundang",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.533975,
+    "wer": 0.98622
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "ngiemboon",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.51151,
+    "wer": 0.977113
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "ngombala",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.424427,
+    "wer": 1.027027
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "nomaande",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 1.157713,
+    "wer": 1.222816
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "nugunu",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.239063,
+    "wer": 0.541176
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "pidgin",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.167521,
+    "wer": 0.77027
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "sepedi",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.699586,
+    "wer": 0.99435
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "yambeta",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.370857,
+    "wer": 0.967742
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "yangben",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  },
+  {
+   "basis": "only 0.0h of clear+attribution audio (minimum 1.0h)",
+   "eval_baseline": {
+    "cer": 0.1766,
+    "wer": 0.507357
+   },
+   "hours": {
+    "attribution": 0.0,
+    "blocked_sharealike": 0.0,
+    "clear": 0.0,
+    "never_train": 0.0
+   },
+   "language": "yoruba",
+   "recommendation": "INSUFFICIENT_DATA",
+   "trainable_hours": 0.0
+  }
+ ],
+ "minimum_trainable_hours": 1.0,
+ "record": "B5_TRAINING_RECOMMENDATION",
+ "recorded_utc": "2026-08-17T23:32:47Z",
+ "summary": {
+  "BLOCKED_PENDING_LEGAL": 5,
+  "INSUFFICIENT_DATA": 34,
+  "NO_EVAL_BASELINE": 2,
+  "TRAIN": 9
+ }
+}

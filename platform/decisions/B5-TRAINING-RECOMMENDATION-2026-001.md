@@ -1,0 +1,52 @@
+| language | recommendation | trainable h | base WER | base CER | note |
+|---|---|---|---|---|---|
+| kinyarwanda | TRAIN | 300.002 | 41.0% | 9.7% |  |
+| swahili | TRAIN | 88.96 | 13.7% | 3.5% |  |
+| ewe | TRAIN | 79.399 | 96.3% | 29.8% |  |
+| fula | TRAIN | 48.974 | 53.2% | 14.7% |  |
+| pulaar | TRAIN | 24.563 | 131.8% | 112.3% | attribution required |
+| french | TRAIN | 14.987 | 14.3% | 4.2% |  |
+| wolof | TRAIN | 10.12 | 40.0% | 12.7% | attribution required |
+| lingala | TRAIN | 4.993 | 17.4% | 5.1% |  |
+| yemba | TRAIN | 2.254 | 102.6% | 49.6% |  |
+| acholi | BLOCKED_PENDING_LEGAL | 0.0 | — | — |  |
+| amharic | BLOCKED_PENDING_LEGAL | 0.0 | 54.3% | 7.6% |  |
+| luganda | BLOCKED_PENDING_LEGAL | 0.0 | 42.9% | 7.7% |  |
+| oromo | BLOCKED_PENDING_LEGAL | 0.0 | 68.9% | 20.5% |  |
+| shona | BLOCKED_PENDING_LEGAL | 0.0 | 20.9% | 3.8% |  |
+| akan | NO_EVAL_BASELINE | 59.98 | — | — |  |
+| serer | NO_EVAL_BASELINE | 32.013 | — | — |  |
+| bafia | INSUFFICIENT_DATA | 0.0 | 98.3% | 50.9% |  |
+| baka | INSUFFICIENT_DATA | 0.0 | 89.6% | 40.4% |  |
+| bakoko | INSUFFICIENT_DATA | 0.0 | 104.0% | 40.8% |  |
+| bamun | INSUFFICIENT_DATA | 0.0 | 90.5% | 42.0% |  |
+| basaa | INSUFFICIENT_DATA | 0.0 | 86.2% | 38.2% |  |
+| duala | INSUFFICIENT_DATA | 0.0 | 74.7% | 18.6% |  |
+| ejagham | INSUFFICIENT_DATA | 0.0 | 95.6% | 43.6% |  |
+| english | INSUFFICIENT_DATA | 0.0 | 11.8% | 4.3% |  |
+| eton | INSUFFICIENT_DATA | 0.0 | 97.6% | 57.1% |  |
+| ewondo | INSUFFICIENT_DATA | 0.0 | 101.9% | 52.7% |  |
+| fefe | INSUFFICIENT_DATA | 0.0 | 97.4% | 45.9% |  |
+| fulfulde | INSUFFICIENT_DATA | 0.0 | 90.2% | 34.7% |  |
+| gbaya | INSUFFICIENT_DATA | 0.0 | 86.8% | 38.9% |  |
+| ghomala | INSUFFICIENT_DATA | 0.0 | 97.6% | 64.5% |  |
+| hausa | INSUFFICIENT_DATA | 0.0 | 24.2% | 6.4% |  |
+| igbo | INSUFFICIENT_DATA | 0.0 | 43.6% | 12.2% |  |
+| isu | INSUFFICIENT_DATA | 0.0 | 127.7% | 113.8% |  |
+| kera | INSUFFICIENT_DATA | 0.0 | 81.9% | 23.1% |  |
+| kom | INSUFFICIENT_DATA | 0.0 | 89.9% | 42.6% |  |
+| kwasio | INSUFFICIENT_DATA | 0.0 | 95.4% | 40.7% |  |
+| lamso | INSUFFICIENT_DATA | 0.0 | 101.1% | 46.7% |  |
+| maka | INSUFFICIENT_DATA | 0.0 | 100.0% | 54.2% |  |
+| malagasy | INSUFFICIENT_DATA | 0.0 | 70.1% | 21.6% |  |
+| medumba | INSUFFICIENT_DATA | 0.0 | 99.8% | 45.6% |  |
+| mundang | INSUFFICIENT_DATA | 0.0 | 97.5% | 40.1% |  |
+| ngiemboon | INSUFFICIENT_DATA | 0.0 | 98.6% | 53.4% |  |
+| ngombala | INSUFFICIENT_DATA | 0.0 | 97.7% | 51.2% |  |
+| nomaande | INSUFFICIENT_DATA | 0.0 | 102.7% | 42.4% |  |
+| nugunu | INSUFFICIENT_DATA | 0.0 | 122.3% | 115.8% |  |
+| pidgin | INSUFFICIENT_DATA | 0.0 | 54.1% | 23.9% |  |
+| sepedi | INSUFFICIENT_DATA | 0.0 | 77.0% | 16.8% |  |
+| yambeta | INSUFFICIENT_DATA | 0.0 | 99.4% | 70.0% |  |
+| yangben | INSUFFICIENT_DATA | 0.0 | 96.8% | 37.1% |  |
+| yoruba | INSUFFICIENT_DATA | 0.0 | 50.7% | 17.7% |  |
