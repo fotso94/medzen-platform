@@ -1,5 +1,16 @@
 inherits: _defaults.yaml
 language: amharic
 version: v1-initial
-rationale: Platform defaults; revisit once a baseline exists.
-overrides: {}
+rationale: |
+  Ge'ez-script language with the largest wave-2 pool (189.5 h, WaxalNLP
+  digital_umuganda, sharealike_review cleared by LIC-2026-002). Suite
+  baseline 54.3% WER / 7.6% CER (full-coverage merge report) — the 0.20
+  registry default is unreachable in a first fine-tune round. WER stays
+  primary; the T6 strict-improvement gate supplies the beat-the-baseline
+  requirement on top of this ceiling.
+  OWNER-APPROVED 2026-08-18: WER ceiling 0.40 (wave-2 approval, verbatim
+  "threshold approve for Amharic, luganda and fula" against the presented
+  proposal amharic <=40%).
+overrides:
+  asr:
+    absolute_wer_max: 0.40

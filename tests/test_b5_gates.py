@@ -126,6 +126,14 @@ def promotion_root(tmp_path_factory) -> Path:
     snapshot = ROOT / "platform/evidence/B5-REFUSAL-WORLD-REGISTRY-2026-001/languages"
     for path in sorted(snapshot.glob("*.yaml")):
         shutil.copy2(path, root / "registry/languages" / path.name)
+    # Same for the AUTH-pinned gate files (defaults + the three
+    # original_validation languages): wave-2 owner approvals legitimately
+    # move the live bars (luganda 0.35, 2026-08-18), while the negative
+    # proof keeps verifying the bytes B5-AUTH-2026-001 hash-bound.
+    gates_snapshot = (ROOT /
+        "platform/evidence/B5-REFUSAL-WORLD-REGISTRY-2026-001/gates")
+    for path in sorted(gates_snapshot.glob("*.yaml")):
+        shutil.copy2(path, root / "registry/gates" / path.name)
     for rel in ("pipeline/b5_gates.py", "scripts/evaluate_gates.py"):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, root / rel)

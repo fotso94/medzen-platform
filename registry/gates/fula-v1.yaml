@@ -1,5 +1,15 @@
 inherits: _defaults.yaml
 language: fula
 version: v1-initial
-rationale: Platform defaults; revisit once a baseline exists.
-overrides: {}
+rationale: |
+  Wave-1 TRAIN language whose pool tripled when LIC-2026-002 cleared
+  sharealike_review (49.0 h clear -> 147.1 h total). Suite baseline
+  53.2% WER / 14.7% CER — the 0.20 registry default is unreachable in a
+  first fine-tune round. WER stays primary; the T6 strict-improvement
+  gate supplies the beat-the-baseline requirement on top of this ceiling.
+  OWNER-APPROVED 2026-08-18: WER ceiling 0.40 (wave-2 approval, verbatim
+  "threshold approve for Amharic, luganda and fula" against the presented
+  proposal fula <=40%).
+overrides:
+  asr:
+    absolute_wer_max: 0.40

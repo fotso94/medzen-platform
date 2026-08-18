@@ -1,5 +1,18 @@
 inherits: _defaults.yaml
 language: luganda
 version: v1-initial
-rationale: Platform defaults; revisit once a baseline exists.
-overrides: {}
+rationale: |
+  Bantu language, smallest wave-2 pool (24.8 h, WaxalNLP makerere,
+  sharealike_review cleared by LIC-2026-002). Suite baseline 42.9% WER /
+  7.7% CER — the 0.20 registry default is unreachable in a first
+  fine-tune round on this little audio. WER stays primary; the T6
+  strict-improvement gate supplies the beat-the-baseline requirement.
+  OWNER-APPROVED 2026-08-18: WER ceiling 0.35 (wave-2 approval, verbatim
+  "threshold approve for Amharic, luganda and fula" against the presented
+  proposal luganda <=35%).
+  NOTE: the B5-AUTH-2026-001 frozen negative proof pins the PREVIOUS
+  bytes of this file; those live on at
+  platform/evidence/B5-REFUSAL-WORLD-REGISTRY-2026-001/gates/.
+overrides:
+  asr:
+    absolute_wer_max: 0.35
