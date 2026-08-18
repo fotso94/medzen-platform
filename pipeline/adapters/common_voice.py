@@ -41,7 +41,11 @@ CODES = {"swahili": "sw", "hausa": "ha", "yoruba": "yo",
          # rw verified real in this mirror 2026-08-08 (train.tsv ~1.0M rows,
          # ~2,000 validated hours). Ingest is CAPPED via env (below) — the full
          # locale is far larger than a first campaign needs.
-         "kinyarwanda": "rw"}
+         "kinyarwanda": "rw",
+         # en verified in this mirror; ALWAYS ingest with
+         # MEDZEN_CV_MAX_SECONDS + MEDZEN_CV_STREAMING=1 — the full locale
+         # is thousands of hours and non-streaming would download it all
+         "english": "en"}
 SPLITS = ("train", "validation")
 
 # Optional env controls (added for the capped kinyarwanda ingest, 2026-08-11):

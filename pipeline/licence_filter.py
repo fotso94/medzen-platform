@@ -24,7 +24,9 @@ TRAIN_CLEAR = frozenset({"cc0", "commercial_ok"})
 # owner-attested legal sign-off (LIC-2026-002; signed document retained
 # privately by the owner). ShareAlike is attribution-PLUS: the obligation
 # follows the weights and must surface in every consuming manifest.
-TRAIN_ATTRIBUTION = frozenset({"cc_by_4_0", "sharealike_review"})
+# cc_by_3_0 admitted 2026-08-18 for the NCHLT speech corpora (CC BY 3.0
+# verified at repo.sadilar.org handle 20.500.12185/270; Tier A owner order)
+TRAIN_ATTRIBUTION = frozenset({"cc_by_4_0", "cc_by_3_0", "sharealike_review"})
 LEGAL_REVIEW_PENDING = frozenset()
 NEVER_TRAIN = frozenset({"research_only", "nc", "non_commercial", "noncommercial"})
 

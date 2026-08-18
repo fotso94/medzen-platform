@@ -38,6 +38,7 @@ TIER_BY_POLICY = {
     "commercial_ok": "permissive",     # CC0 / CC-BY-4.0 / Apache-2.0
     "cc0": "permissive",
     "cc_by_4_0": "permissive",
+    "cc_by_3_0": "permissive",   # NCHLT speech corpora (SADiLaR)
     "sharealike_review": "sharealike",  # CC-BY-SA-4.0 (owner-legal-approved, isolated)
     "research_only_nc": "eval_only",    # non-commercial -> eval/benchmark only
     "eval_reserved": "eval_only",       # cleanly licensed but deliberately held out

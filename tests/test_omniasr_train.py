@@ -87,7 +87,8 @@ def test_ctc_defaults_bind_the_eval_proven_identity():
     config = make_config()
     assert config.model_card == "medzen_omniASR_CTC_1B_v2"
     assert config.audio_cap_hours == 100.0
-    assert sorted(config.allowed_policies) == ["cc0", "cc_by_4_0", "commercial_ok", "sharealike_review"]
+    assert sorted(config.allowed_policies) == [
+        "cc0", "cc_by_3_0", "cc_by_4_0", "commercial_ok", "sharealike_review"]
 
 
 # --------------------------------------------------------------------------

@@ -51,6 +51,9 @@ CONFIGS: dict[str, dict[str, tuple[str, str]]] = {
     "oromo":   {"asr": ("orm_asr", "digital_umuganda")},
     "lingala": {"asr": ("lin_asr", "digital_umuganda")},
     "shona":   {"asr": ("sna_asr", "digital_umuganda")},
+    # malagasy verified in the repo 2026-08-18 (data/ASR/mlg train shards);
+    # unlocked for training by LIC-2026-002 (Tier A, owner-ordered ingest)
+    "malagasy": {"asr": ("mlg_asr", "digital_umuganda")},
     "pidgin":  {"tts": ("pcm_tts", "media_trust")},
     "igbo":    {"tts": ("ibo_tts", "media_trust")},
     "hausa":   {"tts": ("hau_tts", "media_trust")},
