@@ -1,0 +1,67 @@
+{
+ "AlgorithmSpecification": {
+  "ContainerArguments": [
+   "-m",
+   "pipeline.omniasr_train"
+  ],
+  "ContainerEntrypoint": [
+   "/opt/venv/bin/python"
+  ],
+  "TrainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:aea6efbec91bc759c9b4ca1485417b48c92c4c7c1c8eb5a958114bd78160ef09",
+  "TrainingInputMode": "File"
+ },
+ "CheckpointConfig": {
+  "LocalPath": "/opt/ml/checkpoints",
+  "S3Uri": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001/checkpoints"
+ },
+ "EnableManagedSpotTraining": false,
+ "EnableNetworkIsolation": false,
+ "Environment": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "200",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_LANGUAGES": "kinyarwanda,swahili,ewe,fula,pulaar,french,wolof,lingala,yemba",
+  "MEDZEN_MANIFEST_VERSION": "gb3",
+  "MEDZEN_MAX_STEPS": "24868",
+  "MEDZEN_SEED": "20260818",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "OutputDataConfig": {
+  "KmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "S3OutputPath": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001/output"
+ },
+ "ResourceConfig": {
+  "InstanceCount": 1,
+  "InstanceType": "ml.g6.xlarge",
+  "VolumeSizeInGB": 100
+ },
+ "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+ "StoppingCondition": {
+  "MaxRuntimeInSeconds": 450000
+ },
+ "Tags": [
+  {
+   "Key": "medzen:cost-registry",
+   "Value": "COST-REGISTRY-2026-045 B5-CTC-CAMPAIGN-2026-001"
+  },
+  {
+   "Key": "medzen:job",
+   "Value": "b5-ctc-campaign-2026-001"
+  },
+  {
+   "Key": "medzen:classification",
+   "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
+  }
+ ],
+ "TrainingJobName": "medzen-b5-b5-ctc-campaign-2026-001",
+ "VpcConfig": {
+  "SecurityGroupIds": [
+   "sg-0fee72d218ac002a7"
+  ],
+  "Subnets": [
+   "subnet-00232b25bc1ac407a"
+  ]
+ }
+}

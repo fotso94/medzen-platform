@@ -1,0 +1,33 @@
+{
+ "cost_ceiling_usd": 346.0,
+ "cost_registry_line": "COST-REGISTRY-2026-045 B5-CTC-CAMPAIGN-2026-001",
+ "environment": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "200",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_LANGUAGES": "kinyarwanda,swahili,ewe,fula,pulaar,french,wolof,lingala,yemba",
+  "MEDZEN_MANIFEST_VERSION": "gb3",
+  "MEDZEN_MAX_STEPS": "24868",
+  "MEDZEN_SEED": "20260818",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_note": "the EXACT image that completed T5-r6 end to end; no trainer code changed since",
+ "image_oci_index_digest": "sha256:14a919d61e949736dbd50c7b08dc5f08d6a4ad00dbf7a5434cfbd768429595d8",
+ "image_tag": "t5-cal-2026-08-17f",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:aea6efbec91bc759c9b4ca1485417b48c92c4c7c1c8eb5a958114bd78160ef09",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "b5-ctc-campaign-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "owner rule: on-demand basis always; spot quota also still 0/PENDING; a ~4-day run must not carry interruption risk in its first pass",
+ "max_runtime_seconds": 450000,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100
+}
