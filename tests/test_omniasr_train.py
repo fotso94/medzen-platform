@@ -87,7 +87,7 @@ def test_ctc_defaults_bind_the_eval_proven_identity():
     config = make_config()
     assert config.model_card == "medzen_omniASR_CTC_1B_v2"
     assert config.audio_cap_hours == 100.0
-    assert sorted(config.allowed_policies) == ["cc0", "cc_by_4_0", "commercial_ok"]
+    assert sorted(config.allowed_policies) == ["cc0", "cc_by_4_0", "commercial_ok", "sharealike_review"]
 
 
 # --------------------------------------------------------------------------
@@ -152,7 +152,7 @@ def test_licence_gate_removes_rows_before_weights_are_taken():
     rows = {
         "yemba": [_row("yemba", "cc0", index=i) for i in range(20)],
         "wolof": ([_row("wolof", "cc0", index=i) for i in range(20)]
-                  + [_row("wolof", "sharealike_review", index=100 + i)
+                  + [_row("wolof", "research_only", index=100 + i)
                      for i in range(60)]),
     }
     config = make_config(MEDZEN_LANGUAGES="yemba,wolof")
@@ -161,7 +161,7 @@ def test_licence_gate_removes_rows_before_weights_are_taken():
     for r in mix:
         per_lang[r["_lang"]] = per_lang.get(r["_lang"], 0) + 1
     assert provenance["pool_gate"]["excluded_rows_by_policy"] == {
-        "sharealike_review": 60}
+        "research_only": 60}
     assert provenance["pool_gate"]["applied"] == "before temperature sampling"
     assert per_lang["yemba"] == per_lang["wolof"], (
         "equal post-gate pools must draw equal shares — the gate ran late")

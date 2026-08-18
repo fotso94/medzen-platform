@@ -32,12 +32,14 @@ BASE = "omniASR_CTC_1B_v2|unconditioned"
 
 
 def test_licence_hours_bucket_correctly():
+    # sharealike cleared by LIC-2026-002 (owner-attested legal sign-off):
+    # it now buckets as ATTRIBUTION-class (the obligation follows the weights)
     hours = licence_hours_from_manifest_rows([
         _row("cc0"), _row("commercial_ok"), _row("cc_by_4_0"),
         _row("sharealike_review", 7200), _row("cc0", split="eval"),
     ])
-    assert hours == {"clear": 2.0, "attribution": 1.0,
-                     "blocked_sharealike": 2.0, "never_train": 0.0}
+    assert hours == {"clear": 2.0, "attribution": 3.0,
+                     "blocked_sharealike": 0.0, "never_train": 0.0}
 
 
 def test_unknown_policy_refuses():
@@ -101,7 +103,9 @@ def test_table_sorts_train_first_by_hours_and_summarizes():
     order = [(e["language"], e["recommendation"]) for e in result["languages"]]
     assert order[0] == ("biglang", "TRAIN")
     assert order[1] == ("smalllang", "TRAIN")
-    assert ("blockedlang", "BLOCKED_PENDING_LEGAL") in order
+    # post-LIC-2026-002 the sharealike language is trainable; it lacks an
+    # eval baseline so the gate-first rule holds it there instead
+    assert ("blockedlang", "NO_EVAL_BASELINE") in order
     assert ("nodata", "INSUFFICIENT_DATA") in order
     assert result["summary"]["TRAIN"] == 2
     # LLM rows must not create baseline entries

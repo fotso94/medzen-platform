@@ -13,13 +13,25 @@ def _row(policy, lang="alpha"):
     return {"license_policy": policy, "primary_language": lang}
 
 
-def test_default_gate_excludes_sharealike_and_reports():
+def test_default_gate_admits_cleared_sharealike_with_attribution():
+    # LIC-2026-002: sharealike_review is legally cleared (owner-attested
+    # sign-off) and now enters the default mix as attribution-class data.
     rows = [_row("cc0"), _row("commercial_ok"), _row("cc_by_4_0"),
             _row("sharealike_review"), _row("sharealike_review")]
     eligible, report = filter_training_rows(rows)
-    assert len(eligible) == 3
-    assert report["excluded_rows_by_policy"] == {"sharealike_review": 2}
+    assert len(eligible) == 5
+    assert report["excluded_rows_by_policy"] == {}
     assert report["attribution_required"] is True
+
+
+def test_narrowed_allowed_set_still_excludes_sharealike():
+    # Historical replays (B4/gb3-era fingerprints) bind an explicit allowed
+    # list — a narrowed set must keep excluding, independent of the default.
+    rows = [_row("cc0"), _row("sharealike_review")]
+    eligible, report = filter_training_rows(
+        rows, allowed=frozenset({"cc0", "cc_by_4_0", "commercial_ok"}))
+    assert len(eligible) == 1
+    assert report["excluded_rows_by_policy"] == {"sharealike_review": 1}
 
 
 def test_missing_policy_refuses():
