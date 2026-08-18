@@ -69,10 +69,9 @@ resource "aws_iam_role_policy" "trainer_b5_t5_sagemaker" {
 }
 
 # ---- GitHub Actions OIDC ---------------------------------------------------
-data "aws_iam_openid_connect_provider" "github" {
-  count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
-  url   = "https://token.actions.githubusercontent.com"
-}
+# (the provider is now MANAGED below in the CI-role block — the former
+# read-only data source would have raced the resource at first activation
+# apply; removed by the task-G review, it had no references)
 
 # EC2 cannot assume a role directly — it needs an instance profile. The role
 # already exists with the A3 guardrails (explicit Deny on eval writes,
@@ -101,4 +100,72 @@ resource "aws_iam_role_policy" "builder" {
 resource "aws_iam_instance_profile" "builder" {
   name = "medzen-builder-profile"
   role = aws_iam_role.builder.name
+}
+
+# ---- CI role (B7 activation packet, task G) --------------------------------
+# Dark until var.github_repo is real AND the owner applies: the OIDC provider
+# and role only materialize when the placeholder is replaced. Trust is
+# scoped to THIS repository's main branch — no other repo, ref or fork can
+# assume it. Same explicit-Deny posture as the trainer role.
+resource "aws_iam_openid_connect_provider" "github" {
+  count           = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+}
+
+data "aws_iam_policy_document" "ci_trust" {
+  count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ci" {
+  count              = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  name               = "medzen-ci-role"
+  assume_role_policy = data.aws_iam_policy_document.ci_trust[0].json
+}
+
+resource "aws_iam_role_policy" "ci" {
+  count  = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  name   = "medzen-ci-access"
+  role   = aws_iam_role.ci[0].id
+  policy = file("${local.iam_dir}/medzen-ci-role.json")
+}
+
+# Namespace-scoped Kubernetes access: the CI role may patch deployments in
+# the medzen namespace only (rollout of the five services); cluster admin
+# stays human. The access policy is the EKS-managed edit policy scoped by
+# namespace — auditable in one place here.
+resource "aws_eks_access_entry" "ci" {
+  count         = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  cluster_name  = "medzen-speech"
+  principal_arn = aws_iam_role.ci[0].arn
+}
+
+resource "aws_eks_access_policy_association" "ci_medzen_edit" {
+  count         = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  cluster_name  = "medzen-speech"
+  principal_arn = aws_iam_role.ci[0].arn
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
+  access_scope {
+    type       = "namespace"
+    namespaces = ["medzen"]
+  }
+  depends_on = [aws_eks_access_entry.ci]
 }
