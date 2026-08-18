@@ -239,6 +239,12 @@ offline:
       - {actions: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer,
                    ecr:BatchCheckLayerAvailability, ecr:DescribeImages],
          resource: ecr, name: medzen-trainer}
+      # T6 gate evaluations run the PINNED eval-runtime image on a trainer-
+      # plane box (read eval sets, write research/* results). Pull-only; the
+      # A3 wall (no eval-zone writes) is untouched.
+      - {actions: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer,
+                   ecr:BatchCheckLayerAvailability, ecr:DescribeImages],
+         resource: ecr, name: medzen-asr-eval-runtime}
     explicit_denies:
       # The isolation SageMaker sells, obtained for free by construction.
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",
