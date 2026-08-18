@@ -1,0 +1,143 @@
+{
+ "assembled_utc": "2026-08-18T02:32:14+00:00",
+ "basis": {
+  "decision": "platform/decisions/B5-TRAINING-RECOMMENDATION-2026-002.json",
+  "owner_approval": "Option B full 13-language retrain; bars amharic 0.40 / luganda 0.35 / fula 0.40; oromo bar OPEN"
+ },
+ "composition": "15 gb3 manifests carried forward unchanged (they already contain the sharealike rows LIC-2026-002 cleared; the licence gate admits them at mix time) + 4 newly curated wave-2 languages",
+ "curation_report": {
+  "amharic": {
+   "conflict_pair_dropped": 6,
+   "eval_leak_dropped": 25,
+   "hours_in": 189.5,
+   "hours_out": 189.4,
+   "kept": 37971,
+   "rows_in": 38002,
+   "rows_out": 37971
+  },
+  "luganda": {
+   "conflict_pair_dropped": 2,
+   "eval_leak_dropped": 53,
+   "hours_in": 24.8,
+   "hours_out": 24.5,
+   "kept": 4187,
+   "rows_in": 4242,
+   "rows_out": 4187
+  },
+  "oromo": {
+   "eval_leak_dropped": 35,
+   "hours_in": 189.5,
+   "hours_out": 189.3,
+   "kept": 38101,
+   "rows_in": 38136,
+   "rows_out": 38101
+  },
+  "shona": {
+   "eval_leak_dropped": 15,
+   "hours_in": 75.7,
+   "hours_out": 75.6,
+   "kept": 13638,
+   "rows_in": 13653,
+   "rows_out": 13638
+  }
+ },
+ "curation_rules": "gb3 mechanical set: eval-zone byte-leak drop, same-audio-different-text conflict pairs dropped both sides, byte-duplicate re-listings dropped, pulaar-class intra-word '?' scan (zero found), empty-text/duration sanity (zero found)",
+ "manifests": {
+  "amharic/asr/amh_asr": {
+   "key": "curated/amharic/asr/amh_asr/gb4/manifest.jsonl",
+   "sha256": "0946e245f58f07191d619f835410c30b17418214909ab1f12cd4fa0a4a164ee3",
+   "version": "gb4"
+  },
+  "ewe/asr/ewe_asr": {
+   "key": "curated/ewe/asr/ewe_asr/gb3/manifest.jsonl",
+   "sha256": "663c55755491ac02258d5920302f268c6414b6327d4fed01d13153624f228bb7",
+   "version": "gb3"
+  },
+  "french/asr/aaf_ca16_conv": {
+   "key": "curated/french/asr/aaf_ca16_conv/gb3/manifest.jsonl",
+   "sha256": "ce14c38f364957fab64339ed0b4e0bbc4db58e8085a06da7d4d9a6c5506fcdb0",
+   "version": "gb3"
+  },
+  "french/asr/aaf_ca16_devtest": {
+   "key": "curated/french/asr/aaf_ca16_devtest/gb3/manifest.jsonl",
+   "sha256": "3ba09d0c7f96f5a6c0b7c83c9d2106f17b2c9a769a18c1d0292a1e5e86babe7d",
+   "version": "gb3"
+  },
+  "french/asr/aaf_ca16_read": {
+   "key": "curated/french/asr/aaf_ca16_read/gb3/manifest.jsonl",
+   "sha256": "a2f1bccaf53fa7360039d33aaf0a4d863c91d6eb2402750d393c0dd40f890bd3",
+   "version": "gb3"
+  },
+  "french/asr/aaf_niger_dev": {
+   "key": "curated/french/asr/aaf_niger_dev/gb3/manifest.jsonl",
+   "sha256": "40e67d7801ae586b8ef32488162d12c2fe2445be6bc94b8874aa1dc802ddce01",
+   "version": "gb3"
+  },
+  "french/asr/aaf_yaounde": {
+   "key": "curated/french/asr/aaf_yaounde/gb3/manifest.jsonl",
+   "sha256": "aa7e6085b9862e2504d6de5e6728f0d4febac9df327ee18fce88e54b79e1674c",
+   "version": "gb3"
+  },
+  "fula/asr/ful_asr": {
+   "key": "curated/fula/asr/ful_asr/gb3/manifest.jsonl",
+   "sha256": "fdd21b2a16063b1fb282e9146332dd85d57789d535634b2de2ea6ef365acba19",
+   "version": "gb3"
+  },
+  "fula/asr/fula_omni": {
+   "key": "curated/fula/asr/fula_omni/gb3/manifest.jsonl",
+   "sha256": "63810cabe3484f8f4537d39ffdea9869bd344a3dbf3716f8b96d0f1b082e0a67",
+   "version": "gb3"
+  },
+  "kinyarwanda/asr/cv17_rw": {
+   "key": "curated/kinyarwanda/asr/cv17_rw/gb3/manifest.jsonl",
+   "sha256": "e72c88495042a1339344f9eb963b96564751db2af9830a59ccf7b51cfa60a37e",
+   "version": "gb3"
+  },
+  "lingala/asr/lin_asr": {
+   "key": "curated/lingala/asr/lin_asr/gb3/manifest.jsonl",
+   "sha256": "eaf840c75cdea09075eefa2e6ac58e1960a3747f5b5409b724e64e2fa8935bc3",
+   "version": "gb3"
+  },
+  "lingala/asr/lrsc": {
+   "key": "curated/lingala/asr/lrsc/gb3/manifest.jsonl",
+   "sha256": "c82657f60f4ee2e8fe0d7caef9f3acd928a48f0b8b9e5679f1a0b5279a7907b6",
+   "version": "gb3"
+  },
+  "luganda/asr/lug_asr": {
+   "key": "curated/luganda/asr/lug_asr/gb4/manifest.jsonl",
+   "sha256": "4b154328e3ee182f5ed038d1a8c16e1985e8c24456136f414b52dd159489cf41",
+   "version": "gb4"
+  },
+  "oromo/asr/orm_asr": {
+   "key": "curated/oromo/asr/orm_asr/gb4/manifest.jsonl",
+   "sha256": "63d86fad87af90187ff6e73150bf4ccb8e6735cb68e07fbb3c4211edc021439a",
+   "version": "gb4"
+  },
+  "pulaar/asr/kallaama_fuc": {
+   "key": "curated/pulaar/asr/kallaama_fuc/gb3/manifest.jsonl",
+   "sha256": "9a8921a6cb51ac63eb5720c09dbae1d2a2396abb84692b8316287dbb0a67ef4d",
+   "version": "gb3"
+  },
+  "shona/asr/sna_asr": {
+   "key": "curated/shona/asr/sna_asr/gb4/manifest.jsonl",
+   "sha256": "98441abc6e188b056fee3f6a83c85658495cd60e6fc81fde4dc80cea8bf7308e",
+   "version": "gb4"
+  },
+  "swahili/asr/cv17_sw": {
+   "key": "curated/swahili/asr/cv17_sw/gb3/manifest.jsonl",
+   "sha256": "74211fcdc28efea3bc4a81164e8175d5dbac4f81d868fb61a7d85e4892e69f2f",
+   "version": "gb3"
+  },
+  "wolof/asr/kallaama_wol": {
+   "key": "curated/wolof/asr/kallaama_wol/gb3/manifest.jsonl",
+   "sha256": "d5032030fc37eb2f7051581e9bd892b7c7b5f7b59ceb67ac912c0f9ba080d942",
+   "version": "gb3"
+  },
+  "yemba/asr/egra": {
+   "key": "curated/yemba/asr/egra/gb3/manifest.jsonl",
+   "sha256": "a92f7e3b8dd85e55d110737d1d2a9bf877e8748ccb06b3f033f215327952fdf1",
+   "version": "gb3"
+  }
+ },
+ "version": "gb4"
+}

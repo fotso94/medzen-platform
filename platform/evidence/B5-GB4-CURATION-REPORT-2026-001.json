@@ -1,0 +1,36 @@
+{
+ "amharic": {
+  "conflict_pair_dropped": 6,
+  "eval_leak_dropped": 25,
+  "hours_in": 189.5,
+  "hours_out": 189.4,
+  "kept": 37971,
+  "rows_in": 38002,
+  "rows_out": 37971
+ },
+ "luganda": {
+  "conflict_pair_dropped": 2,
+  "eval_leak_dropped": 53,
+  "hours_in": 24.8,
+  "hours_out": 24.5,
+  "kept": 4187,
+  "rows_in": 4242,
+  "rows_out": 4187
+ },
+ "oromo": {
+  "eval_leak_dropped": 35,
+  "hours_in": 189.5,
+  "hours_out": 189.3,
+  "kept": 38101,
+  "rows_in": 38136,
+  "rows_out": 38101
+ },
+ "shona": {
+  "eval_leak_dropped": 15,
+  "hours_in": 75.7,
+  "hours_out": 75.6,
+  "kept": 13638,
+  "rows_in": 13653,
+  "rows_out": 13638
+ }
+}
