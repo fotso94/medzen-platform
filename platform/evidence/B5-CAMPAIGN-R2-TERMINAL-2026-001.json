@@ -1,0 +1,22 @@
+{
+ "billable_seconds": 56061,
+ "cost": {
+  "actual_usd_upper_bound": 24.92,
+  "basis": "on-demand bound 1.60 USD/h (the deliberately-high registry bound)",
+  "billable_hours": 15.57,
+  "note": "duration estimate assumed ~4 days; measured step time 2.25s beat the assumption ~6x",
+  "reserved_ceiling_usd": 346
+ },
+ "failure_reason": null,
+ "final_checkpoint": "research/b5-training/b5-ctc-campaign-2026-001-r2/checkpoints/step-0024868.pt",
+ "id": "B5-CAMPAIGN-R2-TERMINAL-2026-001",
+ "job": "medzen-b5-b5-ctc-campaign-2026-001-r2",
+ "model_artifact": "research/b5-training/b5-ctc-campaign-2026-001-r2/output/medzen-b5-b5-ctc-campaign-2026-001-r2/output/model.tar.gz",
+ "model_artifact_bytes": 1546065022,
+ "next": "T6 gate: evaluate the trained model on the frozen pool; per-language pass/fail vs the owner-approved bars; owner reviews the table before promotion and before the wave-2 launch hold clears.",
+ "record": "B5-CAMPAIGN-TERMINAL-OBSERVATION",
+ "status": "Completed",
+ "steps_completed": 24868,
+ "training_end_utc": "2026-08-18T16:18:17Z",
+ "training_start_utc": "2026-08-18T00:43:56Z"
+}
