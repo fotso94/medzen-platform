@@ -1,0 +1,137 @@
+{
+ "fingerprint": "ad4960e1b9b377df8c77f3b6ba0178f068a81de343b87aa8b450e6a4e85611ff",
+ "provenance": {
+  "adoption_key": "curated/_versions/gb3/ADOPTION.json",
+  "complete_key": "curated/_versions/gb3/COMPLETE.json",
+  "complete_raw_sha256": "25427f567756ef28c2e8d8dc0e3c485a8a385f54e4c714177bffbd86b871166a",
+  "eligible_rows": 198944,
+  "eligible_rows_before_exclusions": 200523,
+  "exclusions": {
+   "applied": "before temperature sampling",
+   "by_trigger": {
+    "intra_word_question_mark_hook_letter_substitution": 1579
+   },
+   "declared": 1579,
+   "list_id": "DQ-2026-006-gb3-pulaar-question-mark-deferral",
+   "out_of_scope_declared": 0,
+   "policy_declared": 1579,
+   "policy_sha256": "b830ff56f343709e5318eb8f59f74339ce70aaa38e2fe528743b6f12d8c8593f",
+   "removed_from_eligible_pool": 1579
+  },
+  "manifest_version": "gb3",
+  "manifests": {
+   "ewe/asr/ewe_asr": {
+    "key": "curated/ewe/asr/ewe_asr/gb3/manifest.jsonl",
+    "manifest_sha256": "663c55755491ac02258d5920302f268c6414b6327d4fed01d13153624f228bb7",
+    "version": "gb3"
+   },
+   "french/asr/aaf_ca16_conv": {
+    "key": "curated/french/asr/aaf_ca16_conv/gb3/manifest.jsonl",
+    "manifest_sha256": "ce14c38f364957fab64339ed0b4e0bbc4db58e8085a06da7d4d9a6c5506fcdb0",
+    "version": "gb3"
+   },
+   "french/asr/aaf_ca16_devtest": {
+    "key": "curated/french/asr/aaf_ca16_devtest/gb3/manifest.jsonl",
+    "manifest_sha256": "3ba09d0c7f96f5a6c0b7c83c9d2106f17b2c9a769a18c1d0292a1e5e86babe7d",
+    "version": "gb3"
+   },
+   "french/asr/aaf_ca16_read": {
+    "key": "curated/french/asr/aaf_ca16_read/gb3/manifest.jsonl",
+    "manifest_sha256": "a2f1bccaf53fa7360039d33aaf0a4d863c91d6eb2402750d393c0dd40f890bd3",
+    "version": "gb3"
+   },
+   "french/asr/aaf_niger_dev": {
+    "key": "curated/french/asr/aaf_niger_dev/gb3/manifest.jsonl",
+    "manifest_sha256": "40e67d7801ae586b8ef32488162d12c2fe2445be6bc94b8874aa1dc802ddce01",
+    "version": "gb3"
+   },
+   "french/asr/aaf_yaounde": {
+    "key": "curated/french/asr/aaf_yaounde/gb3/manifest.jsonl",
+    "manifest_sha256": "aa7e6085b9862e2504d6de5e6728f0d4febac9df327ee18fce88e54b79e1674c",
+    "version": "gb3"
+   },
+   "fula/asr/ful_asr": {
+    "key": "curated/fula/asr/ful_asr/gb3/manifest.jsonl",
+    "manifest_sha256": "fdd21b2a16063b1fb282e9146332dd85d57789d535634b2de2ea6ef365acba19",
+    "version": "gb3"
+   },
+   "fula/asr/fula_omni": {
+    "key": "curated/fula/asr/fula_omni/gb3/manifest.jsonl",
+    "manifest_sha256": "63810cabe3484f8f4537d39ffdea9869bd344a3dbf3716f8b96d0f1b082e0a67",
+    "version": "gb3"
+   },
+   "kinyarwanda/asr/cv17_rw": {
+    "key": "curated/kinyarwanda/asr/cv17_rw/gb3/manifest.jsonl",
+    "manifest_sha256": "e72c88495042a1339344f9eb963b96564751db2af9830a59ccf7b51cfa60a37e",
+    "version": "gb3"
+   },
+   "lingala/asr/lin_asr": {
+    "key": "curated/lingala/asr/lin_asr/gb3/manifest.jsonl",
+    "manifest_sha256": "eaf840c75cdea09075eefa2e6ac58e1960a3747f5b5409b724e64e2fa8935bc3",
+    "version": "gb3"
+   },
+   "lingala/asr/lrsc": {
+    "key": "curated/lingala/asr/lrsc/gb3/manifest.jsonl",
+    "manifest_sha256": "c82657f60f4ee2e8fe0d7caef9f3acd928a48f0b8b9e5679f1a0b5279a7907b6",
+    "version": "gb3"
+   },
+   "pulaar/asr/kallaama_fuc": {
+    "key": "curated/pulaar/asr/kallaama_fuc/gb3/manifest.jsonl",
+    "manifest_sha256": "9a8921a6cb51ac63eb5720c09dbae1d2a2396abb84692b8316287dbb0a67ef4d",
+    "version": "gb3"
+   },
+   "swahili/asr/cv17_sw": {
+    "key": "curated/swahili/asr/cv17_sw/gb3/manifest.jsonl",
+    "manifest_sha256": "74211fcdc28efea3bc4a81164e8175d5dbac4f81d868fb61a7d85e4892e69f2f",
+    "version": "gb3"
+   },
+   "wolof/asr/kallaama_wol": {
+    "key": "curated/wolof/asr/kallaama_wol/gb3/manifest.jsonl",
+    "manifest_sha256": "d5032030fc37eb2f7051581e9bd892b7c7b5f7b59ceb67ac912c0f9ba080d942",
+    "version": "gb3"
+   },
+   "yemba/asr/egra": {
+    "key": "curated/yemba/asr/egra/gb3/manifest.jsonl",
+    "manifest_sha256": "a92f7e3b8dd85e55d110737d1d2a9bf877e8748ccb06b3f033f215327952fdf1",
+    "version": "gb3"
+   }
+  },
+  "other_versions_present_but_unused": [
+   "gb1",
+   "gb2",
+   "v1",
+   "v2"
+  ],
+  "per_language_audio_cap": {
+   "applied": "before temperature sampling",
+   "cap_seconds": 360000.0,
+   "capped_languages": {
+    "kinyarwanda": {
+     "hours_after": 100.0,
+     "hours_before": 299.932,
+     "rows_after": 72313,
+     "rows_before": 216918
+    }
+   }
+  },
+  "pool_gate": {
+   "allowed_policies": [
+    "cc0",
+    "cc_by_4_0",
+    "commercial_ok"
+   ],
+   "applied": "before temperature sampling",
+   "attribution_required": true,
+   "eligible_rows": 343549,
+   "excluded_rows_by_policy": {
+    "sharealike_review": 32919
+   },
+   "status": "PASS_LICENCE_POLICY_GATE"
+  },
+  "rejected": {
+   "not_permitted": 0,
+   "wrong_split": 0
+  },
+  "require_allowed_use": "asr_train"
+ }
+}

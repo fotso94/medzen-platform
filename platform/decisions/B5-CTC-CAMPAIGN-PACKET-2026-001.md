@@ -90,3 +90,24 @@ go required; ~$5 on-demand, ceiling $105 under the +$100 rule).
   policy; (2) bindings + registry reservation at $346; (3) the standing
   per-run launch discipline (review with numbered phrase, dry
   validation, launch).
+
+## 7. gb3 BOUND (2026-08-17/18)
+
+Assembled, adopted, and live-validated end to end:
+- 15 manifests, 9 languages, 200,523 rows; curation per the mechanical
+  rules: fula dropped 514 conflicting cross-corpus pairs (both rows) +
+  271 re-listings, kinyarwanda 28 pairs, ewe 1, french 39 re-listings;
+  yemba inherits gb2 verbatim.
+- The pulaar '?' defect is WORSE than the audit surface: generic
+  normalization silently DELETES the '?' that stands in for hook
+  letters, leaving clean-looking labels missing consonants. 1,579 rows
+  (10.8%) stay in the manifests as factual record and are deferred at
+  training by DQ-2026-006 (policy_deferral: nobody listened, nothing
+  judged, promotion forbidden).
+- Live gate chain PASS: exclusions applied before sampling (exactly
+  1,579), licence gate excludes 32,919 sharealike rows that ride in
+  fula's corpora, kinyarwanda capped at 100h, run fingerprint
+  ad4960e1... (platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json).
+- COST UPDATE: with the kinyarwanda cap the effective training audio is
+  ~374h -> ~100 GPU-h -> ~$160 on-demand. The $346 reservation stands
+  as the conservative ceiling; the surplus releases at close.
