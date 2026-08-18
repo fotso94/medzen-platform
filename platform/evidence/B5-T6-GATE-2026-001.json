@@ -1,0 +1,126 @@
+{
+ "candidate": "omniASR_CTC_1B_v2_medzen_r2 (campaign r2 merged checkpoint)",
+ "consequences": [
+  "NOTHING promotes; serving keeps the base model.",
+  "The wave-2 launch hold HARDENS: do not spend the approved wave-2 budget on this recipe until the regression is diagnosed and a revised recipe is validated (a cheap single-language probe like T5 can prove a fix for ~$1-2).",
+  "Row receipts (hypothesis hashes + error counts, no text) at research/b5-training/t6-eval-r2/results/."
+ ],
+ "environment": "pinned eval-runtime image sha256:dafc4b14\u2026, identical inference path and scorer as the baseline suite; g6.xlarge; unconditioned; batch 1",
+ "frozen_pool": {
+  "languages": 9,
+  "rows": 11752,
+  "selection_chunks": [
+   "4e402203bbfd7d1d\u2026",
+   "21b94b3bfa9715c7\u2026",
+   "8f2ab8a70fce525b\u2026"
+  ]
+ },
+ "gate_rules": "strict WER improvement over suite baseline AND owner-approved absolute bars",
+ "id": "B5-T6-GATE-2026-001",
+ "measurement_integrity": "11,752/11,752 rows, checksum-verified inputs, complete-pool-or-refuse runner (four earlier boxes refused on incomplete inputs rather than emit numbers).",
+ "reading": "Only the two smallest, worst-baseline languages improved (ewe 96.3->92.9, yemba 102.6->94.9); every well-performing language degraded (french 14.3->27.4, lingala 17.4->31.8, swahili 13.7->18.9, wolof 40.0->53.0). That pattern is diagnostic of the training recipe (temperature sampling over-weighting small languages + interference), not measurement noise.",
+ "record": "B5-T6-GATE-REPORT",
+ "recorded_utc": "2026-08-18T22:08:36Z",
+ "table": [
+  {
+   "bar_cer": 0.1,
+   "bar_wer": 0.3,
+   "baseline_cer": 0.297887,
+   "baseline_wer": 0.963068,
+   "improved": true,
+   "language": "ewe",
+   "new_cer": 0.276761,
+   "new_wer": 0.928977,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.15,
+   "baseline_cer": 0.042427,
+   "baseline_wer": 0.143474,
+   "improved": false,
+   "language": "french",
+   "new_cer": 0.074548,
+   "new_wer": 0.273847,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.4,
+   "baseline_cer": 0.14715,
+   "baseline_wer": 0.532289,
+   "improved": false,
+   "language": "fula",
+   "new_cer": 0.179558,
+   "new_wer": 0.580046,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.3,
+   "baseline_cer": 0.096688,
+   "baseline_wer": 0.409818,
+   "improved": false,
+   "language": "kinyarwanda",
+   "new_cer": 0.107306,
+   "new_wer": 0.423269,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.2,
+   "baseline_cer": 0.051037,
+   "baseline_wer": 0.173894,
+   "improved": false,
+   "language": "lingala",
+   "new_cer": 0.104117,
+   "new_wer": 0.318225,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.2,
+   "baseline_cer": 1.122908,
+   "baseline_wer": 1.317935,
+   "improved": false,
+   "language": "pulaar",
+   "new_cer": 1.122908,
+   "new_wer": 1.366848,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.2,
+   "baseline_cer": 0.035321,
+   "baseline_wer": 0.137355,
+   "improved": false,
+   "language": "swahili",
+   "new_cer": 0.064515,
+   "new_wer": 0.18889,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": null,
+   "bar_wer": 0.2,
+   "baseline_cer": 0.126568,
+   "baseline_wer": 0.399984,
+   "improved": false,
+   "language": "wolof",
+   "new_cer": 0.172407,
+   "new_wer": 0.529935,
+   "verdict": "FAIL"
+  },
+  {
+   "bar_cer": 0.1,
+   "bar_wer": 0.3,
+   "baseline_cer": 0.496063,
+   "baseline_wer": 1.025641,
+   "improved": true,
+   "language": "yemba",
+   "new_cer": 0.426509,
+   "new_wer": 0.948718,
+   "verdict": "FAIL"
+  }
+ ],
+ "verdict": "NO_PROMOTION \u2014 0 of 9 languages pass; 7 of 9 REGRESSED vs the untrained baseline"
+}
