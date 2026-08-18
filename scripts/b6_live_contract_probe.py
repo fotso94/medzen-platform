@@ -34,7 +34,11 @@ class ProbeFailure(RuntimeError):
 
 
 def synthetic_wav(seconds: float = 1.0, rate: int = 16000) -> bytes:
-    """Non-speech PCM fixture: a quiet 440 Hz tone, WAV-wrapped."""
+    """The committed synthetic fixture when present (the local pipeline
+    is fixture-keyed); otherwise a generated non-speech tone."""
+    fixture = ROOT / "platform/testdata/orchestrator/synthetic-file-request.wav"
+    if fixture.is_file():
+        return fixture.read_bytes()
     import math
     frames = int(seconds * rate)
     samples = b"".join(
@@ -75,15 +79,23 @@ def probe_streaming(base_url: str) -> dict:
     from websockets.sync.client import connect
     ws_url = base_url.replace("https://", "wss://").replace("http://", "ws://")
     request_id = str(uuid.uuid4())
+    token = os.environ.get("MEDZEN_ORCHESTRATOR_TOKEN", "")
     with connect(f"{ws_url}/v1/conversations/stream",
-                 additional_headers={"x-request-id": request_id},
+                 additional_headers={
+                     "x-request-id": request_id,
+                     "Authorization": f"Bearer {token}",
+                     "X-MedZen-Contract-Version": "medzen.speech.v1"},
                  open_timeout=30, close_timeout=30) as ws:
         ws.send(json.dumps({"type": "start", "request_id": request_id,
                             "language_hint": "en", "response_audio": False}))
         ready = json.loads(ws.recv(timeout=30))
         if ready.get("type") != "ready":
             raise ProbeFailure(f"streaming did not open with ready: {ready}")
-        ws.send(synthetic_wav())
+        # stream contract: RAW pcm_s16le/16000/mono frames <=64KiB each —
+        # never a WAV container (the header poisons the pipeline; r-f review)
+        pcm = synthetic_wav()[44:]
+        for offset in range(0, len(pcm), 32000):
+            ws.send(pcm[offset:offset + 32000])
         first = json.loads(ws.recv(timeout=30))
         if first.get("type") not in {"partial_transcript", "final_transcript"}:
             raise ProbeFailure(f"unexpected first stream event: {first}")
@@ -115,13 +127,20 @@ def main() -> int:
     parser.add_argument("--full", action="store_true")
     args = parser.parse_args()
     base_url = os.environ.get("MEDZEN_ORCHESTRATOR_URL", "").rstrip("/")
-    if not base_url:
+    token = os.environ.get("MEDZEN_ORCHESTRATOR_TOKEN", "")
+    if not base_url or not token:
         print(json.dumps({"status": "REFUSED",
-                          "detail": "MEDZEN_ORCHESTRATOR_URL is required — "
-                                    "this probe never invents endpoints"}))
+                          "detail": "MEDZEN_ORCHESTRATOR_URL and "
+                                    "MEDZEN_ORCHESTRATOR_TOKEN are required — "
+                                    "this probe never invents endpoints or "
+                                    "credentials"}))
         return 2
     import requests
     session = requests.Session()
+    session.headers.update({
+        "Authorization": f"Bearer {token}",
+        "X-MedZen-Contract-Version": "medzen.speech.v1",
+    })
     results = {"target": base_url}
     try:
         results.update(probe_file_mode(base_url, session))
