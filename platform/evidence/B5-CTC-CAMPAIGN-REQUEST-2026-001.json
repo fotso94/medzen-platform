@@ -39,7 +39,7 @@
  },
  "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
  "StoppingCondition": {
-  "MaxRuntimeInSeconds": 450000
+  "MaxRuntimeInSeconds": 432000
  },
  "Tags": [
   {

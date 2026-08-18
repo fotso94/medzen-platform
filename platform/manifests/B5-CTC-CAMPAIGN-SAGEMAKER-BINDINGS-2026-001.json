@@ -22,7 +22,7 @@
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always; spot quota also still 0/PENDING; a ~4-day run must not carry interruption risk in its first pass",
- "max_runtime_seconds": 450000,
+ "max_runtime_seconds": 432000,
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
  ],
