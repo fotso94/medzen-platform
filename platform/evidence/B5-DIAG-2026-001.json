@@ -1,0 +1,30 @@
+{
+ "evidence": {
+  "mix_shares_T0.5": "mild: kinyarwanda 19.6%, swahili 18.5%, ewe 17.4%, fula 13.7%, pulaar 9.7%, french 7.6%, wolof 6.2%, lingala 4.4%, yemba 2.9% \u2014 temperature sampling is NOT the primary cause.",
+  "observability_gaps": [
+   "trainer logs no loss (3 CloudWatch events in 15.6h)",
+   "provenance lacks sampled per-language shares"
+  ],
+  "receipts_distribution": "uniform shift of the whole per-row WER distribution (french median row-WER 0.24); no outlier concentration -> not a decode/truncation pathology.",
+  "result_pattern": "improvement ONLY where base was hopeless (ewe 96.3->92.9, yemba 102.6->94.9); degradation everywhere base was strong (french 14.3->27.4, lingala 17.4->31.8, swahili 13.7->18.9) \u2014 consistent with global rewrite, not per-language imbalance.",
+  "weight_deltas": "base (fp32 bundle part, sha-verified prefix) vs merged r2 export, all 807 tensors compared: non-target modules median rel-delta 0.0017 (bf16 rounding only -> export/merge STRUCTURALLY CORRECT); q/v_proj (192 tensors) median 0.2155, max 1.2092 (encoder layers 39-47 highest)."
+ },
+ "id": "B5-DIAG-2026-001",
+ "recipe_fix_if_retrain": [
+  "lr 1e-4",
+  "alpha=rank (scale 1.0)",
+  "dev-set WER every 500 steps with early stop + best-checkpoint selection",
+  "loss + sampled-share logging",
+  "prove on a T5-style single-language probe before any wave-2 spend"
+ ],
+ "record": "B5-WAVE1-REGRESSION-DIAGNOSIS",
+ "recorded_utc": "2026-08-18T22:38:16Z",
+ "ruled_out": [
+  "merge/export arithmetic (non-target deltas at rounding level)",
+  "eval-side error (identical pinned image+scorer, complete pool, checksum-verified)",
+  "target-text mismatch (trainer encodes text_normalized)",
+  "temperature-sampling imbalance as primary cause"
+ ],
+ "salvage_path": "124 adapter checkpoints exist (every 200 steps). Sweep early checkpoints (e.g. 600/1200/2400/4800/9600) on a ~900-row dev slice; if the sweet spot predates the runaway, merge the best and re-run the full T6 \u2014 potentially a promotable model from compute already paid for (~$2 sweep).",
+ "verdict": "ROOT CAUSE: adapter magnitude runaway \u2014 lr 1e-3 with alpha/rank=2 for 24,868 steps, no loss logging, no dev-set early stopping. The merged q/v attention weights moved a MEDIAN 21.6% of their norm (max 121%, late layers worst); healthy LoRA adaptation moves ~0.1-5%. The base model's attention was effectively rewritten."
+}
