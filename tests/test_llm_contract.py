@@ -67,7 +67,9 @@ def test_every_generated_language_resolves_exactly_one_policy():
         ROOT / "registry/languages", ROOT / "registry/llm-policies/v1.yaml"
     )
     loaded = store.validate_all()
-    assert len(loaded) == 17
+    # 17 original scope languages + kinyarwanda/pulaar/yemba, declared by
+    # the B4-B5-SCOPE-2026-004 campaign activation
+    assert len(loaded) == 20
     assert set(loaded) == set(store.aliases())
     for alias, policy in loaded.items():
         assert policy.language == alias

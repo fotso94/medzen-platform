@@ -51,7 +51,10 @@
       "properties": {
         "decision_ref": {
           "type": "string",
-          "const": "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json"
+          "enum": [
+            "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json",
+            "platform/decisions/B4-B5-SCOPE-2026-004-campaign-activation.json"
+          ]
         },
         "decision_sha256": {
           "type": "string",

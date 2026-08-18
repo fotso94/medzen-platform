@@ -50,7 +50,13 @@ def test_readiness_record_matches_repository_and_live_empty_repositories():
 
 
 def test_current_generated_manifests_are_not_misrepresented_as_deployable():
+    # The invariant: no manifest may pin a deployable image tag. Files that
+    # reference a container image must carry PLACEHOLDER_TAG; pure-topology
+    # manifests (e.g. the task-F internal ingress) have no image to pin and
+    # satisfy the invariant vacuously.
     for path in (ROOT / "platform/k8s/base").glob("*.yaml"):
         if path.name == "asr-runtime.yaml":
             continue
-        assert "PLACEHOLDER_TAG" in path.read_text()
+        text = path.read_text()
+        if "image:" in text:
+            assert "PLACEHOLDER_TAG" in text, path.name

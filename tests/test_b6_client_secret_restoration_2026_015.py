@@ -359,6 +359,9 @@ def test_preflight_restore_rotate_verify_receipts_are_ordered_and_plaintext_free
     runner.TOKEN_PATH = tmp_path / "token"
     receipts = tmp_path / "receipts"
 
+    # Pin time inside the packet's recovery window: the 2026-015 packet
+    # expired 2026-08-17T04:00Z by design, and this test proves the runner's
+    # in-window behaviour, which must not decay with the wall clock.
     runner.preflight(
         secret,
         iam,
@@ -367,6 +370,7 @@ def test_preflight_restore_rotate_verify_receipts_are_ordered_and_plaintext_free
         dict(runner.ZERO_BOUNDARY),
         receipts / "preflight.json",
         authorization,
+        current_time=datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc),
     )
     with pytest.raises(runner.RestorationRefusal, match="expired"):
         runner.preflight(

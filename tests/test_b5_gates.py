@@ -117,6 +117,15 @@ def promotion_root(tmp_path_factory) -> Path:
     for path in (root / "registry/languages").glob("*.yaml"):
         if path.stem not in PROMOTION_WORLD_LANGUAGES:
             path.unlink()
+    # The 17 language documents are BYTE-PINNED from the committed snapshot:
+    # the live registry legitimately evolved past the frozen scope decision
+    # (B4-B5-SCOPE-2026-004 activated the owner-approved B5 campaign), and
+    # this proof is about the world the frozen controls describe, not the
+    # moving tree. Before 2026-08-17 this fixture copied the live documents,
+    # which silently coupled the negative proof to registry evolution.
+    snapshot = ROOT / "platform/evidence/B5-REFUSAL-WORLD-REGISTRY-2026-001/languages"
+    for path in sorted(snapshot.glob("*.yaml")):
+        shutil.copy2(path, root / "registry/languages" / path.name)
     for rel in ("pipeline/b5_gates.py", "scripts/evaluate_gates.py"):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / rel, root / rel)
@@ -449,23 +458,34 @@ def test_generated_language_yaml_is_regenerated_from_sources():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def test_generated_scope_keeps_nine_deferred_and_five_not_evaluated():
-    deferred = {
-        "acholi", "akan", "amharic", "ewe", "fula", "shona",
-        "lingala", "luganda", "oromo",
-    }
-    not_evaluated = {"hausa", "igbo", "pidgin", "swahili", "yoruba"}
-    for language in deferred | not_evaluated:
+def test_generated_scope_mirrors_the_campaign_activation_decision():
+    """B4-B5-SCOPE-2026-004 activated the nine owner-approved TRAIN
+    languages; everything else keeps an explicit non-active disposition.
+    (The frozen 2026-003 grouping lives on, byte-pinned, in the promotion
+    world snapshot — see promotion_root.)"""
+    active = {"kinyarwanda", "swahili", "ewe", "fula", "pulaar",
+              "french", "wolof", "lingala", "yemba"}
+    deferred = {"acholi", "akan", "amharic", "luganda", "oromo", "shona"}
+    not_evaluated = {"hausa", "igbo", "pidgin", "yoruba"}
+    for language in active | deferred | not_evaluated:
         doc = yaml.safe_load(
             (ROOT / f"registry/languages/{language}.yaml").read_text())
-        want = "DEFERRED" if language in deferred else "NOT_EVALUATED"
-        assert doc["b4_b5_scope"]["promotion_state"] == want
+        scope = doc["b4_b5_scope"]
+        assert scope["decision_ref"] == (
+            "platform/decisions/B4-B5-SCOPE-2026-004-campaign-activation.json")
+        if language in deferred:
+            assert scope["promotion_state"] == "DEFERRED"
+            assert scope["training_state"] == "DEFERRED"
+        elif language in not_evaluated:
+            assert scope["promotion_state"] == "NOT_EVALUATED"
+            assert scope["training_state"] == "INACTIVE"
+        else:
+            assert scope["promotion_state"] == "NOT_EVALUATED"
+            assert scope["training_state"] == "ACTIVE"
+            assert scope["validation_state"] == "ACTIVE"
     sources = yaml.safe_load((ROOT / "registry/sources.yaml").read_text())
-    assert set(sources["scope"]) == {
-        "swahili", "hausa", "yoruba", "amharic", "oromo", "igbo",
-        "lingala", "shona", "wolof", "fula", "pidgin", "akan", "ewe",
-        "luganda", "acholi", "english", "french",
-    }
+    assert set(sources["scope"]) == (
+        active | deferred | not_evaluated | {"english"})
     assert set(sources["scope"]) <= set(sources["languages"])
 
 

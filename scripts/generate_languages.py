@@ -200,14 +200,44 @@ def main() -> int:
             raise SystemExit(f"REFUSING: b4_b5_scope {field} is malformed")
         if field not in {"active_training", "active_validation"}:
             scope_groups.append(set(value))
-    if current_scope["active_training"] or current_scope["active_validation"]:
-        raise SystemExit("REFUSING: current active training/validation is not empty")
+    active = (set(current_scope["active_training"])
+              | set(current_scope["active_validation"]))
+    if active:
+        # Activation is authorized by the PINNED decision, never by a yaml
+        # edit alone: every active language must carry recommendation TRAIN
+        # in the hash-verified scope decision. (Until 2026-08-17 this was a
+        # blanket refusal — correct while no training was approved; the
+        # owner-approved B5 recommendation ended that era.)
+        import json as _json
+        try:
+            decision = _json.loads(decision_path.read_text())
+        except (OSError, ValueError) as exc:
+            raise SystemExit(f"REFUSING: scope decision is unreadable: {exc}")
+        if "language_scope" in decision:
+            # scope-decision shape: the document itself lists the actives
+            approved = set(
+                decision["language_scope"].get("active_training") or [])
+            approved |= set(
+                decision["language_scope"].get("active_validation") or [])
+        else:
+            # recommendation-table shape
+            approved = {entry.get("language")
+                        for entry in decision.get("languages", [])
+                        if entry.get("recommendation") == "TRAIN"}
+        unapproved = sorted(active - approved)
+        if unapproved:
+            raise SystemExit(
+                "REFUSING: active languages lack TRAIN approval in the "
+                f"pinned scope decision: {unapproved}")
     flattened: set[str] = set()
     for group in scope_groups:
         if flattened & group:
             raise SystemExit("REFUSING: b4_b5_scope disposition groups overlap")
         flattened |= group
-    if flattened != set(scope):
+    if flattened & active:
+        raise SystemExit(
+            "REFUSING: active languages cannot also carry a disposition")
+    if flattened | active != set(scope):
         raise SystemExit("REFUSING: b4_b5_scope does not cover registry scope")
     approvals = yaml.safe_load(DECODE_APPROVALS.read_text()) or {}
     if approvals.get("version") != "decode-approval-v1":

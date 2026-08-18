@@ -5,8 +5,8 @@ iso_code: pcm
 display_name: Pidgin
 status: declared
 b4_b5_scope:
-  decision_ref: platform/decisions/B4-B5-SCOPE-2026-004-campaign-activation.json
-  decision_sha256: 2280b361700c3aae14432ecc6c43235c81945a6c5e52e09eecde663f12274452
+  decision_ref: platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
+  decision_sha256: 31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc
   training_state: INACTIVE
   validation_state: INACTIVE
   promotion_state: NOT_EVALUATED

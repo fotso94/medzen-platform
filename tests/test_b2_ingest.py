@@ -349,10 +349,15 @@ def test_language_generation_is_idempotent_and_preserves_earned_state(tmp_path):
         shutil.copytree(ROOT / sub, work / sub)
     decision_dir = work / "platform" / "decisions"
     decision_dir.mkdir(parents=True)
-    shutil.copy2(
-        ROOT / "platform/decisions/"
+    # the generator pins whichever scope decision sources.yaml references;
+    # both the historical B4 deferral and its B5 successor must exist in the
+    # repo copy or generation refuses for the wrong reason
+    for decision in (
         "B4-B5-SCOPE-2026-003-language-deferral.json",
-        decision_dir / "B4-B5-SCOPE-2026-003-language-deferral.json")
+        "B4-B5-SCOPE-2026-004-campaign-activation.json",
+    ):
+        shutil.copy2(ROOT / "platform/decisions" / decision,
+                     decision_dir / decision)
     gen = work / "scripts" / "generate_languages.py"
     reg = work / "registry" / "languages"
 

@@ -1,0 +1,68 @@
+{
+  "record": "B4-B5-LANGUAGE-SCOPE-DEFERRAL",
+  "id": "B4-B5-SCOPE-2026-004",
+  "revision": 1,
+  "status": "owner_approved",
+  "authorized_by_role": "platform-owner",
+  "authorized_utc": "2026-08-17T23:32:47Z",
+  "decision": "Activate training and validation for the nine languages the owner approved verbatim from the B5 training recommendation (owner: 'approve the 9 and we'll fix akan/serer later', 'approve the thresholds', 'Launch the campaign'). Every other scoped language keeps an explicit non-active disposition. This is the first scope decision since B4-SCOPE-2026-001 under which any language is training-active.",
+  "basis": {
+    "recommendation_ref": "platform/decisions/B5-TRAINING-RECOMMENDATION-2026-001.json",
+    "recommendation_sha256": "ea2b61a82b00da8ec324708c1f46ecb4a633a361086b446459b9c5b251ef6970",
+    "campaign_packet": "platform/decisions/B5-CTC-CAMPAIGN-PACKET-2026-001.md",
+    "running_campaign_job": "medzen-b5-b5-ctc-campaign-2026-001-r2",
+    "sharealike_clearance": "platform/decisions/LIC-2026-002-sharealike-on-weights-cleared.md"
+  },
+  "precedence": {
+    "mode": "supersede_by_reference_for_future_scope_only",
+    "historical_records_remain_immutable": true,
+    "superseded_future_scope_sources": [
+      {
+        "path": "platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json",
+        "sha256": "31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc"
+      }
+    ],
+    "not_amended_or_reinterpreted": [
+      "platform/decisions/B5-AUTH-2026-001-refusal-engineering.json remains a frozen negative proof of the B4-B5-SCOPE-2026-003 world; its registry snapshot is byte-pinned at platform/evidence/B5-REFUSAL-WORLD-REGISTRY-2026-001/ and this activation does not reopen the historical whisper candidate.",
+      "Historical campaign, validation and termination evidence keeps its original meaning."
+    ]
+  },
+  "language_scope": {
+    "original_training": ["acholi", "akan", "amharic", "ewe", "fula", "hausa", "igbo", "lingala", "luganda", "oromo", "pidgin", "shona", "swahili", "yoruba"],
+    "active_training": ["ewe", "french", "fula", "kinyarwanda", "lingala", "pulaar", "swahili", "wolof", "yemba"],
+    "original_validation": ["lingala", "luganda", "oromo"],
+    "active_validation": ["ewe", "french", "fula", "kinyarwanda", "lingala", "pulaar", "swahili", "wolof", "yemba"],
+    "deferred": ["acholi", "akan", "amharic", "luganda", "oromo", "shona"],
+    "inactive_not_evaluated": ["hausa", "igbo", "pidgin", "yoruba"],
+    "promotion_not_applicable": ["english"],
+    "partition_rule": "active_training equals active_validation (the T6 gate validates exactly the trained set). Active, deferred, inactive_not_evaluated and promotion_not_applicable are pairwise disjoint and together exactly cover the generated registry scope. Every active language carries recommendation TRAIN in the referenced owner-approved recommendation; activation by yaml edit without that backing is refused by scripts/generate_languages.py.",
+    "registry_entries_must_remain_discoverable": true,
+    "registry_source_deletion_permitted": false
+  },
+  "per_language_deferral": {
+    "acholi": {
+      "reason": "ShareAlike licence review cleared (LIC-2026-002) but acholi has no clean frozen evaluation set, so no gate is reachable.",
+      "reactivation_condition": "Adopt a clean frozen evaluation set, then enter a future owner-approved wave with approved numbers."
+    },
+    "akan": {
+      "reason": "NO_EVAL_BASELINE in the B5 recommendation: gb-zone/eval-pool label mapping mismatch left akan without a usable baseline. Owner deferred the fix ('we'll fix akan/serer later').",
+      "reactivation_condition": "Fix the label mapping, re-derive the baseline from the frozen suite, then enter a future owner-approved wave."
+    },
+    "amharic": {
+      "reason": "BLOCKED_PENDING_LEGAL at recommendation time. LIC-2026-002 has since cleared sharealike_review; amharic moves to a wave-2 decision, not silently to active.",
+      "reactivation_condition": "Owner approves the wave-2 language list and numbers."
+    },
+    "luganda": {
+      "reason": "BLOCKED_PENDING_LEGAL at recommendation time. LIC-2026-002 has since cleared sharealike_review; luganda moves to a wave-2 decision, not silently to active.",
+      "reactivation_condition": "Owner approves the wave-2 language list and numbers."
+    },
+    "oromo": {
+      "reason": "BLOCKED_PENDING_LEGAL at recommendation time. LIC-2026-002 has since cleared sharealike_review; oromo moves to a wave-2 decision, not silently to active.",
+      "reactivation_condition": "Owner approves the wave-2 language list and numbers."
+    },
+    "shona": {
+      "reason": "BLOCKED_PENDING_LEGAL at recommendation time. LIC-2026-002 has since cleared sharealike_review; shona moves to a wave-2 decision, not silently to active.",
+      "reactivation_condition": "Owner approves the wave-2 language list and numbers."
+    }
+  }
+}

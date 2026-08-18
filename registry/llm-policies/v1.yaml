@@ -23,11 +23,14 @@ policies:
   fula-medzen-v1: {language: fula, response_language: Fula}
   hausa-medzen-v1: {language: hausa, response_language: Hausa}
   igbo-medzen-v1: {language: igbo, response_language: Igbo}
+  kinyarwanda-medzen-v1: {language: kinyarwanda, response_language: Ikinyarwanda}
   lingala-medzen-v1: {language: lingala, response_language: Lingala}
   luganda-medzen-v1: {language: luganda, response_language: Luganda}
   oromo-medzen-v1: {language: oromo, response_language: Oromo}
   pidgin-medzen-v1: {language: pidgin, response_language: Pidgin}
+  pulaar-medzen-v1: {language: pulaar, response_language: Pulaar}
   shona-medzen-v1: {language: shona, response_language: Shona}
   swahili-medzen-v1: {language: swahili, response_language: Swahili}
   wolof-medzen-v1: {language: wolof, response_language: Wolof}
+  yemba-medzen-v1: {language: yemba, response_language: Yemba}
   yoruba-medzen-v1: {language: yoruba, response_language: Yoruba}

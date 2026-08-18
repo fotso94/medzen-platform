@@ -53,6 +53,24 @@ datasets:
     commercial: commercial_ok
     access: open
 
+  kallaama:
+    url: https://github.com/gauthelo/kallaama-speech-dataset
+    licence: cc_by_4_0
+    commercial: commercial_ok
+    access: open
+    note: "Zenodo archive of spontaneous Senegalese radio speech (Wolof, Pulaar)
+           with timestamped transcriptions; segmented at extract
+           (pipeline/adapters/kallaama.py)."
+
+  yemba_egra:
+    url: owner-supplied
+    licence: owner_supplied
+    commercial: commercial_ok
+    access: private
+    note: "Owner-supplied Cameroonian EGRA word-level recordings (2026-08-11);
+           licence/consent documentation rests with the owner — recorded as
+           commercial_ok on owner authority (pipeline/adapters/yemba_egra.py)."
+
 # ---------------------------------------------------------------------------
 # One entry per language. asr/tts list the datasets that actually provide that
 # capability. An empty list means the capability CANNOT be built today.
@@ -113,6 +131,17 @@ languages:
   french:    {iso: fr, name: French,  asr: [common_voice], tts: [],
               note: "Cameroon French is the target; character must come from own collection."}
 
+  # --- B5 campaign additions (owner-approved TRAIN set, 2026-08-16) --------
+  kinyarwanda: {iso: kin, name: Ikinyarwanda, asr: [common_voice], tts: [],
+                note: "Capped Common Voice rw ingest (~300 h train); owner-approved
+                       0.30 WER gate override."}
+  pulaar:      {iso: fuc, name: Pulaar, asr: [kallaama], tts: [],
+                note: "Kallaama fuc; DQ-2026-006 defers 1,579 '?'-substitution rows.
+                       Distinct from pular (fuf, TTS-only)."}
+  yemba:       {iso: ybb, name: Yemba, asr: [yemba_egra], tts: [],
+                note: "T5 calibration language — proven trainable end to end on
+                       SageMaker. SOREVA soreva-v1 is the frozen eval."}
+
 # ---------------------------------------------------------------------------
 # ACTIVE SCOPE — the languages that get a registry entry generated.
 # Everything above is verified reference; adding a language to production is a
@@ -149,32 +178,55 @@ scope:
   # the general-speech replay languages that keep the multilingual mix honest.
   - english
   - french
+  # B5 campaign additions (B5-TRAINING-RECOMMENDATION-2026-001): training-
+  # active languages must be declared so thresholds_ref resolves for T6.
+  - kinyarwanda
+  - pulaar
+  - yemba
 
 # CURRENT B4/B5 SCHEDULING AND PROMOTION DISPOSITION. No entry above is
 # removed when a language is deferred. Generated registry files surface this
 # state, while the owner decision remains the executable authority.
 b4_b5_scope:
-  decision_ref: platform/decisions/B4-B5-SCOPE-2026-003-language-deferral.json
-  decision_sha256: 31a2b87141b58744f25c65a6af39ac90bf920a568374425049b5fdeb082c45cc
-  active_training: []
-  active_validation: []
-  deferred:
-    - acholi
-    - akan
-    - amharic
+  # SUPERSEDED 2026-08-17: the owner-approved B5 training recommendation
+  # (9 TRAIN approved verbatim, thresholds approved) replaces the B4-era
+  # blanket deferral as the executable scope authority.
+  decision_ref: platform/decisions/B4-B5-SCOPE-2026-004-campaign-activation.json
+  decision_sha256: 2280b361700c3aae14432ecc6c43235c81945a6c5e52e09eecde663f12274452
+  active_training:      # the owner-approved TRAIN set (campaign r2 running)
+    - kinyarwanda
+    - swahili
     - ewe
     - fula
-    - shona
+    - pulaar
+    - french
+    - wolof
     - lingala
+    - yemba
+  active_validation:    # T6 gate validates exactly the trained set
+    - kinyarwanda
+    - swahili
+    - ewe
+    - fula
+    - pulaar
+    - french
+    - wolof
+    - lingala
+    - yemba
+  deferred:
+    # BLOCKED_PENDING_LEGAL at decision time (LIC-2026-002 has since cleared
+    # sharealike — these move to a wave-2 decision, not silently to active):
+    - acholi
+    - amharic
     - luganda
     - oromo
-  inactive_not_evaluated:
+    - shona
+    # NO_EVAL_BASELINE (owner: fix akan/serer later):
+    - akan
+  inactive_not_evaluated:   # INSUFFICIENT_DATA in the B5 table
     - hausa
     - igbo
     - pidgin
-    - swahili
     - yoruba
   promotion_not_applicable:
-    - wolof
-    - english
-    - french
+    - english             # structural fallback target, never a promotion candidate
