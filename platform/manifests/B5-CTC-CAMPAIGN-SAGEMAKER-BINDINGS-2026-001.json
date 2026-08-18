@@ -18,11 +18,12 @@
  "image_tag": "t5-cal-2026-08-17f",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:aea6efbec91bc759c9b4ca1485417b48c92c4c7c1c8eb5a958114bd78160ef09",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-ctc-campaign-2026-001",
+ "job_id": "b5-ctc-campaign-2026-001-r2",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always; spot quota also still 0/PENDING; a ~4-day run must not carry interruption risk in its first pass",
  "max_runtime_seconds": 432000,
+ "network_note": "r1 failed on data download: the T5 endpoint set had been torn down per its packet lifecycle and the campaign launch skipped recreating it. Endpoints recreated 2026-08-18 (s3 gateway vpce-0ce13c7c, ecr.api/dkr, logs) and LIVE FOR THE CAMPAIGN DURATION (~$1/day), deleted at campaign close.",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
  ],

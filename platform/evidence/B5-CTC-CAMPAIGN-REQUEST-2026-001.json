@@ -12,7 +12,7 @@
  },
  "CheckpointConfig": {
   "LocalPath": "/opt/ml/checkpoints",
-  "S3Uri": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001/checkpoints"
+  "S3Uri": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001-r2/checkpoints"
  },
  "EnableManagedSpotTraining": false,
  "EnableNetworkIsolation": false,
@@ -30,7 +30,7 @@
  },
  "OutputDataConfig": {
   "KmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
-  "S3OutputPath": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001/output"
+  "S3OutputPath": "s3://medzen-speech/research/b5-training/b5-ctc-campaign-2026-001-r2/output"
  },
  "ResourceConfig": {
   "InstanceCount": 1,
@@ -48,14 +48,14 @@
   },
   {
    "Key": "medzen:job",
-   "Value": "b5-ctc-campaign-2026-001"
+   "Value": "b5-ctc-campaign-2026-001-r2"
   },
   {
    "Key": "medzen:classification",
    "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
   }
  ],
- "TrainingJobName": "medzen-b5-b5-ctc-campaign-2026-001",
+ "TrainingJobName": "medzen-b5-b5-ctc-campaign-2026-001-r2",
  "VpcConfig": {
   "SecurityGroupIds": [
    "sg-0fee72d218ac002a7"
