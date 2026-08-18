@@ -8,6 +8,14 @@
  },
  "id": "B5-TRAINING-RECOMMENDATION-2026-002",
  "owner_approval": {
+  "amendments": [
+   {
+    "effect": "oromo bar approved at 0.45; no open items remain. Launch hold reduces to: campaign r2 T6 table reviewed.",
+    "revision": 2,
+    "utc": "2026-08-18",
+    "verbatim": "approve oromo at 0.45 and proceed with driver v2"
+   }
+  ],
   "approved_thresholds": {
    "amharic": {
     "absolute_wer_max": 0.4
@@ -17,6 +25,9 @@
    },
    "luganda": {
     "absolute_wer_max": 0.35
+   },
+   "oromo": {
+    "absolute_wer_max": 0.45
    }
   },
   "composition": "OPTION_B_FULL_13_LANGUAGE_RETRAIN",
@@ -27,16 +38,14 @@
    "reported_max_usd": 508,
    "runtime_cap_usd": 408
   },
-  "open_items": {
-   "oromo": "Bar NOT approved (proposed 0.45). Registry default 0.20 is unreachable from the 68.9% baseline; owner must set a bar or drop oromo before the wave-2 launch packet binds."
-  },
+  "open_items": {},
   "verbatim": "Proceed with Option Band threshold approve for Amharic, luganda and fula"
  },
  "record": "B5-TRAINING-RECOMMENDATION",
- "revision": 1,
+ "revision": 2,
  "sequencing": "Wave-2 launch only after campaign r2 completes and its T6 gate table is reviewed.",
  "sharealike_obligation": "All six wave-2/top-up languages train on sharealike_review data; the resulting model manifest MUST carry sharealike_obligation: true (LIC-2026-002).",
- "status": "owner_approved_with_one_open_item",
+ "status": "owner_approved",
  "supersedes": {
   "mode": "extends_for_wave_2_only; wave-1 approvals and the running campaign are untouched",
   "path": "platform/decisions/B5-TRAINING-RECOMMENDATION-2026-001.json",
