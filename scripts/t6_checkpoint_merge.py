@@ -11,6 +11,7 @@ weight-delta analysis (non-target deltas at rounding level)."""
 from __future__ import annotations
 
 import glob
+import os
 import sys
 from pathlib import Path
 
@@ -39,7 +40,9 @@ def main() -> int:
             continue
         model = load_model("medzen_omniASR_CTC_1B_v2", device=device,
                            dtype=torch.bfloat16)
-        wrap_lora(model, rank=16, alpha=32.0, dropout=0.0,
+        rank = int(os.environ.get("MERGE_RANK", "16"))
+        alpha = float(os.environ.get("MERGE_ALPHA", "32"))
+        wrap_lora(model, rank=rank, alpha=alpha, dropout=0.0,
                   scope_prefix=CTC_SCOPE_PREFIX)
         missing, unexpected = model.load_state_dict(state["lora"], strict=False)
         if unexpected:
