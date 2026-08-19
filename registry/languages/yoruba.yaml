@@ -50,5 +50,5 @@ provenance:
   - waxalnlp/media_trust
   licence_status:
     common_voice: commercial_ok
-    naijavoices: research_only_nc
+    naijavoices: commercial_ok
     waxalnlp/media_trust: sharealike_review

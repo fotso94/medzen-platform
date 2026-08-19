@@ -1,0 +1,15 @@
+{
+ "authorized_by_role": "platform-owner",
+ "document_custody": "The signed agreement is retained PRIVATELY by the owner. It is deliberately not committed, copied, or uploaded anywhere. This record carries the attestation only (LIC-2026-002 precedent).",
+ "effect": [
+  "MedZen's rights derive from the private commercial agreement, not the public NC licence: ingested rows record license_policy=commercial_ok on owner authority with this record referenced.",
+  "The public-NC copies remain untouched; only data obtained under the agreement is ingested."
+ ],
+ "id": "LIC-2026-004-naijavoices-commercial-agreement",
+ "owner_attestation_verbatim": "i already have paperwork signed by me and the dataset owners and id like to keep private so do not worry about that and proceed by unlocking 1 and 2 as i order you.",
+ "prior_state": "research_only_nc \u2014 never enters a commercial mix under the public licence",
+ "record": "LICENCE-CLEARANCE",
+ "recorded_utc": "2026-08-19T16:33:50Z",
+ "source": "NaijaVoices (~1,800 h hausa/igbo/yoruba ASR; public licence CC-BY-NC-SA)",
+ "status": "owner_attested"
+}

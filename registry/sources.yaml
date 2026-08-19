@@ -35,17 +35,19 @@ datasets:
 
   naijavoices:
     url: https://huggingface.co/datasets/naijavoices/naijavoices-dataset
-    licence: cc_by_nc_sa_4_0
-    commercial: research_only_nc
+    licence: cc_by_nc_sa_4_0_public__private_commercial_agreement
+    commercial: commercial_ok      # LIC-2026-004: owner-attested signed agreement
     access: gated
     note: Igbo/Hausa/Yoruba ASR. No Pidgin despite widespread claims.
+          Commercial rights via the owner's PRIVATE agreement (LIC-2026-004).
 
   africanvoices_io:
     url: https://africanvoices.io
-    licence: unpublished
-    commercial: pending_written_terms
+    licence: private_written_terms
+    commercial: commercial_ok      # LIC-2026-003: owner-attested signed terms
     access: registration
-    note: 1900h incl. Nigerian Pidgin ASR. BLOCKED until terms are in writing.
+    note: 1900h incl. Nigerian Pidgin ASR. Unblocked by the owner's PRIVATE
+          signed terms (LIC-2026-003).
 
   common_voice:
     url: https://commonvoice.mozilla.org

@@ -47,5 +47,5 @@ provenance:
   - naijavoices
   - waxalnlp/media_trust
   licence_status:
-    naijavoices: research_only_nc
+    naijavoices: commercial_ok
     waxalnlp/media_trust: sharealike_review

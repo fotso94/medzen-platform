@@ -1,0 +1,16 @@
+{
+ "authorized_by_role": "platform-owner",
+ "document_custody": "The signed agreement is retained PRIVATELY by the owner. It is deliberately not committed, copied, or uploaded anywhere. This record carries the attestation only (LIC-2026-002 precedent).",
+ "effect": [
+  "africanvoices_io commercial state moves to commercial_ok on owner authority (private signed terms).",
+  "Ingested rows record license_policy=commercial_ok with this record referenced in the adapter header (yemba_egra precedent).",
+  "Any attribution/usage conditions in the private agreement are the owner's to flag; none were communicated."
+ ],
+ "id": "LIC-2026-003-africanvoices-written-terms",
+ "owner_attestation_verbatim": "i already have paperwork signed by me and the dataset owners and id like to keep private so do not worry about that and proceed by unlocking 1 and 2 as i order you.",
+ "prior_state": "pending_written_terms \u2014 no published licence; BLOCKED by the source matrix",
+ "record": "LICENCE-CLEARANCE",
+ "recorded_utc": "2026-08-19T16:33:50Z",
+ "source": "africanvoices.io (~1,900 h incl. Nigerian Pidgin ASR)",
+ "status": "owner_attested"
+}

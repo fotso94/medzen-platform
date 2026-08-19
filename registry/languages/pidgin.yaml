@@ -68,7 +68,7 @@ provenance:
   - africanvoices_io
   - waxalnlp/media_trust
   licence_status:
-    africanvoices_io: pending_written_terms
+    africanvoices_io: commercial_ok
     waxalnlp/media_trust: sharealike_review
   notes: Nigerian Pidgin. Cameroon Pidgin (Kamtok) is the real target and is NOT in any public
     source — own collection required. Models drift toward the better-resourced Nigerian variety;
