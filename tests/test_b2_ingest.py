@@ -380,3 +380,20 @@ def test_language_generation_is_idempotent_and_preserves_earned_state(tmp_path):
 
     chk = subprocess.run([sys.executable, str(gen), "--check"], capture_output=True, text=True)
     assert chk.returncode == 0, chk.stdout + chk.stderr
+
+
+def test_byte_conflict_drop_both_policy(monkeypatch):
+    """Opt-in ONLY: identical bytes with different transcripts drop BOTH
+    sides (full-CV-rw lesson 2026-08-20); the default remains the refusal."""
+    from pipeline.adapters.base import (ConflictingDuplicateAudioError,
+                                         dedupe_byte_duplicates)
+    def item(sha, text):
+        return {"record": {"audio_checksum_sha256": sha,
+                            "text_normalized": text, "text_verbatim": text,
+                            "audio_filepath": f"s3://x/{sha}.wav"}}
+    items = [item("aa", "one"), item("aa", "two"), item("bb", "clean")]
+    with pytest.raises(ConflictingDuplicateAudioError):
+        dedupe_byte_duplicates(items)
+    monkeypatch.setenv("MEDZEN_BYTE_CONFLICT_POLICY", "drop_both")
+    kept = dedupe_byte_duplicates(items)
+    assert [i["record"]["audio_checksum_sha256"] for i in kept] == ["bb"]

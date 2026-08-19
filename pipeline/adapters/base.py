@@ -79,6 +79,19 @@ def dedupe_byte_duplicates(items: list[dict]) -> list[dict]:
                               prev["audio_filepath"], prev["text_verbatim"],
                               rec["audio_filepath"], rec["text_verbatim"]))
     if conflicts:
+        import os
+        if os.environ.get("MEDZEN_BYTE_CONFLICT_POLICY") == "drop_both":
+            # Explicit opt-in for corpora where identical bytes carry
+            # different transcripts at scale (the full CV rw pull, 2026-08-20:
+            # broken/silent recordings hash identically). At least one label
+            # per pair is wrong, so BOTH sides go — the gb3 curation rule
+            # applied at ingest. Never a silent default: the refusal stays.
+            bad = {sha for sha, *_ in conflicts}
+            kept = [it for it in kept
+                    if it["record"]["audio_checksum_sha256"] not in bad]
+            print(f"  byte-conflict policy drop_both: {len(conflicts)} "
+                  f"conflicting pair(s) -> {len(bad)} sha(s) dropped entirely")
+            return kept
         raise ConflictingDuplicateAudioError(conflicts)
     return kept
 
