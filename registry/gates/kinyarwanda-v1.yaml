@@ -18,7 +18,14 @@ rationale: |
   with matched-domain data. 0.38 covers dev-slice noise; the strict
   beat-the-baseline gate still applies. The full fine-tune experiment
   (owner option B) may later tighten this back down.
+  OWNER-DECIDED 2026-08-19 (v1 ship): relative gain override to 0.09 —
+  verbatim "yes ship v1 at a 9.3% gain and let the full fine-tune (already
+  in motion) try to earn a bigger gain on the full 2,000 hours..if at then
+  end we get more gain than 9.3% well ship the trained model as v2".
+  Full-pool gate: 0.372 WER / 0.089 CER on 6,657 frozen rows vs 0.410 /
+  0.097 baseline (B5-KW-V1-GATE-2026-001).
 overrides:
   asr:
     absolute_wer_max: 0.38
+    relative_wer_gain_min: 0.09
 

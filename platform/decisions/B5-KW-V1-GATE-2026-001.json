@@ -1,0 +1,26 @@
+{
+ "artifact": "s3://medzen-speech/approved/kinyarwanda/asr/v1/model.pt",
+ "artifact_source": "b5-kinyarwanda-full-2026-001 checkpoint step-0006000, rank-32 LoRA merged (trainer's own machinery, MERGE_RANK=32)",
+ "decode": "ctc_greedy, unconditioned (matches gate measurement)",
+ "gate": {
+  "baseline_cer": 0.097,
+  "baseline_wer": 0.41,
+  "cer": 0.088924,
+  "dimensions": {
+   "absolute_wer_max_0.38": "PASS",
+   "relative_gain_min": "PASS under the owner's 0.09 override (default 0.15 consciously relaxed, this record)",
+   "strict_improvement": "PASS"
+  },
+  "pool": "6,657 frozen kinyarwanda suite rows, pinned eval image sha256:dafc4b14\u2026, identical scorer as baselines",
+  "relative_gain": 0.093,
+  "wer": 0.372046
+ },
+ "id": "B5-KW-V1-GATE-2026-001",
+ "licence": "training data 100% cv17 cc0 \u2014 NO sharealike obligation on this artifact",
+ "owner_decision_verbatim": "yes ship v1 at a 9.3% gain and let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2",
+ "record": "B5-KW-V1-PROMOTION",
+ "recorded_utc": "2026-08-19T21:25:21Z",
+ "serving_note": "approved/ artifact ready; serving activation follows the B6 deploy (owner-approved, pending). v2 path: full fine-tune on the ~2,000h v2 corpus; ships only if it beats 9.3% relative gain.",
+ "status": "owner_approved_shipped",
+ "v1_train_data_note": "trained on the 300h v1 corpus (gb3); the uncapped v2 corpus feeds the fine-tune only."
+}
