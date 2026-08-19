@@ -89,6 +89,9 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "nchlt":
         from .adapters.nchlt import NCHLTAdapter
         return NCHLTAdapter(language, task=task, version=version)
+    if source == "naijavoices":
+        from .adapters.naijavoices import NaijaVoicesAdapter
+        return NaijaVoicesAdapter(language, task=task, version=version)
     raise SystemExit(f"unknown source '{source}'")
 
 
