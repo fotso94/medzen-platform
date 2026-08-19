@@ -1,0 +1,439 @@
+{
+ "conclusions": [
+  "Per-language architecture + lr 1e-4 recipe: SOUND (serving routes per language; cross-language damage is irrelevant by construction).",
+  "Bars are not reachable by recipe alone for small/domain-mismatched languages \u2014 data is the binding constraint (feeds the 47-language transfer measurement + Tier B/C sourcing).",
+  "kinyarwanda is the one language plausibly within reach of its bar using owned data: one uncapped rank-32 experiment (~$12) decides it."
+ ],
+ "dev_slice": {
+  "rw-0000600": {
+   "ewe": {
+    "cer": 0.278739,
+    "wer": 0.970833
+   },
+   "french": {
+    "cer": 0.048738,
+    "wer": 0.163203
+   },
+   "fula": {
+    "cer": 0.158128,
+    "wer": 0.533514
+   },
+   "kinyarwanda": {
+    "cer": 0.093373,
+    "wer": 0.390488
+   },
+   "lingala": {
+    "cer": 0.05503,
+    "wer": 0.183202
+   },
+   "pulaar": {
+    "cer": 1.163862,
+    "wer": 1.374468
+   },
+   "swahili": {
+    "cer": 0.03875,
+    "wer": 0.148406
+   },
+   "wolof": {
+    "cer": 0.132563,
+    "wer": 0.412794
+   },
+   "yemba": {
+    "cer": 0.497621,
+    "wer": 1.012539
+   }
+  },
+  "rw-0001200": {
+   "ewe": {
+    "cer": 0.264496,
+    "wer": 0.95
+   },
+   "french": {
+    "cer": 0.046003,
+    "wer": 0.160758
+   },
+   "fula": {
+    "cer": 0.157812,
+    "wer": 0.525362
+   },
+   "kinyarwanda": {
+    "cer": 0.092526,
+    "wer": 0.387985
+   },
+   "lingala": {
+    "cer": 0.054562,
+    "wer": 0.180947
+   },
+   "pulaar": {
+    "cer": 1.154119,
+    "wer": 1.357447
+   },
+   "swahili": {
+    "cer": 0.04354,
+    "wer": 0.166957
+   },
+   "wolof": {
+    "cer": 0.132812,
+    "wer": 0.413293
+   },
+   "yemba": {
+    "cer": 0.495718,
+    "wer": 1.012539
+   }
+  },
+  "rw-0001800": {
+   "ewe": {
+    "cer": 0.272635,
+    "wer": 0.970833
+   },
+   "french": {
+    "cer": 0.047743,
+    "wer": 0.163203
+   },
+   "fula": {
+    "cer": 0.159393,
+    "wer": 0.531703
+   },
+   "kinyarwanda": {
+    "cer": 0.091044,
+    "wer": 0.375469
+   },
+   "lingala": {
+    "cer": 0.055147,
+    "wer": 0.181511
+   },
+   "pulaar": {
+    "cer": 1.160319,
+    "wer": 1.378723
+   },
+   "swahili": {
+    "cer": 0.042234,
+    "wer": 0.164058
+   },
+   "wolof": {
+    "cer": 0.133308,
+    "wer": 0.410295
+   },
+   "yemba": {
+    "cer": 0.498573,
+    "wer": 1.009404
+   }
+  },
+  "rw-0002400": {
+   "ewe": {
+    "cer": 0.292981,
+    "wer": 0.991667
+   },
+   "french": {
+    "cer": 0.049981,
+    "wer": 0.158924
+   },
+   "fula": {
+    "cer": 0.162028,
+    "wer": 0.539855
+   },
+   "kinyarwanda": {
+    "cer": 0.091467,
+    "wer": 0.379224
+   },
+   "lingala": {
+    "cer": 0.0576,
+    "wer": 0.191094
+   },
+   "pulaar": {
+    "cer": 1.16209,
+    "wer": 1.331915
+   },
+   "swahili": {
+    "cer": 0.045064,
+    "wer": 0.175652
+   },
+   "wolof": {
+    "cer": 0.135545,
+    "wer": 0.41929
+   },
+   "yemba": {
+    "cer": 0.50999,
+    "wer": 1.00627
+   }
+  },
+  "rw-0003000": {
+   "ewe": {
+    "cer": 0.295015,
+    "wer": 0.979167
+   },
+   "french": {
+    "cer": 0.047743,
+    "wer": 0.162592
+   },
+   "fula": {
+    "cer": 0.164242,
+    "wer": 0.544837
+   },
+   "kinyarwanda": {
+    "cer": 0.093161,
+    "wer": 0.390488
+   },
+   "lingala": {
+    "cer": 0.057834,
+    "wer": 0.187711
+   },
+   "pulaar": {
+    "cer": 1.161205,
+    "wer": 1.361702
+   },
+   "swahili": {
+    "cer": 0.045499,
+    "wer": 0.182609
+   },
+   "wolof": {
+    "cer": 0.136166,
+    "wer": 0.421789
+   },
+   "yemba": {
+    "cer": 0.50333,
+    "wer": 1.025078
+   }
+  },
+  "yemba-0000200": {
+   "ewe": {
+    "cer": 0.546287,
+    "wer": 1.241667
+   },
+   "french": {
+    "cer": 0.10506,
+    "wer": 0.271394
+   },
+   "fula": {
+    "cer": 0.334598,
+    "wer": 0.867301
+   },
+   "kinyarwanda": {
+    "cer": 0.2166,
+    "wer": 0.722153
+   },
+   "lingala": {
+    "cer": 0.203178,
+    "wer": 0.600902
+   },
+   "pulaar": {
+    "cer": 1.183348,
+    "wer": 1.412766
+   },
+   "swahili": {
+    "cer": 0.057799,
+    "wer": 0.226667
+   },
+   "wolof": {
+    "cer": 0.321282,
+    "wer": 0.796602
+   },
+   "yemba": {
+    "cer": 0.333016,
+    "wer": 0.912226
+   }
+  },
+  "yemba-0000400": {
+   "ewe": {
+    "cer": 0.546287,
+    "wer": 1.1875
+   },
+   "french": {
+    "cer": 0.137262,
+    "wer": 0.339853
+   },
+   "fula": {
+    "cer": 0.34514,
+    "wer": 0.897645
+   },
+   "kinyarwanda": {
+    "cer": 0.300656,
+    "wer": 0.867334
+   },
+   "lingala": {
+    "cer": 0.204346,
+    "wer": 0.607103
+   },
+   "pulaar": {
+    "cer": 1.177148,
+    "wer": 1.331915
+   },
+   "swahili": {
+    "cer": 0.080113,
+    "wer": 0.29913
+   },
+   "wolof": {
+    "cer": 0.339794,
+    "wer": 0.846577
+   },
+   "yemba": {
+    "cer": 0.346337,
+    "wer": 0.902821
+   }
+  },
+  "yemba-0000600": {
+   "ewe": {
+    "cer": 0.57884,
+    "wer": 1.195833
+   },
+   "french": {
+    "cer": 0.152182,
+    "wer": 0.377751
+   },
+   "fula": {
+    "cer": 0.326165,
+    "wer": 0.884964
+   },
+   "kinyarwanda": {
+    "cer": 0.341097,
+    "wer": 0.918648
+   },
+   "lingala": {
+    "cer": 0.194415,
+    "wer": 0.591319
+   },
+   "pulaar": {
+    "cer": 1.158547,
+    "wer": 1.323404
+   },
+   "swahili": {
+    "cer": 0.090672,
+    "wer": 0.327536
+   },
+   "wolof": {
+    "cer": 0.326003,
+    "wer": 0.832584
+   },
+   "yemba": {
+    "cer": 0.372978,
+    "wer": 0.937304
+   }
+  },
+  "yemba-0000800": {
+   "ewe": {
+    "cer": 0.577823,
+    "wer": 1.1375
+   },
+   "french": {
+    "cer": 0.166605,
+    "wer": 0.418093
+   },
+   "fula": {
+    "cer": 0.369492,
+    "wer": 0.914855
+   },
+   "kinyarwanda": {
+    "cer": 0.401228,
+    "wer": 0.971214
+   },
+   "lingala": {
+    "cer": 0.221404,
+    "wer": 0.660654
+   },
+   "pulaar": {
+    "cer": 1.157662,
+    "wer": 1.280851
+   },
+   "swahili": {
+    "cer": 0.122456,
+    "wer": 0.410435
+   },
+   "wolof": {
+    "cer": 0.359299,
+    "wer": 0.867566
+   },
+   "yemba": {
+    "cer": 0.358706,
+    "wer": 0.937304
+   }
+  },
+  "yemba-0001000": {
+   "ewe": {
+    "cer": 0.622584,
+    "wer": 1.195833
+   },
+   "french": {
+    "cer": 0.20179,
+    "wer": 0.529951
+   },
+   "fula": {
+    "cer": 0.42821,
+    "wer": 0.942482
+   },
+   "kinyarwanda": {
+    "cer": 0.461783,
+    "wer": 0.98373
+   },
+   "lingala": {
+    "cer": 0.24851,
+    "wer": 0.734498
+   },
+   "pulaar": {
+    "cer": 1.178034,
+    "wer": 1.27234
+   },
+   "swahili": {
+    "cer": 0.167519,
+    "wer": 0.536812
+   },
+   "wolof": {
+    "cer": 0.420176,
+    "wer": 0.912044
+   },
+   "yemba": {
+    "cer": 0.390105,
+    "wer": 0.959248
+   }
+  },
+  "yemba-0001200": {
+   "ewe": {
+    "cer": 0.636826,
+    "wer": 1.170833
+   },
+   "french": {
+    "cer": 0.211364,
+    "wer": 0.526895
+   },
+   "fula": {
+    "cer": 0.448977,
+    "wer": 0.95154
+   },
+   "kinyarwanda": {
+    "cer": 0.474063,
+    "wer": 1.013767
+   },
+   "lingala": {
+    "cer": 0.252015,
+    "wer": 0.730552
+   },
+   "pulaar": {
+    "cer": 1.186005,
+    "wer": 1.340426
+   },
+   "swahili": {
+    "cer": 0.162186,
+    "wer": 0.514203
+   },
+   "wolof": {
+    "cer": 0.427507,
+    "wer": 0.905047
+   },
+   "yemba": {
+    "cer": 0.414843,
+    "wer": 0.956113
+   }
+  }
+ },
+ "findings": {
+  "interference_mechanism_confirmed": "the tiny yemba adapter destroys french (0.149 -> 0.527 by step 1200) while the 100h kinyarwanda adapter barely moves it (0.163) \u2014 small-data languages produce violent updates; this is why the shared 9-language run degraded everything.",
+  "kinyarwanda": "RECIPE PROVEN: clean U-curve, no runaway \u2014 0.414 -> 0.375 best (step 1800), CER 0.096 -> 0.091, french held (0.163). But best is 0.375 vs the 0.30 owner bar: rank-16 on the 100h-capped pool plateaus short. Levers untried: lift the 100h cap (300h owned), rank 32, best-checkpoint on a longer run.",
+  "yemba": "DATA-LIMITED, not recipe-limited: brief gain (1.019 -> 0.903 WER, CER 0.491 -> 0.333 at step 200-400) then immediate overfit \u2014 2.3h of single-word child EGRA audio cannot teach conversational SOREVA eval speech at ANY training setting."
+ },
+ "id": "B5-PROBE-2026-002",
+ "jobs": {
+  "kinyarwanda": "b5-probe-kinyarwanda-2026-001-r3 ($3.35)",
+  "yemba": "b5-probe-yemba-2026-001-r3 ($0.79)"
+ },
+ "record": "B5-PERLANG-PROBE-RESULT",
+ "recorded_utc": "2026-08-19T08:02:57Z"
+}
