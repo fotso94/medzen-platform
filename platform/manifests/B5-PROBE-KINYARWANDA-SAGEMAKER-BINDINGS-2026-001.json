@@ -1,0 +1,35 @@
+{
+ "cost_ceiling_usd": 10,
+ "cost_registry_line": "COST-REGISTRY-2026-045 B5-CTC-CAMPAIGN-2026-001",
+ "environment": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "200",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_LANGUAGES": "kinyarwanda",
+  "MEDZEN_LORA_ALPHA": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb3",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260818",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_note": "the EXACT image that completed T5-r6 end to end; no trainer code changed since",
+ "image_oci_index_digest": "sha256:14a919d61e949736dbd50c7b08dc5f08d6a4ad00dbf7a5434cfbd768429595d8",
+ "image_tag": "t5-cal-2026-08-17f",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:aea6efbec91bc759c9b4ca1485417b48c92c4c7c1c8eb5a958114bd78160ef09",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "b5-probe-kinyarwanda-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "owner rule: on-demand basis always; spot quota also still 0/PENDING; a ~4-day run must not carry interruption risk in its first pass",
+ "max_runtime_seconds": 14400,
+ "network_note": "r1 failed on data download: the T5 endpoint set had been torn down per its packet lifecycle and the campaign launch skipped recreating it. Endpoints recreated 2026-08-18 (s3 gateway vpce-0ce13c7c, ecr.api/dkr, logs) and LIVE FOR THE CAMPAIGN DURATION (~$1/day), deleted at campaign close.",
+ "purpose": "PER-LANGUAGE probe (kinyarwanda only), lr 1e-4, alpha=rank \u2014 B5-PROBE-2026-001 pivot.",
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100
+}
