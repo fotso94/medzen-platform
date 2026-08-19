@@ -1,0 +1,88 @@
+{
+ "consequence": "Step-1 salvage is dead; Step 2 (retrain with the corrected recipe) is required. The corrected-recipe probe gains a sharper success criterion: at ~lr 1e-4, EARLY checkpoints must show target-language gains with base-language WER held (the exact signature 1e-3 failed by step 400).",
+ "cost_note": "4 sweep boxes ~$3 total; merged checkpoints cached at research/b5-training/t6-eval-r2/results/merged/.",
+ "dev_slice_wer": {
+  "base": {
+   "ewe": 0.9375,
+   "french": 0.149144,
+   "fula": 0.524004,
+   "kinyarwanda": 0.414268,
+   "lingala": 0.180947,
+   "pulaar": 1.357447,
+   "swahili": 0.14087,
+   "wolof": 0.4003,
+   "yemba": 1.018809
+  },
+  "step-0000400": {
+   "ewe": 1.0125,
+   "french": 0.173594,
+   "fula": 0.555707,
+   "kinyarwanda": 0.429287,
+   "lingala": 0.249154,
+   "pulaar": 1.33617,
+   "swahili": 0.197681,
+   "wolof": 0.454273,
+   "yemba": 1.0
+  },
+  "step-0000800": {
+   "ewe": 1.004167,
+   "french": 0.222494,
+   "fula": 0.587409,
+   "kinyarwanda": 0.449312,
+   "lingala": 0.281849,
+   "pulaar": 1.357447,
+   "swahili": 0.208116,
+   "wolof": 0.525237,
+   "yemba": 0.99373
+  },
+  "step-0001600": {
+   "ewe": 1.025,
+   "french": 0.238998,
+   "fula": 0.620018,
+   "kinyarwanda": 0.474343,
+   "lingala": 0.289741,
+   "pulaar": 1.387234,
+   "swahili": 0.212174,
+   "wolof": 0.531734,
+   "yemba": 0.974922
+  },
+  "step-0003200": {
+   "ewe": 1.008333,
+   "french": 0.257335,
+   "fula": 0.604167,
+   "kinyarwanda": 0.475594,
+   "lingala": 0.35062,
+   "pulaar": 1.374468,
+   "swahili": 0.212174,
+   "wolof": 0.524238,
+   "yemba": 1.047022
+  },
+  "step-0006400": {
+   "ewe": 0.983333,
+   "french": 0.26956,
+   "fula": 0.583786,
+   "kinyarwanda": 0.440551,
+   "lingala": 0.322435,
+   "pulaar": 1.391489,
+   "swahili": 0.211014,
+   "wolof": 0.529735,
+   "yemba": 0.974922
+  },
+  "step-0012800": {
+   "ewe": 0.975,
+   "french": 0.256724,
+   "fula": 0.602355,
+   "kinyarwanda": 0.410513,
+   "lingala": 0.308906,
+   "pulaar": 1.391489,
+   "swahili": 0.231884,
+   "wolof": 0.535732,
+   "yemba": 0.974922
+  }
+ },
+ "finding": "NO SALVAGEABLE CHECKPOINT. Damage is present from the EARLIEST checkpoint: at step 400 (1.6% of the run) 7/9 languages were already worse than base; no checkpoint beats base macro-WER (base 0.569, best checkpoint 0.601). The regression is an immediate learning-rate effect, not gradual overtraining past a sweet spot \u2014 this refines B5-DIAG-2026-001: lr 1e-3 was destructive within the first hundreds of steps.",
+ "id": "B5-SWEEP-2026-001",
+ "method": "6 adapter checkpoints (steps 400-12,800) merged with the trainer's own machinery (CTC scope), each + base evaluated on a deterministic 900-row dev slice (100/language from the frozen pool) in the pinned eval image.",
+ "record": "B5-CHECKPOINT-SWEEP",
+ "recorded_utc": "2026-08-19T00:05:45Z"
+}
