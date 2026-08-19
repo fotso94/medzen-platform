@@ -146,3 +146,37 @@ def test_fish_mode_starts_and_resolves_the_owner_kinyarwanda_voice(monkeypatch):
     from medzen_speech_tts_gateway.voices import resolve
     assert resolve("kinyarwanda").reference_id == (
         "da02ddd729004bb98133102da10c36ba")
+
+
+def test_real_media_type_results_are_not_rejected_as_malformed():
+    """Deep-review regression (2026-08-20): the gateway validated results
+    against the SYNTHETIC media type, so a real provider returning
+    audio/mpeg fell to text-only on every call. Expected media type must
+    follow the provider."""
+    from medzen_speech_tts_gateway.gateway import TTSGateway
+    from medzen_speech_tts_gateway.provider import FishRequest, FishResult
+    from medzen_speech_tts_gateway.shared_resilience import CircuitBreaker
+
+    class MpegProvider:
+        name = "fish"
+        model_version = "fish:s1"
+        media_type = "audio/mpeg"
+        def synthesize(self, request: FishRequest, *, timeout_ms: int) -> FishResult:
+            return FishResult(b"ID3fake-mpeg-bytes", "audio/mpeg", self.model_version)
+
+    breaker = CircuitBreaker(name="fish", failure_threshold=3,
+                              timeout_threshold=3, window_s=60,
+                              open_duration_s=30, half_open_max_calls=1)
+    gateway = TTSGateway(provider=MpegProvider(), breaker=breaker,
+                          voice_resolver=lambda language: "voice-x")
+    result = gateway.synthesize({
+        "request_id": "11111111-1111-4111-8111-111111111111",
+        "language": "kinyarwanda",
+        "text": "murakoze",
+        "model_versions": {"asr": "a", "registry_snapshot": "r", "llm": "l",
+                            "rag": "g", "tts": None},
+    })
+    assert result["provider"] == "fish"
+    assert result["media_type"] == "audio/mpeg"
+    assert result["model_versions"]["tts"] == "fish:s1"
+    assert result["audio_sha256"]

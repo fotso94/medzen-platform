@@ -73,6 +73,10 @@ class TTSGateway:
         # default keeps the synthetic voice id — fake/text-only behavior is
         # byte-identical; the real mode injects the SSM-backed resolver
         self._voice_id = voice_resolver or (lambda language: VOICE_ID)
+        # the DEEP-REVIEW catch (2026-08-20): validating against the
+        # synthetic constant would reject every real Fish result as
+        # malformed — the expected media type belongs to the provider
+        self._media_type = getattr(provider, "media_type", MEDIA_TYPE)
 
     @property
     def backend_mode(self) -> str:
@@ -176,7 +180,7 @@ class TTSGateway:
             provider=self.provider.name,
             voice_id=voice_id,
             model_version=self.provider.model_version,
-            media_type=MEDIA_TYPE,
+            media_type=self._media_type,
         )
         cached = self.cache.get(key)
         if cached is not None:
@@ -208,7 +212,7 @@ class TTSGateway:
             if (
                 not isinstance(result.audio, bytes)
                 or not result.audio
-                or result.media_type != MEDIA_TYPE
+                or result.media_type != self._media_type
                 or result.model_version != self.provider.model_version
             ):
                 raise CacheRefusal("Fish response does not match the local contract")
