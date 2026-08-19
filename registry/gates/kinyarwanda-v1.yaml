@@ -11,7 +11,14 @@ rationale: |
   the kinyarwanda bar with beat-the-41%-baseline; the 0.20 registry
   default was judged too aggressive for the first fine-tune round). The agglutinative morphology
   argues for tracking CER alongside WER without gating on it in v1.
+  OWNER-REVISED 2026-08-19: WER ceiling 0.38 (verbatim "revise the bar and
+  ship the 35.5% adapter as v1 now"). Evidence basis B5-KW-DECISIVE-2026-001:
+  LoRA plateaus at 0.355 dev (0.375-0.387 band) — a 14% relative gain over
+  the 0.414 baseline; 0.30 is unreachable by adaptation on this base model
+  with matched-domain data. 0.38 covers dev-slice noise; the strict
+  beat-the-baseline gate still applies. The full fine-tune experiment
+  (owner option B) may later tighten this back down.
 overrides:
   asr:
-    absolute_wer_max: 0.30
+    absolute_wer_max: 0.38
 
