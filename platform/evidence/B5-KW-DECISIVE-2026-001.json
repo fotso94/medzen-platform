@@ -1,0 +1,48 @@
+{
+ "chain": "shared adapter: destructive (B5-DIAG-2026-001) -> per-language rank16/100h: 0.375 (B5-PROBE-2026-002) -> rank32/300h: 0.355 plateau (this record). The lever ladder is exhausted for LoRA.",
+ "dev_curve": {
+  "1000": {
+   "cer": 0.087656,
+   "wer": 0.36796
+  },
+  "10000": {
+   "cer": 0.086598,
+   "wer": 0.386733
+  },
+  "12000": {
+   "cer": 0.08448,
+   "wer": 0.371715
+  },
+  "2000": {
+   "cer": 0.089773,
+   "wer": 0.382979
+  },
+  "3000": {
+   "cer": 0.084268,
+   "wer": 0.38423
+  },
+  "4000": {
+   "cer": 0.084904,
+   "wer": 0.374218
+  },
+  "6000": {
+   "cer": 0.084057,
+   "wer": 0.355444
+  },
+  "8000": {
+   "cer": 0.085539,
+   "wer": 0.375469
+  }
+ },
+ "id": "B5-KW-DECISIVE-2026-001",
+ "job": "medzen-b5-b5-kinyarwanda-full-2026-001 (Completed, $12.43, 12,000 steps, 300h uncapped, rank 32, lr 1e-4)",
+ "note": "dev slice is 100 rows (noise \u00b10.02-0.03); any promotion path requires the full-pool T6 run regardless.",
+ "owner_options": [
+  "A) Revise the kinyarwanda bar to ~0.36-0.38 and ship step-6000 as v1 after a FULL-pool T6 run (still a 14% relative gain over the 0.414 baseline; strict-improvement gate passes; ceiling is what blocks).",
+  "B) Hold the 0.30 bar and reclassify kinyarwanda as method/data-limited: the one untried technical lever is a FULL fine-tune (not LoRA, ~$25-40, per-language so no interference risk; 2GB artifact vs 47MB).",
+  "C) Hold the bar, stop here: base model keeps serving kinyarwanda; revisit with new data or a stronger base model generation."
+ ],
+ "record": "B5-KINYARWANDA-DECISIVE-RESULT",
+ "recorded_utc": "2026-08-19T20:11:27Z",
+ "verdict": "PLATEAU ABOVE THE BAR: best 0.355 WER @ step 6000 (dev slice) vs the 0.30 owner bar. Tripling data + doubling adapter capacity improved 0.375 -> 0.355; the curve is flat (0.355-0.387 across steps 1k-12k) \u2014 a genuine capability plateau of LoRA adaptation on this base model, in matched domain (CV train vs CV eval)."
+}
