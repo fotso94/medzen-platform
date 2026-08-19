@@ -83,6 +83,16 @@ def test_nonsense_numbers_are_refused():
         make_config(MEDZEN_AUDIO_CAP_HOURS="0")
 
 
+def test_train_mode_parses_and_defaults_to_lora():
+    config = make_config()
+    assert config.train_mode == "lora"
+    config = make_config(MEDZEN_TRAIN_MODE="full")
+    assert config.train_mode == "full"
+    # the mode is part of the run fingerprint — a full-FT run can never
+    # collide with a LoRA run's identity
+    assert config.fingerprint_payload()["train_mode"] == "full"
+
+
 def test_ctc_defaults_bind_the_eval_proven_identity():
     config = make_config()
     assert config.model_card == "medzen_omniASR_CTC_1B_v2"

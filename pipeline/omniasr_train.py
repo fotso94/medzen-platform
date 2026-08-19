@@ -130,6 +130,7 @@ class TrainerConfig:
     lora_rank: int
     lora_alpha: float
     lora_dropout: float
+    train_mode: str
     checkpoint_dir: Path
     output_dir: Path
     checkpoint_every_steps: int
@@ -210,6 +211,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         lora_rank=_number("MEDZEN_LORA_RANK", "16", int, 1),
         lora_alpha=_number("MEDZEN_LORA_ALPHA", "32", float, 0.0),
         lora_dropout=_number("MEDZEN_LORA_DROPOUT", "0.0", float, 0.0),
+        train_mode=env.get("MEDZEN_TRAIN_MODE", "lora"),
         checkpoint_dir=Path(env.get("MEDZEN_CHECKPOINT_DIR", "/opt/ml/checkpoints")),
         output_dir=Path(env.get("MEDZEN_OUTPUT_DIR", "/opt/ml/model")),
         checkpoint_every_steps=_number("MEDZEN_CHECKPOINT_EVERY", "50", int, 1),
@@ -426,10 +428,22 @@ def main() -> int:
 
     import torch
 
+    if config.train_mode not in ("lora", "full"):
+        raise TrainerRefusal(f"unknown MEDZEN_TRAIN_MODE {config.train_mode!r}")
     model, tokenizer, device = _load_model_and_tokenizer(config)
-    wrap_audit = wrap_lora(
-        model, rank=config.lora_rank, alpha=config.lora_alpha,
-        dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX)
+    if config.train_mode == "lora":
+        wrap_audit = wrap_lora(
+            model, rank=config.lora_rank, alpha=config.lora_alpha,
+            dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX)
+    else:
+        # FULL fine-tune (owner option B, B5-KW-DECISIVE-2026-001): every
+        # parameter trains; per-language jobs only, so there is no
+        # cross-language interference surface. Checkpoints carry the full
+        # model state (no optimizer: 8 GB/ckpt is not worth resume
+        # momentum on on-demand instances).
+        wrap_audit = {"mode": "full", "merged_modules": []}
+        for parameter in model.parameters():
+            parameter.requires_grad_(True)
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=config.learning_rate)
@@ -444,6 +458,14 @@ def main() -> int:
     signal.signal(signal.SIGTERM, lambda *_: stop_flag.__setitem__("stop", True))
 
     def save_state(path: Path, step: int) -> None:
+        if config.train_mode == "full":
+            with path.open("wb") as stream:
+                torch.save({"step": step, "model": model.state_dict(),
+                            "torch_rng": torch.get_rng_state(),
+                            "cuda_rng": (torch.cuda.get_rng_state_all()
+                                         if torch.cuda.is_available() else None)},
+                           stream)
+            return
         with path.open("wb") as stream:
             torch.save({"step": step, "lora": lora_state_dict(model),
                         "optimizer": optimizer.state_dict(),
@@ -457,6 +479,12 @@ def main() -> int:
 
     def load_state(path: Path) -> int:
         state = torch.load(path, map_location="cpu", weights_only=False)
+        if config.train_mode == "full":
+            model.load_state_dict(state["model"])
+            torch.set_rng_state(state["torch_rng"])
+            if state.get("cuda_rng") is not None and torch.cuda.is_available():
+                torch.cuda.set_rng_state_all(state["cuda_rng"])
+            return int(state["step"])
         model.load_state_dict(state["lora"], strict=False)
         optimizer.load_state_dict(state["optimizer"])
         torch.set_rng_state(state["torch_rng"])
