@@ -1,0 +1,14 @@
+{
+ "decisions": [
+  "Per-language adapters replace the shared multilingual adapter (B5-PROBE-2026-001/-002 evidence; interference structural).",
+  "french/swahili/lingala serve on the BASE model \u2014 they meet their owner-approved bars untrained.",
+  "yemba/ewe/pulaar move to the DATA-FIRST track: no further training on current corpora (single-word/domain-mismatched data cannot reach conversational bars); their path is the 47-language transfer measurement + Tier B/C sourcing.",
+  "kinyarwanda decisive experiment approved (~$12-19): uncapped 300h, rank 32, best-checkpoint. wolof/fula training decisions follow its verdict.",
+  "Wave-2 budget ($346 reserved) remains held pending a recipe that passes a T6 gate once."
+ ],
+ "id": "B5-TRAINING-STRATEGY-2026-001",
+ "owner_approval_verbatim": "Approve and proceed",
+ "record": "B5-TRAINING-STRATEGY",
+ "recorded_utc": "2026-08-19T11:47:07Z",
+ "status": "owner_approved"
+}
