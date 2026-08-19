@@ -4,6 +4,8 @@
  "environment": {
   "MEDZEN_BATCH_SIZE": "2",
   "MEDZEN_CHECKPOINT_EVERY": "200",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "0",
   "MEDZEN_GRAD_ACCUM": "8",
   "MEDZEN_LANGUAGES": "kinyarwanda",
   "MEDZEN_LORA_ALPHA": "16",
@@ -18,7 +20,7 @@
  "image_tag": "t5-cal-2026-08-17f",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:aea6efbec91bc759c9b4ca1485417b48c92c4c7c1c8eb5a958114bd78160ef09",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-probe-kinyarwanda-2026-001",
+ "job_id": "b5-probe-kinyarwanda-2026-001-r2",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always; spot quota also still 0/PENDING; a ~4-day run must not carry interruption risk in its first pass",
