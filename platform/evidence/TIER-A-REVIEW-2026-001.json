@@ -1,0 +1,174 @@
+{
+ "checks": {
+  "a3_validator": "9/9 manifests pass with the registry language check",
+  "audio_checksum_spot_checks": "202/202 fetched objects match manifest sha256",
+  "cross_corpus_byte_dups": "0 (fleurs vs cv17 per language)",
+  "eval_leak_byte_check": "0 leaked rows across all 9 corpora vs every frozen eval set of the 6 languages",
+  "internal_byte_dups": "0 across all corpora",
+  "licence_policies": "9/9 exact (fleurs commercial_ok, cv cc0, nchlt cc_by_3_0, waxal-mlg sharealike_review per LIC-2026-002)",
+  "splits_and_uses": "all rows train / asr_train; zero eval-zone writes (IAM-denied paths)"
+ },
+ "id": "TIER-A-REVIEW-2026-001",
+ "notes": [
+  "malagasy is 93.6 h (18.3 s average clips, radio/long-form) \u2014 materially larger than scoped.",
+  "cv17 igbo is 11 rows \u2014 the source is nearly empty; igbo scale depends on the Tier B NaijaVoices agreement.",
+  "english ingest runs on a dedicated box (dep versions pinned to the local environment; ephemeral scoped IAM role, eval-zone write-denied)."
+ ],
+ "record": "TIER-A-DEEP-REVIEW",
+ "recorded_utc": "2026-08-19T13:23:31Z",
+ "scope": "9 of 10 Tier A corpora (english capped CV still ingesting on its box; addendum follows)",
+ "totals": {
+  "hours": 194.8,
+  "per_corpus": {
+   "english/asr/en_us_fleurs_train": {
+    "all_train": true,
+    "hours": 7.4,
+    "internal_dup_shas": 0,
+    "policies": [
+     "commercial_ok"
+    ],
+    "policy_ok": true,
+    "rows": 2596,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_train"
+    ]
+   },
+   "hausa/asr/cv17_ha": {
+    "all_train": true,
+    "hours": 3.0,
+    "internal_dup_shas": 0,
+    "policies": [
+     "cc0"
+    ],
+    "policy_ok": true,
+    "rows": 2507,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_eval",
+     "asr_train"
+    ]
+   },
+   "hausa/asr/ha_ng_fleurs_train": {
+    "all_train": true,
+    "hours": 12.8,
+    "internal_dup_shas": 0,
+    "policies": [
+     "commercial_ok"
+    ],
+    "policy_ok": true,
+    "rows": 3174,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_train"
+    ]
+   },
+   "igbo/asr/cv17_ig": {
+    "all_train": true,
+    "hours": 0.0,
+    "internal_dup_shas": 0,
+    "policies": [
+     "cc0"
+    ],
+    "policy_ok": true,
+    "rows": 11,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_eval",
+     "asr_train"
+    ]
+   },
+   "igbo/asr/ig_ng_fleurs_train": {
+    "all_train": true,
+    "hours": 11.7,
+    "internal_dup_shas": 0,
+    "policies": [
+     "commercial_ok"
+    ],
+    "policy_ok": true,
+    "rows": 2635,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_train"
+    ]
+   },
+   "malagasy/asr/mlg_asr": {
+    "all_train": true,
+    "hours": 93.6,
+    "internal_dup_shas": 0,
+    "policies": [
+     "sharealike_review"
+    ],
+    "policy_ok": true,
+    "rows": 18399,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_eval",
+     "asr_train"
+    ]
+   },
+   "sepedi/asr/nchlt_nso": {
+    "all_train": true,
+    "hours": 53.4,
+    "internal_dup_shas": 0,
+    "policies": [
+     "cc_by_3_0"
+    ],
+    "policy_ok": true,
+    "rows": 56274,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_train"
+    ]
+   },
+   "yoruba/asr/cv17_yo": {
+    "all_train": true,
+    "hours": 3.3,
+    "internal_dup_shas": 0,
+    "policies": [
+     "cc0"
+    ],
+    "policy_ok": true,
+    "rows": 2076,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_eval",
+     "asr_train"
+    ]
+   },
+   "yoruba/asr/yo_ng_fleurs_train": {
+    "all_train": true,
+    "hours": 9.6,
+    "internal_dup_shas": 0,
+    "policies": [
+     "commercial_ok"
+    ],
+    "policy_ok": true,
+    "rows": 2297,
+    "splits": [
+     "train"
+    ],
+    "uses": [
+     "asr_train"
+    ]
+   }
+  },
+  "rows": 89969
+ }
+}
