@@ -1,0 +1,91 @@
+{
+ "dev_slice_wer": {
+  "step-0000200": {
+   "ewe": 0.866667,
+   "french": 0.150367,
+   "fula": 0.553442,
+   "kinyarwanda": 0.415519,
+   "lingala": 0.187711,
+   "pulaar": 1.306383,
+   "swahili": 0.162319,
+   "wolof": 0.434783,
+   "yemba": 1.0
+  },
+  "step-0000400": {
+   "ewe": 0.854167,
+   "french": 0.152812,
+   "fula": 0.572464,
+   "kinyarwanda": 0.411765,
+   "lingala": 0.235062,
+   "pulaar": 1.33617,
+   "swahili": 0.168696,
+   "wolof": 0.426287,
+   "yemba": 0.99373
+  },
+  "step-0000600": {
+   "ewe": 0.933333,
+   "french": 0.15709,
+   "fula": 0.584692,
+   "kinyarwanda": 0.419274,
+   "lingala": 0.322999,
+   "pulaar": 1.251064,
+   "swahili": 0.182029,
+   "wolof": 0.45927,
+   "yemba": 1.003135
+  },
+  "step-0000800": {
+   "ewe": 0.895833,
+   "french": 0.170538,
+   "fula": 0.588315,
+   "kinyarwanda": 0.436796,
+   "lingala": 0.303269,
+   "pulaar": 1.26383,
+   "swahili": 0.184928,
+   "wolof": 0.449275,
+   "yemba": 1.00627
+  },
+  "step-0001200": {
+   "ewe": 0.983333,
+   "french": 0.161369,
+   "fula": 0.591486,
+   "kinyarwanda": 0.42428,
+   "lingala": 0.382751,
+   "pulaar": 1.251064,
+   "swahili": 0.187826,
+   "wolof": 0.437281,
+   "yemba": 1.018809
+  },
+  "step-0001600": {
+   "ewe": 0.970833,
+   "french": 0.179095,
+   "fula": 0.586957,
+   "kinyarwanda": 0.416771,
+   "lingala": 0.310034,
+   "pulaar": 1.255319,
+   "swahili": 0.184928,
+   "wolof": 0.438281,
+   "yemba": 1.021944
+  },
+  "step-0002000": {
+   "ewe": 0.979167,
+   "french": 0.22066,
+   "fula": 0.592844,
+   "kinyarwanda": 0.400501,
+   "lingala": 0.316798,
+   "pulaar": 1.238298,
+   "swahili": 0.191884,
+   "wolof": 0.437781,
+   "yemba": 1.021944
+  }
+ },
+ "finding": "lr 1e-4 + alpha=rank SLOWS the damage but does not change its nature: at step 200 macro-WER matches base (0.564 vs 0.569) with pulaar/ewe improving and french/kinyarwanda held, but the interference signature re-emerges by step 600 and the strong languages erode steadily. A single shared rank-16 adapter across 9 languages is structurally interference-bound at ANY safe learning rate.",
+ "id": "B5-PROBE-2026-001",
+ "job": "medzen-b5-b5-probe-lr1e4-2026-001 (Completed, $2.87 actual)",
+ "next": "Per-language probe: yemba-only (tiny, fastest signal) + kinyarwanda-only (biggest value, domain-matched cv17 train->cv17 eval), lr 1e-4, dev-swept checkpoints (~$5 total). Full per-language wave only after both curves prove the shape.",
+ "record": "B5-RECIPE-PROBE-RESULT",
+ "recorded_utc": "2026-08-19T04:47:36Z",
+ "strategic_read": [
+  "french (14.3%), swahili (13.7%), lingala (17.4%) already meet their absolute bars with the BASE model \u2014 they never needed training; base serves them.",
+  "The six languages below bar (kinyarwanda, wolof, fula, pulaar, ewe, yemba) should each get a PER-LANGUAGE adapter: zero interference by construction, matches the registry's per-language artifact design and the per-language T6 gate."
+ ]
+}
