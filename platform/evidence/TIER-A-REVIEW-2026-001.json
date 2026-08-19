@@ -8,6 +8,21 @@
   "licence_policies": "9/9 exact (fleurs commercial_ok, cv cc0, nchlt cc_by_3_0, waxal-mlg sharealike_review per LIC-2026-002)",
   "splits_and_uses": "all rows train / asr_train; zero eval-zone writes (IAM-denied paths)"
  },
+ "english_addendum": {
+  "cap": "MEDZEN_CV_MAX_SECONDS=360000 landed exactly 100.0 h",
+  "checks": "A3 validator pass; cc0 exact; all-train; 0 internal dups; 0 eval-leaks vs all english eval sets; 0 cross-dups vs fleurs_train en; 12/12 audio checksum spot-checks",
+  "corpus": "english/asr/cv17_en",
+  "hours": 100.0,
+  "ingest_box_lessons": [
+   "wait/verify instance-role credentials FROM INSIDE the box (propagation to fresh profiles takes minutes; two boxes died silently)",
+   "the data bucket is SSE-KMS \u2014 any new role needs kms:Decrypt+GenerateDataKey on key 9c336116\u2026",
+   "MEDZEN_PROFILE= (empty) selects the instance-role chain",
+   "set TMPDIR onto the data volume \u2014 AL2023 /tmp is RAM-backed tmpfs and the ingest spill will blow it"
+  ],
+  "recorded_utc": "2026-08-19T16:33:04Z",
+  "rows": 58149,
+  "scope_status": "TIER A COMPLETE: 10/10 corpora, 294.8 h, 148,118 rows, all clean"
+ },
  "id": "TIER-A-REVIEW-2026-001",
  "notes": [
   "malagasy is 93.6 h (18.3 s average clips, radio/long-form) \u2014 materially larger than scoped.",
