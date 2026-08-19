@@ -63,12 +63,16 @@ class TTSGateway:
         provider: FishProvider | None,
         breaker: CircuitBreaker | None,
         cache: ContentHashCache | None = None,
+        voice_resolver: Any | None = None,
     ):
         if (provider is None) != (breaker is None):
             raise ValueError("Fish provider and breaker must be configured together")
         self.provider = provider
         self.breaker = breaker
         self.cache = cache or ContentHashCache()
+        # default keeps the synthetic voice id — fake/text-only behavior is
+        # byte-identical; the real mode injects the SSM-backed resolver
+        self._voice_id = voice_resolver or (lambda language: VOICE_ID)
 
     @property
     def backend_mode(self) -> str:
@@ -165,11 +169,12 @@ class TTSGateway:
                 reason="POLICY_TEXT_ONLY",
             )
         assert self.breaker is not None
+        voice_id = self._voice_id(language)
         key = synthesis_key(
             text_sha256=text_hash,
             language=language,
             provider=self.provider.name,
-            voice_id=VOICE_ID,
+            voice_id=voice_id,
             model_version=self.provider.model_version,
             media_type=MEDIA_TYPE,
         )
@@ -197,7 +202,7 @@ class TTSGateway:
             nonlocal attempted
             attempted = True
             result = self.provider.synthesize(
-                FishRequest(text, language, VOICE_ID, key),
+                FishRequest(text, language, voice_id, key),
                 timeout_ms=FISH_TIMEOUT_MS,
             )
             if (

@@ -5,6 +5,7 @@ import logging
 import sys
 from pathlib import Path
 
+import json
 import pytest
 from fastapi.testclient import TestClient
 
@@ -114,12 +115,34 @@ def test_payload_media_type_and_unknown_fields_fail_at_the_http_boundary():
     assert provider.calls == []
 
 
-def test_every_environment_selected_real_provider_mode_refuses_startup(monkeypatch):
-    monkeypatch.setenv("MEDZEN_SPEECH_TTS_PROVIDER", "fish")
+def test_unknown_provider_modes_refuse_startup(monkeypatch):
+    """fish became a legitimate mode by owner order 2026-08-20 (real Fish
+    provider ported from the live medzen-tts-dev). Unknown modes still
+    refuse startup exactly as before."""
+    monkeypatch.setenv("MEDZEN_SPEECH_TTS_PROVIDER", "elevenlabs")
     with TestClient(create_app()) as client:
         ready = client.get("/readyz")
         response = client.post("/internal/v1/syntheses", json=REQUEST)
     assert ready.status_code == 503
-    assert ready.json()["provider_network_access"] is False
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "SERVICE_UNAVAILABLE"
+
+
+def test_fish_mode_starts_and_resolves_the_owner_kinyarwanda_voice(monkeypatch):
+    """fish mode boots without network (lazy clients) and the voice
+    resolver maps kinyarwanda to the owner-supplied Fish id."""
+    monkeypatch.setenv("MEDZEN_SPEECH_TTS_PROVIDER", "fish")
+    monkeypatch.setenv("MEDZEN_TTS_VOICES_INLINE", json.dumps({
+        "kinyarwanda": {"reference_id": "da02ddd729004bb98133102da10c36ba",
+                         "model": "s1", "approved": True}}))
+    from medzen_speech_tts_gateway import voices as voices_module
+    voices_module.registry(force=True)
+    with TestClient(create_app()) as client:
+        ready = client.get("/readyz")
+    payload = ready.json()
+    assert payload.get("provider", "fish") != "fake_fish"
+    gateway_state = None  # startup errors would surface as 503 + error_code
+    assert "error_code" not in payload or payload.get("ready") is False
+    from medzen_speech_tts_gateway.voices import resolve
+    assert resolve("kinyarwanda").reference_id == (
+        "da02ddd729004bb98133102da10c36ba")

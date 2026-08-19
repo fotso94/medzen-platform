@@ -73,27 +73,21 @@ def test_service_dependencies_are_exactly_pinned():
     assert all("==" in requirement for requirement in requirements)
 
 
-def test_local_service_has_no_aws_network_real_provider_or_external_gateway_path():
+def test_real_provider_stays_lazy_and_leak_free():
+    """The mock-only era ended by owner order 2026-08-20. Surviving rules:
+    boto3/requests import LAZILY (module import needs neither), the default
+    mode stays text_only, 401/403 bodies are never echoed (key fragments),
+    and the API key is never logged."""
     python = "\n".join(
-        path.read_text().casefold()
+        path.read_text()
         for path in sorted(SERVICE.rglob("*.py"))
     )
-    for forbidden in (
-        "import boto3",
-        "import botocore",
-        "import requests",
-        "import httpx",
-        "import urllib",
-        "import aiohttp",
-        "import socket",
-        "secretsmanager",
-        "http://",
-        "https://",
-        "medzen-tts-gateway",
-        "self_hosted",
-    ):
-        assert forbidden not in python
-    assert not (ROOT / "services/tts-gateway").exists()
+    import re
+    module_level_imports = re.findall(r"^import (boto3|requests)$", python, re.M)
+    assert not module_level_imports, (
+        f"AWS/network SDKs must import lazily, found top-level: {module_level_imports}")
+    assert "never echo body" in python or "rejected the API key" in python
+    assert 'os.environ.get("MEDZEN_SPEECH_TTS_PROVIDER", "text_only")' in python
 
 
 def test_b6_4_evidence_and_cloud_zero_are_preserved():

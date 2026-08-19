@@ -78,11 +78,22 @@ def create_app(
                 app.state.gateway = supplied_gateway
             else:
                 mode = os.environ.get("MEDZEN_SPEECH_TTS_PROVIDER", "text_only")
-                if mode != "text_only":
+                if mode not in ("text_only", "fish"):
                     raise RuntimeError(
-                        "B6.5 local gateway refuses every real provider mode"
+                        f"unknown MEDZEN_SPEECH_TTS_PROVIDER {mode!r} — the "
+                        "gateway refuses unrecognised provider modes"
                     )
-                app.state.gateway = TTSGateway(provider=None, breaker=None)
+                if mode == "fish":
+                    from .provider import RealFishProvider
+                    from .voices import resolve as _resolve_voice
+                    app.state.gateway = TTSGateway(
+                        provider=RealFishProvider(),
+                        breaker=fish_breaker(),
+                        voice_resolver=lambda language:
+                            _resolve_voice(language).reference_id,
+                    )
+                else:
+                    app.state.gateway = TTSGateway(provider=None, breaker=None)
             app.state.startup_error = None
         except Exception as exc:
             app.state.gateway = None

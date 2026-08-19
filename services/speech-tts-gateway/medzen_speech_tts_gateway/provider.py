@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -63,3 +63,75 @@ class FakeFishProvider:
         ).encode("utf-8")
         audio = b"MEDZEN_FAKE_FISH_V1\x00" + hashlib.sha256(material).digest()
         return FishResult(audio, self.media_type, self.model_version)
+
+
+class RealFishProvider:
+    """Fish Audio cloud synthesis — the call shape ported verbatim from the
+    proven live medzen-tts-dev provider (reviewed 2026-08-20, not modified).
+    The API key comes from Secrets Manager (the same secret the live
+    service uses) or MEDZEN_FISH_API_KEY for local runs; it is never logged
+    and 401/403 bodies are never echoed (they can contain key fragments).
+    requests/boto3 import lazily so contract tests need neither."""
+
+    name = "fish"
+    media_type = "audio/mpeg"
+
+    def __init__(self, model: str = "s1", api_key: str | None = None,
+                 secret_id: str = "medzen/fish-api-key",
+                 base_url: str = "https://api.fish.audio",
+                 session: Any | None = None):
+        self.model = model
+        self.model_version = f"fish:{model}"
+        self._api_key = api_key
+        self._secret_id = secret_id
+        self._base_url = base_url.rstrip("/")
+        self._session = session
+
+    def _key(self) -> str:
+        if self._api_key:
+            return self._api_key
+        import os
+        env_key = os.environ.get("MEDZEN_FISH_API_KEY")
+        if env_key:
+            self._api_key = env_key
+            return env_key
+        import boto3
+        client = boto3.client(
+            "secretsmanager",
+            region_name=os.environ.get("AWS_REGION", "eu-central-1"))
+        raw = client.get_secret_value(SecretId=self._secret_id)["SecretString"]
+        try:
+            self._api_key = json.loads(raw).get("api_key", raw)
+        except ValueError:
+            self._api_key = raw
+        return self._api_key
+
+    def _http(self):
+        if self._session is None:
+            import requests
+            self._session = requests.Session()
+        return self._session
+
+    def synthesize(self, request: FishRequest, *, timeout_ms: int) -> FishResult:
+        response = self._http().post(
+            f"{self._base_url}/v1/tts",
+            headers={"Authorization": f"Bearer {self._key()}",
+                     "Content-Type": "application/json",
+                     "model": self.model},
+            json={"text": request.text,
+                  "reference_id": request.voice_id,
+                  "format": "mp3",
+                  "normalize": True,
+                  "latency": "balanced"},
+            timeout=(5, max(1, timeout_ms // 1000)),
+        )
+        if response.status_code in (401, 403):
+            raise RuntimeError("fish rejected the API key")   # never echo body
+        if response.status_code == 429:
+            raise RuntimeError("fish rate limited")
+        if not response.ok:
+            raise RuntimeError(f"fish HTTP {response.status_code}: "
+                               f"{response.text[:200]}")
+        if not response.content:
+            raise RuntimeError("fish returned an empty body")
+        return FishResult(response.content, self.media_type, self.model_version)
