@@ -69,6 +69,10 @@ def test_service_dependencies_are_exactly_pinned():
         "PyYAML==6.0.3",
         "starlette==1.3.1",
         "uvicorn==0.52.0",
+        # real Fish provider (owner order 2026-08-20): lazy-imported at the
+        # client factory, pinned like everything else
+        "requests==2.32.5",
+        "boto3==1.40.16",
     ]
     assert all("==" in requirement for requirement in requirements)
 
