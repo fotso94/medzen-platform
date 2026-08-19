@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from .gateway import GatewayRefusal, LLMGateway
 from .policy import PolicyStore
-from .provider import FakeBedrockProvider
+from .provider import BedrockProvider, FakeBedrockProvider
 from .shared_resilience import CircuitBreaker, State, load_config
 
 
@@ -76,9 +76,11 @@ def create_app(gateway: LLMGateway | None = None, *,
             if supplied_gateway is not None:
                 app.state.gateway = supplied_gateway
             else:
-                if os.environ.get("MEDZEN_LLM_PROVIDER", "fake") != "fake":
+                mode = os.environ.get("MEDZEN_LLM_PROVIDER", "fake")
+                if mode not in ("fake", "bedrock"):
                     raise RuntimeError(
-                        "B6.2 local gateway refuses every real provider mode"
+                        f"unknown MEDZEN_LLM_PROVIDER {mode!r} — the gateway "
+                        "refuses unrecognised provider modes"
                     )
                 root = _root()
                 policies = PolicyStore(
@@ -86,9 +88,14 @@ def create_app(gateway: LLMGateway | None = None, *,
                     root / "registry/llm-policies/v1.yaml",
                 )
                 policies.validate_all()
-                app.state.gateway = LLMGateway(
-                    policies, FakeBedrockProvider(), _breaker()
-                )
+                if mode == "bedrock":
+                    provider = BedrockProvider(
+                        model_id=os.environ.get("MEDZEN_BEDROCK_MODEL_ID", ""),
+                        region=os.environ.get("AWS_REGION", "eu-central-1"),
+                    )
+                else:
+                    provider = FakeBedrockProvider()
+                app.state.gateway = LLMGateway(policies, provider, _breaker())
             app.state.startup_error = None
         except Exception as exc:
             app.state.gateway = None
@@ -127,10 +134,13 @@ def create_app(gateway: LLMGateway | None = None, *,
         gateway_value = request.app.state.gateway
         state = gateway_value.breaker.state if gateway_value is not None else None
         ready = gateway_value is not None and state is State.CLOSED
+        provider_obj = getattr(gateway_value, "provider", None)
+        provider_name = getattr(provider_obj, "name", "unavailable")
         payload = {
             "ready": ready,
-            "provider": "fake_bedrock",
-            "provider_network_access": False,
+            "provider": provider_name,
+            "provider_network_access": provider_name == "bedrock",
+            "model_version": getattr(provider_obj, "model_version", None),
             "language_policies_loaded": gateway_value is not None,
             "breaker_state": state.value if state is not None else "unavailable",
         }

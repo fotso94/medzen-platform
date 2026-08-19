@@ -56,3 +56,85 @@ class FakeBedrockProvider:
             citation_binding_sha256=binding,
             model_version=self.model_version,
         )
+
+
+class BedrockProvider:
+    """Real Bedrock backend via the Converse API (model-family agnostic, so
+    the pinned model can move between Anthropic/Nova without code changes).
+
+    The model NEVER sees or invents the citation binding: the gateway's own
+    binding is echoed back verbatim, and the model may cite only supplied
+    document ids — anything else is surfaced for the gateway's tamper check.
+    boto3 is imported lazily so contract tests never need AWS installed.
+    """
+
+    name = "bedrock"
+
+    def __init__(self, model_id: str, region: str, client: Any | None = None):
+        if not model_id:
+            raise ValueError("MEDZEN_BEDROCK_MODEL_ID is required for the "
+                             "bedrock provider — there is no default model")
+        self.model_id = model_id
+        self.model_version = model_id
+        self._region = region
+        self._client = client
+
+    def _bedrock(self, timeout_ms: int):
+        if self._client is not None:
+            return self._client
+        import boto3
+        from botocore.config import Config
+        self._client = boto3.client(
+            "bedrock-runtime", region_name=self._region,
+            config=Config(read_timeout=max(1, timeout_ms // 1000),
+                          connect_timeout=5,
+                          retries={"max_attempts": 1}))
+        return self._client
+
+    def invoke(self, request: ProviderRequest, *, timeout_ms: int) -> ProviderResult:
+        allowed_ids = [item["document_id"] for item in request.citations]
+        citations_block = "\n\n".join(
+            f"[{item['document_id']}]\n{item.get('content', '')}"
+            for item in request.citations)
+        system = (
+            "You are a careful medical assistant for the MedZen platform.\n"
+            f"Respond ONLY in {request.response_language}.\n"
+            "Use ONLY the supplied citations for factual claims; if they do "
+            "not support an answer, say so and advise consulting a clinician.\n"
+            "Never repeat or invent personal identifiers.\n"
+            "Reply with EXACTLY one JSON object, no markdown fences:\n"
+            '{"text": "<your reply>", "cited_document_ids": ["<id>", ...]}\n'
+            f"cited_document_ids MUST be a subset of {allowed_ids}."
+        )
+        user = (
+            f"Patient transcript ({request.language}):\n"
+            f"{request.normalized_transcript}\n\n"
+            f"Citations:\n{citations_block if citations_block else '(none supplied)'}"
+        )
+        response = self._bedrock(timeout_ms).converse(
+            modelId=self.model_id,
+            system=[{"text": system}],
+            messages=[{"role": "user", "content": [{"text": user}]}],
+            inferenceConfig={
+                "maxTokens": request.maximum_output_tokens,
+                "temperature": 0.2,
+            },
+        )
+        parts = response.get("output", {}).get("message", {}).get("content", [])
+        raw = "".join(p.get("text", "") for p in parts).strip()
+        import json as _json
+        try:
+            if raw.startswith("```"):
+                raw = raw.strip("`").removeprefix("json").strip()
+            payload = _json.loads(raw)
+            text = str(payload["text"])
+            cited = tuple(str(x) for x in payload.get("cited_document_ids", []))
+        except (ValueError, KeyError, TypeError) as exc:
+            raise RuntimeError(
+                f"bedrock reply was not the contracted JSON shape: {exc}") from exc
+        return ProviderResult(
+            text=text,
+            cited_document_ids=cited,
+            citation_binding_sha256=request.citation_binding_sha256,
+            model_version=self.model_version,
+        )

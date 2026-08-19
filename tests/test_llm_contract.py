@@ -93,18 +93,63 @@ def test_missing_or_cross_language_policy_reference_fails_closed(tmp_path: Path)
         store.load("lingala")
 
 
-def test_local_gateway_has_no_aws_sdk_or_real_provider_adapter():
-    requirements = {
-        line.split("==", 1)[0].strip().casefold()
-        for line in (SERVICE_ROOT / "requirements.txt").read_text().splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    }
-    sources = "\n".join(
-        path.read_text().casefold()
-        for path in (SERVICE_ROOT / "medzen_llm_gateway").glob("*.py")
-    )
-    assert "boto3" not in requirements
-    assert "botocore" not in requirements
-    assert "import boto3" not in sources
-    assert "import botocore" not in sources
-    assert "bedrock-runtime" not in sources
+def test_provider_modes_fail_closed_and_default_to_fake():
+    """The mock-only (B6.2) era ended by owner order 2026-08-20: the real
+    BedrockProvider is now part of the gateway. The invariants that survive:
+    the DEFAULT mode is the no-network fake, unknown modes refuse, the real
+    provider requires an explicit model id (no default model), and boto3 is
+    imported lazily so the gateway module works without AWS installed."""
+    import os
+    from medzen_llm_gateway.provider import BedrockProvider
+
+    assert os.environ.get("MEDZEN_LLM_PROVIDER") is None, (
+        "tests must run without a provider mode in the environment")
+    with pytest.raises(ValueError, match="no default model"):
+        BedrockProvider(model_id="", region="eu-central-1")
+    # module import (already done above) did not require boto3: the import
+    # lives inside the client factory only
+    provider = BedrockProvider(model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
+                                region="eu-central-1")
+    assert provider.name == "bedrock"
+    assert provider.model_version.startswith("anthropic.claude-haiku")
+
+
+def test_bedrock_provider_maps_the_contract(monkeypatch):
+    """Request→prompt and response→result mapping against a stub client:
+    the model may only cite supplied ids, the gateway's citation binding is
+    echoed verbatim, and non-JSON replies raise (breaker feeds on that)."""
+    from medzen_llm_gateway.provider import BedrockProvider, ProviderRequest
+
+    captured = {}
+
+    class StubClient:
+        def converse(self, **kwargs):
+            captured.update(kwargs)
+            return {"output": {"message": {"content": [
+                {"text": '{"text": "Fata imiti kabiri ku munsi.", '
+                          '"cited_document_ids": ["doc-1"]}'}]}}}
+
+    provider = BedrockProvider(model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
+                                region="eu-central-1", client=StubClient())
+    request = ProviderRequest(
+        language="kinyarwanda", response_language="Ikinyarwanda",
+        policy_id="kinyarwanda-medzen-v1",
+        normalized_transcript="nfata iyi miti gute",
+        citations=({"document_id": "doc-1", "content": "dosage guidance"},),
+        citation_binding_sha256="ab" * 32, maximum_output_tokens=256)
+    result = provider.invoke(request, timeout_ms=30000)
+    assert result.text.startswith("Fata imiti")
+    assert result.cited_document_ids == ("doc-1",)
+    assert result.citation_binding_sha256 == "ab" * 32
+    assert captured["modelId"].startswith("anthropic.claude-haiku")
+    assert "Ikinyarwanda" in captured["system"][0]["text"]
+    assert captured["inferenceConfig"]["maxTokens"] == 256
+
+    class BrokenClient:
+        def converse(self, **kwargs):
+            return {"output": {"message": {"content": [{"text": "not json"}]}}}
+
+    broken = BedrockProvider(model_id="m", region="eu-central-1",
+                              client=BrokenClient())
+    with pytest.raises(RuntimeError, match="contracted JSON shape"):
+        broken.invoke(request, timeout_ms=30000)
