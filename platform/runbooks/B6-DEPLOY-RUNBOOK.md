@@ -69,3 +69,30 @@ Any step failing its exit condition: `kubectl rollout undo` the
 affected deployment (previous ReplicaSet retained), or delete the
 ingress to detach the ALB. No data-plane state lives in the cluster;
 rollback is stateless.
+
+## Addendum 2026-08-20 — all five images built; container proof; deploy-time contract
+
+**Images (provenance-stamped, in ECR):** medzen-orchestrator:v1-2026-08-20a ·
+medzen-rag-index:v1-2026-08-20a · medzen-llm-gateway:v1-bedrock-2026-08-20a ·
+medzen-speech-tts-gateway:v1-fish-2026-08-20c · medzen-asr-runtime +
+medzen-model-loader (pre-existing, digest-pinned in B6-6).
+
+**Container proof (performed):** the orchestrator image passed
+`b6_live_contract_probe.py --full` (file mode + streaming) running in
+local_fixture mode with the test fixtures and sibling service packages
+volume-mounted (they are deliberately NOT in the image; cluster mode uses
+the Remote*Clients over HTTP).
+
+**Deploy-time env contract (cluster mode):**
+- orchestrator: `MEDZEN_ORCHESTRATOR_MODE=deployed_http_ssm`,
+  `AWS_REGION=eu-central-1`, `MEDZEN_CLIENT_KEYS_SECRET_ID=medzen/client-api-keys`,
+  `MEDZEN_REGISTRY_ROOT=<reviewed snapshot>` — NOTE: the code currently pins
+  the root pattern to `/medzen/registry/test/b6/<sha256>`; pointing at a
+  production namespace is a deliberate code+review change at activation.
+- llm-gateway: `MEDZEN_LLM_PROVIDER=bedrock`,
+  `MEDZEN_BEDROCK_MODEL_ID=eu.anthropic.claude-haiku-4-5-20251001-v1:0`
+  (the eu inference profile — bare model ids are refused by Bedrock).
+- tts-gateway: `MEDZEN_SPEECH_TTS_PROVIDER=fish`; voices at SSM
+  `/medzen/registry/tts/voices` (kinyarwanda approved, owner voice id);
+  key from Secrets Manager `medzen/fish-api-key` (existing grant).
+- Defaults everywhere are the offline/fixture modes; unknown modes refuse.
