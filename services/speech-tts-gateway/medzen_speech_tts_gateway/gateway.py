@@ -80,7 +80,9 @@ class TTSGateway:
 
     @property
     def backend_mode(self) -> str:
-        return "fake_fish_with_text_only_fallback" if self.provider else "text_only"
+        if self.provider is None:
+            return "text_only"
+        return f"{self.provider.name}_with_text_only_fallback"
 
     def _validate(self, value: Any) -> tuple[str, str, str, dict[str, str | None]]:
         if not isinstance(value, dict) or set(value) != {

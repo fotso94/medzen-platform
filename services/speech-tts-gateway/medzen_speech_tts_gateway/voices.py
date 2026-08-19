@@ -3,7 +3,8 @@ medzen-tts-dev service, reviewed 2026-08-20; that service stays untouched
 as reference + fallback).
 
 The caller sends a language; this module is the only place that knows the
-provider-side reference_id. Source of truth is SSM (swap a voice without a
+provider-side reference_id. Source of truth is SSM under /medzen/registry/ (inside the
+pod role's existing grant — alignment review 2026-08-20; swap a voice without a
 redeploy, TTL-cached); MEDZEN_TTS_VOICES_INLINE overrides for tests; the
 built-in default keeps the container bootable if SSM is unreachable.
 
@@ -50,7 +51,7 @@ _DEFAULT_REGISTRY: dict[str, dict] = {
     },
 }
 
-_SSM_PARAM = os.environ.get("MEDZEN_TTS_VOICES_SSM_PARAM", "/medzen/tts/voices")
+_SSM_PARAM = os.environ.get("MEDZEN_TTS_VOICES_SSM_PARAM", "/medzen/registry/tts/voices")
 _TTL_SECONDS = float(os.environ.get("MEDZEN_TTS_VOICES_TTL_SECONDS", "300"))
 
 _lock = threading.Lock()
