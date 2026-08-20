@@ -79,6 +79,15 @@ def main() -> int:
         residue = [k for k in merged_state if ".lora_a" in k or ".lora_b" in k]
         if residue:
             raise SystemExit(f"step {step}: adapter residue {residue[:3]}")
+        # self-review 2026-08-20: the finiteness refusal must cover BOTH
+        # branches — a diverged LoRA run is as unservable as a full one
+        poisoned = [k for k, v in merged_state.items()
+                    if torch.is_tensor(v) and v.is_floating_point()
+                    and not bool(torch.isfinite(v).all())]
+        if poisoned:
+            raise SystemExit(
+                f"step {step}: NON-FINITE tensors {poisoned[:3]} after "
+                "merge — diverged checkpoint, refusing to extract")
         torch.save(merged_state, target)
         print(f"merged step {step}: {loaded} adapter tensors, "
               f"{len(audit['merged_modules'])} modules -> {target.name}",

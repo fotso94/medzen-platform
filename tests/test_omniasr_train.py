@@ -854,3 +854,41 @@ def test_nonfinite_loss_fails_closed_without_persisting(tmp_path):
     assert not list(tmp_path.glob("step-*.pt")), "poison must not persist"
     assert all(torch.isfinite(p).all() for p in model.parameters()), (
         "the guard must fire BEFORE the optimizer step")
+
+
+@_needs_torch
+def test_poisoned_parameters_refuse_the_checkpoint_boundary(tmp_path):
+    """Self-review 2026-08-20: the checkpoint-time parameter scan was an
+    untested branch. Finite losses with silently poisoned weights must
+    stop at the boundary WITHOUT persisting."""
+    import torch
+    from torch import nn
+    from pipeline.omniasr_train import run_training_loop
+
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-4",
+                          MEDZEN_WARMUP_STEPS="1",
+                          MEDZEN_LR_SCHEDULE="constant",
+                          MEDZEN_MAX_STEPS="2", MEDZEN_BATCH_SIZE="1",
+                          MEDZEN_GRAD_ACCUM="1", MEDZEN_CHECKPOINT_EVERY="2",
+                          MEDZEN_CHECKPOINT_DIR=str(tmp_path))
+    model = nn.Linear(4, 4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    calls = {"n": 0}
+
+    def sneaky_loss(m, b):
+        calls["n"] += 1
+        if calls["n"] == 2:   # poison AFTER step 1 succeeded
+            with torch.no_grad():
+                m.weight[0, 0] = float("inf")
+        return m(b).pow(2).mean().nan_to_num(0.0, 0.0, 0.0)
+
+    outcome = run_training_loop(
+        model=model, optimizer=optimizer,
+        batches=lambda i: torch.randn(1, 4),
+        batch_loss=sneaky_loss,
+        config=config, fingerprint="f" * 64,
+        save_state=lambda p, s: p.write_bytes(b"poison"),
+        load_state=lambda p: 0)
+    assert outcome["status"] == "TRAINING_DIVERGED_NONFINITE"
+    assert outcome["nonfinite"] in ("parameters", "grad_norm", "loss")
+    assert not list(tmp_path.glob("step-*.pt"))
