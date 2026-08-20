@@ -311,6 +311,17 @@ def load_mix(cli, temperature: float, seed: int,
             raise SystemExit(
                 "REFUSING: the pool gate removed every eligible row; "
                 "nothing to train on")
+        # Codex review #7 (reproduced): the pre-gate coverage check passed,
+        # then the licence gate removed EVERY row of one requested language
+        # and training continued on the remainder. Coverage must hold after
+        # every filtering stage.
+        if languages:
+            uncovered = sorted(set(languages) - set(per_lang))
+            if uncovered:
+                raise SystemExit(
+                    f"REFUSING: the licence gate removed every row of "
+                    f"requested language(s) {uncovered} — a partial mixture "
+                    "must never be bought silently")
     cap_report = None
     if per_language_audio_cap_s is not None:
         if per_language_audio_cap_s <= 0:

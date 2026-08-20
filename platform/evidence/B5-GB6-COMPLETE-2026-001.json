@@ -1,5 +1,5 @@
 {
- "assembled_utc": "2026-08-21T01:10:00Z",
+ "assembled_utc": "2026-08-20T20:21:52Z",
  "basis": {
   "owner_order": "Codex recommendations adopted 2026-08-20; prerequisites executed before any pilot spend",
   "purpose": "ARCH-2026-001 universal-model pilot: the physical, immutable multilingual revision Codex review #6 required \u2014 every pilot language trainable at literal /gb6/ paths (the trainer resolves by path)"
@@ -81,6 +81,7 @@
   }
  },
  "sharealike_note": "per-mix rule carried from gb5: mixes touching LIC-2026-002 sharealike corpora carry the obligation; the 12 gb6 corpora include gb3-era sharealike rows for french/ewe/lingala \u2014 pilot mixes therefore carry sharealike_obligation TRUE unless re-filtered at mix time",
+ "timestamp_note": "timestamps corrected 2026-08-20T21:15Z (Codex review #7: prior stamps were future-dated estimates; corrected to the verifiable git commit times)",
  "trainability": "ALL SIX PILOT LANGUAGES trainable at gb6; the trainer additionally refuses silent partial coverage since bb5a72f",
  "version": "gb6"
 }

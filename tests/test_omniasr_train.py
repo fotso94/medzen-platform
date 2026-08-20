@@ -906,8 +906,52 @@ def test_multilingual_full_ft_requires_the_architecture_ack():
                           MEDZEN_WARMUP_STEPS="100",
                           MEDZEN_LR_SCHEDULE="constant",
                           MEDZEN_LANGUAGES="kinyarwanda,english,french",
-                          MEDZEN_MULTILINGUAL_FULL_ACK="ARCH-2026-001")
+                          MEDZEN_MULTILINGUAL_FULL_ACK="ARCH-2026-001",
+                          MEDZEN_TEMPERATURE="0.5",
+                          MEDZEN_EXCLUSIONS_REF="s3://x/policy.json",
+                          MEDZEN_EXPECT_EXCLUDED="1579",
+                          MEDZEN_MAX_STEPS="40000",
+                          MEDZEN_CHECKPOINT_EVERY="2000")
     assert sorted(config.languages) == ["english", "french", "kinyarwanda"]
+    # Codex review #7: the ack must ride the run fingerprint
+    assert config.fingerprint_payload()["multilingual_ack"] == "ARCH-2026-001"
+
+
+def test_multilingual_full_ft_enforces_the_pilot_profile_bounds():
+    """Codex review #7 reproduction: ack + temperature 100 + tiny checkpoint
+    interval were all accepted. The trainer-side hard walls now refuse."""
+    base = dict(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                MEDZEN_WARMUP_STEPS="100", MEDZEN_LR_SCHEDULE="constant",
+                MEDZEN_LANGUAGES="kinyarwanda,english",
+                MEDZEN_MULTILINGUAL_FULL_ACK="ARCH-2026-001",
+                MEDZEN_EXCLUSIONS_REF="s3://x/policy.json",
+                MEDZEN_EXPECT_EXCLUDED="1579",
+                MEDZEN_MAX_STEPS="40000", MEDZEN_CHECKPOINT_EVERY="2000")
+    with pytest.raises(TrainerRefusal, match="temperature"):
+        make_config(**dict(base, MEDZEN_TEMPERATURE="100"))
+    with pytest.raises(TrainerRefusal, match="EXCLUSIONS"):
+        env = dict(base)
+        del env["MEDZEN_EXCLUSIONS_REF"]
+        make_config(**env)
+    with pytest.raises(TrainerRefusal, match="checkpoint_every"):
+        make_config(**dict(base, MEDZEN_CHECKPOINT_EVERY="50"))
+    # a 30-step calibration with interval 30 satisfies min(1000, max_steps)
+    tiny = make_config(**dict(base, MEDZEN_MAX_STEPS="30",
+                               MEDZEN_CHECKPOINT_EVERY="30",
+                               MEDZEN_WARMUP_STEPS="10"))
+    assert tiny.checkpoint_every_steps == 30
+
+
+def test_licence_gate_cannot_silently_remove_a_requested_language():
+    """Codex review #7 reproduction: pre-gate coverage passed, then the
+    licence gate removed EVERY row of one language and training continued."""
+    rows = {
+        "yemba": [_row("yemba", "cc0", index=i) for i in range(10)],
+        "wolof": [_row("wolof", "research_only", index=i) for i in range(10)],
+    }
+    config = make_config(MEDZEN_LANGUAGES="yemba,wolof")
+    with pytest.raises(SystemExit, match="licence gate removed every row"):
+        build_gated_mix(config, client=FakeS3(rows))
 
 
 def test_mix_refuses_silent_partial_language_coverage():

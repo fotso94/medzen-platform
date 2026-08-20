@@ -68,21 +68,32 @@ def test_no_per_language_serving_digest_may_enter_the_registry():
     the serving-contract step. Full enforcement arrives with that step;
     this trips any earlier drift."""
     import yaml
-    forbidden = {"serving_artifact", "asr_digest", "model_digest",
-                 "artifact_digest", "serving_model"}
+    # Codex review #7: the first version of this test forbade INVENTED
+    # field names and missed the real ones. Real semantics: per-language
+    # APPROVAL fields are allowed (approved_version — the A4 mechanism);
+    # what must never diverge is a SERVING artifact digest. Collect every
+    # digest-bearing artifact field across languages' asr sections — if
+    # any exist, they must all be identical.
+    digest_fields = {"artifact", "artifact_tree_sha256", "artifact_sha256",
+                     "serving_artifact", "asr_digest", "model_digest",
+                     "artifact_digest", "serving_model"}
+    seen: dict[str, list[str]] = {}
     for path in sorted((ROOT / "registry/languages").glob("*.yaml")):
         doc = yaml.safe_load(path.read_text()) or {}
         def walk(node, trail):
             if isinstance(node, dict):
                 for key, value in node.items():
-                    assert key not in forbidden, (
-                        f"{path.name}: {'.'.join(trail + [key])} — "
-                        "per-language serving digests violate ARCH-2026-001")
+                    if key in digest_fields and isinstance(value, str):
+                        seen.setdefault(value, []).append(
+                            f"{path.name}:{'.'.join(trail + [key])}")
                     walk(value, trail + [key])
             elif isinstance(node, list):
                 for item in node:
                     walk(item, trail)
         walk(doc, [])
+    assert len(seen) <= 1, (
+        f"ARCH-2026-001: {len(seen)} DIFFERENT artifact digests bound across "
+        f"language files — production binds ONE digest globally: {seen}")
 
 
 def test_tier2_holdout_record_binds_every_pilot_language():
@@ -108,3 +119,60 @@ def test_gb6_covers_every_pilot_language_physically():
         assert "/gb6/manifest.jsonl" in entry["key"], (
             "gb6 entries must be PHYSICAL /gb6/ paths — the trainer "
             "resolves by path")
+
+
+def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
+    """Codex review #7 reproduction: a report with nothing but PASS states
+    was accepted. It must now carry the full protocol evidence chain."""
+    import subprocess, sys
+    fabricated = {"schema_version": 1,
+                  "languages": {"kinyarwanda": {"state": "PASS"}},
+                  "gate_state_counts": {"PASS": 1}}
+    path = tmp_path / "report.json"
+    path.write_text(json.dumps(fabricated))
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+         "--gate-report", str(path), "--languages", "kinyarwanda"],
+        capture_output=True, text=True)
+    assert proc.returncode == 1
+    assert "PROMOTION-PROTOCOL-2026-001" in proc.stdout
+
+    complete = {
+        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-001",
+        "candidate_digest": "sha256:" + "a" * 64,
+        "code_switch_evidence": {"set": "licensed-cs-1", "state": "PASS"},
+        "operational_evidence": {"latency_p95_ms": 800, "vram_gb": 18},
+        "languages": {"kinyarwanda": {
+            "state": "PASS", "holdout_manifest_sha256": "b" * 64,
+            "improvement": {"margin": 0.093, "upper_ci": -0.11,
+                             "method": "paired_clustered_bootstrap",
+                             "clusters": 80}}},
+        "gate_state_counts": {"PASS": 1}}
+    path.write_text(json.dumps(complete))
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+         "--gate-report", str(path), "--languages", "kinyarwanda"],
+        capture_output=True, text=True)
+    assert proc.returncode == 0, proc.stdout
+
+
+def test_clustered_noninferiority_validator_behaves():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from noninferiority import clustered_noninferiority
+
+    equal = [{"cluster_id": f"s{i % 10}", "baseline_errors": 5,
+              "candidate_errors": 5, "reference_words": 20}
+             for i in range(200)]
+    verdict = clustered_noninferiority(equal, margin=0.01)
+    assert verdict["non_inferior"] is True
+    assert verdict["clusters"] == 10
+    worse = [{"cluster_id": f"s{i % 10}", "baseline_errors": 5,
+              "candidate_errors": 9, "reference_words": 20}
+             for i in range(200)]
+    verdict = clustered_noninferiority(worse, margin=0.01)
+    assert verdict["non_inferior"] is False, (
+        "a uniform +20% error increase must fail a 1-point margin")
+    # determinism under the declared seed
+    again = clustered_noninferiority(worse, margin=0.01)
+    assert again["upper_ci"] == verdict["upper_ci"]

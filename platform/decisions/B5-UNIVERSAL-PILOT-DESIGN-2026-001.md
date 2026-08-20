@@ -17,6 +17,22 @@ recipes review #5 correctly noted we never explored.
   thin?).
 - All other supported languages — replay evidence at gate time.
 
+## Required environment (rev3 — Codex review #7: the documented config
+refused to run because gb6's adoption binds DQ-2026-006)
+Every pilot arm binds AT LEAST:
+- MEDZEN_TRAIN_MODE=full, MEDZEN_MULTILINGUAL_FULL_ACK=ARCH-2026-001
+- MEDZEN_MANIFEST_VERSION=gb6
+- MEDZEN_LANGUAGES=english,ewe,french,kinyarwanda,lingala,swahili (exactly)
+- MEDZEN_EXCLUSIONS_REF=s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json
+- MEDZEN_EXPECT_EXCLUDED=1579  (gb6 ADOPTION binds this policy's sha)
+- MEDZEN_TEMPERATURE=0.5 (trainer refuses > 0.5 multilingual)
+- MEDZEN_CHECKPOINT_EVERY=2000 (trainer refuses < min(1000, max_steps):
+  the 50-step default would write ~2 TB on a 250 GB disk)
+- MEDZEN_LR (0 < lr <= 1e-4), MEDZEN_WARMUP_STEPS (1 <= w < max_steps),
+  MEDZEN_LR_SCHEDULE (constant|cosine), per-language MEDZEN_AUDIO_CAP_HOURS
+The ack now rides the run fingerprint. All bounds are trainer-enforced
+refusals, not conventions.
+
 ## Arms (sequential, each gated on the last; stop early on a winner)
 1. Balanced dense full FT (preservation via mixture balance + low LR +
    replay data in-mix). ~40k steps, 1 x ml.g6.xlarge.

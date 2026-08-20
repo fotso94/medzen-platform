@@ -2,7 +2,7 @@
   "record": "PROMOTION-PROTOCOL-2026-001",
   "title": "Production ASR promotion protocol v0 (one multilingual artifact)",
   "status": "DECLARED",
-  "declared_utc": "2026-08-20T23:05:00Z",
+  "declared_utc": "2026-08-20T20:16:54Z",
   "basis": "ARCH-2026-001 + Codex review #5 recommendation 5 + the sealed-holdout discipline proven in B5-KW-V2-GATE-PROTOCOL-2026-001",
   "principles": [
     "aggregate WER alone can NEVER promote an artifact",
@@ -23,5 +23,11 @@
   },
   "phasing_rationale": "declaring unmeasurable gates as blocking today would make promotion impossible forever; declaring them phased-with-trigger keeps them from being quietly dropped",
   "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate",
-  "machine_enforcement": "tests/test_arch_2026_001.py consumes these records; the trainer refuses silent partial language coverage and un-acked multilingual full FT; the one-global-digest registry rule becomes enforceable at the serving-contract step (ARCH sequencing step 6) and is tracked there, not silently dropped"
+  "machine_enforcement": "tests/test_arch_2026_001.py consumes these records; the trainer refuses silent partial language coverage and un-acked multilingual full FT; the one-global-digest registry rule becomes enforceable at the serving-contract step (ARCH sequencing step 6) and is tracked there, not silently dropped",
+  "timestamp_note": "timestamps corrected 2026-08-20T21:15Z (Codex review #7: prior stamps were future-dated estimates; corrected to the verifiable git commit times)",
+  "holdout_grades": {
+    "promotion_grade": "kinyarwanda cv17-test-v1-sealed (80 real speakers, speaker-disjoint, single-consumption)",
+    "conditional": "french aaf-test-v1 tier2 (REBUILT FROM manifest.r2 2026-08-20: 12 real speakers, speaker-disjoint, eval-only metadata; caveat: 132/258 sealed texts shared with CA16 training scripts)",
+    "development_grade_only": "all FLEURS/soreva tier2 pools: placeholder speaker ids make speaker-independence INDETERMINATE, and all source pools were scored in the 47-language suite. Usable for protected-language non-inferiority SUPPORT; NOT primary blind promotion evidence. Target-language promotion claims need speaker-verifiable sets (commissioned / code-switch acquisitions)."
+  }
 }

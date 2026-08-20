@@ -57,12 +57,16 @@ def test_absent_and_malformed_reports_refuse(tmp_path):
 
 
 def test_cli_exit_codes(tmp_path):
+    # Since PROMOTION-PROTOCOL-2026-001 (Codex review #7), a bare-PASS
+    # report REFUSES: pre-protocol reports cannot promote. The full-chain
+    # passing case lives in test_arch_2026_001.py.
     path = _report(tmp_path, {"hausa": "PASS"})
     root = Path(__file__).resolve().parents[1]
     ok = subprocess.run([sys.executable, "scripts/b7_model_promotion_check.py",
                          "--gate-report", str(path), "--languages", "hausa"],
                         capture_output=True, cwd=root)
-    assert ok.returncode == 0
+    assert ok.returncode == 1
+    assert b"PROMOTION-PROTOCOL-2026-001" in ok.stdout
     bad = subprocess.run([sys.executable, "scripts/b7_model_promotion_check.py",
                           "--gate-report", str(path), "--languages", "hausa,wolof"],
                          capture_output=True, cwd=root)

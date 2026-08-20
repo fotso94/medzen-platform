@@ -2,7 +2,7 @@
   "record": "ARCH-2026-001",
   "title": "One multilingual production ASR model \u2014 permanent architecture",
   "status": "OWNER_DECIDED",
-  "decided_utc": "2026-08-20T23:00:00Z",
+  "decided_utc": "2026-08-20T19:43:11Z",
   "owner_verbatim": "since id like to one one production model as the permanent architecture ... check codex recommendations wether it make sense and align with your recommendations on this, if yes proceed with changes/fix (2026-08-20)",
   "basis": "Codex review #5 (split-brain, verified accurate 2026-08-20) + Codex recommended next steps, assessed by Claude as coherent and execution-ready. Supersedes Claude's per-language-routing serving recommendation.",
   "architecture": {
@@ -26,5 +26,6 @@
     "5. promotion under PROMOTION-PROTOCOL-2026-001 (aggregate WER alone can never promote)",
     "6. ONLY THEN the serving contract changes: services.yaml asr-runtime wording + model-loader v1 manifest accepting the promoted hash-pinned omniASR artifact (deliberate reviewed change; loader stays fail-closed until then)"
   ],
-  "explicitly_deferred": "services.yaml and model-loader are NOT modified by this record (step 6); the sha-pinned governance tests keep them frozen until the promoted artifact exists"
+  "explicitly_deferred": "services.yaml and model-loader are NOT modified by this record (step 6); the sha-pinned governance tests keep them frozen until the promoted artifact exists",
+  "timestamp_note": "timestamps corrected 2026-08-20T21:15Z (Codex review #7: prior stamps were future-dated estimates; corrected to the verifiable git commit times)"
 }

@@ -1,5 +1,10 @@
 {
- "built_utc": "2026-08-21T02:00:00Z",
+ "built_utc": "2026-08-20T20:26:33Z",
+ "grades": {
+  "conditional": "french aaf-test-v1 tier2 (REBUILT FROM manifest.r2 2026-08-20: 12 real speakers, speaker-disjoint, eval-only metadata; caveat: 132/258 sealed texts shared with CA16 training scripts)",
+  "development_grade_only": "all FLEURS/soreva tier2 pools: placeholder speaker ids make speaker-independence INDETERMINATE, and all source pools were scored in the 47-language suite. Usable for protected-language non-inferiority SUPPORT; NOT primary blind promotion evidence. Target-language promotion claims need speaker-verifiable sets (commissioned / code-switch acquisitions).",
+  "promotion_grade": "kinyarwanda cv17-test-v1-sealed (80 real speakers, speaker-disjoint, single-consumption)"
+ },
  "honest_limitations": {
   "fleurs_and_soreva_speaker_ids": "single placeholder id per pool on both eval and training sides \u2014 speaker disjointness is INDETERMINATE there; isolation rests on byte+session+text disjointness plus the sources' own split construction",
   "french_aaf_text_overlap": "132 of 258 sealed aaf-test rows share exact normalized text with gb6 CA16 training corpora (shared scripted prompts). The pilot packet must treat french/fleurs as the primary french anchor; aaf-test is secondary with this caveat on record."
@@ -56,8 +61,10 @@
   "french": [
    {
     "distinct_speakers": 12,
+    "metadata_source": "manifest.r2.jsonl (Codex review #7: the original manifest still permitted asr_train on eval rows; r2 = eval-only)",
     "method": "speaker_disjoint",
     "pool": "eval/french/asr/aaf-test-v1",
+    "rebuilt_from_r2_utc": "2026-08-20T21:05:00Z",
     "sealed_vs_gb6_overlap": {
      "byte": 0,
      "session": 0,
@@ -67,12 +74,12 @@
     "tier2-dev": {
      "key": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
      "rows": 217,
-     "sha256": "07d5406ada5a8e4e4c82b5f88da05b3f67bfeb333492184c4de0e649ee21d7e5"
+     "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c"
     },
     "tier2-sealed": {
      "key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
      "rows": 258,
-     "sha256": "a89455de9a44f739cef5f80f22bb994e2f081fbead015bbeb2c8a9295017e293"
+     "sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b"
     },
     "total_rows": 475
    },
@@ -194,5 +201,6 @@
  },
  "purpose": "ARCH-2026-001 pilot Tier-2 promotion holdouts (Codex review #6 rec 4): one untouched final holdout per pilot language, frozen BEFORE any arm launches, consumed exactly once by the winning arm. kinyarwanda's sealed holdout pre-exists (B5-KW-V2-GATE-PROTOCOL-2026-001).",
  "record": "B5-TIER2-HOLDOUTS-2026-001",
- "split_rule": "per pool: speaker-disjoint salted split when >= 8 real speakers; otherwise deterministic row-hash split with the speaker dimension recorded as stated. Salt 'universal-tier2-2026-08-21' + language."
+ "split_rule": "per pool: speaker-disjoint salted split when >= 8 real speakers; otherwise deterministic row-hash split with the speaker dimension recorded as stated. Salt 'universal-tier2-2026-08-21' + language.",
+ "timestamp_note": "timestamps corrected 2026-08-20T21:15Z (Codex review #7: prior stamps were future-dated estimates; corrected to the verifiable git commit times)"
 }

@@ -135,6 +135,7 @@ class TrainerConfig:
     train_mode: str
     warmup_steps: int
     lr_schedule: str
+    multilingual_ack: str | None
     checkpoint_dir: Path
     output_dir: Path
     checkpoint_every_steps: int
@@ -259,6 +260,30 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                 f"explicitly cites the one-model architecture: set "
                 f"MEDZEN_MULTILINGUAL_FULL_ACK=ARCH-2026-001 for a "
                 f"preservation-aware universal run; got {sorted(languages)}")
+        if len(languages) != 1:
+            # Codex review #7: the ack alone was a magic string — a
+            # multilingual full run must ALSO satisfy the pilot-profile
+            # bounds (the packet supplies exact values; these are the
+            # trainer-side hard walls).
+            temp_value = _number("MEDZEN_TEMPERATURE", "0.5", float, 0.0)
+            if temp_value > 0.5:
+                raise TrainerRefusal(
+                    f"multilingual full FT requires temperature <= 0.5, got "
+                    f"{temp_value} (higher lets one language dominate)")
+            if not env.get("MEDZEN_EXCLUSIONS_REF", "").strip() or not                     env.get("MEDZEN_EXPECT_EXCLUDED", "").strip():
+                raise TrainerRefusal(
+                    "multilingual full FT requires MEDZEN_EXCLUSIONS_REF + "
+                    "MEDZEN_EXPECT_EXCLUDED (gb6 adoption binds DQ-2026-006; "
+                    "a run without it refuses at mix time anyway)")
+            steps_value = _number("MEDZEN_MAX_STEPS", "600", int, 1)
+            every_value = _number("MEDZEN_CHECKPOINT_EVERY", "50", int, 1)
+            if every_value < min(1000, steps_value):
+                raise TrainerRefusal(
+                    f"multilingual full FT requires checkpoint_every >= "
+                    f"min(1000, max_steps): {every_value} would write "
+                    f"~{(steps_value // every_value) * 2.6:.0f} GB of "
+                    "checkpoints (the 40k/50 default is ~2 TB on a 250 GB "
+                    "disk)")
 
     return TrainerConfig(
         variant=variant,
@@ -279,6 +304,8 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         train_mode=env.get("MEDZEN_TRAIN_MODE", "lora"),
         warmup_steps=_number("MEDZEN_WARMUP_STEPS", "0", int, 0),
         lr_schedule=lr_schedule,
+        multilingual_ack=env.get("MEDZEN_MULTILINGUAL_FULL_ACK", "").strip()
+        or None,
         checkpoint_dir=Path(env.get("MEDZEN_CHECKPOINT_DIR", "/opt/ml/checkpoints")),
         output_dir=Path(env.get("MEDZEN_OUTPUT_DIR", "/opt/ml/model")),
         checkpoint_every_steps=_number("MEDZEN_CHECKPOINT_EVERY", "50", int, 1),
