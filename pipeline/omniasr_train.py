@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import signal
 from dataclasses import asdict, dataclass, field
@@ -186,6 +187,10 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             value = kind(raw)
         except ValueError as exc:
             raise TrainerRefusal(f"{name}={raw!r} is not a {kind.__name__}") from exc
+        # NaN/Infinity pass every < comparison unscathed (Codex review #2:
+        # MEDZEN_LR=nan was accepted) — no numeric knob may be non-finite
+        if kind is float and not math.isfinite(value):
+            raise TrainerRefusal(f"{name}={raw!r} is not a finite number")
         if minimum is not None and value < minimum:
             raise TrainerRefusal(f"{name}={value} is below the minimum {minimum}")
         return value
@@ -196,17 +201,38 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
     except ValueError as exc:
         raise TrainerRefusal(f"MEDZEN_SEED={seed_raw!r} is not an integer") from exc
 
+    # Mode is validated AT PARSE (Codex review #2: an unknown mode used to
+    # pass parse and only refuse after mix building and model staging had
+    # already spent time and bytes).
+    train_mode = env.get("MEDZEN_TRAIN_MODE", "lora")
+    if train_mode not in ("lora", "full"):
+        raise TrainerRefusal(f"unknown MEDZEN_TRAIN_MODE {train_mode!r}")
+
     # Full-mode guards (Codex finding 2026-08-20). The 1e-3 default is a
     # LoRA rate — it is the exact rate behind the wave-1 runaway
     # (B5-DIAG-2026-001) and must never reach a full fine-tune implicitly.
     # And full mode exists BECAUSE per-language isolation ended the shared
     # adapter's interference — a multi-language full job would rebuild the
     # failure the strategy pivot removed.
-    if env.get("MEDZEN_TRAIN_MODE", "lora") == "full":
-        if not env.get("MEDZEN_LR", "").strip():
+    if train_mode == "full":
+        lr_raw = env.get("MEDZEN_LR", "").strip()
+        if not lr_raw:
             raise TrainerRefusal(
                 "full mode requires an EXPLICIT MEDZEN_LR — the 1e-3 default "
                 "is a LoRA rate and destroyed wave-1 (B5-DIAG-2026-001)")
+        # Codex review #2: 0, 1000, NaN and Infinity were all accepted.
+        # Zero trains nothing while paying; anything above 1e-3 is at or
+        # beyond the proven-runaway LoRA rate on a full parameter surface.
+        lr_value = _number("MEDZEN_LR", lr_raw, float, None)
+        if not (0.0 < lr_value <= 1e-3):
+            raise TrainerRefusal(
+                f"full mode requires 0 < MEDZEN_LR <= 1e-3, got {lr_raw!r} "
+                "(the wave-1 runaway was 1e-3 on a far smaller surface)")
+        if not env.get("MEDZEN_WARMUP_STEPS", "").strip():
+            raise TrainerRefusal(
+                "full mode requires an EXPLICIT MEDZEN_WARMUP_STEPS — a "
+                "bounded schedule is part of the full-FT contract "
+                "(Codex review #2)")
         if len(languages) != 1:
             raise TrainerRefusal(
                 f"full mode trains exactly one language per job "
@@ -359,25 +385,35 @@ def save_full_state(path: Path, *, model, optimizer, step: int) -> None:
     the AdamW state in a single rotating sidecar next to it (Codex finding
     2026-08-20: without optimizer moments a resume is not
     trajectory-equivalent; with them in EVERY file a 40k-step run writes
-    ~200 GB — the sidecar keeps exactly the resumable state, once)."""
+    ~200 GB — the sidecar keeps exactly the resumable state, once).
+
+    Codex review #2 (2026-08-20): the sidecar is HASH-BOUND. It is written
+    FIRST, its digest rides inside the model checkpoint, and the marker
+    hashes the model checkpoint — so the trust chain is
+    marker → model checkpoint → sidecar, and corrupted or swapped
+    optimizer moments cannot ride a valid-looking step number."""
     import torch
+    sidecar_path = path.parent / OPTIMIZER_SIDECAR
+    sidecar_tmp = path.parent / (OPTIMIZER_SIDECAR + ".tmp")
+    with sidecar_tmp.open("wb") as stream:
+        torch.save({"step": step, "optimizer": optimizer.state_dict()}, stream)
+    sidecar_tmp.replace(sidecar_path)
+    sidecar_sha = hashlib.sha256(sidecar_path.read_bytes()).hexdigest()
     with path.open("wb") as stream:
         torch.save({"step": step, "model": model.state_dict(),
+                    "optimizer_sidecar_sha256": sidecar_sha,
+                    "optimizer_sidecar_step": step,
                     "torch_rng": torch.get_rng_state(),
                     "cuda_rng": (torch.cuda.get_rng_state_all()
                                  if torch.cuda.is_available() else None)},
                    stream)
-    sidecar_tmp = path.parent / (OPTIMIZER_SIDECAR + ".tmp")
-    with sidecar_tmp.open("wb") as stream:
-        torch.save({"step": step, "optimizer": optimizer.state_dict()}, stream)
-    sidecar_tmp.replace(path.parent / OPTIMIZER_SIDECAR)
 
 
 def load_full_state(path: Path, *, model, optimizer) -> int:
-    """Resume a full-mode checkpoint. The optimizer sidecar must exist and
-    match the checkpoint's step — a mismatched sidecar means the crash
-    landed between the two writes, and resuming without the matching
-    moments would silently diverge from the paid trajectory. Refuse."""
+    """Resume a full-mode checkpoint. The sidecar's BYTES must hash to the
+    digest the (marker-verified) model checkpoint carries — step equality
+    alone let deliberately corrupted AdamW moments through (Codex review
+    #2 reproduction, now the regression test). Refuse anything torn."""
     import torch
     state = torch.load(path, map_location="cpu", weights_only=False)
     sidecar_path = path.parent / OPTIMIZER_SIDECAR
@@ -386,6 +422,17 @@ def load_full_state(path: Path, *, model, optimizer) -> int:
             f"full-mode resume needs {OPTIMIZER_SIDECAR} beside "
             f"{path.name}; without the optimizer moments the resumed "
             "trajectory is not the one already paid for")
+    want_sha = state.get("optimizer_sidecar_sha256")
+    if not want_sha:
+        raise TrainerRefusal(
+            f"{path.name} predates sidecar hash-binding — refusing an "
+            "unverifiable optimizer pair")
+    actual_sha = hashlib.sha256(sidecar_path.read_bytes()).hexdigest()
+    if actual_sha != want_sha:
+        raise TrainerRefusal(
+            f"optimizer sidecar hash {actual_sha[:16]} does not match the "
+            f"{want_sha[:16]} bound into {path.name}; the pair is torn or "
+            "corrupted — refusing a non-equivalent resume")
     sidecar = torch.load(sidecar_path, map_location="cpu", weights_only=False)
     if int(sidecar["step"]) != int(state["step"]):
         raise TrainerRefusal(
@@ -402,16 +449,22 @@ def load_full_state(path: Path, *, model, optimizer) -> int:
 
 def check_disk_envelope(config: TrainerConfig, mix: list[dict],
                         *, cache_root: Path,
+                        staging_root: Path | None = None,
                         model_bytes_estimate: int = 2_600_000_000,
-                        free_bytes=None) -> dict[str, int]:
+                        staging_bytes_estimate: int = 6_000_000_000,
+                        free_bytes=None, device_of=None) -> dict[str, int]:
     """Measured disk envelope BEFORE any GPU-hour is spent (Codex finding
     2026-08-20: 1,442 h of cached audio plus ~20 full checkpoints cannot
     fit the historical 100 GB volume convention).
 
+    Codex review #2: needs are GROUPED BY FILESYSTEM and summed — checking
+    paths separately approved a 100 GB shared volume for a 110.8 GB total
+    (38.0 audio + 72.8 checkpoints on the 300 h/12k-step shape). Model
+    staging counts too, and main() calls this BEFORE staging or GPU load.
+
     Audio cache: 16 kHz mono PCM_16 wav = 32,000 B/s of duration.
     Checkpoint zone: one full-model file per checkpoint interval + the
-    optimizer sidecar (~3x model for AdamW fp32 moments) + the export.
-    Refuses if either filesystem lacks the estimate plus 10% headroom."""
+    optimizer sidecar (~3x model for AdamW moments) + the export."""
     import shutil
 
     audio_need = int(sum(r["duration_s"] for r in mix) * 32_000 * 1.10)
@@ -422,21 +475,35 @@ def check_disk_envelope(config: TrainerConfig, mix: list[dict],
     else:
         ckpt_need = int(n_checkpoints * 200_000_000 + model_bytes_estimate)
     measure = free_bytes or (lambda p: shutil.disk_usage(p).free)
-    needs = {str(cache_root): audio_need,
-             str(config.checkpoint_dir): ckpt_need}
-    for path_str, need in needs.items():
-        root = Path(path_str)
+
+    def existing_ancestor(root: Path) -> Path:
         probe = root
         while not probe.exists() and probe.parent != probe:
             probe = probe.parent
-        free = measure(probe)
-        if free < need:
+        return probe
+
+    dev = device_of or (lambda p: os.stat(p).st_dev)
+    needs = [(cache_root, audio_need, "audio cache"),
+             (config.checkpoint_dir, ckpt_need, "checkpoints"),
+             (staging_root or cache_root, staging_bytes_estimate,
+              "model staging")]
+    grouped: dict[object, dict] = {}
+    for root, need, label in needs:
+        probe = existing_ancestor(Path(root))
+        bucket = grouped.setdefault(dev(probe),
+                                    {"probe": probe, "need": 0, "labels": []})
+        bucket["need"] += need
+        bucket["labels"].append(f"{label} ~{need / 1e9:.0f} GB")
+    for bucket in grouped.values():
+        free = measure(bucket["probe"])
+        if free < bucket["need"]:
             raise TrainerRefusal(
-                f"disk envelope: {path_str} needs ~{need / 1e9:.0f} GB "
-                f"({'audio cache' if path_str == str(cache_root) else 'checkpoints'}), "
-                f"only {free / 1e9:.0f} GB free — provision the volume "
-                "before spending GPU-hours")
-    return {"audio_cache_bytes": audio_need, "checkpoint_bytes": ckpt_need}
+                f"disk envelope: filesystem of {bucket['probe']} needs "
+                f"~{bucket['need'] / 1e9:.0f} GB total "
+                f"({' + '.join(bucket['labels'])}), only {free / 1e9:.0f} GB "
+                "free — provision the volume before spending GPU-hours")
+    return {"audio_cache_bytes": audio_need, "checkpoint_bytes": ckpt_need,
+            "staging_bytes": staging_bytes_estimate}
 
 
 def run_training_loop(
@@ -545,6 +612,15 @@ def main() -> int:
         "mix_provenance": provenance,
     }, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode() + b"\n")
 
+    # Disk envelope BEFORE staging or GPU load (Codex review #2: the gate
+    # used to run after both, spending download bytes and GPU minutes a
+    # doomed run could never use)
+    cache_root = Path(os.environ.get("MEDZEN_AUDIO_CACHE",
+                                     "/tmp/medzen-audio-cache"))
+    envelope = check_disk_envelope(config, mix, cache_root=cache_root)
+    print(json.dumps({"status": "DISK_ENVELOPE_OK", **envelope},
+                     sort_keys=True))
+
     stage_model_artifacts(s3())
 
     import torch
@@ -576,11 +652,6 @@ def main() -> int:
         lr=config.learning_rate)
 
     from pipeline.omniasr_data import make_batch_source
-    cache_root = Path(os.environ.get("MEDZEN_AUDIO_CACHE",
-                                     "/tmp/medzen-audio-cache"))
-    envelope = check_disk_envelope(config, mix, cache_root=cache_root)
-    print(json.dumps({"status": "DISK_ENVELOPE_OK", **envelope},
-                     sort_keys=True))
     batches = make_batch_source(
         mix, tokenizer, config, s3(),
         cache_root,
