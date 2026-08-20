@@ -74,8 +74,16 @@ rollback is stateless.
 
 **Images (provenance-stamped, in ECR):** medzen-orchestrator:v1-2026-08-20a ·
 medzen-rag-index:v1-2026-08-20a · medzen-llm-gateway:v1-bedrock-2026-08-20a ·
-medzen-speech-tts-gateway:v1-fish-2026-08-20c · medzen-asr-runtime +
-medzen-model-loader (pre-existing, digest-pinned in B6-6).
+medzen-speech-tts-gateway:v1-fish-2026-08-20d (sha256:46cd5abd14b3…,
+supersedes -20c whose baked Fish secret default named a non-existent
+secret) · medzen-asr-runtime + medzen-model-loader (pre-existing,
+digest-pinned in B6-6).
+
+**🚨 MANUAL ACTION (owner, before fish-mode deploy):** put the Fish API
+key value into Secrets Manager secret `medzen/speech/fish-api-key` — it
+exists but is EMPTY (verified 2026-08-20). The key must never pass
+through the engineering agent; load it directly:
+`aws secretsmanager put-secret-value --secret-id medzen/speech/fish-api-key --secret-string '<key>'`
 
 **Container proof (performed):** the orchestrator image passed
 `b6_live_contract_probe.py --full` (file mode + streaming) running in
