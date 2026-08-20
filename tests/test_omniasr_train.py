@@ -708,3 +708,39 @@ def test_full_resume_refuses_corrupted_optimizer_moments(tmp_path):
     with pytest.raises(TrainerRefusal, match="hash"):
         load_full_state(tmp_path / "step-1.pt", model=model,
                         optimizer=optimizer)
+
+
+def test_disk_envelope_audio_bound_is_draws_aware(tmp_path):
+    """ml.g6.xlarge ground truth (launch refusal 2026-08-20): storage is a
+    fixed 250 GB NVMe. The cache can only hold rows the sampler draws, so
+    the audio bound is the top-K longest rows (K = draws), not the whole
+    mix — the whole-mix bound wrongly refused the v2 shape that fits."""
+    from pipeline.omniasr_train import check_disk_envelope
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                          MEDZEN_WARMUP_STEPS="500",
+                          MEDZEN_LANGUAGES="kinyarwanda",
+                          MEDZEN_MAX_STEPS="40000",
+                          MEDZEN_BATCH_SIZE="2", MEDZEN_GRAD_ACCUM="8",
+                          MEDZEN_CHECKPOINT_EVERY="2000",
+                          MEDZEN_CHECKPOINT_DIR=str(tmp_path / "ckpt"))
+    # ~1.02M-row corpus at ~5.1 s avg: whole-mix bound would be ~183 GB,
+    # but 40k steps can draw at most 640k rows
+    mix = [{"duration_s": 5.1}] * 1_018_628
+    report = check_disk_envelope(config, mix, cache_root=tmp_path / "cache",
+                                 free_bytes=lambda p: 250_000_000_000,
+                                 device_of=lambda p: "one-device")
+    draws = 40_000 * 2 * 8
+    assert report["audio_cache_bytes"] == int(draws * 5.1 * 32_000 * 1.10)
+    assert report["audio_cache_bytes"] < 120_000_000_000
+    # a SHORT run over the same corpus needs almost nothing
+    tiny = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                        MEDZEN_WARMUP_STEPS="10",
+                        MEDZEN_LANGUAGES="kinyarwanda",
+                        MEDZEN_MAX_STEPS="30",
+                        MEDZEN_BATCH_SIZE="2", MEDZEN_GRAD_ACCUM="8",
+                        MEDZEN_CHECKPOINT_EVERY="10",
+                        MEDZEN_CHECKPOINT_DIR=str(tmp_path / "ckpt2"))
+    small = check_disk_envelope(tiny, mix, cache_root=tmp_path / "cache",
+                                free_bytes=lambda p: 250_000_000_000,
+                                device_of=lambda p: "one-device")
+    assert small["audio_cache_bytes"] < 100_000_000

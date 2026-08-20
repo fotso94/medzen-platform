@@ -462,12 +462,21 @@ def check_disk_envelope(config: TrainerConfig, mix: list[dict],
     (38.0 audio + 72.8 checkpoints on the 300 h/12k-step shape). Model
     staging counts too, and main() calls this BEFORE staging or GPU load.
 
-    Audio cache: 16 kHz mono PCM_16 wav = 32,000 B/s of duration.
+    Audio cache: 16 kHz mono PCM_16 wav = 32,000 B/s of duration. The cache
+    only ever holds rows the sampler actually DRAWS: a run of max_steps at
+    effective batch B×A can touch at most max_steps*B*A unique rows, so the
+    worst case is the top-K longest rows, K = min(len(mix), draws) — NOT
+    the whole mix (ml.g6.xlarge ground truth 2026-08-20: storage is a fixed
+    250 GB NVMe; the whole-mix bound wrongly refused runs that fit).
     Checkpoint zone: one full-model file per checkpoint interval + the
     optimizer sidecar (~3x model for AdamW moments) + the export."""
     import shutil
 
-    audio_need = int(sum(r["duration_s"] for r in mix) * 32_000 * 1.10)
+    draws = config.max_steps * config.batch_size * config.grad_accum
+    k = min(len(mix), draws)
+    top_k_seconds = sum(sorted((r["duration_s"] for r in mix),
+                               reverse=True)[:k])
+    audio_need = int(top_k_seconds * 32_000 * 1.10)
     n_checkpoints = max(1, config.max_steps // config.checkpoint_every_steps)
     if config.train_mode == "full":
         ckpt_need = int((n_checkpoints + 1) * model_bytes_estimate
