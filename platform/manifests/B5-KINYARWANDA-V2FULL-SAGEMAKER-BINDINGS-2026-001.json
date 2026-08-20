@@ -17,10 +17,10 @@
         "MEDZEN_VARIANT": "ctc",
         "MEDZEN_WARMUP_STEPS": "500"
     },
-    "image_note": "ft-2026-08-20b (c938ea0): both Codex review rounds applied. Qualification chain: 45 in-image tests passed; ftcal-2026-001 PASSED the identical full-mode path live on -20a (TRAINING_COMPLETE, PASS_MERGED_EXPORT, 973 billable s); ftcal-2026-002 on THIS image gates this launch. Measured artifacts: 1.95 GB model checkpoint, 3.90 GB optimizer sidecar = bf16 AdamW moments (accepted: fp32 masters would double optimizer memory on the 24 GB L4; calibration trained cleanly).",
-    "image_oci_index_digest": "sha256:1da3c43f6c34f9360f6d896af1979c98bd7b75773620e124cfc9aa29573f252a",
-    "image_tag": "ft-2026-08-20b",
-    "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:a5106ca5dbd260881427ed274a1ecd9f7e6dbe11b3914a2e7eedddd66eeb8c3f",
+    "image_note": "ft-2026-08-20c (b65c1ba): both Codex rounds + draws-aware disk bound (ml.g6.xlarge storage is a FIXED 250 GB NVMe - CreateTrainingJob refused 500). Worst-case v2 footprint: audio top-640k-draws ~115 GB + 21 ckpts ~41 GB + sidecar 3.9 GB (measured) + export/staging ~8 GB = ~168 GB, runtime envelope check re-verifies against real free space at startup. Qualification: 46 in-image tests + ftcal-002 (-20b, identical trained path) + ftcal-003 (-20c) gate this launch. bf16 AdamW moments accepted (measured 3.90 GB sidecar; calibration trained cleanly).",
+    "image_oci_index_digest": "sha256:a128d683a5890f7d0267a2197e3e848bce09de03552d4a15d0e92d9e637134b5",
+    "image_tag": "ft-2026-08-20c",
+    "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5abe66af8669c6543b697c8d2f5b6c4e66a06eb7092f99e7e33e371e453b3958",
     "instance_type": "ml.g6.xlarge",
     "job_id": "b5-kinyarwanda-v2full-2026-001",
     "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
@@ -28,12 +28,12 @@
     "managed_spot_reason": "owner rule: on-demand basis always; a multi-day full FT must not carry interruption risk",
     "max_runtime_seconds": 216000,
     "network_note": "campaign endpoints verified LIVE 2026-08-20 (s3 gateway vpce-0ce13c7c, ecr.api, ecr.dkr, logs); checkpoint S3 sync verified working by ftcal-001 (LATEST.json + sidecar landed).",
-    "purpose": "OWNER-ORDERED kinyarwanda v2 FULL fine-tune on the full gb5 corpus (1,018,628 rows / 1,442.7 h / 630 speakers, eval-leak zero dual-verified). Owner verbatim 2026-08-19: 'let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2'; launch gate 2026-08-20: 'if calibration 2 passes proceed with the v2 full training'. Shape: 40k steps (~0.63 epoch at eff. batch 16), warmup 500, lr 1e-5, 20 sweep checkpoints. Pacing basis: ftcal-001 measured <3 s/step => ~35-40 h expected, 60 h ceiling ($96.00 worst case at the validator's $1.60/h; resume via hash-bound S3 checkpoints if ever wall-hit). Ship as v2 ONLY if relative WER gain on the frozen pool > 9.3%.",
+    "purpose": "OWNER-ORDERED kinyarwanda v2 FULL fine-tune on the full gb5 corpus (1,018,628 rows / 1,442.7 h / 630 speakers, eval-leak zero dual-verified). Owner verbatim 2026-08-19: 'let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2'; launch gate 2026-08-20: 'if calibration passes (rev3 on the exact image) proceed with the v2 full training'. Shape: 40k steps (~0.63 epoch at eff. batch 16), warmup 500, lr 1e-5, 20 sweep checkpoints. Pacing basis: ftcal-001 measured <3 s/step => ~35-40 h expected, 60 h ceiling ($96.00 worst case at the validator's $1.60/h; resume via hash-bound S3 checkpoints if ever wall-hit). Ship as v2 ONLY if relative WER gain on the frozen pool > 9.3%.",
     "security_group_ids": [
         "sg-0fee72d218ac002a7"
     ],
     "subnets": [
         "subnet-00232b25bc1ac407a"
     ],
-    "volume_gb": 500
+    "volume_gb": 250
 }
