@@ -89,7 +89,8 @@ def test_train_mode_parses_and_defaults_to_lora():
     # full mode requires an explicit LR since the Codex-finding corrections
     # (2026-08-20) — the bare form is covered by its own refusal test
     config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
-                          MEDZEN_WARMUP_STEPS="100")
+                          MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="constant")
     assert config.train_mode == "full"
     # the mode is part of the run fingerprint — a full-FT run can never
     # collide with a LoRA run's identity
@@ -453,19 +454,22 @@ def test_full_mode_requires_an_explicit_learning_rate():
     with pytest.raises(TrainerRefusal, match="EXPLICIT MEDZEN_LR"):
         make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_WARMUP_STEPS="100")
     config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
-                          MEDZEN_WARMUP_STEPS="100")
+                          MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="constant")
     assert config.learning_rate == 1e-5
 
 
 def test_full_mode_learning_rate_is_finite_and_bounded():
-    """Codex review #2 reproduction: 0, 1000, NaN and Infinity were all
-    accepted. Zero pays for nothing; >=1e-3 is the proven-runaway zone."""
-    for bad in ("0", "1000", "nan", "inf", "2e-3"):
+    """Codex reviews #2 + #4: 0, 1000, NaN, Infinity were accepted; then
+    the #2 bound was boundary-INCLUSIVE and still blessed 1e-3 — the
+    documented runaway rate. Cap = 1e-4, the highest probe-proven rate."""
+    for bad in ("0", "1000", "nan", "inf", "2e-3", "1e-3", "2e-4"):
         with pytest.raises(TrainerRefusal, match="MEDZEN_LR|finite"):
             make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR=bad,
                         MEDZEN_WARMUP_STEPS="100")
-    assert make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-3",
-                       MEDZEN_WARMUP_STEPS="100").learning_rate == 1e-3
+    assert make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-4",
+                       MEDZEN_WARMUP_STEPS="100",
+                       MEDZEN_LR_SCHEDULE="constant").learning_rate == 1e-4
 
 
 def test_unknown_train_mode_is_refused_at_parse_time():
@@ -476,17 +480,54 @@ def test_unknown_train_mode_is_refused_at_parse_time():
                     MEDZEN_WARMUP_STEPS="100")
 
 
-def test_full_mode_requires_an_explicit_warmup_schedule():
+def test_full_mode_warmup_is_explicit_and_bounded():
+    """Codex review #4: 0, > max_steps and absurd warmups all passed (and
+    the old test BLESSED zero). Now: explicit AND 1 <= warmup < max_steps."""
     with pytest.raises(TrainerRefusal, match="MEDZEN_WARMUP_STEPS"):
         make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5")
+    for bad in ("0", "600", "999999999"):   # max_steps defaults to 600
+        with pytest.raises(TrainerRefusal,
+                           match="warmup|MEDZEN_WARMUP_STEPS"):
+            make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                        MEDZEN_WARMUP_STEPS=bad,
+                        MEDZEN_LR_SCHEDULE="constant")
     assert make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
-                       MEDZEN_WARMUP_STEPS="0").warmup_steps == 0
+                       MEDZEN_WARMUP_STEPS="100",
+                       MEDZEN_LR_SCHEDULE="constant").warmup_steps == 100
+
+
+def test_full_mode_requires_a_declared_post_warmup_schedule():
+    """Codex review #4: no silent schedule in full mode."""
+    with pytest.raises(TrainerRefusal, match="MEDZEN_LR_SCHEDULE"):
+        make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                    MEDZEN_WARMUP_STEPS="100")
+    with pytest.raises(TrainerRefusal, match="MEDZEN_LR_SCHEDULE"):
+        make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                    MEDZEN_WARMUP_STEPS="100", MEDZEN_LR_SCHEDULE="step")
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                          MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="cosine")
+    assert config.lr_schedule == "cosine"
+
+
+def test_cosine_schedule_decays_to_the_ten_percent_floor():
+    from pipeline.omniasr_train import scheduled_lr
+    base, warm, total = 1e-5, 100, 1100
+    assert scheduled_lr(base, 0, warm, total, "cosine") == pytest.approx(1e-7)
+    assert scheduled_lr(base, warm, warm, total, "cosine") == pytest.approx(base)
+    mid = scheduled_lr(base, warm + 500, warm, total, "cosine")
+    assert 0.5 * base < mid < 0.6 * base
+    assert scheduled_lr(base, total, warm, total, "cosine") == pytest.approx(
+        0.1 * base)
+    assert scheduled_lr(base, 10**9, warm, total, "cosine") == pytest.approx(
+        0.1 * base)
 
 
 def test_full_mode_trains_exactly_one_language_per_job():
     with pytest.raises(TrainerRefusal, match="one language"):
         make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
                     MEDZEN_WARMUP_STEPS="100",
+                    MEDZEN_LR_SCHEDULE="constant",
                     MEDZEN_LANGUAGES="yemba,kinyarwanda")
 
 
@@ -504,6 +545,7 @@ def test_disk_envelope_refuses_before_gpu_hours(tmp_path):
     from pipeline.omniasr_train import check_disk_envelope
     config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
                           MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="constant",
                           MEDZEN_MAX_STEPS="40000",
                           MEDZEN_CHECKPOINT_EVERY="2000",
                           MEDZEN_CHECKPOINT_DIR=str(tmp_path / "ckpt"))
@@ -525,6 +567,7 @@ def test_disk_envelope_sums_needs_that_share_a_filesystem(tmp_path):
     from pipeline.omniasr_train import check_disk_envelope
     config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
                           MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="constant",
                           MEDZEN_LANGUAGES="kinyarwanda",
                           MEDZEN_MAX_STEPS="12000",
                           MEDZEN_CHECKPOINT_EVERY="500",
@@ -655,9 +698,10 @@ def test_one_step_full_training_checkpoints_through_the_real_loop(tmp_path):
     from pipeline.omniasr_train import (load_full_state, run_training_loop,
                                          save_full_state)
 
-    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-3",
-                          MEDZEN_WARMUP_STEPS="0",
-                          MEDZEN_MAX_STEPS="1", MEDZEN_BATCH_SIZE="1",
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-4",
+                          MEDZEN_WARMUP_STEPS="1",
+                          MEDZEN_LR_SCHEDULE="constant",
+                          MEDZEN_MAX_STEPS="2", MEDZEN_BATCH_SIZE="1",
                           MEDZEN_GRAD_ACCUM="1", MEDZEN_CHECKPOINT_EVERY="1",
                           MEDZEN_CHECKPOINT_DIR=str(tmp_path))
     torch.manual_seed(config.seed)
@@ -676,8 +720,8 @@ def test_one_step_full_training_checkpoints_through_the_real_loop(tmp_path):
         load_state=lambda path: load_full_state(
             path, model=model, optimizer=optimizer))
     assert outcome["status"] == "COMPLETED"
-    assert outcome["step"] == 1
-    saved = torch.load(tmp_path / "step-0000001.pt", map_location="cpu",
+    assert outcome["step"] == 2
+    saved = torch.load(tmp_path / "step-0000002.pt", map_location="cpu",
                        weights_only=False)
     assert set(saved) >= {"step", "model", "torch_rng"}
     assert (tmp_path / "optimizer-LATEST.pt").exists()
@@ -718,6 +762,7 @@ def test_disk_envelope_audio_bound_is_draws_aware(tmp_path):
     from pipeline.omniasr_train import check_disk_envelope
     config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
                           MEDZEN_WARMUP_STEPS="500",
+                          MEDZEN_LR_SCHEDULE="constant",
                           MEDZEN_LANGUAGES="kinyarwanda",
                           MEDZEN_MAX_STEPS="40000",
                           MEDZEN_BATCH_SIZE="2", MEDZEN_GRAD_ACCUM="8",
@@ -735,6 +780,7 @@ def test_disk_envelope_audio_bound_is_draws_aware(tmp_path):
     # a SHORT run over the same corpus needs almost nothing
     tiny = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
                         MEDZEN_WARMUP_STEPS="10",
+                        MEDZEN_LR_SCHEDULE="constant",
                         MEDZEN_LANGUAGES="kinyarwanda",
                         MEDZEN_MAX_STEPS="30",
                         MEDZEN_BATCH_SIZE="2", MEDZEN_GRAD_ACCUM="8",
@@ -756,9 +802,12 @@ def test_sweep_merge_tool_handles_full_checkpoints(tmp_path, monkeypatch):
     from torch import nn
 
     root = Path(__file__).resolve().parents[1]
-    src = (root / "scripts" / "t6_checkpoint_merge.py").read_text()
-    assert '"model" in state and "lora" not in state' in src
-    assert "refusing an ambiguous artifact" in src
+    src_path = root / "scripts" / "t6_checkpoint_merge.py"
+    if src_path.exists():   # scripts/ is not shipped into the trainer image
+        src = src_path.read_text()
+        assert '"model" in state and "lora" not in state' in src
+        assert "refusing an ambiguous artifact" in src
+        assert "NON-FINITE" in src
 
     # behavioural check of the same extraction logic on a real full ckpt
     model = nn.Linear(4, 4)
@@ -774,3 +823,34 @@ def test_sweep_merge_tool_handles_full_checkpoints(tmp_path, monkeypatch):
     reloaded.load_state_dict(state["model"])
     for a, b in zip(model.parameters(), reloaded.parameters()):
         assert torch.equal(a, b)
+
+
+@_needs_torch
+def test_nonfinite_loss_fails_closed_without_persisting(tmp_path):
+    """Codex review #4 reproduction (was: NaN loss -> COMPLETED with
+    non-finite parameters). Now the loop stops BEFORE the optimizer step,
+    reports TRAINING_DIVERGED_NONFINITE, and persists nothing."""
+    import torch
+    from torch import nn
+    from pipeline.omniasr_train import run_training_loop
+
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-4",
+                          MEDZEN_WARMUP_STEPS="1",
+                          MEDZEN_LR_SCHEDULE="constant",
+                          MEDZEN_MAX_STEPS="3", MEDZEN_BATCH_SIZE="1",
+                          MEDZEN_GRAD_ACCUM="1", MEDZEN_CHECKPOINT_EVERY="3",
+                          MEDZEN_CHECKPOINT_DIR=str(tmp_path))
+    model = nn.Linear(4, 4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    outcome = run_training_loop(
+        model=model, optimizer=optimizer,
+        batches=lambda i: torch.randn(1, 4),
+        batch_loss=lambda m, b: m(b).pow(2).mean() * float("nan"),
+        config=config, fingerprint="f" * 64,
+        save_state=lambda p, s: p.write_bytes(b"poison"),
+        load_state=lambda p: 0)
+    assert outcome["status"] == "TRAINING_DIVERGED_NONFINITE"
+    assert outcome["nonfinite"] == "loss"
+    assert not list(tmp_path.glob("step-*.pt")), "poison must not persist"
+    assert all(torch.isfinite(p).all() for p in model.parameters()), (
+        "the guard must fire BEFORE the optimizer step")

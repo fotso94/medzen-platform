@@ -41,6 +41,8 @@ def bindings() -> dict:
             "MEDZEN_LANGUAGES": "yemba",
             "MEDZEN_SEED": "7",
             "MEDZEN_MAX_STEPS": "600",
+            # required since Codex review #4: every packet declares its mode
+            "MEDZEN_TRAIN_MODE": "lora",
         },
     }
 
@@ -219,3 +221,42 @@ def test_container_entrypoint_runs_the_trainer_module():
     spec = request["AlgorithmSpecification"]
     assert spec["ContainerEntrypoint"] == ["/opt/venv/bin/python"]
     assert spec["ContainerArguments"] == ["-m", "pipeline.omniasr_train"]
+
+
+def test_render_runs_the_trainer_parser_on_the_environment(tmp_path):
+    """Codex review #4 (reproduced): a packet with LR=nan, no train mode
+    and no warmup rendered + validated PASS. The launcher now runs the
+    trainer's OWN parse_config, so both layers refuse identically."""
+    import copy
+    import json
+    import pytest
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    bindings = json.loads((root / "platform/manifests/"
+        "B5-KINYARWANDA-FTCAL-SAGEMAKER-BINDINGS-2026-003.json").read_bytes())
+
+    import sys
+    sys.path.insert(0, str(root / "scripts"))
+    from b5_sagemaker_job import JobRefusal, render_request
+
+    # the committed ftcal packet must still render (it declares its mode,
+    # bounded LR and warmup) — but only after gaining a schedule field
+    good = copy.deepcopy(bindings)
+    good["environment"]["MEDZEN_LR_SCHEDULE"] = "constant"
+    render_request(good)
+
+    poisoned = copy.deepcopy(good)
+    poisoned["environment"]["MEDZEN_LR"] = "nan"
+    with pytest.raises(JobRefusal, match="trainer would refuse"):
+        render_request(poisoned)
+
+    modeless = copy.deepcopy(good)
+    del modeless["environment"]["MEDZEN_TRAIN_MODE"]
+    with pytest.raises(JobRefusal, match="MEDZEN_TRAIN_MODE"):
+        render_request(modeless)
+
+    lazy_warmup = copy.deepcopy(good)
+    lazy_warmup["environment"]["MEDZEN_WARMUP_STEPS"] = "0"
+    with pytest.raises(JobRefusal, match="trainer would refuse"):
+        render_request(lazy_warmup)

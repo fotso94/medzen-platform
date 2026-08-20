@@ -50,6 +50,9 @@ PROHIBITED_SUBSTRINGS = (
 REQUIRED_ENVIRONMENT = (
     "MEDZEN_VARIANT", "MEDZEN_MANIFEST_VERSION", "MEDZEN_LANGUAGES",
     "MEDZEN_SEED", "MEDZEN_MAX_STEPS",
+    # Codex review #4: a packet that omitted the mode silently trained
+    # LoRA — every packet now DECLARES what kind of training it buys
+    "MEDZEN_TRAIN_MODE",
 )
 
 
@@ -113,6 +116,17 @@ def render_request(bindings: dict) -> dict:
         raise JobRefusal(f"environment lacks {missing}")
     if environment["MEDZEN_VARIANT"] != "ctc":
         raise JobRefusal("only the calibrated ctc variant is launchable")
+    # Codex review #4 (reproduced: LR=nan passed): the trainer's OWN parser
+    # is the single source of truth for environment semantics — run it at
+    # packet time so a bad packet dies here, not after instance spin-up.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from pipeline.omniasr_train import TrainerRefusal, parse_config
+    try:
+        parse_config(environment)
+    except TrainerRefusal as exc:
+        raise JobRefusal(
+            f"the trainer would refuse this environment at container "
+            f"start: {exc}") from exc
     registry_line = _require(bindings, "cost_registry_line")
     volume_gb = int(bindings.get("volume_gb", 100))
     if not 1 <= volume_gb <= 500:

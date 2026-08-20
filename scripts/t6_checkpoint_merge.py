@@ -50,6 +50,15 @@ def main() -> int:
                 raise SystemExit(
                     f"step {step}: full checkpoint carries adapter keys "
                     f"{residue[:3]} — refusing an ambiguous artifact")
+            # Codex review #4: a diverged run used to leave non-finite
+            # weights that COMPLETED — never let one reach evaluation
+            poisoned = [k for k, v in full_state.items()
+                        if torch.is_tensor(v) and v.is_floating_point()
+                        and not bool(torch.isfinite(v).all())]
+            if poisoned:
+                raise SystemExit(
+                    f"step {step}: NON-FINITE tensors {poisoned[:3]} — "
+                    "diverged checkpoint, refusing to extract")
             torch.save(full_state, target)
             print(f"extracted FULL step {step}: {len(full_state)} tensors "
                   f"-> {target.name}", flush=True)

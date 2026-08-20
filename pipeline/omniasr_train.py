@@ -56,6 +56,7 @@ CTC_TOKENIZER = "medzen_omniASR_tokenizer_written_v2"
 CTC_SCOPE_PREFIX = "encoder."  # wav2vec2 attention lives under the encoder;
 # the llama_decoder default in wrap_lora belongs to the (refused) LLM variant.
 SIGTERM_EXIT = 42  # named: spot reclaim checkpointed and left cleanly
+DIVERGED_EXIT = 43  # named: non-finite loss/grad/params — poison NOT persisted
 
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
@@ -133,6 +134,7 @@ class TrainerConfig:
     lora_dropout: float
     train_mode: str
     warmup_steps: int
+    lr_schedule: str
     checkpoint_dir: Path
     output_dir: Path
     checkpoint_every_steps: int
@@ -207,6 +209,10 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
     train_mode = env.get("MEDZEN_TRAIN_MODE", "lora")
     if train_mode not in ("lora", "full"):
         raise TrainerRefusal(f"unknown MEDZEN_TRAIN_MODE {train_mode!r}")
+    lr_schedule = env.get("MEDZEN_LR_SCHEDULE", "constant").strip() or "constant"
+    if lr_schedule not in ("constant", "cosine"):
+        raise TrainerRefusal(
+            f"unknown MEDZEN_LR_SCHEDULE {lr_schedule!r} (constant|cosine)")
 
     # Full-mode guards (Codex finding 2026-08-20). The 1e-3 default is a
     # LoRA rate — it is the exact rate behind the wave-1 runaway
@@ -220,19 +226,32 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             raise TrainerRefusal(
                 "full mode requires an EXPLICIT MEDZEN_LR — the 1e-3 default "
                 "is a LoRA rate and destroyed wave-1 (B5-DIAG-2026-001)")
-        # Codex review #2: 0, 1000, NaN and Infinity were all accepted.
-        # Zero trains nothing while paying; anything above 1e-3 is at or
-        # beyond the proven-runaway LoRA rate on a full parameter surface.
+        # Codex review #4: the #2 bound was boundary-INCLUSIVE and blessed
+        # the documented runaway rate. Evidence-backed cap: 1e-4 is the
+        # highest rate our own probes proved stable (decisive LoRA run),
+        # and the full surface is strictly more sensitive.
         lr_value = _number("MEDZEN_LR", lr_raw, float, None)
-        if not (0.0 < lr_value <= 1e-3):
+        if not (0.0 < lr_value <= 1e-4):
             raise TrainerRefusal(
-                f"full mode requires 0 < MEDZEN_LR <= 1e-3, got {lr_raw!r} "
-                "(the wave-1 runaway was 1e-3 on a far smaller surface)")
+                f"full mode requires 0 < MEDZEN_LR <= 1e-4, got {lr_raw!r} "
+                "(1e-4 is the highest probe-proven stable rate; 1e-3 "
+                "destroyed wave-1 on a far smaller surface)")
         if not env.get("MEDZEN_WARMUP_STEPS", "").strip():
             raise TrainerRefusal(
                 "full mode requires an EXPLICIT MEDZEN_WARMUP_STEPS — a "
                 "bounded schedule is part of the full-FT contract "
                 "(Codex review #2)")
+        warmup_value = _number("MEDZEN_WARMUP_STEPS", "", int, 1)
+        max_steps_value = _number("MEDZEN_MAX_STEPS", "600", int, 1)
+        if not (1 <= warmup_value < max_steps_value):
+            raise TrainerRefusal(
+                f"full mode requires 1 <= warmup < max_steps, got "
+                f"warmup={warmup_value} max_steps={max_steps_value} "
+                "(Codex review #4: 0 and absurd values passed)")
+        if not env.get("MEDZEN_LR_SCHEDULE", "").strip():
+            raise TrainerRefusal(
+                "full mode requires an EXPLICIT MEDZEN_LR_SCHEDULE "
+                "(constant|cosine) — no silent schedule (Codex review #4)")
         if len(languages) != 1:
             raise TrainerRefusal(
                 f"full mode trains exactly one language per job "
@@ -256,6 +275,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         lora_dropout=_number("MEDZEN_LORA_DROPOUT", "0.0", float, 0.0),
         train_mode=env.get("MEDZEN_TRAIN_MODE", "lora"),
         warmup_steps=_number("MEDZEN_WARMUP_STEPS", "0", int, 0),
+        lr_schedule=lr_schedule,
         checkpoint_dir=Path(env.get("MEDZEN_CHECKPOINT_DIR", "/opt/ml/checkpoints")),
         output_dir=Path(env.get("MEDZEN_OUTPUT_DIR", "/opt/ml/model")),
         checkpoint_every_steps=_number("MEDZEN_CHECKPOINT_EVERY", "50", int, 1),
@@ -367,14 +387,26 @@ def write_checkpoint_marker(checkpoint_dir: Path, *, step: int,
 # the GPU. The fairseq2 pieces plug in via batch_loss.
 # --------------------------------------------------------------------------
 
-def warmup_lr(base_lr: float, step: int, warmup_steps: int) -> float:
-    """Linear warmup to base_lr over warmup_steps; base_lr thereafter.
+def scheduled_lr(base_lr: float, step: int, warmup_steps: int,
+                 max_steps: int, schedule: str = "constant") -> float:
+    """Linear warmup, then the DECLARED schedule (Codex review #4: the
+    post-warmup shape must be explicit). cosine decays to a 10% floor over
+    (warmup, max_steps]. Stateless in step, so a resumed run computes the
+    same rate the uninterrupted run would have used."""
+    if warmup_steps > 0 and step < warmup_steps:
+        return base_lr * (step + 1) / warmup_steps
+    if schedule == "cosine":
+        span = max(1, max_steps - warmup_steps)
+        progress = min(1.0, max(0.0, (step - warmup_steps) / span))
+        return base_lr * (0.1 + 0.9 * 0.5 * (1.0 + math.cos(math.pi * progress)))
+    return base_lr
 
-    Stateless in step so a resumed run computes the same rate the
-    uninterrupted run would have used at that step."""
-    if warmup_steps <= 0 or step >= warmup_steps:
-        return base_lr
-    return base_lr * (step + 1) / warmup_steps
+
+def warmup_lr(base_lr: float, step: int, warmup_steps: int) -> float:
+    """Constant-schedule convenience wrapper around scheduled_lr."""
+    return scheduled_lr(base_lr, step, warmup_steps,
+                        max_steps=step + warmup_steps + 1,
+                        schedule="constant")
 
 
 OPTIMIZER_SIDECAR = "optimizer-LATEST.pt"
@@ -561,18 +593,41 @@ def run_training_loop(
             loss = batch_loss(model, batches(step * config.grad_accum + micro))
             (loss / config.grad_accum).backward()
             accumulated += float(loss.detach())
-        torch.nn.utils.clip_grad_norm_(
+        step_loss = accumulated / config.grad_accum
+        # Codex review #4 (reproduced): a NaN loss used to sail through to
+        # COMPLETED with non-finite parameters. Fail closed BEFORE the
+        # optimizer step, and never persist a poisoned state.
+        if not math.isfinite(step_loss):
+            return {"status": "TRAINING_DIVERGED_NONFINITE", "step": step,
+                    "resumed_from": start_step, "losses": losses,
+                    "nonfinite": "loss"}
+        total_norm = torch.nn.utils.clip_grad_norm_(
             [p for p in model.parameters() if p.requires_grad], 1.0)
-        # stateless warmup: recomputed from step, so resume matches the
-        # uninterrupted schedule exactly
-        rate = warmup_lr(config.learning_rate, step, config.warmup_steps)
+        if not bool(torch.isfinite(total_norm)):
+            return {"status": "TRAINING_DIVERGED_NONFINITE", "step": step,
+                    "resumed_from": start_step, "losses": losses,
+                    "nonfinite": "grad_norm"}
+        # stateless declared schedule: recomputed from step, so resume
+        # matches the uninterrupted trajectory exactly
+        rate = scheduled_lr(config.learning_rate, step, config.warmup_steps,
+                            config.max_steps, config.lr_schedule)
         for group in optimizer.param_groups:
             group["lr"] = rate
         optimizer.step()
         step += 1
-        losses.append(accumulated / config.grad_accum)
+        losses.append(step_loss)
         if step % config.checkpoint_every_steps == 0 or step == config.max_steps:
+            for parameter in model.parameters():
+                if not bool(torch.isfinite(parameter).all()):
+                    return {"status": "TRAINING_DIVERGED_NONFINITE",
+                            "step": step, "resumed_from": start_step,
+                            "losses": losses, "nonfinite": "parameters"}
             checkpoint(step)
+            recent = losses[-config.checkpoint_every_steps:]
+            print(json.dumps({"status": "TRAIN_PROGRESS", "step": step,
+                              "lr": rate,
+                              "mean_loss": sum(recent) / max(1, len(recent)),
+                              "finite": True}, sort_keys=True), flush=True)
     return {"status": "COMPLETED", "step": step,
             "resumed_from": start_step, "losses": losses}
 
@@ -702,6 +757,11 @@ def main() -> int:
         load_state=load_state, stop_flag=stop_flag)
     if outcome["status"] == "INTERRUPTED_CHECKPOINTED":
         return SIGTERM_EXIT
+    if outcome["status"] == "TRAINING_DIVERGED_NONFINITE":
+        print(json.dumps({"status": "TRAINING_DIVERGED_NONFINITE",
+                          "step": outcome["step"],
+                          "nonfinite": outcome["nonfinite"]}, sort_keys=True))
+        return DIVERGED_EXIT
 
     # mode-aware identity (Codex finding 2026-08-20: full-mode audits have
     # no rank/alpha, and the old unconditional read was a guaranteed
