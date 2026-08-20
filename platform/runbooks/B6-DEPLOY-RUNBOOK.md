@@ -74,16 +74,27 @@ rollback is stateless.
 
 **Images (provenance-stamped, in ECR):** medzen-orchestrator:v1-2026-08-20a ·
 medzen-rag-index:v1-2026-08-20a · medzen-llm-gateway:v1-bedrock-2026-08-20a ·
-medzen-speech-tts-gateway:v1-fish-2026-08-20d (sha256:46cd5abd14b3…,
-supersedes -20c whose baked Fish secret default named a non-existent
-secret) · medzen-asr-runtime + medzen-model-loader (pre-existing,
-digest-pinned in B6-6).
+medzen-speech-tts-gateway:v1-fish-2026-08-20e (sha256:4dfbf9172847…,
+supersedes -20d/-20c; -20c's baked Fish secret default named a
+non-existent secret, -20e adds the MEDZEN_FISH_SECRET_ID override below) ·
+medzen-asr-runtime + medzen-model-loader (pre-existing, digest-pinned in
+B6-6).
 
-**🚨 MANUAL ACTION (owner, before fish-mode deploy):** put the Fish API
-key value into Secrets Manager secret `medzen/speech/fish-api-key` — it
-exists but is EMPTY (verified 2026-08-20). The key must never pass
-through the engineering agent; load it directly:
-`aws secretsmanager put-secret-value --secret-id medzen/speech/fish-api-key --secret-string '<key>'`
+**Fish API key (resolved 2026-08-20 by read-only investigation of the live
+ECS medzen-tts-gateway, task-def :3):** the live service passes its secret
+ARN via env `FISH_SECRET_ID` and fetches at runtime — the key lives in
+Secrets Manager `medzen/tts/dev/fish-api-key` (HAS a value). The platform
+gateway reuses THAT SAME KEY with no credential handling: set
+`MEDZEN_FISH_SECRET_ID=medzen/tts/dev/fish-api-key` (name or full ARN) in
+the deploy env and grant the pod role `secretsmanager:GetSecretValue` on
+it. Alternative (namespace separation, owner-only): load the key into
+`medzen/speech/fish-api-key` (exists, currently EMPTY) — the gateway's
+default — via
+`aws secretsmanager put-secret-value --secret-id medzen/speech/fish-api-key --secret-string '<key>'`.
+Reading the dev secret does not touch the dev service; the live service's
+other pins for reference: FISH_MODEL=s2.1-pro-free, voice registry at SSM
+`/medzen/tts/dev/voices` (the platform keeps its own
+`/medzen/registry/tts/voices`).
 
 **Container proof (performed):** the orchestrator image passed
 `b6_live_contract_probe.py --full` (file mode + streaming) running in
