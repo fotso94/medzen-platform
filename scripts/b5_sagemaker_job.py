@@ -127,6 +127,34 @@ def render_request(bindings: dict) -> dict:
         raise JobRefusal(
             f"the trainer would refuse this environment at container "
             f"start: {exc}") from exc
+    # Codex review #8 step 6: a multilingual-full packet must bind the
+    # EXACT approved pilot profile, not merely satisfy generic limits.
+    if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
+        protocol = json.loads(
+            (Path(__file__).resolve().parents[1] / "platform/decisions/"
+             "PROMOTION-PROTOCOL-2026-001.json").read_bytes())
+        mandatory = set(protocol["mandatory_languages"])
+        requested = {t.strip() for t in
+                     environment.get("MEDZEN_LANGUAGES", "").split(",")
+                     if t.strip()}
+        if requested != mandatory:
+            raise JobRefusal(
+                f"multilingual-full packets bind the frozen pilot set "
+                f"{sorted(mandatory)} exactly; got {sorted(requested)}")
+        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb6":
+            raise JobRefusal(
+                "multilingual-full packets bind dataset version gb6 "
+                "(B5-GB6-COMPLETE-2026-001)")
+        if environment.get("MEDZEN_TEMPERATURE") != "0.5":
+            raise JobRefusal(
+                "multilingual-full packets bind temperature 0.5 exactly "
+                "(the approved pilot profile)")
+        expected_ref = ("s3://medzen-speech/curated/_versions/gb3/"
+                        "DQ-2026-006-gb3-pulaar-question-mark-deferral.json")
+        if environment.get("MEDZEN_EXCLUSIONS_REF") != expected_ref:
+            raise JobRefusal(
+                "multilingual-full packets bind the exact DQ-2026-006 "
+                "exclusions reference gb6 adoption was granted on")
     registry_line = _require(bindings, "cost_registry_line")
     volume_gb = int(bindings.get("volume_gb", 100))
     if not 1 <= volume_gb <= 500:

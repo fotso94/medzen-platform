@@ -1,0 +1,51 @@
+{
+ "basis": "Codex review #8 step 5: bind holdout + version-record evidence to S3 VersionId + KMS identity",
+ "objects": {
+  "curated/_versions/gb6/ADOPTION.json": {
+   "content_length": 763,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "zNj..s2uM46ZCiMHdz1oZpaIKgiOoPpk"
+  },
+  "curated/_versions/gb6/COMPLETE.json": {
+   "content_length": 4983,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "_saghA1utrT.va_ikw.qPyfBA6sGk51O"
+  },
+  "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl": {
+   "content_length": 2267502,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6"
+  },
+  "eval/kinyarwanda/asr/cv17-test-v1-dev/manifest.jsonl": {
+   "content_length": 4518590,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "BGmUkrtIur0QS29ftFW5CQs6WDmIKz3K"
+  },
+  "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl": {
+   "content_length": 4640867,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ"
+  },
+  "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl": {
+   "content_length": 2251088,
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa"
+  }
+ },
+ "record": "B5-IMMUTABILITY-BINDINGS-2026-001",
+ "universal_kinyarwanda_holdout": {
+  "dev-selection": {
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "rows": 1642,
+   "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+   "speakers": 36
+  },
+  "universal-sealed": {
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+   "rows": 1642,
+   "sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
+   "speakers": 41
+  }
+ },
+ "written_utc": "2026-08-20T22:50:00Z"
+}

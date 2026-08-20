@@ -137,23 +137,93 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
     assert proc.returncode == 1
     assert "PROMOTION-PROTOCOL-2026-001" in proc.stdout
 
+    def entry(kind="non_inferiority"):
+        stats = {"margin": 0.02, "upper_ci": 0.005, "clusters": 40,
+                 "method": "paired_clustered_bootstrap",
+                 "non_inferior": True}
+        if kind == "improvement":
+            stats = {"margin": 0.093, "upper_ci": -0.11, "clusters": 80,
+                     "method": "paired_clustered_bootstrap_relative",
+                     "improved": True}
+        return {"state": "PASS", "holdout_manifest_sha256": "b" * 64,
+                kind: stats}
+
+    mandatory = ["english", "ewe", "french", "kinyarwanda", "lingala",
+                 "swahili"]
     complete = {
         "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-001",
         "candidate_digest": "sha256:" + "a" * 64,
         "code_switch_evidence": {"set": "licensed-cs-1", "state": "PASS"},
-        "operational_evidence": {"latency_p95_ms": 800, "vram_gb": 18},
-        "languages": {"kinyarwanda": {
-            "state": "PASS", "holdout_manifest_sha256": "b" * 64,
-            "improvement": {"margin": 0.093, "upper_ci": -0.11,
-                             "method": "paired_clustered_bootstrap",
-                             "clusters": 80}}},
-        "gate_state_counts": {"PASS": 1}}
+        "operational_evidence": {"latency_p95_ms": 800, "vram_gb": 18,
+                                  "state": "PASS"},
+        "languages": {lang: entry("improvement" if lang == "kinyarwanda"
+                                   else "non_inferiority")
+                      for lang in mandatory},
+        "gate_state_counts": {"PASS": len(mandatory)}}
     path.write_text(json.dumps(complete))
     proc = subprocess.run(
         [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
          "--gate-report", str(path), "--languages", "kinyarwanda"],
         capture_output=True, text=True)
     assert proc.returncode == 0, proc.stdout
+
+    # ATOMIC GATE (Codex review #8): a well-formed report covering ONLY the
+    # requested language must refuse — the mandatory set cannot be subset
+    subset = dict(complete,
+                  languages={"kinyarwanda": entry("improvement")},
+                  gate_state_counts={"PASS": 1})
+    path.write_text(json.dumps(subset))
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+         "--gate-report", str(path), "--languages", "kinyarwanda"],
+        capture_output=True, text=True)
+    assert proc.returncode == 1
+
+    # failing statistical verdicts and FAIL evidence states must refuse
+    poisoned = json.loads(json.dumps(complete))
+    poisoned["languages"]["english"]["non_inferiority"]["non_inferior"] = False
+    path.write_text(json.dumps(poisoned))
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+         "--gate-report", str(path), "--languages", "kinyarwanda"],
+        capture_output=True, text=True)
+    assert proc.returncode == 1
+    poisoned = json.loads(json.dumps(complete))
+    poisoned["code_switch_evidence"]["state"] = "FAIL"
+    path.write_text(json.dumps(poisoned))
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+         "--gate-report", str(path), "--languages", "kinyarwanda"],
+        capture_output=True, text=True)
+    assert proc.returncode == 1
+
+
+def test_relative_improvement_validator_and_input_validation():
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import noninferiority
+    importlib.reload(noninferiority)
+
+    better = [{"cluster_id": f"s{i % 12}", "baseline_errors": 10,
+               "candidate_errors": 8, "reference_words": 25}
+              for i in range(240)]
+    verdict = noninferiority.clustered_relative_improvement(
+        better, min_relative_gain=0.093)
+    assert verdict["improved"] is True          # uniform 20% gain > 9.3%
+    barely = [{"cluster_id": f"s{i % 12}", "baseline_errors": 10,
+               "candidate_errors": 9.5, "reference_words": 25}
+              for i in range(240)]
+    verdict = noninferiority.clustered_relative_improvement(
+        barely, min_relative_gain=0.093)
+    assert verdict["improved"] is False         # 5% gain < 9.3%
+    import pytest as _pytest
+    with _pytest.raises(ValueError, match="invalid paired row"):
+        noninferiority.clustered_noninferiority(
+            [{"cluster_id": "a", "baseline_errors": -1,
+              "candidate_errors": 0, "reference_words": 10},
+             {"cluster_id": "b", "baseline_errors": 1,
+              "candidate_errors": 1, "reference_words": 10}], margin=0.01)
 
 
 def test_clustered_noninferiority_validator_behaves():
@@ -176,3 +246,42 @@ def test_clustered_noninferiority_validator_behaves():
     # determinism under the declared seed
     again = clustered_noninferiority(worse, margin=0.01)
     assert again["upper_ci"] == verdict["upper_ci"]
+
+
+def test_holdout_consumption_ledger_is_append_only_and_unique():
+    """Codex review #8: the kinyarwanda sealed set was double-booked. The
+    ledger makes consumption single-use and auditable."""
+    path = ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl"
+    entries = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    assert entries[0]["event"] == "LEDGER_OPENED"
+    numbers = [e["entry"] for e in entries]
+    assert numbers == sorted(set(numbers)), "entries must be unique, ordered"
+    consumed = [e["holdout"] for e in entries if e["event"] == "CONSUMED"]
+    assert len(consumed) == len(set(consumed)), (
+        "a sealed holdout was consumed twice — the seal is void")
+    reserved = {e["holdout"]: e["reserved_for"] for e in entries
+                if e["event"] == "RESERVED"}
+    assert "cv17-test-v1-sealed" in json.dumps(reserved)
+    assert "cv17-test-v1-universal-sealed" in json.dumps(reserved)
+
+
+def test_registry_router_refuses_divergent_asr_digests():
+    """Codex review #8 reproduction: RegistryRouter accepted english and
+    french bound to DIFFERENT ASR digests. The load-time guard refuses."""
+    import sys
+    sys.path.insert(0, str(ROOT / "services/speech-orchestrator"))
+    from medzen_speech_orchestrator.registry import (RegistryRefusal,
+                                                      enforce_single_asr_digest)
+
+    class Route:
+        def __init__(self, digest):
+            self.asr_artifact_tree_sha256 = digest
+
+    import pytest as _pytest
+    with _pytest.raises(RegistryRefusal, match="MULTIPLE ASR artifact"):
+        enforce_single_asr_digest({"english": Route("a" * 64),
+                                    "french": Route("b" * 64)})
+    enforce_single_asr_digest({"english": Route("a" * 64),
+                                "french": Route("a" * 64)})   # same digest OK
+    enforce_single_asr_digest({"english": Route(None),
+                                "french": Route(None)})       # local mode OK

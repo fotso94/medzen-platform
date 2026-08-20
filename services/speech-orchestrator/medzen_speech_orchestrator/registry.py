@@ -258,6 +258,25 @@ def _exact(value: Any, fields: set[str], label: str) -> dict[str, Any]:
     return value
 
 
+def enforce_single_asr_digest(routes: dict) -> None:
+    """ARCH-2026-001 (Codex review #8: a snapshot with divergent English and
+    French ASR digests was ACCEPTED by the router): production serves
+    exactly ONE multilingual ASR artifact, so every language route that
+    binds an ASR artifact identity must bind the SAME one. Fails closed at
+    snapshot load, not at request time."""
+    digests: dict[str, set[str]] = {}
+    for alias, route in routes.items():
+        identity = getattr(route, "asr_artifact_tree_sha256", None)
+        if identity:
+            digests.setdefault(str(identity), set()).add(alias)
+    if len(digests) > 1:
+        summary = {k[:16]: sorted(v) for k, v in digests.items()}
+        raise RegistryRefusal(
+            f"registry binds MULTIPLE ASR artifact digests across languages "
+            f"({summary}) — ARCH-2026-001 requires the one production "
+            "artifact")
+
+
 class RegistryRouter:
     def __init__(
         self,
@@ -373,6 +392,7 @@ class RegistryRouter:
         }
         if hashlib.sha256(canonical_json(material)).hexdigest() != self.snapshot_sha256:
             raise RegistryRefusal("registry snapshot content hash mismatch")
+        enforce_single_asr_digest(routes)
         return routes, code_index, default
 
     def _route(

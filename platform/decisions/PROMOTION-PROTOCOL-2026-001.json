@@ -29,5 +29,14 @@
     "promotion_grade": "kinyarwanda cv17-test-v1-sealed (80 real speakers, speaker-disjoint, single-consumption)",
     "conditional": "french aaf-test-v1 tier2 (REBUILT FROM manifest.r2 2026-08-20: 12 real speakers, speaker-disjoint, eval-only metadata; caveat: 132/258 sealed texts shared with CA16 training scripts)",
     "development_grade_only": "all FLEURS/soreva tier2 pools: placeholder speaker ids make speaker-independence INDETERMINATE, and all source pools were scored in the 47-language suite. Usable for protected-language non-inferiority SUPPORT; NOT primary blind promotion evidence. Target-language promotion claims need speaker-verifiable sets (commissioned / code-switch acquisitions)."
-  }
+  },
+  "mandatory_languages": [
+    "english",
+    "ewe",
+    "french",
+    "kinyarwanda",
+    "lingala",
+    "swahili"
+  ],
+  "atomic_gate": "Codex review #8: promotion is ATOMIC over the mandatory set \u2014 the ONE production artifact passes for every mandatory language in a single report, or nothing promotes. Requesting a language subset can never bypass this; the checker enforces the full set regardless of the request."
 }

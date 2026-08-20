@@ -260,3 +260,27 @@ def test_render_runs_the_trainer_parser_on_the_environment(tmp_path):
     lazy_warmup["environment"]["MEDZEN_WARMUP_STEPS"] = "0"
     with pytest.raises(JobRefusal, match="trainer would refuse"):
         render_request(lazy_warmup)
+
+
+def test_multilingual_packets_bind_the_exact_pilot_profile():
+    """Codex review #8: generic limits allowed arbitrary language subsets /
+    versions through. Multilingual-full packets bind the frozen profile."""
+    import copy
+    import json as _json
+    import pytest
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    good = _json.loads((root / "platform/manifests/"
+        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-001.json").read_bytes())
+    render_request(good)   # the committed calibration packet must pass
+
+    for mutation in (
+            {"MEDZEN_LANGUAGES": "kinyarwanda,english"},
+            {"MEDZEN_MANIFEST_VERSION": "gb5"},
+            {"MEDZEN_TEMPERATURE": "0.4"},
+            {"MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/other.json"}):
+        bad = copy.deepcopy(good)
+        bad["environment"].update(mutation)
+        with pytest.raises(JobRefusal):
+            render_request(bad)

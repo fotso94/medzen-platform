@@ -9,6 +9,7 @@
   "fleurs_and_soreva_speaker_ids": "single placeholder id per pool on both eval and training sides \u2014 speaker disjointness is INDETERMINATE there; isolation rests on byte+session+text disjointness plus the sources' own split construction",
   "french_aaf_text_overlap": "132 of 258 sealed aaf-test rows share exact normalized text with gb6 CA16 training corpora (shared scripted prompts). The pilot packet must treat french/fleurs as the primary french anchor; aaf-test is secondary with this caveat on record."
  },
+ "immutability_binding": "Codex review #8: evidence now binds key + sha256 + S3 VersionId + KMS identity (bucket is versioned; VersionId pins the exact bytes even if the key is later overwritten)",
  "pools": {
   "english": [
    {
@@ -22,13 +23,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 603833,
      "key": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 511,
+     "s3_version_id": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP",
      "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215"
     },
     "tier2-sealed": {
+     "content_length": 631942,
      "key": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 529,
+     "s3_version_id": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD",
      "sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f"
     },
     "total_rows": 1040
@@ -46,13 +53,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 77965,
      "key": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 76,
+     "s3_version_id": "QTeWOFGyMqKFaJbjcKgvDFAlSHId.1Vd",
      "sha256": "f1e594173e68d19015a373d036234571f38e3712262ace2c0725e4f8d0ba734f"
     },
     "tier2-sealed": {
+     "content_length": 67701,
      "key": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 66,
+     "s3_version_id": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi",
      "sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4"
     },
     "total_rows": 142
@@ -72,13 +85,19 @@
      "text": 132
     },
     "tier2-dev": {
+     "content_length": 228382,
      "key": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 217,
+     "s3_version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX",
      "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c"
     },
     "tier2-sealed": {
+     "content_length": 271130,
      "key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 258,
+     "s3_version_id": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G",
      "sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b"
     },
     "total_rows": 475
@@ -94,13 +113,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 631892,
      "key": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 495,
+     "s3_version_id": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO",
      "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58"
     },
     "tier2-sealed": {
+     "content_length": 597863,
      "key": "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 469,
+     "s3_version_id": "39xzQDaj2Kbl5A_ncGh1IpG7QDoUe3qV",
      "sha256": "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf"
     },
     "total_rows": 964
@@ -118,13 +143,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 372755,
      "key": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 317,
+     "s3_version_id": "517JjmUaGEfjP04.wC8v14zu0OCyIL8e",
      "sha256": "fbc9d94c0a3881822a8328f156054532b96f08401c4d2bfafb8b802351d77b00"
     },
     "tier2-sealed": {
+     "content_length": 383462,
      "key": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 325,
+     "s3_version_id": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd",
      "sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35"
     },
     "total_rows": 642
@@ -140,13 +171,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 71223,
      "key": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 69,
+     "s3_version_id": "hLpk__VAdpZRKkaGmX6HEzXQfHg8sMft",
      "sha256": "e87deac1e3b715fce9490c4fdd1adbb199aa12c30899cd1724509c2690f838d7"
     },
     "tier2-sealed": {
+     "content_length": 83466,
      "key": "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 81,
+     "s3_version_id": "Fa.zlXFBDkDYmSc.ymU4oTPIW5N8eEcl",
      "sha256": "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63"
     },
     "total_rows": 150
@@ -164,13 +201,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 423136,
      "key": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 354,
+     "s3_version_id": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b",
      "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a"
     },
     "tier2-sealed": {
+     "content_length": 407148,
      "key": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 343,
+     "s3_version_id": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p",
      "sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb"
     },
     "total_rows": 697
@@ -186,13 +229,19 @@
      "text": 0
     },
     "tier2-dev": {
+     "content_length": 80113,
      "key": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 78,
+     "s3_version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd",
      "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1"
     },
     "tier2-sealed": {
+     "content_length": 69850,
      "key": "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "rows": 68,
+     "s3_version_id": "NhicuR6DvwTEXSQ4Pv8gKn_rQtrrChAw",
      "sha256": "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c"
     },
     "total_rows": 146

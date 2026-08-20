@@ -34,6 +34,17 @@ def load_gate_report(path: Path) -> dict:
     return report
 
 
+def _protocol_record() -> dict:
+    path = (Path(__file__).resolve().parents[1]
+            / "platform/decisions/PROMOTION-PROTOCOL-2026-001.json")
+    return json.loads(path.read_bytes())
+
+
+def _hex(value: str, length: int) -> bool:
+    return len(value) == length and all(
+        c in "0123456789abcdef" for c in value.lower())
+
+
 def require_protocol_evidence(report: dict, requested: list[str]) -> None:
     """PROMOTION-PROTOCOL-2026-001 became binding on 2026-08-21 (Codex
     review #7: a fabricated bare-PASS report was accepted). A promotion
@@ -44,20 +55,42 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
             "gate report does not bind PROMOTION-PROTOCOL-2026-001 — "
             "pre-protocol reports cannot promote")
     digest = str(report.get("candidate_digest", ""))
-    if not (digest.startswith("sha256:") and len(digest) == 71):
+    if not (digest.startswith("sha256:") and _hex(digest[7:], 64)):
         raise PromotionCheckRefusal(
-            "candidate_digest must be the full sha256:<64hex> of the ONE "
-            "production artifact (ARCH-2026-001)")
+            "candidate_digest must be the full sha256:<64 HEX> of the ONE "
+            "production artifact (Codex review #8: non-hex passed)")
     for block in ("code_switch_evidence", "operational_evidence"):
-        if not isinstance(report.get(block), dict) or not report[block]:
+        blob = report.get(block)
+        if not isinstance(blob, dict) or not blob:
             raise PromotionCheckRefusal(f"gate report lacks the {block} block")
-    for language in requested:
+        if blob.get("state") != "PASS":
+            raise PromotionCheckRefusal(
+                f"{block}.state is {blob.get('state')!r}, not PASS — "
+                "evidence must PASS, not merely exist (Codex review #8)")
+    # ATOMIC GATE (Codex review #8): the one production artifact promotes
+    # for the frozen mandatory set or not at all — a requested subset can
+    # never bypass the languages it left out.
+    mandatory = _protocol_record().get("mandatory_languages", [])
+    checked = sorted(set(requested) | set(mandatory))
+    counts = report.get("gate_state_counts", {})
+    actual_pass = sum(1 for e in report["languages"].values()
+                      if isinstance(e, dict) and e.get("state") == "PASS")
+    if counts.get("PASS") != actual_pass:
+        raise PromotionCheckRefusal(
+            f"gate_state_counts.PASS={counts.get('PASS')} but the languages "
+            f"map holds {actual_pass} PASS entries — inconsistent report")
+    for language in checked:
         entry = report["languages"].get(language) or {}
         holdout = str(entry.get("holdout_manifest_sha256", ""))
         if len(holdout) != 64:
             raise PromotionCheckRefusal(
                 f"{language}: holdout_manifest_sha256 missing — the sealed "
                 "set identity must be bound")
+        if (entry.get("state")) != "PASS":
+            raise PromotionCheckRefusal(
+                f"{language}: mandatory language state is "
+                f"{entry.get('state')!r} — the atomic gate covers the whole "
+                "mandatory set")
         stats = entry.get("non_inferiority") or entry.get("improvement")
         if not isinstance(stats, dict):
             raise PromotionCheckRefusal(
@@ -66,10 +99,31 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
             if field not in stats:
                 raise PromotionCheckRefusal(
                     f"{language}: statistics block lacks '{field}'")
-        if stats["method"] != "paired_clustered_bootstrap":
+        if stats["method"] not in ("paired_clustered_bootstrap",
+                                    "paired_clustered_bootstrap_relative"):
             raise PromotionCheckRefusal(
-                f"{language}: method {stats['method']!r} is not the "
-                "predeclared paired_clustered_bootstrap")
+                f"{language}: method {stats['method']!r} is not a "
+                "predeclared paired clustered bootstrap")
+        # Codex review #8: presence was accepted as truth. The VERDICT
+        # fields must actually pass and be internally coherent.
+        verdict_key = ("non_inferior" if "non_inferiority" in entry
+                       else "improved")
+        if stats.get(verdict_key) is not True:
+            raise PromotionCheckRefusal(
+                f"{language}: {verdict_key}={stats.get(verdict_key)!r} — a "
+                "failing or absent statistical verdict cannot promote")
+        clusters = stats["clusters"]
+        if not isinstance(clusters, int) or clusters < 2:
+            raise PromotionCheckRefusal(
+                f"{language}: clusters={clusters!r} is not a valid cluster "
+                "count")
+        margin, upper = float(stats["margin"]), float(stats["upper_ci"])
+        if not (margin > 0):
+            raise PromotionCheckRefusal(f"{language}: margin must be positive")
+        if "non_inferiority" in entry and not (upper < margin):
+            raise PromotionCheckRefusal(
+                f"{language}: upper_ci {upper} does not clear the margin "
+                f"{margin} — the numbers contradict the claimed verdict")
 
 
 def promotable_languages(report: dict, requested: list[str]) -> dict[str, str]:

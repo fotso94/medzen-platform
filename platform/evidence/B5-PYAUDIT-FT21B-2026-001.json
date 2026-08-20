@@ -1,0 +1,68 @@
+{
+ "packages_audited": 93,
+ "findings": [
+  {
+   "package": "setuptools",
+   "version": "78.1.0",
+   "id": "GHSA-5rjg-fvgr-3xxf"
+  },
+  {
+   "package": "setuptools",
+   "version": "78.1.0",
+   "id": "GHSA-h35f-9h28-mq5c"
+  },
+  {
+   "package": "setuptools",
+   "version": "78.1.0",
+   "id": "PYSEC-2025-49"
+  },
+  {
+   "package": "setuptools",
+   "version": "78.1.0",
+   "id": "PYSEC-2026-3447"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "GHSA-qfhq-4f3w-5fph"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "GHSA-rrmf-rvhw-rf47"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "GHSA-vgrw-7cvw-pwgx"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "PYSEC-2025-203"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "PYSEC-2025-204"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "PYSEC-2025-206"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "PYSEC-2026-139"
+  },
+  {
+   "package": "torch",
+   "version": "2.8.0",
+   "id": "PYSEC-2026-2286"
+  }
+ ],
+ "source_freeze_sha_note": "pip freeze from ft-2026-08-21b test stage (same venv as runtime)",
+ "queried_utc": "2026-08-20T23:10:00Z",
+ "database": "OSV (api.osv.dev querybatch)"
+}
