@@ -92,6 +92,9 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "naijavoices":
         from .adapters.naijavoices import NaijaVoicesAdapter
         return NaijaVoicesAdapter(language, task=task, version=version)
+    if source == "africanvoices":
+        from .adapters.africanvoices import AfricanVoicesAdapter
+        return AfricanVoicesAdapter(language, task=task, version=version)
     raise SystemExit(f"unknown source '{source}'")
 
 

@@ -397,3 +397,90 @@ def test_byte_conflict_drop_both_policy(monkeypatch):
     monkeypatch.setenv("MEDZEN_BYTE_CONFLICT_POLICY", "drop_both")
     kept = dedupe_byte_duplicates(items)
     assert [i["record"]["audio_checksum_sha256"] for i in kept] == ["bb"]
+
+
+def test_africanvoices_adapter_reads_the_xlsx_batch_layout(tmp_path, monkeypatch):
+    """Functional pass over a synthetic batch: the XLSX-named-.csv metadata
+    quirk, 48 kHz FLAC resample to 16 kHz, real speaker ids, naija-only
+    fail-closed, and the usable() bounds (a 40 s clip must drop)."""
+    import numpy as np
+    import openpyxl
+    import soundfile as sf
+
+    batch = tmp_path / "Batch_1"
+    (batch / "audio").mkdir(parents=True)
+    rows = [
+        ("PECT1M144", "pcm_m_PECT1M144_ev_spontaneous_164",
+         "bin reveal say di new category na to address di shortage",
+         "audio/pcm_m_PECT1M144_ev_spontaneous_164.flac",
+         "male", "15-29", "Tertiary", "2.0", "naija", 40, "EV"),
+        ("PBUT1F2", "pcm_f_PBUT1F2_bu_spontaneous_228",
+         "as emma save reach 10000 e show say she don reach one big goal",
+         "audio/pcm_f_PBUT1F2_bu_spontaneous_228.flac",
+         "female", "15-29", "Tertiary", "40.0", "naija", 40, "BU"),
+    ]
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["speaker_id", "audio_id", "transcript", "audio_path", "gender",
+               "age_group", "education", "duration", "language", "snr",
+               "domain"])
+    for r in rows:
+        ws.append(list(r))
+    wb.save(batch / "metadata.csv")   # the quirk: XLSX bytes, .csv name
+    rng = np.random.default_rng(0)
+    sf.write(batch / rows[0][3], rng.standard_normal(48_000 * 2) * 0.1,
+             48_000, format="FLAC")
+    sf.write(batch / rows[1][3], rng.standard_normal(48_000 * 40) * 0.1,
+             48_000, format="FLAC")
+
+    monkeypatch.setenv("MEDZEN_AV_DIR", str(tmp_path))
+    from pipeline.adapters.africanvoices import AfricanVoicesAdapter
+    adapter = AfricanVoicesAdapter("pidgin")
+    items = list(adapter.items())
+    assert len(items) == 1, "the 40 s clip must fall to the usable() bounds"
+    rec = items[0]["record"]
+    assert rec["primary_language"] == "pidgin"
+    assert rec["speaker_id"] == "PECT1M144"
+    assert rec["sample_rate"] == 16_000
+    assert abs(rec["duration_s"] - 2.0) < 0.05
+    assert rec["license_policy"] == "commercial_ok"
+    assert rec["consent_id"] == "agreement-level:LIC-2026-003"
+    assert "curated/pidgin/asr/av_pcm/v1/audio/" in rec["audio_filepath"]
+    assert rec["split_strategy"] == "speaker_disjoint"
+
+    with pytest.raises(ValueError, match="pidgin"):
+        AfricanVoicesAdapter("hausa")
+
+
+def test_africanvoices_refuses_mislabeled_or_drifted_metadata(tmp_path,
+                                                              monkeypatch):
+    import numpy as np
+    import openpyxl
+    import soundfile as sf
+
+    batch = tmp_path / "Batch_1"
+    (batch / "audio").mkdir(parents=True)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["speaker_id", "audio_id", "transcript", "audio_path", "gender",
+               "age_group", "education", "duration", "language", "snr",
+               "domain"])
+    ws.append(["S1", "clip1", "some yoruba text", "audio/clip1.flac", "male",
+               "15-29", "Tertiary", "2.0", "yoruba", 40, "EV"])
+    wb.save(batch / "metadata.csv")
+    sf.write(batch / "audio/clip1.flac",
+             np.zeros(48_000 * 2, dtype="float32"), 48_000, format="FLAC")
+
+    monkeypatch.setenv("MEDZEN_AV_DIR", str(tmp_path))
+    from pipeline.adapters.africanvoices import AfricanVoicesAdapter
+    with pytest.raises(ValueError, match="refusing to mislabel"):
+        list(AfricanVoicesAdapter("pidgin").items())
+
+    # column drift refuses before any row is trusted
+    wb2 = openpyxl.Workbook()
+    ws2 = wb2.active
+    ws2.append(["speaker", "id", "text"])
+    ws2.append(["S1", "clip1", "hello"])
+    wb2.save(batch / "metadata.csv")
+    with pytest.raises(ValueError, match="layout drifted"):
+        list(AfricanVoicesAdapter("pidgin").items())
