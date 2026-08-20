@@ -68,16 +68,19 @@ class FakeFishProvider:
 class RealFishProvider:
     """Fish Audio cloud synthesis — the call shape ported verbatim from the
     proven live medzen-tts-dev provider (reviewed 2026-08-20, not modified).
-    The API key comes from Secrets Manager (the same secret the live
-    service uses) or MEDZEN_FISH_API_KEY for local runs; it is never logged
-    and 401/403 bodies are never echoed (they can contain key fragments).
-    requests/boto3 import lazily so contract tests need neither."""
+    The API key comes from Secrets Manager (medzen/speech/fish-api-key —
+    the platform-namespace secret; the live dev service keeps its own
+    medzen/tts/dev/fish-api-key) or MEDZEN_FISH_API_KEY for local runs; it
+    is never logged and 401/403 bodies are never echoed (they can contain
+    key fragments). requests/boto3 import lazily so contract tests need
+    neither. Handoff-verification fix 2026-08-20: the previous default
+    named a secret that does not exist in Secrets Manager."""
 
     name = "fish"
     media_type = "audio/mpeg"
 
     def __init__(self, model: str = "s1", api_key: str | None = None,
-                 secret_id: str = "medzen/fish-api-key",
+                 secret_id: str = "medzen/speech/fish-api-key",
                  base_url: str = "https://api.fish.audio",
                  session: Any | None = None):
         self.model = model

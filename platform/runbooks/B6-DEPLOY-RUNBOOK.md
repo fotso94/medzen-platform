@@ -94,5 +94,6 @@ the Remote*Clients over HTTP).
   (the eu inference profile — bare model ids are refused by Bedrock).
 - tts-gateway: `MEDZEN_SPEECH_TTS_PROVIDER=fish`; voices at SSM
   `/medzen/registry/tts/voices` (kinyarwanda approved, owner voice id);
-  key from Secrets Manager `medzen/fish-api-key` (existing grant).
+  key from Secrets Manager `medzen/speech/fish-api-key` (verified to exist
+  2026-08-20; the earlier-named `medzen/fish-api-key` does NOT exist).
 - Defaults everywhere are the offline/fixture modes; unknown modes refuse.
