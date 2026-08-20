@@ -26,9 +26,9 @@
     "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
     "managed_spot": false,
     "managed_spot_reason": "owner rule: on-demand basis always; a multi-day full FT must not carry interruption risk",
-    "max_runtime_seconds": 259200,
+    "max_runtime_seconds": 216000,
     "network_note": "campaign endpoints verified LIVE 2026-08-20 (s3 gateway vpce-0ce13c7c, ecr.api, ecr.dkr, logs); checkpoint S3 sync verified working by ftcal-001 (LATEST.json + sidecar landed).",
-    "purpose": "OWNER-ORDERED kinyarwanda v2 FULL fine-tune on the full gb5 corpus (1,018,628 rows / 1,442.7 h / 630 speakers, eval-leak zero dual-verified). Owner verbatim 2026-08-19: 'let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2'; launch gate 2026-08-20: 'if calibration 2 passes proceed with the v2 full training'. Shape: 40k steps (~0.63 epoch at eff. batch 16), warmup 500, lr 1e-5, 20 sweep checkpoints. Pacing basis: ftcal-001 measured <3 s/step => ~35-40 h expected, 72 h ceiling. Ship as v2 ONLY if relative WER gain on the frozen pool > 9.3%.",
+    "purpose": "OWNER-ORDERED kinyarwanda v2 FULL fine-tune on the full gb5 corpus (1,018,628 rows / 1,442.7 h / 630 speakers, eval-leak zero dual-verified). Owner verbatim 2026-08-19: 'let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2'; launch gate 2026-08-20: 'if calibration 2 passes proceed with the v2 full training'. Shape: 40k steps (~0.63 epoch at eff. batch 16), warmup 500, lr 1e-5, 20 sweep checkpoints. Pacing basis: ftcal-001 measured <3 s/step => ~35-40 h expected, 60 h ceiling ($96.00 worst case at the validator's $1.60/h; resume via hash-bound S3 checkpoints if ever wall-hit). Ship as v2 ONLY if relative WER gain on the frozen pool > 9.3%.",
     "security_group_ids": [
         "sg-0fee72d218ac002a7"
     ],
