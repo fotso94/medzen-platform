@@ -20,14 +20,15 @@
     "consumption_rule": "evaluated EXACTLY ONCE, after v2 checkpoint selection is complete and the selected checkpoint is declared in writing; any second evaluation voids the seal and requires a new holdout"
   },
   "dev_half": {
-    "key": "eval/kinyarwanda/asr/cv17-test-v1-dev/manifest.jsonl",
-    "manifest_sha256": "fc9d0a7f2fbe69d24b233c1d68d7f3d7a8bc48c693d1f80f69859879f42c3c46",
-    "rows": 3284,
-    "speakers": 77,
-    "use": "THE ONLY selection surface for v2: sweep and diagnostics run on the dev half EXCLUSIVELY"
+    "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+    "manifest_sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+    "rows": 1642,
+    "speakers": 36,
+    "use": "THE ONLY selection surface for v2: sweep and diagnostics run on dev-selection EXCLUSIVELY"
   },
   "predeclared_ship_rule": "SHIP v2 IFF: on the SEALED holdout, with BOTH models scored in the same pinned eval image (medzen-asr-eval-runtime@sha256:dafc4b14...) under identical decode config, (WER_v1_sealed - WER_v2_sealed) / WER_v1_sealed > 0.093. v1 = approved/kinyarwanda/asr/v1/model.pt. No threshold revision after observing sealed results.",
   "confirmatory_set": "FLEURS has no kinyarwanda (verified: 0 of 102 configs). Independent-source candidates (AfriVoice Kinyarwanda, Mbaza hackathon set) require licence diligence - tracked as a follow-up; DIRECTIONAL check only, does not gate this ship decision.",
-  "sequence": "v2 job completes -> sweep 20 checkpoints on the DEV HALF ONLY -> declare selected checkpoint in the shared file -> single sealed-holdout run scoring v1 and the selected v2 -> apply predeclared rule -> record verdict",
-  "revision_note": "rev2 2026-08-20 (BEFORE any consumption of either half): self-review caught that rev1 permitted selection 'alongside the demoted pool', which contains the sealed rows and would have broken the seal; selection surface corrected to the dev half exclusively. The sealed half remains untouched; the predeclared ship rule is unchanged."
+  "sequence": "v2 job completes -> sweep 20 checkpoints on cv17-test-v1-dev-selection ONLY -> declare selected checkpoint in the shared file -> ledger CONSUMED entry -> single sealed-holdout run scoring v1 and the selected v2 -> apply predeclared rule -> record verdict",
+  "revision_note": "rev2 2026-08-20 (BEFORE any consumption of either half): self-review caught that rev1 permitted selection 'alongside the demoted pool', which contains the sealed rows and would have broken the seal; selection surface corrected to the dev half exclusively. The sealed half remains untouched; the predeclared ship rule is unchanged.",
+  "revision_note_rev3": "rev3 2026-08-20T22:45Z (Codex review #9 CRITICAL, BEFORE any consumption): rev2 still bound the ORIGINAL 3,284-row dev half, which is exactly dev-selection UNION universal-sealed \u2014 sweeping it would have consumed the universal seal. Selection surface rebound to the 1,642-row dev-selection manifest. The PREDECLARED SHIP RULE IS UNCHANGED, byte for byte."
 }
