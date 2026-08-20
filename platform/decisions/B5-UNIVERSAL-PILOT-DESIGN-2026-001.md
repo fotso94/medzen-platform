@@ -28,16 +28,30 @@ recipes review #5 correctly noted we never explored.
    both fail their gates.
 Internal MoE/adapters: only if all simpler arms show interference.
 
-## Data
-gb5 already contains every pilot language's curated corpora. Mixture:
-temperature 0.5 with per-language caps sized so no language exceeds ~35%
-of steps; replay share for anchors/sentinels >= 15% combined.
+## Data — gb6 REQUIRED (rev2 correction, Codex review #6)
+Rev1 claimed gb5 suffices — FALSE on two counts: gb5 is physically
+trainable for kinyarwanda ONLY (its own COMPLETE record says so; the
+trainer resolves by /version/ path), and english is entirely absent from
+its manifest list. BEFORE any pilot spend: assemble **gb6**, a physical
+immutable revision with /gb6/ manifests + audits for EVERY pilot language
+(kinyarwanda, english, french, swahili, lingala, ewe), adopted per the
+proven gb3 record shape. The trainer now REFUSES silent partial coverage
+(every requested language must contribute rows) and multilingual full FT
+requires MEDZEN_MULTILINGUAL_FULL_ACK=ARCH-2026-001 — both machine gates,
+both tested. Mixture: temperature 0.5, no language over ~35% of steps,
+replay share for anchors/sentinels >= 15% combined.
 
-## Selection vs evidence (sealed discipline, per language)
-Selection: existing dev surfaces only. Evidence: NEW sealed
-speaker-disjoint holdouts per pilot language, frozen with audits BEFORE
-the first arm launches (kinyarwanda already has one; build the rest the
-same way).
+## Selection vs evidence (rev2 — two-tier, Codex review #6)
+Rev1 had one sealed set per language shared across sequential arms —
+earlier arms' sealed results would have steered later arms (adaptive
+contamination). Corrected structure:
+- TIER 1 (development): arms are compared and the winner chosen on dev
+  surfaces ONLY (existing demoted pools / dev halves, plus new dev splits
+  for languages lacking one).
+- TIER 2 (promotion): ONE untouched final holdout per language, frozen
+  with audits BEFORE arm 1 launches, consumed EXACTLY ONCE by the single
+  winning arm under PROMOTION-PROTOCOL-2026-001. No arm-vs-arm comparison
+  ever touches Tier 2.
 
 ## Estimated cost (on-demand, owner rule applied at report time)
 - Arm 1: ~35-40 h g6.xlarge ≈ $60-70

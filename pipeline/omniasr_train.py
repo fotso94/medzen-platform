@@ -252,10 +252,13 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             raise TrainerRefusal(
                 "full mode requires an EXPLICIT MEDZEN_LR_SCHEDULE "
                 "(constant|cosine) — no silent schedule (Codex review #4)")
-        if len(languages) != 1:
+        if len(languages) != 1 and env.get(
+                "MEDZEN_MULTILINGUAL_FULL_ACK") != "ARCH-2026-001":
             raise TrainerRefusal(
-                f"full mode trains exactly one language per job "
-                f"(B5-TRAINING-STRATEGY-2026-001); got {sorted(languages)}")
+                f"full mode trains one language per job unless the run "
+                f"explicitly cites the one-model architecture: set "
+                f"MEDZEN_MULTILINGUAL_FULL_ACK=ARCH-2026-001 for a "
+                f"preservation-aware universal run; got {sorted(languages)}")
 
     return TrainerConfig(
         variant=variant,

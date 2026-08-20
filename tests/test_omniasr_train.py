@@ -892,3 +892,28 @@ def test_poisoned_parameters_refuse_the_checkpoint_boundary(tmp_path):
     assert outcome["status"] == "TRAINING_DIVERGED_NONFINITE"
     assert outcome["nonfinite"] in ("parameters", "grad_norm", "loss")
     assert not list(tmp_path.glob("step-*.pt"))
+
+
+def test_multilingual_full_ft_requires_the_architecture_ack():
+    """Codex review #6: the pilot (ARCH-2026-001) needs multilingual full
+    FT, which the review-#1 guard refused outright. The guard now opens
+    ONLY to a run that explicitly cites the architecture record."""
+    with pytest.raises(TrainerRefusal, match="ARCH-2026-001"):
+        make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                    MEDZEN_WARMUP_STEPS="100", MEDZEN_LR_SCHEDULE="constant",
+                    MEDZEN_LANGUAGES="kinyarwanda,english,french")
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                          MEDZEN_WARMUP_STEPS="100",
+                          MEDZEN_LR_SCHEDULE="constant",
+                          MEDZEN_LANGUAGES="kinyarwanda,english,french",
+                          MEDZEN_MULTILINGUAL_FULL_ACK="ARCH-2026-001")
+    assert sorted(config.languages) == ["english", "french", "kinyarwanda"]
+
+
+def test_mix_refuses_silent_partial_language_coverage():
+    """Codex review #6: requesting languages the version does not carry
+    used to silently train on the remainder."""
+    rows = {"yemba": [_row("yemba", "cc0", index=i) for i in range(5)]}
+    config = make_config(MEDZEN_LANGUAGES="yemba,english")
+    with pytest.raises(SystemExit, match="contribute no eligible rows"):
+        build_gated_mix(config, client=FakeS3(rows))

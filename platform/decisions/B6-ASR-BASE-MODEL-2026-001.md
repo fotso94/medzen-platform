@@ -144,3 +144,11 @@ Whisper's rejection stands on the completed evidence; per the owner
 directive of 2026-08-16 it was removed from the evaluated set after
 8,283 fully-covered rows proved the pattern; its artifacts remain
 staged and integrity-verified for reproducibility.
+
+## SUPERSESSION NOTE — 2026-08-21 (ARCH-2026-001)
+
+The **two-variant deployment** language above is SUPERSEDED by
+ARCH-2026-001 (owner-decided): production deploys exactly ONE hash-pinned
+multilingual artifact. The omniASR base-family choice itself stands; the
+LLM variant is retained as an OFFLINE accuracy comparator only and is
+never deployed. Registry entries bind the single production digest.

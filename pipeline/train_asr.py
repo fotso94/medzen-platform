@@ -282,6 +282,17 @@ def load_mix(cli, temperature: float, seed: int,
     if not per_lang:
         raise SystemExit(f"REFUSING: no rows permit {require_use!r} at version "
                          f"{version!r}; nothing to train on")
+    # Codex review #6 (2026-08-21): a multilingual run whose version lacks
+    # ONE requested language silently trained on the rest — the mixture the
+    # packet promised was not the mixture bought. Every requested language
+    # must contribute rows, or the run refuses.
+    if languages:
+        uncovered = sorted(set(languages) - set(per_lang))
+        if uncovered:
+            raise SystemExit(
+                f"REFUSING: requested language(s) {uncovered} contribute no "
+                f"eligible rows at version {version!r} — a partial mixture "
+                "must never be bought silently")
 
     # Optional pool-level gates (omniASR/B5 trainer). Both operate on the
     # ELIGIBLE POOL, before per-language counts and temperature sampling, for

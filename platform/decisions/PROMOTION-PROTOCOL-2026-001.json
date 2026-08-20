@@ -18,9 +18,10 @@
     "operational": "streaming latency envelope, VRAM ceiling on the serving instance class, cancellation behaviour, wrong-language-hint robustness (soft hints must degrade gracefully, never hard-fail)"
   },
   "gates_phased_blocking_when_assets_exist": {
-    "code_switch": "BLOCKED on licensed code-switch sets (see B5-DATA-SOURCING addendum). Becomes mandatory the moment the first licensed set is frozen. Synthetic audio is never promotion evidence.",
+    "code_switch": "MANDATORY FOR THE FIRST PRODUCTION PROMOTION (Codex review #6 + owner one-model decision): no artifact becomes THE production model without passing at least one licensed, disjoint code-switch set (kinyarwanda-english/french or pidgin-english/french). This puts the owner-led code-switch licensing on the promotion critical path \u2014 deliberate. Synthetic audio is never promotion evidence.",
     "clinical_entities": "medical terms, numbers, dosages, negation, emergency phrases \u2014 becomes mandatory with the first licensed clinical-entity set"
   },
   "phasing_rationale": "declaring unmeasurable gates as blocking today would make promotion impossible forever; declaring them phased-with-trigger keeps them from being quietly dropped",
-  "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate"
+  "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate",
+  "machine_enforcement": "tests/test_arch_2026_001.py consumes these records; the trainer refuses silent partial language coverage and un-acked multilingual full FT; the one-global-digest registry rule becomes enforceable at the serving-contract step (ARCH sequencing step 6) and is tracked there, not silently dropped"
 }
