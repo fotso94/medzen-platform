@@ -122,79 +122,99 @@ def test_gb6_covers_every_pilot_language_physically():
 
 
 def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
-    """Codex review #7 reproduction: a report with nothing but PASS states
-    was accepted. It must now carry the full protocol evidence chain."""
-    import subprocess, sys
-    fabricated = {"schema_version": 1,
-                  "languages": {"kinyarwanda": {"state": "PASS"}},
-                  "gate_state_counts": {"PASS": 1}}
-    path = tmp_path / "report.json"
-    path.write_text(json.dumps(fabricated))
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
-         "--gate-report", str(path), "--languages", "kinyarwanda"],
-        capture_output=True, text=True)
-    assert proc.returncode == 1
-    assert "PROMOTION-PROTOCOL-2026-001" in proc.stdout
+    """Codex reviews #7-#9: the gate now (a) uses per-method strict
+    schemas, (b) only accepts AUTHORITATIVE holdout identities, and
+    (c) RECOMPUTES statistics from hash-bound rows — a report that is not
+    derived from real rows cannot pass."""
+    import hashlib
+    import subprocess
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from noninferiority import (clustered_noninferiority,
+                                 clustered_relative_improvement)
 
-    def entry(kind="non_inferiority"):
-        stats = {"margin": 0.02, "upper_ci": 0.005, "clusters": 40,
-                 "method": "paired_clustered_bootstrap",
-                 "non_inferior": True}
-        if kind == "improvement":
-            stats = {"margin": 0.093, "upper_ci": -0.11, "clusters": 80,
-                     "method": "paired_clustered_bootstrap_relative",
-                     "improved": True}
-        return {"state": "PASS", "holdout_manifest_sha256": "b" * 64,
-                kind: stats}
+    def run(report_path, results_dir):
+        return subprocess.run(
+            [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
+             "--gate-report", str(report_path),
+             "--results-dir", str(results_dir)],
+            capture_output=True, text=True)
 
-    mandatory = ["english", "ewe", "french", "kinyarwanda", "lingala",
-                 "swahili"]
-    complete = {
+    # authoritative sealed identities from the committed evidence
+    tier2 = json.loads((ROOT / "platform/evidence/"
+                        "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
+    bindings = json.loads((ROOT / "platform/evidence/"
+                           "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
+    sealed_sha = {lang: pools[0]["tier2-sealed"]["sha256"]
+                  for lang, pools in tier2["pools"].items()}
+    sealed_sha["kinyarwanda"] = (bindings["universal_kinyarwanda_holdout"]
+                                  ["universal-sealed"]["sha256"])
+
+    results = tmp_path / "results"
+    results.mkdir()
+    languages = {}
+    for lang, sha in sorted(sealed_sha.items()):
+        if lang == "kinyarwanda":
+            rows = [{"cluster_id": f"s{i % 10}", "baseline_errors": 10,
+                     "candidate_errors": 8, "reference_words": 25}
+                    for i in range(200)]
+            stats = clustered_relative_improvement(
+                rows, min_relative_gain=0.093, iterations=2000)
+            block_name = "improvement"
+        else:
+            rows = [{"cluster_id": f"s{i % 10}", "baseline_errors": 5,
+                     "candidate_errors": 5, "reference_words": 20}
+                    for i in range(200)]
+            stats = clustered_noninferiority(rows, margin=0.02,
+                                              iterations=2000)
+            block_name = "non_inferiority"
+        body = "".join(json.dumps(r) + "\n" for r in rows).encode()
+        (results / f"{lang}.rows.jsonl").write_bytes(body)
+        languages[lang] = {
+            "state": "PASS", "holdout_manifest_sha256": sha,
+            "rows_sha256": hashlib.sha256(body).hexdigest(),
+            block_name: stats}
+    report = {
         "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-001",
         "candidate_digest": "sha256:" + "a" * 64,
-        "code_switch_evidence": {"set": "licensed-cs-1", "state": "PASS"},
-        "operational_evidence": {"latency_p95_ms": 800, "vram_gb": 18,
-                                  "state": "PASS"},
-        "languages": {lang: entry("improvement" if lang == "kinyarwanda"
-                                   else "non_inferiority")
-                      for lang in mandatory},
-        "gate_state_counts": {"PASS": len(mandatory)}}
-    path.write_text(json.dumps(complete))
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
-         "--gate-report", str(path), "--languages", "kinyarwanda"],
-        capture_output=True, text=True)
+        "code_switch_evidence": {"state": "PASS", "set": "licensed-cs-1",
+                                  "manifest_sha256": "c" * 64, "rows": 500},
+        "operational_evidence": {"state": "PASS", "latency_p95_ms": 800,
+                                  "vram_gb": 18},
+        "languages": languages,
+        "gate_state_counts": {"PASS": len(languages)}}
+    path = tmp_path / "report.json"
+    path.write_text(json.dumps(report))
+    proc = run(path, results)
     assert proc.returncode == 0, proc.stdout
 
-    # ATOMIC GATE (Codex review #8): a well-formed report covering ONLY the
-    # requested language must refuse — the mandatory set cannot be subset
-    subset = dict(complete,
-                  languages={"kinyarwanda": entry("improvement")},
-                  gate_state_counts={"PASS": 1})
-    path.write_text(json.dumps(subset))
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
-         "--gate-report", str(path), "--languages", "kinyarwanda"],
-        capture_output=True, text=True)
-    assert proc.returncode == 1
-
-    # failing statistical verdicts and FAIL evidence states must refuse
-    poisoned = json.loads(json.dumps(complete))
-    poisoned["languages"]["english"]["non_inferiority"]["non_inferior"] = False
+    # (1) fabricated stats not derived from the rows -> refused
+    poisoned = json.loads(json.dumps(report))
+    poisoned["languages"]["english"]["non_inferiority"]["upper_ci"] = -0.5
     path.write_text(json.dumps(poisoned))
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
-         "--gate-report", str(path), "--languages", "kinyarwanda"],
-        capture_output=True, text=True)
-    assert proc.returncode == 1
-    poisoned = json.loads(json.dumps(complete))
-    poisoned["code_switch_evidence"]["state"] = "FAIL"
+    assert run(path, results).returncode == 1
+    # (2) unknown holdout identity -> refused
+    poisoned = json.loads(json.dumps(report))
+    poisoned["languages"]["french"]["holdout_manifest_sha256"] = "d" * 64
     path.write_text(json.dumps(poisoned))
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/b7_model_promotion_check.py"),
-         "--gate-report", str(path), "--languages", "kinyarwanda"],
-        capture_output=True, text=True)
+    assert run(path, results).returncode == 1
+    # (3) wrong-schema relative block (Codex #9: the field mismatch) ->
+    # a LEGITIMATE relative result passes above; an absolute-field fake
+    # in the improvement slot refuses
+    poisoned = json.loads(json.dumps(report))
+    poisoned["languages"]["kinyarwanda"]["improvement"] = {
+        "margin": 0.093, "upper_ci": -0.2, "clusters": 10, "rows": 200,
+        "method": "paired_clustered_bootstrap", "non_inferior": True,
+        "seed": 1, "iterations": 2000, "alpha": 0.05}
+    path.write_text(json.dumps(poisoned))
+    assert run(path, results).returncode == 1
+    # (4) bare evidence blocks -> refused
+    poisoned = json.loads(json.dumps(report))
+    poisoned["code_switch_evidence"] = {"state": "PASS"}
+    path.write_text(json.dumps(poisoned))
+    assert run(path, results).returncode == 1
+    # (5) missing rows file -> refused
+    proc = run(tmp_path / "report.json", tmp_path / "empty")
     assert proc.returncode == 1
 
 
@@ -248,21 +268,39 @@ def test_clustered_noninferiority_validator_behaves():
     assert again["upper_ci"] == verdict["upper_ci"]
 
 
-def test_holdout_consumption_ledger_is_append_only_and_unique():
-    """Codex review #8: the kinyarwanda sealed set was double-booked. The
-    ledger makes consumption single-use and auditable."""
-    path = ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl"
-    entries = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+def test_holdout_consumption_ledger_is_append_only_and_unique(tmp_path):
+    """Codex review #9: the ledger is now an EXECUTABLE gate — hash-chained
+    against history rewriting, refusing double consumption."""
+    import shutil
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import holdout_ledger
+    from holdout_ledger import (LedgerRefusal, record_consumption,
+                                 require_available, verify_chain)
+
+    entries = verify_chain()          # the committed ledger chain is valid
     assert entries[0]["event"] == "LEDGER_OPENED"
-    numbers = [e["entry"] for e in entries]
-    assert numbers == sorted(set(numbers)), "entries must be unique, ordered"
-    consumed = [e["holdout"] for e in entries if e["event"] == "CONSUMED"]
-    assert len(consumed) == len(set(consumed)), (
-        "a sealed holdout was consumed twice — the seal is void")
-    reserved = {e["holdout"]: e["reserved_for"] for e in entries
-                if e["event"] == "RESERVED"}
-    assert "cv17-test-v1-sealed" in json.dumps(reserved)
-    assert "cv17-test-v1-universal-sealed" in json.dumps(reserved)
+    assert any("cv17-test-v1-universal-sealed" in json.dumps(e)
+               for e in entries)
+
+    work = tmp_path / "ledger.jsonl"
+    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                work)
+    require_available("eval/x/sealed/manifest.jsonl", work)
+    record_consumption("eval/x/sealed/manifest.jsonl", "e" * 64,
+                        "test-gate-run", work)
+    import pytest as _pytest
+    with _pytest.raises(LedgerRefusal, match="already CONSUMED"):
+        record_consumption("eval/x/sealed/manifest.jsonl", "e" * 64,
+                            "second-attempt", work)
+    # history rewriting breaks the chain
+    lines = work.read_text().splitlines()
+    tampered = json.loads(lines[1])
+    tampered["reserved_for"] = "something else entirely"
+    lines[1] = json.dumps(tampered, sort_keys=True)
+    work.write_text("\n".join(lines) + "\n")
+    with _pytest.raises(LedgerRefusal, match="chain broken"):
+        verify_chain(work)
 
 
 def test_registry_router_refuses_divergent_asr_digests():

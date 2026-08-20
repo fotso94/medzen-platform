@@ -1,10 +1,13 @@
 {
   "record": "B5-IMAGE-RISK-2026-001",
-  "written_utc": "2026-08-20T23:15:00Z",
+  "written_utc": "2026-08-20T22:44:43Z",
   "scope": "medzen-trainer-omniasr:ft-2026-08-21b (amd64 child sha256:059f4bfb...)",
   "basis": "Codex review #8 step 7: ECR Basic scanning covers OS packages only; a Python-aware audit was required. Performed via OSV querybatch over the image venv's pip freeze (93 packages) - evidence B5-PYAUDIT-FT21B-2026-001.json.",
-  "findings": {"setuptools_78.1.0": 4, "torch_2.8.0": 8, "other_91_packages": 0},
-  "risk_decision": "ACCEPTED FOR TRAINING SCOPE ONLY",
+  "findings": {
+    "torch_2.8.0": 8,
+    "other_runtime_packages": 0
+  },
+  "risk_decision": "ACCEPTED FOR TRAINING SCOPE ONLY \u2014 IMPLEMENTER-ASSESSED, OWNER RATIFICATION REQUESTED",
   "rationale": [
     "the trainer runs in a private VPC subnet with no inbound surface, VPC endpoints only, and processes exclusively owned S3 data under the job role",
     "torch advisories centre on deserialization/DoS of UNTRUSTED inputs; the loop torch.loads only self-written checkpoints whose bytes are hash-bound (marker -> model -> sidecar chain)",
@@ -15,5 +18,7 @@
     "pins are bumped at the next scheduled image refresh; any bump re-runs the full qualification chain (in-image tests + calibration)",
     "this acceptance does NOT transfer to any serving image - serving images get their own Python-aware audit at the serving-contract step",
     "re-audit on every new trainer image push (freeze + OSV batch, ~1 minute)"
-  ]
+  ],
+  "revision": 2,
+  "scope_correction": "rev1 audited the TEST-STAGE freeze; the shipped runtime uninstalls pip/setuptools/wheel, so rev1's setuptools findings never described the runtime (Codex review #9). rev2 audits the RUNTIME inventory enumerated in-container via importlib.metadata."
 }

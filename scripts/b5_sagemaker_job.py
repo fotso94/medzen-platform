@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
 import re
 import subprocess
 import sys
@@ -233,12 +234,29 @@ def validate_request(request: dict, bindings: dict) -> dict:
     }
 
 
-def review_is_recorded(job_id: str, shared_file: Path = SHARED_REVIEWS) -> bool:
+def canonical_bindings_sha256(bindings: dict) -> str:
+    """The packet identity the authorization must cite (Codex review #9:
+    the phrase bound only the job id, so a mutated packet — different
+    seed, LR, batch, image — launched under an old approval)."""
+    return hashlib.sha256(json.dumps(
+        bindings, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def review_is_recorded(job_id: str, bindings: dict | None = None,
+                       shared_file: Path = SHARED_REVIEWS) -> bool:
     text = shared_file.read_text()
     marker = f"authorizing training job {job_id} "
     if marker not in text:
         return False
-    return "DECISION: APPROVED" in text.split(marker)[0][-4000:]
+    if "DECISION: APPROVED" not in text.split(marker)[0][-4000:]:
+        return False
+    if bindings is not None:
+        sha = canonical_bindings_sha256(bindings)
+        window = text.split(marker)[0][-4000:] + marker + \
+            text.split(marker, 1)[1][:400]
+        if f"bindings-sha256 {sha}" not in window:
+            return False
+    return True
 
 
 def main() -> int:
@@ -261,10 +279,12 @@ def main() -> int:
             print(json.dumps(result, sort_keys=True))
             return 0
         job_id = bindings["job_id"]
-        if not review_is_recorded(job_id):
+        if not review_is_recorded(job_id, bindings):
             raise JobRefusal(
-                f"no APPROVED review with the training-job {job_id} approval "
-                f"phrase found in {SHARED_REVIEWS} — record the review first")
+                f"no APPROVED review binding training-job {job_id} AND "
+                f"bindings-sha256 {canonical_bindings_sha256(bindings)} "
+                f"found in {SHARED_REVIEWS} — the authorization must cite "
+                "the exact packet (Codex review #9)")
         completed = subprocess.run(
             ["aws", "sagemaker", "create-training-job",
              "--region", REGION,

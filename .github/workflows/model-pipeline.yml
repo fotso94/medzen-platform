@@ -43,9 +43,12 @@ jobs:
           python-version: "3.12"
       - name: gate report authorizes exactly these languages
         run: |
+          # ARCH-2026-001 atomic gate (Codex review #9): no language
+          # subsetting — the checker evaluates the frozen mandatory set and
+          # statistics are recomputed from hash-bound rows
           python scripts/b7_model_promotion_check.py \
             --gate-report "${{ inputs.gate_report_path }}" \
-            --languages "${{ inputs.languages }}"
+            --results-dir "${{ inputs.results_dir }}"
 
   open-registry-pr:
     needs: verify-gate-report
@@ -62,9 +65,12 @@ jobs:
           python-version: "3.12"
       - name: branch with the per-language approved_version bumps
         run: |
+          # ARCH-2026-001 atomic gate (Codex review #9): no language
+          # subsetting — the checker evaluates the frozen mandatory set and
+          # statistics are recomputed from hash-bound rows
           python scripts/b7_model_promotion_check.py \
             --gate-report "${{ inputs.gate_report_path }}" \
-            --languages "${{ inputs.languages }}"
+            --results-dir "${{ inputs.results_dir }}"
           echo "::error::fail-closed placeholder: the approved_version bump is made"
           echo "::error::through the decode-approvals input to scripts/generate_languages.py,"
           echo "::error::whose promotion schema lands with B5 reactivation. Until that"

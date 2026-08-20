@@ -1,68 +1,63 @@
 {
- "packages_audited": 93,
+ "acceptance_status": "IMPLEMENTER-ASSESSED, training scope only \u2014 OWNER RATIFICATION REQUESTED (Codex review #9: acceptance should not be implementer-only)",
  "findings": [
   {
-   "package": "setuptools",
-   "version": "78.1.0",
-   "id": "GHSA-5rjg-fvgr-3xxf"
-  },
-  {
-   "package": "setuptools",
-   "version": "78.1.0",
-   "id": "GHSA-h35f-9h28-mq5c"
-  },
-  {
-   "package": "setuptools",
-   "version": "78.1.0",
-   "id": "PYSEC-2025-49"
-  },
-  {
-   "package": "setuptools",
-   "version": "78.1.0",
-   "id": "PYSEC-2026-3447"
-  },
-  {
+   "id": "GHSA-qfhq-4f3w-5fph",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "GHSA-qfhq-4f3w-5fph"
+   "version": "2.8.0"
   },
   {
+   "id": "GHSA-rrmf-rvhw-rf47",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "GHSA-rrmf-rvhw-rf47"
+   "version": "2.8.0"
   },
   {
+   "id": "GHSA-vgrw-7cvw-pwgx",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "GHSA-vgrw-7cvw-pwgx"
+   "version": "2.8.0"
   },
   {
+   "id": "PYSEC-2025-203",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "PYSEC-2025-203"
+   "version": "2.8.0"
   },
   {
+   "id": "PYSEC-2025-204",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "PYSEC-2025-204"
+   "version": "2.8.0"
   },
   {
+   "id": "PYSEC-2025-206",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "PYSEC-2025-206"
+   "version": "2.8.0"
   },
   {
+   "id": "PYSEC-2026-139",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "PYSEC-2026-139"
+   "version": "2.8.0"
   },
   {
+   "id": "PYSEC-2026-2286",
    "package": "torch",
-   "version": "2.8.0",
-   "id": "PYSEC-2026-2286"
+   "version": "2.8.0"
   }
  ],
- "source_freeze_sha_note": "pip freeze from ft-2026-08-21b test stage (same venv as runtime)",
- "queried_utc": "2026-08-20T23:10:00Z",
- "database": "OSV (api.osv.dev querybatch)"
+ "image": {
+  "amd64_child_digest": "sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+  "oci_index_digest": "sha256:c5a530bf59bb6bfcb406c19d37b37b04fdf4485bfbaa959de9936e5700d233ca",
+  "tag": "ft-2026-08-21b"
+ },
+ "packages_audited": 90,
+ "per_advisory_analysis": {
+  "GHSA-qfhq-4f3w-5fph": "torch: MEMORY CORRUPTION in tensor operations on crafted inputs \u2014 NOT a torch.load issue. Trainer exposure: tensors originate from our own decoded 16 kHz wav bytes and our own tokenizer; no untrusted party supplies tensors. Residual risk: crash/DoS of our own job.",
+  "GHSA-rrmf-rvhw-rf47": "torch deserialization: trainer torch.loads only self-written, hash-chain-verified checkpoints.",
+  "GHSA-vgrw-7cvw-pwgx": "torch deserialization variant: same checkpoint-provenance argument.",
+  "PYSEC-torch-family": "PYSEC-2025-203/204/206, PYSEC-2026-139/2286: mixed DoS/deserialization; same input-provenance analysis \u2014 no untrusted model files or tensors ever reach the trainer."
+ },
+ "queried_utc": "2026-08-20T22:44:43Z",
+ "raw_osv_response_sha256": "8e7e5984fd64cedb4ec1e132f63ff0d232cf6a26acc9e361c22ff45a371ec4cc",
+ "record": "B5-PYAUDIT-FT21B-2026-001",
+ "revision": 2,
+ "runtime_freeze_sha256": "dfc53350c66b0ac151de99cc8934f2eed3586b357ff74f0daee5e752c09f4261",
+ "scope_correction": "rev1 audited the TEST-STAGE freeze; the shipped runtime uninstalls pip/setuptools/wheel, so rev1's setuptools findings never described the runtime (Codex review #9). rev2 audits the RUNTIME inventory enumerated in-container via importlib.metadata."
 }

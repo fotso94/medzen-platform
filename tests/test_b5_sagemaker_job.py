@@ -139,11 +139,11 @@ def test_absent_bindings_keys_are_refused(key):
 def test_launch_gate_needs_the_approval_phrase(tmp_path):
     shared = tmp_path / "claude_instructions.txt"
     shared.write_text("nothing relevant\n")
-    assert review_is_recorded("t5-calibration-yemba", shared) is False
+    assert review_is_recorded("t5-calibration-yemba", shared_file=shared) is False
     shared.write_text(
         "REVIEW ...\nDECISION: APPROVED — risk accepted, "
         "authorizing training job t5-calibration-yemba per packet.\n")
-    assert review_is_recorded("t5-calibration-yemba", shared) is True
+    assert review_is_recorded("t5-calibration-yemba", shared_file=shared) is True
 
 
 def test_approval_phrase_without_approved_decision_fails(tmp_path):
@@ -151,7 +151,7 @@ def test_approval_phrase_without_approved_decision_fails(tmp_path):
     shared.write_text(
         "DECISION: HOLD — do not launch\n"
         "... authorizing training job t5-calibration-yemba pending fixes\n")
-    text_ok = review_is_recorded("t5-calibration-yemba", shared)
+    text_ok = review_is_recorded("t5-calibration-yemba", shared_file=shared)
     assert text_ok is False, "HOLD text before the phrase must not authorize"
 
 
@@ -169,7 +169,7 @@ def test_approval_more_than_4000_chars_before_the_phrase_does_not_carry(tmp_path
         "DECISION: APPROVED — some OTHER packet entirely\n"
         + ("x" * 4100) + "\n"
         + "notes mentioning authorizing training job t5-calibration-yemba later\n")
-    assert review_is_recorded("t5-calibration-yemba", shared) is False
+    assert review_is_recorded("t5-calibration-yemba", shared_file=shared) is False
 
 
 def test_ceiling_arithmetic_is_conservative_by_construction():
@@ -284,3 +284,30 @@ def test_multilingual_packets_bind_the_exact_pilot_profile():
         bad["environment"].update(mutation)
         with pytest.raises(JobRefusal):
             render_request(bad)
+
+
+def test_authorization_binds_the_canonical_packet_sha(tmp_path):
+    """Codex review #9: the approval phrase bound only the job id, so a
+    mutated packet (seed/LR/batch/image) launched under an old approval.
+    The authorization must now cite the canonical bindings sha256."""
+    from b5_sagemaker_job import canonical_bindings_sha256, review_is_recorded
+
+    b = bindings()
+    sha = canonical_bindings_sha256(b)
+    shared = tmp_path / "reviews.txt"
+    shared.write_text(
+        "review text\nDECISION: APPROVED\n"
+        f"authorizing training job {b['job_id']} bindings-sha256 {sha}\n")
+    assert review_is_recorded(b["job_id"], b, shared) is True
+    # job id alone no longer suffices when bindings are supplied
+    shared.write_text(
+        "review text\nDECISION: APPROVED\n"
+        f"authorizing training job {b['job_id']} \n")
+    assert review_is_recorded(b["job_id"], b, shared) is False
+    # a MUTATED packet cannot ride the original approval
+    shared.write_text(
+        "review text\nDECISION: APPROVED\n"
+        f"authorizing training job {b['job_id']} bindings-sha256 {sha}\n")
+    mutated = bindings()
+    mutated["environment"]["MEDZEN_SEED"] = "999"
+    assert review_is_recorded(mutated["job_id"], mutated, shared) is False

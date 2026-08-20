@@ -40,6 +40,31 @@ def _protocol_record() -> dict:
     return json.loads(path.read_bytes())
 
 
+def _authoritative_holdout_shas() -> set[str]:
+    """The only holdout identities a report may cite: sealed-manifest
+    sha256s recorded in the committed evidence (Codex review #9: any
+    64-char string passed; now the hash must BE a known sealed set)."""
+    root = Path(__file__).resolve().parents[1] / "platform/evidence"
+    shas: set[str] = set()
+    tier2 = json.loads((root / "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
+    for pools in tier2["pools"].values():
+        for pool in pools:
+            shas.add(pool["tier2-sealed"]["sha256"])
+    bindings = json.loads(
+        (root / "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
+    shas.add(bindings["universal_kinyarwanda_holdout"]
+             ["universal-sealed"]["sha256"])
+    # the v2 sealed half (B5-KW-V2-GATE-PROTOCOL-2026-001)
+    shas.add("f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9")
+    return shas
+
+
+ABSOLUTE_SCHEMA = {"margin", "upper_ci", "method", "clusters", "rows",
+                   "non_inferior", "seed", "iterations", "alpha"}
+RELATIVE_SCHEMA = {"min_relative_gain", "lower_ci", "method", "clusters",
+                   "rows", "improved", "seed", "iterations", "alpha"}
+
+
 def _hex(value: str, length: int) -> bool:
     return len(value) == length and all(
         c in "0123456789abcdef" for c in value.lower())
@@ -59,14 +84,22 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
         raise PromotionCheckRefusal(
             "candidate_digest must be the full sha256:<64 HEX> of the ONE "
             "production artifact (Codex review #8: non-hex passed)")
-    for block in ("code_switch_evidence", "operational_evidence"):
+    required_evidence_fields = {
+        "code_switch_evidence": {"state", "set", "manifest_sha256", "rows"},
+        "operational_evidence": {"state", "latency_p95_ms", "vram_gb"},
+    }
+    for block, needed in required_evidence_fields.items():
         blob = report.get(block)
         if not isinstance(blob, dict) or not blob:
             raise PromotionCheckRefusal(f"gate report lacks the {block} block")
+        missing_fields = needed - set(blob)
+        if missing_fields:
+            raise PromotionCheckRefusal(
+                f"{block} lacks substantive fields {sorted(missing_fields)} "
+                "— a bare state flag is not evidence (Codex review #9)")
         if blob.get("state") != "PASS":
             raise PromotionCheckRefusal(
-                f"{block}.state is {blob.get('state')!r}, not PASS — "
-                "evidence must PASS, not merely exist (Codex review #8)")
+                f"{block}.state is {blob.get('state')!r}, not PASS")
     # ATOMIC GATE (Codex review #8): the one production artifact promotes
     # for the frozen mandatory set or not at all — a requested subset can
     # never bypass the languages it left out.
@@ -91,23 +124,36 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
                 f"{language}: mandatory language state is "
                 f"{entry.get('state')!r} — the atomic gate covers the whole "
                 "mandatory set")
+        holdout = str(entry.get("holdout_manifest_sha256", ""))
+        if not _hex(holdout, 64):
+            raise PromotionCheckRefusal(
+                f"{language}: holdout_manifest_sha256 is not 64 hex chars")
+        if holdout not in _authoritative_holdout_shas():
+            raise PromotionCheckRefusal(
+                f"{language}: holdout {holdout[:16]}… is not a recorded "
+                "sealed set (Codex review #9: any 64-char string passed)")
+        # Codex review #9: SEPARATE STRICT SCHEMAS — the checker used to
+        # demand absolute-mode fields from relative-mode results, refusing
+        # legitimate evidence while accepting fabricated wrong-field blocks.
         stats = entry.get("non_inferiority") or entry.get("improvement")
         if not isinstance(stats, dict):
             raise PromotionCheckRefusal(
                 f"{language}: no non_inferiority/improvement statistics block")
-        for field in ("margin", "upper_ci", "method", "clusters"):
-            if field not in stats:
-                raise PromotionCheckRefusal(
-                    f"{language}: statistics block lacks '{field}'")
-        if stats["method"] not in ("paired_clustered_bootstrap",
-                                    "paired_clustered_bootstrap_relative"):
+        if "non_inferiority" in entry:
+            schema, method, verdict_key = (
+                ABSOLUTE_SCHEMA, "paired_clustered_bootstrap", "non_inferior")
+        else:
+            schema, method, verdict_key = (
+                RELATIVE_SCHEMA, "paired_clustered_bootstrap_relative",
+                "improved")
+        missing_fields = schema - set(stats)
+        if missing_fields:
             raise PromotionCheckRefusal(
-                f"{language}: method {stats['method']!r} is not a "
-                "predeclared paired clustered bootstrap")
-        # Codex review #8: presence was accepted as truth. The VERDICT
-        # fields must actually pass and be internally coherent.
-        verdict_key = ("non_inferior" if "non_inferiority" in entry
-                       else "improved")
+                f"{language}: statistics block lacks {sorted(missing_fields)}")
+        if stats["method"] != method:
+            raise PromotionCheckRefusal(
+                f"{language}: method {stats['method']!r} does not match the "
+                f"block type (expected {method})")
         if stats.get(verdict_key) is not True:
             raise PromotionCheckRefusal(
                 f"{language}: {verdict_key}={stats.get(verdict_key)!r} — a "
@@ -117,13 +163,73 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
             raise PromotionCheckRefusal(
                 f"{language}: clusters={clusters!r} is not a valid cluster "
                 "count")
-        margin, upper = float(stats["margin"]), float(stats["upper_ci"])
-        if not (margin > 0):
-            raise PromotionCheckRefusal(f"{language}: margin must be positive")
-        if "non_inferiority" in entry and not (upper < margin):
+        if "non_inferiority" in entry:
+            margin, upper = float(stats["margin"]), float(stats["upper_ci"])
+            if not (margin > 0):
+                raise PromotionCheckRefusal(
+                    f"{language}: margin must be positive")
+            if not (upper < margin):
+                raise PromotionCheckRefusal(
+                    f"{language}: upper_ci {upper} does not clear the margin "
+                    f"{margin} — the numbers contradict the claimed verdict")
+        else:
+            gain, lower = (float(stats["min_relative_gain"]),
+                           float(stats["lower_ci"]))
+            if not (0 < gain < 1):
+                raise PromotionCheckRefusal(
+                    f"{language}: min_relative_gain must be in (0, 1)")
+            if not (lower > gain):
+                raise PromotionCheckRefusal(
+                    f"{language}: lower_ci {lower} does not clear "
+                    f"min_relative_gain {gain} — the numbers contradict the "
+                    "claimed verdict")
+
+
+def recompute_statistics(report: dict, results_dir: Path,
+                          requested: list[str]) -> None:
+    """Codex review #9 rec 3: the gate RECOMPUTES the statistics from
+    hash-bound per-row results. Self-reported summaries alone can no
+    longer promote — the rows file must exist, hash-match, and reproduce
+    the claimed verdict AND bounds exactly (deterministic under seed)."""
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import hashlib as _hashlib
+
+    from noninferiority import (clustered_noninferiority,
+                                 clustered_relative_improvement)
+    mandatory = _protocol_record().get("mandatory_languages", [])
+    for language in sorted(set(requested) | set(mandatory)):
+        entry = report["languages"][language]
+        rows_path = results_dir / f"{language}.rows.jsonl"
+        if not rows_path.is_file():
             raise PromotionCheckRefusal(
-                f"{language}: upper_ci {upper} does not clear the margin "
-                f"{margin} — the numbers contradict the claimed verdict")
+                f"{language}: per-row results file absent at {rows_path} — "
+                "summaries alone cannot promote (Codex review #9)")
+        body = rows_path.read_bytes()
+        claimed_sha = str(entry.get("rows_sha256", ""))
+        if _hashlib.sha256(body).hexdigest() != claimed_sha:
+            raise PromotionCheckRefusal(
+                f"{language}: rows file hash does not match the report's "
+                "rows_sha256")
+        rows = [json.loads(line) for line in body.decode().splitlines()
+                if line.strip()]
+        stats = entry.get("non_inferiority") or entry.get("improvement")
+        kwargs = {k: stats[k] for k in ("iterations", "seed", "alpha")}
+        if "non_inferiority" in entry:
+            actual = clustered_noninferiority(
+                rows, margin=stats["margin"], **kwargs)
+            claims = {k: stats[k] for k in ("upper_ci", "non_inferior")}
+            facts = {k: actual[k] for k in ("upper_ci", "non_inferior")}
+        else:
+            actual = clustered_relative_improvement(
+                rows, min_relative_gain=stats["min_relative_gain"], **kwargs)
+            claims = {k: stats[k] for k in ("lower_ci", "improved")}
+            facts = {k: actual[k] for k in ("lower_ci", "improved")}
+        if claims != facts:
+            raise PromotionCheckRefusal(
+                f"{language}: recomputed statistics {facts} do not match "
+                f"the claimed {claims} — the report is not derived from "
+                "these rows")
 
 
 def promotable_languages(report: dict, requested: list[str]) -> dict[str, str]:
@@ -152,14 +258,27 @@ def promotable_languages(report: dict, requested: list[str]) -> dict[str, str]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gate-report", type=Path, required=True)
-    parser.add_argument("--languages", required=True,
-                        help="comma-separated languages the PR intends to bump")
+    parser.add_argument("--languages", default="",
+                        help="DEPRECATED subset selector — promotion is "
+                             "atomic over the mandatory set; empty means "
+                             "exactly that set")
+    parser.add_argument("--results-dir", type=Path, default=None,
+                        help="directory of per-language hash-bound "
+                             "<language>.rows.jsonl result files; REQUIRED "
+                             "for promotion (recompute gate)")
     args = parser.parse_args()
     try:
         report = load_gate_report(args.gate_report)
         requested = [x.strip() for x in args.languages.split(",") if x.strip()]
+        if not requested:
+            requested = list(_protocol_record().get("mandatory_languages", []))
         states = promotable_languages(report, requested)
         require_protocol_evidence(report, requested)
+        if args.results_dir is None:
+            raise PromotionCheckRefusal(
+                "--results-dir is required: promotion statistics must be "
+                "recomputed from hash-bound rows (Codex review #9)")
+        recompute_statistics(report, args.results_dir, requested)
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))
         return 1

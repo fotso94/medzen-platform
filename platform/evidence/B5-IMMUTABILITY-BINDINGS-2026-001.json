@@ -33,6 +33,7 @@
   }
  },
  "record": "B5-IMMUTABILITY-BINDINGS-2026-001",
+ "timestamp_note": "rev2: rev1 was stamped 22:50Z inside a commit created 22:10:40Z (Codex review #9) \u2014 estimates are banned; stamps now come from the clock",
  "universal_kinyarwanda_holdout": {
   "dev-selection": {
    "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
@@ -47,5 +48,5 @@
    "speakers": 41
   }
  },
- "written_utc": "2026-08-20T22:50:00Z"
+ "written_utc": "2026-08-20T22:44:58Z"
 }
