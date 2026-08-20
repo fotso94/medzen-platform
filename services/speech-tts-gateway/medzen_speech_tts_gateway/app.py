@@ -86,8 +86,18 @@ def create_app(
                 if mode == "fish":
                     from .provider import RealFishProvider
                     from .voices import resolve as _resolve_voice
+                    # MEDZEN_FISH_SECRET_ID lets deploy config point at an
+                    # existing secret (name or full ARN) — e.g. the live dev
+                    # service's medzen/tts/dev/fish-api-key, so the SAME key
+                    # is reused without anyone handling its value
+                    # (investigation 2026-08-20: the dev service passes its
+                    # secret ARN via env and fetches at runtime, same
+                    # pattern). Default stays the platform-namespace secret.
+                    secret_kw = {}
+                    if os.environ.get("MEDZEN_FISH_SECRET_ID"):
+                        secret_kw["secret_id"] = os.environ["MEDZEN_FISH_SECRET_ID"]
                     app.state.gateway = TTSGateway(
-                        provider=RealFishProvider(),
+                        provider=RealFishProvider(**secret_kw),
                         breaker=fish_breaker(),
                         voice_resolver=lambda language:
                             _resolve_voice(language).reference_id,

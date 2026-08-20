@@ -148,6 +148,34 @@ def test_fish_mode_starts_and_resolves_the_owner_kinyarwanda_voice(monkeypatch):
         "da02ddd729004bb98133102da10c36ba")
 
 
+def test_fish_secret_id_is_deploy_configurable(monkeypatch):
+    """MEDZEN_FISH_SECRET_ID points the provider at an existing secret
+    (name or ARN) so the platform can reuse the live dev service's key
+    (medzen/tts/dev/fish-api-key) without anyone handling its value.
+    Default stays the platform-namespace secret when the env is unset."""
+    monkeypatch.setenv("MEDZEN_SPEECH_TTS_PROVIDER", "fish")
+    monkeypatch.setenv("MEDZEN_TTS_VOICES_INLINE", json.dumps({
+        "kinyarwanda": {"reference_id": "da02ddd729004bb98133102da10c36ba",
+                         "model": "s1", "approved": True}}))
+    from medzen_speech_tts_gateway import voices as voices_module
+    voices_module.registry(force=True)
+
+    monkeypatch.setenv(
+        "MEDZEN_FISH_SECRET_ID",
+        "arn:aws:secretsmanager:eu-central-1:558069890522:"
+        "secret:medzen/tts/dev/fish-api-key-e8XyJe")
+    with TestClient(create_app()) as client:
+        client.get("/readyz")
+        provider = client.app.state.gateway.provider
+    assert provider._secret_id.endswith("fish-api-key-e8XyJe")
+
+    monkeypatch.delenv("MEDZEN_FISH_SECRET_ID")
+    with TestClient(create_app()) as client:
+        client.get("/readyz")
+        provider = client.app.state.gateway.provider
+    assert provider._secret_id == "medzen/speech/fish-api-key"
+
+
 def test_real_media_type_results_are_not_rejected_as_malformed():
     """Deep-review regression (2026-08-20): the gateway validated results
     against the SYNTHETIC media type, so a real provider returning
