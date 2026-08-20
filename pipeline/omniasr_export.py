@@ -1,10 +1,18 @@
-"""Adapter-merge export with a signed manifest (design record T2).
+"""Checkpoint export with a signed manifest (design record T2).
 
-The exported artifact is a plain checkpoint with every LoRA adapter folded
-into the base weights — the serving pipeline stays byte-for-byte the one the
-evaluation suite live-proved, with no adapter code at inference. The
-manifest carries the §B5 identity set (model SHA-256, tokenizer reference,
-decode config, gate report reference) and both files are write-once.
+The exported artifact is a plain checkpoint the serving pipeline can load
+byte-for-byte on the path the evaluation suite live-proved, with no adapter
+code at inference. Two modes (Codex finding 2026-08-20 — full mode used to
+fall into the LoRA merge and refuse):
+
+  lora — every adapter is folded into the base weights, then the original
+         modules are restored (the only mode until 2026-08-20);
+  full — the model IS the artifact; a full fine-tune must be adapter-free
+         and any LoRA module present is refused, never silently merged.
+
+The manifest carries the §B5 identity set (model SHA-256, tokenizer
+reference, decode config, gate report reference) and both files are
+write-once.
 """
 
 from __future__ import annotations
@@ -17,7 +25,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from pipeline.omniasr_lora import merge_lora
+from pipeline.omniasr_lora import LoRALinear, merge_lora
 
 
 class ExportRefusal(RuntimeError):
@@ -39,16 +47,28 @@ def export_merged_checkpoint(
     decode_config: dict[str, Any],
     gate_report_reference: str | None,
     training_run_identity: dict[str, Any],
+    train_mode: str = "lora",
 ) -> dict[str, Any]:
-    """Merge adapters, save the checkpoint, and bind its manifest.
+    """Save the trained checkpoint and bind its manifest (mode-aware).
 
-    The write-once check precedes the merge so a refused export never
-    mutates the model it was handed."""
+    The write-once check precedes any model mutation so a refused export
+    never touches the model it was handed."""
+    if train_mode not in ("lora", "full"):
+        raise ExportRefusal(f"unknown train_mode {train_mode!r}")
     checkpoint_path = output_dir / "model.pt"
     manifest_path = output_dir / "manifest.json"
     if checkpoint_path.exists() or manifest_path.exists():
         raise ExportRefusal(f"{output_dir} already holds an exported artifact")
-    merge_audit = merge_lora(model)
+    if train_mode == "full":
+        adapters = [n for n, m in model.named_modules()
+                    if isinstance(m, LoRALinear)]
+        if adapters:
+            raise ExportRefusal(
+                f"full-mode export requires an adapter-free model, found "
+                f"LoRA modules: {adapters[:3]}")
+        merge_audit = {"status": "PASS_FULL_EXPORT", "merged_modules": []}
+    else:
+        merge_audit = merge_lora(model)
 
     state = model.state_dict()
     residue = [name for name in state if ".lora_a" in name or ".lora_b" in name]
@@ -63,6 +83,7 @@ def export_merged_checkpoint(
     manifest = {
         "record": "OMNIASR_MERGED_CHECKPOINT_MANIFEST",
         "schema_version": 1,
+        "train_mode": train_mode,
         "base_model_card": base_model_card,
         "model_sha256": model_sha256,
         "model_bytes": checkpoint_path.stat().st_size,

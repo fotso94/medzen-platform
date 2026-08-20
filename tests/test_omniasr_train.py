@@ -86,7 +86,9 @@ def test_nonsense_numbers_are_refused():
 def test_train_mode_parses_and_defaults_to_lora():
     config = make_config()
     assert config.train_mode == "lora"
-    config = make_config(MEDZEN_TRAIN_MODE="full")
+    # full mode requires an explicit LR since the Codex-finding corrections
+    # (2026-08-20) — the bare form is covered by its own refusal test
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5")
     assert config.train_mode == "full"
     # the mode is part of the run fingerprint — a full-FT run can never
     # collide with a LoRA run's identity
@@ -438,3 +440,187 @@ def test_model_staging_pins_the_evaluated_identities():
     assert CTC_MODEL_ARTIFACTS["omniASR_tokenizer_written_v2.model"]["sha256"].startswith("8aa11a10")
     assert MODEL_ROOT_PREFIX.startswith("research/asr-base-model/pilot/1cdca3e7")
     assert MODEL_ROOT_PREFIX.endswith("bundles/")
+
+
+# --------------------------------------------------------------------------
+# Full fine-tune mode — Codex finding 2026-08-20 (owner-ordered corrections).
+# The paid failure mode was: training completes, then export KeyErrors on
+# LoRA-only audit fields and merge_lora refuses the adapter-free model.
+# --------------------------------------------------------------------------
+
+def test_full_mode_requires_an_explicit_learning_rate():
+    with pytest.raises(TrainerRefusal, match="EXPLICIT MEDZEN_LR"):
+        make_config(MEDZEN_TRAIN_MODE="full")
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5")
+    assert config.learning_rate == 1e-5
+
+
+def test_full_mode_trains_exactly_one_language_per_job():
+    with pytest.raises(TrainerRefusal, match="one language"):
+        make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                    MEDZEN_LANGUAGES="yemba,kinyarwanda")
+
+
+def test_warmup_is_linear_stateless_and_off_by_default():
+    from pipeline.omniasr_train import warmup_lr
+    assert make_config().warmup_steps == 0
+    assert warmup_lr(1e-5, step=0, warmup_steps=0) == 1e-5
+    assert warmup_lr(1e-5, step=0, warmup_steps=100) == pytest.approx(1e-7)
+    assert warmup_lr(1e-5, step=49, warmup_steps=100) == pytest.approx(5e-6)
+    assert warmup_lr(1e-5, step=100, warmup_steps=100) == 1e-5
+    assert warmup_lr(1e-5, step=5000, warmup_steps=100) == 1e-5
+
+
+def test_disk_envelope_refuses_before_gpu_hours(tmp_path):
+    from pipeline.omniasr_train import check_disk_envelope
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-5",
+                          MEDZEN_MAX_STEPS="40000",
+                          MEDZEN_CHECKPOINT_EVERY="2000",
+                          MEDZEN_CHECKPOINT_DIR=str(tmp_path / "ckpt"))
+    mix = [{"duration_s": 3600.0}] * 1440   # ~1,440 h at 32 kB/s
+    with pytest.raises(TrainerRefusal, match="disk envelope"):
+        check_disk_envelope(config, mix, cache_root=tmp_path / "cache",
+                            free_bytes=lambda p: 100_000_000_000)  # 100 GB
+    report = check_disk_envelope(config, mix, cache_root=tmp_path / "cache",
+                                 free_bytes=lambda p: 10**12)      # 1 TB
+    assert report["audio_cache_bytes"] > 150_000_000_000
+    assert report["checkpoint_bytes"] > 50_000_000_000
+
+
+@_needs_torch
+def test_full_mode_export_skips_the_lora_merge_and_binds_the_manifest(tmp_path):
+    import torch
+    from torch import nn
+    from pipeline.omniasr_export import ExportRefusal, export_merged_checkpoint
+    from pipeline.omniasr_lora import LoRALinear
+
+    model = nn.Sequential(nn.Linear(4, 4), nn.Linear(4, 2))
+    export = export_merged_checkpoint(
+        model, output_dir=tmp_path / "full",
+        base_model_card="card", tokenizer_reference="tok",
+        decode_config={"strategy": "ctc_greedy"},
+        gate_report_reference=None, train_mode="full",
+        training_run_identity={"wrap_audit": {"mode": "full"}})
+    assert export["status"] == "PASS_MERGED_EXPORT"
+    manifest = json.loads(Path(export["manifest"]).read_bytes())
+    assert manifest["train_mode"] == "full"
+    assert manifest["merged_modules"] == []
+    # fresh-process reload: the artifact must load standalone
+    state = torch.load(export["checkpoint"], map_location="cpu",
+                       weights_only=True)
+    reloaded = nn.Sequential(nn.Linear(4, 4), nn.Linear(4, 2))
+    reloaded.load_state_dict(state)
+
+    # a full-mode model with adapters still attached is a wiring bug —
+    # refuse, never merge silently
+    adapterful = nn.Sequential(LoRALinear(nn.Linear(4, 4), rank=2, alpha=4.0,
+                                           dropout=0.0))
+    with pytest.raises(ExportRefusal, match="adapter-free"):
+        export_merged_checkpoint(
+            adapterful, output_dir=tmp_path / "bad",
+            base_model_card="card", tokenizer_reference="tok",
+            decode_config={"strategy": "ctc_greedy"},
+            gate_report_reference=None, train_mode="full",
+            training_run_identity={})
+
+
+@_needs_torch
+def test_full_checkpoint_resume_is_trajectory_equivalent(tmp_path):
+    """The Codex core risk: without optimizer moments a resumed AdamW run
+    diverges from the paid trajectory. Straight-through 4 steps must equal
+    2 steps + save + FRESH model/optimizer + load + 2 steps, bit-for-bit."""
+    import torch
+    from torch import nn
+    from pipeline.omniasr_train import load_full_state, save_full_state
+
+    def build():
+        torch.manual_seed(7)
+        model = nn.Linear(8, 8)
+        return model, torch.optim.AdamW(model.parameters(), lr=1e-2)
+
+    torch.manual_seed(123)
+    data = [torch.randn(4, 8) for _ in range(4)]
+
+    def step(model, optimizer, batch):
+        optimizer.zero_grad(set_to_none=True)
+        loss = model(batch).pow(2).mean()
+        loss.backward()
+        optimizer.step()
+
+    straight, opt_a = build()
+    for batch in data:
+        step(straight, opt_a, batch)
+
+    resumed, opt_b = build()
+    for batch in data[:2]:
+        step(resumed, opt_b, batch)
+    save_full_state(tmp_path / "step-2.pt", model=resumed, optimizer=opt_b,
+                    step=2)
+    fresh, opt_c = build()   # fresh process stand-in: brand-new objects
+    assert load_full_state(tmp_path / "step-2.pt", model=fresh,
+                           optimizer=opt_c) == 2
+    for batch in data[2:]:
+        step(fresh, opt_c, batch)
+
+    for p_straight, p_fresh in zip(straight.parameters(), fresh.parameters()):
+        assert torch.equal(p_straight, p_fresh), (
+            "resumed trajectory diverged from the uninterrupted one")
+
+
+@_needs_torch
+def test_full_resume_refuses_a_torn_checkpoint_pair(tmp_path):
+    import torch
+    from torch import nn
+    from pipeline.omniasr_train import (OPTIMIZER_SIDECAR, load_full_state,
+                                         save_full_state)
+
+    model = nn.Linear(4, 4)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-2)
+    save_full_state(tmp_path / "step-1.pt", model=model, optimizer=optimizer,
+                    step=1)
+    # sidecar from a different step = crash landed between the two writes
+    torch.save({"step": 9, "optimizer": optimizer.state_dict()},
+               tmp_path / OPTIMIZER_SIDECAR)
+    with pytest.raises(TrainerRefusal, match="torn"):
+        load_full_state(tmp_path / "step-1.pt", model=model,
+                        optimizer=optimizer)
+    (tmp_path / OPTIMIZER_SIDECAR).unlink()
+    with pytest.raises(TrainerRefusal, match="optimizer"):
+        load_full_state(tmp_path / "step-1.pt", model=model,
+                        optimizer=optimizer)
+
+
+@_needs_torch
+def test_one_step_full_training_checkpoints_through_the_real_loop(tmp_path):
+    """Codex verify item: one-step full-parameter training through
+    run_training_loop with the REAL full-mode save path, then reload."""
+    import torch
+    from torch import nn
+    from pipeline.omniasr_train import (load_full_state, run_training_loop,
+                                         save_full_state)
+
+    config = make_config(MEDZEN_TRAIN_MODE="full", MEDZEN_LR="1e-3",
+                          MEDZEN_MAX_STEPS="1", MEDZEN_BATCH_SIZE="1",
+                          MEDZEN_GRAD_ACCUM="1", MEDZEN_CHECKPOINT_EVERY="1",
+                          MEDZEN_CHECKPOINT_DIR=str(tmp_path))
+    torch.manual_seed(config.seed)
+    model = nn.Linear(6, 6)
+    for parameter in model.parameters():
+        parameter.requires_grad_(True)
+    optimizer = torch.optim.AdamW(model.parameters(),
+                                  lr=config.learning_rate)
+    outcome = run_training_loop(
+        model=model, optimizer=optimizer,
+        batches=lambda i: torch.randn(2, 6),
+        batch_loss=lambda m, b: m(b).pow(2).mean(),
+        config=config, fingerprint="f" * 64,
+        save_state=lambda path, step: save_full_state(
+            path, model=model, optimizer=optimizer, step=step),
+        load_state=lambda path: load_full_state(
+            path, model=model, optimizer=optimizer))
+    assert outcome["status"] == "COMPLETED"
+    assert outcome["step"] == 1
+    saved = torch.load(tmp_path / "step-0000001.pt", map_location="cpu",
+                       weights_only=False)
+    assert set(saved) >= {"step", "model", "torch_rng"}
+    assert (tmp_path / "optimizer-LATEST.pt").exists()

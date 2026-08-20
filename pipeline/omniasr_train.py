@@ -131,6 +131,7 @@ class TrainerConfig:
     lora_alpha: float
     lora_dropout: float
     train_mode: str
+    warmup_steps: int
     checkpoint_dir: Path
     output_dir: Path
     checkpoint_every_steps: int
@@ -195,6 +196,22 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
     except ValueError as exc:
         raise TrainerRefusal(f"MEDZEN_SEED={seed_raw!r} is not an integer") from exc
 
+    # Full-mode guards (Codex finding 2026-08-20). The 1e-3 default is a
+    # LoRA rate — it is the exact rate behind the wave-1 runaway
+    # (B5-DIAG-2026-001) and must never reach a full fine-tune implicitly.
+    # And full mode exists BECAUSE per-language isolation ended the shared
+    # adapter's interference — a multi-language full job would rebuild the
+    # failure the strategy pivot removed.
+    if env.get("MEDZEN_TRAIN_MODE", "lora") == "full":
+        if not env.get("MEDZEN_LR", "").strip():
+            raise TrainerRefusal(
+                "full mode requires an EXPLICIT MEDZEN_LR — the 1e-3 default "
+                "is a LoRA rate and destroyed wave-1 (B5-DIAG-2026-001)")
+        if len(languages) != 1:
+            raise TrainerRefusal(
+                f"full mode trains exactly one language per job "
+                f"(B5-TRAINING-STRATEGY-2026-001); got {sorted(languages)}")
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -212,6 +229,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         lora_alpha=_number("MEDZEN_LORA_ALPHA", "32", float, 0.0),
         lora_dropout=_number("MEDZEN_LORA_DROPOUT", "0.0", float, 0.0),
         train_mode=env.get("MEDZEN_TRAIN_MODE", "lora"),
+        warmup_steps=_number("MEDZEN_WARMUP_STEPS", "0", int, 0),
         checkpoint_dir=Path(env.get("MEDZEN_CHECKPOINT_DIR", "/opt/ml/checkpoints")),
         output_dir=Path(env.get("MEDZEN_OUTPUT_DIR", "/opt/ml/model")),
         checkpoint_every_steps=_number("MEDZEN_CHECKPOINT_EVERY", "50", int, 1),
@@ -323,6 +341,104 @@ def write_checkpoint_marker(checkpoint_dir: Path, *, step: int,
 # the GPU. The fairseq2 pieces plug in via batch_loss.
 # --------------------------------------------------------------------------
 
+def warmup_lr(base_lr: float, step: int, warmup_steps: int) -> float:
+    """Linear warmup to base_lr over warmup_steps; base_lr thereafter.
+
+    Stateless in step so a resumed run computes the same rate the
+    uninterrupted run would have used at that step."""
+    if warmup_steps <= 0 or step >= warmup_steps:
+        return base_lr
+    return base_lr * (step + 1) / warmup_steps
+
+
+OPTIMIZER_SIDECAR = "optimizer-LATEST.pt"
+
+
+def save_full_state(path: Path, *, model, optimizer, step: int) -> None:
+    """Full-mode checkpoint: model weights + RNG per checkpoint file, and
+    the AdamW state in a single rotating sidecar next to it (Codex finding
+    2026-08-20: without optimizer moments a resume is not
+    trajectory-equivalent; with them in EVERY file a 40k-step run writes
+    ~200 GB — the sidecar keeps exactly the resumable state, once)."""
+    import torch
+    with path.open("wb") as stream:
+        torch.save({"step": step, "model": model.state_dict(),
+                    "torch_rng": torch.get_rng_state(),
+                    "cuda_rng": (torch.cuda.get_rng_state_all()
+                                 if torch.cuda.is_available() else None)},
+                   stream)
+    sidecar_tmp = path.parent / (OPTIMIZER_SIDECAR + ".tmp")
+    with sidecar_tmp.open("wb") as stream:
+        torch.save({"step": step, "optimizer": optimizer.state_dict()}, stream)
+    sidecar_tmp.replace(path.parent / OPTIMIZER_SIDECAR)
+
+
+def load_full_state(path: Path, *, model, optimizer) -> int:
+    """Resume a full-mode checkpoint. The optimizer sidecar must exist and
+    match the checkpoint's step — a mismatched sidecar means the crash
+    landed between the two writes, and resuming without the matching
+    moments would silently diverge from the paid trajectory. Refuse."""
+    import torch
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    sidecar_path = path.parent / OPTIMIZER_SIDECAR
+    if not sidecar_path.exists():
+        raise TrainerRefusal(
+            f"full-mode resume needs {OPTIMIZER_SIDECAR} beside "
+            f"{path.name}; without the optimizer moments the resumed "
+            "trajectory is not the one already paid for")
+    sidecar = torch.load(sidecar_path, map_location="cpu", weights_only=False)
+    if int(sidecar["step"]) != int(state["step"]):
+        raise TrainerRefusal(
+            f"optimizer sidecar is at step {sidecar['step']}, checkpoint at "
+            f"{state['step']}; the checkpoint pair is torn — refusing a "
+            "non-equivalent resume")
+    model.load_state_dict(state["model"])
+    optimizer.load_state_dict(sidecar["optimizer"])
+    torch.set_rng_state(state["torch_rng"])
+    if state.get("cuda_rng") is not None and torch.cuda.is_available():
+        torch.cuda.set_rng_state_all(state["cuda_rng"])
+    return int(state["step"])
+
+
+def check_disk_envelope(config: TrainerConfig, mix: list[dict],
+                        *, cache_root: Path,
+                        model_bytes_estimate: int = 2_600_000_000,
+                        free_bytes=None) -> dict[str, int]:
+    """Measured disk envelope BEFORE any GPU-hour is spent (Codex finding
+    2026-08-20: 1,442 h of cached audio plus ~20 full checkpoints cannot
+    fit the historical 100 GB volume convention).
+
+    Audio cache: 16 kHz mono PCM_16 wav = 32,000 B/s of duration.
+    Checkpoint zone: one full-model file per checkpoint interval + the
+    optimizer sidecar (~3x model for AdamW fp32 moments) + the export.
+    Refuses if either filesystem lacks the estimate plus 10% headroom."""
+    import shutil
+
+    audio_need = int(sum(r["duration_s"] for r in mix) * 32_000 * 1.10)
+    n_checkpoints = max(1, config.max_steps // config.checkpoint_every_steps)
+    if config.train_mode == "full":
+        ckpt_need = int((n_checkpoints + 1) * model_bytes_estimate
+                        + 3 * model_bytes_estimate)
+    else:
+        ckpt_need = int(n_checkpoints * 200_000_000 + model_bytes_estimate)
+    measure = free_bytes or (lambda p: shutil.disk_usage(p).free)
+    needs = {str(cache_root): audio_need,
+             str(config.checkpoint_dir): ckpt_need}
+    for path_str, need in needs.items():
+        root = Path(path_str)
+        probe = root
+        while not probe.exists() and probe.parent != probe:
+            probe = probe.parent
+        free = measure(probe)
+        if free < need:
+            raise TrainerRefusal(
+                f"disk envelope: {path_str} needs ~{need / 1e9:.0f} GB "
+                f"({'audio cache' if path_str == str(cache_root) else 'checkpoints'}), "
+                f"only {free / 1e9:.0f} GB free — provision the volume "
+                "before spending GPU-hours")
+    return {"audio_cache_bytes": audio_need, "checkpoint_bytes": ckpt_need}
+
+
 def run_training_loop(
     *,
     model,
@@ -371,6 +487,11 @@ def run_training_loop(
             accumulated += float(loss.detach())
         torch.nn.utils.clip_grad_norm_(
             [p for p in model.parameters() if p.requires_grad], 1.0)
+        # stateless warmup: recomputed from step, so resume matches the
+        # uninterrupted schedule exactly
+        rate = warmup_lr(config.learning_rate, step, config.warmup_steps)
+        for group in optimizer.param_groups:
+            group["lr"] = rate
         optimizer.step()
         step += 1
         losses.append(accumulated / config.grad_accum)
@@ -430,6 +551,11 @@ def main() -> int:
 
     if config.train_mode not in ("lora", "full"):
         raise TrainerRefusal(f"unknown MEDZEN_TRAIN_MODE {config.train_mode!r}")
+    # deterministic torch state (Codex finding 2026-08-20): the mix was
+    # always seeded; the weights/dropout/sampling RNG was not
+    torch.manual_seed(config.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(config.seed)
     model, tokenizer, device = _load_model_and_tokenizer(config)
     if config.train_mode == "lora":
         wrap_audit = wrap_lora(
@@ -437,21 +563,27 @@ def main() -> int:
             dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX)
     else:
         # FULL fine-tune (owner option B, B5-KW-DECISIVE-2026-001): every
-        # parameter trains; per-language jobs only, so there is no
-        # cross-language interference surface. Checkpoints carry the full
-        # model state (no optimizer: 8 GB/ckpt is not worth resume
-        # momentum on on-demand instances).
-        wrap_audit = {"mode": "full", "merged_modules": []}
+        # parameter trains; parse enforces one language per job. Optimizer
+        # state lives in a rotating sidecar (save_full_state).
         for parameter in model.parameters():
             parameter.requires_grad_(True)
+        total = sum(p.numel() for p in model.parameters())
+        wrap_audit = {"mode": "full", "merged_modules": [],
+                      "trainable_parameters": total, "total_parameters": total,
+                      "trainable_fraction": 1.0}
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=config.learning_rate)
 
     from pipeline.omniasr_data import make_batch_source
+    cache_root = Path(os.environ.get("MEDZEN_AUDIO_CACHE",
+                                     "/tmp/medzen-audio-cache"))
+    envelope = check_disk_envelope(config, mix, cache_root=cache_root)
+    print(json.dumps({"status": "DISK_ENVELOPE_OK", **envelope},
+                     sort_keys=True))
     batches = make_batch_source(
         mix, tokenizer, config, s3(),
-        Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache")),
+        cache_root,
         device=device)
 
     stop_flag = {"stop": False}
@@ -459,12 +591,7 @@ def main() -> int:
 
     def save_state(path: Path, step: int) -> None:
         if config.train_mode == "full":
-            with path.open("wb") as stream:
-                torch.save({"step": step, "model": model.state_dict(),
-                            "torch_rng": torch.get_rng_state(),
-                            "cuda_rng": (torch.cuda.get_rng_state_all()
-                                         if torch.cuda.is_available() else None)},
-                           stream)
+            save_full_state(path, model=model, optimizer=optimizer, step=step)
             return
         with path.open("wb") as stream:
             torch.save({"step": step, "lora": lora_state_dict(model),
@@ -478,13 +605,9 @@ def main() -> int:
                        stream)
 
     def load_state(path: Path) -> int:
-        state = torch.load(path, map_location="cpu", weights_only=False)
         if config.train_mode == "full":
-            model.load_state_dict(state["model"])
-            torch.set_rng_state(state["torch_rng"])
-            if state.get("cuda_rng") is not None and torch.cuda.is_available():
-                torch.cuda.set_rng_state_all(state["cuda_rng"])
-            return int(state["step"])
+            return load_full_state(path, model=model, optimizer=optimizer)
+        state = torch.load(path, map_location="cpu", weights_only=False)
         model.load_state_dict(state["lora"], strict=False)
         optimizer.load_state_dict(state["optimizer"])
         torch.set_rng_state(state["torch_rng"])
@@ -500,6 +623,15 @@ def main() -> int:
     if outcome["status"] == "INTERRUPTED_CHECKPOINTED":
         return SIGTERM_EXIT
 
+    # mode-aware identity (Codex finding 2026-08-20: full-mode audits have
+    # no rank/alpha, and the old unconditional read was a guaranteed
+    # KeyError after the paid loop finished)
+    if config.train_mode == "full":
+        audit_extract = {k: wrap_audit[k] for k in
+                         ("mode", "trainable_parameters", "total_parameters")}
+    else:
+        audit_extract = {k: wrap_audit[k] for k in
+                         ("rank", "alpha", "trainable_parameters")}
     export = export_merged_checkpoint(
         model,
         output_dir=config.output_dir / "export",
@@ -507,11 +639,11 @@ def main() -> int:
         tokenizer_reference=CTC_TOKENIZER,
         decode_config={"strategy": "ctc_greedy"},
         gate_report_reference=None,
+        train_mode=config.train_mode,
         training_run_identity={
             "run_fingerprint": fingerprint,
             "steps": outcome["step"],
-            "wrap_audit": {k: wrap_audit[k] for k in
-                           ("rank", "alpha", "trainable_parameters")},
+            "wrap_audit": audit_extract,
         })
     print(json.dumps({"status": "TRAINING_COMPLETE", "export": export,
                       "steps": outcome["step"]}, sort_keys=True))
