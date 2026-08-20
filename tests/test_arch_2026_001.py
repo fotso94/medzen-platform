@@ -59,3 +59,52 @@ def test_trainer_enforces_what_the_pilot_promises():
     assert "MEDZEN_MULTILINGUAL_FULL_ACK" in trainer
     mix = (ROOT / "pipeline/train_asr.py").read_text()
     assert "a partial mixture" in mix
+
+
+def test_no_per_language_serving_digest_may_enter_the_registry():
+    """ARCH-2026-001 one-global-digest tripwire (Codex review #6 rec 6):
+    language registry files must never grow per-language serving-artifact
+    digest bindings — the production digest is bound once, globally, at
+    the serving-contract step. Full enforcement arrives with that step;
+    this trips any earlier drift."""
+    import yaml
+    forbidden = {"serving_artifact", "asr_digest", "model_digest",
+                 "artifact_digest", "serving_model"}
+    for path in sorted((ROOT / "registry/languages").glob("*.yaml")):
+        doc = yaml.safe_load(path.read_text()) or {}
+        def walk(node, trail):
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    assert key not in forbidden, (
+                        f"{path.name}: {'.'.join(trail + [key])} — "
+                        "per-language serving digests violate ARCH-2026-001")
+                    walk(value, trail + [key])
+            elif isinstance(node, list):
+                for item in node:
+                    walk(item, trail)
+        walk(doc, [])
+
+
+def test_tier2_holdout_record_binds_every_pilot_language():
+    holdouts = json.loads((ROOT / "platform/evidence/"
+                           "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
+    assert set(holdouts["pools"]) == {"english", "ewe", "french", "lingala",
+                                       "swahili"}
+    for language, pools in holdouts["pools"].items():
+        for pool in pools:
+            assert pool["sealed_vs_gb6_overlap"]["byte"] == 0
+            assert pool["sealed_vs_gb6_overlap"]["session"] == 0
+            assert pool["tier2-sealed"]["rows"] > 0
+    assert "french_aaf_text_overlap" in holdouts["honest_limitations"]
+
+
+def test_gb6_covers_every_pilot_language_physically():
+    gb6 = json.loads((ROOT / "platform/evidence/"
+                      "B5-GB6-COMPLETE-2026-001.json").read_bytes())
+    covered = {k.split("/")[0] for k in gb6["manifests"]}
+    assert {"kinyarwanda", "english", "french", "swahili", "lingala",
+            "ewe"} <= covered
+    for entry in gb6["manifests"].values():
+        assert "/gb6/manifest.jsonl" in entry["key"], (
+            "gb6 entries must be PHYSICAL /gb6/ paths — the trainer "
+            "resolves by path")
