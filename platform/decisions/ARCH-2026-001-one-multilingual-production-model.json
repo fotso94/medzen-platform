@@ -1,0 +1,30 @@
+{
+  "record": "ARCH-2026-001",
+  "title": "One multilingual production ASR model — permanent architecture",
+  "status": "OWNER_DECIDED",
+  "decided_utc": "2026-08-20T23:00:00Z",
+  "owner_verbatim": "since id like to one one production model as the permanent architecture ... check codex recommendations wether it make sense and align with your recommendations on this, if yes proceed with changes/fix (2026-08-20)",
+  "basis": "Codex review #5 (split-brain, verified accurate 2026-08-20) + Codex recommended next steps, assessed by Claude as coherent and execution-ready. Supersedes Claude's per-language-routing serving recommendation.",
+  "architecture": {
+    "production_artifact": "exactly ONE active multilingual ASR artifact serves all languages; hash-pinned; omniASR CTC is the real-time candidate family",
+    "language_routing": "NO external model-selecting language router",
+    "language_hints": "optional SOFT hints only; auto/mixed-language operation is MANDATORY; a wrong hint must never hard-fail",
+    "internal_specialization": "permitted inside the one artifact (adapters/MoE internally) ONLY if simpler preservation-aware recipes still show interference",
+    "per_language_models": "RESEARCH TEACHERS ONLY: quality ceilings, distillation teachers, adaptation-layer evidence, pipeline validation. Never a production serving path.",
+    "registry": "per-language approval + normalization policies remain in the registry; all entries bind the SAME production ASR digest"
+  },
+  "kinyarwanda_reframe": {
+    "v1": "remains approved/ as the kinyarwanda research ceiling v1; was never deployed (the B6a loader cannot load it — deliberate unretired gate, now permanent policy)",
+    "v2_running_job": "finishes and is evaluated EXACTLY per B5-KW-V2-GATE-PROTOCOL-2026-001 (sealed holdout, predeclared rule). A passing verdict promotes it as the kinyarwanda QUALITY CEILING + distillation teacher, not a serving artifact.",
+    "serving_path": "no kinyarwanda-specific serving path will be built"
+  },
+  "sequencing": [
+    "1. THIS record (architecture first)",
+    "2. kinyarwanda v2 completes -> sealed verdict -> ceiling/teacher",
+    "3. code-switch data gap closes (licensed, disjoint; see scoping addendum) — synthetic audio may aid training, NEVER promotion evidence",
+    "4. bounded universal-model pilot (design doc B5-UNIVERSAL-PILOT-DESIGN-2026-001; owner approves numbers before spend)",
+    "5. promotion under PROMOTION-PROTOCOL-2026-001 (aggregate WER alone can never promote)",
+    "6. ONLY THEN the serving contract changes: services.yaml asr-runtime wording + model-loader v1 manifest accepting the promoted hash-pinned omniASR artifact (deliberate reviewed change; loader stays fail-closed until then)"
+  ],
+  "explicitly_deferred": "services.yaml and model-loader are NOT modified by this record (step 6); the sha-pinned governance tests keep them frozen until the promoted artifact exists"
+}

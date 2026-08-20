@@ -1,0 +1,25 @@
+{
+  "record": "PROMOTION-PROTOCOL-2026-001",
+  "title": "Production ASR promotion protocol v0 (one multilingual artifact)",
+  "status": "DECLARED",
+  "declared_utc": "2026-08-20T23:05:00Z",
+  "basis": "ARCH-2026-001 + Codex review #5 recommendation 5 + the sealed-holdout discipline proven in B5-KW-V2-GATE-PROTOCOL-2026-001",
+  "principles": [
+    "aggregate WER alone can NEVER promote an artifact",
+    "all thresholds are PREDECLARED before any sealed observation",
+    "every sealed set is consumed exactly once per candidate",
+    "checkpoint selection and promotion evidence use disjoint sets"
+  ],
+  "gates_v0_active_now": {
+    "target_languages": "meaningful predeclared relative WER improvement on sealed speaker-disjoint holdouts",
+    "protected_languages": "predeclared statistical NON-INFERIORITY on every protected language (replay anchors english/french; regression sentinels swahili/lingala; plus every language the artifact already served)",
+    "degenerate_output": "hallucination-rate, deletion-rate and silence-behaviour screens on the sealed sets (measurable today from existing transcripts)",
+    "operational": "streaming latency envelope, VRAM ceiling on the serving instance class, cancellation behaviour, wrong-language-hint robustness (soft hints must degrade gracefully, never hard-fail)"
+  },
+  "gates_phased_blocking_when_assets_exist": {
+    "code_switch": "BLOCKED on licensed code-switch sets (see B5-DATA-SOURCING addendum). Becomes mandatory the moment the first licensed set is frozen. Synthetic audio is never promotion evidence.",
+    "clinical_entities": "medical terms, numbers, dosages, negation, emergency phrases — becomes mandatory with the first licensed clinical-entity set"
+  },
+  "phasing_rationale": "declaring unmeasurable gates as blocking today would make promotion impossible forever; declaring them phased-with-trigger keeps them from being quietly dropped",
+  "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate"
+}

@@ -10,5 +10,10 @@
  "owner_approval_verbatim": "Approve and proceed",
  "record": "B5-TRAINING-STRATEGY",
  "recorded_utc": "2026-08-19T11:47:07Z",
+ "revision_2": {
+  "revised_utc": "2026-08-20T23:00:00Z",
+  "superseded_by": "ARCH-2026-001 (owner-decided): per-language models are research teachers only; production is one multilingual artifact; a bounded preservation-aware universal pilot tests exactly the unexplored recipes.",
+  "what_changed": "HONEST SCOPE (Codex review #5, verified): the phrase 'interference structural' overclaimed. Evidence covers ONLY the explored envelope: q/v LoRA at ranks 16/32, lr 1e-3..1e-4, one 9-language temperature-0.5 mixture. Broader multilingual recipes (preservation-aware full FT, distillation, wider adapter placement, internal MoE) were deprioritized on cost-benefit, NOT disproven."
+ },
  "status": "owner_approved"
 }
