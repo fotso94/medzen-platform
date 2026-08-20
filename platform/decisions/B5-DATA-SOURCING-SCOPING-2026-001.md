@@ -79,3 +79,27 @@ for exactly this run.
    negotiation) — both are owner-to-counterparty actions.
 3. Approve the SOREVA quote request for Tier C (no spend commitment; the
    quote comes back as its own decision).
+
+## Addendum 2026-08-20 — code-switch corpora (ARCH-2026-001 requirement)
+
+The one-multilingual-model architecture must eventually PROVE code-switch
+handling; no licensed code-switch set exists today (VERIFIED_GAP,
+B4-REPLAY-CODESWITCH-GAP-2026-001). Sourcing targets, in priority order
+for real MedZen pairs:
+
+1. kinyarwanda–english and kinyarwanda–french
+2. pidgin–english and pidgin–french
+
+Required properties (promotion-evidence grade): licensed for evaluation;
+speaker- AND session-disjoint from all training corpora; NATURAL
+conversational switches (not concatenated monolingual clips);
+switch-boundary annotations; coverage of medical terms, numbers, dosages,
+negation, and emergency phrases. Synthetic/TTS-generated audio may
+support TRAINING experiments but is never promotion evidence
+(PROMOTION-PROTOCOL-2026-001).
+
+Likely sources: commissioned recording (the owner's africanvoices/
+NaijaVoices relationships are the strongest channel — both teams record
+natively); academic code-switch corpora are rare for these pairs.
+This is data acquisition with licensing — owner-led, engineering
+supports with specs + freeze audits.
