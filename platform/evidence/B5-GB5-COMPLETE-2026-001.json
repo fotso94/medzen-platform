@@ -4,7 +4,7 @@
   "owner_order": "verbatim 2026-08-19: 'yes ship v1 at a 9.3% gain and let the full fine-tune (already in motion) try to earn a bigger gain on the full 2,000 hours..if at then end we get more gain than 9.3% well ship the trained model as v2'",
   "prior_version": "gb4 (carried forward unchanged except kinyarwanda)"
  },
- "composition": "all gb4 manifests carried forward unchanged; kinyarwanda/asr/cv17_rw replaced by the v2 FULL re-pull (was the 300 h capped v1). NaijaVoices (nv_*) and africanvoices (av_pcm) corpora are NOT in gb5 \u2014 they join a later version after their Tier-B review.",
+ "composition": "kinyarwanda/asr/cv17_rw at gb5 = the v2 FULL re-pull, physically copied to the gb5 path (trainer resolves by path). gb4's other entries are reference-only history: THIS VERSION IS TRAINABLE FOR KINYARWANDA ONLY. Any other-language gb5 run must first copy its manifest to a /gb5/ path and re-adopt. NaijaVoices/africanvoices join a later version after Tier-B review.",
  "curation_report": {
   "kinyarwanda_cv17_rw_v2": {
    "byte_relistings_dropped_at_ingest": 57,
@@ -71,9 +71,10 @@
    "version": "gb3"
   },
   "kinyarwanda/asr/cv17_rw": {
-   "key": "curated/kinyarwanda/asr/cv17_rw/v2/manifest.jsonl",
+   "key": "curated/kinyarwanda/asr/cv17_rw/gb5/manifest.jsonl",
+   "note": "byte-identical server-side copy of v2/manifest.jsonl (zero rows dropped in curation); the trainer resolves manifests by literal /gb5/ path \u2014 discovered 2026-08-20, which also means gb4's carry-by-reference entries were never trainable as written",
    "sha256": "900e165f236c3869523f36b5dc9f0de351a79f5e6445a00f5d168adc4f9ebd02",
-   "version": "v2-as-gb5"
+   "version": "gb5"
   },
   "lingala/asr/lin_asr": {
    "key": "curated/lingala/asr/lin_asr/gb3/manifest.jsonl",
