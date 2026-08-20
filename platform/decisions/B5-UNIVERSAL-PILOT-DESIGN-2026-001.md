@@ -43,6 +43,9 @@ same way).
 - Arm 1: ~35-40 h g6.xlarge ≈ $60-70
 - Arm 2: +calibration (~$1) + ~40 h ≈ $65-75 (if arm 1 fails gates)
 - Sweeps/gates: ~$10-15 per arm (eval boxes)
-- Worst case all three arms + gates: ~$230 → reported max $330
+- Arm 3 (if reached): ~40 h ≈ $60-70
+- Worst case all three arms + all gates: ~$260 → reported max $360
+  (self-review 2026-08-20: the first draft said $230, below the sum of
+  its own per-arm lines — corrected upward, never quietly down)
 NOTHING launches until the owner approves these numbers per the standing
 packet ceremony.

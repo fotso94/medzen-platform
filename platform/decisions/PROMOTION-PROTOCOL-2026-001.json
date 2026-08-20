@@ -8,7 +8,8 @@
     "aggregate WER alone can NEVER promote an artifact",
     "all thresholds are PREDECLARED before any sealed observation",
     "every sealed set is consumed exactly once per candidate",
-    "checkpoint selection and promotion evidence use disjoint sets"
+    "checkpoint selection and promotion evidence use disjoint sets",
+    "each candidate's packet PREDECLARES, per protected language, the non-inferiority margin, the statistical test and the alpha BEFORE its sealed run \u2014 the protocol names the gates, the packet names the numbers"
   ],
   "gates_v0_active_now": {
     "target_languages": "meaningful predeclared relative WER improvement on sealed speaker-disjoint holdouts",
@@ -18,7 +19,7 @@
   },
   "gates_phased_blocking_when_assets_exist": {
     "code_switch": "BLOCKED on licensed code-switch sets (see B5-DATA-SOURCING addendum). Becomes mandatory the moment the first licensed set is frozen. Synthetic audio is never promotion evidence.",
-    "clinical_entities": "medical terms, numbers, dosages, negation, emergency phrases — becomes mandatory with the first licensed clinical-entity set"
+    "clinical_entities": "medical terms, numbers, dosages, negation, emergency phrases \u2014 becomes mandatory with the first licensed clinical-entity set"
   },
   "phasing_rationale": "declaring unmeasurable gates as blocking today would make promotion impossible forever; declaring them phased-with-trigger keeps them from being quietly dropped",
   "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate"
