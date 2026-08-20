@@ -1,0 +1,198 @@
+{
+ "built_utc": "2026-08-21T02:00:00Z",
+ "honest_limitations": {
+  "fleurs_and_soreva_speaker_ids": "single placeholder id per pool on both eval and training sides \u2014 speaker disjointness is INDETERMINATE there; isolation rests on byte+session+text disjointness plus the sources' own split construction",
+  "french_aaf_text_overlap": "132 of 258 sealed aaf-test rows share exact normalized text with gb6 CA16 training corpora (shared scripted prompts). The pilot packet must treat french/fleurs as the primary french anchor; aaf-test is secondary with this caveat on record."
+ },
+ "pools": {
+  "english": [
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/english/asr/fleurs-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "rows": 511,
+     "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215"
+    },
+    "tier2-sealed": {
+     "key": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "rows": 529,
+     "sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f"
+    },
+    "total_rows": 1040
+   }
+  ],
+  "ewe": [
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/ewe/asr/soreva-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "rows": 76,
+     "sha256": "f1e594173e68d19015a373d036234571f38e3712262ace2c0725e4f8d0ba734f"
+    },
+    "tier2-sealed": {
+     "key": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "rows": 66,
+     "sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4"
+    },
+    "total_rows": 142
+   }
+  ],
+  "french": [
+   {
+    "distinct_speakers": 12,
+    "method": "speaker_disjoint",
+    "pool": "eval/french/asr/aaf-test-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": 0,
+     "text": 132
+    },
+    "tier2-dev": {
+     "key": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+     "rows": 217,
+     "sha256": "07d5406ada5a8e4e4c82b5f88da05b3f67bfeb333492184c4de0e649ee21d7e5"
+    },
+    "tier2-sealed": {
+     "key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+     "rows": 258,
+     "sha256": "a89455de9a44f739cef5f80f22bb994e2f081fbead015bbeb2c8a9295017e293"
+    },
+    "total_rows": 475
+   },
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/french/asr/fleurs-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "rows": 495,
+     "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58"
+    },
+    "tier2-sealed": {
+     "key": "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "rows": 469,
+     "sha256": "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf"
+    },
+    "total_rows": 964
+   }
+  ],
+  "lingala": [
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/lingala/asr/fleurs-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "rows": 317,
+     "sha256": "fbc9d94c0a3881822a8328f156054532b96f08401c4d2bfafb8b802351d77b00"
+    },
+    "tier2-sealed": {
+     "key": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "rows": 325,
+     "sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35"
+    },
+    "total_rows": 642
+   },
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/lingala/asr/soreva-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "rows": 69,
+     "sha256": "e87deac1e3b715fce9490c4fdd1adbb199aa12c30899cd1724509c2690f838d7"
+    },
+    "tier2-sealed": {
+     "key": "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "rows": 81,
+     "sha256": "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63"
+    },
+    "total_rows": 150
+   }
+  ],
+  "swahili": [
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/swahili/asr/fleurs-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "rows": 354,
+     "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a"
+    },
+    "tier2-sealed": {
+     "key": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "rows": 343,
+     "sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb"
+    },
+    "total_rows": 697
+   },
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/swahili/asr/soreva-v1",
+    "sealed_vs_gb6_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids both sides)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "rows": 78,
+     "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1"
+    },
+    "tier2-sealed": {
+     "key": "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "rows": 68,
+     "sha256": "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c"
+    },
+    "total_rows": 146
+   }
+  ]
+ },
+ "purpose": "ARCH-2026-001 pilot Tier-2 promotion holdouts (Codex review #6 rec 4): one untouched final holdout per pilot language, frozen BEFORE any arm launches, consumed exactly once by the winning arm. kinyarwanda's sealed holdout pre-exists (B5-KW-V2-GATE-PROTOCOL-2026-001).",
+ "record": "B5-TIER2-HOLDOUTS-2026-001",
+ "split_rule": "per pool: speaker-disjoint salted split when >= 8 real speakers; otherwise deterministic row-hash split with the speaker dimension recorded as stated. Salt 'universal-tier2-2026-08-21' + language."
+}
