@@ -1,0 +1,86 @@
+{
+ "assembled_utc": "2026-08-21T01:10:00Z",
+ "basis": {
+  "owner_order": "Codex recommendations adopted 2026-08-20; prerequisites executed before any pilot spend",
+  "purpose": "ARCH-2026-001 universal-model pilot: the physical, immutable multilingual revision Codex review #6 required \u2014 every pilot language trainable at literal /gb6/ paths (the trainer resolves by path)"
+ },
+ "composition": "12 corpora / 6 languages, every one a byte-identical server-side copy of an audited source: kinyarwanda cv17_rw from gb5 (curation B5-GB5-COMPLETE-2026-001, eval-leak 0 dual-verified); french x5 + swahili + lingala x2 + ewe from gb3 (gb3 mechanical curation, eval-zone byte-leak dropped at assembly, carried through gb4 unchanged); english cv17_en + en_us_fleurs_train from their Tier A v1 ingests (TIER-A-REVIEW-2026-001: checksums, licences, zero byte-leaks vs frozen pools). Sha verified per entry at copy time, zero drift.",
+ "deferral_policy_carry_forward": "DQ-2026-006 pulaar 1,579 exclusions unchanged (out-of-scope for pilot languages, tolerated by the language-scoped rule); new deferrals in gb6: 0",
+ "manifests": {
+  "english/asr/cv17_en": {
+   "carried_from": "curated/english/asr/cv17_en/v1/manifest.jsonl",
+   "key": "curated/english/asr/cv17_en/gb6/manifest.jsonl",
+   "sha256": "0403cd237622769d65e53ac914409211249058733d9a98cb32249dd89e203fca",
+   "version": "gb6"
+  },
+  "english/asr/en_us_fleurs_train": {
+   "carried_from": "curated/english/asr/en_us_fleurs_train/v1/manifest.jsonl",
+   "key": "curated/english/asr/en_us_fleurs_train/gb6/manifest.jsonl",
+   "sha256": "317b37cac13c385a9a2d910cea2e68676cc71b8766e43d36fc8a99ea07764bc1",
+   "version": "gb6"
+  },
+  "ewe/asr/ewe_asr": {
+   "carried_from": "curated/ewe/asr/ewe_asr/gb3/manifest.jsonl",
+   "key": "curated/ewe/asr/ewe_asr/gb6/manifest.jsonl",
+   "sha256": "663c55755491ac02258d5920302f268c6414b6327d4fed01d13153624f228bb7",
+   "version": "gb6"
+  },
+  "french/asr/aaf_ca16_conv": {
+   "carried_from": "curated/french/asr/aaf_ca16_conv/gb3/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_conv/gb6/manifest.jsonl",
+   "sha256": "ce14c38f364957fab64339ed0b4e0bbc4db58e8085a06da7d4d9a6c5506fcdb0",
+   "version": "gb6"
+  },
+  "french/asr/aaf_ca16_devtest": {
+   "carried_from": "curated/french/asr/aaf_ca16_devtest/gb3/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_devtest/gb6/manifest.jsonl",
+   "sha256": "3ba09d0c7f96f5a6c0b7c83c9d2106f17b2c9a769a18c1d0292a1e5e86babe7d",
+   "version": "gb6"
+  },
+  "french/asr/aaf_ca16_read": {
+   "carried_from": "curated/french/asr/aaf_ca16_read/gb3/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_read/gb6/manifest.jsonl",
+   "sha256": "a2f1bccaf53fa7360039d33aaf0a4d863c91d6eb2402750d393c0dd40f890bd3",
+   "version": "gb6"
+  },
+  "french/asr/aaf_niger_dev": {
+   "carried_from": "curated/french/asr/aaf_niger_dev/gb3/manifest.jsonl",
+   "key": "curated/french/asr/aaf_niger_dev/gb6/manifest.jsonl",
+   "sha256": "40e67d7801ae586b8ef32488162d12c2fe2445be6bc94b8874aa1dc802ddce01",
+   "version": "gb6"
+  },
+  "french/asr/aaf_yaounde": {
+   "carried_from": "curated/french/asr/aaf_yaounde/gb3/manifest.jsonl",
+   "key": "curated/french/asr/aaf_yaounde/gb6/manifest.jsonl",
+   "sha256": "aa7e6085b9862e2504d6de5e6728f0d4febac9df327ee18fce88e54b79e1674c",
+   "version": "gb6"
+  },
+  "kinyarwanda/asr/cv17_rw": {
+   "carried_from": "curated/kinyarwanda/asr/cv17_rw/gb5/manifest.jsonl",
+   "key": "curated/kinyarwanda/asr/cv17_rw/gb6/manifest.jsonl",
+   "sha256": "900e165f236c3869523f36b5dc9f0de351a79f5e6445a00f5d168adc4f9ebd02",
+   "version": "gb6"
+  },
+  "lingala/asr/lin_asr": {
+   "carried_from": "curated/lingala/asr/lin_asr/gb3/manifest.jsonl",
+   "key": "curated/lingala/asr/lin_asr/gb6/manifest.jsonl",
+   "sha256": "eaf840c75cdea09075eefa2e6ac58e1960a3747f5b5409b724e64e2fa8935bc3",
+   "version": "gb6"
+  },
+  "lingala/asr/lrsc": {
+   "carried_from": "curated/lingala/asr/lrsc/gb3/manifest.jsonl",
+   "key": "curated/lingala/asr/lrsc/gb6/manifest.jsonl",
+   "sha256": "c82657f60f4ee2e8fe0d7caef9f3acd928a48f0b8b9e5679f1a0b5279a7907b6",
+   "version": "gb6"
+  },
+  "swahili/asr/cv17_sw": {
+   "carried_from": "curated/swahili/asr/cv17_sw/gb3/manifest.jsonl",
+   "key": "curated/swahili/asr/cv17_sw/gb6/manifest.jsonl",
+   "sha256": "74211fcdc28efea3bc4a81164e8175d5dbac4f81d868fb61a7d85e4892e69f2f",
+   "version": "gb6"
+  }
+ },
+ "sharealike_note": "per-mix rule carried from gb5: mixes touching LIC-2026-002 sharealike corpora carry the obligation; the 12 gb6 corpora include gb3-era sharealike rows for french/ewe/lingala \u2014 pilot mixes therefore carry sharealike_obligation TRUE unless re-filtered at mix time",
+ "trainability": "ALL SIX PILOT LANGUAGES trainable at gb6; the trainer additionally refuses silent partial coverage since bb5a72f",
+ "version": "gb6"
+}
