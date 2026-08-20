@@ -1,0 +1,39 @@
+{
+    "cost_ceiling_usd": 10,
+    "cost_registry_line": "COST-REGISTRY-2026-045 B5-CTC-CAMPAIGN-2026-001",
+    "environment": {
+        "MEDZEN_AUDIO_CAP_HOURS": "2",
+        "MEDZEN_BATCH_SIZE": "2",
+        "MEDZEN_CHECKPOINT_EVERY": "10",
+        "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+        "MEDZEN_EXPECT_EXCLUDED": "1579",
+        "MEDZEN_GRAD_ACCUM": "8",
+        "MEDZEN_LANGUAGES": "kinyarwanda",
+        "MEDZEN_LR": "1e-5",
+        "MEDZEN_MANIFEST_VERSION": "gb5",
+        "MEDZEN_MAX_STEPS": "30",
+        "MEDZEN_SEED": "20260820",
+        "MEDZEN_TRAIN_MODE": "full",
+        "MEDZEN_VARIANT": "ctc",
+        "MEDZEN_WARMUP_STEPS": "10"
+    },
+    "image_note": "ft-2026-08-20b: round-2 hardening (hash-bound checkpoint pair, per-filesystem summed disk gate moved before staging, parse-time mode+LR bounds+warmup requirements). The 9-test full-mode verification suite PASSED inside this exact amd64 image (trainer-test stage, same builder) before push.",
+    "image_oci_index_digest": "sha256:1da3c43f6c34f9360f6d896af1979c98bd7b75773620e124cfc9aa29573f252a",
+    "image_tag": "ft-2026-08-20b",
+    "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:a5106ca5dbd260881427ed274a1ecd9f7e6dbe11b3914a2e7eedddd66eeb8c3f",
+    "instance_type": "ml.g6.xlarge",
+    "job_id": "b5-kinyarwanda-ftcal-2026-002",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "managed_spot": false,
+    "managed_spot_reason": "owner rule: on-demand basis always",
+    "max_runtime_seconds": 14400,
+    "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+    "purpose": "FULL-MODE CALIBRATION rev2 (Codex review #2 corrections): exact-image GPU qualification of the round-2-hardened image — ftcal-2026-001 already PASSED the identical shape on -20a in 973 billable seconds; this qualifies the image the v2 job will bind on the real 1B model — 30 steps on a 2 h kinyarwanda gb5 slice, warmup 10, checkpoints every 10 with optimizer sidecar, terminal full-mode export. SUCCESS = TRAINING_COMPLETE with export manifest train_mode=full + DISK_ENVELOPE_OK + finite losses. The v2 40k-step job stays HELD until this passes.",
+    "security_group_ids": [
+        "sg-0fee72d218ac002a7"
+    ],
+    "subnets": [
+        "subnet-00232b25bc1ac407a"
+    ],
+    "volume_gb": 100
+}
