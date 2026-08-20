@@ -3,14 +3,20 @@
   "status": "OWNER_APPROVED",
   "owner_verbatim": "Approve and proceed with the correction plan (2026-08-20)",
   "basis": "Codex review #3 (verified accurate 2026-08-20): the frozen 6,657-row kinyarwanda pool served checkpoint selection (100-row slice, all inside the pool), full-pool evaluation, threshold revision, and v1 promotion - repeated decision exposure makes it a de-facto development set. Winner's-curse inflation on a 20-checkpoint sweep (~0.5-1.5% relative) can swing the >9.3% ship decision.",
-  "pool_demotion": "eval/kinyarwanda/asr/cv17-test-v1 (6,657 rows) is DEMOTED to development use: checkpoint selection and diagnostics only. It backs no further promotion claim.",
+  "pool_demotion": "eval/kinyarwanda/asr/cv17-test-v1 (6,657 rows) is RETIRED as a claim surface AND as a selection surface: it CONTAINS the sealed rows, so any selection run over the full pool would consume the seal (self-review catch 2026-08-20). Historical full-pool numbers stand as frozen history; all NEW selection/diagnostic runs use the dev half only.",
   "sealed_holdout": {
     "key": "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
     "manifest_sha256": "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9",
     "rows": 3373,
     "speakers": 80,
     "construction": "deterministic speaker-disjoint split of the r2 pool: speakers ordered by sha256('kw-sealed-holdout-2026-08-20' + speaker_id), assigned to SEALED until >= half the rows; never previously used for any per-half decision",
-    "freeze_audit_vs_gb5_training": {"byte_overlap": 0, "speaker_overlap": 0, "session_overlap": 0, "exact_text_collisions": 64, "note": "64 of 1,018,628 training rows (0.006%) share exact normalized text - common short phrases, no audio/speaker identity"},
+    "freeze_audit_vs_gb5_training": {
+      "byte_overlap": 0,
+      "speaker_overlap": 0,
+      "session_overlap": 0,
+      "exact_text_collisions": 64,
+      "note": "64 of 1,018,628 training rows (0.006%) share exact normalized text - common short phrases, no audio/speaker identity"
+    },
     "consumption_rule": "evaluated EXACTLY ONCE, after v2 checkpoint selection is complete and the selected checkpoint is declared in writing; any second evaluation voids the seal and requires a new holdout"
   },
   "dev_half": {
@@ -18,9 +24,10 @@
     "manifest_sha256": "fc9d0a7f2fbe69d24b233c1d68d7f3d7a8bc48c693d1f80f69859879f42c3c46",
     "rows": 3284,
     "speakers": 77,
-    "use": "v2 checkpoint selection (sweep) alongside the demoted pool"
+    "use": "THE ONLY selection surface for v2: sweep and diagnostics run on the dev half EXCLUSIVELY"
   },
   "predeclared_ship_rule": "SHIP v2 IFF: on the SEALED holdout, with BOTH models scored in the same pinned eval image (medzen-asr-eval-runtime@sha256:dafc4b14...) under identical decode config, (WER_v1_sealed - WER_v2_sealed) / WER_v1_sealed > 0.093. v1 = approved/kinyarwanda/asr/v1/model.pt. No threshold revision after observing sealed results.",
   "confirmatory_set": "FLEURS has no kinyarwanda (verified: 0 of 102 configs). Independent-source candidates (AfriVoice Kinyarwanda, Mbaza hackathon set) require licence diligence - tracked as a follow-up; DIRECTIONAL check only, does not gate this ship decision.",
-  "sequence": "v2 job completes -> sweep 20 checkpoints on dev half + demoted pool -> declare selected checkpoint in the shared file -> single sealed-holdout run scoring v1 and the selected v2 -> apply predeclared rule -> record verdict"
+  "sequence": "v2 job completes -> sweep 20 checkpoints on the DEV HALF ONLY -> declare selected checkpoint in the shared file -> single sealed-holdout run scoring v1 and the selected v2 -> apply predeclared rule -> record verdict",
+  "revision_note": "rev2 2026-08-20 (BEFORE any consumption of either half): self-review caught that rev1 permitted selection 'alongside the demoted pool', which contains the sealed rows and would have broken the seal; selection surface corrected to the dev half exclusively. The sealed half remains untouched; the predeclared ship rule is unchanged."
 }

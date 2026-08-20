@@ -38,6 +38,23 @@ def main() -> int:
         if target.exists():
             print(f"skip step {step} (exists)", flush=True)
             continue
+        # FULL-mode checkpoints (self-review catch 2026-08-20: this script
+        # was LoRA-only and the v2 sweep would have crashed on
+        # state["lora"]). A full checkpoint carries the whole model — no
+        # wrap, no merge; just extract the servable state dict.
+        if "model" in state and "lora" not in state:
+            full_state = state["model"]
+            residue = [k for k in full_state
+                       if ".lora_a" in k or ".lora_b" in k]
+            if residue:
+                raise SystemExit(
+                    f"step {step}: full checkpoint carries adapter keys "
+                    f"{residue[:3]} — refusing an ambiguous artifact")
+            torch.save(full_state, target)
+            print(f"extracted FULL step {step}: {len(full_state)} tensors "
+                  f"-> {target.name}", flush=True)
+            del full_state, state
+            continue
         model = load_model("medzen_omniASR_CTC_1B_v2", device=device,
                            dtype=torch.bfloat16)
         rank = int(os.environ.get("MERGE_RANK", "16"))

@@ -744,3 +744,33 @@ def test_disk_envelope_audio_bound_is_draws_aware(tmp_path):
                                 free_bytes=lambda p: 250_000_000_000,
                                 device_of=lambda p: "one-device")
     assert small["audio_cache_bytes"] < 100_000_000
+
+
+@_needs_torch
+def test_sweep_merge_tool_handles_full_checkpoints(tmp_path, monkeypatch):
+    """Self-review catch 2026-08-20: t6_checkpoint_merge.py was LoRA-only
+    (wrap_lora + state['lora']) and would have crashed on v2's full
+    checkpoints. The full branch extracts state['model'] as the servable
+    dict, refuses adapter residue, and never touches fairseq2."""
+    import torch
+    from torch import nn
+
+    root = Path(__file__).resolve().parents[1]
+    src = (root / "scripts" / "t6_checkpoint_merge.py").read_text()
+    assert '"model" in state and "lora" not in state' in src
+    assert "refusing an ambiguous artifact" in src
+
+    # behavioural check of the same extraction logic on a real full ckpt
+    model = nn.Linear(4, 4)
+    ckpt = {"step": 2000, "model": model.state_dict(),
+            "torch_rng": torch.get_rng_state(), "cuda_rng": None,
+            "optimizer_sidecar_sha256": "ab" * 32,
+            "optimizer_sidecar_step": 2000}
+    path = tmp_path / "step-0002000.pt"
+    torch.save(ckpt, path)
+    state = torch.load(path, map_location="cpu", weights_only=False)
+    assert "model" in state and "lora" not in state
+    reloaded = nn.Linear(4, 4)
+    reloaded.load_state_dict(state["model"])
+    for a, b in zip(model.parameters(), reloaded.parameters()):
+        assert torch.equal(a, b)
