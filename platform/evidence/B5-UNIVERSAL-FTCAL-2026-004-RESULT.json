@@ -1,0 +1,26 @@
+{
+ "billable_seconds": 1128,
+ "cost_usd_on_demand": 0.5,
+ "job": "medzen-b5-b5-universal-ftcal-2026-004",
+ "packet": "platform/manifests/B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-004.json",
+ "record": "B5-UNIVERSAL-FTCAL-2026-004-RESULT",
+ "status": "Completed",
+ "success_criteria": {
+  "disk": "DISK_ENVELOPE_OK",
+  "exclusions": "1579 rows from DQ-2026-006 (approved, policy_deferral)",
+  "export": {
+   "manifest_sha256": "1adc05e8599ad8d0d2bd1161ff395beb268b97fd5c9462f0b6f3fe602d0bc4a2",
+   "model_sha256": "59b6f7a343a8a4c612cd173a68aa1eaae151a0ecd9e15c094ab0504a5864c419",
+   "status": "PASS_MERGED_EXPORT"
+  },
+  "manifests": "13 at version gb9; eligible rows 7315; rejected 0 not permitted, 0 wrong split",
+  "train_progress": {
+   "finite": true,
+   "lr": 1e-05,
+   "mean_loss": 47.99465670002004,
+   "step": 30
+  }
+ },
+ "utc": "2026-08-21T21:59:58Z",
+ "verdict": "PASS \u2014 the 7-language full-FT chain on gb9 is proven end-to-end. Arm-1 rev2 (gb9, $64 worst case, bindings 5edc8b90...) is fully prepared and BLOCKED on: Codex re-review of d4edb34 + an owner authorization COMMITTED under platform/decisions/launch-authorizations/."
+}

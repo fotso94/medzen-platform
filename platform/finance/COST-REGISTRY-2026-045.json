@@ -246,6 +246,16 @@
    "packet": "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-002",
    "reservation_usd": 70.0,
    "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 1128,
+   "financial_state": "CLOSED_SUCCESS_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-004",
+   "outcome": "PASS \u2014 7-language gb9 chain proven (B5-UNIVERSAL-FTCAL-2026-004-RESULT)",
+   "recognized_committed_usd": 0.5,
+   "utc": "2026-08-21T21:59:58Z"
   }
  ],
  "controls": {
