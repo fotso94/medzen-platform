@@ -272,7 +272,7 @@ def test_multilingual_packets_bind_the_exact_pilot_profile():
 
     root = Path(__file__).resolve().parents[1]
     good = _json.loads((root / "platform/manifests/"
-        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-001.json").read_bytes())
+        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-002.json").read_bytes())
     render_request(good)   # the committed calibration packet must pass
 
     for mutation in (

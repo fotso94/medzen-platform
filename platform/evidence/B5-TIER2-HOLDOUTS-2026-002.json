@@ -1,0 +1,32 @@
+{
+ "built_utc": "2026-08-21T19:58:06Z",
+ "grade": "development-grade if speaker dimension INDETERMINATE, per the -001 grading rules; promotion-grade pidgin evidence awaits the code-switch/commissioned sets",
+ "pools": {
+  "pidgin": [
+   {
+    "distinct_speakers": 1,
+    "method": "row_hash_disjoint (placeholder speaker ids \u2014 speaker dimension INDETERMINATE)",
+    "pool": "eval/pidgin/asr/soreva-v1",
+    "sealed_vs_gb7_overlap": {
+     "byte": 0,
+     "session": 0,
+     "speaker": "INDETERMINATE (placeholder ids)",
+     "text": 0
+    },
+    "tier2-dev": {
+     "key": "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "rows": 72,
+     "sha256": "f98302268168d9fff2cd25c355cb1ac846e04370766d504dda624f99ead97481"
+    },
+    "tier2-sealed": {
+     "key": "eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "rows": 70,
+     "sha256": "962df457dfb42274f6dc324750df995c10e7349e276caa46b9132e9e7a99d9ab"
+    },
+    "total_rows": 142
+   }
+  ]
+ },
+ "record": "B5-TIER2-HOLDOUTS-2026-002",
+ "role": "pidgin addendum to B5-TIER2-HOLDOUTS-2026-001 (owner added pidgin to the pilot set)"
+}

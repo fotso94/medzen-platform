@@ -1,0 +1,42 @@
+{
+    "cost_ceiling_usd": 10,
+    "cost_registry_line": "COST-REGISTRY-2026-045 B5-CTC-CAMPAIGN-2026-001",
+    "environment": {
+        "MEDZEN_AUDIO_CAP_HOURS": "2",
+        "MEDZEN_BATCH_SIZE": "2",
+        "MEDZEN_CHECKPOINT_EVERY": "30",
+        "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+        "MEDZEN_EXPECT_EXCLUDED": "1579",
+        "MEDZEN_GRAD_ACCUM": "8",
+        "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+        "MEDZEN_LR": "1e-5",
+        "MEDZEN_LR_SCHEDULE": "constant",
+        "MEDZEN_MANIFEST_VERSION": "gb7",
+        "MEDZEN_MAX_STEPS": "30",
+        "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+        "MEDZEN_SEED": "20260820",
+        "MEDZEN_TEMPERATURE": "0.5",
+        "MEDZEN_TRAIN_MODE": "full",
+        "MEDZEN_VARIANT": "ctc",
+        "MEDZEN_WARMUP_STEPS": "10"
+    },
+    "image_note": "ft-2026-08-21b (b9b2756): review #7 corrections \u2014 post-gate coverage refusal, fingerprinted ack, pilot-profile hard walls, hardened promotion checker. 55 in-image tests passed pre-push.",
+    "image_oci_index_digest": "sha256:c5a530bf59bb6bfcb406c19d37b37b04fdf4485bfbaa959de9936e5700d233ca",
+    "image_tag": "ft-2026-08-21b",
+    "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+    "instance_type": "ml.g6.xlarge",
+    "job_id": "b5-universal-ftcal-2026-002",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "managed_spot": false,
+    "managed_spot_reason": "owner rule: on-demand basis always",
+    "max_runtime_seconds": 14400,
+    "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+    "purpose": "UNIVERSAL-PILOT CALIBRATION rev2 (7 languages, gb7): first cycle including PIDGIN \u2014 2 h/language slices, temperature 0.5, DQ-2026-006 exclusions, 30 steps on ft-2026-08-21b. Proves gb7 + all seven languages end-to-end before the arm-1 numbers go to the owner. SUCCESS = TRAINING_COMPLETE + 13 manifests at gb7 + finite TRAIN_PROGRESS + full-mode export.",
+    "security_group_ids": [
+        "sg-0fee72d218ac002a7"
+    ],
+    "subnets": [
+        "subnet-00232b25bc1ac407a"
+    ],
+    "volume_gb": 100
+}

@@ -79,3 +79,28 @@ contamination). Corrected structure:
   its own per-arm lines — corrected upward, never quietly down)
 NOTHING launches until the owner approves these numbers per the standing
 packet ceremony.
+
+## Rev4 — 2026-08-21: the owner's final 7-language set + gb7
+
+Owner verbatim: keep english and french; add pidgin ("well keep french and
+english and depending on how long the ingest complete well decide either
+to add pidgin or to proceed without it" -> ingest completed same day at
+699 h, Tier-B PASS -> "well wait for pidgin to build the final pilot
+set"). Recipe: FULL FINE-TUNE (owner-confirmed; adapters only as the
+interference fallback — the shared-adapter family already failed 0/9).
+
+FINAL SET: kinyarwanda (improvement target), pidgin (second target —
+698.2 h conversational, the domain-closest corpus in the fleet), english
++ french (replay anchors), swahili + lingala (regression sentinels), ewe
+(weak-language transfer probe).
+
+Dataset: **gb7** (13 corpora, sha-pinned, adopted; pidgin joined after
+TIER-B-REVIEW-2026-001). Mixture: temperature 0.5 + per-language audio
+cap 100 h (bounds any language's share; kinyarwanda and pidgin train on
+100 h slices this arm — preservation first, scale later if the recipe
+holds). Selection surfaces: existing dev sets + pidgin soreva-v1-tier2-dev.
+Tier-2: pidgin sealed half built + RESERVED (development-grade,
+placeholder speakers — honestly graded in B5-TIER2-HOLDOUTS-2026-002).
+
+Costs (unchanged envelope): arm 1 ~31 h ≈ $50-70; arms 2-3 only if arm 1
+fails its gates; all-arms + gates worst case ~$260 → **reported max $360**.

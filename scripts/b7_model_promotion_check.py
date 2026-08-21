@@ -36,7 +36,7 @@ def load_gate_report(path: Path) -> dict:
 
 def _protocol_record() -> dict:
     path = (Path(__file__).resolve().parents[1]
-            / "platform/decisions/PROMOTION-PROTOCOL-2026-002.json")
+            / "platform/decisions/PROMOTION-PROTOCOL-2026-003.json")
     return json.loads(path.read_bytes())
 
 
@@ -46,11 +46,13 @@ def _authoritative_holdouts_by_language() -> dict[str, set[str]]:
     swahili's holdout for english refuses."""
     root = Path(__file__).resolve().parents[1] / "platform/evidence"
     mapping: dict[str, set[str]] = {}
-    tier2 = json.loads((root / "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
-    for language, pools in tier2["pools"].items():
-        for pool in pools:
-            mapping.setdefault(language, set()).add(
-                pool["tier2-sealed"]["sha256"])
+    for record_name in ("B5-TIER2-HOLDOUTS-2026-001.json",
+                         "B5-TIER2-HOLDOUTS-2026-002.json"):
+        tier2 = json.loads((root / record_name).read_bytes())
+        for language, pools in tier2["pools"].items():
+            for pool in pools:
+                mapping.setdefault(language, set()).add(
+                    pool["tier2-sealed"]["sha256"])
     bindings = json.loads(
         (root / "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
     mapping.setdefault("kinyarwanda", set()).add(
@@ -76,9 +78,9 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
     review #7: a fabricated bare-PASS report was accepted). A promotion
     report must carry the full identity + evidence chain; a report that
     predates the protocol simply cannot promote."""
-    if report.get("protocol_id") != "PROMOTION-PROTOCOL-2026-002":
+    if report.get("protocol_id") != "PROMOTION-PROTOCOL-2026-003":
         raise PromotionCheckRefusal(
-            "gate report does not bind PROMOTION-PROTOCOL-2026-002 — "
+            "gate report does not bind PROMOTION-PROTOCOL-2026-003 — "
             "pre-protocol reports cannot promote")
     digest = str(report.get("candidate_digest", ""))
     if not (digest.startswith("sha256:") and _hex(digest[7:], 64)):

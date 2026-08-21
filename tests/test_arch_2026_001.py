@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ARCH = json.loads((ROOT / "platform/decisions/"
                    "ARCH-2026-001-one-multilingual-production-model.json").read_bytes())
 PROTOCOL = json.loads((ROOT / "platform/decisions/"
-                       "PROMOTION-PROTOCOL-2026-002.json").read_bytes())
+                       "PROMOTION-PROTOCOL-2026-003.json").read_bytes())
 PILOT = (ROOT / "platform/decisions/"
          "B5-UNIVERSAL-PILOT-DESIGN-2026-001.md").read_text()
 
@@ -141,12 +141,15 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
             capture_output=True, text=True)
 
     # authoritative sealed identities from the committed evidence
-    tier2 = json.loads((ROOT / "platform/evidence/"
-                        "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
+    sealed_sha = {}
+    for record_name in ("B5-TIER2-HOLDOUTS-2026-001.json",
+                         "B5-TIER2-HOLDOUTS-2026-002.json"):
+        tier2 = json.loads((ROOT / "platform/evidence/"
+                            f"{record_name}").read_bytes())
+        for lang, pools in tier2["pools"].items():
+            sealed_sha[lang] = pools[0]["tier2-sealed"]["sha256"]
     bindings = json.loads((ROOT / "platform/evidence/"
                            "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
-    sealed_sha = {lang: pools[0]["tier2-sealed"]["sha256"]
-                  for lang, pools in tier2["pools"].items()}
     sealed_sha["kinyarwanda"] = (bindings["universal_kinyarwanda_holdout"]
                                   ["universal-sealed"]["sha256"])
 
@@ -175,7 +178,7 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
             "rows_sha256": hashlib.sha256(body).hexdigest(),
             block_name: stats}
     report = {
-        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-002",
+        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-003",
         "candidate_digest": "sha256:" + "a" * 64,
         "code_switch_evidence": {"state": "PASS", "set": "licensed-cs-1",
                                   "manifest_sha256": "c" * 64, "rows": 500},

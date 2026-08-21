@@ -133,7 +133,7 @@ def render_request(bindings: dict) -> dict:
     if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
         protocol = json.loads(
             (Path(__file__).resolve().parents[1] / "platform/decisions/"
-             "PROMOTION-PROTOCOL-2026-002.json").read_bytes())
+             "PROMOTION-PROTOCOL-2026-003.json").read_bytes())
         mandatory = set(protocol["mandatory_languages"])
         requested = {t.strip() for t in
                      environment.get("MEDZEN_LANGUAGES", "").split(",")
@@ -142,10 +142,10 @@ def render_request(bindings: dict) -> dict:
             raise JobRefusal(
                 f"multilingual-full packets bind the frozen pilot set "
                 f"{sorted(mandatory)} exactly; got {sorted(requested)}")
-        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb6":
+        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb7":
             raise JobRefusal(
-                "multilingual-full packets bind dataset version gb6 "
-                "(B5-GB6-COMPLETE-2026-001)")
+                "multilingual-full packets bind dataset version gb7 "
+                "(B5-GB7 — the 7-language revision incl. pidgin)")
         if environment.get("MEDZEN_TEMPERATURE") != "0.5":
             raise JobRefusal(
                 "multilingual-full packets bind temperature 0.5 exactly "
