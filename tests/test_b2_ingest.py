@@ -484,3 +484,39 @@ def test_africanvoices_refuses_mislabeled_or_drifted_metadata(tmp_path,
     wb2.save(batch / "metadata.csv")
     with pytest.raises(ValueError, match="layout drifted"):
         list(AfricanVoicesAdapter("pidgin").items())
+
+
+def test_africanvoices_skips_malformed_audio_instead_of_crashing(tmp_path,
+                                                                  monkeypatch):
+    """2026-08-21 production lesson: one corrupt FLAC killed a full
+    42-batch ingest at decode time (libsndfile psf_fseek). Malformed audio
+    is counted and skipped."""
+    import numpy as np
+    import openpyxl
+    import soundfile as sf
+
+    batch = tmp_path / "Batch_1"
+    (batch / "audio").mkdir(parents=True)
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["speaker_id", "audio_id", "transcript", "audio_path", "gender",
+               "age_group", "education", "duration", "language", "snr",
+               "domain"])
+    ws.append(["S1", "good", "one good clip of pidgin audio here",
+               "audio/good.flac", "male", "15-29", "Tertiary", "2.0",
+               "naija", 40, "EV"])
+    ws.append(["S2", "bad", "this clip is corrupt on disk",
+               "audio/bad.flac", "female", "15-29", "Tertiary", "2.0",
+               "naija", 40, "EV"])
+    wb.save(batch / "metadata.csv")
+    rng = np.random.default_rng(0)
+    sf.write(batch / "audio/good.flac", rng.standard_normal(48_000 * 2) * 0.1,
+             48_000, format="FLAC")
+    good_bytes = (batch / "audio/good.flac").read_bytes()
+    (batch / "audio/bad.flac").write_bytes(good_bytes[: len(good_bytes) // 3])
+
+    monkeypatch.setenv("MEDZEN_AV_DIR", str(tmp_path))
+    from pipeline.adapters.africanvoices import AfricanVoicesAdapter
+    items = list(AfricanVoicesAdapter("pidgin").items())
+    assert len(items) == 1, "the corrupt clip must be skipped, not fatal"
+    assert items[0]["record"]["speaker_id"] == "S1"

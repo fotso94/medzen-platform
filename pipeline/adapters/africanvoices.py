@@ -138,6 +138,7 @@ class AfricanVoicesAdapter:
         emitted_s = 0.0
         for batch in batches:
             dropped = 0
+            malformed = 0
             rows = read_metadata(batch, spill)
             for row in rows:
                 if limit and produced >= limit:
@@ -156,12 +157,22 @@ class AfricanVoicesAdapter:
                     dropped += 1
                     continue
                 raw = flac_path.read_bytes()
-                arr, sr = sf.read(io.BytesIO(raw), dtype="float32")
-                if getattr(arr, "ndim", 1) > 1:
-                    arr = arr.mean(axis=1)
-                if sr != TARGET_SR:
-                    arr = librosa.resample(arr, orig_sr=sr,
-                                           target_sr=TARGET_SR)
+                # 2026-08-21 lesson: ONE corrupt FLAC (libsndfile
+                # psf_fseek failure) killed a full 42-batch run at decode
+                # time. A malformed file is a data defect to count and
+                # skip, never a crash.
+                try:
+                    arr, sr = sf.read(io.BytesIO(raw), dtype="float32")
+                    if getattr(arr, "ndim", 1) > 1:
+                        arr = arr.mean(axis=1)
+                    if sr != TARGET_SR:
+                        arr = librosa.resample(arr, orig_sr=sr,
+                                               target_sr=TARGET_SR)
+                except Exception as exc:                  # noqa: BLE001
+                    malformed += 1
+                    print(f"  [av] MALFORMED {row['audio_id']}: "
+                          f"{type(exc).__name__}: {exc}", flush=True)
+                    continue
                 dur = len(arr) / TARGET_SR
                 if not usable(dur, text):
                     dropped += 1
@@ -194,6 +205,7 @@ class AfricanVoicesAdapter:
                 emitted_s += dur
             print(f"  [av] {batch.name}: {len(rows)} rows, "
                   f"{dropped} dropped (bounds/missing), "
+                  f"{malformed} malformed (undecodable), "
                   f"cumulative {emitted_s / 3600:.1f} h", flush=True)
 
     def rows(self, language: str | None = None,
