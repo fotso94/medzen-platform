@@ -269,38 +269,43 @@ def test_clustered_noninferiority_validator_behaves():
 
 
 def test_holdout_consumption_ledger_is_append_only_and_unique(tmp_path):
-    """Codex review #9: the ledger is now an EXECUTABLE gate — hash-chained
-    against history rewriting, refusing double consumption."""
+    """v4 semantics: reservation-gated consumption, double-consume refusal,
+    chain-tamper detection."""
+    import hashlib
     import shutil
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
     import holdout_ledger
-    from holdout_ledger import (LedgerRefusal, record_consumption,
-                                 require_available, verify_chain)
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
 
-    entries = verify_chain()          # the committed ledger chain is valid
+    entries = holdout_ledger.verify_chain()
     assert entries[0]["event"] == "LEDGER_OPENED"
-    assert any("cv17-test-v1-universal-sealed" in json.dumps(e)
-               for e in entries)
 
     work = tmp_path / "ledger.jsonl"
     shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
                 work)
-    require_available("eval/x/sealed/manifest.jsonl", work)
-    record_consumption("eval/x/sealed/manifest.jsonl", "e" * 64,
-                        "test-gate-run", work)
-    import pytest as _pytest
-    with _pytest.raises(LedgerRefusal, match="already CONSUMED"):
-        record_consumption("eval/x/sealed/manifest.jsonl", "e" * 64,
-                            "second-attempt", work)
+    lines = work.read_text().splitlines()
+    reserve = {"entry": len(lines) + 1, "utc": "2026-08-21T18:00:00Z",
+               "event": "RESERVED", "holdout": "eval/x/sealed/manifest.jsonl",
+               "sha256": "e" * 64,
+               "prev_sha256": hashlib.sha256(lines[-1].encode()).hexdigest()}
+    with work.open("a") as fh:
+        fh.write(json.dumps(reserve, sort_keys=True) + "\n")
+    holdout_ledger.record_consumption("eval/x/sealed/manifest.jsonl",
+                                       "e" * 64, "gate-run", work)
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="already CONSUMED"):
+        holdout_ledger.record_consumption("eval/x/sealed/manifest.jsonl",
+                                           "e" * 64, "second", work)
     # history rewriting breaks the chain
     lines = work.read_text().splitlines()
     tampered = json.loads(lines[1])
     tampered["reserved_for"] = "something else entirely"
     lines[1] = json.dumps(tampered, sort_keys=True)
     work.write_text("\n".join(lines) + "\n")
-    with _pytest.raises(LedgerRefusal, match="chain broken"):
-        verify_chain(work)
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="chain broken"):
+        holdout_ledger.verify_chain(work)
 
 
 def test_registry_router_refuses_divergent_asr_digests():
@@ -341,10 +346,11 @@ def test_ledger_void_requires_no_observation_attestation(tmp_path):
 
 
 def test_void_adjudication_is_strict(tmp_path):
-    """Codex review #11 adversarial set: mismatched holdout, wrong sha,
-    future/nonexistent target, duplicate void, forged attestation, missing
-    approval — all must FAIL to release; only the complete owner-approved
-    schema releases."""
+    """Ledger v4 (Codex review #12): owner approval must be a COMMITTED
+    authorization record verified by bytes; reserved-sha matching; strict
+    field typing. Adversarial set: forged owner string, empty evidence
+    lists, wrong sha, nonexistent target, duplicate void, malformed
+    release — all fail; the complete chain releases."""
     import hashlib
     import shutil
     import sys
@@ -354,13 +360,36 @@ def test_void_adjudication_is_strict(tmp_path):
     importlib.reload(holdout_ledger)
     import pytest as _pytest
 
+    repo = tmp_path / "repo"
+    (repo / "platform/decisions").mkdir(parents=True)
+    approval_doc = {"record": "AUTH-TEST-001",
+                     "authorizes": "CONSUMPTION_VOIDED",
+                     "holdout": "eval/Z/sealed/manifest.jsonl",
+                     "owner_verbatim": "approved in chat on <date>"}
+    approval_path = repo / "platform/decisions/AUTH-TEST-001.json"
+    approval_path.write_text(json.dumps(approval_doc, sort_keys=True))
+    approval_ref = {"path": "platform/decisions/AUTH-TEST-001.json",
+                     "record_id": "AUTH-TEST-001",
+                     "sha256": hashlib.sha256(
+                         approval_path.read_bytes()).hexdigest()}
+
     def fresh():
         work = tmp_path / f"l{fresh.n}.jsonl"
         fresh.n += 1
         shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
                     work)
-        holdout_ledger.record_consumption("eval/Z/sealed/manifest.jsonl",
-                                           "9" * 64, "run", work)
+        # reserve + consume holdout Z
+        lines = work.read_text().splitlines()
+        for doc in (
+            {"event": "RESERVED", "holdout": "eval/Z/sealed/manifest.jsonl",
+             "sha256": "9" * 64, "utc": "2026-08-21T17:00:00Z"},):
+            doc = dict(doc, entry=len(lines) + 1,
+                       prev_sha256=hashlib.sha256(lines[-1].encode()).hexdigest())
+            lines.append(json.dumps(doc, sort_keys=True))
+        work.write_text("\n".join(lines) + "\n")
+        holdout_ledger.record_consumption(
+            "eval/Z/sealed/manifest.jsonl", "9" * 64, "run", work,
+            repo_root=repo)
         return work, len(work.read_text().splitlines())
     fresh.n = 0
 
@@ -371,47 +400,121 @@ def test_void_adjudication_is_strict(tmp_path):
         with work.open("a") as fh:
             fh.write(json.dumps(doc, sort_keys=True) + "\n")
 
-    good_void = {
-        "utc": "2026-08-21T17:00:00Z", "event": "CONSUMPTION_VOIDED",
-        "holdout": "eval/Z/sealed/manifest.jsonl", "holdout_sha256": "9" * 64,
-        "evaluator_instance_ids": ["i-abc"], "userdata_sha256": "u" * 64,
-        "results_prefix_object_count": 0, "log_version_ids": ["v1"],
-        "no_inference_attestation": ("no model inference started and no "
-                                      "results were produced"),
-        "approved_by": "owner (verbatim approval reference)"}
+    good = {"utc": "2026-08-21T17:10:00Z", "event": "CONSUMPTION_VOIDED",
+            "holdout": "eval/Z/sealed/manifest.jsonl",
+            "holdout_sha256": "9" * 64,
+            "evaluator_instance_ids": ["i-0abc"],
+            "userdata_sha256": "a" * 64,
+            "results_prefix_object_count": 0,
+            "log_version_ids": ["ver1"],
+            "no_inference_attestation": ("no model inference started and no "
+                                          "results were produced"),
+            "approval_record": approval_ref}
 
-    # the complete schema releases
+    # the complete owner-record-backed schema releases
     work, n = fresh()
-    append(work, dict(good_void, voids_entry=n))
-    holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl", work)
+    append(work, dict(good, voids_entry=n))
+    holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl", work,
+                                      repo_root=repo)
 
     adversarial = [
-        dict(good_void, holdout="eval/OTHER/manifest.jsonl"),      # mismatch
-        dict(good_void, holdout_sha256="8" * 64),                  # wrong sha
-        dict(good_void, voids_entry=99999),                        # nonexistent
-        {k: v for k, v in good_void.items() if k != "approved_by"},
-        dict(good_void, results_prefix_object_count=3),            # results!
-        dict(good_void, no_inference_attestation="trust me"),      # forged
+        dict(good, approval_record=None),                       # no record
+        dict(good, approval_record=dict(approval_ref,
+                                         sha256="0" * 64)),     # wrong bytes
+        dict(good, evaluator_instance_ids=[]),                  # empty list
+        dict(good, evaluator_instance_ids=["not-an-instance"]),
+        dict(good, log_version_ids=[]),
+        dict(good, userdata_sha256="ZZZ"),                      # invalid hash
+        dict(good, holdout_sha256="8" * 64),                    # sha mismatch
+        dict(good, results_prefix_object_count=2),
     ]
     for bad in adversarial:
         work, n = fresh()
-        bad = dict(bad)
-        bad.setdefault("voids_entry", n)
-        if bad.get("voids_entry") == 99999:
-            pass
-        else:
-            bad["voids_entry"] = n
-        append(work, bad)
+        append(work, dict(bad, voids_entry=n))
         with _pytest.raises(holdout_ledger.LedgerRefusal):
             holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl",
-                                              work)
+                                              work, repo_root=repo)
 
-    # duplicate voids invalidate each other
+    # forged free-text owner approval (the review #12 reproduction)
     work, n = fresh()
-    append(work, dict(good_void, voids_entry=n))
-    append(work, dict(good_void, voids_entry=n))
+    forged = {k: v for k, v in good.items() if k != "approval_record"}
+    forged["approved_by"] = "owner forged by anyone"
+    append(work, dict(forged, voids_entry=n))
     with _pytest.raises(holdout_ledger.LedgerRefusal):
-        holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl", work)
+        holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl",
+                                          work, repo_root=repo)
+
+
+def test_acquisition_verifies_reserved_sha_and_is_atomic(tmp_path):
+    """Codex review #12: an all-zero sha acquired the universal holdout,
+    and concurrent acquisitions both succeeded."""
+    import hashlib
+    import shutil
+    import sys
+    import threading
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
+
+    work = tmp_path / "ledger.jsonl"
+    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                work)
+
+    # wrong sha vs the RESERVED sha refuses (universal holdout, entry 3)
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="RESERVED sha"):
+        holdout_ledger.record_consumption(
+            "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+            "0" * 64, "attack", work)
+    # unreserved holdout refuses
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="no RESERVED"):
+        holdout_ledger.record_consumption(
+            "eval/never-reserved/manifest.jsonl", "1" * 64, "x", work)
+
+    # concurrency: exactly ONE of N concurrent acquisitions may win
+    correct_sha = "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df"
+    outcomes = []
+    def attempt():
+        try:
+            holdout_ledger.record_consumption(
+                "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+                correct_sha, "racer", work)
+            outcomes.append("won")
+        except holdout_ledger.LedgerRefusal:
+            outcomes.append("refused")
+    threads = [threading.Thread(target=attempt) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert outcomes.count("won") == 1, outcomes
+    holdout_ledger.verify_chain(work)   # chain intact after the race
+
+
+def test_sealed_launcher_acquires_before_any_aws_call(tmp_path):
+    """Codex review #12: the gate existed but nothing called it. The
+    sanctioned launcher must refuse BEFORE any AWS invocation."""
+    import shutil
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import launch_sealed_eval
+    importlib.reload(launch_sealed_eval)
+    import holdout_ledger
+    calls = []
+    def fake_runner(cmd, **kwargs):
+        calls.append(cmd)
+        class R: returncode, stdout, stderr = 0, "i-000", ""
+        return R()
+    # spent/quarantined holdout -> REFUSED with ZERO aws calls
+    rc = launch_sealed_eval.main(
+        ["--holdout", "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+         "--sha", "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9",
+         "--consumer", "test", "--userdata", str(tmp_path / "x.sh")],
+        runner=fake_runner)
+    assert rc == 1
+    assert calls == [], "AWS was touched before acquisition succeeded"
 
 
 def test_v2_sealed_holdout_is_quarantined_and_unciteable():
@@ -441,8 +544,8 @@ def test_checker_refuses_cross_language_holdout_substitution(tmp_path):
     importlib.reload(checker)
     mapping = checker._authoritative_holdouts_by_language()
     swahili_sha = next(iter(mapping["swahili"]))
-    assert swahili_sha not in mapping.get("english", set()) or True
-    # direct unit check of the guard
-    report_entry_sha = swahili_sha
-    assert report_entry_sha in mapping["swahili"]
-    assert report_entry_sha not in mapping["french"]
+    # Codex review #12: the previous version carried an always-true
+    # assertion. Real checks only:
+    assert swahili_sha not in mapping["english"]
+    assert swahili_sha not in mapping["french"]
+    assert swahili_sha in mapping["swahili"]

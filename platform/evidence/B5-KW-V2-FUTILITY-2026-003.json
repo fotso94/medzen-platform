@@ -1,0 +1,17 @@
+{
+ "dev_selection_manifest": {
+  "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+  "note": "this manifest carries speaker_id \u2014 the bound selection JSON in -002 does not; clustering reconstructs from THIS object",
+  "s3_version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6",
+  "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569"
+ },
+ "historical_scripts_note": "scripts/sweeps/* restored to byte-exact as-run content; warnings moved to scripts/sweeps/README.md sidecar",
+ "noninferiority_implementation": {
+  "at_commit": "9b609a3",
+  "path": "scripts/noninferiority.py",
+  "sha256": "781e15906ec7e70cac594d08a50366e2a93b0153cb6ff6d9f13f28c8f509fe48"
+ },
+ "record": "B5-KW-V2-FUTILITY-2026-003",
+ "role": "addendum to -002 (Codex review #12 lesser issues): binds the speaker-bearing canonical manifest and the exact statistical implementation",
+ "written_utc": "2026-08-21T16:41:24Z"
+}

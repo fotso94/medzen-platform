@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
-"""Executable sealed-holdout consumption gate (Codex review #9 rec 8: the
-ledger was descriptive, not enforcing).
+"""Executable sealed-holdout consumption gate, v4 (Codex reviews #9-#12).
 
-Chain rule: every entry embeds prev_sha256 = sha256 of the previous line's
-exact bytes — rewriting history breaks the chain. Consumption rule: a
-holdout with a CONSUMED entry can never be consumed again; gate runners
-call require_available() BEFORE evaluating and record_consumption()
-BEFORE reading results."""
+Chain rule: every entry embeds prev_sha256 of the previous line's exact
+bytes. Consumption rule: a holdout must be RESERVED (with its manifest
+sha) before it can be CONSUMED; acquisition verifies the requested sha
+against the reservation and is ATOMIC (exclusive file lock around
+read+append). Voids and releases are honored only as strict, schema-
+complete adjudications whose owner approval is a COMMITTED authorization
+record verified by path + sha256 — free-text 'owner ...' strings are
+worthless (Codex review #12: they were forgeable)."""
 from __future__ import annotations
 
 import datetime
+import fcntl
 import hashlib
 import json
 from pathlib import Path
 
-LEDGER = (Path(__file__).resolve().parents[1]
-          / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl")
+ROOT = Path(__file__).resolve().parents[1]
+LEDGER = ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl"
 
 
 class LedgerRefusal(RuntimeError):
@@ -43,27 +46,46 @@ def verify_chain(path: Path = LEDGER) -> list[dict]:
     return entries
 
 
-VOID_REQUIRED_FIELDS = {
-    "voids_entry", "holdout", "holdout_sha256", "evaluator_instance_ids",
-    "userdata_sha256", "results_prefix_object_count", "log_version_ids",
-    "no_inference_attestation", "approved_by",
-}
+def _verify_owner_approval(entry: dict, repo_root: Path) -> bool:
+    """Approval = a COMMITTED authorization record, verified by bytes.
+
+    entry['approval_record'] = {'path': <repo-relative>, 'record_id': str,
+    'sha256': str}. The file must exist, hash to the declared sha, carry
+    the declared record_id, name this entry's holdout, and authorize this
+    entry's event type."""
+    ref = entry.get("approval_record")
+    if not isinstance(ref, dict):
+        return False
+    try:
+        raw = (repo_root / ref["path"]).read_bytes()
+    except (KeyError, OSError, ValueError):
+        return False
+    if hashlib.sha256(raw).hexdigest() != ref.get("sha256"):
+        return False
+    try:
+        doc = json.loads(raw)
+    except ValueError:
+        return False
+    return (doc.get("record") == ref.get("record_id")
+            and doc.get("authorizes") == entry["event"]
+            and doc.get("holdout") == entry.get("holdout")
+            and bool(str(doc.get("owner_verbatim", "")).strip()))
 
 
-def _valid_voids(entries: list[dict]) -> set[int]:
-    """Codex review #11 (bypass reproduced): a void is honored ONLY when
-    it is a strict, schema-complete adjudication that (a) names an
-    EXISTING, PRECEDING CONSUMED entry, (b) matches that entry's holdout
-    AND sha, (c) attests zero inference and zero result objects with the
-    supporting AWS identities, (d) carries owner/reviewer approval, and
-    (e) is the only void for that entry."""
+VOID_REQUIRED = {"voids_entry", "holdout", "holdout_sha256",
+                 "evaluator_instance_ids", "userdata_sha256",
+                 "results_prefix_object_count", "log_version_ids",
+                 "no_inference_attestation", "approval_record"}
+
+
+def _valid_voids(entries: list[dict], repo_root: Path) -> set[int]:
     by_number = {e["entry"]: e for e in entries}
-    seen_targets: set[int] = set()
+    seen: set[int] = set()
     valid: set[int] = set()
     for e in entries:
         if e["event"] != "CONSUMPTION_VOIDED":
             continue
-        if not VOID_REQUIRED_FIELDS <= set(e):
+        if not VOID_REQUIRED <= set(e):
             continue
         target = by_number.get(e["voids_entry"])
         if (target is None or target["event"] != "CONSUMED"
@@ -71,37 +93,58 @@ def _valid_voids(entries: list[dict]) -> set[int]:
                 or target.get("holdout") != e.get("holdout")
                 or target.get("sha256") != e.get("holdout_sha256")):
             continue
+        ids = e.get("evaluator_instance_ids")
+        logs = e.get("log_version_ids")
+        if not (isinstance(ids, list) and ids and all(
+                isinstance(x, str) and x.startswith("i-") for x in ids)):
+            continue
+        if not (isinstance(logs, list) and logs
+                and all(isinstance(x, str) and x for x in logs)):
+            continue
+        userdata = str(e.get("userdata_sha256", ""))
+        if not (len(userdata) == 64
+                and all(c in "0123456789abcdef" for c in userdata.lower())):
+            continue
         if e.get("results_prefix_object_count") != 0:
             continue
-        if "no model inference started and no results were produced" not in                 str(e.get("no_inference_attestation", "")):
+        if "no model inference started and no results were produced" not in \
+                str(e.get("no_inference_attestation", "")):
             continue
-        if not str(e.get("approved_by", "")).strip().startswith("owner"):
+        if not _verify_owner_approval(e, repo_root):
             continue
-        if e["voids_entry"] in seen_targets:
+        if e["voids_entry"] in seen:
             valid.discard(e["voids_entry"])
             continue
-        seen_targets.add(e["voids_entry"])
+        seen.add(e["voids_entry"])
         valid.add(e["voids_entry"])
     return valid
 
 
-def require_available(holdout_key: str, path: Path = LEDGER) -> None:
-    """A CONSUMED entry spends the seal unless a strict-schema adjudication
-    voids it (_valid_voids). A QUARANTINED entry blocks the holdout until
-    a later RELEASED entry (same schema discipline) lifts it."""
-    entries = verify_chain(path)
-    voided = _valid_voids(entries)
-    quarantined: set[str] = set()
+def _active_quarantines(entries: list[dict], repo_root: Path) -> set[str]:
+    by_number = {e["entry"]: e for e in entries}
+    quarantined: dict[str, int] = {}
     for e in entries:
         if e["event"] == "QUARANTINED":
-            quarantined.add(e.get("holdout"))
-        if e["event"] == "RELEASED" and e.get("holdout") in quarantined:
-            if str(e.get("approved_by", "")).strip().startswith("owner"):
-                quarantined.discard(e.get("holdout"))
-    if holdout_key in quarantined:
+            quarantined[e.get("holdout")] = e["entry"]
+        elif e["event"] == "RELEASED":
+            target = by_number.get(e.get("releases_entry"))
+            if (target is not None and target["event"] == "QUARANTINED"
+                    and target["entry"] < e["entry"]
+                    and target.get("holdout") == e.get("holdout")
+                    and quarantined.get(e.get("holdout")) == target["entry"]
+                    and _verify_owner_approval(e, repo_root)):
+                quarantined.pop(e.get("holdout"), None)
+    return set(quarantined)
+
+
+def require_available(holdout_key: str, path: Path = LEDGER,
+                       repo_root: Path = ROOT) -> None:
+    entries = verify_chain(path)
+    if holdout_key in _active_quarantines(entries, repo_root):
         raise LedgerRefusal(
             f"{holdout_key} is QUARANTINED — release requires an "
-            "owner-approved RELEASED entry")
+            "owner-approved RELEASED entry targeting the exact quarantine")
+    voided = _valid_voids(entries, repo_root)
     for entry in entries:
         if (entry.get("holdout") == holdout_key
                 and entry["event"] == "CONSUMED"
@@ -111,20 +154,48 @@ def require_available(holdout_key: str, path: Path = LEDGER) -> None:
                 f"{entry['entry']}) — the seal is spent")
 
 
+def _reserved_sha(entries: list[dict], holdout_key: str) -> str | None:
+    sha = None
+    for e in entries:
+        if e["event"] == "RESERVED" and e.get("holdout") == holdout_key:
+            sha = e.get("sha256")
+    return sha
+
+
 def record_consumption(holdout_key: str, sha256: str, consumed_by: str,
-                        path: Path = LEDGER) -> dict:
-    require_available(holdout_key, path)
-    lines = _lines(path)
-    entry = {
-        "entry": len(lines) + 1,
-        "utc": datetime.datetime.now(datetime.timezone.utc)
-                .strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "event": "CONSUMED",
-        "holdout": holdout_key,
-        "sha256": sha256,
-        "consumed_by": consumed_by,
-        "prev_sha256": hashlib.sha256(lines[-1].encode()).hexdigest(),
-    }
-    with path.open("a") as fh:
-        fh.write(json.dumps(entry, sort_keys=True) + "\n")
-    return entry
+                        path: Path = LEDGER,
+                        repo_root: Path = ROOT) -> dict:
+    """ATOMIC acquire (exclusive flock around read+verify+append). The
+    requested sha must equal the holdout's RESERVED sha (Codex review #12:
+    an all-zero sha acquired the universal holdout)."""
+    lock_path = path.with_suffix(".lock")
+    with lock_path.open("w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            entries = verify_chain(path)
+            reserved = _reserved_sha(entries, holdout_key)
+            if reserved is None:
+                raise LedgerRefusal(
+                    f"{holdout_key} has no RESERVED entry — unreserved "
+                    "holdouts cannot be consumed")
+            if sha256 != reserved:
+                raise LedgerRefusal(
+                    f"requested sha {sha256[:16]}… does not match the "
+                    f"RESERVED sha {reserved[:16]}… for {holdout_key}")
+            require_available(holdout_key, path, repo_root)
+            lines = _lines(path)
+            entry = {
+                "entry": len(lines) + 1,
+                "utc": datetime.datetime.now(datetime.timezone.utc)
+                        .strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "event": "CONSUMED",
+                "holdout": holdout_key,
+                "sha256": sha256,
+                "consumed_by": consumed_by,
+                "prev_sha256": hashlib.sha256(lines[-1].encode()).hexdigest(),
+            }
+            with path.open("a") as fh:
+                fh.write(json.dumps(entry, sort_keys=True) + "\n")
+            return entry
+        finally:
+            fcntl.flock(lock, fcntl.LOCK_UN)
