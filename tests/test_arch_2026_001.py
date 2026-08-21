@@ -901,3 +901,65 @@ def test_stale_protocol_id_in_gate_report_refuses():
         checker.require_protocol_evidence(ok, [])
     except checker.PromotionCheckRefusal as exc:
         assert "protocol" not in str(exc).split("—")[0], exc
+
+
+def test_curation_relabel_requires_verified_predecessor(tmp_path):
+    """Codex review #21: `kind` defaulted to None so direct callers
+    bypassed predecessor verification. It is now a required argument and
+    wrong input bytes refuse before any transform."""
+    import inspect
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import pytest
+    from pidgin_holdout_curation import relabel
+    assert (inspect.signature(relabel).parameters["kind"].default
+            is inspect.Parameter.empty), "kind must have NO default"
+    fake = tmp_path / "fake.jsonl"
+    fake.write_text(json.dumps({"split": "train", "allowed_use":
+                                 ["asr_train"], "speaker_id": "s"}) + "\n")
+    with pytest.raises(ValueError, match="predecessor drifted"):
+        relabel(fake, tmp_path / "out.jsonl", "sealed")
+
+
+def test_protocol_pointer_hash_binds_the_protocol_file(tmp_path,
+                                                       monkeypatch):
+    """Codex review #21: consumers loaded a hardcoded protocol filename
+    from working-tree bytes. The pointer binds the file hash; tampering
+    either side refuses."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import pytest
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    record = checker._protocol_record()
+    assert record["record"] == PROTOCOL["record"]
+    pointer = json.loads((ROOT / "platform/decisions/"
+                          "CURRENT-PROMOTION-PROTOCOL.json").read_bytes())
+    import hashlib as h
+    assert pointer["sha256"] == h.sha256(
+        (ROOT / pointer["file"]).read_bytes()).hexdigest()
+    # a tampered copy refuses: point the checker at a doctored tree
+    fake_root = tmp_path
+    (fake_root / "platform/decisions").mkdir(parents=True)
+    (fake_root / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json"
+     ).write_text(json.dumps(pointer))
+    doctored = json.loads((ROOT / pointer["file"]).read_bytes())
+    doctored["mandatory_languages"] = ["english"]
+    (fake_root / pointer["file"]).parent.mkdir(parents=True, exist_ok=True)
+    (fake_root / pointer["file"]).write_text(json.dumps(doctored))
+    real_parents = Path(checker.__file__).resolve().parents
+
+    class FakePath:
+        def __init__(self, p):
+            self._p = p
+        def resolve(self):
+            return self
+        @property
+        def parents(self):
+            return [fake_root / "scripts", fake_root]
+    monkeypatch.setattr(checker, "__file__",
+                        str(fake_root / "scripts/b7.py"))
+    with pytest.raises(checker.PromotionCheckRefusal,
+                       match="pointer hash"):
+        checker._protocol_record()

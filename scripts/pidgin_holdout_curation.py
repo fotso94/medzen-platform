@@ -45,14 +45,14 @@ SUCCESSOR_KEYS = {
 }
 
 
-def relabel(src: Path, dst: Path, kind: str | None = None) -> dict:
+def relabel(src: Path, dst: Path, kind: str) -> dict:
     """Deterministic transform: training labels -> evaluation labels.
     Field order is preserved so the output is byte-reproducible.
 
-    Codex review #20: PREDECESSORS was declared but never enforced —
-    pass `kind` ("dev"/"sealed") to verify the input IS the hash-bound
-    predecessor before a byte is transformed."""
-    if kind is not None:
+    Codex reviews #20-#21: predecessor verification is MANDATORY —
+    `kind` ("dev"/"sealed") selects the hash-bound predecessor and the
+    input must match it byte-for-byte before anything is transformed."""
+    if True:
         _, want = PREDECESSORS[kind]
         got = sha256_file(src)
         if got != want:

@@ -1,0 +1,7 @@
+{
+ "file": "platform/decisions/PROMOTION-PROTOCOL-2026-004.json",
+ "note": "Codex review #21: consumers loaded a HARDCODED protocol filename from mutable working-tree bytes. Supersession is now one reviewed diff HERE; every consumer resolves the pointer and verifies the file hash.",
+ "pointer": "CURRENT-PROMOTION-PROTOCOL",
+ "record": "PROMOTION-PROTOCOL-2026-004",
+ "sha256": "6cc0a29f195a94570ccba5e6b63170aa9f5b4c4c91228c3e2cfb739efa4c8db9"
+}

@@ -314,11 +314,10 @@ def test_authorization_binds_the_canonical_packet_sha(tmp_path):
 
 
 def test_owner_authorization_must_be_committed_not_mutable_text(tmp_path):
-    """Codex review #19 finding 5 (reproduced by the reviewer as
-    MUTABLE_TEXT_FORGERY_ACCEPTED): shared-file text alone must never
-    authorize an above-tier launch. The committed-record gate accepts
-    ONLY a record at git HEAD binding the exact packet sha, a
-    sufficient ceiling and non-transferability."""
+    """Codex reviews #19-#21. v3 contract: committed record + a dedicated
+    approval file whose phrase quotes the record's OWN commit oid —
+    pre-published phrases are structurally dead (reviewer reproduced
+    fabricated_record_plus_preseeded_phrase_passes=true against v2)."""
     import json as _json
     import subprocess
     from b5_sagemaker_job import (canonical_bindings_sha256,
@@ -330,58 +329,64 @@ def test_owner_authorization_must_be_committed_not_mutable_text(tmp_path):
     repo = tmp_path / "repo"
     auth_dir = repo / "platform/decisions/launch-authorizations"
     auth_dir.mkdir(parents=True)
+    approvals = tmp_path / "approvals"
+    approvals.mkdir()
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
-    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"],
-                   check=True)
-    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"],
-                   check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
 
-    phrase = (f"I authorize {job} ceiling usd 70 "
-              f"bindings-sha256-16 {sha[:16]}")
     record = {"job_id": job, "bindings_sha256": sha, "ceiling_usd": 70,
               "non_transferable": True,
-              "owner_statement": "approved for exactly this packet",
-              "owner_approval_phrase": phrase}
+              "owner_statement": "approved for exactly this packet"}
     path = auth_dir / f"{job}.json"
     path.write_text(_json.dumps(record))
-    shared = tmp_path / "shared.txt"
-    shared.write_text(f"REVIEW ...\nDECISION: APPROVED\n{phrase}\n")
 
     def gate(jid=job, bnd=b, worst=64.0):
         return owner_authorization_is_committed(jid, bnd, worst, repo,
-                                                shared_file=shared)
+                                                approvals_dir=approvals)
 
-    # working-tree only (the forgery surface): REFUSED
-    assert gate() is False
-
+    # a PRE-PUBLISHED phrase (written before the record commit exists,
+    # so it cannot quote the record's commit oid) can never authorize
+    stale = (f"I authorize {job} ceiling usd 70 "
+             f"bindings-sha256-16 {sha[:16]}")
+    (approvals / f"{job}.approval").write_text(stale)
+    assert gate() is False                      # record not committed yet
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "auth"],
-                   check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "auth"], check=True)
+    assert gate() is False, "phrase without record-commit oid must refuse"
+
+    oid = subprocess.run(["git", "-C", str(repo), "log", "-1",
+                          "--format=%H", "HEAD", "--",
+                          f"platform/decisions/launch-authorizations/{job}.json"],
+                         capture_output=True, text=True).stdout.strip()
+    phrase = (f"I authorize {job} ceiling usd 70 bindings-sha256-16 "
+              f"{sha[:16]} record-commit {oid[:16]}")
+    (approvals / f"{job}.approval").write_text(phrase + "\n")
     assert gate() is True
+
+    # exact-equality file: extra text refuses (no free-text windows)
+    (approvals / f"{job}.approval").write_text(
+        "DECISION: APPROVED\n" + phrase)
+    assert gate() is False
+    (approvals / f"{job}.approval").write_text(phrase)
 
     # a MUTATED packet cannot ride the committed authorization
     mutated = bindings()
     mutated["environment"]["MEDZEN_SEED"] = "999"
     assert gate(bnd=mutated) is False
-    # insufficient ceiling: REFUSED
+    # insufficient ceiling refuses
     assert gate(worst=71.0) is False
-    # Codex review #20 finding 6: BOTH channels must carry the exact
-    # phrase — committed record alone is not enough...
-    shared.write_text("REVIEW ...\nDECISION: APPROVED\nno phrase here\n")
+    # NON-INTEGER ceiling refuses (Codex review #21: int() truncated
+    # $70.9 into a phrase claiming $70)
+    frac = dict(record, ceiling_usd=70.9)
+    path.write_text(_json.dumps(frac))
+    subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "frac"], check=True)
     assert gate() is False
-    # ...and the phrase without an APPROVED decision fails too
-    shared.write_text(f"DECISION: HOLD\n{phrase}\n")
-    assert gate() is False
-    shared.write_text(f"REVIEW ...\nDECISION: APPROVED\n{phrase}\n")
-    # tampered fields committed later still refuse
-    for field, value in (("non_transferable", False),
-                          ("owner_statement", "  "),
-                          ("owner_approval_phrase", phrase + " extended")):
-        bad = dict(record, **{field: value})
-        path.write_text(_json.dumps(bad))
-        subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "tamper"],
-                       check=True)
-        assert gate() is False, field
+    # tampering the record after approval breaks the commit-oid link:
+    # the phrase quotes the OLD record commit, the record is now newer
+    path.write_text(_json.dumps(record))
+    subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "restore"], check=True)
+    assert gate() is False, "phrase quoting a stale record commit must refuse"
     # path traversal in the job id can never escape the auth dir
     assert gate(jid="../evil") is False
 
@@ -403,51 +408,192 @@ def test_launch_requires_the_medzen_account():
 
 
 def test_above_tier_packet_must_bind_a_passing_calibration_receipt(tmp_path):
-    """Codex review #20 finding 4: the arm packet floated free of the
-    calibration that justified it. The receipt must be committed at HEAD,
-    hash-exact, verdict PASS, and bind the SAME dataset adoption."""
+    """Codex reviews #20-#21: v1 of this gate accepted the genuine gb8
+    receipt for a gb9 arm (wrong_gb8_calibration_receipt_accepted_
+    for_gb9_arm=true) because every semantic identity came from the
+    PACKET. Now the RECEIPT itself carries them all and each is
+    cross-checked."""
     import hashlib as h
     import json as _json
     import subprocess
-    from b5_sagemaker_job import JobRefusal as JR, verify_calibration_receipt
+    from b5_sagemaker_job import (JobRefusal as JR,
+                                  canonical_bindings_sha256,
+                                  verify_calibration_receipt)
 
     repo = tmp_path / "repo"
     (repo / "platform/evidence").mkdir(parents=True)
+    (repo / "platform/manifests").mkdir(parents=True)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
-    adoption = {"version": "gb9", "complete_raw_sha256": "e0" * 32}
+
+    image = ("558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+             "medzen-trainer-omniasr@sha256:" + "b" * 64)
+    invariants = {"MEDZEN_VARIANT": "ctc", "MEDZEN_TRAIN_MODE": "full",
+                  "MEDZEN_LANGUAGES": "english,pidgin",
+                  "MEDZEN_TEMPERATURE": "0.5",
+                  "MEDZEN_EXCLUSIONS_REF": "s3://x/d.json",
+                  "MEDZEN_EXPECT_EXCLUDED": "1579",
+                  "MEDZEN_MANIFEST_VERSION": "gb9"}
+    cal_packet = {"job_id": "cal-1", "environment": dict(invariants)}
+    (repo / "platform/manifests/CAL-PACKET.json").write_text(
+        _json.dumps(cal_packet))
     (repo / "platform/evidence/B5-GB9-ADOPTION-2026-001.json").write_text(
-        _json.dumps(adoption))
-    receipt_rec = {"verdict": "PASS — chain proven", "job": "cal-1"}
-    rec_path = repo / "platform/evidence/CAL-RESULT.json"
-    rec_path.write_text(_json.dumps(receipt_rec))
+        _json.dumps({"version": "gb9", "complete_raw_sha256": "e0" * 32}))
+    (repo / "platform/evidence/B5-GB8-ADOPTION-2026-001.json").write_text(
+        _json.dumps({"version": "gb8", "complete_raw_sha256": "d0" * 32}))
+
+    def receipt_record(**over):
+        rec = {"terminal_status": "Completed", "billable_seconds": 1128,
+               "verdict": "PASS — chain proven", "job": "cal-1",
+               "dataset_version": "gb9",
+               "dataset_complete_raw_sha256": "e0" * 32,
+               "image_uri_with_digest": image,
+               "environment_invariants": dict(invariants),
+               "calibration_packet": "platform/manifests/CAL-PACKET.json",
+               "calibration_bindings_sha256":
+                   canonical_bindings_sha256(cal_packet),
+               "export": {"status": "PASS_MERGED_EXPORT",
+                          "model_sha256": "1" * 64,
+                          "manifest_sha256": "2" * 64},
+               "artifact": {"s3_version_id": "Vid123",
+                            "kms_key": "arn:aws:kms:eu-central-1:5:key/k"}}
+        rec.update(over)
+        return rec
+
+    rec_path = repo / "platform/evidence/CAL-RECEIPT.json"
+    rec_path.write_text(_json.dumps(receipt_record()))
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-qm", "evidence"], check=True)
     rec_sha = h.sha256(rec_path.read_bytes()).hexdigest()
 
-    def packet(**over):
-        receipt = {"record": "platform/evidence/CAL-RESULT.json",
-                   "record_sha256": rec_sha,
-                   "dataset_complete_raw_sha256": "e0" * 32}
-        receipt.update(over)
-        return {"environment": {"MEDZEN_MANIFEST_VERSION": "gb9"},
-                "calibration_receipt": receipt}
+    def arm(**env_over):
+        env = dict(invariants)
+        env.update(env_over)
+        return {"environment": env, "image_uri_with_digest": image,
+                "calibration_receipt": {
+                    "record": "platform/evidence/CAL-RECEIPT.json",
+                    "record_sha256": rec_sha}}
 
-    verify_calibration_receipt(packet(), repo)   # the honest one passes
-    with pytest.raises(JR, match="calibration_receipt"):
-        verify_calibration_receipt(
-            {"environment": {"MEDZEN_MANIFEST_VERSION": "gb9"}}, repo)
-    with pytest.raises(JR, match="does not match the committed bytes"):
-        verify_calibration_receipt(packet(record_sha256="00" * 32), repo)
-    with pytest.raises(JR, match="adoption"):
-        verify_calibration_receipt(
-            packet(dataset_complete_raw_sha256="ff" * 32), repo)
-    with pytest.raises(JR, match="repo-relative"):
-        verify_calibration_receipt(packet(record="/etc/passwd"), repo)
-    # a FAILED calibration record cannot justify an arm
-    rec_path.write_text(_json.dumps({"verdict": "FAILED", "job": "cal-1"}))
-    subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "fail"], check=True)
-    failed_sha = h.sha256(rec_path.read_bytes()).hexdigest()
-    with pytest.raises(JR, match="not PASS"):
-        verify_calibration_receipt(packet(record_sha256=failed_sha), repo)
+    verify_calibration_receipt(arm(), repo)      # the honest chain passes
+
+    # THE Codex #21 reproduction: a gb8 receipt for a gb9 arm refuses —
+    # commit a genuine gb8 receipt and point the gb9 arm at it
+    gb8_path = repo / "platform/evidence/CAL-RECEIPT-GB8.json"
+    gb8_inv = dict(invariants, MEDZEN_MANIFEST_VERSION="gb8")
+    gb8_path.write_text(_json.dumps(receipt_record(
+        dataset_version="gb8", dataset_complete_raw_sha256="d0" * 32,
+        environment_invariants=gb8_inv)))
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "gb8"], check=True)
+    wrong = arm()
+    wrong["calibration_receipt"] = {
+        "record": "platform/evidence/CAL-RECEIPT-GB8.json",
+        "record_sha256": h.sha256(gb8_path.read_bytes()).hexdigest()}
+    with pytest.raises(JR, match="wrong calibration"):
+        verify_calibration_receipt(wrong, repo)
+
+    # each semantic mismatch refuses on the RECEIPT's own declarations
+    cases = [
+        (receipt_record(terminal_status="Stopped"), "Completed"),
+        (receipt_record(billable_seconds=0), "billable"),
+        (receipt_record(dataset_complete_raw_sha256="f0" * 32), "adoption"),
+        (receipt_record(image_uri_with_digest=image.replace("b" * 64,
+                                                            "c" * 64)),
+         "different image"),
+        (receipt_record(environment_invariants=dict(
+            invariants, MEDZEN_TEMPERATURE="0.4")), "invariant"),
+        (receipt_record(calibration_bindings_sha256="9" * 64),
+         "calibration packet"),
+        (receipt_record(export={"status": "PASS_MERGED_EXPORT",
+                                 "model_sha256": "zz",
+                                 "manifest_sha256": "2" * 64}),
+         "hash-complete"),
+        (receipt_record(artifact={"s3_version_id": "",
+                                    "kms_key": "arn:aws:kms:x"}),
+         "VersionId"),
+    ]
+    for record, needle in cases:
+        rec_path.write_text(_json.dumps(record))
+        subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "mut"],
+                       check=True)
+        bad = arm()
+        bad["calibration_receipt"]["record_sha256"] = h.sha256(
+            rec_path.read_bytes()).hexdigest()
+        with pytest.raises(JR, match=needle):
+            verify_calibration_receipt(bad, repo)
+
+
+def test_launch_requires_an_active_committed_reservation(tmp_path):
+    """Codex review #21: the launcher never read the cost registry — a
+    job could launch while its reservation said PENDING. The packet
+    binds the registry sha; the allocation must be the single
+    ACTIVE_RESERVED line covering the worst case."""
+    import hashlib as h
+    import json as _json
+    import subprocess
+    from b5_sagemaker_job import (JobRefusal as JR,
+                                  verify_active_reservation)
+
+    repo = tmp_path / "repo"
+    (repo / "platform/finance").mkdir(parents=True)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    reg_path = repo / "platform/finance/REG.json"
+
+    def commit_registry(state, reservation=70.0, extra_active=False):
+        allocations = [
+            {"allocation_id": "OLD-1",
+             "financial_state": "CLOSED_RECONCILED"},
+            {"allocation_id": "ARM-1", "financial_state": state,
+             "reservation_usd": reservation}]
+        if extra_active:
+            allocations.append({"allocation_id": "OTHER",
+                                 "financial_state": "ACTIVE_RESERVED",
+                                 "reservation_usd": 10})
+        reg_path.write_text(_json.dumps({"allocations": allocations}))
+        subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+        subprocess.run(["git", "-C", str(repo), "commit", "-qm", "reg"],
+                       check=True)
+        return h.sha256(reg_path.read_bytes()).hexdigest()
+
+    def packet(sha):
+        return {"cost_registry_binding": {
+            "file": "platform/finance/REG.json", "sha256": sha,
+            "allocation_id": "ARM-1"}}
+
+    sha = commit_registry("PENDING_OWNER_AUTHORIZATION")
+    with pytest.raises(JR, match="not ACTIVE_RESERVED"):
+        verify_active_reservation(packet(sha), 64.0, repo)
+    sha = commit_registry("ACTIVE_RESERVED", reservation=50.0)
+    with pytest.raises(JR, match="does not cover"):
+        verify_active_reservation(packet(sha), 64.0, repo)
+    sha = commit_registry("ACTIVE_RESERVED", extra_active=True)
+    with pytest.raises(JR, match="one-active-reservation"):
+        verify_active_reservation(packet(sha), 64.0, repo)
+    sha = commit_registry("ACTIVE_RESERVED")
+    verify_active_reservation(packet(sha), 64.0, repo)   # the honest one
+    # a stale sha (registry changed since the packet bound it) refuses
+    commit_registry("ACTIVE_RESERVED", reservation=71.0)
+    with pytest.raises(JR, match="sha256 does not match"):
+        verify_active_reservation(packet(sha), 64.0, repo)
+
+
+def test_review_hold_after_approval_overrides(tmp_path):
+    """Codex review #21: a newer DECISION: HOLD did not override an
+    older nearby APPROVED, and the FIRST mention governed instead of
+    the last."""
+    shared = tmp_path / "shared.txt"
+    marker = "authorizing training job t5-calibration-yemba "
+    shared.write_text(
+        f"DECISION: APPROVED\n{marker}per packet\n"
+        f"later findings...\nDECISION: HOLD — regression found\n")
+    assert review_is_recorded("t5-calibration-yemba",
+                              shared_file=shared) is False
+    # a FRESH approval after the hold (a new last mention) authorizes
+    shared.write_text(shared.read_text()
+                      + f"re-reviewed, fixed\nDECISION: APPROVED\n"
+                        f"{marker}per packet rev2\n")
+    assert review_is_recorded("t5-calibration-yemba",
+                              shared_file=shared) is True

@@ -131,9 +131,14 @@ def render_request(bindings: dict) -> dict:
     # Codex review #8 step 6: a multilingual-full packet must bind the
     # EXACT approved pilot profile, not merely satisfy generic limits.
     if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
-        protocol = json.loads(
-            (Path(__file__).resolve().parents[1] / "platform/decisions/"
-             "PROMOTION-PROTOCOL-2026-004.json").read_bytes())
+        root_dir = Path(__file__).resolve().parents[1]
+        pointer = json.loads((root_dir / "platform/decisions/"
+                              "CURRENT-PROMOTION-PROTOCOL.json").read_bytes())
+        protocol_body = (root_dir / pointer["file"]).read_bytes()
+        if hashlib.sha256(protocol_body).hexdigest() != pointer["sha256"]:
+            raise JobRefusal("promotion-protocol file does not match the "
+                             "committed pointer hash (Codex review #21)")
+        protocol = json.loads(protocol_body)
         mandatory = set(protocol["mandatory_languages"])
         requested = {t.strip() for t in
                      environment.get("MEDZEN_LANGUAGES", "").split(",")
@@ -246,16 +251,23 @@ def canonical_bindings_sha256(bindings: dict) -> str:
 
 def review_is_recorded(job_id: str, bindings: dict | None = None,
                        shared_file: Path = SHARED_REVIEWS) -> bool:
+    """Independent-review channel. Codex review #21 parser fixes: the
+    LAST mention of the job governs (not the first), the APPROVED must
+    sit adjacent to that mention (2,000 before / 400 after — an
+    unrelated earlier approval 4k away no longer qualifies), and any
+    LATER `DECISION: HOLD` overrides an older approval."""
     text = shared_file.read_text()
     marker = f"authorizing training job {job_id} "
-    if marker not in text:
+    idx = text.rfind(marker)
+    if idx < 0:
         return False
-    if "DECISION: APPROVED" not in text.split(marker)[0][-4000:]:
+    window = text[max(0, idx - 2000):idx + len(marker) + 400]
+    if "DECISION: APPROVED" not in window:
+        return False
+    if "DECISION: HOLD" in text[idx:]:
         return False
     if bindings is not None:
         sha = canonical_bindings_sha256(bindings)
-        window = text.split(marker)[0][-4000:] + marker + \
-            text.split(marker, 1)[1][:400]
         if f"bindings-sha256 {sha}" not in window:
             return False
     return True
@@ -263,12 +275,39 @@ def review_is_recorded(job_id: str, bindings: dict | None = None,
 
 CALIBRATION_TIER_USD = 10.0
 AUTH_DIR = "platform/decisions/launch-authorizations"
+APPROVALS_DIR = Path.home() / "Documents/medzen-shared/authorizations"
+_HEX40 = re.compile(r"^[0-9a-f]{40}$")
+
+
+def repo_head_oid(root: Path) -> str:
+    """One captured commit OID for EVERY committed-evidence read in a
+    launch decision (Codex review #21: separate HEAD resolutions could
+    read different commits mid-decision)."""
+    completed = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                               capture_output=True, text=True)
+    oid = (completed.stdout or "").strip()
+    if completed.returncode != 0 or not _HEX40.fullmatch(oid):
+        raise JobRefusal("cannot resolve a git HEAD commit — committed-"
+                         "evidence gates need a repository")
+    return oid
+
+
+def _show_at(root: Path, oid: str, rel: str) -> bytes | None:
+    if rel.startswith(("/", "..")) or ":" in rel or "\\" in rel:
+        return None
+    completed = subprocess.run(["git", "-C", str(root), "show",
+                                f"{oid}:{rel}"],
+                               capture_output=True)
+    return completed.stdout if completed.returncode == 0 else None
 
 
 def assert_medzen_account(runner=subprocess.run) -> None:
     """Codex review #20 finding 5: launch relied on ambient credentials;
     this machine's DEFAULT AWS account is not MedZen's. Any mutation must
-    first prove the effective identity lives in account 558069890522."""
+    first prove the effective identity lives in account 558069890522.
+    (The launch path itself now uses ONE boto3 session for both the STS
+    check and CreateTrainingJob — no credential TOCTOU; this CLI-based
+    variant remains for tooling and tests.)"""
     completed = runner(["aws", "sts", "get-caller-identity",
                         "--query", "Account", "--output", "text"],
                        capture_output=True, text=True)
@@ -280,115 +319,236 @@ def assert_medzen_account(runner=subprocess.run) -> None:
             "under ambient credentials (Codex review #20)")
 
 
+RECEIPT_INVARIANTS = ("MEDZEN_VARIANT", "MEDZEN_TRAIN_MODE",
+                      "MEDZEN_LANGUAGES", "MEDZEN_TEMPERATURE",
+                      "MEDZEN_EXCLUSIONS_REF", "MEDZEN_EXPECT_EXCLUDED",
+                      "MEDZEN_MANIFEST_VERSION")
+
+
 def verify_calibration_receipt(bindings: dict,
-                                repo_root: Path | None = None) -> None:
-    """Codex review #20 finding 4: the arm packet floated free of the
-    calibration that justified it. An above-tier multilingual packet must
-    bind a `calibration_receipt` whose record is COMMITTED at HEAD,
-    byte-identical to the declared sha, verdict PASS, and whose dataset
-    adoption (complete_raw_sha256) matches the packet's own gb version's
-    committed ADOPTION evidence."""
+                                repo_root: Path | None = None,
+                                head_oid: str | None = None) -> None:
+    """Codex review #20 finding 4 + review #21: the first version only
+    checked committed+sha+PASS with the dataset sha supplied BY THE
+    PACKET — the genuine gb8 receipt authorized a gb9 arm. Every
+    semantic identity now comes from the RECEIPT RECORD itself and is
+    cross-checked against the arm packet and committed evidence at ONE
+    captured commit:
+      terminal AWS status + billable seconds; the calibration packet's
+      canonical sha (recomputed from the committed packet); dataset
+      version + adoption sha; image digest; the invariant training
+      environment; export status + hashes; artifact VersionId + KMS."""
     root = repo_root or Path(__file__).resolve().parents[1]
+    oid = head_oid or repo_head_oid(root)
     receipt = bindings.get("calibration_receipt")
     if not isinstance(receipt, dict):
         raise JobRefusal(
             "above-tier multilingual packets must bind calibration_receipt "
-            "(record path + sha256 + artifact identities) — an arm may "
-            "never launch on an unproven chain (Codex review #20)")
+            "{record, record_sha256} — an arm may never launch on an "
+            "unproven chain (Codex reviews #20-#21)")
     rel = str(receipt.get("record") or "")
-    if rel.startswith(("/", "..")) or ":" in rel or "\\" in rel or \
-            not rel.startswith("platform/evidence/"):
+    if not rel.startswith("platform/evidence/"):
         raise JobRefusal(f"calibration_receipt.record {rel!r} must be a "
                          "repo-relative platform/evidence/ path")
-    shown = subprocess.run(["git", "-C", str(root), "show", f"HEAD:{rel}"],
-                           capture_output=True, text=True)
-    if shown.returncode != 0:
+    body = _show_at(root, oid, rel)
+    if body is None:
         raise JobRefusal(f"calibration receipt {rel} is not committed at "
-                         "HEAD — working-tree receipts do not count")
-    body = shown.stdout.encode()
+                         f"{oid[:12]} — working-tree receipts do not count")
     if hashlib.sha256(body).hexdigest() != receipt.get("record_sha256"):
         raise JobRefusal("calibration_receipt.record_sha256 does not match "
                          f"the committed bytes of {rel}")
     record = json.loads(body)
-    if not str(record.get("verdict", "")).startswith("PASS"):
-        raise JobRefusal(f"calibration record {rel} verdict is not PASS")
-    version = bindings["environment"].get("MEDZEN_MANIFEST_VERSION", "")
+
+    def field(name):
+        value = record.get(name)
+        if value in (None, "", [], {}):
+            raise JobRefusal(f"calibration receipt lacks {name!r} — a "
+                             "receipt that cannot be externally verified "
+                             "cannot justify an arm")
+        return value
+
+    if field("terminal_status") != "Completed":
+        raise JobRefusal("calibration terminal_status is not Completed")
+    if not isinstance(record.get("billable_seconds"), int) or             record["billable_seconds"] <= 0:
+        raise JobRefusal("calibration receipt lacks positive "
+                         "billable_seconds")
+    if not str(field("verdict")).startswith("PASS"):
+        raise JobRefusal("calibration verdict is not PASS")
+    env = bindings["environment"]
+    if field("dataset_version") != env.get("MEDZEN_MANIFEST_VERSION"):
+        raise JobRefusal(
+            f"receipt proves dataset {record.get('dataset_version')!r} but "
+            f"the arm binds {env.get('MEDZEN_MANIFEST_VERSION')!r} — the "
+            "wrong calibration cannot justify this arm (Codex review #21)")
+    version = env.get("MEDZEN_MANIFEST_VERSION", "")
     adoption_rel = (f"platform/evidence/"
                     f"B5-{version.upper()}-ADOPTION-2026-001.json")
-    shown = subprocess.run(
-        ["git", "-C", str(root), "show", f"HEAD:{adoption_rel}"],
-        capture_output=True, text=True)
-    if shown.returncode != 0:
-        raise JobRefusal(f"no committed adoption evidence {adoption_rel} "
-                         f"for dataset version {version}")
-    adoption = json.loads(shown.stdout)
-    if receipt.get("dataset_complete_raw_sha256") != \
-            adoption["complete_raw_sha256"]:
+    adoption_body = _show_at(root, oid, adoption_rel)
+    if adoption_body is None:
+        raise JobRefusal(f"no committed adoption evidence {adoption_rel}")
+    adoption = json.loads(adoption_body)
+    if field("dataset_complete_raw_sha256") !=             adoption["complete_raw_sha256"]:
+        raise JobRefusal("receipt dataset adoption sha does not match the "
+                         f"committed {version} adoption")
+    if field("image_uri_with_digest") !=             bindings.get("image_uri_with_digest"):
+        raise JobRefusal("the arm binds a different image digest than the "
+                         "calibration proved")
+    invariants = field("environment_invariants")
+    for key in RECEIPT_INVARIANTS:
+        if invariants.get(key) != env.get(key):
+            raise JobRefusal(
+                f"invariant {key} differs from the calibrated chain: "
+                f"receipt {invariants.get(key)!r} vs arm {env.get(key)!r}")
+    packet_rel = str(field("calibration_packet"))
+    packet_body = _show_at(root, oid, packet_rel)
+    if packet_body is None:
+        raise JobRefusal(f"calibration packet {packet_rel} is not "
+                         "committed — the receipt cannot be re-derived")
+    if canonical_bindings_sha256(json.loads(packet_body)) !=             field("calibration_bindings_sha256"):
+        raise JobRefusal("receipt calibration_bindings_sha256 does not "
+                         "match the committed calibration packet")
+    export = field("export")
+    if export.get("status") != "PASS_MERGED_EXPORT" or not (
+            _hex(str(export.get("model_sha256", "")), 64)
+            and _hex(str(export.get("manifest_sha256", "")), 64)):
+        raise JobRefusal("receipt export block is not a hash-complete "
+                         "PASS_MERGED_EXPORT")
+    artifact = field("artifact")
+    if not artifact.get("s3_version_id") or not str(
+            artifact.get("kms_key", "")).startswith("arn:aws:kms:"):
+        raise JobRefusal("receipt artifact block lacks S3 VersionId or "
+                         "KMS identity")
+
+
+def _hex(value: str, length: int) -> bool:
+    return len(value) == length and all(
+        c in "0123456789abcdef" for c in value.lower())
+
+
+def verify_active_reservation(bindings: dict, worst_case_usd: float,
+                               repo_root: Path | None = None,
+                               head_oid: str | None = None) -> None:
+    """Codex review #21: the launcher never read the cost registry, so a
+    job could launch while its reservation said PENDING. The packet
+    binds the registry file's sha256; at launch the committed registry
+    must show the packet's allocation as the SINGLE ACTIVE_RESERVED
+    line, sized for the worst case."""
+    root = repo_root or Path(__file__).resolve().parents[1]
+    oid = head_oid or repo_head_oid(root)
+    binding = bindings.get("cost_registry_binding")
+    if not isinstance(binding, dict):
         raise JobRefusal(
-            "calibration_receipt.dataset_complete_raw_sha256 does not "
-            f"match the committed {version} adoption — the arm must train "
-            "on exactly the dataset the calibration proved")
+            "above-tier packets must bind cost_registry_binding "
+            "{file, sha256, allocation_id} — reserve BEFORE billable "
+            "execution (Codex review #21)")
+    rel = str(binding.get("file") or "")
+    if not rel.startswith("platform/finance/"):
+        raise JobRefusal("cost_registry_binding.file must live under "
+                         "platform/finance/")
+    body = _show_at(root, oid, rel)
+    if body is None:
+        raise JobRefusal(f"registry {rel} is not committed at {oid[:12]}")
+    if hashlib.sha256(body).hexdigest() != binding.get("sha256"):
+        raise JobRefusal("cost_registry_binding.sha256 does not match the "
+                         f"committed bytes of {rel}")
+    registry = json.loads(body)
+    allocation_id = binding.get("allocation_id")
+    effective: dict[str, dict] = {}
+    for line in registry.get("allocations", []):
+        if line.get("allocation_id"):
+            effective[line["allocation_id"]] = line
+    ours = effective.get(allocation_id)
+    if ours is None:
+        raise JobRefusal(f"allocation {allocation_id!r} does not exist in "
+                         f"{rel}")
+    if ours.get("financial_state") != "ACTIVE_RESERVED":
+        raise JobRefusal(
+            f"allocation {allocation_id!r} is "
+            f"{ours.get('financial_state')!r}, not ACTIVE_RESERVED — the "
+            "reservation must be activated (a new registry revision, "
+            "committed) BEFORE launch")
+    if float(ours.get("reservation_usd", 0)) < worst_case_usd:
+        raise JobRefusal(
+            f"active reservation ${ours.get('reservation_usd')} does not "
+            f"cover the ${worst_case_usd:.2f} worst case")
+    active = [k for k, line in effective.items()
+              if line.get("financial_state") == "ACTIVE_RESERVED"]
+    if active != [allocation_id]:
+        raise JobRefusal(
+            f"one-active-reservation rule violated: {sorted(active)}")
 
 
 def owner_authorization_is_committed(job_id: str, bindings: dict,
                                      worst_case_usd: float,
                                      repo_root: Path | None = None,
-                                     shared_file: Path | None = None) -> bool:
-    """Codex review #19 finding 5: the shared-file gate reads MUTABLE
-    text — anyone with file write could forge `DECISION: APPROVED`. For
-    any job above the calibration tier (worst case > $10, which rides
-    the owner's committed campaign allocation), launch now additionally
-    requires an owner-authorization record COMMITTED AT GIT HEAD (the
-    ledger-v5 trust model: committed records reviewed in git history).
+                                     approvals_dir: Path | None = None,
+                                     head_oid: str | None = None) -> bool:
+    """Owner-authorization gate v3 (Codex reviews #19-#21).
 
-    The record lives at {AUTH_DIR}/<job_id>.json and must bind:
-      job_id (exact), bindings_sha256 (canonical packet sha),
-      ceiling_usd >= the packet's worst case, non_transferable: true,
-      and a non-empty owner_statement. Working-tree or staged-only files
-      never pass — the bytes come from `git show HEAD:<path>`."""
+    v2 failed because the approval phrase was knowable in advance — it
+    was even pre-published — and the free-text window parser accepted
+    any nearby stale DECISION: APPROVED. v3:
+
+      1. The authorization record must be COMMITTED at the captured
+         commit under {AUTH_DIR}/<job_id>.json, binding the canonical
+         packet sha, an INTEGER-VALUED ceiling >= worst case (a $70.9
+         ceiling can no longer masquerade as '70'), non-transferability
+         and the owner's statement.
+      2. The approval phrase must quote the first 16 hex of the COMMIT
+         THAT INTRODUCED THE RECORD — unknowable before that commit
+         exists, so pre-published phrases are structurally dead.
+      3. The phrase lives alone in a DEDICATED file
+         (~/Documents/medzen-shared/authorizations/<job_id>.approval)
+         compared by exact equality — no windows, no free-text parsing.
+
+    HONEST RESIDUAL TRUST: every channel still lives on one machine;
+    a determined local writer can fabricate all three artifacts. Real
+    separation of authority needs owner signing keys or the GitHub
+    protected-environment approval once remote CI activates — until
+    then this gate guarantees ORDER (record first, approval second),
+    EXACTNESS and AUDITABILITY, not cryptographic identity."""
     if not job_id or not all(c.islower() or c.isdigit() or c == "-"
                              for c in job_id):
         return False
     root = repo_root or Path(__file__).resolve().parents[1]
-    completed = subprocess.run(
-        ["git", "-C", str(root), "show",
-         f"HEAD:{AUTH_DIR}/{job_id}.json"],
-        capture_output=True, text=True)
-    if completed.returncode != 0:
+    try:
+        oid = head_oid or repo_head_oid(root)
+    except JobRefusal:
+        return False
+    rel = f"{AUTH_DIR}/{job_id}.json"
+    body = _show_at(root, oid, rel)
+    if body is None:
         return False
     try:
-        record = json.loads(completed.stdout)
+        record = json.loads(body)
     except ValueError:
         return False
+    ceiling = record.get("ceiling_usd")
     if not (record.get("job_id") == job_id
             and record.get("bindings_sha256")
                 == canonical_bindings_sha256(bindings)
-            and isinstance(record.get("ceiling_usd"), (int, float))
-            and record["ceiling_usd"] >= worst_case_usd
+            and isinstance(ceiling, (int, float))
+            and float(ceiling).is_integer()
+            and ceiling >= worst_case_usd
             and record.get("non_transferable") is True
             and bool(str(record.get("owner_statement") or "").strip())):
         return False
-    # Codex review #20 finding 6: any repo writer could invent
-    # owner_statement. The record must now carry the owner's EXACT
-    # approval phrase in a fixed machine-checkable format, and the SAME
-    # phrase must independently appear in the shared reviews file after
-    # a DECISION: APPROVED — two channels must agree on the verbatim
-    # words. HONEST RESIDUAL TRUST (stated, not hidden): both channels
-    # live on one machine; cryptographic separation of authority needs
-    # owner signing keys or the GitHub protected-environment approval
-    # (wired dark in infra-pipeline.yml) once remote CI activates.
-    expected_phrase = (f"I authorize {job_id} ceiling usd "
-                       f"{int(record['ceiling_usd'])} bindings-sha256-16 "
-                       f"{record['bindings_sha256'][:16]}")
-    if record.get("owner_approval_phrase") != expected_phrase:
+    log = subprocess.run(
+        ["git", "-C", str(root), "log", "-1", "--format=%H", oid,
+         "--", rel], capture_output=True, text=True)
+    record_commit = (log.stdout or "").strip()
+    if log.returncode != 0 or not _HEX40.fullmatch(record_commit):
         return False
+    expected_phrase = (f"I authorize {job_id} ceiling usd {int(ceiling)} "
+                       f"bindings-sha256-16 "
+                       f"{record['bindings_sha256'][:16]} "
+                       f"record-commit {record_commit[:16]}")
+    approval_path = (approvals_dir or APPROVALS_DIR) / f"{job_id}.approval"
     try:
-        shared = (shared_file or SHARED_REVIEWS).read_text()
+        approval = approval_path.read_text().strip()
     except OSError:
         return False
-    if expected_phrase not in shared:
-        return False
-    return "DECISION: APPROVED" in shared.split(expected_phrase)[0][-4000:]
+    return approval == expected_phrase
 
 
 def main() -> int:
@@ -415,31 +575,37 @@ def main() -> int:
             raise JobRefusal(
                 f"no APPROVED review binding training-job {job_id} AND "
                 f"bindings-sha256 {canonical_bindings_sha256(bindings)} "
-                f"found in {SHARED_REVIEWS} — the authorization must cite "
-                "the exact packet (Codex review #9)")
+                f"adjacent to its LAST mention in {SHARED_REVIEWS} (a "
+                "later DECISION: HOLD overrides) — Codex reviews #9/#21")
         worst_case = result["worst_case_on_demand_usd"]
+        root = Path(__file__).resolve().parents[1]
+        head = repo_head_oid(root)
         if worst_case > CALIBRATION_TIER_USD:
             if not owner_authorization_is_committed(job_id, bindings,
-                                                    worst_case):
+                                                    worst_case,
+                                                    head_oid=head):
                 raise JobRefusal(
                     f"worst case ${worst_case:.2f} exceeds the calibration "
-                    f"tier (${CALIBRATION_TIER_USD:.0f}) and no OWNER "
-                    f"authorization is COMMITTED at HEAD under {AUTH_DIR}/"
-                    f"{job_id}.json binding this exact packet sha, a "
-                    f"sufficient ceiling, non-transferability AND the "
-                    f"exact owner approval phrase attested in both "
-                    f"channels (Codex reviews #19-#20)")
-            verify_calibration_receipt(bindings)
-        assert_medzen_account()
-        completed = subprocess.run(
-            ["aws", "sagemaker", "create-training-job",
-             "--region", REGION,
-             "--cli-input-json", json.dumps(request, sort_keys=True)],
-            capture_output=True, text=True)
-        if completed.returncode != 0:
-            raise JobRefusal(f"create-training-job failed: "
-                             f"{completed.stderr[-400:]}")
-        print(completed.stdout.strip())
+                    f"tier (${CALIBRATION_TIER_USD:.0f}) and the owner "
+                    f"authorization gate v3 is not satisfied: committed "
+                    f"record at {AUTH_DIR}/{job_id}.json + the exact "
+                    f"approval phrase (quoting that record's commit) in "
+                    f"the dedicated approvals file (Codex reviews "
+                    f"#19-#21)")
+            verify_calibration_receipt(bindings, head_oid=head)
+            verify_active_reservation(bindings, worst_case, head_oid=head)
+        # ONE boto3 session for the account check AND the mutation — no
+        # credential TOCTOU between separate CLI processes (review #21)
+        import boto3
+        session = boto3.session.Session(region_name=REGION)
+        account = session.client("sts").get_caller_identity().get("Account")
+        if account != ACCOUNT:
+            raise JobRefusal(
+                f"effective AWS account is {account!r}, not the MedZen "
+                f"account {ACCOUNT} — refusing to launch")
+        response = session.client("sagemaker").create_training_job(**request)
+        print(json.dumps({"TrainingJobArn": response["TrainingJobArn"]},
+                         indent=4))
         return 0
     except JobRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))

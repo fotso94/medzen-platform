@@ -1,0 +1,34 @@
+{
+ "artifact": {
+  "bytes": 1548263374,
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-ftcal-2026-004/output/medzen-b5-b5-universal-ftcal-2026-004/output/model.tar.gz",
+  "s3_version_id": "QVE06XHBGIxAXHAp9ufHdx_1fAEoacRF"
+ },
+ "billable_seconds": 1128,
+ "calibration_bindings_sha256": "242814939c8319ff7a4f239aa0c354fa28cb4d38a3e819ad1489d7fbda19776d",
+ "calibration_packet": "platform/manifests/B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-004.json",
+ "dataset_complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
+ "dataset_version": "gb9",
+ "environment_invariants": {
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_MANIFEST_VERSION": "gb9",
+  "MEDZEN_TEMPERATURE": "0.5",
+  "MEDZEN_TRAIN_MODE": "full",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "export": {
+  "manifest_sha256": "1adc05e8599ad8d0d2bd1161ff395beb268b97fd5c9462f0b6f3fe602d0bc4a2",
+  "model_sha256": "59b6f7a343a8a4c612cd173a68aa1eaae151a0ecd9e15c094ab0504a5864c419",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+ "job": "medzen-b5-b5-universal-ftcal-2026-004",
+ "record": "B5-UNIVERSAL-FTCAL-2026-004-RECEIPT",
+ "role": "externally-verifiable calibration receipt (Codex review #21: the -RESULT record lacked the identities needed for semantic verification; every field below can be re-queried against AWS or re-derived from committed evidence)",
+ "terminal_status": "Completed",
+ "utc": "2026-08-21T22:42:14Z",
+ "verdict": "PASS \u2014 7-language full-FT chain proven on gb9; see B5-UNIVERSAL-FTCAL-2026-004-RESULT for the log-derived criteria"
+}

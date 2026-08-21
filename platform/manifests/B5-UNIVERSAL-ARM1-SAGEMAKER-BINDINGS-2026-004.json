@@ -1,0 +1,51 @@
+{
+    "calibration_receipt": {
+        "record": "platform/evidence/B5-UNIVERSAL-FTCAL-2026-004-RECEIPT.json",
+        "record_sha256": "0cb47d6c6b7f78a8272c56c5b74e44a27822de930e2a99de8945bbce9edbdcf8"
+    },
+    "cost_ceiling_usd": 70,
+    "cost_registry_binding": {
+        "allocation_id": "B5-ARM1-2026-001",
+        "file": "platform/finance/COST-REGISTRY-2026-047.json",
+        "sha256": "7624b6673b7a0c6b22ba533a284d75e57aeb19f867109de5b0d6d91036bf6e01"
+    },
+    "cost_registry_line": "COST-REGISTRY-2026-047 B5-ARM1-2026-001 ($70 hard; ACTIVE_RESERVED required at launch via revision 048)",
+    "environment": {
+        "MEDZEN_AUDIO_CAP_HOURS": "100",
+        "MEDZEN_BATCH_SIZE": "2",
+        "MEDZEN_CHECKPOINT_EVERY": "2000",
+        "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+        "MEDZEN_EXPECT_EXCLUDED": "1579",
+        "MEDZEN_GRAD_ACCUM": "8",
+        "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+        "MEDZEN_LR": "1e-5",
+        "MEDZEN_LR_SCHEDULE": "constant",
+        "MEDZEN_MANIFEST_VERSION": "gb9",
+        "MEDZEN_MAX_STEPS": "40000",
+        "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+        "MEDZEN_SEED": "20260820",
+        "MEDZEN_TEMPERATURE": "0.5",
+        "MEDZEN_TRAIN_MODE": "full",
+        "MEDZEN_VARIANT": "ctc",
+        "MEDZEN_WARMUP_STEPS": "500"
+    },
+    "image_note": "ft-2026-08-21b (b9b2756): review #7 corrections \u2014 post-gate coverage refusal, fingerprinted ack, pilot-profile hard walls, hardened promotion checker. 55 in-image tests passed pre-push.",
+    "image_oci_index_digest": "sha256:c5a530bf59bb6bfcb406c19d37b37b04fdf4485bfbaa959de9936e5700d233ca",
+    "image_tag": "ft-2026-08-21b",
+    "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+    "instance_type": "ml.g6.xlarge",
+    "job_id": "b5-universal-arm1-2026-004",
+    "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+    "managed_spot": false,
+    "managed_spot_reason": "owner rule: on-demand basis always",
+    "max_runtime_seconds": 144000,
+    "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+    "purpose": "UNIVERSAL PILOT ARM 1 rev4 (design rev8): balanced dense full FT, 7 languages on gb9, 40,000 steps, LR 1e-5 constant, warmup 500, temperature 0.5, 100 h/language caps, checkpoint every 2,000. Launch gates (all committed-evidence at ONE captured commit): semantic calibration receipt (terminal status, packet sha, dataset adoption, image digest, invariant environment, export hashes, artifact VersionId+KMS); ACTIVE_RESERVED registry allocation (sha-bound; activation = revision 048 committed with the owner authorization); owner approval phrase quoting the authorization record's own commit (pre-published phrases are structurally dead); independent review with later-HOLD override; single boto3 session STS pin to 558069890522. $70 HARD.",
+    "security_group_ids": [
+        "sg-0fee72d218ac002a7"
+    ],
+    "subnets": [
+        "subnet-00232b25bc1ac407a"
+    ],
+    "volume_gb": 100
+}

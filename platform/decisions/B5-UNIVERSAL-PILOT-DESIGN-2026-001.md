@@ -163,3 +163,24 @@ the committed authorization record AND the shared reviews file after
 DECISION: APPROVED. Residual trust stated honestly: both channels live
 on one machine; cryptographic separation arrives with owner signing keys
 or the GitHub protected-environment approval once remote CI activates.
+
+## Rev8 (2026-08-21T22:43:41Z) — Codex review #21: the authorization is now order-proven
+The pre-published approval phrase was VOIDED in the shared log (my own
+gate defeated by my own hand — the reviewer reproduced the full bypass).
+Owner authorization v3: the approval phrase must quote the first 16 hex
+of the git commit that INTRODUCED the authorization record — unknowable
+before that commit exists — and lives alone in a dedicated file
+(~/Documents/medzen-shared/authorizations/<job>.approval), compared by
+exact equality. Integer-valued ceilings only. Review parser: the LAST
+mention governs; a later DECISION: HOLD overrides. Calibration receipts
+are now SEMANTIC (B5-UNIVERSAL-FTCAL-2026-004-RECEIPT): terminal AWS
+status, calibration packet sha, dataset adoption, image digest,
+invariant environment, export hashes, artifact VersionId+KMS — the
+gb8-receipt-for-a-gb9-arm reproduction refuses. COST-REGISTRY-2026-047:
+campaign closed PROVISIONALLY at the conservative $160 (CE still
+Estimated:true; list-price accrual ~$86.43); launch REQUIRES the
+packet-sha-bound registry to show ACTIVE_RESERVED (activation = revision
+048 committed with the owner authorization). One boto3 session for STS
+pin + CreateTrainingJob. Protocol resolved via a hash-binding pointer.
+Residual single-machine trust stated plainly in the code: this gate
+proves ORDER, EXACTNESS and AUDITABILITY, not cryptographic identity.

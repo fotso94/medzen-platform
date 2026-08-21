@@ -24,6 +24,8 @@ BUCKET = "medzen-speech"
 
 if len(sys.argv) < 2:
     raise SystemExit("usage: gb_leak_matrix.py <path-to-gbN-COMPLETE.json>")
+print(f"cache dir: {S} (verified-inputs cache; persists for reuse —"
+      " set MEDZEN_CACHE_DIR or delete it afterwards)", flush=True)
 complete = json.load(open(sys.argv[1]))
 
 # ---- corpora: name -> (local path, authoritative sha from gb7 COMPLETE rev2)

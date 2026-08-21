@@ -35,9 +35,25 @@ def load_gate_report(path: Path) -> dict:
 
 
 def _protocol_record() -> dict:
-    path = (Path(__file__).resolve().parents[1]
-            / "platform/decisions/PROMOTION-PROTOCOL-2026-004.json")
-    return json.loads(path.read_bytes())
+    """Resolved via the committed pointer (Codex review #21: no more
+    hardcoded filename; the pointer binds the protocol file's sha256,
+    so protocol supersession is one reviewed pointer diff and silent
+    tampering of either file refuses)."""
+    root = Path(__file__).resolve().parents[1]
+    pointer = json.loads(
+        (root / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json")
+        .read_bytes())
+    body = (root / pointer["file"]).read_bytes()
+    import hashlib
+    if hashlib.sha256(body).hexdigest() != pointer["sha256"]:
+        raise PromotionCheckRefusal(
+            "protocol file does not match the committed pointer hash — "
+            "refusing a tampered or half-updated protocol")
+    record = json.loads(body)
+    if record.get("record") != pointer["record"]:
+        raise PromotionCheckRefusal(
+            "protocol record id does not match the pointer")
+    return record
 
 
 def _authoritative_holdouts_by_language() -> dict[str, set[str]]:
