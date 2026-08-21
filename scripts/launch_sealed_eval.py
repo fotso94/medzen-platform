@@ -52,34 +52,31 @@ def durable_commit(entry: dict, runner=subprocess.run) -> None:
     shown = runner(["git", "-C", str(ROOT), "show", f"HEAD:{rel}"],
                    capture_output=True, text=True)
     tail = json.loads(shown.stdout.splitlines()[-1])
-    if tail.get("entry") != entry["entry"]:
-        raise LaunchRefusal("committed ledger tail does not show the "
-                            "acquisition")
+    if tail != entry:
+        raise LaunchRefusal(
+            "committed ledger tail does not match the FULL acquisition "
+            "entry (Codex review #15: entry-number-only was too weak)")
 
 
 def main(argv: list[str] | None = None, runner=subprocess.run) -> int:
+    """Codex review #15: standalone acquisition is ALSO disabled — an
+    acquisition with no evaluator attached would consume a seal that the
+    void rules could not cleanly recover (they require evaluator instance
+    ids and log VersionIds that a mistake would not possess). Acquisition
+    becomes an internal, packet-authorized step of the future evaluator
+    (spec requirement), immediately before first sealed-data access.
+    record_consumption/durable_commit remain as the building blocks."""
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest="command", required=True)
-    acq = sub.add_parser("acquire")
-    acq.add_argument("--holdout", required=True)
-    acq.add_argument("--sha", required=True)
-    acq.add_argument("--consumer", required=True)
+    sub.add_parser("acquire")
     sub.add_parser("launch")
     args = parser.parse_args(argv)
-    if args.command == "launch":
-        print(json.dumps({"status": "REFUSED", "detail":
-              "sealed-evaluator launch is NOT IMPLEMENTED — build against "
-              "SEALED-EVALUATOR-SPEC-2026-001 first (Codex reviews #13-#14)"}))
-        return 1
-    try:
-        entry = record_consumption(args.holdout, args.sha, args.consumer)
-        durable_commit(entry, runner)
-    except (LedgerRefusal, LaunchRefusal) as exc:
-        print(json.dumps({"status": "REFUSED", "detail": str(exc)}))
-        return 1
-    print(json.dumps({"status": "ACQUIRED_DURABLE",
-                      "entry": entry["entry"]}, sort_keys=True))
-    return 0
+    print(json.dumps({"status": "REFUSED", "detail":
+          f"sealed-evaluator {args.command} is NOT IMPLEMENTED — build "
+          "against SEALED-EVALUATOR-SPEC-2026-001 first (Codex reviews "
+          "#13-#15); acquisition is an internal step of that evaluator, "
+          "never a standalone command"}))
+    return 1
 
 
 if __name__ == "__main__":

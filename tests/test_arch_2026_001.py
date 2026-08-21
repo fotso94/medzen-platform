@@ -654,3 +654,36 @@ def test_checker_refuses_cross_language_holdout_substitution_restored():
     assert swahili_sha not in mapping["english"]
     assert swahili_sha not in mapping["french"]
     assert swahili_sha in mapping["swahili"]
+
+
+def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
+    """Codex review #15: (a) standalone acquire is disabled too; (b) CI
+    guards against ANY future raw sealed-launch path — 'run-instances'
+    may appear only in the historical provenance scripts."""
+    import subprocess
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import launch_sealed_eval
+    importlib.reload(launch_sealed_eval)
+    for command in ("acquire", "launch"):
+        calls = []
+        def spy(cmd, **kwargs):
+            calls.append(cmd)
+            class R: returncode, stdout, stderr = 0, "", ""
+            return R()
+        argv = [command]
+        rc = launch_sealed_eval.main(argv, runner=spy)
+        assert rc == 1 and calls == [], command
+
+    tracked = subprocess.run(
+        ["git", "-C", str(ROOT), "grep", "-l", "run-instances", "--",
+         "scripts/", ".github/"],
+        capture_output=True, text=True).stdout.split()
+    allowed = {"scripts/sweeps/av-ingest-userdata.sh",
+               "scripts/sweeps/v2-sweep-userdata.sh",
+               "scripts/sweeps/v2-sealed-userdata.sh"}
+    stray = [p for p in tracked if p not in allowed]
+    assert stray == [], (
+        f"raw EC2 launch path(s) outside historical provenance: {stray} — "
+        "sealed/eval launches must go through the spec-built evaluator")
