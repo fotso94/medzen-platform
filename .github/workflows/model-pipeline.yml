@@ -33,9 +33,10 @@ on:
         required: true
         type: string
 
+# Codex review #18 principle: id-token only where OIDC is used — the
+# only job needing extra grants (open-registry-pr) documents its own.
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   verify-gate-report:

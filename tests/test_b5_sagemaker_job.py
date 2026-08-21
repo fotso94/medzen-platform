@@ -272,12 +272,12 @@ def test_multilingual_packets_bind_the_exact_pilot_profile():
 
     root = Path(__file__).resolve().parents[1]
     good = _json.loads((root / "platform/manifests/"
-        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-002.json").read_bytes())
+        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-003.json").read_bytes())
     render_request(good)   # the committed calibration packet must pass
 
     for mutation in (
             {"MEDZEN_LANGUAGES": "kinyarwanda,english"},
-            {"MEDZEN_MANIFEST_VERSION": "gb5"},
+            {"MEDZEN_MANIFEST_VERSION": "gb7"},
             {"MEDZEN_TEMPERATURE": "0.4"},
             {"MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/other.json"}):
         bad = copy.deepcopy(good)

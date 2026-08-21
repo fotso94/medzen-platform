@@ -1,0 +1,43 @@
+{
+ "built_utc": "2026-08-21T20:14:17Z",
+ "grade": "speaker-disjoint with REAL identities (promotion-grade on the speaker dimension) BUT NOT text-disjoint: ~80% of eval texts also occur in training (prompted corpus, shared scripts). Absolute WER will flatter memorized prompts; USE FOR RELATIVE model-vs-model comparisons; absolute claims need the future code-switch/commissioned sets.",
+ "pools": {
+  "pidgin": [
+   {
+    "method": "speaker_disjoint (REAL speaker ids; 50 speakers / 51.1 h held out of training entirely)",
+    "pool": "curated pidgin av_pcm (held-out speakers)",
+    "sealed_vs_gb8_train_overlap": {
+     "byte": 0,
+     "speaker": 0,
+     "text": 1180
+    },
+    "tier2-dev": {
+     "audit_vs_train_v2": {
+      "byte": 0,
+      "speaker": 0,
+      "text": 1199
+     },
+     "hours": 3.2,
+     "key": "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
+     "rows": 1500,
+     "sha256": "d88fd26141f3fd4502d9e85ac6ab9c019147d7b2f512c29283568a7c5b987c62",
+     "speakers": 25
+    },
+    "tier2-sealed": {
+     "audit_vs_train_v2": {
+      "byte": 0,
+      "speaker": 0,
+      "text": 1180
+     },
+     "hours": 3.1,
+     "key": "eval/pidgin/asr/av-heldout-sealed/manifest.jsonl",
+     "rows": 1500,
+     "sha256": "c52af8c7e8bb53b92f4d3fed48fb908c52288144581f5a2138b114b82293eba8",
+     "speakers": 24
+    }
+   }
+  ]
+ },
+ "record": "B5-TIER2-HOLDOUTS-2026-003",
+ "role": "pilot-grade pidgin holdouts from the TRAINING corpus's real speakers (supersedes the tiny soreva-v1 placeholder splits of -002 as pidgin's PRIMARY sets)"
+}

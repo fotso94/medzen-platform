@@ -1,0 +1,194 @@
+{
+ "artifacts": {
+  "gb8-leak-matrix.json": {
+   "key": "platform/evidence-artifacts/tierb-2026-002/gb8-leak-matrix.json",
+   "s3_version_id": "mbKDXytVRzOC8xhQkiKSbNuPr5Ta3gO8",
+   "sha256": "6afb9f7f510359d5a487c747a8704bf2c36288d3c0d85847866ec75eb410b934"
+  },
+  "pidgin-curation.json": {
+   "key": "platform/evidence-artifacts/tierb-2026-002/pidgin-curation.json",
+   "s3_version_id": "pbS1317BcICehnmJSeDd_zpdXVbBc4nM",
+   "sha256": "c5056c705c60851c1e3aa8bee74f9834780e29d44a873de6a045528a701c1aa0"
+  },
+  "spot-verification-002.json": {
+   "key": "platform/evidence-artifacts/tierb-2026-002/spot-verification-002.json",
+   "s3_version_id": "elM5KQvVwykin3df.HAUPWJ4z.6CvNC3",
+   "sha256": "7521d02d32a73a2da5dc33dfd87374b6628bdcc7056aa5114230661277b31f4d"
+  },
+  "text-collisions-002.json": {
+   "key": "platform/evidence-artifacts/tierb-2026-002/text-collisions-002.json",
+   "s3_version_id": "1JS_7N0WA85SEJr8hmL5Oi.JOBJUhS0b",
+   "sha256": "f1e70aeb8bfe0a838d08184f3440ee16286066a7b9ada6d0a8243883cd774811"
+  },
+  "tierb-audit.json": {
+   "key": "platform/evidence-artifacts/tierb-2026-002/tierb-audit.json",
+   "s3_version_id": "iLvg9bDQZ.OfZY8rqCfSQ9hfEqOT05_R",
+   "sha256": "290e60649d182a9c3944d773d5b91dacf81ff039aa023418108a1c51a59dc28d"
+  }
+ },
+ "checksum_spot_verification": {
+  "hausa": {
+   "mismatched": 0,
+   "procedure": "random.Random(20260821).sample(range(rows), 25) over the corpus manifest in file order; audio bytes sha256 vs the row's audio_sha256",
+   "sampled": 25,
+   "seed": 20260821,
+   "verified": 25
+  },
+  "igbo": {
+   "mismatched": 0,
+   "procedure": "random.Random(20260821).sample(range(rows), 25) over the corpus manifest in file order; audio bytes sha256 vs the row's audio_sha256",
+   "sampled": 25,
+   "seed": 20260821,
+   "verified": 25
+  },
+  "pidgin": {
+   "mismatched": 0,
+   "procedure": "random.Random(20260821).sample(range(rows), 25) over the corpus manifest in file order; audio bytes sha256 vs the row's audio_sha256",
+   "sampled": 25,
+   "seed": 20260821,
+   "verified": 25
+  },
+  "yoruba": {
+   "mismatched": 0,
+   "procedure": "random.Random(20260821).sample(range(rows), 25) over the corpus manifest in file order; audio bytes sha256 vs the row's audio_sha256",
+   "sampled": 25,
+   "seed": 20260821,
+   "verified": 25
+  }
+ },
+ "corpus_manifests": {
+  "hausa": {
+   "bytes": 128077958,
+   "key": "curated/hausa/asr/nv_hausa/v1/manifest.jsonl",
+   "s3_version_id": "Jm_QeS30HVAnMv3mYgloEyLuihpPoY8S",
+   "sha256": "f4dee107946f7f2b2464f1de2a769260c63f589c8f8fec3c12c6209751f98ae1"
+  },
+  "igbo": {
+   "bytes": 107094104,
+   "key": "curated/igbo/asr/nv_igbo/v1/manifest.jsonl",
+   "s3_version_id": "KH1rWGhKqWpfX5D2wGPwTRHYJlL2ocE6",
+   "sha256": "07626f864263cfa71a5edfef1bbbe38b628d9f568f696d8e6c7e844c71ce371e"
+  },
+  "pidgin": {
+   "bytes": 374272063,
+   "key": "curated/pidgin/asr/av_pcm/v1/manifest.jsonl",
+   "s3_version_id": ".AEjBsOzzQ7kxQ9C1HxeU_83m31UQlg2",
+   "sha256": "b95bc789db03450fd5375243165410c27b428118974b53834c2e685ee08603eb"
+  },
+  "yoruba": {
+   "bytes": 125352695,
+   "key": "curated/yoruba/asr/nv_yoruba/v1/manifest.jsonl",
+   "s3_version_id": "cxqGK0YsbUUbJRF64mWMh_D6YtVk5yQi",
+   "sha256": "17c10306921be2079079ab4dbc4d2110c1fc2c246c73270f79e8a899b3bd457a"
+  }
+ },
+ "corrections_to_001": {
+  "malformed": {
+   "clips": [
+    "pcm_m_PECT1M139_ev_spontaneous_027 (Batch_13)",
+    "pcm_f_PHTT1F30_he_spontaneous_423 (Batch_19)",
+    "pcm_f_PECT1F216_ev_spontaneous_014 (Batch_35)"
+   ],
+   "evidence": "ingest_log.malformed_lines below; stubs archived in the session scratchpad malformed/ dir",
+   "is": "THREE clips were skipped as malformed during the full-corpus ingest. All three were re-extracted from the owner's pristine LOCAL Mac archives and are IDENTICAL 8,288-byte truncated FLAC stubs in the original export \u2014 persistent source defects, not transfer or box corruption",
+   "was": "notes.pidgin_quality claimed '0 malformed audio files across 331,333 clips; the ingest-crash corruption was box-side' \u2014 WRONG on both counts: the claim generalized from the last 5 batch-summary lines of the log instead of the full log"
+  },
+  "repetition": {
+   "finding": "v1 pidgin corpus: 168,605 unique normalized texts across 331,333 rows; 77.12% of rows sit in repeated-text groups; worst text repeats 37x (consent boilerplate)",
+   "response": "train-v2 caps at 3 rows per normalized text AND holds out 50 real speakers (51.1 h) for dev+sealed; adopted as gb8's pidgin corpus \u2014 see B5-GB8-COMPLETE-2026-001 and B5-TIER2-HOLDOUTS-2026-003"
+  }
+ },
+ "frozen_pools": {
+  "hausa": [
+   {
+    "key": "eval/hausa/asr/fleurs-v1/manifest.jsonl",
+    "rows": 826,
+    "s3_version_id": "X_3buJ8O0C3vIORYMn7cRQKtwOQ0QETd",
+    "sha256": "59a68e746984c3037b8d7e2065d2001720249da0bc8972630aaf9cd3b2be40df"
+   },
+   {
+    "key": "eval/hausa/asr/soreva-v1/manifest.jsonl",
+    "rows": 149,
+    "s3_version_id": "_m6dJmwGk8tuvoHFT4DlivczROowB93I",
+    "sha256": "82b48a3018681d6493d0290c089c500bb99ba573337e972d10b214980536ab99"
+   }
+  ],
+  "igbo": [
+   {
+    "key": "eval/igbo/asr/fleurs-v1/manifest.jsonl",
+    "rows": 1253,
+    "s3_version_id": "QZuTOngFSrL3j_0kiPvTN3gH0lfXlqP4",
+    "sha256": "a533c583fd9faeafa6cf1de1dc9ddce4e3860a259e7f39065ae52f3eb338f500"
+   },
+   {
+    "key": "eval/igbo/asr/soreva-v1/manifest.jsonl",
+    "rows": 140,
+    "s3_version_id": "JAMKb6T7B68vFHl_pi3fo.jZjEWidLFh",
+    "sha256": "04ad1751564d0b081dafa5df5b9a0d99239a8231a1dcebaf136f255ccafbf0a6"
+   }
+  ],
+  "pidgin": [
+   {
+    "key": "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl",
+    "rows": 72,
+    "s3_version_id": "5ZhNdQtdWylFGTHSldW8gn7r1xtQXAqY",
+    "sha256": "f98302268168d9fff2cd25c355cb1ac846e04370766d504dda624f99ead97481"
+   },
+   {
+    "key": "eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "rows": 70,
+    "s3_version_id": "dLYaa8w8wVkFirOo.JljicC.RLTuiwfl",
+    "sha256": "962df457dfb42274f6dc324750df995c10e7349e276caa46b9132e9e7a99d9ab"
+   }
+  ],
+  "yoruba": [
+   {
+    "key": "eval/yoruba/asr/fleurs-v1/manifest.jsonl",
+    "rows": 1184,
+    "s3_version_id": "IEUu0v66KycWIzf2QQVRSv.QJWpoywtF",
+    "sha256": "b23a0f7e853cda25e7cf98d85137707cbba6292bd6495c7d09c2d1b684af8fce"
+   },
+   {
+    "key": "eval/yoruba/asr/soreva-v1/manifest.jsonl",
+    "rows": 137,
+    "s3_version_id": "Hv9zlPMsoQ8bmZdWFFv9NQDAtscCg.kX",
+    "sha256": "2392c514d9211077b0b6e567604afe3a25a21ffe2b1d3476d57da62701af9796"
+   }
+  ]
+ },
+ "ingest_log": {
+  "batch_summary_count": 42,
+  "key": "research/b5-training/av-ingest/host.log",
+  "malformed_lines": [
+   "  [av] MALFORMED pcm_m_PECT1M139_ev_spontaneous_027: LibsndfileError: Internal psf_fseek() failed.",
+   "  [av] MALFORMED pcm_f_PHTT1F30_he_spontaneous_423: LibsndfileError: Internal psf_fseek() failed.",
+   "  [av] MALFORMED pcm_f_PECT1F216_ev_spontaneous_014: LibsndfileError: Internal psf_fseek() failed."
+  ],
+  "s3_version_id": "MHI.dpc35U34NP4GK0FCG6Zk2A3rEy_A",
+  "sha256": "7cdf503cef6cd90cb7eb8bb2e5dbcc797d8427866fab410567654a2217d735e8"
+ },
+ "normalization": "NFKC -> casefold -> strip non-word chars -> collapse whitespace",
+ "record": "TIER-B-REVIEW-2026-002",
+ "reviewed_utc": "2026-08-21T20:40:11Z",
+ "role": "reproducible evidence package for TIER-B-REVIEW-2026-001 (Codex review #18: evidence-incomplete) PLUS two corrections the review surfaced",
+ "spot_verification_identities": "platform/evidence-artifacts/tierb-2026-002/spot-verification-002.json (all 100 object keys + shas + VersionIds)",
+ "text_collisions": {
+  "hausa": {
+   "count": 0,
+   "detail": "platform/evidence-artifacts/tierb-2026-002/text-collisions-002.json"
+  },
+  "igbo": {
+   "count": 2,
+   "detail": "platform/evidence-artifacts/tierb-2026-002/text-collisions-002.json"
+  },
+  "pidgin": {
+   "count": 0,
+   "detail": "platform/evidence-artifacts/tierb-2026-002/text-collisions-002.json"
+  },
+  "yoruba": {
+   "count": 0,
+   "detail": "platform/evidence-artifacts/tierb-2026-002/text-collisions-002.json"
+  }
+ },
+ "verdict": "PASS maintained for hausa/igbo/yoruba and for the pidgin CORPUS AS INGESTED (v1); pidgin TRAINING use now goes through gb8's train-v2 (text-capped, speaker-held-out). -001's malformed/box-side note is SUPERSEDED by corrections_to_001.malformed."
+}

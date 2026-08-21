@@ -694,13 +694,16 @@ def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
     grep_args = []
     for op in operations:
         grep_args += ["-e", op]
+    # Codex review #18: `git grep -c` counts LINES containing a match, so
+    # a second call added on an already-matching line slipped through.
+    # `-o` emits one line PER OCCURRENCE; tally those per file.
     tracked = subprocess.run(
-        ["git", "-C", str(ROOT), "grep", "-c"] + grep_args,
+        ["git", "-C", str(ROOT), "grep", "-o"] + grep_args,
         capture_output=True, text=True).stdout
-    counts = {}
+    counts: dict[str, int] = {}
     for line in tracked.splitlines():
-        path, _, n = line.rpartition(":")
-        counts[path] = int(n)
+        path = line.split(":", 1)[0]
+        counts[path] = counts.get(path, 0) + 1
     allowed_counts = {
         # governed B6a EC2 stage-execution system (its own packet gates)
         "pipeline/budget.py": 1,

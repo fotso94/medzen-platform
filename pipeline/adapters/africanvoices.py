@@ -157,10 +157,14 @@ class AfricanVoicesAdapter:
                     dropped += 1
                     continue
                 raw = flac_path.read_bytes()
-                # 2026-08-21 lesson: ONE corrupt FLAC (libsndfile
-                # psf_fseek failure) killed a full 42-batch run at decode
-                # time. A malformed file is a data defect to count and
-                # skip, never a crash.
+                # 2026-08-21 lesson: a corrupt FLAC (libsndfile psf_fseek
+                # failure) killed a full 42-batch run at decode time. The
+                # full-corpus run then skipped THREE such files — all
+                # verified (2026-08-21, Codex review #18) to be identical
+                # 8,288-byte truncated stubs in the ORIGINAL export
+                # archives (Batch_13/19/35), i.e. persistent source
+                # defects, not transfer corruption. A malformed file is a
+                # data defect to count and skip, never a crash.
                 try:
                     arr, sr = sf.read(io.BytesIO(raw), dtype="float32")
                     if getattr(arr, "ndim", 1) > 1:

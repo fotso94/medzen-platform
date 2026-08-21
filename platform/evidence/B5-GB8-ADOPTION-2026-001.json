@@ -1,0 +1,8 @@
+{
+ "adopted_by": "claude-primary-engineer (Codex review #18 correction batch; owner directive: proceed with gb7 and the pilot packet \u2014 gb8 is that dataset, corrected)",
+ "adopted_utc": "2026-08-21T20:35:01Z",
+ "complete_raw_sha256": "e69f405e112a00557dd7e78ace4778ddbf82caefd4f0cf428cf32a50a12e6063",
+ "deferral_policy_sha256": "b830ff56f343709e5318eb8f59f74339ce70aaa38e2fe528743b6f12d8c8593f",
+ "status": "approved",
+ "version": "gb8"
+}

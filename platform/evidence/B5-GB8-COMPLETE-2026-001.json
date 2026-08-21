@@ -1,0 +1,100 @@
+{
+ "assembled_utc": "2026-08-21T20:35:01Z",
+ "deferral_policy_sha256": "b830ff56f343709e5318eb8f59f74339ce70aaa38e2fe528743b6f12d8c8593f",
+ "manifests": {
+  "english/asr/cv17_en": {
+   "bytes": 80139621,
+   "carried_from": "curated/english/asr/cv17_en/gb7/manifest.jsonl",
+   "key": "curated/english/asr/cv17_en/gb8/manifest.jsonl",
+   "sha256": "0403cd237622769d65e53ac914409211249058733d9a98cb32249dd89e203fca",
+   "version": "gb8"
+  },
+  "english/asr/en_us_fleurs_train": {
+   "bytes": 3131351,
+   "carried_from": "curated/english/asr/en_us_fleurs_train/gb7/manifest.jsonl",
+   "key": "curated/english/asr/en_us_fleurs_train/gb8/manifest.jsonl",
+   "sha256": "317b37cac13c385a9a2d910cea2e68676cc71b8766e43d36fc8a99ea07764bc1",
+   "version": "gb8"
+  },
+  "ewe/asr/ewe_asr": {
+   "bytes": 20804373,
+   "carried_from": "curated/ewe/asr/ewe_asr/gb7/manifest.jsonl",
+   "key": "curated/ewe/asr/ewe_asr/gb8/manifest.jsonl",
+   "sha256": "663c55755491ac02258d5920302f268c6414b6327d4fed01d13153624f228bb7",
+   "version": "gb8"
+  },
+  "french/asr/aaf_ca16_conv": {
+   "bytes": 393594,
+   "carried_from": "curated/french/asr/aaf_ca16_conv/gb7/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_conv/gb8/manifest.jsonl",
+   "sha256": "ce14c38f364957fab64339ed0b4e0bbc4db58e8085a06da7d4d9a6c5506fcdb0",
+   "version": "gb8"
+  },
+  "french/asr/aaf_ca16_devtest": {
+   "bytes": 546678,
+   "carried_from": "curated/french/asr/aaf_ca16_devtest/gb7/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_devtest/gb8/manifest.jsonl",
+   "sha256": "3ba09d0c7f96f5a6c0b7c83c9d2106f17b2c9a769a18c1d0292a1e5e86babe7d",
+   "version": "gb8"
+  },
+  "french/asr/aaf_ca16_read": {
+   "bytes": 3070259,
+   "carried_from": "curated/french/asr/aaf_ca16_read/gb7/manifest.jsonl",
+   "key": "curated/french/asr/aaf_ca16_read/gb8/manifest.jsonl",
+   "sha256": "a2f1bccaf53fa7360039d33aaf0a4d863c91d6eb2402750d393c0dd40f890bd3",
+   "version": "gb8"
+  },
+  "french/asr/aaf_niger_dev": {
+   "bytes": 1049172,
+   "carried_from": "curated/french/asr/aaf_niger_dev/gb7/manifest.jsonl",
+   "key": "curated/french/asr/aaf_niger_dev/gb8/manifest.jsonl",
+   "sha256": "40e67d7801ae586b8ef32488162d12c2fe2445be6bc94b8874aa1dc802ddce01",
+   "version": "gb8"
+  },
+  "french/asr/aaf_yaounde": {
+   "bytes": 9050248,
+   "carried_from": "curated/french/asr/aaf_yaounde/gb7/manifest.jsonl",
+   "key": "curated/french/asr/aaf_yaounde/gb8/manifest.jsonl",
+   "sha256": "aa7e6085b9862e2504d6de5e6728f0d4febac9df327ee18fce88e54b79e1674c",
+   "version": "gb8"
+  },
+  "kinyarwanda/asr/cv17_rw": {
+   "bytes": 1388608838,
+   "carried_from": "curated/kinyarwanda/asr/cv17_rw/gb7/manifest.jsonl",
+   "key": "curated/kinyarwanda/asr/cv17_rw/gb8/manifest.jsonl",
+   "sha256": "900e165f236c3869523f36b5dc9f0de351a79f5e6445a00f5d168adc4f9ebd02",
+   "version": "gb8"
+  },
+  "lingala/asr/lin_asr": {
+   "bytes": 17457304,
+   "carried_from": "curated/lingala/asr/lin_asr/gb7/manifest.jsonl",
+   "key": "curated/lingala/asr/lin_asr/gb8/manifest.jsonl",
+   "sha256": "eaf840c75cdea09075eefa2e6ac58e1960a3747f5b5409b724e64e2fa8935bc3",
+   "version": "gb8"
+  },
+  "lingala/asr/lrsc": {
+   "bytes": 3251629,
+   "carried_from": "curated/lingala/asr/lrsc/gb7/manifest.jsonl",
+   "key": "curated/lingala/asr/lrsc/gb8/manifest.jsonl",
+   "sha256": "c82657f60f4ee2e8fe0d7caef9f3acd928a48f0b8b9e5679f1a0b5279a7907b6",
+   "version": "gb8"
+  },
+  "pidgin/asr/av_pcm": {
+   "bytes": 329176030,
+   "carried_from": "curated/pidgin/asr/av_pcm/v2/manifest.jsonl",
+   "key": "curated/pidgin/asr/av_pcm/gb8/manifest.jsonl",
+   "sha256": "436c1c583c66c60981d369bf013677fb617d67ddd6ddae04b3ad87a5283b6fe6",
+   "version": "gb8"
+  },
+  "swahili/asr/cv17_sw": {
+   "bytes": 80476296,
+   "carried_from": "curated/swahili/asr/cv17_sw/gb7/manifest.jsonl",
+   "key": "curated/swahili/asr/cv17_sw/gb8/manifest.jsonl",
+   "sha256": "74211fcdc28efea3bc4a81164e8175d5dbac4f81d868fb61a7d85e4892e69f2f",
+   "version": "gb8"
+  }
+ },
+ "provenance": "gb7 with ONE change: the pidgin corpus is the PILOT-GRADE curated train-v2 (Codex review #18) \u2014 50 real speakers / 51.1 h held out entirely for dev+sealed evaluation, text repetition capped at 3 rows per normalized text (v1 had 77.12% of rows in repeated-text groups). 291,074 rows / 616.6 h / 687 speakers. gb7 itself was RESTORED to its adopted bytes and left immutable: an in-place gb7 amendment was attempted first and correctly REFUSED by the trainer's immutability guard (job medzen-b5-b5-universal-ftcal-2026-002, 2026-08-21) \u2014 version labels never change meaning; corrections get a NEW version.",
+ "supersedes": "gb7",
+ "version": "gb8"
+}

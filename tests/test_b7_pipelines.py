@@ -56,11 +56,28 @@ DOCUMENTED_JOB_ADDITIONS = {
 }
 
 
+def _needs_oidc(path) -> bool:
+    """A workflow earns id-token:write only by actually assuming an AWS
+    role — directly, or by calling a local reusable workflow that does
+    (the caller's grant must cover the callee). Codex review #18: the
+    old rule handed every workflow id-token:write unconditionally."""
+    body = path.read_text()
+    if "configure-aws-credentials" in body:
+        return True
+    for other in _workflow_files():
+        if (f"uses: ./.github/workflows/{other.name}" in body
+                and "configure-aws-credentials" in other.read_text()):
+            return True
+    return False
+
+
 def test_permissions_are_minimal_everywhere():
     for path in _workflow_files():
         doc = yaml.safe_load(path.read_text())
-        assert doc.get("permissions") == MINIMAL, (
-            f"{path.name}: top-level permissions must be exactly contents:read + id-token:write"
+        expected_top = MINIMAL if _needs_oidc(path) else {"contents": "read"}
+        assert doc.get("permissions") == expected_top, (
+            f"{path.name}: top-level permissions must be exactly "
+            f"{expected_top} (id-token:write only with actual OIDC use)"
         )
         allowed = DOCUMENTED_JOB_ADDITIONS.get(path.name, {})
         for job_name, job in doc.get("jobs", {}).items():

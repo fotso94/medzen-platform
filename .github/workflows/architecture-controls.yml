@@ -1,9 +1,9 @@
 name: architecture-controls
 # Codex review #16: the sealed-machinery guards must run in CI on every
 # relevant change, not only locally.
+# Codex review #18: this workflow never touches AWS — no OIDC token.
 permissions:
   contents: read
-  id-token: write
 on:
   push:
     branches: ["**"]

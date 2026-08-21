@@ -142,10 +142,12 @@ def render_request(bindings: dict) -> dict:
             raise JobRefusal(
                 f"multilingual-full packets bind the frozen pilot set "
                 f"{sorted(mandatory)} exactly; got {sorted(requested)}")
-        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb7":
+        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb8":
             raise JobRefusal(
-                "multilingual-full packets bind dataset version gb7 "
-                "(B5-GB7 — the 7-language revision incl. pidgin)")
+                "multilingual-full packets bind dataset version gb8 "
+                "(B5-GB8 — the 7-language revision with the PILOT-GRADE "
+                "pidgin train-v2; gb7's pidgin manifest predates the "
+                "held-out-speaker carve and the text-repetition cap)")
         if environment.get("MEDZEN_TEMPERATURE") != "0.5":
             raise JobRefusal(
                 "multilingual-full packets bind temperature 0.5 exactly "
