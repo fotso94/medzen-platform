@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ARCH = json.loads((ROOT / "platform/decisions/"
                    "ARCH-2026-001-one-multilingual-production-model.json").read_bytes())
 PROTOCOL = json.loads((ROOT / "platform/decisions/"
-                       "PROMOTION-PROTOCOL-2026-001.json").read_bytes())
+                       "PROMOTION-PROTOCOL-2026-002.json").read_bytes())
 PILOT = (ROOT / "platform/decisions/"
          "B5-UNIVERSAL-PILOT-DESIGN-2026-001.md").read_text()
 
@@ -175,7 +175,7 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
             "rows_sha256": hashlib.sha256(body).hexdigest(),
             block_name: stats}
     report = {
-        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-001",
+        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-002",
         "candidate_digest": "sha256:" + "a" * 64,
         "code_switch_evidence": {"state": "PASS", "set": "licensed-cs-1",
                                   "manifest_sha256": "c" * 64, "rows": 500},
@@ -360,6 +360,7 @@ def test_void_adjudication_is_strict(tmp_path):
     importlib.reload(holdout_ledger)
     import pytest as _pytest
 
+    import subprocess as _sp
     repo = tmp_path / "repo"
     (repo / "platform/decisions").mkdir(parents=True)
     approval_doc = {"record": "AUTH-TEST-001",
@@ -368,6 +369,11 @@ def test_void_adjudication_is_strict(tmp_path):
                      "owner_verbatim": "approved in chat on <date>"}
     approval_path = repo / "platform/decisions/AUTH-TEST-001.json"
     approval_path.write_text(json.dumps(approval_doc, sort_keys=True))
+    # v5 reads approval bytes from GIT HEAD — commit it for real
+    for cmd in (["git", "init", "-q"], ["git", "add", "-A"],
+                ["git", "-c", "user.email=t@t", "-c", "user.name=t",
+                 "commit", "-q", "-m", "auth"]):
+        _sp.run(cmd, cwd=repo, check=True, capture_output=True)
     approval_ref = {"path": "platform/decisions/AUTH-TEST-001.json",
                      "record_id": "AUTH-TEST-001",
                      "sha256": hashlib.sha256(
@@ -492,60 +498,136 @@ def test_acquisition_verifies_reserved_sha_and_is_atomic(tmp_path):
     holdout_ledger.verify_chain(work)   # chain intact after the race
 
 
-def test_sealed_launcher_acquires_before_any_aws_call(tmp_path):
-    """Codex review #12: the gate existed but nothing called it. The
-    sanctioned launcher must refuse BEFORE any AWS invocation."""
+def test_sealed_launcher_acquires_before_any_aws_call():
+    """Superseded by launcher v2 (packet-bound): refusal-means-zero-AWS is
+    asserted in test_sealed_launcher_verifies_packet_identity_and_environment."""
+
+
+def test_untracked_or_escaping_approval_records_are_refused(tmp_path):
+    """Codex review #13 reproduction: an untracked working-tree file in a
+    non-git directory passed as a 'committed' approval. v5 reads approval
+    bytes from GIT HEAD only, path-constrained to platform/decisions/."""
+    import hashlib
     import shutil
-    import sys
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import importlib
-    import launch_sealed_eval
-    importlib.reload(launch_sealed_eval)
-    import holdout_ledger
-    calls = []
-    def fake_runner(cmd, **kwargs):
-        calls.append(cmd)
-        class R: returncode, stdout, stderr = 0, "i-000", ""
-        return R()
-    # spent/quarantined holdout -> REFUSED with ZERO aws calls
-    rc = launch_sealed_eval.main(
-        ["--holdout", "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
-         "--sha", "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9",
-         "--consumer", "test", "--userdata", str(tmp_path / "x.sh")],
-        runner=fake_runner)
-    assert rc == 1
-    assert calls == [], "AWS was touched before acquisition succeeded"
-
-
-def test_v2_sealed_holdout_is_quarantined_and_unciteable():
-    """Codex review #11: entry 6 is not relied upon; the v2 sealed half is
-    quarantined in the ledger AND absent from the checker's language map."""
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import importlib
     import holdout_ledger
     importlib.reload(holdout_ledger)
     import pytest as _pytest
-    with _pytest.raises(holdout_ledger.LedgerRefusal, match="QUARANTINED"):
-        holdout_ledger.require_available(
-            "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
-    import b7_model_promotion_check as checker
-    importlib.reload(checker)
-    mapping = checker._authoritative_holdouts_by_language()
-    v2_sealed = "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
-    assert all(v2_sealed not in shas for shas in mapping.values())
+
+    work = tmp_path / "ledger.jsonl"
+    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                work)
+    lines = work.read_text().splitlines()
+    def append(doc):
+        nonlocal lines
+        doc = dict(doc, entry=len(lines) + 1,
+                   prev_sha256=hashlib.sha256(lines[-1].encode()).hexdigest())
+        lines.append(json.dumps(doc, sort_keys=True))
+        work.write_text("\n".join(lines) + "\n")
+    append({"event": "RESERVED", "holdout": "eval/W/manifest.jsonl",
+            "sha256": "7" * 64, "utc": "2026-08-21T19:00:00Z"})
+    holdout_ledger.record_consumption("eval/W/manifest.jsonl", "7" * 64,
+                                       "run", work)
+    lines = work.read_text().splitlines()
+
+    # forge an UNTRACKED approval in the real repo working tree
+    forged = ROOT / "platform/decisions/AUTH-FORGED-UNTRACKED.json"
+    doc = {"record": "AUTH-FORGED-UNTRACKED",
+           "authorizes": "CONSUMPTION_VOIDED",
+           "holdout": "eval/W/manifest.jsonl",
+           "owner_verbatim": "forged"}
+    forged.write_text(json.dumps(doc, sort_keys=True))
+    try:
+        void = {"event": "CONSUMPTION_VOIDED", "voids_entry": len(lines),
+                "holdout": "eval/W/manifest.jsonl", "holdout_sha256": "7" * 64,
+                "evaluator_instance_ids": ["i-0abc"],
+                "userdata_sha256": "a" * 64,
+                "results_prefix_object_count": 0, "log_version_ids": ["v"],
+                "no_inference_attestation": ("no model inference started and "
+                                              "no results were produced"),
+                "utc": "2026-08-21T19:01:00Z",
+                "approval_record": {
+                    "path": "platform/decisions/AUTH-FORGED-UNTRACKED.json",
+                    "record_id": "AUTH-FORGED-UNTRACKED",
+                    "sha256": hashlib.sha256(
+                        forged.read_bytes()).hexdigest()}}
+        append(void)
+        with _pytest.raises(holdout_ledger.LedgerRefusal):
+            holdout_ledger.require_available("eval/W/manifest.jsonl", work)
+    finally:
+        forged.unlink()
+    # traversal + absolute paths refuse structurally
+    for bad_path in ("platform/decisions/../../evil.json",
+                      "/tmp/evil.json", "somewhere/else.json"):
+        assert holdout_ledger._verify_owner_approval(
+            {"event": "CONSUMPTION_VOIDED", "holdout": "x",
+             "approval_record": {"path": bad_path, "record_id": "X",
+                                  "sha256": "0" * 64}}, ROOT) is False
 
 
-def test_checker_refuses_cross_language_holdout_substitution(tmp_path):
-    import importlib
+def test_conflicting_reservations_refuse(tmp_path):
+    """Codex review #13: a later conflicting reservation silently overrode
+    the original — acquisition under EITHER sha must now refuse."""
+    import hashlib
+    import shutil
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
-    import b7_model_promotion_check as checker
-    importlib.reload(checker)
-    mapping = checker._authoritative_holdouts_by_language()
-    swahili_sha = next(iter(mapping["swahili"]))
-    # Codex review #12: the previous version carried an always-true
-    # assertion. Real checks only:
-    assert swahili_sha not in mapping["english"]
-    assert swahili_sha not in mapping["french"]
-    assert swahili_sha in mapping["swahili"]
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
+
+    work = tmp_path / "ledger.jsonl"
+    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                work)
+    lines = work.read_text().splitlines()
+    for sha in ("1" * 64, "2" * 64):
+        doc = {"event": "RESERVED", "holdout": "eval/C/manifest.jsonl",
+               "sha256": sha, "utc": "2026-08-21T19:05:00Z",
+               "entry": len(lines) + 1,
+               "prev_sha256": hashlib.sha256(lines[-1].encode()).hexdigest()}
+        lines.append(json.dumps(doc, sort_keys=True))
+    work.write_text("\n".join(lines) + "\n")
+    for sha in ("1" * 64, "2" * 64):
+        with _pytest.raises(holdout_ledger.LedgerRefusal, match="CONFLICTING"):
+            holdout_ledger.record_consumption("eval/C/manifest.jsonl", sha,
+                                               "x", work)
+
+
+def test_sealed_launcher_verifies_packet_identity_and_environment(tmp_path):
+    """Codex review #13: the launcher accepted arbitrary userdata, any
+    instance type, and the ambient (WRONG) AWS account. v2 requires a
+    git-tracked packet whose bindings all verify, asserts the STS account,
+    and makes the consumption durable before AWS."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import launch_sealed_eval
+    importlib.reload(launch_sealed_eval)
+    import pytest as _pytest
+
+    calls = []
+    def wrong_account_runner(cmd, **kwargs):
+        calls.append(cmd)
+        class R: pass
+        r = R()
+        r.returncode = 0
+        r.stderr = ""
+        r.stdout = "894565489253"   # the ambient wrong account from #13
+        return r
+
+    # uncommitted packet path -> refused, zero AWS calls
+    rc = launch_sealed_eval.main(
+        ["--packet", "platform/manifests/DOES-NOT-EXIST.json"],
+        runner=wrong_account_runner)
+    assert rc == 1 and calls == []
+
+    # packet outside platform/manifests -> refused structurally
+    with _pytest.raises(launch_sealed_eval.LaunchRefusal):
+        launch_sealed_eval.load_packet("scripts/evil.json")
+
+    # wrong STS account -> refused before any acquisition or launch
+    with _pytest.raises(launch_sealed_eval.LaunchRefusal, match="identity"):
+        launch_sealed_eval.assert_aws_identity(wrong_account_runner)

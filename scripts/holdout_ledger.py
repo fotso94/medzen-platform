@@ -47,19 +47,31 @@ def verify_chain(path: Path = LEDGER) -> list[dict]:
 
 
 def _verify_owner_approval(entry: dict, repo_root: Path) -> bool:
-    """Approval = a COMMITTED authorization record, verified by bytes.
-
-    entry['approval_record'] = {'path': <repo-relative>, 'record_id': str,
-    'sha256': str}. The file must exist, hash to the declared sha, carry
-    the declared record_id, name this entry's holdout, and authorize this
-    entry's event type."""
+    """Approval = an authorization record COMMITTED AT GIT HEAD (Codex
+    review #13: a working-tree file in a non-git directory passed the v4
+    check). The bytes are read from `git show HEAD:<path>` — untracked,
+    staged-only, absolute, traversal and symlinked paths all fail. Trust
+    model: the project's standing authorization pattern is committed
+    records carrying the owner's verbatim words, reviewed in git history
+    (same as training packets); cryptographic signing is not in use."""
+    import subprocess
     ref = entry.get("approval_record")
     if not isinstance(ref, dict):
         return False
-    try:
-        raw = (repo_root / ref["path"]).read_bytes()
-    except (KeyError, OSError, ValueError):
+    raw_path = str(ref.get("path", ""))
+    if (not raw_path.startswith("platform/decisions/")
+            or raw_path != str(Path(raw_path))
+            or ".." in Path(raw_path).parts or Path(raw_path).is_absolute()):
         return False
+    on_disk = repo_root / raw_path
+    if on_disk.is_symlink():
+        return False
+    got = subprocess.run(["git", "-C", str(repo_root), "show",
+                          f"HEAD:{raw_path}"],
+                         capture_output=True)
+    if got.returncode != 0:
+        return False
+    raw = got.stdout
     if hashlib.sha256(raw).hexdigest() != ref.get("sha256"):
         return False
     try:
@@ -155,11 +167,19 @@ def require_available(holdout_key: str, path: Path = LEDGER,
 
 
 def _reserved_sha(entries: list[dict], holdout_key: str) -> str | None:
-    sha = None
-    for e in entries:
-        if e["event"] == "RESERVED" and e.get("holdout") == holdout_key:
-            sha = e.get("sha256")
-    return sha
+    """Codex review #13: a later CONFLICTING reservation silently overrode
+    the original. Multiple reservations must agree, or the ledger refuses
+    until an owner-approved amendment resolves them."""
+    shas = [e.get("sha256") for e in entries
+            if e["event"] == "RESERVED" and e.get("holdout") == holdout_key]
+    if not shas:
+        return None
+    if len(set(shas)) > 1:
+        raise LedgerRefusal(
+            f"{holdout_key} carries CONFLICTING reservations "
+            f"({[x[:12] for x in dict.fromkeys(shas)]}) — refuse until an "
+            "owner-approved amendment resolves them")
+    return shas[-1]
 
 
 def record_consumption(holdout_key: str, sha256: str, consumed_by: str,
@@ -168,7 +188,10 @@ def record_consumption(holdout_key: str, sha256: str, consumed_by: str,
     """ATOMIC acquire (exclusive flock around read+verify+append). The
     requested sha must equal the holdout's RESERVED sha (Codex review #12:
     an all-zero sha acquired the universal holdout)."""
-    lock_path = path.with_suffix(".lock")
+    import tempfile
+    lock_path = Path(tempfile.gettempdir()) / (
+        "medzen-ledger-" + hashlib.sha256(
+            str(path.resolve()).encode()).hexdigest()[:16] + ".lock")
     with lock_path.open("w") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         try:

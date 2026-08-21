@@ -133,7 +133,7 @@ def render_request(bindings: dict) -> dict:
     if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
         protocol = json.loads(
             (Path(__file__).resolve().parents[1] / "platform/decisions/"
-             "PROMOTION-PROTOCOL-2026-001.json").read_bytes())
+             "PROMOTION-PROTOCOL-2026-002.json").read_bytes())
         mandatory = set(protocol["mandatory_languages"])
         requested = {t.strip() for t in
                      environment.get("MEDZEN_LANGUAGES", "").split(",")

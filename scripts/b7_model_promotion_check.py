@@ -36,7 +36,7 @@ def load_gate_report(path: Path) -> dict:
 
 def _protocol_record() -> dict:
     path = (Path(__file__).resolve().parents[1]
-            / "platform/decisions/PROMOTION-PROTOCOL-2026-001.json")
+            / "platform/decisions/PROMOTION-PROTOCOL-2026-002.json")
     return json.loads(path.read_bytes())
 
 
@@ -76,9 +76,9 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
     review #7: a fabricated bare-PASS report was accepted). A promotion
     report must carry the full identity + evidence chain; a report that
     predates the protocol simply cannot promote."""
-    if report.get("protocol_id") != "PROMOTION-PROTOCOL-2026-001":
+    if report.get("protocol_id") != "PROMOTION-PROTOCOL-2026-002":
         raise PromotionCheckRefusal(
-            "gate report does not bind PROMOTION-PROTOCOL-2026-001 — "
+            "gate report does not bind PROMOTION-PROTOCOL-2026-002 — "
             "pre-protocol reports cannot promote")
     digest = str(report.get("candidate_digest", ""))
     if not (digest.startswith("sha256:") and _hex(digest[7:], 64)):

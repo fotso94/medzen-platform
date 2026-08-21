@@ -1,0 +1,44 @@
+{
+  "record": "PROMOTION-PROTOCOL-2026-002",
+  "title": "Production ASR promotion protocol v0 (one multilingual artifact)",
+  "status": "DECLARED \u2014 WRITE ONCE, supersedes -001",
+  "declared_utc": "2026-08-21T17:34:54Z",
+  "basis": "ARCH-2026-001 + Codex review #5 recommendation 5 + the sealed-holdout discipline proven in B5-KW-V2-GATE-PROTOCOL-2026-001",
+  "principles": [
+    "aggregate WER alone can NEVER promote an artifact",
+    "all thresholds are PREDECLARED before any sealed observation",
+    "every sealed set is consumed exactly once per candidate",
+    "checkpoint selection and promotion evidence use disjoint sets",
+    "each candidate's packet PREDECLARES, per protected language, the non-inferiority margin, the statistical test and the alpha BEFORE its sealed run \u2014 the protocol names the gates, the packet names the numbers"
+  ],
+  "gates_v0_active_now": {
+    "target_languages": "meaningful predeclared relative WER improvement on sealed speaker-disjoint holdouts",
+    "protected_languages": "predeclared statistical NON-INFERIORITY on every protected language (replay anchors english/french; regression sentinels swahili/lingala; plus every language the artifact already served)",
+    "degenerate_output": "hallucination-rate, deletion-rate and silence-behaviour screens on the sealed sets (measurable today from existing transcripts)",
+    "operational": "streaming latency envelope, VRAM ceiling on the serving instance class, cancellation behaviour, wrong-language-hint robustness (soft hints must degrade gracefully, never hard-fail)"
+  },
+  "gates_phased_blocking_when_assets_exist": {
+    "code_switch": "MANDATORY FOR THE FIRST PRODUCTION PROMOTION (Codex review #6 + owner one-model decision): no artifact becomes THE production model without passing at least one licensed, disjoint code-switch set (kinyarwanda-english/french or pidgin-english/french). This puts the owner-led code-switch licensing on the promotion critical path \u2014 deliberate. Synthetic audio is never promotion evidence.",
+    "clinical_entities": "medical terms, numbers, dosages, negation, emergency phrases \u2014 becomes mandatory with the first licensed clinical-entity set"
+  },
+  "phasing_rationale": "declaring unmeasurable gates as blocking today would make promotion impossible forever; declaring them phased-with-trigger keeps them from being quietly dropped",
+  "consumers": "the universal-model pilot (B5-UNIVERSAL-PILOT-DESIGN-2026-001) and every subsequent production-artifact candidate",
+  "machine_enforcement": "tests/test_arch_2026_001.py consumes these records; the trainer refuses silent partial language coverage and un-acked multilingual full FT; the one-global-digest registry rule becomes enforceable at the serving-contract step (ARCH sequencing step 6) and is tracked there, not silently dropped",
+  "timestamp_note": "timestamps corrected 2026-08-20T21:15Z (Codex review #7: prior stamps were future-dated estimates; corrected to the verifiable git commit times)",
+  "holdout_grades": {
+    "promotion_grade": "kinyarwanda: cv17-test-v1-universal-sealed (1,642 rows / 41 real speakers, speaker-disjoint from all selection surfaces AND from the quarantined v2 sealed half; RESERVED at ledger entry 3, sha 5ca3ef62..., genuinely never touched)",
+    "conditional": "french aaf-test-v1 tier2 (REBUILT FROM manifest.r2 2026-08-20: 12 real speakers, speaker-disjoint, eval-only metadata; caveat: 132/258 sealed texts shared with CA16 training scripts)",
+    "development_grade_only": "all FLEURS/soreva tier2 pools: placeholder speaker ids make speaker-independence INDETERMINATE, and all source pools were scored in the 47-language suite. Usable for protected-language non-inferiority SUPPORT; NOT primary blind promotion evidence. Target-language promotion claims need speaker-verifiable sets (commissioned / code-switch acquisitions).",
+    "quarantined_not_promotion_grade": "cv17-test-v1-sealed: quarantined; release requires a committed owner-authorization record (ledger v5 discipline); NOT citable for promotion regardless"
+  },
+  "mandatory_languages": [
+    "english",
+    "ewe",
+    "french",
+    "kinyarwanda",
+    "lingala",
+    "swahili"
+  ],
+  "atomic_gate": "Codex review #8: promotion is ATOMIC over the mandatory set \u2014 the ONE production artifact passes for every mandatory language in a single report, or nothing promotes. Requesting a language subset can never bypass this; the checker enforces the full set regardless of the request.",
+  "supersession": "Codex review #13 finding 7: -001's grades named cv17-test-v1-sealed as promotion-grade; that set is QUARANTINED (ledger entry 7, partial staging under a bypassable-era void). THIS record names kinyarwanda's promotion holdout explicitly."
+}
