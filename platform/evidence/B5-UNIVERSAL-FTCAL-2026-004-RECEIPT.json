@@ -10,6 +10,12 @@
  "calibration_packet": "platform/manifests/B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-004.json",
  "dataset_complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
  "dataset_version": "gb9",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
  "environment_invariants": {
   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
   "MEDZEN_EXPECT_EXCLUDED": "1579",
@@ -28,6 +34,7 @@
  "job": "medzen-b5-b5-universal-ftcal-2026-004",
  "record": "B5-UNIVERSAL-FTCAL-2026-004-RECEIPT",
  "role": "externally-verifiable calibration receipt (Codex review #21: the -RESULT record lacked the identities needed for semantic verification; every field below can be re-queried against AWS or re-derived from committed evidence)",
+ "scale_note": "the arm may differ from this calibration ONLY on these keys; every other environment key must be byte-identical to the committed calibration packet (Codex review #22: LR/batch/accum/seed/schedule drift previously slipped through)",
  "terminal_status": "Completed",
  "utc": "2026-08-21T22:42:14Z",
  "verdict": "PASS \u2014 7-language full-FT chain proven on gb9; see B5-UNIVERSAL-FTCAL-2026-004-RESULT for the log-derived criteria"

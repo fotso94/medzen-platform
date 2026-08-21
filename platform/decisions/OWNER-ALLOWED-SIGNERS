@@ -1,0 +1,11 @@
+# OWNER SIGNING KEY ENROLLMENT (Codex review #22 finding 3)
+# The owner generates a key ONCE:
+#   ssh-keygen -t ed25519 -f ~/.ssh/medzen_owner -N '<passphrase>'
+# then this file gains ONE line (a reviewed commit):
+#   owner@medzen ssh-ed25519 <public key from ~/.ssh/medzen_owner.pub>
+# Signing a launch intent:
+#   ssh-keygen -Y sign -f ~/.ssh/medzen_owner -n medzen-launch \
+#     platform/decisions/launch-intents/<job>.json
+#   mv platform/decisions/launch-intents/<job>.json.sig \
+#      platform/decisions/launch-intents/<job>.sig
+# No key is enrolled yet: every arm launch REFUSES by construction.

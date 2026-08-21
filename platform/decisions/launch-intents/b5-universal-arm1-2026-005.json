@@ -1,0 +1,22 @@
+{
+ "ceiling_usd": 70,
+ "job_id": "b5-universal-arm1-2026-005",
+ "packet": {
+  "canonical_sha256": "475621c45b4dd720fbfb74ad6474b672c627941f501d5d33807c11e2d3fe01c1",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json"
+ },
+ "receipt": {
+  "record": "platform/evidence/B5-UNIVERSAL-FTCAL-2026-004-RECEIPT.json",
+  "record_sha256": "721629e06b5766fe76931e662c3d27698a6dd7a167c737ec48e01116a35baf18"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM1-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-048.json",
+  "sha256": "f21cf68340fda00d7364fc57661152584f3cf758ef206a9f94433edd68657f9d"
+ },
+ "review": {
+  "file": "platform/decisions/reviews/b5-universal-arm1-2026-005.json"
+ },
+ "statement": "signing this file authorizes EXACTLY the packet, registry line and calibration chain above \u2014 nothing else, non-transferable",
+ "utc": "2026-08-21T23:10:32Z"
+}

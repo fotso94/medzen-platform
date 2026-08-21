@@ -35,15 +35,34 @@ def load_gate_report(path: Path) -> dict:
 
 
 def _protocol_record() -> dict:
-    """Resolved via the committed pointer (Codex review #21: no more
-    hardcoded filename; the pointer binds the protocol file's sha256,
-    so protocol supersession is one reviewed pointer diff and silent
-    tampering of either file refuses)."""
+    """Resolved via the committed pointer, with BOTH files read from the
+    CAPTURED GIT HEAD (Codex review #22: working-tree bytes accepted
+    coordinated pointer+protocol edits; an uncontained path was
+    accepted). Path containment: the protocol must live under
+    platform/decisions/."""
+    import subprocess
     root = Path(__file__).resolve().parents[1]
+
+    def show(rel: str) -> bytes:
+        if rel.startswith(("/", "..")) or ":" in rel or "/../" in rel:
+            raise PromotionCheckRefusal(
+                f"protocol path {rel!r} escapes containment")
+        completed = subprocess.run(
+            ["git", "-C", str(root), "show", f"HEAD:{rel}"],
+            capture_output=True)
+        if completed.returncode != 0:
+            raise PromotionCheckRefusal(
+                f"{rel} is not committed at HEAD — the protocol chain "
+                "must be committed bytes, not working-tree edits")
+        return completed.stdout
+
     pointer = json.loads(
-        (root / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json")
-        .read_bytes())
-    body = (root / pointer["file"]).read_bytes()
+        show("platform/decisions/CURRENT-PROMOTION-PROTOCOL.json"))
+    rel = str(pointer.get("file") or "")
+    if not rel.startswith("platform/decisions/"):
+        raise PromotionCheckRefusal(
+            f"protocol pointer path {rel!r} escapes platform/decisions/")
+    body = show(rel)
     import hashlib
     if hashlib.sha256(body).hexdigest() != pointer["sha256"]:
         raise PromotionCheckRefusal(

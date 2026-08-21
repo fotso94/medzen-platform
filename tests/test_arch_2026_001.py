@@ -921,45 +921,28 @@ def test_curation_relabel_requires_verified_predecessor(tmp_path):
         relabel(fake, tmp_path / "out.jsonl", "sealed")
 
 
-def test_protocol_pointer_hash_binds_the_protocol_file(tmp_path,
-                                                       monkeypatch):
-    """Codex review #21: consumers loaded a hardcoded protocol filename
-    from working-tree bytes. The pointer binds the file hash; tampering
-    either side refuses."""
+def test_protocol_pointer_hash_binds_the_protocol_file():
+    """Codex reviews #21-#22: the pointer binds the file hash AND both
+    files come from committed HEAD — working-tree edits (even
+    coordinated pointer+protocol edits) cannot change what consumers
+    load until they are committed."""
+    import hashlib as h
+    import subprocess
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import importlib
-    import pytest
     import b7_model_promotion_check as checker
     importlib.reload(checker)
     record = checker._protocol_record()
     assert record["record"] == PROTOCOL["record"]
-    pointer = json.loads((ROOT / "platform/decisions/"
-                          "CURRENT-PROMOTION-PROTOCOL.json").read_bytes())
-    import hashlib as h
-    assert pointer["sha256"] == h.sha256(
-        (ROOT / pointer["file"]).read_bytes()).hexdigest()
-    # a tampered copy refuses: point the checker at a doctored tree
-    fake_root = tmp_path
-    (fake_root / "platform/decisions").mkdir(parents=True)
-    (fake_root / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json"
-     ).write_text(json.dumps(pointer))
-    doctored = json.loads((ROOT / pointer["file"]).read_bytes())
-    doctored["mandatory_languages"] = ["english"]
-    (fake_root / pointer["file"]).parent.mkdir(parents=True, exist_ok=True)
-    (fake_root / pointer["file"]).write_text(json.dumps(doctored))
-    real_parents = Path(checker.__file__).resolve().parents
-
-    class FakePath:
-        def __init__(self, p):
-            self._p = p
-        def resolve(self):
-            return self
-        @property
-        def parents(self):
-            return [fake_root / "scripts", fake_root]
-    monkeypatch.setattr(checker, "__file__",
-                        str(fake_root / "scripts/b7.py"))
-    with pytest.raises(checker.PromotionCheckRefusal,
-                       match="pointer hash"):
-        checker._protocol_record()
+    committed_pointer = json.loads(subprocess.run(
+        ["git", "-C", str(ROOT), "show",
+         "HEAD:platform/decisions/CURRENT-PROMOTION-PROTOCOL.json"],
+        capture_output=True, check=True).stdout)
+    committed_protocol = subprocess.run(
+        ["git", "-C", str(ROOT), "show",
+         f"HEAD:{committed_pointer['file']}"],
+        capture_output=True, check=True).stdout
+    assert committed_pointer["sha256"] == h.sha256(
+        committed_protocol).hexdigest()
+    assert record == json.loads(committed_protocol)

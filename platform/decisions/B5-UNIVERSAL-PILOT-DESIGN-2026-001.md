@@ -184,3 +184,25 @@ packet-sha-bound registry to show ACTIVE_RESERVED (activation = revision
 pin + CreateTrainingJob. Protocol resolved via a hash-binding pointer.
 Residual single-machine trust stated plainly in the code: this gate
 proves ORDER, EXACTNESS and AUDITABILITY, not cryptographic identity.
+
+## Rev9 (2026-08-21T23:10:46Z) — Codex review #22: structured records, signed intent
+Free-text review parsing is GONE: the review decision is a committed
+record (platform/decisions/reviews/<job>.json) with an enum decision and
+the exact packet sha — HOLD/CHANGES_REQUIRED are states, not strings to
+mis-parse. Owner authorization v4: commit ids are deterministic (the
+reviewer precomputed one), so the owner now SIGNS the committed launch
+intent with an SSH key verified against the committed allowed-signers
+file (namespace medzen-launch); no key is enrolled yet, so every arm
+launch refuses by construction until the owner enrolls. The calibration
+receipt's recipe authority is the COMMITTED CALIBRATION PACKET: the arm
+environment must be byte-identical outside the four declared scale keys
+(max steps, checkpoint cadence, warmup, audio caps) — the reproduced
+LR/batch/accum/seed/schedule drifts refuse — and AWS re-verifies
+status/billable/image/artifact on the launch session. The #21
+circularity is broken: the packet no longer binds the registry; registry
+048 binds the PACKET's sha in its ACTIVE_RESERVED line (booking only —
+spend stays gated on the signed intent), and the reservation verifier
+now checks packet identity AND the registry's own ceiling arithmetic.
+Protocol and every other governed input load from ONE captured commit.
+The medzen-shared four-files rule is respected again (the approvals
+directory idea is dead; everything lives in the repo).
