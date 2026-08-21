@@ -10,11 +10,12 @@ evaluator is built as a structured composition against
 SEALED-EVALUATOR-SPEC-2026-001 (platform/decisions/), which captures
 every requirement from those reviews as acceptance criteria.
 
-What this tool DOES provide today:
-  acquire — the atomic, reserved-sha-verified ledger consumption with
-            durable commit-and-verify (ledger-file-scoped pathspec).
-Any attempt to launch refuses loudly. There is no other launch path;
-sealed evaluation is ON HOLD and this file is the hold, in code.
+This tool provides NOTHING executable today (Codex review #15: a
+standalone acquisition could consume a seal no evaluator would ever
+use). Both commands refuse. record_consumption/durable_commit remain as
+the building blocks the future evaluator composes internally, packet-
+authorized, immediately before first sealed-data access. Sealed
+evaluation is ON HOLD and this file is the hold, in code.
 """
 from __future__ import annotations
 
@@ -25,7 +26,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from holdout_ledger import LEDGER, LedgerRefusal, record_consumption
+from holdout_ledger import LEDGER
 
 ROOT = Path(__file__).resolve().parents[1]
 

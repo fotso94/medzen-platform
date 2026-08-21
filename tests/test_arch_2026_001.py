@@ -657,9 +657,12 @@ def test_checker_refuses_cross_language_holdout_substitution_restored():
 
 
 def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
-    """Codex review #15: (a) standalone acquire is disabled too; (b) CI
-    guards against ANY future raw sealed-launch path — 'run-instances'
-    may appear only in the historical provenance scripts."""
+    """Codex reviews #15-#16: (a) both sealed commands refuse; (b) the
+    launch-path guard scans the ENTIRE tracked repository for BOTH the CLI
+    (run-instances) and SDK (run_instances) forms. Every file that may
+    contain them is individually allowlisted — adding launch capability
+    anywhere else fails the suite, and extending the allowlist is a
+    reviewed diff by construction."""
     import subprocess
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -672,18 +675,53 @@ def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
             calls.append(cmd)
             class R: returncode, stdout, stderr = 0, "", ""
             return R()
-        argv = [command]
-        rc = launch_sealed_eval.main(argv, runner=spy)
+        rc = launch_sealed_eval.main([command], runner=spy)
         assert rc == 1 and calls == [], command
 
     tracked = subprocess.run(
-        ["git", "-C", str(ROOT), "grep", "-l", "run-instances", "--",
-         "scripts/", ".github/"],
+        ["git", "-C", str(ROOT), "grep", "-l", "-e", "run-instances",
+         "-e", "run_instances"],
         capture_output=True, text=True).stdout.split()
-    allowed = {"scripts/sweeps/av-ingest-userdata.sh",
-               "scripts/sweeps/v2-sweep-userdata.sh",
-               "scripts/sweeps/v2-sealed-userdata.sh"}
-    stray = [p for p in tracked if p not in allowed]
+    allowed = {
+        # governed B6a EC2 stage-execution system (its own packet gates)
+        "pipeline/budget.py", "pipeline/builder_adapter.py",
+        "pipeline/builder_userdata.sh", "pipeline/container_userdata.sh",
+        "pipeline/ec2_stage_adapter.py", "pipeline/eval_userdata.sh",
+        "pipeline/trainer_userdata.sh",
+        # documentation / evidence records (non-executable)
+        "platform/decisions/PLAN-2026-001-reproduce-failed-eval.md",
+        "platform/evidence/CAMPAIGNRUN-2026-001-failed.json",
+        # tests of the above + this guard itself
+        "tests/test_arch_2026_001.py", "tests/test_builder_adapter.py",
+        "tests/test_stage_execution.py",
+    }
+    stray = sorted(set(tracked) - allowed)
     assert stray == [], (
-        f"raw EC2 launch path(s) outside historical provenance: {stray} — "
-        "sealed/eval launches must go through the spec-built evaluator")
+        f"EC2 launch capability appeared outside the reviewed allowlist: "
+        f"{stray} — sealed/eval launches must go through the spec-built "
+        "evaluator (SEALED-EVALUATOR-SPEC-2026-001)")
+
+
+def test_durable_commit_refuses_a_mismatched_committed_entry(tmp_path):
+    """Codex review #16: the full-entry comparison had no direct
+    regression. A committed tail differing in ANY field must refuse."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import launch_sealed_eval
+    importlib.reload(launch_sealed_eval)
+    import pytest as _pytest
+
+    entry = {"entry": 99, "event": "CONSUMED", "holdout": "eval/x",
+             "sha256": "a" * 64, "consumed_by": "run", "utc": "t",
+             "prev_sha256": "b" * 64}
+    tampered = dict(entry, consumed_by="someone else")
+    def runner(cmd, **kwargs):
+        class R: pass
+        r = R()
+        r.returncode = 0
+        r.stderr = ""
+        r.stdout = json.dumps(tampered, sort_keys=True) + "\n"
+        return r
+    with _pytest.raises(launch_sealed_eval.LaunchRefusal, match="FULL"):
+        launch_sealed_eval.durable_commit(entry, runner)
