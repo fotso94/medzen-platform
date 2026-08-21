@@ -678,28 +678,62 @@ def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
         rc = launch_sealed_eval.main([command], runner=spy)
         assert rc == 1 and calls == [], command
 
+    # Codex review #17: occurrence-level binding — a NEW call added
+    # inside an already-trusted file trips the count; and the operation
+    # set covers every compute-creating EC2 form present-or-plausible,
+    # not just run-instances. HONEST LIMIT (stated, not hidden): this is
+    # a tripwire against accidental or careless additions; a deliberately
+    # evasive author (dynamic string assembly, getattr tricks) is what
+    # human review and the independent reviewer exist for.
+    operations = ["run-instances", "run_instances", "create-fleet",
+                  "create_fleet", "request-spot-instances",
+                  "request_spot_instances", "RunInstances", "CreateFleet"]
+    grep_args = []
+    for op in operations:
+        grep_args += ["-e", op]
     tracked = subprocess.run(
-        ["git", "-C", str(ROOT), "grep", "-l", "-e", "run-instances",
-         "-e", "run_instances"],
-        capture_output=True, text=True).stdout.split()
-    allowed = {
+        ["git", "-C", str(ROOT), "grep", "-c"] + grep_args,
+        capture_output=True, text=True).stdout
+    counts = {}
+    for line in tracked.splitlines():
+        path, _, n = line.rpartition(":")
+        counts[path] = int(n)
+    allowed_counts = {
         # governed B6a EC2 stage-execution system (its own packet gates)
-        "pipeline/budget.py", "pipeline/builder_adapter.py",
-        "pipeline/builder_userdata.sh", "pipeline/container_userdata.sh",
-        "pipeline/ec2_stage_adapter.py", "pipeline/eval_userdata.sh",
-        "pipeline/trainer_userdata.sh",
-        # documentation / evidence records (non-executable)
-        "platform/decisions/PLAN-2026-001-reproduce-failed-eval.md",
-        "platform/evidence/CAMPAIGNRUN-2026-001-failed.json",
-        # tests of the above + this guard itself
-        "tests/test_arch_2026_001.py", "tests/test_builder_adapter.py",
-        "tests/test_stage_execution.py",
+        "pipeline/budget.py": 1,
+        "pipeline/builder_adapter.py": 3,
+        "pipeline/builder_userdata.sh": 1,
+        "pipeline/container_userdata.sh": 1,
+        "pipeline/ec2_stage_adapter.py": 3,
+        "pipeline/eval_userdata.sh": 1,
+        "pipeline/trainer_userdata.sh": 1,
+        # documentation / evidence records / fixtures (non-executable)
+        "platform/decisions/PLAN-2026-001-reproduce-failed-eval.md": 1,
+        "platform/evidence/CAMPAIGNRUN-2026-001-failed.json": 1,
+        "platform/evidence/B6-COST-RECONCILIATION-2026-005.json": 1,
+        "tests/fixtures/asr_base_model_pilot/aws-live-2026-08-13/"
+        "ec2-describe-instance-template.json": 1,
+        # tests of the above + this guard itself (count not pinned for
+        # this file — it enumerates the operations)
+        "tests/test_builder_adapter.py": 1,
+        "tests/test_stage_execution.py": 1,
     }
-    stray = sorted(set(tracked) - allowed)
-    assert stray == [], (
-        f"EC2 launch capability appeared outside the reviewed allowlist: "
-        f"{stray} — sealed/eval launches must go through the spec-built "
-        "evaluator (SEALED-EVALUATOR-SPEC-2026-001)")
+    self_path = "tests/test_arch_2026_001.py"
+    problems = []
+    for path, n in sorted(counts.items()):
+        if path == self_path:
+            continue
+        if path not in allowed_counts:
+            problems.append(f"NEW launch-capable file: {path} ({n})")
+        elif n != allowed_counts[path]:
+            problems.append(
+                f"{path}: {n} occurrences vs {allowed_counts[path]} "
+                "allowlisted — a new call was added inside a trusted file")
+    assert problems == [], (
+        f"{problems} — compute-creating capability changed; sealed/eval "
+        "launches must go through the spec-built evaluator "
+        "(SEALED-EVALUATOR-SPEC-2026-001), and allowlist changes are "
+        "reviewed diffs")
 
 
 def test_durable_commit_refuses_a_mismatched_committed_entry(tmp_path):
