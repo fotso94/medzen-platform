@@ -15,6 +15,10 @@ on:
         description: training run identity (MLflow run / campaign attempt)
         required: true
         type: string
+      results_dir:
+        description: directory of per-language hash-bound <language>.rows.jsonl files (recompute gate)
+        required: true
+        type: string
       track:
         description: model track
         required: true

@@ -40,23 +40,24 @@ def _protocol_record() -> dict:
     return json.loads(path.read_bytes())
 
 
-def _authoritative_holdout_shas() -> set[str]:
-    """The only holdout identities a report may cite: sealed-manifest
-    sha256s recorded in the committed evidence (Codex review #9: any
-    64-char string passed; now the hash must BE a known sealed set)."""
+def _authoritative_holdouts_by_language() -> dict[str, set[str]]:
+    """Codex review #11: the checker accepted ANY known sealed sha for ANY
+    language. The mapping is now language-specific — a report citing
+    swahili's holdout for english refuses."""
     root = Path(__file__).resolve().parents[1] / "platform/evidence"
-    shas: set[str] = set()
+    mapping: dict[str, set[str]] = {}
     tier2 = json.loads((root / "B5-TIER2-HOLDOUTS-2026-001.json").read_bytes())
-    for pools in tier2["pools"].values():
+    for language, pools in tier2["pools"].items():
         for pool in pools:
-            shas.add(pool["tier2-sealed"]["sha256"])
+            mapping.setdefault(language, set()).add(
+                pool["tier2-sealed"]["sha256"])
     bindings = json.loads(
         (root / "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
-    shas.add(bindings["universal_kinyarwanda_holdout"]
-             ["universal-sealed"]["sha256"])
-    # the v2 sealed half (B5-KW-V2-GATE-PROTOCOL-2026-001)
-    shas.add("f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9")
-    return shas
+    mapping.setdefault("kinyarwanda", set()).add(
+        bindings["universal_kinyarwanda_holdout"]["universal-sealed"]["sha256"])
+    # the v2 sealed half is QUARANTINED (ledger entry 7) and deliberately
+    # NOT in this mapping until an owner-approved release
+    return mapping
 
 
 ABSOLUTE_SCHEMA = {"margin", "upper_ci", "method", "clusters", "rows",
@@ -128,10 +129,12 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
         if not _hex(holdout, 64):
             raise PromotionCheckRefusal(
                 f"{language}: holdout_manifest_sha256 is not 64 hex chars")
-        if holdout not in _authoritative_holdout_shas():
+        if holdout not in _authoritative_holdouts_by_language().get(
+                language, set()):
             raise PromotionCheckRefusal(
                 f"{language}: holdout {holdout[:16]}… is not a recorded "
-                "sealed set (Codex review #9: any 64-char string passed)")
+                f"sealed set FOR {language} (Codex review #11: cross-"
+                "language holdout substitution refused)")
         # Codex review #9: SEPARATE STRICT SCHEMAS — the checker used to
         # demand absolute-mode fields from relative-mode results, refusing
         # legitimate evidence while accepting fabricated wrong-field blocks.

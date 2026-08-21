@@ -1,0 +1,72 @@
+{
+ "complete_evidence_chain": {
+  "checkpoint_36000_marker": {
+   "checkpoint_sha256": "9d329aae23de400763204aa09e73706df79cba51bc7a5c82fd9ca837eed8b14c",
+   "marker_version_id": "uwzizHIOP2CGOeCk_sAdLJl3L25bw5xt"
+  },
+  "decode_config": {
+   "mode": "unconditioned",
+   "strategy": "ctc_greedy"
+  },
+  "dev_selection_object": {
+   "key": "research/b5-training/t6-eval-r2/inputs/v2-selection-dev.json",
+   "len": 971247,
+   "sha256": "e8c6f49de93374dffe338ce4581d0987a4a09f993f147104e091b3cbd13e3f78",
+   "v": "XQg8ccnyib0_.vSG2dr39664nTRRpdpK"
+  },
+  "eval_image": "medzen-asr-eval-runtime@sha256:dafc4b1467c5e659ef931219910c2c718705578392ad86992b11b19aadb91555",
+  "sealed_selection_object": {
+   "key": "research/b5-training/t6-eval-r2/inputs/v2-sealed-selection.json",
+   "len": 1965185,
+   "sha256": "de6248b154863229a248dcb046ae104b8cea77618485648761fad239c51d07de",
+   "v": "Kg7viw68.6jaOPEfG3x4tDCOsTpZS.qS"
+  },
+  "v1_receipts": {
+   "key": "research/b5-training/t6-eval-r2/results/rw-v1-gate/t6-row-receipts.jsonl",
+   "len": 2205765,
+   "sha256": "404282fa54944fef155a53473302cf1608cad4046dbf6ea91fd6352e84f419ee",
+   "v": "IvIv.IcSFscON50TH0jmtK4IuRJS3vAk"
+  },
+  "v2_36000_receipts": {
+   "key": "research/b5-training/t6-eval-r2/results/v2-sweep/dev-v2-0036000.rows.jsonl",
+   "len": 544222,
+   "sha256": "54bf489d2b6761a05bbd8ac211b59f7215a058e9f5c6cdb3c73247d5ac35eabc",
+   "v": "myzxTFWRxigT0XUdoOXFiL0s_TTqcUwl"
+  }
+ },
+ "corrections": {
+  "sealed_exposure_wording": "-001 said 'no sealed audio was fetched / zero observation'. WRONG (Codex review #11, verified via CloudWatch): the r2 box downloaded the sealed selection descriptor (all 3,373 references + URIs + checksums) and ran the audio-staging loop for ~5 minutes (~255 MB ingress) before termination. ACCURATE STATEMENT: the descriptor was read and PARTIAL AUDIO STAGING LIKELY OCCURRED to an ephemeral volume (since destroyed); NO model inference started, NO predictions or evaluation results were produced, and the results prefix holds zero objects.",
+  "unreachable_wording": "-001 said the 9.3% bar was 'simply unreachable'. Too absolute: the development evidence makes clearing the bar on the sealed population EXTREMELY UNLIKELY (clustered lower CI 1.83%, zero of Codex's 100k resamples above 9.3%) \u2014 a futility judgment, not a mathematical bound on a different population."
+ },
+ "decision_unchanged": "v2 CLOSED research-only; NOT promoted; NOT an approved teacher; v1 remains the kinyarwanda reference",
+ "paired_measurement": {
+  "bar": 0.093,
+  "bootstrap": {
+   "alpha": 0.05,
+   "clusters": 36,
+   "improved": false,
+   "iterations": 20000,
+   "lower_ci": 0.0183,
+   "method": "paired_clustered_bootstrap_relative",
+   "point_relative_gain": 0.0299,
+   "reconstruction": "deterministic from the bound receipt objects: pair rows by audio_sha256, cluster by dev-selection speaker_id",
+   "seed": 20260821
+  },
+  "relative_gain": 0.0299,
+  "surface": "cv17-test-v1-dev-selection (1,642 rows / 36 speakers)",
+  "v1": {
+   "reference_words": 13875,
+   "wer": 0.402234,
+   "word_errors": 5581
+  },
+  "v2_step36000": {
+   "reference_words": 13875,
+   "wer": 0.390198,
+   "word_errors": 5414
+  }
+ },
+ "record": "B5-KW-V2-FUTILITY-2026-002",
+ "role": "CORRECTION + successor to B5-KW-V2-FUTILITY-2026-001 (which is write-once and stands UNEDITED; where the two records differ, THIS one governs)",
+ "sealed_set_status": "cv17-test-v1-sealed is QUARANTINED (ledger entry 7): ledger entry 6's void is NOT relied upon (its mechanism was bypassable \u2014 reproduced \u2014 and it lacked owner/reviewer approval). Release requires the strict adjudication schema in holdout_ledger v3 INCLUDING owner approval. cv17-test-v1-universal-sealed remains genuinely untouched.",
+ "written_utc": "2026-08-21T16:21:56Z"
+}

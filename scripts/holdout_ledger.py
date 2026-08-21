@@ -43,16 +43,65 @@ def verify_chain(path: Path = LEDGER) -> list[dict]:
     return entries
 
 
+VOID_REQUIRED_FIELDS = {
+    "voids_entry", "holdout", "holdout_sha256", "evaluator_instance_ids",
+    "userdata_sha256", "results_prefix_object_count", "log_version_ids",
+    "no_inference_attestation", "approved_by",
+}
+
+
+def _valid_voids(entries: list[dict]) -> set[int]:
+    """Codex review #11 (bypass reproduced): a void is honored ONLY when
+    it is a strict, schema-complete adjudication that (a) names an
+    EXISTING, PRECEDING CONSUMED entry, (b) matches that entry's holdout
+    AND sha, (c) attests zero inference and zero result objects with the
+    supporting AWS identities, (d) carries owner/reviewer approval, and
+    (e) is the only void for that entry."""
+    by_number = {e["entry"]: e for e in entries}
+    seen_targets: set[int] = set()
+    valid: set[int] = set()
+    for e in entries:
+        if e["event"] != "CONSUMPTION_VOIDED":
+            continue
+        if not VOID_REQUIRED_FIELDS <= set(e):
+            continue
+        target = by_number.get(e["voids_entry"])
+        if (target is None or target["event"] != "CONSUMED"
+                or target["entry"] >= e["entry"]
+                or target.get("holdout") != e.get("holdout")
+                or target.get("sha256") != e.get("holdout_sha256")):
+            continue
+        if e.get("results_prefix_object_count") != 0:
+            continue
+        if "no model inference started and no results were produced" not in                 str(e.get("no_inference_attestation", "")):
+            continue
+        if not str(e.get("approved_by", "")).strip().startswith("owner"):
+            continue
+        if e["voids_entry"] in seen_targets:
+            valid.discard(e["voids_entry"])
+            continue
+        seen_targets.add(e["voids_entry"])
+        valid.add(e["voids_entry"])
+    return valid
+
+
 def require_available(holdout_key: str, path: Path = LEDGER) -> None:
-    """A CONSUMED entry spends the seal — unless a later CONSUMPTION_VOIDED
-    entry references it BY NUMBER with the no-observation attestation
-    (Codex review #10 case: the evaluator died before fetching a single
-    sealed row; zero information flowed, so the seal is not spent). Both
-    entries stay in the chain forever — voiding is auditable, not erasure."""
+    """A CONSUMED entry spends the seal unless a strict-schema adjudication
+    voids it (_valid_voids). A QUARANTINED entry blocks the holdout until
+    a later RELEASED entry (same schema discipline) lifts it."""
     entries = verify_chain(path)
-    voided = {e["voids_entry"] for e in entries
-              if e["event"] == "CONSUMPTION_VOIDED"
-              and "no sealed data was observed" in e.get("attestation", "")}
+    voided = _valid_voids(entries)
+    quarantined: set[str] = set()
+    for e in entries:
+        if e["event"] == "QUARANTINED":
+            quarantined.add(e.get("holdout"))
+        if e["event"] == "RELEASED" and e.get("holdout") in quarantined:
+            if str(e.get("approved_by", "")).strip().startswith("owner"):
+                quarantined.discard(e.get("holdout"))
+    if holdout_key in quarantined:
+        raise LedgerRefusal(
+            f"{holdout_key} is QUARANTINED — release requires an "
+            "owner-approved RELEASED entry")
     for entry in entries:
         if (entry.get("holdout") == holdout_key
                 and entry["event"] == "CONSUMED"

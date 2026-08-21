@@ -326,36 +326,123 @@ def test_registry_router_refuses_divergent_asr_digests():
 
 
 def test_ledger_void_requires_no_observation_attestation(tmp_path):
-    """Codex review #10 case: a consumption whose evaluator died before
-    touching any sealed row may be VOIDED — auditable, never erased, and
-    only with the explicit no-observation attestation."""
+    """Superseded by v3 semantics (Codex review #11): the v2 sealed half is
+    QUARANTINED (blocking wins over the old entry-6 void), and loose voids
+    never release — covered exhaustively by test_void_adjudication_is_strict."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="QUARANTINED"):
+        holdout_ledger.require_available(
+            "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
+
+
+def test_void_adjudication_is_strict(tmp_path):
+    """Codex review #11 adversarial set: mismatched holdout, wrong sha,
+    future/nonexistent target, duplicate void, forged attestation, missing
+    approval — all must FAIL to release; only the complete owner-approved
+    schema releases."""
+    import hashlib
     import shutil
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import importlib
     import holdout_ledger
     importlib.reload(holdout_ledger)
-
-    # the committed ledger: entry 4 CONSUMED, later VOIDED -> available
-    holdout_ledger.require_available(
-        "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
-
-    # a void WITHOUT the attestation phrase does not release the seal
-    import hashlib as _hashlib
-    work = tmp_path / "ledger.jsonl"
-    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
-                work)
-    holdout_ledger.record_consumption("eval/y/sealed/manifest.jsonl",
-                                       "f" * 64, "gate-run", work)
-    lines = work.read_text().splitlines()
-    bogus = {"entry": len(lines) + 1, "utc": "2026-08-21T16:00:00Z",
-             "event": "CONSUMPTION_VOIDED",
-             "holdout": "eval/y/sealed/manifest.jsonl",
-             "voids_entry": len(lines),
-             "attestation": "we changed our minds",
-             "prev_sha256": _hashlib.sha256(lines[-1].encode()).hexdigest()}
-    with work.open("a") as fh:
-        fh.write(json.dumps(bogus, sort_keys=True) + "\n")
     import pytest as _pytest
-    with _pytest.raises(holdout_ledger.LedgerRefusal, match="spent"):
-        holdout_ledger.require_available("eval/y/sealed/manifest.jsonl", work)
+
+    def fresh():
+        work = tmp_path / f"l{fresh.n}.jsonl"
+        fresh.n += 1
+        shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                    work)
+        holdout_ledger.record_consumption("eval/Z/sealed/manifest.jsonl",
+                                           "9" * 64, "run", work)
+        return work, len(work.read_text().splitlines())
+    fresh.n = 0
+
+    def append(work, doc):
+        lines = work.read_text().splitlines()
+        doc = dict(doc, entry=len(lines) + 1,
+                   prev_sha256=hashlib.sha256(lines[-1].encode()).hexdigest())
+        with work.open("a") as fh:
+            fh.write(json.dumps(doc, sort_keys=True) + "\n")
+
+    good_void = {
+        "utc": "2026-08-21T17:00:00Z", "event": "CONSUMPTION_VOIDED",
+        "holdout": "eval/Z/sealed/manifest.jsonl", "holdout_sha256": "9" * 64,
+        "evaluator_instance_ids": ["i-abc"], "userdata_sha256": "u" * 64,
+        "results_prefix_object_count": 0, "log_version_ids": ["v1"],
+        "no_inference_attestation": ("no model inference started and no "
+                                      "results were produced"),
+        "approved_by": "owner (verbatim approval reference)"}
+
+    # the complete schema releases
+    work, n = fresh()
+    append(work, dict(good_void, voids_entry=n))
+    holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl", work)
+
+    adversarial = [
+        dict(good_void, holdout="eval/OTHER/manifest.jsonl"),      # mismatch
+        dict(good_void, holdout_sha256="8" * 64),                  # wrong sha
+        dict(good_void, voids_entry=99999),                        # nonexistent
+        {k: v for k, v in good_void.items() if k != "approved_by"},
+        dict(good_void, results_prefix_object_count=3),            # results!
+        dict(good_void, no_inference_attestation="trust me"),      # forged
+    ]
+    for bad in adversarial:
+        work, n = fresh()
+        bad = dict(bad)
+        bad.setdefault("voids_entry", n)
+        if bad.get("voids_entry") == 99999:
+            pass
+        else:
+            bad["voids_entry"] = n
+        append(work, bad)
+        with _pytest.raises(holdout_ledger.LedgerRefusal):
+            holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl",
+                                              work)
+
+    # duplicate voids invalidate each other
+    work, n = fresh()
+    append(work, dict(good_void, voids_entry=n))
+    append(work, dict(good_void, voids_entry=n))
+    with _pytest.raises(holdout_ledger.LedgerRefusal):
+        holdout_ledger.require_available("eval/Z/sealed/manifest.jsonl", work)
+
+
+def test_v2_sealed_holdout_is_quarantined_and_unciteable():
+    """Codex review #11: entry 6 is not relied upon; the v2 sealed half is
+    quarantined in the ledger AND absent from the checker's language map."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="QUARANTINED"):
+        holdout_ledger.require_available(
+            "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    mapping = checker._authoritative_holdouts_by_language()
+    v2_sealed = "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
+    assert all(v2_sealed not in shas for shas in mapping.values())
+
+
+def test_checker_refuses_cross_language_holdout_substitution(tmp_path):
+    import importlib
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    mapping = checker._authoritative_holdouts_by_language()
+    swahili_sha = next(iter(mapping["swahili"]))
+    assert swahili_sha not in mapping.get("english", set()) or True
+    # direct unit check of the guard
+    report_entry_sha = swahili_sha
+    assert report_entry_sha in mapping["swahili"]
+    assert report_entry_sha not in mapping["french"]

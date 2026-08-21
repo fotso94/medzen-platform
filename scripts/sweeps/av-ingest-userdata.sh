@@ -1,3 +1,7 @@
+# HISTORICAL / PROVENANCE-ONLY (Codex review #11): this executor ran
+# once and is NOT safe for reuse as-is — unversioned S3 reads, mutable
+# image tag, overwrite-capable uploads, no sealed_gate integration.
+# Future sealed evaluators MUST run scripts/sealed_gate.py acquire first.
 #!/bin/bash
 set -x
 exec > /var/log/ingest.log 2>&1
