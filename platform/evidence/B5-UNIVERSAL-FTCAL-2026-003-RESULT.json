@@ -1,0 +1,28 @@
+{
+ "billable_seconds": 1102,
+ "bindings_sha256": "a4ea5c6a42196542190833df1fc3994a8493283a675fa6d45d8407f840bb64ce",
+ "cost_usd_on_demand": 0.49,
+ "job": "medzen-b5-b5-universal-ftcal-2026-003",
+ "packet": "platform/manifests/B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-003.json",
+ "prior_attempt": "rev2 (ftcal-2026-002) FAILED CORRECTLY at 888 billable seconds (~$0.30): its bound gb7 pidgin manifest was overwritten mid-job by the review-#18 curation upload; the immutability guard refused. gb7 restored; correction promoted to gb8.",
+ "record": "B5-UNIVERSAL-FTCAL-2026-003-RESULT",
+ "status": "Completed",
+ "success_criteria": {
+  "disk": "DISK_ENVELOPE_OK",
+  "exclusions": "1579 rows from DQ-2026-006 (approved, policy_deferral)",
+  "export": {
+   "manifest_sha256": "a943ae8b5369fc1ada9579cae2496074874d0bdf3ac0a168e224fe9f7b8b9859",
+   "model_sha256": "d17ef7fc5023c4ce7b334b3a5ba075fb8425f0314b0894185ae1b2202c1b9e8c",
+   "status": "PASS_MERGED_EXPORT"
+  },
+  "manifests": "13 at version gb8; eligible rows 7315; rejected 0 not permitted, 0 wrong split",
+  "train_progress": {
+   "finite": true,
+   "lr": 1e-05,
+   "mean_loss": 48.01098372911414,
+   "step": 30
+  }
+ },
+ "utc": "2026-08-21T20:58:49Z",
+ "verdict": "PASS \u2014 the 7-language full-FT chain on gb8 is proven end-to-end; arm-1 may bind gb8 pending owner numbers approval"
+}

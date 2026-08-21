@@ -104,3 +104,27 @@ placeholder speakers — honestly graded in B5-TIER2-HOLDOUTS-2026-002).
 
 Costs (unchanged envelope): arm 1 ~31 h ≈ $50-70; arms 2-3 only if arm 1
 fails its gates; all-arms + gates worst case ~$260 → **reported max $360**.
+
+## Rev5 (2026-08-21T20:58:12Z) — gb8 + pilot-grade pidgin surfaces (Codex review #18)
+Dataset: **gb8** (B5-GB8-COMPLETE-2026-001; supersedes gb7 for training).
+gb7's pidgin manifest predates the held-out-speaker carve and text cap;
+gb7 itself stays immutable at its adopted bytes — the correction is a NEW
+version, a rule the trainer enforced itself when an in-place amendment
+was attempted (ftcal-2026-002 refused, failed closed).
+Pidgin surfaces upgraded to REAL-speaker sets (B5-TIER2-HOLDOUTS-2026-003):
+- selection (Tier 1): eval/pidgin/asr/av-heldout-dev (1,500 rows / 25
+  speakers) PRIMARY; soreva-v1-tier2-dev stays as a secondary probe.
+- Tier 2 (promotion): eval/pidgin/asr/av-heldout-sealed (1,500 rows / 24
+  speakers, ledger entry 17 RESERVED). Honest caveat carried on every
+  use: speaker-disjoint but NOT text-disjoint (~80% of eval texts occur
+  in training — prompted corpus), so pidgin evidence is RELATIVE
+  (model-vs-model); absolute claims wait for code-switch/commissioned sets.
+Chain proof: calibration rev3 (medzen-b5-b5-universal-ftcal-2026-003) on
+gb8 PASSED end-to-end — 13 manifests at gb8, 7,315 eligible rows, 1,579
+exclusions bound, finite loss at step 30, PASS_MERGED_EXPORT.
+Arm-1 recipe (calibration-proven config, scaled): 40,000 steps, LR 1e-5
+constant, warmup 500, batch 2 x grad-accum 8, temperature 0.5,
+100 h/language caps, checkpoint every 2,000 (the v2 kinyarwanda full-FT
+disk/checkpoint profile, proven at 36k+ steps on this instance type).
+Costs (unchanged envelope): arm 1 <= 40 h ceiling ~= $64 worst case;
+all-arms + gates worst case ~$260 -> **reported max $360**.
