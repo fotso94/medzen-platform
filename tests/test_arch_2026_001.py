@@ -596,38 +596,61 @@ def test_conflicting_reservations_refuse(tmp_path):
                                                "x", work)
 
 
-def test_sealed_launcher_verifies_packet_identity_and_environment(tmp_path):
-    """Codex review #13: the launcher accepted arbitrary userdata, any
-    instance type, and the ambient (WRONG) AWS account. v2 requires a
-    git-tracked packet whose bindings all verify, asserts the STS account,
-    and makes the consumption durable before AWS."""
+def test_sealed_launch_is_not_implemented_and_refuses():
+    """Codex review #14 disposition: a generic launcher cannot be secured
+    by bolted-on validation. Launch capability is REMOVED until an
+    evaluator meets SEALED-EVALUATOR-SPEC-2026-001; the refusal IS the
+    hold, in code."""
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import importlib
     import launch_sealed_eval
     importlib.reload(launch_sealed_eval)
-    import pytest as _pytest
-
     calls = []
-    def wrong_account_runner(cmd, **kwargs):
+    def spy_runner(cmd, **kwargs):
         calls.append(cmd)
-        class R: pass
-        r = R()
-        r.returncode = 0
-        r.stderr = ""
-        r.stdout = "894565489253"   # the ambient wrong account from #13
-        return r
+        class R: returncode, stdout, stderr = 0, "", ""
+        return R()
+    rc = launch_sealed_eval.main(["launch"], runner=spy_runner)
+    assert rc == 1
+    assert calls == [], "launch refusal must make ZERO external calls"
+    spec = (ROOT / "platform/decisions/SEALED-EVALUATOR-SPEC-2026-001.md")
+    text = spec.read_text()
+    for requirement in ("STRUCTURED COMPOSITION", "GIT-BLOB",
+                         "OWNER-AUTHORIZED PACKET", "WATCHDOG",
+                         "KMS-encrypted", "EXACTLY-ONCE", "REHEARSAL"):
+        assert requirement in text
 
-    # uncommitted packet path -> refused, zero AWS calls
-    rc = launch_sealed_eval.main(
-        ["--packet", "platform/manifests/DOES-NOT-EXIST.json"],
-        runner=wrong_account_runner)
-    assert rc == 1 and calls == []
 
-    # packet outside platform/manifests -> refused structurally
-    with _pytest.raises(launch_sealed_eval.LaunchRefusal):
-        launch_sealed_eval.load_packet("scripts/evil.json")
+def test_v2_sealed_holdout_is_quarantined_and_unciteable():
+    """RESTORED (Codex review #14: dropped in the #13 test rewrite —
+    range-replace carelessness). The quarantined v2 sealed half must stay
+    blocked in the ledger AND absent from the checker's language map."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest as _pytest
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="QUARANTINED"):
+        holdout_ledger.require_available(
+            "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    mapping = checker._authoritative_holdouts_by_language()
+    v2_sealed = "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
+    assert all(v2_sealed not in shas for shas in mapping.values())
 
-    # wrong STS account -> refused before any acquisition or launch
-    with _pytest.raises(launch_sealed_eval.LaunchRefusal, match="identity"):
-        launch_sealed_eval.assert_aws_identity(wrong_account_runner)
+
+def test_checker_refuses_cross_language_holdout_substitution_restored():
+    """RESTORED (Codex review #14) with real assertions only."""
+    import importlib
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    mapping = checker._authoritative_holdouts_by_language()
+    swahili_sha = next(iter(mapping["swahili"]))
+    assert swahili_sha not in mapping["english"]
+    assert swahili_sha not in mapping["french"]
+    assert swahili_sha in mapping["swahili"]
