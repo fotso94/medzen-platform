@@ -323,3 +323,39 @@ def test_registry_router_refuses_divergent_asr_digests():
                                 "french": Route("a" * 64)})   # same digest OK
     enforce_single_asr_digest({"english": Route(None),
                                 "french": Route(None)})       # local mode OK
+
+
+def test_ledger_void_requires_no_observation_attestation(tmp_path):
+    """Codex review #10 case: a consumption whose evaluator died before
+    touching any sealed row may be VOIDED — auditable, never erased, and
+    only with the explicit no-observation attestation."""
+    import shutil
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+
+    # the committed ledger: entry 4 CONSUMED, later VOIDED -> available
+    holdout_ledger.require_available(
+        "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl")
+
+    # a void WITHOUT the attestation phrase does not release the seal
+    import hashlib as _hashlib
+    work = tmp_path / "ledger.jsonl"
+    shutil.copy(ROOT / "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl",
+                work)
+    holdout_ledger.record_consumption("eval/y/sealed/manifest.jsonl",
+                                       "f" * 64, "gate-run", work)
+    lines = work.read_text().splitlines()
+    bogus = {"entry": len(lines) + 1, "utc": "2026-08-21T16:00:00Z",
+             "event": "CONSUMPTION_VOIDED",
+             "holdout": "eval/y/sealed/manifest.jsonl",
+             "voids_entry": len(lines),
+             "attestation": "we changed our minds",
+             "prev_sha256": _hashlib.sha256(lines[-1].encode()).hexdigest()}
+    with work.open("a") as fh:
+        fh.write(json.dumps(bogus, sort_keys=True) + "\n")
+    import pytest as _pytest
+    with _pytest.raises(holdout_ledger.LedgerRefusal, match="spent"):
+        holdout_ledger.require_available("eval/y/sealed/manifest.jsonl", work)

@@ -44,8 +44,19 @@ def verify_chain(path: Path = LEDGER) -> list[dict]:
 
 
 def require_available(holdout_key: str, path: Path = LEDGER) -> None:
-    for entry in verify_chain(path):
-        if entry.get("holdout") == holdout_key and entry["event"] == "CONSUMED":
+    """A CONSUMED entry spends the seal — unless a later CONSUMPTION_VOIDED
+    entry references it BY NUMBER with the no-observation attestation
+    (Codex review #10 case: the evaluator died before fetching a single
+    sealed row; zero information flowed, so the seal is not spent). Both
+    entries stay in the chain forever — voiding is auditable, not erasure."""
+    entries = verify_chain(path)
+    voided = {e["voids_entry"] for e in entries
+              if e["event"] == "CONSUMPTION_VOIDED"
+              and "no sealed data was observed" in e.get("attestation", "")}
+    for entry in entries:
+        if (entry.get("holdout") == holdout_key
+                and entry["event"] == "CONSUMED"
+                and entry["entry"] not in voided):
             raise LedgerRefusal(
                 f"{holdout_key} was already CONSUMED (entry "
                 f"{entry['entry']}) — the seal is spent")

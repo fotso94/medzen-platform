@@ -1,0 +1,131 @@
+{
+ "basis": "Codex review #10 futility analysis, INDEPENDENTLY REPRODUCED to the digit: on the 1,642-row dev-selection surface, paired against the historical v1 receipts from the same pinned eval image, v1 = 5,581/13,875 = 40.2234% WER, v2 step-36000 = 5,414/13,875 = 39.0198% WER, relative gain 2.99% vs the predeclared >9.3% bar. Claude's 36-speaker clustered bootstrap (20k iterations, seed 20260821): point 2.99%, lower CI 1.83%, improved=False; Codex's independent 100k bootstrap: CI 1.65-5.20%, zero resamples above 9.3%. Consuming the single-use sealed set to confirm a near-certain failure has no value.",
+ "decision": "kinyarwanda v2 (full fine-tune, 1,442.7 h) is CLOSED as research-only: NOT promoted, NOT an approved distillation teacher. v1 remains the kinyarwanda reference/ceiling. The sealed sets were NOT consumed.",
+ "protocol_note": "B5-KW-V2-GATE-PROTOCOL-2026-001's sealed run was superseded by this futility stop (Codex review #10, owner-forwarded 'act on it'): the predeclared 9.3% SHIP bar is untouched and simply unreachable \u2014 the dev evidence bounds the sealed outcome far below it.",
+ "record": "B5-KW-V2-FUTILITY-2026-001",
+ "retained_value": "the 20 checkpoints + export remain research artifacts; the strongest kinyarwanda training signal now comes from the universal pilot (ARCH-2026-001), which may revisit distillation sources on its own evidence",
+ "sealed_sets_status": "BOTH UNCONSUMED: cv17-test-v1-sealed (3,373 rows \u2014 the two sealed-run boxes died BEFORE any sealed audio was fetched; zero results objects exist; ledger entries 4-6 document the void) and cv17-test-v1-universal-sealed (never touched)",
+ "selected_dev_checkpoint": {
+  "content_length": 1951669101,
+  "role": "raw minimum-WER development checkpoint ONLY",
+  "s3_key": "research/b5-training/b5-kinyarwanda-v2full-2026-001/checkpoints/step-0036000.pt",
+  "s3_version_id": "GrVxjdQ0y0_9fXpq8F6HB5M8lF0ckRjK",
+  "step": 36000
+ },
+ "selection_surface": {
+  "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+  "manifest_sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+  "rows": 1642,
+  "speakers": 36
+ },
+ "status": "CLOSED_FOR_FUTILITY \u2014 WRITE ONCE",
+ "sweep_results_dev_selection": {
+  "0002000": {
+   "cer": 0.104103,
+   "result_sha256": "6cabc40b358a8c54d42b7f58d6fe4b83b64efe12659f232aee5129a5b11aacf7",
+   "wer": 0.398559
+  },
+  "0004000": {
+   "cer": 0.103324,
+   "result_sha256": "248e4b067ed20e5b118132d1944c4d565e14be4bf64384b354967d21319f87e0",
+   "wer": 0.394306
+  },
+  "0006000": {
+   "cer": 0.1033,
+   "result_sha256": "d09585f73f5d7fcc8dc15d6ca85c5ddfff729e0a52ea6d6fc062db35766283cb",
+   "wer": 0.397333
+  },
+  "0008000": {
+   "cer": 0.102805,
+   "result_sha256": "ecf779e4c35d19c493d489b14ecd6dab2dc71207d6875c87299fadb0211fdc1f",
+   "wer": 0.395459
+  },
+  "0010000": {
+   "cer": 0.102509,
+   "result_sha256": "1e91c1de79d7f0ee8265c235cd60031340ce3121045a7fd64fc38b1fe0023519",
+   "wer": 0.394667
+  },
+  "0012000": {
+   "cer": 0.102397,
+   "result_sha256": "2b65d392706c695e08fcc0c3cd3dff397817132d996b57aeede37e53e36efc58",
+   "wer": 0.392577
+  },
+  "0014000": {
+   "cer": 0.102299,
+   "result_sha256": "75c97255d864423195f1641a57f37379d27469e6652ec6cba3564b75b079b04c",
+   "wer": 0.392
+  },
+  "0016000": {
+   "cer": 0.102323,
+   "result_sha256": "81816d2a335ee9187281917d2529c274f0a2d8443782f293b5ea1172e3ea9624",
+   "wer": 0.391423
+  },
+  "0018000": {
+   "cer": 0.101903,
+   "result_sha256": "8ee7a2c5cac4da801bb46e98f8fe430b783a9860a43523031621bb9925afc8af",
+   "wer": 0.393441
+  },
+  "0020000": {
+   "cer": 0.102373,
+   "result_sha256": "b7013d9ed19950dc654657985e46a16f7536069bef338478f251101b24940ca8",
+   "wer": 0.392505
+  },
+  "0022000": {
+   "cer": 0.101928,
+   "result_sha256": "196d5eadf4ae00ad1afc5fe59084588eb64b35940cde05e7a1d8acebb6a2124a",
+   "wer": 0.393081
+  },
+  "0024000": {
+   "cer": 0.101409,
+   "result_sha256": "189e62094e3fccb258df1660b6d8b10ad3803428c4b1a8bad63eb355f75019a3",
+   "wer": 0.393081
+  },
+  "0026000": {
+   "cer": 0.101804,
+   "result_sha256": "ec93bed2bb2eda25aa8ad1caa6d257846899a9657e25739504d03c111676335f",
+   "wer": 0.394162
+  },
+  "0028000": {
+   "cer": 0.101619,
+   "result_sha256": "e52395154795a3a42bd96e92620d12d4aef2afcad0e6b834edc2be8451964ccc",
+   "wer": 0.391784
+  },
+  "0030000": {
+   "cer": 0.101569,
+   "result_sha256": "7f148917b17d7f9bf9ac1f361b1521237aecf9ea7a8d08282b42301ab8b48ec3",
+   "wer": 0.39236
+  },
+  "0032000": {
+   "cer": 0.101607,
+   "result_sha256": "d714a8284ac55d2bce3d71e8ab3301509e81211f616372b35b3ed14d890de7c0",
+   "wer": 0.391928
+  },
+  "0034000": {
+   "cer": 0.101742,
+   "result_sha256": "dbb47c60b45da278ad1cb499fe573a24ea035ff514a7d0c0fce6579e1f7c7c26",
+   "wer": 0.392072
+  },
+  "0036000": {
+   "cer": 0.101446,
+   "result_sha256": "456c7dad17dd26d570f68615690a6e2eedf1357449dfac479a812bd8e7ec3d26",
+   "wer": 0.390198
+  },
+  "0038000": {
+   "cer": 0.101569,
+   "result_sha256": "ad8e440b5410eed87ded9b85c3243a7400df161e61599ae7e41d6968731335dc",
+   "wer": 0.391135
+  },
+  "0040000": {
+   "cer": 0.101545,
+   "result_sha256": "4d3623b34663269fb94fea7ce03a1247636a4bd98ddda7ea797ce63f60975015",
+   "wer": 0.391063
+  }
+ },
+ "training_job": {
+  "billable_seconds": 109664,
+  "export_manifest_sha256": "3657faa9caf3726316ff3679f920f6790e8bb55192e12e61ae8344d531f2afa4",
+  "name": "medzen-b5-b5-kinyarwanda-v2full-2026-001",
+  "on_demand_usd": 48.74
+ },
+ "written_utc": "2026-08-21T15:49:18Z"
+}
