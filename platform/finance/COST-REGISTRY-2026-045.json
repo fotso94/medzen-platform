@@ -215,6 +215,37 @@
    "owner_approval": "campaign table + language list + thresholds, 2026-08-17 chat",
    "packet": "B5-CTC-CAMPAIGN-PACKET-2026-001",
    "recognized_committed_usd": 346.0
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 888,
+   "financial_state": "CLOSED_FAILED_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-002",
+   "outcome": "FAILED CORRECTLY \u2014 bound gb7 pidgin manifest was overwritten mid-job by the review-#18 curation upload; immutability guard refused (correction promoted to gb8)",
+   "recognized_committed_usd": 0.4,
+   "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 1102,
+   "financial_state": "CLOSED_SUCCESS_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-003",
+   "outcome": "PASS \u2014 7-language gb8 chain proven (B5-UNIVERSAL-FTCAL-2026-003-RESULT)",
+   "recognized_committed_usd": 0.49,
+   "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "financial_state": "PENDING_OWNER_AUTHORIZATION",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate authorizations",
+   "owner_approval": "REQUIRED, NOT YET GIVEN \u2014 Codex review #19 finding 5: this exact allocation activates only with an owner authorization COMMITTED under platform/decisions/launch-authorizations/ binding the packet's canonical sha, the $70 ceiling and non-transferability; the prior $346 campaign reservation does NOT cover arm launches",
+   "packet": "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-002",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T21:36:01Z"
   }
  ],
  "controls": {

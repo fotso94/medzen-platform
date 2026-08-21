@@ -133,7 +133,7 @@ def render_request(bindings: dict) -> dict:
     if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
         protocol = json.loads(
             (Path(__file__).resolve().parents[1] / "platform/decisions/"
-             "PROMOTION-PROTOCOL-2026-003.json").read_bytes())
+             "PROMOTION-PROTOCOL-2026-004.json").read_bytes())
         mandatory = set(protocol["mandatory_languages"])
         requested = {t.strip() for t in
                      environment.get("MEDZEN_LANGUAGES", "").split(",")
@@ -142,12 +142,12 @@ def render_request(bindings: dict) -> dict:
             raise JobRefusal(
                 f"multilingual-full packets bind the frozen pilot set "
                 f"{sorted(mandatory)} exactly; got {sorted(requested)}")
-        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb8":
+        if environment.get("MEDZEN_MANIFEST_VERSION") != "gb9":
             raise JobRefusal(
-                "multilingual-full packets bind dataset version gb8 "
-                "(B5-GB8 — the 7-language revision with the PILOT-GRADE "
-                "pidgin train-v2; gb7's pidgin manifest predates the "
-                "held-out-speaker carve and the text-repetition cap)")
+                "multilingual-full packets bind dataset version gb9 "
+                "(B5-GB9: gb8 minus the cross-language CV contributor "
+                "whose voice sits in the kinyarwanda dev-selection "
+                "surface — Codex review #19 finding 4)")
         if environment.get("MEDZEN_TEMPERATURE") != "0.5":
             raise JobRefusal(
                 "multilingual-full packets bind temperature 0.5 exactly "
@@ -261,6 +261,48 @@ def review_is_recorded(job_id: str, bindings: dict | None = None,
     return True
 
 
+CALIBRATION_TIER_USD = 10.0
+AUTH_DIR = "platform/decisions/launch-authorizations"
+
+
+def owner_authorization_is_committed(job_id: str, bindings: dict,
+                                     worst_case_usd: float,
+                                     repo_root: Path | None = None) -> bool:
+    """Codex review #19 finding 5: the shared-file gate reads MUTABLE
+    text — anyone with file write could forge `DECISION: APPROVED`. For
+    any job above the calibration tier (worst case > $10, which rides
+    the owner's committed campaign allocation), launch now additionally
+    requires an owner-authorization record COMMITTED AT GIT HEAD (the
+    ledger-v5 trust model: committed records reviewed in git history).
+
+    The record lives at {AUTH_DIR}/<job_id>.json and must bind:
+      job_id (exact), bindings_sha256 (canonical packet sha),
+      ceiling_usd >= the packet's worst case, non_transferable: true,
+      and a non-empty owner_statement. Working-tree or staged-only files
+      never pass — the bytes come from `git show HEAD:<path>`."""
+    if not job_id or not all(c.islower() or c.isdigit() or c == "-"
+                             for c in job_id):
+        return False
+    root = repo_root or Path(__file__).resolve().parents[1]
+    completed = subprocess.run(
+        ["git", "-C", str(root), "show",
+         f"HEAD:{AUTH_DIR}/{job_id}.json"],
+        capture_output=True, text=True)
+    if completed.returncode != 0:
+        return False
+    try:
+        record = json.loads(completed.stdout)
+    except ValueError:
+        return False
+    return (record.get("job_id") == job_id
+            and record.get("bindings_sha256")
+                == canonical_bindings_sha256(bindings)
+            and isinstance(record.get("ceiling_usd"), (int, float))
+            and record["ceiling_usd"] >= worst_case_usd
+            and record.get("non_transferable") is True
+            and bool(str(record.get("owner_statement") or "").strip()))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("render", "validate", "launch"))
@@ -287,6 +329,18 @@ def main() -> int:
                 f"bindings-sha256 {canonical_bindings_sha256(bindings)} "
                 f"found in {SHARED_REVIEWS} — the authorization must cite "
                 "the exact packet (Codex review #9)")
+        worst_case = result["worst_case_on_demand_usd"]
+        if (worst_case > CALIBRATION_TIER_USD
+                and not owner_authorization_is_committed(
+                    job_id, bindings, worst_case)):
+            raise JobRefusal(
+                f"worst case ${worst_case:.2f} exceeds the calibration "
+                f"tier (${CALIBRATION_TIER_USD:.0f}) and no OWNER "
+                f"authorization is COMMITTED at HEAD under {AUTH_DIR}/"
+                f"{job_id}.json binding this exact packet sha, a "
+                f"sufficient ceiling and non-transferability — mutable "
+                f"shared-file text alone cannot authorize an arm launch "
+                f"(Codex review #19)")
         completed = subprocess.run(
             ["aws", "sagemaker", "create-training-job",
              "--region", REGION,

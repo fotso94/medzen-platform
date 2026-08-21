@@ -36,23 +36,32 @@ def load_gate_report(path: Path) -> dict:
 
 def _protocol_record() -> dict:
     path = (Path(__file__).resolve().parents[1]
-            / "platform/decisions/PROMOTION-PROTOCOL-2026-003.json")
+            / "platform/decisions/PROMOTION-PROTOCOL-2026-004.json")
     return json.loads(path.read_bytes())
 
 
 def _authoritative_holdouts_by_language() -> dict[str, set[str]]:
     """Codex review #11: the checker accepted ANY known sealed sha for ANY
     language. The mapping is now language-specific — a report citing
-    swahili's holdout for english refuses."""
+    swahili's holdout for english refuses.
+
+    Codex review #19: the checker had pinned records -001/-002 and never
+    learned about successors, so the obsolete 70-row soreva placeholder
+    stayed acceptable while the real-speaker pidgin sets were not. Rule
+    now: enumerate EVERY B5-TIER2-HOLDOUTS-*.json in ascending order; for
+    each language, only the HIGHEST-numbered record covering it counts.
+    A superseded record's holdouts drop out of the mapping entirely."""
     root = Path(__file__).resolve().parents[1] / "platform/evidence"
     mapping: dict[str, set[str]] = {}
-    for record_name in ("B5-TIER2-HOLDOUTS-2026-001.json",
-                         "B5-TIER2-HOLDOUTS-2026-002.json"):
-        tier2 = json.loads((root / record_name).read_bytes())
+    per_language: dict[str, dict] = {}
+    for record_path in sorted(root.glob("B5-TIER2-HOLDOUTS-*.json")):
+        tier2 = json.loads(record_path.read_bytes())
         for language, pools in tier2["pools"].items():
-            for pool in pools:
-                mapping.setdefault(language, set()).add(
-                    pool["tier2-sealed"]["sha256"])
+            per_language[language] = {"pools": pools}
+    for language, entry in per_language.items():
+        for pool in entry["pools"]:
+            mapping.setdefault(language, set()).add(
+                pool["tier2-sealed"]["sha256"])
     bindings = json.loads(
         (root / "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
     mapping.setdefault("kinyarwanda", set()).add(

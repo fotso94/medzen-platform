@@ -272,12 +272,12 @@ def test_multilingual_packets_bind_the_exact_pilot_profile():
 
     root = Path(__file__).resolve().parents[1]
     good = _json.loads((root / "platform/manifests/"
-        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-003.json").read_bytes())
+        "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-004.json").read_bytes())
     render_request(good)   # the committed calibration packet must pass
 
     for mutation in (
             {"MEDZEN_LANGUAGES": "kinyarwanda,english"},
-            {"MEDZEN_MANIFEST_VERSION": "gb7"},
+            {"MEDZEN_MANIFEST_VERSION": "gb8"},
             {"MEDZEN_TEMPERATURE": "0.4"},
             {"MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/other.json"}):
         bad = copy.deepcopy(good)
@@ -311,3 +311,58 @@ def test_authorization_binds_the_canonical_packet_sha(tmp_path):
     mutated = bindings()
     mutated["environment"]["MEDZEN_SEED"] = "999"
     assert review_is_recorded(mutated["job_id"], mutated, shared) is False
+
+
+def test_owner_authorization_must_be_committed_not_mutable_text(tmp_path):
+    """Codex review #19 finding 5 (reproduced by the reviewer as
+    MUTABLE_TEXT_FORGERY_ACCEPTED): shared-file text alone must never
+    authorize an above-tier launch. The committed-record gate accepts
+    ONLY a record at git HEAD binding the exact packet sha, a
+    sufficient ceiling and non-transferability."""
+    import json as _json
+    import subprocess
+    from b5_sagemaker_job import (canonical_bindings_sha256,
+                                  owner_authorization_is_committed)
+
+    b = bindings()
+    job = b["job_id"]
+    sha = canonical_bindings_sha256(b)
+    repo = tmp_path / "repo"
+    auth_dir = repo / "platform/decisions/launch-authorizations"
+    auth_dir.mkdir(parents=True)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"],
+                   check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"],
+                   check=True)
+
+    record = {"job_id": job, "bindings_sha256": sha, "ceiling_usd": 70,
+              "non_transferable": True,
+              "owner_statement": "approved for exactly this packet"}
+    path = auth_dir / f"{job}.json"
+    path.write_text(_json.dumps(record))
+
+    # working-tree only (the forgery surface): REFUSED
+    assert owner_authorization_is_committed(job, b, 64.0, repo) is False
+
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "auth"],
+                   check=True)
+    assert owner_authorization_is_committed(job, b, 64.0, repo) is True
+
+    # a MUTATED packet cannot ride the committed authorization
+    mutated = bindings()
+    mutated["environment"]["MEDZEN_SEED"] = "999"
+    assert owner_authorization_is_committed(job, mutated, 64.0, repo) is False
+    # insufficient ceiling: REFUSED
+    assert owner_authorization_is_committed(job, b, 71.0, repo) is False
+    # tampered fields committed later still refuse
+    for field, value in (("non_transferable", False),
+                          ("owner_statement", "  ")):
+        bad = dict(record, **{field: value})
+        path.write_text(_json.dumps(bad))
+        subprocess.run(["git", "-C", str(repo), "commit", "-aqm", "tamper"],
+                       check=True)
+        assert owner_authorization_is_committed(job, b, 64.0, repo) is False, field
+    # path traversal in the job id can never escape the auth dir
+    assert owner_authorization_is_committed("../evil", b, 64.0, repo) is False

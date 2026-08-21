@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ARCH = json.loads((ROOT / "platform/decisions/"
                    "ARCH-2026-001-one-multilingual-production-model.json").read_bytes())
 PROTOCOL = json.loads((ROOT / "platform/decisions/"
-                       "PROMOTION-PROTOCOL-2026-003.json").read_bytes())
+                       "PROMOTION-PROTOCOL-2026-004.json").read_bytes())
 PILOT = (ROOT / "platform/decisions/"
          "B5-UNIVERSAL-PILOT-DESIGN-2026-001.md").read_text()
 
@@ -140,12 +140,13 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
              "--results-dir", str(results_dir)],
             capture_output=True, text=True)
 
-    # authoritative sealed identities from the committed evidence
+    # authoritative sealed identities from the committed evidence —
+    # ascending record order, later record wins per language (the
+    # checker's own supersession rule, Codex review #19)
     sealed_sha = {}
-    for record_name in ("B5-TIER2-HOLDOUTS-2026-001.json",
-                         "B5-TIER2-HOLDOUTS-2026-002.json"):
-        tier2 = json.loads((ROOT / "platform/evidence/"
-                            f"{record_name}").read_bytes())
+    for record_path in sorted((ROOT / "platform/evidence").glob(
+            "B5-TIER2-HOLDOUTS-*.json")):
+        tier2 = json.loads(record_path.read_bytes())
         for lang, pools in tier2["pools"].items():
             sealed_sha[lang] = pools[0]["tier2-sealed"]["sha256"]
     bindings = json.loads((ROOT / "platform/evidence/"
@@ -765,3 +766,111 @@ def test_durable_commit_refuses_a_mismatched_committed_entry(tmp_path):
         return r
     with _pytest.raises(launch_sealed_eval.LaunchRefusal, match="FULL"):
         launch_sealed_eval.durable_commit(entry, runner)
+
+
+def test_pidgin_holdout_supersession_latest_record_wins():
+    """Codex review #19 finding 2: the checker pinned records -001/-002,
+    so the obsolete soreva placeholder stayed authoritative and the
+    real-speaker sets were unknown. The mapping must now accept ONLY the
+    eval-only e1 sealed sha for pidgin, drop every superseded pidgin sha,
+    and leave other languages untouched."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    mapping = checker._authoritative_holdouts_by_language()
+    E1_SEALED = ("fca527c0462d927c7729039065cfe1266214bd794"
+                 "7f965e1661574b8e1b58c91")
+    SOREVA_SEALED = ("962df457" , )  # superseded -002 placeholder (prefix)
+    TRAIN_LABELED = ("c52af8c7",)    # superseded -003 train-labeled (prefix)
+    assert mapping["pidgin"] == {E1_SEALED}
+    every_sha = {sha for shas in mapping.values() for sha in shas}
+    for prefix in SOREVA_SEALED + TRAIN_LABELED:
+        assert not any(sha.startswith(prefix) for sha in every_sha), (
+            f"superseded pidgin holdout {prefix}… still authoritative")
+    # untouched languages keep their -001 holdouts
+    assert any(s.startswith("5b0829d7") for s in mapping["english"])
+    assert any(s.startswith("5ca3ef62") for s in mapping["kinyarwanda"])
+    # the protocol consumed is the -004 successor
+    assert checker._protocol_record()["record"] == "PROMOTION-PROTOCOL-2026-004"
+    assert "av-heldout-sealed-e1" in (
+        checker._protocol_record()["holdout_grades"]["pidgin"])
+
+
+def test_eval_manifest_validator_refuses_training_labels():
+    """Codex review #19 finding 1: 3,000 'evaluation' rows carried
+    split=train + allowed_use=[asr_train]. The validator refuses each
+    failure mode; the relabel transform produces rows that pass."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import pytest
+    from validate_eval_manifest import (EvalManifestViolation,
+                                        validate_rows)
+    good = {"split": "test", "allowed_use": ["asr_eval"], "speaker_id": "s1"}
+    assert validate_rows([good]) == 1
+    for bad in (
+            {**good, "split": "train"},
+            {**good, "allowed_use": ["asr_train"]},
+            {**good, "allowed_use": ["asr_eval", "asr_train"]},
+            {**good, "allowed_use": []},
+    ):
+        with pytest.raises(EvalManifestViolation):
+            validate_rows([good, bad])
+    with pytest.raises(EvalManifestViolation):
+        validate_rows([])  # empty manifests refuse too
+
+    # the -004 record must DECLARE validator-verified labels
+    t4 = json.loads((ROOT / "platform/evidence/"
+                     "B5-TIER2-HOLDOUTS-2026-004.json").read_bytes())
+    pool = t4["pools"]["pidgin"][0]
+    verified = pool["eval_labels_verified"]
+    assert verified["split"] == "test"
+    assert verified["allowed_use"] == ["asr_eval"]
+    assert verified["verified_rows"] == {"tier2-dev": 1500,
+                                          "tier2-sealed": 1500}
+
+
+def test_ledger_reservation_withdrawal_blocks_consumption(tmp_path):
+    """Codex review #19: a defective reserved holdout must be withdrawable
+    without owner ceremony (capability-REMOVING), the withdrawn sha must
+    refuse consumption, and a MALFORMED withdrawal must be inert."""
+    import hashlib as h
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import holdout_ledger
+    importlib.reload(holdout_ledger)
+    import pytest
+    work = tmp_path / "ledger.jsonl"
+    sha = "ab" * 32
+    lines = [json.dumps({"entry": 1, "event": "LEDGER_OPENED",
+                          "utc": "2026-08-21T00:00:00Z"}, sort_keys=True)]
+
+    def append(doc):
+        doc = dict(doc, entry=len(lines) + 1, utc="2026-08-21T00:00:01Z",
+                   prev_sha256=h.sha256(lines[-1].encode()).hexdigest())
+        lines.append(json.dumps(doc, sort_keys=True))
+        work.write_text("\n".join(lines) + "\n")
+
+    append({"event": "RESERVED", "holdout": "eval/x/manifest.jsonl",
+            "sha256": sha})
+    work.write_text("\n".join(lines) + "\n")
+    # malformed withdrawal (wrong sha) is INERT — still consumable...
+    append({"event": "RESERVATION_WITHDRAWN", "withdraws_entry": 2,
+            "holdout": "eval/x/manifest.jsonl", "sha256": "cd" * 32,
+            "reason": "wrong sha", "successor_key": "eval/y"})
+    entries = holdout_ledger.verify_chain(work)
+    assert holdout_ledger._reserved_sha(entries,
+                                        "eval/x/manifest.jsonl") == sha
+    # ...a WELL-FORMED withdrawal removes the reservation
+    append({"event": "RESERVATION_WITHDRAWN", "withdraws_entry": 2,
+            "holdout": "eval/x/manifest.jsonl", "sha256": sha,
+            "reason": "train-labeled rows", "successor_key": "eval/y"})
+    entries = holdout_ledger.verify_chain(work)
+    assert holdout_ledger._reserved_sha(entries,
+                                        "eval/x/manifest.jsonl") is None
+    with pytest.raises(holdout_ledger.LedgerRefusal, match="no RESERVED"):
+        holdout_ledger.record_consumption("eval/x/manifest.jsonl", sha,
+                                          "probe", path=work,
+                                          repo_root=ROOT)

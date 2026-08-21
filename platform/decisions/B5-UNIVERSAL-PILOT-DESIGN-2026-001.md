@@ -128,3 +128,19 @@ constant, warmup 500, batch 2 x grad-accum 8, temperature 0.5,
 disk/checkpoint profile, proven at 36k+ steps on this instance type).
 Costs (unchanged envelope): arm 1 <= 40 h ceiling ~= $64 worst case;
 all-arms + gates worst case ~$260 -> **reported max $360**.
+
+## Rev6 (2026-08-21T21:36:50Z) — Codex review #19: eval integrity + authorization controls
+Dataset: **gb9** (B5-GB9-COMPLETE-2026-001) = gb8 minus the 4 english rows
+of the one CV contributor who also voices 19 kinyarwanda dev-selection
+rows. Pidgin surfaces: the -e1 EVAL-ONLY successors (split=test,
+allowed_use=[asr_eval], validator-verified; B5-TIER2-HOLDOUTS-2026-004) —
+the earlier objects carried training labels and were superseded, never
+overwritten (ledger entries 18-19). Pidgin grading TIGHTENED: conditional
+within-corpus evidence only (candidate-saw-prompts asymmetry disclosed);
+never sole promotion evidence; production-grade pidgin awaits the
+code-switch set. Promotion protocol: -004; checker: latest-covering-record
+supersession. Arm launches now require BOTH the independent review AND an
+owner authorization COMMITTED at git HEAD (mutable shared-file text can
+no longer authorize — reproduced forgery closed). Arm 1 = exact $70
+allocation (B5-ARM1-2026-001, PENDING_OWNER_AUTHORIZATION); arms 2-3
+separately authorized only if arm 1 justifies them.

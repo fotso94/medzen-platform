@@ -1,0 +1,50 @@
+{
+ "built_utc": "2026-08-21T21:30:04Z",
+ "grade": "CONDITIONAL WITHIN-CORPUS evidence (Codex review #19 finding 3): speaker-disjoint with real identities, but ~80% of eval texts occur in training (prompted corpus) and a fine-tuned candidate has SEEN those prompts while a zero-shot baseline has not \u2014 relative comparison does not fully remove that asymmetry. Usable for arm-vs-arm selection support and within-corpus gates; NEVER sole promotion evidence. Genuine pidgin production promotion requires a text-disjoint conversational or licensed code-switch set (already a mandatory phased gate).",
+ "pools": {
+  "pidgin": [
+   {
+    "eval_labels_verified": {
+     "allowed_use": [
+      "asr_eval"
+     ],
+     "split": "test",
+     "validator": "scripts/validate_eval_manifest.py",
+     "verified_rows": {
+      "tier2-dev": 1500,
+      "tier2-sealed": 1500
+     }
+    },
+    "method": "speaker_disjoint (REAL speaker ids; 50 speakers / 51.1 h held out of training entirely; salted-hash carve documented in scripts/pidgin_holdout_curation.py)",
+    "pool": "curated pidgin av_pcm (held-out speakers)",
+    "sealed_vs_gb8_train_overlap": {
+     "byte": 0,
+     "speaker": 0,
+     "text": 1180
+    },
+    "tier2-dev": {
+     "key": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+     "rows": 1500,
+     "s3_version_id": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg",
+     "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1",
+     "speakers": 25
+    },
+    "tier2-sealed": {
+     "key": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+     "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+     "rows": 1500,
+     "s3_version_id": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN",
+     "sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91",
+     "speakers": 24
+    }
+   }
+  ]
+ },
+ "record": "B5-TIER2-HOLDOUTS-2026-004",
+ "supersedes_for_pidgin": [
+  "B5-TIER2-HOLDOUTS-2026-002",
+  "B5-TIER2-HOLDOUTS-2026-003"
+ ],
+ "why": "Codex review #19 finding 1: the -003 objects carried split=train + allowed_use=[asr_train] on every row (carved verbatim from the training manifest). These are the EVALUATION-ONLY relabeled successors (scripts/pidgin_holdout_curation.py); predecessors left immutable, sealed reservation superseded at ledger entries 18-19."
+}

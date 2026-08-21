@@ -1,0 +1,42 @@
+{
+ "gb9_leak_matrix": {
+  "key": "platform/evidence-artifacts/gb9/leak-matrix.json",
+  "len": 9438,
+  "result": "299 cells, 0 byte, 0 session overlap; 2 FLEURS placeholder-id cells only",
+  "sha256": "d3a8865c506d2d009e7febef1e27a692ec38ff3565ca0e05d9a5c9ed1fc866ef",
+  "vid": "OkQ8B8BYCDB94qFo_cCGttzd3eQS5GsK"
+ },
+ "malformed_source_stubs": {
+  "conclusion": "all three clips are the SAME truncated FLAC stub in the original export archives \u2014 persistent source defects, not transfer corruption",
+  "identical_bytes_sha256": "fb373474cb69dd33937543aa94116f5f5419b57fbebf3bd2b9264efc1c1770fc",
+  "objects": {
+   "pcm_f_PECT1F216_ev_spontaneous_014": {
+    "key": "platform/evidence-artifacts/tierb-2026-002/malformed/pcm_f_PECT1F216_ev_spontaneous_014.flac",
+    "len": 8288,
+    "source_archive": "Batch_35.tar.zst (owner's pristine local Mac copy, re-extracted 2026-08-21)",
+    "vid": "04ZAC2kBfyzgj9wNJOScTsQllUcsx1Rm"
+   },
+   "pcm_f_PHTT1F30_he_spontaneous_423": {
+    "key": "platform/evidence-artifacts/tierb-2026-002/malformed/pcm_f_PHTT1F30_he_spontaneous_423.flac",
+    "len": 8288,
+    "source_archive": "Batch_19.tar.zst (owner's pristine local Mac copy, re-extracted 2026-08-21)",
+    "vid": "jaiy18SnMfGvGRbfK3p7Xl6IDa0x4Tq4"
+   },
+   "pcm_m_PECT1M139_ev_spontaneous_027": {
+    "key": "platform/evidence-artifacts/tierb-2026-002/malformed/pcm_m_PECT1M139_ev_spontaneous_027.flac",
+    "len": 8288,
+    "source_archive": "Batch_13.tar.zst (owner's pristine local Mac copy, re-extracted 2026-08-21)",
+    "vid": "z2veZaUexDcnJJM.rX32k6k64.6Eyuc_"
+   }
+  },
+  "size_bytes": 8288
+ },
+ "record": "TIER-B-REVIEW-2026-002A",
+ "reproducible_implementation": {
+  "curation": "scripts/pidgin_holdout_curation.py (committed)",
+  "eval_labels": "scripts/validate_eval_manifest.py (committed)",
+  "leak_matrix": "scripts/gb_leak_matrix.py (committed; sha-verifies every input, fetches from S3 on local-cache miss)"
+ },
+ "role": "durable-evidence addendum to TIER-B-REVIEW-2026-002 (Codex review #19 lesser concerns) + the gb9 leak matrix",
+ "utc": "2026-08-21T21:36:27Z"
+}

@@ -166,12 +166,44 @@ def require_available(holdout_key: str, path: Path = LEDGER,
                 f"{entry['entry']}) — the seal is spent")
 
 
+def _withdrawn_reservations(entries: list[dict]) -> set[int]:
+    """Codex review #19: the first pidgin sealed reservation pointed at a
+    manifest whose rows carried TRAINING labels — the object had to be
+    superseded, not consumed. RESERVATION_WITHDRAWN removes a reservation
+    (a capability-REMOVING event, so it needs no approval record — like
+    a refusal). Strict schema: it must cite the exact RESERVED entry by
+    number, matching holdout AND sha, plus a reason and the successor
+    key. A withdrawal that has ever been CONSUMED cannot be withdrawn.
+    Malformed withdrawals are INERT — they never suppress anything."""
+    by_number = {e["entry"]: e for e in entries}
+    withdrawn: set[int] = set()
+    for e in entries:
+        if e["event"] != "RESERVATION_WITHDRAWN":
+            continue
+        target = by_number.get(e.get("withdraws_entry"))
+        if (target is None or target["event"] != "RESERVED"
+                or target.get("holdout") != e.get("holdout")
+                or target.get("sha256") != e.get("sha256")
+                or not e.get("reason") or not e.get("successor_key")):
+            continue
+        if any(c["event"] == "CONSUMED"
+               and c.get("holdout") == target.get("holdout")
+               and c.get("sha256") == target.get("sha256")
+               for c in entries):
+            continue
+        withdrawn.add(target["entry"])
+    return withdrawn
+
+
 def _reserved_sha(entries: list[dict], holdout_key: str) -> str | None:
     """Codex review #13: a later CONFLICTING reservation silently overrode
     the original. Multiple reservations must agree, or the ledger refuses
-    until an owner-approved amendment resolves them."""
+    until an owner-approved amendment resolves them. Withdrawn
+    reservations (review #19) no longer count."""
+    withdrawn = _withdrawn_reservations(entries)
     shas = [e.get("sha256") for e in entries
-            if e["event"] == "RESERVED" and e.get("holdout") == holdout_key]
+            if e["event"] == "RESERVED" and e.get("holdout") == holdout_key
+            and e["entry"] not in withdrawn]
     if not shas:
         return None
     if len(set(shas)) > 1:
