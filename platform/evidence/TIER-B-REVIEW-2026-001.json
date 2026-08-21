@@ -1,0 +1,110 @@
+{
+ "checksum_spot_verification": {
+  "hausa": {
+   "mismatched": 0,
+   "verified": 25
+  },
+  "igbo": {
+   "mismatched": 0,
+   "verified": 25
+  },
+  "pidgin": {
+   "mismatched": 0,
+   "verified": 25
+  },
+  "yoruba": {
+   "mismatched": 0,
+   "verified": 25
+  }
+ },
+ "method": "full-manifest four-dimension leak audit (byte / speaker / session / exact-normalized-text) against EVERY frozen pool of each language (soreva + fleurs where present); licence and consent field verification on every row; duration and sample-rate bounds on every row; 25 random audio objects per corpus downloaded from S3 and sha256-reverified (seed 20260821)",
+ "next": "gb7 multilingual revision (pilot 6 + pidgin), pidgin dev/sealed splits, pilot design rev4 per the owner's 7-language full-FT direction",
+ "notes": {
+  "igbo_text_collisions": "2 of 92,033 rows share exact normalized text with a frozen-pool row \u2014 common short phrases, zero byte/speaker/session identity; negligible",
+  "pidgin_quality": "0 malformed audio files across 331,333 clips; the ingest-crash corruption was box-side (partial disk write), never source data",
+  "speakers": "real per-corpus speaker ids throughout: pidgin 737, hausa 1,877, igbo 1,806, yoruba 1,742 \u2014 speaker-disjoint splits are possible for all four"
+ },
+ "record": "TIER-B-REVIEW-2026-001",
+ "results": {
+  "hausa": {
+   "bad_duration": 0,
+   "bad_sr": 0,
+   "consents": [
+    "agreement-level:LIC-2026-004"
+   ],
+   "frozen_pool_rows": 975,
+   "hours": 99.2,
+   "leak_byte": 0,
+   "leak_session": 0,
+   "leak_speaker": 0,
+   "leak_text": 0,
+   "licence_policies": {
+    "commercial_ok": 113439
+   },
+   "rows": 113439,
+   "speakers": 1877
+  },
+  "igbo": {
+   "bad_duration": 0,
+   "bad_sr": 0,
+   "consents": [
+    "agreement-level:LIC-2026-004"
+   ],
+   "frozen_pool_rows": 1393,
+   "hours": 99.7,
+   "leak_byte": 0,
+   "leak_session": 0,
+   "leak_speaker": 0,
+   "leak_text": 2,
+   "licence_policies": {
+    "commercial_ok": 92033
+   },
+   "rows": 92033,
+   "speakers": 1806
+  },
+  "pidgin": {
+   "bad_duration": 0,
+   "bad_sr": 0,
+   "consents": [
+    "agreement-level:LIC-2026-003"
+   ],
+   "frozen_pool_rows": 142,
+   "hours": 698.2,
+   "leak_byte": 0,
+   "leak_session": 0,
+   "leak_speaker": 0,
+   "leak_text": 0,
+   "licence_policies": {
+    "commercial_ok": 331333
+   },
+   "rows": 331333,
+   "speakers": 737
+  },
+  "yoruba": {
+   "bad_duration": 0,
+   "bad_sr": 0,
+   "consents": [
+    "agreement-level:LIC-2026-004"
+   ],
+   "frozen_pool_rows": 1321,
+   "hours": 99.6,
+   "leak_byte": 0,
+   "leak_session": 0,
+   "leak_speaker": 0,
+   "leak_text": 0,
+   "licence_policies": {
+    "commercial_ok": 99189
+   },
+   "rows": 99189,
+   "speakers": 1742
+  }
+ },
+ "reviewed_utc": "2026-08-21T19:55:26Z",
+ "scope": {
+  "hausa/asr/nv_hausa/v1": "NaijaVoices (LIC-2026-004)",
+  "igbo/asr/nv_igbo/v1": "NaijaVoices (LIC-2026-004)",
+  "pidgin/asr/av_pcm/v1": "africanvoices (LIC-2026-003, owner attestation)",
+  "yoruba/asr/nv_yoruba/v1": "NaijaVoices (LIC-2026-004)"
+ },
+ "verdict": "PASS \u2014 all four Tier-B corpora are training-ready"
+}
