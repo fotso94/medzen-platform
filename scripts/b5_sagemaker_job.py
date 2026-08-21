@@ -469,22 +469,50 @@ def verify_calibration_receipt(bindings: dict,
     return record
 
 
-def verify_receipt_against_aws(record: dict, sagemaker_client,
-                                s3_client) -> None:
-    """Codex review #22: a committed receipt is still a repo writer's
-    document — the facts only AWS knows are re-queried at launch on the
-    SAME session that will create the training job."""
-    job = record["job"]
-    desc = sagemaker_client.describe_training_job(TrainingJobName=job)
+def verify_receipt_against_aws(record: dict, cal_packet: dict,
+                                sagemaker_client, s3_client) -> None:
+    """Codex reviews #22-#23 (reproduced: the genuine gb8 ftcal-003 job
+    passed as a gb9 calibration). The COMPLETE live job contract is
+    compared against the COMMITTED calibration packet, not just three
+    convenient fields: job name derived from the packet, the full
+    Environment, image, artifact URI + VersionId + KMS, and the output
+    KMS configuration."""
+    expected_job = f"medzen-b5-{cal_packet['job_id']}"
+    if record.get("job") != expected_job:
+        raise JobRefusal(
+            f"receipt names job {record.get('job')!r} but the committed "
+            f"calibration packet derives {expected_job!r} — a different "
+            "job's evidence cannot justify this chain (Codex review #23)")
+    desc = sagemaker_client.describe_training_job(
+        TrainingJobName=expected_job)
     if desc.get("TrainingJobStatus") != "Completed":
-        raise JobRefusal(f"AWS says calibration {job} is "
+        raise JobRefusal(f"AWS says {expected_job} is "
                          f"{desc.get('TrainingJobStatus')!r}, not Completed")
     if desc.get("BillableTimeInSeconds") != record["billable_seconds"]:
         raise JobRefusal("AWS billable seconds do not match the receipt")
     if desc.get("AlgorithmSpecification", {}).get("TrainingImage") != \
-            record["image_uri_with_digest"]:
-        raise JobRefusal("AWS training image does not match the receipt")
+            cal_packet["image_uri_with_digest"]:
+        raise JobRefusal("AWS training image does not match the committed "
+                         "calibration packet")
+    live_env = desc.get("Environment") or {}
+    cal_env = cal_packet.get("environment") or {}
+    if live_env != cal_env:
+        drift = sorted(set(live_env.items()) ^ set(cal_env.items()))
+        raise JobRefusal(
+            f"the LIVE SageMaker Environment differs from the committed "
+            f"calibration packet ({drift[:4]}) — the job that actually "
+            "ran is not the calibration this packet claims "
+            "(Codex review #23)")
     artifact = record["artifact"]
+    live_artifact = desc.get("ModelArtifacts", {}).get("S3ModelArtifacts")
+    if live_artifact != artifact["s3_uri"]:
+        raise JobRefusal(f"AWS model artifact {live_artifact!r} does not "
+                         "match the receipt's s3_uri")
+    if desc.get("OutputDataConfig", {}).get("KmsKeyId") not in (
+            artifact["kms_key"],
+            artifact["kms_key"].rsplit("/", 1)[-1]):
+        raise JobRefusal("AWS output KMS configuration does not match "
+                         "the receipt")
     uri = artifact["s3_uri"]
     bucket, key = uri.replace("s3://", "", 1).split("/", 1)
     head = s3_client.head_object(Bucket=bucket, Key=key)
@@ -499,16 +527,52 @@ def _hex(value: str, length: int) -> bool:
         c in "0123456789abcdef" for c in value.lower())
 
 
+def _finite_nonneg(value, what: str) -> float:
+    import math
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise JobRefusal(f"{what} is not a number")
+    if not math.isfinite(number) or number < 0:
+        raise JobRefusal(f"{what} is {value!r} — non-finite or negative "
+                         "financial values refuse (Codex review #23: NaN "
+                         "passed every comparison)")
+    return number
+
+
+def recompute_registry_totals(registry: dict) -> dict:
+    """The registry's own arithmetic, re-derived from EFFECTIVE rows
+    (last line per allocation_id). Codex review #23: the summary said
+    $584.43 while the rows totalled $514.43 — summaries must be a pure
+    function of rows, never hand-maintained."""
+    effective: dict[str, dict] = {}
+    for line in registry.get("allocations", []):
+        if line.get("allocation_id"):
+            effective[line["allocation_id"]] = line
+    recognized = 0.0
+    active_sum = 0.0
+    for aid, line in effective.items():
+        value = line.get("recognized_committed_usd")
+        if value is not None:
+            recognized += _finite_nonneg(
+                value, f"allocation {aid} recognized_committed_usd")
+        if line.get("financial_state") == "ACTIVE_RESERVED":
+            active_sum += _finite_nonneg(
+                line.get("reservation_usd", 0),
+                f"allocation {aid} reservation_usd")
+    return {"effective": effective, "recognized": round(recognized, 10),
+            "active": round(active_sum, 10)}
+
+
 def verify_active_reservation(registry_binding: dict, bindings: dict,
                                worst_case_usd: float,
                                repo_root: Path | None = None,
                                head_oid: str | None = None) -> None:
-    """Codex reviews #21-#22. The committed registry must show THIS
-    packet's allocation as the single ACTIVE_RESERVED line, sized for
-    the worst case, BOUND TO THIS PACKET'S SHA (a different packet's
-    reservation was accepted), and the registry's own arithmetic must
-    hold: recognized + active reservations within the aggregate ceiling
-    (an over-budget registry was accepted)."""
+    """Codex reviews #21-#23. The committed registry must show THIS
+    packet's allocation as the single unexpired ACTIVE_RESERVED line,
+    sized for the worst case, and the summary must EQUAL the recompute
+    from effective rows with finite non-negative values under the
+    aggregate ceiling."""
     root = repo_root or Path(__file__).resolve().parents[1]
     oid = head_oid or repo_head_oid(root)
     if not isinstance(registry_binding, dict):
@@ -525,45 +589,56 @@ def verify_active_reservation(registry_binding: dict, bindings: dict,
         raise JobRefusal("registry binding sha256 does not match the "
                          f"committed bytes of {rel}")
     registry = json.loads(body)
+    totals = recompute_registry_totals(registry)
     allocation_id = registry_binding.get("allocation_id")
-    effective: dict[str, dict] = {}
-    for line in registry.get("allocations", []):
-        if line.get("allocation_id"):
-            effective[line["allocation_id"]] = line
-    ours = effective.get(allocation_id)
+    ours = totals["effective"].get(allocation_id)
     if ours is None:
         raise JobRefusal(f"allocation {allocation_id!r} does not exist")
     if ours.get("financial_state") != "ACTIVE_RESERVED":
         raise JobRefusal(
             f"allocation {allocation_id!r} is "
             f"{ours.get('financial_state')!r}, not ACTIVE_RESERVED")
-    if float(ours.get("reservation_usd", 0)) < worst_case_usd:
+    if _finite_nonneg(ours.get("reservation_usd", 0),
+                      "reservation_usd") < worst_case_usd:
         raise JobRefusal("active reservation does not cover the worst case")
     if ours.get("packet_bindings_sha256") != \
             canonical_bindings_sha256(bindings):
         raise JobRefusal(
-            "the ACTIVE reservation is bound to a DIFFERENT packet sha — "
-            "another packet's reservation cannot fund this launch "
+            "the ACTIVE reservation is bound to a DIFFERENT packet sha "
             "(Codex review #22)")
-    active = {k: line for k, line in effective.items()
-              if line.get("financial_state") == "ACTIVE_RESERVED"}
-    if list(active) != [allocation_id]:
+    expiry = str(ours.get("reservation_expires_utc") or "")
+    import datetime
+    try:
+        expires = datetime.datetime.fromisoformat(
+            expiry.replace("Z", "+00:00"))
+    except ValueError:
+        raise JobRefusal("ACTIVE_RESERVED lines must carry a valid "
+                         "reservation_expires_utc (Codex review #23: no "
+                         "reservation expiry existed)")
+    if datetime.datetime.now(datetime.timezone.utc) >= expires:
+        raise JobRefusal(f"the reservation expired at {expiry} — cut a "
+                         "fresh registry revision to re-reserve")
+    active = [aid for aid, line in totals["effective"].items()
+              if line.get("financial_state") == "ACTIVE_RESERVED"]
+    if active != [allocation_id]:
         raise JobRefusal(
             f"one-active-reservation rule violated: {sorted(active)}")
     summary = registry.get("guardrail_summary") or {}
-    ceiling = float(summary.get("aggregate_ceiling_usd", 0))
-    recognized = float(summary.get("recognized_committed_guardrail_usd", 0))
-    active_sum = sum(float(line.get("reservation_usd", 0))
-                     for line in active.values())
-    if abs(float(summary.get("active_reservations_usd", -1))
-           - active_sum) > 0.01:
-        raise JobRefusal("registry summary active_reservations_usd does "
-                         "not match its own allocation lines")
-    if recognized + active_sum > ceiling + 1e-9:
-        raise JobRefusal(
-            f"registry arithmetic breaches the aggregate ceiling: "
-            f"{recognized:.2f} recognized + {active_sum:.2f} reserved > "
-            f"{ceiling:.2f}")
+    ceiling = _finite_nonneg(summary.get("aggregate_ceiling_usd", 0),
+                             "aggregate_ceiling_usd")
+    for key, expected in (
+            ("recognized_committed_guardrail_usd", totals["recognized"]),
+            ("active_reservations_usd", totals["active"])):
+        declared = _finite_nonneg(summary.get(key, float("nan")), key)
+        if abs(declared - expected) > 0.01:
+            raise JobRefusal(
+                f"registry summary {key}=${declared:.2f} does not match "
+                f"the recompute from effective rows ${expected:.2f} — "
+                "summaries must be pure functions of rows "
+                "(Codex review #23)")
+    if totals["recognized"] + totals["active"] > ceiling + 1e-9:
+        raise JobRefusal("registry arithmetic breaches the aggregate "
+                         "ceiling")
 
 
 def owner_intent_is_signed(job_id: str, root: Path, oid: str,
@@ -617,6 +692,92 @@ def owner_intent_is_signed(job_id: str, root: Path, oid: str,
     return intent
 
 
+def verify_intent_chain(intent: dict, bindings: dict, worst_case: float,
+                         root: Path, oid: str) -> None:
+    """Codex review #23 finding 2 (reproduced: owner signed while the
+    review was PENDING; the review was flipped to APPROVED afterwards
+    and both passed). The signed intent must bind the review's EXACT
+    committed bytes (sha) and decision, the packet, the receipt, an
+    integer ceiling covering the worst case, and its own expiry."""
+    packet_rel = str(intent.get("packet", {}).get("file") or "")
+    packet_body = _show_at(root, oid, packet_rel)
+    packet_sha = canonical_bindings_sha256(bindings)
+    if packet_body is None or canonical_bindings_sha256(
+            json.loads(packet_body)) != packet_sha or \
+            intent["packet"].get("canonical_sha256") != packet_sha:
+        raise JobRefusal("the signed intent binds a DIFFERENT packet "
+                         "than the one launching")
+    review_ref = intent.get("review") or {}
+    review_rel = str(review_ref.get("file") or "")
+    review_body = _show_at(root, oid, review_rel)
+    if review_body is None:
+        raise JobRefusal("the signed intent's review record is not "
+                         "committed")
+    if hashlib.sha256(review_body).hexdigest() != \
+            review_ref.get("sha256"):
+        raise JobRefusal(
+            "the committed review record differs from the bytes the "
+            "owner signed over — a review changed AFTER signing cannot "
+            "ride the old signature (Codex review #23)")
+    review = json.loads(review_body)
+    if review.get("decision") != "APPROVED" or \
+            review_ref.get("decision") != "APPROVED":
+        raise JobRefusal("the owner may only sign an APPROVED review — "
+                         f"this one is {review.get('decision')!r}")
+    if review.get("bindings_sha256") != packet_sha:
+        raise JobRefusal("the reviewed packet differs from the launching "
+                         "packet")
+    if not str(review_ref.get("reviewer") or "").strip() or \
+            review.get("reviewer") != review_ref.get("reviewer"):
+        raise JobRefusal("the intent must name the reviewer it relied on")
+    if intent.get("receipt", {}).get("record_sha256") != \
+            bindings["calibration_receipt"]["record_sha256"]:
+        raise JobRefusal("the signed intent binds a different calibration "
+                         "receipt")
+    ceiling = intent.get("ceiling_usd")
+    if type(ceiling) is not int:
+        raise JobRefusal("intent ceiling_usd must be a strict integer")
+    if not (worst_case <= ceiling <= float(
+            bindings.get("cost_ceiling_usd", 0))):
+        raise JobRefusal(
+            f"intent ceiling ${ceiling} must cover the ${worst_case:.2f} "
+            "worst case and stay within the packet ceiling")
+    import datetime
+    expiry = str(intent.get("expires_utc") or "")
+    try:
+        expires = datetime.datetime.fromisoformat(
+            expiry.replace("Z", "+00:00"))
+    except ValueError:
+        raise JobRefusal("the intent must carry a valid expires_utc")
+    if datetime.datetime.now(datetime.timezone.utc) >= expires:
+        raise JobRefusal(f"the signed intent expired at {expiry}")
+
+
+def assert_committed_profile(bindings: dict, root: Path, oid: str) -> None:
+    """Codex review #23 finding 4 (reproduced: an english-only request
+    passed after coordinated WORKING-TREE protocol edits). At launch the
+    multilingual profile is re-asserted against the COMMITTED protocol
+    bytes — the working tree has no vote."""
+    environment = bindings.get("environment") or {}
+    if not environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):
+        return
+    protocol = load_protocol(root, oid=oid)
+    mandatory = set(protocol["mandatory_languages"])
+    requested = {t.strip() for t in
+                 environment.get("MEDZEN_LANGUAGES", "").split(",")
+                 if t.strip()}
+    if requested != mandatory:
+        raise JobRefusal(
+            f"COMMITTED protocol requires {sorted(mandatory)} exactly; "
+            f"the packet binds {sorted(requested)} — working-tree "
+            "protocol edits cannot widen or narrow the set "
+            "(Codex review #23)")
+
+
+EXECUTOR_ENV = "MEDZEN_EXECUTOR"
+PROTECTED_EXECUTOR = "github-protected-workflow"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("render", "validate", "launch"))
@@ -640,28 +801,35 @@ def main() -> int:
         worst_case = result["worst_case_on_demand_usd"]
         root = Path(__file__).resolve().parents[1]
         head = repo_head_oid(root)
-        review_record_approves(job_id, bindings, root, head)
         receipt_record = None
+        cal_packet = None
         if worst_case > CALIBRATION_TIER_USD:
+            # the OUTERMOST boundary first: locally, above-tier launches
+            # refuse no matter what the other gates say
+            import os
+            if not (os.environ.get(EXECUTOR_ENV) == PROTECTED_EXECUTOR
+                    and os.environ.get("GITHUB_ACTIONS") == "true"):
+                raise JobRefusal(
+                    "above-tier launches happen ONLY via the protected "
+                    "workflow (.github/workflows/arm-launch.yml) whose "
+                    "environment requires the OWNER's approval on "
+                    "github.com — a trust anchor no repository writer "
+                    "can rewrite (Codex review #23: the in-repo "
+                    "allowed-signers file was forgeable). The SSH-signed "
+                    "intent remains as defense-in-depth inside that "
+                    "workflow.")
+            review_record_approves(job_id, bindings, root, head)
             intent = owner_intent_is_signed(job_id, root, head)
-            packet_rel = str(intent.get("packet", {}).get("file") or "")
-            packet_body = _show_at(root, head, packet_rel)
-            if packet_body is None or canonical_bindings_sha256(
-                    json.loads(packet_body)) != \
-                    canonical_bindings_sha256(bindings) or \
-                    intent["packet"].get("canonical_sha256") != \
-                    canonical_bindings_sha256(bindings):
-                raise JobRefusal("the signed intent binds a DIFFERENT "
-                                 "packet than the one launching")
+            verify_intent_chain(intent, bindings, worst_case, root, head)
             receipt_record = verify_calibration_receipt(bindings,
                                                         head_oid=head)
-            if intent.get("receipt", {}).get("record_sha256") != \
-                    bindings["calibration_receipt"]["record_sha256"]:
-                raise JobRefusal("the signed intent binds a different "
-                                 "calibration receipt")
+            cal_packet = json.loads(_show_at(
+                root, head, receipt_record["calibration_packet"]))
             verify_active_reservation(intent.get("registry"), bindings,
                                       worst_case, head_oid=head)
-            load_protocol(root, oid=head)   # committed-bytes re-check
+            assert_committed_profile(bindings, root, head)
+        else:
+            review_record_approves(job_id, bindings, root, head)
         # ONE boto3 session: STS pin + AWS receipt facts + the mutation
         import boto3
         session = boto3.session.Session(region_name=REGION)
@@ -671,7 +839,7 @@ def main() -> int:
                 f"effective AWS account is {account!r}, not the MedZen "
                 f"account {ACCOUNT} — refusing to launch")
         if receipt_record is not None:
-            verify_receipt_against_aws(receipt_record,
+            verify_receipt_against_aws(receipt_record, cal_packet,
                                        session.client("sagemaker"),
                                        session.client("s3"))
         response = session.client("sagemaker").create_training_job(**request)

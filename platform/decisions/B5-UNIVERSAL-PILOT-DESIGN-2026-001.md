@@ -206,3 +206,24 @@ now checks packet identity AND the registry's own ceiling arithmetic.
 Protocol and every other governed input load from ONE captured commit.
 The medzen-shared four-files rule is respected again (the approvals
 directory idea is dead; everything lives in the repo).
+
+## Rev10 (2026-08-21T23:35:57Z) — Codex review #23: the trust anchor leaves the repo
+The in-repo allowed-signers file was forgeable by any repository writer
+(reviewer reproduced enrolling their own key as owner@medzen), so the
+authorization boundary moves OFF this machine entirely: above-tier
+launches now happen ONLY via .github/workflows/arm-launch.yml, whose
+protected environment (arm-launch-approval) requires the OWNER's click
+on github.com — an event no local writer can fabricate. Locally,
+above-tier launches refuse unconditionally (the sealed-evaluator
+precedent). The SSH-signed intent stays as defense-in-depth INSIDE the
+approved workflow, and now binds the review record's EXACT bytes +
+decision (signing over a PENDING review, then flipping it, refuses),
+an integer ceiling and an expiry. The live AWS check compares the
+COMPLETE job contract (full Environment, derived job name, artifact
+URI, output KMS) against the committed calibration packet — the
+reproduced gb8-as-gb9 live bypass refuses. Registry summaries are now
+PURE FUNCTIONS of effective rows (049 recomputed: $514.43 recognized +
+$70 reserved = $584.43 of $800; NaN/negatives refuse; reservations
+expire 2026-09-04). Owner activation when ready: create the GitHub
+environment with yourself as required reviewer + set MEDZEN_CI_ROLE_ARN
+(B7 packet); until then every arm path refuses by construction.

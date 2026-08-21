@@ -381,7 +381,7 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
 
     def receipt_record(**over):
         rec = {"terminal_status": "Completed", "billable_seconds": 1128,
-               "verdict": "PASS — chain proven", "job": "cal-1",
+               "verdict": "PASS — chain proven", "job": "medzen-b5-cal-1",
                "declared_scale_keys": sorted(SCALE_KEYS),
                "dataset_version": "gb9",
                "dataset_complete_raw_sha256": "e0" * 32,
@@ -440,7 +440,9 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
     rec_path.write_text(_json.dumps(receipt_record()))
     _commit(repo)
 
-    # AWS re-verification refuses when AWS disagrees with the receipt
+    # AWS re-verification: the COMPLETE live job contract vs the
+    # committed calibration packet (Codex review #23 reproduced the
+    # genuine gb8 job passing as a gb9 calibration)
     from b5_sagemaker_job import verify_receipt_against_aws
     record = receipt_record()
 
@@ -448,9 +450,13 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
         def __init__(self, **over):
             self.desc = {"TrainingJobStatus": "Completed",
                          "BillableTimeInSeconds": 1128,
-                         "AlgorithmSpecification": {"TrainingImage": image}}
+                         "AlgorithmSpecification": {"TrainingImage": image},
+                         "Environment": dict(cal_env),
+                         "ModelArtifacts": {"S3ModelArtifacts": "s3://b/k"},
+                         "OutputDataConfig": {"KmsKeyId": KMS}}
             self.desc.update(over)
         def describe_training_job(self, TrainingJobName):
+            assert TrainingJobName == "medzen-b5-cal-1"
             return self.desc
 
     class S3:
@@ -459,23 +465,39 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
         def head_object(self, Bucket, Key):
             return {"VersionId": self.vid, "SSEKMSKeyId": self.kms}
 
-    verify_receipt_against_aws(record, SM(), S3())
+    verify_receipt_against_aws(record, cal, SM(), S3())
+    # a receipt naming a different job than the packet derives refuses
+    with pytest.raises(JR, match="different job"):
+        verify_receipt_against_aws(receipt_record(job="medzen-b5-other"),
+                                   cal, SM(), S3())
     with pytest.raises(JR, match="not Completed"):
-        verify_receipt_against_aws(record,
+        verify_receipt_against_aws(record, cal,
                                    SM(TrainingJobStatus="Stopped"), S3())
     with pytest.raises(JR, match="billable"):
-        verify_receipt_against_aws(record,
+        verify_receipt_against_aws(record, cal,
                                    SM(BillableTimeInSeconds=900), S3())
+    # THE #23 reproduction: the live Environment differs (a gb8 job
+    # wearing a gb9 receipt) — refuses on the full-env comparison
+    with pytest.raises(JR, match="LIVE SageMaker Environment"):
+        verify_receipt_against_aws(record, cal, SM(Environment=dict(
+            cal_env, MEDZEN_MANIFEST_VERSION="gb8")), S3())
+    with pytest.raises(JR, match="model artifact"):
+        verify_receipt_against_aws(record, cal, SM(ModelArtifacts={
+            "S3ModelArtifacts": "s3://b/other"}), S3())
+    with pytest.raises(JR, match="output KMS"):
+        verify_receipt_against_aws(record, cal, SM(OutputDataConfig={
+            "KmsKeyId": KMS.replace("9c33", "dead")}), S3())
     with pytest.raises(JR, match="VersionId"):
-        verify_receipt_against_aws(record, SM(), S3(vid="FORGED"))
-    with pytest.raises(JR, match="KMS"):
-        verify_receipt_against_aws(record, SM(),
+        verify_receipt_against_aws(record, cal, SM(), S3(vid="FORGED"))
+    with pytest.raises(JR, match="KMS identity"):
+        verify_receipt_against_aws(record, cal, SM(),
                                    S3(kms=KMS.replace("9c33", "dead")))
 
 
 def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
-    """Codex review #22 finding 4 (reproduced: DIFFERENT_PACKET_ACTIVE_
-    RESERVATION_ACCEPTED, OVER_BUDGET_REGISTRY_ACCEPTED)."""
+    """Codex reviews #22-#23 (reproduced: different-packet reservation,
+    over-budget registry, NaN values passing every comparison, hand-
+    maintained summaries diverging from rows, no expiry)."""
     import json as _json
     import hashlib as h
     from b5_sagemaker_job import (JobRefusal as JR,
@@ -487,20 +509,26 @@ def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
     reg_path = repo / "platform/finance/REG.json"
 
     def commit_registry(packet_sha=None, reservation=70.0,
-                         recognized=584.43, ceiling=800.0,
-                         summary_active=None):
+                         recognized_row=500.0, ceiling=800.0,
+                         summary_recognized=None, summary_active=None,
+                         expires="2027-01-01T00:00:00Z"):
+        line = {"allocation_id": "ARM-1",
+                "financial_state": "ACTIVE_RESERVED",
+                "reservation_usd": reservation,
+                "reservation_expires_utc": expires,
+                "packet_bindings_sha256":
+                    packet_sha or canonical_bindings_sha256(b)}
         reg = {"allocations": [
-            {"allocation_id": "ARM-1",
-             "financial_state": "ACTIVE_RESERVED",
-             "reservation_usd": reservation,
-             "packet_bindings_sha256":
-                 packet_sha or canonical_bindings_sha256(b)}],
+            {"allocation_id": "OLD", "financial_state": "CLOSED",
+             "recognized_committed_usd": recognized_row}, line],
             "guardrail_summary": {
                 "aggregate_ceiling_usd": ceiling,
-                "recognized_committed_guardrail_usd": recognized,
-                "active_reservations_usd": (reservation
-                                             if summary_active is None
-                                             else summary_active)}}
+                "recognized_committed_guardrail_usd":
+                    (recognized_row if summary_recognized is None
+                     else summary_recognized),
+                "active_reservations_usd":
+                    (reservation if summary_active is None
+                     else summary_active)}}
         reg_path.write_text(_json.dumps(reg))
         _commit(repo)
         return {"file": "platform/finance/REG.json",
@@ -508,20 +536,37 @@ def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
                 "allocation_id": "ARM-1"}
 
     verify_active_reservation(commit_registry(), b, 64.0, repo)
-    # ANOTHER packet's reservation cannot fund this launch
     with pytest.raises(JR, match="DIFFERENT packet"):
         verify_active_reservation(commit_registry(packet_sha="f" * 64),
                                   b, 64.0, repo)
-    # an over-budget registry refuses on its own arithmetic
+    # over-budget on the RECOMPUTED rows refuses
     with pytest.raises(JR, match="aggregate ceiling"):
         verify_active_reservation(
-            commit_registry(recognized=780.0), b, 64.0, repo)
-    # a summary lying about its own reservations refuses
-    with pytest.raises(JR, match="does not match its own"):
+            commit_registry(recognized_row=780.0), b, 64.0, repo)
+    # a summary that disagrees with its own rows refuses (reproduced:
+    # $584.43 declared vs $514.43 recomputed)
+    with pytest.raises(JR, match="does not match the recompute"):
+        verify_active_reservation(
+            commit_registry(summary_recognized=584.43), b, 64.0, repo)
+    with pytest.raises(JR, match="does not match the recompute"):
         verify_active_reservation(
             commit_registry(summary_active=0.0), b, 64.0, repo)
-
-
+    # NaN and negative values refuse everywhere they appear
+    with pytest.raises(JR, match="non-finite or negative"):
+        verify_active_reservation(
+            commit_registry(recognized_row=float("nan"),
+                             summary_recognized=0.0), b, 64.0, repo)
+    with pytest.raises(JR, match="non-finite or negative"):
+        verify_active_reservation(
+            commit_registry(reservation=-70.0, summary_active=-70.0),
+            b, 64.0, repo)
+    # an EXPIRED reservation refuses (no expiry existed before #23)
+    with pytest.raises(JR, match="expired"):
+        verify_active_reservation(
+            commit_registry(expires="2026-01-01T00:00:00Z"), b, 64.0, repo)
+    with pytest.raises(JR, match="valid reservation_expires_utc"):
+        verify_active_reservation(
+            commit_registry(expires=""), b, 64.0, repo)
 def test_owner_intent_requires_a_verifying_ssh_signature(tmp_path):
     """Codex review #22 finding 3: commit ids are deterministic, so
     oid-quoting proved reference, not identity. The owner now SIGNS the
@@ -611,3 +656,95 @@ def test_protocol_loads_from_captured_commit_with_containment(tmp_path):
     oid2 = _commit(repo)
     with pytest.raises(JR, match="escapes"):
         load_protocol(repo, oid2)
+
+def test_intent_binds_review_sha_so_post_signing_flips_refuse(tmp_path):
+    """Codex review #23 finding 2 reproduction: owner signs while the
+    review is PENDING; the review is later flipped to APPROVED; the old
+    signature must NOT carry. The intent binds the review's exact
+    committed bytes."""
+    import json as _json
+    import hashlib as h
+    from b5_sagemaker_job import (JobRefusal as JR,
+                                  canonical_bindings_sha256,
+                                  verify_intent_chain)
+    b = dict(bindings(), cost_ceiling_usd=70.0,
+             calibration_receipt={"record": "platform/evidence/R.json",
+                                    "record_sha256": "a" * 64})
+    repo = _mini_repo(tmp_path)
+    (repo / "platform/decisions/reviews").mkdir(parents=True)
+    (repo / "platform/manifests").mkdir(parents=True)
+    pkt_path = repo / "platform/manifests/PKT.json"
+    pkt_path.write_text(_json.dumps(b))
+    sha = canonical_bindings_sha256(b)
+    review_path = repo / "platform/decisions/reviews/j.json"
+
+    def write_review(decision):
+        review_path.write_text(_json.dumps(
+            {"job_id": b["job_id"], "bindings_sha256": sha,
+             "decision": decision, "reviewer": "codex", "basis": "x"}))
+        _commit(repo)
+        return h.sha256(review_path.read_bytes()).hexdigest()
+
+    pending_sha = write_review("PENDING_INDEPENDENT_REVIEW")
+
+    def intent(review_sha, decision="APPROVED"):
+        return {"job_id": b["job_id"],
+                "packet": {"file": "platform/manifests/PKT.json",
+                            "canonical_sha256": sha},
+                "review": {"file": "platform/decisions/reviews/j.json",
+                            "sha256": review_sha, "decision": decision,
+                            "reviewer": "codex"},
+                "receipt": {"record_sha256": "a" * 64},
+                "ceiling_usd": 70,
+                "expires_utc": "2027-01-01T00:00:00Z"}
+
+    # the reproduction: signed over the PENDING review bytes...
+    with pytest.raises(JR, match="only sign an APPROVED"):
+        verify_intent_chain(intent(pending_sha,
+                                    decision="PENDING_INDEPENDENT_REVIEW"),
+                            b, 64.0, repo,
+                            __import__("b5_sagemaker_job")
+                            .repo_head_oid(repo))
+    # ...review later flipped to APPROVED: the sha the owner signed no
+    # longer matches the committed bytes -> refuses
+    write_review("APPROVED")
+    oid = __import__("b5_sagemaker_job").repo_head_oid(repo)
+    with pytest.raises(JR, match="AFTER signing"):
+        verify_intent_chain(intent(pending_sha), b, 64.0, repo, oid)
+    # the honest path: intent binds the APPROVED review's exact bytes
+    approved_sha = h.sha256(review_path.read_bytes()).hexdigest()
+    verify_intent_chain(intent(approved_sha), b, 64.0, repo, oid)
+    # strict-integer ceiling + expiry are enforced on the intent itself
+    bad = intent(approved_sha)
+    bad["ceiling_usd"] = 70.0
+    with pytest.raises(JR, match="strict integer"):
+        verify_intent_chain(bad, b, 64.0, repo, oid)
+    bad = intent(approved_sha)
+    bad["expires_utc"] = "2026-01-01T00:00:00Z"
+    with pytest.raises(JR, match="expired"):
+        verify_intent_chain(bad, b, 64.0, repo, oid)
+
+
+def test_above_tier_local_launch_refuses_pointing_to_protected_workflow(tmp_path, monkeypatch):
+    """Codex review #23 finding 1: the in-repo allowed-signers file was
+    forgeable (reproduced), so above-tier launches move to the GitHub
+    protected-environment workflow — the owner's approval lives where no
+    repository writer can rewrite it. Locally they refuse always."""
+    import json as _json
+    import subprocess
+    import sys
+    monkeypatch.delenv("MEDZEN_EXECUTOR", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    root = Path(__file__).resolve().parents[1]
+    b = _json.loads((root / "platform/manifests/"
+                     "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json"
+                     ).read_bytes())
+    request = render_request(b)
+    bp = tmp_path / "b.json"; bp.write_text(_json.dumps(b))
+    rp = tmp_path / "r.json"; rp.write_text(_json.dumps(request))
+    proc = subprocess.run(
+        [sys.executable, str(root / "scripts/b5_sagemaker_job.py"),
+         "launch", "--bindings", str(bp), "--request", str(rp)],
+        capture_output=True, text=True, cwd=root)
+    assert proc.returncode == 2, proc.stdout
+    assert "protected" in proc.stdout and "workflow" in proc.stdout

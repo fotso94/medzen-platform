@@ -1,0 +1,48 @@
+name: arm-launch
+# Codex review #23: the owner's approval must live at a trust boundary
+# no repository writer can rewrite. This workflow's environment
+# (arm-launch-approval) is protected in GitHub settings with the OWNER
+# as required reviewer — the run BLOCKS until the owner clicks Approve
+# on github.com, an event only the owner's GitHub account can produce.
+# DARK until the owner: (1) creates the environment with themselves as
+# required reviewer, (2) sets MEDZEN_CI_ROLE_ARN (B7 activation packet).
+# Every in-repo gate (structured review, signed intent, recipe-bound
+# receipt, AWS contract, reservation) still runs INSIDE the approved
+# job as defense-in-depth.
+permissions:
+  contents: read
+  id-token: write
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "arm job id (must match the committed packet)"
+        required: true
+        type: string
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    environment: arm-launch-approval
+    if: vars.MEDZEN_CI_ROLE_ARN != ''
+    env:
+      MEDZEN_EXECUTOR: github-protected-workflow
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: install launch dependencies
+        run: |
+          pip install boto3 pyyaml jsonschema numpy
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_CI_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: launch under the committed gates
+        run: |
+          python scripts/b5_sagemaker_job.py launch \
+            --bindings "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json" \
+            --request "platform/manifests/B5-UNIVERSAL-ARM1-REQUEST-2026-005.json"
