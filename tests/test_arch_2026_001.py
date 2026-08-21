@@ -179,7 +179,9 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
             "rows_sha256": hashlib.sha256(body).hexdigest(),
             block_name: stats}
     report = {
-        "schema_version": 1, "protocol_id": "PROMOTION-PROTOCOL-2026-003",
+        # bind the CURRENT protocol dynamically (Codex review #20: a
+        # hardcoded id here would rot on the next supersession)
+        "schema_version": 1, "protocol_id": PROTOCOL["record"],
         "candidate_digest": "sha256:" + "a" * 64,
         "code_switch_evidence": {"state": "PASS", "set": "licensed-cs-1",
                                   "manifest_sha256": "c" * 64, "rows": 500},
@@ -874,3 +876,28 @@ def test_ledger_reservation_withdrawal_blocks_consumption(tmp_path):
         holdout_ledger.record_consumption("eval/x/manifest.jsonl", sha,
                                           "probe", path=work,
                                           repo_root=ROOT)
+
+
+def test_stale_protocol_id_in_gate_report_refuses():
+    """Codex review #20 finding 1: the checker loaded protocol -004 but
+    required reports to claim -003 — legitimate current evidence refused,
+    the obsolete identifier accepted. Now: only the CURRENT record's id
+    passes; the superseded one refuses explicitly."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import pytest
+    import b7_model_promotion_check as checker
+    importlib.reload(checker)
+    current = checker._protocol_record()["record"]
+    assert current == PROTOCOL["record"]
+    base = {"protocol_id": "PROMOTION-PROTOCOL-2026-003",
+            "candidate_digest": "sha256:" + "a" * 64}
+    with pytest.raises(checker.PromotionCheckRefusal,
+                       match="current protocol is " + current):
+        checker.require_protocol_evidence(base, [])
+    ok = {"protocol_id": current, "candidate_digest": "sha256:" + "a" * 64}
+    try:
+        checker.require_protocol_evidence(ok, [])
+    except checker.PromotionCheckRefusal as exc:
+        assert "protocol" not in str(exc).split("—")[0], exc

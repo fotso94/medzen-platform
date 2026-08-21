@@ -144,3 +144,22 @@ owner authorization COMMITTED at git HEAD (mutable shared-file text can
 no longer authorize — reproduced forgery closed). Arm 1 = exact $70
 allocation (B5-ARM1-2026-001, PENDING_OWNER_AUTHORIZATION); arms 2-3
 separately authorized only if arm 1 justifies them.
+
+## Rev7 (2026-08-21T22:13:08Z) — Codex review #20: spending + authorization controls
+Promotion checker binds the CURRENT protocol record dynamically (stale
+-003 ids refuse). COST-REGISTRY-2026-046 (append-only successor; the 045
+in-place edit is acknowledged there): campaign CLOSED at $73.38 Cost
+Explorer gross actuals (replacing the $346 conservative recognition),
+zero active reservations, $302.19 headroom — arm-1 activation lands at
+$567.81 under the unchanged $800 ceiling. $70 IS the arm-1
+authorization amount, hard, launcher-enforced; the owner's "+$100
+reported max" is a conversational reporting convention that never binds
+or reserves anything. Arm-1 rev3 packet binds the PASSING gb9
+calibration receipt (committed at HEAD, hash-exact, dataset adoption sha
+matched) — an arm can never launch on an unproven chain. Launch also
+asserts STS account 558069890522 and requires the owner approval phrase
+"I authorize <job> ceiling usd <N> bindings-sha256-16 <sha16>" in BOTH
+the committed authorization record AND the shared reviews file after
+DECISION: APPROVED. Residual trust stated honestly: both channels live
+on one machine; cryptographic separation arrives with owner signing keys
+or the GitHub protected-environment approval once remote CI activates.

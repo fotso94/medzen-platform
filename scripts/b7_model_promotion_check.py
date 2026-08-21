@@ -87,9 +87,15 @@ def require_protocol_evidence(report: dict, requested: list[str]) -> None:
     review #7: a fabricated bare-PASS report was accepted). A promotion
     report must carry the full identity + evidence chain; a report that
     predates the protocol simply cannot promote."""
-    if report.get("protocol_id") != "PROMOTION-PROTOCOL-2026-003":
+    # Codex review #20: this was a hardcoded string that fell behind the
+    # loaded protocol on supersession — legitimate -004 evidence refused
+    # while the obsolete -003 identifier stayed acceptable. The report
+    # must bind the CURRENT protocol record, whatever it is.
+    current_protocol = _protocol_record()["record"]
+    if report.get("protocol_id") != current_protocol:
         raise PromotionCheckRefusal(
-            "gate report does not bind PROMOTION-PROTOCOL-2026-003 — "
+            f"gate report binds protocol {report.get('protocol_id')!r} "
+            f"but the current protocol is {current_protocol} — stale or "
             "pre-protocol reports cannot promote")
     digest = str(report.get("candidate_digest", ""))
     if not (digest.startswith("sha256:") and _hex(digest[7:], 64)):

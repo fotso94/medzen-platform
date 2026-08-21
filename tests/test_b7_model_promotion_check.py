@@ -66,7 +66,9 @@ def test_cli_exit_codes(tmp_path):
                          "--gate-report", str(path), "--languages", "hausa"],
                         capture_output=True, cwd=root)
     assert ok.returncode == 1
-    assert b"PROMOTION-PROTOCOL-2026-003" in ok.stdout
+    # Codex review #20: the refusal names the CURRENT protocol, not a
+    # hardcoded one — pin only the stable prefix
+    assert b"current protocol is PROMOTION-PROTOCOL-" in ok.stdout
     bad = subprocess.run([sys.executable, "scripts/b7_model_promotion_check.py",
                           "--gate-report", str(path), "--languages", "hausa,wolof"],
                          capture_output=True, cwd=root)

@@ -36,7 +36,15 @@ def validate_rows(rows: Iterable[dict], source: str = "<rows>") -> int:
     for i, row in enumerate(rows):
         count += 1
         split = row.get("split")
-        allowed = row.get("allowed_use") or []
+        allowed = row.get("allowed_use")
+        # Codex review #20: a string ("asr_eval") or dict here satisfied
+        # the membership checks by substring/key accident — the field's
+        # TYPE is part of the contract
+        if not (isinstance(allowed, list)
+                and all(isinstance(x, str) for x in allowed)):
+            raise EvalManifestViolation(
+                f"{source} row {i}: allowed_use must be a list of "
+                f"strings, got {type(allowed).__name__}")
         if split != REQUIRED_SPLIT:
             raise EvalManifestViolation(
                 f"{source} row {i}: split={split!r} — evaluation rows must "

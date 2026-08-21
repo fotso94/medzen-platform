@@ -22,7 +22,9 @@ S = Path(os.environ.get("MEDZEN_CACHE_DIR")
          or tempfile.mkdtemp(prefix="medzen-leak-matrix-"))
 BUCKET = "medzen-speech"
 
-complete = json.load(open(S / "gb9-COMPLETE.json"))
+if len(sys.argv) < 2:
+    raise SystemExit("usage: gb_leak_matrix.py <path-to-gbN-COMPLETE.json>")
+complete = json.load(open(sys.argv[1]))
 
 # ---- corpora: name -> (local path, authoritative sha from gb7 COMPLETE rev2)
 CORPUS_LOCAL = {}
@@ -168,7 +170,10 @@ for name, (local, sha, key) in sorted(CORPUS_LOCAL.items()):
             elif same:
                 verdict = "FAIL"
             else:
-                verdict = "REPORT_CROSS_LANGUAGE_SPEAKER"
+                # Codex review #20: cross-language speaker overlap was
+                # merely reported — the exact defect gb9 exists to
+                # prevent. Zero tolerance now that the datasets are clean.
+                verdict = "FAIL_CROSS_LANGUAGE_SPEAKER"
             cells[f"{name} x {p['label']}"] = {
                 "byte_overlap_rows": h["bytes"],
                 "speaker_overlap": sorted(h["speakers"])[:20],
@@ -177,7 +182,8 @@ for name, (local, sha, key) in sorted(CORPUS_LOCAL.items()):
                 "same_language": same, "verdict": verdict}
     print(f"corpus {name}: {rows} rows checked", flush=True)
 
-fails = {k: v for k, v in cells.items() if v["verdict"] == "FAIL"}
+fails = {k: v for k, v in cells.items()
+         if v["verdict"].startswith("FAIL")}
 out = {
     "matrix": "gb9 corpora x all frozen evaluation pools",
     "corpora": corpus_meta,

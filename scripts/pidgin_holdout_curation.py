@@ -45,9 +45,20 @@ SUCCESSOR_KEYS = {
 }
 
 
-def relabel(src: Path, dst: Path) -> dict:
+def relabel(src: Path, dst: Path, kind: str | None = None) -> dict:
     """Deterministic transform: training labels -> evaluation labels.
-    Field order is preserved so the output is byte-reproducible."""
+    Field order is preserved so the output is byte-reproducible.
+
+    Codex review #20: PREDECESSORS was declared but never enforced —
+    pass `kind` ("dev"/"sealed") to verify the input IS the hash-bound
+    predecessor before a byte is transformed."""
+    if kind is not None:
+        _, want = PREDECESSORS[kind]
+        got = sha256_file(src)
+        if got != want:
+            raise ValueError(
+                f"{kind} predecessor drifted: {got[:16]} != {want[:16]} — "
+                "refusing to relabel an unverified input")
     rows = []
     for line in open(src):
         if not line.strip():
@@ -74,5 +85,5 @@ def sha256_file(path: Path) -> str:
 
 
 if __name__ == "__main__":
-    src, dst = Path(sys.argv[1]), Path(sys.argv[2])
-    print(json.dumps(relabel(src, dst), indent=1))
+    kind, src, dst = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3])
+    print(json.dumps(relabel(src, dst, kind=kind), indent=1))
