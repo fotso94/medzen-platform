@@ -7,7 +7,16 @@
         "secretsmanager:GetSecretValue"
       ],
       "Resource": [
-        "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/fish-api-key*"
+        "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/speech/fish-api-key*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/tts/dev/fish-api-key*"
       ]
     },
     {

@@ -2,7 +2,7 @@
 name: app-rag-index
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "services/rag-index/**"
       - "platform/services.yaml"

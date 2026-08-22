@@ -135,7 +135,8 @@ class SpeechOrchestrator:
                 cancel(request_id)
 
     def handle(
-        self, *, audio: bytes, request_id: str, language_hint: str | None
+        self, *, audio: bytes, request_id: str, language_hint: str | None,
+        response_audio: bool = False,
     ) -> tuple[str, dict[str, Any]]:
         total_started = self.clock()
         try:
@@ -286,7 +287,10 @@ class SpeechOrchestrator:
                 "audio_url": None,
                 "tts_backend": "text_only",
             }
-            if self.tts is not None:
+            # B6v2 (Codex serving review): response_audio=false means
+            # ZERO synthesis calls — text must never reach the TTS
+            # provider against the caller's request. Default is False.
+            if self.tts is not None and response_audio:
                 tts, tts_ms = self._timed(
                     lambda: self.tts.synthesize(
                         request_id=request_id,

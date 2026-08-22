@@ -2,7 +2,7 @@
 name: app-llm-gateway
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "services/llm-gateway/**"
       - "platform/services.yaml"

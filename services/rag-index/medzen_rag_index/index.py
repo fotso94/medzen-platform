@@ -196,6 +196,10 @@ class IndexRepository:
                 "section": document.section,
                 "content_sha256": document.content_sha256,
                 "excerpt": document.text[:280],
+                # B6v2: the UNAMBIGUOUS grounding field the LLM gateway
+                # consumes (the excerpt/content name split silently sent
+                # BLANK grounding to Bedrock — Codex serving review)
+                "grounding_text": document.text[:1200],
                 "score": score,
             })
         return citations

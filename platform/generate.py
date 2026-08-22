@@ -53,9 +53,14 @@ def arn_for(perm: dict, meta: dict) -> list[str]:
         # "repository/medzen-trainer*" would also match medzen-trainer-anything.
         return [f"arn:aws:ecr:{region}:{acct}:repository/{perm['name']}"]
     if res == "bedrock":
-        # both in-region model ARNs and the EU cross-region inference profile
-        return [f"arn:aws:bedrock:{region}::foundation-model/*",
-                f"arn:aws:bedrock:{region}:{acct}:inference-profile/eu.*"]
+        # the EU cross-region profile FANS OUT to destination-region
+        # foundation models — granting only the in-region ARNs made
+        # every real invocation fail (Codex serving review finding 7)
+        destinations = ["eu-central-1", "eu-west-1", "eu-west-3",
+                        "eu-north-1"]
+        return ([f"arn:aws:bedrock:{d}::foundation-model/*"
+                 for d in destinations]
+                + [f"arn:aws:bedrock:{region}:{acct}:inference-profile/eu.*"])
     if res == "*":
         return ["*"]
     raise ValueError(f"unknown resource shorthand: {res}")

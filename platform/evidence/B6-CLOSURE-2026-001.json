@@ -1,263 +1,273 @@
 {
-  "record": "B6_FULL_SERVING_PLATFORM_CLOSURE",
-  "id": "B6-CLOSURE-2026-001",
-  "revision": 1,
-  "status": "READY_FOR_FINAL_CLOSURE_REVIEW",
-  "prepared_utc": "2026-08-11T18:56:12Z",
-  "closure_scope": "Full B6 platform engineering and bounded synthetic integration under PLAN-2026-013. This is not B5 model promotion, production traffic authorization, language reactivation or B7 authorization.",
-  "governing_plan": {
-    "path": "platform/decisions/PLAN-2026-013-full-b6-serving.md",
-    "sha256": "3cfba1521281384aabbc91c4c5f04f7e2bec51444cfdf15f8a28b56a8f20418b"
+ "amended_utc": "2026-08-22T21:26:22Z",
+ "amendments": [
+  {
+   "reason": "chain re-bind: the contract-and-rag engineering record was amended for the B6v2 grounding_text correction (Codex serving review); closure conclusions unchanged",
+   "rebound": [
+    "platform/evidence/B6-LOCAL-ENGINEERING-2026-001-contract-and-rag.json"
+   ],
+   "utc": "2026-08-22T21:26:22Z"
+  }
+ ],
+ "b6a_foundation": {
+  "model_classification": "ZERO_SHOT_WHISPER_LARGE_V3_V0_PLATFORM_TEST_ONLY",
+  "path": "platform/evidence/B6A-CLOSURE-2026-001.json",
+  "sha256": "11a3c55f592387086556e85e882db6492b588cd0a5ee1be574566b707114ea51",
+  "status": "PASS_HISTORICAL_UNCHANGED"
+ },
+ "closure_scope": "Full B6 platform engineering and bounded synthetic integration under PLAN-2026-013. This is not B5 model promotion, production traffic authorization, language reactivation or B7 authorization.",
+ "closure_semantics": {
+  "b6_complete": false,
+  "b6_engineering_and_bounded_integration": "COMPLETE",
+  "b6_final_closure_review": "PENDING",
+  "becomes_complete_only_after": "Independent final closure review accepts this immutable record without findings requiring change.",
+  "new_aws_packet_required": false,
+  "next_action": "PRESENT_FOR_FINAL_CLOSURE_REVIEW"
+ },
+ "closure_statement": "B6 has completed its planned local engineering, scan qualification, non-serving registry publication, private Stage A qualification, bounded file and streaming conversations, cancellation proof, controlled drills, isolation proof, cost reconciliation and exact-zero cleanup. Formal B6 completion remains pending only the requested independent final review of this record. B5 remains BLOCKED and production remains untouched.",
+ "contract": {
+  "adoption_record": {
+   "path": "platform/decisions/B6-CONTRACT-2026-001-adoption.json",
+   "sha256": "5a643982459b46876259cf73c5e8e89e529c5f14d8251febb9550205a7486e88"
   },
-  "contract": {
-    "adoption_record": {
-      "path": "platform/decisions/B6-CONTRACT-2026-001-adoption.json",
-      "sha256": "5a643982459b46876259cf73c5e8e89e529c5f14d8251febb9550205a7486e88"
-    },
-    "canonical_contract": {
-      "path": "platform/contracts/speech-v1.yaml",
-      "sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
-    },
-    "status": "PASS_ADOPTED_AND_TESTED"
+  "canonical_contract": {
+   "path": "platform/contracts/speech-v1.yaml",
+   "sha256": "e544141a7ad894ac0b5d411c7d8a3b64767de40ca63de4b96afc579f6a244d0d"
   },
-  "local_engineering_exits": [
-    {
-      "stage": "B6.0_AND_B6.1_CONTRACT_AND_RAG",
-      "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-001-contract-and-rag.json",
-      "sha256": "3a606b4a8b09fd9506747323ae90809885f29fdac693a120d59780e5078ae033",
-      "status": "PASS"
-    },
-    {
-      "stage": "B6.2_LLM_GATEWAY",
-      "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-002-llm-gateway.json",
-      "sha256": "f0a90a3b681f46493a62960da162a23e5c64327bc33f358683706c562c46c9da",
-      "status": "PASS_LOCAL_MOCKED"
-    },
-    {
-      "stage": "B6.3_ORCHESTRATOR_FILE_MODE",
-      "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-003-orchestrator-file-mode.json",
-      "sha256": "d1c31858c7df473b09899652a19705573035979b7d1eef180d1e25bcc91ebe56",
-      "status": "PASS"
-    },
-    {
-      "stage": "B6.4_STREAMING",
-      "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-004-streaming.json",
-      "sha256": "9609e16c626f2b85d4ef92229fd72165ddbfe12bde506a30b90d4ed69c363a55",
-      "status": "PASS"
-    },
-    {
-      "stage": "B6.5_TTS",
-      "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-005-tts.json",
-      "sha256": "bf91c7370945be6c4900c0351869bca952c54cb5200c19a48360df38c73ed513",
-      "status": "PASS_LOCAL_TEXT_PRESERVING"
-    }
-  ],
-  "registry_evidence": [
-    {
-      "purpose": "NON_SERVING_TEST_REGISTRY",
-      "path": "platform/evidence/B6-SSM-TEST-REGISTRY-2026-001.json",
-      "sha256": "4b8a6dc527001811b6e8dc05bbcd92d04c80893120015dca5ff8dc29e80f7ffd",
-      "status": "PASS"
-    },
-    {
-      "purpose": "CONTENT_ADDRESSED_DEPLOYMENT_SNAPSHOT",
-      "path": "platform/evidence/B6-DEPLOYMENT-REGISTRY-2026-001-RETRY-007A.json",
-      "sha256": "68aa1a8f50bfa28d4216f3f366bb75d910a9d4ad63a849bcc9267669304f3595",
-      "status": "PASS",
-      "production_pointer_written": false
-    }
-  ],
-  "b6a_foundation": {
-    "path": "platform/evidence/B6A-CLOSURE-2026-001.json",
-    "sha256": "11a3c55f592387086556e85e882db6492b588cd0a5ee1be574566b707114ea51",
-    "status": "PASS_HISTORICAL_UNCHANGED",
-    "model_classification": "ZERO_SHOT_WHISPER_LARGE_V3_V0_PLATFORM_TEST_ONLY"
+  "status": "PASS_ADOPTED_AND_TESTED"
+ },
+ "cost_closure": {
+  "active_reservations_usd": 0.0,
+  "guardrail_headroom_usd": 225.5713935784,
+  "recognized_committed_guardrail_usd": 74.4286064216,
+  "reconciliation": {
+   "path": "platform/evidence/B6-COST-RECONCILIATION-2026-006.json",
+   "sha256": "bd9a2d91cf899eb70409eb6f4889c39e1cb867828ed532f8058f245597683d98"
   },
-  "stage_a_receipts": {
-    "directory": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE",
-    "required_consecutive_probe_passes": 3,
-    "receipt_hashes": {
-      "stage_a_preflight": "c21c9e5a2dee7b45e906bf3b4c3eb26e5ff2a435cce95792c55be6cae6491efc",
-      "stage_a_terraform": "630a770a0f4bbd6e618a827156d72db6aa92fadb12c6a7fd7624df3b876b6722",
-      "stage_a_endpoints": "341165a0de302b4b5da3a2c3c61aac912bec1b7512563474780e827c9047df56",
-      "stage_a_probe_1": "6c4b1e181ecc598902f18bbc481aba658681b5799005eabf9ba9593253782e4a",
-      "stage_a_probe_2": "48f481093effd82f1d67e156f8060dc006187b952f560d79cec1f75422a383a6",
-      "stage_a_probe_3": "6bd7705420a97a32bc23680328bdcac9440367d4bf16584076895c89d66979fb",
-      "stage_a_cleanup": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
-      "stage_a": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22"
-    },
-    "status": "PASS_THREE_CONSECUTIVE_PRIVATE_PROBES_AND_CLEANUP"
+  "registry": {
+   "path": "platform/finance/COST-REGISTRY-2026-006.json",
+   "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
   },
-  "file_conversation_proof": {
-    "path": "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json",
-    "sha256": "808d160e391998e3f534d8776342e58337ebb4a200ffaab58fcc43e586c60c89",
-    "status": "PASS_HISTORICAL_UNCHANGED_NO_RERUN",
-    "http_status": 200,
-    "citation_count": 3,
-    "tts_backend": "text_only",
-    "model_versions_present": true
+  "status": "PASS_OPERATIONAL_RECONCILIATION_FINANCIAL_SIGNOFF_REMAINS_SEPARATE"
+ },
+ "exit_conditions": {
+  "adopted_contract_and_suites": "PASS",
+  "all_bounded_window_pods_ready": "PASS",
+  "cancellation_within_250_ms": "PASS_96_646_MS",
+  "controlled_failure_drills_without_cascade": "PASS",
+  "cost_registry_reconciled": "PASS",
+  "cpu_gpu_and_ephemeral_resources_zero": "PASS",
+  "file_conversation": "PASS",
+  "four_new_services_implemented_scanned_and_identified": "PASS",
+  "orchestrator_only_ingress": "PASS",
+  "phi_safe_receipts": "PASS",
+  "streaming_conversation": "PASS"
+ },
+ "file_conversation_proof": {
+  "citation_count": 3,
+  "http_status": 200,
+  "model_versions_present": true,
+  "path": "platform/evidence/receipts/B6-2026-030A-A2-LIVE/file_proof.json",
+  "sha256": "808d160e391998e3f534d8776342e58337ebb4a200ffaab58fcc43e586c60c89",
+  "status": "PASS_HISTORICAL_UNCHANGED_NO_RERUN",
+  "tts_backend": "text_only"
+ },
+ "final_deployed_child_digests": {
+  "asr_runtime": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
+  "llm_gateway": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
+  "model_loader": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+  "nvidia_dra": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
+  "orchestrator": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
+  "rag_index": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+  "tts_gateway": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d"
+ },
+ "final_window": {
+  "directory": "platform/evidence/receipts/B6-2026-034-A1-LIVE",
+  "merge_commit": "c0f190f4f7a25d49559cf124057639086faaccac",
+  "packet_result": {
+   "path": "platform/evidence/B6-PACKET-2026-034-ATTEMPT-1-COMPLETE.json",
+   "sha256": "4e116b494fab72c68a79886212c234656714aff18b8f10098cc27f8c622506ad",
+   "status": "PASS_REMAINING_PROOFS_CLEANUP_COMPLETE"
   },
-  "final_window": {
-    "packet_result": {
-      "path": "platform/evidence/B6-PACKET-2026-034-ATTEMPT-1-COMPLETE.json",
-      "sha256": "4e116b494fab72c68a79886212c234656714aff18b8f10098cc27f8c622506ad",
-      "status": "PASS_REMAINING_PROOFS_CLEANUP_COMPLETE"
-    },
-    "merge_commit": "c0f190f4f7a25d49559cf124057639086faaccac",
-    "directory": "platform/evidence/receipts/B6-2026-034-A1-LIVE",
-    "receipt_hashes": {
-      "stage0": "10afac4ae6ebdb9aa45b6959f4fba26411eb0ab77367fa80dd3013adc93a3bb9",
-      "deadline": "8a89d72adf044e3efca8e55cbcaf03e2b13c79636eafbbeefebe5a01af09bacb",
-      "workers_ready": "a9620877322677d07fb726e6461b6bd8ae070b6d3c87b84282cae89691efc08c",
-      "dra_ready": "563ccff8e443c81cc180cc425f5f022ae8f273b947d0168718e2680e5712e883",
-      "rag_ready": "08716d2bb51522d85a0cb646330f0fea2f0a7cbc30b106e08cf2b53a284a1854",
-      "asr_ready": "4c130987b6b57104be29d09fe52af5d8f2b088e7f99898555038587f2c5646eb",
-      "tts_ready": "273ea7ce14bd7f8e1280e9e1ff0b8964894e1239453f29b0304101c19607f657",
-      "llm_ready": "e30271204a1d57bc4630eef86fe90b2b2ee5448b1928127aacb447fe3c4f6e0a",
-      "orchestrator_ready": "074cda343ae9d30972bee54bd714a2b756368824526cab632e8c5cca2fb7a918",
-      "controller_window": "151b39033397d0cda31b56ce82c1a7986980b5d6d261107e1efec19d062d8c45",
-      "controller_ready": "4d9c44dc2ad890e1e65310a7e31385bc55c39e1a87db1c2f301a6d346aea9433",
-      "pre_endpoint_images": "fbdefabe1a6db825055b2d32efa6f66f04d96be2e97b6503809334fbf11110fc",
-      "terraform_window": "487e44446c01c05f47b4124d7bb8e63b4033683920f230fe50945c30bb79a939",
-      "endpoints_ready": "89e0ecfac19365693f1c69f1e635cb188732660dc39a3e37a2c6776c7b310b35",
-      "alb_ready": "f20d472e0adfc6a9088561b05347d23989ab9501cc05dbb0d16a5286bdb20227",
-      "fargate_probe": "90ff6326ca6f6631844c71bef6b3bf1017132efccea6900e51c24daa92e1e95f",
-      "alb_tag_mutation_warning": "61be4f57e2cd7371e315b64ec75dbfbdfc16eb1b02f17e247e1df9dbb20058d7",
-      "websocket_proof": "f141499b8e894366f484a1fb7f07c9927315eabc941b8b8c4d7a2bea63b65100",
-      "cancellation_proof": "778d1fb1b165ec54b46377b4833c4c0f7e448ff08ceddc1f68c64907f4db53e7",
-      "failure_drills": "b75342eed7afdb97510cfb0e3599932c7af8f23df9a464feb8f552935ad56bed",
-      "isolation_proof": "ed519c926413f6ec6f4b5f625b26a563640b11c40a9541a4a8c6c64d1fc97883",
-      "cleanup": "b3d5fce33b30f74b85ba026e73d308e306a9d721f02d13a33371151d2d378b2e"
-    },
-    "proof_summary": {
-      "all_22_receipts": "PASS",
-      "streaming_conversation": "PASS_FINAL_RESULT_PRESERVED",
-      "cancellation": "PASS_96_646_MS_WITHIN_250_MS",
-      "failure_drills": "PASS_NO_500_CASCADE",
-      "isolation": "PASS_ORCHESTRATOR_ONLY_INGRESS",
-      "cleanup": "PASS_EXACT_ZERO"
-    }
+  "proof_summary": {
+   "all_22_receipts": "PASS",
+   "cancellation": "PASS_96_646_MS_WITHIN_250_MS",
+   "cleanup": "PASS_EXACT_ZERO",
+   "failure_drills": "PASS_NO_500_CASCADE",
+   "isolation": "PASS_ORCHESTRATOR_ONLY_INGRESS",
+   "streaming_conversation": "PASS_FINAL_RESULT_PRESERVED"
   },
-  "scan_chain": [
-    {
-      "generation": "B6A_BASE_SERVING_CHAIN",
-      "path": "platform/evidence/B6A-PACKET-2026-003C-A-SCAN-RESULT.json",
-      "sha256": "1b1ed84205fe9a71c3b21b2a2658814855fd5fdcf6af00c5590bb4205e8dc70b",
-      "outcome": "PASS_SCAN_ONLY",
-      "child_digests": {
-        "model_loader": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
-        "asr_runtime": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
-        "nvidia_dra": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
-      },
-      "critical": 0,
-      "high": 0,
-      "waivers": 0
-    },
-    {
-      "generation": "B6_LOCAL_SERVICE_IMAGES",
-      "path": "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
-      "sha256": "f0364c098d8e7cbcc53b9fb0dddd46a8dda8295b420803e179106e326e160c83",
-      "outcome": "PASS_SCAN_ONLY",
-      "child_digests": {
-        "rag_index": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
-        "llm_gateway": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
-        "orchestrator_initial": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
-        "tts_gateway": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d"
-      },
-      "critical": 0,
-      "high": 0,
-      "waivers": 0
-    },
-    {
-      "generation": "WEBSOCKET_BACKEND_SUCCESSOR",
-      "path": "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json",
-      "sha256": "bc7b2a523114f692921492125574b712e65543f02e7dcb47d9f9e8c6fe6f427d",
-      "outcome": "PASS_SCAN_ONLY",
-      "child_digest": "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed",
-      "critical": 0,
-      "high": 0,
-      "waivers": 0
-    },
-    {
-      "generation": "STREAMING_PARTIAL_SOURCE_FINAL",
-      "path": "platform/evidence/B6-PACKET-2026-033-SCAN-RESULT.json",
-      "sha256": "fe7548a9555c35cb0dd1c0508c07f0eae028c809f370b36af95f9e66f7f7493d",
-      "outcome": "PASS_SCAN_ONLY",
-      "child_digest": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
-      "critical": 0,
-      "high": 0,
-      "waivers": 0
-    }
-  ],
-  "final_deployed_child_digests": {
-    "model_loader": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+  "receipt_hashes": {
+   "alb_ready": "f20d472e0adfc6a9088561b05347d23989ab9501cc05dbb0d16a5286bdb20227",
+   "alb_tag_mutation_warning": "61be4f57e2cd7371e315b64ec75dbfbdfc16eb1b02f17e247e1df9dbb20058d7",
+   "asr_ready": "4c130987b6b57104be29d09fe52af5d8f2b088e7f99898555038587f2c5646eb",
+   "cancellation_proof": "778d1fb1b165ec54b46377b4833c4c0f7e448ff08ceddc1f68c64907f4db53e7",
+   "cleanup": "b3d5fce33b30f74b85ba026e73d308e306a9d721f02d13a33371151d2d378b2e",
+   "controller_ready": "4d9c44dc2ad890e1e65310a7e31385bc55c39e1a87db1c2f301a6d346aea9433",
+   "controller_window": "151b39033397d0cda31b56ce82c1a7986980b5d6d261107e1efec19d062d8c45",
+   "deadline": "8a89d72adf044e3efca8e55cbcaf03e2b13c79636eafbbeefebe5a01af09bacb",
+   "dra_ready": "563ccff8e443c81cc180cc425f5f022ae8f273b947d0168718e2680e5712e883",
+   "endpoints_ready": "89e0ecfac19365693f1c69f1e635cb188732660dc39a3e37a2c6776c7b310b35",
+   "failure_drills": "b75342eed7afdb97510cfb0e3599932c7af8f23df9a464feb8f552935ad56bed",
+   "fargate_probe": "90ff6326ca6f6631844c71bef6b3bf1017132efccea6900e51c24daa92e1e95f",
+   "isolation_proof": "ed519c926413f6ec6f4b5f625b26a563640b11c40a9541a4a8c6c64d1fc97883",
+   "llm_ready": "e30271204a1d57bc4630eef86fe90b2b2ee5448b1928127aacb447fe3c4f6e0a",
+   "orchestrator_ready": "074cda343ae9d30972bee54bd714a2b756368824526cab632e8c5cca2fb7a918",
+   "pre_endpoint_images": "fbdefabe1a6db825055b2d32efa6f66f04d96be2e97b6503809334fbf11110fc",
+   "rag_ready": "08716d2bb51522d85a0cb646330f0fea2f0a7cbc30b106e08cf2b53a284a1854",
+   "stage0": "10afac4ae6ebdb9aa45b6959f4fba26411eb0ab77367fa80dd3013adc93a3bb9",
+   "terraform_window": "487e44446c01c05f47b4124d7bb8e63b4033683920f230fe50945c30bb79a939",
+   "tts_ready": "273ea7ce14bd7f8e1280e9e1ff0b8964894e1239453f29b0304101c19607f657",
+   "websocket_proof": "f141499b8e894366f484a1fb7f07c9927315eabc941b8b8c4d7a2bea63b65100",
+   "workers_ready": "a9620877322677d07fb726e6461b6bd8ae070b6d3c87b84282cae89691efc08c"
+  }
+ },
+ "governing_plan": {
+  "path": "platform/decisions/PLAN-2026-013-full-b6-serving.md",
+  "sha256": "3cfba1521281384aabbc91c4c5f04f7e2bec51444cfdf15f8a28b56a8f20418b"
+ },
+ "id": "B6-CLOSURE-2026-001",
+ "immutable_boundaries": {
+  "approved_versions_changed": 0,
+  "b5_gate_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
+  "b5_outcome": "BLOCKED_UNCHANGED",
+  "b7_authorized": false,
+  "languages_reactivated": 0,
+  "models_registered": 0,
+  "phi": 0,
+  "production_ssm_changes": 0,
+  "production_traffic": 0,
+  "v0_production_approved": false
+ },
+ "local_engineering_exits": [
+  {
+   "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-001-contract-and-rag.json",
+   "sha256": "b9add1779b92fa94cd5540c1f3f2ad62e6aea11b250e4f6f9589c7836eda95ad",
+   "stage": "B6.0_AND_B6.1_CONTRACT_AND_RAG",
+   "status": "PASS"
+  },
+  {
+   "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-002-llm-gateway.json",
+   "sha256": "f0a90a3b681f46493a62960da162a23e5c64327bc33f358683706c562c46c9da",
+   "stage": "B6.2_LLM_GATEWAY",
+   "status": "PASS_LOCAL_MOCKED"
+  },
+  {
+   "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-003-orchestrator-file-mode.json",
+   "sha256": "d1c31858c7df473b09899652a19705573035979b7d1eef180d1e25bcc91ebe56",
+   "stage": "B6.3_ORCHESTRATOR_FILE_MODE",
+   "status": "PASS"
+  },
+  {
+   "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-004-streaming.json",
+   "sha256": "9609e16c626f2b85d4ef92229fd72165ddbfe12bde506a30b90d4ed69c363a55",
+   "stage": "B6.4_STREAMING",
+   "status": "PASS"
+  },
+  {
+   "path": "platform/evidence/B6-LOCAL-ENGINEERING-2026-005-tts.json",
+   "sha256": "bf91c7370945be6c4900c0351869bca952c54cb5200c19a48360df38c73ed513",
+   "stage": "B6.5_TTS",
+   "status": "PASS_LOCAL_TEXT_PRESERVING"
+  }
+ ],
+ "prepared_utc": "2026-08-11T18:56:12Z",
+ "record": "B6_FULL_SERVING_PLATFORM_CLOSURE",
+ "registry_evidence": [
+  {
+   "path": "platform/evidence/B6-SSM-TEST-REGISTRY-2026-001.json",
+   "purpose": "NON_SERVING_TEST_REGISTRY",
+   "sha256": "4b8a6dc527001811b6e8dc05bbcd92d04c80893120015dca5ff8dc29e80f7ffd",
+   "status": "PASS"
+  },
+  {
+   "path": "platform/evidence/B6-DEPLOYMENT-REGISTRY-2026-001-RETRY-007A.json",
+   "production_pointer_written": false,
+   "purpose": "CONTENT_ADDRESSED_DEPLOYMENT_SNAPSHOT",
+   "sha256": "68aa1a8f50bfa28d4216f3f366bb75d910a9d4ad63a849bcc9267669304f3595",
+   "status": "PASS"
+  }
+ ],
+ "revision": 1,
+ "scan_chain": [
+  {
+   "child_digests": {
     "asr_runtime": "sha256:434ac9e757b56949324e9e480490042fcbf35285f27bdee713bd771b502f4087",
-    "nvidia_dra": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246",
-    "rag_index": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+    "model_loader": "sha256:cb794f2169dc65f391a0c9ec789997ce19a31b38d9087f263fba0863ba0414a5",
+    "nvidia_dra": "sha256:7fb313758a20a04e80a53d5f6d1efe8e6fe936bc845001c21204c1c361d59246"
+   },
+   "critical": 0,
+   "generation": "B6A_BASE_SERVING_CHAIN",
+   "high": 0,
+   "outcome": "PASS_SCAN_ONLY",
+   "path": "platform/evidence/B6A-PACKET-2026-003C-A-SCAN-RESULT.json",
+   "sha256": "1b1ed84205fe9a71c3b21b2a2658814855fd5fdcf6af00c5590bb4205e8dc70b",
+   "waivers": 0
+  },
+  {
+   "child_digests": {
     "llm_gateway": "sha256:88026dd9708073dcd3622e7dd68e7a70aff98cddd43129c53c017d571f533f5a",
-    "tts_gateway": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d",
-    "orchestrator": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3"
+    "orchestrator_initial": "sha256:fa2cccdf9891c080fcc1eb408a325e8afbd623e4f89469ea228ddf166dad62aa",
+    "rag_index": "sha256:fe4663812f88bd35d520fee3e80450981347c970f2a561eb8163b14183b7194c",
+    "tts_gateway": "sha256:88e83b97a03c593505435981c554d5d0f3045c4acb4a7224148d58e3af96087d"
+   },
+   "critical": 0,
+   "generation": "B6_LOCAL_SERVICE_IMAGES",
+   "high": 0,
+   "outcome": "PASS_SCAN_ONLY",
+   "path": "platform/evidence/B6-5B-ECR-SCAN-RESULT-2026-001.json",
+   "sha256": "f0364c098d8e7cbcc53b9fb0dddd46a8dda8295b420803e179106e326e160c83",
+   "waivers": 0
   },
-  "cost_closure": {
-    "registry": {
-      "path": "platform/finance/COST-REGISTRY-2026-006.json",
-      "sha256": "d80b1a00d87baa44e162078ff8b51fbda99b3e8733974761e156318e8429e9da"
-    },
-    "reconciliation": {
-      "path": "platform/evidence/B6-COST-RECONCILIATION-2026-006.json",
-      "sha256": "bd9a2d91cf899eb70409eb6f4889c39e1cb867828ed532f8058f245597683d98"
-    },
-    "recognized_committed_guardrail_usd": 74.4286064216,
-    "active_reservations_usd": 0.0,
-    "guardrail_headroom_usd": 225.5713935784,
-    "status": "PASS_OPERATIONAL_RECONCILIATION_FINANCIAL_SIGNOFF_REMAINS_SEPARATE"
+  {
+   "child_digest": "sha256:a3bd7170dbef4541ff6286324974a79d0b0da2287dcdcaf8f77a20654c7befed",
+   "critical": 0,
+   "generation": "WEBSOCKET_BACKEND_SUCCESSOR",
+   "high": 0,
+   "outcome": "PASS_SCAN_ONLY",
+   "path": "platform/evidence/B6-PACKET-2026-031-SCAN-RESULT.json",
+   "sha256": "bc7b2a523114f692921492125574b712e65543f02e7dcb47d9f9e8c6fe6f427d",
+   "waivers": 0
   },
-  "exit_conditions": {
-    "adopted_contract_and_suites": "PASS",
-    "four_new_services_implemented_scanned_and_identified": "PASS",
-    "all_bounded_window_pods_ready": "PASS",
-    "file_conversation": "PASS",
-    "streaming_conversation": "PASS",
-    "cancellation_within_250_ms": "PASS_96_646_MS",
-    "controlled_failure_drills_without_cascade": "PASS",
-    "orchestrator_only_ingress": "PASS",
-    "phi_safe_receipts": "PASS",
-    "cost_registry_reconciled": "PASS",
-    "cpu_gpu_and_ephemeral_resources_zero": "PASS"
+  {
+   "child_digest": "sha256:475ff8520e7ff78a52208a1bebe1de78c2a257de112424a837d0f5e1a73d2dc3",
+   "critical": 0,
+   "generation": "STREAMING_PARTIAL_SOURCE_FINAL",
+   "high": 0,
+   "outcome": "PASS_SCAN_ONLY",
+   "path": "platform/evidence/B6-PACKET-2026-033-SCAN-RESULT.json",
+   "sha256": "fe7548a9555c35cb0dd1c0508c07f0eae028c809f370b36af95f9e66f7f7493d",
+   "waivers": 0
+  }
+ ],
+ "stage_a_receipts": {
+  "directory": "platform/evidence/receipts/B6-2026-026-STAGE-A-LIVE",
+  "receipt_hashes": {
+   "stage_a": "e0ac64176a04ec9de2dbd9e633a3c4f93889f5c49958cf910019f0941ffd0c22",
+   "stage_a_cleanup": "6442e398edd48621d8c4cd8bdfe3d5f2d46bd3bdf331f56e51c8433c83301979",
+   "stage_a_endpoints": "341165a0de302b4b5da3a2c3c61aac912bec1b7512563474780e827c9047df56",
+   "stage_a_preflight": "c21c9e5a2dee7b45e906bf3b4c3eb26e5ff2a435cce95792c55be6cae6491efc",
+   "stage_a_probe_1": "6c4b1e181ecc598902f18bbc481aba658681b5799005eabf9ba9593253782e4a",
+   "stage_a_probe_2": "48f481093effd82f1d67e156f8060dc006187b952f560d79cec1f75422a383a6",
+   "stage_a_probe_3": "6bd7705420a97a32bc23680328bdcac9440367d4bf16584076895c89d66979fb",
+   "stage_a_terraform": "630a770a0f4bbd6e618a827156d72db6aa92fadb12c6a7fd7624df3b876b6722"
   },
-  "zero_state": {
-    "cpu_desired": 0,
-    "cpu_asg_instances": 0,
-    "gpu_desired": 0,
-    "gpu_asg_instances": 0,
-    "workload_nodes": 0,
-    "synthetic_workloads": 0,
-    "temporary_endpoints": 0,
-    "window_albs": 0,
-    "deadline_actions": 0,
-    "production_serving_pointer": 0,
-    "approved_asr_objects": 0,
-    "active_cost_reservations": 0
-  },
-  "immutable_boundaries": {
-    "b5_gate_report_sha256": "25217157215ea979440187aa050772ffdf248d75e1ae823d5dcb72cb9d8def30",
-    "b5_outcome": "BLOCKED_UNCHANGED",
-    "v0_production_approved": false,
-    "languages_reactivated": 0,
-    "approved_versions_changed": 0,
-    "production_ssm_changes": 0,
-    "models_registered": 0,
-    "production_traffic": 0,
-    "phi": 0,
-    "b7_authorized": false
-  },
-  "closure_semantics": {
-    "b6_engineering_and_bounded_integration": "COMPLETE",
-    "b6_final_closure_review": "PENDING",
-    "b6_complete": false,
-    "becomes_complete_only_after": "Independent final closure review accepts this immutable record without findings requiring change.",
-    "next_action": "PRESENT_FOR_FINAL_CLOSURE_REVIEW",
-    "new_aws_packet_required": false
-  },
-  "closure_statement": "B6 has completed its planned local engineering, scan qualification, non-serving registry publication, private Stage A qualification, bounded file and streaming conversations, cancellation proof, controlled drills, isolation proof, cost reconciliation and exact-zero cleanup. Formal B6 completion remains pending only the requested independent final review of this record. B5 remains BLOCKED and production remains untouched."
+  "required_consecutive_probe_passes": 3,
+  "status": "PASS_THREE_CONSECUTIVE_PRIVATE_PROBES_AND_CLEANUP"
+ },
+ "status": "READY_FOR_FINAL_CLOSURE_REVIEW",
+ "zero_state": {
+  "active_cost_reservations": 0,
+  "approved_asr_objects": 0,
+  "cpu_asg_instances": 0,
+  "cpu_desired": 0,
+  "deadline_actions": 0,
+  "gpu_asg_instances": 0,
+  "gpu_desired": 0,
+  "production_serving_pointer": 0,
+  "synthetic_workloads": 0,
+  "temporary_endpoints": 0,
+  "window_albs": 0,
+  "workload_nodes": 0
+ }
 }

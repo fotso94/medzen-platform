@@ -112,7 +112,7 @@ jobs:
           aws-region: eu-central-1
       - name: point deployment at the pushed digest
         run: |
-          aws eks update-kubeconfig --name medzen --region eu-central-1
+          aws eks update-kubeconfig --name medzen-speech --region eu-central-1
           kubectl set image "deployment/${{ inputs.k8s_deployment }}" \
             "${{ inputs.k8s_deployment }}=558069890522.dkr.ecr.eu-central-1.amazonaws.com/${{ inputs.ecr_repository }}:${{ github.sha }}" \
             --namespace medzen

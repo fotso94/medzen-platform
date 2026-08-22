@@ -175,6 +175,9 @@ def test_remote_http_chain_preserves_contract_versions_citations_and_text_fallba
         audio=b"RIFF\x00\x00\x00\x00WAVEsynthetic",
         request_id=REQUEST_ID,
         language_hint="en",
+        # B6v2: audio must be requested EXPLICITLY (default False means
+        # zero TTS calls); this test exercises the full remote chain
+        response_audio=True,
     )
     assert [call[0] for call in transport.calls] == ["asr", "rag", "llm", "tts"]
     assert result["reply"]["tts_backend"] == "text_only"
@@ -219,6 +222,9 @@ def test_remote_http_chain_refuses_a_rag_registry_identity_mismatch():
             audio=b"RIFF\x00\x00\x00\x00WAVEsynthetic",
             request_id=REQUEST_ID,
             language_hint="en",
+            # B6v2: audio must now be requested EXPLICITLY (default
+            # False = zero TTS calls); this test exercises the full chain
+            response_audio=True,
         )
     assert caught.value.code == "DEPENDENCY_UNAVAILABLE"
     assert caught.value.status_code == 503

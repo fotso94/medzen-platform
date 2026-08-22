@@ -42,6 +42,7 @@ _DEFAULT_REGISTRY: dict[str, dict] = {
         "model": "s1",
         "label": "Ikinyarwanda - owner-supplied voice (OWNER ORDER 2026-08-20)",
         "approved": True,
+        "consent_evidence": "owner order 2026-08-20 (chat, verbatim): owner-supplied voice for kinyarwanda",
     },
     "pidgin": {
         "reference_id": "101351e6043e44888064c585143fdf6c",
@@ -59,17 +60,38 @@ _cache: dict[str, Voice] = {}
 _loaded_at: float = 0.0
 
 
+class RegistryUnavailable(RuntimeError):
+    """B6v2: the voice registry could not be authoritatively loaded —
+    synthesis must fail CLOSED, never fall back to built-in real
+    reference ids (Codex serving review finding 5)."""
+
+
+def _strict_bool(value, field: str, context: str) -> bool:
+    """B6v2: bool("false") is True — string booleans silently APPROVED
+    every voice. Only real JSON booleans are accepted."""
+    if isinstance(value, bool):
+        return value
+    raise RegistryUnavailable(
+        f"voice {context}: {field} must be a JSON boolean, got "
+        f"{value!r} — refusing a registry that cannot be trusted")
+
+
 def _parse(raw: str) -> dict[str, Voice]:
     data = json.loads(raw)
     out: dict[str, Voice] = {}
     for lang, cfg in data.items():
         key = lang.strip().lower()
+        approved = _strict_bool(cfg.get("approved", False), "approved", key)
+        # approval only COUNTS with consent/usage-rights evidence (B6v2)
+        evidence = str(cfg.get("consent_evidence") or "").strip()
+        if approved and not evidence:
+            approved = False
         out[key] = Voice(
             language=key,
             reference_id=cfg["reference_id"],
             model=cfg.get("model", "s1"),
             label=cfg.get("label", key),
-            approved=bool(cfg.get("approved", False)),
+            approved=approved,
         )
     return out
 
@@ -86,8 +108,17 @@ def _load() -> dict[str, Voice]:
         log.info("voice registry loaded from %s", _SSM_PARAM)
         return _parse(raw)
     except Exception as exc:                                  # noqa: BLE001
-        log.warning("voice registry: SSM load failed (%s); built-in default", exc)
-        return _parse(json.dumps(_DEFAULT_REGISTRY))
+        # B6v2: FAIL CLOSED. The built-in fallback held REAL reference
+        # ids and re-enabled voices the registry may have revoked. The
+        # legacy fallback survives ONLY behind an explicit env flag for
+        # the closed v1 synthetic proof.
+        if os.environ.get("MEDZEN_TTS_ALLOW_BUILTIN_FALLBACK") == "1":
+            log.warning("voice registry: SSM failed (%s); LEGACY builtin "
+                        "fallback (v1-proof flag set)", exc)
+            return _parse(json.dumps(_DEFAULT_REGISTRY))
+        raise RegistryUnavailable(
+            f"voice registry unavailable ({type(exc).__name__}) — "
+            "failing closed") from exc
 
 
 def registry(force: bool = False) -> dict[str, Voice]:
@@ -107,3 +138,32 @@ def resolve(language: str) -> Voice:
             f"no voice configured for language '{key}'; "
             f"available: {sorted(registry())}")
     return voice
+
+
+class VoiceRefusal(RuntimeError):
+    """B6v2: synthesis-time governance refusals."""
+
+
+def select_voice(language: str) -> Voice:
+    """B6v2 selection: the ONLY sanctioned path from language to a Fish
+    reference id. Unknown or unapproved voices refuse — approval means a
+    strict boolean TRUE backed by consent evidence (enforced at parse)."""
+    voices = registry()
+    voice = voices.get(language.strip().lower())
+    if voice is None:
+        raise VoiceRefusal(f"no voice registered for {language!r}")
+    if not voice.approved:
+        raise VoiceRefusal(
+            f"voice for {language!r} is not approved for synthesis "
+            "(approval requires consent/usage-rights evidence)")
+    return voice
+
+
+def enforce_model(voice: Voice, requested_model: str | None) -> str:
+    """Each voice declares its Fish model; a request may not silently
+    upgrade or downgrade it (billing and quality both differ)."""
+    if requested_model is not None and requested_model != voice.model:
+        raise VoiceRefusal(
+            f"voice {voice.language!r} is bound to Fish model "
+            f"{voice.model!r}; requested {requested_model!r}")
+    return voice.model

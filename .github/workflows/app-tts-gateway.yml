@@ -2,7 +2,7 @@
 name: app-tts-gateway
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "services/speech-tts-gateway/**"
       - "platform/services.yaml"

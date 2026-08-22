@@ -2,7 +2,7 @@
 name: app-asr-runtime
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "services/asr-runtime/**"
       - "platform/services.yaml"

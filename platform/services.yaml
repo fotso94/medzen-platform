@@ -156,7 +156,10 @@ services:
     pod_identity:
       role_name: medzen-tts-role
       permissions:
-        - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/fish-api-key}
+        # BOTH real Fish secrets (the old medzen/fish-api-key matched
+        # neither — Codex serving review finding 7)
+        - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/speech/fish-api-key}
+        - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/tts/dev/fish-api-key}
         - {actions: [s3:GetObject, s3:PutObject], resource: audio_cache, path: "tts/*"}
         - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
     existing_code: null            # unrelated project owns medzen-tts-gateway; ours is separate

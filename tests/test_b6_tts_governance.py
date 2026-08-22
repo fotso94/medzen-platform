@@ -45,7 +45,7 @@ def test_additive_status_and_architecture_now_point_to_the_owned_service():
     assert tts["image_repo"] == "medzen-speech-tts-gateway"
     assert tts["existing_code"] is None
     assert sha(ROOT / "platform/services.yaml") == (
-        "f224480886f6e572df6a23776aa687c35d61b600ad82f36ad5d0a79737b7b9b4"
+        "db3ef0c3500fe1306e620d5358e2f95d0d45412843adb524f1f55e60f701987f"
     )
     status = yaml.safe_load((
         ROOT / "platform/service-implementation-status/v1.yaml"

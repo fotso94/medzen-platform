@@ -2,7 +2,7 @@
 name: app-speech-orchestrator
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "services/speech-orchestrator/**"
       - "platform/services.yaml"

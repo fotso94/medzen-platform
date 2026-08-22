@@ -8,7 +8,7 @@ import uuid
 from typing import Any
 
 from .policy import PolicyRefusal, PolicyStore
-from .provider import FakeBedrockProvider, ProviderRequest
+from .provider import ProviderError, FakeBedrockProvider, ProviderRequest
 from .shared_resilience import CircuitBreaker
 
 
@@ -108,7 +108,9 @@ class LLMGateway:
             raise _invalid("citation count exceeds language policy limit")
         identities: set[str] = set()
         for expected_rank, citation in enumerate(citations, start=1):
-            if not isinstance(citation, dict) or set(citation) != CITATION_KEYS:
+            if not isinstance(citation, dict) or not (
+                CITATION_KEYS <= set(citation)
+                <= CITATION_KEYS | {"grounding_text"}):
                 raise _invalid("citation fields are incomplete or unknown")
             if citation["rank"] != expected_rank:
                 raise _invalid("citation ranks must be contiguous and ordered")
@@ -157,6 +159,12 @@ class LLMGateway:
             result = self.provider.invoke(
                 provider_request, timeout_ms=policy.timeout_ms
             )
+        except ProviderError as exc:
+            # B6v2: a data-contract refusal (blank grounding), NOT a
+            # provider outage — non-retryable, no breaker penalty
+            raise GatewayRefusal(
+                "BLANK_GROUNDING", str(exc), 422, False
+            ) from exc
         except TimeoutError as exc:
             self.breaker.record_failure(timeout=True)
             raise GatewayRefusal(
@@ -168,9 +176,13 @@ class LLMGateway:
                 "PROVIDER_UNAVAILABLE", "LLM provider is unavailable", 503, True
             ) from exc
         expected_ids = tuple(item["document_id"] for item in citations)
+        # B6v2: a VALIDATED SUBSET of supplied citations is legitimate —
+        # real providers cite what they used; exact-tuple equality
+        # refused honest subsets and only fit the synthetic echo
+        cited_ok = set(result.cited_document_ids) <= set(expected_ids)
         if (
             result.model_version != self.provider.model_version
-            or result.cited_document_ids != expected_ids
+            or not cited_ok
             or result.citation_binding_sha256 != binding
         ):
             self.breaker.record_failure()

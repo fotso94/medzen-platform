@@ -325,6 +325,7 @@ def create_app(
                 audio=raw_audio,
                 request_id=request_id,
                 language_hint=language_hint,
+                response_audio=(response_audio == "true"),
             )
         except OrchestratorRefusal as exc:
             return refuse(

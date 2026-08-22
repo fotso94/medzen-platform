@@ -1,0 +1,60 @@
+# B6 REAL-PROVIDER CONTRACT v2 (Codex serving review, 2026-08-22)
+# The synthetic v1 proof (llm-v1/tts-v1 + PLATFORM_PROOF_ONLY loader) is
+# CLOSED and untouched. v2 defines the identities and semantics real
+# serving must satisfy. Registry namespace is SEPARATE:
+#   /medzen/registry/nonprod/b6v2/<snapshot-sha256>/
+# never a weakening of /medzen/registry/test/b6.
+version: 2
+classification: NONPROD_REAL_PROVIDER_V2
+registry_namespace: /medzen/registry/nonprod/b6v2
+
+asr:
+  family: omniasr_ctc_1b            # ARCH-2026-001: ONE multilingual artifact
+  artifact_format: fairseq2_pt      # the B5 trainer's merged full-mode export
+  model_version: "omniasr_ctc_1b:<sha256[:12]>"   # identity IS the digest
+  languages_mandatory: [english, ewe, french, kinyarwanda, lingala, pidgin, swahili]
+  binding_rule: >
+    NO artifact digest is bound here. Arm 1's artifact may bind only
+    after PROMOTION-PROTOCOL approval; the loader_v2 refuses PRODUCTION
+    classification without the gate record.
+
+llm:
+  provider: bedrock
+  invocation: cross-region inference profile eu.* (destination-region
+    foundation-model ARNs granted — medzen-llm-role.json)
+  grounding:
+    field: grounding_text           # the excerpt/content split sent BLANK
+    max_chars: 1200                 # grounding to Bedrock in v1 wiring
+    blank_grounding: REFUSE (GatewayRefusal BLANK_GROUNDING 422, non-retryable)
+    prompt_hash: grounding_sha256 over the exact citation block bytes
+  citations:
+    validation: cited_document_ids must be a SUBSET of supplied ids
+      (exact-tuple equality only fit the synthetic echo provider)
+
+tts:
+  provider: fish
+  secrets: [medzen/speech/fish-api-key, medzen/tts/dev/fish-api-key]
+  response_audio:
+    default: false
+    "false": ZERO synthesis calls — text never reaches the provider
+  voice_governance:
+    booleans: strict JSON booleans only (bool("false") poisoning refused)
+    approval: requires consent_evidence; unapproved voices refuse synthesis
+    registry_failure: FAIL CLOSED (builtin fallback only under the
+      explicit v1-proof flag MEDZEN_TTS_ALLOW_BUILTIN_FALLBACK=1)
+    model_binding: each voice declares its Fish model; requests cannot
+      silently switch models
+  audio_delivery:
+    storage: S3, SSE-KMS (campaign key), content-addressed by synthesis key
+    retrieval: authenticated presigned GET, 900s expiry
+    lifecycle: bucket prefix expiration rule — delivery cache, not archive
+    medzen+local_uris: PROHIBITED in v2 responses
+
+readiness:
+  rule: healthy only with proven configuration — secret readable,
+    voice registry loaded, provider identity resolved. A green probe
+    that checked nothing is worse than a red one.
+
+deployment:
+  branch: master (the repository default — app pipelines watched main)
+  cluster: medzen-speech (pipelines targeted 'medzen')

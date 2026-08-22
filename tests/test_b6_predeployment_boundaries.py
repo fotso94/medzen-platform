@@ -180,7 +180,7 @@ def test_supplemental_orchestrator_kms_is_secrets_manager_context_scoped() -> No
     assert 'values   = ["secretsmanager.${var.region}.amazonaws.com"]' in source
     assert 'variable = "kms:EncryptionContext:SecretARN"' in source
     assert "secret:medzen/client-api-keys*" in source
-    assert sha(ROOT / "platform/services.yaml") == "f224480886f6e572df6a23776aa687c35d61b600ad82f36ad5d0a79737b7b9b4"
+    assert sha(ROOT / "platform/services.yaml") == "db3ef0c3500fe1306e620d5358e2f95d0d45412843adb524f1f55e60f701987f"
 
 
 def test_deployment_registry_manifest_is_exact_and_non_serving() -> None:

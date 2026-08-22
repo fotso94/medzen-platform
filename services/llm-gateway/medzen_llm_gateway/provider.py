@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from typing import Any
 
 
+class ProviderError(RuntimeError):
+    """B6v2: a provider-level refusal (e.g. blank grounding) — the
+    gateway maps it to a refusal response; it must never surface as an
+    unhandled 500."""
+
+
 @dataclass(frozen=True)
 class ProviderRequest:
     language: str
@@ -93,9 +99,25 @@ class BedrockProvider:
 
     def invoke(self, request: ProviderRequest, *, timeout_ms: int) -> ProviderResult:
         allowed_ids = [item["document_id"] for item in request.citations]
+        # B6v2 (Codex serving review): grounding comes from the explicit
+        # grounding_text field; a citation with BLANK grounding refuses —
+        # a document id without its text produces confidently 'cited'
+        # answers that are actually ungrounded. Legacy field names are
+        # accepted as fallback but blankness is never silently tolerated.
+        def _grounding(item):
+            for field in ("grounding_text", "content", "excerpt"):
+                value = str(item.get(field) or "").strip()
+                if value:
+                    return value[:1200]
+            raise ProviderError(
+                f"citation {item.get('document_id')!r} carries no "
+                "grounding text — refusing to send blank grounding")
         citations_block = "\n\n".join(
-            f"[{item['document_id']}]\n{item.get('content', '')}"
+            f"[{item['document_id']}]\n{_grounding(item)}"
             for item in request.citations)
+        import hashlib as _hashlib
+        grounding_sha256 = _hashlib.sha256(
+            citations_block.encode("utf-8")).hexdigest()
         system = (
             "You are a careful medical assistant for the MedZen platform.\n"
             f"Respond ONLY in {request.response_language}.\n"
