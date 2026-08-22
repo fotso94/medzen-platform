@@ -61,6 +61,12 @@ class JobRefusal(RuntimeError):
     pass
 
 
+def _tag_safe(value: str) -> str:
+    allowed = set("abcdefghijklmnopqrstuvwxyz"
+                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 _.:/=+-@")
+    return "".join(c for c in str(value) if c in allowed)[:256].strip()
+
+
 def _require(bindings: dict, key: str):
     value = bindings.get(key)
     if value in (None, "", [], {}):
@@ -203,8 +209,13 @@ def render_request(bindings: dict) -> dict:
         "EnableManagedSpotTraining": managed_spot,
         "EnableNetworkIsolation": False,
         "Environment": dict(sorted(environment.items())),
+        # AWS tag values allow only [letters spaces digits _.:/=+-@]
+        # (live ValidationException at the first real arm launch: the
+        # bookkeeping label's parentheses were refused). Sanitize DERIVED
+        # tag values; identity fields are already charset-safe.
         "Tags": [
-            {"Key": "medzen:cost-registry", "Value": registry_line},
+            {"Key": "medzen:cost-registry",
+             "Value": _tag_safe(registry_line)},
             {"Key": "medzen:job", "Value": job_id},
             {"Key": "medzen:classification",
              "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"},

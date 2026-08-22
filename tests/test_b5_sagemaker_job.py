@@ -931,3 +931,20 @@ def test_iam_policy_artifacts_are_valid_and_honest():
         "S3 read must be the exact calibration artifact prefix")
     assert "sagemaker:InstanceTypes" in body
     assert "research/b5-training/*" not in body, "no broad S3 prefixes"
+
+def test_rendered_tag_values_satisfy_aws_charset():
+    """Live ValidationException at the first real arm launch: AWS tag
+    values allow only letters/spaces/digits/_.:/=+-@ — parentheses in
+    the bookkeeping label killed CreateTrainingJob AFTER every gate
+    passed. Every rendered tag must satisfy the AWS pattern."""
+    import re
+    pattern = re.compile(r"^[\w \.:/=+\-@]*$")
+    request = render_request(bindings())
+    for tag in request["Tags"]:
+        assert pattern.match(tag["Value"]), tag
+    b = bindings()
+    b["cost_registry_line"] = "LINE-1 (with parens, commas — and dashes)"
+    request = render_request(b)
+    value = [t for t in request["Tags"]
+             if t["Key"] == "medzen:cost-registry"][0]["Value"]
+    assert "(" not in value and "," not in value
