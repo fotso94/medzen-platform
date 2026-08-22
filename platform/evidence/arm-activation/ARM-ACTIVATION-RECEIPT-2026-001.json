@@ -1,0 +1,75 @@
+{
+ "applied_iam_trust": {
+  "Statement": [
+   {
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+     "StringEquals": {
+      "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+      "token.actions.githubusercontent.com:job_workflow_ref": "fotso94/medzen-platform/.github/workflows/arm-launch-exec.yml@refs/heads/master",
+      "token.actions.githubusercontent.com:sub": "repo:fotso94@16901658/medzen-platform@1322233937:environment:arm-launch-approval"
+     }
+    },
+    "Effect": "Allow",
+    "Principal": {
+     "Federated": "arn:aws:iam::558069890522:oidc-provider/token.actions.githubusercontent.com"
+    }
+   }
+  ],
+  "Version": "2012-10-17"
+ },
+ "canary_evidence": {
+  "claims_dump": {
+   "finding": "sub=immutable form; job_workflow_ref=plain form",
+   "run": 32546488992
+  },
+  "negative_direct": {
+   "outcome": "explicit AccessDenied",
+   "run": 32546184882
+  },
+  "negative_wrongref": {
+   "outcome": "explicit AccessDenied vs the FINAL trust",
+   "run": 32547166062
+  },
+  "positive": {
+   "outcome": "SUCCESS \u2014 assumed medzen-arm-launch-role, identity asserted",
+   "run": 32547146302
+  }
+ },
+ "fresh_plan_result": "No changes. Your infrastructure matches the configuration.",
+ "github_environment": {
+  "branch_policies": [
+   "master"
+  ],
+  "deployment_branch_policy": {
+   "custom_branch_policies": true,
+   "protected_branches": false
+  },
+  "name": "arm-launch-approval",
+  "protection_rules": [
+   {
+    "reviewers": [
+     "fotso94"
+    ],
+    "type": "required_reviewers"
+   },
+   {
+    "reviewers": null,
+    "type": "branch_policy"
+   }
+  ]
+ },
+ "launch": {
+  "first_attempt_refused": {
+   "reason": "AWS tag charset ValidationException AFTER all gates passed; sanitizer fix, packet sha unchanged",
+   "run": 32548657111
+  },
+  "training_job": "medzen-b5-b5-universal-arm1-2026-005",
+  "workflow_run": 32549529178
+ },
+ "record": "ARM-ACTIVATION-RECEIPT-2026-001",
+ "role": "successor activation receipt (Codex review #29 minor concern: the earlier saved plan predated the job_workflow_ref claims-dump fix \u2014 this receipt binds the APPLIED trust, and the fresh plan shows No changes, proving state == config)",
+ "role_arn": "arn:aws:iam::558069890522:role/medzen-arm-launch-role",
+ "role_created": "2026-08-22T02:23:18+00:00",
+ "utc": "2026-08-22T05:37:03Z"
+}
