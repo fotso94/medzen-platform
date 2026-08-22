@@ -1,37 +1,39 @@
 {
-  "id": "B6-AWS-READ-FIXTURE-CAPTURE-2026-003",
-  "status": "PASS_READ_ONLY_ADDITIVE_TARGET_HEALTH_CAPTURE",
-  "recorded_at_utc": "2026-08-11T00:00:33Z",
-  "supersedes_by_reference": {
-    "path": "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json",
-    "sha256": "2e427a8dd158ffcff7efe9cf57ac8559797bfdded3ea8c0319cb832b4a2010d8"
+ "amended_utc": "2026-08-22T00:32:42Z",
+ "aws": {
+  "account": "558069890522",
+  "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
+  "credentials_or_phi": false,
+  "mutations": 0,
+  "region": "eu-central-1"
+ },
+ "boundaries": {
+  "fixture_contains_credentials_or_phi": false,
+  "fixture_contains_private_target_addresses": true,
+  "historical_empty_target_health_fixture_preserved": true,
+  "packet_2026_026_initial_registration_observation_remains_bound_by_terminal_evidence": "platform/evidence/B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE.json",
+  "source_target_group_was_not_created_or_modified": true,
+  "source_target_group_was_read_only": true
+ },
+ "capture": {
+  "api": "elasticloadbalancing:DescribeTargetHealth",
+  "observed_states": [
+   "healthy"
+  ],
+  "observed_target_count": 2,
+  "path": "tests/fixtures/aws/elbv2-describe-target-health-medzen-ehrbase-healthy.json",
+  "request": {
+   "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/medzen-ehrbase-tg/47f768314c838f01"
   },
-  "aws": {
-    "account": "558069890522",
-    "region": "eu-central-1",
-    "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
-    "mutations": 0,
-    "credentials_or_phi": false
-  },
-  "purpose": "Add a current recorded-real successful DescribeTargetHealth response so the successor stable-health gate is never validated only against an author-written response shape.",
-  "capture": {
-    "api": "elasticloadbalancing:DescribeTargetHealth",
-    "request": {
-      "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/medzen-ehrbase-tg/47f768314c838f01"
-    },
-    "path": "tests/fixtures/aws/elbv2-describe-target-health-medzen-ehrbase-healthy.json",
-    "sha256": "ea75fe927ad48a9aaae9ddd15553fce1f28aaacb4c3fb07271af34c438b2a813",
-    "observed_target_count": 2,
-    "observed_states": [
-      "healthy"
-    ]
-  },
-  "boundaries": {
-    "source_target_group_was_read_only": true,
-    "source_target_group_was_not_created_or_modified": true,
-    "fixture_contains_private_target_addresses": true,
-    "fixture_contains_credentials_or_phi": false,
-    "historical_empty_target_health_fixture_preserved": true,
-    "packet_2026_026_initial_registration_observation_remains_bound_by_terminal_evidence": "platform/evidence/B6-PACKET-2026-026-TERMINAL-FARGATE-TARGET-READINESS-RACE.json"
-  }
+  "sha256": "ea75fe927ad48a9aaae9ddd15553fce1f28aaacb4c3fb07271af34c438b2a813"
+ },
+ "id": "B6-AWS-READ-FIXTURE-CAPTURE-2026-003",
+ "purpose": "Add a current recorded-real successful DescribeTargetHealth response so the successor stable-health gate is never validated only against an author-written response shape.",
+ "rebound_2026_08_21": "base capture record amended (fixture sanitization: the owner's real access key id replaced with the AWS docs EXAMPLE id before the repo goes public); reference re-bound",
+ "recorded_at_utc": "2026-08-11T00:00:33Z",
+ "status": "PASS_READ_ONLY_ADDITIVE_TARGET_HEALTH_CAPTURE",
+ "supersedes_by_reference": {
+  "path": "platform/evidence/B6-AWS-READ-FIXTURE-CAPTURE-2026-002.json",
+  "sha256": "ffe45e951c5eee26453db36bf364dfc85313e718672ac38b3c45b97ccac4f735"
+ }
 }

@@ -1,370 +1,372 @@
 {
-  "id": "B6-AWS-READ-FIXTURE-CAPTURE-2026-002",
-  "status": "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_RUNNER_COVERAGE",
-  "recorded_at_utc": "2026-08-10T22:10:03Z",
-  "aws": {
-    "account": "558069890522",
-    "primary_region": "eu-central-1",
-    "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
-    "mutations": 0,
-    "credentials_or_phi": false
+ "amended_utc": "2026-08-22T00:32:12Z",
+ "aws": {
+  "account": "558069890522",
+  "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
+  "credentials_or_phi": false,
+  "mutations": 0,
+  "primary_region": "eu-central-1"
+ },
+ "boundaries": {
+  "cross_region_gateway_fixture_reason": "A pre-existing untagged S3 gateway endpoint in us-east-2 supplied the real gateway response shape without creating any resource.",
+  "kubernetes_reads": "NOT_AWS_APIS",
+  "no_secret_plaintext": true,
+  "secretsmanager_get_secret_value_fixture_is_access_denied_only": true,
+  "ssm_fixture_contains_only_non_serving_synthetic_registry_values": true,
+  "terraform_provider_internal_reads": "OUTSIDE_APPLICATION_RESPONSE_INTERPRETATION; PLAN_AND_ACTION_GUARDS_REMAIN"
+ },
+ "captures": [
+  {
+   "api": "autoscaling:DescribeAutoScalingGroups",
+   "path": "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-cpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "AutoScalingGroupNames": [
+     "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
+    ]
+   },
+   "sha256": "cb5e59d678cf3434c324f76139bc2d4445b8d28276c27bfabab812bc381e1ddb"
   },
-  "scope": {
-    "statement": "Every explicit AWS read API whose response is interpreted by the packet-2026-026 Stage A runner or the conditionally unlocked full-window runner.",
-    "sources": [
-      "scripts/b6_6_cleanup.sh",
-      "scripts/b6_6_credential.py",
-      "scripts/b6_6_deadline.py",
-      "scripts/b6_6_fargate_probe.py",
-      "scripts/b6_6_lbc_runtime.py",
-      "scripts/b6_6_operations.sh",
-      "scripts/b6_6_persistent_secret_bridge.py",
-      "scripts/b6_6_probe_endpoints.py",
-      "scripts/b6_6_stage_a.py"
-    ],
-    "explicit_read_api_count": 23,
-    "fixture_count": 29,
-    "uncovered_read_apis": 0
+  {
+   "api": "autoscaling:DescribeAutoScalingGroups",
+   "path": "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-gpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "AutoScalingGroupNames": [
+     "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
+    ]
+   },
+   "sha256": "d19be32a520638d20ac580d68721f8a100cdde52ed5ac78ce98e83d1ab2d3dac"
   },
-  "runtime_api_inventory": [
-    "autoscaling:DescribeAutoScalingGroups",
-    "autoscaling:DescribeScheduledActions",
-    "ec2:DescribePrefixLists",
-    "ec2:DescribeSecurityGroups",
-    "ec2:DescribeVpcEndpoints",
-    "ecs:DescribeClusters",
-    "ecs:DescribeTaskDefinition",
-    "ecs:DescribeTasks",
-    "ecs:ListTasks",
-    "eks:DescribeNodegroup",
-    "elasticloadbalancing:DescribeListeners",
-    "elasticloadbalancing:DescribeLoadBalancers",
-    "elasticloadbalancing:DescribeRules",
-    "elasticloadbalancing:DescribeTags",
-    "elasticloadbalancing:DescribeTargetGroups",
-    "elasticloadbalancing:DescribeTargetHealth",
-    "iam:GetRole",
-    "iam:GetUser",
-    "secretsmanager:DescribeSecret",
-    "secretsmanager:GetSecretValue",
-    "secretsmanager:ListSecretVersionIds",
-    "ssm:GetParametersByPath",
-    "sts:GetCallerIdentity"
+  {
+   "api": "autoscaling:DescribeScheduledActions",
+   "path": "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-cpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "AutoScalingGroupName": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
+   },
+   "sha256": "6f16629462425c0118e6e943915bcb2eba50725c402a02aa3b91a7a8fc8abc6e"
+  },
+  {
+   "api": "autoscaling:DescribeScheduledActions",
+   "path": "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-gpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "AutoScalingGroupName": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
+   },
+   "sha256": "6f16629462425c0118e6e943915bcb2eba50725c402a02aa3b91a7a8fc8abc6e"
+  },
+  {
+   "api": "ec2:DescribePrefixLists",
+   "path": "tests/fixtures/aws/ec2-describe-prefix-lists-s3-eu-central-1.json",
+   "region": "eu-central-1",
+   "request": {
+    "Filters": [
+     {
+      "Name": "prefix-list-name",
+      "Values": [
+       "com.amazonaws.eu-central-1.s3"
+      ]
+     }
+    ]
+   },
+   "sha256": "c7fca5faae13f83855f5444e705b2318ee84b68d982bc59673319cd8bd0db985"
+  },
+  {
+   "api": "ec2:DescribeSecurityGroups",
+   "path": "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json",
+   "region": "eu-central-1",
+   "request": {
+    "GroupIds": [
+     "sg-070fc00321934eacb"
+    ]
+   },
+   "sha256": "2f9129d630cadc5f2915a5bf8c9b9885096fb39b43bfbe5125fab23d71c5a49a"
+  },
+  {
+   "api": "ec2:DescribeVpcEndpoints",
+   "path": "tests/fixtures/aws/ec2-describe-vpc-endpoints-interface-vpce-0c807782b5e1c9577.json",
+   "region": "eu-central-1",
+   "request": {
+    "VpcEndpointIds": [
+     "vpce-0c807782b5e1c9577"
+    ]
+   },
+   "sha256": "e23d786890975331b70d4f67c5f7c171e71b42a15e1ea5ba7bba7f78f5bb08e0"
+  },
+  {
+   "api": "ec2:DescribeVpcEndpoints",
+   "path": "tests/fixtures/aws/ec2-describe-vpc-endpoints-s3-gateway-vpce-09b2f7b21a4f625f3.json",
+   "region": "us-east-2",
+   "request": {
+    "VpcEndpointIds": [
+     "vpce-09b2f7b21a4f625f3"
+    ]
+   },
+   "sha256": "6e9bbcd4f47c6d0f2ba127e2faec331f47a2d3089b94fc65d3066abdc7c01558"
+  },
+  {
+   "api": "ecs:DescribeClusters",
+   "path": "tests/fixtures/aws/ecs-describe-clusters-medzen-b6-window-probe-inactive.json",
+   "region": "eu-central-1",
+   "request": {
+    "clusters": [
+     "medzen-b6-window-probe"
+    ]
+   },
+   "sha256": "a2f78b38b6b37f5d8a1d81a9bd4b2e6cd4bc2f6ee7de11cfeb9d8c4ce7bc423d"
+  },
+  {
+   "api": "ecs:DescribeTaskDefinition",
+   "path": "tests/fixtures/aws/ecs-describe-task-definition-medzen-b6-window-probe-9-inactive.json",
+   "region": "eu-central-1",
+   "request": {
+    "taskDefinition": "medzen-b6-window-probe:9"
+   },
+   "sha256": "9712d9b7b35874c22e9f90dd7842be6e3676f315a2ec8b618cf50544fa8aba70"
+  },
+  {
+   "api": "ecs:DescribeTasks",
+   "path": "tests/fixtures/aws/ecs-describe-tasks-medzen-b6-window-probe-missing.json",
+   "region": "eu-central-1",
+   "request": {
+    "cluster": "medzen-b6-window-probe",
+    "tasks": [
+     "arn:aws:ecs:eu-central-1:558069890522:task/medzen-b6-window-probe/94aaf80cffa142558b8094b083b25867"
+    ]
+   },
+   "sha256": "567eb3336129850ad1455e50442cbe421acf11b63fc98a2f9bc67c66aa703a01"
+  },
+  {
+   "api": "ecs:ListTasks",
+   "path": "tests/fixtures/aws/ecs-list-tasks-medzen-b6-window-probe-empty.json",
+   "region": "eu-central-1",
+   "request": {
+    "cluster": "medzen-b6-window-probe"
+   },
+   "sha256": "61e8c39ffa1ef5166ae05bf0aa601d558fb5bfee1225e791219db1e7c23c3b5f"
+  },
+  {
+   "api": "eks:DescribeNodegroup",
+   "path": "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-cpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "clusterName": "medzen-speech",
+    "nodegroupName": "cpu"
+   },
+   "sha256": "525671ed5cbea3bf2f63bbf1f9d244ed74ede9d184856a5a23fc748ebf666b25"
+  },
+  {
+   "api": "eks:DescribeNodegroup",
+   "path": "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-gpu.json",
+   "region": "eu-central-1",
+   "request": {
+    "clusterName": "medzen-speech",
+    "nodegroupName": "gpu"
+   },
+   "sha256": "a22be74a4ad8f62ed01807c8504c11470b9fce647fa60c9dd6cc60a0d0894fbd"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeListeners",
+   "path": "tests/fixtures/aws/elbv2-describe-listeners-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
+   },
+   "sha256": "a636f237d07b2d93315cd0d3ad9d90f313def6ac25a2c6ae8d0b4d65abbe1ff1"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeLoadBalancers",
+   "path": "tests/fixtures/aws/elbv2-describe-load-balancers-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "LoadBalancerArns": [
+     "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
+    ]
+   },
+   "sha256": "a8d53ac5404504a6a7c7c8a720a90824a6389147745e71a3487327fa473fdd7e"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeRules",
+   "path": "tests/fixtures/aws/elbv2-describe-rules-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/cache-proxy-test/a6aba2020bec36a9/259e482b3e133823"
+   },
+   "sha256": "e79fee76f8ae83b83bb73065618fc4da18e07bed94af20d5bbd5d3b692fd4c5c"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeTags",
+   "path": "tests/fixtures/aws/elbv2-describe-tags-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "ResourceArns": [
+     "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
+    ]
+   },
+   "sha256": "1e8266bde9fd254e3551b2064e55ce2b7be3035e9c6a063bbc20427007bf6b0b"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeTargetGroups",
+   "path": "tests/fixtures/aws/elbv2-describe-target-groups-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
+   },
+   "sha256": "e524c577fcfcd2474d76f6243119094aa8f172eb746269e98e18e8936f2ea872"
+  },
+  {
+   "api": "elasticloadbalancing:DescribeTargetHealth",
+   "path": "tests/fixtures/aws/elbv2-describe-target-health-cache-proxy-test.json",
+   "region": "eu-central-1",
+   "request": {
+    "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/cache-proxy-test/546ae6a0af46af8c"
+   },
+   "sha256": "5b2c104e32a6132478644f0d910d2a14ce0ecb34119fcdbd9001d284e9d25fea"
+  },
+  {
+   "api": "iam:GetRole",
+   "path": "tests/fixtures/aws/iam-get-role-medzen-b6-window-probe-execution-absent.json",
+   "region": "global",
+   "request": {
+    "RoleName": "medzen-b6-window-probe-execution"
+   },
+   "sha256": "639b464c28462c4e1d64e4226f89bfa509ad26d8b84937f0b9c21ccba9509f7c"
+  },
+  {
+   "api": "iam:GetRole",
+   "path": "tests/fixtures/aws/iam-get-role-medzen-orch-role.json",
+   "region": "global",
+   "request": {
+    "RoleName": "medzen-orch-role"
+   },
+   "sha256": "b5e5bd607ff1a1447c08dc316cd7a280e3b7566c467f68604e3e4f1ec201c660"
+  },
+  {
+   "api": "iam:GetUser",
+   "path": "tests/fixtures/aws/iam-get-user-s-fotso.json",
+   "region": "global",
+   "request": {
+    "UserName": "s.fotso"
+   },
+   "sanitized_2026_08_21": "the captured live response embedded the owner's REAL active access key id in a user tag; replaced with the canonical AWS docs EXAMPLE id before the repository goes public (owner order 'make the public repo'). Semantics of the capture are unchanged; the original bytes remain in git history (key rotation recommended to the owner).",
+   "sha256": "e3747fa28b86a737d08bc40c18d680fc3ac7d016e5910977d03943fc763d3ee2"
+  },
+  {
+   "api": "secretsmanager:DescribeSecret",
+   "path": "tests/fixtures/aws/secretsmanager-describe-secret-medzen-client-api-keys.json",
+   "region": "eu-central-1",
+   "request": {
+    "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
+   },
+   "sha256": "cc528cee46bcb463b440bb99eb251a417e9be7da1b37f6af21eb445ac867c942"
+  },
+  {
+   "api": "secretsmanager:GetSecretValue",
+   "path": "tests/fixtures/aws/secretsmanager-get-secret-value-medzen-client-api-keys-denied.json",
+   "region": "eu-central-1",
+   "request": {
+    "Expected": "AccessDeniedException",
+    "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
+   },
+   "sha256": "67ec83aa31bc91c9c0480dd16d44d884423c3cb1567703497a27b03eaedbf8c3"
+  },
+  {
+   "api": "secretsmanager:ListSecretVersionIds",
+   "path": "tests/fixtures/aws/secretsmanager-list-secret-version-ids-medzen-client-api-keys.json",
+   "region": "eu-central-1",
+   "request": {
+    "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
+   },
+   "sha256": "957073789952bfb8c41ebf7df3cac959719f7b5f11f3a6853d9b2ad0ec6fb490"
+  },
+  {
+   "api": "ssm:GetParametersByPath",
+   "path": "tests/fixtures/aws/ssm-get-parameters-by-path-b6-test-registry.json",
+   "region": "eu-central-1",
+   "request": {
+    "Path": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
+    "Recursive": true,
+    "WithDecryption": true
+   },
+   "sha256": "4ee22bd11af7cb918e3cf05681f54a7f499176e7f761b0eaa03713842c2ac120"
+  },
+  {
+   "api": "ssm:GetParametersByPath",
+   "path": "tests/fixtures/aws/ssm-get-parameters-by-path-serving-empty.json",
+   "region": "eu-central-1",
+   "request": {
+    "Path": "/medzen/registry/serving",
+    "Recursive": true,
+    "WithDecryption": true
+   },
+   "sha256": "29eca2eed652792a10926adbae9daf1c82afc4ada0f5e9dd8193ec0fbc2a583b"
+  },
+  {
+   "api": "sts:GetCallerIdentity",
+   "path": "tests/fixtures/aws/sts-get-caller-identity-medzen.json",
+   "region": "eu-central-1",
+   "request": {},
+   "sha256": "c0728109fef986c9f6ea9d6bfba6db32680d2c30097988990317e39deeb4c644"
+  }
+ ],
+ "contains_credentials_or_phi": false,
+ "endpoint_verifier_coverage": {
+  "apis": [
+   "ec2:DescribePrefixLists",
+   "ec2:DescribeSecurityGroups",
+   "ec2:DescribeVpcEndpoints"
   ],
-  "captures": [
-    {
-      "api": "autoscaling:DescribeAutoScalingGroups",
-      "request": {
-        "AutoScalingGroupNames": [
-          "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-cpu.json",
-      "sha256": "cb5e59d678cf3434c324f76139bc2d4445b8d28276c27bfabab812bc381e1ddb"
-    },
-    {
-      "api": "autoscaling:DescribeAutoScalingGroups",
-      "request": {
-        "AutoScalingGroupNames": [
-          "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/autoscaling-describe-auto-scaling-groups-medzen-gpu.json",
-      "sha256": "d19be32a520638d20ac580d68721f8a100cdde52ed5ac78ce98e83d1ab2d3dac"
-    },
-    {
-      "api": "autoscaling:DescribeScheduledActions",
-      "request": {
-        "AutoScalingGroupName": "eks-cpu-32cfd795-fa28-d1d9-1b8c-2ed678be1772"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-cpu.json",
-      "sha256": "6f16629462425c0118e6e943915bcb2eba50725c402a02aa3b91a7a8fc8abc6e"
-    },
-    {
-      "api": "autoscaling:DescribeScheduledActions",
-      "request": {
-        "AutoScalingGroupName": "eks-gpu-b8cfd795-fa28-70a1-b844-258a0f0adc26"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/autoscaling-describe-scheduled-actions-medzen-gpu.json",
-      "sha256": "6f16629462425c0118e6e943915bcb2eba50725c402a02aa3b91a7a8fc8abc6e"
-    },
-    {
-      "api": "ec2:DescribePrefixLists",
-      "request": {
-        "Filters": [
-          {
-            "Name": "prefix-list-name",
-            "Values": [
-              "com.amazonaws.eu-central-1.s3"
-            ]
-          }
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ec2-describe-prefix-lists-s3-eu-central-1.json",
-      "sha256": "c7fca5faae13f83855f5444e705b2318ee84b68d982bc59673319cd8bd0db985"
-    },
-    {
-      "api": "ec2:DescribeSecurityGroups",
-      "request": {
-        "GroupIds": [
-          "sg-070fc00321934eacb"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json",
-      "sha256": "2f9129d630cadc5f2915a5bf8c9b9885096fb39b43bfbe5125fab23d71c5a49a"
-    },
-    {
-      "api": "ec2:DescribeVpcEndpoints",
-      "request": {
-        "VpcEndpointIds": [
-          "vpce-0c807782b5e1c9577"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ec2-describe-vpc-endpoints-interface-vpce-0c807782b5e1c9577.json",
-      "sha256": "e23d786890975331b70d4f67c5f7c171e71b42a15e1ea5ba7bba7f78f5bb08e0"
-    },
-    {
-      "api": "ec2:DescribeVpcEndpoints",
-      "request": {
-        "VpcEndpointIds": [
-          "vpce-09b2f7b21a4f625f3"
-        ]
-      },
-      "region": "us-east-2",
-      "path": "tests/fixtures/aws/ec2-describe-vpc-endpoints-s3-gateway-vpce-09b2f7b21a4f625f3.json",
-      "sha256": "6e9bbcd4f47c6d0f2ba127e2faec331f47a2d3089b94fc65d3066abdc7c01558"
-    },
-    {
-      "api": "ecs:DescribeClusters",
-      "request": {
-        "clusters": [
-          "medzen-b6-window-probe"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ecs-describe-clusters-medzen-b6-window-probe-inactive.json",
-      "sha256": "a2f78b38b6b37f5d8a1d81a9bd4b2e6cd4bc2f6ee7de11cfeb9d8c4ce7bc423d"
-    },
-    {
-      "api": "ecs:DescribeTaskDefinition",
-      "request": {
-        "taskDefinition": "medzen-b6-window-probe:9"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ecs-describe-task-definition-medzen-b6-window-probe-9-inactive.json",
-      "sha256": "9712d9b7b35874c22e9f90dd7842be6e3676f315a2ec8b618cf50544fa8aba70"
-    },
-    {
-      "api": "ecs:DescribeTasks",
-      "request": {
-        "cluster": "medzen-b6-window-probe",
-        "tasks": [
-          "arn:aws:ecs:eu-central-1:558069890522:task/medzen-b6-window-probe/94aaf80cffa142558b8094b083b25867"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ecs-describe-tasks-medzen-b6-window-probe-missing.json",
-      "sha256": "567eb3336129850ad1455e50442cbe421acf11b63fc98a2f9bc67c66aa703a01"
-    },
-    {
-      "api": "ecs:ListTasks",
-      "request": {
-        "cluster": "medzen-b6-window-probe"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ecs-list-tasks-medzen-b6-window-probe-empty.json",
-      "sha256": "61e8c39ffa1ef5166ae05bf0aa601d558fb5bfee1225e791219db1e7c23c3b5f"
-    },
-    {
-      "api": "eks:DescribeNodegroup",
-      "request": {
-        "clusterName": "medzen-speech",
-        "nodegroupName": "cpu"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-cpu.json",
-      "sha256": "525671ed5cbea3bf2f63bbf1f9d244ed74ede9d184856a5a23fc748ebf666b25"
-    },
-    {
-      "api": "eks:DescribeNodegroup",
-      "request": {
-        "clusterName": "medzen-speech",
-        "nodegroupName": "gpu"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/eks-describe-nodegroup-medzen-speech-gpu.json",
-      "sha256": "a22be74a4ad8f62ed01807c8504c11470b9fce647fa60c9dd6cc60a0d0894fbd"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeListeners",
-      "request": {
-        "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-listeners-cache-proxy-test.json",
-      "sha256": "a636f237d07b2d93315cd0d3ad9d90f313def6ac25a2c6ae8d0b4d65abbe1ff1"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeLoadBalancers",
-      "request": {
-        "LoadBalancerArns": [
-          "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-load-balancers-cache-proxy-test.json",
-      "sha256": "a8d53ac5404504a6a7c7c8a720a90824a6389147745e71a3487327fa473fdd7e"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeRules",
-      "request": {
-        "ListenerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:listener/app/cache-proxy-test/a6aba2020bec36a9/259e482b3e133823"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-rules-cache-proxy-test.json",
-      "sha256": "e79fee76f8ae83b83bb73065618fc4da18e07bed94af20d5bbd5d3b692fd4c5c"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeTags",
-      "request": {
-        "ResourceArns": [
-          "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
-        ]
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-tags-cache-proxy-test.json",
-      "sha256": "1e8266bde9fd254e3551b2064e55ce2b7be3035e9c6a063bbc20427007bf6b0b"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeTargetGroups",
-      "request": {
-        "LoadBalancerArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:loadbalancer/app/cache-proxy-test/a6aba2020bec36a9"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-target-groups-cache-proxy-test.json",
-      "sha256": "e524c577fcfcd2474d76f6243119094aa8f172eb746269e98e18e8936f2ea872"
-    },
-    {
-      "api": "elasticloadbalancing:DescribeTargetHealth",
-      "request": {
-        "TargetGroupArn": "arn:aws:elasticloadbalancing:eu-central-1:558069890522:targetgroup/cache-proxy-test/546ae6a0af46af8c"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/elbv2-describe-target-health-cache-proxy-test.json",
-      "sha256": "5b2c104e32a6132478644f0d910d2a14ce0ecb34119fcdbd9001d284e9d25fea"
-    },
-    {
-      "api": "iam:GetRole",
-      "request": {
-        "RoleName": "medzen-b6-window-probe-execution"
-      },
-      "region": "global",
-      "path": "tests/fixtures/aws/iam-get-role-medzen-b6-window-probe-execution-absent.json",
-      "sha256": "639b464c28462c4e1d64e4226f89bfa509ad26d8b84937f0b9c21ccba9509f7c"
-    },
-    {
-      "api": "iam:GetRole",
-      "request": {
-        "RoleName": "medzen-orch-role"
-      },
-      "region": "global",
-      "path": "tests/fixtures/aws/iam-get-role-medzen-orch-role.json",
-      "sha256": "b5e5bd607ff1a1447c08dc316cd7a280e3b7566c467f68604e3e4f1ec201c660"
-    },
-    {
-      "api": "iam:GetUser",
-      "request": {
-        "UserName": "s.fotso"
-      },
-      "region": "global",
-      "path": "tests/fixtures/aws/iam-get-user-s-fotso.json",
-      "sha256": "fd07d28ae0bc7513cda6cd125c91fcdb89ce2481e3d26ea6a51111cd029ee753"
-    },
-    {
-      "api": "secretsmanager:DescribeSecret",
-      "request": {
-        "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/secretsmanager-describe-secret-medzen-client-api-keys.json",
-      "sha256": "cc528cee46bcb463b440bb99eb251a417e9be7da1b37f6af21eb445ac867c942"
-    },
-    {
-      "api": "secretsmanager:GetSecretValue",
-      "request": {
-        "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE",
-        "Expected": "AccessDeniedException"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/secretsmanager-get-secret-value-medzen-client-api-keys-denied.json",
-      "sha256": "67ec83aa31bc91c9c0480dd16d44d884423c3cb1567703497a27b03eaedbf8c3"
-    },
-    {
-      "api": "secretsmanager:ListSecretVersionIds",
-      "request": {
-        "SecretId": "arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE"
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/secretsmanager-list-secret-version-ids-medzen-client-api-keys.json",
-      "sha256": "957073789952bfb8c41ebf7df3cac959719f7b5f11f3a6853d9b2ad0ec6fb490"
-    },
-    {
-      "api": "ssm:GetParametersByPath",
-      "request": {
-        "Path": "/medzen/registry/test/b6/d4f9696d288e0ea6c1d139f496e00eaf097b77ea8b3a4f5a26a6470286adfe81",
-        "Recursive": true,
-        "WithDecryption": true
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ssm-get-parameters-by-path-b6-test-registry.json",
-      "sha256": "4ee22bd11af7cb918e3cf05681f54a7f499176e7f761b0eaa03713842c2ac120"
-    },
-    {
-      "api": "ssm:GetParametersByPath",
-      "request": {
-        "Path": "/medzen/registry/serving",
-        "Recursive": true,
-        "WithDecryption": true
-      },
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/ssm-get-parameters-by-path-serving-empty.json",
-      "sha256": "29eca2eed652792a10926adbae9daf1c82afc4ada0f5e9dd8193ec0fbc2a583b"
-    },
-    {
-      "api": "sts:GetCallerIdentity",
-      "request": {},
-      "region": "eu-central-1",
-      "path": "tests/fixtures/aws/sts-get-caller-identity-medzen.json",
-      "sha256": "c0728109fef986c9f6ea9d6bfba6db32680d2c30097988990317e39deeb4c644"
-    }
+  "describe_vpc_endpoints_prefix_list_id_present": false,
+  "expected_s3_prefix_list_id": "pl-6ea54007",
+  "real_gateway_endpoint_response": true,
+  "real_interface_endpoint_response": true,
+  "real_s3_prefix_list_response": true
+ },
+ "id": "B6-AWS-READ-FIXTURE-CAPTURE-2026-002",
+ "recorded_at_utc": "2026-08-10T22:10:03Z",
+ "runtime_api_inventory": [
+  "autoscaling:DescribeAutoScalingGroups",
+  "autoscaling:DescribeScheduledActions",
+  "ec2:DescribePrefixLists",
+  "ec2:DescribeSecurityGroups",
+  "ec2:DescribeVpcEndpoints",
+  "ecs:DescribeClusters",
+  "ecs:DescribeTaskDefinition",
+  "ecs:DescribeTasks",
+  "ecs:ListTasks",
+  "eks:DescribeNodegroup",
+  "elasticloadbalancing:DescribeListeners",
+  "elasticloadbalancing:DescribeLoadBalancers",
+  "elasticloadbalancing:DescribeRules",
+  "elasticloadbalancing:DescribeTags",
+  "elasticloadbalancing:DescribeTargetGroups",
+  "elasticloadbalancing:DescribeTargetHealth",
+  "iam:GetRole",
+  "iam:GetUser",
+  "secretsmanager:DescribeSecret",
+  "secretsmanager:GetSecretValue",
+  "secretsmanager:ListSecretVersionIds",
+  "ssm:GetParametersByPath",
+  "sts:GetCallerIdentity"
+ ],
+ "scope": {
+  "explicit_read_api_count": 23,
+  "fixture_count": 29,
+  "sources": [
+   "scripts/b6_6_cleanup.sh",
+   "scripts/b6_6_credential.py",
+   "scripts/b6_6_deadline.py",
+   "scripts/b6_6_fargate_probe.py",
+   "scripts/b6_6_lbc_runtime.py",
+   "scripts/b6_6_operations.sh",
+   "scripts/b6_6_persistent_secret_bridge.py",
+   "scripts/b6_6_probe_endpoints.py",
+   "scripts/b6_6_stage_a.py"
   ],
-  "endpoint_verifier_coverage": {
-    "apis": [
-      "ec2:DescribePrefixLists",
-      "ec2:DescribeSecurityGroups",
-      "ec2:DescribeVpcEndpoints"
-    ],
-    "real_interface_endpoint_response": true,
-    "real_gateway_endpoint_response": true,
-    "real_s3_prefix_list_response": true,
-    "describe_vpc_endpoints_prefix_list_id_present": false,
-    "expected_s3_prefix_list_id": "pl-6ea54007"
-  },
-  "boundaries": {
-    "ssm_fixture_contains_only_non_serving_synthetic_registry_values": true,
-    "secretsmanager_get_secret_value_fixture_is_access_denied_only": true,
-    "no_secret_plaintext": true,
-    "cross_region_gateway_fixture_reason": "A pre-existing untagged S3 gateway endpoint in us-east-2 supplied the real gateway response shape without creating any resource.",
-    "terraform_provider_internal_reads": "OUTSIDE_APPLICATION_RESPONSE_INTERPRETATION; PLAN_AND_ACTION_GUARDS_REMAIN",
-    "kubernetes_reads": "NOT_AWS_APIS"
-  },
-  "standing_rule": "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
-  "contains_credentials_or_phi": false
+  "statement": "Every explicit AWS read API whose response is interpreted by the packet-2026-026 Stage A runner or the conditionally unlocked full-window runner.",
+  "uncovered_read_apis": 0
+ },
+ "standing_rule": "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
+ "status": "PASS_READ_ONLY_LIVE_CAPTURE_COMPLETE_RUNNER_COVERAGE"
 }
