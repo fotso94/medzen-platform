@@ -213,18 +213,15 @@ data "aws_iam_policy_document" "arm_launch_trust" {
       # canaries pin down which one fires in practice.
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values = [
-        "repo:${var.github_repo_immutable}:environment:arm-launch-approval",
-        "repo:${var.github_repo}:environment:arm-launch-approval",
-      ]
+      # immutable ONLY (Codex review #28: GitHub confirms this repo
+      # always presents the immutable prefix; the legacy spelling was
+      # dead weight in the trust surface)
+      values = ["repo:${var.github_repo_immutable}:environment:arm-launch-approval"]
     }
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values = [
-        "${var.github_repo_immutable}/.github/workflows/arm-launch-exec.yml@refs/heads/master",
-        "${var.github_repo}/.github/workflows/arm-launch-exec.yml@refs/heads/master",
-      ]
+      values   = ["${var.github_repo_immutable}/.github/workflows/arm-launch-exec.yml@refs/heads/master"]
     }
   }
 }

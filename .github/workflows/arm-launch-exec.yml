@@ -19,12 +19,19 @@ jobs:
   exec:
     runs-on: ubuntu-latest
     environment: arm-launch-approval
-    if: github.ref == 'refs/heads/master' && vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != '' && (inputs.mode == 'canary' || inputs.mode == 'launch')
+    if: github.ref == 'refs/heads/master' && (inputs.mode == 'canary' || inputs.mode == 'launch')
     env:
       MEDZEN_EXECUTOR: github-protected-workflow
+      ROLE_ARN: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
       ARM_PACKET: platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json
       ARM_REQUEST: platform/manifests/B5-UNIVERSAL-ARM1-REQUEST-2026-005.json
     steps:
+      - name: the role variable must be configured (skipping is not passing)
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "MEDZEN_ARM_LAUNCH_ROLE_ARN is not set — refusing to pretend this run happened (Codex review #28)"
+            exit 1
+          fi
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
         with:
           fetch-depth: 0

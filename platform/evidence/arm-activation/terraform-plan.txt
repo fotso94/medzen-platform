@@ -16,14 +16,8 @@ Terraform will perform the following actions:
                       + Condition = {
                           + StringEquals = {
                               + "token.actions.githubusercontent.com:aud"              = "sts.amazonaws.com"
-                              + "token.actions.githubusercontent.com:job_workflow_ref" = [
-                                  + "fotso94@16901658/medzen-platform@1322233937/.github/workflows/arm-launch-exec.yml@refs/heads/master",
-                                  + "fotso94/medzen-platform/.github/workflows/arm-launch-exec.yml@refs/heads/master",
-                                ]
-                              + "token.actions.githubusercontent.com:sub"              = [
-                                  + "repo:fotso94@16901658/medzen-platform@1322233937:environment:arm-launch-approval",
-                                  + "repo:fotso94/medzen-platform:environment:arm-launch-approval",
-                                ]
+                              + "token.actions.githubusercontent.com:job_workflow_ref" = "fotso94@16901658/medzen-platform@1322233937/.github/workflows/arm-launch-exec.yml@refs/heads/master"
+                              + "token.actions.githubusercontent.com:sub"              = "repo:fotso94@16901658/medzen-platform@1322233937:environment:arm-launch-approval"
                             }
                         }
                       + Effect    = "Allow"
