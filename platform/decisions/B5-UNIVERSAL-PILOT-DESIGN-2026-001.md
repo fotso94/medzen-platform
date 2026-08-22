@@ -253,3 +253,23 @@ what that approval buys. Registry derived fields (committed+reserved,
 headroom, active count) are recomputed too. Chain regenerated: packet
 0cb9106f... with a revision-agnostic registry tag; registry 050;
 intent v3 still bound to the PENDING review bytes.
+
+## Rev12 (2026-08-22T00:21:31Z) — Codex review #25: injection out, real lockdown design
+The workflow takes NO inputs (the injectable job_id was removed, not
+sanitized — it launches one hardcoded committed packet). The local
+"IAM lock" draft was withdrawn as theater (caller-controlled tags cannot
+lock a caller; the local identity holds AdministratorAccess and could
+self-unbind anything): its replacement is
+platform/iam/LOCAL-BOUNDARY-RUNBOOK.md — a permissions-boundary design
+the OWNER applies from a separate admin principal, after which local
+credentials cannot create ANY training job or touch IAM. Terraform arm
+activation is decoupled (var.arm_launch_enabled; the existing OIDC
+provider is a data source, never re-created). The role's trust binds
+the EXACT workflow file (job_workflow_ref) on master, not just the
+environment. The role is narrowed: exact calibration-artifact S3
+prefix, InstanceTypes/OutputKmsKey/RequestTag conditions on create.
+The launcher requires the dedicated role's STS ARN for above-tier
+launches. Packet/registry SSH-era language corrected via successors
+(packet 2e166686..., registry 051). Plan caveat recorded: required
+reviewers on private repos need GitHub Enterprise — verify before
+relying on the environment gate.

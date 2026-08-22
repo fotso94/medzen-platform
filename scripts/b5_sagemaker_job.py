@@ -769,6 +769,24 @@ def assert_committed_profile(bindings: dict, root: Path, oid: str) -> None:
 
 EXECUTOR_ENV = "MEDZEN_EXECUTOR"
 PROTECTED_EXECUTOR = "github-protected-workflow"
+ARM_LAUNCH_ROLE = "medzen-arm-launch-role"
+
+
+def assert_launch_identity(arn: str, above_tier: bool) -> None:
+    """Codex review #25 finding 5: the launcher only checked the account
+    number, so forged executor variables under LOCAL credentials would
+    have sailed past the identity check. Above-tier launches must run as
+    an assumed session of the DEDICATED arm-launch role — local users
+    and the general CI role refuse."""
+    if not above_tier:
+        return
+    prefix = f"arn:aws:sts::{ACCOUNT}:assumed-role/{ARM_LAUNCH_ROLE}/"
+    if not str(arn or "").startswith(prefix):
+        raise JobRefusal(
+            f"above-tier launches must run as {ARM_LAUNCH_ROLE} (the "
+            f"protected workflow's dedicated role); caller is {arn!r} — "
+            "forged executor variables under other credentials refuse "
+            "(Codex review #25)")
 
 
 def main() -> int:
@@ -828,11 +846,13 @@ def main() -> int:
         # ONE boto3 session: STS pin + AWS receipt facts + the mutation
         import boto3
         session = boto3.session.Session(region_name=REGION)
-        account = session.client("sts").get_caller_identity().get("Account")
-        if account != ACCOUNT:
+        identity = session.client("sts").get_caller_identity()
+        if identity.get("Account") != ACCOUNT:
             raise JobRefusal(
-                f"effective AWS account is {account!r}, not the MedZen "
-                f"account {ACCOUNT} — refusing to launch")
+                f"effective AWS account is {identity.get('Account')!r}, "
+                f"not the MedZen account {ACCOUNT} — refusing to launch")
+        assert_launch_identity(identity.get("Arn"),
+                               worst_case > CALIBRATION_TIER_USD)
         if receipt_record is not None:
             verify_receipt_against_aws(receipt_record, cal_packet,
                                        session.client("sagemaker"),

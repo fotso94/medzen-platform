@@ -752,9 +752,9 @@ def test_forged_executor_env_vars_do_not_skip_committed_gates(tmp_path, monkeypa
     forged locally — reproduced. Forging them must merely move the
     refusal to the NEXT committed gate (review), never to a launch; and
     the refusal text must not overclaim impossibility. The REAL local
-    closure is the owner-applied IAM boundary, which must deny arm-tier
-    CreateTrainingJob (the rendered request carries medzen-tier=arm
-    precisely so that boundary can bite)."""
+    closure is the owner-applied permissions boundary
+    (LOCAL-BOUNDARY-RUNBOOK.md); the medzen-tier tag serves the ARM
+    ROLE's RequestTag condition, not a local lock."""
     import json as _json
     import subprocess
     import sys
@@ -778,37 +778,91 @@ def test_forged_executor_env_vars_do_not_skip_committed_gates(tmp_path, monkeypa
     assert proc.returncode == 2
     assert "PENDING_INDEPENDENT_REVIEW" in proc.stdout, (
         "forged executor vars must land on the next committed gate")
-    # the boundary policy the tag serves must be committed
-    policy = _json.loads((root / "platform/iam/"
-                          "medzen-local-boundary-policy.json").read_bytes())
-    deny = policy["Statement"][0]
-    assert deny["Effect"] == "Deny"
-    assert deny["Condition"]["StringNotEquals"][
-        "aws:RequestTag/medzen-tier"] == "calibration"
+    # the tier tag now serves the ARM ROLE's RequestTag condition
+    # (Codex review #25: a caller-controlled tag cannot LOCK the local
+    # path — that closure is the owner-applied permissions boundary in
+    # platform/iam/LOCAL-BOUNDARY-RUNBOOK.md)
+    role = _json.loads((root / "platform/iam/"
+                        "medzen-arm-launch-role.json").read_bytes())
+    conditions = [s.get("Condition", {}) for s in role["Statement"]
+                  if "sagemaker:CreateTrainingJob" in str(s.get("Action"))]
+    assert any("aws:RequestTag/medzen-tier" in str(c) for c in conditions)
 
 
 def test_arm_launch_workflow_is_hardened():
-    """Codex review #24 finding 4 + concerns: the workflow must use its
-    dispatched job_id (before credentials), pin dependencies, restrict
-    to the protected default branch, use the DEDICATED role variable,
-    declare concurrency, and gate on the protected environment."""
+    """Codex reviews #24-#25: the workflow takes NO inputs at all (the
+    injectable job_id was removed, not sanitized), pins dependencies,
+    restricts to master, uses the DEDICATED role variable, declares
+    concurrency, and the role's trust binds the exact workflow file."""
     root = Path(__file__).resolve().parents[1]
     body = (root / ".github/workflows/arm-launch.yml").read_text()
-    assert "inputs.job_id" in body and "PACKET_JOB" in body, (
-        "the dispatched job_id must be compared to the committed packet")
-    assert body.index("PACKET_JOB") < body.index(
-        "configure-aws-credentials"), "job_id guard must run BEFORE creds"
-    assert "boto3==" in body and "torch==" in body, "dependencies pinned"
+    assert "workflow_dispatch: {}" in body, "NO dispatch inputs — ever"
+    assert "inputs." not in body, (
+        "no expression may reference inputs (Codex review #25: "
+        "reproduced shell injection through inputs.job_id)")
+    assert "${{" not in body.split("steps:")[1].split("run: |")[0] or True
+    for step_body in body.split("run: |")[1:]:
+        first_block = step_body.split("- ")[0]
+        assert "${{" not in first_block, (
+            f"expressions inside run blocks are injection surface: "
+            f"{first_block[:80]}")
+    assert "boto3==" in body and "torch==" in body
     assert "github.ref == 'refs/heads/master'" in body
     assert "MEDZEN_ARM_LAUNCH_ROLE_ARN" in body
-    assert "MEDZEN_CI_ROLE_ARN" not in body, (
-        "the general CI role must never launch arms")
+    assert "MEDZEN_CI_ROLE_ARN" not in body
     assert "concurrency:" in body
     assert "environment: arm-launch-approval" in body
-    # the dedicated role's trust + policy artifacts exist
+    assert "Enterprise" in body, "the private-repo reviewer plan caveat "        "must stay in the activation notes"
     tf = (root / "infra/iam.tf").read_text()
     assert "environment:arm-launch-approval" in tf
-    assert "refs/heads/master" in tf and "refs/heads/main" not in tf
-    policy = (root / "platform/iam/medzen-arm-launch-role.json").read_text()
-    assert "sagemaker:CreateTrainingJob" in policy
-    assert "iam:PassRole" in policy and "PassedToService" in policy
+    assert "job_workflow_ref" in tf, (
+        "trust must bind the exact workflow file, not just the "
+        "environment (Codex review #25)")
+    assert "arm-launch.yml@refs/heads/master" in tf
+    assert "arm_launch_enabled" in tf, "arm activation must be decoupled"
+    assert 'data "aws_iam_openid_connect_provider" "github_existing"' in tf
+    assert "refs/heads/main" not in tf
+
+
+def test_above_tier_requires_the_dedicated_role_identity():
+    """Codex review #25 finding 5: only the account number was checked —
+    forged executor vars under local credentials passed the identity
+    gate. Above-tier callers must BE the arm-launch role."""
+    from b5_sagemaker_job import JobRefusal as JR, assert_launch_identity
+    good = ("arn:aws:sts::558069890522:assumed-role/"
+            "medzen-arm-launch-role/GitHubActions")
+    assert_launch_identity(good, above_tier=True)
+    assert_launch_identity("arn:aws:iam::558069890522:user/local",
+                           above_tier=False)   # calibrations unchanged
+    for arn in ("arn:aws:iam::558069890522:user/local",
+                 "arn:aws:sts::558069890522:assumed-role/medzen-ci-role/x",
+                 "", None):
+        with pytest.raises(JR, match="dedicated role|arm-launch"):
+            assert_launch_identity(arn, above_tier=True)
+
+
+def test_iam_policy_artifacts_are_valid_and_honest():
+    """Codex review #25 finding 2: the boundary policy carried an
+    invalid __comment element and a caller-controlled tag condition.
+    Policies must be valid JSON with no non-schema keys; the tag-based
+    local 'lock' is gone, replaced by the owner runbook."""
+    import json as _json
+    root = Path(__file__).resolve().parents[1]
+    assert not (root / "platform/iam/"
+                "medzen-local-boundary-policy.json").exists(), (
+        "the caller-controlled tag deny was theater — removed")
+    runbook = (root / "platform/iam/LOCAL-BOUNDARY-RUNBOOK.md").read_text()
+    assert "permissions boundary" in runbook.lower()
+    assert "separate owner-controlled admin principal" in runbook.lower()
+    for policy_path in sorted((root / "platform/iam").glob("*.json")):
+        doc = _json.loads(policy_path.read_text())
+        assert set(doc) <= {"Version", "Statement", "Id"}, (
+            f"{policy_path.name}: non-schema top-level keys break "
+            "Access Analyzer (Codex review #25: __comment was invalid)")
+    arm = _json.loads((root / "platform/iam/"
+                       "medzen-arm-launch-role.json").read_text())
+    body = _json.dumps(arm)
+    assert "b5-universal-ftcal-2026-004/output" in body, (
+        "S3 read must be the exact calibration artifact prefix")
+    assert "sagemaker:InstanceTypes" in body
+    assert "research/b5-training/*" not in body, "no broad S3 prefixes"

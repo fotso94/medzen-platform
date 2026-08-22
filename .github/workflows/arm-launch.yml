@@ -1,17 +1,26 @@
 name: arm-launch
-# Codex reviews #23-#24. The OWNER's click on this workflow's protected
-# environment (arm-launch-approval) is THE authorization event — a
-# github.com identity action outside every local trust surface. The
-# workflow assumes the DEDICATED medzen-arm-launch-role (environment-
-# scoped OIDC subject; never the general CI role) and re-runs every
-# committed gate before anything spends.
-# DARK until the owner: (1) creates environment arm-launch-approval with
-# themselves as required reviewer (deployment branches: master only;
-# check plan support for required reviewers on private repos),
-# (2) sets repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN after applying the
-# infra/iam.tf arm-launch role,
-# (3) applies platform/iam/medzen-local-boundary-policy.json so local
-# credentials cannot create arm-tier jobs directly.
+# Codex reviews #23-#25. The OWNER's click on this workflow's protected
+# environment (arm-launch-approval) is THE authorization event. The
+# workflow launches ONE hardcoded committed packet — it takes NO inputs
+# at all (Codex review #25: an injectable job_id input could execute
+# attacker shell after owner approval; the input is REMOVED rather than
+# sanitized). The dedicated role's trust binds BOTH the environment
+# subject AND this exact workflow file via the job_workflow_ref claim.
+#
+# DARK until the owner activates (in order):
+#   1. GitHub environment arm-launch-approval: self as required
+#      reviewer; deployment branches -> master only. PLAN CHECK FIRST:
+#      required reviewers on PRIVATE repos need GitHub Enterprise
+#      (Free/Pro/Team only support them on public repos) — verify, or
+#      this gate silently does not gate.
+#   2. terraform apply with -var arm_launch_enabled=true (imports
+#      nothing; the arm role references the EXISTING OIDC provider via
+#      a data source) then set repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN.
+#   3. Apply the local-credential lockdown per
+#      platform/iam/LOCAL-BOUNDARY-RUNBOOK.md from a SEPARATE
+#      owner-controlled admin principal (Codex review #25: the local
+#      identity holds AdministratorAccess — no in-repo file constrains
+#      it; the runbook is the real closure of the local path).
 permissions:
   contents: read
   id-token: write
@@ -19,18 +28,11 @@ concurrency:
   group: arm-launch
   cancel-in-progress: false
 on:
-  workflow_dispatch:
-    inputs:
-      job_id:
-        description: "arm job id — must equal the committed packet's job_id"
-        required: true
-        type: string
+  workflow_dispatch: {}
 jobs:
   launch:
     runs-on: ubuntu-latest
     environment: arm-launch-approval
-    # protected default branch ONLY (Codex review #24: dispatch can
-    # target arbitrary refs), and dark until the dedicated role exists
     if: github.ref == 'refs/heads/master' && vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != ''
     env:
       MEDZEN_EXECUTOR: github-protected-workflow
@@ -40,13 +42,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
         with:
           fetch-depth: 0
-      - name: the dispatched job_id must equal the committed packet (BEFORE credentials)
-        run: |
-          PACKET_JOB=$(python3 -c "import json; print(json.load(open('$ARM_PACKET'))['job_id'])")
-          if [ "${{ inputs.job_id }}" != "$PACKET_JOB" ]; then
-            echo "dispatched job_id '${{ inputs.job_id }}' != committed packet job_id '$PACKET_JOB'"
-            exit 1
-          fi
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"

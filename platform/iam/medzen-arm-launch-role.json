@@ -2,14 +2,23 @@
  "Version": "2012-10-17",
  "Statement": [
   {
-   "Sid": "DescribeAndCreateB5TrainingJobsOnly",
+   "Sid": "DescribeB5TrainingJobs",
    "Effect": "Allow",
-   "Action": [
-    "sagemaker:DescribeTrainingJob",
-    "sagemaker:CreateTrainingJob",
-    "sagemaker:AddTags"
-   ],
+   "Action": "sagemaker:DescribeTrainingJob",
    "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+  },
+  {
+   "Sid": "CreateArmTierB5JobsUnderHardConditions",
+   "Effect": "Allow",
+   "Action": ["sagemaker:CreateTrainingJob", "sagemaker:AddTags"],
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*",
+   "Condition": {
+    "StringEqualsIfExists": {
+     "sagemaker:InstanceTypes": "ml.g6.xlarge",
+     "sagemaker:OutputKmsKey": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+     "aws:RequestTag/medzen-tier": "arm"
+    }
+   }
   },
   {
    "Sid": "PassOnlyTheTrainerRoleToSageMaker",
@@ -21,17 +30,10 @@
    }
   },
   {
-   "Sid": "ReadCalibrationEvidenceForReceiptVerification",
+   "Sid": "HeadExactlyTheCalibrationArtifact",
    "Effect": "Allow",
-   "Action": [
-    "s3:GetObject",
-    "s3:GetObjectVersion"
-   ],
-   "Resource": [
-    "arn:aws:s3:::medzen-speech/research/b5-training/*",
-    "arn:aws:s3:::medzen-speech/curated/_versions/*",
-    "arn:aws:s3:::medzen-speech/platform/evidence-artifacts/*"
-   ]
+   "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+   "Resource": "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-ftcal-2026-004/output/*"
   },
   {
    "Sid": "DecryptWithTheCampaignKeyOnly",

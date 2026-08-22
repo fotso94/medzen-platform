@@ -173,20 +173,32 @@ resource "aws_eks_access_policy_association" "ci_medzen_edit" {
 
 
 # ---------------------------------------------------------------------------
-# ARM-LAUNCH ROLE (Codex review #24): a DEDICATED role for the protected
-# arm-launch workflow — never the general CI role. Trust: ONLY the
-# environment-scoped OIDC subject (environment-referencing jobs present
-# repo:ORG/REPO:environment:ENV, not the branch-ref form). Permissions:
-# exactly what the launch gates need — describe/create the b5 training
-# jobs, pass ONLY the trainer role to SageMaker, read the calibration
-# evidence, decrypt with the one campaign KMS key.
+# ARM-LAUNCH ROLE (Codex reviews #24-#25): DEDICATED role for the
+# protected arm-launch workflow, decoupled from B7 CI activation behind
+# its own flag. The GitHub OIDC provider ALREADY EXISTS in the live
+# account (Codex review #25: creating it again would fail the plan), so
+# it is referenced as a data source, never created here. Trust binds
+# BOTH the environment-scoped subject AND the exact workflow file via
+# the job_workflow_ref token claim — no other workflow referencing the
+# environment can assume this role.
+variable "arm_launch_enabled" {
+  description = "owner switch: create the arm-launch role (independent of B7 CI activation)"
+  type        = bool
+  default     = false
+}
+
+data "aws_iam_openid_connect_provider" "github_existing" {
+  count = var.arm_launch_enabled ? 1 : 0
+  url   = "https://token.actions.githubusercontent.com"
+}
+
 data "aws_iam_policy_document" "arm_launch_trust" {
-  count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count = var.arm_launch_enabled ? 1 : 0
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github[0].arn]
+      identifiers = [data.aws_iam_openid_connect_provider.github_existing[0].arn]
     }
     condition {
       test     = "StringEquals"
@@ -198,18 +210,28 @@ data "aws_iam_policy_document" "arm_launch_trust" {
       variable = "token.actions.githubusercontent.com:sub"
       values   = ["repo:${var.github_repo}:environment:arm-launch-approval"]
     }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:job_workflow_ref"
+      values   = ["${var.github_repo}/.github/workflows/arm-launch.yml@refs/heads/master"]
+    }
   }
 }
 
 resource "aws_iam_role" "arm_launch" {
-  count              = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count              = var.arm_launch_enabled ? 1 : 0
   name               = "medzen-arm-launch-role"
   assume_role_policy = data.aws_iam_policy_document.arm_launch_trust[0].json
 }
 
 resource "aws_iam_role_policy" "arm_launch" {
-  count  = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count  = var.arm_launch_enabled ? 1 : 0
   name   = "medzen-arm-launch-access"
   role   = aws_iam_role.arm_launch[0].id
   policy = file("${local.iam_dir}/medzen-arm-launch-role.json")
 }
+
+# NOTE (Codex review #25): the B7 ci_trust block above still declares its
+# own aws_iam_openid_connect_provider resource; B7 activation must
+# `terraform import aws_iam_openid_connect_provider.github[0] <arn>`
+# first or the plan will try to duplicate the existing provider.

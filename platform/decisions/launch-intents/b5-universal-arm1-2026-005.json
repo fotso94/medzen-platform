@@ -3,7 +3,7 @@
  "expires_utc": "2026-09-04T23:59:59Z",
  "job_id": "b5-universal-arm1-2026-005",
  "packet": {
-  "canonical_sha256": "0cb9106ffa25a2acc35ba883dba9cd23e3537ff8bb78b56686c0fcb26239745c",
+  "canonical_sha256": "2e1666866a435dcc4ab821052c1e0cac57d04ae2cd10da654302891300ead63d",
   "file": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json"
  },
  "receipt": {
@@ -12,15 +12,15 @@
  },
  "registry": {
   "allocation_id": "B5-ARM1-2026-001",
-  "file": "platform/finance/COST-REGISTRY-2026-050.json",
-  "sha256": "649ca9429b52e1bc0450cd5b7dc4664c687748ddc91de14fe06a7d577a697e53"
+  "file": "platform/finance/COST-REGISTRY-2026-051.json",
+  "sha256": "456c5e35d049493fdaa314f590c38a843662c70c36d2dffabef7350c4df34aa4"
  },
  "review": {
   "decision": "PENDING_INDEPENDENT_REVIEW",
   "file": "platform/decisions/reviews/b5-universal-arm1-2026-005.json",
   "reviewer": "codex-independent-reviewer",
-  "sha256": "e80760fe7fe1957e8b80f30b7fa8f4735b8ea3c4d86f22ec07640f96c279e647"
+  "sha256": "cfd8093cdd433212c85ae56daf15a341e83e68a9976d247095508e10c9836832"
  },
  "statement": "the OWNER's approval of the protected workflow run is the authorization event; this record binds EXACTLY what that approval buys. It references the PENDING review bytes, so the chain refuses until re-review flips the record and this intent is regenerated against the APPROVED bytes.",
- "utc": "2026-08-21T23:58:19Z"
+ "utc": "2026-08-22T00:20:14Z"
 }
