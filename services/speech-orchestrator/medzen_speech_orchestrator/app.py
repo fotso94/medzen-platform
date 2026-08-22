@@ -21,6 +21,7 @@ from .local_dependencies import LocalLLMClient, LocalRAGClient, SyntheticASRClie
 from .orchestrator import OrchestratorRefusal, SpeechOrchestrator
 from .registry import (
     DEPLOYED_CLASSIFICATION,
+    V2_CLASSIFICATION,
     LocalParameterStore,
     RegistryRouter,
     SSMParameterStore,
@@ -102,8 +103,17 @@ def build_deployed_orchestrator() -> tuple[SpeechOrchestrator, SecretsManagerKey
     if os.environ.get("AWS_REGION") != "eu-central-1":
         raise RuntimeError("deployed orchestrator requires the reviewed AWS region")
     registry_root = os.environ.get("MEDZEN_REGISTRY_ROOT", "")
-    if not re.fullmatch(r"/medzen/registry/test/b6/[0-9a-f]{64}", registry_root):
-        raise RuntimeError("deployed orchestrator requires an exact test registry root")
+    # B6v2 round 3 (Codex): the deployed builder only matched the v1 test
+    # namespace, so no environment could ever select the v2 root — the
+    # classification follows the namespace, never a second free variable.
+    if re.fullmatch(r"/medzen/registry/test/b6/[0-9a-f]{64}", registry_root):
+        expected_classification = DEPLOYED_CLASSIFICATION
+    elif re.fullmatch(r"/medzen/registry/nonprod/b6v2/[0-9a-f]{64}", registry_root):
+        expected_classification = V2_CLASSIFICATION
+    else:
+        raise RuntimeError(
+            "deployed orchestrator requires an exact test/b6 or nonprod/b6v2 "
+            "registry root")
     if os.environ.get("MEDZEN_CLIENT_KEYS_SECRET_ID") != "medzen/client-api-keys":
         raise RuntimeError("deployed orchestrator requires the exact client key secret")
     import boto3
@@ -111,7 +121,7 @@ def build_deployed_orchestrator() -> tuple[SpeechOrchestrator, SecretsManagerKey
     router = RegistryRouter(
         SSMParameterStore(boto3.client("ssm", region_name="eu-central-1")),
         registry_root,
-        expected_classification=DEPLOYED_CLASSIFICATION,
+        expected_classification=expected_classification,
     )
     transport = ClusterHTTPTransport(timeout_seconds=30.0)
     orchestrator = SpeechOrchestrator(

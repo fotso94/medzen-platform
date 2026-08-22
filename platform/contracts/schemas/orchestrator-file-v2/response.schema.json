@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.orchestrator.file.v1.response",
+  "$id": "medzen.orchestrator.file.v2.response",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -78,10 +78,18 @@
           "pattern": "^[0-9a-f]{64}$"
         },
         "audio_url": {
-          "type": "null"
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^https://"
         },
         "tts_backend": {
-          "const": "text_only"
+          "enum": [
+            "text_only",
+            "fish",
+            "self_hosted"
+          ]
         }
       }
     },
@@ -189,25 +197,43 @@
       ],
       "properties": {
         "asr": {
-          "const": "v0-local-synthetic-asr"
+          "pattern": "^(v0|v0-local-synthetic-asr|omniasr_ctc_1b:[0-9a-f]{12})$"
         },
         "registry_snapshot": {
-          "pattern": "^b6-test:[0-9a-f]{64}$"
+          "pattern": "^(b6-test|b6v2-nonprod):[0-9a-f]{64}$"
         },
         "llm": {
-          "enum": [
-            "fake-bedrock-local-v1",
-            null
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(fake-bedrock-local-v1|bedrock:[a-z0-9.:-]+)$"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "rag": {
-          "enum": [
-            "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
-            null
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "tts": {
-          "type": "null"
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^fish:s(1|2\\.1-pro-free)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     }

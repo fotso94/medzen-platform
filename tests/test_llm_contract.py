@@ -111,7 +111,12 @@ def test_provider_modes_fail_closed_and_default_to_fake():
     provider = BedrockProvider(model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
                                 region="eu-central-1")
     assert provider.name == "bedrock"
-    assert provider.model_version.startswith("anthropic.claude-haiku")
+    # B6v2 round 3 (Codex): the registry's v2 identity is bedrock:<id> —
+    # a bare model id can never match a v2 route's version check
+    assert provider.model_version == (
+        "bedrock:anthropic.claude-haiku-4-5-20251001-v1:0")
+    # the AWS call itself still uses the BARE id
+    assert provider.model_id == "anthropic.claude-haiku-4-5-20251001-v1:0"
 
 
 def test_bedrock_provider_maps_the_contract(monkeypatch):

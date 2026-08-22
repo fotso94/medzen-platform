@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.tts.v1.response",
+  "$id": "medzen.tts.v2.response",
   "type": "object",
   "additionalProperties": false,
   "required": [

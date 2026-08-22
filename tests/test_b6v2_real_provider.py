@@ -300,13 +300,17 @@ def test_registry_accepts_v2_nonprod_root_and_real_identities():
 def test_orchestrator_accepts_real_fish_version_fill():
     """Codex review round 2 (reproduced REAL_FISH_ORCHESTRATOR_REFUSED):
     a real Fish result sets model_versions.tts=fish:s1; the orchestrator
-    required tts_versions == pre-TTS versions and refused it."""
+    required tts_versions == pre-TTS versions and refused it. Round 3:
+    the round-2 fill accepted ANY claimed value — the only version the
+    TTS step may introduce is the one the REGISTRY bound to the route."""
     body = (ROOT / "services/speech-orchestrator/"
             "medzen_speech_orchestrator/orchestrator.py").read_text()
     assert "tts_identity_ok" in body
-    assert "filled_tts" in body, (
-        "the TTS step must be allowed to FILL the tts version slot while "
-        "asr/rag/llm/snapshot stay fixed")
+    assert "tts=route.tts_model_version" in body, (
+        "the TTS fill must equal the registry-bound identity exactly")
+    assert 'tts=tts_versions.get("tts")' not in body, (
+        "round 2's accept-anything fill is an identity check that "
+        "cannot fail")
 
 
 def test_tts_app_uses_governed_selection_and_optional_s3(monkeypatch):
@@ -359,10 +363,13 @@ def test_s3_cache_only_404_is_a_miss_others_raise():
 
 def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_path):
     """Codex review round 2 (reproduced FABRICATED_PRODUCTION_APPROVAL_
-    ACCEPTED): a fabricated protocol/APPROVED/64-char value passed. The
-    approval must bind a COMMITTED record, hash-verified, that promotes
-    THIS digest."""
+    ACCEPTED): a fabricated protocol/APPROVED/64-char value passed.
+    Round 3: 'committed somewhere under platform/' was still forgeable —
+    the record must live in platform/decisions/promotions/ ONLY and cite
+    the exact protocol the CURRENT-PROMOTION-PROTOCOL pointer designates
+    at HEAD (hash-verified), and promote THIS digest."""
     import hashlib
+    import json as _json
     import subprocess
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                validate_manifest_v2)
@@ -375,33 +382,62 @@ def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_
             promotion_approval={"protocol": "PROMOTION-PROTOCOL-9999",
                                  "decision": "APPROVED",
                                  "gate_report_sha256": "z" * 64}))
-    # a real committed record that promotes this digest passes
+
     repo = tmp_path / "repo"
+    (repo / "platform/decisions/promotions").mkdir(parents=True)
     (repo / "platform/evidence").mkdir(parents=True)
     subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
     subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
-    import json as _json
-    rec = {"record": "PROMOTION-PROTOCOL-2026-004", "decision": "APPROVED",
-           "artifact_sha256": digest}
-    rec_rel = "platform/evidence/PROMO.json"
-    (repo / rec_rel).write_text(_json.dumps(rec))
+
+    protocol_rel = "platform/decisions/PROMOTION-PROTOCOL-2026-004.json"
+    (repo / protocol_rel).write_text(_json.dumps({"gates": ["T6"]}))
+    protocol_sha = hashlib.sha256((repo / protocol_rel).read_bytes()).hexdigest()
+    (repo / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json").write_text(
+        _json.dumps({"file": protocol_rel,
+                     "record": "PROMOTION-PROTOCOL-2026-004",
+                     "sha256": protocol_sha}))
+    record = {"protocol": "PROMOTION-PROTOCOL-2026-004",
+              "decision": "APPROVED", "artifact_sha256": digest}
+    rec_rel = "platform/decisions/promotions/ARM1-PROMO.json"
+    (repo / rec_rel).write_text(_json.dumps(record))
+    # the SAME approved bytes committed outside the promotions dir —
+    # e.g. smuggled into evidence — must count for nothing
+    smuggled_rel = "platform/evidence/PROMO.json"
+    (repo / smuggled_rel).write_text(_json.dumps(record))
+    stale = dict(record, protocol="PROMOTION-PROTOCOL-2026-003")
+    stale_rel = "platform/decisions/promotions/STALE-PROMO.json"
+    (repo / stale_rel).write_text(_json.dumps(stale))
     subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-qm", "promo"], check=True)
-    rec_sha = hashlib.sha256((repo / rec_rel).read_bytes()).hexdigest()
+
+    def _approval(rel):
+        sha = hashlib.sha256((repo / rel).read_bytes()).hexdigest()
+        return {"record": rel, "record_sha256": sha}
+
     import os
     os.environ["MEDZEN_REPO_ROOT"] = str(repo)
     try:
+        # the full pointer-verified chain passes
         ok = validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION",
-            promotion_approval={"record": rec_rel, "record_sha256": rec_sha}))
+            promotion_approval=_approval(rec_rel)))
         assert ok["classification"] == "PRODUCTION"
+        # committed OUTSIDE platform/decisions/promotions/ refuses
+        with pytest.raises(LoaderV2Refusal, match="promotions"):
+            validate_manifest_v2(_v2_manifest(
+                digest=digest, classification="PRODUCTION",
+                promotion_approval=_approval(smuggled_rel)))
+        # citing a superseded/invented protocol id refuses
+        with pytest.raises(LoaderV2Refusal, match="pointer requires"):
+            validate_manifest_v2(_v2_manifest(
+                digest=digest, classification="PRODUCTION",
+                promotion_approval=_approval(stale_rel)))
         # a record promoting a DIFFERENT digest refuses
         with pytest.raises(LoaderV2Refusal, match="promotes"):
             validate_manifest_v2(_v2_manifest(
                 digest="cd" * 32, classification="PRODUCTION",
-                promotion_approval={"record": rec_rel,
-                                     "record_sha256": rec_sha}))
+                promotion_approval=_approval(rec_rel)))
     finally:
         os.environ.pop("MEDZEN_REPO_ROOT", None)
 

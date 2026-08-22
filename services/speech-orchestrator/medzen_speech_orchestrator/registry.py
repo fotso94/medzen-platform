@@ -16,7 +16,9 @@ ROOT_RE = re.compile(
 LOCAL_CLASSIFICATION = "B6_3_LOCAL_SYNTHETIC_ONLY"
 DEPLOYED_CLASSIFICATION = "B6_6_SYNTHETIC_INTEGRATION_ONLY"
 # B6v2 (Codex serving review): the REAL-provider nonprod namespace.
-V2_CLASSIFICATION = "B6V2_NONPROD_REAL_PROVIDERS"
+# Round 3: ONE classification string — the contract's, shared with
+# loader_v2 — not a router-private spelling that matches nothing.
+V2_CLASSIFICATION = "NONPROD_REAL_PROVIDER_V2"
 V2_ROOT_PREFIX = "/medzen/registry/nonprod/b6v2/"
 # real identities the v2 route may carry (in addition to the
 # synthetic ones, so the composed stub chain stays testable)
@@ -24,6 +26,7 @@ V2_LLM_RE = re.compile(r"^(fake-bedrock-local-v1|bedrock:[a-z0-9.:-]+)$")
 V2_TTS_RE = re.compile(r"^fish:s(1|2\.1-pro-free)$")
 V2_ASR_RE = re.compile(r"^(v0|omniasr_ctc_1b:[0-9a-f]{12})$")
 CONTRACT_VERSION = "medzen.speech.v1"
+V2_CONTRACT_VERSION = "medzen.speech.v2"
 DEPLOYED_ENDPOINTS = {
     "asr": "http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions",
     "rag": "http://rag-index.medzen.svc.cluster.local:8083/internal/v1/retrievals",
@@ -92,7 +95,8 @@ class LocalParameterStore:
             name = raw["Name"]
             if (
                 not isinstance(name, str)
-                or not name.startswith("/medzen/registry/test/b6/")
+                or not (name.startswith("/medzen/registry/test/b6/")
+                        or name.startswith(V2_ROOT_PREFIX))
                 or name in parameters
                 or raw["Type"] != "SecureString"
                 or not isinstance(raw["Value"], str)
@@ -217,19 +221,27 @@ class RegistryRoute:
     llm_model_version: str
     llm_policy_id: str
     tts_backend: str
-    tts_model_version: None
+    # v1 routes bind None (text-only proof); v2 routes may bind the
+    # governed Fish identity ("fish:s1") — the orchestrator's version
+    # fill must equal EXACTLY this value, never "any non-empty string"
+    tts_model_version: str | None
     registry_snapshot: str
     classification: str
     dependency_endpoints: dict[str, str]
 
     @property
     def model_versions(self) -> dict[str, str | None]:
+        # PRE-pipeline versions: llm/rag/tts stay None until their step
+        # fills them. The route-BOUND tts identity (fish:s1) lives in
+        # tts_model_version and may only enter via the orchestrator's
+        # fill check after a real synthesis — reporting it here would
+        # claim a synthesis that never happened (B6v2 round 3).
         return {
             "asr": self.asr_model_version,
             "registry_snapshot": self.registry_snapshot,
             "llm": None,
             "rag": None,
-            "tts": self.tts_model_version,
+            "tts": None,
         }
 
     @property
@@ -311,7 +323,7 @@ class RegistryRouter:
         if is_v2_root != (expected_classification == V2_CLASSIFICATION):
             raise RegistryRefusal(
                 "registry root and classification disagree (b6v2 roots "
-                "require B6V2_NONPROD_REAL_PROVIDERS and only them)")
+                "require NONPROD_REAL_PROVIDER_V2 and only them)")
         self.classification = expected_classification
         self.snapshot_sha256 = match.group(1)
         label = "b6v2-nonprod" if is_v2_root else "b6-test"
@@ -419,6 +431,8 @@ class RegistryRouter:
     ) -> RegistryRoute:
         if self.classification == LOCAL_CLASSIFICATION:
             return self._local_route(alias, codes, value)
+        if self.classification == V2_CLASSIFICATION:
+            return self._v2_route(alias, codes, value)
         return self._deployed_route(alias, codes, value)
 
     def _common_route(
@@ -427,6 +441,7 @@ class RegistryRouter:
         alias: str,
         codes: tuple[str, ...],
         route: dict[str, Any],
+        contract_version: str = CONTRACT_VERSION,
     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
         language = _exact(
             route["language"], {"alias", "response_code", "accepted_codes"},
@@ -443,7 +458,7 @@ class RegistryRouter:
             route["tts"], {"backend", "model_version"}, "registry TTS route"
         )
         if (
-            route["contract_version"] != CONTRACT_VERSION
+            route["contract_version"] != contract_version
             or language["alias"] != alias
             or language["accepted_codes"] != list(codes)
             or not isinstance(language["response_code"], str)
@@ -549,26 +564,7 @@ class RegistryRouter:
             },
             "registry ASR route",
         )
-        dependencies = _exact(
-            route["dependencies"], set(DEPLOYED_ENDPOINTS),
-            "registry dependency routes",
-        )
-        endpoints: dict[str, str] = {}
-        for name, expected_endpoint in DEPLOYED_ENDPOINTS.items():
-            dependency = _exact(
-                dependencies[name], {"endpoint", "contract_id", "contract_sha256"},
-                f"registry {name} dependency",
-            )
-            expected_contract, expected_sha = DEPLOYED_CONTRACTS[name]
-            if dependency != {
-                "endpoint": expected_endpoint,
-                "contract_id": expected_contract,
-                "contract_sha256": expected_sha,
-            }:
-                raise RegistryRefusal(
-                    f"registry {name} dependency is not the reviewed cluster contract"
-                )
-            endpoints[name] = dependency["endpoint"]
+        endpoints = self._cluster_dependencies(route)
         if (
             route["schema_version"] != 2
             or route["classification"] != DEPLOYED_CLASSIFICATION
@@ -602,6 +598,106 @@ class RegistryRouter:
             tts_model_version=None,
             registry_snapshot=self.registry_snapshot,
             classification=DEPLOYED_CLASSIFICATION,
+            dependency_endpoints=endpoints,
+        )
+
+    def _cluster_dependencies(self, route: dict[str, Any]) -> dict[str, str]:
+        dependencies = _exact(
+            route["dependencies"], set(DEPLOYED_ENDPOINTS),
+            "registry dependency routes",
+        )
+        endpoints: dict[str, str] = {}
+        for name, expected_endpoint in DEPLOYED_ENDPOINTS.items():
+            dependency = _exact(
+                dependencies[name], {"endpoint", "contract_id", "contract_sha256"},
+                f"registry {name} dependency",
+            )
+            expected_contract, expected_sha = DEPLOYED_CONTRACTS[name]
+            if dependency != {
+                "endpoint": expected_endpoint,
+                "contract_id": expected_contract,
+                "contract_sha256": expected_sha,
+            }:
+                raise RegistryRefusal(
+                    f"registry {name} dependency is not the reviewed cluster contract"
+                )
+            endpoints[name] = dependency["endpoint"]
+        return endpoints
+
+    def _v2_route(
+        self, alias: str, codes: tuple[str, ...], value: Any
+    ) -> RegistryRoute:
+        """B6v2 round 3 (Codex): the v2 root previously fell through to
+        _deployed_route, whose hard v1 identities (asr v0, text-only tts,
+        B6_6 classification) refused every real-provider snapshot. A v2
+        route binds the OmniASR artifact, a bedrock:/fake LLM identity and
+        an optional governed Fish voice — same reviewed cluster boundary."""
+        route = _exact(
+            value,
+            {
+                "schema_version", "classification", "language", "contract_version",
+                "asr", "rag", "llm", "tts", "dependencies"
+            },
+            "registry route",
+        )
+        language, rag, llm, tts = self._common_route(
+            alias=alias, codes=codes, route=route,
+            contract_version=V2_CONTRACT_VERSION,
+        )
+        asr = _exact(
+            route["asr"],
+            {
+                "backend", "model_version", "artifact_tree_sha256",
+                "reported_registry_snapshot"
+            },
+            "registry ASR route",
+        )
+        endpoints = self._cluster_dependencies(route)
+        tts_ok = (
+            tts == {"backend": "http_text_only_v1", "model_version": None}
+            or (
+                tts["backend"] == "http_fish_v2"
+                and isinstance(tts["model_version"], str)
+                and V2_TTS_RE.fullmatch(tts["model_version"]) is not None
+            )
+        )
+        if (
+            route["schema_version"] != 2
+            or route["classification"] != V2_CLASSIFICATION
+            or asr["backend"] != "http_cluster_v1"
+            or not isinstance(asr["model_version"], str)
+            # v2 serves the trained multilingual artifact — the synthetic
+            # "v0" identity belongs to the closed v1 proof
+            or not asr["model_version"].startswith("omniasr_ctc_1b:")
+            or V2_ASR_RE.fullmatch(asr["model_version"]) is None
+            or not isinstance(asr["artifact_tree_sha256"], str)
+            or SHA256_RE.fullmatch(asr["artifact_tree_sha256"]) is None
+            or not isinstance(asr["reported_registry_snapshot"], str)
+            or not asr["reported_registry_snapshot"].startswith("omniasr-nonprod:")
+            or SHA256_RE.fullmatch(
+                asr["reported_registry_snapshot"].removeprefix("omniasr-nonprod:")
+            ) is None
+            or not tts_ok
+        ):
+            raise RegistryRefusal("v2 registry route is unsafe or inconsistent")
+        return RegistryRoute(
+            alias=alias,
+            response_code=language["response_code"],
+            accepted_codes=codes,
+            asr_backend=asr["backend"],
+            asr_model_version=asr["model_version"],
+            asr_fixture_sha256=None,
+            asr_artifact_tree_sha256=asr["artifact_tree_sha256"],
+            asr_reported_registry_snapshot=asr["reported_registry_snapshot"],
+            rag_alias=rag["alias"],
+            rag_snapshot_sha256=rag["snapshot_sha256"],
+            rag_query_language=rag["query_language"],
+            llm_model_version=llm["model_version"],
+            llm_policy_id=llm["policy_id"],
+            tts_backend=tts["backend"],
+            tts_model_version=tts["model_version"],
+            registry_snapshot=self.registry_snapshot,
+            classification=V2_CLASSIFICATION,
             dependency_endpoints=endpoints,
         )
 

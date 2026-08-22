@@ -8,6 +8,14 @@ on:
       - "platform/services.yaml"
       - ".github/workflows/_service-pipeline.yml"
       - ".github/workflows/app-tts-gateway.yml"
+      # B6v2 round 3 (Codex): the suite files themselves and the shared
+      # contract/fixture trees must retrigger this pipeline too
+      - "tests/test_tts_app.py"
+      - "tests/test_tts_gateway.py"
+      - "tests/test_tts_contract.py"
+      - "tests/test_b6_tts_governance.py"
+      - "platform/contracts/**"
+      - "platform/generated/registry-ssm/**"
 permissions:
   contents: read
   id-token: write

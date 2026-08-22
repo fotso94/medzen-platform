@@ -84,7 +84,11 @@ class BedrockProvider:
             raise ValueError("MEDZEN_BEDROCK_MODEL_ID is required for the "
                              "bedrock provider — there is no default model")
         self.model_id = model_id
-        self.model_version = model_id
+        # B6v2 round 3 (Codex): the registry's v2 identity is
+        # "bedrock:<model-id>" (V2_LLM_RE); a bare model id can never
+        # match a v2 route, so the orchestrator would refuse every
+        # real response at the version check.
+        self.model_version = f"bedrock:{model_id}"
         self._region = region
         self._client = client
 

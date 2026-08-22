@@ -265,6 +265,22 @@ class SpeechOrchestrator:
                 "tts": None,
             }
             reply = llm.get("reply")
+            # B6v2 round 3 (Codex): a REAL provider cites a SUBSET of the
+            # supplied documents — exact-tuple equality only ever fit the
+            # synthetic echo. Every cited entry must still be byte-equal
+            # to a supplied one (no invented or altered citations), cited
+            # at most once, and the binding hash covers what was actually
+            # cited. The echo provider's full set remains a valid subset.
+            reply_citations = (
+                reply.get("citations") if isinstance(reply, dict) else None
+            )
+            citations_ok = (
+                isinstance(reply_citations, list)
+                and bool(reply_citations)
+                and all(c in rag["citations"] for c in reply_citations)
+                and len({self._citation_binding([c]) for c in reply_citations})
+                == len(reply_citations)
+            )
             if (
                 llm.get("request_id") != request_id
                 or llm.get("language") != route.alias
@@ -272,9 +288,9 @@ class SpeechOrchestrator:
                 or not isinstance(reply, dict)
                 or not isinstance(reply.get("text"), str)
                 or not reply["text"]
-                or reply.get("citations") != rag["citations"]
+                or not citations_ok
                 or reply.get("citation_binding_sha256")
-                != self._citation_binding(rag["citations"])
+                != self._citation_binding(reply_citations)
             ):
                 raise OrchestratorRefusal(
                     "DEPENDENCY_UNAVAILABLE",
@@ -301,14 +317,16 @@ class SpeechOrchestrator:
                     )
                 )
                 tts_versions = self._versions(tts.get("model_versions"), "TTS")
-                # B6v2 (Codex serving review): a REAL TTS provider FILLS
-                # the tts version slot (e.g. fish:s1); the pre-TTS
-                # versions carry tts=None. Equality on every OTHER key,
-                # and tts either preserved-None or newly set by this
-                # step — never a silent change to asr/rag/llm/snapshot.
+                # B6v2 round 3 (Codex): the round-2 fill accepted ANY
+                # value the TTS service claimed — an identity check that
+                # cannot fail. The only version this step may introduce
+                # is the one the REGISTRY bound to this route (fish:s1
+                # or None); every other key must be preserved exactly.
                 expected_tts = dict(versions)
-                filled_tts = dict(versions, tts=tts_versions.get("tts"))
-                tts_identity_ok = tts_versions in (expected_tts, filled_tts)
+                allowed = [expected_tts]
+                if route.tts_model_version is not None:
+                    allowed.append(dict(versions, tts=route.tts_model_version))
+                tts_identity_ok = tts_versions in allowed
                 if (
                     tts.get("request_id") != request_id
                     or tts.get("language") != route.alias
@@ -335,8 +353,9 @@ class SpeechOrchestrator:
                     "audio_url": tts.get("audio_url"),
                     "tts_backend": tts["tts_backend"],
                 }
-                # adopt the (possibly newly-filled) tts version
-                versions = filled_tts if tts_versions == filled_tts else tts_versions
+                # adopt the (possibly route-filled) tts version — already
+                # constrained to the registry-bound identity above
+                versions = tts_versions
             total_ms = round((self.clock() - total_started) * 1000, 3)
             return session_id, {
                 "request_id": request_id,

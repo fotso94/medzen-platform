@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.tts.v1.request",
+  "$id": "medzen.tts.v2.request",
   "type": "object",
   "additionalProperties": false,
   "required": ["request_id", "language", "text", "model_versions"],

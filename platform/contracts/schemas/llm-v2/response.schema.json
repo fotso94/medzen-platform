@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.llm.v1.response",
+  "$id": "medzen.llm.v2.response",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -65,7 +65,14 @@
       }
     },
     "provider": {
-      "const": "fake_bedrock"
+      "enum": [
+        "fake_bedrock",
+        "bedrock"
+      ]
+    },
+    "grounding_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "model_versions": {
       "$ref": "#/$defs/model_versions"

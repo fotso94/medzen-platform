@@ -8,6 +8,14 @@ on:
       - "platform/services.yaml"
       - ".github/workflows/_service-pipeline.yml"
       - ".github/workflows/app-speech-orchestrator.yml"
+      # B6v2 round 3 (Codex): the suite files themselves and the shared
+      # contract/fixture trees must retrigger this pipeline too
+      - "tests/test_speech_orchestrator.py"
+      - "tests/test_speech_orchestrator_streaming.py"
+      - "tests/test_orchestrator_remote_adapters.py"
+      - "tests/test_b6v2_real_provider.py"
+      - "platform/contracts/**"
+      - "platform/generated/registry-ssm/**"
 permissions:
   contents: read
   id-token: write

@@ -87,11 +87,21 @@ def kms_statements(perms: list[dict], meta: dict) -> list[dict]:
     keys = meta.get("kms", {})
     need: dict[str, set[str]] = {}
     registry_need: dict[str, set[str]] = {}
+    secret_need: dict[str, set[str]] = {}
     for p in perms:
         arn = keys.get(p["resource"])
         if not arn:
             continue                                  # unencrypted or non-S3
         actions = set(p["actions"])
+        # B6v2 round 3 (Codex): medzen/speech/fish-api-key is encrypted
+        # with the customer-managed key — GetSecretValue without
+        # kms:Decrypt fails with a KMS AccessDenied that an S3/secret-only
+        # policy review never sees. Same derived-not-declared rule as the
+        # bucket grants; scoped to decryption VIA Secrets Manager only.
+        if p["resource"] == "secret":
+            if "secretsmanager:GetSecretValue" in actions:
+                secret_need.setdefault(arn, set()).add("kms:Decrypt")
+            continue
         if p["resource"] == "registry":
             if actions & {"ssm:GetParameter", "ssm:GetParameters",
                           "ssm:GetParametersByPath"}:
@@ -125,6 +135,14 @@ def kms_statements(perms: list[dict], meta: dict) -> list[dict]:
                          f"arn:aws:ssm:{meta['region']}:{meta['account_id']}:"
                          f"parameter{meta['registry_ssm_prefix']}/*")}}},
         ])
+    for arn, acts in sorted(secret_need.items()):
+        statements.append(
+            {"Sid": f"SecretKmsFor{_sid(arn)}", "Effect": "Allow",
+             "Action": sorted(acts), "Resource": [arn],
+             "Condition": {
+                 "StringEquals": {
+                     "kms:ViaService": (
+                         f"secretsmanager.{meta['region']}.amazonaws.com")}}})
     return statements                            # sorted inputs => idempotent output
 
 

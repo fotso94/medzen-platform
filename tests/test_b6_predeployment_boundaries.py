@@ -180,7 +180,11 @@ def test_supplemental_orchestrator_kms_is_secrets_manager_context_scoped() -> No
     assert 'values   = ["secretsmanager.${var.region}.amazonaws.com"]' in source
     assert 'variable = "kms:EncryptionContext:SecretARN"' in source
     assert "secret:medzen/client-api-keys*" in source
-    assert sha(ROOT / "platform/services.yaml") == "db3ef0c3500fe1306e620d5358e2f95d0d45412843adb524f1f55e60f701987f"
+    # pin updated for B6v2 round 3: secret-KMS mapping + audio-cache
+    # ListBucket added to services.yaml (reviewed; applied + simulated).
+    # The generated ViaService grant now overlaps this supplemental
+    # context-scoped one — both constrain decrypt to Secrets Manager.
+    assert sha(ROOT / "platform/services.yaml") == "f740f98ce55beb65839445a3a823a413509d471fee23c658389e4ce397694bfd"
 
 
 def test_deployment_registry_manifest_is_exact_and_non_serving() -> None:

@@ -44,8 +44,11 @@ def test_additive_status_and_architecture_now_point_to_the_owned_service():
     tts = services["services"]["tts-gateway"]
     assert tts["image_repo"] == "medzen-speech-tts-gateway"
     assert tts["existing_code"] is None
+    # pin updated for B6v2 round 3 (Codex): secret KMS mapping (fish key
+    # is CMK-encrypted — verified live) + prefix-scoped s3:ListBucket for
+    # the audio cache's 404-miss semantics
     assert sha(ROOT / "platform/services.yaml") == (
-        "db3ef0c3500fe1306e620d5358e2f95d0d45412843adb524f1f55e60f701987f"
+        "f740f98ce55beb65839445a3a823a413509d471fee23c658389e4ce397694bfd"
     )
     status = yaml.safe_load((
         ROOT / "platform/service-implementation-status/v1.yaml"

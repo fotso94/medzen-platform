@@ -8,6 +8,12 @@ on:
       - "platform/services.yaml"
       - ".github/workflows/_service-pipeline.yml"
       - ".github/workflows/app-asr-runtime.yml"
+      # B6v2 round 3 (Codex): the suite files themselves and the shared
+      # contract/fixture trees must retrigger this pipeline too
+      - "tests/test_asr_runtime.py"
+      - "tests/test_asr_eval_runtime.py"
+      - "platform/contracts/**"
+      - "platform/generated/registry-ssm/**"
 permissions:
   contents: read
   id-token: write

@@ -8,6 +8,12 @@ on:
       - "platform/services.yaml"
       - ".github/workflows/_service-pipeline.yml"
       - ".github/workflows/app-rag-index.yml"
+      # B6v2 round 3 (Codex): the suite files themselves and the shared
+      # contract/fixture trees must retrigger this pipeline too
+      - "tests/test_rag_index.py"
+      - "tests/test_b6_6_registry_rag_alignment.py"
+      - "platform/contracts/**"
+      - "platform/generated/registry-ssm/**"
 permissions:
   contents: read
   id-token: write

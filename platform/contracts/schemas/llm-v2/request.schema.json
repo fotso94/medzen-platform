@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.llm.v1.request",
+  "$id": "medzen.llm.v2.request",
   "type": "object",
   "additionalProperties": false,
   "required": [

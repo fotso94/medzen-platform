@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from .gateway import TTSGateway, TTSRefusal
 from .shared_resilience import CircuitBreaker, State, load_config
+from .voices import RegistryUnavailable, VoiceRefusal
 
 
 MAX_BODY_BYTES = 65_536
@@ -94,10 +95,13 @@ def create_app(
                     # unapproved voices and enforce_model refuses a
                     # request that would silently switch a voice's Fish
                     # model. resolve() (non-enforcing) is gone from here.
+                    # round 3 (Codex): return (reference_id, model) — the
+                    # registry's per-voice Fish model was being resolved,
+                    # enforced and then THROWN AWAY; the provider always
+                    # synthesized on its constructor default.
                     def _governed_voice(language):
                         voice = select_voice(language)
-                        enforce_model(voice, None)
-                        return voice.reference_id
+                        return voice.reference_id, enforce_model(voice, None)
                     # B6v2: S3-backed audio delivery when configured
                     # (KMS-encrypted, cross-replica, expiring retrieval);
                     # the process-local cache remains only as the v1-proof
@@ -162,8 +166,45 @@ def create_app(
             "fish_available": ready and breaker is not None and state is State.CLOSED,
             "provider_network_access": False,
         }
+        # B6v2 round 3 (Codex): a green probe that checked nothing is
+        # worse than a red one. In fish mode readiness PROVES the
+        # configuration: voice registry loads, the provider can resolve
+        # its API key, and (when configured) the audio cache answers a
+        # definite miss — which also exercises the 404-vs-403 IAM
+        # semantics a broken grant would hide until first synthesis.
+        # scope: REAL fish only — the synthetic v1-proof provider has no
+        # secret, registry or S3 to prove, and its byte-behavior is frozen
+        if (
+            ready
+            and gateway_value.provider is not None
+            and getattr(gateway_value.provider, "name", "") == "fish"
+        ):
+            from .voices import registry as voice_registry
+            checks: dict[str, Any] = {}
+            try:
+                checks["voice_registry"] = bool(voice_registry())
+            except Exception:                                 # noqa: BLE001
+                checks["voice_registry"] = False
+            try:
+                checks["fish_secret"] = bool(gateway_value.provider._key())
+            except Exception:                                 # noqa: BLE001
+                checks["fish_secret"] = False
+            cache = gateway_value.cache
+            if hasattr(cache, "presign"):
+                try:
+                    cache.get("0" * 64)
+                    checks["audio_cache"] = True
+                except Exception:                             # noqa: BLE001
+                    checks["audio_cache"] = False
+            else:
+                checks["audio_cache"] = "not_configured"
+            payload["checks"] = checks
+            ready = ready and all(v is not False for v in checks.values())
+            payload["ready"] = ready
         if not ready:
-            payload["error_code"] = request.app.state.startup_error
+            payload["error_code"] = (
+                request.app.state.startup_error or "READINESS_CHECK_FAILED"
+            )
         return JSONResponse(payload, status_code=200 if ready else 503)
 
     @app.post("/internal/v1/syntheses")
@@ -208,6 +249,21 @@ def create_app(
                         return gateway_value.synthesize(value)
                     except TTSRefusal as exc:
                         refusal = exc
+                    except VoiceRefusal as exc:
+                        # round 3 (Codex): governance refusals escaped as
+                        # anonymous 500s — a caller could not distinguish
+                        # "this voice may not synthesize" from an outage
+                        refusal = TTSRefusal(
+                            "VOICE_NOT_APPROVED", str(exc), 422, False
+                        )
+                    except RegistryUnavailable as exc:
+                        refusal = TTSRefusal(
+                            "VOICE_REGISTRY_UNAVAILABLE",
+                            "voice registry could not be loaded — failing closed",
+                            503,
+                            True,
+                        )
+                        LOGGER.warning("voice registry unavailable: %s", exc)
         return JSONResponse(
             {
                 "request_id": request_id,

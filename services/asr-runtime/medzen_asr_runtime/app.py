@@ -85,9 +85,17 @@ def create_app(backend: Backend | None = None, *,
     async def lifespan(app: FastAPI):
         if supplied_backend is None:
             try:
-                app.state.backend = FasterWhisperBackend(
-                    Path(os.environ.get("MODEL_DIR", "/models")),
-                    os.environ.get("MODEL_MANIFEST_SHA256", ""))
+                # B6v2 round 3 (Codex): the OmniASR serving backend —
+                # explicit opt-in for the GPU image; the v0 proof path
+                # stays the default and byte-identical
+                if os.environ.get("MEDZEN_ASR_BACKEND") == "omniasr":
+                    from .omniasr_backend import OmniASRBackend
+                    app.state.backend = OmniASRBackend(
+                        Path(os.environ.get("MODEL_DIR", "/models")))
+                else:
+                    app.state.backend = FasterWhisperBackend(
+                        Path(os.environ.get("MODEL_DIR", "/models")),
+                        os.environ.get("MODEL_MANIFEST_SHA256", ""))
                 app.state.startup_error = None
             except Exception as exc:
                 app.state.backend = None

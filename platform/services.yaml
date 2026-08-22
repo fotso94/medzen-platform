@@ -27,6 +27,11 @@ meta:
     # Parameter Store is a control-plane data use, so it reuses the data key.
     # The generated role grants constrain decrypt to SSM and this exact path.
     registry: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57
+    # medzen/speech/fish-api-key is CMK-encrypted (verified live 2026-08-22:
+    # describe-secret names this key; medzen/tts/dev/* uses the AWS default
+    # key). GetSecretValue without kms:Decrypt-via-secretsmanager is inert
+    # (B6v2 round 3, Codex) — same derived-grant rule as the buckets.
+    secret: arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57
   registry_ssm_prefix: /medzen/registry     # existing app config lives under
                                            # /medzen-health-pro/* and /medzen/tts/* — no collision
 
@@ -160,7 +165,10 @@ services:
         # neither — Codex serving review finding 7)
         - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/speech/fish-api-key}
         - {actions: [secretsmanager:GetSecretValue], resource: secret, name: medzen/tts/dev/fish-api-key}
-        - {actions: [s3:GetObject, s3:PutObject], resource: audio_cache, path: "tts/*"}
+        # ListBucket (prefix-scoped): without it HeadObject on a missing
+        # key returns 403, not 404 — the fail-closed cache would raise on
+        # every legitimate MISS instead of synthesizing (B6v2 round 3)
+        - {actions: [s3:GetObject, s3:PutObject, s3:ListBucket], resource: audio_cache, path: "tts/*"}
         - {actions: [ssm:GetParameter, ssm:GetParametersByPath], resource: registry}
     existing_code: null            # unrelated project owns medzen-tts-gateway; ours is separate
     notes: Fallback chain Fish -> self-hosted (registry-approved only) -> text-only.

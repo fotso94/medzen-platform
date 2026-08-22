@@ -126,9 +126,23 @@ def test_rollout_gate_fails_pipeline_not_cluster():
 
 
 def test_scan_is_fail_closed_on_critical_and_high():
+    # B6v2 round 3: Docker Scout needs an entitlement the org lacks — the
+    # step failed at login, i.e. no scan ever ran. Trivy is unauthenticated.
     body = (WORKFLOWS / "_service-pipeline.yml").read_text()
-    assert "only-severities: critical,high" in body
-    assert "exit-code: true" in body
+    assert "docker/scout-action" not in body, "Scout cannot run in this org"
+    assert "aquasecurity/trivy-action" in body
+    assert "severity: CRITICAL,HIGH" in body
+    assert 'exit-code: "1"' in body
+
+
+def test_test_job_installs_the_service_pins_not_the_training_stack():
+    # The repo-root requirements.txt is the data/training stack; installing
+    # it gave the orchestrator a floating mlflow-transitive fastapi and no
+    # python-multipart (every multipart parse became INVALID_REQUEST 400).
+    body = (WORKFLOWS / "_service-pipeline.yml").read_text()
+    assert "-r ${{ inputs.context_path }}/requirements.txt" in body
+    assert "pip install -r requirements.txt" not in body
+    assert '"httpx==0.28.1"' in body, "starlette's TestClient needs httpx"
 
 
 def test_one_pipeline_instance_per_declared_service():

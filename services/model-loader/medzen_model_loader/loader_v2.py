@@ -90,17 +90,28 @@ def _verify_committed_promotion(manifest: Mapping[str, Any],
         raise LoaderV2Refusal(
             "PRODUCTION requires a promotion_approval binding")
     rel = str(approval.get("record") or "")
-    if not rel.startswith("platform/") or ".." in rel or ":" in rel:
-        raise LoaderV2Refusal("promotion record path is unsafe")
+    # Round 3 (Codex): "anywhere under platform/" let ANY committed JSON
+    # — an evidence file, a fixture — play promotion record. Promotion
+    # records live in exactly one reviewed directory.
+    if (not rel.startswith("platform/decisions/promotions/")
+            or ".." in rel or ":" in rel or rel.count("/") != 3
+            or not rel.endswith(".json")):
+        raise LoaderV2Refusal(
+            "promotion records live under platform/decisions/promotions/ "
+            "only — no other committed path can vouch for production")
     root = os.environ.get("MEDZEN_REPO_ROOT")
     git = (["git", "-C", root] if root else ["git"])
-    shown = subprocess.run(git + ["show", f"HEAD:{rel}"],
-                           capture_output=True)
-    if shown.returncode != 0:
-        raise LoaderV2Refusal(
-            f"promotion record {rel} is not committed at HEAD — a "
-            "manifest cannot self-certify production")
-    body = shown.stdout
+
+    def _at_head(path: str) -> bytes:
+        shown = subprocess.run(git + ["show", f"HEAD:{path}"],
+                               capture_output=True)
+        if shown.returncode != 0:
+            raise LoaderV2Refusal(
+                f"{path} is not committed at HEAD — a manifest cannot "
+                "self-certify production")
+        return shown.stdout
+
+    body = _at_head(rel)
     if hashlib.sha256(body).hexdigest() != approval.get("record_sha256"):
         raise LoaderV2Refusal(
             "promotion_approval.record_sha256 does not match the "
@@ -108,9 +119,24 @@ def _verify_committed_promotion(manifest: Mapping[str, Any],
     record = json.loads(body)
     if record.get("decision") != "APPROVED":
         raise LoaderV2Refusal("committed promotion record is not APPROVED")
-    protocol = str(record.get("protocol") or record.get("record") or "")
-    if not protocol.startswith("PROMOTION-PROTOCOL-"):
-        raise LoaderV2Refusal("promotion record protocol id is invalid")
+    # Round 3 (Codex): a prefix match ("PROMOTION-PROTOCOL-*") accepted
+    # any invented or superseded protocol id. The record must name the
+    # protocol the CURRENT-PROMOTION-PROTOCOL pointer designates at
+    # HEAD, and the pointed protocol bytes must hash to the pointer's
+    # recorded sha — the same supersession discipline every other
+    # consumer follows (Codex review #21).
+    pointer = json.loads(
+        _at_head("platform/decisions/CURRENT-PROMOTION-PROTOCOL.json"))
+    protocol_bytes = _at_head(str(pointer["file"]))
+    if hashlib.sha256(protocol_bytes).hexdigest() != pointer.get("sha256"):
+        raise LoaderV2Refusal(
+            "the committed promotion protocol does not match the "
+            "pointer's recorded hash — the protocol chain is broken")
+    if record.get("protocol") != pointer.get("record"):
+        raise LoaderV2Refusal(
+            f"promotion record cites protocol "
+            f"{record.get('protocol')!r}; the current pointer requires "
+            f"{pointer.get('record')!r}")
     bound = str(record.get("artifact_sha256")
                 or record.get("promoted_artifact_sha256") or "")
     if bound != digest:

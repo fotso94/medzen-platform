@@ -12,6 +12,11 @@ class FishRequest:
     language: str
     voice_id: str
     synthesis_key_sha256: str
+    # B6v2 round 3 (Codex): each voice declares its Fish model in the
+    # registry, but the request never carried it — the provider always
+    # used its constructor default, silently switching models. None
+    # keeps the provider default (v1-proof paths).
+    model: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,11 +121,14 @@ class RealFishProvider:
         return self._session
 
     def synthesize(self, request: FishRequest, *, timeout_ms: int) -> FishResult:
+        # round 3: honour the registry-declared per-voice model; the
+        # constructor default only covers requests that carry none
+        model = request.model or self.model
         response = self._http().post(
             f"{self._base_url}/v1/tts",
             headers={"Authorization": f"Bearer {self._key()}",
                      "Content-Type": "application/json",
-                     "model": self.model},
+                     "model": model},
             json={"text": request.text,
                   "reference_id": request.voice_id,
                   "format": "mp3",
@@ -137,4 +145,4 @@ class RealFishProvider:
                                f"{response.text[:200]}")
         if not response.content:
             raise RuntimeError("fish returned an empty body")
-        return FishResult(response.content, self.media_type, self.model_version)
+        return FishResult(response.content, self.media_type, f"fish:{model}")

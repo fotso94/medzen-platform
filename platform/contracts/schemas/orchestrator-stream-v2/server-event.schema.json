@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.orchestrator.stream.v1.server-event",
+  "$id": "medzen.orchestrator.stream.v2.server-event",
   "type": "object",
   "additionalProperties": false,
   "required": [

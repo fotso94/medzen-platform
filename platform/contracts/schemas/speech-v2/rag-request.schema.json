@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.speech.v1.rag-request",
+  "$id": "medzen.speech.v2.rag-request",
   "type": "object",
   "additionalProperties": false,
   "required": ["request_id", "query"],

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.speech.v1.file-response",
+  "$id": "medzen.speech.v2.file-response",
   "type": "object",
   "additionalProperties": false,
   "required": [

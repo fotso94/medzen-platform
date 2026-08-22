@@ -178,8 +178,13 @@ class LLMGateway:
         expected_ids = tuple(item["document_id"] for item in citations)
         # B6v2: a VALIDATED SUBSET of supplied citations is legitimate —
         # real providers cite what they used; exact-tuple equality
-        # refused honest subsets and only fit the synthetic echo
-        cited_ok = set(result.cited_document_ids) <= set(expected_ids)
+        # refused honest subsets and only fit the synthetic echo.
+        # Round 3: the subset must be NON-EMPTY — an answer that cites
+        # nothing is ungrounded and must never leave this gateway.
+        cited_ok = (
+            bool(result.cited_document_ids)
+            and set(result.cited_document_ids) <= set(expected_ids)
+        )
         if (
             result.model_version != self.provider.model_version
             or not cited_ok
@@ -206,16 +211,28 @@ class LLMGateway:
         cited = set(result.cited_document_ids)
         reply_citations = [dict(item) for item in citations
                             if item["document_id"] in cited]
-        return {
+        response = {
             "request_id": request_id,
             "language": language,
             "reply": {
                 "text": result.text,
                 "citations": reply_citations,
-                "citation_binding_sha256": binding,
+                # round 3: the binding must cover what the reply actually
+                # carries — hashing the full supplied set while returning
+                # a subset made the reply's own binding unverifiable
+                # (identical for the echo provider, which cites the set)
+                "citation_binding_sha256": citation_binding(reply_citations),
             },
             "policy": {"id": policy.policy_id, "sha256": policy.policy_sha256},
             "provider": self.provider.name,
             "model_versions": output_versions,
             "latency_ms": round((time.perf_counter() - started) * 1000, 3),
         }
+        # round 3: the grounding hash existed only inside the provider call
+        # — auditors could never tie a response to the exact grounding
+        # bytes sent. Present exactly when real grounding was hashed; the
+        # byte-frozen v1 schema (additionalProperties: false) never sees
+        # it because the synthetic echo hashes nothing.
+        if result.grounding_sha256 is not None:
+            response["grounding_sha256"] = result.grounding_sha256
+        return response

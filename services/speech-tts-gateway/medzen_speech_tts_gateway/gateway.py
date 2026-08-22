@@ -175,13 +175,24 @@ class TTSGateway:
                 reason="POLICY_TEXT_ONLY",
             )
         assert self.breaker is not None
-        voice_id = self._voice_id(language)
+        # B6v2 round 3 (Codex): a resolver may return (voice_id, model)
+        # so the registry's per-voice Fish model actually REACHES the
+        # provider; a bare id keeps the provider default (v1 proof).
+        selection = self._voice_id(language)
+        if isinstance(selection, tuple):
+            voice_id, voice_model = selection
+        else:
+            voice_id, voice_model = selection, None
+        expected_model_version = (
+            f"fish:{voice_model}" if voice_model
+            else self.provider.model_version
+        )
         key = synthesis_key(
             text_sha256=text_hash,
             language=language,
             provider=self.provider.name,
             voice_id=voice_id,
-            model_version=self.provider.model_version,
+            model_version=expected_model_version,
             media_type=self._media_type,
         )
         cached = self.cache.get(key)
@@ -208,14 +219,14 @@ class TTSGateway:
             nonlocal attempted
             attempted = True
             result = self.provider.synthesize(
-                FishRequest(text, language, voice_id, key),
+                FishRequest(text, language, voice_id, key, model=voice_model),
                 timeout_ms=FISH_TIMEOUT_MS,
             )
             if (
                 not isinstance(result.audio, bytes)
                 or not result.audio
                 or result.media_type != self._media_type
-                or result.model_version != self.provider.model_version
+                or result.model_version != expected_model_version
             ):
                 raise CacheRefusal("Fish response does not match the local contract")
             return CachedAudio(

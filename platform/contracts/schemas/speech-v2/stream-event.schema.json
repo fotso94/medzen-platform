@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "medzen.speech.v1.stream-server-event",
+  "$id": "medzen.speech.v2.stream-server-event",
   "type": "object",
   "required": ["type", "request_id", "session_id", "model_versions"],
   "properties": {
