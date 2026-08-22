@@ -830,6 +830,35 @@ def test_arm_launch_workflow_is_hardened():
     assert "continue-on-error: true" in neg
     assert "ASSUME_OUTCOME" in neg
 
+    # Codex review #26: deps must install BEFORE credential acquisition
+    assert exec_body.index("install pinned") < exec_body.index(
+        "configure-aws-credentials")
+    # the wrong-ref negative canary is a REAL reusable workflow, so the
+    # token carries an actual (wrong) job_workflow_ref
+    wr_exec = (wf / "arm-launch-canary-wrongref-exec.yml").read_text()
+    wr_caller = (wf / "arm-launch-canary-wrongref.yml").read_text()
+    assert "workflow_call" in wr_exec
+    assert "environment: arm-launch-approval" in wr_exec
+    assert "continue-on-error: true" in wr_exec and "ASSUME_OUTCOME" in wr_exec
+    assert "arm-launch-canary-wrongref-exec.yml" in wr_caller
+    # IAM policy: non-deprecated key, mandatory presence checks, exact job
+    import json as _json
+    policy = _json.loads((root / "platform/iam/"
+                          "medzen-arm-launch-role.json").read_text())
+    create = next(s for s in policy["Statement"]
+                  if s["Sid"] == "CreateArmTierB5JobsUnderHardConditions")
+    assert "sagemaker:OutputKmsKeyArn" in str(create["Condition"])
+    assert "sagemaker:OutputKmsKey\"" not in _json.dumps(create), (
+        "deprecated OutputKmsKey key silently implicit-denies (Codex #26)")
+    assert set(create["Condition"]["Null"]) == {
+        "sagemaker:InstanceTypes", "sagemaker:VpcSubnets",
+        "sagemaker:VpcSecurityGroupIds"}, (
+        "ForAllValues without Null:false passes on ABSENT keys")
+    assert create["Resource"].endswith(
+        "training-job/medzen-b5-b5-universal-arm1-2026-005")
+    # arm-control tests run in CI
+    ci = (root / ".github/workflows/architecture-controls.yml").read_text()
+    assert "test_b5_sagemaker_job.py" in ci
     tf = (root / "infra/iam.tf").read_text()
     assert "environment:arm-launch-approval" in tf
     assert "arm-launch-exec.yml@refs/heads/master" in tf, (
@@ -838,6 +867,8 @@ def test_arm_launch_workflow_is_hardened():
         "arm activation and legacy CI must be independently switched")
     assert 'data "aws_iam_openid_connect_provider" "github_existing"' in tf
     assert "refs/heads/main" not in tf
+    assert "precondition" in tf and 'fotso94/medzen-platform"' in tf, (
+        "activation must refuse a wrong github_repo (Codex review #26)")
 def test_above_tier_requires_the_dedicated_role_identity():
     """Codex review #25 finding 5: only the account number was checked —
     forged executor vars under local credentials passed the identity

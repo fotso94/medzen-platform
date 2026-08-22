@@ -25,10 +25,20 @@ cleanup and the local credential boundary are owner-accepted risks.
   workflow -> assumption MUST fail; the job passes only if creds fail).
   actionlint: all four PASS.
 
-Activation order (after Codex pass): terraform apply -var
-arm_launch_enabled=true -var github_repo=fotso94/medzen-platform ->
-set MEDZEN_ARM_LAUNCH_ROLE_ARN repo variable -> owner creates
-environment arm-launch-approval (self as required reviewer, master-only
-branches) -> run BOTH canaries (expect positive OK + negative refused)
--> merge to master -> flip review to APPROVED per Codex verdict ->
-dispatch arm-launch -> owner clicks Approve -> $70-capped launch.
+Activation order (Codex review #26: the workflows and trust target
+master, so MERGE COMES FIRST):
+1. Codex passes this packet -> merge the reviewed branch to master.
+2. terraform plan -out=arm.tfplan -var arm_launch_enabled=true
+   -var github_repo=fotso94/medzen-platform  (precondition REFUSES any
+   other repo value); verify the saved plan JSON shows exactly the two
+   arm resources; terraform apply arm.tfplan.
+3. Set repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN to the new role ARN.
+4. Owner creates environment arm-launch-approval (self as required
+   reviewer; deployment branches: master only).
+5. Run ALL THREE canaries from master: arm-launch-canary (expect
+   CANARY_ASSUMED_ROLE_OK), arm-launch-canary-unauthorized (missing
+   claim -> refused), arm-launch-canary-wrongref (real-but-wrong
+   job_workflow_ref -> refused).
+6. Record the APPROVED review per the Codex verdict; regenerate the
+   intent against the APPROVED bytes; dispatch arm-launch; owner
+   clicks Approve -> $70-capped launch.

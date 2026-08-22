@@ -19,6 +19,8 @@ jobs:
         with:
           python-version: "3.12"
       - name: install control-test dependencies
-        run: pip install pytest pyyaml
-      - name: architecture + sealed-machinery controls
-        run: python -m pytest tests/test_arch_2026_001.py -q
+        run: |
+          pip install pytest pyyaml "boto3==1.40.16" "jsonschema==4.25.0" "numpy==2.3.2"
+          pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
+      - name: architecture + sealed-machinery + arm-launch controls
+        run: python -m pytest tests/test_arch_2026_001.py tests/test_b5_sagemaker_job.py tests/test_b7_pipelines.py -q

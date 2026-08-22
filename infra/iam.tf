@@ -222,6 +222,13 @@ resource "aws_iam_role" "arm_launch" {
   count              = var.arm_launch_enabled ? 1 : 0
   name               = "medzen-arm-launch-role"
   assume_role_policy = data.aws_iam_policy_document.arm_launch_trust[0].json
+
+  lifecycle {
+    precondition {
+      condition     = var.github_repo == "fotso94/medzen-platform"
+      error_message = "arm activation requires github_repo to be EXACTLY fotso94/medzen-platform — the REPLACE default would mint a role trusting a nonexistent repository (Codex review #26)."
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "arm_launch" {

@@ -1,0 +1,42 @@
+{
+ "missing_arm_tag": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "no_instance_types": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "no_vpc_values_at_all": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "positive_intended_request": {
+  "decision": "allowed",
+  "expected": "allowed",
+  "verdict": "PASS"
+ },
+ "runtime_over_ceiling": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "wrong_instance_type": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "wrong_job_name": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ },
+ "wrong_kms": {
+  "decision": "implicitDeny",
+  "expected": "implicitDeny",
+  "verdict": "PASS"
+ }
+}
