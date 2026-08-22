@@ -1,0 +1,25 @@
+{
+ "__comment": "Codex review #24 finding 1: repository code cannot constrain local AWS credentials — the boundary must be IAM itself. OWNER-APPLIED (attach to the local IAM identity; do not let the local identity retain iam:* on itself). Effect: local credentials may still launch calibration-tier jobs (tagged medzen-tier=calibration by the launcher) but can NEVER create an arm-tier training job — those require the medzen-arm-launch-role, reachable only through the owner-approved GitHub environment.",
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "DenyUntaggedOrArmTierTrainingJobCreation",
+   "Effect": "Deny",
+   "Action": "sagemaker:CreateTrainingJob",
+   "Resource": "*",
+   "Condition": {
+    "StringNotEquals": {"aws:RequestTag/medzen-tier": "calibration"}
+   }
+  },
+  {
+   "Sid": "DenySelfServiceIamEscape",
+   "Effect": "Deny",
+   "Action": [
+    "iam:AttachUserPolicy", "iam:DetachUserPolicy",
+    "iam:PutUserPolicy", "iam:DeleteUserPolicy",
+    "iam:DeleteUserPermissionsBoundary", "iam:PutUserPermissionsBoundary"
+   ],
+   "Resource": "arn:aws:iam::558069890522:user/${aws:username}"
+  }
+ ]
+}

@@ -130,7 +130,8 @@ data "aws_iam_policy_document" "ci_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      # Codex review #24: the default branch is MASTER, not main
+      values   = ["repo:${var.github_repo}:ref:refs/heads/master"]
     }
   }
 }
@@ -168,4 +169,47 @@ resource "aws_eks_access_policy_association" "ci_medzen_edit" {
     namespaces = ["medzen"]
   }
   depends_on = [aws_eks_access_entry.ci]
+}
+
+
+# ---------------------------------------------------------------------------
+# ARM-LAUNCH ROLE (Codex review #24): a DEDICATED role for the protected
+# arm-launch workflow — never the general CI role. Trust: ONLY the
+# environment-scoped OIDC subject (environment-referencing jobs present
+# repo:ORG/REPO:environment:ENV, not the branch-ref form). Permissions:
+# exactly what the launch gates need — describe/create the b5 training
+# jobs, pass ONLY the trainer role to SageMaker, read the calibration
+# evidence, decrypt with the one campaign KMS key.
+data "aws_iam_policy_document" "arm_launch_trust" {
+  count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_repo}:environment:arm-launch-approval"]
+    }
+  }
+}
+
+resource "aws_iam_role" "arm_launch" {
+  count              = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  name               = "medzen-arm-launch-role"
+  assume_role_policy = data.aws_iam_policy_document.arm_launch_trust[0].json
+}
+
+resource "aws_iam_role_policy" "arm_launch" {
+  count  = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  name   = "medzen-arm-launch-access"
+  role   = aws_iam_role.arm_launch[0].id
+  policy = file("${local.iam_dir}/medzen-arm-launch-role.json")
 }

@@ -51,7 +51,7 @@
  "Tags": [
   {
    "Key": "medzen:cost-registry",
-   "Value": "COST-REGISTRY-2026-048 B5-ARM1-2026-001 ($70 hard; the registry binds THIS packet's sha \u2014 the packet deliberately does not bind the registry, breaking the #21 circularity)"
+   "Value": "B5-ARM1-2026-001 (allocation id; the AUTHORITATIVE registry revision + sha travel in the launch intent, never in this packet \u2014 Codex review #24: revision tags here go stale)"
   },
   {
    "Key": "medzen:job",
@@ -60,6 +60,10 @@
   {
    "Key": "medzen:classification",
    "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
+  },
+  {
+   "Key": "medzen-tier",
+   "Value": "arm"
   }
  ],
  "TrainingJobName": "medzen-b5-b5-universal-arm1-2026-005",

@@ -1,8 +1,8 @@
 {
  "basis": "rev5 submitted with the Codex #22 correction batch; this record flips to APPROVED only on the reviewer's verdict (any other decision keeps the launcher refusing)",
- "bindings_sha256": "475621c45b4dd720fbfb74ad6474b672c627941f501d5d33807c11e2d3fe01c1",
+ "bindings_sha256": "0cb9106ffa25a2acc35ba883dba9cd23e3537ff8bb78b56686c0fcb26239745c",
  "decision": "PENDING_INDEPENDENT_REVIEW",
  "job_id": "b5-universal-arm1-2026-005",
  "reviewer": "codex-independent-reviewer",
- "utc": "2026-08-21T23:10:32Z"
+ "utc": "2026-08-21T23:59:40Z"
 }

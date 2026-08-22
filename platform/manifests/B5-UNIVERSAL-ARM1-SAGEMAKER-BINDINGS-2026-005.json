@@ -4,7 +4,7 @@
         "record_sha256": "721629e06b5766fe76931e662c3d27698a6dd7a167c737ec48e01116a35baf18"
     },
     "cost_ceiling_usd": 70,
-    "cost_registry_line": "COST-REGISTRY-2026-048 B5-ARM1-2026-001 ($70 hard; the registry binds THIS packet's sha \u2014 the packet deliberately does not bind the registry, breaking the #21 circularity)",
+    "cost_registry_line": "B5-ARM1-2026-001 (allocation id; the AUTHORITATIVE registry revision + sha travel in the launch intent, never in this packet \u2014 Codex review #24: revision tags here go stale)",
     "environment": {
         "MEDZEN_AUDIO_CAP_HOURS": "100",
         "MEDZEN_BATCH_SIZE": "2",

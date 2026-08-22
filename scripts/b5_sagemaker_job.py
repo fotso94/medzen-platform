@@ -208,6 +208,14 @@ def render_request(bindings: dict) -> dict:
             {"Key": "medzen:job", "Value": job_id},
             {"Key": "medzen:classification",
              "Value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"},
+            # Codex review #24: the OWNER-APPLIED local IAM boundary
+            # (platform/iam/medzen-local-boundary-policy.json) denies
+            # local CreateTrainingJob unless medzen-tier=calibration —
+            # arm-tier jobs are only creatable by the arm-launch role
+            {"Key": "medzen-tier",
+             "Value": ("calibration"
+                        if worst_case <= CALIBRATION_TIER_USD
+                        else "arm")},
         ],
     }
 
@@ -247,8 +255,6 @@ CALIBRATION_TIER_USD = 10.0
 AUTH_DIR = "platform/decisions/launch-authorizations"
 REVIEWS_DIR = "platform/decisions/reviews"
 INTENTS_DIR = "platform/decisions/launch-intents"
-ALLOWED_SIGNERS = "platform/decisions/OWNER-ALLOWED-SIGNERS"
-SIGN_NAMESPACE = "medzen-launch"
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 # Codex review #22: the calibration proves the RECIPE; an arm may differ
 # from it ONLY on these declared scale dimensions — every other
@@ -628,64 +634,51 @@ def verify_active_reservation(registry_binding: dict, bindings: dict,
                              "aggregate_ceiling_usd")
     for key, expected in (
             ("recognized_committed_guardrail_usd", totals["recognized"]),
-            ("active_reservations_usd", totals["active"])):
+            ("active_reservations_usd", totals["active"]),
+            # Codex review #24: the DERIVED fields were not recomputed —
+            # corrupted committed_plus_reserved/headroom passed
+            ("committed_plus_reserved_usd",
+             totals["recognized"] + totals["active"]),
+            ("guardrail_headroom_after_reservations_usd",
+             ceiling - totals["recognized"] - totals["active"])):
         declared = _finite_nonneg(summary.get(key, float("nan")), key)
         if abs(declared - expected) > 0.01:
             raise JobRefusal(
                 f"registry summary {key}=${declared:.2f} does not match "
                 f"the recompute from effective rows ${expected:.2f} — "
                 "summaries must be pure functions of rows "
-                "(Codex review #23)")
+                "(Codex reviews #23-#24)")
+    declared_count = str(registry.get("controls", {}).get(
+        "current_active_billable_reservations", ""))
+    active_count = sum(
+        1 for line in totals["effective"].values()
+        if line.get("financial_state") == "ACTIVE_RESERVED")
+    if declared_count != str(active_count):
+        raise JobRefusal(
+            f"controls.current_active_billable_reservations="
+            f"{declared_count!r} but the rows hold {active_count} — "
+            "the count is a derived field too (Codex review #24)")
     if totals["recognized"] + totals["active"] > ceiling + 1e-9:
         raise JobRefusal("registry arithmetic breaches the aggregate "
                          "ceiling")
 
 
-def owner_intent_is_signed(job_id: str, root: Path, oid: str,
-                            identity: str = "owner@medzen") -> dict:
-    """Owner authorization v4 (Codex review #22: commit ids are
-    DETERMINISTIC — the reviewer precomputed a future commit sha, so
-    oid-quoting proves reference, not order or identity). The owner now
-    SIGNS: an SSH signature (ssh-keygen -Y, namespace medzen-launch)
-    over the committed launch-intent record's exact bytes, verified
-    against the COMMITTED allowed-signers file. The signing key lives
-    with the owner; no repository write can conjure a signature.
-
-    Residual trust, stated: if the owner's private key is readable on
-    this machine, a local actor could still sign. The upgrade path
-    (GitHub protected-environment approval on the existing remote)
-    removes even that."""
+def load_intent(job_id: str, root: Path, oid: str) -> dict:
+    """The launch-intent record: the unsigned COMMITTED document binding
+    packet, registry line, receipt and the review's exact bytes. Codex
+    review #24: the in-repo SSH allowed-signers file was forgeable by
+    any repository writer, so the signature layer is REMOVED rather than
+    kept as theater — the OWNER's authorization is their click on the
+    protected GitHub environment (github.com identity, outside every
+    local trust surface), and the workflow verifies this intent chain
+    before anything spends."""
     if not job_id or not all(c.islower() or c.isdigit() or c == "-"
                              for c in job_id):
         raise JobRefusal("malformed job id")
     intent_rel = f"{INTENTS_DIR}/{job_id}.json"
-    sig_rel = f"{INTENTS_DIR}/{job_id}.sig"
     intent_body = _show_at(root, oid, intent_rel)
     if intent_body is None:
         raise JobRefusal(f"no committed launch intent at {intent_rel}")
-    sig_body = _show_at(root, oid, sig_rel)
-    if sig_body is None:
-        raise JobRefusal(f"no committed owner signature at {sig_rel} — "
-                         "the owner has not authorized this launch")
-    signers_body = _show_at(root, oid, ALLOWED_SIGNERS)
-    if signers_body is None:
-        raise JobRefusal(f"no committed {ALLOWED_SIGNERS} — enroll the "
-                         "owner's signing key first")
-    import tempfile
-    with tempfile.TemporaryDirectory() as td:
-        signers = Path(td) / "allowed_signers"
-        signers.write_bytes(signers_body)
-        sig = Path(td) / "intent.sig"
-        sig.write_bytes(sig_body)
-        completed = subprocess.run(
-            ["ssh-keygen", "-Y", "verify", "-f", str(signers),
-             "-I", identity, "-n", SIGN_NAMESPACE, "-s", str(sig)],
-            input=intent_body, capture_output=True)
-    if completed.returncode != 0:
-        raise JobRefusal(
-            "owner signature does NOT verify over the committed launch "
-            "intent — refusing (" +
-            (completed.stderr or b"").decode(errors="replace")[:120] + ")")
     intent = json.loads(intent_body)
     if intent.get("job_id") != job_id:
         raise JobRefusal("launch intent names a different job")
@@ -810,16 +803,18 @@ def main() -> int:
             if not (os.environ.get(EXECUTOR_ENV) == PROTECTED_EXECUTOR
                     and os.environ.get("GITHUB_ACTIONS") == "true"):
                 raise JobRefusal(
-                    "above-tier launches happen ONLY via the protected "
-                    "workflow (.github/workflows/arm-launch.yml) whose "
-                    "environment requires the OWNER's approval on "
-                    "github.com — a trust anchor no repository writer "
-                    "can rewrite (Codex review #23: the in-repo "
-                    "allowed-signers file was forgeable). The SSH-signed "
-                    "intent remains as defense-in-depth inside that "
-                    "workflow.")
+                    "above-tier launches go through the protected "
+                    "workflow (.github/workflows/arm-launch.yml): its "
+                    "GitHub environment requires the OWNER's approval "
+                    "and its dedicated AWS role is the only identity "
+                    "meant to create arm-tier jobs. HONEST LIMIT (Codex "
+                    "review #24): this refusal is PROCESS enforcement — "
+                    "env vars can be forged and local credentials can "
+                    "call SageMaker directly until the owner applies "
+                    "platform/iam/medzen-local-boundary-policy.json, "
+                    "which is what actually closes the local path.")
             review_record_approves(job_id, bindings, root, head)
-            intent = owner_intent_is_signed(job_id, root, head)
+            intent = load_intent(job_id, root, head)
             verify_intent_chain(intent, bindings, worst_case, root, head)
             receipt_record = verify_calibration_receipt(bindings,
                                                         head_oid=head)

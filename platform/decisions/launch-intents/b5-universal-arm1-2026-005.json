@@ -3,7 +3,7 @@
  "expires_utc": "2026-09-04T23:59:59Z",
  "job_id": "b5-universal-arm1-2026-005",
  "packet": {
-  "canonical_sha256": "475621c45b4dd720fbfb74ad6474b672c627941f501d5d33807c11e2d3fe01c1",
+  "canonical_sha256": "0cb9106ffa25a2acc35ba883dba9cd23e3537ff8bb78b56686c0fcb26239745c",
   "file": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json"
  },
  "receipt": {
@@ -12,15 +12,15 @@
  },
  "registry": {
   "allocation_id": "B5-ARM1-2026-001",
-  "file": "platform/finance/COST-REGISTRY-2026-049.json",
-  "sha256": "a52281ec9f6173404048896e70fc7159d95665581ceb1912cfe27976a9319f4d"
+  "file": "platform/finance/COST-REGISTRY-2026-050.json",
+  "sha256": "649ca9429b52e1bc0450cd5b7dc4664c687748ddc91de14fe06a7d577a697e53"
  },
  "review": {
   "decision": "PENDING_INDEPENDENT_REVIEW",
   "file": "platform/decisions/reviews/b5-universal-arm1-2026-005.json",
   "reviewer": "codex-independent-reviewer",
-  "sha256": "c3aa96345b0d209ae21020c7d9f5453b51c856eecc24c1d8f9a0e5c9b2c3ef03"
+  "sha256": "e80760fe7fe1957e8b80f30b7fa8f4735b8ea3c4d86f22ec07640f96c279e647"
  },
- "statement": "signing authorizes EXACTLY the packet, registry line, calibration chain and APPROVED review bound above \u2014 the intent gate refuses unless review.decision is APPROVED, so THIS placeholder intent (decision PENDING) can never launch even if signed; it will be regenerated against the APPROVED review bytes after re-review",
- "utc": "2026-08-21T23:35:41Z"
+ "statement": "the OWNER's approval of the protected workflow run is the authorization event; this record binds EXACTLY what that approval buys. It references the PENDING review bytes, so the chain refuses until re-review flips the record and this intent is regenerated against the APPROVED bytes.",
+ "utc": "2026-08-21T23:58:19Z"
 }

@@ -227,3 +227,29 @@ $70 reserved = $584.43 of $800; NaN/negatives refuse; reservations
 expire 2026-09-04). Owner activation when ready: create the GitHub
 environment with yourself as required reviewer + set MEDZEN_CI_ROLE_ARN
 (B7 packet); until then every arm path refuses by construction.
+
+## Rev11 (2026-08-22T00:00:10Z) — Codex review #24: honest boundaries, dedicated role
+Overclaim retracted: repository code and env vars CANNOT bound local AWS
+credentials (the reviewer forged both executor vars, and local creds
+hold sagemaker:CreateTrainingJob directly). What actually closes the
+local path is IAM: the owner-applied
+platform/iam/medzen-local-boundary-policy.json denies local
+CreateTrainingJob unless the request carries medzen-tier=calibration
+(the launcher now tags every request; arm requests tag medzen-tier=arm
+precisely so the deny bites), plus denies self-service IAM escape.
+The workflow gets a DEDICATED medzen-arm-launch-role (never the general
+CI role): trust = the environment-scoped OIDC subject
+repo:...:environment:arm-launch-approval (the branch-ref form was wrong
+AND named main while the default branch is master — both fixed);
+permissions = exactly describe/create medzen-b5-* jobs, PassRole of the
+trainer role to SageMaker only, calibration-evidence S3 reads, one KMS
+key. Workflow hardened: dispatched job_id must equal the committed
+packet BEFORE credentials, pinned dependencies, concurrency group,
+master-ref guard. The SSH-signature layer is REMOVED as theater (an
+in-repo signers file is not an identity boundary): the OWNER's approval
+of the protected workflow run IS the authorization; the committed
+intent (binding review bytes, registry, receipt, ceiling, expiry) is
+what that approval buys. Registry derived fields (committed+reserved,
+headroom, active count) are recomputed too. Chain regenerated: packet
+0cb9106f... with a revision-agnostic registry tag; registry 050;
+intent v3 still bound to the PENDING review bytes.

@@ -518,17 +518,20 @@ def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
                 "reservation_expires_utc": expires,
                 "packet_bindings_sha256":
                     packet_sha or canonical_bindings_sha256(b)}
+        rec = (recognized_row if summary_recognized is None
+               else summary_recognized)
+        act = (reservation if summary_active is None else summary_active)
         reg = {"allocations": [
             {"allocation_id": "OLD", "financial_state": "CLOSED",
              "recognized_committed_usd": recognized_row}, line],
+            "controls": {"current_active_billable_reservations": "1"},
             "guardrail_summary": {
                 "aggregate_ceiling_usd": ceiling,
-                "recognized_committed_guardrail_usd":
-                    (recognized_row if summary_recognized is None
-                     else summary_recognized),
-                "active_reservations_usd":
-                    (reservation if summary_active is None
-                     else summary_active)}}
+                "recognized_committed_guardrail_usd": rec,
+                "active_reservations_usd": act,
+                "committed_plus_reserved_usd": rec + act,
+                "guardrail_headroom_after_reservations_usd":
+                    ceiling - rec - act}}
         reg_path.write_text(_json.dumps(reg))
         _commit(repo)
         return {"file": "platform/finance/REG.json",
@@ -539,8 +542,10 @@ def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
     with pytest.raises(JR, match="DIFFERENT packet"):
         verify_active_reservation(commit_registry(packet_sha="f" * 64),
                                   b, 64.0, repo)
-    # over-budget on the RECOMPUTED rows refuses
-    with pytest.raises(JR, match="aggregate ceiling"):
+    # over-budget on the RECOMPUTED rows refuses (the honest summary
+    # reports negative headroom, which the finiteness guard also
+    # refuses — either refusal closes the gate)
+    with pytest.raises(JR, match="aggregate ceiling|non-finite or negative"):
         verify_active_reservation(
             commit_registry(recognized_row=780.0), b, 64.0, repo)
     # a summary that disagrees with its own rows refuses (reproduced:
@@ -567,64 +572,6 @@ def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):
     with pytest.raises(JR, match="valid reservation_expires_utc"):
         verify_active_reservation(
             commit_registry(expires=""), b, 64.0, repo)
-def test_owner_intent_requires_a_verifying_ssh_signature(tmp_path):
-    """Codex review #22 finding 3: commit ids are deterministic, so
-    oid-quoting proved reference, not identity. The owner now SIGNS the
-    committed launch intent (ssh-keygen -Y, namespace medzen-launch);
-    no signature, wrong key, wrong namespace or tampered intent
-    refuses."""
-    import json as _json
-    import subprocess
-    from b5_sagemaker_job import JobRefusal as JR, owner_intent_is_signed
-
-    repo = _mini_repo(tmp_path)
-    intents = repo / "platform/decisions/launch-intents"
-    intents.mkdir(parents=True)
-    job = "b5-universal-arm1-2026-005"
-    intent = {"job_id": job, "packet": {"file": "p.json",
-                                         "canonical_sha256": "a" * 64}}
-    intent_path = intents / f"{job}.json"
-    intent_path.write_text(_json.dumps(intent))
-
-    # owner key (test key standing in for the owner's real one)
-    key = tmp_path / "owner_ed25519"
-    subprocess.run(["ssh-keygen", "-t", "ed25519", "-N", "", "-q",
-                    "-f", str(key)], check=True)
-    pub = (tmp_path / "owner_ed25519.pub").read_text().strip()
-    signers = repo / "platform/decisions/OWNER-ALLOWED-SIGNERS"
-    signers.write_text(f"owner@medzen {pub.split(' ')[0]} {pub.split(' ')[1]}\n")
-
-    oid = _commit(repo)
-    with pytest.raises(JR, match="not authorized"):
-        owner_intent_is_signed(job, repo, oid)
-
-    # owner signs the exact committed bytes
-    subprocess.run(["ssh-keygen", "-Y", "sign", "-f", str(key),
-                    "-n", "medzen-launch", str(intent_path)], check=True)
-    (intents / f"{job}.json.sig").rename(intents / f"{job}.sig")
-    oid = _commit(repo)
-    assert owner_intent_is_signed(job, repo, oid)["job_id"] == job
-
-    # tampering the intent AFTER signing breaks verification
-    intent_path.write_text(_json.dumps(dict(intent, packet={
-        "file": "p.json", "canonical_sha256": "f" * 64})))
-    oid2 = _commit(repo)
-    with pytest.raises(JR, match="does NOT verify"):
-        owner_intent_is_signed(job, repo, oid2)
-
-    # a signature from an UNENROLLED key refuses
-    intent_path.write_text(_json.dumps(intent))
-    rogue = tmp_path / "rogue_ed25519"
-    subprocess.run(["ssh-keygen", "-t", "ed25519", "-N", "", "-q",
-                    "-f", str(rogue)], check=True)
-    subprocess.run(["ssh-keygen", "-Y", "sign", "-f", str(rogue),
-                    "-n", "medzen-launch", str(intent_path)], check=True)
-    (intents / f"{job}.json.sig").rename(intents / f"{job}.sig")
-    oid3 = _commit(repo)
-    with pytest.raises(JR, match="does NOT verify"):
-        owner_intent_is_signed(job, repo, oid3)
-
-
 def test_protocol_loads_from_captured_commit_with_containment(tmp_path):
     """Codex review #22 finding 5: working-tree bytes and an
     uncontained pointer path were accepted. With an oid, both files come
@@ -748,3 +695,120 @@ def test_above_tier_local_launch_refuses_pointing_to_protected_workflow(tmp_path
         capture_output=True, text=True, cwd=root)
     assert proc.returncode == 2, proc.stdout
     assert "protected" in proc.stdout and "workflow" in proc.stdout
+
+def test_derived_summary_corruption_refuses(tmp_path):
+    """Codex review #24: committed_plus_reserved, headroom and the
+    active-reservation COUNT were not recomputed — in-memory corruption
+    passed. All derived fields are now pure functions of rows."""
+    import json as _json
+    import hashlib as h
+    from b5_sagemaker_job import (JobRefusal as JR,
+                                  canonical_bindings_sha256,
+                                  verify_active_reservation)
+    b = bindings()
+    repo = _mini_repo(tmp_path)
+    (repo / "platform/finance").mkdir(parents=True)
+    reg_path = repo / "platform/finance/REG.json"
+
+    def registry(**summary_over):
+        summary = {"aggregate_ceiling_usd": 800.0,
+                   "recognized_committed_guardrail_usd": 500.0,
+                   "active_reservations_usd": 70.0,
+                   "committed_plus_reserved_usd": 570.0,
+                   "guardrail_headroom_after_reservations_usd": 230.0}
+        summary.update(summary_over)
+        return {"allocations": [
+            {"allocation_id": "OLD", "financial_state": "CLOSED",
+             "recognized_committed_usd": 500.0},
+            {"allocation_id": "ARM-1",
+             "financial_state": "ACTIVE_RESERVED",
+             "reservation_usd": 70.0,
+             "reservation_expires_utc": "2027-01-01T00:00:00Z",
+             "packet_bindings_sha256": canonical_bindings_sha256(b)}],
+            "controls": {"current_active_billable_reservations": "1"},
+            "guardrail_summary": summary}
+
+    def commit_reg(reg):
+        reg_path.write_text(_json.dumps(reg))
+        _commit(repo)
+        return {"file": "platform/finance/REG.json",
+                "sha256": h.sha256(reg_path.read_bytes()).hexdigest(),
+                "allocation_id": "ARM-1"}
+
+    verify_active_reservation(commit_reg(registry()), b, 64.0, repo)
+    for corruption in ({"committed_plus_reserved_usd": 500.0},
+                        {"guardrail_headroom_after_reservations_usd": 700.0}):
+        with pytest.raises(JR, match="does not match the recompute"):
+            verify_active_reservation(commit_reg(registry(**corruption)),
+                                      b, 64.0, repo)
+    bad = registry()
+    bad["controls"]["current_active_billable_reservations"] = "0"
+    with pytest.raises(JR, match="count is a derived field"):
+        verify_active_reservation(commit_reg(bad), b, 64.0, repo)
+
+
+def test_forged_executor_env_vars_do_not_skip_committed_gates(tmp_path, monkeypatch):
+    """Codex review #24 finding 1: MEDZEN_EXECUTOR/GITHUB_ACTIONS can be
+    forged locally — reproduced. Forging them must merely move the
+    refusal to the NEXT committed gate (review), never to a launch; and
+    the refusal text must not overclaim impossibility. The REAL local
+    closure is the owner-applied IAM boundary, which must deny arm-tier
+    CreateTrainingJob (the rendered request carries medzen-tier=arm
+    precisely so that boundary can bite)."""
+    import json as _json
+    import subprocess
+    import sys
+    root = Path(__file__).resolve().parents[1]
+    b = _json.loads((root / "platform/manifests/"
+                     "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json"
+                     ).read_bytes())
+    request = render_request(b)
+    tier = [t["Value"] for t in request["Tags"]
+            if t["Key"] == "medzen-tier"]
+    assert tier == ["arm"], "arm requests must carry the boundary tag"
+    bp = tmp_path / "b.json"; bp.write_text(_json.dumps(b))
+    rp = tmp_path / "r.json"; rp.write_text(_json.dumps(request))
+    env = dict(__import__("os").environ,
+               MEDZEN_EXECUTOR="github-protected-workflow",
+               GITHUB_ACTIONS="true")
+    proc = subprocess.run(
+        [sys.executable, str(root / "scripts/b5_sagemaker_job.py"),
+         "launch", "--bindings", str(bp), "--request", str(rp)],
+        capture_output=True, text=True, cwd=root, env=env)
+    assert proc.returncode == 2
+    assert "PENDING_INDEPENDENT_REVIEW" in proc.stdout, (
+        "forged executor vars must land on the next committed gate")
+    # the boundary policy the tag serves must be committed
+    policy = _json.loads((root / "platform/iam/"
+                          "medzen-local-boundary-policy.json").read_bytes())
+    deny = policy["Statement"][0]
+    assert deny["Effect"] == "Deny"
+    assert deny["Condition"]["StringNotEquals"][
+        "aws:RequestTag/medzen-tier"] == "calibration"
+
+
+def test_arm_launch_workflow_is_hardened():
+    """Codex review #24 finding 4 + concerns: the workflow must use its
+    dispatched job_id (before credentials), pin dependencies, restrict
+    to the protected default branch, use the DEDICATED role variable,
+    declare concurrency, and gate on the protected environment."""
+    root = Path(__file__).resolve().parents[1]
+    body = (root / ".github/workflows/arm-launch.yml").read_text()
+    assert "inputs.job_id" in body and "PACKET_JOB" in body, (
+        "the dispatched job_id must be compared to the committed packet")
+    assert body.index("PACKET_JOB") < body.index(
+        "configure-aws-credentials"), "job_id guard must run BEFORE creds"
+    assert "boto3==" in body and "torch==" in body, "dependencies pinned"
+    assert "github.ref == 'refs/heads/master'" in body
+    assert "MEDZEN_ARM_LAUNCH_ROLE_ARN" in body
+    assert "MEDZEN_CI_ROLE_ARN" not in body, (
+        "the general CI role must never launch arms")
+    assert "concurrency:" in body
+    assert "environment: arm-launch-approval" in body
+    # the dedicated role's trust + policy artifacts exist
+    tf = (root / "infra/iam.tf").read_text()
+    assert "environment:arm-launch-approval" in tf
+    assert "refs/heads/master" in tf and "refs/heads/main" not in tf
+    policy = (root / "platform/iam/medzen-arm-launch-role.json").read_text()
+    assert "sagemaker:CreateTrainingJob" in policy
+    assert "iam:PassRole" in policy and "PassedToService" in policy
