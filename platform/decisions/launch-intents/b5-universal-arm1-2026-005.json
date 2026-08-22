@@ -16,11 +16,11 @@
   "sha256": "456c5e35d049493fdaa314f590c38a843662c70c36d2dffabef7350c4df34aa4"
  },
  "review": {
-  "decision": "PENDING_INDEPENDENT_REVIEW",
+  "decision": "APPROVED",
   "file": "platform/decisions/reviews/b5-universal-arm1-2026-005.json",
   "reviewer": "codex-independent-reviewer",
-  "sha256": "cfd8093cdd433212c85ae56daf15a341e83e68a9976d247095508e10c9836832"
+  "sha256": "9620fe12fca4cc85d63a45f4c62b4ef56d2facfca96653ddea5f63fb25cd094d"
  },
- "statement": "the OWNER's approval of the protected workflow run is the authorization event; this record binds EXACTLY what that approval buys. It references the PENDING review bytes, so the chain refuses until re-review flips the record and this intent is regenerated against the APPROVED bytes.",
- "utc": "2026-08-22T00:20:14Z"
+ "statement": "the OWNER's approval of the protected arm-launch workflow run is the authorization; this intent binds exactly what that approval buys: packet 2e1666866a435dcc..., registry 051 ARM1 line, the ftcal-004 receipt chain, ceiling $70, expiry 2026-09-04",
+ "utc": "2026-08-22T03:02:47Z"
 }
