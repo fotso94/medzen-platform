@@ -221,7 +221,9 @@ data "aws_iam_policy_document" "arm_launch_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo_immutable}/.github/workflows/arm-launch-exec.yml@refs/heads/master"]
+      # EMPIRICAL (canary claims dump): GitHub mixes forms — sub is
+      # IMMUTABLE but job_workflow_ref is the PLAIN name form.
+      values = ["${var.github_repo}/.github/workflows/arm-launch-exec.yml@refs/heads/master"]
     }
   }
 }
