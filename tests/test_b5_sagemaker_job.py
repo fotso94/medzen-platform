@@ -775,9 +775,12 @@ def test_forged_executor_env_vars_do_not_skip_committed_gates(tmp_path, monkeypa
         [sys.executable, str(root / "scripts/b5_sagemaker_job.py"),
          "launch", "--bindings", str(bp), "--request", str(rp)],
         capture_output=True, text=True, cwd=root, env=env)
-    assert proc.returncode == 2
-    assert "PENDING_INDEPENDENT_REVIEW" in proc.stdout, (
-        "forged executor vars must land on the next committed gate")
+    assert proc.returncode == 2, proc.stdout
+    # the review chain may legitimately be APPROVED (it is, post-#28);
+    # the invariant is that forged executor vars NEVER produce a launch —
+    # some committed or identity gate must refuse
+    assert "TrainingJobArn" not in proc.stdout
+    assert '"status": "REFUSED"' in proc.stdout
     # the tier tag now serves the ARM ROLE's RequestTag condition
     # (Codex review #25: a caller-controlled tag cannot LOCK the local
     # path — that closure is the owner-applied permissions boundary in

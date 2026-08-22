@@ -846,7 +846,12 @@ def main() -> int:
         # ONE boto3 session: STS pin + AWS receipt facts + the mutation
         import boto3
         session = boto3.session.Session(region_name=REGION)
-        identity = session.client("sts").get_caller_identity()
+        try:
+            identity = session.client("sts").get_caller_identity()
+        except Exception as exc:
+            raise JobRefusal(f"cannot establish an AWS identity "
+                             f"({type(exc).__name__}) — refusing to "
+                             "launch") from exc
         if identity.get("Account") != ACCOUNT:
             raise JobRefusal(
                 f"effective AWS account is {identity.get('Account')!r}, "
