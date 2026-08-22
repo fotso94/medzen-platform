@@ -21,7 +21,7 @@ from medzen_rag_index.index import IndexRefusal, IndexRepository  # noqa: E402
 
 TEST_INDEX = ROOT / "platform/testdata/rag-index"
 RESPONSE_SCHEMA = json.loads((
-    ROOT / "platform/contracts/schemas/speech-v1/rag-response.schema.json"
+    ROOT / "platform/contracts/schemas/speech-v2/rag-response.schema.json"
 ).read_bytes())
 REQUEST_ID = "55555555-5555-4555-8555-555555555555"
 

@@ -6,12 +6,8 @@
       "language_hint": "en",
       "audio_format": "pcm_s16le/16000/mono"
     },
-    {
-      "binary_fixture": "platform/testdata/orchestrator/synthetic-file-request.wav#pcm_frames"
-    },
-    {
-      "type": "end_of_speech"
-    }
+    {"binary_fixture": "platform/testdata/orchestrator/synthetic-file-request.wav#pcm_frames"},
+    {"type": "end_of_speech"}
   ],
   "server": [
     {
@@ -52,9 +48,9 @@
         "tts": null
       },
       "transcript": {
-        "normalization_version": "b6-local-synthetic-v1",
+        "verbatim": "When does the fictional training desk open?",
         "normalized": "When does the fictional training desk open?",
-        "verbatim": "When does the fictional training desk open?"
+        "normalization_version": "b6-local-synthetic-v1"
       },
       "language": "en"
     },
@@ -79,7 +75,6 @@
           "section": "hours",
           "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
           "excerpt": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
-          "grounding_text": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
           "score": 10.0
         },
         {
@@ -90,7 +85,6 @@
           "section": "arrival",
           "content_sha256": "edaaf0f8a6ab248c2b1143c6f9b913e219e3db55998c2819f6298952521571e1",
           "excerpt": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
-          "grounding_text": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
           "score": 6.0
         },
         {
@@ -101,7 +95,6 @@
           "section": "hours",
           "content_sha256": "fe6f9abbbd89dfeacdfefa8e31a9cc9bcc22a6bd8e9174e6c8e6f35f935751eb",
           "excerpt": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
-          "grounding_text": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
           "score": 1.0
         }
       ],

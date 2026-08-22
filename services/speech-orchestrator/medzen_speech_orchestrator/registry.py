@@ -11,9 +11,18 @@ from typing import Any, Protocol
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ALIAS_RE = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 CODE_RE = re.compile(r"^[a-z]{2,3}$")
-ROOT_RE = re.compile(r"^/medzen/registry/test/b6/([0-9a-f]{64})$")
+ROOT_RE = re.compile(
+    r"^/medzen/registry/(?:test/b6|nonprod/b6v2)/([0-9a-f]{64})$")
 LOCAL_CLASSIFICATION = "B6_3_LOCAL_SYNTHETIC_ONLY"
 DEPLOYED_CLASSIFICATION = "B6_6_SYNTHETIC_INTEGRATION_ONLY"
+# B6v2 (Codex serving review): the REAL-provider nonprod namespace.
+V2_CLASSIFICATION = "B6V2_NONPROD_REAL_PROVIDERS"
+V2_ROOT_PREFIX = "/medzen/registry/nonprod/b6v2/"
+# real identities the v2 route may carry (in addition to the
+# synthetic ones, so the composed stub chain stays testable)
+V2_LLM_RE = re.compile(r"^(fake-bedrock-local-v1|bedrock:[a-z0-9.:-]+)$")
+V2_TTS_RE = re.compile(r"^fish:s(1|2\.1-pro-free)$")
+V2_ASR_RE = re.compile(r"^(v0|omniasr_ctc_1b:[0-9a-f]{12})$")
 CONTRACT_VERSION = "medzen.speech.v1"
 DEPLOYED_ENDPOINTS = {
     "asr": "http://asr-runtime.medzen.svc.cluster.local:8081/internal/v1/transcriptions",
@@ -291,12 +300,22 @@ class RegistryRouter:
         if expected_classification not in {
             LOCAL_CLASSIFICATION,
             DEPLOYED_CLASSIFICATION,
+            V2_CLASSIFICATION,
         }:
             raise RegistryRefusal("registry classification policy is unknown")
         self.root = root.rstrip("/")
+        self._root = self.root
+        # v2 roots and classification travel together — a v2 namespace
+        # under a v1 classification (or vice versa) is a config error
+        is_v2_root = self.root.startswith(V2_ROOT_PREFIX.rstrip("/"))
+        if is_v2_root != (expected_classification == V2_CLASSIFICATION):
+            raise RegistryRefusal(
+                "registry root and classification disagree (b6v2 roots "
+                "require B6V2_NONPROD_REAL_PROVIDERS and only them)")
         self.classification = expected_classification
         self.snapshot_sha256 = match.group(1)
-        self.registry_snapshot = f"b6-test:{self.snapshot_sha256}"
+        label = "b6v2-nonprod" if is_v2_root else "b6-test"
+        self.registry_snapshot = f"{label}:{self.snapshot_sha256}"
         self._routes_by_alias, self._aliases_by_code, self.default_language = self._load(store)
 
     def _load(
@@ -434,12 +453,29 @@ class RegistryRouter:
             or SHA256_RE.fullmatch(rag["snapshot_sha256"]) is None
             or not isinstance(rag["query_language"], str)
             or CODE_RE.fullmatch(rag["query_language"]) is None
-            or llm["model_version"] != "fake-bedrock-local-v1"
+            or not self._llm_version_ok(llm["model_version"])
             or llm["policy_id"] != f"{alias}-medzen-v1"
-            or tts["model_version"] is not None
+            or not self._tts_version_ok(tts["model_version"])
         ):
             raise RegistryRefusal("registry route is unsafe or inconsistent")
         return language, rag, llm, tts
+
+    # B6v2: under the nonprod/b6v2 root, routes may bind REAL provider
+    # identities; under the test/b6 roots only the synthetic ones pass.
+    def _is_v2(self) -> bool:
+        return self._root.startswith(V2_ROOT_PREFIX)
+
+    def _llm_version_ok(self, version: Any) -> bool:
+        if version == "fake-bedrock-local-v1":
+            return True
+        return (self._is_v2() and isinstance(version, str)
+                and V2_LLM_RE.fullmatch(version) is not None)
+
+    def _tts_version_ok(self, version: Any) -> bool:
+        if version is None:
+            return True
+        return (self._is_v2() and isinstance(version, str)
+                and V2_TTS_RE.fullmatch(version) is not None)
 
     def _local_route(
         self, alias: str, codes: tuple[str, ...], value: Any

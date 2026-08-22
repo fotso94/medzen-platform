@@ -37,10 +37,10 @@ HEADERS = {
 REQUEST_ID = "11111111-1111-4111-8111-111111111111"
 SESSION_ID = uuid.UUID("22222222-2222-4222-8222-222222222222")
 SCHEMA = json.loads((
-    ROOT / "platform/contracts/schemas/orchestrator-file-v1/response.schema.json"
+    ROOT / "platform/contracts/schemas/orchestrator-file-v2/response.schema.json"
 ).read_bytes())
 GOLDEN = json.loads((
-    ROOT / "platform/contracts/fixtures/orchestrator-file-v1/response.json"
+    ROOT / "platform/contracts/fixtures/orchestrator-file-v2/response.json"
 ).read_bytes())
 
 

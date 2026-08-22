@@ -1,0 +1,34 @@
+{
+  "request_id": "66666666-6666-4666-8666-666666666666",
+  "language": "english",
+  "reply": {
+    "text": "[English synthetic] Answer supported only by synthetic-hours.",
+    "citations": [
+      {
+        "rank": 1,
+        "document_id": "synthetic-hours",
+        "title": "Fictional training desk hours",
+        "source_uri": "medzen://synthetic/training-desk",
+        "section": "hours",
+        "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
+        "excerpt": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
+        "score": 9.0,
+        "grounding_text": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice."
+      }
+    ],
+    "citation_binding_sha256": "e5a2e045c4dfebdbd8caf48a122627d24ef48b5eccc9e8503a4dfa06374a993e"
+  },
+  "policy": {
+    "id": "english-medzen-v1",
+    "sha256": "6325c60b660a2a5ad55093a7f9c73a33978df2afd26223515ff0a5da528f93e4"
+  },
+  "provider": "fake_bedrock",
+  "model_versions": {
+    "asr": "v0-platform-test",
+    "registry_snapshot": "local-contract:MEDZEN-SPEECH-CONTRACT-2026-001",
+    "llm": "fake-bedrock-local-v1",
+    "rag": "sha256:6dc2a9217b44a8cd9523ee051f19a7e20d1cab447ad0029a42796c5211797160",
+    "tts": null
+  },
+  "latency_ms": 1.0
+}

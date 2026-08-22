@@ -50,3 +50,10 @@ class ContentHashCache:
     def __len__(self) -> int:
         with self._lock:
             return len(self._entries)
+
+
+def _process_delivery_url(synthesis_key_sha256: str) -> str:
+    # B6v2: the process-local cache keeps the v1-proof local URI scheme;
+    # only the S3 cache yields fetchable URLs. This helper lets the
+    # gateway ask "how do I deliver this key?" uniformly.
+    return f"medzen+local://tts/{synthesis_key_sha256}"

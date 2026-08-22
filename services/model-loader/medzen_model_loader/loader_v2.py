@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -69,19 +70,53 @@ def validate_manifest_v2(manifest: Mapping[str, Any]) -> dict[str, Any]:
             f"model_version must be {expected_version!r} — the identity "
             "IS the digest; free-text versions drift")
     if classification == CLASSIFICATION_PROD:
-        approval = manifest.get("promotion_approval")
-        if not (isinstance(approval, Mapping)
-                and str(approval.get("protocol", "")).startswith(
-                    "PROMOTION-PROTOCOL-")
-                and approval.get("decision") == "APPROVED"
-                and len(str(approval.get("gate_report_sha256", ""))) == 64):
-            raise LoaderV2Refusal(
-                "PRODUCTION classification requires a promotion-gate "
-                "approval record (protocol id + APPROVED + gate report "
-                "sha) — no artifact ships on training success alone")
+        _verify_committed_promotion(manifest, digest)
     return {"digest": digest, "version": expected_version,
             "classification": classification,
             "languages": sorted(languages)}
+
+
+def _verify_committed_promotion(manifest: Mapping[str, Any],
+                                digest: str) -> None:
+    """Codex serving review (reproduced FABRICATED_PRODUCTION_APPROVAL_
+    ACCEPTED): the manifest's own fields cannot vouch for the manifest.
+    Production standing binds an AUTHORITATIVE promotion record COMMITTED
+    at git HEAD whose bytes hash to the declared sha, whose protocol
+    matches the CURRENT-PROMOTION-PROTOCOL pointer, whose decision is
+    APPROVED, and that names THIS exact artifact digest."""
+    import subprocess
+    approval = manifest.get("promotion_approval")
+    if not isinstance(approval, Mapping):
+        raise LoaderV2Refusal(
+            "PRODUCTION requires a promotion_approval binding")
+    rel = str(approval.get("record") or "")
+    if not rel.startswith("platform/") or ".." in rel or ":" in rel:
+        raise LoaderV2Refusal("promotion record path is unsafe")
+    root = os.environ.get("MEDZEN_REPO_ROOT")
+    git = (["git", "-C", root] if root else ["git"])
+    shown = subprocess.run(git + ["show", f"HEAD:{rel}"],
+                           capture_output=True)
+    if shown.returncode != 0:
+        raise LoaderV2Refusal(
+            f"promotion record {rel} is not committed at HEAD — a "
+            "manifest cannot self-certify production")
+    body = shown.stdout
+    if hashlib.sha256(body).hexdigest() != approval.get("record_sha256"):
+        raise LoaderV2Refusal(
+            "promotion_approval.record_sha256 does not match the "
+            "committed record bytes")
+    record = json.loads(body)
+    if record.get("decision") != "APPROVED":
+        raise LoaderV2Refusal("committed promotion record is not APPROVED")
+    protocol = str(record.get("protocol") or record.get("record") or "")
+    if not protocol.startswith("PROMOTION-PROTOCOL-"):
+        raise LoaderV2Refusal("promotion record protocol id is invalid")
+    bound = str(record.get("artifact_sha256")
+                or record.get("promoted_artifact_sha256") or "")
+    if bound != digest:
+        raise LoaderV2Refusal(
+            f"the committed promotion record promotes {bound[:12]}…, not "
+            f"this artifact {digest[:12]}… — refusing")
 
 
 def load_artifact_v2(manifest: Mapping[str, Any],

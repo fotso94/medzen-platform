@@ -17,5 +17,6 @@ jobs:
     with:
       service: speech-orchestrator
       context_path: services/speech-orchestrator
+      test_paths: "tests/test_speech_orchestrator.py tests/test_speech_orchestrator_streaming.py tests/test_orchestrator_remote_adapters.py tests/test_b6v2_real_provider.py"
       ecr_repository: medzen-orchestrator
       k8s_deployment: speech-orchestrator

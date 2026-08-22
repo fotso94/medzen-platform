@@ -3,9 +3,9 @@
   "session_id": "22222222-2222-4222-8222-222222222222",
   "language": "en",
   "transcript": {
-    "normalization_version": "b6-local-synthetic-v1",
+    "verbatim": "When does the fictional training desk open?",
     "normalized": "When does the fictional training desk open?",
-    "verbatim": "When does the fictional training desk open?"
+    "normalization_version": "b6-local-synthetic-v1"
   },
   "reply": {
     "text": "[English synthetic] Answer supported only by synthetic-hours, synthetic-card, synthetic-support.",
@@ -18,7 +18,6 @@
         "section": "hours",
         "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
         "excerpt": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
-        "grounding_text": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
         "score": 10.0
       },
       {
@@ -29,7 +28,6 @@
         "section": "arrival",
         "content_sha256": "edaaf0f8a6ab248c2b1143c6f9b913e219e3db55998c2819f6298952521571e1",
         "excerpt": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
-        "grounding_text": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
         "score": 6.0
       },
       {
@@ -40,11 +38,10 @@
         "section": "hours",
         "content_sha256": "fe6f9abbbd89dfeacdfefa8e31a9cc9bcc22a6bd8e9174e6c8e6f35f935751eb",
         "excerpt": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
-        "grounding_text": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
         "score": 1.0
       }
     ],
-    "citation_binding_sha256": "56ceaf997c50690f38cd73e57935cda9f8361a4a73959c001a6e8219386a30d8",
+    "citation_binding_sha256": "a3aa2bcf1d9073ba6ca9b3615686f632f4e92cfb6f20a3f6b4cd4a6da9f4f178",
     "audio_url": null,
     "tts_backend": "text_only"
   },

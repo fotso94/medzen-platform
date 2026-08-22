@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.speech.v1.file-response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "session_id",
+    "language",
+    "transcript",
+    "reply",
+    "model_versions",
+    "latency_ms"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "format": "uuid"},
+    "session_id": {"type": "string", "format": "uuid"},
+    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "transcript": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verbatim", "normalized", "normalization_version"],
+      "properties": {
+        "verbatim": {"type": "string"},
+        "normalized": {"type": "string"},
+        "normalization_version": {"type": "string"}
+      }
+    },
+    "reply": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "audio_url", "tts_backend"],
+      "properties": {
+        "text": {"type": "string"},
+        "audio_url": {"type": ["string", "null"]},
+        "tts_backend": {"enum": ["fish", "self_hosted", "text_only"]}
+      }
+    },
+    "model_versions": {"$ref": "#/$defs/model_versions"},
+    "latency_ms": {
+      "type": "object",
+      "additionalProperties": {"type": "number", "minimum": 0}
+    }
+  },
+  "$defs": {
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "properties": {
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string"},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": ["string", "null"]},
+        "tts": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

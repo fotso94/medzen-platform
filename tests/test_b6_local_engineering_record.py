@@ -16,7 +16,12 @@ def value() -> dict:
 
 
 def test_local_engineering_record_binds_every_named_source():
-    for relative, expected in value()["source_bindings"].items():
+    # CURRENT bindings live in the APPEND-ONLY successor record; the
+    # -001 record stays byte-frozen as the closed v1 proof (Codex B6
+    # review round 2: publish successors, never amend history)
+    successor = json.loads((ROOT / "platform/evidence/"
+        "B6-LOCAL-ENGINEERING-2026-008-b6v2.json").read_bytes())
+    for relative, expected in successor["source_bindings"].items():
         actual = hashlib.sha256((ROOT / relative).read_bytes()).hexdigest()
         assert actual == expected, relative
 

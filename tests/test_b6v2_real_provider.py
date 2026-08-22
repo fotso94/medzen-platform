@@ -225,16 +225,13 @@ def test_loader_v2_accepts_the_multilingual_artifact_shape(tmp_path):
 
 
 def test_loader_v2_refuses_production_binding_without_gate_approval():
+    # the committed-record contract is exercised in depth by
+    # test_loader_v2_production_needs_committed_promotion_not_manifest_fields;
+    # here we only confirm PRODUCTION without any binding refuses
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                validate_manifest_v2)
-    with pytest.raises(LoaderV2Refusal, match="promotion-gate"):
+    with pytest.raises(LoaderV2Refusal):
         validate_manifest_v2(_v2_manifest(classification="PRODUCTION"))
-    ok = validate_manifest_v2(_v2_manifest(
-        classification="PRODUCTION",
-        promotion_approval={"protocol": "PROMOTION-PROTOCOL-2026-004",
-                              "decision": "APPROVED",
-                              "gate_report_sha256": "e" * 64}))
-    assert ok["classification"] == "PRODUCTION"
 
 
 # ------------------------------------------------------------ IAM + deploy
@@ -276,3 +273,149 @@ def test_v2_contract_and_v1_proof_coexist():
     v0_loader = (ROOT / "services/model-loader/medzen_model_loader/"
                  "loader.py").read_text()
     assert "whisper-large-v3" in v0_loader, "v0 proof loader unchanged"
+
+
+# ------------------------------------------------- composed end-to-end
+def test_registry_accepts_v2_nonprod_root_and_real_identities():
+    """Codex review round 2 (reproduced B6V2_REGISTRY_REFUSED): the
+    deployed registry only accepted /medzen/registry/test/b6/... The v2
+    nonprod root + real provider identities must route."""
+    import medzen_speech_orchestrator.registry as reg
+    assert reg.ROOT_RE.fullmatch(
+        "/medzen/registry/nonprod/b6v2/" + "a" * 64) is not None
+    assert reg.V2_LLM_RE.fullmatch("bedrock:eu.anthropic.claude") is not None
+    assert reg.V2_TTS_RE.fullmatch("fish:s1") is not None
+    assert reg.V2_ASR_RE.fullmatch("omniasr_ctc_1b:" + "a" * 12) is not None
+    # v2 root REQUIRES the v2 classification (and vice versa)
+    class _EmptyStore:
+        def get_parameters_by_path(self, path):
+            return []
+    import pytest
+    with pytest.raises(reg.RegistryRefusal, match="disagree"):
+        reg.RegistryRouter(_EmptyStore(),
+                           "/medzen/registry/nonprod/b6v2/" + "a" * 64,
+                           expected_classification=reg.LOCAL_CLASSIFICATION)
+
+
+def test_orchestrator_accepts_real_fish_version_fill():
+    """Codex review round 2 (reproduced REAL_FISH_ORCHESTRATOR_REFUSED):
+    a real Fish result sets model_versions.tts=fish:s1; the orchestrator
+    required tts_versions == pre-TTS versions and refused it."""
+    body = (ROOT / "services/speech-orchestrator/"
+            "medzen_speech_orchestrator/orchestrator.py").read_text()
+    assert "tts_identity_ok" in body
+    assert "filled_tts" in body, (
+        "the TTS step must be allowed to FILL the tts version slot while "
+        "asr/rag/llm/snapshot stay fixed")
+
+
+def test_tts_app_uses_governed_selection_and_optional_s3(monkeypatch):
+    """Codex review round 2 (reproduced APP_PATH_RESOLVE_UNAPPROVED): the
+    real app called the non-enforcing resolve(); it must use the governed
+    selector and honor the S3 audio cache when configured."""
+    app_src = (ROOT / "services/speech-tts-gateway/"
+               "medzen_speech_tts_gateway/app.py").read_text()
+    assert "from .voices import select_voice, enforce_model" in app_src
+    assert "resolve as _resolve_voice" not in app_src, (
+        "the non-enforcing resolve() must be gone from the real path")
+    assert "S3AudioCache" in app_src and "MEDZEN_TTS_AUDIO_BUCKET" in app_src
+
+
+def test_gateway_delivery_url_prefers_s3_over_local_scheme():
+    from medzen_speech_tts_gateway.gateway import TTSGateway
+    import inspect
+    src = inspect.getsource(TTSGateway._delivery_url)
+    assert "presign" in src and "medzen+local" in src, (
+        "delivery must be S3 presigned when the cache supports it, "
+        "local scheme only as the v1-proof fallback")
+
+
+def test_s3_cache_only_404_is_a_miss_others_raise():
+    """Codex review round 2: non-404 S3 failures must fail CLOSED."""
+    from medzen_speech_tts_gateway.s3_cache import S3AudioCache
+    import pytest
+
+    class Boom:
+        def __init__(self, err):
+            self.err = err
+        def head_object(self, **kw):
+            raise self.err
+        def generate_presigned_url(self, *a, **k):
+            return "https://x"
+
+    class ClientError(Exception):
+        def __init__(self, code, http):
+            self.response = {"Error": {"Code": code},
+                             "ResponseMetadata": {"HTTPStatusCode": http}}
+
+    miss = S3AudioCache(bucket="b", kms_key_arn="arn:kms",
+                         client=Boom(ClientError("NoSuchKey", 404)))
+    assert miss.get("ab" * 32) is None
+    throttled = S3AudioCache(bucket="b", kms_key_arn="arn:kms",
+                              client=Boom(ClientError("Throttling", 503)))
+    with pytest.raises(Exception):
+        throttled.get("ab" * 32)
+
+
+def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_path):
+    """Codex review round 2 (reproduced FABRICATED_PRODUCTION_APPROVAL_
+    ACCEPTED): a fabricated protocol/APPROVED/64-char value passed. The
+    approval must bind a COMMITTED record, hash-verified, that promotes
+    THIS digest."""
+    import hashlib
+    import subprocess
+    from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
+                                               validate_manifest_v2)
+    import pytest
+    digest = "ab" * 32
+    # fabricated manifest-only approval refuses
+    with pytest.raises(LoaderV2Refusal):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION",
+            promotion_approval={"protocol": "PROMOTION-PROTOCOL-9999",
+                                 "decision": "APPROVED",
+                                 "gate_report_sha256": "z" * 64}))
+    # a real committed record that promotes this digest passes
+    repo = tmp_path / "repo"
+    (repo / "platform/evidence").mkdir(parents=True)
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    import json as _json
+    rec = {"record": "PROMOTION-PROTOCOL-2026-004", "decision": "APPROVED",
+           "artifact_sha256": digest}
+    rec_rel = "platform/evidence/PROMO.json"
+    (repo / rec_rel).write_text(_json.dumps(rec))
+    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "promo"], check=True)
+    rec_sha = hashlib.sha256((repo / rec_rel).read_bytes()).hexdigest()
+    import os
+    os.environ["MEDZEN_REPO_ROOT"] = str(repo)
+    try:
+        ok = validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION",
+            promotion_approval={"record": rec_rel, "record_sha256": rec_sha}))
+        assert ok["classification"] == "PRODUCTION"
+        # a record promoting a DIFFERENT digest refuses
+        with pytest.raises(LoaderV2Refusal, match="promotes"):
+            validate_manifest_v2(_v2_manifest(
+                digest="cd" * 32, classification="PRODUCTION",
+                promotion_approval={"record": rec_rel,
+                                     "record_sha256": rec_sha}))
+    finally:
+        os.environ.pop("MEDZEN_REPO_ROOT", None)
+
+
+def test_ci_pipeline_builds_from_repo_root_with_source_commit():
+    """Codex review round 2 (reproduced COPY .../requirements.txt not
+    found): Dockerfiles COPY repo-root paths, so context must be root,
+    the Dockerfile named, SOURCE_COMMIT supplied, and each service maps
+    to REAL test files (the -k selection collected zero)."""
+    pipeline = (ROOT / ".github/workflows/_service-pipeline.yml").read_text()
+    assert "context: ." in pipeline
+    assert "file: ${{ inputs.context_path }}/Dockerfile" in pipeline
+    assert "SOURCE_COMMIT=${{ github.sha }}" in pipeline
+    assert "inputs.test_paths" in pipeline
+    assert '-k "${{ inputs.service }}"' not in pipeline
+    for wf in sorted((ROOT / ".github/workflows").glob("app-*.yml")):
+        assert "test_paths:" in wf.read_text(), wf.name

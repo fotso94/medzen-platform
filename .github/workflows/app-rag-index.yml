@@ -17,5 +17,6 @@ jobs:
     with:
       service: rag-index
       context_path: services/rag-index
+      test_paths: "tests/test_rag_index.py tests/test_b6_6_registry_rag_alignment.py"
       ecr_repository: medzen-rag-index
       k8s_deployment: rag-index

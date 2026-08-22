@@ -17,5 +17,6 @@ jobs:
     with:
       service: tts-gateway
       context_path: services/speech-tts-gateway
+      test_paths: "tests/test_tts_app.py tests/test_tts_gateway.py tests/test_tts_contract.py tests/test_b6_tts_governance.py"
       ecr_repository: medzen-speech-tts-gateway
       k8s_deployment: tts-gateway

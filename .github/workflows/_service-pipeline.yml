@@ -22,6 +22,10 @@ on:
         description: service key in platform/services.yaml
         required: true
         type: string
+      test_paths:
+        description: "explicit pytest targets for this service (Codex serving review: -k selections collected ZERO tests)"
+        required: true
+        type: string
       context_path:
         description: docker build context directory
         required: true
@@ -52,7 +56,7 @@ jobs:
       - name: generated artifacts must match services.yaml
         run: python platform/generate.py --check
       - name: focused service tests
-        run: python -m pytest tests/ -q -k "${{ inputs.service }}"
+        run: python -m pytest -q ${{ inputs.test_paths }}
 
   build-scan:
     needs: test
@@ -66,7 +70,15 @@ jobs:
         id: build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
-          context: ${{ inputs.context_path }}
+          # B6v2 (Codex serving review): the Dockerfiles COPY
+          # services/<svc>/... i.e. repository-ROOT paths, so the build
+          # context MUST be the repo root, not the service dir; the
+          # Dockerfile is named explicitly and SOURCE_COMMIT supplied
+          # (the images `RUN test -n "$SOURCE_COMMIT"`).
+          context: .
+          file: ${{ inputs.context_path }}/Dockerfile
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
           platforms: linux/amd64
           load: true
           tags: ${{ inputs.service }}:ci-${{ github.sha }}
@@ -94,7 +106,10 @@ jobs:
       - name: rebuild and push by digest
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
-          context: ${{ inputs.context_path }}
+          context: .
+          file: ${{ inputs.context_path }}/Dockerfile
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
           platforms: linux/amd64
           push: true
           tags: 558069890522.dkr.ecr.eu-central-1.amazonaws.com/${{ inputs.ecr_repository }}:${{ github.sha }}

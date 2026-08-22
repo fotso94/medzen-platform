@@ -17,5 +17,6 @@ jobs:
     with:
       service: llm-gateway
       context_path: services/llm-gateway
+      test_paths: "tests/test_llm_gateway.py tests/test_llm_contract.py"
       ecr_repository: medzen-llm-gateway
       k8s_deployment: llm-gateway

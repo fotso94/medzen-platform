@@ -259,6 +259,23 @@ class TTSGateway:
             cache_hit=hit, provider_attempted=attempted,
         )
 
+    def _delivery_url(self, audio: "CachedAudio") -> str:
+        # B6v2 (Codex serving review): fetchable, expiring, cross-replica
+        # delivery when the cache is S3-backed; medzen+local:// only under
+        # the process-local v1-proof cache.
+        put = getattr(self.cache, "put", None)
+        presign = getattr(self.cache, "presign", None)
+        if callable(put) and callable(presign):
+            existing = self.cache.get(audio.synthesis_key_sha256)
+            if existing is None:
+                self.cache.put(
+                    synthesis_key_sha256=audio.synthesis_key_sha256,
+                    audio_bytes=audio.audio,
+                    media_type=audio.media_type,
+                    model_version=audio.model_version)
+            return self.cache.presign(audio.synthesis_key_sha256)
+        return f"medzen+local://tts/{audio.synthesis_key_sha256}"
+
     def _fish_response(
         self, request_id: str, language: str, text: str, text_hash: str,
         audio: CachedAudio, versions: dict[str, str | None], *,
@@ -274,7 +291,7 @@ class TTSGateway:
             key=audio.synthesis_key_sha256,
             backend="fish",
             provider=self.provider.name if self.provider else "text_only",
-            audio_url=f"medzen+local://tts/{audio.synthesis_key_sha256}",
+            audio_url=self._delivery_url(audio),
             media_type=audio.media_type,
             audio_sha256=audio.audio_sha256,
             versions=output_versions,

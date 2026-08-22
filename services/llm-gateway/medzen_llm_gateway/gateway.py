@@ -200,12 +200,18 @@ class LLMGateway:
         self.breaker.record_success()
         output_versions = dict(versions)
         output_versions["llm"] = result.model_version
+        # B6v2 (Codex review): return ONLY the citations the model
+        # actually used — echoing every supplied document made it
+        # impossible to tell what grounded the answer
+        cited = set(result.cited_document_ids)
+        reply_citations = [dict(item) for item in citations
+                            if item["document_id"] in cited]
         return {
             "request_id": request_id,
             "language": language,
             "reply": {
                 "text": result.text,
-                "citations": citations,
+                "citations": reply_citations,
                 "citation_binding_sha256": binding,
             },
             "policy": {"id": policy.policy_id, "sha256": policy.policy_sha256},

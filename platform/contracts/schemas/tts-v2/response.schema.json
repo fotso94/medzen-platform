@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.tts.v1.response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id", "language", "text", "content_sha256",
+    "synthesis_key_sha256", "tts_backend", "provider", "audio_url",
+    "media_type", "audio_sha256", "model_versions", "cache_hit", "provider_attempted",
+    "degradation_reason"
+  ],
+  "properties": {
+    "request_id": {"type": "string", "format": "uuid"},
+    "language": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 8192},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "synthesis_key_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "tts_backend": {"enum": ["fish", "text_only"]},
+    "provider": {"enum": ["fake_fish", "text_only"]},
+    "audio_url": {
+      "type": ["string", "null"],
+      "pattern": "^medzen\\+local://tts/[0-9a-f]{64}$"
+    },
+    "media_type": {"enum": ["audio/vnd.medzen.synthetic", null]},
+    "audio_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "model_versions": {"$ref": "#/$defs/model_versions"},
+    "cache_hit": {"type": "boolean"},
+    "provider_attempted": {"type": "boolean"},
+    "degradation_reason": {
+      "enum": [
+        null, "POLICY_TEXT_ONLY", "FISH_TIMEOUT", "FISH_UNAVAILABLE",
+        "FISH_CIRCUIT_OPEN", "FISH_INVALID_RESPONSE"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"tts_backend": {"const": "fish"}}},
+      "then": {
+        "properties": {
+          "provider": {"const": "fake_fish"},
+          "audio_url": {"type": "string"},
+          "media_type": {"const": "audio/vnd.medzen.synthetic"},
+          "audio_sha256": {"type": "string"},
+          "model_versions": {"properties": {"tts": {"type": "string"}}},
+          "degradation_reason": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"tts_backend": {"const": "text_only"}}},
+      "then": {
+        "properties": {
+          "audio_url": {"type": "null"},
+          "media_type": {"type": "null"},
+          "audio_sha256": {"type": "null"},
+          "model_versions": {"properties": {"tts": {"type": "null"}}},
+          "degradation_reason": {"type": "string"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "properties": {
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string", "minLength": 1},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": ["string", "null"]},
+        "tts": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

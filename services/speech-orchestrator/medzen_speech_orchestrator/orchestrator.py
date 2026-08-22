@@ -301,6 +301,14 @@ class SpeechOrchestrator:
                     )
                 )
                 tts_versions = self._versions(tts.get("model_versions"), "TTS")
+                # B6v2 (Codex serving review): a REAL TTS provider FILLS
+                # the tts version slot (e.g. fish:s1); the pre-TTS
+                # versions carry tts=None. Equality on every OTHER key,
+                # and tts either preserved-None or newly set by this
+                # step — never a silent change to asr/rag/llm/snapshot.
+                expected_tts = dict(versions)
+                filled_tts = dict(versions, tts=tts_versions.get("tts"))
+                tts_identity_ok = tts_versions in (expected_tts, filled_tts)
                 if (
                     tts.get("request_id") != request_id
                     or tts.get("language") != route.alias
@@ -311,7 +319,7 @@ class SpeechOrchestrator:
                     or not isinstance(tts.get("content_sha256"), str)
                     or tts["content_sha256"]
                     != hashlib.sha256(reply["text"].encode("utf-8")).hexdigest()
-                    or tts_versions != versions
+                    or not tts_identity_ok
                     or (
                         tts.get("tts_backend") == "text_only"
                         and tts.get("audio_url") is not None
@@ -327,7 +335,8 @@ class SpeechOrchestrator:
                     "audio_url": tts.get("audio_url"),
                     "tts_backend": tts["tts_backend"],
                 }
-                versions = tts_versions
+                # adopt the (possibly newly-filled) tts version
+                versions = filled_tts if tts_versions == filled_tts else tts_versions
             total_ms = round((self.clock() - total_started) * 1000, 3)
             return session_id, {
                 "request_id": request_id,

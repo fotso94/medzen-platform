@@ -17,5 +17,6 @@ jobs:
     with:
       service: asr-runtime
       context_path: services/asr-runtime
+      test_paths: "tests/test_asr_runtime.py tests/test_asr_eval_runtime.py"
       ecr_repository: medzen-asr-runtime
       k8s_deployment: asr-runtime

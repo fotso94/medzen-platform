@@ -85,22 +85,32 @@ def create_app(
                     )
                 if mode == "fish":
                     from .provider import RealFishProvider
-                    from .voices import resolve as _resolve_voice
-                    # MEDZEN_FISH_SECRET_ID lets deploy config point at an
-                    # existing secret (name or full ARN) — e.g. the live dev
-                    # service's medzen/tts/dev/fish-api-key, so the SAME key
-                    # is reused without anyone handling its value
-                    # (investigation 2026-08-20: the dev service passes its
-                    # secret ARN via env and fetches at runtime, same
-                    # pattern). Default stays the platform-namespace secret.
+                    from .voices import select_voice, enforce_model
                     secret_kw = {}
                     if os.environ.get("MEDZEN_FISH_SECRET_ID"):
                         secret_kw["secret_id"] = os.environ["MEDZEN_FISH_SECRET_ID"]
+                    # B6v2 (Codex serving review): the REAL path now uses
+                    # the GOVERNED selector — select_voice refuses
+                    # unapproved voices and enforce_model refuses a
+                    # request that would silently switch a voice's Fish
+                    # model. resolve() (non-enforcing) is gone from here.
+                    def _governed_voice(language):
+                        voice = select_voice(language)
+                        enforce_model(voice, None)
+                        return voice.reference_id
+                    # B6v2: S3-backed audio delivery when configured
+                    # (KMS-encrypted, cross-replica, expiring retrieval);
+                    # the process-local cache remains only as the v1-proof
+                    # default when no bucket is set.
+                    cache = None
+                    if os.environ.get("MEDZEN_TTS_AUDIO_BUCKET"):
+                        from .s3_cache import S3AudioCache
+                        cache = S3AudioCache()
                     app.state.gateway = TTSGateway(
                         provider=RealFishProvider(**secret_kw),
                         breaker=fish_breaker(),
-                        voice_resolver=lambda language:
-                            _resolve_voice(language).reference_id,
+                        voice_resolver=_governed_voice,
+                        cache=cache,
                     )
                 else:
                     app.state.gateway = TTSGateway(provider=None, breaker=None)

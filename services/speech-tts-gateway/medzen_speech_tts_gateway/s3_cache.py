@@ -67,8 +67,26 @@ class S3AudioCache:
         key = self._key(synthesis_key_sha256)
         try:
             head = self._s3.head_object(Bucket=self.bucket, Key=key)
-        except Exception:                                     # noqa: BLE001
-            return None
+        except Exception as exc:                              # noqa: BLE001
+            # B6v2 (Codex serving review): ONLY a 404/NoSuchKey is a
+            # cache MISS. Any other S3 failure (perms, throttling,
+            # outage) must fail CLOSED — silently treating it as a miss
+            # would re-synthesize and re-bill on every hiccup and hide
+            # real breakage.
+            code = getattr(getattr(exc, "response", None), "get",
+                           lambda *_: None)("Error") if hasattr(
+                               exc, "response") else None
+            status = None
+            if isinstance(getattr(exc, "response", None), dict):
+                status = exc.response.get("Error", {}).get("Code")
+                http = exc.response.get("ResponseMetadata", {}).get(
+                    "HTTPStatusCode")
+            else:
+                http = None
+            if status in ("404", "NoSuchKey", "NotFound") or http == 404 \
+                    or isinstance(exc, KeyError):
+                return None
+            raise
         return StoredAudio(
             audio_url=self.presign(synthesis_key_sha256),
             media_type=head.get("ContentType", "audio/mpeg"),

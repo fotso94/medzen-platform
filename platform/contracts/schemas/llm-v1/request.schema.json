@@ -3,167 +3,63 @@
   "$id": "medzen.llm.v1.request",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "request_id",
-    "language",
-    "transcript",
-    "rag",
-    "model_versions"
-  ],
+  "required": ["request_id", "language", "transcript", "rag", "model_versions"],
   "properties": {
-    "request_id": {
-      "type": "string",
-      "format": "uuid"
-    },
-    "language": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]{0,31}$"
-    },
+    "request_id": {"type": "string", "format": "uuid"},
+    "language": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
     "transcript": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "verbatim",
-        "normalized",
-        "normalization_version"
-      ],
+      "required": ["verbatim", "normalized", "normalization_version"],
       "properties": {
-        "verbatim": {
-          "type": "string",
-          "maxLength": 8000
-        },
-        "normalized": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 8000
-        },
-        "normalization_version": {
-          "type": "string",
-          "minLength": 1
-        }
+        "verbatim": {"type": "string", "maxLength": 8000},
+        "normalized": {"type": "string", "minLength": 1, "maxLength": 8000},
+        "normalization_version": {"type": "string", "minLength": 1}
       }
     },
     "rag": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "query_id",
-        "index_snapshot_sha256",
-        "citations"
-      ],
+      "required": ["query_id", "index_snapshot_sha256", "citations"],
       "properties": {
-        "query_id": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        },
-        "index_snapshot_sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        },
+        "query_id": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "index_snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "citations": {
           "type": "array",
           "minItems": 1,
           "maxItems": 5,
-          "items": {
-            "$ref": "#/$defs/citation"
-          }
+          "items": {"$ref": "#/$defs/citation"}
         }
       }
     },
-    "model_versions": {
-      "$ref": "#/$defs/model_versions"
-    }
+    "model_versions": {"$ref": "#/$defs/model_versions"}
   },
   "$defs": {
     "citation": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "rank",
-        "document_id",
-        "title",
-        "source_uri",
-        "section",
-        "content_sha256",
-        "excerpt",
-        "score"
-      ],
+      "required": ["rank", "document_id", "title", "source_uri", "section", "content_sha256", "excerpt", "score"],
       "properties": {
-        "rank": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "document_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "title": {
-          "type": "string",
-          "minLength": 1
-        },
-        "source_uri": {
-          "type": "string",
-          "minLength": 1
-        },
-        "section": {
-          "type": "string",
-          "minLength": 1
-        },
-        "content_sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
-        },
-        "excerpt": {
-          "type": "string",
-          "minLength": 1
-        },
-        "score": {
-          "type": "number",
-          "exclusiveMinimum": 0
-        },
-        "grounding_text": {
-          "type": "string",
-          "maxLength": 1200
-        }
+        "rank": {"type": "integer", "minimum": 1},
+        "document_id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "source_uri": {"type": "string", "minLength": 1},
+        "section": {"type": "string", "minLength": 1},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "excerpt": {"type": "string", "minLength": 1},
+        "score": {"type": "number", "exclusiveMinimum": 0}
       }
     },
     "model_versions": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "asr",
-        "registry_snapshot",
-        "llm",
-        "rag",
-        "tts"
-      ],
+      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
       "properties": {
-        "asr": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "registry_snapshot": {
-          "type": "string",
-          "minLength": 1
-        },
-        "llm": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "rag": {
-          "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$"
-        },
-        "tts": {
-          "type": [
-            "string",
-            "null"
-          ]
-        }
+        "asr": {"type": ["string", "null"]},
+        "registry_snapshot": {"type": "string", "minLength": 1},
+        "llm": {"type": ["string", "null"]},
+        "rag": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "tts": {"type": ["string", "null"]}
       }
     }
   }

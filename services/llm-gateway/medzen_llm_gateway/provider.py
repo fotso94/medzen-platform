@@ -27,6 +27,9 @@ class ProviderResult:
     cited_document_ids: tuple[str, ...]
     citation_binding_sha256: str
     model_version: str
+    # B6v2: hash of the exact citation bytes sent to the provider —
+    # auditable grounding identity (was computed then DISCARDED)
+    grounding_sha256: str | None = None
 
 
 class FakeBedrockProvider:
@@ -159,4 +162,5 @@ class BedrockProvider:
             cited_document_ids=cited,
             citation_binding_sha256=request.citation_binding_sha256,
             model_version=self.model_version,
+            grounding_sha256=grounding_sha256,
         )

@@ -22,10 +22,10 @@ from medzen_llm_gateway.shared_resilience import CircuitBreaker, State  # noqa: 
 
 
 REQUEST = json.loads((
-    ROOT / "platform/contracts/fixtures/llm-v1/request.json"
+    ROOT / "platform/contracts/fixtures/llm-v2/request.json"
 ).read_bytes())
 RESPONSE_SCHEMA = json.loads((
-    ROOT / "platform/contracts/schemas/llm-v1/response.schema.json"
+    ROOT / "platform/contracts/schemas/llm-v2/response.schema.json"
 ).read_bytes())
 
 

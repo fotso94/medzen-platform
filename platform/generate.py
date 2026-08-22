@@ -56,8 +56,11 @@ def arn_for(perm: dict, meta: dict) -> list[str]:
         # the EU cross-region profile FANS OUT to destination-region
         # foundation models — granting only the in-region ARNs made
         # every real invocation fail (Codex serving review finding 7)
+        # ALL SIX destinations the eu.* cross-region profile fans out
+        # to (Codex serving review round 2: eu-south-1/2 were missing;
+        # live sim implicit-denied non-Frankfurt regions)
         destinations = ["eu-central-1", "eu-west-1", "eu-west-3",
-                        "eu-north-1"]
+                        "eu-north-1", "eu-south-1", "eu-south-2"]
         return ([f"arn:aws:bedrock:{d}::foundation-model/*"
                  for d in destinations]
                 + [f"arn:aws:bedrock:{region}:{acct}:inference-profile/eu.*"])
