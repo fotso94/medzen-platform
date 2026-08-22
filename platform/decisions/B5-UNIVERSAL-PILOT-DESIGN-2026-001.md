@@ -273,3 +273,22 @@ launches. Packet/registry SSH-era language corrected via successors
 (packet 2e166686..., registry 051). Plan caveat recorded: required
 reviewers on private repos need GitHub Enterprise — verify before
 relying on the environment gate.
+
+## Rev13 (2026-08-22T01:10:59Z) — owner fast-path: activation packet built and verified
+Owner directive (verbatim intent): dev environment, make it work fast;
+key rotation, public-repo cleanup and the local credential boundary are
+owner-accepted risks for now. Repository made PUBLIC by the owner
+(owner-session flip, anonymously verified) — required reviewers now
+work on the current plan. Packet contents, all verified empirically:
+arm role policy with mandatory arm tag / qualified instance-subnet-SG
+matching / OutputKmsKey ARN / runtime ceiling 144000s — Access Analyzer
+ZERO findings; trust doc validated as AssumeRolePolicyDocument with
+ZERO errors (dispositions recorded); terraform plan with
+arm_launch_enabled=true and b7_ci_enabled=false = EXACTLY 2 add / 0
+change / 0 destroy (existing OIDC provider read as data source);
+protected caller -> REUSABLE credential-bearing exec workflow (real
+job_workflow_ref target; typed input only in if:; no expressions in any
+run block); positive STS canary through the exact production chain +
+negative canary (same environment, wrong workflow -> must be refused);
+terraform fmt+validate, actionlint x4, full suite green. Evidence
+bundle: platform/evidence/arm-activation/.

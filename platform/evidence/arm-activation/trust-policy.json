@@ -1,0 +1,17 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Effect": "Allow",
+   "Principal": {"Federated": "arn:aws:iam::558069890522:oidc-provider/token.actions.githubusercontent.com"},
+   "Action": "sts:AssumeRoleWithWebIdentity",
+   "Condition": {
+    "StringEquals": {
+     "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+     "token.actions.githubusercontent.com:sub": "repo:fotso94/medzen-platform:environment:arm-launch-approval",
+     "token.actions.githubusercontent.com:job_workflow_ref": "fotso94/medzen-platform/.github/workflows/arm-launch-exec.yml@refs/heads/master"
+    }
+   }
+  }
+ ]
+}

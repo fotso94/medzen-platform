@@ -1,0 +1,32 @@
+name: arm-launch-canary-unauthorized
+# NEGATIVE canary (fast-path packet item 4): this job uses the SAME
+# protected environment (so the sub claim matches) but is NOT the
+# reusable exec workflow — its job_workflow_ref names THIS file, so the
+# role trust must REFUSE the assumption. The job SUCCEEDS only when the
+# credentials step FAILS, proving the exact-workflow binding is real.
+permissions:
+  contents: read
+  id-token: write
+on:
+  workflow_dispatch: {}
+jobs:
+  must-be-refused:
+    runs-on: ubuntu-latest
+    environment: arm-launch-approval
+    if: vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != ''
+    steps:
+      - uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        id: assume
+        continue-on-error: true
+        with:
+          role-to-assume: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: the assumption above must have FAILED
+        env:
+          ASSUME_OUTCOME: ${{ steps.assume.outcome }}
+        run: |
+          if [ "$ASSUME_OUTCOME" = "success" ]; then
+            echo "TRUST POLICY TOO BROAD: an unauthorized workflow assumed the arm-launch role"
+            exit 1
+          fi
+          echo "NEGATIVE_CANARY_OK: unauthorized workflow was refused"

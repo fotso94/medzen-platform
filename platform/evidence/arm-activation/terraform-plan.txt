@@ -1,0 +1,274 @@
+data.aws_iam_policy_document.b6_probe_ecr_api_endpoint: Reading...
+data.aws_iam_openid_connect_provider.github_existing[0]: Reading...
+data.aws_iam_policy_document.registry_publisher_trust: Reading...
+data.aws_vpc.shared: Reading...
+data.aws_caller_identity.me: Reading...
+data.aws_subnet.selected["subnet-00232b25bc1ac407a"]: Reading...
+data.aws_subnet.selected["subnet-01fb2fc3f56bce55e"]: Reading...
+data.aws_subnet.selected["subnet-05029419c6c61a536"]: Reading...
+data.aws_iam_policy_document.b6_probe_ecr_api_endpoint: Read complete after 0s [id=1680018427]
+aws_s3_bucket.data: Refreshing state... [id=medzen-speech]
+data.aws_iam_policy_document.pod_identity_trust: Reading...
+data.aws_iam_policy_document.registry_publisher_trust: Read complete after 0s [id=4265782774]
+data.aws_iam_policy_document.pod_identity_trust: Read complete after 0s [id=819195744]
+data.aws_iam_policy_document.b6_probe_execution_trust: Reading...
+aws_kms_key.audio: Refreshing state... [id=d3c8d8fa-b188-476b-a32b-fb65bebb3bda]
+data.aws_iam_policy_document.eks_cluster_trust: Reading...
+data.aws_iam_policy_document.b6_probe_execution_trust: Read complete after 0s [id=1077804475]
+data.aws_iam_policy_document.eks_cluster_trust: Read complete after 0s [id=3552664922]
+aws_s3_bucket.audio: Refreshing state... [id=medzen-audio-cache]
+aws_ecr_registry_scanning_configuration.b6a_runtime: Refreshing state... [id=558069890522]
+data.aws_caller_identity.me: Read complete after 1s [id=558069890522]
+data.aws_iam_policy_document.node_trust: Reading...
+data.aws_iam_policy_document.node_trust: Read complete after 0s [id=2851119427]
+aws_iam_role.b6a_asr: Refreshing state... [id=medzen-b6a-asr-role]
+data.aws_iam_openid_connect_provider.github_existing[0]: Read complete after 1s [id=arn:aws:iam::558069890522:oidc-provider/token.actions.githubusercontent.com]
+aws_kms_key.data: Refreshing state... [id=9c336116-c648-4548-95c6-1b926478ae57]
+data.aws_iam_policy_document.trainer_trust: Reading...
+data.aws_iam_policy_document.trainer_trust: Read complete after 0s [id=3998084094]
+data.aws_partition.current: Reading...
+data.aws_partition.current: Read complete after 0s [id=aws]
+aws_iam_role.b6_load_balancer_controller: Refreshing state... [id=medzen-lbc-role]
+aws_iam_role.pod["speech-orchestrator"]: Refreshing state... [id=medzen-orch-role]
+data.aws_subnet.selected["subnet-00232b25bc1ac407a"]: Read complete after 1s [id=subnet-00232b25bc1ac407a]
+data.aws_subnet.selected["subnet-01fb2fc3f56bce55e"]: Read complete after 1s [id=subnet-01fb2fc3f56bce55e]
+data.aws_subnet.selected["subnet-05029419c6c61a536"]: Read complete after 1s [id=subnet-05029419c6c61a536]
+aws_iam_role.pod["rag-index"]: Refreshing state... [id=medzen-rag-role]
+aws_iam_role.pod["model-loader"]: Refreshing state... [id=medzen-loader-role]
+aws_iam_role.pod["llm-gateway"]: Refreshing state... [id=medzen-llm-role]
+aws_iam_role.pod["tts-gateway"]: Refreshing state... [id=medzen-tts-role]
+aws_iam_role.pod["asr-runtime"]: Refreshing state... [id=medzen-asr-role]
+aws_iam_role.cluster: Refreshing state... [id=medzen-speech-cluster-role]
+aws_iam_role.node: Refreshing state... [id=medzen-speech-node-role]
+data.aws_iam_policy_document.arm_launch_trust[0]: Reading...
+data.aws_iam_policy_document.arm_launch_trust[0]: Read complete after 0s [id=1038354204]
+aws_iam_role_policy.b6a_asr: Refreshing state... [id=medzen-b6a-asr-role:medzen-b6a-asr-access]
+aws_iam_role.trainer: Refreshing state... [id=medzen-trainer-role]
+aws_iam_role.builder: Refreshing state... [id=medzen-builder-role]
+aws_iam_role.registry_publisher: Refreshing state... [id=medzen-registry-publisher-role]
+data.aws_iam_policy_document.audit_key: Reading...
+data.aws_iam_policy_document.audit_key: Read complete after 0s [id=2593229130]
+data.aws_iam_policy_document.b6_probe_execution: Reading...
+data.aws_iam_policy_document.b6_probe_execution: Read complete after 0s [id=3142367594]
+aws_kms_alias.audio: Refreshing state... [id=alias/medzen-audio]
+data.aws_iam_policy_document.registry_publisher_b6_5c_tags: Reading...
+data.aws_iam_policy_document.registry_publisher_b6_5c_tags: Read complete after 0s [id=2947379428]
+data.aws_iam_policy_document.b6_probe_ecr_dkr_endpoint: Reading...
+data.aws_iam_policy_document.b6_probe_ecr_dkr_endpoint: Read complete after 0s [id=1346736515]
+data.aws_iam_policy_document.b6_probe_s3_endpoint: Reading...
+data.aws_iam_policy_document.b6_probe_s3_endpoint: Read complete after 0s [id=2542090308]
+aws_kms_alias.data: Refreshing state... [id=alias/medzen-data]
+data.aws_iam_policy_document.b6_client_keys_kms: Reading...
+data.aws_iam_policy_document.b6_client_keys_kms: Read complete after 0s [id=795930826]
+aws_ecr_repository.b6a_nvidia_dra: Refreshing state... [id=medzen-nvidia-dra]
+data.aws_iam_policy_document.registry_publisher: Reading...
+data.aws_iam_policy_document.registry_publisher: Read complete after 0s [id=901907718]
+aws_secretsmanager_secret.fish: Refreshing state... [id=arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/speech/fish-api-key-Oo2iLp]
+aws_ecr_repository.b6_load_balancer_controller: Refreshing state... [id=medzen-aws-load-balancer-controller]
+aws_secretsmanager_secret.client_keys: Refreshing state... [id=arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/speech/client-api-keys-MGfX7x]
+aws_ecr_repository.svc["medzen-model-loader"]: Refreshing state... [id=medzen-model-loader]
+aws_ecr_repository.svc["medzen-trainer"]: Refreshing state... [id=medzen-trainer]
+aws_ecr_repository.svc["medzen-asr-runtime"]: Refreshing state... [id=medzen-asr-runtime]
+data.aws_vpc.shared: Read complete after 2s [id=vpc-051aa9df8b64bf141]
+aws_ecr_repository.svc["medzen-speech-tts-gateway"]: Refreshing state... [id=medzen-speech-tts-gateway]
+aws_ecr_repository.svc["medzen-llm-gateway"]: Refreshing state... [id=medzen-llm-gateway]
+aws_ecr_repository.svc["medzen-orchestrator"]: Refreshing state... [id=medzen-orchestrator]
+aws_ecr_repository.svc["medzen-rag-index"]: Refreshing state... [id=medzen-rag-index]
+aws_secretsmanager_secret.b6_client_keys[0]: Refreshing state... [id=arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE]
+aws_kms_key.audit: Refreshing state... [id=a86c98f6-808c-4c83-88a9-93fdb37e4d6c]
+terraform_data.network_preconditions: Refreshing state... [id=5d920754-3f61-118e-a40a-44fb09fa7324]
+aws_iam_role_policy_attachment.cluster["arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"]: Refreshing state... [id=medzen-speech-cluster-role-20260729182941181000000001]
+aws_iam_role_policy.pod["llm-gateway"]: Refreshing state... [id=medzen-llm-role:medzen-llm-role-access]
+aws_iam_role_policy.pod["speech-orchestrator"]: Refreshing state... [id=medzen-orch-role:medzen-orch-role-access]
+aws_iam_role_policy.pod["asr-runtime"]: Refreshing state... [id=medzen-asr-role:medzen-asr-role-access]
+aws_iam_role_policy.pod["model-loader"]: Refreshing state... [id=medzen-loader-role:medzen-loader-role-access]
+aws_iam_role_policy.pod["tts-gateway"]: Refreshing state... [id=medzen-tts-role:medzen-tts-role-access]
+aws_iam_role_policy.pod["rag-index"]: Refreshing state... [id=medzen-rag-role:medzen-rag-role-access]
+aws_iam_role_policy.b6_client_keys_kms[0]: Refreshing state... [id=medzen-orch-role:medzen-orch-b6-client-secret-kms]
+aws_iam_role_policy.node_ssm_core: Refreshing state... [id=medzen-speech-node-role:medzen-speech-node-ssm-core]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"]: Refreshing state... [id=medzen-speech-node-role-20260729182941322500000002]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"]: Refreshing state... [id=medzen-speech-node-role-20260729182941334600000004]
+aws_iam_role_policy_attachment.node["arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"]: Refreshing state... [id=medzen-speech-node-role-20260729182941334600000003]
+aws_iam_instance_profile.builder: Refreshing state... [id=medzen-builder-profile]
+aws_iam_role_policy.builder: Refreshing state... [id=medzen-builder-role:medzen-builder-access]
+aws_iam_role_policy.trainer: Refreshing state... [id=medzen-trainer-role:medzen-trainer-access]
+aws_iam_role_policy.trainer_b5_t5_sagemaker: Refreshing state... [id=medzen-trainer-role:medzen-b5-t5-sagemaker]
+aws_iam_instance_profile.trainer: Refreshing state... [id=medzen-trainer-profile]
+aws_iam_role_policy.registry_publisher_b6_5c_tags: Refreshing state... [id=medzen-registry-publisher-role:medzen-registry-publisher-b6-5c-tags]
+aws_iam_role_policy.registry_publisher: Refreshing state... [id=medzen-registry-publisher-role:medzen-registry-publisher-access]
+aws_security_group.b6_internal_alb: Refreshing state... [id=sg-0f0f6c66852830013]
+aws_eks_cluster.this: Refreshing state... [id=medzen-speech]
+aws_ecr_lifecycle_policy.svc["medzen-rag-index"]: Refreshing state... [id=medzen-rag-index]
+aws_ecr_lifecycle_policy.svc["medzen-speech-tts-gateway"]: Refreshing state... [id=medzen-speech-tts-gateway]
+aws_ecr_lifecycle_policy.svc["medzen-trainer"]: Refreshing state... [id=medzen-trainer]
+aws_ecr_lifecycle_policy.svc["medzen-asr-runtime"]: Refreshing state... [id=medzen-asr-runtime]
+aws_ecr_lifecycle_policy.svc["medzen-llm-gateway"]: Refreshing state... [id=medzen-llm-gateway]
+aws_ecr_lifecycle_policy.svc["medzen-model-loader"]: Refreshing state... [id=medzen-model-loader]
+aws_ecr_lifecycle_policy.svc["medzen-orchestrator"]: Refreshing state... [id=medzen-orchestrator]
+data.aws_iam_policy_document.b6_client_keys: Reading...
+data.aws_iam_policy_document.b6_client_keys: Read complete after 0s [id=3106393192]
+aws_s3_bucket_lifecycle_configuration.data: Refreshing state... [id=medzen-speech]
+aws_s3_bucket_versioning.data: Refreshing state... [id=medzen-speech]
+aws_s3_bucket_public_access_block.data: Refreshing state... [id=medzen-speech]
+aws_s3_bucket_server_side_encryption_configuration.data: Refreshing state... [id=medzen-speech]
+aws_secretsmanager_secret_policy.b6_client_keys[0]: Refreshing state... [id=arn:aws:secretsmanager:eu-central-1:558069890522:secret:medzen/client-api-keys-NxZGxE]
+aws_s3_bucket_server_side_encryption_configuration.audio: Refreshing state... [id=medzen-audio-cache]
+aws_s3_bucket_public_access_block.audio: Refreshing state... [id=medzen-audio-cache]
+aws_s3_bucket_lifecycle_configuration.audio: Refreshing state... [id=medzen-audio-cache]
+aws_cloudwatch_log_group.audit: Refreshing state... [id=/medzen/speech/audit]
+aws_iam_role_policy.b6_load_balancer_controller: Refreshing state... [id=medzen-lbc-role:medzen-lbc-access]
+aws_kms_alias.audit: Refreshing state... [id=alias/medzen-audit]
+aws_cloudwatch_log_group.svc["llm-gateway"]: Refreshing state... [id=/medzen/speech/llm-gateway]
+aws_cloudwatch_log_group.svc["model-loader"]: Refreshing state... [id=/medzen/speech/model-loader]
+aws_cloudwatch_log_group.svc["asr-runtime"]: Refreshing state... [id=/medzen/speech/asr-runtime]
+aws_cloudwatch_log_group.svc["rag-index"]: Refreshing state... [id=/medzen/speech/rag-index]
+aws_cloudwatch_log_group.svc["tts-gateway"]: Refreshing state... [id=/medzen/speech/tts-gateway]
+aws_cloudwatch_log_group.svc["speech-orchestrator"]: Refreshing state... [id=/medzen/speech/speech-orchestrator]
+aws_eks_node_group.cpu: Refreshing state... [id=medzen-speech:cpu]
+aws_eks_node_group.gpu: Refreshing state... [id=medzen-speech:gpu]
+aws_eks_addon.core["eks-pod-identity-agent"]: Refreshing state... [id=medzen-speech:eks-pod-identity-agent]
+aws_eks_addon.core["vpc-cni"]: Refreshing state... [id=medzen-speech:vpc-cni]
+aws_eks_addon.core["coredns"]: Refreshing state... [id=medzen-speech:coredns]
+aws_eks_addon.core["kube-proxy"]: Refreshing state... [id=medzen-speech:kube-proxy]
+aws_eks_pod_identity_association.b6_load_balancer_controller: Refreshing state... [id=a-r3q0lpnurafsdzzuv]
+aws_eks_pod_identity_association.svc["rag-index"]: Refreshing state... [id=a-thhlowcpri3iyqxyb]
+aws_eks_pod_identity_association.svc["tts-gateway"]: Refreshing state... [id=a-hdrjrqfspvaqgcjxn]
+aws_eks_pod_identity_association.svc["llm-gateway"]: Refreshing state... [id=a-qclaenwlnt0xynaah]
+aws_eks_pod_identity_association.svc["model-loader"]: Refreshing state... [id=a-nrpbxzjutolrzohbt]
+aws_eks_pod_identity_association.b6a_asr: Refreshing state... [id=a-ajbhedkszqlnrrjk4]
+aws_eks_pod_identity_association.svc["speech-orchestrator"]: Refreshing state... [id=a-hwagucnwr4awgrpeo]
+aws_eks_pod_identity_association.svc["asr-runtime"]: Refreshing state... [id=a-rolux7jd5ihx5f98s]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # aws_iam_role.arm_launch[0] will be created
+  + resource "aws_iam_role" "arm_launch" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRoleWithWebIdentity"
+                      + Condition = {
+                          + StringEquals = {
+                              + "token.actions.githubusercontent.com:aud"              = "sts.amazonaws.com"
+                              + "token.actions.githubusercontent.com:job_workflow_ref" = "fotso94/medzen-platform/.github/workflows/arm-launch-exec.yml@refs/heads/master"
+                              + "token.actions.githubusercontent.com:sub"              = "repo:fotso94/medzen-platform:environment:arm-launch-approval"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Federated = "arn:aws:iam::558069890522:oidc-provider/token.actions.githubusercontent.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "medzen-arm-launch-role"
+      + name_prefix           = (known after apply)
+      + path                  = "/"
+      + tags_all              = {
+          + "Component"   = "speech-platform"
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "medzen-speech"
+        }
+      + unique_id             = (known after apply)
+    }
+
+  # aws_iam_role_policy.arm_launch[0] will be created
+  + resource "aws_iam_role_policy" "arm_launch" {
+      + id          = (known after apply)
+      + name        = "medzen-arm-launch-access"
+      + name_prefix = (known after apply)
+      + policy      = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = "sagemaker:DescribeTrainingJob"
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+                      + Sid      = "DescribeB5TrainingJobs"
+                    },
+                  + {
+                      + Action    = "sagemaker:CreateTrainingJob"
+                      + Condition = {
+                          + "ForAllValues:StringEquals" = {
+                              + "sagemaker:InstanceTypes"       = [
+                                  + "ml.g6.xlarge",
+                                ]
+                              + "sagemaker:VpcSecurityGroupIds" = [
+                                  + "sg-0fee72d218ac002a7",
+                                ]
+                              + "sagemaker:VpcSubnets"          = [
+                                  + "subnet-00232b25bc1ac407a",
+                                ]
+                            }
+                          + NumericLessThanEquals       = {
+                              + "sagemaker:MaxRuntimeInSeconds" = "144000"
+                            }
+                          + StringEquals                = {
+                              + "aws:RequestTag/medzen-tier" = "arm"
+                              + "sagemaker:OutputKmsKey"     = "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+                      + Sid       = "CreateArmTierB5JobsUnderHardConditions"
+                    },
+                  + {
+                      + Action   = "sagemaker:AddTags"
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+                      + Sid      = "TagTheJobsBeingCreated"
+                    },
+                  + {
+                      + Action    = "iam:PassRole"
+                      + Condition = {
+                          + StringEquals = {
+                              + "iam:PassedToService" = "sagemaker.amazonaws.com"
+                            }
+                        }
+                      + Effect    = "Allow"
+                      + Resource  = "arn:aws:iam::558069890522:role/medzen-trainer-role"
+                      + Sid       = "PassOnlyTheTrainerRoleToSageMaker"
+                    },
+                  + {
+                      + Action   = [
+                          + "s3:GetObject",
+                          + "s3:GetObjectVersion",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-ftcal-2026-004/output/*"
+                      + Sid      = "HeadExactlyTheCalibrationArtifact"
+                    },
+                  + {
+                      + Action   = "kms:Decrypt"
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+                      + Sid      = "DecryptWithTheCampaignKeyOnly"
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + role        = (known after apply)
+    }
+
+Plan: 2 to add, 0 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Note: You didn't use the -out option to save this plan, so Terraform can't
+guarantee to take exactly these actions if you run "terraform apply" now.
+Releasing state lock. This may take a few moments...

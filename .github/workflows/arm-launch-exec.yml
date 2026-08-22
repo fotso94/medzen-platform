@@ -1,0 +1,53 @@
+name: arm-launch-exec
+# REUSABLE credential-bearing workflow (owner fast-path packet item 3):
+# the OIDC token's job_workflow_ref claim points at THIS file, so the
+# role trust binds to it exactly. The protected environment lives on
+# THIS job — the owner's Approve click gates every run, canary or
+# launch. `mode` is a typed workflow_call input used ONLY in step `if:`
+# conditions — never interpolated into shell (injection-safe).
+permissions:
+  contents: read
+  id-token: write
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "canary = STS identity probe only (non-mutating); launch = the real arm launch"
+        required: true
+        type: string
+jobs:
+  exec:
+    runs-on: ubuntu-latest
+    environment: arm-launch-approval
+    if: github.ref == 'refs/heads/master' && vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != '' && (inputs.mode == 'canary' || inputs.mode == 'launch')
+    env:
+      MEDZEN_EXECUTOR: github-protected-workflow
+      ARM_PACKET: platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json
+      ARM_REQUEST: platform/manifests/B5-UNIVERSAL-ARM1-REQUEST-2026-005.json
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+        with:
+          fetch-depth: 0
+      - uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: "canary: prove the assumed identity, mutate nothing"
+        if: inputs.mode == 'canary'
+        run: |
+          aws sts get-caller-identity --output json
+          echo "CANARY_ASSUMED_ROLE_OK (no mutating call was made)"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: inputs.mode == 'launch'
+        with:
+          python-version: "3.12"
+      - name: install pinned launch dependencies
+        if: inputs.mode == 'launch'
+        run: |
+          pip install "boto3==1.40.16" "pyyaml==6.0.2" "jsonschema==4.25.0" "numpy==2.3.2"
+          pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
+      - name: launch under the committed gates
+        if: inputs.mode == 'launch'
+        run: |
+          python scripts/b5_sagemaker_job.py launch \
+            --bindings "$ARM_PACKET" --request "$ARM_REQUEST"

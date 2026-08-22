@@ -1,26 +1,12 @@
 name: arm-launch
-# Codex reviews #23-#25. The OWNER's click on this workflow's protected
-# environment (arm-launch-approval) is THE authorization event. The
-# workflow launches ONE hardcoded committed packet — it takes NO inputs
-# at all (Codex review #25: an injectable job_id input could execute
-# attacker shell after owner approval; the input is REMOVED rather than
-# sanitized). The dedicated role's trust binds BOTH the environment
-# subject AND this exact workflow file via the job_workflow_ref claim.
-#
-# DARK until the owner activates (in order):
-#   1. GitHub environment arm-launch-approval: self as required
-#      reviewer; deployment branches -> master only. PLAN CHECK FIRST:
-#      required reviewers on PRIVATE repos need GitHub Enterprise
-#      (Free/Pro/Team only support them on public repos) — verify, or
-#      this gate silently does not gate.
-#   2. terraform apply with -var arm_launch_enabled=true (imports
-#      nothing; the arm role references the EXISTING OIDC provider via
-#      a data source) then set repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN.
-#   3. Apply the local-credential lockdown per
-#      platform/iam/LOCAL-BOUNDARY-RUNBOOK.md from a SEPARATE
-#      owner-controlled admin principal (Codex review #25: the local
-#      identity holds AdministratorAccess — no in-repo file constrains
-#      it; the runbook is the real closure of the local path).
+# Protected CALLER (no credentials here): dispatches the reusable
+# credential-bearing exec workflow in launch mode. Takes NO inputs.
+# Activation notes live in the exec workflow and
+# platform/iam/LOCAL-BOUNDARY-RUNBOOK.md (deferred by owner: dev-risk
+# accepted). Owner setup: environment arm-launch-approval (self as
+# required reviewer; master-only deployment branches — works on the
+# now-public repo on any plan) + terraform apply -var
+# arm_launch_enabled=true + repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN.
 permissions:
   contents: read
   id-token: write
@@ -31,29 +17,6 @@ on:
   workflow_dispatch: {}
 jobs:
   launch:
-    runs-on: ubuntu-latest
-    environment: arm-launch-approval
-    if: github.ref == 'refs/heads/master' && vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != ''
-    env:
-      MEDZEN_EXECUTOR: github-protected-workflow
-      ARM_PACKET: platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json
-      ARM_REQUEST: platform/manifests/B5-UNIVERSAL-ARM1-REQUEST-2026-005.json
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-      - name: install pinned launch dependencies
-        run: |
-          pip install "boto3==1.40.16" "pyyaml==6.0.2" "jsonschema==4.25.0" "numpy==2.3.2"
-          pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
-      - uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
-        with:
-          role-to-assume: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
-          aws-region: eu-central-1
-      - name: launch under the committed gates
-        run: |
-          python scripts/b5_sagemaker_job.py launch \
-            --bindings "$ARM_PACKET" --request "$ARM_REQUEST"
+    uses: ./.github/workflows/arm-launch-exec.yml
+    with:
+      mode: launch

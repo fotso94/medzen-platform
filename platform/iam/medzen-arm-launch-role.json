@@ -10,15 +10,28 @@
   {
    "Sid": "CreateArmTierB5JobsUnderHardConditions",
    "Effect": "Allow",
-   "Action": ["sagemaker:CreateTrainingJob", "sagemaker:AddTags"],
+   "Action": "sagemaker:CreateTrainingJob",
    "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*",
    "Condition": {
-    "StringEqualsIfExists": {
-     "sagemaker:InstanceTypes": "ml.g6.xlarge",
+    "StringEquals": {
      "sagemaker:OutputKmsKey": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
      "aws:RequestTag/medzen-tier": "arm"
+    },
+    "ForAllValues:StringEquals": {
+     "sagemaker:InstanceTypes": ["ml.g6.xlarge"],
+     "sagemaker:VpcSubnets": ["subnet-00232b25bc1ac407a"],
+     "sagemaker:VpcSecurityGroupIds": ["sg-0fee72d218ac002a7"]
+    },
+    "NumericLessThanEquals": {
+     "sagemaker:MaxRuntimeInSeconds": "144000"
     }
    }
+  },
+  {
+   "Sid": "TagTheJobsBeingCreated",
+   "Effect": "Allow",
+   "Action": "sagemaker:AddTags",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
   },
   {
    "Sid": "PassOnlyTheTrainerRoleToSageMaker",

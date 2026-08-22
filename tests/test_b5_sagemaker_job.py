@@ -790,40 +790,54 @@ def test_forged_executor_env_vars_do_not_skip_committed_gates(tmp_path, monkeypa
 
 
 def test_arm_launch_workflow_is_hardened():
-    """Codex reviews #24-#25: the workflow takes NO inputs at all (the
-    injectable job_id was removed, not sanitized), pins dependencies,
-    restricts to master, uses the DEDICATED role variable, declares
-    concurrency, and the role's trust binds the exact workflow file."""
+    """Reviews #24-#25 + owner fast-path packet: protected caller with
+    NO inputs and NO credentials; a reusable credential-bearing exec
+    workflow (the job_workflow_ref target) whose typed input appears
+    only in `if:` conditions; canaries for both trust directions; no
+    expressions inside any run block; pinned deps; master guard."""
     root = Path(__file__).resolve().parents[1]
-    body = (root / ".github/workflows/arm-launch.yml").read_text()
-    assert "workflow_dispatch: {}" in body, "NO dispatch inputs — ever"
-    assert "inputs." not in body, (
-        "no expression may reference inputs (Codex review #25: "
-        "reproduced shell injection through inputs.job_id)")
-    assert "${{" not in body.split("steps:")[1].split("run: |")[0] or True
-    for step_body in body.split("run: |")[1:]:
-        first_block = step_body.split("- ")[0]
-        assert "${{" not in first_block, (
-            f"expressions inside run blocks are injection surface: "
-            f"{first_block[:80]}")
-    assert "boto3==" in body and "torch==" in body
-    assert "github.ref == 'refs/heads/master'" in body
-    assert "MEDZEN_ARM_LAUNCH_ROLE_ARN" in body
-    assert "MEDZEN_CI_ROLE_ARN" not in body
-    assert "concurrency:" in body
-    assert "environment: arm-launch-approval" in body
-    assert "Enterprise" in body, "the private-repo reviewer plan caveat "        "must stay in the activation notes"
+    wf = root / ".github/workflows"
+    caller = (wf / "arm-launch.yml").read_text()
+    exec_body = (wf / "arm-launch-exec.yml").read_text()
+    pos = (wf / "arm-launch-canary.yml").read_text()
+    neg = (wf / "arm-launch-canary-unauthorized.yml").read_text()
+
+    assert "workflow_dispatch: {}" in caller
+    assert "${{ inputs" not in caller, "caller must reference no inputs"
+    assert "configure-aws-credentials" not in caller, "caller carries no creds"
+    assert "uses: ./.github/workflows/arm-launch-exec.yml" in caller
+    assert "concurrency:" in caller
+
+    assert "workflow_call:" in exec_body
+    assert "environment: arm-launch-approval" in exec_body
+    assert "github.ref == 'refs/heads/master'" in exec_body
+    assert "MEDZEN_ARM_LAUNCH_ROLE_ARN" in exec_body
+    assert "MEDZEN_CI_ROLE_ARN" not in exec_body
+    assert "boto3==" in exec_body and "torch==" in exec_body
+    for body, name in ((caller, "caller"), (exec_body, "exec"),
+                        (pos, "canary"), (neg, "neg-canary")):
+        for step_body in body.split("run: |")[1:]:
+            block = step_body.split("\n      - ")[0]
+            assert "${{" not in block, (
+                f"{name}: expression inside a run block is injection "
+                f"surface: {block[:80]}")
+    assert "uses: ./.github/workflows/arm-launch-exec.yml" in pos
+    assert "mode: canary" in pos
+    # the negative canary must use the SAME environment but NOT the exec
+    # workflow, and must only pass when assumption fails
+    assert "environment: arm-launch-approval" in neg
+    assert "arm-launch-exec.yml" not in neg
+    assert "continue-on-error: true" in neg
+    assert "ASSUME_OUTCOME" in neg
+
     tf = (root / "infra/iam.tf").read_text()
     assert "environment:arm-launch-approval" in tf
-    assert "job_workflow_ref" in tf, (
-        "trust must bind the exact workflow file, not just the "
-        "environment (Codex review #25)")
-    assert "arm-launch.yml@refs/heads/master" in tf
-    assert "arm_launch_enabled" in tf, "arm activation must be decoupled"
+    assert "arm-launch-exec.yml@refs/heads/master" in tf, (
+        "trust must bind the REUSABLE credential-bearing workflow")
+    assert "arm_launch_enabled" in tf and "b7_ci_enabled" in tf, (
+        "arm activation and legacy CI must be independently switched")
     assert 'data "aws_iam_openid_connect_provider" "github_existing"' in tf
     assert "refs/heads/main" not in tf
-
-
 def test_above_tier_requires_the_dedicated_role_identity():
     """Codex review #25 finding 5: only the account number was checked —
     forged executor vars under local credentials passed the identity

@@ -108,14 +108,14 @@ resource "aws_iam_instance_profile" "builder" {
 # scoped to THIS repository's main branch — no other repo, ref or fork can
 # assume it. Same explicit-Deny posture as the trainer role.
 resource "aws_iam_openid_connect_provider" "github" {
-  count           = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count           = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
 data "aws_iam_policy_document" "ci_trust" {
-  count = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
@@ -131,19 +131,19 @@ data "aws_iam_policy_document" "ci_trust" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       # Codex review #24: the default branch is MASTER, not main
-      values   = ["repo:${var.github_repo}:ref:refs/heads/master"]
+      values = ["repo:${var.github_repo}:ref:refs/heads/master"]
     }
   }
 }
 
 resource "aws_iam_role" "ci" {
-  count              = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count              = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   name               = "medzen-ci-role"
   assume_role_policy = data.aws_iam_policy_document.ci_trust[0].json
 }
 
 resource "aws_iam_role_policy" "ci" {
-  count  = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count  = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   name   = "medzen-ci-access"
   role   = aws_iam_role.ci[0].id
   policy = file("${local.iam_dir}/medzen-ci-role.json")
@@ -154,13 +154,13 @@ resource "aws_iam_role_policy" "ci" {
 # stays human. The access policy is the EKS-managed edit policy scoped by
 # namespace — auditable in one place here.
 resource "aws_eks_access_entry" "ci" {
-  count         = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count         = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   cluster_name  = "medzen-speech"
   principal_arn = aws_iam_role.ci[0].arn
 }
 
 resource "aws_eks_access_policy_association" "ci_medzen_edit" {
-  count         = var.github_repo == "REPLACE/medzen-platform" ? 0 : 1
+  count         = var.github_repo != "REPLACE/medzen-platform" && var.b7_ci_enabled ? 1 : 0
   cluster_name  = "medzen-speech"
   principal_arn = aws_iam_role.ci[0].arn
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSEditPolicy"
@@ -213,7 +213,7 @@ data "aws_iam_policy_document" "arm_launch_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo}/.github/workflows/arm-launch.yml@refs/heads/master"]
+      values   = ["${var.github_repo}/.github/workflows/arm-launch-exec.yml@refs/heads/master"]
     }
   }
 }

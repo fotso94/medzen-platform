@@ -106,3 +106,9 @@ variable "registry_publisher_principal_arn" {
     error_message = "registry_publisher_principal_arn must be an exact IAM user or role ARN."
   }
 }
+
+variable "b7_ci_enabled" {
+  description = "owner switch for the LEGACY B7 CI resources (role, EKS wiring, OIDC provider resource) — kept OFF so the arm-launch activation plan contains ONLY the arm role (Codex #25 / owner fast-path: exactly 2 add, 0 change, 0 destroy). B7 activation additionally requires importing the existing OIDC provider first."
+  type        = bool
+  default     = false
+}

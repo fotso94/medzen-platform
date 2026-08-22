@@ -1,0 +1,82 @@
+{
+    "findings": [
+        {
+            "findingDetails": "The \"token.actions.githubusercontent.com:aud\" (audience) claim key identifies the recipients that the JSON web token is intended for. Because this claim is single-valued, do not use a qualifier.",
+            "findingType": "SUGGESTION",
+            "issueCode": "CONFIRM_AUDIENCE_CLAIM_TYPE",
+            "learnMoreLink": "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-reference-policy-checks.html#access-analyzer-reference-policy-checks-suggestion-confirm-audience-claim-type",
+            "locations": [
+                {
+                    "path": [
+                        {
+                            "value": "Statement"
+                        },
+                        {
+                            "index": 0
+                        },
+                        {
+                            "value": "Condition"
+                        },
+                        {
+                            "value": "StringEquals"
+                        },
+                        {
+                            "key": "token.actions.githubusercontent.com:aud"
+                        }
+                    ],
+                    "span": {
+                        "start": {
+                            "line": 10,
+                            "column": 5,
+                            "offset": 271
+                        },
+                        "end": {
+                            "line": 10,
+                            "column": 46,
+                            "offset": 312
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "findingDetails": "Using a wildcard (*) in token.actions.githubusercontent.com:sub can allow requests from more sources than you intended. Specify the value of token.actions.githubusercontent.com:sub with the repository and branch name. If the subject claim does not include the branch, specify it in a token.actions.githubusercontent.com:ref condition key.",
+            "findingType": "WARNING",
+            "issueCode": "SPECIFIC_GITHUB_REPO_AND_BRANCH_RECOMMENDED",
+            "learnMoreLink": "https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-reference-policy-checks.html#access-analyzer-reference-policy-checks-general-warning-specific-github-repo-and-branch-recommended",
+            "locations": [
+                {
+                    "path": [
+                        {
+                            "value": "Statement"
+                        },
+                        {
+                            "index": 0
+                        },
+                        {
+                            "value": "Condition"
+                        },
+                        {
+                            "value": "StringEquals"
+                        },
+                        {
+                            "key": "token.actions.githubusercontent.com:sub"
+                        }
+                    ],
+                    "span": {
+                        "start": {
+                            "line": 11,
+                            "column": 5,
+                            "offset": 340
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 46,
+                            "offset": 381
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

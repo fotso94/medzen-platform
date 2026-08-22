@@ -1,0 +1,15 @@
+name: arm-launch-canary
+# POSITIVE canary (fast-path packet item 4): exercises the EXACT
+# production chain — environment approval + reusable exec workflow +
+# role assumption — and stops after sts get-caller-identity. Proves the
+# role is assumable by the intended workflow identity, mutating nothing.
+permissions:
+  contents: read
+  id-token: write
+on:
+  workflow_dispatch: {}
+jobs:
+  canary:
+    uses: ./.github/workflows/arm-launch-exec.yml
+    with:
+      mode: canary
