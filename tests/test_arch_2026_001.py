@@ -717,6 +717,9 @@ def test_no_sealed_command_works_and_no_stray_launch_paths_exist():
         "pipeline/eval_userdata.sh": 1,
         "pipeline/trainer_userdata.sh": 1,
         # documentation / evidence records / fixtures (non-executable)
+        # the lockdown runbook DENIES these ops in its boundary policy —
+        # the two hits are deny-list strings, not launch capability
+        "platform/iam/LOCAL-BOUNDARY-RUNBOOK.md": 2,
         "platform/decisions/PLAN-2026-001-reproduce-failed-eval.md": 1,
         "platform/evidence/CAMPAIGNRUN-2026-001-failed.json": 1,
         "platform/evidence/B6-COST-RECONCILIATION-2026-005.json": 1,
