@@ -25,20 +25,32 @@ cleanup and the local credential boundary are owner-accepted risks.
   workflow -> assumption MUST fail; the job passes only if creds fail).
   actionlint: all four PASS.
 
-Activation order (Codex review #26: the workflows and trust target
-master, so MERGE COMES FIRST):
-1. Codex passes this packet -> merge the reviewed branch to master.
-2. terraform plan -out=arm.tfplan -var arm_launch_enabled=true
-   -var github_repo=fotso94/medzen-platform  (precondition REFUSES any
-   other repo value); verify the saved plan JSON shows exactly the two
-   arm resources; terraform apply arm.tfplan.
-3. Set repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN to the new role ARN.
-4. Owner creates environment arm-launch-approval (self as required
-   reviewer; deployment branches: master only).
-5. Run ALL THREE canaries from master: arm-launch-canary (expect
-   CANARY_ASSUMED_ROLE_OK), arm-launch-canary-unauthorized (missing
-   claim -> refused), arm-launch-canary-wrongref (real-but-wrong
-   job_workflow_ref -> refused).
-6. Record the APPROVED review per the Codex verdict; regenerate the
+COST LANGUAGE, precisely (Codex review #27): $70 is the PROCESS-
+enforced ceiling (launcher refusal + the byte-exact reviewed request at
+1 instance / $64 calculated max). The AWS-HARD limits are: instance
+type ml.g6.xlarge only, runtime <= 144,000s, the exact job name, and
+the campaign KMS key. IAM cannot constrain InstanceCount; the account
+quota itself allows two ml.g6.xlarge — the single-instance bound lives
+in the reviewed request, not in IAM.
+
+Activation order (Codex review #27: GitHub AUTO-CREATES a referenced
+missing environment WITHOUT protection rules — so the protected
+environment must exist BEFORE anything can reference it):
+1. Codex passes this packet.
+2. Owner (or implementer via owner session) creates environment
+   arm-launch-approval FIRST: required reviewer = fotso94, deployment
+   branches = master only. Verify it shows the protection rules.
+3. Merge the reviewed branch to master.
+4. terraform plan -out=arm.tfplan -var arm_launch_enabled=true
+   -var github_repo=fotso94/medzen-platform (immutable id form is a
+   defaulted variable, precondition-checked); verify the saved plan
+   JSON = exactly the two arm creates; terraform apply arm.tfplan.
+5. Set repo variable MEDZEN_ARM_LAUNCH_ROLE_ARN to the role ARN.
+6. Run ALL THREE canaries from master: arm-launch-canary (must print
+   CANARY_ASSUMED_ROLE_OK with the exact role ARN asserted),
+   arm-launch-canary-unauthorized and arm-launch-canary-wrongref (each
+   must print its explicit-AccessDenied OK line; a missing variable
+   FAILS rather than skips).
+7. Record the APPROVED review per the Codex verdict; regenerate the
    intent against the APPROVED bytes; dispatch arm-launch; owner
-   clicks Approve -> $70-capped launch.
+   clicks Approve -> launch (process ceiling $70, calculated max $64).

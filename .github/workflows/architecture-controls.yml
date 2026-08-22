@@ -19,8 +19,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: install control-test dependencies
+        # fastapi/httpx: test_arch imports the orchestrator app (Codex
+        # review #27 reproduced ModuleNotFoundError on the runner); the
+        # control selection needs NO torch (verified in a bare venv)
         run: |
-          pip install pytest pyyaml "boto3==1.40.16" "jsonschema==4.25.0" "numpy==2.3.2"
-          pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install pytest pyyaml "boto3==1.40.16" "jsonschema==4.25.0" "numpy==2.3.2" "fastapi==0.141.1" "httpx==0.28.1"
       - name: architecture + sealed-machinery + arm-launch controls
         run: python -m pytest tests/test_arch_2026_001.py tests/test_b5_sagemaker_job.py tests/test_b7_pipelines.py -q

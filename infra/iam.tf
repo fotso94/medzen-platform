@@ -206,14 +206,25 @@ data "aws_iam_policy_document" "arm_launch_trust" {
       values   = ["sts.amazonaws.com"]
     }
     condition {
+      # Codex review #27: this repo postdates GitHub's immutable-subject
+      # rollout — tokens carry name@id forms (verified against the API:
+      # owner 16901658, repo 1322233937). Both spellings are accepted so
+      # the trust survives GitHub toggling the immutable format; the
+      # canaries pin down which one fires in practice.
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:environment:arm-launch-approval"]
+      values = [
+        "repo:${var.github_repo_immutable}:environment:arm-launch-approval",
+        "repo:${var.github_repo}:environment:arm-launch-approval",
+      ]
     }
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo}/.github/workflows/arm-launch-exec.yml@refs/heads/master"]
+      values = [
+        "${var.github_repo_immutable}/.github/workflows/arm-launch-exec.yml@refs/heads/master",
+        "${var.github_repo}/.github/workflows/arm-launch-exec.yml@refs/heads/master",
+      ]
     }
   }
 }
@@ -225,8 +236,8 @@ resource "aws_iam_role" "arm_launch" {
 
   lifecycle {
     precondition {
-      condition     = var.github_repo == "fotso94/medzen-platform"
-      error_message = "arm activation requires github_repo to be EXACTLY fotso94/medzen-platform — the REPLACE default would mint a role trusting a nonexistent repository (Codex review #26)."
+      condition     = var.github_repo == "fotso94/medzen-platform" && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937"
+      error_message = "arm activation requires github_repo=fotso94/medzen-platform AND the immutable form fotso94@16901658/medzen-platform@1322233937 (Codex reviews #26-#27: wrong values mint an unusable role)."
     }
   }
 }

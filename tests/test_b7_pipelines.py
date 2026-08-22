@@ -62,11 +62,15 @@ def _needs_oidc(path) -> bool:
     (the caller's grant must cover the callee). Codex review #18: the
     old rule handed every workflow id-token:write unconditionally."""
     body = path.read_text()
-    if "configure-aws-credentials" in body:
+    # raw OIDC use (the hardened canaries call STS directly to observe
+    # the exact error code — Codex review #27) counts too
+    markers = ("configure-aws-credentials", "ACTIONS_ID_TOKEN_REQUEST",
+               "assume-role-with-web-identity")
+    if any(m in body for m in markers):
         return True
     for other in _workflow_files():
         if (f"uses: ./.github/workflows/{other.name}" in body
-                and "configure-aws-credentials" in other.read_text()):
+                and any(m in other.read_text() for m in markers)):
             return True
     return False
 

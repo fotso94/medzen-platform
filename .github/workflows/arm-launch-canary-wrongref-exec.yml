@@ -1,10 +1,8 @@
 name: arm-launch-canary-wrongref-exec
-# WRONG-REF negative canary, reusable half (Codex review #26 finding 5:
-# the direct-job probe only proved a MISSING claim is rejected). This
-# IS a reusable workflow, so the token carries a real job_workflow_ref
-# — naming THIS file, not arm-launch-exec.yml. Same environment, same
-# sub claim: only the workflow identity differs. The assumption MUST
-# be refused; the job passes only when it is.
+# NEGATIVE canary #2, reusable half: token carries a REAL (wrong)
+# job_workflow_ref naming THIS file. Same environment, same sub — only
+# the workflow identity differs. Hardened per Codex review #27: missing
+# variable fails; only an explicit STS AccessDenied passes.
 permissions:
   contents: read
   id-token: write
@@ -14,20 +12,33 @@ jobs:
   must-be-refused:
     runs-on: ubuntu-latest
     environment: arm-launch-approval
-    if: vars.MEDZEN_ARM_LAUNCH_ROLE_ARN != ''
+    env:
+      ROLE_ARN: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
     steps:
-      - uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
-        id: assume
-        continue-on-error: true
-        with:
-          role-to-assume: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
-          aws-region: eu-central-1
-      - name: the assumption above must have FAILED
-        env:
-          ASSUME_OUTCOME: ${{ steps.assume.outcome }}
+      - name: the role variable must be configured (skipping is not passing)
         run: |
-          if [ "$ASSUME_OUTCOME" = "success" ]; then
+          if [ -z "$ROLE_ARN" ]; then
+            echo "MEDZEN_ARM_LAUNCH_ROLE_ARN is not set — refusing to pretend this canary ran"
+            exit 1
+          fi
+      - name: raw assume attempt must yield explicit AccessDenied
+        run: |
+          OIDC_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c "import json,sys; print(json.load(sys.stdin)['value'])")
+          set +e
+          ERR=$(aws sts assume-role-with-web-identity \
+            --role-arn "$ROLE_ARN" \
+            --role-session-name canary-wrongref \
+            --web-identity-token "$OIDC_TOKEN" 2>&1)
+          RC=$?
+          set -e
+          if [ $RC -eq 0 ]; then
             echo "TRUST POLICY TOO BROAD: a WRONG reusable workflow assumed the arm-launch role"
             exit 1
           fi
-          echo "WRONGREF_NEGATIVE_CANARY_OK: wrong job_workflow_ref was refused"
+          echo "$ERR" | grep -q "AccessDenied" || {
+            echo "assumption failed but NOT with AccessDenied — inconclusive, failing:"
+            echo "$ERR"
+            exit 1
+          }
+          echo "WRONGREF_NEGATIVE_CANARY_OK: explicit AccessDenied for the wrong job_workflow_ref"

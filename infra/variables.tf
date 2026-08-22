@@ -112,3 +112,9 @@ variable "b7_ci_enabled" {
   type        = bool
   default     = false
 }
+
+variable "github_repo_immutable" {
+  description = "GitHub immutable OIDC identity owner@id/repo@id (Codex review #27: repos created after the immutable-subject rollout present this form in sub/job_workflow_ref; verified via the API — owner fotso94=16901658, repo medzen-platform=1322233937)"
+  type        = string
+  default     = "fotso94@16901658/medzen-platform@1322233937"
+}

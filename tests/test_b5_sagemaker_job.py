@@ -827,8 +827,14 @@ def test_arm_launch_workflow_is_hardened():
     # workflow, and must only pass when assumption fails
     assert "environment: arm-launch-approval" in neg
     assert "arm-launch-exec.yml" not in neg
-    assert "continue-on-error: true" in neg
-    assert "ASSUME_OUTCOME" in neg
+    # Codex review #27: no silent skips, explicit error-code assertion
+    for canary_body, cname in ((neg, "unauthorized"),):
+        assert "if: vars.MEDZEN_ARM_LAUNCH_ROLE_ARN" not in canary_body, (
+            f"{cname}: a missing variable must FAIL, never skip")
+        assert "skipping is not passing" in canary_body
+        assert "AccessDenied" in canary_body, (
+            f"{cname}: only an explicit STS AccessDenied may pass")
+        assert "assume-role-with-web-identity" in canary_body
 
     # Codex review #26: deps must install BEFORE credential acquisition
     assert exec_body.index("install pinned") < exec_body.index(
@@ -839,8 +845,11 @@ def test_arm_launch_workflow_is_hardened():
     wr_caller = (wf / "arm-launch-canary-wrongref.yml").read_text()
     assert "workflow_call" in wr_exec
     assert "environment: arm-launch-approval" in wr_exec
-    assert "continue-on-error: true" in wr_exec and "ASSUME_OUTCOME" in wr_exec
+    assert "AccessDenied" in wr_exec and "skipping is not passing" in wr_exec
     assert "arm-launch-canary-wrongref-exec.yml" in wr_caller
+    # positive canary must assert the EXACT assumed identity
+    assert "assumed-role/medzen-arm-launch-role" in exec_body
+    assert "558069890522" in exec_body
     # IAM policy: non-deprecated key, mandatory presence checks, exact job
     import json as _json
     policy = _json.loads((root / "platform/iam/"
@@ -869,6 +878,14 @@ def test_arm_launch_workflow_is_hardened():
     assert "refs/heads/main" not in tf
     assert "precondition" in tf and 'fotso94/medzen-platform"' in tf, (
         "activation must refuse a wrong github_repo (Codex review #26)")
+    # Codex review #27: immutable OIDC identity (owner@id/repo@id)
+    assert "16901658" in tf and "1322233937" in tf, (
+        "trust must carry the immutable subject this repo actually "
+        "presents (post-immutable-rollout repo)")
+    ci = (root / ".github/workflows/architecture-controls.yml").read_text()
+    assert "fastapi==" in ci, (
+        "test_arch imports the orchestrator app; CI needs fastapi "
+        "(Codex review #27: real runs were red)")
 def test_above_tier_requires_the_dedicated_role_identity():
     """Codex review #25 finding 5: only the account number was checked —
     forged executor vars under local credentials passed the identity
