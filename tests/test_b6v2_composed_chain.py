@@ -58,13 +58,13 @@ def _v2_route() -> dict:
         "schema_version": 2,
         "classification": V2_CLASSIFICATION,
         "contract_version": V2_CONTRACT_VERSION,
-        "language": {"alias": "kinyarwanda", "response_code": "rw",
-                      "accepted_codes": ["rw"]},
+        "language": {"alias": "kinyarwanda", "response_code": "kin",
+                      "accepted_codes": ["kin"]},
         "asr": {"backend": "http_cluster_v1", "model_version": ASR_VERSION,
                  "artifact_tree_sha256": ASR_TREE_SHA,
                  "reported_registry_snapshot": ASR_REPORTED},
         "rag": {"alias": "current", "snapshot_sha256": RAG_SHA,
-                 "query_language": "rw"},
+                 "query_language": "kin"},
         "llm": {"model_version": LLM_VERSION,
                  "policy_id": "kinyarwanda-medzen-v1"},
         "tts": {"backend": "http_fish_v2", "model_version": "fish:s1"},
@@ -82,7 +82,7 @@ class InMemoryStore:
 
     def __init__(self):
         index = {"schema_version": 1, "default_language": "kinyarwanda",
-                 "languages": [{"alias": "kinyarwanda", "codes": ["rw"],
+                 "languages": [{"alias": "kinyarwanda", "codes": ["kin"],
                                  "route_parameter": "routes/kinyarwanda"}]}
         route = _v2_route()
         material = {"schema_version": 1, "classification": V2_CLASSIFICATION,
@@ -131,7 +131,7 @@ class ComposedASRClient:
     def transcribe(self, audio, *, request_id, route):
         return ASRResult(
             request_id=request_id,
-            language="rw",
+            language="kin",
             language_probability=1.0,
             transcript={
                 "verbatim": QUERY,
@@ -151,7 +151,7 @@ def _rag_client() -> LocalRAGClient:
         return Document(
             document_id=document_id, title=title,
             source_uri=f"medzen://synthetic/{document_id}",
-            section="guidance", language="rw", text=text,
+            section="guidance", language="kin", text=text,
             content_sha256=hashlib.sha256(text.encode()).hexdigest(),
             title_tokens=_tokens(title), text_tokens=_tokens(text),
         )
@@ -362,7 +362,7 @@ def test_composed_v2_chain_end_to_end(composed):
     _, response = orchestrator.handle(
         audio=b"RIFF\x00\x00\x00\x00WAVEcomposed",
         request_id=REQUEST_ID,
-        language_hint="rw",
+        language_hint="kin",
         response_audio=True,
     )
     # one real Bedrock converse, one real Fish POST, one SSE-KMS S3 object
@@ -407,7 +407,7 @@ def test_composed_default_makes_zero_provider_tts_calls(composed):
     _, response = orchestrator.handle(
         audio=b"RIFF\x00\x00\x00\x00WAVEcomposed",
         request_id=REQUEST_ID,
-        language_hint="rw",
+        language_hint="kin",
     )
     assert fish.calls == []
     assert s3.store == {}
@@ -422,7 +422,7 @@ def test_composed_blank_grounding_refuses_before_bedrock(composed):
     orchestrator, store, bedrock, fish, s3 = composed
     rag = orchestrator.rag.retrieve(
         request_id=REQUEST_ID, query=QUERY,
-        route=orchestrator.router.resolve("rw"))
+        route=orchestrator.router.resolve("kin"))
     # gateway validation already rejects EMPTY excerpts; the provider
     # refusal guards the hole string-truthiness misses — whitespace-only
     # grounding, which passes every "non-empty string" check upstream

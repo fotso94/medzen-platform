@@ -13,46 +13,191 @@
     "latency_ms"
   ],
   "properties": {
-    "request_id": {"type": "string", "format": "uuid"},
-    "session_id": {"type": "string", "format": "uuid"},
-    "language": {"type": "string", "pattern": "^[a-z]{2,3}$"},
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^[a-z]{2,3}$"
+    },
     "transcript": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["verbatim", "normalized", "normalization_version"],
+      "required": [
+        "verbatim",
+        "normalized",
+        "normalization_version"
+      ],
       "properties": {
-        "verbatim": {"type": "string"},
-        "normalized": {"type": "string"},
-        "normalization_version": {"type": "string"}
+        "verbatim": {
+          "type": "string"
+        },
+        "normalized": {
+          "type": "string"
+        },
+        "normalization_version": {
+          "type": "string"
+        }
       }
     },
     "reply": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["text", "audio_url", "tts_backend"],
+      "required": [
+        "text",
+        "citations",
+        "citation_binding_sha256",
+        "audio_url",
+        "tts_backend"
+      ],
       "properties": {
-        "text": {"type": "string"},
-        "audio_url": {"type": ["string", "null"]},
-        "tts_backend": {"enum": ["fish", "self_hosted", "text_only"]}
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "citations": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "$ref": "#/$defs/citation"
+          }
+        },
+        "citation_binding_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "audio_url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^https://"
+        },
+        "tts_backend": {
+          "enum": [
+            "text_only",
+            "fish",
+            "self_hosted"
+          ]
+        },
+        "grounding_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
       }
     },
-    "model_versions": {"$ref": "#/$defs/model_versions"},
+    "model_versions": {
+      "$ref": "#/$defs/model_versions"
+    },
     "latency_ms": {
       "type": "object",
-      "additionalProperties": {"type": "number", "minimum": 0}
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0
+      }
     }
   },
   "$defs": {
     "model_versions": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"],
+      "required": [
+        "asr",
+        "registry_snapshot",
+        "llm",
+        "rag",
+        "tts"
+      ],
       "properties": {
-        "asr": {"type": ["string", "null"]},
-        "registry_snapshot": {"type": "string"},
-        "llm": {"type": ["string", "null"]},
-        "rag": {"type": ["string", "null"]},
-        "tts": {"type": ["string", "null"]}
+        "asr": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registry_snapshot": {
+          "type": "string"
+        },
+        "llm": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rag": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tts": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "document_id",
+        "title",
+        "source_uri",
+        "section",
+        "content_sha256",
+        "excerpt",
+        "score",
+        "grounding_text"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "document_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_uri": {
+          "type": "string",
+          "minLength": 1
+        },
+        "section": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "excerpt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "score": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "grounding_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200
+        }
       }
     }
   }

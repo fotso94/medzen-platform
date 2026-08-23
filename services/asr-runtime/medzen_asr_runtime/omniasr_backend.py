@@ -69,15 +69,52 @@ def load_v2_ready_marker(model_dir: Path) -> dict[str, Any]:
     ):
         raise BackendRefusal(
             "v2 marker must map every served language to its omnilingual id")
-    checkpoint = Path(str(marker.get("checkpoint_path") or ""))
-    if not checkpoint.is_file():
+    if not re.fullmatch(r"[0-9a-f]{64}", str(marker.get("tokenizer_sha256"))):
         raise BackendRefusal(
-            "verified artifact is not staged at the asset card's "
-            f"checkpoint path ({checkpoint})")
+            "v2 marker must bind the tokenizer bytes — the asset card "
+            "deserializes tokenizer AND checkpoint")
+    checkpoint = Path(str(marker.get("checkpoint_path") or ""))
+    tokenizer = Path(str(marker.get("tokenizer_path") or ""))
+    if not checkpoint.is_file() or not tokenizer.is_file():
+        raise BackendRefusal(
+            "verified artifacts are not staged at the asset card's paths")
+    # round 5 (Codex): re-hash the STAGED bytes at the exact paths
+    # fairseq2 will deserialize — the marker attests what the loader
+    # verified; this proves nothing changed between loader and runtime.
+    if _sha256_file(checkpoint) != marker.get("artifact_sha256"):
+        raise BackendRefusal(
+            "staged checkpoint bytes do not match the verified marker")
+    if _sha256_file(tokenizer) != marker.get("tokenizer_sha256"):
+        raise BackendRefusal(
+            "staged tokenizer bytes do not match the verified marker")
     if marker.get("asset_card") != "medzen_omniASR_CTC_1B_v2":
         raise BackendRefusal(
             "v2 serving is bound to the reviewed CTC asset card only")
     return marker
+
+
+def _sha256_file(path: Path) -> str:
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def resolve_omni_language(language_ids: dict[str, str],
+                          language_hint: str | None) -> str | None:
+    """Round 5 (Codex, reproduced: \"'en' is not served\"): the marker's
+    table carries BOTH the registry alias and the wire iso code for
+    every served language (marker_language_ids in the loader), so the
+    hint the orchestrator actually sends resolves. None = unconditioned."""
+    if not language_hint:
+        return None
+    omni = language_ids.get(language_hint.strip().lower())
+    if omni is None:
+        raise BackendRefusal(
+            f"{language_hint!r} is not served by this artifact")
+    return omni
 
 
 class OmniASRBackend:
@@ -117,13 +154,7 @@ class OmniASRBackend:
         self.ready = True
 
     def transcribe(self, audio_path: Path, language_hint: str | None) -> Transcript:
-        omni_lang = None
-        if language_hint:
-            omni_lang = self._language_ids.get(language_hint)
-            if omni_lang is None:
-                raise BackendRefusal(
-                    f"{language_hint!r} is not served by this artifact "
-                    f"({self.marker['model_version']})")
+        omni_lang = resolve_omni_language(self._language_ids, language_hint)
         languages = None if omni_lang is None else [omni_lang]
         # round 4 (Codex): report the REAL audio duration (billing and
         # latency accounting depend on it); the pipeline itself does not

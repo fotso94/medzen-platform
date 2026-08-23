@@ -26,7 +26,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 ROOT = Path(__file__).resolve().parents[1]
 for service in ("speech-orchestrator", "rag-index", "llm-gateway",
-                "speech-tts-gateway", "asr-runtime"):
+                "speech-tts-gateway", "asr-runtime", "model-loader"):
     sys.path.insert(0, str(ROOT / f"services/{service}"))
 
 from test_b6v2_composed_chain import (  # noqa: E402
@@ -158,6 +158,14 @@ class StubOmniBackend:
 
     def transcribe(self, audio_path, language_hint):
         from medzen_asr_runtime.backend import Transcript
+        # round 5 (Codex): the round-4 stub ignored the language map and
+        # hid the reproduced `'en' is not served` refusal — the hint now
+        # goes through the REAL pre-inference resolution over the REAL
+        # canonical marker table before anything transcribes
+        from medzen_asr_runtime.omniasr_backend import resolve_omni_language
+        from medzen_model_loader.languages_v2 import marker_language_ids
+        assert resolve_omni_language(
+            marker_language_ids(), language_hint) == "eng_Latn"
         return Transcript(
             language=language_hint or "en",
             language_probability=1.0,
@@ -347,9 +355,15 @@ def test_http_chain_end_to_end_over_real_apps(http_chain):
         "grounding provenance must survive the final boundary")
     assert [c["document_id"] for c in reply["citations"]] == ["synthetic-hours"]
 
-    schema = json.loads((ROOT / "platform/contracts/schemas/"
-                         "orchestrator-file-v2/response.schema.json").read_text())
-    Draft202012Validator(schema, format_checker=FormatChecker()).validate(body)
+    # round 5 (Codex): the response must satisfy BOTH published views of
+    # the contract — the orchestrator schema AND the speech-v2 response
+    # schema (grounding/citation fields were rejected by the latter)
+    for relative in ("orchestrator-file-v2/response.schema.json",
+                      "speech-v2/file-response.schema.json"):
+        schema = json.loads(
+            (ROOT / "platform/contracts/schemas" / relative).read_text())
+        Draft202012Validator(
+            schema, format_checker=FormatChecker()).validate(body)
 
 
 def test_v2_contract_constants_match_the_committed_contracts():

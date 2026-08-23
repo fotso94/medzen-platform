@@ -361,103 +361,162 @@ def test_s3_cache_only_404_is_a_miss_others_raise():
         throttled.get("ab" * 32)
 
 
-def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_path):
-    """Codex review round 2 (reproduced FABRICATED_PRODUCTION_APPROVAL_
-    ACCEPTED): a fabricated protocol/APPROVED/64-char value passed.
-    Round 3: 'committed somewhere under platform/' was still forgeable —
-    the record must live in platform/decisions/promotions/ ONLY and cite
-    the exact protocol the CURRENT-PROMOTION-PROTOCOL pointer designates
-    at HEAD (hash-verified), and promote THIS digest."""
+def _promotion_bundle(tmp_path, digest, *, gate_report=None, record_over=None,
+                      protocol_id="PROMOTION-PROTOCOL-2026-004"):
+    """Build an immutable promotion bundle: index pins every document,
+    the deployment pin is sha256(bundle.json)."""
     import hashlib
     import json as _json
-    import subprocess
+
+    bundle = tmp_path / "bundle"
+    bundle.mkdir(parents=True, exist_ok=True)
+    gates = {"target_languages": "...", "protected_languages": "...",
+             "degenerate_output": "...", "operational": "..."}
+    languages = ["english", "ewe", "french", "kinyarwanda", "lingala",
+                 "pidgin", "swahili"]
+    protocol = {"record": "PROMOTION-PROTOCOL-2026-004",
+                "gates_v0_active_now": gates,
+                "mandatory_languages": languages}
+    protocol_bytes = _json.dumps(protocol).encode()
+    pointer = {"file": "PROMOTION-PROTOCOL-2026-004.json",
+               "record": protocol_id,
+               "sha256": hashlib.sha256(protocol_bytes).hexdigest()}
+    if gate_report is None:
+        gate_report = {
+            "protocol": "PROMOTION-PROTOCOL-2026-004",
+            "artifact_sha256": digest,
+            "atomic_outcome": "PASS",
+            "languages": {lang: {g: "PASS" for g in
+                                  [*gates, "code_switch"]}
+                          for lang in languages},
+        }
+    review = {"status": "PASS", "findings": 0,
+              "reviewer": "codex-independent-review"}
+    files = {
+        "PROMOTION-PROTOCOL-2026-004.json": protocol_bytes,
+        "CURRENT-PROMOTION-PROTOCOL.json": _json.dumps(pointer).encode(),
+        "T6-GATE-REPORT.json": _json.dumps(gate_report).encode(),
+        "INDEPENDENT-REVIEW.json": _json.dumps(review).encode(),
+    }
+    shas = {name: hashlib.sha256(body).hexdigest()
+            for name, body in files.items()}
+    record = {
+        "protocol": "PROMOTION-PROTOCOL-2026-004",
+        "decision": "APPROVED",
+        "artifact_sha256": digest,
+        "gate_report": {"record": "T6-GATE-REPORT.json",
+                         "record_sha256": shas["T6-GATE-REPORT.json"]},
+        "independent_review": {"record": "INDEPENDENT-REVIEW.json",
+                                "record_sha256": shas["INDEPENDENT-REVIEW.json"]},
+        "owner_authorization": {
+            "statement": f"owner authorizes promotion of {digest[:12]}",
+            "recorded_utc": "2026-08-23T00:00:00Z"},
+    }
+    record.update(record_over or {})
+    files["PROMOTION-RECORD.json"] = _json.dumps(record).encode()
+    shas["PROMOTION-RECORD.json"] = hashlib.sha256(
+        files["PROMOTION-RECORD.json"]).hexdigest()
+    for name, body in files.items():
+        (bundle / name).write_bytes(body)
+    index = {"files": shas, "record": "PROMOTION-RECORD.json"}
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    return bundle, hashlib.sha256(index_bytes).hexdigest()
+
+
+def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
+    """Codex rounds 2-5 (FABRICATED_PRODUCTION_APPROVAL_ACCEPTED, then
+    'still self-certifiable', then 'git not in the runtime image'):
+    production standing verifies an IMMUTABLE bundle pinned by the
+    reviewed deployment — no git — and the gate report must GENUINELY
+    satisfy the protocol: every active gate + code_switch PASS for every
+    mandatory language, a zero-findings independent review, and an owner
+    authorization bound to THIS digest."""
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                validate_manifest_v2)
     import pytest
     digest = "ab" * 32
-    # fabricated manifest-only approval refuses
-    with pytest.raises(LoaderV2Refusal):
+
+    # no bundle configured -> refuse
+    monkeypatch.delenv("MEDZEN_PROMOTION_BUNDLE_DIR", raising=False)
+    monkeypatch.delenv("MEDZEN_PROMOTION_BUNDLE_SHA256", raising=False)
+    with pytest.raises(LoaderV2Refusal, match="promotion bundle"):
         validate_manifest_v2(_v2_manifest(
-            digest=digest, classification="PRODUCTION",
-            promotion_approval={"protocol": "PROMOTION-PROTOCOL-9999",
-                                 "decision": "APPROVED",
-                                 "gate_report_sha256": "z" * 64}))
+            digest=digest, classification="PRODUCTION"))
 
-    repo = tmp_path / "repo"
-    (repo / "platform/decisions/promotions").mkdir(parents=True)
-    (repo / "platform/evidence").mkdir(parents=True)
-    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
-    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
-    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    def arm(bundle, pin):
+        monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
+        monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
 
-    protocol_rel = "platform/decisions/PROMOTION-PROTOCOL-2026-004.json"
-    (repo / protocol_rel).write_text(_json.dumps({"gates": ["T6"]}))
-    protocol_sha = hashlib.sha256((repo / protocol_rel).read_bytes()).hexdigest()
-    (repo / "platform/decisions/CURRENT-PROMOTION-PROTOCOL.json").write_text(
-        _json.dumps({"file": protocol_rel,
-                     "record": "PROMOTION-PROTOCOL-2026-004",
-                     "sha256": protocol_sha}))
-    gate_rel = "platform/evidence/T6-GATE-REPORT.json"
-    (repo / gate_rel).write_text(_json.dumps({"gate": "T6", "outcome": "PASS"}))
-    gate_sha = hashlib.sha256((repo / gate_rel).read_bytes()).hexdigest()
-    # round 4 (Codex): decision+protocol+digest alone is an ASSERTION —
-    # the record must bind its committed gate report, the independent
-    # review identity, and the owner's authorization
-    minimal = {"protocol": "PROMOTION-PROTOCOL-2026-004",
-               "decision": "APPROVED", "artifact_sha256": digest}
-    minimal_rel = "platform/decisions/promotions/MINIMAL-PROMO.json"
-    (repo / minimal_rel).write_text(_json.dumps(minimal))
-    record = dict(minimal,
-                  gate_report={"record": gate_rel, "record_sha256": gate_sha},
-                  independent_review="codex-serving-review-round-4",
-                  owner_authorization="owner order (test fixture)")
-    rec_rel = "platform/decisions/promotions/ARM1-PROMO.json"
-    (repo / rec_rel).write_text(_json.dumps(record))
-    # the SAME approved bytes committed outside the promotions dir —
-    # e.g. smuggled into evidence — must count for nothing
-    smuggled_rel = "platform/evidence/PROMO.json"
-    (repo / smuggled_rel).write_text(_json.dumps(record))
-    stale = dict(record, protocol="PROMOTION-PROTOCOL-2026-003")
-    stale_rel = "platform/decisions/promotions/STALE-PROMO.json"
-    (repo / stale_rel).write_text(_json.dumps(stale))
-    subprocess.run(["git", "-C", str(repo), "add", "-A"], check=True)
-    subprocess.run(["git", "-C", str(repo), "commit", "-qm", "promo"], check=True)
+    # the full verified bundle passes
+    bundle, pin = _promotion_bundle(tmp_path, digest)
+    arm(bundle, pin)
+    ok = validate_manifest_v2(_v2_manifest(
+        digest=digest, classification="PRODUCTION"))
+    assert ok["classification"] == "PRODUCTION"
 
-    def _approval(rel):
-        sha = hashlib.sha256((repo / rel).read_bytes()).hexdigest()
-        return {"record": rel, "record_sha256": sha}
+    # a trivial {"outcome": "PASS"} report is an assertion, not a gate run
+    bundle, pin = _promotion_bundle(
+        tmp_path / "trivial", digest, gate_report={"outcome": "PASS"})
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="atomically PASS"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
 
-    import os
-    os.environ["MEDZEN_REPO_ROOT"] = str(repo)
-    try:
-        # the full pointer-verified chain passes
-        ok = validate_manifest_v2(_v2_manifest(
-            digest=digest, classification="PRODUCTION",
-            promotion_approval=_approval(rec_rel)))
-        assert ok["classification"] == "PRODUCTION"
-        # committed OUTSIDE platform/decisions/promotions/ refuses
-        with pytest.raises(LoaderV2Refusal, match="promotions"):
-            validate_manifest_v2(_v2_manifest(
-                digest=digest, classification="PRODUCTION",
-                promotion_approval=_approval(smuggled_rel)))
-        # a bare decision/protocol/digest record binds no evidence — refuses
-        with pytest.raises(LoaderV2Refusal, match="gate report"):
-            validate_manifest_v2(_v2_manifest(
-                digest=digest, classification="PRODUCTION",
-                promotion_approval=_approval(minimal_rel)))
-        # citing a superseded/invented protocol id refuses
-        with pytest.raises(LoaderV2Refusal, match="pointer requires"):
-            validate_manifest_v2(_v2_manifest(
-                digest=digest, classification="PRODUCTION",
-                promotion_approval=_approval(stale_rel)))
-        # a record promoting a DIFFERENT digest refuses
-        with pytest.raises(LoaderV2Refusal, match="promotes"):
-            validate_manifest_v2(_v2_manifest(
-                digest="cd" * 32, classification="PRODUCTION",
-                promotion_approval=_approval(rec_rel)))
-    finally:
-        os.environ.pop("MEDZEN_REPO_ROOT", None)
+    # one language missing the mandatory code_switch gate -> atomic refusal
+    gates = ["target_languages", "protected_languages", "degenerate_output",
+             "operational", "code_switch"]
+    languages = ["english", "ewe", "french", "kinyarwanda", "lingala",
+                 "pidgin", "swahili"]
+    partial = {
+        "protocol": "PROMOTION-PROTOCOL-2026-004",
+        "artifact_sha256": digest,
+        "atomic_outcome": "PASS",
+        "languages": {lang: {g: "PASS" for g in gates}
+                      for lang in languages},
+    }
+    del partial["languages"]["pidgin"]["code_switch"]
+    bundle, pin = _promotion_bundle(tmp_path / "partial", digest,
+                                     gate_report=partial)
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="atomic"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
 
+    # a record promoting a DIFFERENT digest refuses
+    bundle, pin = _promotion_bundle(tmp_path / "other", "cd" * 32)
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="different artifact"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # owner authorization not bound to THIS digest refuses
+    bundle, pin = _promotion_bundle(
+        tmp_path / "unbound", digest,
+        record_over={"owner_authorization": {
+            "statement": "owner approves the model",
+            "recorded_utc": "2026-08-23T00:00:00Z"}})
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="bound to THIS"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # a superseded/invented protocol id refuses
+    bundle, pin = _promotion_bundle(tmp_path / "stale", digest,
+                                     protocol_id="PROMOTION-PROTOCOL-2026-003")
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="pointer requires"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # tampering with a bundled document after pinning refuses
+    bundle, pin = _promotion_bundle(tmp_path / "tampered", digest)
+    report_path = bundle / "T6-GATE-REPORT.json"
+    report_path.write_bytes(report_path.read_bytes() + b" ")
+    arm(bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="does not match its pin"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
 
 def test_ci_pipeline_builds_from_repo_root_with_source_commit():
     """Codex review round 2 (reproduced COPY .../requirements.txt not

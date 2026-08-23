@@ -110,13 +110,19 @@
       "then": {
         "properties": {
           "provider": {
-            "const": "fake_fish"
+            "enum": [
+              "fake_fish",
+              "fish"
+            ]
           },
           "audio_url": {
             "type": "string"
           },
           "media_type": {
-            "const": "audio/vnd.medzen.synthetic"
+            "enum": [
+              "audio/vnd.medzen.synthetic",
+              "audio/mpeg"
+            ]
           },
           "audio_sha256": {
             "type": "string"

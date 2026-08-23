@@ -1,20 +1,28 @@
-# B6v2 REAL-PROVIDER service contract (Codex serving review round 4).
+# B6v2 REAL-PROVIDER service contract (Codex serving review rounds 4-5).
 # The v1 contract file stays byte-frozen with the closed synthetic proof;
 # THIS file is the reviewed identity v2 registry routes pin (contract_id +
-# sha256 of these exact bytes — the same discipline as the v1 routes).
-# Policy source: platform/contracts/b6v2-real-providers.yaml.
+# sha256 of these exact bytes - the same discipline as the v1 routes).
+# Round 5: generated as a strict YAML DOCUMENT and parse-tested; every
+# schema hash below is verified against the committed file by
+# tests/test_b6v2_contracts.py. Policy: platform/contracts/b6v2-real-providers.yaml.
+asr_identity: omniasr_ctc_1b:<sha256[:12]> (reported snapshot omniasr-nonprod:<sha256>)
 contract_id: MEDZEN-SPEECH-CONTRACT-2026-002
-version: medzen.speech.v2
-covers: [asr-runtime, rag-index, speech-orchestrator]
-asr_identity: "omniasr_ctc_1b:<sha256[:12]> (reported snapshot omniasr-nonprod:<sha256>)"
-rag: citations carry grounding_text (1..1200 chars, non-blank); the reply
-  cites a validated non-empty SUBSET; binding hashes the reply's citations.
-response_audio: default false — zero synthesis calls unless requested.
+covers:
+- asr-runtime
+- rag-index
+- speech-orchestrator
+language_identities: 'registry alias + wire iso code -> omnilingual id, canonical
+  map: medzen_model_loader.languages_v2 (pinned to registry/languages and language-conditioning-v1.json
+  by test)'
+rag: citations carry grounding_text (1..1200 chars, non-blank); the reply cites
+  a validated non-empty SUBSET; the binding hashes the reply's own citations; grounding_sha256
+  is verified and propagated end to end
+response_audio: default false - zero synthesis calls unless requested
 schemas:
-  file-response.schema.json: fe1bd9a5cd050f7681bac6e171a571d44a83828e7f8b59d1bbc5953de8124015
-  rag-request.schema.json: 4192b17bcc400566f3ebf6bc6608fd3e7472b0d977595db4d599b617840a430d
-  rag-response.schema.json: f1c4a77cfdab1e5c484e6ef10c07c50dc707568cff211e79b9d6ce3de07a3d38
-  stream-event.schema.json: f04688e3ef63f1f817ea7423153a993be3f5d736b59845265bcbfa75f6e8184b
-orchestrator_schemas:
-  response.schema.json: 473e335ecc400da2e32e1af1d66a81b4727b311f2fb1f5a93b9aee2439569935
-  server-event.schema.json: 6db72670e53b3206a5faed77aa86e1a8c36d5fa89d0dfb812bac16cfd0864b4f
+  orchestrator-file-v2/response.schema.json: 7b00b30cdacf8c95715ee84ffa7eae926c429a1bf727aafd99013f8541e12a6e
+  orchestrator-stream-v2/server-event.schema.json: 6db72670e53b3206a5faed77aa86e1a8c36d5fa89d0dfb812bac16cfd0864b4f
+  speech-v2/file-response.schema.json: a6b20ed332da2d28ac4dc317edf2072fec70a4cf4bab1469b22dad10883e4edd
+  speech-v2/rag-request.schema.json: 4192b17bcc400566f3ebf6bc6608fd3e7472b0d977595db4d599b617840a430d
+  speech-v2/rag-response.schema.json: f1c4a77cfdab1e5c484e6ef10c07c50dc707568cff211e79b9d6ce3de07a3d38
+  speech-v2/stream-event.schema.json: f04688e3ef63f1f817ea7423153a993be3f5d736b59845265bcbfa75f6e8184b
+version: medzen.speech.v2

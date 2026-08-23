@@ -12,12 +12,16 @@ on:
       - "services/model-loader/**"
       - "tests/test_model_loader.py"
       - "tests/test_b6v2_real_provider.py"
+      - "tests/test_b6v2_serving_language_and_loader.py"
+      - "services/asr-runtime/medzen_asr_runtime/omniasr_backend.py"
       - ".github/workflows/model-loader-tests.yml"
   pull_request:
     paths:
       - "services/model-loader/**"
       - "tests/test_model_loader.py"
       - "tests/test_b6v2_real_provider.py"
+      - "tests/test_b6v2_serving_language_and_loader.py"
+      - "services/asr-runtime/medzen_asr_runtime/omniasr_backend.py"
       - ".github/workflows/model-loader-tests.yml"
 jobs:
   tests:
@@ -36,4 +40,5 @@ jobs:
           python -m pytest -q tests/test_model_loader.py
           "tests/test_b6v2_real_provider.py::test_loader_v2_accepts_the_multilingual_artifact_shape"
           "tests/test_b6v2_real_provider.py::test_loader_v2_refuses_production_binding_without_gate_approval"
-          "tests/test_b6v2_real_provider.py::test_loader_v2_production_needs_committed_promotion_not_manifest_fields"
+          "tests/test_b6v2_real_provider.py::test_loader_v2_production_needs_a_verified_promotion_bundle"
+          tests/test_b6v2_serving_language_and_loader.py

@@ -1,15 +1,19 @@
-# B6v2 REAL-PROVIDER service contract (Codex serving review round 4).
+# B6v2 REAL-PROVIDER service contract (Codex serving review rounds 4-5).
 # The v1 contract file stays byte-frozen with the closed synthetic proof;
 # THIS file is the reviewed identity v2 registry routes pin (contract_id +
-# sha256 of these exact bytes — the same discipline as the v1 routes).
-# Policy source: platform/contracts/b6v2-real-providers.yaml.
+# sha256 of these exact bytes - the same discipline as the v1 routes).
+# Round 5: generated as a strict YAML DOCUMENT and parse-tested; every
+# schema hash below is verified against the committed file by
+# tests/test_b6v2_contracts.py. Policy: platform/contracts/b6v2-real-providers.yaml.
+citations: cited_document_ids must be a NON-EMPTY subset of supplied ids
 contract_id: MEDZEN-LLM-CONTRACT-2026-002
-version: medzen.speech.v2
-provider_identities: [fake-bedrock-local-v1, "bedrock:<model-id>"]
-grounding: blank or whitespace-only grounding REFUSES (BLANK_GROUNDING 422)
-  before any provider call; grounding_sha256 covers the exact citation
-  block bytes sent and is returned whenever real grounding was hashed.
-citations: cited_document_ids must be a NON-EMPTY subset of supplied ids.
+grounding: blank or whitespace-only grounding REFUSES (BLANK_GROUNDING 422) before
+  any provider call; grounding_sha256 covers the exact citation block bytes sent
+  and returns whenever real grounding was hashed
+provider_identities:
+- fake-bedrock-local-v1
+- bedrock:<model-id>
 schemas:
-  request.schema.json: 3178c5b7c11a6acf97d3c1509c4ce953818844b3957237bb84dac0a26d7c4210
-  response.schema.json: 9f1e990624d6c0a9bf40c41cf6ada8f81a74b9230fe81c9ad24ed998f5573291
+  llm-v2/request.schema.json: 3178c5b7c11a6acf97d3c1509c4ce953818844b3957237bb84dac0a26d7c4210
+  llm-v2/response.schema.json: 9f1e990624d6c0a9bf40c41cf6ada8f81a74b9230fe81c9ad24ed998f5573291
+version: medzen.speech.v2
