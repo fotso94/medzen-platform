@@ -261,6 +261,11 @@ offline:
       - {actions: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer,
                    ecr:BatchCheckLayerAvailability, ecr:DescribeImages],
          resource: ecr, name: medzen-asr-eval-runtime}
+      # round 13: the dev GPU smoke pulls the SERVING image by digest on
+      # the trainer-profile box (pull-only; first smoke failed closed here)
+      - {actions: [ecr:BatchGetImage, ecr:GetDownloadUrlForLayer,
+                   ecr:BatchCheckLayerAvailability, ecr:DescribeImages],
+         resource: ecr, name: medzen-asr-runtime}
     explicit_denies:
       # The isolation SageMaker sells, obtained for free by construction.
       - {actions: ["s3:PutObject", "s3:DeleteObject"], resource: data, path: "eval/*",

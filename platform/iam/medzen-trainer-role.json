@@ -187,7 +187,6 @@
       ]
     },
     {
-      "Sid": "PullServingImageForDevSmoke",
       "Effect": "Allow",
       "Action": [
         "ecr:BatchGetImage",

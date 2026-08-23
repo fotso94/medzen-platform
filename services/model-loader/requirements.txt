@@ -9,4 +9,4 @@ s3transfer==0.19.2
 six==1.17.0
 urllib3==2.7.0
 # B6v2 OmniASR serving runtime (dark until b6v2 activation)
-cryptography==48.0.1
+cryptography==50.0.0
