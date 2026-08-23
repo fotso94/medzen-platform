@@ -14,6 +14,7 @@
   "If lingala still regresses under the predeclared rule, proceed to the planned preservation/distillation Arm 2",
   "Do NOT retroactively weaken Arm-1's disqualifying-loss rule"
  ],
+ "final_verdict": "NOT_A_WINNER__PRESERVATION_GATE_FAILURE_CONFIRMED__ROUTE_TO_ARM_2",
  "not_a_winner": true,
  "preservation_gate": {
   "lingala": {
@@ -27,7 +28,18 @@
    "delta_abs": 0.014881,
    "every_checkpoint_worse_than_base": true
   },
-  "status": "UNRESOLVED_REGRESSION",
+  "sentinel_resolution": {
+   "base_wer": 0.172301,
+   "candidate_wer": 0.1793,
+   "conclusion": "preservation-gate failure CONFIRMED with statistical power; route to Arm 2",
+   "delta_abs": 0.006999,
+   "non_inferior": false,
+   "noninferiority_margin": 0.01,
+   "record": "ARM1-LINGALA-SENTINEL-2026-001-RECEIPT",
+   "rows": 386,
+   "upper_ci": 0.012686
+  },
+  "status": "CONFIRMED_REGRESSION_ON_386_ROW_SENTINEL",
   "swahili": {
    "base_wer": 0.148594,
    "best_checkpoint_wer": 0.149933,

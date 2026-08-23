@@ -1,0 +1,38 @@
+{
+ "base_lingala_wer": 0.172301,
+ "baseline": "arm-1 base model",
+ "candidate": "step-0014000 (arm-1 best-macro checkpoint)",
+ "candidate_lingala_wer": 0.1793,
+ "delta_abs_wer": 0.006999,
+ "instance": "g6.xlarge (r2; r1 failed closed on a repo-path bug, ~$0.10)",
+ "interpretation": "step-14000 is NOT non-inferior to base on lingala: upper 95%% CI of the WER delta (0.01269) exceeds the predeclared margin (0.01), point estimate +0.006999. The 60-row sweep signal is confirmed with statistical power on 386 rows.",
+ "noninferiority": {
+  "alpha": 0.05,
+  "clusters": 386,
+  "iterations": 2000,
+  "margin": 0.01,
+  "non_inferior": false,
+  "rows": 386,
+  "seed": 20260823,
+  "upper_ci": 0.012685598962087357
+ },
+ "paired_rows": 386,
+ "predeclared_rule": {
+  "alpha": 0.05,
+  "baseline": "arm-1 base model (frozen zero-shot)",
+  "candidate": "step-0014000 (arm-1 best-macro checkpoint)",
+  "cluster_by": "audio_checksum_sha256 (row-level; placeholder-speaker pools have no meaningful speaker clusters)",
+  "decision": "NON_INFERIOR iff the upper (1-alpha) CI bound of (candidate_wer - baseline_wer) <= margin_abs_wer; also report the raw point estimate and CI. A regression beyond the margin CONFIRMS the preservation-gate failure and routes to Arm 2.",
+  "declared_before_evaluation": true,
+  "iterations": 2000,
+  "margin_abs_wer": 0.01,
+  "metric": "word error rate (pooled), clustered bootstrap",
+  "seed": 20260823
+ },
+ "purpose": "Codex review #14 finding 1: larger independent dev-only lingala regression sentinel",
+ "record": "ARM1-LINGALA-SENTINEL-2026-001-RECEIPT",
+ "routing": "Per the predeclared rule: route to the planned preservation/distillation Arm 2. Arm-1's disqualifying-loss rule is NOT weakened. No sealed set spent.",
+ "sealed_sets_read": false,
+ "selection": "B5-ARM1-LINGALA-SENTINEL-2026-001 (386 rows, version-bound, sha-verified)",
+ "verdict": "PRESERVATION_GATE_FAILURE_CONFIRMED"
+}
