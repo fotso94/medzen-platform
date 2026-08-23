@@ -77,6 +77,8 @@ jobs:
           ignore-unfixed: true
           exit-code: "1"
           format: table
+          # the GPU image is ~20GB — the 5m default deadline cannot walk it
+          timeout: 30m
       - name: CycloneDX SBOM
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -84,6 +86,7 @@ jobs:
           image-ref: ${{ matrix.name }}:ci-${{ github.sha }}
           format: cyclonedx
           output: sbom-${{ matrix.name }}-${{ github.sha }}.cdx.json
+          timeout: 30m
       - name: record the built image identity
         run: |
           docker image inspect "${{ matrix.name }}:ci-${{ github.sha }}" \
