@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from typing import Any, Callable, Mapping
 
 from .noninferiority import (
@@ -155,6 +156,12 @@ def require_candidate_packet(report: dict, *,
         raise PromotionCheckRefusal(
             "candidate packet must predeclare the scorer_sha256 — the "
             "scoring code is part of the method")
+    # round 13 (Codex): the scorer is named by id and must be the BAKED
+    # one — resolve_scorer() enforces the hash; here the id must exist
+    if not candidate_packet.get("scorer_id"):
+        raise PromotionCheckRefusal(
+            "candidate packet must predeclare the scorer_id of a scorer "
+            "baked into the reviewed loader image")
     if report.get("scorer_sha256") != scorer:
         raise PromotionCheckRefusal(
             "gate report scorer does not match the predeclared scorer")
@@ -487,19 +494,51 @@ def require_sealed_row_identity(report: dict, mandatory: list[str], *,
             scorer=scorer)
 
 
-def load_scorer(scorer_source: bytes):
-    """Round 12 (Codex): execute the PINNED scorer to recompute error
-    counts. The source runs only AFTER the signed evidence root that
-    covers it verifies — executing admission-signed bytes, nothing else.
-    The module must expose score_errors(reference, hypothesis) -> int
-    and reference_words(reference) -> int."""
-    namespace: dict = {}
-    exec(compile(scorer_source, "scorer.py", "exec"), namespace)  # noqa: S102
-    for required in ("score_errors", "reference_words"):
-        if not callable(namespace.get(required)):
+SCORER_REGISTRY = {
+    # round 13 (Codex, ARBITRARY CODE EXECUTION through bundled scorer.py):
+    # the scorer is BAKED into the reviewed loader image and referenced by
+    # a fixed id + the sha256 of the baked module's own source bytes.
+    # Signed evidence is DATA; the bundle may carry no executable code.
+    "scorer_v1": "scorer_v1.py",
+}
+
+
+def scorer_registry_sha256(scorer_id: str) -> str:
+    """sha256 of the BAKED module source for a registered scorer id."""
+    import hashlib
+    from pathlib import Path
+    filename = SCORER_REGISTRY.get(str(scorer_id))
+    if filename is None:
+        raise PromotionCheckRefusal(
+            f"scorer id {scorer_id!r} is not in the baked scorer registry "
+            f"({sorted(SCORER_REGISTRY)}) — evidence cannot name a scorer "
+            "this image does not carry")
+    return hashlib.sha256(
+        (Path(__file__).resolve().parent / filename).read_bytes()).hexdigest()
+
+
+def resolve_scorer(candidate_packet: Mapping[str, Any]):
+    """Resolve the predeclared scorer to the BAKED implementation. The
+    packet names scorer_id and scorer_sha256; the sha256 must equal the
+    baked module's source bytes — a packet naming any other scoring code
+    refuses. Nothing from the bundle is ever compiled or executed."""
+    scorer_id = str(candidate_packet.get("scorer_id", ""))
+    declared = str(candidate_packet.get("scorer_sha256", "")).lower()
+    baked = scorer_registry_sha256(scorer_id)
+    if declared != baked:
+        raise PromotionCheckRefusal(
+            f"predeclared scorer_sha256 {declared[:12]} is not the baked "
+            f"{scorer_id} ({baked[:12]}) — the scoring code is part of the "
+            "reviewed image, never of the evidence")
+    import importlib
+    module = importlib.import_module(
+        f".{SCORER_REGISTRY[scorer_id][:-3]}", package=__package__)
+    namespace = {"score_errors": module.score_errors,
+                 "reference_words": module.reference_words}
+    for required, value in namespace.items():
+        if not callable(value):
             raise PromotionCheckRefusal(
-                f"the pinned scorer exposes no {required}() — it cannot "
-                "recompute the evidence")
+                f"the baked scorer exposes no {required}()")
     return namespace
 
 
@@ -693,6 +732,245 @@ def recompute_code_switch(report: dict, *,
             f"claimed {claims}")
 
 
+CONTRACT_FIELDS = (
+    # round 11-12: identity, image, compute, inputs, outputs, account
+    "job_name", "image_digest", "instance_type", "channels",
+    "output_s3_prefix", "output_kms_key_arn", "account_id", "region",
+    "execution_role_arn", "network_isolation", "volume_kms_key_arn",
+    "hyperparameters_sha256",
+    # round 13 (Codex, PARTIAL CONTRACT): environment, VPC, runtime
+    # limits, instance count, volume size, checkpoint configuration
+    "instance_count", "volume_size_gb", "max_runtime_seconds",
+    "vpc_config", "checkpoint_config", "environment_sha256",
+)
+CHANNEL_FIELDS = ("s3_uri", "s3_data_type", "s3_data_distribution_type",
+                  "content_type", "compression_type", "input_mode")
+_IMAGE_DIGEST_RE = re.compile(r"^[0-9]{12}\.dkr\.ecr\.[a-z0-9-]+\.amazonaws"
+                              r"\.com/[a-z0-9._/-]+@sha256:[0-9a-f]{64}$")
+
+
+def _canonical(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
+
+
+def _normalize_channels(channels: Any) -> dict[str, dict[str, str | None]]:
+    if not isinstance(channels, Mapping) or not channels:
+        raise PromotionCheckRefusal(
+            "sealed-run channels must be a non-empty mapping of channel "
+            "name to the COMPLETE input description")
+    out: dict[str, dict[str, str | None]] = {}
+    for name, spec in channels.items():
+        if not isinstance(spec, Mapping) or set(spec) != set(CHANNEL_FIELDS):
+            raise PromotionCheckRefusal(
+                f"channel {name!r} must describe exactly "
+                f"{list(CHANNEL_FIELDS)} — a URI alone is not an input "
+                "contract (Codex round 13)")
+        out[str(name)] = {field: (None if spec[field] is None
+                                  else str(spec[field]))
+                          for field in CHANNEL_FIELDS}
+    return out
+
+
+def validate_sealed_run_contract(contract: Any) -> dict[str, Any]:
+    """The PREDECLARED sealed-run contract must be complete and strict:
+    immutable ECR digest (a well-formed reference, not merely a string
+    containing '@sha256:'), network isolation REQUIRED, exact channel
+    semantics, and every runtime/security dimension named."""
+    if not isinstance(contract, Mapping) or any(
+        contract.get(field) in (None, "", [], {})
+        for field in CONTRACT_FIELDS
+    ):
+        raise PromotionCheckRefusal(
+            "candidate packet must PREDECLARE the COMPLETE sealed-run "
+            f"contract ({', '.join(CONTRACT_FIELDS)}) — a job name alone "
+            "binds nothing (Codex rounds 11-13)")
+    if not _IMAGE_DIGEST_RE.fullmatch(str(contract["image_digest"])):
+        raise PromotionCheckRefusal(
+            "sealed-run image must be a well-formed IMMUTABLE ECR "
+            "reference <account>.dkr.ecr.<region>.amazonaws.com/<repo>"
+            "@sha256:<64 hex> — malformed or tagged references refuse")
+    if contract["network_isolation"] is not True:
+        raise PromotionCheckRefusal(
+            "sealed runs REQUIRE network isolation — a run that could "
+            "reach the network could have read anything (Codex round 13)")
+    for field in ("instance_count", "volume_size_gb",
+                   "max_runtime_seconds"):
+        value = contract[field]
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise PromotionCheckRefusal(
+                f"sealed-run {field} must be a positive integer")
+    vpc = contract["vpc_config"]
+    if vpc != "none" and (not isinstance(vpc, Mapping) or set(vpc) != {
+            "security_group_ids", "subnets"}):
+        raise PromotionCheckRefusal(
+            "sealed-run vpc_config must be 'none' or "
+            "{security_group_ids, subnets}")
+    if not _hex(str(contract["environment_sha256"]), 64) or not _hex(
+            str(contract["hyperparameters_sha256"]), 64):
+        raise PromotionCheckRefusal(
+            "sealed-run environment_sha256 / hyperparameters_sha256 must "
+            "be sha256 hex")
+    normalized = dict(contract)
+    normalized["channels"] = _normalize_channels(contract["channels"])
+    if isinstance(vpc, Mapping):
+        normalized["vpc_config"] = {
+            "security_group_ids": sorted(str(x) for x in
+                                         vpc["security_group_ids"]),
+            "subnets": sorted(str(x) for x in vpc["subnets"])}
+    return normalized
+
+
+def _describe_contract_view(described: Mapping[str, Any],
+                            contract: Mapping[str, Any]) -> dict[str, Any]:
+    """Project the DESCRIBED job onto the contract's fields for an exact
+    comparison; account/region come from the ARN."""
+    view = {field: described.get(field) for field in CONTRACT_FIELDS
+            if field not in ("job_name", "account_id", "region",
+                             "channels", "vpc_config")}
+    described_channels = described.get("channels") or {}
+    view["channels"] = {
+        str(name): {field: (None if spec.get(field) is None
+                            else str(spec.get(field)))
+                    for field in CHANNEL_FIELDS}
+        for name, spec in described_channels.items()}
+    vpc = described.get("vpc_config")
+    view["vpc_config"] = ({"security_group_ids": sorted(
+        str(x) for x in vpc.get("security_group_ids", [])),
+        "subnets": sorted(str(x) for x in vpc.get("subnets", []))}
+        if isinstance(vpc, Mapping) else "none")
+    return view
+
+
+def _compare_contract(described_view: Mapping[str, Any],
+                      contract: Mapping[str, Any], *, label: str) -> None:
+    for field in CONTRACT_FIELDS:
+        if field in ("job_name", "account_id", "region"):
+            continue
+        actual, declared = described_view.get(field), contract.get(field)
+        if _canonical(actual) != _canonical(declared) and not (
+            field not in ("channels", "vpc_config", "network_isolation",
+                          "instance_count", "volume_size_gb",
+                          "max_runtime_seconds")
+            and str(actual) == str(declared)
+        ):
+            raise PromotionCheckRefusal(
+                f"{label} {field}={actual!r} does not match the "
+                f"predeclared {declared!r}")
+
+
+def verify_sealed_outputs(report: dict, *,
+                          candidate_packet: Mapping[str, Any],
+                          contract: Mapping[str, Any],
+                          artifact_tree_sha256: str,
+                          rows_bytes: Callable[[str], bytes | None],
+                          job_window: tuple[str, str],
+                          output_object_fetch: Callable[
+                              [str, str], tuple[bytes, str, str]],
+                          ) -> dict[str, Any]:
+    """Round 13 (Codex, 'the evidence does not prove the model generated
+    the hypotheses'): every bundled row file must be BYTE-IDENTICAL to an
+    immutable, versioned object the sealed job itself wrote under its
+    output prefix, inside the job's execution window; the job's own
+    INFERENCE RECEIPT (also an output object) must name this artifact
+    tree, the predeclared decoding configuration, the contract image
+    and every row object's sha256. Returns the verified identities for
+    the attested admission receipt."""
+    outputs = report.get("sealed_outputs")
+    if not isinstance(outputs, Mapping):
+        raise PromotionCheckRefusal(
+            "gate report binds no sealed_outputs — rows must be the "
+            "sealed job's own immutable output objects")
+    decoding = str(candidate_packet.get("decoding_config_sha256", ""))
+    if not _hex(decoding, 64):
+        raise PromotionCheckRefusal(
+            "candidate packet must predeclare decoding_config_sha256 — "
+            "the decoding configuration is part of the method")
+    prefix = str(contract["output_s3_prefix"]).rstrip("/") + "/"
+    start_utc, end_utc = job_window
+    if not _utc_ok(start_utc) or not _utc_ok(end_utc):
+        raise PromotionCheckRefusal(
+            "the sealed-run authority returned no valid execution window")
+
+    def fetch(label: str, ref: Any) -> bytes:
+        if not isinstance(ref, Mapping) or not all(
+                ref.get(k) for k in ("s3_uri", "version_id", "sha256")):
+            raise PromotionCheckRefusal(
+                f"{label}: output object must name s3_uri, version_id "
+                "and sha256")
+        uri = str(ref["s3_uri"])
+        if not uri.startswith(prefix):
+            raise PromotionCheckRefusal(
+                f"{label}: {uri} is not under the sealed job's output "
+                f"prefix {prefix} — an object the job did not write")
+        body, modified_utc, _etag = output_object_fetch(
+            uri, str(ref["version_id"]))
+        if hashlib.sha256(body).hexdigest() != str(ref["sha256"]).lower():
+            raise PromotionCheckRefusal(
+                f"{label}: versioned object bytes do not hash to the "
+                "declared sha256")
+        if not (start_utc <= modified_utc <= end_utc):
+            raise PromotionCheckRefusal(
+                f"{label}: object written at {modified_utc}, outside the "
+                f"sealed job's window {start_utc}..{end_utc}")
+        return body
+
+    receipt_ref = outputs.get("inference_receipt")
+    receipt_body = fetch("inference receipt", receipt_ref)
+    try:
+        inference = json.loads(receipt_body)
+    except ValueError as exc:
+        raise PromotionCheckRefusal(
+            "inference receipt is not JSON") from exc
+    if not isinstance(inference, Mapping):
+        raise PromotionCheckRefusal("inference receipt is not an object")
+    expectations = {
+        "artifact_tree_sha256": artifact_tree_sha256,
+        "decoding_config_sha256": decoding,
+        "image_digest": str(contract["image_digest"]),
+        "job_name": str(contract["job_name"]),
+    }
+    for field, expected in expectations.items():
+        if str(inference.get(field)) != expected:
+            raise PromotionCheckRefusal(
+                f"inference receipt {field}={inference.get(field)!r} does "
+                f"not bind the predeclared {expected!r} — the job did not "
+                "attest to running THIS artifact with THIS method")
+    declared_rows = outputs.get("rows")
+    receipt_rows = inference.get("rows_sha256")
+    if not isinstance(declared_rows, Mapping) or not declared_rows:
+        raise PromotionCheckRefusal("sealed_outputs names no row objects")
+    if not isinstance(receipt_rows, Mapping):
+        raise PromotionCheckRefusal(
+            "inference receipt names no rows_sha256 — the job must attest "
+            "to its own outputs")
+    verified_rows: dict[str, dict[str, str]] = {}
+    for label, ref in declared_rows.items():
+        body = fetch(f"rows[{label}]", ref)
+        digest = hashlib.sha256(body).hexdigest()
+        if str(receipt_rows.get(label, "")).lower() != digest:
+            raise PromotionCheckRefusal(
+                f"rows[{label}]: the inference receipt does not attest "
+                "this row object")
+        bundled = rows_bytes(label)
+        if bundled is None or hashlib.sha256(bundled).hexdigest() != digest:
+            raise PromotionCheckRefusal(
+                f"rows[{label}]: bundled row bytes are not the sealed "
+                "job's immutable output object")
+        verified_rows[str(label)] = {
+            "s3_uri": str(ref["s3_uri"]), "version_id": str(ref["version_id"]),
+            "sha256": digest}
+    if set(receipt_rows) != set(verified_rows):
+        raise PromotionCheckRefusal(
+            "the inference receipt attests row objects the report does "
+            "not bind (or vice versa)")
+    return {"inference_receipt": {
+                "s3_uri": str(receipt_ref["s3_uri"]),
+                "version_id": str(receipt_ref["version_id"]),
+                "sha256": hashlib.sha256(receipt_body).hexdigest()},
+            "rows": verified_rows,
+            "decoding_config_sha256": decoding}
+
+
 def verify_packet_chronology(report: dict, *,
                              anchor_envelope: Mapping[str, Any],
                              packet_bytes: bytes,
@@ -701,13 +979,19 @@ def verify_packet_chronology(report: dict, *,
                                  [Mapping[str, Any]], tuple[bytes, str]],
                              sealed_start_fetch: Callable[
                                  [Mapping[str, Any]], Mapping[str, Any]],
+                             artifact_tree_sha256: str,
+                             rows_bytes: Callable[[str], bytes | None],
+                             output_object_fetch: Callable[
+                                 [str, str], tuple[bytes, str, str]],
                              ) -> dict[str, Any]:
-    """The LIVE chronology verification the ADMISSION pipeline runs
-    (rounds 8-10, Codex): a separate envelope names the packet identity
-    and storage; the storage-set timestamp must precede the AWS-set
-    creation time of the ONE sealed job the packet PREDECLARED, and that
-    job must have Completed. Returns the material for the attested
-    admission receipt the runtime later verifies offline."""
+    """The LIVE chronology + contract + output verification the
+    ADMISSION pipeline runs (rounds 8-13, Codex): a separate envelope
+    names the packet identity and storage; the storage-set timestamp
+    must precede the AWS-set creation time of the ONE sealed job the
+    packet PREDECLARED; that job must have Completed and must EQUAL the
+    predeclared contract on every dimension; and every bundled row file
+    must be the job's own immutable output. Returns the material for
+    the attested admission receipt the runtime later verifies offline."""
     declared_sha = str(anchor_envelope.get("packet_sha256") or "")
     if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
         raise PromotionCheckRefusal(
@@ -725,26 +1009,7 @@ def verify_packet_chronology(report: dict, *,
     if not _utc_ok(anchored_utc):
         raise PromotionCheckRefusal(
             "the anchor authority returned no valid timestamp")
-    contract = candidate_packet.get("sealed_run")
-    CONTRACT_FIELDS = ("job_name", "image_digest", "instance_type",
-                        "channels", "output_s3_prefix",
-                        "output_kms_key_arn", "account_id", "region",
-                        "execution_role_arn", "network_isolation",
-                        "volume_kms_key_arn", "hyperparameters_sha256")
-    if not isinstance(contract, Mapping) or any(
-        contract.get(field) in (None, "", [], {})
-        for field in CONTRACT_FIELDS
-    ):
-        raise PromotionCheckRefusal(
-            "candidate packet must PREDECLARE the COMPLETE sealed-run "
-            f"contract ({', '.join(CONTRACT_FIELDS)}) — a job name alone "
-            "binds nothing (Codex rounds 11-12)")
-    # round 12 (Codex, MUTABLE_IMAGE_TAG_ACCEPTED): only an immutable
-    # ECR digest reference identifies an image
-    if "@sha256:" not in str(contract["image_digest"]):
-        raise PromotionCheckRefusal(
-            "sealed-run image must be an IMMUTABLE @sha256 digest "
-            "reference — a mutable tag identifies nothing")
+    contract = validate_sealed_run_contract(candidate_packet.get("sealed_run"))
     job = report.get("sealed_run_job")
     if not isinstance(job, Mapping) or str(job.get("name")) != str(
         contract["job_name"]
@@ -754,6 +1019,7 @@ def verify_packet_chronology(report: dict, *,
             "unrelated job cannot provide the chronology clock")
     described = sealed_start_fetch(job)
     creation_utc = str(described.get("creation_utc", ""))
+    end_utc = str(described.get("end_utc", ""))
     if not _utc_ok(creation_utc):
         raise PromotionCheckRefusal(
             "the sealed-run authority returned no valid start timestamp")
@@ -761,36 +1027,11 @@ def verify_packet_chronology(report: dict, *,
         raise PromotionCheckRefusal(
             f"the sealed run is {described.get('status')!r}, not "
             "Completed — an unfinished or failed run cannot promote")
-    # round 11 (Codex, UNBOUND_COMPLETED_JOB_ACCEPTED): the DESCRIBED
-    # job must match the predeclared contract on every dimension — an
-    # unrelated completed job proves nothing
-    live_checks = {
-        "image_digest": described.get("image"),
-        "instance_type": described.get("instance_type"),
-        "output_s3_prefix": described.get("output_path"),
-        "output_kms_key_arn": described.get("output_kms"),
-        "execution_role_arn": described.get("role_arn"),
-        "network_isolation": described.get("network_isolation"),
-        "volume_kms_key_arn": described.get("volume_kms"),
-        "hyperparameters_sha256": described.get("hyperparameters_sha256"),
-    }
-    for field, actual in live_checks.items():
-        if str(actual) != str(contract[field]):
-            raise PromotionCheckRefusal(
-                f"sealed job {field}={actual!r} does not match the "
-                f"predeclared {contract[field]!r}")
-    # round 12 (Codex, UNDECLARED_EXTRA_INPUT_ACCEPTED): EXACT channel
-    # equality — name for name, URI for URI; an undeclared extra input
-    # is an unreviewed data path
-    described_channels = {str(k): str(v) for k, v in
-                           (described.get("channels") or {}).items()}
-    declared_channels = {str(k): str(v) for k, v in
-                          dict(contract["channels"]).items()}
-    if described_channels != declared_channels:
-        raise PromotionCheckRefusal(
-            f"sealed job channels {sorted(described_channels)} do not "
-            f"EXACTLY equal the predeclared {sorted(declared_channels)} "
-            "— undeclared inputs refuse")
+    # rounds 11-13: the DESCRIBED job must EQUAL the predeclared contract
+    # on EVERY dimension — an unrelated or differently-configured job
+    # proves nothing
+    view = _describe_contract_view(described, contract)
+    _compare_contract(view, contract, label="sealed job")
     arn = str(described.get("arn", ""))
     if (f":{contract['account_id']}:" not in arn
             or f":{contract['region']}:" not in arn):
@@ -802,37 +1043,37 @@ def verify_packet_chronology(report: dict, *,
             f"the packet was anchored at {anchored_utc}, NOT before the "
             f"sealed run started at {creation_utc} — post-hoc "
             "predeclaration refused")
+    sealed_outputs = verify_sealed_outputs(
+        report, candidate_packet=candidate_packet, contract=contract,
+        artifact_tree_sha256=artifact_tree_sha256, rows_bytes=rows_bytes,
+        job_window=(creation_utc, end_utc),
+        output_object_fetch=output_object_fetch)
+    sealed_job = dict(view)
+    sealed_job.update({"name": str(contract["job_name"]),
+                       "creation_utc": creation_utc, "end_utc": end_utc,
+                       "status": "Completed",
+                       "account_id": contract["account_id"],
+                       "region": contract["region"],
+                       "output_artifact_s3_uri": described.get(
+                           "output_artifact_s3_uri")})
     return {"packet_sha256": declared_sha, "anchored_utc": anchored_utc,
-            "sealed_job": {"name": str(contract["job_name"]),
-                            "creation_utc": creation_utc,
-                            "status": "Completed",
-                            # round 12: record what the job ACTUALLY was
-                            "image_digest": described.get("image"),
-                            "instance_type": described.get("instance_type"),
-                            "channels": described_channels,
-                            "output_s3_prefix": described.get("output_path"),
-                            "output_kms_key_arn": described.get("output_kms"),
-                            "execution_role_arn": described.get("role_arn"),
-                            "network_isolation": described.get(
-                                "network_isolation"),
-                            "volume_kms_key_arn": described.get("volume_kms"),
-                            "hyperparameters_sha256": described.get(
-                                "hyperparameters_sha256"),
-                            "account_id": contract["account_id"],
-                            "region": contract["region"]}}
+            "sealed_job": sealed_job, "sealed_outputs": sealed_outputs}
 
 
 def verify_admission_receipt(report: dict, *,
                              anchor_envelope: Mapping[str, Any],
                              packet_bytes: bytes,
                              candidate_packet: Mapping[str, Any],
-                             admission_receipt: Mapping[str, Any]) -> None:
+                             admission_receipt: Mapping[str, Any],
+                             artifact_tree_sha256: str,
+                             rows_bytes: Callable[[str], bytes | None],
+                             ) -> None:
     """Round 10 (Codex): the RUNTIME does not call AWS — its loader role
     has (correctly) no sagemaker:Describe* or s3:GetObjectVersion. The
-    ADMISSION pipeline performs the live chronology verification with
-    proper credentials and writes this attested receipt into the bundle;
-    the runtime verifies the receipt's internal consistency against the
-    packet, envelope and report it also holds."""
+    ADMISSION pipeline performs the live verification with proper
+    credentials and writes this attested receipt into the bundle; the
+    runtime verifies the receipt's internal consistency against the
+    packet, envelope, report and row bytes it also holds."""
     declared_sha = str(anchor_envelope.get("packet_sha256") or "")
     if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
         raise PromotionCheckRefusal(
@@ -859,38 +1100,56 @@ def verify_admission_receipt(report: dict, *,
         raise PromotionCheckRefusal(
             f"the sealed run is {job.get('status')!r}, not Completed — "
             "an unfinished or failed run cannot promote")
-    contract = candidate_packet.get("sealed_run")
-    if not isinstance(contract, Mapping) or not contract.get("job_name"):
-        raise PromotionCheckRefusal(
-            "candidate packet must PREDECLARE the sealed-run contract")
+    contract = validate_sealed_run_contract(candidate_packet.get("sealed_run"))
     report_job = report.get("sealed_run_job") or {}
     if not (str(contract["job_name"]) == str(job.get("name"))
             == str(report_job.get("name"))):
         raise PromotionCheckRefusal(
             "the sealed job must be the ONE the packet predeclared — an "
             "unrelated job cannot provide the chronology clock")
-    # round 11: the receipt's verified contract must EQUAL the packet's
-    for field in ("image_digest", "instance_type", "output_s3_prefix",
-                   "output_kms_key_arn", "account_id", "region",
-                   "execution_role_arn", "network_isolation",
-                   "volume_kms_key_arn", "hyperparameters_sha256"):
-        if str(job.get(field)) != str(contract.get(field)):
+    # rounds 11-13: the receipt's verified contract must EQUAL the
+    # packet's on every dimension
+    _compare_contract(_describe_contract_view(job, contract), contract,
+                      label="admission receipt")
+    for field in ("account_id", "region"):
+        if str(job.get(field)) != str(contract[field]):
             raise PromotionCheckRefusal(
                 f"admission receipt {field} does not match the "
                 "predeclared sealed-run contract")
-    receipt_channels = {str(k): str(v) for k, v in
-                         (job.get("channels") or {}).items()}
-    declared_channels = {str(k): str(v) for k, v in
-                          dict(contract.get("channels") or {}).items()}
-    if receipt_channels != declared_channels:
+    # round 13: the receipt's verified output identities must be the
+    # report's, and the bundled rows must hash to them
+    attested = admission_receipt.get("sealed_outputs")
+    declared = report.get("sealed_outputs")
+    if not isinstance(attested, Mapping) or not isinstance(declared, Mapping):
         raise PromotionCheckRefusal(
-            "admission receipt channels do not EXACTLY equal the "
-            "predeclared sealed-run channels")
+            "admission receipt or gate report binds no sealed_outputs")
+    if _canonical(attested.get("inference_receipt")) != _canonical(
+            declared.get("inference_receipt")):
+        raise PromotionCheckRefusal(
+            "admission receipt attests a different inference receipt")
+    if str(attested.get("decoding_config_sha256")) != str(
+            candidate_packet.get("decoding_config_sha256")):
+        raise PromotionCheckRefusal(
+            "admission receipt decoding configuration is not the "
+            "predeclared one")
+    attested_rows = attested.get("rows") or {}
+    declared_rows = declared.get("rows") or {}
+    if _canonical(attested_rows) != _canonical(declared_rows) or not attested_rows:
+        raise PromotionCheckRefusal(
+            "admission receipt row objects do not equal the report's")
+    for label, ref in attested_rows.items():
+        bundled = rows_bytes(str(label))
+        if bundled is None or hashlib.sha256(bundled).hexdigest() != str(
+                ref.get("sha256", "")).lower():
+            raise PromotionCheckRefusal(
+                f"rows[{label}]: bundled row bytes are not the attested "
+                "sealed-job output object")
 
 
 def require_licensed_code_switch(report: dict, *,
                                  candidate_packet: Mapping[str, Any],
                                  licensed_sets: Mapping[str, Mapping[str, Any]],
+                                 document_bytes: Callable[[str], bytes | None],
                                  ) -> None:
     """Round 10 (Codex): the code-switch set must resolve to a LICENSED,
     reserved, speaker-disjoint holdout registered in the pinned
@@ -922,6 +1181,35 @@ def require_licensed_code_switch(report: dict, *,
     if registered.get("manifest_sha256") != declared.get("manifest_sha256"):
         raise PromotionCheckRefusal(
             "code-switch manifest does not match the licensed registry")
+    # round 13 (Codex, PRESENCE-ONLY): the licence record and the
+    # reservation ledger entry are OPENED, hashed against the registry,
+    # and must themselves name this manifest — a path naming nothing,
+    # or a document about some other set, refuses
+    for doc_field, sha_field, must_name in (
+            ("license_record", "license_sha256", "manifest_sha256"),
+            ("reservation_ledger_entry", "reservation_sha256",
+             "manifest_sha256")):
+        path = str(registered[doc_field])
+        body = document_bytes(path)
+        if body is None:
+            raise PromotionCheckRefusal(
+                f"licensed code-switch {doc_field} {path!r} does not "
+                "resolve to a document")
+        if hashlib.sha256(body).hexdigest() != str(
+                registered[sha_field]).lower():
+            raise PromotionCheckRefusal(
+                f"licensed code-switch {doc_field} does not hash to the "
+                f"registry's {sha_field}")
+        try:
+            document = json.loads(body)
+        except ValueError as exc:
+            raise PromotionCheckRefusal(
+                f"licensed code-switch {doc_field} is not JSON") from exc
+        if not isinstance(document, Mapping) or str(
+                document.get(must_name)) != str(registered["manifest_sha256"]):
+            raise PromotionCheckRefusal(
+                f"licensed code-switch {doc_field} does not name this "
+                "set's manifest_sha256 — a document about another set")
 
 
 def verify_complete_promotion(report: dict, *,
@@ -937,7 +1225,7 @@ def verify_complete_promotion(report: dict, *,
                               rows_bytes: Callable[[str], bytes | None],
                               manifest_bytes: Callable[[str], bytes | None],
                               verify_chronology: Callable[[], None],
-                              scorer_source: bytes,
+                              document_bytes: Callable[[str], bytes | None],
                               ) -> dict[str, str]:
     """Round 8 (Codex): the ONE complete promotion gate. The repo-side
     checker and the runtime bundle verifier both call THIS with their
@@ -959,7 +1247,8 @@ def verify_complete_promotion(report: dict, *,
     verify_chronology()
     require_licensed_code_switch(
         report, candidate_packet=candidate_packet,
-        licensed_sets=licensed_code_switch_sets)
+        licensed_sets=licensed_code_switch_sets,
+        document_bytes=document_bytes)
     require_protocol_evidence(
         report, mandatory, protocol=protocol,
         holdouts_by_language=holdouts_by_language)
@@ -967,7 +1256,7 @@ def verify_complete_promotion(report: dict, *,
         report, grade_authority=grade_authority, mandatory=mandatory)
     recompute_statistics(
         report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
-    scorer = load_scorer(scorer_source)
+    scorer = resolve_scorer(candidate_packet)   # baked, never bundle code
     require_sealed_row_identity(
         report, mandatory, rows_bytes=rows_bytes,
         manifest_bytes=manifest_bytes, scorer=scorer)

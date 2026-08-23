@@ -752,7 +752,7 @@ def test_bucket_boundary_enforces_create_only_complete_signed_writes():
 def test_kms_policy_pins_digest_message_type_and_algorithm():
     policy = json.loads((
         ROOT / "platform/promotion/kms-key-policy.template.json").read_text())
-    use = _statement(policy, "PromotionRoleMaySignAndVerifyOnly")
+    use = _statement(policy, "AdmissionRoleSignsECDSADigestsOnly")
     conditions = use["Condition"]["StringEquals"]
     assert conditions["kms:SigningAlgorithm"] == SIGNING_ALGORITHM
     assert conditions["kms:MessageType"] == "DIGEST"

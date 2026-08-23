@@ -4,22 +4,54 @@
     {
       "Sid": "AccountRootAdminOnly",
       "Effect": "Allow",
-      "Principal": {"AWS": "arn:aws:iam::558069890522:root"},
-      "Action": ["kms:DescribeKey", "kms:GetKeyPolicy", "kms:PutKeyPolicy", "kms:EnableKey", "kms:DisableKey", "kms:ScheduleKeyDeletion", "kms:CancelKeyDeletion", "kms:CreateAlias", "kms:UpdateAlias", "kms:DeleteAlias"],
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:root"
+      },
+      "Action": [
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:PutKeyPolicy",
+        "kms:GetPublicKey",
+        "kms:Verify",
+        "kms:EnableKey",
+        "kms:DisableKey",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion",
+        "kms:CreateAlias",
+        "kms:UpdateAlias",
+        "kms:DeleteAlias",
+        "kms:ListAliases",
+        "kms:ListResourceTags",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:UpdateKeyDescription",
+        "kms:ListKeyPolicies",
+        "kms:GetKeyRotationStatus",
+        "kms:ListKeyRotations",
+        "kms:ListGrants",
+        "kms:ListRetirableGrants"
+      ],
       "Resource": "*"
     },
     {
-      "Sid": "PromotionRoleMaySignAndVerifyOnly",
+      "Sid": "AdmissionRoleSignsECDSADigestsOnly",
       "Effect": "Allow",
-      "Principal": {"AWS": "arn:aws:iam::558069890522:role/medzen-b5-promotion-role"},
-      "Action": ["kms:Sign", "kms:Verify", "kms:GetPublicKey", "kms:DescribeKey"],
+      "Principal": {
+        "AWS": "arn:aws:iam::558069890522:role/medzen-promotion-admission-role"
+      },
+      "Action": [
+        "kms:Sign",
+        "kms:GetPublicKey",
+        "kms:DescribeKey"
+      ],
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "kms:SigningAlgorithm": "RSASSA_PSS_SHA_256",
+          "kms:SigningAlgorithm": "ECDSA_SHA_256",
           "kms:MessageType": "DIGEST"
         }
       }
     }
-  ]
+  ],
+  "_note": "round 13 (Codex): the LIVE policy is managed by infra/promotion_admission.tf (aws_kms_key_policy); this template mirrors it. The key is ECC_NIST_P256 \u2014 ECDSA_SHA_256, never RSASSA_PSS."
 }

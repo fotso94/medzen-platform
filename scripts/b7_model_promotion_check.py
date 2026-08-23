@@ -23,7 +23,8 @@ from pathlib import Path
 # checker (git/evidence-record authorities) and by the runtime promotion
 # bundle verification (deployment-pinned authorities). Two codebases for
 # the same gate is how a fabricated all-PASS bundle promoted.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "services/model-loader"))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "services/model-loader"))
 from medzen_model_loader.promotion_check import (  # noqa: E402
     PromotionCheckRefusal,
     promotable_languages,
@@ -170,6 +171,21 @@ def _sealed_start_fetch(job):
     return _sagemaker_sealed_start_fetch(job)
 
 
+def _output_object_fetch(s3_uri, version_id):
+    # round 13: the sealed job's own versioned output objects
+    from medzen_model_loader.loader_v2 import _s3_output_fetch
+    return _s3_output_fetch(s3_uri, version_id)
+
+
+def _document_bytes(path):
+    # round 13: licence/reservation documents resolve against the
+    # COMMITTED repository tree, never an author-supplied directory
+    candidate = (ROOT / str(path).lstrip("/")).resolve()
+    if ROOT not in candidate.parents or not candidate.is_file():
+        return None
+    return candidate.read_bytes()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gate-report", type=Path, required=True)
@@ -192,9 +208,6 @@ def main() -> int:
     parser.add_argument("--artifact-tree", default=None,
                         help="the candidate's full 64-hex artifact tree "
                              "digest (round 8: REQUIRED)")
-    parser.add_argument("--scorer", type=Path, default=None,
-                        help="the pinned scorer bytes (round 12: REQUIRED "
-                             "— every error count recomputes)")
     parser.add_argument("--write-admission-receipt", type=Path,
                         default=None,
                         help="write the attested chronology receipt the "
@@ -211,8 +224,7 @@ def main() -> int:
                              ("--candidate-packet", args.candidate_packet),
                              ("--manifests-dir", args.manifests_dir),
                              ("--artifact-tree", args.artifact_tree),
-                             ("--anchor-envelope", args.anchor_envelope),
-                             ("--scorer", args.scorer)):
+                             ("--anchor-envelope", args.anchor_envelope)):
             if value is None:
                 raise PromotionCheckRefusal(
                     f"{flag} is required: the promotion gate is COMPLETE "
@@ -242,7 +254,10 @@ def main() -> int:
                 report, anchor_envelope=envelope,
                 packet_bytes=packet_bytes, candidate_packet=packet,
                 anchor_fetch=_anchor_fetch,
-                sealed_start_fetch=_sealed_start_fetch)
+                sealed_start_fetch=_sealed_start_fetch,
+                artifact_tree_sha256=str(args.artifact_tree),
+                rows_bytes=rows_bytes,
+                output_object_fetch=_output_object_fetch)
             if args.write_admission_receipt is not None:
                 args.write_admission_receipt.write_text(
                     json.dumps(receipt, indent=1, sort_keys=True) + "\n")
@@ -260,7 +275,7 @@ def main() -> int:
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             verify_chronology=verify_chronology,
-            scorer_source=args.scorer.read_bytes(),
+            document_bytes=_document_bytes,
         )
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))

@@ -2,8 +2,9 @@
 # deployed CPU image contains no fairseq2/omnilingual_asr, so the backend
 # was unservable). This mirrors the asr-eval-runtime image — the exact
 # pinned stack that ran the trained artifact at the T6 gate — and adds the
-# ASR runtime service on top. DARK until the b6v2 serving deploy: nothing
-# builds or pushes this in CI yet.
+# ASR runtime service on top. Round 13 (Codex): built, Trivy-scanned and
+# SBOM'd in CI by .github/workflows/model-images.yml (push-by-digest with
+# provenance gated on the CI role like every AWS-touching job).
 #
 # Model staging contract: the model-loader init container verifies the
 # artifact with loader_v2 and writes /models/.medzen-ready-v2.json via

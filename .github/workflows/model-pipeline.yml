@@ -1,10 +1,23 @@
-# B7 Phase 3 — model pipeline (Base v5 B7: workflow_dispatch -> verify gate
-# report -> registry PR; canary rides the alias flip after merge).
+# B7 Phase 3 — model pipeline: the ONE promotion-admission path.
 #
-# The gate report is the authority: no report, no PR. Only languages that
-# PASSED may have approved_version bumped; failures stay pinned (§A4).
-# Registry-PR creation is dark-gated with the rest of the AWS surface and
-# additionally requires B5 reactivation to supply real reports.
+# Round 13 (Codex): the previous shape signed only the admission receipt
+# (the loader requires a signed evidence ROOT), had no bundle assembler,
+# and its second job omitted dependencies, interpolated inputs into the
+# shell and exited 1 by design. Now:
+#
+#   admit  -> scripts/assemble_promotion_bundle.py --sign
+#             (complete LIVE gate -> layout -> KMS-sign authority + root
+#              -> the loader's OWN runtime verifier) in the PROTECTED
+#             `promotion-admission` environment, under the DEDICATED
+#             admission role (the only principal granted kms:Sign).
+#   open-admission-pr -> commits the pins + promotion record under
+#             platform/decisions/admissions/<run_id>/ on a branch and opens
+#             the PR the owner reviews. Deployment pins are taken from
+#             that merged record, never from a workflow log.
+#
+# Every AWS-touching job is dark until MEDZEN_ADMISSION_ROLE_ARN exists
+# (a repository variable set when the protected environment + role are
+# created under review — infra/promotion_admission.tf).
 
 name: model-pipeline
 
@@ -16,66 +29,65 @@ on:
         required: true
         type: string
       results_dir:
-        description: directory of per-language hash-bound <language>.rows.jsonl files (recompute gate)
+        description: directory of per-language <label>.rows.jsonl files (the sealed job's own output objects)
         required: true
+        type: string
       candidate_packet_path:
-        description: the PREDECLARED candidate packet (round 8+)
+        description: the PREDECLARED candidate packet
         required: true
+        type: string
       manifests_dir:
-        description: directory of <language>.holdout-manifest.jsonl sealed manifests
+        description: directory of <label>.holdout-manifest.jsonl sealed manifests
         required: true
+        type: string
       artifact_tree:
         description: full 64-hex artifact tree digest (checkpoint+tokenizer)
         required: true
+        type: string
       anchor_envelope_path:
         description: the separate anchor envelope (packet sha + S3 storage)
         required: true
         type: string
-      track:
-        description: model track
-        required: true
-        type: choice
-        options: [asr]
       gate_report_path:
-        description: committed gate-report artifact path
+        description: committed gate-report path
         required: true
         type: string
-      languages:
-        description: comma-separated languages whose gates passed
+      independent_review_path:
+        description: committed independent review record (status PASS)
+        required: true
+        type: string
+      owner_authorization_path:
+        description: committed owner authorization naming the artifact tree
         required: true
         type: string
 
-# Codex review #18 principle: id-token only where OIDC is used — the
-# only job needing extra grants (open-registry-pr) documents its own.
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  verify-gate-report:
+  admit:
     runs-on: ubuntu-24.04
+    # the protected environment is where the owner's required review
+    # lives; kms:Sign is granted to the admission role and nothing else
+    environment: promotion-admission
+    if: vars.MEDZEN_ADMISSION_ROLE_ARN != ''
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
-      - name: OIDC federation for live S3/SageMaker verification
-        # round 12 (Codex): the complete gate performs LIVE anchor and
-        # sealed-job checks — it needs credentials; dark until the CI
-        # role variable exists, like every AWS-touching job
-        if: vars.MEDZEN_CI_ROLE_ARN != ''
-        uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
-        with:
-          role-to-assume: ${{ vars.MEDZEN_CI_ROLE_ARN }}
-          aws-region: eu-central-1
-      - name: pinned gate dependencies
+      - name: pinned admission dependencies
         run: >
           python -m pip install "boto3==1.43.58" "PyYAML==6.0.3"
           "cryptography==48.0.1"
-      - name: gate report authorizes exactly these languages
-        # round 12 (Codex): user inputs pass through ENV, never shell
-        # interpolation; the checker invokes the COMPLETE gate — partial
-        # invocations refuse by design
+      - name: OIDC federation as the DEDICATED admission role
+        uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_ADMISSION_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: assemble, completely verify, sign, runtime-verify
+        # inputs pass through ENV, never shell interpolation
         env:
           GATE_REPORT: ${{ inputs.gate_report_path }}
           RESULTS_DIR: ${{ inputs.results_dir }}
@@ -83,76 +95,76 @@ jobs:
           MANIFESTS_DIR: ${{ inputs.manifests_dir }}
           ARTIFACT_TREE: ${{ inputs.artifact_tree }}
           ANCHOR_ENVELOPE: ${{ inputs.anchor_envelope_path }}
+          INDEPENDENT_REVIEW: ${{ inputs.independent_review_path }}
+          OWNER_AUTHORIZATION: ${{ inputs.owner_authorization_path }}
         run: |
-          python scripts/b7_model_promotion_check.py \
+          python scripts/assemble_promotion_bundle.py \
             --gate-report "$GATE_REPORT" \
             --results-dir "$RESULTS_DIR" \
             --candidate-packet "$CANDIDATE_PACKET" \
             --manifests-dir "$MANIFESTS_DIR" \
             --artifact-tree "$ARTIFACT_TREE" \
             --anchor-envelope "$ANCHOR_ENVELOPE" \
-            --scorer platform/promotion/scorer_v1.py \
-            --write-admission-receipt admission-receipt.json
-      - name: sign the admission receipt with the promotion key
-        # requires kms:Sign on alias/medzen-promotion-signing — granted
-        # only to the owner-approved admission role; dark until then
-        if: vars.MEDZEN_CI_ROLE_ARN != ''
-        run: |
-          python scripts/sign_promotion_document.py admission-receipt.json
-      - name: attested receipt artifacts
+            --independent-review "$INDEPENDENT_REVIEW" \
+            --owner-authorization "$OWNER_AUTHORIZATION" \
+            --output-dir promotion-bundle \
+            --sign
+      - name: signed promotion bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: admission-receipt
-          path: |
-            admission-receipt.json
-            admission-receipt.json.sig
-          if-no-files-found: warn
+          name: promotion-bundle
+          path: promotion-bundle/
+          if-no-files-found: error
 
-  open-registry-pr:
-    needs: verify-gate-report
-    if: vars.MEDZEN_CI_ROLE_ARN != ''
+  open-admission-pr:
+    needs: admit
+    if: vars.MEDZEN_ADMISSION_ROLE_ARN != ''
     runs-on: ubuntu-24.04
     permissions:
-      contents: write # pushes the registry bump branch, nothing else
+      contents: write # pushes ONLY the admission-record branch
       id-token: write
       pull-requests: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          python-version: "3.12"
-      - name: branch with the per-language approved_version bumps
+          name: promotion-bundle
+          path: promotion-bundle
+      - name: commit the admission record on its own branch
+        env:
+          RUN_ID: ${{ inputs.run_id }}
         run: |
-          # ARCH-2026-001 atomic gate (Codex review #9): no language
-          # subsetting — the checker evaluates the frozen mandatory set and
-          # statistics are recomputed from hash-bound rows
-          # round 11 (Codex): the workflow invokes the COMPLETE gate —
-          # partial invocations refuse by design
-          python scripts/b7_model_promotion_check.py \
-            --gate-report "${{ inputs.gate_report_path }}" \
-            --results-dir "${{ inputs.results_dir }}" \
-            --candidate-packet "${{ inputs.candidate_packet_path }}" \
-            --manifests-dir "${{ inputs.manifests_dir }}" \
-            --artifact-tree "${{ inputs.artifact_tree }}" \
-            --anchor-envelope "${{ inputs.anchor_envelope_path }}" \
-            --write-admission-receipt admission-receipt.json
-          echo "::error::fail-closed placeholder: the approved_version bump is made"
-          echo "::error::through the decode-approvals input to scripts/generate_languages.py,"
-          echo "::error::whose promotion schema lands with B5 reactivation. Until that"
-          echo "::error::reviewed change, this pipeline verifies gates but opens no PR."
-          exit 1
-      - name: open the PR for human review
+          case "$RUN_ID" in
+            *[!A-Za-z0-9._-]*|"") echo "::error::run_id must be [A-Za-z0-9._-]"; exit 1;;
+          esac
+          dest="platform/decisions/admissions/$RUN_ID"
+          if [ -e "$dest" ]; then echo "::error::admission record $dest already exists (append-only)"; exit 1; fi
+          mkdir -p "$dest"
+          cp promotion-bundle/ADMISSION-PINS.json promotion-bundle/PROMOTION-RECORD.json \
+             promotion-bundle/ADMISSION-RECEIPT.json promotion-bundle/bundle.json \
+             promotion-bundle/bundle.json.sig "$dest/"
+          git config user.name "medzen-admission[bot]"
+          git config user.email "admission@medzen.invalid"
+          git checkout -b "promotion-admission/$RUN_ID"
+          git add "$dest"
+          git commit -m "promotion admission record $RUN_ID (signed bundle pins)"
+          git push origin "promotion-admission/$RUN_ID"
+      - name: open the PR for the owner's review
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8.0.0
+        env:
+          RUN_ID: ${{ inputs.run_id }}
         with:
           script: |
+            const runId = process.env.RUN_ID;
             await github.rest.pulls.create({
               ...context.repo,
-              title: `registry: promote ${{ toJSON(inputs.languages) }} (run ${{ toJSON(inputs.run_id) }})`,
-              head: `model-promotion/${{ inputs.run_id }}`,
+              title: `promotion admission ${runId}: signed bundle pins for owner review`,
+              head: `promotion-admission/${runId}`,
               base: 'master',
               body: [
-                'Gate report: `${{ inputs.gate_report_path }}`',
-                'Only PASS languages are bumped; failures stay pinned (§A4).',
-                'Merging triggers the canary alias flip for these languages only.',
+                `Admission record: \`platform/decisions/admissions/${runId}/\``,
+                'Contains the signed evidence-root pins the deployment must carry',
+                '(MEDZEN_PROMOTION_BUNDLE_SHA256, MEDZEN_HOLDOUT_GRADES_SHA256).',
+                'Merging records the admission; deployment stays a separate, held step.',
               ].join('\n'),
             });

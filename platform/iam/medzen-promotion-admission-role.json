@@ -1,0 +1,44 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "ReadVersionedEvidenceObjects",
+   "Effect": "Allow",
+   "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/*",
+    "arn:aws:s3:::medzen-speech/research/*",
+    "arn:aws:s3:::medzen-speech/promotion/*",
+    "arn:aws:s3:::medzen-speech/sealed-results/*"
+   ]
+  },
+  {
+   "Sid": "DescribeSealedJobs",
+   "Effect": "Allow",
+   "Action": ["sagemaker:DescribeTrainingJob", "sagemaker:DescribeProcessingJob"],
+   "Resource": [
+    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-*",
+    "arn:aws:sagemaker:eu-central-1:558069890522:processing-job/medzen-*"
+   ]
+  },
+  {
+   "Sid": "DecryptEvidenceUnderTheDataKey",
+   "Effect": "Allow",
+   "Action": ["kms:Decrypt"],
+   "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  {
+   "Sid": "SignPromotionEvidence",
+   "Effect": "Allow",
+   "Action": ["kms:Sign", "kms:GetPublicKey", "kms:DescribeKey"],
+   "Resource": "arn:aws:kms:eu-central-1:558069890522:key/d9162c72-ebfa-4a00-bc18-5cd043c763ff",
+   "Condition": {"StringEquals": {"kms:SigningAlgorithm": "ECDSA_SHA_256", "kms:MessageType": "DIGEST"}}
+  },
+  {
+   "Sid": "IdentityCheck",
+   "Effect": "Allow",
+   "Action": "sts:GetCallerIdentity",
+   "Resource": "*"
+  }
+ ]
+}

@@ -547,6 +547,17 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     files["HOLDOUT-BINDINGS.json"] = _json.dumps(holdouts).encode()
     # round 10: grades live in the SEPARATELY pinned authority document;
     # the synthetic authority also registers the synthetic CS set
+    # round 13 (Codex, PRESENCE-ONLY): the licence record and the
+    # reservation ledger entry are REAL documents in the bundle (flattened
+    # repository paths), hashed by the registry and naming this manifest
+    cs_license = _json.dumps({"record": "SYNTHETIC-CS-LICENSE",
+                              "manifest_sha256": cs_manifest_sha,
+                              "licensor": "synthetic"}).encode()
+    cs_reservation = _json.dumps({"record": "SYNTHETIC-CS-RESERVATION",
+                                  "manifest_sha256": cs_manifest_sha,
+                                  "reserved_for": "promotion"}).encode()
+    files["platform__decisions__SYNTHETIC-CS-LICENSE.json"] = cs_license
+    files["platform__ledger__SYNTHETIC-CS-RESERVATION.json"] = cs_reservation
     files["HOLDOUT-GRADES.json"] = _json.dumps({
         "record": "HOLDOUT-GRADES-2026-001",
         "grades": grade_entries,
@@ -554,9 +565,11 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
             "kinyarwanda-english-cs-v1": {
                 "manifest_sha256": cs_manifest_sha,
                 "license_record": "platform/decisions/SYNTHETIC-CS-LICENSE.json",
-                "license_sha256": "aa" * 32,
-                "reservation_ledger_entry": "synthetic-ledger-1",
-                "reservation_sha256": "bb" * 32,
+                "license_sha256": hashlib.sha256(cs_license).hexdigest(),
+                "reservation_ledger_entry":
+                    "platform/ledger/SYNTHETIC-CS-RESERVATION.json",
+                "reservation_sha256": hashlib.sha256(
+                    cs_reservation).hexdigest(),
                 "speaker_disjoint": True}},
     }).encode()
     packet = {
@@ -571,30 +584,51 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "operational_thresholds": {"max_latency_p95_ms": 1200,
                                      "max_vram_gb": 20},
         "allowed_instance_types": ["ml.g6.xlarge"],
+        "scorer_id": "scorer_v1",
         "scorer_sha256": hashlib.sha256(SCORER_BYTES).hexdigest(),
-        "sealed_run": {
-            "job_name": "medzen-sealed-eval-synthetic-1",
-            "image_digest": ("558069890522.dkr.ecr.eu-central-1"
-                              ".amazonaws.com/medzen-sealed-eval@sha256:"
-                              + "8e" * 32),
-            "instance_type": "ml.g6.xlarge",
-            "channels": {"sealed-one": "s3://medzen-speech/eval/sealed/one",
-                          "sealed-two": "s3://medzen-speech/eval/sealed/two"},
-            "output_s3_prefix": "s3://medzen-speech/sealed-results/",
-            "output_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/k",
-            "account_id": "558069890522",
-            "region": "eu-central-1",
-            "execution_role_arn": ("arn:aws:iam::558069890522:role/"
-                                     "medzen-sealed-eval-role"),
-            "network_isolation": True,
-            "volume_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/v",
-            "hyperparameters_sha256": "77" * 32,
-        },
+        # round 13: the decoding configuration is part of the method
+        "decoding_config_sha256": "dc" * 32,
+        "sealed_run": dict(SEALED_RUN_CONTRACT),
     }
     packet.update(packet_over or {})
     packet_bytes = _json.dumps(packet).encode()
     files["CANDIDATE-PACKET.json"] = packet_bytes
-    files["scorer.py"] = SCORER_BYTES
+    # round 13 (Codex): every bundled row file is the sealed job's OWN
+    # immutable output object, attested by the job's inference receipt
+    row_labels = [name[:-len(".rows.jsonl")] for name in files
+                  if name.endswith(".rows.jsonl")]
+    inference = {
+        "artifact_tree_sha256": tree_digest,
+        "decoding_config_sha256": packet["decoding_config_sha256"],
+        "image_digest": packet["sealed_run"]["image_digest"],
+        "job_name": packet["sealed_run"]["job_name"],
+        "rows_sha256": {label: hashlib.sha256(
+            files[f"{label}.rows.jsonl"]).hexdigest() for label in row_labels},
+    }
+    inference_bytes = _json.dumps(inference, sort_keys=True).encode()
+    prefix = packet["sealed_run"]["output_s3_prefix"]
+    sealed_outputs = {
+        "inference_receipt": {"s3_uri": f"{prefix}inference-receipt.json",
+                              "version_id": "v-inference",
+                              "sha256": hashlib.sha256(
+                                  inference_bytes).hexdigest()},
+        "rows": {label: {"s3_uri": f"{prefix}{label}.rows.jsonl",
+                         "version_id": f"v-{label}",
+                         "sha256": inference["rows_sha256"][label]}
+                 for label in row_labels},
+    }
+    report["sealed_outputs"] = sealed_outputs
+    report_body = _json.dumps(report).encode()
+    files["T6-GATE-REPORT.json"] = report_body
+    # the in-memory "S3" the admission-path tests fetch from
+    SEALED_OUTPUT_STORE.clear()
+    SEALED_OUTPUT_STORE[(sealed_outputs["inference_receipt"]["s3_uri"],
+                         "v-inference")] = (inference_bytes,
+                                            "2026-08-23T12:30:00Z")
+    for label in row_labels:
+        SEALED_OUTPUT_STORE[(f"{prefix}{label}.rows.jsonl", f"v-{label}")] = (
+            files[f"{label}.rows.jsonl"], "2026-08-23T12:40:00Z")
+    # round 13 (Codex): bundles carry NO code — the scorer is baked
     # round 9 (Codex): the anchor is a SEPARATE envelope — a packet
     # cannot contain its own storage identity (circular VersionId)
     files["ANCHOR-ENVELOPE.json"] = _json.dumps({
@@ -610,15 +644,15 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "anchored_utc": "2026-08-23T10:00:00Z",
         "sealed_job": {"name": "medzen-sealed-eval-synthetic-1",
                         "creation_utc": "2026-08-23T12:00:00Z",
+                        "end_utc": "2026-08-23T13:00:00Z",
                         "status": "Completed",
+                        "output_artifact_s3_uri": None,
                         **{k: packet["sealed_run"][k]
-                           for k in ("image_digest", "instance_type",
-                                       "channels", "output_s3_prefix",
-                                       "output_kms_key_arn", "account_id",
-                                       "region", "execution_role_arn",
-                                       "network_isolation",
-                                       "volume_kms_key_arn",
-                                       "hyperparameters_sha256")}},
+                           for k in packet["sealed_run"]
+                           if k != "job_name"}},
+        "sealed_outputs": dict(sealed_outputs,
+                               decoding_config_sha256=packet[
+                                   "decoding_config_sha256"]),
     }).encode()
     # rounds 11-12: the AUTHORITY is signed per-document; the evidence
     # ROOT (bundle.json) is signed in _arm_bundle after the index exists
@@ -658,10 +692,117 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     return bundle, hashlib.sha256(index_bytes).hexdigest()
 
 
-SCORER_BYTES = (ROOT / "platform/promotion/scorer_v1.py").read_bytes()
+SEALED_OUTPUT_STORE: dict = {}
 
-_scorer_namespace: dict = {}
-exec(compile(SCORER_BYTES, "scorer.py", "exec"), _scorer_namespace)
+
+def _stub_output_fetch(s3_uri, version_id):
+    try:
+        body, modified = SEALED_OUTPUT_STORE[(s3_uri, version_id)]
+    except KeyError:
+        raise RuntimeError(f"no such versioned object {s3_uri}@{version_id}")
+    return body, modified, "etag"
+
+
+SEALED_RUN_CONTRACT = {
+    "job_name": "medzen-sealed-eval-synthetic-1",
+    "image_digest": ("558069890522.dkr.ecr.eu-central-1"
+                      ".amazonaws.com/medzen-sealed-eval@sha256:"
+                      + "8e" * 32),
+    "instance_type": "ml.g6.xlarge",
+    "instance_count": 1,
+    "volume_size_gb": 100,
+    "max_runtime_seconds": 14400,
+    "channels": {
+        "sealed-one": {"s3_uri": "s3://medzen-speech/eval/sealed/one",
+                        "s3_data_type": "S3Prefix",
+                        "s3_data_distribution_type": "FullyReplicated",
+                        "content_type": None, "compression_type": "None",
+                        "input_mode": "File"},
+        "sealed-two": {"s3_uri": "s3://medzen-speech/eval/sealed/two",
+                        "s3_data_type": "S3Prefix",
+                        "s3_data_distribution_type": "FullyReplicated",
+                        "content_type": None, "compression_type": "None",
+                        "input_mode": "File"}},
+    "output_s3_prefix": "s3://medzen-speech/sealed-results/",
+    "output_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/k",
+    "account_id": "558069890522",
+    "region": "eu-central-1",
+    "execution_role_arn": ("arn:aws:iam::558069890522:role/"
+                             "medzen-sealed-eval-role"),
+    "network_isolation": True,
+    "vpc_config": {"security_group_ids": ["sg-0fee72d218ac002a7"],
+                    "subnets": ["subnet-00232b25bc1ac407a"]},
+    "checkpoint_config": "none",
+    "volume_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/v",
+    "environment_sha256": "66" * 32,
+    "hyperparameters_sha256": "77" * 32,
+}
+
+
+# round 13 (Codex): the scorer is the BAKED loader module; the committed
+# reference copy under platform/promotion is pinned byte-identical below
+SCORER_BYTES = (ROOT / "services/model-loader/medzen_model_loader/"
+                "scorer_v1.py").read_bytes()
+
+from medzen_model_loader import scorer_v1 as _scorer_module  # noqa: E402
+_scorer_namespace = {"score_errors": _scorer_module.score_errors,
+                     "reference_words": _scorer_module.reference_words}
+
+
+def test_reference_scorer_copy_is_byte_identical_to_the_baked_module():
+    assert (ROOT / "platform/promotion/scorer_v1.py").read_bytes() == SCORER_BYTES
+
+
+def _production_manifest_check(tmp_path, monkeypatch, bundle_dir, **over):
+    from medzen_model_loader.loader_v2 import (artifact_tree_sha256,
+                                               validate_manifest_v2)
+    digest = "ab" * 32
+    tree = artifact_tree_sha256(digest, "12" * 32)
+    bundle, pin = _promotion_bundle(bundle_dir, tree, **over)
+    return bundle, pin, digest, validate_manifest_v2
+
+
+def test_bundle_carrying_executable_files_refuses(tmp_path, monkeypatch):
+    """Codex round 13 reproduced arbitrary code execution through a
+    bundled scorer.py. Evidence is data: ANY executable file refuses
+    before the gate runs, and nothing is compiled."""
+    import hashlib
+    import json as _json
+    import os
+    from medzen_model_loader.loader_v2 import LoaderV2Refusal
+    bundle, pin, digest, validate = _production_manifest_check(
+        tmp_path, monkeypatch, tmp_path)
+    payload = b"import os\nos.environ['MEDZEN_PWNED'] = '1'\n"
+    (bundle / "scorer.py").write_bytes(payload)
+    index = _json.loads((bundle / "bundle.json").read_bytes())
+    index["files"]["scorer.py"] = hashlib.sha256(payload).hexdigest()
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    _arm_bundle(monkeypatch, bundle, hashlib.sha256(index_bytes).hexdigest())
+    with pytest.raises(LoaderV2Refusal, match="executable files"):
+        validate(_v2_manifest(digest=digest, classification="PRODUCTION"))
+    assert "MEDZEN_PWNED" not in os.environ
+
+
+def test_packet_naming_a_foreign_scorer_hash_refuses(tmp_path, monkeypatch):
+    from medzen_model_loader.loader_v2 import LoaderV2Refusal
+    bundle, pin, digest, validate = _production_manifest_check(
+        tmp_path, monkeypatch, tmp_path,
+        packet_over={"scorer_sha256": "ab" * 32},
+        report_over={"scorer_sha256": "ab" * 32})
+    _arm_bundle(monkeypatch, bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="not the baked"):
+        validate(_v2_manifest(digest=digest, classification="PRODUCTION"))
+
+
+def test_packet_naming_an_unregistered_scorer_id_refuses(tmp_path, monkeypatch):
+    from medzen_model_loader.loader_v2 import LoaderV2Refusal
+    bundle, pin, digest, validate = _production_manifest_check(
+        tmp_path, monkeypatch, tmp_path, packet_over={"scorer_id": "scorer_v9"})
+    _arm_bundle(monkeypatch, bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="not in the baked scorer registry"):
+        validate(_v2_manifest(digest=digest, classification="PRODUCTION"))
+
 
 _TEST_SIGNING_KEY = None
 
@@ -935,12 +1076,25 @@ def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
         k: stats[k] for k in ("margin", "upper_ci", "method", "clusters",
                                 "rows", "non_inferior", "seed",
                                 "iterations", "alpha")}
+    # round 13: model an admission authority that ATTESTED the swapped
+    # rows as the job's output, so only the cluster-identity check fires
+    report["sealed_outputs"]["rows"]["english"]["sha256"] = (
+        index["files"]["english.rows.jsonl"])
     report_body = _json.dumps(report).encode()
     (bundle / "T6-GATE-REPORT.json").write_bytes(report_body)
     index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(
         report_body).hexdigest()
+    receipt = _json.loads((bundle / "ADMISSION-RECEIPT.json").read_bytes())
+    receipt["sealed_outputs"]["rows"]["english"]["sha256"] = (
+        index["files"]["english.rows.jsonl"])
+    receipt_body = _json.dumps(receipt).encode()
+    (bundle / "ADMISSION-RECEIPT.json").write_bytes(receipt_body)
+    index["files"]["ADMISSION-RECEIPT.json"] = _hashlib.sha256(
+        receipt_body).hexdigest()
     record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
     record["gate_report"]["record_sha256"] = index["files"]["T6-GATE-REPORT.json"]
+    record["admission_receipt"]["record_sha256"] = (
+        index["files"]["ADMISSION-RECEIPT.json"])
     record_body = _json.dumps(record).encode()
     (bundle / "PROMOTION-RECORD.json").write_bytes(record_body)
     index["files"]["PROMOTION-RECORD.json"] = _hashlib.sha256(

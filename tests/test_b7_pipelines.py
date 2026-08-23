@@ -49,9 +49,9 @@ DOCUMENTED_JOB_ADDITIONS = {
         "drift": {**MINIMAL, "issues": "write"},
     },
     "model-pipeline.yml": {
-        # pushes ONLY the registry-bump branch and opens its PR; activation
-        # of the actual bump is a B5-reactivation change (see the checklist).
-        "open-registry-pr": {"contents": "write", "id-token": "write", "pull-requests": "write"},
+        # round 13: pushes ONLY the admission-record branch and opens its
+        # PR; deployment pins come from the merged record
+        "open-admission-pr": {"contents": "write", "id-token": "write", "pull-requests": "write"},
     },
 }
 

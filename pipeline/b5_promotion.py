@@ -11,7 +11,10 @@ from pipeline.b5_gates import FailClosedError, GateState, parse_state, sha256_fi
 
 SCHEMA_VERSION = "medzen-signed-promotion-manifest-v1"
 CANONICALIZATION = "medzen-canonical-json-v1"
-SIGNING_ALGORITHM = "RSASSA_PSS_SHA_256"
+# round 13 (Codex, policy trap): the ONE live promotion signing key is
+# ECC_NIST_P256 (alias/medzen-promotion-signing) — every signer, verifier
+# and key policy names ECDSA_SHA_256; the RSASSA_PSS design never had a key
+SIGNING_ALGORITHM = "ECDSA_SHA_256"
 MESSAGE_TYPE = "DIGEST"
 PROMOTION_SIGNATURE_PURPOSE = "B5_PROMOTION"
 DRY_RUN_SIGNATURE_PURPOSE = "B5_DRY_RUN_NON_PROMOTABLE"

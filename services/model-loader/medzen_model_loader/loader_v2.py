@@ -70,10 +70,132 @@ def _s3_anchor_fetch(storage):
     return body, anchored_utc
 
 
+def _canonical_sha256(value) -> str:
+    import hashlib as _hashlib
+    return _hashlib.sha256(json.dumps(
+        value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def describe_sealed_job_contract(described: dict, *, kind: str) -> dict:
+    """Round 13 (Codex, PARTIAL CONTRACT): reduce a DescribeTrainingJob /
+    DescribeProcessingJob response to the COMPLETE bound contract —
+    environment, full input semantics, VPC, runtime limits, instance
+    count, volume size, checkpoint configuration and the output
+    artifact identity. Pure function (tests feed it fixtures)."""
+    from datetime import timezone
+
+    def utc(value):
+        return (value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                if value is not None else None)
+    if kind == "sagemaker_training":
+        resource = described.get("ResourceConfig", {}) or {}
+        algorithm = described.get("AlgorithmSpecification", {}) or {}
+        output = described.get("OutputDataConfig", {}) or {}
+        channels = {}
+        for channel in described.get("InputDataConfig", []) or []:
+            source = (channel.get("DataSource", {}) or {}).get(
+                "S3DataSource", {}) or {}
+            channels[str(channel.get("ChannelName"))] = {
+                "s3_uri": source.get("S3Uri"),
+                "s3_data_type": source.get("S3DataType"),
+                "s3_data_distribution_type": source.get(
+                    "S3DataDistributionType"),
+                "content_type": channel.get("ContentType"),
+                "compression_type": channel.get("CompressionType"),
+                "input_mode": channel.get("InputMode"),
+            }
+        vpc = described.get("VpcConfig") or {}
+        checkpoint = described.get("CheckpointConfig") or {}
+        stopping = described.get("StoppingCondition", {}) or {}
+        return {
+            "creation_utc": utc(described.get("CreationTime")),
+            "end_utc": utc(described.get("TrainingEndTime")),
+            "status": described.get("TrainingJobStatus"),
+            "image_digest": algorithm.get("TrainingImage"),
+            "instance_type": resource.get("InstanceType"),
+            "instance_count": resource.get("InstanceCount"),
+            "volume_size_gb": resource.get("VolumeSizeInGB"),
+            "volume_kms_key_arn": resource.get("VolumeKmsKeyId"),
+            "max_runtime_seconds": stopping.get("MaxRuntimeInSeconds"),
+            "channels": channels,
+            "output_s3_prefix": output.get("S3OutputPath"),
+            "output_kms_key_arn": output.get("KmsKeyId"),
+            "execution_role_arn": described.get("RoleArn"),
+            "network_isolation": described.get("EnableNetworkIsolation"),
+            "vpc_config": ({"security_group_ids": sorted(
+                vpc.get("SecurityGroupIds", [])),
+                "subnets": sorted(vpc.get("Subnets", []))}
+                if vpc else "none"),
+            "checkpoint_config": (str(checkpoint.get("S3Uri"))
+                                  if checkpoint.get("S3Uri") else "none"),
+            "environment_sha256": _canonical_sha256(
+                {str(k): str(v) for k, v in
+                 (described.get("Environment") or {}).items()}),
+            "hyperparameters_sha256": _canonical_sha256(
+                {str(k): str(v) for k, v in
+                 (described.get("HyperParameters") or {}).items()}),
+            "output_artifact_s3_uri": (described.get("ModelArtifacts") or {}
+                                       ).get("S3ModelArtifacts"),
+            "arn": described.get("TrainingJobArn"),
+        }
+    if kind == "sagemaker_processing":
+        resources = ((described.get("ProcessingResources", {}) or {})
+                     .get("ClusterConfig", {}) or {})
+        app = described.get("AppSpecification", {}) or {}
+        channels = {}
+        for entry in described.get("ProcessingInputs", []) or []:
+            s3 = entry.get("S3Input", {}) or {}
+            channels[str(entry.get("InputName"))] = {
+                "s3_uri": s3.get("S3Uri"),
+                "s3_data_type": s3.get("S3DataType"),
+                "s3_data_distribution_type": s3.get(
+                    "S3DataDistributionType"),
+                "content_type": None,
+                "compression_type": s3.get("S3CompressionType"),
+                "input_mode": s3.get("S3InputMode"),
+            }
+        outputs = (described.get("ProcessingOutputConfig", {}) or {})
+        out_uris = sorted(str((o.get("S3Output", {}) or {}).get("S3Uri"))
+                          for o in outputs.get("Outputs", []) or [])
+        vpc = (described.get("NetworkConfig", {}) or {}).get("VpcConfig") or {}
+        stopping = described.get("StoppingCondition", {}) or {}
+        return {
+            "creation_utc": utc(described.get("CreationTime")),
+            "end_utc": utc(described.get("ProcessingEndTime")),
+            "status": described.get("ProcessingJobStatus"),
+            "image_digest": app.get("ImageUri"),
+            "instance_type": resources.get("InstanceType"),
+            "instance_count": resources.get("InstanceCount"),
+            "volume_size_gb": resources.get("VolumeSizeInGB"),
+            "volume_kms_key_arn": resources.get("VolumeKmsKeyId"),
+            "max_runtime_seconds": stopping.get("MaxRuntimeInSeconds"),
+            "channels": channels,
+            "output_s3_prefix": out_uris[0] if len(out_uris) == 1 else
+            json.dumps(out_uris),
+            "output_kms_key_arn": outputs.get("KmsKeyId"),
+            "execution_role_arn": described.get("RoleArn"),
+            "network_isolation": (described.get("NetworkConfig", {}) or {}
+                                  ).get("EnableNetworkIsolation"),
+            "vpc_config": ({"security_group_ids": sorted(
+                vpc.get("SecurityGroupIds", [])),
+                "subnets": sorted(vpc.get("Subnets", []))}
+                if vpc else "none"),
+            "checkpoint_config": "none",
+            "environment_sha256": _canonical_sha256(
+                {str(k): str(v) for k, v in
+                 (described.get("Environment") or {}).items()}),
+            "hyperparameters_sha256": _canonical_sha256({}),
+            "output_artifact_s3_uri": None,
+            "arn": described.get("ProcessingJobArn"),
+        }
+    raise LoaderV2Refusal(f"unsupported sealed_run_job type {kind!r}")
+
+
 def _sagemaker_sealed_start_fetch(job):
     """Round 9 (Codex): the sealed run's start is the AWS control
     plane's CreationTime for the bound job — never a report-authored
-    timestamp. Tests monkeypatch SEALED_START_FETCH."""
+    timestamp. Round 13: returns the COMPLETE described contract via
+    describe_sealed_job_contract. Tests monkeypatch SEALED_START_FETCH."""
     import boto3
     client = boto3.client(
         "sagemaker", region_name=os.environ.get("AWS_REGION", "eu-central-1"))
@@ -86,49 +208,32 @@ def _sagemaker_sealed_start_fetch(job):
     else:
         raise LoaderV2Refusal(
             f"unsupported sealed_run_job type {kind!r}")
+    return describe_sealed_job_contract(described, kind=kind)
+
+
+def _s3_output_fetch(s3_uri: str, version_id: str):
+    """Round 13 (Codex, rows not bound to the job): fetch an EXACT
+    versioned output object of the sealed job. Returns (bytes,
+    last_modified_utc, etag). Admission-only (needs s3:GetObjectVersion);
+    the runtime verifies the signed receipt offline."""
+    import boto3
     from datetime import timezone
-    # round 10 (Codex): aware datetimes NORMALIZE to UTC — strftime on
-    # a -04:00 timestamp mislabeled local time as Z
-    # round 11 (Codex, UNBOUND_COMPLETED_JOB_ACCEPTED): return the FULL
-    # described contract so admission can bind image/inputs/output/kms
-    import hashlib as _hashlib
-    channels = {
-        str(channel.get("ChannelName")): str(
-            channel.get("DataSource", {}).get("S3DataSource", {})
-            .get("S3Uri"))
-        for channel in described.get("InputDataConfig", [])
-    }
-    hyperparameters = described.get("HyperParameters", {}) or {}
-    hyperparameters_sha256 = _hashlib.sha256(json.dumps(
-        {str(k): str(v) for k, v in hyperparameters.items()},
-        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    return {
-        "creation_utc": described["CreationTime"].astimezone(
-            timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "status": described.get("TrainingJobStatus")
-        or described.get("ProcessingJobStatus"),
-        "image": described.get("AlgorithmSpecification", {})
-        .get("TrainingImage"),
-        "instance_type": described.get("ResourceConfig", {})
-        .get("InstanceType"),
-        # round 12: the COMPLETE configuration, not a URI subset
-        "channels": channels,
-        "output_path": described.get("OutputDataConfig", {})
-        .get("S3OutputPath"),
-        "output_kms": described.get("OutputDataConfig", {})
-        .get("KmsKeyId"),
-        "role_arn": described.get("RoleArn"),
-        "network_isolation": described.get("EnableNetworkIsolation"),
-        "volume_kms": described.get("ResourceConfig", {})
-        .get("VolumeKmsKeyId"),
-        "hyperparameters_sha256": hyperparameters_sha256,
-        "arn": described.get("TrainingJobArn")
-        or described.get("ProcessingJobArn"),
-    }
+    if not s3_uri.startswith("s3://"):
+        raise LoaderV2Refusal(f"output object {s3_uri!r} is not an S3 URI")
+    bucket, _, key = s3_uri[5:].partition("/")
+    client = boto3.client(
+        "s3", region_name=os.environ.get("AWS_REGION", "eu-central-1"))
+    response = client.get_object(Bucket=bucket, Key=key,
+                                 VersionId=str(version_id))
+    body = response["Body"].read()
+    return (body, response["LastModified"].astimezone(
+        timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        str(response.get("ETag", "")).strip('"'))
 
 
 PROMOTION_ANCHOR_FETCH = _s3_anchor_fetch
 SEALED_START_FETCH = _sagemaker_sealed_start_fetch
+OUTPUT_OBJECT_FETCH = _s3_output_fetch
 
 
 def _sha256_ok(value: Any) -> bool:
@@ -399,23 +504,34 @@ def _verify_promotion_bundle(digest: str) -> None:
             return None
         return (root / name).read_bytes()
 
-    # round 11 (Codex): the predeclared scorer hash must be BACKED by
-    # bundled scorer bytes — a hash naming nothing proves nothing
-    if "scorer.py" not in files:
+    # round 13 (Codex, ARBITRARY CODE EXECUTION): signed evidence is
+    # DATA. The scorer is baked into this image and resolved by the
+    # packet's scorer_id + sha256 inside the gate; a bundle carrying any
+    # executable file refuses outright — nothing in it is ever compiled.
+    executable = sorted(name for name in files
+                        if name.endswith((".py", ".pyc", ".so", ".sh")))
+    if executable:
         raise LoaderV2Refusal(
-            "promotion bundle omits the scorer bytes the packet "
-            "predeclares")
-    if files["scorer.py"] != str(packet.get("scorer_sha256", "")).lower():
-        raise LoaderV2Refusal(
-            "bundled scorer bytes do not hash to the packet's "
-            "predeclared scorer_sha256")
+            f"promotion bundle carries executable files {executable} — "
+            "evidence is data; scorers are baked into the reviewed image")
 
     from .promotion_check import verify_admission_receipt
 
     def verify_chronology() -> None:
         verify_admission_receipt(
             report, anchor_envelope=envelope, packet_bytes=packet_bytes,
-            candidate_packet=packet, admission_receipt=admission)
+            candidate_packet=packet, admission_receipt=admission,
+            artifact_tree_sha256=digest, rows_bytes=rows_bytes)
+
+    def document_bytes(path: str) -> bytes | None:
+        # round 13: licence/reservation documents travel IN the bundle
+        # (hashed in the signed index) under their registry paths
+        # bundle entries are FLAT: a repository path maps to its
+        # flattened name (platform/x/y.json -> platform__x__y.json)
+        name = str(path).lstrip("/").replace("/", "__")
+        if name not in files or not (root / name).is_file():
+            return None
+        return (root / name).read_bytes()
 
     try:
         verify_complete_promotion(
@@ -431,7 +547,7 @@ def _verify_promotion_bundle(digest: str) -> None:
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             verify_chronology=verify_chronology,
-            scorer_source=(root / "scorer.py").read_bytes(),
+            document_bytes=document_bytes,
         )
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc
