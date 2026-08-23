@@ -36,40 +36,56 @@ def _now() -> str:
 
 
 class CallLedger:
-    """Counts provider invocations ACROSS runs; refuses past the cap."""
+    """Counts provider invocations ACROSS runs; refuses past the cap.
 
-    def __init__(self, receipt_dir: Path, leg: str, max_calls: int):
-        self.path = receipt_dir / f"{leg}.ledger.jsonl"
+    Round 9 (Codex): read-then-append raced — 20 concurrent runs won
+    5-12 reservations against a cap of 1, and any --receipt-dir minted a
+    fresh budget. Reservation is now one ATOMIC os.open(O_CREAT|O_EXCL)
+    per numbered slot (the filesystem arbitrates concurrent creators),
+    and the ledger lives at ONE canonical qualification-bound location
+    under the repo's evidence tree — no caller-chosen directory can
+    reset it. Multi-MACHINE arbitration would need DynamoDB conditional
+    writes; this host-local lock is the honest current boundary."""
+
+    def __init__(self, qualification_id: str, leg: str, max_calls: int):
+        safe = "".join(c for c in qualification_id
+                       if c.isalnum() or c in "-_")
+        if not safe or safe != qualification_id:
+            raise SystemExit(
+                "REFUSED: qualification id must be [-_a-zA-Z0-9]")
+        self.directory = ROOT / "platform/evidence/receipts" / safe
+        self.directory.mkdir(parents=True, exist_ok=True)
+        self.leg = leg
         self.max_calls = max_calls
 
-    def entries(self) -> list[dict]:
-        if not self.path.is_file():
-            return []
-        return [json.loads(line) for line in
-                self.path.read_text().splitlines() if line.strip()]
-
     def reserve(self) -> int:
-        entries = self.entries()
-        if len(entries) >= self.max_calls:
-            raise SystemExit(
-                f"REFUSED: {self.path.name} already records "
-                f"{len(entries)}/{self.max_calls} provider calls — the "
-                "cap is enforced, not documented. Delete the ledger ONLY "
-                "with owner approval to re-qualify.")
-        with open(self.path, "a") as f:
-            f.write(json.dumps({"call": len(entries) + 1,
-                                  "reserved_utc": _now()}) + "\n")
-        return len(entries) + 1
+        import os
+        for slot in range(1, self.max_calls + 1):
+            lock = self.directory / f"{self.leg}.call-{slot}.lock"
+            try:
+                descriptor = os.open(
+                    str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            except FileExistsError:
+                continue
+            with os.fdopen(descriptor, "w") as f:
+                f.write(json.dumps({"call": slot,
+                                      "reserved_utc": _now()}) + "\n")
+            return slot
+        raise SystemExit(
+            f"REFUSED: all {self.max_calls} {self.leg} call slots in "
+            f"{self.directory.name} are reserved — the cap is enforced "
+            "atomically. Re-qualification needs owner approval and a "
+            "NEW qualification id.")
 
 
-def bedrock_leg(receipt_dir: Path, max_calls: int) -> dict:
+def bedrock_leg(qualification_id: str, max_calls: int) -> dict:
     from medzen_llm_gateway.gateway import LLMGateway
     from medzen_llm_gateway.policy import PolicyStore
     from medzen_llm_gateway.provider import BedrockProvider
     from medzen_llm_gateway.shared_resilience import (CircuitBreaker,
                                                        load_config)
 
-    ledger = CallLedger(receipt_dir, "bedrock", max_calls)
+    ledger = CallLedger(qualification_id, "bedrock", max_calls)
     call_number = ledger.reserve()
     model_id = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
     config = load_config()
@@ -126,14 +142,14 @@ def bedrock_leg(receipt_dir: Path, max_calls: int) -> dict:
     }
 
 
-def fish_leg(receipt_dir: Path, max_calls: int) -> dict:
+def fish_leg(qualification_id: str, max_calls: int) -> dict:
     from medzen_speech_tts_gateway.app import fish_breaker
     from medzen_speech_tts_gateway.gateway import TTSGateway
     from medzen_speech_tts_gateway.provider import RealFishProvider
     from medzen_speech_tts_gateway.s3_cache import S3AudioCache
     from medzen_speech_tts_gateway.voices import enforce_model, select_voice
 
-    ledger = CallLedger(receipt_dir, "fish", max_calls)
+    ledger = CallLedger(qualification_id, "fish", max_calls)
     call_number = ledger.reserve()
 
     def governed(language):
@@ -175,13 +191,16 @@ def fish_leg(receipt_dir: Path, max_calls: int) -> dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("leg", choices=("bedrock", "fish"))
-    parser.add_argument("--receipt-dir", type=Path, required=True)
+    parser.add_argument("--qualification-id", required=True,
+                        help="canonical id; the ledger lives at "
+                             "platform/evidence/receipts/<id>/ — no "
+                             "caller-chosen directory can reset the cap")
     parser.add_argument("--max-calls", type=int, default=1)
     args = parser.parse_args()
-    args.receipt_dir.mkdir(parents=True, exist_ok=True)
     outcome = (bedrock_leg if args.leg == "bedrock" else fish_leg)(
-        args.receipt_dir, args.max_calls)
-    results = args.receipt_dir / f"{args.leg}.results.jsonl"
+        args.qualification_id, args.max_calls)
+    results = (ROOT / "platform/evidence/receipts"
+               / args.qualification_id / f"{args.leg}.results.jsonl")
     with open(results, "a") as f:
         f.write(json.dumps(outcome, sort_keys=True) + "\n")
     print(json.dumps(outcome, indent=1, sort_keys=True))

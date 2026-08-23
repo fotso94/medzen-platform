@@ -460,106 +460,148 @@ def require_sealed_row_identity(report: dict, mandatory: list[str], *,
     manipulation all refuse."""
     for language in mandatory:
         entry = report["languages"][language]
-        manifest_raw = manifest_bytes(language)
-        if manifest_raw is None:
+        _verify_rows_cover_manifest(
+            language,
+            rows_raw=rows_bytes(language),
+            manifest_raw=manifest_bytes(language),
+            bound_sha=str(entry.get("holdout_manifest_sha256", "")))
+
+
+def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
+                                manifest_raw: bytes | None,
+                                bound_sha: str) -> None:
+    """The shared manifest-coverage core (round 9: code-switch uses it
+    too). The AUTHORITATIVE JSONL manifest must hash to the bound
+    identity; result rows must cover its audio checksums exactly once,
+    match each utterance's speaker cluster, and (round 9, reference
+    binding) hash the reference text the manifest declares."""
+    if manifest_raw is None:
+        raise PromotionCheckRefusal(
+            f"{label}: sealed holdout manifest absent — row "
+            "identity cannot be verified")
+    if hashlib.sha256(manifest_raw).hexdigest() != bound_sha:
+        raise PromotionCheckRefusal(
+            f"{label}: holdout manifest bytes do not hash to the "
+            "report's bound sealed-set identity")
+    speaker_by_checksum: dict[str, str] = {}
+    reference_sha_by_checksum: dict[str, str | None] = {}
+    for line in manifest_raw.decode().splitlines():
+        if not line.strip():
+            continue
+        try:
+            manifest_row = json.loads(line)
+        except json.JSONDecodeError as exc:
             raise PromotionCheckRefusal(
-                f"{language}: sealed holdout manifest absent — row "
-                "identity cannot be verified")
-        if hashlib.sha256(manifest_raw).hexdigest() != str(
-            entry.get("holdout_manifest_sha256", "")
+                f"{label}: sealed manifest is not valid JSONL"
+            ) from exc
+        checksum = str(manifest_row.get("audio_checksum_sha256", ""))
+        if not _hex(checksum, 64):
+            raise PromotionCheckRefusal(
+                f"{label}: a sealed manifest row lacks its "
+                "audio_checksum_sha256 identity")
+        if checksum in speaker_by_checksum:
+            raise PromotionCheckRefusal(
+                f"{label}: duplicate audio checksum in the sealed "
+                "manifest — the set identity is ambiguous")
+        speaker_by_checksum[checksum] = str(
+            manifest_row.get("speaker_id", ""))
+        reference = manifest_row.get("text_normalized")
+        reference_sha_by_checksum[checksum] = (
+            hashlib.sha256(str(reference).encode()).hexdigest()
+            if isinstance(reference, str) and reference else None)
+    if not speaker_by_checksum:
+        raise PromotionCheckRefusal(
+            f"{label}: sealed manifest contains no rows")
+    if rows_raw is None:
+        raise PromotionCheckRefusal(
+            f"{label}: rows absent for sealed-identity check")
+    seen: set[str] = set()
+    for line in rows_raw.decode().splitlines():
+        if not line.strip():
+            continue
+        result_row = json.loads(line)
+        checksum = str(result_row.get("audio_checksum_sha256", ""))
+        if not _hex(checksum, 64):
+            raise PromotionCheckRefusal(
+                f"{label}: every result row must carry the "
+                "audio_checksum_sha256 of the sealed utterance it scored")
+        if checksum in seen:
+            raise PromotionCheckRefusal(
+                f"{label}: duplicate utterance rows — each sealed "
+                "utterance is scored exactly once")
+        seen.add(checksum)
+        speaker = speaker_by_checksum.get(checksum)
+        if speaker is None:
+            raise PromotionCheckRefusal(
+                f"{label}: a result row scores an utterance the "
+                "sealed manifest never contained")
+        if speaker and str(result_row.get("cluster_id")) != speaker:
+            raise PromotionCheckRefusal(
+                f"{label}: result row cluster does not match the "
+                "sealed manifest's speaker for that utterance")
+        expected_reference = reference_sha_by_checksum.get(checksum)
+        if expected_reference is not None and (
+            result_row.get("reference_text_sha256") != expected_reference
         ):
             raise PromotionCheckRefusal(
-                f"{language}: holdout manifest bytes do not hash to the "
-                "report's bound sealed-set identity")
-        speaker_by_checksum: dict[str, str] = {}
-        for line in manifest_raw.decode().splitlines():
-            if not line.strip():
-                continue
-            try:
-                manifest_row = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise PromotionCheckRefusal(
-                    f"{language}: sealed manifest is not valid JSONL"
-                ) from exc
-            checksum = str(manifest_row.get("audio_checksum_sha256", ""))
-            if not _hex(checksum, 64):
-                raise PromotionCheckRefusal(
-                    f"{language}: a sealed manifest row lacks its "
-                    "audio_checksum_sha256 identity")
-            if checksum in speaker_by_checksum:
-                raise PromotionCheckRefusal(
-                    f"{language}: duplicate audio checksum in the sealed "
-                    "manifest — the set identity is ambiguous")
-            speaker_by_checksum[checksum] = str(
-                manifest_row.get("speaker_id", ""))
-        if not speaker_by_checksum:
-            raise PromotionCheckRefusal(
-                f"{language}: sealed manifest contains no rows")
-        body = rows_bytes(language)
-        if body is None:
-            raise PromotionCheckRefusal(
-                f"{language}: rows absent for sealed-identity check")
-        seen: set[str] = set()
-        for line in body.decode().splitlines():
-            if not line.strip():
-                continue
-            result_row = json.loads(line)
-            checksum = str(result_row.get("audio_checksum_sha256", ""))
-            if not _hex(checksum, 64):
-                raise PromotionCheckRefusal(
-                    f"{language}: every result row must carry the "
-                    "audio_checksum_sha256 of the sealed utterance it scored")
-            if checksum in seen:
-                raise PromotionCheckRefusal(
-                    f"{language}: duplicate utterance rows — each sealed "
-                    "utterance is scored exactly once")
-            seen.add(checksum)
-            speaker = speaker_by_checksum.get(checksum)
-            if speaker is None:
-                raise PromotionCheckRefusal(
-                    f"{language}: a result row scores an utterance the "
-                    "sealed manifest never contained")
-            if speaker and str(result_row.get("cluster_id")) != speaker:
-                raise PromotionCheckRefusal(
-                    f"{language}: result row cluster does not match the "
-                    "sealed manifest's speaker for that utterance")
-        if seen != set(speaker_by_checksum):
-            raise PromotionCheckRefusal(
-                f"{language}: result rows do not cover EXACTLY the sealed "
-                "utterance set (missing or invented utterances)")
+                f"{label}: result row reference hash does not match the "
+                "sealed manifest's reference text — errors must be "
+                "scored against the SEALED references")
+    if seen != set(speaker_by_checksum):
+        raise PromotionCheckRefusal(
+            f"{label}: result rows do not cover EXACTLY the sealed "
+            "utterance set (missing or invented utterances)")
 
 
 def verify_packet_chronology(report: dict, *,
-                             candidate_packet: Mapping[str, Any],
+                             anchor_envelope: Mapping[str, Any],
                              packet_bytes: bytes,
                              anchor_fetch: Callable[
                                  [Mapping[str, Any]], tuple[bytes, str]],
+                             sealed_start_fetch: Callable[
+                                 [Mapping[str, Any]], str],
                              ) -> None:
     """Round 8 (Codex): nothing proved the 'predeclared' packet existed
-    BEFORE sealed observation — it was born inside the same bundle as
-    the results. The packet must carry an immutable anchor (an S3
-    VersionId or a git commit — something whose creation time is set by
-    the storage system, not by the author), the anchored bytes must
-    equal the bundled packet exactly, and the anchor's timestamp must
-    precede the report's declared sealed-run start."""
-    anchor = candidate_packet.get("anchor")
-    if not isinstance(anchor, Mapping) or not anchor:
+    BEFORE sealed observation. Round 9 (Codex): the round-8 design was
+    CIRCULAR — an S3 VersionId only exists after the bytes are stored,
+    so a packet cannot contain its own anchor; git commit timestamps are
+    author-controlled; and sealed_run_started_utc was report-authored.
+
+    The anchor is now a SEPARATE ENVELOPE document: it names the
+    packet's sha256 and the S3 storage coordinates. Verification:
+    (a) the bundled packet's bytes hash to the envelope's declared sha;
+    (b) the fetched S3 version's bytes hash to the same sha;
+    (c) the S3 LastModified (set by the STORAGE SYSTEM) must precede
+    (d) the sealed run's start as reported by the AWS control plane
+        (the SageMaker job's CreationTime — fetched, never
+        report-authored)."""
+    declared_sha = str(anchor_envelope.get("packet_sha256") or "")
+    if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
         raise PromotionCheckRefusal(
-            "candidate packet carries no immutability anchor — "
-            "predeclaration cannot be proven")
-    started = report.get("sealed_run_started_utc")
-    if not _utc_ok(started):
+            "the bundled candidate packet does not hash to the anchor "
+            "envelope's declared identity")
+    storage = anchor_envelope.get("storage")
+    if not isinstance(storage, Mapping) or not storage:
         raise PromotionCheckRefusal(
-            "gate report must declare sealed_run_started_utc "
-            "(YYYY-MM-DDTHH:MM:SSZ)")
-    anchored_bytes, anchored_utc = anchor_fetch(anchor)
-    if anchored_bytes != packet_bytes:
+            "anchor envelope names no immutable storage coordinates")
+    anchored_bytes, anchored_utc = anchor_fetch(storage)
+    if hashlib.sha256(anchored_bytes).hexdigest() != declared_sha:
         raise PromotionCheckRefusal(
             "the anchored candidate packet bytes differ from the bundled "
             "packet — the predeclaration was edited after anchoring")
     if not _utc_ok(anchored_utc):
         raise PromotionCheckRefusal(
             "the anchor authority returned no valid timestamp")
+    job = report.get("sealed_run_job")
+    if not isinstance(job, Mapping) or not str(job.get("name") or "").strip():
+        raise PromotionCheckRefusal(
+            "gate report must bind the sealed_run_job whose AWS-set "
+            "CreationTime marks sealed observation — a self-declared "
+            "timestamp proves nothing")
+    started = sealed_start_fetch(job)
+    if not _utc_ok(started):
+        raise PromotionCheckRefusal(
+            "the sealed-run authority returned no valid start timestamp")
     if anchored_utc >= str(started):
         raise PromotionCheckRefusal(
             f"the packet was anchored at {anchored_utc}, NOT before the "
@@ -568,7 +610,9 @@ def verify_packet_chronology(report: dict, *,
 
 
 def recompute_code_switch(report: dict, *,
-                          rows_bytes: Callable[[str], bytes | None]) -> None:
+                          rows_bytes: Callable[[str], bytes | None],
+                          manifest_bytes: Callable[[str], bytes | None],
+                          ) -> None:
     """Round 7 (Codex, FABRICATED_CODE_SWITCH_..._ACCEPTED): the
     code-switch gate is evidence too — its statistics recompute from its
     own hash-bound rows exactly like every language gate."""
@@ -584,6 +628,14 @@ def recompute_code_switch(report: dict, *,
     if body is None:
         raise PromotionCheckRefusal(
             "code-switch rows absent — the gate recomputes, never trusts")
+    # round 9 (Codex, CODE_SWITCH_MANIFEST_PRESENT=false): the declared
+    # code-switch set is a real bundled JSONL manifest, hash-bound, with
+    # exactly-once row coverage — same rule as every language gate
+    _verify_rows_cover_manifest(
+        "code_switch",
+        rows_raw=body,
+        manifest_raw=manifest_bytes("code_switch"),
+        bound_sha=str(evidence.get("manifest_sha256", "")))
     if hashlib.sha256(body).hexdigest() != str(
         evidence.get("rows_sha256", "")
     ):
@@ -622,11 +674,14 @@ def verify_complete_promotion(report: dict, *,
                               grades_by_holdout: Mapping[str, str],
                               candidate_packet: Mapping[str, Any],
                               packet_bytes: bytes,
+                              anchor_envelope: Mapping[str, Any],
                               artifact_tree_sha256: str,
                               rows_bytes: Callable[[str], bytes | None],
                               manifest_bytes: Callable[[str], bytes | None],
                               anchor_fetch: Callable[
                                   [Mapping[str, Any]], tuple[bytes, str]],
+                              sealed_start_fetch: Callable[
+                                  [Mapping[str, Any]], str],
                               ) -> dict[str, str]:
     """Round 8 (Codex): the ONE complete promotion gate. The repo-side
     checker and the runtime bundle verifier both call THIS with their
@@ -646,8 +701,9 @@ def verify_complete_promotion(report: dict, *,
     require_candidate_packet(
         report, candidate_packet=candidate_packet, mandatory=mandatory)
     verify_packet_chronology(
-        report, candidate_packet=candidate_packet,
-        packet_bytes=packet_bytes, anchor_fetch=anchor_fetch)
+        report, anchor_envelope=anchor_envelope,
+        packet_bytes=packet_bytes, anchor_fetch=anchor_fetch,
+        sealed_start_fetch=sealed_start_fetch)
     require_protocol_evidence(
         report, mandatory, protocol=protocol,
         holdouts_by_language=holdouts_by_language)
@@ -658,7 +714,8 @@ def verify_complete_promotion(report: dict, *,
     require_sealed_row_identity(
         report, mandatory, rows_bytes=rows_bytes,
         manifest_bytes=manifest_bytes)
-    recompute_code_switch(report, rows_bytes=rows_bytes)
+    recompute_code_switch(report, rows_bytes=rows_bytes,
+                          manifest_bytes=manifest_bytes)
     require_operational_receipt(
         report, candidate_packet=candidate_packet,
         artifact_tree_sha256=artifact_tree_sha256)

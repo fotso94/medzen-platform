@@ -258,3 +258,37 @@ def test_round7_tree_digest_is_end_to_end_exact(monkeypatch, tmp_path):
     marker_path.write_text(_json.dumps(forged, indent=1, sort_keys=True))
     with pytest.raises(BackendRefusal, match="does not recompute"):
         load_v2_ready_marker(destination)
+
+
+def test_holdout_grade_authority_matches_records_and_protocol():
+    """Round 9 (Codex): the checker DEFAULTED every recognized sha to
+    promotion_grade. The committed authority is regenerated from the
+    records' own metadata — drift refuses — and the protocol's grades
+    are spot-pinned: ONLY kinyarwanda's universal set is promotion-grade,
+    real-speaker tier2 pools are conditional, placeholder pools are
+    development-grade only."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "generate_holdout_grades",
+        ROOT / "scripts/generate_holdout_grades.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    committed = json.loads(
+        (ROOT / "platform/decisions/HOLDOUT-GRADES-2026-001.json"
+         ).read_bytes())
+    assert committed["grades"] == module.derive(), (
+        "the grade authority drifted from the records — regenerate via "
+        "scripts/generate_holdout_grades.py under review")
+    by_grade = {}
+    for sha, entry in committed["grades"].items():
+        by_grade.setdefault(entry["grade"], set()).add(
+            (entry["language"], entry["pool"]))
+    promotion = by_grade.get("promotion_grade", set())
+    assert promotion == {("kinyarwanda", "cv17-test-v1-universal-sealed")}, (
+        "ONLY kinyarwanda's universal sealed set is promotion-grade")
+    conditional_languages = {lang for lang, _ in
+                              by_grade.get("conditional", set())}
+    assert {"french", "pidgin"} <= conditional_languages
+    development_languages = {lang for lang, _ in
+                              by_grade.get("development_grade_only", set())}
+    assert {"english", "ewe", "lingala", "swahili"} <= development_languages

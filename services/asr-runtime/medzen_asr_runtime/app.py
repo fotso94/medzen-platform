@@ -213,10 +213,13 @@ def create_app(backend: Backend | None = None, *,
         await websocket.accept()
         runtime = websocket.app.state.backend
         if runtime is None or runtime.ready is not True:
-            await websocket.send_json({
-                "type": "error", "request_id": "unknown", "session_id": "unknown",
+            # round 9 (Codex): early events carry the tree and a
+            # schema-valid fresh UUID instead of the literal "unknown"
+            await websocket.send_json(_with_tree({
+                "type": "error", "request_id": str(uuid.uuid4()),
+                "session_id": str(uuid.uuid4()),
                 "error": {"code": "MODEL_NOT_READY", "message": "ASR model is not ready",
-                          "retryable": True}, "model_versions": {}})
+                          "retryable": True}, "model_versions": {}}, runtime))
             await websocket.close(code=1013)
             return
         try:
@@ -227,10 +230,12 @@ def create_app(backend: Backend | None = None, *,
             request_id = _request_id(start.get("request_id"))
             language_hint = _language(start.get("language_hint"))
         except (ValueError, json.JSONDecodeError):
-            await websocket.send_json({
-                "type": "error", "request_id": "unknown", "session_id": "unknown",
+            await websocket.send_json(_with_tree({
+                "type": "error", "request_id": str(uuid.uuid4()),
+                "session_id": str(uuid.uuid4()),
                 "error": {"code": "INVALID_START", "message": "invalid stream start",
-                          "retryable": False}, "model_versions": runtime.model_versions})
+                          "retryable": False},
+                "model_versions": runtime.model_versions}, runtime))
             await websocket.close(code=1008)
             return
         session_id = str(uuid.uuid4())

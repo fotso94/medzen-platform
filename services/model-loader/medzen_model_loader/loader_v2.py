@@ -49,26 +49,46 @@ class LoaderV2Refusal(RuntimeError):
     pass
 
 
-def _s3_anchor_fetch(anchor):
-    """Round 8 (Codex): predeclaration chronology. Fetch the EXACT
+def _s3_anchor_fetch(storage):
+    """Rounds 8-9 (Codex): predeclaration chronology. Fetch the EXACT
     anchored S3 object version; its LastModified is set by the storage
     system, not the author. Tests monkeypatch PROMOTION_ANCHOR_FETCH."""
     import boto3
-    if anchor.get("type") != "s3":
+    if storage.get("type") != "s3":
         raise LoaderV2Refusal(
-            f"unsupported packet anchor type {anchor.get('type')!r} in "
+            f"unsupported anchor storage type {storage.get('type')!r} in "
             "the runtime (S3 VersionId required)")
     client = boto3.client(
         "s3", region_name=os.environ.get("AWS_REGION", "eu-central-1"))
     response = client.get_object(
-        Bucket=str(anchor["bucket"]), Key=str(anchor["key"]),
-        VersionId=str(anchor["version_id"]))
+        Bucket=str(storage["bucket"]), Key=str(storage["key"]),
+        VersionId=str(storage["version_id"]))
     body = response["Body"].read()
     anchored_utc = response["LastModified"].strftime("%Y-%m-%dT%H:%M:%SZ")
     return body, anchored_utc
 
 
+def _sagemaker_sealed_start_fetch(job):
+    """Round 9 (Codex): the sealed run's start is the AWS control
+    plane's CreationTime for the bound job — never a report-authored
+    timestamp. Tests monkeypatch SEALED_START_FETCH."""
+    import boto3
+    client = boto3.client(
+        "sagemaker", region_name=os.environ.get("AWS_REGION", "eu-central-1"))
+    kind = str(job.get("type") or "sagemaker_training")
+    name = str(job["name"])
+    if kind == "sagemaker_training":
+        described = client.describe_training_job(TrainingJobName=name)
+    elif kind == "sagemaker_processing":
+        described = client.describe_processing_job(ProcessingJobName=name)
+    else:
+        raise LoaderV2Refusal(
+            f"unsupported sealed_run_job type {kind!r}")
+    return described["CreationTime"].strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 PROMOTION_ANCHOR_FETCH = _s3_anchor_fetch
+SEALED_START_FETCH = _sagemaker_sealed_start_fetch
 
 
 def _sha256_ok(value: Any) -> bool:
@@ -266,6 +286,9 @@ def _verify_promotion_bundle(digest: str) -> None:
     packet = _bundled(record.get("candidate_packet"), "candidate packet")
     packet_bytes = (root / str(
         record["candidate_packet"]["record"])).read_bytes()
+    # round 9 (Codex): the anchor is a SEPARATE envelope — a packet
+    # cannot contain its own storage identity (circular)
+    envelope = _bundled(record.get("anchor_envelope"), "anchor envelope")
 
     def rows_bytes(language: str) -> bytes | None:
         name = f"{language}.rows.jsonl"
@@ -288,10 +311,12 @@ def _verify_promotion_bundle(digest: str) -> None:
             grades_by_holdout=grades,
             candidate_packet=packet,
             packet_bytes=packet_bytes,
+            anchor_envelope=envelope,
             artifact_tree_sha256=digest,
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             anchor_fetch=PROMOTION_ANCHOR_FETCH,
+            sealed_start_fetch=SEALED_START_FETCH,
         )
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc

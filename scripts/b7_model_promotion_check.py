@@ -139,43 +139,33 @@ def recompute_statistics(report: dict, results_dir: Path,
 
 
 def _grades_by_holdout() -> dict[str, str]:
-    """Round 8: grades from the SAME authoritative records that supply
-    the holdout mapping. Every sha defaults to promotion_grade unless a
-    record's pool marks otherwise; the quarantined v2 half is absent
-    from the mapping entirely, so it can never carry any grade."""
-    grades: dict[str, str] = {}
-    for shas in _authoritative_holdouts_by_language().values():
-        for sha in shas:
-            grades.setdefault(sha, "promotion_grade")
-    return grades
-
-
-def _anchor_fetch(anchor):
-    """Repo-side chronology authorities: a git commit (timestamp is the
-    committer clock recorded by the repository) or an S3 VersionId
-    (timestamp is set by the storage system)."""
-    import subprocess
-    from medzen_model_loader.loader_v2 import _s3_anchor_fetch
+    """Round 9 (Codex): the round-8 version DEFAULTED every recognized
+    sha to promotion_grade — contradicting the protocol, under which
+    only kinyarwanda's universal sealed set is promotion-grade. Grades
+    now come from the committed machine-readable authority
+    (HOLDOUT-GRADES-2026-001, generated from the records' own metadata
+    by scripts/generate_holdout_grades.py); an unknown sha carries NO
+    grade and therefore refuses downstream."""
     root = Path(__file__).resolve().parents[1]
-    if anchor.get("type") == "git":
-        rel = str(anchor.get("path", ""))
-        commit = str(anchor.get("commit", ""))
-        if rel.startswith(("/", "..")) or ":" in rel:
-            raise PromotionCheckRefusal("anchor path escapes containment")
-        shown = subprocess.run(
-            ["git", "-C", str(root), "show", f"{commit}:{rel}"],
-            capture_output=True)
-        if shown.returncode != 0:
-            raise PromotionCheckRefusal(
-                "anchored packet is not committed at the anchor commit")
-        stamped = subprocess.run(
-            ["git", "-C", str(root), "show", "-s",
-             "--format=%cd", "--date=format-local:%Y-%m-%dT%H:%M:%SZ",
-             commit],
-            capture_output=True, text=True,
-            env={"TZ": "UTC", "PATH": "/usr/bin:/bin:/usr/local/bin"})
-        return shown.stdout, stamped.stdout.strip()
-    return _s3_anchor_fetch(anchor)
+    authority = json.loads(
+        (root / "platform/decisions/HOLDOUT-GRADES-2026-001.json"
+         ).read_bytes())
+    return {sha: entry["grade"]
+            for sha, entry in authority["grades"].items()}
+
+
+def _anchor_fetch(storage):
+    """Round 9 (Codex): git commit timestamps are AUTHOR-controlled and
+    prove nothing about chronology. The only anchor authority is S3
+    (LastModified set by the storage system) — same implementation the
+    runtime uses."""
+    from medzen_model_loader.loader_v2 import _s3_anchor_fetch
+    return _s3_anchor_fetch(storage)
+
+
+def _sealed_start_fetch(job):
+    from medzen_model_loader.loader_v2 import _sagemaker_sealed_start_fetch
+    return _sagemaker_sealed_start_fetch(job)
 
 
 def main() -> int:
@@ -200,13 +190,19 @@ def main() -> int:
     parser.add_argument("--artifact-tree", default=None,
                         help="the candidate's full 64-hex artifact tree "
                              "digest (round 8: REQUIRED)")
+    parser.add_argument("--anchor-envelope", type=Path, default=None,
+                        help="the SEPARATE anchor envelope naming the "
+                             "packet sha + S3 storage coordinates "
+                             "(round 9: REQUIRED — a packet cannot "
+                             "contain its own storage identity)")
     args = parser.parse_args()
     try:
         report = load_gate_report(args.gate_report)
         for flag, value in (("--results-dir", args.results_dir),
                              ("--candidate-packet", args.candidate_packet),
                              ("--manifests-dir", args.manifests_dir),
-                             ("--artifact-tree", args.artifact_tree)):
+                             ("--artifact-tree", args.artifact_tree),
+                             ("--anchor-envelope", args.anchor_envelope)):
             if value is None:
                 raise PromotionCheckRefusal(
                     f"{flag} is required: the promotion gate is COMPLETE "
@@ -231,10 +227,13 @@ def main() -> int:
             grades_by_holdout=_grades_by_holdout(),
             candidate_packet=json.loads(packet_bytes),
             packet_bytes=packet_bytes,
+            anchor_envelope=json.loads(
+                args.anchor_envelope.read_bytes()),
             artifact_tree_sha256=str(args.artifact_tree),
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             anchor_fetch=_anchor_fetch,
+            sealed_start_fetch=_sealed_start_fetch,
         )
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))

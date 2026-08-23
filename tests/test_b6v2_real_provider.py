@@ -412,7 +412,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
 
     def build_language(label, broken=False):
         """Authoritative-format JSONL manifest + matching result rows:
-        identity = audio_checksum_sha256, cluster = speaker_id."""
+        identity = audio_checksum_sha256, cluster = speaker_id, and
+        (round 9) each result row hashes the SEALED reference text."""
         manifest_rows = []
         result_rows = []
         for cluster in range(4):
@@ -420,16 +421,19 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
             for i in range(3):
                 checksum = hashlib.sha256(
                     f"{label}-audio-{cluster}-{i}".encode()).hexdigest()
+                reference = f"synthetic evidence row {label} {cluster} {i}"
                 manifest_rows.append({
                     "audio_checksum_sha256": checksum,
                     "speaker_id": speaker,
                     "session_id": f"{label}-sess{cluster}",
                     "duration_s": 5.0,
-                    "text_normalized": "synthetic evidence row",
+                    "text_normalized": reference,
                 })
                 result_rows.append({
                     "audio_checksum_sha256": checksum,
                     "cluster_id": speaker,
+                    "reference_text_sha256": hashlib.sha256(
+                        reference.encode()).hexdigest(),
                     "baseline_errors": 4 + cluster,
                     "candidate_errors": 30 if broken else 2,
                     "reference_words": 40,
@@ -473,12 +477,16 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         files[f"{language}.rows.jsonl"] = rows_body
         files[f"{language}.holdout-manifest.jsonl"] = manifest_bytes
 
-    _, cs_body, cs_rows = build_language("codeswitch")
+    cs_manifest, cs_body, cs_rows = build_language("codeswitch")
+    cs_manifest_sha = hashlib.sha256(cs_manifest).hexdigest()
     cs_stats = clustered_noninferiority(
         cs_rows, margin=PREDECLARED["margin"],
         iterations=PREDECLARED["iterations"],
         seed=PREDECLARED["seed"], alpha=PREDECLARED["alpha"])
     files["code_switch.rows.jsonl"] = cs_body
+    # round 9 (Codex, CODE_SWITCH_MANIFEST_PRESENT=false): the declared
+    # set is a REAL bundled JSONL manifest
+    files["code_switch.holdout-manifest.jsonl"] = cs_manifest
 
     samples = [700.0 + i for i in range(40)]
     p95 = sorted(samples)[min(len(samples) - 1,
@@ -487,12 +495,13 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "schema_version": "medzen-b5-gate-report-v1",
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
-        "sealed_run_started_utc": "2026-08-23T12:00:00Z",
+        "sealed_run_job": {"type": "sagemaker_training",
+                             "name": "medzen-sealed-eval-synthetic-1"},
         "languages": report_languages,
         "gate_state_counts": {"PASS": len(languages)},
         "code_switch_evidence": {
             "state": "PASS", "set": "kinyarwanda-english-cs-v1",
-            "manifest_sha256": "ab" * 32, "rows": len(cs_rows),
+            "manifest_sha256": cs_manifest_sha, "rows": len(cs_rows),
             "rows_sha256": hashlib.sha256(cs_body).hexdigest(),
             "non_inferiority": {k: cs_stats[k] for k in
                                  ("margin", "upper_ci", "method", "clusters",
@@ -520,16 +529,22 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                        else packet_languages),
         "code_switch": dict(PREDECLARED,
                               set="kinyarwanda-english-cs-v1",
-                              manifest_sha256="ab" * 32),
+                              manifest_sha256=cs_manifest_sha),
         "operational_thresholds": {"max_latency_p95_ms": 1200,
                                      "max_vram_gb": 20},
         "allowed_instance_types": ["ml.g6.xlarge"],
-        "anchor": {"type": "s3", "bucket": "medzen-speech",
-                    "key": "promotion/candidate-packet.json",
-                    "version_id": "test-version-1"},
     }
     packet.update(packet_over or {})
-    files["CANDIDATE-PACKET.json"] = _json.dumps(packet).encode()
+    packet_bytes = _json.dumps(packet).encode()
+    files["CANDIDATE-PACKET.json"] = packet_bytes
+    # round 9 (Codex): the anchor is a SEPARATE envelope — a packet
+    # cannot contain its own storage identity (circular VersionId)
+    files["ANCHOR-ENVELOPE.json"] = _json.dumps({
+        "packet_sha256": hashlib.sha256(packet_bytes).hexdigest(),
+        "storage": {"type": "s3", "bucket": "medzen-speech",
+                     "key": "promotion/candidate-packet.json",
+                     "version_id": "test-version-1"},
+    }).encode()
     review = {"status": "PASS", "findings": 0,
               "reviewer": "codex-independent-review"}
     files["INDEPENDENT-REVIEW.json"] = _json.dumps(review).encode()
@@ -543,6 +558,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                          "record_sha256": shas["T6-GATE-REPORT.json"]},
         "candidate_packet": {"record": "CANDIDATE-PACKET.json",
                               "record_sha256": shas["CANDIDATE-PACKET.json"]},
+        "anchor_envelope": {"record": "ANCHOR-ENVELOPE.json",
+                             "record_sha256": shas["ANCHOR-ENVELOPE.json"]},
         "independent_review": {"record": "INDEPENDENT-REVIEW.json",
                                 "record_sha256": shas["INDEPENDENT-REVIEW.json"]},
         "owner_authorization": {
@@ -562,16 +579,20 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
 
 
 def _arm_bundle(monkeypatch, bundle, pin):
-    """Arm the bundle env AND a faithful anchor authority: it returns
-    the bundled packet bytes with a timestamp BEFORE the sealed run —
-    individual tests override it to prove chronology refusals."""
+    """Arm the bundle env AND faithful authorities: the anchor fetch
+    returns the bundled packet bytes with a STORAGE-set timestamp
+    before the AWS-set sealed-run start. Individual tests override
+    either to prove chronology refusals."""
     import medzen_model_loader.loader_v2 as loader_v2
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
     packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
     monkeypatch.setattr(
         loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda anchor: (packet_bytes, "2026-08-23T10:00:00Z"))
+        lambda storage: (packet_bytes, "2026-08-23T10:00:00Z"))
+    monkeypatch.setattr(
+        loader_v2, "SEALED_START_FETCH",
+        lambda job: "2026-08-23T12:00:00Z")
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
@@ -705,14 +726,14 @@ def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
     fixed_instance = dict(fixed_utc, instance_type="ml.g6.xlarge")
     expect("finite", report_over={"operational_evidence": fixed_instance})
 
-    # 4. chronology: an anchor whose timestamp is AFTER the sealed run
+    # 4. chronology: STORAGE-set anchor time AFTER the AWS-set sealed
+    # start — post-hoc predeclaration refuses
     bundle, pin = _promotion_bundle(tmp_path / "posthoc-anchor", tree)
+    _arm_bundle(monkeypatch, bundle, pin)
     packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
-    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
-    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
     monkeypatch.setattr(
         loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda anchor: (packet_bytes, "2026-08-23T14:00:00Z"))
+        lambda storage: (packet_bytes, "2026-08-23T14:00:00Z"))
     with pytest.raises(LoaderV2Refusal, match="post-hoc predeclaration"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -720,7 +741,7 @@ def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
     # 5. anchored bytes that differ from the bundled packet
     monkeypatch.setattr(
         loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda anchor: (packet_bytes + b" ", "2026-08-23T10:00:00Z"))
+        lambda storage: (packet_bytes + b" ", "2026-08-23T10:00:00Z"))
     with pytest.raises(LoaderV2Refusal, match="edited after anchoring"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))

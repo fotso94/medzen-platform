@@ -1,0 +1,56 @@
+{
+ "authority": "PROMOTION-PROTOCOL-2026-004 holdout_grades, derived from the tier2 records' own pool metadata by scripts/generate_holdout_grades.py",
+ "grades": {
+  "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b": {
+   "grade": "conditional",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1"
+  },
+  "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf": {
+   "grade": "development_grade_only",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1"
+  },
+  "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63": {
+   "grade": "development_grade_only",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1"
+  },
+  "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f": {
+   "grade": "development_grade_only",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1"
+  },
+  "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df": {
+   "grade": "promotion_grade",
+   "language": "kinyarwanda",
+   "pool": "cv17-test-v1-universal-sealed"
+  },
+  "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb": {
+   "grade": "development_grade_only",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1"
+  },
+  "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35": {
+   "grade": "development_grade_only",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1"
+  },
+  "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c": {
+   "grade": "development_grade_only",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1"
+  },
+  "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4": {
+   "grade": "development_grade_only",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1"
+  },
+  "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91": {
+   "grade": "conditional",
+   "language": "pidgin",
+   "pool": "curated pidgin av_pcm (held-out speakers)"
+  }
+ },
+ "record": "HOLDOUT-GRADES-2026-001"
+}
