@@ -223,3 +223,88 @@ def test_vendored_noninferiority_is_byte_identical_to_the_authoritative_module()
         authoritative).hexdigest(), (
         "edit scripts/noninferiority.py and re-copy it into the loader "
         "package — the two must stay byte-identical")
+
+
+def test_round7_tree_digest_is_end_to_end_exact(monkeypatch, tmp_path):
+    """Codex round 7 reproductions: MARKER_TREE_DOES_NOT_RECOMPUTE and
+    FULL_TREE_MISMATCH. The backend recomputes the tree from the
+    marker's own component hashes, and the orchestrator compares the
+    FULL 64-char digest — the 12-char prefix is a display label only."""
+    import json as _json
+    from medzen_asr_runtime.omniasr_backend import _artifact_tree_sha256
+    from medzen_model_loader.loader_v2 import artifact_tree_sha256
+
+    # the two implementations (loader package absent from the serving
+    # image) must be byte-identical in OUTPUT
+    assert _artifact_tree_sha256("ab" * 32, "12" * 32) == (
+        artifact_tree_sha256("ab" * 32, "12" * 32))
+
+    manifest_bytes = _json.dumps(_serving_manifest()).encode()
+    destination = _armed_env(monkeypatch, tmp_path, manifest_bytes)
+    s3 = FakeS3({
+        "medzen-speech/serving/b6v2/MANIFEST.json": manifest_bytes,
+        "medzen-speech/serving/b6v2/model.pt": CHECKPOINT,
+        "medzen-speech/serving/b6v2/tokenizer.model": TOKENIZER,
+    })
+    run_b6v2_init(s3)
+    marker_path = destination / ".medzen-ready-v2.json"
+    marker = _json.loads(marker_path.read_bytes())
+
+    # a marker whose declared tree does NOT recompute from its own
+    # checkpoint+tokenizer hashes is malformed, not trusted — even when
+    # the version still matches the forged tree's prefix
+    forged_tree = marker["artifact_tree_sha256"][:12] + "f" * 52
+    forged = dict(marker, artifact_tree_sha256=forged_tree)
+    marker_path.write_text(_json.dumps(forged, indent=1, sort_keys=True))
+    with pytest.raises(BackendRefusal, match="does not recompute"):
+        load_v2_ready_marker(destination)
+
+
+def test_round7_orchestrator_refuses_full_tree_mismatch():
+    """Two DIFFERENT full trees sharing the first 12 characters were
+    accepted as the same runtime identity. The v2 orchestrator now
+    compares the full digest exactly."""
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT / "services/speech-orchestrator"))
+    _sys.path.insert(0, str(ROOT / "tests"))
+    from test_b6v2_composed_chain import InMemoryStore, ComposedASRClient
+    from medzen_speech_orchestrator.emergency import EmergencyChecker
+    from medzen_speech_orchestrator.orchestrator import (
+        OrchestratorRefusal,
+        SpeechOrchestrator,
+    )
+    from medzen_speech_orchestrator.registry import (
+        RegistryRouter,
+        V2_CLASSIFICATION,
+    )
+
+    store = InMemoryStore()
+    router = RegistryRouter(store, store.root,
+                            expected_classification=V2_CLASSIFICATION)
+    route = router.resolve("kin")
+
+    class SamePrefixDifferentTreeASR(ComposedASRClient):
+        def transcribe(self, audio, *, request_id, route):
+            result = super().transcribe(
+                audio, request_id=request_id, route=route)
+            # same 12-char prefix, different full tree
+            forged = route.asr_artifact_tree_sha256[:12] + "f" * 52
+            return type(result)(**{**result.__dict__,
+                                     "artifact_tree_sha256": forged})
+
+    orchestrator = SpeechOrchestrator(
+        router=router,
+        emergency=EmergencyChecker(
+            ROOT / "registry/emergency-policies/v1.yaml"),
+        asr=SamePrefixDifferentTreeASR(),
+        rag=None, llm=None, tts=None,
+    )
+    assert route.asr_model_version == (
+        f"omniasr_ctc_1b:{route.asr_artifact_tree_sha256[:12]}")
+    with pytest.raises(OrchestratorRefusal,
+                        match="tree digest does not match"):
+        orchestrator.handle(
+            audio=b"RIFF\x00\x00\x00\x00WAVE",
+            request_id="55555555-5555-4555-8555-555555555555",
+            language_hint="kin",
+        )

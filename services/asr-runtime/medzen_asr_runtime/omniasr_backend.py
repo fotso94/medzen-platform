@@ -53,6 +53,7 @@ def load_v2_ready_marker(model_dir: Path) -> dict[str, Any]:
     version = marker.get("model_version")
     digest = str(marker.get("artifact_sha256") or "")
     tree = str(marker.get("artifact_tree_sha256") or "")
+    tokenizer_sha = str(marker.get("tokenizer_sha256") or "")
     if (not isinstance(version, str)
             or V2_MODEL_VERSION_RE.fullmatch(version) is None
             or re.fullmatch(r"[0-9a-f]{64}", digest) is None
@@ -64,6 +65,13 @@ def load_v2_ready_marker(model_dir: Path) -> dict[str, Any]:
             or version != f"omniasr_ctc_1b:{tree[:12]}"):
         raise BackendRefusal(
             "v2 marker identity is malformed — the version IS the tree digest")
+    # round 7 (Codex, MARKER_TREE_DOES_NOT_RECOMPUTE): the declared tree
+    # must RECOMPUTE from the marker's own component hashes — a marker
+    # asserting an unrelated tree is malformed, not trusted
+    if tree != _artifact_tree_sha256(digest, tokenizer_sha):
+        raise BackendRefusal(
+            "v2 marker tree digest does not recompute from its "
+            "checkpoint and tokenizer hashes")
     if not isinstance(marker.get("manifest_sha256"), str) or re.fullmatch(
         r"[0-9a-f]{64}", marker["manifest_sha256"]
     ) is None:
@@ -108,6 +116,19 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
+def _artifact_tree_sha256(checkpoint_sha256: str, tokenizer_sha256: str) -> str:
+    """Byte-identical construction to medzen_model_loader.loader_v2.
+    artifact_tree_sha256 (the loader package is absent from the serving
+    image); a cross-test pins the two implementations to equal outputs."""
+    import hashlib
+    import json as _json
+    material = _json.dumps(
+        {"checkpoint_sha256": checkpoint_sha256,
+         "tokenizer_sha256": tokenizer_sha256},
+        sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(material).hexdigest()
+
+
 def resolve_omni_language(language_ids: dict[str, str],
                           language_hint: str | None) -> str | None:
     """Round 5 (Codex, reproduced: \"'en' is not served\"): the marker's
@@ -149,6 +170,9 @@ class OmniASRBackend:
         # from the marker — never a hardcoded label
         self.classification = self.marker["classification"]
         self.production_approved = self.classification == "PRODUCTION"
+        # round 7 (Codex): the FULL tree digest travels in every response
+        # for exact comparison; the 12-char version is display only
+        self.artifact_tree_sha256 = self.marker["artifact_tree_sha256"]
         self.model_versions = {
             "asr": self.marker["model_version"],
             "registry_snapshot": (

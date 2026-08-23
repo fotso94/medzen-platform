@@ -226,8 +226,13 @@ def _verify_promotion_bundle(digest: str) -> None:
     from .promotion_check import (
         PromotionCheckRefusal,
         promotable_languages,
+        recompute_code_switch,
         recompute_statistics,
+        require_candidate_packet,
+        require_holdout_grades,
+        require_operational_receipt,
         require_protocol_evidence,
+        require_sealed_row_identity,
         validate_report_structure,
     )
 
@@ -235,11 +240,20 @@ def _verify_promotion_bundle(digest: str) -> None:
     if "HOLDOUT-BINDINGS.json" not in loaded:
         raise LoaderV2Refusal(
             "promotion bundle omits the sealed-holdout bindings")
-    holdouts = {language: set(map(str, shas))
-                for language, shas in loaded["HOLDOUT-BINDINGS.json"].items()}
+    # round 7: bindings carry GRADES too — {language: [{sha256, grade}]}
+    holdouts: dict[str, set[str]] = {}
+    grades: dict[str, str] = {}
+    for language, entries in loaded["HOLDOUT-BINDINGS.json"].items():
+        for binding in entries:
+            holdouts.setdefault(language, set()).add(str(binding["sha256"]))
+            grades[str(binding["sha256"])] = str(binding.get("grade", ""))
     if str(report.get("candidate_digest") or "") != f"sha256:{digest}":
         raise LoaderV2Refusal(
             "gate report candidate_digest does not name this artifact tree")
+    # round 7 (Codex): the PREDECLARED candidate packet is mandatory —
+    # thresholds, alpha, method, seed and iterations are fixed before
+    # any sealed observation, never selected after the results
+    packet = _bundled(record.get("candidate_packet"), "candidate packet")
     mandatory = list(protocol.get("mandatory_languages", []))
     if not mandatory:
         raise LoaderV2Refusal("bundled protocol declares no mandatory set")
@@ -250,14 +264,29 @@ def _verify_promotion_bundle(digest: str) -> None:
             return None
         return (root / name).read_bytes()
 
+    def manifest_bytes(language: str) -> bytes | None:
+        name = f"{language}.holdout-manifest.json"
+        if name not in files:
+            return None
+        return (root / name).read_bytes()
+
     try:
         validate_report_structure(report)
         promotable_languages(report, mandatory)
+        require_candidate_packet(report, candidate_packet=packet)
         require_protocol_evidence(
             report, mandatory, protocol=protocol,
             holdouts_by_language=holdouts)
+        require_holdout_grades(
+            report, grades_by_holdout=grades, mandatory=mandatory)
         recompute_statistics(
             report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
+        require_sealed_row_identity(
+            report, mandatory, rows_bytes=rows_bytes,
+            manifest_bytes=manifest_bytes)
+        recompute_code_switch(report, rows_bytes=rows_bytes)
+        require_operational_receipt(
+            report, candidate_packet=packet, artifact_tree_sha256=digest)
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc
 
@@ -405,10 +434,13 @@ def run_b6v2_init(s3_client: Any | None = None) -> dict[str, Any]:
         f"{prefix}/{manifest['tokenizer'].get('s3_filename', 'tokenizer.model')}")
     checkpoint_path = destination / CHECKPOINT_FILENAME
     tokenizer_path = destination / TOKENIZER_FILENAME
-    # Round 6 (Codex): TWO-PHASE publish — both files download and
-    # verify in a staging directory first, then publish together, then
-    # the marker. Previously a bad tokenizer left a verified checkpoint
-    # already installed at its final path.
+    # Round 6 (Codex): TWO-PHASE, MARKER-COMMITTED FAIL-CLOSED publish —
+    # both files download and verify in a staging directory first, then
+    # move to their final paths, then the marker commits the set. The
+    # two os.replace calls are not literally one atomic operation
+    # (round 7): a crash between them can leave a partial file set, but
+    # nothing serves without the marker, which is written LAST and only
+    # after BOTH staged files verified — the marker IS the commit point.
     staging = destination / ".medzen-staging"
     staging.mkdir(exist_ok=True)
     staged_checkpoint = staging / CHECKPOINT_FILENAME

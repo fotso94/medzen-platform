@@ -70,7 +70,7 @@ V2_DEPLOYED_CONTRACTS = {
     ),
     "tts": (
         "MEDZEN-TTS-CONTRACT-2026-002",
-        "a64dace2761813bb4da7c751af74f9dd480a3dd2ba7601513f4f0e6d17bd9779",
+        "d2246bd04016a293e3d93c4f291677aa0055b3d5735bdbe9bc2aa15107535e26",
     ),
 }
 

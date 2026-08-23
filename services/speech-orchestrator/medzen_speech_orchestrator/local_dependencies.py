@@ -32,6 +32,9 @@ class ASRResult:
     transcript: dict[str, str]
     duration_seconds: float
     model_versions: dict[str, str | None]
+    # round 7 (Codex): the FULL 64-char artifact tree digest a v2 ASR
+    # runtime reports; None on the frozen v0/v1 paths
+    artifact_tree_sha256: str | None = None
 
 
 class SyntheticASRClient:

@@ -375,11 +375,11 @@ def test_s3_cache_only_404_is_a_miss_others_raise():
 
 def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                       labels_only=False, record_over=None,
+                      report_over=None, packet_over=None,
                       protocol_id="PROMOTION-PROTOCOL-2026-004"):
-    """Build an immutable promotion bundle in the AUTHORITATIVE gate
-    format (round 6, Codex): per-language hash-bound rows whose
-    clustered-bootstrap statistics are COMPUTED with the same shared
-    code the gate recomputes with — labels alone can never promote."""
+    """Round 7 bundle: PREDECLARED candidate packet, sealed-manifest
+    utterance identity, per-row code-switch evidence and an operational
+    receipt — every statistic recomputed by the shared gate."""
     import hashlib
     import json as _json
     from medzen_model_loader.noninferiority import clustered_noninferiority
@@ -403,58 +403,99 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "PROMOTION-PROTOCOL-2026-004.json": protocol_bytes,
         "CURRENT-PROMOTION-PROTOCOL.json": _json.dumps(pointer).encode(),
     }
+    PREDECLARED = {"margin": 0.02, "alpha": 0.05, "seed": 20260823,
+                    "iterations": 200,
+                    "method": "paired_clustered_bootstrap"}
+
+    def paired_rows(label, broken=False):
+        rows = [
+            {"utterance_id": f"{label}-utt-{cluster}-{i}",
+             "cluster_id": f"spk{cluster}",
+             "baseline_errors": 4 + cluster,
+             "candidate_errors": 30 if broken else 2,
+             "reference_words": 40}
+            for cluster in range(4) for i in range(3)
+        ]
+        body = "\n".join(_json.dumps(r) for r in rows).encode() + b"\n"
+        return rows, body
+
     report_languages = {}
     holdouts = {}
-    for index, language in enumerate(languages):
-        holdout_sha = hashlib.sha256(f"holdout-{language}".encode()).hexdigest()
-        holdouts[language] = [holdout_sha]
-        # deterministic paired rows where the candidate is clearly
-        # non-inferior (fewer errors than baseline in every cluster)
-        rows = [
-            {"cluster_id": f"spk{cluster}", "baseline_errors": 4 + cluster,
-             "candidate_errors": 2, "reference_words": 40}
-            for cluster in range(4) for _ in range(3)
-        ]
-        rows_bytes = "\n".join(_json.dumps(r) for r in rows).encode() + b"\n"
-        if language == break_rows_for:
-            # rows that CANNOT reproduce the claimed statistics
-            fake = [dict(r, candidate_errors=30) for r in rows]
-            rows_bytes = "\n".join(_json.dumps(r) for r in fake).encode() + b"\n"
+    packet_languages = {}
+    for language in languages:
+        rows, rows_body = paired_rows(language,
+                                       broken=(language == break_rows_for))
+        clean_rows, _ = paired_rows(language)
+        manifest = {"utterance_ids": [r["utterance_id"] for r in clean_rows]}
+        manifest_bytes = _json.dumps(manifest).encode()
+        holdout_sha = hashlib.sha256(manifest_bytes).hexdigest()
+        holdouts[language] = [{"sha256": holdout_sha,
+                                 "grade": "promotion_grade"}]
+        packet_languages[language] = dict(
+            PREDECLARED, holdout_manifest_sha256=holdout_sha)
         stats = clustered_noninferiority(
-            [_json.loads(line) for line in
-             ("\n".join(_json.dumps(r) for r in rows)).splitlines()],
-            margin=0.02, iterations=200, seed=20260823, alpha=0.05)
+            clean_rows, margin=PREDECLARED["margin"],
+            iterations=PREDECLARED["iterations"],
+            seed=PREDECLARED["seed"], alpha=PREDECLARED["alpha"])
         entry = {
             "state": "PASS",
             "holdout_manifest_sha256": holdout_sha,
-            "rows_sha256": hashlib.sha256(rows_bytes).hexdigest(),
+            "rows_sha256": hashlib.sha256(rows_body).hexdigest(),
             "non_inferiority": {k: stats[k] for k in
                                  ("margin", "upper_ci", "method", "clusters",
                                   "rows", "non_inferior", "seed",
                                   "iterations", "alpha")},
         }
         if labels_only:
-            # Codex round 6 repro: detailed PASS labels, NO evidence
             entry = {"state": "PASS",
                      "holdout_manifest_sha256": holdout_sha,
                      "gates": {"everything": "PASS"}}
         report_languages[language] = entry
-        files[f"{language}.rows.jsonl"] = rows_bytes
+        files[f"{language}.rows.jsonl"] = rows_body
+        files[f"{language}.holdout-manifest.json"] = manifest_bytes
+
+    cs_rows, cs_body = paired_rows("codeswitch")
+    cs_stats = clustered_noninferiority(
+        cs_rows, margin=PREDECLARED["margin"],
+        iterations=PREDECLARED["iterations"],
+        seed=PREDECLARED["seed"], alpha=PREDECLARED["alpha"])
+    files["code_switch.rows.jsonl"] = cs_body
+
     report = {
         "schema_version": "medzen-b5-gate-report-v1",
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
         "languages": report_languages,
         "gate_state_counts": {"PASS": len(languages)},
-        "code_switch_evidence": {"state": "PASS",
-                                   "set": "kinyarwanda-english-cs-v1",
-                                   "manifest_sha256": "ab" * 32,
-                                   "rows": 500},
-        "operational_evidence": {"state": "PASS", "latency_p95_ms": 850,
-                                   "vram_gb": 11.2},
+        "code_switch_evidence": {
+            "state": "PASS", "set": "kinyarwanda-english-cs-v1",
+            "manifest_sha256": "ab" * 32, "rows": len(cs_rows),
+            "rows_sha256": hashlib.sha256(cs_body).hexdigest(),
+            "non_inferiority": {k: cs_stats[k] for k in
+                                 ("margin", "upper_ci", "method", "clusters",
+                                  "rows", "non_inferior", "seed",
+                                  "iterations", "alpha")},
+        },
+        "operational_evidence": {
+            "state": "PASS", "latency_p95_ms": 850, "vram_gb": 11.2,
+            "artifact_tree_sha256": tree_digest,
+            "serving_image_digest": "sha256:" + "9a" * 32,
+            "instance_type": "ml.g6.xlarge",
+            "measured_utc": "2026-08-23T00:00:00Z",
+        },
     }
+    report.update(report_over or {})
     files["T6-GATE-REPORT.json"] = _json.dumps(report).encode()
     files["HOLDOUT-BINDINGS.json"] = _json.dumps(holdouts).encode()
+    packet = {
+        "protocol_id": "PROMOTION-PROTOCOL-2026-004",
+        "candidate_digest": f"sha256:{tree_digest}",
+        "languages": packet_languages,
+        "operational_thresholds": {"max_latency_p95_ms": 1200,
+                                     "max_vram_gb": 20},
+    }
+    packet.update(packet_over or {})
+    files["CANDIDATE-PACKET.json"] = _json.dumps(packet).encode()
     review = {"status": "PASS", "findings": 0,
               "reviewer": "codex-independent-review"}
     files["INDEPENDENT-REVIEW.json"] = _json.dumps(review).encode()
@@ -466,6 +507,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "artifact_sha256": tree_digest,
         "gate_report": {"record": "T6-GATE-REPORT.json",
                          "record_sha256": shas["T6-GATE-REPORT.json"]},
+        "candidate_packet": {"record": "CANDIDATE-PACKET.json",
+                              "record_sha256": shas["CANDIDATE-PACKET.json"]},
         "independent_review": {"record": "INDEPENDENT-REVIEW.json",
                                 "record_sha256": shas["INDEPENDENT-REVIEW.json"]},
         "owner_authorization": {
@@ -484,13 +527,15 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     return bundle, hashlib.sha256(index_bytes).hexdigest()
 
 
+def _arm_bundle(monkeypatch, bundle, pin):
+    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
+    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
+
+
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
-    """Codex rounds 2-6 (FABRICATED_PRODUCTION_APPROVAL_ACCEPTED ->
-    'git not in the runtime image' -> FABRICATED_DETAILED_PASS_BUNDLE_
-    ACCEPTED): the bundle now runs the SAME shared semantics and
-    statistical RECOMPUTATION as scripts/b7_model_promotion_check.py.
-    Evidence is per-row data reproducing the clustered-bootstrap
-    verdicts — PASS labels, however detailed, promote nothing."""
+    """Codex rounds 2-7: production standing verifies an immutable bundle
+    whose evidence RECOMPUTES — labels, invented counts, post-hoc
+    thresholds and off-manifest rows all refuse."""
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                artifact_tree_sha256,
                                                validate_manifest_v2)
@@ -498,29 +543,23 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
     digest = "ab" * 32
     tree = artifact_tree_sha256(digest, "12" * 32)
 
-    # no bundle configured -> refuse
     monkeypatch.delenv("MEDZEN_PROMOTION_BUNDLE_DIR", raising=False)
     monkeypatch.delenv("MEDZEN_PROMOTION_BUNDLE_SHA256", raising=False)
     with pytest.raises(LoaderV2Refusal, match="promotion bundle"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    def arm(bundle, pin):
-        monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
-        monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
-
-    # a bundle whose rows genuinely reproduce the statistics passes
+    # the full recomputable bundle passes
     bundle, pin = _promotion_bundle(tmp_path, tree)
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     ok = validate_manifest_v2(_v2_manifest(
         digest=digest, classification="PRODUCTION"))
     assert ok["classification"] == "PRODUCTION"
 
-    # Codex round 6 reproduction: detailed all-PASS labels with NO
-    # statistical evidence — refused by the shared gate
+    # detailed all-PASS labels with NO statistical evidence — refused
     bundle, pin = _promotion_bundle(tmp_path / "labels", tree,
                                      labels_only=True)
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="promotion gate refused"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -528,7 +567,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
     # rows that do not REPRODUCE the claimed statistics — refused
     bundle, pin = _promotion_bundle(tmp_path / "forged", tree,
                                      break_rows_for="pidgin")
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="promotion gate refused"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -536,7 +575,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
     # a record promoting a DIFFERENT artifact tree refuses
     other_tree = artifact_tree_sha256("cd" * 32, "12" * 32)
     bundle, pin = _promotion_bundle(tmp_path / "other", other_tree)
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="different artifact"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -547,7 +586,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
         record_over={"owner_authorization": {
             "statement": "owner approves the model",
             "recorded_utc": "2026-08-23T00:00:00Z"}})
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="bound to THIS"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -555,7 +594,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
     # a superseded/invented protocol id refuses
     bundle, pin = _promotion_bundle(tmp_path / "stale", tree,
                                      protocol_id="PROMOTION-PROTOCOL-2026-003")
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="pointer requires"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
@@ -564,8 +603,152 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
     bundle, pin = _promotion_bundle(tmp_path / "tampered", tree)
     report_path = bundle / "T6-GATE-REPORT.json"
     report_path.write_bytes(report_path.read_bytes() + b" ")
-    arm(bundle, pin)
+    _arm_bundle(monkeypatch, bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="does not match its pin"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+
+def test_round7_adversarial_promotion_reproductions(tmp_path, monkeypatch):
+    """The EXACT round-7 Codex reproductions, encoded as refusals:
+    FABRICATED_CODE_SWITCH_AND_OPERATIONAL_EVIDENCE_ACCEPTED and
+    FABRICATED_ROW_AND_CLUSTER_COUNTS_ACCEPTED, plus post-hoc threshold
+    selection and off-manifest rows."""
+    import hashlib as _hashlib
+    import json as _json
+    from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
+                                               artifact_tree_sha256,
+                                               validate_manifest_v2)
+    import pytest
+    digest = "ab" * 32
+    tree = artifact_tree_sha256(digest, "12" * 32)
+
+    def refuse(match, **kwargs):
+        bundle, pin = _promotion_bundle(tmp_path / match[:12], tree, **kwargs)
+        _arm_bundle(monkeypatch, bundle, pin)
+        with pytest.raises(LoaderV2Refusal, match=match):
+            validate_manifest_v2(_v2_manifest(
+                digest=digest, classification="PRODUCTION"))
+
+    # 1. code-switch as a bare PASS label (no stats block, no rows hash)
+    refuse("code_switch_evidence carries no statistics",
+           report_over={"code_switch_evidence": {
+               "state": "PASS", "set": "cs-v1",
+               "manifest_sha256": "ab" * 32, "rows": 500}})
+
+    # 2. operational evidence without a measurement receipt
+    refuse("operational receipt lacks",
+           report_over={"operational_evidence": {
+               "state": "PASS", "latency_p95_ms": 1, "vram_gb": 1}})
+
+    # 2b. operational receipt measuring a DIFFERENT artifact
+    refuse("DIFFERENT artifact tree",
+           report_over={"operational_evidence": {
+               "state": "PASS", "latency_p95_ms": 850, "vram_gb": 11.2,
+               "artifact_tree_sha256": "ee" * 32,
+               "serving_image_digest": "sha256:" + "9a" * 32,
+               "instance_type": "ml.g6.xlarge",
+               "measured_utc": "2026-08-23T00:00:00Z"}})
+
+    # 3. fabricated row/cluster counts on real rows
+    bundle, pin = _promotion_bundle(tmp_path / "counts", tree)
+    report = _json.loads((bundle / "T6-GATE-REPORT.json").read_bytes())
+    report["languages"]["swahili"]["non_inferiority"]["rows"] = 5000
+    report["languages"]["swahili"]["non_inferiority"]["clusters"] = 400
+    body = _json.dumps(report).encode()
+    (bundle / "T6-GATE-REPORT.json").write_bytes(body)
+    index = _json.loads((bundle / "bundle.json").read_bytes())
+    index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(body).hexdigest()
+    record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
+    record["gate_report"]["record_sha256"] = index["files"]["T6-GATE-REPORT.json"]
+    record_body = _json.dumps(record).encode()
+    (bundle / "PROMOTION-RECORD.json").write_bytes(record_body)
+    index["files"]["PROMOTION-RECORD.json"] = _hashlib.sha256(
+        record_body).hexdigest()
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    _arm_bundle(monkeypatch, bundle,
+                _hashlib.sha256(index_bytes).hexdigest())
+    with pytest.raises(LoaderV2Refusal, match="counts must derive"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 4. post-result threshold selection: report margin differs from the
+    # PREDECLARED packet margin
+    loose = {"margin": 0.5, "alpha": 0.05, "seed": 20260823,
+             "iterations": 200, "method": "paired_clustered_bootstrap"}
+    refuse("PREDECLARED",
+           packet_over={"languages": {
+               lang: dict(loose, holdout_manifest_sha256="00" * 32)
+               for lang in ("english", "ewe", "french", "kinyarwanda",
+                             "lingala", "pidgin", "swahili")}})
+
+    # 5. a bundle omitting the candidate packet entirely
+    refuse("candidate packet",
+           record_over={"candidate_packet": {"record": "MISSING.json",
+                                               "record_sha256": "00" * 64}})
+
+    # 6. rows for utterances the sealed manifest never contained
+    bundle, pin = _promotion_bundle(tmp_path / "offmanifest", tree)
+    manifest_path = bundle / "english.holdout-manifest.json"
+    manifest = _json.loads(manifest_path.read_bytes())
+    manifest["utterance_ids"][0] = "invented-utterance"
+    # keep the report's bound holdout sha in sync so ONLY the row
+    # identity check can fire
+    manifest_body = _json.dumps(manifest).encode()
+    manifest_path.write_bytes(manifest_body)
+    new_holdout_sha = _hashlib.sha256(manifest_body).hexdigest()
+    index = _json.loads((bundle / "bundle.json").read_bytes())
+    index["files"]["english.holdout-manifest.json"] = new_holdout_sha
+    report = _json.loads((bundle / "T6-GATE-REPORT.json").read_bytes())
+    report["languages"]["english"]["holdout_manifest_sha256"] = new_holdout_sha
+    body = _json.dumps(report).encode()
+    (bundle / "T6-GATE-REPORT.json").write_bytes(body)
+    index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(body).hexdigest()
+    packet = _json.loads((bundle / "CANDIDATE-PACKET.json").read_bytes())
+    packet["languages"]["english"]["holdout_manifest_sha256"] = new_holdout_sha
+    packet_body = _json.dumps(packet).encode()
+    (bundle / "CANDIDATE-PACKET.json").write_bytes(packet_body)
+    index["files"]["CANDIDATE-PACKET.json"] = _hashlib.sha256(
+        packet_body).hexdigest()
+    bindings = _json.loads((bundle / "HOLDOUT-BINDINGS.json").read_bytes())
+    bindings["english"] = [{"sha256": new_holdout_sha,
+                              "grade": "promotion_grade"}]
+    bindings_body = _json.dumps(bindings).encode()
+    (bundle / "HOLDOUT-BINDINGS.json").write_bytes(bindings_body)
+    index["files"]["HOLDOUT-BINDINGS.json"] = _hashlib.sha256(
+        bindings_body).hexdigest()
+    record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
+    record["gate_report"]["record_sha256"] = index["files"]["T6-GATE-REPORT.json"]
+    record["candidate_packet"]["record_sha256"] = index["files"]["CANDIDATE-PACKET.json"]
+    record_body = _json.dumps(record).encode()
+    (bundle / "PROMOTION-RECORD.json").write_bytes(record_body)
+    index["files"]["PROMOTION-RECORD.json"] = _hashlib.sha256(
+        record_body).hexdigest()
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    _arm_bundle(monkeypatch, bundle,
+                _hashlib.sha256(index_bytes).hexdigest())
+    with pytest.raises(LoaderV2Refusal, match="EXACTLY the sealed"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 7. a development-grade holdout as sole evidence
+    bundle, pin = _promotion_bundle(tmp_path / "devgrade", tree)
+    bindings = _json.loads((bundle / "HOLDOUT-BINDINGS.json").read_bytes())
+    for language in bindings:
+        for entry in bindings[language]:
+            entry["grade"] = "development_grade_only"
+    bindings_body = _json.dumps(bindings).encode()
+    (bundle / "HOLDOUT-BINDINGS.json").write_bytes(bindings_body)
+    index = _json.loads((bundle / "bundle.json").read_bytes())
+    index["files"]["HOLDOUT-BINDINGS.json"] = _hashlib.sha256(
+        bindings_body).hexdigest()
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    _arm_bundle(monkeypatch, bundle,
+                _hashlib.sha256(index_bytes).hexdigest())
+    with pytest.raises(LoaderV2Refusal, match="development-grade"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 

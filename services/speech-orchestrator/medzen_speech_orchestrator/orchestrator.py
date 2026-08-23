@@ -199,6 +199,22 @@ class SpeechOrchestrator:
                     503,
                     True,
                 )
+            # B6v2 round 7 (Codex, FULL_TREE_MISMATCH): the 12-char
+            # version prefix is a display label, not an identity — two
+            # different artifacts sharing a prefix passed. In v2 the ASR
+            # runtime reports the FULL 64-char tree digest and it must
+            # equal the registry's binding EXACTLY.
+            if route.classification == V2_CLASSIFICATION and (
+                getattr(asr, "artifact_tree_sha256", None)
+                != route.asr_artifact_tree_sha256
+            ):
+                raise OrchestratorRefusal(
+                    "DEPENDENCY_UNAVAILABLE",
+                    "ASR artifact tree digest does not match the registry "
+                    "binding exactly",
+                    503,
+                    True,
+                )
             emergency = self.emergency.check(asr.transcript["normalized"])
             session_id = str(self.session_id_factory())
             if emergency.triggered:

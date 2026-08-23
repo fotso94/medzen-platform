@@ -142,6 +142,8 @@ class ComposedASRClient:
             },
             duration_seconds=1.0,
             model_versions=dict(route.expected_asr_versions),
+            # round 7: the FULL tree digest, compared exactly in v2
+            artifact_tree_sha256=route.asr_artifact_tree_sha256,
         )
 
 

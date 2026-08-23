@@ -163,6 +163,7 @@ class RemoteASRClient:
                 transcript=value["transcript"],
                 duration_seconds=value["duration_seconds"],
                 model_versions=value["model_versions"],
+                artifact_tree_sha256=value.get("artifact_tree_sha256"),
             )
         except KeyError as exc:
             raise RemoteDependencyRefusal(

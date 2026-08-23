@@ -149,6 +149,8 @@ class StubOmniBackend:
     ready = True
     classification = V2_CLASSIFICATION
     production_approved = False
+    # round 7: the FULL tree digest rides the payload for exact compare
+    artifact_tree_sha256 = ASR_TREE_SHA
     model_versions = {
         "asr": ASR_VERSION,
         "registry_snapshot": "omniasr-nonprod:" + "cd" * 32,

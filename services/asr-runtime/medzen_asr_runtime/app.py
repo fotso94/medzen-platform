@@ -74,6 +74,16 @@ def _transcript_payload(request_id: str, transcript: Transcript,
     }
 
 
+def _with_tree(payload: dict, runtime) -> dict:
+    # round 7 (Codex): the FULL 64-char artifact tree digest rides every
+    # v2 response for EXACT registry comparison; the v0 proof payload
+    # stays byte-frozen (no such attribute, no field)
+    tree = getattr(runtime, "artifact_tree_sha256", None)
+    if tree is not None:
+        payload["artifact_tree_sha256"] = tree
+    return payload
+
+
 async def _transcribe_bytes(backend: Backend, audio: bytes,
                             language_hint: str | None) -> Transcript:
     with tempfile.NamedTemporaryFile(suffix=".wav") as handle:
@@ -190,13 +200,13 @@ def create_app(backend: Backend | None = None, *,
                                  "request_id": request_id,
                                  "model_versions": runtime.model_versions},
                                 status_code=503)
-        return _transcript_payload(
+        return _with_tree(_transcript_payload(
             request_id, result, runtime.model_versions,
             (time.perf_counter() - started) * 1000,
             classification=getattr(
                 runtime, "classification", "PLATFORM_PROOF_ONLY"),
             production_approved=getattr(
-                runtime, "production_approved", False))
+                runtime, "production_approved", False)), runtime)
 
     @app.websocket("/internal/v1/transcriptions/stream")
     async def stream(websocket: WebSocket):

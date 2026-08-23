@@ -161,9 +161,20 @@ def test_prohibited_identity_combinations_refuse():
                      media_type="audio/mpeg")
     with pytest.raises(ValidationError):
         validator.validate(inverted)
+    # round 7 (Codex, INVALID_PROVIDER_BACKEND_COMBINATION_ACCEPTED):
+    # the exact reproduced combination — provider text_only with a fish
+    # backend and local synthetic audio — must refuse under the oneOf
+    reproduced = dict(base, provider="text_only")
+    with pytest.raises(ValidationError):
+        validator.validate(reproduced)
     # fish-mode DEGRADATION (text_only fallback) stays legal
     degraded = dict(base, tts_backend="text_only", audio_url=None,
                      media_type=None, audio_sha256=None,
                      degradation_reason="FISH_TIMEOUT")
     degraded["model_versions"] = dict(base["model_versions"], tts=None)
     validator.validate(degraded)
+    # and the policy text-only shape stays legal too
+    policy = dict(degraded, provider="text_only",
+                   degradation_reason="POLICY_TEXT_ONLY",
+                   provider_attempted=False)
+    validator.validate(policy)

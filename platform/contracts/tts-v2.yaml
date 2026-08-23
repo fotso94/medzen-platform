@@ -16,7 +16,7 @@ provider_identities:
 - text_only
 schemas:
   tts-v2/request.schema.json: 47be6eac18f4b116155b9d2d0dc3d40e90c59b0ffefc6dd1fd233bb48f61e62d
-  tts-v2/response.schema.json: 53bd59c285844df5fc1caedff35725c336561491d0a0a8634ca328a600b57f40
+  tts-v2/response.schema.json: 300b615eab7ce0187107216f023e7f3081970945b6f573fca8bb4573006f3f21
 version: medzen.speech.v2
 voice_governance: strict JSON booleans; approval requires consent_evidence; the
   per-voice Fish model travels with the request; registry failure FAILS CLOSED

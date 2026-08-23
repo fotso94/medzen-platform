@@ -98,124 +98,6 @@
       ]
     }
   },
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "provider": {
-            "const": "fish"
-          },
-          "tts_backend": {
-            "const": "fish"
-          }
-        },
-        "required": [
-          "provider",
-          "tts_backend"
-        ]
-      },
-      "then": {
-        "properties": {
-          "audio_url": {
-            "type": "string",
-            "pattern": "^https://"
-          },
-          "media_type": {
-            "const": "audio/mpeg"
-          },
-          "audio_sha256": {
-            "type": "string"
-          },
-          "model_versions": {
-            "properties": {
-              "tts": {
-                "type": "string",
-                "pattern": "^fish:s(1|2\\.1-pro-free)$"
-              }
-            }
-          },
-          "degradation_reason": {
-            "type": "null"
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "provider": {
-            "const": "fake_fish"
-          },
-          "tts_backend": {
-            "const": "fish"
-          }
-        },
-        "required": [
-          "provider",
-          "tts_backend"
-        ]
-      },
-      "then": {
-        "properties": {
-          "audio_url": {
-            "type": "string",
-            "pattern": "^medzen\\+local://tts/[0-9a-f]{64}$"
-          },
-          "media_type": {
-            "const": "audio/vnd.medzen.synthetic"
-          },
-          "audio_sha256": {
-            "type": "string"
-          },
-          "model_versions": {
-            "properties": {
-              "tts": {
-                "type": "string"
-              }
-            }
-          },
-          "degradation_reason": {
-            "type": "null"
-          }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "tts_backend": {
-            "const": "text_only"
-          }
-        },
-        "required": [
-          "tts_backend"
-        ]
-      },
-      "then": {
-        "properties": {
-          "audio_url": {
-            "type": "null"
-          },
-          "media_type": {
-            "type": "null"
-          },
-          "audio_sha256": {
-            "type": "null"
-          },
-          "model_versions": {
-            "properties": {
-              "tts": {
-                "type": "null"
-              }
-            }
-          },
-          "degradation_reason": {
-            "type": "string"
-          }
-        }
-      }
-    }
-  ],
   "$defs": {
     "model_versions": {
       "type": "object",
@@ -258,5 +140,188 @@
         }
       }
     }
-  }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "provider": {
+          "const": "fish"
+        },
+        "tts_backend": {
+          "const": "fish"
+        },
+        "audio_url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "media_type": {
+          "const": "audio/mpeg"
+        },
+        "audio_sha256": {
+          "type": "string"
+        },
+        "model_versions": {
+          "properties": {
+            "tts": {
+              "type": "string",
+              "pattern": "^fish:s(1|2\\.1-pro-free)$"
+            }
+          }
+        },
+        "degradation_reason": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "provider",
+        "tts_backend"
+      ]
+    },
+    {
+      "properties": {
+        "provider": {
+          "const": "fake_fish"
+        },
+        "tts_backend": {
+          "const": "fish"
+        },
+        "audio_url": {
+          "type": "string",
+          "pattern": "^medzen\\+local://tts/[0-9a-f]{64}$"
+        },
+        "media_type": {
+          "const": "audio/vnd.medzen.synthetic"
+        },
+        "audio_sha256": {
+          "type": "string"
+        },
+        "model_versions": {
+          "properties": {
+            "tts": {
+              "type": "string"
+            }
+          }
+        },
+        "degradation_reason": {
+          "type": "null"
+        }
+      },
+      "required": [
+        "provider",
+        "tts_backend"
+      ]
+    },
+    {
+      "properties": {
+        "provider": {
+          "const": "text_only"
+        },
+        "tts_backend": {
+          "const": "text_only"
+        },
+        "audio_url": {
+          "type": "null"
+        },
+        "media_type": {
+          "type": "null"
+        },
+        "audio_sha256": {
+          "type": "null"
+        },
+        "model_versions": {
+          "properties": {
+            "tts": {
+              "type": "null"
+            }
+          }
+        },
+        "degradation_reason": {
+          "const": "POLICY_TEXT_ONLY"
+        },
+        "provider_attempted": {
+          "const": false
+        }
+      },
+      "required": [
+        "provider",
+        "tts_backend"
+      ]
+    },
+    {
+      "properties": {
+        "provider": {
+          "const": "fish"
+        },
+        "tts_backend": {
+          "const": "text_only"
+        },
+        "audio_url": {
+          "type": "null"
+        },
+        "media_type": {
+          "type": "null"
+        },
+        "audio_sha256": {
+          "type": "null"
+        },
+        "model_versions": {
+          "properties": {
+            "tts": {
+              "type": "null"
+            }
+          }
+        },
+        "degradation_reason": {
+          "enum": [
+            "FISH_TIMEOUT",
+            "FISH_UNAVAILABLE",
+            "FISH_CIRCUIT_OPEN",
+            "FISH_INVALID_RESPONSE"
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "tts_backend"
+      ]
+    },
+    {
+      "properties": {
+        "provider": {
+          "const": "fake_fish"
+        },
+        "tts_backend": {
+          "const": "text_only"
+        },
+        "audio_url": {
+          "type": "null"
+        },
+        "media_type": {
+          "type": "null"
+        },
+        "audio_sha256": {
+          "type": "null"
+        },
+        "model_versions": {
+          "properties": {
+            "tts": {
+              "type": "null"
+            }
+          }
+        },
+        "degradation_reason": {
+          "enum": [
+            "FISH_TIMEOUT",
+            "FISH_UNAVAILABLE",
+            "FISH_CIRCUIT_OPEN",
+            "FISH_INVALID_RESPONSE"
+          ]
+        }
+      },
+      "required": [
+        "provider",
+        "tts_backend"
+      ]
+    }
+  ]
 }

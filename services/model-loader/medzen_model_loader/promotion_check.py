@@ -73,6 +73,124 @@ def promotable_languages(report: dict, requested: list[str]) -> dict[str, str]:
     return states
 
 
+def require_candidate_packet(report: dict, *,
+                             candidate_packet: Mapping[str, Any]) -> None:
+    """Round 7 (Codex): the protocol PREDECLARES every threshold before
+    any sealed observation — a bundle without an immutable candidate
+    packet permits post-result threshold selection. Every statistical
+    parameter in the report must equal the packet's predeclared value,
+    and the packet must name the same candidate."""
+    if report.get("candidate_digest") != candidate_packet.get("candidate_digest"):
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares a different candidate digest")
+    if report.get("protocol_id") != candidate_packet.get("protocol_id"):
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares a different protocol")
+    declared = candidate_packet.get("languages")
+    if not isinstance(declared, Mapping) or not declared:
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares no per-language parameters")
+    for language, predeclared in declared.items():
+        entry = report.get("languages", {}).get(language)
+        if not isinstance(entry, Mapping):
+            raise PromotionCheckRefusal(
+                f"{language}: predeclared in the packet but absent from "
+                "the gate report")
+        stats = entry.get("non_inferiority") or entry.get("improvement")
+        if not isinstance(stats, Mapping):
+            raise PromotionCheckRefusal(
+                f"{language}: no statistics block to compare against the "
+                "predeclared packet")
+        threshold_key = ("margin" if "non_inferiority" in entry
+                          else "min_relative_gain")
+        for key in (threshold_key, "alpha", "method", "seed", "iterations"):
+            if stats.get(key) != predeclared.get(key):
+                raise PromotionCheckRefusal(
+                    f"{language}: {key}={stats.get(key)!r} does not match "
+                    f"the PREDECLARED {predeclared.get(key)!r} — thresholds "
+                    "are chosen before sealed observation, never after")
+        packet_holdout = str(predeclared.get("holdout_manifest_sha256", ""))
+        if entry.get("holdout_manifest_sha256") != packet_holdout:
+            raise PromotionCheckRefusal(
+                f"{language}: sealed set differs from the predeclared one")
+    operational_thresholds = candidate_packet.get("operational_thresholds")
+    if not isinstance(operational_thresholds, Mapping) or not {
+        "max_latency_p95_ms", "max_vram_gb"
+    } <= set(operational_thresholds):
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares no operational thresholds")
+
+
+def require_operational_receipt(report: dict, *,
+                                candidate_packet: Mapping[str, Any],
+                                artifact_tree_sha256: str) -> None:
+    """Round 7 (Codex, FABRICATED_..._OPERATIONAL_EVIDENCE_ACCEPTED):
+    operational evidence must be a measurement RECEIPT tied to the exact
+    artifact tree, the serving image and the hardware, and the measured
+    values must clear the PREDECLARED thresholds — a PASS flag with two
+    numbers is an assertion."""
+    receipt = report.get("operational_evidence")
+    if not isinstance(receipt, Mapping):
+        raise PromotionCheckRefusal("gate report lacks operational evidence")
+    needed = {"state", "latency_p95_ms", "vram_gb", "artifact_tree_sha256",
+              "serving_image_digest", "instance_type", "measured_utc"}
+    missing = needed - set(receipt)
+    if missing:
+        raise PromotionCheckRefusal(
+            f"operational receipt lacks {sorted(missing)} — measurements "
+            "must be attributable to artifact, image and hardware")
+    if receipt.get("artifact_tree_sha256") != artifact_tree_sha256:
+        raise PromotionCheckRefusal(
+            "operational receipt measures a DIFFERENT artifact tree")
+    if not str(receipt.get("serving_image_digest", "")).startswith("sha256:"):
+        raise PromotionCheckRefusal(
+            "operational receipt must pin the serving image digest")
+    if not str(receipt.get("instance_type") or "").strip():
+        raise PromotionCheckRefusal(
+            "operational receipt must name the measured instance type")
+    thresholds = candidate_packet.get("operational_thresholds", {})
+    try:
+        latency = float(receipt["latency_p95_ms"])
+        vram = float(receipt["vram_gb"])
+        max_latency = float(thresholds["max_latency_p95_ms"])
+        max_vram = float(thresholds["max_vram_gb"])
+    except (TypeError, ValueError, KeyError) as exc:
+        raise PromotionCheckRefusal(
+            "operational receipt values are not numeric") from exc
+    if latency > max_latency or vram > max_vram:
+        raise PromotionCheckRefusal(
+            f"operational measurements (p95 {latency}ms, {vram}GB) exceed "
+            f"the PREDECLARED thresholds ({max_latency}ms, {max_vram}GB)")
+
+
+def require_holdout_grades(report: dict, *,
+                           grades_by_holdout: Mapping[str, str],
+                           mandatory: list[str]) -> None:
+    """Round 7 (Codex): the protocol grades sealed sets — development-
+    grade pools (placeholder speakers) may support but never BE the
+    promotion evidence, and conditional sets carry disclosed caveats."""
+    for language in mandatory:
+        entry = report.get("languages", {}).get(language) or {}
+        holdout = str(entry.get("holdout_manifest_sha256", ""))
+        grade = grades_by_holdout.get(holdout)
+        if grade is None:
+            raise PromotionCheckRefusal(
+                f"{language}: sealed set carries no recorded grade")
+        if grade == "development_grade_only":
+            raise PromotionCheckRefusal(
+                f"{language}: a development-grade pool cannot be sole "
+                "promotion evidence (placeholder speakers)")
+        if grade == "conditional" and not str(
+            entry.get("conditional_caveat_ack") or ""
+        ).strip():
+            raise PromotionCheckRefusal(
+                f"{language}: a conditional set requires the disclosed "
+                "caveat to be acknowledged in the report entry")
+        if grade not in ("promotion_grade", "conditional"):
+            raise PromotionCheckRefusal(
+                f"{language}: unknown holdout grade {grade!r}")
+
+
 def require_protocol_evidence(report: dict, requested: list[str], *,
                               protocol: Mapping[str, Any],
                               holdouts_by_language: Mapping[str, set[str]],
@@ -235,8 +353,114 @@ def recompute_statistics(report: dict, requested: list[str], *,
         except ValueError as exc:
             raise PromotionCheckRefusal(
                 f"{language}: rows are not valid paired evidence ({exc})")
+        # Round 7 (Codex, FABRICATED_ROW_AND_CLUSTER_COUNTS_ACCEPTED):
+        # the reported row/cluster counts are claims too — they must
+        # equal what the rows actually contain.
+        for count_key in ("rows", "clusters"):
+            if stats.get(count_key) != actual[count_key]:
+                raise PromotionCheckRefusal(
+                    f"{language}: reported {count_key}={stats.get(count_key)!r} "
+                    f"but the evidence contains {actual[count_key]} — "
+                    "counts must derive from the rows")
         if claims != facts:
             raise PromotionCheckRefusal(
                 f"{language}: recomputed statistics {facts} do not match "
                 f"the claimed {claims} — the report is not derived from "
                 "these rows")
+
+
+def require_sealed_row_identity(report: dict, mandatory: list[str], *,
+                                rows_bytes: Callable[[str], bytes | None],
+                                manifest_bytes: Callable[[str], bytes | None],
+                                ) -> None:
+    """Round 7 (Codex): every result row must belong to the EXACT sealed
+    set — the rows' utterance-id set must equal the sealed manifest's,
+    once each, and the manifest bytes must hash to the report's bound
+    holdout_manifest_sha256. Rows for utterances the sealed set never
+    contained (or a convenient subset of it) are not sealed evidence."""
+    for language in mandatory:
+        entry = report["languages"][language]
+        manifest_raw = manifest_bytes(language)
+        if manifest_raw is None:
+            raise PromotionCheckRefusal(
+                f"{language}: sealed holdout manifest absent — row "
+                "identity cannot be verified")
+        if hashlib.sha256(manifest_raw).hexdigest() != str(
+            entry.get("holdout_manifest_sha256", "")
+        ):
+            raise PromotionCheckRefusal(
+                f"{language}: holdout manifest bytes do not hash to the "
+                "report's bound sealed-set identity")
+        manifest = json.loads(manifest_raw)
+        sealed_ids = manifest.get("utterance_ids")
+        if (not isinstance(sealed_ids, list) or not sealed_ids
+                or len(set(sealed_ids)) != len(sealed_ids)):
+            raise PromotionCheckRefusal(
+                f"{language}: sealed manifest carries no unique "
+                "utterance_ids list")
+        body = rows_bytes(language)
+        if body is None:
+            raise PromotionCheckRefusal(
+                f"{language}: rows absent for sealed-identity check")
+        row_ids = [json.loads(line).get("utterance_id")
+                   for line in body.decode().splitlines() if line.strip()]
+        if any(not isinstance(i, str) or not i for i in row_ids):
+            raise PromotionCheckRefusal(
+                f"{language}: every result row must carry its utterance_id")
+        if len(set(row_ids)) != len(row_ids):
+            raise PromotionCheckRefusal(
+                f"{language}: duplicate utterance rows — each sealed "
+                "utterance is scored exactly once")
+        if set(row_ids) != set(sealed_ids):
+            raise PromotionCheckRefusal(
+                f"{language}: result rows do not cover EXACTLY the sealed "
+                "utterance set (missing or invented utterances)")
+
+
+def recompute_code_switch(report: dict, *,
+                          rows_bytes: Callable[[str], bytes | None]) -> None:
+    """Round 7 (Codex, FABRICATED_CODE_SWITCH_..._ACCEPTED): the
+    code-switch gate is evidence too — its statistics recompute from its
+    own hash-bound rows exactly like every language gate."""
+    evidence = report.get("code_switch_evidence")
+    if not isinstance(evidence, Mapping):
+        raise PromotionCheckRefusal("gate report lacks code_switch_evidence")
+    stats = evidence.get("non_inferiority") or evidence.get("improvement")
+    if not isinstance(stats, Mapping):
+        raise PromotionCheckRefusal(
+            "code_switch_evidence carries no statistics block — a PASS "
+            "flag is not evidence")
+    body = rows_bytes("code_switch")
+    if body is None:
+        raise PromotionCheckRefusal(
+            "code-switch rows absent — the gate recomputes, never trusts")
+    if hashlib.sha256(body).hexdigest() != str(
+        evidence.get("rows_sha256", "")
+    ):
+        raise PromotionCheckRefusal(
+            "code-switch rows do not hash to the report's rows_sha256")
+    rows = [json.loads(line) for line in body.decode().splitlines()
+            if line.strip()]
+    kwargs = {k: stats[k] for k in ("iterations", "seed", "alpha")}
+    try:
+        if "non_inferiority" in evidence:
+            actual = clustered_noninferiority(
+                rows, margin=stats["margin"], **kwargs)
+            claims = {k: stats[k] for k in ("upper_ci", "non_inferior",
+                                              "rows", "clusters")}
+            facts = {k: actual[k] for k in ("upper_ci", "non_inferior",
+                                              "rows", "clusters")}
+        else:
+            actual = clustered_relative_improvement(
+                rows, min_relative_gain=stats["min_relative_gain"], **kwargs)
+            claims = {k: stats[k] for k in ("lower_ci", "improved",
+                                              "rows", "clusters")}
+            facts = {k: actual[k] for k in ("lower_ci", "improved",
+                                              "rows", "clusters")}
+    except ValueError as exc:
+        raise PromotionCheckRefusal(
+            f"code-switch rows are not valid paired evidence ({exc})")
+    if claims != facts:
+        raise PromotionCheckRefusal(
+            f"code-switch recomputation {facts} does not match the "
+            f"claimed {claims}")
