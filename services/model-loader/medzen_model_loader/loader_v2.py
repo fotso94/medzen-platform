@@ -69,11 +69,23 @@ def validate_manifest_v2(manifest: Mapping[str, Any]) -> dict[str, Any]:
         raise LoaderV2Refusal(
             f"model_version must be {expected_version!r} — the identity "
             "IS the digest; free-text versions drift")
+    # round 4: serving needs the alias -> omnilingual language-id map;
+    # when the manifest carries one it must cover exactly the languages
+    language_ids = manifest.get("language_ids")
+    if language_ids is not None:
+        if (not isinstance(language_ids, Mapping)
+                or set(language_ids) != languages
+                or not all(isinstance(v, str) and v
+                           for v in language_ids.values())):
+            raise LoaderV2Refusal(
+                "language_ids must map EVERY manifest language to its "
+                "omnilingual id")
     if classification == CLASSIFICATION_PROD:
         _verify_committed_promotion(manifest, digest)
     return {"digest": digest, "version": expected_version,
             "classification": classification,
-            "languages": sorted(languages)}
+            "languages": sorted(languages),
+            "language_ids": dict(language_ids) if language_ids else None}
 
 
 def _verify_committed_promotion(manifest: Mapping[str, Any],
@@ -137,6 +149,26 @@ def _verify_committed_promotion(manifest: Mapping[str, Any],
             f"promotion record cites protocol "
             f"{record.get('protocol')!r}; the current pointer requires "
             f"{pointer.get('record')!r}")
+    # Round 4 (Codex): a record carrying ONLY decision/protocol/digest is
+    # an assertion, not a promotion. It must bind the evidence the
+    # protocol demands: the committed gate report (hash-verified at
+    # HEAD), the independent review identity, and the owner's
+    # authorization. Semantics of those documents are the protocol's
+    # job; their EXISTENCE and binding are this gate's job.
+    gate = record.get("gate_report")
+    if (not isinstance(gate, Mapping)
+            or not str(gate.get("record") or "").startswith("platform/")
+            or ".." in str(gate.get("record"))):
+        raise LoaderV2Refusal(
+            "promotion record must bind its committed gate report")
+    gate_bytes = _at_head(str(gate["record"]))
+    if hashlib.sha256(gate_bytes).hexdigest() != gate.get("record_sha256"):
+        raise LoaderV2Refusal(
+            "gate_report.record_sha256 does not match the committed bytes")
+    for field in ("independent_review", "owner_authorization"):
+        if not str(record.get(field) or "").strip():
+            raise LoaderV2Refusal(
+                f"promotion record must carry a non-empty {field}")
     bound = str(record.get("artifact_sha256")
                 or record.get("promoted_artifact_sha256") or "")
     if bound != digest:
@@ -162,7 +194,49 @@ def load_artifact_v2(manifest: Mapping[str, Any],
     return identity
 
 
+ASSET_CARD = "medzen_omniASR_CTC_1B_v2"
+
+
+def write_ready_marker_v2(manifest_path: Path, artifact_path: Path,
+                          model_dir: Path) -> Path:
+    """B6v2 round 4 (Codex): NOTHING wrote the marker the serving backend
+    requires — loader_v2 only printed identity data, so the OmniASR path
+    could never come up. This verifies (digest before deserialization,
+    same as load_artifact_v2) and then writes .medzen-ready-v2.json
+    ATOMICALLY (tmp file + os.replace) so a crashed loader can never
+    leave a half-written attestation a runtime would trust."""
+    manifest = json.loads(manifest_path.read_text())
+    identity = load_artifact_v2(manifest, artifact_path)
+    if not identity["language_ids"]:
+        raise LoaderV2Refusal(
+            "serving requires the manifest's language_ids map — the "
+            "runtime cannot guess omnilingual language codes")
+    marker = {
+        "schema_version": 3,
+        "artifact_verified": True,
+        "classification": identity["classification"],
+        "model_version": identity["version"],
+        "artifact_sha256": identity["digest"],
+        "manifest_sha256": hashlib.sha256(
+            manifest_path.read_bytes()).hexdigest(),
+        "language_ids": identity["language_ids"],
+        "checkpoint_path": str(artifact_path),
+        "asset_card": ASSET_CARD,
+    }
+    destination = model_dir / ".medzen-ready-v2.json"
+    temporary = model_dir / ".medzen-ready-v2.json.tmp"
+    temporary.write_text(json.dumps(marker, indent=1, sort_keys=True))
+    os.replace(temporary, destination)
+    return destination
+
+
 if __name__ == "__main__":
     import sys
-    manifest = json.loads(Path(sys.argv[1]).read_text())
-    print(json.dumps(load_artifact_v2(manifest, Path(sys.argv[2]))))
+    if "--write-marker" in sys.argv:
+        flag = sys.argv.index("--write-marker")
+        destination = write_ready_marker_v2(
+            Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[flag + 1]))
+        print(json.dumps({"marker": str(destination)}))
+    else:
+        manifest = json.loads(Path(sys.argv[1]).read_text())
+        print(json.dumps(load_artifact_v2(manifest, Path(sys.argv[2]))))

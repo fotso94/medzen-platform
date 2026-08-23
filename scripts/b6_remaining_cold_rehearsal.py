@@ -255,6 +255,31 @@ def _scenario(
     }
 
 
+def _matches_current_or_authorized(expected: Any, relative: str) -> bool:
+    """B6v2 round 4 (Codex serving review): the predecessor receipts bind
+    the sources AS THEY RAN inside the closed 2026-034 window. Comparing
+    them to the working tree froze streaming_app.py forever. A current
+    mismatch is fine exactly when the recorded hash matches the bytes at
+    the window's prepared_repository_commit — the same at-commit
+    discipline as the promotion gate."""
+    import subprocess
+
+    if not isinstance(expected, str):
+        return False
+    if sha256_file(ROOT / relative) == expected:
+        return True
+    auth = json.loads(
+        (ROOT / "platform/decisions/B6-AWS-AUTH-2026-034-window.json"
+         ).read_bytes())
+    shown = subprocess.run(
+        ["git", "-C", str(ROOT), "show",
+         f"{auth['prepared_repository_commit']}:{relative}"],
+        capture_output=True,
+    )
+    return (shown.returncode == 0
+            and hashlib.sha256(shown.stdout).hexdigest() == expected)
+
+
 def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
     scan = json.loads((ROOT / SCAN_RESULT_PATH).read_bytes())
     file_receipt = json.loads((ROOT / FILE_RECEIPT_PATH).read_bytes())
@@ -305,14 +330,12 @@ def _immutable_reuse_and_digest_audit() -> dict[str, Any]:
         or aligned.get("event_sequence", [None])[0] != "ready"
         or aligned.get("event_sequence", [])[-3:]
         != ["final_transcript", "reply_text", "completed"]
-        or probe_app.get("probe_sha256")
-        != sha256_file(ROOT / "scripts/b6_6_probe.py")
-        or probe_app.get("runtime_app_sha256")
-        != sha256_file(
-            ROOT
-            / "services/speech-orchestrator/"
-            / "medzen_speech_orchestrator/streaming_app.py"
-        )
+        or not _matches_current_or_authorized(
+            probe_app.get("probe_sha256"), "scripts/b6_6_probe.py")
+        or not _matches_current_or_authorized(
+            probe_app.get("runtime_app_sha256"),
+            "services/speech-orchestrator/"
+            "medzen_speech_orchestrator/streaming_app.py")
     ):
         raise AssertionError("immutable predecessor binding differs")
     return {

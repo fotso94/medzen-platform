@@ -29,6 +29,10 @@ REQUEST_ID = "708abbfd-937e-41c9-8dd0-0c81eb0ba912"
 
 class Backend:
     ready = True
+    # B6v2 round 4: readiness/transcripts report the backend's DECLARED
+    # classification (FasterWhisperBackend declares this same constant)
+    classification = "PLATFORM_PROOF_ONLY"
+    production_approved = False
     model_versions = {
         "asr": "v0",
         "registry_snapshot": "b6a-non-serving:" + "a" * 64,

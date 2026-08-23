@@ -102,14 +102,18 @@ def create_app(
                     def _governed_voice(language):
                         voice = select_voice(language)
                         return voice.reference_id, enforce_model(voice, None)
-                    # B6v2: S3-backed audio delivery when configured
-                    # (KMS-encrypted, cross-replica, expiring retrieval);
-                    # the process-local cache remains only as the v1-proof
-                    # default when no bucket is set.
-                    cache = None
-                    if os.environ.get("MEDZEN_TTS_AUDIO_BUCKET"):
-                        from .s3_cache import S3AudioCache
-                        cache = S3AudioCache()
+                    # B6v2 round 4 (Codex): real-fish mode REFUSES to start
+                    # without S3+KMS delivery — a pod that would mint
+                    # forbidden medzen+local URLs must never become ready.
+                    # (The process-local cache belongs to the synthetic
+                    # v1 proof, which never enters this branch.)
+                    if not os.environ.get("MEDZEN_TTS_AUDIO_BUCKET"):
+                        raise RuntimeError(
+                            "fish mode requires MEDZEN_TTS_AUDIO_BUCKET — "
+                            "S3+KMS delivery is not optional for real "
+                            "providers")
+                    from .s3_cache import S3AudioCache
+                    cache = S3AudioCache()
                     app.state.gateway = TTSGateway(
                         provider=RealFishProvider(**secret_kw),
                         breaker=fish_breaker(),
@@ -179,17 +183,29 @@ def create_app(
             and gateway_value.provider is not None
             and getattr(gateway_value.provider, "name", "") == "fish"
         ):
+            # real mode talks to the provider network — say so
+            payload["provider_network_access"] = True
             from .voices import registry as voice_registry
             checks: dict[str, Any] = {}
             try:
-                checks["voice_registry"] = bool(voice_registry())
+                voices = voice_registry()
+                checks["voice_registry"] = bool(voices)
+                # round 4 (Codex): a fish gateway whose every voice is
+                # unapproved refuses ALL synthesis — green would be a lie.
+                # Approval already implies consent evidence (parse-time).
+                checks["approved_voice"] = any(
+                    v.approved for v in voices.values())
             except Exception:                                 # noqa: BLE001
                 checks["voice_registry"] = False
+                checks["approved_voice"] = False
             try:
                 checks["fish_secret"] = bool(gateway_value.provider._key())
             except Exception:                                 # noqa: BLE001
                 checks["fish_secret"] = False
             cache = gateway_value.cache
+            # round 4 (Codex): "not configured" reported GREEN — but a
+            # fish pod without S3 cannot deliver audio at all. Startup
+            # now refuses that shape; readiness re-proves it anyway.
             if hasattr(cache, "presign"):
                 try:
                     cache.get("0" * 64)
@@ -197,9 +213,9 @@ def create_app(
                 except Exception:                             # noqa: BLE001
                     checks["audio_cache"] = False
             else:
-                checks["audio_cache"] = "not_configured"
+                checks["audio_cache"] = False
             payload["checks"] = checks
-            ready = ready and all(v is not False for v in checks.values())
+            ready = ready and all(checks.values())
             payload["ready"] = ready
         if not ready:
             payload["error_code"] = (

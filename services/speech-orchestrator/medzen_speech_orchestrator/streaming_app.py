@@ -365,7 +365,15 @@ def create_app(
                 error_code=exc.code
             )
             return
-        if websocket.headers.get("X-MedZen-Contract-Version") != CONTRACT_VERSION:
+        # B6v2 round 4 (Codex): the required version follows the bound
+        # registry — v2 roots negotiate medzen.speech.v2 only
+        from .registry import V2_CLASSIFICATION, V2_CONTRACT_VERSION
+        required_contract = (
+            V2_CONTRACT_VERSION
+            if service.router.classification == V2_CLASSIFICATION
+            else CONTRACT_VERSION
+        )
+        if websocket.headers.get("X-MedZen-Contract-Version") != required_contract:
             await websocket.close(code=4406)
             _log(
                 event_type="stream_refused", status_code=4406,

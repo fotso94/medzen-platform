@@ -1,0 +1,16 @@
+# B6v2 REAL-PROVIDER service contract (Codex serving review round 4).
+# The v1 contract file stays byte-frozen with the closed synthetic proof;
+# THIS file is the reviewed identity v2 registry routes pin (contract_id +
+# sha256 of these exact bytes — the same discipline as the v1 routes).
+# Policy source: platform/contracts/b6v2-real-providers.yaml.
+contract_id: MEDZEN-TTS-CONTRACT-2026-002
+version: medzen.speech.v2
+provider_identities: [fake_fish, fish, text_only]
+voice_governance: strict JSON booleans; approval requires consent_evidence;
+  per-voice Fish model travels with the request; registry failure FAILS CLOSED.
+audio_delivery: S3 SSE-KMS + presigned expiring GET in real mode;
+  medzen+local:// exists ONLY under the process-local v1-proof cache.
+model_version: "fish:<voice-model>" fills the tts slot on synthesis only.
+schemas:
+  request.schema.json: 47be6eac18f4b116155b9d2d0dc3d40e90c59b0ffefc6dd1fd233bb48f61e62d
+  response.schema.json: 28b82b4192596e851664c2d3c8ed5c77f2492268a245c1f01cb629a6466756fc

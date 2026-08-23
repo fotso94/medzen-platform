@@ -11,6 +11,7 @@ from .emergency import EmergencyChecker
 from .local_dependencies import ASRResult
 from .registry import (
     DEPLOYED_CLASSIFICATION,
+    V2_CLASSIFICATION,
     RegistryRefusal,
     RegistryRoute,
     RegistryRouter,
@@ -123,6 +124,27 @@ class SpeechOrchestrator:
         ).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    @staticmethod
+    def _grounding_hash(citations: list[dict[str, Any]]) -> str:
+        """The contract-defined grounding block hash (llm-v2.yaml): per
+        supplied citation, the first non-blank of grounding_text/content/
+        excerpt, stripped then capped at 1200 chars, rendered as
+        "[<id>]\\n<grounding>" and joined by blank lines — byte-for-byte
+        what the provider sends to the model. B6v2 round 4 (Codex): the
+        hash existed but VANISHED here, so no client could ever tie an
+        answer to the grounding actually used."""
+        def grounding(item: dict[str, Any]) -> str | None:
+            for field in ("grounding_text", "content", "excerpt"):
+                value = str(item.get(field) or "").strip()
+                if value:
+                    return value[:1200]
+            return None
+
+        block = "\n\n".join(
+            f"[{item.get('document_id')}]\n{grounding(item)}"
+            for item in citations)
+        return hashlib.sha256(block.encode("utf-8")).hexdigest()
+
     def cancel(self, request_id: str) -> None:
         """Propagate cancellation to every adapter with active request state."""
         seen: set[int] = set()
@@ -209,7 +231,14 @@ class SpeechOrchestrator:
             )
             reported_rag_versions = self._versions(rag.get("model_versions"), "RAG")
             index = rag.get("index")
-            if route.classification == DEPLOYED_CLASSIFICATION:
+            # B6v2 round 4 (Codex HTTP-level finding): over the cluster
+            # boundary the rag-index service reports its OWN identity
+            # (asr None + its local contract snapshot) — it cannot echo
+            # the orchestrator's route. The v2 flow shares the deployed
+            # rag contract; only the local file-mode adapter echoes.
+            if route.classification in (
+                DEPLOYED_CLASSIFICATION, V2_CLASSIFICATION,
+            ):
                 rag_identity_valid = reported_rag_versions == {
                     "asr": None,
                     "registry_snapshot": (
@@ -298,6 +327,20 @@ class SpeechOrchestrator:
                     503,
                     True,
                 )
+            # B6v2 round 4 (Codex): when the gateway reports the grounding
+            # hash, it must equal the hash of the grounding block derivable
+            # from the citations WE supplied — otherwise the model was
+            # grounded on something this pipeline never saw.
+            grounding_sha256 = llm.get("grounding_sha256")
+            if grounding_sha256 is not None and (
+                grounding_sha256 != self._grounding_hash(rag["citations"])
+            ):
+                raise OrchestratorRefusal(
+                    "DEPENDENCY_UNAVAILABLE",
+                    "LLM grounding hash does not match the supplied citations",
+                    503,
+                    True,
+                )
             tts_ms = 0.0
             tts_reply = {
                 "audio_url": None,
@@ -357,17 +400,22 @@ class SpeechOrchestrator:
                 # constrained to the registry-bound identity above
                 versions = tts_versions
             total_ms = round((self.clock() - total_started) * 1000, 3)
+            reply_out = {
+                "text": reply["text"],
+                "citations": reply["citations"],
+                "citation_binding_sha256": reply["citation_binding_sha256"],
+                **tts_reply,
+            }
+            # round 4: propagate the VERIFIED grounding provenance; absent
+            # for the synthetic echo, which grounds nothing
+            if grounding_sha256 is not None:
+                reply_out["grounding_sha256"] = grounding_sha256
             return session_id, {
                 "request_id": request_id,
                 "session_id": session_id,
                 "language": route.response_code,
                 "transcript": dict(asr.transcript),
-                "reply": {
-                    "text": reply["text"],
-                    "citations": reply["citations"],
-                    "citation_binding_sha256": reply["citation_binding_sha256"],
-                    **tts_reply,
-                },
+                "reply": reply_out,
                 "model_versions": versions,
                 "latency_ms": {
                     "total": total_ms, "asr": asr_ms,

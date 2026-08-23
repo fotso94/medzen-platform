@@ -34,10 +34,10 @@ from medzen_speech_orchestrator.local_dependencies import (  # noqa: E402
 )
 from medzen_speech_orchestrator.orchestrator import SpeechOrchestrator  # noqa: E402
 from medzen_speech_orchestrator.registry import (  # noqa: E402
-    DEPLOYED_CONTRACTS,
     DEPLOYED_ENDPOINTS,
     V2_CLASSIFICATION,
     V2_CONTRACT_VERSION,
+    V2_DEPLOYED_CONTRACTS,
     Parameter,
     RegistryRouter,
     canonical_json,
@@ -70,8 +70,8 @@ def _v2_route() -> dict:
         "tts": {"backend": "http_fish_v2", "model_version": "fish:s1"},
         "dependencies": {
             name: {"endpoint": DEPLOYED_ENDPOINTS[name],
-                    "contract_id": DEPLOYED_CONTRACTS[name][0],
-                    "contract_sha256": DEPLOYED_CONTRACTS[name][1]}
+                    "contract_id": V2_DEPLOYED_CONTRACTS[name][0],
+                    "contract_sha256": V2_DEPLOYED_CONTRACTS[name][1]}
             for name in DEPLOYED_ENDPOINTS
         },
     }
@@ -171,24 +171,40 @@ def _rag_client() -> LocalRAGClient:
     repository.root = ROOT
     repository.alias = "current"
     repository.loaded = loaded
-    client = LocalRAGClient.__new__(LocalRAGClient)
+
+    class ServiceIdentityRAGClient(LocalRAGClient):
+        """Round 4: over HTTP the rag-index service reports its OWN
+        identity (LoadedIndex.model_versions), never the orchestrator's
+        route — the round-3 route-echo hid a broken deployed seam."""
+
+        def retrieve(self, *, request_id, query, route):
+            response = super().retrieve(
+                request_id=request_id, query=query, route=route)
+            response["model_versions"] = (
+                self._repository.loaded.model_versions)
+            return response
+
+    client = ServiceIdentityRAGClient.__new__(ServiceIdentityRAGClient)
     client._repository = repository
     return client
 
 
 # ------------------------------------------------------------- LLM seam
 class StubBedrockClient:
-    """Contract-shaped converse() that cites a strict SUBSET (doc-1)."""
+    """Contract-shaped converse() that cites a strict SUBSET."""
 
-    def __init__(self):
+    def __init__(self, cited_ids=("doc-1",),
+                 text="Fata imiti kabiri ku munsi nyuma yo kurya."):
         self.calls = []
+        self._cited_ids = list(cited_ids)
+        self._text = text
 
     def converse(self, **kwargs):
         self.calls.append(kwargs)
         return {"output": {"message": {"content": [
             {"text": json.dumps({
-                "text": "Fata imiti kabiri ku munsi nyuma yo kurya.",
-                "cited_document_ids": ["doc-1"],
+                "text": self._text,
+                "cited_document_ids": self._cited_ids,
             })}]}}}
 
 

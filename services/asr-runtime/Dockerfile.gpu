@@ -1,0 +1,84 @@
+# B6v2 GPU serving image for the OmniASR backend (Codex round 4: the
+# deployed CPU image contains no fairseq2/omnilingual_asr, so the backend
+# was unservable). This mirrors the asr-eval-runtime image — the exact
+# pinned stack that ran the trained artifact at the T6 gate — and adds the
+# ASR runtime service on top. DARK until the b6v2 serving deploy: nothing
+# builds or pushes this in CI yet.
+#
+# Model staging contract: the model-loader init container verifies the
+# artifact with loader_v2 and writes /models/.medzen-ready-v2.json via
+# write_ready_marker_v2 (atomic); the checkpoint sits at the asset card's
+# path /models/omniASR-CTC-1B-v2.pt. Start with MEDZEN_ASR_BACKEND=omniasr.
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc AS serving-builder
+
+ARG OMNI_COMMIT=145a12a668aace6c1d0d290128c1225571fc1955
+ARG SOURCE_COMMIT
+RUN test -n "$SOURCE_COMMIT"
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH=/opt/venv/bin:$PATH
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        build-essential ca-certificates cmake git libsndfile1-dev \
+        python3.12 python3.12-dev python3.12-venv \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/build
+RUN python3.12 -m venv /opt/venv \
+    && pip install --no-cache-dir "pip==26.2"
+RUN pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cu128 \
+        "torch==2.8.0" "torchaudio==2.8.0"
+# the eval runtime's pinned inference stack (fairseq2 et al.)
+COPY services/asr-eval-runtime/requirements.txt ./eval-requirements.txt
+RUN pip install --no-cache-dir -r eval-requirements.txt
+# the serving API stack (fastapi/uvicorn/av pins from the CPU image)
+COPY services/asr-runtime/requirements.txt ./serving-requirements.txt
+RUN pip install --no-cache-dir -r serving-requirements.txt
+RUN git clone --filter=blob:none https://github.com/facebookresearch/omnilingual-asr.git omnilingual-asr \
+    && git -C omnilingual-asr checkout --detach "$OMNI_COMMIT" \
+    && test "$(git -C omnilingual-asr rev-parse HEAD)" = "$OMNI_COMMIT" \
+    && pip install --no-cache-dir --no-deps ./omnilingual-asr \
+    && python -c 'import omnilingual_asr; assert omnilingual_asr.__version__ == "0.1.0"' \
+    && python -c 'import ctypes; [ctypes.CDLL(n) for n in ("libcudart.so.12", "libcublas.so.12", "libcublasLt.so.12", "libcudnn.so.9")]' \
+    && python -m pip uninstall -y pip setuptools wheel \
+    && rm -rf /root/.cache /opt/build/omnilingual-asr
+
+FROM nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04@sha256:ac55d124da4882b497f732d8dfd9a702d5447a5f29d08d56da6f64f0a1eb34bc AS runtime
+
+ARG SOURCE_COMMIT
+RUN test -n "$SOURCE_COMMIT"
+ENV PYTHONUNBUFFERED=1 \
+    HF_HUB_OFFLINE=1 \
+    HF_HUB_DISABLE_XET=1 \
+    FAIRSEQ2_ASSET_DIR=/opt/medzen/assets \
+    FAIRSEQ2_CACHE_DIR=/tmp/fairseq2-cache \
+    PATH=/opt/venv/bin:$PATH \
+    PYTHONPATH=/opt/medzen \
+    MEDZEN_ASR_BACKEND=omniasr \
+    MEDZEN_INFERENCE_DEVICE=cuda \
+    MODEL_DIR=/models \
+    SOURCE_COMMIT=$SOURCE_COMMIT
+
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates libsndfile1 python3.12 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 medzen \
+    && useradd --system --uid 10001 --gid 10001 --no-create-home medzen \
+    && mkdir -p /opt/medzen /tmp/fairseq2-cache \
+    && chown -R 10001:10001 /tmp/fairseq2-cache
+
+WORKDIR /opt/medzen
+COPY --from=serving-builder /opt/venv /opt/venv
+COPY services/asr-runtime/medzen_asr_runtime ./medzen_asr_runtime
+# the SAME asset cards the T6 gate evaluated against (checkpoint path
+# /models/omniASR-CTC-1B-v2.pt + written tokenizer)
+COPY services/asr-eval-runtime/assets ./assets
+
+USER 10001:10001
+ENTRYPOINT ["python", "-m", "uvicorn", "medzen_asr_runtime.app:app", \
+            "--host", "0.0.0.0", "--port", "8081"]

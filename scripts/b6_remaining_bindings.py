@@ -257,10 +257,23 @@ def validate(path: Path, packet_sha256: str, root: Path) -> dict[str, Any]:
         if relative.startswith("/") or ".." in Path(relative).parts:
             raise BindingRefusal("packet-2026-034 source path is unsafe")
         target = root / relative
-        if (
-            re.fullmatch(r"[0-9a-f]{64}", str(expected)) is None
-            or not target.is_file()
-            or sha256_file(target) != expected
-        ):
+        if re.fullmatch(r"[0-9a-f]{64}", str(expected)) is None:
+            raise BindingRefusal(f"packet-2026-034 source hash differs: {relative}")
+        if target.is_file() and sha256_file(target) == expected:
+            continue
+        # B6v2 round 4 (Codex serving review): this CLOSED window's record
+        # attests what was authorized AT prepared_repository_commit — it is
+        # not a freeze on future reviewed work. A working-tree difference
+        # is fine exactly when the recorded hash matches the bytes at that
+        # commit (same at-commit discipline as loader_v2's promotion gate).
+        import hashlib
+        import subprocess
+        shown = subprocess.run(
+            ["git", "-C", str(root), "show",
+             f"{value['prepared_repository_commit']}:{relative}"],
+            capture_output=True,
+        )
+        if (shown.returncode != 0
+                or hashlib.sha256(shown.stdout).hexdigest() != expected):
             raise BindingRefusal(f"packet-2026-034 source hash differs: {relative}")
     return value

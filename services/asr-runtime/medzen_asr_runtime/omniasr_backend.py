@@ -102,6 +102,10 @@ class OmniASRBackend:
             dtype=torch.bfloat16,
         )
         self._language_ids: dict[str, str] = dict(self.marker["language_ids"])
+        # round 4 (Codex): the runtime reports the VERIFIED classification
+        # from the marker — never a hardcoded label
+        self.classification = self.marker["classification"]
+        self.production_approved = self.classification == "PRODUCTION"
         self.model_versions = {
             "asr": self.marker["model_version"],
             "registry_snapshot": (
@@ -121,6 +125,10 @@ class OmniASRBackend:
                     f"{language_hint!r} is not served by this artifact "
                     f"({self.marker['model_version']})")
         languages = None if omni_lang is None else [omni_lang]
+        # round 4 (Codex): report the REAL audio duration (billing and
+        # latency accounting depend on it); the pipeline itself does not
+        # expose one. av is already in the runtime image.
+        duration_seconds = _audio_duration_seconds(audio_path)
         values = self._pipeline.transcribe(
             [str(audio_path)], lang=languages, batch_size=1)
         if len(values) != 1 or not isinstance(values[0], str):
@@ -136,5 +144,20 @@ class OmniASRBackend:
             verbatim=verbatim,
             normalized=normalized,
             normalization_version=NORMALIZATION_VERSION,
-            duration_seconds=0.0,
+            duration_seconds=duration_seconds,
         )
+
+
+def _audio_duration_seconds(audio_path: Path) -> float:
+    try:
+        import av
+        with av.open(str(audio_path)) as container:
+            if container.duration:
+                return round(container.duration / 1_000_000, 3)
+            stream = container.streams.audio[0]
+            if stream.duration and stream.time_base:
+                return round(float(stream.duration * stream.time_base), 3)
+    except Exception as exc:                                  # noqa: BLE001
+        raise BackendRefusal(
+            "audio duration could not be determined") from exc
+    raise BackendRefusal("audio container reports no duration")

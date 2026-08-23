@@ -397,8 +397,20 @@ def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_
         _json.dumps({"file": protocol_rel,
                      "record": "PROMOTION-PROTOCOL-2026-004",
                      "sha256": protocol_sha}))
-    record = {"protocol": "PROMOTION-PROTOCOL-2026-004",
-              "decision": "APPROVED", "artifact_sha256": digest}
+    gate_rel = "platform/evidence/T6-GATE-REPORT.json"
+    (repo / gate_rel).write_text(_json.dumps({"gate": "T6", "outcome": "PASS"}))
+    gate_sha = hashlib.sha256((repo / gate_rel).read_bytes()).hexdigest()
+    # round 4 (Codex): decision+protocol+digest alone is an ASSERTION —
+    # the record must bind its committed gate report, the independent
+    # review identity, and the owner's authorization
+    minimal = {"protocol": "PROMOTION-PROTOCOL-2026-004",
+               "decision": "APPROVED", "artifact_sha256": digest}
+    minimal_rel = "platform/decisions/promotions/MINIMAL-PROMO.json"
+    (repo / minimal_rel).write_text(_json.dumps(minimal))
+    record = dict(minimal,
+                  gate_report={"record": gate_rel, "record_sha256": gate_sha},
+                  independent_review="codex-serving-review-round-4",
+                  owner_authorization="owner order (test fixture)")
     rec_rel = "platform/decisions/promotions/ARM1-PROMO.json"
     (repo / rec_rel).write_text(_json.dumps(record))
     # the SAME approved bytes committed outside the promotions dir —
@@ -428,6 +440,11 @@ def test_loader_v2_production_needs_committed_promotion_not_manifest_fields(tmp_
             validate_manifest_v2(_v2_manifest(
                 digest=digest, classification="PRODUCTION",
                 promotion_approval=_approval(smuggled_rel)))
+        # a bare decision/protocol/digest record binds no evidence — refuses
+        with pytest.raises(LoaderV2Refusal, match="gate report"):
+            validate_manifest_v2(_v2_manifest(
+                digest=digest, classification="PRODUCTION",
+                promotion_approval=_approval(minimal_rel)))
         # citing a superseded/invented protocol id refuses
         with pytest.raises(LoaderV2Refusal, match="pointer requires"):
             validate_manifest_v2(_v2_manifest(

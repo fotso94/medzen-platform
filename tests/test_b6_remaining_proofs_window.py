@@ -187,7 +187,24 @@ def test_fresh_cold_rehearsal_is_deterministic(tmp_path):
     assert completed.returncode == 0, completed.stdout
     repeated = json.loads((tmp_path / "repeat/cold_rehearsal.json").read_bytes())
     reviewed = json.loads(COLD_RECEIPT.read_bytes())
+    # B6v2 round 4: determinism means the SCENARIO OUTCOMES replay
+    # byte-identically. runner_source_hashes honestly records the bytes
+    # that ran each time — sources reviewed and changed since the closed
+    # window verify at the window's prepared_repository_commit instead
+    # of being frozen forever (same rule as the bindings validator).
+    repeated_sources = repeated["payload"].pop("runner_source_hashes")
+    reviewed_sources = reviewed["payload"].pop("runner_source_hashes")
     assert repeated["payload"] == reviewed["payload"]
+    assert set(repeated_sources) == set(reviewed_sources)
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT))
+    from scripts.b6_remaining_cold_rehearsal import (
+        _matches_current_or_authorized,
+    )
+    for relative, reviewed_sha in reviewed_sources.items():
+        assert _matches_current_or_authorized(reviewed_sha, relative), (
+            f"{relative}: reviewed hash matches neither the working tree "
+            "nor the window's prepared commit")
 
 
 def test_attempt_parser_allows_exactly_fresh_attempts_one_and_two():

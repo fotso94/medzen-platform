@@ -14,6 +14,8 @@ on:
       - "tests/test_speech_orchestrator_streaming.py"
       - "tests/test_orchestrator_remote_adapters.py"
       - "tests/test_b6v2_real_provider.py"
+      - "tests/test_b6v2_composed_chain.py"
+      - "tests/test_b6v2_http_chain.py"
       - "platform/contracts/**"
       - "platform/generated/registry-ssm/**"
 permissions:
@@ -25,6 +27,6 @@ jobs:
     with:
       service: speech-orchestrator
       context_path: services/speech-orchestrator
-      test_paths: "tests/test_speech_orchestrator.py tests/test_speech_orchestrator_streaming.py tests/test_orchestrator_remote_adapters.py tests/test_b6v2_real_provider.py"
+      test_paths: "tests/test_speech_orchestrator.py tests/test_speech_orchestrator_streaming.py tests/test_orchestrator_remote_adapters.py tests/test_b6v2_real_provider.py tests/test_b6v2_composed_chain.py tests/test_b6v2_http_chain.py"
       ecr_repository: medzen-orchestrator
       k8s_deployment: speech-orchestrator

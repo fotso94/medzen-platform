@@ -50,7 +50,13 @@ def _language(value: str | None) -> str | None:
 
 def _transcript_payload(request_id: str, transcript: Transcript,
                         model_versions: dict[str, str | None],
-                        latency_ms: float) -> dict[str, Any]:
+                        latency_ms: float, *,
+                        classification: str = "PLATFORM_PROOF_ONLY",
+                        production_approved: bool = False) -> dict[str, Any]:
+    # B6v2 round 4 (Codex): the classification was hardcoded to the v0
+    # proof — a verified OmniASR artifact would still have been reported
+    # as PLATFORM_PROOF_ONLY. It now travels from the serving backend's
+    # verified marker.
     return {
         "request_id": request_id,
         "language": transcript.language,
@@ -63,8 +69,8 @@ def _transcript_payload(request_id: str, transcript: Transcript,
         "duration_seconds": transcript.duration_seconds,
         "model_versions": model_versions,
         "latency_ms": round(latency_ms, 3),
-        "classification": "PLATFORM_PROOF_ONLY",
-        "production_approved": False,
+        "classification": classification,
+        "production_approved": production_approved,
     }
 
 
@@ -132,7 +138,11 @@ def create_app(backend: Backend | None = None, *,
         ready = runtime is not None and runtime.ready is True
         payload = {
             "ready": ready,
-            "classification": "PLATFORM_PROOF_ONLY",
+            # round 4 (Codex): report the VERIFIED classification, not a
+            # hardcoded v0 label
+            "classification": (
+                getattr(runtime, "classification", None) or "unavailable"
+                if runtime is not None else "unavailable"),
             "model_manifest_verified": ready,
             "model_tree_verified": ready,
             "model_loaded": ready,
@@ -182,7 +192,11 @@ def create_app(backend: Backend | None = None, *,
                                 status_code=503)
         return _transcript_payload(
             request_id, result, runtime.model_versions,
-            (time.perf_counter() - started) * 1000)
+            (time.perf_counter() - started) * 1000,
+            classification=getattr(
+                runtime, "classification", "PLATFORM_PROOF_ONLY"),
+            production_approved=getattr(
+                runtime, "production_approved", False))
 
     @app.websocket("/internal/v1/transcriptions/stream")
     async def stream(websocket: WebSocket):
@@ -258,7 +272,11 @@ def create_app(backend: Backend | None = None, *,
                 result = await _transcribe_bytes(runtime, bytes(audio), language_hint)
                 payload = _transcript_payload(
                     request_id, result, runtime.model_versions,
-                    (time.perf_counter() - started) * 1000)
+                    (time.perf_counter() - started) * 1000,
+                    classification=getattr(
+                        runtime, "classification", "PLATFORM_PROOF_ONLY"),
+                    production_approved=getattr(
+                        runtime, "production_approved", False))
                 await websocket.send_json(event(
                     "final_transcript", transcript=payload["transcript"],
                     language=payload["language"],

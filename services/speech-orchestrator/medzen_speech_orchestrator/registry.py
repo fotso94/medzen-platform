@@ -51,6 +51,28 @@ DEPLOYED_CONTRACTS = {
         "2576a46f535a42e9986220b003df136e2aef2001ecb51597df09b2d6f09956d8",
     ),
 }
+# B6v2 round 4 (Codex): v2 routes bound the SYNTHETIC v1 contract ids —
+# a route claiming real providers while pinning the proof-only contract.
+# Each sha is sha256 of the committed platform/contracts/<svc>-v2.yaml,
+# which in turn pins every v2 schema file (same discipline as v1).
+V2_DEPLOYED_CONTRACTS = {
+    "asr": (
+        "MEDZEN-SPEECH-CONTRACT-2026-002",
+        "ec6bbc2f2b967f4e1742b1139213e638a99cb24622cff22997ca997c717545dc",
+    ),
+    "rag": (
+        "MEDZEN-SPEECH-CONTRACT-2026-002",
+        "ec6bbc2f2b967f4e1742b1139213e638a99cb24622cff22997ca997c717545dc",
+    ),
+    "llm": (
+        "MEDZEN-LLM-CONTRACT-2026-002",
+        "9e3989a11744772260c3e222a59c14b64c4cdb2e3085f1c573a675b00750c2c9",
+    ),
+    "tts": (
+        "MEDZEN-TTS-CONTRACT-2026-002",
+        "5be0b477e1bb2a2136c20562a36268cbd5a8823418c0ea5cff8c82c2e9343363",
+    ),
+}
 
 
 class RegistryRefusal(RuntimeError):
@@ -601,7 +623,10 @@ class RegistryRouter:
             dependency_endpoints=endpoints,
         )
 
-    def _cluster_dependencies(self, route: dict[str, Any]) -> dict[str, str]:
+    def _cluster_dependencies(
+        self, route: dict[str, Any],
+        contracts: dict[str, tuple[str, str]] = DEPLOYED_CONTRACTS,
+    ) -> dict[str, str]:
         dependencies = _exact(
             route["dependencies"], set(DEPLOYED_ENDPOINTS),
             "registry dependency routes",
@@ -612,7 +637,7 @@ class RegistryRouter:
                 dependencies[name], {"endpoint", "contract_id", "contract_sha256"},
                 f"registry {name} dependency",
             )
-            expected_contract, expected_sha = DEPLOYED_CONTRACTS[name]
+            expected_contract, expected_sha = contracts[name]
             if dependency != {
                 "endpoint": expected_endpoint,
                 "contract_id": expected_contract,
@@ -652,7 +677,8 @@ class RegistryRouter:
             },
             "registry ASR route",
         )
-        endpoints = self._cluster_dependencies(route)
+        endpoints = self._cluster_dependencies(
+            route, contracts=V2_DEPLOYED_CONTRACTS)
         tts_ok = (
             tts == {"backend": "http_text_only_v1", "model_version": None}
             or (

@@ -11,11 +11,13 @@ on:
     paths:
       - "services/model-loader/**"
       - "tests/test_model_loader.py"
+      - "tests/test_b6v2_real_provider.py"
       - ".github/workflows/model-loader-tests.yml"
   pull_request:
     paths:
       - "services/model-loader/**"
       - "tests/test_model_loader.py"
+      - "tests/test_b6v2_real_provider.py"
       - ".github/workflows/model-loader-tests.yml"
 jobs:
   tests:
@@ -30,4 +32,8 @@ jobs:
           python -m pip install -r services/model-loader/requirements.txt
           "pytest==9.1.1" "PyYAML==6.0.3" "jsonschema==4.26.0"
       - name: model-loader tests
-        run: python -m pytest -q tests/test_model_loader.py
+        run: >
+          python -m pytest -q tests/test_model_loader.py
+          "tests/test_b6v2_real_provider.py::test_loader_v2_accepts_the_multilingual_artifact_shape"
+          "tests/test_b6v2_real_provider.py::test_loader_v2_refuses_production_binding_without_gate_approval"
+          "tests/test_b6v2_real_provider.py::test_loader_v2_production_needs_committed_promotion_not_manifest_fields"

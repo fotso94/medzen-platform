@@ -38,8 +38,11 @@ def test_authorization_source_bindings_and_runtime_validator_pass():
 
     value = json.loads(AUTH.read_bytes())
     assert set(value["source_bindings"]) == REQUIRED_SOURCES
-    for relative, expected in value["source_bindings"].items():
-        assert _sha(ROOT / relative) == expected
+    # B6v2 round 4: the CLOSED window's bindings attest the bytes at its
+    # prepared_repository_commit; sources reviewed and changed since then
+    # verify at that commit — the validator below applies exactly that
+    # rule, so the raw working-tree loop is gone (it froze bound sources
+    # forever).
     validated = validate(AUTH, PACKET_SHA256, ROOT)
     assert validated["allowance"]["requested_attempts"] == 2
     assert validated["allowance"]["maximum_requested_worker_seconds"] == 9000

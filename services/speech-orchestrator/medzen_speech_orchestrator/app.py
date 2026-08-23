@@ -22,6 +22,7 @@ from .orchestrator import OrchestratorRefusal, SpeechOrchestrator
 from .registry import (
     DEPLOYED_CLASSIFICATION,
     V2_CLASSIFICATION,
+    V2_CONTRACT_VERSION,
     LocalParameterStore,
     RegistryRouter,
     SSMParameterStore,
@@ -261,10 +262,19 @@ def create_app(
             key_store.authenticate(request.headers.get("Authorization"))
         except AuthRefusal as exc:
             return refuse(exc.code, exc.message, exc.status_code)
-        if request.headers.get("X-MedZen-Contract-Version") != CONTRACT_VERSION:
+        # B6v2 round 4 (Codex): the API negotiated ONLY v1 while a v2
+        # registry could serve v2 identities under a v1 header. The
+        # required version follows the bound registry: v2 roots speak
+        # medzen.speech.v2 and nothing else, v1 roots keep v1 exactly.
+        required_contract = (
+            V2_CONTRACT_VERSION
+            if service.router.classification == V2_CLASSIFICATION
+            else CONTRACT_VERSION
+        )
+        if request.headers.get("X-MedZen-Contract-Version") != required_contract:
             return refuse(
                 "CONTRACT_VERSION_UNSUPPORTED",
-                "X-MedZen-Contract-Version must be medzen.speech.v1",
+                f"X-MedZen-Contract-Version must be {required_contract}",
                 426,
             )
         media_type = request.headers.get("content-type", "").split(";", 1)[0]

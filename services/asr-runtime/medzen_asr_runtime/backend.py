@@ -61,6 +61,11 @@ def load_ready_marker(model_dir: Path, expected_manifest_sha256: str) -> dict[st
 
 
 class FasterWhisperBackend:
+    # the v0 proof identity — the marker check below enforces exactly this;
+    # B6v2 backends carry their own verified classification instead
+    classification = "PLATFORM_PROOF_ONLY"
+    production_approved = False
+
     def __init__(self, model_dir: Path, expected_manifest_sha256: str):
         self.ready = False
         self.marker = load_ready_marker(model_dir, expected_manifest_sha256)

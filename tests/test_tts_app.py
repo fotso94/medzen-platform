@@ -160,6 +160,25 @@ def test_fish_secret_id_is_deploy_configurable(monkeypatch):
     from medzen_speech_tts_gateway import voices as voices_module
     voices_module.registry(force=True)
 
+    # B6v2 round 4: real-fish startup fails closed without S3+KMS, and
+    # deep readiness probes secret+cache — keep the test hermetic with a
+    # fake cache class and an env-supplied key (no AWS, no network)
+    import medzen_speech_tts_gateway.s3_cache as s3_cache_module
+
+    class _HermeticCache:
+        def __init__(self, **kwargs):
+            pass
+
+        def presign(self, key):
+            return f"https://cache.example/{key}"
+
+        def get(self, key):
+            return None
+
+    monkeypatch.setattr(s3_cache_module, "S3AudioCache", _HermeticCache)
+    monkeypatch.setenv("MEDZEN_TTS_AUDIO_BUCKET", "hermetic-test-bucket")
+    monkeypatch.setenv("MEDZEN_FISH_API_KEY", "hermetic-test-key")
+
     monkeypatch.setenv(
         "MEDZEN_FISH_SECRET_ID",
         "arn:aws:secretsmanager:eu-central-1:558069890522:"

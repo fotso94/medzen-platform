@@ -89,11 +89,13 @@ services:
     notes: Emergency detection runs here, pre-LLM, with no shed path (A6).
 
   asr-runtime:
-    role: Speech to text. Serves ONE multilingual Whisper artifact for all
-          languages; per-language approval lives in the registry, not in
-          separate deployments. It loads the verifier-approved artifact and
-          runs one bounded inference on the serving path before reporting
-          ready.
+    role: Speech to text. Serves ONE multilingual artifact for all languages
+          (ARCH-2026-001); per-language approval lives in the registry, not
+          in separate deployments. Default backend is the v0 Whisper/CT2
+          platform proof; B6v2 adds the OmniASR fairseq2 backend
+          (MEDZEN_ASR_BACKEND=omniasr, Dockerfile.gpu, loader-v2 marker) —
+          dark until the b6v2 serving deploy. Either backend loads a
+          verifier-approved artifact and reports its VERIFIED classification.
     node_pool: gpu
     public: false
     image_repo: medzen-asr-runtime
@@ -120,10 +122,13 @@ services:
            the registry per language (correction 3).
 
   llm-gateway:
-    role: Understanding and response generation. B6.2 uses a local fake
-          Bedrock provider only. A real Bedrock adapter requires its own capped
-          AWS packet; a vLLM Qwen upstream remains a later per-language option.
-          Applies the versioned per-language policy referenced by the registry.
+    role: Understanding and response generation. The synthetic fake-Bedrock
+          provider remains the closed B6.2 proof; B6v2 adds the REAL Bedrock
+          Converse provider (identity bedrock:<model-id>, grounding_text in,
+          grounding_sha256 out, blank grounding refused) — live calls remain
+          gated on the capped qualification packet. A vLLM Qwen upstream
+          stays a later per-language option. Applies the versioned
+          per-language policy referenced by the registry.
     node_pool: cpu
     public: false
     image_repo: medzen-llm-gateway
