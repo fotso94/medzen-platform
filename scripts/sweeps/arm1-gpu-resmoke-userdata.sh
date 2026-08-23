@@ -27,10 +27,12 @@ mkdir -p /opt/rs/{models,repo,clips}; cd /opt/rs
 aws s3 cp "s3://$BUCKET/$REPO_KEY" repo.tar.gz --quiet && tar -xzf repo.tar.gz -C repo
 [ -f /opt/rs/repo/platform/manifests/B6V2-ARM1-SMOKE-MANIFEST-2026-001.json ] || { echo REPO-FAIL; shutdown -h now; exit 1; }
 # stage the artifact set into the smoke prefix (create-only)
-aws s3api get-object --bucket $BUCKET --key "$TAR_KEY" model.tar.gz --version-id "$TAR_VID" >/dev/null || { echo TAR-GET-FAIL; shutdown -h now; exit 1; }
+# GetObject (not versioned) + sha256 verify — the trainer role has
+# s3:GetObject on research/*; the sha256 is the integrity guarantee
+aws s3 cp "s3://$BUCKET/$TAR_KEY" model.tar.gz --quiet || { echo TAR-GET-FAIL; shutdown -h now; exit 1; }
 tar -xzf model.tar.gz export/model.pt
 [ "$(sha256sum export/model.pt|cut -d' ' -f1)" = "$EXPORT_SHA" ] || { echo EXPORT-SHA-FAIL; shutdown -h now; exit 1; }
-aws s3api get-object --bucket $BUCKET --key "$TOK_KEY" tokenizer.model --version-id "$TOK_VID" >/dev/null || { echo TOK-GET-FAIL; shutdown -h now; exit 1; }
+aws s3 cp "s3://$BUCKET/$TOK_KEY" tokenizer.model --quiet || { echo TOK-GET-FAIL; shutdown -h now; exit 1; }
 [ "$(sha256sum tokenizer.model|cut -d' ' -f1)" = "$TOK_SHA" ] || { echo TOK-SHA-FAIL; shutdown -h now; exit 1; }
 MAN=/opt/rs/repo/platform/manifests/B6V2-ARM1-SMOKE-MANIFEST-2026-001.json
 MAN_SHA=$(sha256sum "$MAN"|cut -d' ' -f1)

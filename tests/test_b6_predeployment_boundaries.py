@@ -184,7 +184,7 @@ def test_supplemental_orchestrator_kms_is_secrets_manager_context_scoped() -> No
     # ListBucket added to services.yaml (reviewed; applied + simulated).
     # The generated ViaService grant now overlaps this supplemental
     # context-scoped one — both constrain decrypt to Secrets Manager.
-    assert sha(ROOT / "platform/services.yaml") == "4d85ea85e7bc7ad2eb2ebbe2aa23aeebd513f4ab1c159f1645a137acf9006abe"
+    assert sha(ROOT / "platform/services.yaml") == "1d0002634183385ba80bb023f74714f9e5caa23ef70aee009225bde1bb8487b9"
 
 
 def test_deployment_registry_manifest_is_exact_and_non_serving() -> None:

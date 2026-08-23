@@ -1,0 +1,95 @@
+{
+ "artifact_tree_sha256": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "gpu_image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-asr-runtime@sha256:4b58b47867a27210c183d76a40713f74c0aff449afdef70ed5946159093f6756",
+ "init": {
+  "classification": "NONPROD_REAL_PROVIDER_V2",
+  "marker": "/models/.medzen-ready-v2.json",
+  "model_version": "omniasr_ctc_1b:34ca18bab2f7"
+ },
+ "languages_tested": 7,
+ "loader_image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-model-loader@sha256:e1b356755d1f482212e8d0543d905aa2b2823e68d2e5c4a9b1d597ba639c3c42",
+ "per_language": {
+  "english": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "8c8dd3a3f1329a10fd5bbcf9beac376d27ba1773277f1658c0cec2797a00ebbc",
+   "iso": "en",
+   "language_probability": 1.0,
+   "latency_ms": 609.162,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "ewe": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "b741be228c012cd602ff265cd6ed61b7d5baf56bafe28991ce55781f7d80ecda",
+   "iso": "ewe",
+   "language_probability": 1.0,
+   "latency_ms": 38.351,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "french": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "f5fbc3e7995e167184daa259a520793b659e227e7f37f16a80fcf9d7077528f3",
+   "iso": "fr",
+   "language_probability": 1.0,
+   "latency_ms": 47.884,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "kinyarwanda": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "c7081a913f42b8ed2f713dcd380f704e462d1129f9c16093fcbdd363ce2b3866",
+   "iso": "kin",
+   "language_probability": 1.0,
+   "latency_ms": 40.466,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "lingala": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "9832d4e9964ef9ad831ecf11d9b8534cd468cb61e47a09ffc466754c6cf0e8df",
+   "iso": "lin",
+   "language_probability": 1.0,
+   "latency_ms": 45.77,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "pidgin": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "a88e87ffbf65c500dce408dcba10d82001050ccd4eb8cc987eaca9027472cf92",
+   "iso": "pcm",
+   "language_probability": 1.0,
+   "latency_ms": 41.641,
+   "nonempty": true,
+   "production_approved": false
+  },
+  "swahili": {
+   "classification": "NONPROD_REAL_PROVIDER_V2",
+   "http": 200,
+   "hypothesis_sha256": "56f26f8a10daa61b915ca46cec8860688a8fbfd0fd627f24b098a910452fd419",
+   "iso": "swa",
+   "language_probability": 1.0,
+   "latency_ms": 48.046,
+   "nonempty": true,
+   "production_approved": false
+  }
+ },
+ "readyz": {
+  "classification": "NONPROD_REAL_PROVIDER_V2",
+  "model_loaded": true,
+  "model_manifest_verified": true,
+  "model_tree_verified": true,
+  "platform_test_disclosure_loaded": true,
+  "ready": true,
+  "smoke_inference_passed": true
+ },
+ "real_loader_init": true,
+ "record": "ARM1-GPU-RESMOKE-2026-001-RECEIPT",
+ "sealed_sets_read": false
+}
