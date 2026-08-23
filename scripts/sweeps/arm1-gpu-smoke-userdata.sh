@@ -46,8 +46,10 @@ aws s3 cp "$WAV_URI" sample.wav --quiet
 aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$REGION.amazonaws.com
 docker pull "$GPUIMG" >/dev/null 2>&1 || docker pull "$GPUIMG" || { echo PULL-FAILED; shutdown -h now; exit 1; }
 # marker written by the LOADER CODE from the pinned commit, inside the image
+# (script mounted as a FILE — smoke r2 lesson: `python3 -` on a docker run
+# without -i reads EMPTY stdin, exits 0 and writes nothing)
 chmod -R 777 /opt/smoke/models
-docker run --rm --entrypoint python3 -v /opt/smoke/repo:/repo:ro -v /opt/smoke/models:/models "$GPUIMG" - <<'PY'
+cat > /opt/smoke/write_marker.py <<'PY'
 import hashlib, json, sys
 from pathlib import Path
 sys.path.insert(0, "/repo/services/model-loader")
@@ -78,7 +80,11 @@ path = write_ready_marker_v2(manifest, manifest_sha256=manifest_sha,
 print(json.dumps({"marker": str(path), "artifact_tree_sha256": tree,
                   "artifact_sha256": digest, "tokenizer_sha256": tok_sha}))
 PY
-[ $? -ne 0 ] && { echo MARKER-FAILED; shutdown -h now; exit 1; }
+docker run --rm --entrypoint python3 \
+  -v /opt/smoke/repo:/repo:ro -v /opt/smoke/models:/models \
+  -v /opt/smoke/write_marker.py:/write_marker.py:ro \
+  "$GPUIMG" /write_marker.py || { echo MARKER-FAILED; shutdown -h now; exit 1; }
+[ -s /opt/smoke/models/.medzen-ready-v2.json ] || { echo MARKER-MISSING; shutdown -h now; exit 1; }
 TREE=$(python3 -c "
 import hashlib,json
 def sha(p):
