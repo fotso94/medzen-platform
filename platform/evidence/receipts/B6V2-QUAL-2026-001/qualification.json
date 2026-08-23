@@ -1,0 +1,50 @@
+{
+ "actuals": {
+  "bedrock_converse_calls": 3,
+  "bedrock_cost_estimate_usd": 0.01,
+  "bedrock_outcome": "PASS on every call (full gateway chain: grounding in, subset cited, binding + grounding_sha256 verified, bedrock:<model-id> identity)",
+  "cap_note": "each script rerun re-executed the Bedrock leg; actuals recorded honestly above",
+  "fish_api_calls": 4,
+  "fish_cost_usd": 0.0,
+  "fish_outcome": "BLOCKED_ON_OWNER_BILLING: 2x 401 (provider key extraction bug - fixed: secret is {FISH_API_KEY: ...} but the lookup only knew api_key and sent the whole JSON blob), then 2x 402 Insufficient API credit with the VALID key. Authentication works; the Fish developer account has no API credit. Gateway degraded to text_only correctly on every failure. NOTE: the live dev service shares this key - it is likely also degraded until credit is added.",
+  "secret_ops": "medzen/speech/fish-api-key was an EMPTY shell; populated memory-to-memory from medzen/tts/dev/fish-api-key (value never displayed or logged)"
+ },
+ "bedrock": {
+  "citation_binding_sha256": "a992707901fefe4e78dea01a02a952f7dd3cd7d1e4ba280e762e0449c304756f",
+  "cited_document_ids": [
+   "synthetic-hours"
+  ],
+  "grounding_sha256": "45e8c9fed4cf3fb1923518da7b25f9bae2b4547ad97a2372477151a21bfe6c34",
+  "latency_ms": 1376.1,
+  "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "model_version": "bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+  "provider": "bedrock",
+  "reply_chars": 181,
+  "reply_sha256": "279c31ccf357b2be040e6d1697c9b22cb67f1bd32c85534b797d3b5ccf4e8b62",
+  "reply_text": "According to the information available, the fictional training desk opens Monday at 09:00 and closes at 17:00. This is a synthetic test entity for the MedZen platform qualification.",
+  "status": "PASS"
+ },
+ "caps": {
+  "bedrock_calls": 1,
+  "fish_calls": 1
+ },
+ "content_class": "SYNTHETIC_NON_PHI",
+ "fish": {
+  "audio_sha256": null,
+  "cache_hit": false,
+  "degradation_reason": "FISH_UNAVAILABLE",
+  "latency_ms": 1949.2,
+  "media_type": null,
+  "provider": "fish",
+  "s3_delivery": false,
+  "s3_key": null,
+  "status": "DEGRADED",
+  "synthesis_key_sha256": "3740e577bf89b0739576fadef2a8642f84f895cff8db0df7c9de6867ee7b8d25",
+  "text_sha256": "807230933a0f9c91ab88a5cb83a43ac249abcbe7bd7cc3d44c082c291b5492aa",
+  "tts_backend": "text_only",
+  "tts_model_version": null,
+  "voice": "kinyarwanda (live SSM registry, consent-evidenced)"
+ },
+ "owner_action_required": "Add API credit at https://fish.audio/app/developers, then rerun the Fish qualification (single call).",
+ "qualification": "B6V2-QUAL-2026-001"
+}

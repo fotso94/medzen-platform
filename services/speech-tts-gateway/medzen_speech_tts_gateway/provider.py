@@ -108,11 +108,30 @@ class RealFishProvider:
             "secretsmanager",
             region_name=os.environ.get("AWS_REGION", "eu-central-1"))
         raw = client.get_secret_value(SecretId=self._secret_id)["SecretString"]
+        # B6v2 qualification 2026-001 (first real call): the live secret
+        # is {"FISH_API_KEY": "..."} — the old lookup only knew
+        # "api_key" and FELL BACK TO THE WHOLE JSON STRING as the bearer
+        # token, so Fish rejected a JSON blob. Accept the known field
+        # spellings, then a single-string-field object; raw only for
+        # non-JSON values.
         try:
-            self._api_key = json.loads(raw).get("api_key", raw)
+            parsed = json.loads(raw)
         except ValueError:
             self._api_key = raw
-        return self._api_key
+            return self._api_key
+        if isinstance(parsed, dict):
+            for field in ("api_key", "FISH_API_KEY", "apiKey", "key"):
+                value = parsed.get(field)
+                if isinstance(value, str) and value:
+                    self._api_key = value
+                    return self._api_key
+            strings = [v for v in parsed.values()
+                       if isinstance(v, str) and v]
+            if len(strings) == 1:
+                self._api_key = strings[0]
+                return self._api_key
+        raise RuntimeError(
+            "fish secret value has an unrecognised shape")   # never echo it
 
     def _http(self):
         if self._session is None:
@@ -138,6 +157,11 @@ class RealFishProvider:
         )
         if response.status_code in (401, 403):
             raise RuntimeError("fish rejected the API key")   # never echo body
+        if response.status_code == 402:
+            # qualification 2026-001: a valid key with an empty API-credit
+            # balance — an OWNER billing action, not an outage
+            raise RuntimeError("fish API credit exhausted (owner: add "
+                               "funds at fish.audio developers)")
         if response.status_code == 429:
             raise RuntimeError("fish rate limited")
         if not response.ok:
