@@ -1,0 +1,140 @@
+[
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/LATEST.json",
+        "Size": 218,
+        "ETag": "\"4fda5e687831b52ce635efc9c46c58d7\"",
+        "LastModified": "2026-08-23T13:20:57+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/optimizer-LATEST.pt",
+        "Size": 3903372706,
+        "ETag": "\"f92827324c9ed38088ff82aed507406f-745\"",
+        "LastModified": "2026-08-23T13:20:46+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0002000.pt",
+        "Size": 1951669101,
+        "ETag": "\"5257caff5c0bc68f04c5646473d30218-373\"",
+        "LastModified": "2026-08-22T05:56:27+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0004000.pt",
+        "Size": 1951669101,
+        "ETag": "\"20d99df6cf912a7173a2a258c9186d89-373\"",
+        "LastModified": "2026-08-22T07:55:21+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0006000.pt",
+        "Size": 1951669101,
+        "ETag": "\"1fcf62fff88bb4b5b94a2a7ae50100cd-373\"",
+        "LastModified": "2026-08-22T09:52:33+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0008000.pt",
+        "Size": 1951669101,
+        "ETag": "\"f7ed21eca3d5248d559f1502ef327511-373\"",
+        "LastModified": "2026-08-22T11:48:58+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0010000.pt",
+        "Size": 1951669101,
+        "ETag": "\"e8f53fb2fb9524eaf7ab014fb0687234-373\"",
+        "LastModified": "2026-08-22T13:45:43+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0012000.pt",
+        "Size": 1951669101,
+        "ETag": "\"f7794675f74fe8a3084eaf04d9b28192-373\"",
+        "LastModified": "2026-08-22T15:43:43+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0014000.pt",
+        "Size": 1951669101,
+        "ETag": "\"cf5f883474617617864d25ceb7a2b1fd-373\"",
+        "LastModified": "2026-08-22T17:43:06+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0016000.pt",
+        "Size": 1951669101,
+        "ETag": "\"055da6a5ac33a395eff926d3cf988d44-373\"",
+        "LastModified": "2026-08-22T19:40:50+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0018000.pt",
+        "Size": 1951669101,
+        "ETag": "\"c64a1098c70cfdfe76acefac322e5887-373\"",
+        "LastModified": "2026-08-22T21:27:47+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0020000.pt",
+        "Size": 1951669101,
+        "ETag": "\"5549e4d5feb641a71a3e8551dd8d012e-373\"",
+        "LastModified": "2026-08-22T22:54:23+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0022000.pt",
+        "Size": 1951669101,
+        "ETag": "\"66189768ea59840a7271644bc45b95e1-373\"",
+        "LastModified": "2026-08-23T00:21:23+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0024000.pt",
+        "Size": 1951669101,
+        "ETag": "\"9271a9e326de0bd62856872fa22dc48b-373\"",
+        "LastModified": "2026-08-23T01:48:33+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0026000.pt",
+        "Size": 1951669101,
+        "ETag": "\"332404fdf04abb4e634685bb054b2c81-373\"",
+        "LastModified": "2026-08-23T03:15:14+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0028000.pt",
+        "Size": 1951669101,
+        "ETag": "\"a64323b0adb32c3c2ef34c4f829243b3-373\"",
+        "LastModified": "2026-08-23T04:42:26+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0030000.pt",
+        "Size": 1951669101,
+        "ETag": "\"59c84ee530871e8e01eb1a4c56b78c46-373\"",
+        "LastModified": "2026-08-23T06:08:35+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0032000.pt",
+        "Size": 1951669101,
+        "ETag": "\"f153843cd78fa06ae5e7e4cc69031187-373\"",
+        "LastModified": "2026-08-23T07:34:43+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0034000.pt",
+        "Size": 1951669101,
+        "ETag": "\"ff7113f3cb5bc34d81f9215c5754290e-373\"",
+        "LastModified": "2026-08-23T09:01:13+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0036000.pt",
+        "Size": 1951669101,
+        "ETag": "\"0a8eb1d850ac9168c11ff14875447394-373\"",
+        "LastModified": "2026-08-23T10:27:44+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0038000.pt",
+        "Size": 1951669101,
+        "ETag": "\"fed5614883cf5a3ceedc6fd15034ad74-373\"",
+        "LastModified": "2026-08-23T11:54:38+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0040000.pt",
+        "Size": 1951669101,
+        "ETag": "\"7e265a753d337181b719e00bbc85ab04-373\"",
+        "LastModified": "2026-08-23T13:20:55+00:00"
+    },
+    {
+        "Key": "research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+        "Size": 1545557867,
+        "ETag": "\"23b946e737bb7dbbabc8b68e56def00a-185\"",
+        "LastModified": "2026-08-23T13:22:08+00:00"
+    }
+]

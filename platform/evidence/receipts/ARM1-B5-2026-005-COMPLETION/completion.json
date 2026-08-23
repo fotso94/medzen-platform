@@ -1,0 +1,23 @@
+{
+ "billable_time_seconds": 121330,
+ "failure_reason": null,
+ "final_step": 40000,
+ "instance_type": "ml.g6.xlarge",
+ "model_artifacts_s3": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+ "next": "dev-surface checkpoint sweep + gates table, held behind Codex round-13 review per standing sequencing",
+ "record": "ARM1-B5-2026-005-COMPLETION",
+ "sealed_sets_consumed": false,
+ "secondary_status": "Completed",
+ "status": "Completed",
+ "terminal_log_export": {
+  "manifest_sha256": "d4b109e16356e47714d6f2432fdc033fe2c80d03c6861ef04681f8cac49fff90",
+  "model_sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "source": "CloudWatch /aws/sagemaker/TrainingJobs TRAINING_COMPLETE event",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "training_end_time_utc": "2026-08-23T09:22:15.634000",
+ "training_image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+ "training_job_arn": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm1-2026-005",
+ "training_job_name": "medzen-b5-b5-universal-arm1-2026-005",
+ "training_time_seconds": 121330
+}
