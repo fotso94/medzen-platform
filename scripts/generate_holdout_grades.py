@@ -46,8 +46,24 @@ def derive() -> dict[str, dict[str, str]]:
                 raise SystemExit(
                     f"{language}: pool method {method!r} matches no grade "
                     "rule — extend the rule under review, never guess")
-            grades[sha] = {"language": language, "grade": grade,
-                            "pool": str(pool.get("pool", ""))}
+            entry = {"language": language, "grade": grade,
+                      "pool": str(pool.get("pool", ""))}
+            if grade == "conditional":
+                # round 10 (Codex): the caveat acknowledgement must match
+                # the AUTHORITY's disclosed caveat — derived from the
+                # record's own overlap data, never a free-form string
+                overlap_text = None
+                for key, value in pool.items():
+                    if key.startswith("sealed_vs_") and "text" in str(value):
+                        overlap = value if isinstance(value, dict) else {}
+                        overlap_text = overlap.get("text")
+                if overlap_text is None:
+                    raise SystemExit(
+                        f"{language}: conditional pool discloses no text "
+                        "overlap — extend the caveat rule under review")
+                entry["caveat"] = (
+                    f"disclosed_text_overlap_rows:{overlap_text}")
+            grades[sha] = entry
     bindings = json.loads(
         (ROOT / "platform/evidence/"
          "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
@@ -58,6 +74,16 @@ def derive() -> dict[str, dict[str, str]]:
     return grades
 
 
+def licensed_code_switch_sets() -> dict[str, dict]:
+    """Round 10 (Codex): code-switch evidence must resolve to a
+    LICENSED, reserved, speaker-disjoint holdout authority. No such set
+    exists yet — the acquisition is on the owner critical path
+    (PROMOTION-PROTOCOL-2026-004 gates_phased) — so this registry is
+    EMPTY and production promotion is structurally impossible until a
+    licensed set is registered here under review."""
+    return {}
+
+
 def main() -> int:
     document = {
         "record": "HOLDOUT-GRADES-2026-001",
@@ -65,6 +91,7 @@ def main() -> int:
                       "from the tier2 records' own pool metadata by "
                       "scripts/generate_holdout_grades.py",
         "grades": derive(),
+        "licensed_code_switch_sets": licensed_code_switch_sets(),
     }
     OUTPUT.write_text(json.dumps(document, indent=1, sort_keys=True) + "\n")
     counts: dict[str, int] = {}

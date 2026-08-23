@@ -434,6 +434,13 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                     "cluster_id": speaker,
                     "reference_text_sha256": hashlib.sha256(
                         reference.encode()).hexdigest(),
+                    # round 10: error counts BIND the hypotheses scored
+                    "baseline_hypothesis_sha256": hashlib.sha256(
+                        f"baseline-hyp {label} {cluster} {i}".encode()
+                    ).hexdigest(),
+                    "candidate_hypothesis_sha256": hashlib.sha256(
+                        f"candidate-hyp {label} {cluster} {i}".encode()
+                    ).hexdigest(),
                     "baseline_errors": 4 + cluster,
                     "candidate_errors": 30 if broken else 2,
                     "reference_words": 40,
@@ -447,13 +454,16 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     report_languages = {}
     holdouts = {}
     packet_languages = {}
+    grade_entries = {}
     for language in languages:
         manifest_bytes, rows_body, result_rows = build_language(
             language, broken=(language == break_rows_for))
         _, clean_body, clean_rows = build_language(language)
         holdout_sha = hashlib.sha256(manifest_bytes).hexdigest()
-        holdouts[language] = [{"sha256": holdout_sha,
-                                 "grade": "promotion_grade"}]
+        holdouts[language] = [{"sha256": holdout_sha}]
+        grade_entries[holdout_sha] = {"language": language,
+                                        "grade": "promotion_grade",
+                                        "pool": f"synthetic-{language}"}
         packet_languages[language] = dict(
             PREDECLARED, holdout_manifest_sha256=holdout_sha)
         stats = clustered_noninferiority(
@@ -495,6 +505,7 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "schema_version": "medzen-b5-gate-report-v1",
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
+        "scorer_sha256": "5c" * 32,
         "sealed_run_job": {"type": "sagemaker_training",
                              "name": "medzen-sealed-eval-synthetic-1"},
         "languages": report_languages,
@@ -521,6 +532,15 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     report.update(report_over or {})
     files["T6-GATE-REPORT.json"] = _json.dumps(report).encode()
     files["HOLDOUT-BINDINGS.json"] = _json.dumps(holdouts).encode()
+    # round 10: grades live in the SEPARATELY pinned authority document;
+    # the synthetic authority also registers the synthetic CS set
+    files["HOLDOUT-GRADES.json"] = _json.dumps({
+        "record": "SYNTHETIC-GRADES",
+        "grades": grade_entries,
+        "licensed_code_switch_sets": {
+            "kinyarwanda-english-cs-v1": {
+                "manifest_sha256": cs_manifest_sha}},
+    }).encode()
     packet = {
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
@@ -533,6 +553,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "operational_thresholds": {"max_latency_p95_ms": 1200,
                                      "max_vram_gb": 20},
         "allowed_instance_types": ["ml.g6.xlarge"],
+        "scorer_sha256": "5c" * 32,
+        "sealed_run_job_name": "medzen-sealed-eval-synthetic-1",
     }
     packet.update(packet_over or {})
     packet_bytes = _json.dumps(packet).encode()
@@ -544,6 +566,15 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "storage": {"type": "s3", "bucket": "medzen-speech",
                      "key": "promotion/candidate-packet.json",
                      "version_id": "test-version-1"},
+    }).encode()
+    # round 10: the ADMISSION pipeline's attested chronology receipt —
+    # the runtime verifies it offline (no AWS calls in the loader role)
+    files["ADMISSION-RECEIPT.json"] = _json.dumps({
+        "packet_sha256": hashlib.sha256(packet_bytes).hexdigest(),
+        "anchored_utc": "2026-08-23T10:00:00Z",
+        "sealed_job": {"name": "medzen-sealed-eval-synthetic-1",
+                        "creation_utc": "2026-08-23T12:00:00Z",
+                        "status": "Completed"},
     }).encode()
     review = {"status": "PASS", "findings": 0,
               "reviewer": "codex-independent-review"}
@@ -560,6 +591,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                               "record_sha256": shas["CANDIDATE-PACKET.json"]},
         "anchor_envelope": {"record": "ANCHOR-ENVELOPE.json",
                              "record_sha256": shas["ANCHOR-ENVELOPE.json"]},
+        "admission_receipt": {"record": "ADMISSION-RECEIPT.json",
+                               "record_sha256": shas["ADMISSION-RECEIPT.json"]},
         "independent_review": {"record": "INDEPENDENT-REVIEW.json",
                                 "record_sha256": shas["INDEPENDENT-REVIEW.json"]},
         "owner_authorization": {
@@ -579,20 +612,16 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
 
 
 def _arm_bundle(monkeypatch, bundle, pin):
-    """Arm the bundle env AND faithful authorities: the anchor fetch
-    returns the bundled packet bytes with a STORAGE-set timestamp
-    before the AWS-set sealed-run start. Individual tests override
-    either to prove chronology refusals."""
-    import medzen_model_loader.loader_v2 as loader_v2
+    """Arm the bundle env + the SECOND deployment pin (the grade
+    authority). Round 10: the runtime performs no live AWS chronology —
+    it verifies the bundled admission receipt offline."""
+    import hashlib as _hashlib
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
-    packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
-    monkeypatch.setattr(
-        loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda storage: (packet_bytes, "2026-08-23T10:00:00Z"))
-    monkeypatch.setattr(
-        loader_v2, "SEALED_START_FETCH",
-        lambda job: "2026-08-23T12:00:00Z")
+    monkeypatch.setenv(
+        "MEDZEN_HOLDOUT_GRADES_SHA256",
+        _hashlib.sha256(
+            (bundle / "HOLDOUT-GRADES.json").read_bytes()).hexdigest())
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
@@ -726,23 +755,64 @@ def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
     fixed_instance = dict(fixed_utc, instance_type="ml.g6.xlarge")
     expect("finite", report_over={"operational_evidence": fixed_instance})
 
-    # 4. chronology: STORAGE-set anchor time AFTER the AWS-set sealed
-    # start — post-hoc predeclaration refuses
+    # 4. chronology (round 10: RECEIPT-level): an admission receipt
+    # whose anchor time is NOT before the AWS-set job creation refuses
+    import hashlib as _hashlib
+
+    def rebind_receipt(bundle, mutate):
+        receipt_path = bundle / "ADMISSION-RECEIPT.json"
+        receipt = _json.loads(receipt_path.read_bytes())
+        mutate(receipt)
+        body = _json.dumps(receipt).encode()
+        receipt_path.write_bytes(body)
+        index = _json.loads((bundle / "bundle.json").read_bytes())
+        index["files"]["ADMISSION-RECEIPT.json"] = _hashlib.sha256(
+            body).hexdigest()
+        record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
+        record["admission_receipt"]["record_sha256"] = (
+            index["files"]["ADMISSION-RECEIPT.json"])
+        record_body = _json.dumps(record).encode()
+        (bundle / "PROMOTION-RECORD.json").write_bytes(record_body)
+        index["files"]["PROMOTION-RECORD.json"] = _hashlib.sha256(
+            record_body).hexdigest()
+        index_bytes = _json.dumps(index).encode()
+        (bundle / "bundle.json").write_bytes(index_bytes)
+        return _hashlib.sha256(index_bytes).hexdigest()
+
     bundle, pin = _promotion_bundle(tmp_path / "posthoc-anchor", tree)
+    pin = rebind_receipt(
+        bundle, lambda r: r.update(anchored_utc="2026-08-23T14:00:00Z"))
     _arm_bundle(monkeypatch, bundle, pin)
-    packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
-    monkeypatch.setattr(
-        loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda storage: (packet_bytes, "2026-08-23T14:00:00Z"))
     with pytest.raises(LoaderV2Refusal, match="post-hoc predeclaration"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    # 5. anchored bytes that differ from the bundled packet
-    monkeypatch.setattr(
-        loader_v2, "PROMOTION_ANCHOR_FETCH",
-        lambda storage: (packet_bytes + b" ", "2026-08-23T10:00:00Z"))
-    with pytest.raises(LoaderV2Refusal, match="edited after anchoring"):
+    # 5. a receipt attesting a DIFFERENT packet refuses
+    bundle, pin = _promotion_bundle(tmp_path / "wrong-receipt", tree)
+    pin = rebind_receipt(
+        bundle, lambda r: r.update(packet_sha256="00" * 32))
+    _arm_bundle(monkeypatch, bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="DIFFERENT candidate packet"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 5b. an unfinished sealed run refuses
+    bundle, pin = _promotion_bundle(tmp_path / "inprogress", tree)
+    pin = rebind_receipt(
+        bundle,
+        lambda r: r["sealed_job"].update(status="InProgress"))
+    _arm_bundle(monkeypatch, bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="not Completed"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 5c. a job OTHER than the packet-predeclared one refuses
+    bundle, pin = _promotion_bundle(tmp_path / "wrongjob", tree)
+    pin = rebind_receipt(
+        bundle,
+        lambda r: r["sealed_job"].update(name="some-other-job"))
+    _arm_bundle(monkeypatch, bundle, pin)
+    with pytest.raises(LoaderV2Refusal, match="predeclared"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 

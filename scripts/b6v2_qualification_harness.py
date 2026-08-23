@@ -47,16 +47,32 @@ class CallLedger:
     reset it. Multi-MACHINE arbitration would need DynamoDB conditional
     writes; this host-local lock is the honest current boundary."""
 
-    def __init__(self, qualification_id: str, leg: str, max_calls: int):
+    def __init__(self, qualification_id: str, leg: str):
         safe = "".join(c for c in qualification_id
                        if c.isalnum() or c in "-_")
         if not safe or safe != qualification_id:
             raise SystemExit(
                 "REFUSED: qualification id must be [-_a-zA-Z0-9]")
+        # round 10 (Codex): the budget comes from the OWNER-APPROVED
+        # committed packet — an unknown id or leg refuses, and no caller
+        # flag can raise a cap
+        budgets = json.loads(
+            (ROOT / "platform/decisions/"
+             "QUALIFICATION-BUDGETS-2026-001.json").read_bytes())
+        entry = budgets["budgets"].get(qualification_id)
+        if entry is None:
+            raise SystemExit(
+                f"REFUSED: qualification id {qualification_id!r} is not "
+                "in the owner-approved committed budget packet")
+        leg_entry = entry.get("legs", {}).get(leg)
+        if leg_entry is None:
+            raise SystemExit(
+                f"REFUSED: leg {leg!r} has no owner-approved budget for "
+                f"{qualification_id!r}")
         self.directory = ROOT / "platform/evidence/receipts" / safe
         self.directory.mkdir(parents=True, exist_ok=True)
         self.leg = leg
-        self.max_calls = max_calls
+        self.max_calls = int(leg_entry["max_calls"])
 
     def reserve(self) -> int:
         import os
@@ -78,14 +94,14 @@ class CallLedger:
             "NEW qualification id.")
 
 
-def bedrock_leg(qualification_id: str, max_calls: int) -> dict:
+def bedrock_leg(qualification_id: str) -> dict:
     from medzen_llm_gateway.gateway import LLMGateway
     from medzen_llm_gateway.policy import PolicyStore
     from medzen_llm_gateway.provider import BedrockProvider
     from medzen_llm_gateway.shared_resilience import (CircuitBreaker,
                                                        load_config)
 
-    ledger = CallLedger(qualification_id, "bedrock", max_calls)
+    ledger = CallLedger(qualification_id, "bedrock")
     call_number = ledger.reserve()
     model_id = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
     config = load_config()
@@ -142,14 +158,14 @@ def bedrock_leg(qualification_id: str, max_calls: int) -> dict:
     }
 
 
-def fish_leg(qualification_id: str, max_calls: int) -> dict:
+def fish_leg(qualification_id: str) -> dict:
     from medzen_speech_tts_gateway.app import fish_breaker
     from medzen_speech_tts_gateway.gateway import TTSGateway
     from medzen_speech_tts_gateway.provider import RealFishProvider
     from medzen_speech_tts_gateway.s3_cache import S3AudioCache
     from medzen_speech_tts_gateway.voices import enforce_model, select_voice
 
-    ledger = CallLedger(qualification_id, "fish", max_calls)
+    ledger = CallLedger(qualification_id, "fish")
     call_number = ledger.reserve()
 
     def governed(language):
@@ -195,10 +211,9 @@ def main() -> int:
                         help="canonical id; the ledger lives at "
                              "platform/evidence/receipts/<id>/ — no "
                              "caller-chosen directory can reset the cap")
-    parser.add_argument("--max-calls", type=int, default=1)
     args = parser.parse_args()
     outcome = (bedrock_leg if args.leg == "bedrock" else fish_leg)(
-        args.qualification_id, args.max_calls)
+        args.qualification_id)
     results = (ROOT / "platform/evidence/receipts"
                / args.qualification_id / f"{args.leg}.results.jsonl")
     with open(results, "a") as f:

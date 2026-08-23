@@ -1,0 +1,15 @@
+{
+ "record": "QUALIFICATION-BUDGETS-2026-001",
+ "note": "B6v2 round 10 (Codex): provider-call budgets are OWNER-APPROVED and committed — the harness refuses ids absent from this file and takes caps from HERE, never from caller flags.",
+ "budgets": {
+  "B6V2-QUAL-2026-002": {
+   "owner_approval": "owner chat 2026-08-23 (verbatim): i approve and proceed / I approve. does recommendations",
+   "content_class": "SYNTHETIC_NON_PHI",
+   "legs": {
+    "bedrock": {"max_calls": 1,
+                 "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0"},
+    "fish": {"max_calls": 1, "voice": "kinyarwanda"}
+   }
+  }
+ }
+}

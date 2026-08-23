@@ -408,3 +408,45 @@ def test_round8_v2_websocket_events_carry_the_full_tree(monkeypatch, tmp_path):
     assert {"final_transcript", "completed"} <= kinds
     for event in events:
         assert event["artifact_tree_sha256"] == ASR_TREE_SHA, event["type"]
+
+
+def test_round10_early_websocket_errors_are_schema_valid():
+    """Codex rounds 9-10: INVALID_START and MODEL_NOT_READY bypassed the
+    tree helper, used the literal 'unknown' as ids, and MODEL_NOT_READY
+    sent model_versions={}. Both early paths now emit schema-valid
+    events; the v2 backend's events carry the tree digest."""
+    import uuid as _uuid
+    from medzen_asr_runtime.app import create_app as create_asr_app
+
+    stream_schema = json.loads(
+        (ROOT / "platform/contracts/schemas/speech-v2/"
+         "stream-event.schema.json").read_text())
+    validator = Draft202012Validator(stream_schema,
+                                      format_checker=FormatChecker())
+
+    # INVALID_START on a ready v2 backend
+    with TestClient(create_asr_app(StubOmniBackend())) as client:
+        with client.websocket_connect(
+            "/internal/v1/transcriptions/stream"
+        ) as stream:
+            stream.send_text("not json at all")
+            event = stream.receive_json()
+    assert event["error"]["code"] == "INVALID_START"
+    assert event["artifact_tree_sha256"] == ASR_TREE_SHA
+    _uuid.UUID(event["request_id"]); _uuid.UUID(event["session_id"])
+    validator.validate(event)
+
+    # MODEL_NOT_READY (no backend at all)
+    class _Unready:
+        ready = False
+        model_versions = {}
+    with TestClient(create_asr_app(_Unready())) as client:
+        with client.websocket_connect(
+            "/internal/v1/transcriptions/stream"
+        ) as stream:
+            event = stream.receive_json()
+    assert event["error"]["code"] == "MODEL_NOT_READY"
+    assert set(event["model_versions"]) == {
+        "asr", "registry_snapshot", "llm", "rag", "tts"}
+    _uuid.UUID(event["request_id"]); _uuid.UUID(event["session_id"])
+    validator.validate(event)

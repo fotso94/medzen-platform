@@ -2,6 +2,7 @@
  "authority": "PROMOTION-PROTOCOL-2026-004 holdout_grades, derived from the tier2 records' own pool metadata by scripts/generate_holdout_grades.py",
  "grades": {
   "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b": {
+   "caveat": "disclosed_text_overlap_rows:132",
    "grade": "conditional",
    "language": "french",
    "pool": "eval/french/asr/aaf-test-v1"
@@ -47,10 +48,12 @@
    "pool": "eval/ewe/asr/soreva-v1"
   },
   "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91": {
+   "caveat": "disclosed_text_overlap_rows:1180",
    "grade": "conditional",
    "language": "pidgin",
    "pool": "curated pidgin av_pcm (held-out speakers)"
   }
  },
+ "licensed_code_switch_sets": {},
  "record": "HOLDOUT-GRADES-2026-001"
 }

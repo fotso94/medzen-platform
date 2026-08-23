@@ -138,20 +138,22 @@ def recompute_statistics(report: dict, results_dir: Path,
     )
 
 
-def _grades_by_holdout() -> dict[str, str]:
-    """Round 9 (Codex): the round-8 version DEFAULTED every recognized
-    sha to promotion_grade — contradicting the protocol, under which
-    only kinyarwanda's universal sealed set is promotion-grade. Grades
-    now come from the committed machine-readable authority
-    (HOLDOUT-GRADES-2026-001, generated from the records' own metadata
-    by scripts/generate_holdout_grades.py); an unknown sha carries NO
-    grade and therefore refuses downstream."""
+def _grade_authority() -> dict[str, dict]:
+    """Round 10 (Codex): full authority entries (grade + caveat), never
+    a bare grade string, from the committed machine-readable authority."""
     root = Path(__file__).resolve().parents[1]
     authority = json.loads(
         (root / "platform/decisions/HOLDOUT-GRADES-2026-001.json"
          ).read_bytes())
-    return {sha: entry["grade"]
-            for sha, entry in authority["grades"].items()}
+    return dict(authority["grades"])
+
+
+def _licensed_code_switch_sets() -> dict[str, dict]:
+    root = Path(__file__).resolve().parents[1]
+    authority = json.loads(
+        (root / "platform/decisions/HOLDOUT-GRADES-2026-001.json"
+         ).read_bytes())
+    return dict(authority.get("licensed_code_switch_sets", {}))
 
 
 def _anchor_fetch(storage):
@@ -190,6 +192,10 @@ def main() -> int:
     parser.add_argument("--artifact-tree", default=None,
                         help="the candidate's full 64-hex artifact tree "
                              "digest (round 8: REQUIRED)")
+    parser.add_argument("--write-admission-receipt", type=Path,
+                        default=None,
+                        help="write the attested chronology receipt the "
+                             "runtime bundle carries (round 10)")
     parser.add_argument("--anchor-envelope", type=Path, default=None,
                         help="the SEPARATE anchor envelope naming the "
                              "packet sha + S3 storage coordinates "
@@ -219,21 +225,37 @@ def main() -> int:
 
         from medzen_model_loader.promotion_check import (
             verify_complete_promotion,
+            verify_packet_chronology,
         )
+        packet = json.loads(packet_bytes)
+        envelope = json.loads(args.anchor_envelope.read_bytes())
+
+        def verify_chronology() -> None:
+            # the ADMISSION side runs the LIVE AWS verification; the
+            # returned material is the attested receipt the runtime
+            # verifies offline (round 10: the loader role has no AWS)
+            receipt = verify_packet_chronology(
+                report, anchor_envelope=envelope,
+                packet_bytes=packet_bytes, candidate_packet=packet,
+                anchor_fetch=_anchor_fetch,
+                sealed_start_fetch=_sealed_start_fetch)
+            if args.write_admission_receipt is not None:
+                args.write_admission_receipt.write_text(
+                    json.dumps(receipt, indent=1, sort_keys=True) + "\n")
+
         states = verify_complete_promotion(
             report,
             protocol=_protocol_record(),
             holdouts_by_language=_authoritative_holdouts_by_language(),
-            grades_by_holdout=_grades_by_holdout(),
-            candidate_packet=json.loads(packet_bytes),
+            grade_authority=_grade_authority(),
+            licensed_code_switch_sets=_licensed_code_switch_sets(),
+            candidate_packet=packet,
             packet_bytes=packet_bytes,
-            anchor_envelope=json.loads(
-                args.anchor_envelope.read_bytes()),
+            anchor_envelope=envelope,
             artifact_tree_sha256=str(args.artifact_tree),
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
-            anchor_fetch=_anchor_fetch,
-            sealed_start_fetch=_sealed_start_fetch,
+            verify_chronology=verify_chronology,
         )
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))

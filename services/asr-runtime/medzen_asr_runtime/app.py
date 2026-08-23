@@ -215,11 +215,17 @@ def create_app(backend: Backend | None = None, *,
         if runtime is None or runtime.ready is not True:
             # round 9 (Codex): early events carry the tree and a
             # schema-valid fresh UUID instead of the literal "unknown"
+            # round 10 (Codex): {} violated the v2 schema — the event
+            # carries the full null-shaped version set
             await websocket.send_json(_with_tree({
                 "type": "error", "request_id": str(uuid.uuid4()),
                 "session_id": str(uuid.uuid4()),
                 "error": {"code": "MODEL_NOT_READY", "message": "ASR model is not ready",
-                          "retryable": True}, "model_versions": {}}, runtime))
+                          "retryable": True},
+                "model_versions": {"asr": None,
+                                     "registry_snapshot": "unavailable",
+                                     "llm": None, "rag": None,
+                                     "tts": None}}, runtime))
             await websocket.close(code=1013)
             return
         try:

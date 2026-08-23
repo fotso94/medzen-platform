@@ -149,6 +149,15 @@ def require_candidate_packet(report: dict, *,
     } <= set(operational_thresholds):
         raise PromotionCheckRefusal(
             "candidate packet predeclares no operational thresholds")
+    # round 10 (Codex): the scorer is part of the predeclared method
+    scorer = str(candidate_packet.get("scorer_sha256", ""))
+    if not _hex(scorer, 64):
+        raise PromotionCheckRefusal(
+            "candidate packet must predeclare the scorer_sha256 — the "
+            "scoring code is part of the method")
+    if report.get("scorer_sha256") != scorer:
+        raise PromotionCheckRefusal(
+            "gate report scorer does not match the predeclared scorer")
 
 
 def _finite_nonneg(value: Any, label: str) -> float:
@@ -239,29 +248,38 @@ def require_operational_receipt(report: dict, *,
 
 
 def require_holdout_grades(report: dict, *,
-                           grades_by_holdout: Mapping[str, str],
+                           grade_authority: Mapping[str, Mapping[str, Any]],
                            mandatory: list[str]) -> None:
-    """Round 7 (Codex): the protocol grades sealed sets — development-
-    grade pools (placeholder speakers) may support but never BE the
-    promotion evidence, and conditional sets carry disclosed caveats."""
+    """Round 7 (Codex): the protocol grades sealed sets. Round 10
+    (Codex, SYNTHETIC_ALL_PROMOTION_BUNDLE_ACCEPTED): grades come from
+    the PINNED AUTHORITY document — never from bundle-supplied bindings
+    — and a conditional acknowledgement must equal the authority's
+    ACTUAL disclosed caveat, not any nonempty string."""
     for language in mandatory:
         entry = report.get("languages", {}).get(language) or {}
         holdout = str(entry.get("holdout_manifest_sha256", ""))
-        grade = grades_by_holdout.get(holdout)
-        if grade is None:
+        authority_entry = grade_authority.get(holdout)
+        if authority_entry is None:
             raise PromotionCheckRefusal(
-                f"{language}: sealed set carries no recorded grade")
+                f"{language}: sealed set carries no recorded grade in the "
+                "pinned authority")
+        grade = str(authority_entry.get("grade", ""))
+        if str(authority_entry.get("language", "")) != language:
+            raise PromotionCheckRefusal(
+                f"{language}: the pinned authority records this sealed set "
+                f"for {authority_entry.get('language')!r} — cross-language "
+                "substitution refused")
         if grade == "development_grade_only":
             raise PromotionCheckRefusal(
                 f"{language}: a development-grade pool cannot be sole "
                 "promotion evidence (placeholder speakers)")
-        if grade == "conditional" and not str(
-            entry.get("conditional_caveat_ack") or ""
-        ).strip():
-            raise PromotionCheckRefusal(
-                f"{language}: a conditional set requires the disclosed "
-                "caveat to be acknowledged in the report entry")
-        if grade not in ("promotion_grade", "conditional"):
+        if grade == "conditional":
+            caveat = str(authority_entry.get("caveat", ""))
+            if entry.get("conditional_caveat_ack") != caveat:
+                raise PromotionCheckRefusal(
+                    f"{language}: the conditional acknowledgement must "
+                    f"equal the authority's disclosed caveat {caveat!r}")
+        elif grade != "promotion_grade":
             raise PromotionCheckRefusal(
                 f"{language}: unknown holdout grade {grade!r}")
 
@@ -547,66 +565,20 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
                 f"{label}: result row reference hash does not match the "
                 "sealed manifest's reference text — errors must be "
                 "scored against the SEALED references")
+        # round 10 (Codex): every scored row must BIND both hypotheses —
+        # error counts without the texts they were computed from are
+        # unauditable (full scorer recomputation remains the declared
+        # next gap; the binding makes it possible)
+        for side in ("baseline_hypothesis_sha256",
+                      "candidate_hypothesis_sha256"):
+            if not _hex(str(result_row.get(side, "")), 64):
+                raise PromotionCheckRefusal(
+                    f"{label}: result row lacks {side} — supplied error "
+                    "counts must bind the hypotheses they scored")
     if seen != set(speaker_by_checksum):
         raise PromotionCheckRefusal(
             f"{label}: result rows do not cover EXACTLY the sealed "
             "utterance set (missing or invented utterances)")
-
-
-def verify_packet_chronology(report: dict, *,
-                             anchor_envelope: Mapping[str, Any],
-                             packet_bytes: bytes,
-                             anchor_fetch: Callable[
-                                 [Mapping[str, Any]], tuple[bytes, str]],
-                             sealed_start_fetch: Callable[
-                                 [Mapping[str, Any]], str],
-                             ) -> None:
-    """Round 8 (Codex): nothing proved the 'predeclared' packet existed
-    BEFORE sealed observation. Round 9 (Codex): the round-8 design was
-    CIRCULAR — an S3 VersionId only exists after the bytes are stored,
-    so a packet cannot contain its own anchor; git commit timestamps are
-    author-controlled; and sealed_run_started_utc was report-authored.
-
-    The anchor is now a SEPARATE ENVELOPE document: it names the
-    packet's sha256 and the S3 storage coordinates. Verification:
-    (a) the bundled packet's bytes hash to the envelope's declared sha;
-    (b) the fetched S3 version's bytes hash to the same sha;
-    (c) the S3 LastModified (set by the STORAGE SYSTEM) must precede
-    (d) the sealed run's start as reported by the AWS control plane
-        (the SageMaker job's CreationTime — fetched, never
-        report-authored)."""
-    declared_sha = str(anchor_envelope.get("packet_sha256") or "")
-    if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
-        raise PromotionCheckRefusal(
-            "the bundled candidate packet does not hash to the anchor "
-            "envelope's declared identity")
-    storage = anchor_envelope.get("storage")
-    if not isinstance(storage, Mapping) or not storage:
-        raise PromotionCheckRefusal(
-            "anchor envelope names no immutable storage coordinates")
-    anchored_bytes, anchored_utc = anchor_fetch(storage)
-    if hashlib.sha256(anchored_bytes).hexdigest() != declared_sha:
-        raise PromotionCheckRefusal(
-            "the anchored candidate packet bytes differ from the bundled "
-            "packet — the predeclaration was edited after anchoring")
-    if not _utc_ok(anchored_utc):
-        raise PromotionCheckRefusal(
-            "the anchor authority returned no valid timestamp")
-    job = report.get("sealed_run_job")
-    if not isinstance(job, Mapping) or not str(job.get("name") or "").strip():
-        raise PromotionCheckRefusal(
-            "gate report must bind the sealed_run_job whose AWS-set "
-            "CreationTime marks sealed observation — a self-declared "
-            "timestamp proves nothing")
-    started = sealed_start_fetch(job)
-    if not _utc_ok(started):
-        raise PromotionCheckRefusal(
-            "the sealed-run authority returned no valid start timestamp")
-    if anchored_utc >= str(started):
-        raise PromotionCheckRefusal(
-            f"the packet was anchored at {anchored_utc}, NOT before the "
-            f"sealed run started at {started} — post-hoc predeclaration "
-            "refused")
 
 
 def recompute_code_switch(report: dict, *,
@@ -615,7 +587,9 @@ def recompute_code_switch(report: dict, *,
                           ) -> None:
     """Round 7 (Codex, FABRICATED_CODE_SWITCH_..._ACCEPTED): the
     code-switch gate is evidence too — its statistics recompute from its
-    own hash-bound rows exactly like every language gate."""
+    own hash-bound rows exactly like every language gate. Round 9: its
+    declared set is a REAL bundled JSONL manifest verified by the shared
+    coverage helper."""
     evidence = report.get("code_switch_evidence")
     if not isinstance(evidence, Mapping):
         raise PromotionCheckRefusal("gate report lacks code_switch_evidence")
@@ -628,9 +602,6 @@ def recompute_code_switch(report: dict, *,
     if body is None:
         raise PromotionCheckRefusal(
             "code-switch rows absent — the gate recomputes, never trusts")
-    # round 9 (Codex, CODE_SWITCH_MANIFEST_PRESENT=false): the declared
-    # code-switch set is a real bundled JSONL manifest, hash-bound, with
-    # exactly-once row coverage — same rule as every language gate
     _verify_rows_cover_manifest(
         "code_switch",
         rows_raw=body,
@@ -668,20 +639,152 @@ def recompute_code_switch(report: dict, *,
             f"claimed {claims}")
 
 
+def verify_packet_chronology(report: dict, *,
+                             anchor_envelope: Mapping[str, Any],
+                             packet_bytes: bytes,
+                             candidate_packet: Mapping[str, Any],
+                             anchor_fetch: Callable[
+                                 [Mapping[str, Any]], tuple[bytes, str]],
+                             sealed_start_fetch: Callable[
+                                 [Mapping[str, Any]], Mapping[str, Any]],
+                             ) -> dict[str, Any]:
+    """The LIVE chronology verification the ADMISSION pipeline runs
+    (rounds 8-10, Codex): a separate envelope names the packet identity
+    and storage; the storage-set timestamp must precede the AWS-set
+    creation time of the ONE sealed job the packet PREDECLARED, and that
+    job must have Completed. Returns the material for the attested
+    admission receipt the runtime later verifies offline."""
+    declared_sha = str(anchor_envelope.get("packet_sha256") or "")
+    if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
+        raise PromotionCheckRefusal(
+            "the bundled candidate packet does not hash to the anchor "
+            "envelope's declared identity")
+    storage = anchor_envelope.get("storage")
+    if not isinstance(storage, Mapping) or not storage:
+        raise PromotionCheckRefusal(
+            "anchor envelope names no immutable storage coordinates")
+    anchored_bytes, anchored_utc = anchor_fetch(storage)
+    if hashlib.sha256(anchored_bytes).hexdigest() != declared_sha:
+        raise PromotionCheckRefusal(
+            "the anchored candidate packet bytes differ from the bundled "
+            "packet — the predeclaration was edited after anchoring")
+    if not _utc_ok(anchored_utc):
+        raise PromotionCheckRefusal(
+            "the anchor authority returned no valid timestamp")
+    predeclared_job = str(candidate_packet.get("sealed_run_job_name", ""))
+    if not predeclared_job:
+        raise PromotionCheckRefusal(
+            "candidate packet must PREDECLARE the sealed run job name")
+    job = report.get("sealed_run_job")
+    if not isinstance(job, Mapping) or str(job.get("name")) != predeclared_job:
+        raise PromotionCheckRefusal(
+            "the sealed job must be the ONE the packet predeclared — an "
+            "unrelated job cannot provide the chronology clock")
+    described = sealed_start_fetch(job)
+    creation_utc = str(described.get("creation_utc", ""))
+    if not _utc_ok(creation_utc):
+        raise PromotionCheckRefusal(
+            "the sealed-run authority returned no valid start timestamp")
+    if described.get("status") != "Completed":
+        raise PromotionCheckRefusal(
+            f"the sealed run is {described.get('status')!r}, not "
+            "Completed — an unfinished or failed run cannot promote")
+    if anchored_utc >= creation_utc:
+        raise PromotionCheckRefusal(
+            f"the packet was anchored at {anchored_utc}, NOT before the "
+            f"sealed run started at {creation_utc} — post-hoc "
+            "predeclaration refused")
+    return {"packet_sha256": declared_sha, "anchored_utc": anchored_utc,
+            "sealed_job": {"name": predeclared_job,
+                            "creation_utc": creation_utc,
+                            "status": "Completed"}}
+
+
+def verify_admission_receipt(report: dict, *,
+                             anchor_envelope: Mapping[str, Any],
+                             packet_bytes: bytes,
+                             candidate_packet: Mapping[str, Any],
+                             admission_receipt: Mapping[str, Any]) -> None:
+    """Round 10 (Codex): the RUNTIME does not call AWS — its loader role
+    has (correctly) no sagemaker:Describe* or s3:GetObjectVersion. The
+    ADMISSION pipeline performs the live chronology verification with
+    proper credentials and writes this attested receipt into the bundle;
+    the runtime verifies the receipt's internal consistency against the
+    packet, envelope and report it also holds."""
+    declared_sha = str(anchor_envelope.get("packet_sha256") or "")
+    if hashlib.sha256(packet_bytes).hexdigest() != declared_sha:
+        raise PromotionCheckRefusal(
+            "the bundled candidate packet does not hash to the anchor "
+            "envelope's declared identity")
+    if admission_receipt.get("packet_sha256") != declared_sha:
+        raise PromotionCheckRefusal(
+            "the admission receipt attests a DIFFERENT candidate packet")
+    anchored_utc = str(admission_receipt.get("anchored_utc", ""))
+    job = admission_receipt.get("sealed_job")
+    if not isinstance(job, Mapping):
+        raise PromotionCheckRefusal(
+            "the admission receipt binds no sealed job")
+    creation_utc = str(job.get("creation_utc", ""))
+    if not _utc_ok(anchored_utc) or not _utc_ok(creation_utc):
+        raise PromotionCheckRefusal(
+            "the admission receipt carries invalid timestamps")
+    if anchored_utc >= creation_utc:
+        raise PromotionCheckRefusal(
+            f"the packet was anchored at {anchored_utc}, NOT before the "
+            f"sealed run started at {creation_utc} — post-hoc "
+            "predeclaration refused")
+    if job.get("status") != "Completed":
+        raise PromotionCheckRefusal(
+            f"the sealed run is {job.get('status')!r}, not Completed — "
+            "an unfinished or failed run cannot promote")
+    predeclared_job = str(candidate_packet.get("sealed_run_job_name", ""))
+    if not predeclared_job:
+        raise PromotionCheckRefusal(
+            "candidate packet must PREDECLARE the sealed run job name")
+    report_job = report.get("sealed_run_job") or {}
+    if not (predeclared_job == str(job.get("name"))
+            == str(report_job.get("name"))):
+        raise PromotionCheckRefusal(
+            "the sealed job must be the ONE the packet predeclared — an "
+            "unrelated job cannot provide the chronology clock")
+
+
+def require_licensed_code_switch(report: dict, *,
+                                 candidate_packet: Mapping[str, Any],
+                                 licensed_sets: Mapping[str, Mapping[str, Any]],
+                                 ) -> None:
+    """Round 10 (Codex): the code-switch set must resolve to a LICENSED,
+    reserved, speaker-disjoint holdout registered in the pinned
+    authority — a format-valid synthetic manifest is not a licensed
+    dataset. The registry is EMPTY until the owner's code-switch
+    acquisition lands, which makes production promotion structurally
+    impossible today — exactly what the protocol requires."""
+    declared = candidate_packet.get("code_switch") or {}
+    name = str(declared.get("set", ""))
+    registered = licensed_sets.get(name)
+    if registered is None:
+        raise PromotionCheckRefusal(
+            f"code-switch set {name!r} is not in the pinned licensed-set "
+            "registry — the first production promotion requires the "
+            "owner's licensed code-switch acquisition")
+    if registered.get("manifest_sha256") != declared.get("manifest_sha256"):
+        raise PromotionCheckRefusal(
+            "code-switch manifest does not match the licensed registry")
+
+
 def verify_complete_promotion(report: dict, *,
                               protocol: Mapping[str, Any],
                               holdouts_by_language: Mapping[str, set[str]],
-                              grades_by_holdout: Mapping[str, str],
+                              grade_authority: Mapping[str, Mapping[str, Any]],
+                              licensed_code_switch_sets: Mapping[
+                                  str, Mapping[str, Any]],
                               candidate_packet: Mapping[str, Any],
                               packet_bytes: bytes,
                               anchor_envelope: Mapping[str, Any],
                               artifact_tree_sha256: str,
                               rows_bytes: Callable[[str], bytes | None],
                               manifest_bytes: Callable[[str], bytes | None],
-                              anchor_fetch: Callable[
-                                  [Mapping[str, Any]], tuple[bytes, str]],
-                              sealed_start_fetch: Callable[
-                                  [Mapping[str, Any]], str],
+                              verify_chronology: Callable[[], None],
                               ) -> dict[str, str]:
     """Round 8 (Codex): the ONE complete promotion gate. The repo-side
     checker and the runtime bundle verifier both call THIS with their
@@ -700,15 +803,15 @@ def verify_complete_promotion(report: dict, *,
     states = promotable_languages(report, mandatory)
     require_candidate_packet(
         report, candidate_packet=candidate_packet, mandatory=mandatory)
-    verify_packet_chronology(
-        report, anchor_envelope=anchor_envelope,
-        packet_bytes=packet_bytes, anchor_fetch=anchor_fetch,
-        sealed_start_fetch=sealed_start_fetch)
+    verify_chronology()
+    require_licensed_code_switch(
+        report, candidate_packet=candidate_packet,
+        licensed_sets=licensed_code_switch_sets)
     require_protocol_evidence(
         report, mandatory, protocol=protocol,
         holdouts_by_language=holdouts_by_language)
     require_holdout_grades(
-        report, grades_by_holdout=grades_by_holdout, mandatory=mandatory)
+        report, grade_authority=grade_authority, mandatory=mandatory)
     recompute_statistics(
         report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
     require_sealed_row_identity(

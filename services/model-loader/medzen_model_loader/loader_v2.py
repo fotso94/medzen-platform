@@ -64,7 +64,9 @@ def _s3_anchor_fetch(storage):
         Bucket=str(storage["bucket"]), Key=str(storage["key"]),
         VersionId=str(storage["version_id"]))
     body = response["Body"].read()
-    anchored_utc = response["LastModified"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    from datetime import timezone
+    anchored_utc = response["LastModified"].astimezone(
+        timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return body, anchored_utc
 
 
@@ -84,7 +86,15 @@ def _sagemaker_sealed_start_fetch(job):
     else:
         raise LoaderV2Refusal(
             f"unsupported sealed_run_job type {kind!r}")
-    return described["CreationTime"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    from datetime import timezone
+    # round 10 (Codex): aware datetimes NORMALIZE to UTC — strftime on
+    # a -04:00 timestamp mislabeled local time as Z
+    return {
+        "creation_utc": described["CreationTime"].astimezone(
+            timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "status": described.get("TrainingJobStatus")
+        or described.get("ProcessingJobStatus"),
+    }
 
 
 PROMOTION_ANCHOR_FETCH = _s3_anchor_fetch
@@ -276,19 +286,42 @@ def _verify_promotion_bundle(digest: str) -> None:
     if "HOLDOUT-BINDINGS.json" not in loaded:
         raise LoaderV2Refusal(
             "promotion bundle omits the sealed-holdout bindings")
-    # bindings carry GRADES too — {language: [{sha256, grade}]}
+    # round 10 (Codex, SYNTHETIC_ALL_PROMOTION_BUNDLE_ACCEPTED): the
+    # bindings map holdouts to languages ONLY — grades come from the
+    # SEPARATELY deployment-pinned authority document, which the bundle
+    # carries but cannot author
     holdouts: dict[str, set[str]] = {}
-    grades: dict[str, str] = {}
     for language, entries in loaded["HOLDOUT-BINDINGS.json"].items():
         for binding in entries:
+            if "grade" in binding:
+                raise LoaderV2Refusal(
+                    "HOLDOUT-BINDINGS may not assign grades — grades come "
+                    "from the pinned authority only")
             holdouts.setdefault(language, set()).add(str(binding["sha256"]))
-            grades[str(binding["sha256"])] = str(binding.get("grade", ""))
+    grades_pin = os.environ.get("MEDZEN_HOLDOUT_GRADES_SHA256", "")
+    if not _sha256_ok(grades_pin):
+        raise LoaderV2Refusal(
+            "PRODUCTION requires the deployment-pinned holdout grade "
+            "authority (MEDZEN_HOLDOUT_GRADES_SHA256)")
+    if "HOLDOUT-GRADES.json" not in files:
+        raise LoaderV2Refusal(
+            "promotion bundle omits the grade authority document")
+    if files["HOLDOUT-GRADES.json"] != grades_pin.lower():
+        raise LoaderV2Refusal(
+            "the bundled grade authority does not match the deployment pin")
+    grade_authority = loaded["HOLDOUT-GRADES.json"].get("grades", {})
+    licensed_sets = loaded["HOLDOUT-GRADES.json"].get(
+        "licensed_code_switch_sets", {})
     packet = _bundled(record.get("candidate_packet"), "candidate packet")
     packet_bytes = (root / str(
         record["candidate_packet"]["record"])).read_bytes()
     # round 9 (Codex): the anchor is a SEPARATE envelope — a packet
     # cannot contain its own storage identity (circular)
     envelope = _bundled(record.get("anchor_envelope"), "anchor envelope")
+    # round 10 (Codex): the runtime verifies the ADMISSION pipeline's
+    # attested chronology receipt — it makes no AWS calls itself
+    admission = _bundled(record.get("admission_receipt"),
+                          "admission receipt")
 
     def rows_bytes(language: str) -> bytes | None:
         name = f"{language}.rows.jsonl"
@@ -303,20 +336,27 @@ def _verify_promotion_bundle(digest: str) -> None:
             return None
         return (root / name).read_bytes()
 
+    from .promotion_check import verify_admission_receipt
+
+    def verify_chronology() -> None:
+        verify_admission_receipt(
+            report, anchor_envelope=envelope, packet_bytes=packet_bytes,
+            candidate_packet=packet, admission_receipt=admission)
+
     try:
         verify_complete_promotion(
             report,
             protocol=protocol,
             holdouts_by_language=holdouts,
-            grades_by_holdout=grades,
+            grade_authority=grade_authority,
+            licensed_code_switch_sets=licensed_sets,
             candidate_packet=packet,
             packet_bytes=packet_bytes,
             anchor_envelope=envelope,
             artifact_tree_sha256=digest,
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
-            anchor_fetch=PROMOTION_ANCHOR_FETCH,
-            sealed_start_fetch=SEALED_START_FETCH,
+            verify_chronology=verify_chronology,
         )
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc
