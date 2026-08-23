@@ -187,6 +187,19 @@
       ]
     },
     {
+      "Sid": "PullServingImageForDevSmoke",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:DescribeImages"
+      ],
+      "Resource": [
+        "arn:aws:ecr:eu-central-1:558069890522:repository/medzen-asr-runtime"
+      ]
+    },
+    {
       "Sid": "SseKmsFor9C336116C648",
       "Effect": "Allow",
       "Action": [
