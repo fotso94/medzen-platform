@@ -1,0 +1,16 @@
+{
+ "record": "ARM1-DEV-SWEEP-2026-001-LAUNCH",
+ "instance_id": "i-01b5bb67b0e3c0b13",
+ "launched_utc": "2026-08-23T18:57:15Z",
+ "ami": "ami-0e307bca04fbd2d80 (al2023-ami-ecs-gpu-hvm-2023.0.20260813)",
+ "instance_type": "g6.xlarge",
+ "on_demand_usd_per_hour": 1.0064,
+ "hard_cap": "shutdown -h +210 (3.5h) => max .52 compute; instance-initiated shutdown terminates",
+ "expected_usd": "~1.5",
+ "instance_profile": "medzen-trainer-profile",
+ "bindings": {"file": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SWEEP-BINDINGS-2026-001.json", "sha256": "73b4458f36f9731707a27788861f452f11057a6979126ef30d4ee2c54ff685d2", "s3_version_id": "ljLSGNwKHRenJj7LLjH675Hm5Vg8atJI"},
+ "executor": "scripts/sweeps/arm1-dev-sweep-userdata.sh with the three __BINDINGS_*__ placeholders substituted by the values above",
+ "repo_commit": "8daff7611b1c4ec26c1ea520866ac79e72652555",
+ "sealed_sets_read": false,
+ "authorization": "owner approval of Codex round-13 recommendation 2 (development-only sweep, ~$1)"
+}
