@@ -18,6 +18,18 @@ on:
       results_dir:
         description: directory of per-language hash-bound <language>.rows.jsonl files (recompute gate)
         required: true
+      candidate_packet_path:
+        description: the PREDECLARED candidate packet (round 8+)
+        required: true
+      manifests_dir:
+        description: directory of <language>.holdout-manifest.jsonl sealed manifests
+        required: true
+      artifact_tree:
+        description: full 64-hex artifact tree digest (checkpoint+tokenizer)
+        required: true
+      anchor_envelope_path:
+        description: the separate anchor envelope (packet sha + S3 storage)
+        required: true
         type: string
       track:
         description: model track
@@ -51,9 +63,16 @@ jobs:
           # ARCH-2026-001 atomic gate (Codex review #9): no language
           # subsetting — the checker evaluates the frozen mandatory set and
           # statistics are recomputed from hash-bound rows
+          # round 11 (Codex): the workflow invokes the COMPLETE gate —
+          # partial invocations refuse by design
           python scripts/b7_model_promotion_check.py \
             --gate-report "${{ inputs.gate_report_path }}" \
-            --results-dir "${{ inputs.results_dir }}"
+            --results-dir "${{ inputs.results_dir }}" \
+            --candidate-packet "${{ inputs.candidate_packet_path }}" \
+            --manifests-dir "${{ inputs.manifests_dir }}" \
+            --artifact-tree "${{ inputs.artifact_tree }}" \
+            --anchor-envelope "${{ inputs.anchor_envelope_path }}" \
+            --write-admission-receipt admission-receipt.json
 
   open-registry-pr:
     needs: verify-gate-report
@@ -73,9 +92,16 @@ jobs:
           # ARCH-2026-001 atomic gate (Codex review #9): no language
           # subsetting — the checker evaluates the frozen mandatory set and
           # statistics are recomputed from hash-bound rows
+          # round 11 (Codex): the workflow invokes the COMPLETE gate —
+          # partial invocations refuse by design
           python scripts/b7_model_promotion_check.py \
             --gate-report "${{ inputs.gate_report_path }}" \
-            --results-dir "${{ inputs.results_dir }}"
+            --results-dir "${{ inputs.results_dir }}" \
+            --candidate-packet "${{ inputs.candidate_packet_path }}" \
+            --manifests-dir "${{ inputs.manifests_dir }}" \
+            --artifact-tree "${{ inputs.artifact_tree }}" \
+            --anchor-envelope "${{ inputs.anchor_envelope_path }}" \
+            --write-admission-receipt admission-receipt.json
           echo "::error::fail-closed placeholder: the approved_version bump is made"
           echo "::error::through the decode-approvals input to scripts/generate_languages.py,"
           echo "::error::whose promotion schema lands with B5 reactivation. Until that"
@@ -89,7 +115,7 @@ jobs:
               ...context.repo,
               title: `registry: promote ${{ toJSON(inputs.languages) }} (run ${{ toJSON(inputs.run_id) }})`,
               head: `model-promotion/${{ inputs.run_id }}`,
-              base: 'main',
+              base: 'master',
               body: [
                 'Gate report: `${{ inputs.gate_report_path }}`',
                 'Only PASS languages are bumped; failures stay pinned (§A4).',

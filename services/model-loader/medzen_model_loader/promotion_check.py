@@ -569,12 +569,18 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
         # error counts without the texts they were computed from are
         # unauditable (full scorer recomputation remains the declared
         # next gap; the binding makes it possible)
-        for side in ("baseline_hypothesis_sha256",
-                      "candidate_hypothesis_sha256"):
-            if not _hex(str(result_row.get(side, "")), 64):
+        for side in ("baseline_hypothesis", "candidate_hypothesis"):
+            hypothesis = result_row.get(side)
+            declared = str(result_row.get(f"{side}_sha256", ""))
+            if not isinstance(hypothesis, str):
                 raise PromotionCheckRefusal(
-                    f"{label}: result row lacks {side} — supplied error "
-                    "counts must bind the hypotheses they scored")
+                    f"{label}: result row lacks the {side} TEXT — a bare "
+                    "hash backs nothing (Codex round 11)")
+            if hashlib.sha256(
+                hypothesis.encode()).hexdigest() != declared:
+                raise PromotionCheckRefusal(
+                    f"{label}: {side}_sha256 does not recompute from the "
+                    "supplied hypothesis text")
     if seen != set(speaker_by_checksum):
         raise PromotionCheckRefusal(
             f"{label}: result rows do not cover EXACTLY the sealed "
@@ -671,12 +677,21 @@ def verify_packet_chronology(report: dict, *,
     if not _utc_ok(anchored_utc):
         raise PromotionCheckRefusal(
             "the anchor authority returned no valid timestamp")
-    predeclared_job = str(candidate_packet.get("sealed_run_job_name", ""))
-    if not predeclared_job:
+    contract = candidate_packet.get("sealed_run")
+    CONTRACT_FIELDS = ("job_name", "image_digest", "instance_type",
+                        "input_s3_uris", "output_s3_prefix",
+                        "output_kms_key_arn", "account_id", "region")
+    if not isinstance(contract, Mapping) or any(
+        not contract.get(field) for field in CONTRACT_FIELDS
+    ):
         raise PromotionCheckRefusal(
-            "candidate packet must PREDECLARE the sealed run job name")
+            "candidate packet must PREDECLARE the COMPLETE sealed-run "
+            f"contract ({', '.join(CONTRACT_FIELDS)}) — a job name alone "
+            "binds nothing (Codex round 11)")
     job = report.get("sealed_run_job")
-    if not isinstance(job, Mapping) or str(job.get("name")) != predeclared_job:
+    if not isinstance(job, Mapping) or str(job.get("name")) != str(
+        contract["job_name"]
+    ):
         raise PromotionCheckRefusal(
             "the sealed job must be the ONE the packet predeclared — an "
             "unrelated job cannot provide the chronology clock")
@@ -689,15 +704,42 @@ def verify_packet_chronology(report: dict, *,
         raise PromotionCheckRefusal(
             f"the sealed run is {described.get('status')!r}, not "
             "Completed — an unfinished or failed run cannot promote")
+    # round 11 (Codex, UNBOUND_COMPLETED_JOB_ACCEPTED): the DESCRIBED
+    # job must match the predeclared contract on every dimension — an
+    # unrelated completed job proves nothing
+    live_checks = {
+        "image_digest": described.get("image"),
+        "instance_type": described.get("instance_type"),
+        "output_s3_prefix": described.get("output_path"),
+        "output_kms_key_arn": described.get("output_kms"),
+    }
+    for field, actual in live_checks.items():
+        if str(actual) != str(contract[field]):
+            raise PromotionCheckRefusal(
+                f"sealed job {field}={actual!r} does not match the "
+                f"predeclared {contract[field]!r}")
+    described_inputs = set(map(str, described.get("input_uris") or []))
+    if not set(map(str, contract["input_s3_uris"])) <= described_inputs:
+        raise PromotionCheckRefusal(
+            "the sealed job did not read the predeclared holdout inputs")
+    arn = str(described.get("arn", ""))
+    if (f":{contract['account_id']}:" not in arn
+            or f":{contract['region']}:" not in arn):
+        raise PromotionCheckRefusal(
+            "the sealed job does not belong to the predeclared "
+            "account/region")
     if anchored_utc >= creation_utc:
         raise PromotionCheckRefusal(
             f"the packet was anchored at {anchored_utc}, NOT before the "
             f"sealed run started at {creation_utc} — post-hoc "
             "predeclaration refused")
     return {"packet_sha256": declared_sha, "anchored_utc": anchored_utc,
-            "sealed_job": {"name": predeclared_job,
+            "sealed_job": {"name": str(contract["job_name"]),
                             "creation_utc": creation_utc,
-                            "status": "Completed"}}
+                            "status": "Completed",
+                            **{field: contract[field]
+                               for field in CONTRACT_FIELDS
+                               if field != "job_name"}}}
 
 
 def verify_admission_receipt(report: dict, *,
@@ -737,16 +779,28 @@ def verify_admission_receipt(report: dict, *,
         raise PromotionCheckRefusal(
             f"the sealed run is {job.get('status')!r}, not Completed — "
             "an unfinished or failed run cannot promote")
-    predeclared_job = str(candidate_packet.get("sealed_run_job_name", ""))
-    if not predeclared_job:
+    contract = candidate_packet.get("sealed_run")
+    if not isinstance(contract, Mapping) or not contract.get("job_name"):
         raise PromotionCheckRefusal(
-            "candidate packet must PREDECLARE the sealed run job name")
+            "candidate packet must PREDECLARE the sealed-run contract")
     report_job = report.get("sealed_run_job") or {}
-    if not (predeclared_job == str(job.get("name"))
+    if not (str(contract["job_name"]) == str(job.get("name"))
             == str(report_job.get("name"))):
         raise PromotionCheckRefusal(
             "the sealed job must be the ONE the packet predeclared — an "
             "unrelated job cannot provide the chronology clock")
+    # round 11: the receipt's verified contract must EQUAL the packet's
+    for field in ("image_digest", "instance_type", "output_s3_prefix",
+                   "output_kms_key_arn", "account_id", "region"):
+        if str(job.get(field)) != str(contract.get(field)):
+            raise PromotionCheckRefusal(
+                f"admission receipt {field} does not match the "
+                "predeclared sealed-run contract")
+    if (sorted(map(str, job.get("input_s3_uris") or []))
+            != sorted(map(str, contract.get("input_s3_uris") or []))):
+        raise PromotionCheckRefusal(
+            "admission receipt inputs do not match the predeclared "
+            "holdout inputs")
 
 
 def require_licensed_code_switch(report: dict, *,
@@ -767,6 +821,18 @@ def require_licensed_code_switch(report: dict, *,
             f"code-switch set {name!r} is not in the pinned licensed-set "
             "registry — the first production promotion requires the "
             "owner's licensed code-switch acquisition")
+    # round 11 (Codex): a registered set must be FULLY specified — a
+    # manifest hash alone says nothing about licensing or reservation
+    for field in ("manifest_sha256", "license_record",
+                   "reservation_ledger_entry", "speaker_disjoint"):
+        if not registered.get(field):
+            raise PromotionCheckRefusal(
+                f"licensed code-switch registry entry lacks {field} — "
+                "registration requires license, reservation and "
+                "speaker-disjointness evidence")
+    if registered.get("speaker_disjoint") is not True:
+        raise PromotionCheckRefusal(
+            "licensed code-switch set must be speaker-disjoint")
     if registered.get("manifest_sha256") != declared.get("manifest_sha256"):
         raise PromotionCheckRefusal(
             "code-switch manifest does not match the licensed registry")

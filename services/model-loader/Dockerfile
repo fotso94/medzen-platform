@@ -26,6 +26,10 @@ RUN pip install -r requirements.txt \
     && apk del .python-rundeps sqlite-libs \
     && rm -rf /root/.cache
 COPY services/model-loader/medzen_model_loader ./medzen_model_loader
+# round 11 (Codex): the promotion signing PUBLIC key is baked into the
+# image from reviewed source — the trust boundary a bundle author cannot
+# rewrite (signing happens only at admission with the KMS private key)
+COPY platform/decisions/PROMOTION-SIGNING-PUBLIC-KEY.pem ./PROMOTION-SIGNING-PUBLIC-KEY.pem
 
 USER 10001:10001
 ENTRYPOINT ["python", "-m", "medzen_model_loader"]

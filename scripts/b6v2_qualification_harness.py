@@ -47,18 +47,34 @@ class CallLedger:
     reset it. Multi-MACHINE arbitration would need DynamoDB conditional
     writes; this host-local lock is the honest current boundary."""
 
-    def __init__(self, qualification_id: str, leg: str):
+    @staticmethod
+    def _budgets_bytes() -> bytes:
+        import subprocess
+        shown = subprocess.run(
+            ["git", "-C", str(ROOT), "show",
+             "HEAD:platform/decisions/QUALIFICATION-BUDGETS-2026-001.json"],
+            capture_output=True)
+        if shown.returncode != 0:
+            raise SystemExit(
+                "REFUSED: the owner-approved budget packet must be "
+                "COMMITTED at HEAD")
+        return shown.stdout
+
+    def __init__(self, qualification_id: str, leg: str,
+                 ledger_root: Path | None = None,
+                 budgets_loader=None):
+        if budgets_loader is not None:
+            # test injection ONLY — the CLI never exposes this
+            self._budgets_bytes = budgets_loader        # type: ignore
         safe = "".join(c for c in qualification_id
                        if c.isalnum() or c in "-_")
         if not safe or safe != qualification_id:
             raise SystemExit(
                 "REFUSED: qualification id must be [-_a-zA-Z0-9]")
         # round 10 (Codex): the budget comes from the OWNER-APPROVED
-        # committed packet — an unknown id or leg refuses, and no caller
-        # flag can raise a cap
-        budgets = json.loads(
-            (ROOT / "platform/decisions/"
-             "QUALIFICATION-BUDGETS-2026-001.json").read_bytes())
+        # committed packet. Round 11: read at git HEAD — an uncommitted
+        # working-tree edit is not an owner approval
+        budgets = json.loads(self._budgets_bytes())
         entry = budgets["budgets"].get(qualification_id)
         if entry is None:
             raise SystemExit(
@@ -69,9 +85,11 @@ class CallLedger:
             raise SystemExit(
                 f"REFUSED: leg {leg!r} has no owner-approved budget for "
                 f"{qualification_id!r}")
-        self.directory = ROOT / "platform/evidence/receipts" / safe
+        base = ledger_root or (ROOT / "platform/evidence/receipts")
+        self.directory = base / safe
         self.directory.mkdir(parents=True, exist_ok=True)
         self.leg = leg
+        self.leg_entry = dict(leg_entry)
         self.max_calls = int(leg_entry["max_calls"])
 
     def reserve(self) -> int:
@@ -103,7 +121,8 @@ def bedrock_leg(qualification_id: str) -> dict:
 
     ledger = CallLedger(qualification_id, "bedrock")
     call_number = ledger.reserve()
-    model_id = "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+    # round 11 (Codex): the model is the BUDGETED one, not a constant
+    model_id = str(ledger.leg_entry["model_id"])
     config = load_config()
     breaker = CircuitBreaker(
         name="bedrock",
@@ -167,8 +186,13 @@ def fish_leg(qualification_id: str) -> dict:
 
     ledger = CallLedger(qualification_id, "fish")
     call_number = ledger.reserve()
+    budgeted_voice = str(ledger.leg_entry["voice"])
 
     def governed(language):
+        if language != budgeted_voice:
+            raise SystemExit(
+                f"REFUSED: the owner budgeted voice {budgeted_voice!r}, "
+                f"not {language!r}")
         voice = select_voice(language)
         return voice.reference_id, enforce_model(voice, None)
 

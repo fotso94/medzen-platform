@@ -89,11 +89,27 @@ def _sagemaker_sealed_start_fetch(job):
     from datetime import timezone
     # round 10 (Codex): aware datetimes NORMALIZE to UTC — strftime on
     # a -04:00 timestamp mislabeled local time as Z
+    # round 11 (Codex, UNBOUND_COMPLETED_JOB_ACCEPTED): return the FULL
+    # described contract so admission can bind image/inputs/output/kms
+    inputs = [channel.get("DataSource", {}).get("S3DataSource", {})
+              .get("S3Uri") for channel in
+              described.get("InputDataConfig", [])]
     return {
         "creation_utc": described["CreationTime"].astimezone(
             timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "status": described.get("TrainingJobStatus")
         or described.get("ProcessingJobStatus"),
+        "image": described.get("AlgorithmSpecification", {})
+        .get("TrainingImage"),
+        "instance_type": described.get("ResourceConfig", {})
+        .get("InstanceType"),
+        "input_uris": [uri for uri in inputs if uri],
+        "output_path": described.get("OutputDataConfig", {})
+        .get("S3OutputPath"),
+        "output_kms": described.get("OutputDataConfig", {})
+        .get("KmsKeyId"),
+        "arn": described.get("TrainingJobArn")
+        or described.get("ProcessingJobArn"),
     }
 
 
@@ -309,6 +325,26 @@ def _verify_promotion_bundle(digest: str) -> None:
     if files["HOLDOUT-GRADES.json"] != grades_pin.lower():
         raise LoaderV2Refusal(
             "the bundled grade authority does not match the deployment pin")
+    # round 11 (Codex, SYNTHETIC_AUTHORITY_AND_RECEIPT_ACCEPTED): the
+    # deployment env pin is authored by the same actor as the bundle —
+    # not a trust boundary. The authority AND the admission receipt must
+    # carry KMS SIGNATURES that verify offline against the public key
+    # committed in the repo and baked into this image.
+    from .signing import SignatureRefusal, verify_signature
+    for signed_name in ("HOLDOUT-GRADES.json", "ADMISSION-RECEIPT.json"):
+        signature_name = signed_name + ".sig"
+        if signature_name not in files:
+            raise LoaderV2Refusal(
+                f"promotion bundle omits the signature for {signed_name}")
+        try:
+            verify_signature((root / signed_name).read_bytes(),
+                              (root / signature_name).read_bytes())
+        except SignatureRefusal as exc:
+            raise LoaderV2Refusal(str(exc)) from exc
+    if loaded["HOLDOUT-GRADES.json"].get("record") != "HOLDOUT-GRADES-2026-001":
+        raise LoaderV2Refusal(
+            "the grade authority must be the canonical "
+            "HOLDOUT-GRADES-2026-001 record")
     grade_authority = loaded["HOLDOUT-GRADES.json"].get("grades", {})
     licensed_sets = loaded["HOLDOUT-GRADES.json"].get(
         "licensed_code_switch_sets", {})
@@ -335,6 +371,17 @@ def _verify_promotion_bundle(digest: str) -> None:
         if name not in files:
             return None
         return (root / name).read_bytes()
+
+    # round 11 (Codex): the predeclared scorer hash must be BACKED by
+    # bundled scorer bytes — a hash naming nothing proves nothing
+    if "scorer.py" not in files:
+        raise LoaderV2Refusal(
+            "promotion bundle omits the scorer bytes the packet "
+            "predeclares")
+    if files["scorer.py"] != str(packet.get("scorer_sha256", "")).lower():
+        raise LoaderV2Refusal(
+            "bundled scorer bytes do not hash to the packet's "
+            "predeclared scorer_sha256")
 
     from .promotion_check import verify_admission_receipt
 

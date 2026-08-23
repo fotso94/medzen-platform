@@ -434,10 +434,13 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                     "cluster_id": speaker,
                     "reference_text_sha256": hashlib.sha256(
                         reference.encode()).hexdigest(),
-                    # round 10: error counts BIND the hypotheses scored
+                    # rounds 10-11: error counts BIND the hypothesis
+                    # TEXTS, whose hashes must recompute
+                    "baseline_hypothesis": f"baseline-hyp {label} {cluster} {i}",
                     "baseline_hypothesis_sha256": hashlib.sha256(
                         f"baseline-hyp {label} {cluster} {i}".encode()
                     ).hexdigest(),
+                    "candidate_hypothesis": f"candidate-hyp {label} {cluster} {i}",
                     "candidate_hypothesis_sha256": hashlib.sha256(
                         f"candidate-hyp {label} {cluster} {i}".encode()
                     ).hexdigest(),
@@ -505,7 +508,7 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "schema_version": "medzen-b5-gate-report-v1",
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
-        "scorer_sha256": "5c" * 32,
+        "scorer_sha256": hashlib.sha256(SCORER_BYTES).hexdigest(),
         "sealed_run_job": {"type": "sagemaker_training",
                              "name": "medzen-sealed-eval-synthetic-1"},
         "languages": report_languages,
@@ -535,11 +538,14 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     # round 10: grades live in the SEPARATELY pinned authority document;
     # the synthetic authority also registers the synthetic CS set
     files["HOLDOUT-GRADES.json"] = _json.dumps({
-        "record": "SYNTHETIC-GRADES",
+        "record": "HOLDOUT-GRADES-2026-001",
         "grades": grade_entries,
         "licensed_code_switch_sets": {
             "kinyarwanda-english-cs-v1": {
-                "manifest_sha256": cs_manifest_sha}},
+                "manifest_sha256": cs_manifest_sha,
+                "license_record": "platform/decisions/SYNTHETIC-CS-LICENSE.json",
+                "reservation_ledger_entry": "synthetic-ledger-1",
+                "speaker_disjoint": True}},
     }).encode()
     packet = {
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
@@ -553,12 +559,23 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "operational_thresholds": {"max_latency_p95_ms": 1200,
                                      "max_vram_gb": 20},
         "allowed_instance_types": ["ml.g6.xlarge"],
-        "scorer_sha256": "5c" * 32,
-        "sealed_run_job_name": "medzen-sealed-eval-synthetic-1",
+        "scorer_sha256": hashlib.sha256(SCORER_BYTES).hexdigest(),
+        "sealed_run": {
+            "job_name": "medzen-sealed-eval-synthetic-1",
+            "image_digest": "sha256:" + "8e" * 32,
+            "instance_type": "ml.g6.xlarge",
+            "input_s3_uris": ["s3://medzen-speech/eval/sealed/one",
+                                "s3://medzen-speech/eval/sealed/two"],
+            "output_s3_prefix": "s3://medzen-speech/sealed-results/",
+            "output_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/k",
+            "account_id": "558069890522",
+            "region": "eu-central-1",
+        },
     }
     packet.update(packet_over or {})
     packet_bytes = _json.dumps(packet).encode()
     files["CANDIDATE-PACKET.json"] = packet_bytes
+    files["scorer.py"] = SCORER_BYTES
     # round 9 (Codex): the anchor is a SEPARATE envelope — a packet
     # cannot contain its own storage identity (circular VersionId)
     files["ANCHOR-ENVELOPE.json"] = _json.dumps({
@@ -574,8 +591,17 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "anchored_utc": "2026-08-23T10:00:00Z",
         "sealed_job": {"name": "medzen-sealed-eval-synthetic-1",
                         "creation_utc": "2026-08-23T12:00:00Z",
-                        "status": "Completed"},
+                        "status": "Completed",
+                        **{k: packet["sealed_run"][k]
+                           for k in ("image_digest", "instance_type",
+                                       "input_s3_uris", "output_s3_prefix",
+                                       "output_kms_key_arn", "account_id",
+                                       "region")}},
     }).encode()
+    # round 11: the authority and the receipt are SIGNED — tests sign
+    # with a locally generated keypair and pin its public key via env
+    for signed_name in ("HOLDOUT-GRADES.json", "ADMISSION-RECEIPT.json"):
+        files[signed_name + ".sig"] = _test_sign(files[signed_name])
     review = {"status": "PASS", "findings": 0,
               "reviewer": "codex-independent-review"}
     files["INDEPENDENT-REVIEW.json"] = _json.dumps(review).encode()
@@ -611,6 +637,35 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     return bundle, hashlib.sha256(index_bytes).hexdigest()
 
 
+SCORER_BYTES = b"# synthetic scorer bytes for the promotion bundle\n"
+
+_TEST_SIGNING_KEY = None
+
+
+def _test_keypair():
+    global _TEST_SIGNING_KEY
+    if _TEST_SIGNING_KEY is None:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        _TEST_SIGNING_KEY = ec.generate_private_key(ec.SECP256R1())
+    return _TEST_SIGNING_KEY
+
+
+def _test_sign(document: bytes) -> bytes:
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    return _test_keypair().sign(document, ec.ECDSA(hashes.SHA256()))
+
+
+def _test_pubkey_pem(tmp_path) -> str:
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding, PublicFormat)
+    pem = _test_keypair().public_key().public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+    path = tmp_path / "test-promotion-pubkey.pem"
+    path.write_bytes(pem)
+    return str(path)
+
+
 def _arm_bundle(monkeypatch, bundle, pin):
     """Arm the bundle env + the SECOND deployment pin (the grade
     authority). Round 10: the runtime performs no live AWS chronology —
@@ -622,6 +677,10 @@ def _arm_bundle(monkeypatch, bundle, pin):
         "MEDZEN_HOLDOUT_GRADES_SHA256",
         _hashlib.sha256(
             (bundle / "HOLDOUT-GRADES.json").read_bytes()).hexdigest())
+    # round 11: pin the TEST keypair's public key — production bakes the
+    # committed key into the image; the boundary is WHO controls the pin
+    monkeypatch.setenv("MEDZEN_PROMOTION_PUBKEY_PATH",
+                        _test_pubkey_pem(bundle))
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
@@ -760,14 +819,21 @@ def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
     import hashlib as _hashlib
 
     def rebind_receipt(bundle, mutate):
+        """Model an admission authority that SIGNED a wrong receipt —
+        the mutation is re-signed with the test key so the SEMANTIC
+        checks (not the signature) are what refuses."""
         receipt_path = bundle / "ADMISSION-RECEIPT.json"
         receipt = _json.loads(receipt_path.read_bytes())
         mutate(receipt)
         body = _json.dumps(receipt).encode()
         receipt_path.write_bytes(body)
+        signature = _test_sign(body)
+        (bundle / "ADMISSION-RECEIPT.json.sig").write_bytes(signature)
         index = _json.loads((bundle / "bundle.json").read_bytes())
         index["files"]["ADMISSION-RECEIPT.json"] = _hashlib.sha256(
             body).hexdigest()
+        index["files"]["ADMISSION-RECEIPT.json.sig"] = _hashlib.sha256(
+            signature).hexdigest()
         record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
         record["admission_receipt"]["record_sha256"] = (
             index["files"]["ADMISSION-RECEIPT.json"])
@@ -869,3 +935,37 @@ def test_ci_pipeline_builds_from_repo_root_with_source_commit():
     assert '-k "${{ inputs.service }}"' not in pipeline
     for wf in sorted((ROOT / ".github/workflows").glob("app-*.yml")):
         assert "test_paths:" in wf.read_text(), wf.name
+
+
+def test_round11_forged_authority_signature_refuses(tmp_path, monkeypatch):
+    """Codex round 11 (SYNTHETIC_AUTHORITY_AND_RECEIPT_ACCEPTED): a
+    bundle author who rewrites the grade authority cannot produce a
+    valid signature — verification uses the public key pinned OUTSIDE
+    the bundle (committed in the repo, baked into the image)."""
+    import hashlib as _hashlib
+    import json as _json
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
+                                               artifact_tree_sha256,
+                                               validate_manifest_v2)
+    import pytest
+    digest = "ab" * 32
+    tree = artifact_tree_sha256(digest, "12" * 32)
+    bundle, pin = _promotion_bundle(tmp_path, tree)
+    # the attacker signs with a DIFFERENT key (their own)
+    attacker_key = ec.generate_private_key(ec.SECP256R1())
+    authority_body = (bundle / "HOLDOUT-GRADES.json").read_bytes()
+    forged = attacker_key.sign(authority_body, ec.ECDSA(hashes.SHA256()))
+    (bundle / "HOLDOUT-GRADES.json.sig").write_bytes(forged)
+    index = _json.loads((bundle / "bundle.json").read_bytes())
+    index["files"]["HOLDOUT-GRADES.json.sig"] = _hashlib.sha256(
+        forged).hexdigest()
+    index_bytes = _json.dumps(index).encode()
+    (bundle / "bundle.json").write_bytes(index_bytes)
+    _arm_bundle(monkeypatch, bundle,
+                _hashlib.sha256(index_bytes).hexdigest())
+    with pytest.raises(LoaderV2Refusal, match="not produced by the "
+                        "admission authority"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
