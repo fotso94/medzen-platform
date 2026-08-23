@@ -1,0 +1,39 @@
+{
+ "artifact_tree_sha256": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "classification_served": "NONPROD_REAL_PROVIDER_V2",
+ "image": "medzen-asr-runtime@sha256:5bd32e6ed796095a338356d54cf4e5e443ebf7a3eac188bbcdb932899f0b0056",
+ "readyz": {
+  "classification": "NONPROD_REAL_PROVIDER_V2",
+  "model_loaded": true,
+  "model_manifest_verified": true,
+  "model_tree_verified": true,
+  "platform_test_disclosure_loaded": true,
+  "ready": true,
+  "smoke_inference_passed": true
+ },
+ "record": "ARM1-GPU-SMOKE-2026-001-RECEIPT",
+ "reference": "it is thinner under the maria and thicker under the highlands",
+ "response": {
+  "artifact_tree_sha256": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+  "classification": "NONPROD_REAL_PROVIDER_V2",
+  "duration_seconds": 7.2,
+  "language": "en",
+  "language_probability": 1.0,
+  "latency_ms": 415.343,
+  "model_versions": {
+   "asr": "omniasr_ctc_1b:34ca18bab2f7",
+   "llm": null,
+   "rag": null,
+   "registry_snapshot": "omniasr-nonprod:550b1d6cd8e29252727c66a6f7b8d9f7a29fb3c2834ac5816fc114e2c9924ac2",
+   "tts": null
+  },
+  "production_approved": false,
+  "request_id": "6fd2622d-9f4e-40a5-a506-c55eb0dfd71d",
+  "transcript": {
+   "normalization_version": "b6v2-unicode-nfc-whitespace-v1",
+   "normalized": "it is thinner under the maria and thicker under the highlands",
+   "verbatim": "it is thinner under the maria and thicker under the highlands"
+  }
+ },
+ "sealed_sets_read": false
+}
