@@ -465,6 +465,7 @@ def recompute_statistics(report: dict, requested: list[str], *,
 def require_sealed_row_identity(report: dict, mandatory: list[str], *,
                                 rows_bytes: Callable[[str], bytes | None],
                                 manifest_bytes: Callable[[str], bytes | None],
+                                scorer: Mapping[str, Any] | None = None,
                                 ) -> None:
     """Round 7 (Codex): every result row must belong to the EXACT sealed
     set. Round 8 (Codex): the REAL sealed manifests are JSONL row files
@@ -482,12 +483,31 @@ def require_sealed_row_identity(report: dict, mandatory: list[str], *,
             language,
             rows_raw=rows_bytes(language),
             manifest_raw=manifest_bytes(language),
-            bound_sha=str(entry.get("holdout_manifest_sha256", "")))
+            bound_sha=str(entry.get("holdout_manifest_sha256", "")),
+            scorer=scorer)
+
+
+def load_scorer(scorer_source: bytes):
+    """Round 12 (Codex): execute the PINNED scorer to recompute error
+    counts. The source runs only AFTER the signed evidence root that
+    covers it verifies — executing admission-signed bytes, nothing else.
+    The module must expose score_errors(reference, hypothesis) -> int
+    and reference_words(reference) -> int."""
+    namespace: dict = {}
+    exec(compile(scorer_source, "scorer.py", "exec"), namespace)  # noqa: S102
+    for required in ("score_errors", "reference_words"):
+        if not callable(namespace.get(required)):
+            raise PromotionCheckRefusal(
+                f"the pinned scorer exposes no {required}() — it cannot "
+                "recompute the evidence")
+    return namespace
 
 
 def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
                                 manifest_raw: bytes | None,
-                                bound_sha: str) -> None:
+                                bound_sha: str,
+                                scorer: Mapping[str, Any] | None = None,
+                                ) -> None:
     """The shared manifest-coverage core (round 9: code-switch uses it
     too). The AUTHORITATIVE JSONL manifest must hash to the bound
     identity; result rows must cover its audio checksums exactly once,
@@ -503,6 +523,7 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
             "report's bound sealed-set identity")
     speaker_by_checksum: dict[str, str] = {}
     reference_sha_by_checksum: dict[str, str | None] = {}
+    reference_text_by_checksum: dict[str, str | None] = {}
     for line in manifest_raw.decode().splitlines():
         if not line.strip():
             continue
@@ -527,6 +548,8 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
         reference_sha_by_checksum[checksum] = (
             hashlib.sha256(str(reference).encode()).hexdigest()
             if isinstance(reference, str) and reference else None)
+        reference_text_by_checksum[checksum] = (
+            reference if isinstance(reference, str) and reference else None)
     if not speaker_by_checksum:
         raise PromotionCheckRefusal(
             f"{label}: sealed manifest contains no rows")
@@ -581,6 +604,29 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
                 raise PromotionCheckRefusal(
                     f"{label}: {side}_sha256 does not recompute from the "
                     "supplied hypothesis text")
+        # round 12 (Codex): EXECUTE the pinned scorer — every error
+        # count and word count must recompute from the bound texts
+        if scorer is not None:
+            reference_text = reference_text_by_checksum.get(checksum)
+            if reference_text is None:
+                raise PromotionCheckRefusal(
+                    f"{label}: sealed manifest row carries no reference "
+                    "text — scored evidence cannot be recomputed")
+            expected = {
+                "baseline_errors": scorer["score_errors"](
+                    reference_text, result_row["baseline_hypothesis"]),
+                "candidate_errors": scorer["score_errors"](
+                    reference_text, result_row["candidate_hypothesis"]),
+                "reference_words": scorer["reference_words"](
+                    reference_text),
+            }
+            for field, recomputed in expected.items():
+                if result_row.get(field) != recomputed:
+                    raise PromotionCheckRefusal(
+                        f"{label}: {field}={result_row.get(field)!r} does "
+                        f"not recompute from the bound texts "
+                        f"(scorer says {recomputed}) — supplied numbers "
+                        "prove nothing")
     if seen != set(speaker_by_checksum):
         raise PromotionCheckRefusal(
             f"{label}: result rows do not cover EXACTLY the sealed "
@@ -590,6 +636,7 @@ def _verify_rows_cover_manifest(label: str, *, rows_raw: bytes | None,
 def recompute_code_switch(report: dict, *,
                           rows_bytes: Callable[[str], bytes | None],
                           manifest_bytes: Callable[[str], bytes | None],
+                          scorer: Mapping[str, Any] | None = None,
                           ) -> None:
     """Round 7 (Codex, FABRICATED_CODE_SWITCH_..._ACCEPTED): the
     code-switch gate is evidence too — its statistics recompute from its
@@ -612,7 +659,8 @@ def recompute_code_switch(report: dict, *,
         "code_switch",
         rows_raw=body,
         manifest_raw=manifest_bytes("code_switch"),
-        bound_sha=str(evidence.get("manifest_sha256", "")))
+        bound_sha=str(evidence.get("manifest_sha256", "")),
+        scorer=scorer)
     if hashlib.sha256(body).hexdigest() != str(
         evidence.get("rows_sha256", "")
     ):
@@ -679,15 +727,24 @@ def verify_packet_chronology(report: dict, *,
             "the anchor authority returned no valid timestamp")
     contract = candidate_packet.get("sealed_run")
     CONTRACT_FIELDS = ("job_name", "image_digest", "instance_type",
-                        "input_s3_uris", "output_s3_prefix",
-                        "output_kms_key_arn", "account_id", "region")
+                        "channels", "output_s3_prefix",
+                        "output_kms_key_arn", "account_id", "region",
+                        "execution_role_arn", "network_isolation",
+                        "volume_kms_key_arn", "hyperparameters_sha256")
     if not isinstance(contract, Mapping) or any(
-        not contract.get(field) for field in CONTRACT_FIELDS
+        contract.get(field) in (None, "", [], {})
+        for field in CONTRACT_FIELDS
     ):
         raise PromotionCheckRefusal(
             "candidate packet must PREDECLARE the COMPLETE sealed-run "
             f"contract ({', '.join(CONTRACT_FIELDS)}) — a job name alone "
-            "binds nothing (Codex round 11)")
+            "binds nothing (Codex rounds 11-12)")
+    # round 12 (Codex, MUTABLE_IMAGE_TAG_ACCEPTED): only an immutable
+    # ECR digest reference identifies an image
+    if "@sha256:" not in str(contract["image_digest"]):
+        raise PromotionCheckRefusal(
+            "sealed-run image must be an IMMUTABLE @sha256 digest "
+            "reference — a mutable tag identifies nothing")
     job = report.get("sealed_run_job")
     if not isinstance(job, Mapping) or str(job.get("name")) != str(
         contract["job_name"]
@@ -712,16 +769,28 @@ def verify_packet_chronology(report: dict, *,
         "instance_type": described.get("instance_type"),
         "output_s3_prefix": described.get("output_path"),
         "output_kms_key_arn": described.get("output_kms"),
+        "execution_role_arn": described.get("role_arn"),
+        "network_isolation": described.get("network_isolation"),
+        "volume_kms_key_arn": described.get("volume_kms"),
+        "hyperparameters_sha256": described.get("hyperparameters_sha256"),
     }
     for field, actual in live_checks.items():
         if str(actual) != str(contract[field]):
             raise PromotionCheckRefusal(
                 f"sealed job {field}={actual!r} does not match the "
                 f"predeclared {contract[field]!r}")
-    described_inputs = set(map(str, described.get("input_uris") or []))
-    if not set(map(str, contract["input_s3_uris"])) <= described_inputs:
+    # round 12 (Codex, UNDECLARED_EXTRA_INPUT_ACCEPTED): EXACT channel
+    # equality — name for name, URI for URI; an undeclared extra input
+    # is an unreviewed data path
+    described_channels = {str(k): str(v) for k, v in
+                           (described.get("channels") or {}).items()}
+    declared_channels = {str(k): str(v) for k, v in
+                          dict(contract["channels"]).items()}
+    if described_channels != declared_channels:
         raise PromotionCheckRefusal(
-            "the sealed job did not read the predeclared holdout inputs")
+            f"sealed job channels {sorted(described_channels)} do not "
+            f"EXACTLY equal the predeclared {sorted(declared_channels)} "
+            "— undeclared inputs refuse")
     arn = str(described.get("arn", ""))
     if (f":{contract['account_id']}:" not in arn
             or f":{contract['region']}:" not in arn):
@@ -737,9 +806,20 @@ def verify_packet_chronology(report: dict, *,
             "sealed_job": {"name": str(contract["job_name"]),
                             "creation_utc": creation_utc,
                             "status": "Completed",
-                            **{field: contract[field]
-                               for field in CONTRACT_FIELDS
-                               if field != "job_name"}}}
+                            # round 12: record what the job ACTUALLY was
+                            "image_digest": described.get("image"),
+                            "instance_type": described.get("instance_type"),
+                            "channels": described_channels,
+                            "output_s3_prefix": described.get("output_path"),
+                            "output_kms_key_arn": described.get("output_kms"),
+                            "execution_role_arn": described.get("role_arn"),
+                            "network_isolation": described.get(
+                                "network_isolation"),
+                            "volume_kms_key_arn": described.get("volume_kms"),
+                            "hyperparameters_sha256": described.get(
+                                "hyperparameters_sha256"),
+                            "account_id": contract["account_id"],
+                            "region": contract["region"]}}
 
 
 def verify_admission_receipt(report: dict, *,
@@ -791,16 +871,21 @@ def verify_admission_receipt(report: dict, *,
             "unrelated job cannot provide the chronology clock")
     # round 11: the receipt's verified contract must EQUAL the packet's
     for field in ("image_digest", "instance_type", "output_s3_prefix",
-                   "output_kms_key_arn", "account_id", "region"):
+                   "output_kms_key_arn", "account_id", "region",
+                   "execution_role_arn", "network_isolation",
+                   "volume_kms_key_arn", "hyperparameters_sha256"):
         if str(job.get(field)) != str(contract.get(field)):
             raise PromotionCheckRefusal(
                 f"admission receipt {field} does not match the "
                 "predeclared sealed-run contract")
-    if (sorted(map(str, job.get("input_s3_uris") or []))
-            != sorted(map(str, contract.get("input_s3_uris") or []))):
+    receipt_channels = {str(k): str(v) for k, v in
+                         (job.get("channels") or {}).items()}
+    declared_channels = {str(k): str(v) for k, v in
+                          dict(contract.get("channels") or {}).items()}
+    if receipt_channels != declared_channels:
         raise PromotionCheckRefusal(
-            "admission receipt inputs do not match the predeclared "
-            "holdout inputs")
+            "admission receipt channels do not EXACTLY equal the "
+            "predeclared sealed-run channels")
 
 
 def require_licensed_code_switch(report: dict, *,
@@ -823,8 +908,9 @@ def require_licensed_code_switch(report: dict, *,
             "owner's licensed code-switch acquisition")
     # round 11 (Codex): a registered set must be FULLY specified — a
     # manifest hash alone says nothing about licensing or reservation
-    for field in ("manifest_sha256", "license_record",
-                   "reservation_ledger_entry", "speaker_disjoint"):
+    for field in ("manifest_sha256", "license_record", "license_sha256",
+                   "reservation_ledger_entry", "reservation_sha256",
+                   "speaker_disjoint"):
         if not registered.get(field):
             raise PromotionCheckRefusal(
                 f"licensed code-switch registry entry lacks {field} — "
@@ -851,6 +937,7 @@ def verify_complete_promotion(report: dict, *,
                               rows_bytes: Callable[[str], bytes | None],
                               manifest_bytes: Callable[[str], bytes | None],
                               verify_chronology: Callable[[], None],
+                              scorer_source: bytes,
                               ) -> dict[str, str]:
     """Round 8 (Codex): the ONE complete promotion gate. The repo-side
     checker and the runtime bundle verifier both call THIS with their
@@ -880,11 +967,12 @@ def verify_complete_promotion(report: dict, *,
         report, grade_authority=grade_authority, mandatory=mandatory)
     recompute_statistics(
         report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
+    scorer = load_scorer(scorer_source)
     require_sealed_row_identity(
         report, mandatory, rows_bytes=rows_bytes,
-        manifest_bytes=manifest_bytes)
+        manifest_bytes=manifest_bytes, scorer=scorer)
     recompute_code_switch(report, rows_bytes=rows_bytes,
-                          manifest_bytes=manifest_bytes)
+                          manifest_bytes=manifest_bytes, scorer=scorer)
     require_operational_receipt(
         report, candidate_packet=candidate_packet,
         artifact_tree_sha256=artifact_tree_sha256)

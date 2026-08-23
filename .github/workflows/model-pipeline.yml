@@ -49,6 +49,7 @@ on:
 # only job needing extra grants (open-registry-pr) documents its own.
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   verify-gate-report:
@@ -58,21 +59,54 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      - name: OIDC federation for live S3/SageMaker verification
+        # round 12 (Codex): the complete gate performs LIVE anchor and
+        # sealed-job checks — it needs credentials; dark until the CI
+        # role variable exists, like every AWS-touching job
+        if: vars.MEDZEN_CI_ROLE_ARN != ''
+        uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_CI_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: pinned gate dependencies
+        run: >
+          python -m pip install "boto3==1.43.58" "PyYAML==6.0.3"
+          "cryptography==48.0.1"
       - name: gate report authorizes exactly these languages
+        # round 12 (Codex): user inputs pass through ENV, never shell
+        # interpolation; the checker invokes the COMPLETE gate — partial
+        # invocations refuse by design
+        env:
+          GATE_REPORT: ${{ inputs.gate_report_path }}
+          RESULTS_DIR: ${{ inputs.results_dir }}
+          CANDIDATE_PACKET: ${{ inputs.candidate_packet_path }}
+          MANIFESTS_DIR: ${{ inputs.manifests_dir }}
+          ARTIFACT_TREE: ${{ inputs.artifact_tree }}
+          ANCHOR_ENVELOPE: ${{ inputs.anchor_envelope_path }}
         run: |
-          # ARCH-2026-001 atomic gate (Codex review #9): no language
-          # subsetting — the checker evaluates the frozen mandatory set and
-          # statistics are recomputed from hash-bound rows
-          # round 11 (Codex): the workflow invokes the COMPLETE gate —
-          # partial invocations refuse by design
           python scripts/b7_model_promotion_check.py \
-            --gate-report "${{ inputs.gate_report_path }}" \
-            --results-dir "${{ inputs.results_dir }}" \
-            --candidate-packet "${{ inputs.candidate_packet_path }}" \
-            --manifests-dir "${{ inputs.manifests_dir }}" \
-            --artifact-tree "${{ inputs.artifact_tree }}" \
-            --anchor-envelope "${{ inputs.anchor_envelope_path }}" \
+            --gate-report "$GATE_REPORT" \
+            --results-dir "$RESULTS_DIR" \
+            --candidate-packet "$CANDIDATE_PACKET" \
+            --manifests-dir "$MANIFESTS_DIR" \
+            --artifact-tree "$ARTIFACT_TREE" \
+            --anchor-envelope "$ANCHOR_ENVELOPE" \
+            --scorer platform/promotion/scorer_v1.py \
             --write-admission-receipt admission-receipt.json
+      - name: sign the admission receipt with the promotion key
+        # requires kms:Sign on alias/medzen-promotion-signing — granted
+        # only to the owner-approved admission role; dark until then
+        if: vars.MEDZEN_CI_ROLE_ARN != ''
+        run: |
+          python scripts/sign_promotion_document.py admission-receipt.json
+      - name: attested receipt artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: admission-receipt
+          path: |
+            admission-receipt.json
+            admission-receipt.json.sig
+          if-no-files-found: warn
 
   open-registry-pr:
     needs: verify-gate-report

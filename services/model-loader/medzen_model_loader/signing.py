@@ -1,15 +1,18 @@
-"""B6v2 round 11 (Codex): the promotion trust boundary.
+"""B6v2 rounds 11-12 (Codex): the promotion trust boundary.
 
-The grade authority and the admission receipt are signed at ADMISSION
-time with the dedicated KMS key (alias/medzen-promotion-signing,
-ECC_NIST_P256). The RUNTIME verifies those signatures OFFLINE against
-the public key committed in the repository and baked into the loader
-image — a boundary the bundle author cannot rewrite: rewriting it means
-rewriting reviewed source and rebuilding the image through CI.
+The grade authority and the evidence ROOT are signed at ADMISSION time
+with the dedicated KMS key (alias/medzen-promotion-signing). The RUNTIME
+verifies OFFLINE against the public key committed in the repository and
+baked into the loader image.
+
+Round 12 (Codex, ENV_OVERRIDDEN_TRUST_ANCHOR_ACCEPTED): the environment
+override is GONE — an operator env var is not a trust boundary. Test
+keys enter ONLY through monkeypatching _public_key_bytes in tests;
+production resolution is the image-baked path, then the repo-committed
+file, nothing else.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 
@@ -18,16 +21,13 @@ class SignatureRefusal(RuntimeError):
 
 
 def _public_key_bytes() -> bytes:
-    """Resolution order: explicit env (tests), the image-baked path,
-    then the repository-relative committed file."""
     candidates = [
-        os.environ.get("MEDZEN_PROMOTION_PUBKEY_PATH"),
         "/opt/medzen/PROMOTION-SIGNING-PUBLIC-KEY.pem",
         str(Path(__file__).resolve().parents[3]
             / "platform/decisions/PROMOTION-SIGNING-PUBLIC-KEY.pem"),
     ]
     for candidate in candidates:
-        if candidate and Path(candidate).is_file():
+        if Path(candidate).is_file():
             return Path(candidate).read_bytes()
     raise SignatureRefusal(
         "promotion signing public key is absent — the trust boundary "

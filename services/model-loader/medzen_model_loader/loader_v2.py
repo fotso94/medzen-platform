@@ -91,9 +91,17 @@ def _sagemaker_sealed_start_fetch(job):
     # a -04:00 timestamp mislabeled local time as Z
     # round 11 (Codex, UNBOUND_COMPLETED_JOB_ACCEPTED): return the FULL
     # described contract so admission can bind image/inputs/output/kms
-    inputs = [channel.get("DataSource", {}).get("S3DataSource", {})
-              .get("S3Uri") for channel in
-              described.get("InputDataConfig", [])]
+    import hashlib as _hashlib
+    channels = {
+        str(channel.get("ChannelName")): str(
+            channel.get("DataSource", {}).get("S3DataSource", {})
+            .get("S3Uri"))
+        for channel in described.get("InputDataConfig", [])
+    }
+    hyperparameters = described.get("HyperParameters", {}) or {}
+    hyperparameters_sha256 = _hashlib.sha256(json.dumps(
+        {str(k): str(v) for k, v in hyperparameters.items()},
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
         "creation_utc": described["CreationTime"].astimezone(
             timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -103,11 +111,17 @@ def _sagemaker_sealed_start_fetch(job):
         .get("TrainingImage"),
         "instance_type": described.get("ResourceConfig", {})
         .get("InstanceType"),
-        "input_uris": [uri for uri in inputs if uri],
+        # round 12: the COMPLETE configuration, not a URI subset
+        "channels": channels,
         "output_path": described.get("OutputDataConfig", {})
         .get("S3OutputPath"),
         "output_kms": described.get("OutputDataConfig", {})
         .get("KmsKeyId"),
+        "role_arn": described.get("RoleArn"),
+        "network_isolation": described.get("EnableNetworkIsolation"),
+        "volume_kms": described.get("ResourceConfig", {})
+        .get("VolumeKmsKeyId"),
+        "hyperparameters_sha256": hyperparameters_sha256,
         "arn": described.get("TrainingJobArn")
         or described.get("ProcessingJobArn"),
     }
@@ -331,16 +345,29 @@ def _verify_promotion_bundle(digest: str) -> None:
     # carry KMS SIGNATURES that verify offline against the public key
     # committed in the repo and baked into this image.
     from .signing import SignatureRefusal, verify_signature
-    for signed_name in ("HOLDOUT-GRADES.json", "ADMISSION-RECEIPT.json"):
-        signature_name = signed_name + ".sig"
-        if signature_name not in files:
-            raise LoaderV2Refusal(
-                f"promotion bundle omits the signature for {signed_name}")
-        try:
-            verify_signature((root / signed_name).read_bytes(),
-                              (root / signature_name).read_bytes())
-        except SignatureRefusal as exc:
-            raise LoaderV2Refusal(str(exc)) from exc
+    # round 12 (Codex): the admission authority signs ONE evidence ROOT
+    # — the bundle index itself — so the signature covers EVERY file
+    # (rows, manifests, report, packet, envelope, receipt, scorer)
+    # transitively. The index signature lives ALONGSIDE the index.
+    root_signature = root / "bundle.json.sig"
+    if not root_signature.is_file():
+        raise LoaderV2Refusal(
+            "promotion bundle omits the signed evidence root "
+            "(bundle.json.sig)")
+    try:
+        verify_signature(index_bytes, root_signature.read_bytes())
+    except SignatureRefusal as exc:
+        raise LoaderV2Refusal(str(exc)) from exc
+    signed_name = "HOLDOUT-GRADES.json"
+    signature_name = signed_name + ".sig"
+    if signature_name not in files:
+        raise LoaderV2Refusal(
+            f"promotion bundle omits the signature for {signed_name}")
+    try:
+        verify_signature((root / signed_name).read_bytes(),
+                          (root / signature_name).read_bytes())
+    except SignatureRefusal as exc:
+        raise LoaderV2Refusal(str(exc)) from exc
     if loaded["HOLDOUT-GRADES.json"].get("record") != "HOLDOUT-GRADES-2026-001":
         raise LoaderV2Refusal(
             "the grade authority must be the canonical "
@@ -404,6 +431,7 @@ def _verify_promotion_bundle(digest: str) -> None:
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             verify_chronology=verify_chronology,
+            scorer_source=(root / "scorer.py").read_bytes(),
         )
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc

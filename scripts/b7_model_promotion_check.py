@@ -192,6 +192,9 @@ def main() -> int:
     parser.add_argument("--artifact-tree", default=None,
                         help="the candidate's full 64-hex artifact tree "
                              "digest (round 8: REQUIRED)")
+    parser.add_argument("--scorer", type=Path, default=None,
+                        help="the pinned scorer bytes (round 12: REQUIRED "
+                             "— every error count recomputes)")
     parser.add_argument("--write-admission-receipt", type=Path,
                         default=None,
                         help="write the attested chronology receipt the "
@@ -208,7 +211,8 @@ def main() -> int:
                              ("--candidate-packet", args.candidate_packet),
                              ("--manifests-dir", args.manifests_dir),
                              ("--artifact-tree", args.artifact_tree),
-                             ("--anchor-envelope", args.anchor_envelope)):
+                             ("--anchor-envelope", args.anchor_envelope),
+                             ("--scorer", args.scorer)):
             if value is None:
                 raise PromotionCheckRefusal(
                     f"{flag} is required: the promotion gate is COMPLETE "
@@ -256,6 +260,7 @@ def main() -> int:
             rows_bytes=rows_bytes,
             manifest_bytes=manifest_bytes,
             verify_chronology=verify_chronology,
+            scorer_source=args.scorer.read_bytes(),
         )
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))

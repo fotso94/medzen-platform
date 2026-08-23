@@ -421,7 +421,18 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
             for i in range(3):
                 checksum = hashlib.sha256(
                     f"{label}-audio-{cluster}-{i}".encode()).hexdigest()
-                reference = f"synthetic evidence row {label} {cluster} {i}"
+                # a 10-word reference; hypotheses substitute exactly k
+                # leading words, so the PINNED scorer recomputes exactly
+                # k errors (round 12: numbers derive from texts)
+                tokens = [f"w{n}-{label}-{cluster}-{i}" for n in range(10)]
+                reference = " ".join(tokens)
+
+                def substituted(count):
+                    return " ".join(
+                        [f"x{n}" for n in range(count)] + tokens[count:])
+
+                baseline_hyp = substituted(4 + cluster)
+                candidate_hyp = substituted(9 if broken else 2)
                 manifest_rows.append({
                     "audio_checksum_sha256": checksum,
                     "speaker_id": speaker,
@@ -434,19 +445,18 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                     "cluster_id": speaker,
                     "reference_text_sha256": hashlib.sha256(
                         reference.encode()).hexdigest(),
-                    # rounds 10-11: error counts BIND the hypothesis
-                    # TEXTS, whose hashes must recompute
-                    "baseline_hypothesis": f"baseline-hyp {label} {cluster} {i}",
+                    "baseline_hypothesis": baseline_hyp,
                     "baseline_hypothesis_sha256": hashlib.sha256(
-                        f"baseline-hyp {label} {cluster} {i}".encode()
-                    ).hexdigest(),
-                    "candidate_hypothesis": f"candidate-hyp {label} {cluster} {i}",
+                        baseline_hyp.encode()).hexdigest(),
+                    "candidate_hypothesis": candidate_hyp,
                     "candidate_hypothesis_sha256": hashlib.sha256(
-                        f"candidate-hyp {label} {cluster} {i}".encode()
-                    ).hexdigest(),
-                    "baseline_errors": 4 + cluster,
-                    "candidate_errors": 30 if broken else 2,
-                    "reference_words": 40,
+                        candidate_hyp.encode()).hexdigest(),
+                    "baseline_errors": _scorer_namespace["score_errors"](
+                        reference, baseline_hyp),
+                    "candidate_errors": _scorer_namespace["score_errors"](
+                        reference, candidate_hyp),
+                    "reference_words": _scorer_namespace["reference_words"](
+                        reference),
                 })
         manifest_bytes = ("\n".join(_json.dumps(r) for r in manifest_rows)
                            .encode() + b"\n")
@@ -544,7 +554,9 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
             "kinyarwanda-english-cs-v1": {
                 "manifest_sha256": cs_manifest_sha,
                 "license_record": "platform/decisions/SYNTHETIC-CS-LICENSE.json",
+                "license_sha256": "aa" * 32,
                 "reservation_ledger_entry": "synthetic-ledger-1",
+                "reservation_sha256": "bb" * 32,
                 "speaker_disjoint": True}},
     }).encode()
     packet = {
@@ -562,14 +574,21 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
         "scorer_sha256": hashlib.sha256(SCORER_BYTES).hexdigest(),
         "sealed_run": {
             "job_name": "medzen-sealed-eval-synthetic-1",
-            "image_digest": "sha256:" + "8e" * 32,
+            "image_digest": ("558069890522.dkr.ecr.eu-central-1"
+                              ".amazonaws.com/medzen-sealed-eval@sha256:"
+                              + "8e" * 32),
             "instance_type": "ml.g6.xlarge",
-            "input_s3_uris": ["s3://medzen-speech/eval/sealed/one",
-                                "s3://medzen-speech/eval/sealed/two"],
+            "channels": {"sealed-one": "s3://medzen-speech/eval/sealed/one",
+                          "sealed-two": "s3://medzen-speech/eval/sealed/two"},
             "output_s3_prefix": "s3://medzen-speech/sealed-results/",
             "output_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/k",
             "account_id": "558069890522",
             "region": "eu-central-1",
+            "execution_role_arn": ("arn:aws:iam::558069890522:role/"
+                                     "medzen-sealed-eval-role"),
+            "network_isolation": True,
+            "volume_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/v",
+            "hyperparameters_sha256": "77" * 32,
         },
     }
     packet.update(packet_over or {})
@@ -594,14 +613,16 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                         "status": "Completed",
                         **{k: packet["sealed_run"][k]
                            for k in ("image_digest", "instance_type",
-                                       "input_s3_uris", "output_s3_prefix",
+                                       "channels", "output_s3_prefix",
                                        "output_kms_key_arn", "account_id",
-                                       "region")}},
+                                       "region", "execution_role_arn",
+                                       "network_isolation",
+                                       "volume_kms_key_arn",
+                                       "hyperparameters_sha256")}},
     }).encode()
-    # round 11: the authority and the receipt are SIGNED — tests sign
-    # with a locally generated keypair and pin its public key via env
-    for signed_name in ("HOLDOUT-GRADES.json", "ADMISSION-RECEIPT.json"):
-        files[signed_name + ".sig"] = _test_sign(files[signed_name])
+    # rounds 11-12: the AUTHORITY is signed per-document; the evidence
+    # ROOT (bundle.json) is signed in _arm_bundle after the index exists
+    files["HOLDOUT-GRADES.json.sig"] = _test_sign(files["HOLDOUT-GRADES.json"])
     review = {"status": "PASS", "findings": 0,
               "reviewer": "codex-independent-review"}
     files["INDEPENDENT-REVIEW.json"] = _json.dumps(review).encode()
@@ -637,7 +658,10 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     return bundle, hashlib.sha256(index_bytes).hexdigest()
 
 
-SCORER_BYTES = b"# synthetic scorer bytes for the promotion bundle\n"
+SCORER_BYTES = (ROOT / "platform/promotion/scorer_v1.py").read_bytes()
+
+_scorer_namespace: dict = {}
+exec(compile(SCORER_BYTES, "scorer.py", "exec"), _scorer_namespace)
 
 _TEST_SIGNING_KEY = None
 
@@ -677,10 +701,17 @@ def _arm_bundle(monkeypatch, bundle, pin):
         "MEDZEN_HOLDOUT_GRADES_SHA256",
         _hashlib.sha256(
             (bundle / "HOLDOUT-GRADES.json").read_bytes()).hexdigest())
-    # round 11: pin the TEST keypair's public key — production bakes the
-    # committed key into the image; the boundary is WHO controls the pin
-    monkeypatch.setenv("MEDZEN_PROMOTION_PUBKEY_PATH",
-                        _test_pubkey_pem(bundle))
+    # round 12: the env override is GONE — tests inject the key by
+    # monkeypatching the resolver (production resolves the baked key)
+    import medzen_model_loader.signing as signing
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding, PublicFormat)
+    pem = _test_keypair().public_key().public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+    monkeypatch.setattr(signing, "_public_key_bytes", lambda: pem)
+    # sign the evidence ROOT (the index) with the test key
+    (bundle / "bundle.json.sig").write_bytes(
+        _test_sign((bundle / "bundle.json").read_bytes()))
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
