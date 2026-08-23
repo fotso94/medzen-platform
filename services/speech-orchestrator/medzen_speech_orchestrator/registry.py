@@ -58,11 +58,11 @@ DEPLOYED_CONTRACTS = {
 V2_DEPLOYED_CONTRACTS = {
     "asr": (
         "MEDZEN-SPEECH-CONTRACT-2026-002",
-        "73c8921c6589e196d4db0f29970795f3b742e3de3405c4e7a005f6d2cfdf7751",
+        "da9c256b2f887c112fc30da5caed5cc3bf2b645a3fd07eb50674610693c4b2c3",
     ),
     "rag": (
         "MEDZEN-SPEECH-CONTRACT-2026-002",
-        "73c8921c6589e196d4db0f29970795f3b742e3de3405c4e7a005f6d2cfdf7751",
+        "da9c256b2f887c112fc30da5caed5cc3bf2b645a3fd07eb50674610693c4b2c3",
     ),
     "llm": (
         "MEDZEN-LLM-CONTRACT-2026-002",
@@ -70,7 +70,7 @@ V2_DEPLOYED_CONTRACTS = {
     ),
     "tts": (
         "MEDZEN-TTS-CONTRACT-2026-002",
-        "d2246bd04016a293e3d93c4f291677aa0055b3d5735bdbe9bc2aa15107535e26",
+        "e0a4747f9962165dab5d947aeeccf51d59e1f73d7b835e8815fd63f976fcfef1",
     ),
 }
 

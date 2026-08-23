@@ -449,3 +449,49 @@ def test_composed_blank_grounding_refuses_before_bedrock(composed):
     assert caught.value.code == "BLANK_GROUNDING"
     assert caught.value.status_code == 422
     assert bedrock.calls == [], "blank grounding must never reach Bedrock"
+
+
+def test_round7_orchestrator_refuses_full_tree_mismatch():
+    """Two DIFFERENT full trees sharing the first 12 characters were
+    accepted as the same runtime identity. The v2 orchestrator now
+    compares the full digest exactly."""
+    from medzen_speech_orchestrator.emergency import EmergencyChecker
+    from medzen_speech_orchestrator.orchestrator import (
+        OrchestratorRefusal,
+        SpeechOrchestrator,
+    )
+    from medzen_speech_orchestrator.registry import (
+        RegistryRouter,
+        V2_CLASSIFICATION,
+    )
+
+    store = InMemoryStore()
+    router = RegistryRouter(store, store.root,
+                            expected_classification=V2_CLASSIFICATION)
+    route = router.resolve("kin")
+
+    class SamePrefixDifferentTreeASR(ComposedASRClient):
+        def transcribe(self, audio, *, request_id, route):
+            result = super().transcribe(
+                audio, request_id=request_id, route=route)
+            # same 12-char prefix, different full tree
+            forged = route.asr_artifact_tree_sha256[:12] + "f" * 52
+            return type(result)(**{**result.__dict__,
+                                     "artifact_tree_sha256": forged})
+
+    orchestrator = SpeechOrchestrator(
+        router=router,
+        emergency=EmergencyChecker(
+            ROOT / "registry/emergency-policies/v1.yaml"),
+        asr=SamePrefixDifferentTreeASR(),
+        rag=None, llm=None, tts=None,
+    )
+    assert route.asr_model_version == (
+        f"omniasr_ctc_1b:{route.asr_artifact_tree_sha256[:12]}")
+    with pytest.raises(OrchestratorRefusal,
+                        match="tree digest does not match"):
+        orchestrator.handle(
+            audio=b"RIFF\x00\x00\x00\x00WAVE",
+            request_id="55555555-5555-4555-8555-555555555555",
+            language_hint="kin",
+        )

@@ -74,12 +74,19 @@ def promotable_languages(report: dict, requested: list[str]) -> dict[str, str]:
 
 
 def require_candidate_packet(report: dict, *,
-                             candidate_packet: Mapping[str, Any]) -> None:
+                             candidate_packet: Mapping[str, Any],
+                             mandatory: list[str]) -> None:
     """Round 7 (Codex): the protocol PREDECLARES every threshold before
     any sealed observation — a bundle without an immutable candidate
     packet permits post-result threshold selection. Every statistical
     parameter in the report must equal the packet's predeclared value,
-    and the packet must name the same candidate."""
+    and the packet must name the same candidate.
+
+    Round 8 (Codex, CANDIDATE_PACKET_1_OF_7_ACCEPTED): the packet's
+    language set must equal the protocol's mandatory set EXACTLY — a
+    packet predeclaring only english cannot cover a seven-language
+    atomic promotion. And POSTHOC_CODESWITCH_MARGIN_ACCEPTED: the
+    code-switch gate's parameters are predeclared in the packet too."""
     if report.get("candidate_digest") != candidate_packet.get("candidate_digest"):
         raise PromotionCheckRefusal(
             "candidate packet predeclares a different candidate digest")
@@ -90,6 +97,29 @@ def require_candidate_packet(report: dict, *,
     if not isinstance(declared, Mapping) or not declared:
         raise PromotionCheckRefusal(
             "candidate packet predeclares no per-language parameters")
+    if set(declared) != set(mandatory):
+        raise PromotionCheckRefusal(
+            f"candidate packet predeclares {sorted(declared)} but the "
+            f"protocol's mandatory set is {sorted(mandatory)} — the "
+            "packet covers the WHOLE atomic set or it covers nothing")
+    cs_declared = candidate_packet.get("code_switch")
+    if not isinstance(cs_declared, Mapping):
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares no code-switch parameters")
+    cs_evidence = report.get("code_switch_evidence") or {}
+    cs_stats = (cs_evidence.get("non_inferiority")
+                or cs_evidence.get("improvement") or {})
+    cs_threshold_key = ("margin" if "non_inferiority" in cs_evidence
+                        else "min_relative_gain")
+    for key in (cs_threshold_key, "alpha", "method", "seed", "iterations"):
+        if cs_stats.get(key) != cs_declared.get(key):
+            raise PromotionCheckRefusal(
+                f"code_switch {key}={cs_stats.get(key)!r} does not match "
+                f"the PREDECLARED {cs_declared.get(key)!r}")
+    for key in ("set", "manifest_sha256"):
+        if cs_evidence.get(key) != cs_declared.get(key):
+            raise PromotionCheckRefusal(
+                f"code_switch {key} differs from the predeclared packet")
     for language, predeclared in declared.items():
         entry = report.get("languages", {}).get(language)
         if not isinstance(entry, Mapping):
@@ -121,19 +151,45 @@ def require_candidate_packet(report: dict, *,
             "candidate packet predeclares no operational thresholds")
 
 
+def _finite_nonneg(value: Any, label: str) -> float:
+    """Round 8 (Codex, FAKE_OPERATIONAL_RECEIPT_ACCEPTED): NaN evaded
+    the > comparison and negative values passed."""
+    import math
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise PromotionCheckRefusal(f"{label} must be a number")
+    number = float(value)
+    if not math.isfinite(number) or number < 0:
+        raise PromotionCheckRefusal(
+            f"{label}={value!r} must be finite and non-negative")
+    return number
+
+
+def _utc_ok(value: Any) -> bool:
+    from datetime import datetime
+    try:
+        datetime.strptime(str(value), "%Y-%m-%dT%H:%M:%SZ")
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
 def require_operational_receipt(report: dict, *,
                                 candidate_packet: Mapping[str, Any],
                                 artifact_tree_sha256: str) -> None:
     """Round 7 (Codex, FABRICATED_..._OPERATIONAL_EVIDENCE_ACCEPTED):
     operational evidence must be a measurement RECEIPT tied to the exact
-    artifact tree, the serving image and the hardware, and the measured
-    values must clear the PREDECLARED thresholds — a PASS flag with two
-    numbers is an assertion."""
+    artifact tree, the serving image and the hardware. Round 8 (Codex,
+    FAKE_OPERATIONAL_RECEIPT_ACCEPTED — NaN latency, -9 GB, sha256:x,
+    instance 'banana', empty timestamp): every value is now validated
+    for shape and physics, the instance must be on the packet's
+    predeclared allowlist, and the p95 must RECOMPUTE from the raw
+    latency samples the receipt carries."""
     receipt = report.get("operational_evidence")
     if not isinstance(receipt, Mapping):
         raise PromotionCheckRefusal("gate report lacks operational evidence")
     needed = {"state", "latency_p95_ms", "vram_gb", "artifact_tree_sha256",
-              "serving_image_digest", "instance_type", "measured_utc"}
+              "serving_image_digest", "instance_type", "measured_utc",
+              "latency_samples_ms", "sample_count"}
     missing = needed - set(receipt)
     if missing:
         raise PromotionCheckRefusal(
@@ -142,21 +198,40 @@ def require_operational_receipt(report: dict, *,
     if receipt.get("artifact_tree_sha256") != artifact_tree_sha256:
         raise PromotionCheckRefusal(
             "operational receipt measures a DIFFERENT artifact tree")
-    if not str(receipt.get("serving_image_digest", "")).startswith("sha256:"):
+    image = str(receipt.get("serving_image_digest", ""))
+    if not (image.startswith("sha256:") and _hex(image[7:], 64)):
         raise PromotionCheckRefusal(
-            "operational receipt must pin the serving image digest")
-    if not str(receipt.get("instance_type") or "").strip():
+            "serving_image_digest must be a full sha256:<64 hex> identity")
+    if not _utc_ok(receipt.get("measured_utc")):
         raise PromotionCheckRefusal(
-            "operational receipt must name the measured instance type")
+            "measured_utc must be a valid YYYY-MM-DDTHH:MM:SSZ timestamp")
+    allowed_instances = candidate_packet.get("allowed_instance_types")
+    if not isinstance(allowed_instances, list) or not allowed_instances:
+        raise PromotionCheckRefusal(
+            "candidate packet predeclares no allowed instance types")
+    if receipt.get("instance_type") not in allowed_instances:
+        raise PromotionCheckRefusal(
+            f"instance_type {receipt.get('instance_type')!r} is not on the "
+            f"packet's predeclared allowlist {allowed_instances}")
+    samples = receipt.get("latency_samples_ms")
+    if (not isinstance(samples, list) or len(samples) < 20
+            or receipt.get("sample_count") != len(samples)):
+        raise PromotionCheckRefusal(
+            "operational receipt must carry >=20 raw latency samples and "
+            "a sample_count equal to their number")
+    values = sorted(_finite_nonneg(s, "latency sample") for s in samples)
+    recomputed_p95 = values[min(len(values) - 1,
+                                  int(0.95 * (len(values) - 1)))]
+    latency = _finite_nonneg(receipt["latency_p95_ms"], "latency_p95_ms")
+    if abs(latency - recomputed_p95) > 1e-9:
+        raise PromotionCheckRefusal(
+            f"latency_p95_ms={latency} does not recompute from the raw "
+            f"samples (p95={recomputed_p95})")
+    vram = _finite_nonneg(receipt["vram_gb"], "vram_gb")
     thresholds = candidate_packet.get("operational_thresholds", {})
-    try:
-        latency = float(receipt["latency_p95_ms"])
-        vram = float(receipt["vram_gb"])
-        max_latency = float(thresholds["max_latency_p95_ms"])
-        max_vram = float(thresholds["max_vram_gb"])
-    except (TypeError, ValueError, KeyError) as exc:
-        raise PromotionCheckRefusal(
-            "operational receipt values are not numeric") from exc
+    max_latency = _finite_nonneg(
+        thresholds.get("max_latency_p95_ms"), "max_latency_p95_ms")
+    max_vram = _finite_nonneg(thresholds.get("max_vram_gb"), "max_vram_gb")
     if latency > max_latency or vram > max_vram:
         raise PromotionCheckRefusal(
             f"operational measurements (p95 {latency}ms, {vram}GB) exceed "
@@ -374,10 +449,15 @@ def require_sealed_row_identity(report: dict, mandatory: list[str], *,
                                 manifest_bytes: Callable[[str], bytes | None],
                                 ) -> None:
     """Round 7 (Codex): every result row must belong to the EXACT sealed
-    set — the rows' utterance-id set must equal the sealed manifest's,
-    once each, and the manifest bytes must hash to the report's bound
-    holdout_manifest_sha256. Rows for utterances the sealed set never
-    contained (or a convenient subset of it) are not sealed evidence."""
+    set. Round 8 (Codex): the REAL sealed manifests are JSONL row files
+    with NO utterance_id field — the round-7 verifier invented a wrapper
+    object with a different hash and could never consume them. This now
+    parses the AUTHORITATIVE JSONL manifest whose raw bytes hash to the
+    bound holdout identity, derives the deterministic row identity from
+    the immutable audio_checksum_sha256 (unique per utterance), and
+    additionally binds each result row's cluster to the manifest row's
+    speaker — invented rows, dropped utterances, duplicates and cluster
+    manipulation all refuse."""
     for language in mandatory:
         entry = report["languages"][language]
         manifest_raw = manifest_bytes(language)
@@ -391,30 +471,100 @@ def require_sealed_row_identity(report: dict, mandatory: list[str], *,
             raise PromotionCheckRefusal(
                 f"{language}: holdout manifest bytes do not hash to the "
                 "report's bound sealed-set identity")
-        manifest = json.loads(manifest_raw)
-        sealed_ids = manifest.get("utterance_ids")
-        if (not isinstance(sealed_ids, list) or not sealed_ids
-                or len(set(sealed_ids)) != len(sealed_ids)):
+        speaker_by_checksum: dict[str, str] = {}
+        for line in manifest_raw.decode().splitlines():
+            if not line.strip():
+                continue
+            try:
+                manifest_row = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise PromotionCheckRefusal(
+                    f"{language}: sealed manifest is not valid JSONL"
+                ) from exc
+            checksum = str(manifest_row.get("audio_checksum_sha256", ""))
+            if not _hex(checksum, 64):
+                raise PromotionCheckRefusal(
+                    f"{language}: a sealed manifest row lacks its "
+                    "audio_checksum_sha256 identity")
+            if checksum in speaker_by_checksum:
+                raise PromotionCheckRefusal(
+                    f"{language}: duplicate audio checksum in the sealed "
+                    "manifest — the set identity is ambiguous")
+            speaker_by_checksum[checksum] = str(
+                manifest_row.get("speaker_id", ""))
+        if not speaker_by_checksum:
             raise PromotionCheckRefusal(
-                f"{language}: sealed manifest carries no unique "
-                "utterance_ids list")
+                f"{language}: sealed manifest contains no rows")
         body = rows_bytes(language)
         if body is None:
             raise PromotionCheckRefusal(
                 f"{language}: rows absent for sealed-identity check")
-        row_ids = [json.loads(line).get("utterance_id")
-                   for line in body.decode().splitlines() if line.strip()]
-        if any(not isinstance(i, str) or not i for i in row_ids):
-            raise PromotionCheckRefusal(
-                f"{language}: every result row must carry its utterance_id")
-        if len(set(row_ids)) != len(row_ids):
-            raise PromotionCheckRefusal(
-                f"{language}: duplicate utterance rows — each sealed "
-                "utterance is scored exactly once")
-        if set(row_ids) != set(sealed_ids):
+        seen: set[str] = set()
+        for line in body.decode().splitlines():
+            if not line.strip():
+                continue
+            result_row = json.loads(line)
+            checksum = str(result_row.get("audio_checksum_sha256", ""))
+            if not _hex(checksum, 64):
+                raise PromotionCheckRefusal(
+                    f"{language}: every result row must carry the "
+                    "audio_checksum_sha256 of the sealed utterance it scored")
+            if checksum in seen:
+                raise PromotionCheckRefusal(
+                    f"{language}: duplicate utterance rows — each sealed "
+                    "utterance is scored exactly once")
+            seen.add(checksum)
+            speaker = speaker_by_checksum.get(checksum)
+            if speaker is None:
+                raise PromotionCheckRefusal(
+                    f"{language}: a result row scores an utterance the "
+                    "sealed manifest never contained")
+            if speaker and str(result_row.get("cluster_id")) != speaker:
+                raise PromotionCheckRefusal(
+                    f"{language}: result row cluster does not match the "
+                    "sealed manifest's speaker for that utterance")
+        if seen != set(speaker_by_checksum):
             raise PromotionCheckRefusal(
                 f"{language}: result rows do not cover EXACTLY the sealed "
                 "utterance set (missing or invented utterances)")
+
+
+def verify_packet_chronology(report: dict, *,
+                             candidate_packet: Mapping[str, Any],
+                             packet_bytes: bytes,
+                             anchor_fetch: Callable[
+                                 [Mapping[str, Any]], tuple[bytes, str]],
+                             ) -> None:
+    """Round 8 (Codex): nothing proved the 'predeclared' packet existed
+    BEFORE sealed observation — it was born inside the same bundle as
+    the results. The packet must carry an immutable anchor (an S3
+    VersionId or a git commit — something whose creation time is set by
+    the storage system, not by the author), the anchored bytes must
+    equal the bundled packet exactly, and the anchor's timestamp must
+    precede the report's declared sealed-run start."""
+    anchor = candidate_packet.get("anchor")
+    if not isinstance(anchor, Mapping) or not anchor:
+        raise PromotionCheckRefusal(
+            "candidate packet carries no immutability anchor — "
+            "predeclaration cannot be proven")
+    started = report.get("sealed_run_started_utc")
+    if not _utc_ok(started):
+        raise PromotionCheckRefusal(
+            "gate report must declare sealed_run_started_utc "
+            "(YYYY-MM-DDTHH:MM:SSZ)")
+    anchored_bytes, anchored_utc = anchor_fetch(anchor)
+    if anchored_bytes != packet_bytes:
+        raise PromotionCheckRefusal(
+            "the anchored candidate packet bytes differ from the bundled "
+            "packet — the predeclaration was edited after anchoring")
+    if not _utc_ok(anchored_utc):
+        raise PromotionCheckRefusal(
+            "the anchor authority returned no valid timestamp")
+    if anchored_utc >= str(started):
+        raise PromotionCheckRefusal(
+            f"the packet was anchored at {anchored_utc}, NOT before the "
+            f"sealed run started at {started} — post-hoc predeclaration "
+            "refused")
 
 
 def recompute_code_switch(report: dict, *,
@@ -464,3 +614,52 @@ def recompute_code_switch(report: dict, *,
         raise PromotionCheckRefusal(
             f"code-switch recomputation {facts} does not match the "
             f"claimed {claims}")
+
+
+def verify_complete_promotion(report: dict, *,
+                              protocol: Mapping[str, Any],
+                              holdouts_by_language: Mapping[str, set[str]],
+                              grades_by_holdout: Mapping[str, str],
+                              candidate_packet: Mapping[str, Any],
+                              packet_bytes: bytes,
+                              artifact_tree_sha256: str,
+                              rows_bytes: Callable[[str], bytes | None],
+                              manifest_bytes: Callable[[str], bytes | None],
+                              anchor_fetch: Callable[
+                                  [Mapping[str, Any]], tuple[bytes, str]],
+                              ) -> dict[str, str]:
+    """Round 8 (Codex): the ONE complete promotion gate. The repo-side
+    checker and the runtime bundle verifier both call THIS with their
+    own authority adapters — a split-brain gate is how every prior
+    bypass survived. Order matters only for error quality; every check
+    must pass."""
+    mandatory = list(protocol.get("mandatory_languages", []))
+    if not mandatory:
+        raise PromotionCheckRefusal("protocol declares no mandatory set")
+    if str(report.get("candidate_digest") or "") != (
+        f"sha256:{artifact_tree_sha256}"
+    ):
+        raise PromotionCheckRefusal(
+            "gate report candidate_digest does not name this artifact tree")
+    validate_report_structure(report)
+    states = promotable_languages(report, mandatory)
+    require_candidate_packet(
+        report, candidate_packet=candidate_packet, mandatory=mandatory)
+    verify_packet_chronology(
+        report, candidate_packet=candidate_packet,
+        packet_bytes=packet_bytes, anchor_fetch=anchor_fetch)
+    require_protocol_evidence(
+        report, mandatory, protocol=protocol,
+        holdouts_by_language=holdouts_by_language)
+    require_holdout_grades(
+        report, grades_by_holdout=grades_by_holdout, mandatory=mandatory)
+    recompute_statistics(
+        report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
+    require_sealed_row_identity(
+        report, mandatory, rows_bytes=rows_bytes,
+        manifest_bytes=manifest_bytes)
+    recompute_code_switch(report, rows_bytes=rows_bytes)
+    require_operational_receipt(
+        report, candidate_packet=candidate_packet,
+        artifact_tree_sha256=artifact_tree_sha256)
+    return states

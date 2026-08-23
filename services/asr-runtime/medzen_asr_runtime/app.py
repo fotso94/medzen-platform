@@ -236,9 +236,14 @@ def create_app(backend: Backend | None = None, *,
         session_id = str(uuid.uuid4())
 
         def event(kind: str, **fields: Any) -> dict[str, Any]:
-            return {"type": kind, "request_id": request_id,
-                    "session_id": session_id,
-                    "model_versions": runtime.model_versions, **fields}
+            # round 8 (Codex, V2_WS_TREE_FIELDS=[None,None,None]): the
+            # FULL tree digest rides EVERY v2 streaming event, exactly
+            # like the HTTP payload; the frozen v0 stream is unchanged
+            # (no attribute, no field)
+            return _with_tree({"type": kind, "request_id": request_id,
+                                "session_id": session_id,
+                                "model_versions": runtime.model_versions,
+                                **fields}, runtime)
 
         await websocket.send_json(event("ready"))
         audio = bytearray()

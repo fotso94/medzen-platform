@@ -376,10 +376,13 @@ def test_s3_cache_only_404_is_a_miss_others_raise():
 def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                       labels_only=False, record_over=None,
                       report_over=None, packet_over=None,
+                      packet_languages_over=None,
                       protocol_id="PROMOTION-PROTOCOL-2026-004"):
-    """Round 7 bundle: PREDECLARED candidate packet, sealed-manifest
-    utterance identity, per-row code-switch evidence and an operational
-    receipt — every statistic recomputed by the shared gate."""
+    """Round 8 bundle: AUTHORITATIVE JSONL sealed manifests
+    (audio_checksum_sha256 identity + speaker cluster binding), a
+    complete predeclared packet (all mandatory languages, code-switch
+    parameters, instance allowlist, chronology anchor) and a sampled
+    operational receipt — every statistic recomputed by the ONE gate."""
     import hashlib
     import json as _json
     from medzen_model_loader.noninferiority import clustered_noninferiority
@@ -407,27 +410,43 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                     "iterations": 200,
                     "method": "paired_clustered_bootstrap"}
 
-    def paired_rows(label, broken=False):
-        rows = [
-            {"utterance_id": f"{label}-utt-{cluster}-{i}",
-             "cluster_id": f"spk{cluster}",
-             "baseline_errors": 4 + cluster,
-             "candidate_errors": 30 if broken else 2,
-             "reference_words": 40}
-            for cluster in range(4) for i in range(3)
-        ]
-        body = "\n".join(_json.dumps(r) for r in rows).encode() + b"\n"
-        return rows, body
+    def build_language(label, broken=False):
+        """Authoritative-format JSONL manifest + matching result rows:
+        identity = audio_checksum_sha256, cluster = speaker_id."""
+        manifest_rows = []
+        result_rows = []
+        for cluster in range(4):
+            speaker = f"{label}-spk{cluster}"
+            for i in range(3):
+                checksum = hashlib.sha256(
+                    f"{label}-audio-{cluster}-{i}".encode()).hexdigest()
+                manifest_rows.append({
+                    "audio_checksum_sha256": checksum,
+                    "speaker_id": speaker,
+                    "session_id": f"{label}-sess{cluster}",
+                    "duration_s": 5.0,
+                    "text_normalized": "synthetic evidence row",
+                })
+                result_rows.append({
+                    "audio_checksum_sha256": checksum,
+                    "cluster_id": speaker,
+                    "baseline_errors": 4 + cluster,
+                    "candidate_errors": 30 if broken else 2,
+                    "reference_words": 40,
+                })
+        manifest_bytes = ("\n".join(_json.dumps(r) for r in manifest_rows)
+                           .encode() + b"\n")
+        rows_bytes = ("\n".join(_json.dumps(r) for r in result_rows)
+                       .encode() + b"\n")
+        return manifest_bytes, rows_bytes, result_rows
 
     report_languages = {}
     holdouts = {}
     packet_languages = {}
     for language in languages:
-        rows, rows_body = paired_rows(language,
-                                       broken=(language == break_rows_for))
-        clean_rows, _ = paired_rows(language)
-        manifest = {"utterance_ids": [r["utterance_id"] for r in clean_rows]}
-        manifest_bytes = _json.dumps(manifest).encode()
+        manifest_bytes, rows_body, result_rows = build_language(
+            language, broken=(language == break_rows_for))
+        _, clean_body, clean_rows = build_language(language)
         holdout_sha = hashlib.sha256(manifest_bytes).hexdigest()
         holdouts[language] = [{"sha256": holdout_sha,
                                  "grade": "promotion_grade"}]
@@ -452,19 +471,23 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                      "gates": {"everything": "PASS"}}
         report_languages[language] = entry
         files[f"{language}.rows.jsonl"] = rows_body
-        files[f"{language}.holdout-manifest.json"] = manifest_bytes
+        files[f"{language}.holdout-manifest.jsonl"] = manifest_bytes
 
-    cs_rows, cs_body = paired_rows("codeswitch")
+    _, cs_body, cs_rows = build_language("codeswitch")
     cs_stats = clustered_noninferiority(
         cs_rows, margin=PREDECLARED["margin"],
         iterations=PREDECLARED["iterations"],
         seed=PREDECLARED["seed"], alpha=PREDECLARED["alpha"])
     files["code_switch.rows.jsonl"] = cs_body
 
+    samples = [700.0 + i for i in range(40)]
+    p95 = sorted(samples)[min(len(samples) - 1,
+                                int(0.95 * (len(samples) - 1)))]
     report = {
         "schema_version": "medzen-b5-gate-report-v1",
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
+        "sealed_run_started_utc": "2026-08-23T12:00:00Z",
         "languages": report_languages,
         "gate_state_counts": {"PASS": len(languages)},
         "code_switch_evidence": {
@@ -477,11 +500,13 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
                                   "iterations", "alpha")},
         },
         "operational_evidence": {
-            "state": "PASS", "latency_p95_ms": 850, "vram_gb": 11.2,
+            "state": "PASS", "latency_p95_ms": p95, "vram_gb": 11.2,
             "artifact_tree_sha256": tree_digest,
             "serving_image_digest": "sha256:" + "9a" * 32,
             "instance_type": "ml.g6.xlarge",
-            "measured_utc": "2026-08-23T00:00:00Z",
+            "measured_utc": "2026-08-23T13:00:00Z",
+            "latency_samples_ms": samples,
+            "sample_count": len(samples),
         },
     }
     report.update(report_over or {})
@@ -490,9 +515,18 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     packet = {
         "protocol_id": "PROMOTION-PROTOCOL-2026-004",
         "candidate_digest": f"sha256:{tree_digest}",
-        "languages": packet_languages,
+        "languages": (packet_languages_over
+                       if packet_languages_over is not None
+                       else packet_languages),
+        "code_switch": dict(PREDECLARED,
+                              set="kinyarwanda-english-cs-v1",
+                              manifest_sha256="ab" * 32),
         "operational_thresholds": {"max_latency_p95_ms": 1200,
                                      "max_vram_gb": 20},
+        "allowed_instance_types": ["ml.g6.xlarge"],
+        "anchor": {"type": "s3", "bucket": "medzen-speech",
+                    "key": "promotion/candidate-packet.json",
+                    "version_id": "test-version-1"},
     }
     packet.update(packet_over or {})
     files["CANDIDATE-PACKET.json"] = _json.dumps(packet).encode()
@@ -528,14 +562,23 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
 
 
 def _arm_bundle(monkeypatch, bundle, pin):
+    """Arm the bundle env AND a faithful anchor authority: it returns
+    the bundled packet bytes with a timestamp BEFORE the sealed run —
+    individual tests override it to prove chronology refusals."""
+    import medzen_model_loader.loader_v2 as loader_v2
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
     monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
+    packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
+    monkeypatch.setattr(
+        loader_v2, "PROMOTION_ANCHOR_FETCH",
+        lambda anchor: (packet_bytes, "2026-08-23T10:00:00Z"))
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
-    """Codex rounds 2-7: production standing verifies an immutable bundle
-    whose evidence RECOMPUTES — labels, invented counts, post-hoc
-    thresholds and off-manifest rows all refuse."""
+    """Codex rounds 2-8: production standing verifies an immutable bundle
+    whose evidence RECOMPUTES against the authoritative sealed-manifest
+    format — labels, invented counts, post-hoc thresholds and
+    off-manifest rows all refuse."""
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                artifact_tree_sha256,
                                                validate_manifest_v2)
@@ -549,7 +592,8 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    # the full recomputable bundle passes
+    # the full recomputable bundle passes — through the REAL JSONL
+    # sealed-manifest format (audio_checksum_sha256 identity)
     bundle, pin = _promotion_bundle(tmp_path, tree)
     _arm_bundle(monkeypatch, bundle, pin)
     ok = validate_manifest_v2(_v2_manifest(
@@ -609,56 +653,104 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
             digest=digest, classification="PRODUCTION"))
 
 
-def test_round7_adversarial_promotion_reproductions(tmp_path, monkeypatch):
-    """The EXACT round-7 Codex reproductions, encoded as refusals:
-    FABRICATED_CODE_SWITCH_AND_OPERATIONAL_EVIDENCE_ACCEPTED and
-    FABRICATED_ROW_AND_CLUSTER_COUNTS_ACCEPTED, plus post-hoc threshold
-    selection and off-manifest rows."""
-    import hashlib as _hashlib
+def test_round8_adversarial_promotion_reproductions(tmp_path, monkeypatch):
+    """The EXACT round-8 Codex reproductions as refusals:
+    CANDIDATE_PACKET_1_OF_7_ACCEPTED, POSTHOC_CODESWITCH_MARGIN_ACCEPTED,
+    FAKE_OPERATIONAL_RECEIPT_ACCEPTED (NaN/-9/sha256:x/banana/empty),
+    plus unproven predeclaration chronology."""
     import json as _json
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
                                                artifact_tree_sha256,
                                                validate_manifest_v2)
+    import medzen_model_loader.loader_v2 as loader_v2
     import pytest
     digest = "ab" * 32
     tree = artifact_tree_sha256(digest, "12" * 32)
 
-    def refuse(match, **kwargs):
-        bundle, pin = _promotion_bundle(tmp_path / match[:12], tree, **kwargs)
+    def expect(match, **kwargs):
+        name = "".join(c for c in match if c.isalnum())[:16]
+        bundle, pin = _promotion_bundle(tmp_path / name, tree, **kwargs)
         _arm_bundle(monkeypatch, bundle, pin)
         with pytest.raises(LoaderV2Refusal, match=match):
             validate_manifest_v2(_v2_manifest(
                 digest=digest, classification="PRODUCTION"))
+        return bundle, pin
 
-    # 1. code-switch as a bare PASS label (no stats block, no rows hash)
-    refuse("code_switch_evidence carries no statistics",
-           report_over={"code_switch_evidence": {
-               "state": "PASS", "set": "cs-v1",
-               "manifest_sha256": "ab" * 32, "rows": 500}})
+    # 1. a packet predeclaring ONLY english cannot promote seven languages
+    single = {"english": {"margin": 0.02, "alpha": 0.05, "seed": 20260823,
+                            "iterations": 200,
+                            "method": "paired_clustered_bootstrap",
+                            "holdout_manifest_sha256": "00" * 32}}
+    expect("WHOLE atomic set", packet_languages_over=single)
 
-    # 2. operational evidence without a measurement receipt
-    refuse("operational receipt lacks",
-           report_over={"operational_evidence": {
-               "state": "PASS", "latency_p95_ms": 1, "vram_gb": 1}})
+    # 2. post-hoc code-switch margin: report margin != predeclared margin
+    expect("code_switch margin",
+           packet_over={"code_switch": {
+               "margin": 0.5, "alpha": 0.05, "seed": 20260823,
+               "iterations": 200, "method": "paired_clustered_bootstrap",
+               "set": "kinyarwanda-english-cs-v1",
+               "manifest_sha256": "ab" * 32}})
 
-    # 2b. operational receipt measuring a DIFFERENT artifact
-    refuse("DIFFERENT artifact tree",
-           report_over={"operational_evidence": {
-               "state": "PASS", "latency_p95_ms": 850, "vram_gb": 11.2,
-               "artifact_tree_sha256": "ee" * 32,
-               "serving_image_digest": "sha256:" + "9a" * 32,
-               "instance_type": "ml.g6.xlarge",
-               "measured_utc": "2026-08-23T00:00:00Z"}})
+    # 3. the FAKE operational receipt, field by field
+    fake = {"state": "PASS", "latency_p95_ms": float("nan"),
+             "vram_gb": -9, "artifact_tree_sha256": tree,
+             "serving_image_digest": "sha256:x", "instance_type": "banana",
+             "measured_utc": "", "latency_samples_ms": [1.0] * 20,
+             "sample_count": 20}
+    expect("sha256:<64 hex>", report_over={"operational_evidence": fake})
+    fixed_image = dict(fake, serving_image_digest="sha256:" + "9a" * 32)
+    expect("measured_utc", report_over={"operational_evidence": fixed_image})
+    fixed_utc = dict(fixed_image, measured_utc="2026-08-23T13:00:00Z")
+    expect("allowlist", report_over={"operational_evidence": fixed_utc})
+    fixed_instance = dict(fixed_utc, instance_type="ml.g6.xlarge")
+    expect("finite", report_over={"operational_evidence": fixed_instance})
 
-    # 3. fabricated row/cluster counts on real rows
-    bundle, pin = _promotion_bundle(tmp_path / "counts", tree)
-    report = _json.loads((bundle / "T6-GATE-REPORT.json").read_bytes())
-    report["languages"]["swahili"]["non_inferiority"]["rows"] = 5000
-    report["languages"]["swahili"]["non_inferiority"]["clusters"] = 400
-    body = _json.dumps(report).encode()
-    (bundle / "T6-GATE-REPORT.json").write_bytes(body)
+    # 4. chronology: an anchor whose timestamp is AFTER the sealed run
+    bundle, pin = _promotion_bundle(tmp_path / "posthoc-anchor", tree)
+    packet_bytes = (bundle / "CANDIDATE-PACKET.json").read_bytes()
+    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
+    monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
+    monkeypatch.setattr(
+        loader_v2, "PROMOTION_ANCHOR_FETCH",
+        lambda anchor: (packet_bytes, "2026-08-23T14:00:00Z"))
+    with pytest.raises(LoaderV2Refusal, match="post-hoc predeclaration"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 5. anchored bytes that differ from the bundled packet
+    monkeypatch.setattr(
+        loader_v2, "PROMOTION_ANCHOR_FETCH",
+        lambda anchor: (packet_bytes + b" ", "2026-08-23T10:00:00Z"))
+    with pytest.raises(LoaderV2Refusal, match="edited after anchoring"):
+        validate_manifest_v2(_v2_manifest(
+            digest=digest, classification="PRODUCTION"))
+
+    # 6. result rows whose cluster does not match the sealed speaker
+    bundle, pin = _promotion_bundle(tmp_path / "clusterswap", tree)
+    rows_path = bundle / "english.rows.jsonl"
+    rows = [_json.loads(l) for l in
+            rows_path.read_bytes().decode().splitlines() if l.strip()]
+    rows[0]["cluster_id"] = "someone-else"
+    body = "\n".join(_json.dumps(r) for r in rows).encode() + b"\n"
+    rows_path.write_bytes(body)
+    import hashlib as _hashlib
     index = _json.loads((bundle / "bundle.json").read_bytes())
-    index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(body).hexdigest()
+    index["files"]["english.rows.jsonl"] = _hashlib.sha256(body).hexdigest()
+    report = _json.loads((bundle / "T6-GATE-REPORT.json").read_bytes())
+    report["languages"]["english"]["rows_sha256"] = index["files"]["english.rows.jsonl"]
+    # keep the statistics honest for the swapped rows so ONLY the
+    # cluster-identity check can fire
+    from medzen_model_loader.noninferiority import clustered_noninferiority
+    stats = clustered_noninferiority(rows, margin=0.02, iterations=200,
+                                       seed=20260823, alpha=0.05)
+    report["languages"]["english"]["non_inferiority"] = {
+        k: stats[k] for k in ("margin", "upper_ci", "method", "clusters",
+                                "rows", "non_inferior", "seed",
+                                "iterations", "alpha")}
+    report_body = _json.dumps(report).encode()
+    (bundle / "T6-GATE-REPORT.json").write_bytes(report_body)
+    index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(
+        report_body).hexdigest()
     record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
     record["gate_report"]["record_sha256"] = index["files"]["T6-GATE-REPORT.json"]
     record_body = _json.dumps(record).encode()
@@ -669,86 +761,7 @@ def test_round7_adversarial_promotion_reproductions(tmp_path, monkeypatch):
     (bundle / "bundle.json").write_bytes(index_bytes)
     _arm_bundle(monkeypatch, bundle,
                 _hashlib.sha256(index_bytes).hexdigest())
-    with pytest.raises(LoaderV2Refusal, match="counts must derive"):
-        validate_manifest_v2(_v2_manifest(
-            digest=digest, classification="PRODUCTION"))
-
-    # 4. post-result threshold selection: report margin differs from the
-    # PREDECLARED packet margin
-    loose = {"margin": 0.5, "alpha": 0.05, "seed": 20260823,
-             "iterations": 200, "method": "paired_clustered_bootstrap"}
-    refuse("PREDECLARED",
-           packet_over={"languages": {
-               lang: dict(loose, holdout_manifest_sha256="00" * 32)
-               for lang in ("english", "ewe", "french", "kinyarwanda",
-                             "lingala", "pidgin", "swahili")}})
-
-    # 5. a bundle omitting the candidate packet entirely
-    refuse("candidate packet",
-           record_over={"candidate_packet": {"record": "MISSING.json",
-                                               "record_sha256": "00" * 64}})
-
-    # 6. rows for utterances the sealed manifest never contained
-    bundle, pin = _promotion_bundle(tmp_path / "offmanifest", tree)
-    manifest_path = bundle / "english.holdout-manifest.json"
-    manifest = _json.loads(manifest_path.read_bytes())
-    manifest["utterance_ids"][0] = "invented-utterance"
-    # keep the report's bound holdout sha in sync so ONLY the row
-    # identity check can fire
-    manifest_body = _json.dumps(manifest).encode()
-    manifest_path.write_bytes(manifest_body)
-    new_holdout_sha = _hashlib.sha256(manifest_body).hexdigest()
-    index = _json.loads((bundle / "bundle.json").read_bytes())
-    index["files"]["english.holdout-manifest.json"] = new_holdout_sha
-    report = _json.loads((bundle / "T6-GATE-REPORT.json").read_bytes())
-    report["languages"]["english"]["holdout_manifest_sha256"] = new_holdout_sha
-    body = _json.dumps(report).encode()
-    (bundle / "T6-GATE-REPORT.json").write_bytes(body)
-    index["files"]["T6-GATE-REPORT.json"] = _hashlib.sha256(body).hexdigest()
-    packet = _json.loads((bundle / "CANDIDATE-PACKET.json").read_bytes())
-    packet["languages"]["english"]["holdout_manifest_sha256"] = new_holdout_sha
-    packet_body = _json.dumps(packet).encode()
-    (bundle / "CANDIDATE-PACKET.json").write_bytes(packet_body)
-    index["files"]["CANDIDATE-PACKET.json"] = _hashlib.sha256(
-        packet_body).hexdigest()
-    bindings = _json.loads((bundle / "HOLDOUT-BINDINGS.json").read_bytes())
-    bindings["english"] = [{"sha256": new_holdout_sha,
-                              "grade": "promotion_grade"}]
-    bindings_body = _json.dumps(bindings).encode()
-    (bundle / "HOLDOUT-BINDINGS.json").write_bytes(bindings_body)
-    index["files"]["HOLDOUT-BINDINGS.json"] = _hashlib.sha256(
-        bindings_body).hexdigest()
-    record = _json.loads((bundle / "PROMOTION-RECORD.json").read_bytes())
-    record["gate_report"]["record_sha256"] = index["files"]["T6-GATE-REPORT.json"]
-    record["candidate_packet"]["record_sha256"] = index["files"]["CANDIDATE-PACKET.json"]
-    record_body = _json.dumps(record).encode()
-    (bundle / "PROMOTION-RECORD.json").write_bytes(record_body)
-    index["files"]["PROMOTION-RECORD.json"] = _hashlib.sha256(
-        record_body).hexdigest()
-    index_bytes = _json.dumps(index).encode()
-    (bundle / "bundle.json").write_bytes(index_bytes)
-    _arm_bundle(monkeypatch, bundle,
-                _hashlib.sha256(index_bytes).hexdigest())
-    with pytest.raises(LoaderV2Refusal, match="EXACTLY the sealed"):
-        validate_manifest_v2(_v2_manifest(
-            digest=digest, classification="PRODUCTION"))
-
-    # 7. a development-grade holdout as sole evidence
-    bundle, pin = _promotion_bundle(tmp_path / "devgrade", tree)
-    bindings = _json.loads((bundle / "HOLDOUT-BINDINGS.json").read_bytes())
-    for language in bindings:
-        for entry in bindings[language]:
-            entry["grade"] = "development_grade_only"
-    bindings_body = _json.dumps(bindings).encode()
-    (bundle / "HOLDOUT-BINDINGS.json").write_bytes(bindings_body)
-    index = _json.loads((bundle / "bundle.json").read_bytes())
-    index["files"]["HOLDOUT-BINDINGS.json"] = _hashlib.sha256(
-        bindings_body).hexdigest()
-    index_bytes = _json.dumps(index).encode()
-    (bundle / "bundle.json").write_bytes(index_bytes)
-    _arm_bundle(monkeypatch, bundle,
-                _hashlib.sha256(index_bytes).hexdigest())
-    with pytest.raises(LoaderV2Refusal, match="development-grade"):
+    with pytest.raises(LoaderV2Refusal, match="speaker"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 

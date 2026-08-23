@@ -198,7 +198,7 @@
         "model_versions": {
           "properties": {
             "tts": {
-              "type": "string"
+              "const": "fake-fish-local-v1"
             }
           }
         },

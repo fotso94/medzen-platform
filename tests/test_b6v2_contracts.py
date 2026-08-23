@@ -178,3 +178,79 @@ def test_prohibited_identity_combinations_refuse():
                    degradation_reason="POLICY_TEXT_ONLY",
                    provider_attempted=False)
     validator.validate(policy)
+
+
+def test_cartesian_product_of_identity_combinations():
+    """Round 8 (Codex): enumerate the provider/backend/delivery/media/
+    version/degradation product and assert the schema accepts EXACTLY
+    the five legal variants — nothing sneaks between branches."""
+    import itertools
+    from jsonschema import ValidationError
+
+    validator = _validator("tts-v2/response.schema.json")
+    text = "cartesian"
+    URLS = {"https": "https://s3.example/tts/x.mp3",
+            "local": "medzen+local://tts/" + "ab" * 32, "null": None}
+    MEDIA = {"mpeg": "audio/mpeg",
+              "synthetic": "audio/vnd.medzen.synthetic", "null": None}
+    VERSIONS = {"fish_s1": "fish:s1",
+                 "fake_v1": "fake-fish-local-v1", "null": None}
+    REASONS = {"null": None, "policy": "POLICY_TEXT_ONLY",
+                "timeout": "FISH_TIMEOUT"}
+
+    def legal(provider, backend, url_kind, media_kind, version_kind,
+              reason_kind, attempted):
+        if provider == "fish" and backend == "fish":
+            return (url_kind == "https" and media_kind == "mpeg"
+                    and version_kind == "fish_s1" and reason_kind == "null")
+        if provider == "fake_fish" and backend == "fish":
+            return (url_kind == "local" and media_kind == "synthetic"
+                    and version_kind == "fake_v1" and reason_kind == "null")
+        if provider == "text_only" and backend == "text_only":
+            return (url_kind == "null" and media_kind == "null"
+                    and version_kind == "null" and reason_kind == "policy"
+                    and attempted is False)
+        if provider in ("fish", "fake_fish") and backend == "text_only":
+            return (url_kind == "null" and media_kind == "null"
+                    and version_kind == "null" and reason_kind == "timeout")
+        return False
+
+    accepted = rejected = 0
+    for combination in itertools.product(
+        ("fish", "fake_fish", "text_only"), ("fish", "text_only"),
+        URLS, MEDIA, VERSIONS, REASONS, (True, False),
+    ):
+        provider, backend, url_kind, media_kind, version_kind, \
+            reason_kind, attempted = combination
+        response = {
+            "request_id": "44444444-4444-4444-8444-444444444444",
+            "language": "kin",
+            "text": text,
+            "content_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            "synthesis_key_sha256": "ab" * 32,
+            "tts_backend": backend,
+            "provider": provider,
+            "audio_url": URLS[url_kind],
+            "media_type": MEDIA[media_kind],
+            "audio_sha256": (hashlib.sha256(b"x").hexdigest()
+                              if url_kind != "null" else None),
+            "model_versions": {
+                "asr": None, "registry_snapshot": "b6v2-nonprod:" + "cd" * 32,
+                "llm": None, "rag": None, "tts": VERSIONS[version_kind]},
+            "cache_hit": False,
+            "provider_attempted": attempted,
+            "degradation_reason": REASONS[reason_kind],
+        }
+        expected = legal(*combination)
+        try:
+            validator.validate(response)
+            actually = True
+        except ValidationError:
+            actually = False
+        assert actually == expected, (
+            f"combination {combination}: schema "
+            f"{'accepted' if actually else 'rejected'}, expected "
+            f"{'legal' if expected else 'illegal'}")
+        accepted += actually
+        rejected += not actually
+    assert accepted >= 5 and rejected > accepted, (accepted, rejected)

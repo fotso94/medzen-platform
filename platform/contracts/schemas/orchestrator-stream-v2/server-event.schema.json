@@ -123,6 +123,10 @@
           "type": "boolean"
         }
       }
+    },
+    "artifact_tree_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     }
   },
   "allOf": [

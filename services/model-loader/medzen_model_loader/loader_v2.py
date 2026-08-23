@@ -49,6 +49,28 @@ class LoaderV2Refusal(RuntimeError):
     pass
 
 
+def _s3_anchor_fetch(anchor):
+    """Round 8 (Codex): predeclaration chronology. Fetch the EXACT
+    anchored S3 object version; its LastModified is set by the storage
+    system, not the author. Tests monkeypatch PROMOTION_ANCHOR_FETCH."""
+    import boto3
+    if anchor.get("type") != "s3":
+        raise LoaderV2Refusal(
+            f"unsupported packet anchor type {anchor.get('type')!r} in "
+            "the runtime (S3 VersionId required)")
+    client = boto3.client(
+        "s3", region_name=os.environ.get("AWS_REGION", "eu-central-1"))
+    response = client.get_object(
+        Bucket=str(anchor["bucket"]), Key=str(anchor["key"]),
+        VersionId=str(anchor["version_id"]))
+    body = response["Body"].read()
+    anchored_utc = response["LastModified"].strftime("%Y-%m-%dT%H:%M:%SZ")
+    return body, anchored_utc
+
+
+PROMOTION_ANCHOR_FETCH = _s3_anchor_fetch
+
+
 def _sha256_ok(value: Any) -> bool:
     return (isinstance(value, str) and len(value) == 64
             and all(c in SHA_HEX for c in value.lower()))
@@ -223,40 +245,27 @@ def _verify_promotion_bundle(digest: str) -> None:
     # that must reproduce the claimed clustered-bootstrap verdicts, not
     # PASS labels. Holdout authority is the bundled, index-pinned
     # HOLDOUT-BINDINGS document (the deployment pin is the trust anchor).
+    # Round 8 (Codex): the ONE complete gate — same entry point the
+    # repo-side checker runs, fed with bundle-pinned authorities.
     from .promotion_check import (
         PromotionCheckRefusal,
-        promotable_languages,
-        recompute_code_switch,
-        recompute_statistics,
-        require_candidate_packet,
-        require_holdout_grades,
-        require_operational_receipt,
-        require_protocol_evidence,
-        require_sealed_row_identity,
-        validate_report_structure,
+        verify_complete_promotion,
     )
 
     report = _bundled(record.get("gate_report"), "gate report")
     if "HOLDOUT-BINDINGS.json" not in loaded:
         raise LoaderV2Refusal(
             "promotion bundle omits the sealed-holdout bindings")
-    # round 7: bindings carry GRADES too — {language: [{sha256, grade}]}
+    # bindings carry GRADES too — {language: [{sha256, grade}]}
     holdouts: dict[str, set[str]] = {}
     grades: dict[str, str] = {}
     for language, entries in loaded["HOLDOUT-BINDINGS.json"].items():
         for binding in entries:
             holdouts.setdefault(language, set()).add(str(binding["sha256"]))
             grades[str(binding["sha256"])] = str(binding.get("grade", ""))
-    if str(report.get("candidate_digest") or "") != f"sha256:{digest}":
-        raise LoaderV2Refusal(
-            "gate report candidate_digest does not name this artifact tree")
-    # round 7 (Codex): the PREDECLARED candidate packet is mandatory —
-    # thresholds, alpha, method, seed and iterations are fixed before
-    # any sealed observation, never selected after the results
     packet = _bundled(record.get("candidate_packet"), "candidate packet")
-    mandatory = list(protocol.get("mandatory_languages", []))
-    if not mandatory:
-        raise LoaderV2Refusal("bundled protocol declares no mandatory set")
+    packet_bytes = (root / str(
+        record["candidate_packet"]["record"])).read_bytes()
 
     def rows_bytes(language: str) -> bytes | None:
         name = f"{language}.rows.jsonl"
@@ -265,28 +274,25 @@ def _verify_promotion_bundle(digest: str) -> None:
         return (root / name).read_bytes()
 
     def manifest_bytes(language: str) -> bytes | None:
-        name = f"{language}.holdout-manifest.json"
+        # round 8: the AUTHORITATIVE JSONL manifests, bundled verbatim
+        name = f"{language}.holdout-manifest.jsonl"
         if name not in files:
             return None
         return (root / name).read_bytes()
 
     try:
-        validate_report_structure(report)
-        promotable_languages(report, mandatory)
-        require_candidate_packet(report, candidate_packet=packet)
-        require_protocol_evidence(
-            report, mandatory, protocol=protocol,
-            holdouts_by_language=holdouts)
-        require_holdout_grades(
-            report, grades_by_holdout=grades, mandatory=mandatory)
-        recompute_statistics(
-            report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
-        require_sealed_row_identity(
-            report, mandatory, rows_bytes=rows_bytes,
-            manifest_bytes=manifest_bytes)
-        recompute_code_switch(report, rows_bytes=rows_bytes)
-        require_operational_receipt(
-            report, candidate_packet=packet, artifact_tree_sha256=digest)
+        verify_complete_promotion(
+            report,
+            protocol=protocol,
+            holdouts_by_language=holdouts,
+            grades_by_holdout=grades,
+            candidate_packet=packet,
+            packet_bytes=packet_bytes,
+            artifact_tree_sha256=digest,
+            rows_bytes=rows_bytes,
+            manifest_bytes=manifest_bytes,
+            anchor_fetch=PROMOTION_ANCHOR_FETCH,
+        )
     except PromotionCheckRefusal as exc:
         raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc
 

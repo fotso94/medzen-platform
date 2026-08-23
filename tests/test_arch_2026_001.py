@@ -191,8 +191,16 @@ def test_promotion_checker_refuses_a_fabricated_bare_pass(tmp_path):
         "gate_state_counts": {"PASS": len(languages)}}
     path = tmp_path / "report.json"
     path.write_text(json.dumps(report))
+    # Round 8 (Codex): the gate is COMPLETE or it is nothing — the old
+    # invocation (report+rows only) now refuses outright, and a full
+    # pass through this CLI requires the REAL sealed JSONL manifests
+    # plus a chronology-anchored candidate packet, which fabricated
+    # bytes cannot produce BY DESIGN. The genuine full-chain pass is
+    # exercised with bundle-pinned authorities in
+    # test_b6v2_real_provider (promotion bundle tests).
     proc = run(path, results)
-    assert proc.returncode == 0, proc.stdout
+    assert proc.returncode == 1
+    assert "promotion gate is COMPLETE" in proc.stdout
 
     # (1) fabricated stats not derived from the rows -> refused
     poisoned = json.loads(json.dumps(report))

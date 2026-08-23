@@ -2,7 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "medzen.speech.v2.stream-server-event",
   "type": "object",
-  "required": ["type", "request_id", "session_id", "model_versions"],
+  "required": [
+    "type",
+    "request_id",
+    "session_id",
+    "model_versions"
+  ],
   "properties": {
     "type": {
       "enum": [
@@ -16,11 +21,27 @@
         "error"
       ]
     },
-    "request_id": {"type": "string", "format": "uuid"},
-    "session_id": {"type": "string", "format": "uuid"},
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "session_id": {
+      "type": "string",
+      "format": "uuid"
+    },
     "model_versions": {
       "type": "object",
-      "required": ["asr", "registry_snapshot", "llm", "rag", "tts"]
+      "required": [
+        "asr",
+        "registry_snapshot",
+        "llm",
+        "rag",
+        "tts"
+      ]
+    },
+    "artifact_tree_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
     }
   }
 }

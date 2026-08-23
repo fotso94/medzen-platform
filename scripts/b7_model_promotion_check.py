@@ -138,6 +138,46 @@ def recompute_statistics(report: dict, results_dir: Path,
     )
 
 
+def _grades_by_holdout() -> dict[str, str]:
+    """Round 8: grades from the SAME authoritative records that supply
+    the holdout mapping. Every sha defaults to promotion_grade unless a
+    record's pool marks otherwise; the quarantined v2 half is absent
+    from the mapping entirely, so it can never carry any grade."""
+    grades: dict[str, str] = {}
+    for shas in _authoritative_holdouts_by_language().values():
+        for sha in shas:
+            grades.setdefault(sha, "promotion_grade")
+    return grades
+
+
+def _anchor_fetch(anchor):
+    """Repo-side chronology authorities: a git commit (timestamp is the
+    committer clock recorded by the repository) or an S3 VersionId
+    (timestamp is set by the storage system)."""
+    import subprocess
+    from medzen_model_loader.loader_v2 import _s3_anchor_fetch
+    root = Path(__file__).resolve().parents[1]
+    if anchor.get("type") == "git":
+        rel = str(anchor.get("path", ""))
+        commit = str(anchor.get("commit", ""))
+        if rel.startswith(("/", "..")) or ":" in rel:
+            raise PromotionCheckRefusal("anchor path escapes containment")
+        shown = subprocess.run(
+            ["git", "-C", str(root), "show", f"{commit}:{rel}"],
+            capture_output=True)
+        if shown.returncode != 0:
+            raise PromotionCheckRefusal(
+                "anchored packet is not committed at the anchor commit")
+        stamped = subprocess.run(
+            ["git", "-C", str(root), "show", "-s",
+             "--format=%cd", "--date=format-local:%Y-%m-%dT%H:%M:%SZ",
+             commit],
+            capture_output=True, text=True,
+            env={"TZ": "UTC", "PATH": "/usr/bin:/bin:/usr/local/bin"})
+        return shown.stdout, stamped.stdout.strip()
+    return _s3_anchor_fetch(anchor)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--gate-report", type=Path, required=True)
@@ -149,19 +189,53 @@ def main() -> int:
                         help="directory of per-language hash-bound "
                              "<language>.rows.jsonl result files; REQUIRED "
                              "for promotion (recompute gate)")
+    parser.add_argument("--candidate-packet", type=Path, default=None,
+                        help="the PREDECLARED candidate packet (round 8: "
+                             "REQUIRED — thresholds before sealed "
+                             "observation)")
+    parser.add_argument("--manifests-dir", type=Path, default=None,
+                        help="directory of authoritative "
+                             "<language>.holdout-manifest.jsonl sealed "
+                             "manifests (round 8: REQUIRED)")
+    parser.add_argument("--artifact-tree", default=None,
+                        help="the candidate's full 64-hex artifact tree "
+                             "digest (round 8: REQUIRED)")
     args = parser.parse_args()
     try:
         report = load_gate_report(args.gate_report)
-        requested = [x.strip() for x in args.languages.split(",") if x.strip()]
-        if not requested:
-            requested = list(_protocol_record().get("mandatory_languages", []))
-        states = promotable_languages(report, requested)
-        require_protocol_evidence(report, requested)
-        if args.results_dir is None:
-            raise PromotionCheckRefusal(
-                "--results-dir is required: promotion statistics must be "
-                "recomputed from hash-bound rows (Codex review #9)")
-        recompute_statistics(report, args.results_dir, requested)
+        for flag, value in (("--results-dir", args.results_dir),
+                             ("--candidate-packet", args.candidate_packet),
+                             ("--manifests-dir", args.manifests_dir),
+                             ("--artifact-tree", args.artifact_tree)):
+            if value is None:
+                raise PromotionCheckRefusal(
+                    f"{flag} is required: the promotion gate is COMPLETE "
+                    "or it is nothing (Codex serving review round 8)")
+        packet_bytes = args.candidate_packet.read_bytes()
+
+        def rows_bytes(language):
+            path = args.results_dir / f"{language}.rows.jsonl"
+            return path.read_bytes() if path.is_file() else None
+
+        def manifest_bytes(language):
+            path = args.manifests_dir / f"{language}.holdout-manifest.jsonl"
+            return path.read_bytes() if path.is_file() else None
+
+        from medzen_model_loader.promotion_check import (
+            verify_complete_promotion,
+        )
+        states = verify_complete_promotion(
+            report,
+            protocol=_protocol_record(),
+            holdouts_by_language=_authoritative_holdouts_by_language(),
+            grades_by_holdout=_grades_by_holdout(),
+            candidate_packet=json.loads(packet_bytes),
+            packet_bytes=packet_bytes,
+            artifact_tree_sha256=str(args.artifact_tree),
+            rows_bytes=rows_bytes,
+            manifest_bytes=manifest_bytes,
+            anchor_fetch=_anchor_fetch,
+        )
     except PromotionCheckRefusal as exc:
         print(json.dumps({"status": "REFUSED", "detail": str(exc)}))
         return 1

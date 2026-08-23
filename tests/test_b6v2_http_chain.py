@@ -379,3 +379,32 @@ def test_v2_contract_constants_match_the_committed_contracts():
             (ROOT / "platform/contracts" / files[name]).read_bytes()).hexdigest()
         assert sha == actual, f"{name}: {contract_id} pin is stale"
         assert contract_id.endswith("2026-002")
+
+
+def test_round8_v2_websocket_events_carry_the_full_tree(monkeypatch, tmp_path):
+    """Codex round 8 (V2_WS_TREE_FIELDS=[None, None, None]): every v2
+    streaming event carries the FULL artifact tree digest, exactly like
+    the HTTP payload; the frozen v0 stream is unchanged."""
+    import json as _json
+    from fastapi.testclient import TestClient
+    from medzen_asr_runtime.app import create_app
+
+    with TestClient(create_app(StubOmniBackend())) as client:
+        with client.websocket_connect(
+            "/internal/v1/transcriptions/stream"
+        ) as stream:
+            stream.send_text(_json.dumps({
+                "type": "start",
+                "request_id": "66666666-6666-4666-8666-666666666666",
+                "language_hint": "en",
+            }))
+            ready = stream.receive_json()
+            assert ready["type"] == "ready"
+            assert ready["artifact_tree_sha256"] == ASR_TREE_SHA
+            stream.send_bytes(b"RIFF\x00\x00\x00\x00WAVE")
+            stream.send_text(_json.dumps({"type": "end_of_speech"}))
+            events = [stream.receive_json() for _ in range(2)]
+    kinds = {event["type"] for event in events}
+    assert {"final_transcript", "completed"} <= kinds
+    for event in events:
+        assert event["artifact_tree_sha256"] == ASR_TREE_SHA, event["type"]
