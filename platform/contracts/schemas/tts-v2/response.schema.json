@@ -102,27 +102,67 @@
     {
       "if": {
         "properties": {
+          "provider": {
+            "const": "fish"
+          },
           "tts_backend": {
             "const": "fish"
           }
-        }
+        },
+        "required": [
+          "provider",
+          "tts_backend"
+        ]
       },
       "then": {
         "properties": {
-          "provider": {
-            "enum": [
-              "fake_fish",
-              "fish"
-            ]
-          },
           "audio_url": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^https://"
           },
           "media_type": {
-            "enum": [
-              "audio/vnd.medzen.synthetic",
-              "audio/mpeg"
-            ]
+            "const": "audio/mpeg"
+          },
+          "audio_sha256": {
+            "type": "string"
+          },
+          "model_versions": {
+            "properties": {
+              "tts": {
+                "type": "string",
+                "pattern": "^fish:s(1|2\\.1-pro-free)$"
+              }
+            }
+          },
+          "degradation_reason": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "provider": {
+            "const": "fake_fish"
+          },
+          "tts_backend": {
+            "const": "fish"
+          }
+        },
+        "required": [
+          "provider",
+          "tts_backend"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audio_url": {
+            "type": "string",
+            "pattern": "^medzen\\+local://tts/[0-9a-f]{64}$"
+          },
+          "media_type": {
+            "const": "audio/vnd.medzen.synthetic"
           },
           "audio_sha256": {
             "type": "string"
@@ -146,7 +186,10 @@
           "tts_backend": {
             "const": "text_only"
           }
-        }
+        },
+        "required": [
+          "tts_backend"
+        ]
       },
       "then": {
         "properties": {

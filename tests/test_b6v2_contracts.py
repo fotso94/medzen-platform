@@ -120,3 +120,50 @@ def test_the_synthetic_stub_response_still_validates():
         "degradation_reason": None,
     }
     _validator("tts-v2/response.schema.json").validate(response)
+
+
+def test_prohibited_identity_combinations_refuse():
+    """Round 6 (Codex): provider fish + medzen+local + synthetic media
+    VALIDATED — the branches constrained identity and delivery
+    independently. They are now mutually exclusive."""
+    import pytest
+    from jsonschema import ValidationError
+
+    text = "prohibited"
+    base = {
+        "request_id": "44444444-4444-4444-8444-444444444444",
+        "language": "kin",
+        "text": text,
+        "content_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "synthesis_key_sha256": "ab" * 32,
+        "tts_backend": "fish",
+        "provider": "fish",
+        "audio_url": "medzen+local://tts/" + "ab" * 32,   # PROHIBITED for real fish
+        "media_type": "audio/vnd.medzen.synthetic",
+        "audio_sha256": hashlib.sha256(b"x").hexdigest(),
+        "model_versions": {
+            "asr": None,
+            "registry_snapshot": "b6v2-nonprod:" + "cd" * 32,
+            "llm": None,
+            "rag": None,
+            "tts": "fish:s1",
+        },
+        "cache_hit": False,
+        "provider_attempted": True,
+        "degradation_reason": None,
+    }
+    validator = _validator("tts-v2/response.schema.json")
+    with pytest.raises(ValidationError):
+        validator.validate(base)
+    # and the inverse: the synthetic proof may never mint HTTPS delivery
+    inverted = dict(base, provider="fake_fish",
+                     audio_url="https://s3.example/tts/x.mp3",
+                     media_type="audio/mpeg")
+    with pytest.raises(ValidationError):
+        validator.validate(inverted)
+    # fish-mode DEGRADATION (text_only fallback) stays legal
+    degraded = dict(base, tts_backend="text_only", audio_url=None,
+                     media_type=None, audio_sha256=None,
+                     degradation_reason="FISH_TIMEOUT")
+    degraded["model_versions"] = dict(base["model_versions"], tts=None)
+    validator.validate(degraded)

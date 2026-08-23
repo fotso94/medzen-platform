@@ -52,12 +52,18 @@ def load_v2_ready_marker(model_dir: Path) -> dict[str, Any]:
         raise BackendRefusal("v2 marker classification is unknown")
     version = marker.get("model_version")
     digest = str(marker.get("artifact_sha256") or "")
+    tree = str(marker.get("artifact_tree_sha256") or "")
     if (not isinstance(version, str)
             or V2_MODEL_VERSION_RE.fullmatch(version) is None
             or re.fullmatch(r"[0-9a-f]{64}", digest) is None
-            or version != f"omniasr_ctc_1b:{digest[:12]}"):
+            or re.fullmatch(r"[0-9a-f]{64}", tree) is None
+            # round 6 (Codex): ONE identity — the version derives from
+            # the TREE digest (checkpoint+tokenizer), the same value the
+            # registry binds, so registry and runtime can never name
+            # different artifacts
+            or version != f"omniasr_ctc_1b:{tree[:12]}"):
         raise BackendRefusal(
-            "v2 marker identity is malformed — the version IS the digest")
+            "v2 marker identity is malformed — the version IS the tree digest")
     if not isinstance(marker.get("manifest_sha256"), str) or re.fullmatch(
         r"[0-9a-f]{64}", marker["manifest_sha256"]
     ) is None:

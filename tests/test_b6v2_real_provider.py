@@ -184,15 +184,22 @@ def test_unencrypted_audio_storage_is_refused():
 
 # -------------------------------------------------------------- ASR loader
 def _v2_manifest(**over):
+    from medzen_model_loader.loader_v2 import artifact_tree_sha256
     digest = over.pop("digest", "ab" * 32)
+    tokenizer_sha = over.pop("tokenizer_sha", "12" * 32)
+    # round 6 (Codex): ONE tree digest over checkpoint+tokenizer is the
+    # identity; the model_version derives from IT, not the checkpoint
+    tree = artifact_tree_sha256(digest, tokenizer_sha)
     manifest = {
         "schema_version": 2,
         "classification": "NONPROD_REAL_PROVIDER_V2",
         "model_family": "omniasr_ctc_1b",
         "artifact": {"format": "fairseq2_pt", "sha256": digest},
+        "tokenizer": {"sha256": tokenizer_sha},
+        "artifact_tree_sha256": tree,
         "languages": ["english", "ewe", "french", "kinyarwanda",
                        "lingala", "pidgin", "swahili"],
-        "model_version": f"omniasr_ctc_1b:{digest[:12]}",
+        "model_version": f"omniasr_ctc_1b:{tree[:12]}",
     }
     manifest.update(over)
     return manifest
@@ -208,8 +215,13 @@ def test_loader_v2_accepts_the_multilingual_artifact_shape(tmp_path):
     blob = tmp_path / "model.pt"
     blob.write_bytes(b"FAKE-FAIRSEQ2-CHECKPOINT")
     digest = hashlib.sha256(blob.read_bytes()).hexdigest()
+    from medzen_model_loader.loader_v2 import artifact_tree_sha256
+    tree = artifact_tree_sha256(digest, "12" * 32)
     identity = load_artifact_v2(_v2_manifest(digest=digest), blob)
-    assert identity["version"] == f"omniasr_ctc_1b:{digest[:12]}"
+    # round 6 (Codex): the version derives from the TREE digest
+    # (checkpoint+tokenizer), never the checkpoint alone
+    assert identity["version"] == f"omniasr_ctc_1b:{tree[:12]}"
+    assert identity["artifact_tree_sha256"] == tree
     # digest mismatch refuses BEFORE deserialization
     with pytest.raises(LoaderV2Refusal, match="do not match"):
         load_artifact_v2(_v2_manifest(digest="cd" * 32), blob)
@@ -361,55 +373,103 @@ def test_s3_cache_only_404_is_a_miss_others_raise():
         throttled.get("ab" * 32)
 
 
-def _promotion_bundle(tmp_path, digest, *, gate_report=None, record_over=None,
+def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
+                      labels_only=False, record_over=None,
                       protocol_id="PROMOTION-PROTOCOL-2026-004"):
-    """Build an immutable promotion bundle: index pins every document,
-    the deployment pin is sha256(bundle.json)."""
+    """Build an immutable promotion bundle in the AUTHORITATIVE gate
+    format (round 6, Codex): per-language hash-bound rows whose
+    clustered-bootstrap statistics are COMPUTED with the same shared
+    code the gate recomputes with — labels alone can never promote."""
     import hashlib
     import json as _json
+    from medzen_model_loader.noninferiority import clustered_noninferiority
 
     bundle = tmp_path / "bundle"
     bundle.mkdir(parents=True, exist_ok=True)
-    gates = {"target_languages": "...", "protected_languages": "...",
-             "degenerate_output": "...", "operational": "..."}
     languages = ["english", "ewe", "french", "kinyarwanda", "lingala",
                  "pidgin", "swahili"]
     protocol = {"record": "PROMOTION-PROTOCOL-2026-004",
-                "gates_v0_active_now": gates,
+                "gates_v0_active_now": {"target_languages": "...",
+                                          "protected_languages": "...",
+                                          "degenerate_output": "...",
+                                          "operational": "..."},
                 "mandatory_languages": languages}
     protocol_bytes = _json.dumps(protocol).encode()
     pointer = {"file": "PROMOTION-PROTOCOL-2026-004.json",
                "record": protocol_id,
                "sha256": hashlib.sha256(protocol_bytes).hexdigest()}
-    if gate_report is None:
-        gate_report = {
-            "protocol": "PROMOTION-PROTOCOL-2026-004",
-            "artifact_sha256": digest,
-            "atomic_outcome": "PASS",
-            "languages": {lang: {g: "PASS" for g in
-                                  [*gates, "code_switch"]}
-                          for lang in languages},
-        }
-    review = {"status": "PASS", "findings": 0,
-              "reviewer": "codex-independent-review"}
-    files = {
+
+    files: dict[str, bytes] = {
         "PROMOTION-PROTOCOL-2026-004.json": protocol_bytes,
         "CURRENT-PROMOTION-PROTOCOL.json": _json.dumps(pointer).encode(),
-        "T6-GATE-REPORT.json": _json.dumps(gate_report).encode(),
-        "INDEPENDENT-REVIEW.json": _json.dumps(review).encode(),
     }
+    report_languages = {}
+    holdouts = {}
+    for index, language in enumerate(languages):
+        holdout_sha = hashlib.sha256(f"holdout-{language}".encode()).hexdigest()
+        holdouts[language] = [holdout_sha]
+        # deterministic paired rows where the candidate is clearly
+        # non-inferior (fewer errors than baseline in every cluster)
+        rows = [
+            {"cluster_id": f"spk{cluster}", "baseline_errors": 4 + cluster,
+             "candidate_errors": 2, "reference_words": 40}
+            for cluster in range(4) for _ in range(3)
+        ]
+        rows_bytes = "\n".join(_json.dumps(r) for r in rows).encode() + b"\n"
+        if language == break_rows_for:
+            # rows that CANNOT reproduce the claimed statistics
+            fake = [dict(r, candidate_errors=30) for r in rows]
+            rows_bytes = "\n".join(_json.dumps(r) for r in fake).encode() + b"\n"
+        stats = clustered_noninferiority(
+            [_json.loads(line) for line in
+             ("\n".join(_json.dumps(r) for r in rows)).splitlines()],
+            margin=0.02, iterations=200, seed=20260823, alpha=0.05)
+        entry = {
+            "state": "PASS",
+            "holdout_manifest_sha256": holdout_sha,
+            "rows_sha256": hashlib.sha256(rows_bytes).hexdigest(),
+            "non_inferiority": {k: stats[k] for k in
+                                 ("margin", "upper_ci", "method", "clusters",
+                                  "rows", "non_inferior", "seed",
+                                  "iterations", "alpha")},
+        }
+        if labels_only:
+            # Codex round 6 repro: detailed PASS labels, NO evidence
+            entry = {"state": "PASS",
+                     "holdout_manifest_sha256": holdout_sha,
+                     "gates": {"everything": "PASS"}}
+        report_languages[language] = entry
+        files[f"{language}.rows.jsonl"] = rows_bytes
+    report = {
+        "schema_version": "medzen-b5-gate-report-v1",
+        "protocol_id": "PROMOTION-PROTOCOL-2026-004",
+        "candidate_digest": f"sha256:{tree_digest}",
+        "languages": report_languages,
+        "gate_state_counts": {"PASS": len(languages)},
+        "code_switch_evidence": {"state": "PASS",
+                                   "set": "kinyarwanda-english-cs-v1",
+                                   "manifest_sha256": "ab" * 32,
+                                   "rows": 500},
+        "operational_evidence": {"state": "PASS", "latency_p95_ms": 850,
+                                   "vram_gb": 11.2},
+    }
+    files["T6-GATE-REPORT.json"] = _json.dumps(report).encode()
+    files["HOLDOUT-BINDINGS.json"] = _json.dumps(holdouts).encode()
+    review = {"status": "PASS", "findings": 0,
+              "reviewer": "codex-independent-review"}
+    files["INDEPENDENT-REVIEW.json"] = _json.dumps(review).encode()
     shas = {name: hashlib.sha256(body).hexdigest()
             for name, body in files.items()}
     record = {
         "protocol": "PROMOTION-PROTOCOL-2026-004",
         "decision": "APPROVED",
-        "artifact_sha256": digest,
+        "artifact_sha256": tree_digest,
         "gate_report": {"record": "T6-GATE-REPORT.json",
                          "record_sha256": shas["T6-GATE-REPORT.json"]},
         "independent_review": {"record": "INDEPENDENT-REVIEW.json",
                                 "record_sha256": shas["INDEPENDENT-REVIEW.json"]},
         "owner_authorization": {
-            "statement": f"owner authorizes promotion of {digest[:12]}",
+            "statement": f"owner authorizes promotion of {tree_digest[:12]}",
             "recorded_utc": "2026-08-23T00:00:00Z"},
     }
     record.update(record_over or {})
@@ -418,24 +478,25 @@ def _promotion_bundle(tmp_path, digest, *, gate_report=None, record_over=None,
         files["PROMOTION-RECORD.json"]).hexdigest()
     for name, body in files.items():
         (bundle / name).write_bytes(body)
-    index = {"files": shas, "record": "PROMOTION-RECORD.json"}
-    index_bytes = _json.dumps(index).encode()
+    index_bytes = _json.dumps(
+        {"files": shas, "record": "PROMOTION-RECORD.json"}).encode()
     (bundle / "bundle.json").write_bytes(index_bytes)
     return bundle, hashlib.sha256(index_bytes).hexdigest()
 
 
 def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkeypatch):
-    """Codex rounds 2-5 (FABRICATED_PRODUCTION_APPROVAL_ACCEPTED, then
-    'still self-certifiable', then 'git not in the runtime image'):
-    production standing verifies an IMMUTABLE bundle pinned by the
-    reviewed deployment — no git — and the gate report must GENUINELY
-    satisfy the protocol: every active gate + code_switch PASS for every
-    mandatory language, a zero-findings independent review, and an owner
-    authorization bound to THIS digest."""
+    """Codex rounds 2-6 (FABRICATED_PRODUCTION_APPROVAL_ACCEPTED ->
+    'git not in the runtime image' -> FABRICATED_DETAILED_PASS_BUNDLE_
+    ACCEPTED): the bundle now runs the SAME shared semantics and
+    statistical RECOMPUTATION as scripts/b7_model_promotion_check.py.
+    Evidence is per-row data reproducing the clustered-bootstrap
+    verdicts — PASS labels, however detailed, promote nothing."""
     from medzen_model_loader.loader_v2 import (LoaderV2Refusal,
+                                               artifact_tree_sha256,
                                                validate_manifest_v2)
     import pytest
     digest = "ab" * 32
+    tree = artifact_tree_sha256(digest, "12" * 32)
 
     # no bundle configured -> refuse
     monkeypatch.delenv("MEDZEN_PROMOTION_BUNDLE_DIR", raising=False)
@@ -448,51 +509,41 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
         monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_DIR", str(bundle))
         monkeypatch.setenv("MEDZEN_PROMOTION_BUNDLE_SHA256", pin)
 
-    # the full verified bundle passes
-    bundle, pin = _promotion_bundle(tmp_path, digest)
+    # a bundle whose rows genuinely reproduce the statistics passes
+    bundle, pin = _promotion_bundle(tmp_path, tree)
     arm(bundle, pin)
     ok = validate_manifest_v2(_v2_manifest(
         digest=digest, classification="PRODUCTION"))
     assert ok["classification"] == "PRODUCTION"
 
-    # a trivial {"outcome": "PASS"} report is an assertion, not a gate run
-    bundle, pin = _promotion_bundle(
-        tmp_path / "trivial", digest, gate_report={"outcome": "PASS"})
+    # Codex round 6 reproduction: detailed all-PASS labels with NO
+    # statistical evidence — refused by the shared gate
+    bundle, pin = _promotion_bundle(tmp_path / "labels", tree,
+                                     labels_only=True)
     arm(bundle, pin)
-    with pytest.raises(LoaderV2Refusal, match="atomically PASS"):
+    with pytest.raises(LoaderV2Refusal, match="promotion gate refused"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    # one language missing the mandatory code_switch gate -> atomic refusal
-    gates = ["target_languages", "protected_languages", "degenerate_output",
-             "operational", "code_switch"]
-    languages = ["english", "ewe", "french", "kinyarwanda", "lingala",
-                 "pidgin", "swahili"]
-    partial = {
-        "protocol": "PROMOTION-PROTOCOL-2026-004",
-        "artifact_sha256": digest,
-        "atomic_outcome": "PASS",
-        "languages": {lang: {g: "PASS" for g in gates}
-                      for lang in languages},
-    }
-    del partial["languages"]["pidgin"]["code_switch"]
-    bundle, pin = _promotion_bundle(tmp_path / "partial", digest,
-                                     gate_report=partial)
+    # rows that do not REPRODUCE the claimed statistics — refused
+    bundle, pin = _promotion_bundle(tmp_path / "forged", tree,
+                                     break_rows_for="pidgin")
     arm(bundle, pin)
-    with pytest.raises(LoaderV2Refusal, match="atomic"):
+    with pytest.raises(LoaderV2Refusal, match="promotion gate refused"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    # a record promoting a DIFFERENT digest refuses
-    bundle, pin = _promotion_bundle(tmp_path / "other", "cd" * 32)
+    # a record promoting a DIFFERENT artifact tree refuses
+    other_tree = artifact_tree_sha256("cd" * 32, "12" * 32)
+    bundle, pin = _promotion_bundle(tmp_path / "other", other_tree)
     arm(bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="different artifact"):
         validate_manifest_v2(_v2_manifest(
             digest=digest, classification="PRODUCTION"))
 
-    # owner authorization not bound to THIS digest refuses
+    # owner authorization not bound to THIS tree digest refuses
     bundle, pin = _promotion_bundle(
-        tmp_path / "unbound", digest,
+        tmp_path / "unbound", tree,
         record_over={"owner_authorization": {
             "statement": "owner approves the model",
             "recorded_utc": "2026-08-23T00:00:00Z"}})
@@ -502,7 +553,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
             digest=digest, classification="PRODUCTION"))
 
     # a superseded/invented protocol id refuses
-    bundle, pin = _promotion_bundle(tmp_path / "stale", digest,
+    bundle, pin = _promotion_bundle(tmp_path / "stale", tree,
                                      protocol_id="PROMOTION-PROTOCOL-2026-003")
     arm(bundle, pin)
     with pytest.raises(LoaderV2Refusal, match="pointer requires"):
@@ -510,7 +561,7 @@ def test_loader_v2_production_needs_a_verified_promotion_bundle(tmp_path, monkey
             digest=digest, classification="PRODUCTION"))
 
     # tampering with a bundled document after pinning refuses
-    bundle, pin = _promotion_bundle(tmp_path / "tampered", digest)
+    bundle, pin = _promotion_bundle(tmp_path / "tampered", tree)
     report_path = bundle / "T6-GATE-REPORT.json"
     report_path.write_bytes(report_path.read_bytes() + b" ")
     arm(bundle, pin)

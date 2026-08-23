@@ -48,7 +48,8 @@ from medzen_speech_orchestrator.remote_dependencies import (  # noqa: E402
 
 KEY = "medzen-b6-synthetic-client-key"
 REQUEST_ID = "33333333-3333-4333-8333-333333333333"
-ASR_VERSION = "omniasr_ctc_1b:aabbccddeeff"
+ASR_TREE_SHA = "ab" * 32
+ASR_VERSION = f"omniasr_ctc_1b:{ASR_TREE_SHA[:12]}"
 LLM_MODEL_ID = "eu.anthropic.claude-sonnet-4-5"
 QUERY = "When does the fictional training desk open?"
 RAG_FIXTURE = ROOT / "platform/testdata/rag-index"
@@ -68,7 +69,7 @@ def _v2_snapshot() -> tuple[str, dict]:
         "language": {"alias": "english", "response_code": "en",
                       "accepted_codes": ["en"]},
         "asr": {"backend": "http_cluster_v1", "model_version": ASR_VERSION,
-                 "artifact_tree_sha256": "ab" * 32,
+                 "artifact_tree_sha256": ASR_TREE_SHA,
                  "reported_registry_snapshot": "omniasr-nonprod:" + "cd" * 32},
         "rag": {"alias": "current", "snapshot_sha256": _rag_snapshot_sha256(),
                  "query_language": "en"},

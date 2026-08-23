@@ -54,6 +54,19 @@ def _sha256_ok(value: Any) -> bool:
             and all(c in SHA_HEX for c in value.lower()))
 
 
+def artifact_tree_sha256(checkpoint_sha256: str, tokenizer_sha256: str) -> str:
+    """B6v2 round 6 (Codex): ONE digest names the WHOLE served artifact —
+    checkpoint AND tokenizer. The model_version derives from THIS, the
+    registry binds THIS, and the runtime reports a version derived from
+    THIS — so the registry can never approve a different artifact than
+    the runtime serves."""
+    material = json.dumps(
+        {"checkpoint_sha256": checkpoint_sha256,
+         "tokenizer_sha256": tokenizer_sha256},
+        sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(material).hexdigest()
+
+
 def validate_manifest_v2(manifest: Mapping[str, Any]) -> dict[str, Any]:
     if manifest.get("schema_version") != SCHEMA_VERSION:
         raise LoaderV2Refusal("v2 loader requires schema_version 2")
@@ -81,12 +94,30 @@ def validate_manifest_v2(manifest: Mapping[str, Any]) -> dict[str, Any]:
         raise LoaderV2Refusal(
             "one artifact serves EVERY mandatory language "
             f"(missing: {sorted(MANDATORY_LANGUAGES - languages)})")
+    # Round 6 (Codex): the tokenizer is a REQUIRED part of the served
+    # artifact — a v2 manifest without it names half an artifact.
+    tokenizer = manifest.get("tokenizer")
+    if not isinstance(tokenizer, Mapping) or not _sha256_ok(
+        tokenizer.get("sha256")
+    ):
+        raise LoaderV2Refusal(
+            "tokenizer binding must carry a sha256 of the exact "
+            "tokenizer bytes — the asset card deserializes both")
+    tokenizer_sha256 = str(tokenizer["sha256"])
+    # Round 6 (Codex): ONE tree digest over checkpoint+tokenizer is the
+    # identity everything else derives from. The manifest must DECLARE
+    # it (so reviews see it) and it must recompute exactly.
+    tree = artifact_tree_sha256(digest, tokenizer_sha256)
+    if manifest.get("artifact_tree_sha256") != tree:
+        raise LoaderV2Refusal(
+            "artifact_tree_sha256 must equal the tree digest over "
+            "checkpoint+tokenizer — the declared identity must recompute")
     version = manifest.get("model_version")
-    expected_version = f"{MODEL_FAMILY}:{digest[:12]}"
+    expected_version = f"{MODEL_FAMILY}:{tree[:12]}"
     if version != expected_version:
         raise LoaderV2Refusal(
             f"model_version must be {expected_version!r} — the identity "
-            "IS the digest; free-text versions drift")
+            "IS the tree digest; free-text versions drift")
     # Round 5 (Codex): three different language keys with no translation
     # broke routing before inference. A serving manifest must declare
     # EXACTLY the canonical alias -> omnilingual map — no drift, no
@@ -96,26 +127,14 @@ def validate_manifest_v2(manifest: Mapping[str, Any]) -> dict[str, Any]:
         raise LoaderV2Refusal(
             "language_ids must equal the canonical serving map "
             "(medzen_model_loader.languages_v2.SERVING_LANGUAGES_V1)")
-    # Round 5 (Codex): the tokenizer the asset card requires was outside
-    # the integrity contract — a verified checkpoint next to an
-    # unverified tokenizer.
-    tokenizer = manifest.get("tokenizer")
-    tokenizer_sha256 = None
-    if tokenizer is not None:
-        if not isinstance(tokenizer, Mapping) or not _sha256_ok(
-            tokenizer.get("sha256")
-        ):
-            raise LoaderV2Refusal(
-                "tokenizer binding must carry a sha256 of the exact "
-                "tokenizer bytes")
-        tokenizer_sha256 = str(tokenizer["sha256"])
     if classification == CLASSIFICATION_PROD:
-        _verify_promotion_bundle(digest)
+        _verify_promotion_bundle(tree)
     return {"digest": digest, "version": expected_version,
             "classification": classification,
             "languages": sorted(languages),
             "language_ids": (dict(language_ids) if language_ids else None),
-            "tokenizer_sha256": tokenizer_sha256}
+            "tokenizer_sha256": tokenizer_sha256,
+            "artifact_tree_sha256": tree}
 
 
 def _verify_promotion_bundle(digest: str) -> None:
@@ -158,7 +177,10 @@ def _verify_promotion_bundle(digest: str) -> None:
         if hashlib.sha256(body).hexdigest() != str(expected):
             raise LoaderV2Refusal(
                 f"promotion bundle file {name} does not match its pin")
-        loaded[str(name)] = json.loads(body)
+        # .json documents parse; .jsonl row evidence stays raw bytes for
+        # the recomputation gate
+        if str(name).endswith(".json"):
+            loaded[str(name)] = json.loads(body)
 
     def _bundled(reference: Any, label: str) -> Any:
         if (not isinstance(reference, Mapping)
@@ -194,32 +216,50 @@ def _verify_promotion_bundle(digest: str) -> None:
         raise LoaderV2Refusal(
             "the bundled promotion record promotes a different artifact")
 
-    # the gate report must GENUINELY satisfy the protocol: every active
-    # gate (plus code_switch — mandatory for the first production
-    # promotion) PASS for every mandatory language, atomically
+    # Round 6 (Codex, FABRICATED_DETAILED_PASS_BUNDLE_ACCEPTED): the
+    # bundle now consumes the AUTHORITATIVE gate-report format and runs
+    # the SAME shared semantics + statistical RECOMPUTATION as
+    # scripts/b7_model_promotion_check.py — evidence is per-row data
+    # that must reproduce the claimed clustered-bootstrap verdicts, not
+    # PASS labels. Holdout authority is the bundled, index-pinned
+    # HOLDOUT-BINDINGS document (the deployment pin is the trust anchor).
+    from .promotion_check import (
+        PromotionCheckRefusal,
+        promotable_languages,
+        recompute_statistics,
+        require_protocol_evidence,
+        validate_report_structure,
+    )
+
     report = _bundled(record.get("gate_report"), "gate report")
-    if (report.get("protocol") != pointer.get("record")
-            or str(report.get("artifact_sha256") or "") != digest
-            or report.get("atomic_outcome") != "PASS"):
+    if "HOLDOUT-BINDINGS.json" not in loaded:
         raise LoaderV2Refusal(
-            "gate report does not atomically PASS this artifact under "
-            "the current protocol")
-    active_gates = set(protocol.get("gates_v0_active_now", {}))
-    active_gates.add("code_switch")
-    mandatory = protocol.get("mandatory_languages", [])
-    if not active_gates or not mandatory:
-        raise LoaderV2Refusal("bundled protocol declares no gates")
-    results = report.get("languages")
-    if not isinstance(results, Mapping):
-        raise LoaderV2Refusal("gate report carries no per-language results")
-    for language in mandatory:
-        outcome = results.get(language)
-        if not isinstance(outcome, Mapping) or any(
-            outcome.get(gate) != "PASS" for gate in sorted(active_gates)
-        ):
-            raise LoaderV2Refusal(
-                f"gate report does not PASS every active gate for "
-                f"{language!r} — promotion is atomic over the mandatory set")
+            "promotion bundle omits the sealed-holdout bindings")
+    holdouts = {language: set(map(str, shas))
+                for language, shas in loaded["HOLDOUT-BINDINGS.json"].items()}
+    if str(report.get("candidate_digest") or "") != f"sha256:{digest}":
+        raise LoaderV2Refusal(
+            "gate report candidate_digest does not name this artifact tree")
+    mandatory = list(protocol.get("mandatory_languages", []))
+    if not mandatory:
+        raise LoaderV2Refusal("bundled protocol declares no mandatory set")
+
+    def rows_bytes(language: str) -> bytes | None:
+        name = f"{language}.rows.jsonl"
+        if name not in files:
+            return None
+        return (root / name).read_bytes()
+
+    try:
+        validate_report_structure(report)
+        promotable_languages(report, mandatory)
+        require_protocol_evidence(
+            report, mandatory, protocol=protocol,
+            holdouts_by_language=holdouts)
+        recompute_statistics(
+            report, mandatory, mandatory=mandatory, rows_bytes=rows_bytes)
+    except PromotionCheckRefusal as exc:
+        raise LoaderV2Refusal(f"promotion gate refused: {exc}") from exc
 
     review = _bundled(record.get("independent_review"), "independent review")
     if (review.get("status") != "PASS"
@@ -289,6 +329,9 @@ def write_ready_marker_v2(manifest: Mapping[str, Any], *,
         "model_version": identity["version"],
         "artifact_sha256": identity["digest"],
         "tokenizer_sha256": identity["tokenizer_sha256"],
+        # round 6: the ONE identity the registry binds and the version
+        # derives from — checkpoint AND tokenizer under a single digest
+        "artifact_tree_sha256": identity["artifact_tree_sha256"],
         "manifest_sha256": manifest_sha256,
         "language_ids": marker_language_ids(),
         "checkpoint_path": str(checkpoint_path),
@@ -345,20 +388,47 @@ def run_b6v2_init(s3_client: Any | None = None) -> dict[str, Any]:
             "downloaded manifest does not match the deployment pin")
     manifest = json.loads(raw)
     identity = validate_manifest_v2(manifest)
-    if identity["language_ids"] is None or identity["tokenizer_sha256"] is None:
+    if identity["language_ids"] is None:
         raise LoaderV2Refusal(
-            "a serving manifest must bind language_ids and the tokenizer")
+            "a serving manifest must bind the canonical language_ids map")
+    # Round 6 (Codex): the fairseq2 asset card reads the LITERAL /models
+    # paths — a loader that staged anywhere else attested files the
+    # runtime would never read. The override exists ONLY for tests.
+    if (str(destination) != "/models"
+            and os.environ.get("MEDZEN_B6V2_DESTINATION_OVERRIDE") != "1"):
+        raise LoaderV2Refusal(
+            "the asset card deserializes /models — staging elsewhere "
+            "attests files the runtime never reads")
     prefix = key.rsplit("/", 1)[0]
     artifact_key = f"{prefix}/{manifest['artifact'].get('s3_filename', 'model.pt')}"
     tokenizer_key = (
         f"{prefix}/{manifest['tokenizer'].get('s3_filename', 'tokenizer.model')}")
     checkpoint_path = destination / CHECKPOINT_FILENAME
     tokenizer_path = destination / TOKENIZER_FILENAME
-    _stream_to_verified(
-        s3_client, bucket, artifact_key, checkpoint_path, identity["digest"])
-    _stream_to_verified(
-        s3_client, bucket, tokenizer_key, tokenizer_path,
-        identity["tokenizer_sha256"])
+    # Round 6 (Codex): TWO-PHASE publish — both files download and
+    # verify in a staging directory first, then publish together, then
+    # the marker. Previously a bad tokenizer left a verified checkpoint
+    # already installed at its final path.
+    staging = destination / ".medzen-staging"
+    staging.mkdir(exist_ok=True)
+    staged_checkpoint = staging / CHECKPOINT_FILENAME
+    staged_tokenizer = staging / TOKENIZER_FILENAME
+    try:
+        _stream_to_verified(
+            s3_client, bucket, artifact_key, staged_checkpoint,
+            identity["digest"])
+        _stream_to_verified(
+            s3_client, bucket, tokenizer_key, staged_tokenizer,
+            identity["tokenizer_sha256"])
+        os.replace(staged_checkpoint, checkpoint_path)
+        os.replace(staged_tokenizer, tokenizer_path)
+    finally:
+        staged_checkpoint.unlink(missing_ok=True)
+        staged_tokenizer.unlink(missing_ok=True)
+        try:
+            staging.rmdir()
+        except OSError:
+            pass
     marker = write_ready_marker_v2(
         manifest,
         manifest_sha256=pinned.lower(),

@@ -58,19 +58,19 @@ DEPLOYED_CONTRACTS = {
 V2_DEPLOYED_CONTRACTS = {
     "asr": (
         "MEDZEN-SPEECH-CONTRACT-2026-002",
-        "bcbc6cb3aa14b2dca6194216ac052e6ac8bd5fd755d55176550b8073d7697d4d",
+        "73c8921c6589e196d4db0f29970795f3b742e3de3405c4e7a005f6d2cfdf7751",
     ),
     "rag": (
         "MEDZEN-SPEECH-CONTRACT-2026-002",
-        "bcbc6cb3aa14b2dca6194216ac052e6ac8bd5fd755d55176550b8073d7697d4d",
+        "73c8921c6589e196d4db0f29970795f3b742e3de3405c4e7a005f6d2cfdf7751",
     ),
     "llm": (
         "MEDZEN-LLM-CONTRACT-2026-002",
-        "1b28edd1dd21da477aade75162c281890ea351879be930a89aed854cbe63833d",
+        "f8d7797931510e3449ff8298d075f9472bd68194b19dd39dacecf19c0f5754be",
     ),
     "tts": (
         "MEDZEN-TTS-CONTRACT-2026-002",
-        "c42bf476ed8c310612d52c540d3fe75500e0b8a784b591125933e0fe1b7a020a",
+        "a64dace2761813bb4da7c751af74f9dd480a3dd2ba7601513f4f0e6d17bd9779",
     ),
 }
 
@@ -698,6 +698,12 @@ class RegistryRouter:
             or V2_ASR_RE.fullmatch(asr["model_version"]) is None
             or not isinstance(asr["artifact_tree_sha256"], str)
             or SHA256_RE.fullmatch(asr["artifact_tree_sha256"]) is None
+            # B6v2 round 6 (Codex): the version and the tree digest were
+            # validated INDEPENDENTLY — the registry could approve one
+            # artifact while the runtime served another. The version IS
+            # the tree digest's prefix; they must name the same artifact.
+            or asr["model_version"]
+            != f"omniasr_ctc_1b:{asr['artifact_tree_sha256'][:12]}"
             or not isinstance(asr["reported_registry_snapshot"], str)
             or not asr["reported_registry_snapshot"].startswith("omniasr-nonprod:")
             or SHA256_RE.fullmatch(

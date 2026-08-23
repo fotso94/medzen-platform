@@ -44,8 +44,10 @@ from medzen_speech_orchestrator.registry import (  # noqa: E402
 )
 
 REQUEST_ID = "22222222-2222-4222-8222-222222222222"
-ASR_VERSION = "omniasr_ctc_1b:aabbccddeeff"
 ASR_TREE_SHA = "ab" * 32
+# round 6 (Codex): the version IS the tree digest's prefix — the
+# registry refuses a version naming a different artifact than the tree
+ASR_VERSION = f"omniasr_ctc_1b:{ASR_TREE_SHA[:12]}"
 ASR_REPORTED = "omniasr-nonprod:" + "cd" * 32
 LLM_VERSION = "bedrock:eu.anthropic.claude-sonnet-4-5"
 RAG_SHA = "ef" * 32

@@ -84,18 +84,22 @@ TOKENIZER = b"FAKE-SENTENCEPIECE-TOKENIZER-BYTES"
 
 
 def _serving_manifest():
+    from medzen_model_loader.loader_v2 import artifact_tree_sha256
     digest = hashlib.sha256(CHECKPOINT).hexdigest()
+    tokenizer_sha = hashlib.sha256(TOKENIZER).hexdigest()
+    tree = artifact_tree_sha256(digest, tokenizer_sha)
     return {
         "schema_version": 2,
         "classification": "NONPROD_REAL_PROVIDER_V2",
         "model_family": "omniasr_ctc_1b",
         "artifact": {"format": "fairseq2_pt", "sha256": digest,
                       "s3_filename": "model.pt"},
-        "tokenizer": {"sha256": hashlib.sha256(TOKENIZER).hexdigest(),
+        "tokenizer": {"sha256": tokenizer_sha,
                        "s3_filename": "tokenizer.model"},
+        "artifact_tree_sha256": tree,
         "languages": sorted(SERVING_LANGUAGES_V1),
         "language_ids": canonical_language_ids(),
-        "model_version": f"omniasr_ctc_1b:{digest[:12]}",
+        "model_version": f"omniasr_ctc_1b:{tree[:12]}",
     }
 
 
@@ -123,6 +127,8 @@ def _armed_env(monkeypatch, tmp_path, manifest_bytes):
     monkeypatch.setenv("MEDZEN_B6V2_MANIFEST_SHA256",
                         hashlib.sha256(manifest_bytes).hexdigest())
     monkeypatch.setenv("MODEL_DESTINATION", str(destination))
+    # tests stage in tmp dirs; production enforces the literal /models
+    monkeypatch.setenv("MEDZEN_B6V2_DESTINATION_OVERRIDE", "1")
     return destination
 
 
@@ -203,3 +209,17 @@ def test_backend_refuses_staged_bytes_that_drift_from_the_marker(
     (destination / CHECKPOINT_FILENAME).write_bytes(b"SWAPPED-AFTER-LOAD")
     with pytest.raises(BackendRefusal, match="staged checkpoint"):
         load_v2_ready_marker(destination)
+
+
+def test_vendored_noninferiority_is_byte_identical_to_the_authoritative_module():
+    """Round 6 (Codex): the runtime bundle gate and the repo-side
+    b7_model_promotion_check must run the SAME statistics. The loader
+    package vendors scripts/noninferiority.py for the git-free container;
+    byte equality means there is still only ONE implementation."""
+    authoritative = (ROOT / "scripts/noninferiority.py").read_bytes()
+    vendored = (ROOT / "services/model-loader/medzen_model_loader/"
+                "noninferiority.py").read_bytes()
+    assert hashlib.sha256(vendored).hexdigest() == hashlib.sha256(
+        authoritative).hexdigest(), (
+        "edit scripts/noninferiority.py and re-copy it into the loader "
+        "package — the two must stay byte-identical")

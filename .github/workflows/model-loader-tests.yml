@@ -14,6 +14,10 @@ on:
       - "tests/test_b6v2_real_provider.py"
       - "tests/test_b6v2_serving_language_and_loader.py"
       - "services/asr-runtime/medzen_asr_runtime/omniasr_backend.py"
+      - "services/asr-eval-runtime/assets/models.yaml"
+      - "services/asr-eval-runtime/assets/language-conditioning-v1.json"
+      - "registry/languages/**"
+      - "scripts/noninferiority.py"
       - ".github/workflows/model-loader-tests.yml"
   pull_request:
     paths:
@@ -22,6 +26,10 @@ on:
       - "tests/test_b6v2_real_provider.py"
       - "tests/test_b6v2_serving_language_and_loader.py"
       - "services/asr-runtime/medzen_asr_runtime/omniasr_backend.py"
+      - "services/asr-eval-runtime/assets/models.yaml"
+      - "services/asr-eval-runtime/assets/language-conditioning-v1.json"
+      - "registry/languages/**"
+      - "scripts/noninferiority.py"
       - ".github/workflows/model-loader-tests.yml"
 jobs:
   tests:
