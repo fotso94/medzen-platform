@@ -1,0 +1,272 @@
+{
+ "billable_time_seconds": 121330,
+ "count_correction": "receipt -001 said 22 checkpoints; there are 20 PERIODIC step checkpoints plus 2 rolling pointers (LATEST.json, optimizer-LATEST.pt) plus 1 merged export",
+ "creation_time_utc": "2026-08-22T03:39:12Z",
+ "cross_check": "the sweep box's in-region SHA-256 of step-0040000.pt must equal the trainer's own LATEST.json checkpoint_sha256 (ecedfd30...) \u2014 an independent reproduction of the trainer's content identity",
+ "failure_reason": null,
+ "instance_type": "ml.g6.xlarge",
+ "noncurrent_versions": "38, all overwrites of the two rolling pointers (19 each); every periodic checkpoint and the export have exactly one version",
+ "object_counts": {
+  "merged_export": 1,
+  "periodic_checkpoint": 20,
+  "rolling_pointer": 2
+ },
+ "objects": {
+  "LATEST.json": {
+   "content": {
+    "checkpoint": "step-0040000.pt",
+    "checkpoint_sha256": "ecedfd30de60d4fae8d6b6912e3754bbf4e578eac36a004ca219227c1c011249",
+    "run_fingerprint": "24b9ee56c75f1f31e2490f41e735fb8a10d5636f774ff46cbba6946fbf57984f",
+    "step": 40000
+   },
+   "etag": "4fda5e687831b52ce635efc9c46c58d7",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/LATEST.json",
+   "kind": "rolling_pointer",
+   "last_modified": "2026-08-23T13:20:57+00:00",
+   "sha256": "bf19a218bcdc92e77f16b51c0031a101c51a32af0b8dd1922cd5cda5b331ad76",
+   "size": 218,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "f0byuWcuH1rwEQ6YYqrvJW8TGhV3YRm6"
+  },
+  "model.tar.gz": {
+   "etag": "23b946e737bb7dbbabc8b68e56def00a-185",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+   "kind": "merged_export",
+   "last_modified": "2026-08-23T13:22:08+00:00",
+   "sha256": null,
+   "size": 1545557867,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4"
+  },
+  "optimizer-LATEST.pt": {
+   "etag": "f92827324c9ed38088ff82aed507406f-745",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/optimizer-LATEST.pt",
+   "kind": "rolling_pointer",
+   "last_modified": "2026-08-23T13:20:46+00:00",
+   "sha256": null,
+   "size": 3903372706,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "6dVRR9lSz.S_ACHQ70553pQmNsqLdjD8"
+  },
+  "step-0002000.pt": {
+   "etag": "5257caff5c0bc68f04c5646473d30218-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0002000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T05:56:27+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "gH4UM3uZz_zhDNpOSf9sPsXuVk70puUd"
+  },
+  "step-0004000.pt": {
+   "etag": "20d99df6cf912a7173a2a258c9186d89-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0004000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T07:55:21+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "ScxRwjXkM4MKC5VmYG8IN.nBQ97m78Cx"
+  },
+  "step-0006000.pt": {
+   "etag": "1fcf62fff88bb4b5b94a2a7ae50100cd-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0006000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T09:52:33+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "4VWnShHeR7gUwDnfFYb7.dihIMZX6etf"
+  },
+  "step-0008000.pt": {
+   "etag": "f7ed21eca3d5248d559f1502ef327511-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0008000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T11:48:58+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "6TyNmOZBCH0WY2_k5YcHNQbHdPq0c3p5"
+  },
+  "step-0010000.pt": {
+   "etag": "e8f53fb2fb9524eaf7ab014fb0687234-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0010000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T13:45:43+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "AvAKQuAwNLDmeo5UxpF0tzYnoH_6ArPX"
+  },
+  "step-0012000.pt": {
+   "etag": "f7794675f74fe8a3084eaf04d9b28192-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0012000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T15:43:43+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "7TUsbgEoUUZNXcX8VraZezmrL_opmNjQ"
+  },
+  "step-0014000.pt": {
+   "etag": "cf5f883474617617864d25ceb7a2b1fd-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0014000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T17:43:06+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "aJtA6.3T022HwYSiOGHGvQWWO.sXIFRz"
+  },
+  "step-0016000.pt": {
+   "etag": "055da6a5ac33a395eff926d3cf988d44-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0016000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T19:40:50+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "fSg3Twbzxu0uDRLbn8E3PtWeE9EpLqtv"
+  },
+  "step-0018000.pt": {
+   "etag": "c64a1098c70cfdfe76acefac322e5887-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0018000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T21:27:47+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "ctQaq6_ugvo.rtF35_JCet.mTnnviEhC"
+  },
+  "step-0020000.pt": {
+   "etag": "5549e4d5feb641a71a3e8551dd8d012e-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0020000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-22T22:54:23+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "XTB1kqvKsgWjkpPXcbVACoPDGMM6xE30"
+  },
+  "step-0022000.pt": {
+   "etag": "66189768ea59840a7271644bc45b95e1-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0022000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T00:21:23+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "nD3mLFyCT4CuTxlb2mDn2bt9wdQq1.76"
+  },
+  "step-0024000.pt": {
+   "etag": "9271a9e326de0bd62856872fa22dc48b-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0024000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T01:48:33+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "ZyT_cg69.A9kGA4qOacEQYBuRrYDyONE"
+  },
+  "step-0026000.pt": {
+   "etag": "332404fdf04abb4e634685bb054b2c81-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0026000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T03:15:14+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "7w4U4JruUX.jrintV2mzw11q7EqAIEFW"
+  },
+  "step-0028000.pt": {
+   "etag": "a64323b0adb32c3c2ef34c4f829243b3-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0028000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T04:42:26+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "ZSnN5T6YFLzJDU4Atug_y6BgHSBK_nkt"
+  },
+  "step-0030000.pt": {
+   "etag": "59c84ee530871e8e01eb1a4c56b78c46-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0030000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T06:08:35+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "bovMkgGeI6gWNyX8oFdGY3R.wo177HaF"
+  },
+  "step-0032000.pt": {
+   "etag": "f153843cd78fa06ae5e7e4cc69031187-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0032000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T07:34:43+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "7CmhMIzfm8rA2bvWRBhGJdCXf4qIlAza"
+  },
+  "step-0034000.pt": {
+   "etag": "ff7113f3cb5bc34d81f9215c5754290e-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0034000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T09:01:13+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "i7CRBcGlbdQDNK5S0swxTxI07xfYrffj"
+  },
+  "step-0036000.pt": {
+   "etag": "0a8eb1d850ac9168c11ff14875447394-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0036000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T10:27:44+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "T4nDQgBbrHGZQBIj98gG_hnDGkH13rI0"
+  },
+  "step-0038000.pt": {
+   "etag": "fed5614883cf5a3ceedc6fd15034ad74-373",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0038000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T11:54:38+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "L7WCxo_mcXJSXuKOoyxcEJawDsK6l1d7"
+  },
+  "step-0040000.pt": {
+   "etag": "7e265a753d337181b719e00bbc85ab04-373",
+   "expected_sha256_from_trainer_pointer": "ecedfd30de60d4fae8d6b6912e3754bbf4e578eac36a004ca219227c1c011249",
+   "key": "research/b5-training/b5-universal-arm1-2026-005/checkpoints/step-0040000.pt",
+   "kind": "periodic_checkpoint",
+   "last_modified": "2026-08-23T13:20:55+00:00",
+   "sha256": null,
+   "size": 1951669101,
+   "sse_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "version_id": "tMBiDggO9w4DJKepv8lsgfD5kMXSQ0mf"
+  }
+ },
+ "record": "ARM1-B5-2026-005-COMPLETION-002",
+ "sealed_sets_consumed": false,
+ "secondary_status": "Completed",
+ "status": "Completed",
+ "strong_content_identity": "S3 stores only composite CRC for these multipart objects (ChecksumSHA256 absent). The SHA-256 of every .pt and the export is computed IN-REGION by the dev sweep box as it reads each object (served VersionId verified against this receipt) and published in the sweep receipt; receipt -003 folds them in.",
+ "supersedes": "ARM1-B5-2026-005-COMPLETION (append-only; Codex round 13 corrections: VersionIds, KMS identity, strong content identity, UTC)",
+ "terminal_log_export": {
+  "manifest_sha256": "d4b109e16356e47714d6f2432fdc033fe2c80d03c6861ef04681f8cac49fff90",
+  "model_sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "source": "CloudWatch /aws/sagemaker/TrainingJobs TRAINING_COMPLETE event",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "training_end_utc": "2026-08-23T13:22:15Z",
+ "training_image": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+ "training_job_arn": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm1-2026-005",
+ "training_job_name": "medzen-b5-b5-universal-arm1-2026-005",
+ "training_start_utc": "2026-08-22T03:40:05Z",
+ "training_time_seconds": 121330,
+ "utc_correction": "receipt -001 stripped the -04:00 offset and labelled 09:22 as UTC; the true end is 13:22:15Z"
+}

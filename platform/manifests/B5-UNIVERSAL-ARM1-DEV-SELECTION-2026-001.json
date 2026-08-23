@@ -1,0 +1,3049 @@
+{
+ "languages": [
+  "english",
+  "ewe",
+  "french",
+  "kinyarwanda",
+  "lingala",
+  "pidgin",
+  "swahili"
+ ],
+ "purpose": "DEVELOPMENT-ONLY checkpoint-selection surface for b5-universal-arm1-2026-005. Disjoint from every sealed set by the tier-2 records' own construction. NEVER promotion evidence (PROMOTION-PROTOCOL-2026-004: selection and promotion use disjoint sets).",
+ "record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001",
+ "rows": [
+  {
+   "audio_checksum_sha256": "0180a339ca778183d5874713dca55eee524c6098c1638ab95f112657f78e0408",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1700_0180a339ca77.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "it is thinner under the maria and thicker under the highlands"
+  },
+  {
+   "audio_checksum_sha256": "0191b3bd63967ce79ea37fd8159dec4508f270afd0b733835f8416efc540b9d8",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1536_0191b3bd6396.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "local authorities are warning residents in the vicinity of the plant to stay indoors turn off air-conditioners and not to drink tap water"
+  },
+  {
+   "audio_checksum_sha256": "01e3790973043cb68cc9c5cda3348f726f27381263d1508ed88937810259c93d",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1619_01e379097304.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "however most signs are indicated only in catalan because it is established by law as the first official language"
+  },
+  {
+   "audio_checksum_sha256": "024da3437753b2d080fe7a54ae6ad9f09bd6cd1b2bbb67d63dac31aec2f816ac",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1792_024da3437753.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "this is called a chemical's ph you can make an indicator using red cabbage juice"
+  },
+  {
+   "audio_checksum_sha256": "027b66d74055fcd704abfa5ff32c7237c2f03d252812536b2d12910a66500187",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1514_027b66d74055.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "when the fighting ceased after the wounded were transported to the hospital about 40 of the other remaining inmates stayed in the yard and refused to return to their cells"
+  },
+  {
+   "audio_checksum_sha256": "02d6bfe9681d2b808d4230884ed993136370020d162666884fcaa0bff98d7f1d",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1527_02d6bfe9681d.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "poland's men's visually impaired skier maciej krezel and guide anna ogarzynska finished thirteenth in the super-g south korea's jong seork park finished twenty-fourth in the men's sitting super-g"
+  },
+  {
+   "audio_checksum_sha256": "03583d3f370aca37a788bc5a95e1035900d7760c4a10360d1bf22fdf08abf41b",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1804_03583d3f370a.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the haitian institute for justice and democracy has referenced independent studies that suggest the nepalese un peacekeeping battalion unknowingly brought the disease to haiti"
+  },
+  {
+   "audio_checksum_sha256": "041033702d162099e997a9bf3669ddef2935a6f6d5ab23fe83905cf9d22b54fa",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1693_041033702d16.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "but after losing the captain's wicket india only made 36 runs loosing 7 wickets to end the innings"
+  },
+  {
+   "audio_checksum_sha256": "04a2235309d097ea3091a26b65af1c5a4e170bea84b781a8860fe927537b7ee9",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1622_04a2235309d0.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "u s president george w bush welcomed the announcement"
+  },
+  {
+   "audio_checksum_sha256": "04ea0c44b0924c749fe6b53cbc8bdecbfac910946ef7334931f8e9b22384ecf0",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1963_04ea0c44b092.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ironing damp clothes can help them dry many hotels have an iron and ironing board available for loan even if one is not present in the room"
+  },
+  {
+   "audio_checksum_sha256": "04f7321b04b732777d94ec0a0827b45af07f120425b3d97e3c4a308b2176bad3",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/2001_04f7321b04b7.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "travellers are strongly advised to be aware of any risk of severe weather affecting their area as they may affect any travel plans"
+  },
+  {
+   "audio_checksum_sha256": "062d6f5e22643e229198db4684652852afdda2f92cf354fd89ccaaf04646fa77",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1546_062d6f5e2264.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the feathers' structure suggests that they were not used in flight but rather for temperature regulation or display the researchers suggested that even though this is the tail of a young dinosaur the sample shows adult plumage and not a chick's down"
+  },
+  {
+   "audio_checksum_sha256": "06cde396d00bb51b4ef97c314c7f9d88a1c71e01a0498d96784036cc3ef972b7",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1970_06cde396d00b.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "we don't know for sure but it may have had a forked tongue its diet included turtles large fish other mosasaurs and it may even have been a cannibal"
+  },
+  {
+   "audio_checksum_sha256": "06cf3852b6460836bacc33882487f8c398a3dc526a2ac1a42ca23d2ec4f9db7a",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1883_06cf3852b646.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the vertical clearance under the bridge is 15 meters construction was completed in august 2011 it didn't open to traffic until march 2017"
+  },
+  {
+   "audio_checksum_sha256": "07e25e8515d0919163ad65bcd5050feb96885374f5ef36f6923250c652c50679",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1809_07e25e8515d0.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "crossties were introduced fairly early to hold the tracks in place gradually however it was realised that tracks would be more efficient if they had a stip of iron on the top"
+  },
+  {
+   "audio_checksum_sha256": "082a4d003e97ed3ff56f6e13b019406dc3b44c8aeee203765f59459acb25e86a",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1928_082a4d003e97.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "by 1976 thirty percent of machu picchu had been restored and restoration continues till today"
+  },
+  {
+   "audio_checksum_sha256": "08a44c0b5da2e8a89b2c4d90eb9f306916b6bd32d8ba193ef2394eb579d289fa",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1657_08a44c0b5da2.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "any amendments or requests though should be coursed through the travel agent first and not directly with the hotel"
+  },
+  {
+   "audio_checksum_sha256": "08ad295f58f4a7497d8d28b168a80d546d729d6231de8beb4a2bd163b1f78df3",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1592_08ad295f58f4.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "when you went abroad at first people were probably patient and understanding knowing that travellers in a new country need to adapt"
+  },
+  {
+   "audio_checksum_sha256": "08af31d26de5fd6703f440bf4dec2fd4c333e970826c7645b5d86ab182cd255a",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1901_08af31d26de5.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "although ai has a strong connotation of science fiction ai forms a very important branch of computer science dealing with behavior learning and intelligent adaptation in a machine"
+  },
+  {
+   "audio_checksum_sha256": "09b505a7c368d83381dc2731c7480d466a6b2d1fb84c412250363b564ab72123",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1599_09b505a7c368.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the original population hasn't changed at all they still need the same adaptations as before"
+  },
+  {
+   "audio_checksum_sha256": "0aadbeccfe1e343ec25ee8018086e6ae43490bbbe04f99d027ff8fcea1b9d8c8",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1894_0aadbeccfe1e.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "a curry is a dish based on herbs and spices together with either meat or vegetables"
+  },
+  {
+   "audio_checksum_sha256": "0ad37149e6959803907ad5e134716f8cf5f13b931a8c2ff1e22fc277f5458c35",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1596_0ad37149e695.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "naturalists and philosophers focused on classical texts and in particular on the bible in latin"
+  },
+  {
+   "audio_checksum_sha256": "0b4238cb917cb6989bd9bac4738f5940a059ff36ef6ecc86338b49e92a474511",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1599_0b4238cb917c.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the original population hasn't changed at all they still need the same adaptations as before"
+  },
+  {
+   "audio_checksum_sha256": "0c1a3dd4ded401853759efb2b239a5d7f354598aa129eadd6e1ba69e244e6414",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1975_0c1a3dd4ded4.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "vatican city's population is around 800 it is the smallest independent country in the world and the country with the lowest population"
+  },
+  {
+   "audio_checksum_sha256": "0c2d31f27d8dcf213faff069cd0670933fa1b8bfdeafd8ca37ff68814fe0b207",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1786_0c2d31f27d8d.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the composition of these crystals matches those found in the urine of affected pets when compared by infrared spectroscopy ftir"
+  },
+  {
+   "audio_checksum_sha256": "0c3e209ab8bfcb8aa7c1d0590a5073bd911ea849851fe4b1796339f7e514ec6d",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1551_0c3e209ab8bf.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "they are still trying to determine just how large the crash was and how the earth will be affected"
+  },
+  {
+   "audio_checksum_sha256": "0d63b352f42f1697f6dc9411b69a516f4c4e5d6ddda6f4c70d43b8a894c1d757",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1870_0d63b352f42f.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the scenes are displayed on the pyramids and the different pyramids are lit up"
+  },
+  {
+   "audio_checksum_sha256": "0d6d5d827006138fefcc1791941ab20eafbfa8be0e82104fa23ac84d80997f1e",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1926_0d6d5d827006.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "accepted were aristotle's views on all matters of science including psychology"
+  },
+  {
+   "audio_checksum_sha256": "0dca12dbc7a518cda829b31521f1f86f8e134844b5f9460b22c26716716af830",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1519_0dca12dbc7a5.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "in many cases enrolling on a gap-year course abroad can actually improve your chances of moving into higher education back in your home country"
+  },
+  {
+   "audio_checksum_sha256": "0dd23047e0929a9dbdc1d99f287d70107bb2b67f08419fdffeb5fc80ed5ab07c",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1697_0dd23047e092.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "he has been unable to take the drugs needed to overcome his pain as they are banned from the games"
+  },
+  {
+   "audio_checksum_sha256": "0e24d6bc89c67b77edb942f8ba8da057952f6831f2dd69178da3c5731d81224d",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1769_0e24d6bc89c6.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "built by the egyptians in the third century bce the great pyramid is one of many large pyramid structures built to honor dead pharaoh"
+  },
+  {
+   "audio_checksum_sha256": "0e834126f5e39cd16ff2bf065abe6aa33774ecd0a62cb681037d730d0ebb6576",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1949_0e834126f5e3.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the term bug is used by entomologists in a formal sense for this group of insects"
+  },
+  {
+   "audio_checksum_sha256": "0ef87a0ef64faf748c96507a816f46aebb20252ae73ba9086e0af3aad34db4a3",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1722_0ef87a0ef64f.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "cuomo 53 began his governorship earlier this year and signed a bill last month legalizing same-sex marriage"
+  },
+  {
+   "audio_checksum_sha256": "0f45e93ace29eedd3ea4abdc6da46fadbbe1b17455f5715aca12efc904e0d2a8",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1547_0f45e93ace29.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "nhk also reported that the kashiwazaki kariwa nuclear power plant in niigata prefecture was operating normally"
+  },
+  {
+   "audio_checksum_sha256": "0f7e73cec8b6132e79c94ab228771635f0144ea83201c29d7366039fd91e07fc",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1928_0f7e73cec8b6.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "by 1976 thirty percent of machu picchu had been restored and restoration continues till today"
+  },
+  {
+   "audio_checksum_sha256": "0f967bc66366dfc2bafe13b04d50e099d8fe6dcb475e07d0be2e0143c0d230d5",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1813_0f967bc66366.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "barcelona's official languages are catalan and spanish about a half prefer to speak catalan a vast majority understands it and virtually everyone knows spanish"
+  },
+  {
+   "audio_checksum_sha256": "0fc7ff51f66c6306df1a8017e32cfa6ba737849a928cf184002709be9c415ec9",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1516_0fc7ff51f66c.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "please treat the site with all of the dignity solemnity and respect it deserves do not make jokes about the holocaust or nazis"
+  },
+  {
+   "audio_checksum_sha256": "0fe3f7de456d5ad10cb42a469c2d6245313bd1466081d821e0372b453083b1fc",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1555_0fe3f7de456d.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "in the churchyard there are interesting marble sculptures of doves over some tombs"
+  },
+  {
+   "audio_checksum_sha256": "10d6ebc1dccbcf14ceaace052b2d88ffb03398b58947b078001947121dd983d7",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1816_10d6ebc1dccb.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "duvall who is married with two adult children did not leave a big impression on miller to whom the story was related"
+  },
+  {
+   "audio_checksum_sha256": "1108829efab1a8d7b41974ef672f022352481c7cc1363376f4cf1e3cee9691ee",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1686_1108829efab1.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "as a result the process of an organization working together to overcome an obstacle can lead to a new innovative process to serve the customer's need"
+  },
+  {
+   "audio_checksum_sha256": "11338ac53b844de052ea233ba582647d5d11f0b655e5792bcf7d5bb270fdff5e",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1542_11338ac53b84.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "bush spokesman gordon johndroe called north korea's pledge a major step towards the goal of achieving the verifiable denuclearization of the korean peninsula"
+  },
+  {
+   "audio_checksum_sha256": "12e035721bc37a131cf6a60d2f4059aa992435e2c33214f1dc5174d98a0ca486",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1717_12e035721bc3.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "due to the underwater topology the return flow is concentrated at a few deeper sections and a fast current to deep water may form there"
+  },
+  {
+   "audio_checksum_sha256": "1313e605b6515df4d2e66c464d504667045e85b0e8bd2c57b6c9968bdda8cfa9",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1682_1313e605b651.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "while no one knows for certain who wrote it it is known that early in its life the large parchment document it measures 29\u00be inches by 24\u00bd inches was rolled up for storage"
+  },
+  {
+   "audio_checksum_sha256": "13422b4f46a1ba7ee186b32005671c14443df179a64513e60852b2211e98355a",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1627_13422b4f46a1.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ancient roman meals couldn't have included foods that came to europe from america or from asia in later centuries"
+  },
+  {
+   "audio_checksum_sha256": "13d4c05e6cff7d310f3690b45f9b3bcb0ece3da58bb76d4017dffbefa3e8f18c",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1633_13d4c05e6cff.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "in this dynamic transport shuttle everyone is somehow connected with and supporting a transport system based on private cars"
+  },
+  {
+   "audio_checksum_sha256": "14ff53dba985e72b3a013e03b0b5a9d3b13d36b6e902a726e8d76adf9c0c18f6",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1688_14ff53dba985.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the job of navies has traditionally been to ensure that your country maintains the ability to move your people and goods while at the same time interfering with your enemy's ability to move his people and goods"
+  },
+  {
+   "audio_checksum_sha256": "15a9d1d9a39ba75255f4ecadb2b1715319cef414b1b0e4673699157f1d3cf63f",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1992_15a9d1d9a39b.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the term safari in popular use refers to overland travel to view the stunning african wildlife particularly on savanna"
+  },
+  {
+   "audio_checksum_sha256": "16e9826540fcf8bf90529cbd987ecaafaf6962d353d50703a1a551274a70dcd5",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1866_16e9826540fc.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "first most riders wear riding boots with a heel and a smooth quite narrow sole"
+  },
+  {
+   "audio_checksum_sha256": "175a89b11e30e8dc93d48fc89dfe0c8fc6491950a1f268c9ed904743ade57f2c",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1990_175a89b11e30.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "blogs can also help improve student writing while students often begin their blog experience with sloppy grammar and spelling the presence of an audience generally changes that"
+  },
+  {
+   "audio_checksum_sha256": "17927381cb7ba4082da4ffcdcfe981b2a2f1d57bc7dbfc4805743c927c0e8608",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1729_17927381cb7b.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "for example each year students from bennet school in north carolina design a website about their trip to the state capital each year the website gets remodeled but old versions are kept online to serve as a scrapbook"
+  },
+  {
+   "audio_checksum_sha256": "17927b65d3b185ef832fc2eaac4782bf7efdcf710e635d783a58401df54a32ae",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1981_17927b65d3b1.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "if you only go ashore using shipboard excursions you will not need a separate visa as of 2009"
+  },
+  {
+   "audio_checksum_sha256": "18a8125695547b00d98278a98d8d1a84141ac595b5683bad75354d04e1b7d60e",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1764_18a812569554.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the number of people present was so large that it was not possible for everybody to gain access to the funeral in st peter's square"
+  },
+  {
+   "audio_checksum_sha256": "18ac7cd9ed4ee9d2ba052bca38cd37f2b7728a5608713975b392f071fc9e557e",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1667_18ac7cd9ed4e.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "generally speaking two behaviors can emerge as managers begin to lead their former peers one end of the spectrum is trying to remain one of the guys or gals"
+  },
+  {
+   "audio_checksum_sha256": "18ee7abe62407e12cf35cc39f6b7d3a31462b5df342c5a0ada3ba9fcdb0ac1ab",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1814_18ee7abe6240.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "hydrogen ions are protons that had their electrons stripped off them since hydrogen atoms consist of one proton and one electron"
+  },
+  {
+   "audio_checksum_sha256": "19645e01eacf903e9c58f420717257f93b8d434aafe2b9e5a07f5dd982c3f70c",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1583_19645e01eacf.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "she came to this conclusion due to the multitude of positive comments and encouragement sent to her by both female and male individuals urging that contraception medication be considered a medical necessity"
+  },
+  {
+   "audio_checksum_sha256": "1d81763b954ea7a94bdb3261ed90f5509e79ba42352143bd43e76621280a06c2",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1628_1d81763b954e.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "handicraft products might be defined as antiques though they are younger than similar mass-produced goods"
+  },
+  {
+   "audio_checksum_sha256": "1d8c5dab4026ad1e1c8dcf94880f0116780f55336725eab1ffb41afd9c8748cf",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1755_1d8c5dab4026.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "one bomb exploded outside the governor general's office"
+  },
+  {
+   "audio_checksum_sha256": "1fa0d96a3bc5a98b2834e4668521ce4237bc52cf9c1e773aace0886d2f49926a",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/2003_1fa0d96a3bc5.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "to get the best views of hong kong leave the island and head for the kowloon waterfront opposite"
+  },
+  {
+   "audio_checksum_sha256": "1fbc485f104abf60e5a6ad1f0448758115893da350c9680d59f8b049b06fecbf",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/1711_1fbc485f104a.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "these theories look at what it is about certain people that make them want the things that they do and what things in their environment will make them do or not do certain things"
+  },
+  {
+   "audio_checksum_sha256": "207d7178a9a1248f8751564c8f3806fd32d3d2db3fbb4566a9c03613c3146de6",
+   "audio_s3_uri": "s3://medzen-speech/eval/english/asr/fleurs-v1/audio/2009_207d7178a9a1.wav",
+   "language": "english",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "the most readily accessible plant resources would have been the proteins accessible in leaves and legumes but these are hard for primates like us to digest unless they are cooked"
+  },
+  {
+   "audio_checksum_sha256": "007bf856d2258e85be4c5fa6dfd632c47883ded08be796278d0800882fd9c1c9",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_023_007bf856d225.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "at\u0254\u0303"
+  },
+  {
+   "audio_checksum_sha256": "00c0ffe2a4c16184bd7043bc68dcf5f849ebcaac10d51ad7c33e8673a81acccd",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_112_00c0ffe2a4c1.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "am\u00e3"
+  },
+  {
+   "audio_checksum_sha256": "063fe3af036d1f2474ed3075115314204d210c94c0a364374255e018b85f700a",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_148_063fe3af036d.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me kp\u0254 m\u0254 a\u0256e n\u0254n\u0254metataa"
+  },
+  {
+   "audio_checksum_sha256": "0878c4d5f9fe9cb55959a223d8e09177ac62dfb71b344d054b1afa98459f943d",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_138_0878c4d5f9fe.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "a\u0256u sia le nye \u0256um vem"
+  },
+  {
+   "audio_checksum_sha256": "0bbc9858ca15e62fbfb065a68b906c70e1df1860d11662fc96634132c9fe3224",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_078_0bbc9858ca15.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "avuv\u0254 le w\u0254w\u0254m"
+  },
+  {
+   "audio_checksum_sha256": "0f2d86e016df360b403e3ec5f7ea5e078cc0229643231f2fc718173e6560a58e",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_069_0f2d86e016df.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "dzome"
+  },
+  {
+   "audio_checksum_sha256": "0f94bea3f02b08542175bb4f2a7b1ea2bdee35a4660da6bf1027c0d8f0c7c4d7",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_076_0f94bea3f02b.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "le ga\u0192o\u0192o af\u00e3 me"
+  },
+  {
+   "audio_checksum_sha256": "11ec08e46cb913bc3f943e41e1840c02f417f22d912ce7c2abc5c2739f257615",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_002_11ec08e46cb9.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ayee me do gbe"
+  },
+  {
+   "audio_checksum_sha256": "150b74a76bfbcdc3ab44edfa0745376101c4cf3bca142453e3e9c1d07bdecfbd",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_093_150b74a76bfb.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "\u0256usime"
+  },
+  {
+   "audio_checksum_sha256": "16443d068b10c5b034768933e3271776b117c2d9eb7ce5f20aa14defaf9d116e",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_128_16443d068b10.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "afikae makp\u0254 yevubolo lee"
+  },
+  {
+   "audio_checksum_sha256": "19629cbfa610f2919bf49c2a8af0a59567ae15f672d4d8edb3b8348e5ef74626",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_137_19629cbfa610.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "avuv\u0254"
+  },
+  {
+   "audio_checksum_sha256": "19badabb484b18046e69adabec54d6c7d697f86ec59cf048df15b98edcb1a751",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_126_19badabb484b.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "dzogb\u0254 akatsa"
+  },
+  {
+   "audio_checksum_sha256": "209ec4dc4de5f5a8c965fa97be691243bb8254b8fe1795fba633f870970536e5",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_125_209ec4dc4de5.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "az\u00ed"
+  },
+  {
+   "audio_checksum_sha256": "21ebda8669cf5a556a69285309f5867b0e96f70f0a0befcf4b6c13c5c8ff95a2",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_030_21ebda8669cf.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wuieve"
+  },
+  {
+   "audio_checksum_sha256": "25963c0e5e72fc144432b07fd03c5316efb9458ec643c067d095daa2c7cc37fe",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_120_25963c0e5e72.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kutsetsetsi"
+  },
+  {
+   "audio_checksum_sha256": "28db9ac7258bcee11c03ee6a02889d04b12ef3c06eb5beb80626f54a23f3aa04",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_124_28db9ac7258b.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kaklo agawu"
+  },
+  {
+   "audio_checksum_sha256": "2b0f61a8d27fe1676252b169672cc1f4827533ed63c0d1f072572280bb420c2a",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_032_2b0f61a8d27f.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wuiene"
+  },
+  {
+   "audio_checksum_sha256": "2e9e0b6be383eaaf1ab9b25671e908cfc9c0b36603ec487e9c19086647e0adfe",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_122_2e9e0b6be383.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wein"
+  },
+  {
+   "audio_checksum_sha256": "2fb0f1727550d54afddc96b620a599cad5db1e3ce030fd74d06521b38aac39ed",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_045_2fb0f1727550.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "blaenyi"
+  },
+  {
+   "audio_checksum_sha256": "2fde1b7959fc1821700a49dadb628760746efdeac5009dcdeb8c5fb93637335a",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_037_2fde1b7959fc.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wuiasieke"
+  },
+  {
+   "audio_checksum_sha256": "35881bcdb118049ca36d9069e1dccc0693eafcc80b337502b9db9167d7a52359",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_009_35881bcdb118.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me w\u0254na d\u0254 le goethe-institut"
+  },
+  {
+   "audio_checksum_sha256": "35d1cb8f6202a7b714351a60a0c8d2c8738ac7e3667fe958900c04f4b309fb07",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_011_35d1cb8f6202.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "m\u00eda do go m\u00eda ga kpe"
+  },
+  {
+   "audio_checksum_sha256": "3880cf17722394b973b93e9c0ef26e3493731e1a89215b8d014016691e4ca862",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_048_3880cf177223.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "al\u0254fa eve"
+  },
+  {
+   "audio_checksum_sha256": "3dfd40501f15c4da41b24bf27499d89504e5a7f839fd3a0439d66bad3317e4a0",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_046_3dfd40501f15.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "blaasieke"
+  },
+  {
+   "audio_checksum_sha256": "3f8d7eccf68d0004e62e30b0694f078569d466e3111fbe31e0ed52bfbb0e4788",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_101_3f8d7eccf68d.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kpl\u0254\u0303 sia voa"
+  },
+  {
+   "audio_checksum_sha256": "40d96ad1738a38a091b92ac7db628c4deb3c87e3504fb9cef5a300129ea10198",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_141_40d96ad1738a.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "\u0256ee mel\u0254\u0303a vevesesea"
+  },
+  {
+   "audio_checksum_sha256": "462b1ea354c001f4156601f1597177d5c2aca269db8cf048cf1a6a4216c9f81d",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_083_462b1ea354c0.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "taflats\u00e9"
+  },
+  {
+   "audio_checksum_sha256": "4790e66cac479f8f0edd6eb17161ca82a54383ceaf73e61ef89931afc0440242",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_104_4790e66cac47.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kafe \u0256eka taflats\u00e9"
+  },
+  {
+   "audio_checksum_sha256": "4d05130536aae4dc3c11a1b859b6a0e309fdf6c38bc79149c16a799e2dd15949",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_010_4d05130536aa.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "edo dzidz\u0254 nam be me do go w\u00f2"
+  },
+  {
+   "audio_checksum_sha256": "50adb903f45b43d245a4670dc39b737d3033ad1c4d1ca074758485140c84e105",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_013_50adb903f45b.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nukae nye sia"
+  },
+  {
+   "audio_checksum_sha256": "5606e9283bedb920f1a3e3eb695b8dfe48316c84b51d8034a1721f836568afeb",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_118_5606e9283bed.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "yevudzetee"
+  },
+  {
+   "audio_checksum_sha256": "562716e1173552f3753ab435c58c42ec776eb6eda76b7cbb8a90a8f39be4a3f1",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_067_562716e11735.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kele"
+  },
+  {
+   "audio_checksum_sha256": "562d57965599a72208ab8a158fbb39ce1f4ba4732c1d41e74c255dd334ad831c",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_038_562d57965599.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "blaeve"
+  },
+  {
+   "audio_checksum_sha256": "56c41787051bff1fdce76fc0dc3c2ba46c36aee17c352444b7ea3c3b967baa94",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_012_56c41787051b.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "eyi ts\u0254"
+  },
+  {
+   "audio_checksum_sha256": "58cb33aa625df1d98e8fafca9ff4a647e1022efcd31769f263a83a0ac8f641d0",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_094_58cb33aa625d.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "miame"
+  },
+  {
+   "audio_checksum_sha256": "59da56a9e8fbec0773e4b53b0bd7149e308c1a69bf9171f607b0b02e76995c4b",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_129_59da56a9e8fb.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "neniee"
+  },
+  {
+   "audio_checksum_sha256": "60c5f884617211268d06eae56b0e809d79aeea9c00192961e2a75c65c0817aa3",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_035_60c5f8846172.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wuiadre"
+  },
+  {
+   "audio_checksum_sha256": "67ac09e8e88834935bd000de8c8f5d6a0890a8f463d96552da5e0797ba8e6f94",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_150_67ac09e8e888.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me l\u0254\u0303 w\u00f2"
+  },
+  {
+   "audio_checksum_sha256": "685e55001e416fc6d6b32d41f7841271ef875b863332be7cbd70f339ea4b01fe",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_063_685e55001e41.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "masa"
+  },
+  {
+   "audio_checksum_sha256": "6d496ee6607ae3a094d1d3cf082611a8419a1f2c97712f663aece63ac94a8065",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_097_6d496ee6607a.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "k\u0254me k\u0254\u0303dzi"
+  },
+  {
+   "audio_checksum_sha256": "77b2d485bfe3bfcf81ea1d5ae20320364a703ff7144f2610b4f81ef0d11eaa1c",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_080_77b2d485bfe3.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "tsi le dzadzam"
+  },
+  {
+   "audio_checksum_sha256": "7876c5800fb2217523326d81dac4e92cbb9bd78ccc963d85deccdb00ae4aac04",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_077_7876c5800fb2.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "dzodzo le w\u0254w\u0254m"
+  },
+  {
+   "audio_checksum_sha256": "81926d4899a119d8fabd2e1dbe050820424f47d7070d5cb106e1bf5ed49553ff",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_070_81926d4899a1.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ga nenie \u0192o"
+  },
+  {
+   "audio_checksum_sha256": "835dd82cc16315e4c876884d98ca8b91b9f5d9d92361744e983e0158340478e3",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_062_835dd82cc163.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "dame"
+  },
+  {
+   "audio_checksum_sha256": "87d4a4bb2a29862bfbbe2ea6b872dd79076d02001ada48a236025fe9917cccc4",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_027_87d4a4bb2a29.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "asieke"
+  },
+  {
+   "audio_checksum_sha256": "882ef0ce094a7999f91b6addff1b40080379c93a18108c52ee6b553a4bbbd21f",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_082_882ef0ce094a.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "z\u00e3 do v\u0254 z\u00e3 me"
+  },
+  {
+   "audio_checksum_sha256": "8a1672a85eb3c4eee8ea2067bbf8a0c9dd3ab3c92cfe7f3162945bed7a9903d5",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_095_8a1672a85eb3.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "t\u025b\u0303\u025b\u0303"
+  },
+  {
+   "audio_checksum_sha256": "90a250d6dcb31dd3041719f3cd01ddb6881db3fc4ebfd518eca9fc7a5fb4be49",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_073_90a250d6dcb3.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "e\u0192o ga at\u0254\u0303 minute wuiat\u0254\u0303"
+  },
+  {
+   "audio_checksum_sha256": "92cf029aa21182da768a42068664d17a2b2e996699726a16bcf3af06f9d06219",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_133_92cf029aa211.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "gagbagba le \u00e0siw\u00f2a"
+  },
+  {
+   "audio_checksum_sha256": "94ee964049451a2e4ad4e59f087d0b9d82c02c07bfdea48eca35c4a201a7c7db",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_006_94ee96404945.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me dz\u0254 ts\u00f3 berlin"
+  },
+  {
+   "audio_checksum_sha256": "9e62c66b214d546c2df045dc4b2f6fa685b7152f59b7997b86304c59e782856f",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_100_9e62c66b214d.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me di be ma no nane"
+  },
+  {
+   "audio_checksum_sha256": "9f596aff12c0f54cbc54cb92c420c2fd9ea67a30d9849f8a3ec0cb30458b2813",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_087_9f596aff12c0.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "me \u0256e kuku me bia ts\u0254ts\u0254ke"
+  },
+  {
+   "audio_checksum_sha256": "a428fd2a2a90d602f7aa78f7f80d2999cb3c3c0e567576018dc86f96fcbc3a7c",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_131_a428fd2a2a90.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "\u00e0te\u014bu a\u0256e \u00e9dzia"
+  },
+  {
+   "audio_checksum_sha256": "b365febf8faa3d54691e435e0a3cd68096b67a038608473374f7947e65f889f3",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_050_b365febf8faa.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mili\u0254n \u0256eka"
+  },
+  {
+   "audio_checksum_sha256": "b89abc91c6b8ff3f83a5ac05bed70bf838e48c6131d00978a626461fc4f97e59",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_096_b89abc91c6b8.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "m\u0254dzi\u028bu"
+  },
+  {
+   "audio_checksum_sha256": "bb41af6baab3c90a982120611866c7a63f37eab75d5c0570c2da5a6f70831456",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_052_bb41af6baab3.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "bla\u0256a"
+  },
+  {
+   "audio_checksum_sha256": "be17a61deca02ba8d18d34d93b4ab061ac258eab28a5aa61376147fcb52cb769",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_021_be17a61deca0.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "et\u0254\u0303"
+  },
+  {
+   "audio_checksum_sha256": "c1de33464b7fc6d83099c0d98df3be3b990da05ac9471e7874086b836e140b23",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_001_c1de33464b7f.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "\u014bdi \u014bd\u0254 fi\u1ebd"
+  },
+  {
+   "audio_checksum_sha256": "c3208a146f228f65ca6e71639e42aaff7005c801fd6537df3d8e781f7d10523d",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_026_c3208a146f22.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "enyi"
+  },
+  {
+   "audio_checksum_sha256": "c7ef0e61ae5fb80edd8806e4545ce11d01786851eafbebc2e81abd56f7a53257",
+   "audio_s3_uri": "s3://medzen-speech/eval/ewe/asr/soreva_ewe_tg/soreva-v1/audio/cm_ewe_036_c7ef0e61ae5f.wav",
+   "language": "ewe",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wuienyi"
+  },
+  {
+   "audio_checksum_sha256": "002df1b127ed89d015d7033dec509790d9828fac17f2cbd84a56e3a85dcd87f3",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1523_002df1b127ed.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "le match s'est jou\u00e9 \u00e0 un point 21 \u00e0 20 mettant fin \u00e0 la s\u00e9rie de 15 victoires des all blacks"
+  },
+  {
+   "audio_checksum_sha256": "0099a2ef490b48c09e9d04fa9cb029b2bef9f8b261c8627ebfa65fd36ad2aab0",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1939_0099a2ef490b.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "aussi apr\u00e8s la r\u00e9volution les m\u00e9tiers furent ouverts \u00e0 tous les candidats masculins permettant aux plus ambitieux et aux plus talentueux de r\u00e9ussir"
+  },
+  {
+   "audio_checksum_sha256": "00a6e355117d0787bcc85358f3b63cbb77db3673a6da0e911e35c654f13aff7f",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1870_00a6e355117d.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "les sc\u00e8nes sont affich\u00e9es sur les pyramides et les diff\u00e9rentes pyramides sont \u00e9clair\u00e9es"
+  },
+  {
+   "audio_checksum_sha256": "00adb142ee0dd744ba4fe1c5145ccf413a088538416fe4b67cbf70c04d279583",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1727_00adb142ee0d.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "les enfants sauvages peuvent avoir subi de graves abus ou traumatismes avant d'\u00eatre abandonn\u00e9s ou de s'enfuir"
+  },
+  {
+   "audio_checksum_sha256": "00dc2f03bfb80aad84a277e32d9730d4e1b11afbd9004dfbd98b70735db17605",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_003_040_00dc2f03bfb8.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "oui j en ai un"
+  },
+  {
+   "audio_checksum_sha256": "023dbe26f71c10ace138768de3d49964629cf49dc5c8b0e18a487b496dff990b",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/2003_023dbe26f71c.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "pour admirer les plus beaux panoramas de hong kong quittez l'\u00eele et rejoignez le front de mer de kowloon situ\u00e9 en face"
+  },
+  {
+   "audio_checksum_sha256": "02437bf5ce13e97be097927a6e9fde7f0b8f211ac504f6bf5d80b964e841a5fa",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1545_02437bf5ce13.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "un plat au curry peut \u00eatre solide ou liquide selon la quantit\u00e9 de sauce qu'il contient"
+  },
+  {
+   "audio_checksum_sha256": "0247f1c64c831ab549c390e77e7e12f4783a1dad8a85ae4bc9fadf622578e5d1",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1917_0247f1c64c83.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "plusieurs grands \u00e9crans de t\u00e9l\u00e9vision ont \u00e9t\u00e9 install\u00e9s \u00e0 diff\u00e9rents endroits \u00e0 rome pour permettre aux gens de regarder la c\u00e9r\u00e9monie"
+  },
+  {
+   "audio_checksum_sha256": "02581911fa0442b57618b9b966e1e4551fbb9d97678990309c8d487b4834a267",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_060_02581911fa04.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "suivez soigneusement toutes instructions"
+  },
+  {
+   "audio_checksum_sha256": "027eb10a0149013f51be296a675f80046dab3ba800c40527207dbc3fe96e8280",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_008_027eb10a0149.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "la pharmacienne est aussi m\u00e9decin"
+  },
+  {
+   "audio_checksum_sha256": "047268df0a9562be7a318b1a25dd230f90e1a8544f79c1034f2ca9043ac6ec8b",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/2001_047268df0a95.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "il est fortement conseill\u00e9 aux voyageurs de se renseigner sur les risques de mauvais temps pouvant affecter leur r\u00e9gion de destination sachant que cela peut avoir une incidence sur les itin\u00e9raires qu'ils envisagent"
+  },
+  {
+   "audio_checksum_sha256": "04b9d3e9fc6fdb0ba965d72ce6fa43867e9e5d1fb930b5cf2b9f306000008e60",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1834_04b9d3e9fc6f.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "en vous rendant au nord ne manquez pas de visiter le superbe sanctuaire de notre-dame de fatima temple un lieu mondialement connu pour les apparitions de marie"
+  },
+  {
+   "audio_checksum_sha256": "063e595cea4d477353749d55a0a4047a5baf1eeb0f659bf9331466638b6966c1",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_048_063e595cea4d.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "quelques enfants naissent avec une hernie"
+  },
+  {
+   "audio_checksum_sha256": "064457b614de724096f04975ad6108c9109c413d736aae6b1dc6c75ba524eb8e",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1828_064457b614de.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "une recherche sur internet de cours en environnement hostile fournira probablement l'adresse d'une entreprise locale"
+  },
+  {
+   "audio_checksum_sha256": "06cb5d23321d83d89ee31257672c35d6e71f12b3a88fbefac9aae524f276da97",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1846_06cb5d23321d.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "on dit donc que le rapport d'aspect de ce format en divisant par douze pour obtenir le plus simple des rapports de nombres entiers est de 3 2"
+  },
+  {
+   "audio_checksum_sha256": "072b10125455fc82cdfff24488e07eff4ce9bd8e8014fc43a1f70e5f4b52a7b2",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1926_072b10125455.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "les opinions d'aristote sur toutes les questions scientifiques y compris la psychologie ont \u00e9t\u00e9 accept\u00e9es"
+  },
+  {
+   "audio_checksum_sha256": "0766cc1e499e7591835265d8a4c2e3336dd73368addcde7a0130c6f7e5337cea",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1663_0766cc1e499e.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "vall\u00e9e de cocham\u00f3 la destination d'excellence pour l'escalade au chili connue comme le yosemite d'am\u00e9rique du sud avec de nombreuses grandes parois et falaises granitiques diff\u00e9rentes"
+  },
+  {
+   "audio_checksum_sha256": "07b03c59de8ae5e30d4f7255cdbc559877e6e8c8d3630fe314e2f97ede295a87",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_f_024_030_07b03c59de8a.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "apr\u00e8s le repas alors"
+  },
+  {
+   "audio_checksum_sha256": "07c7b7c21851afa06e26d0b5c07e7cf4d20218871a71012570654bd11d3460fc",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1811_07c7b7c21851.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "la norme 802 11n fonctionne \u00e0 la fois sur les fr\u00e9quences 2 4 ghz et 5 0 ghz"
+  },
+  {
+   "audio_checksum_sha256": "083eca3091d443cce3f398b304cbe02b86eb8f74e095b7986ade536dd8b9bf2d",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1630_083eca3091d4.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "le mexicain arly velasquez a termin\u00e9 quinzi\u00e8me au super-g masculin assis le n\u00e9o-z\u00e9landais adam hall a termin\u00e9 \u00e0 la neuvi\u00e8me place du super-g masculin debout"
+  },
+  {
+   "audio_checksum_sha256": "092b2ad6a323ab56786dc0d6f595f1e791894e6e52f1a6a31fefa7aa847f5750",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1991_092b2ad6a323.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "pendant cette p\u00e9riode de l'histoire europ\u00e9enne l'\u00e9glise catholique qui \u00e9tait devenue riche et puissante a \u00e9t\u00e9 remise en question"
+  },
+  {
+   "audio_checksum_sha256": "096cf96d86ff2362cb5c154203f9d4b28b7d6a813cb4bfe091184deabe5792d7",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1734_096cf96d86ff.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "les scientifiques ont pu conclure que la mati\u00e8re noire affecte les autres mati\u00e8res noires de la m\u00eame mani\u00e8re que la mati\u00e8re normale"
+  },
+  {
+   "audio_checksum_sha256": "0a4cf8cee4aef56dace69124dc0f5d96d812868fca13843bc255c90707d41963",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1848_0a4cf8cee4ae.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "une voiture pi\u00e9g\u00e9e a explos\u00e9 au si\u00e8ge de la police \u00e0 gaziantep en turquie hier matin tuant deux officiers de police et blessant plus de vingt autres personnes"
+  },
+  {
+   "audio_checksum_sha256": "0aa1832534b183240fc90dea5a3dd26e79e96a28d4ad31545f53295b2f079f93",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_006_0aa1832534b1.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "par l \u00e9glise l\u00e0-bas"
+  },
+  {
+   "audio_checksum_sha256": "0b26b3510d5aba9853e94e6d84942a0a61a936e3e760d9d3938c15e801221092",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1945_0b26b3510d5a.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "casablanca est l'un des endroits les moins int\u00e9ressants de tout le maroc pour faire des achats"
+  },
+  {
+   "audio_checksum_sha256": "0b6e36ab9cc10fdea4fd38efe06744d8e7496d48a5fb6f8c84cf3f71f8955e0d",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1649_0b6e36ab9cc1.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "au japon les premi\u00e8res f\u00eates des cerisiers en fleurs ont \u00e9t\u00e9 organis\u00e9es par l'empereur uniquement pour lui-m\u00eame et les autres membres de l'aristocratie proche autour de la cour imp\u00e9riale"
+  },
+  {
+   "audio_checksum_sha256": "0b91c6cb72aee186ab842b05705bb9852a478f0d83b1597ea185850b4ef5e765",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1593_0b91c6cb72ae.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "finalement les roues en bois ont \u00e9t\u00e9 remplac\u00e9es par des roues en fer en 1767 les premiers rails en fer ont fait leur apparition"
+  },
+  {
+   "audio_checksum_sha256": "0c7200de3e662ef6e04d5dff7bf58587dd1f1d12180d7ff2c445b7a9ce3ebade",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_023_0c7200de3e66.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "je vous en prie"
+  },
+  {
+   "audio_checksum_sha256": "0cc60c70d2d29736ae145c16799198e45412af988ca0aaffa2f1326907a6f314",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1686_0cc60c70d2d2.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "par cons\u00e9quent le processus d'une organisation travaillant ensemble pour surmonter un obstacle peut conduire \u00e0 un nouveau processus innovant pour r\u00e9pondre au besoin du client"
+  },
+  {
+   "audio_checksum_sha256": "0d44b5a55f98a2c1c08cb41ae3477624a2544172a37bfdfc356bb975b7468d47",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1579_0d44b5a55f98.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "il avertit que personne ne peut garantir que toute action en irak \u00e0 ce stade mettra fin \u00e0 la guerre sectaire \u00e0 la violence croissante ou au glissement vers le chaos"
+  },
+  {
+   "audio_checksum_sha256": "0e122961a2e57d7358943499fb1eb4dceed074e599c85bac4220e44599e60b4c",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1736_0e122961a2e5.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "rolando mendoza tira avec son fusil m16 sur les touristes"
+  },
+  {
+   "audio_checksum_sha256": "0f64134bb4b6206d3067b72d73e9c19bfb5698095f74a063daa89ab49e309732",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_049_0f64134bb4b6.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "je dois t\u00e9l\u00e9phoner \u00e0 mon chef"
+  },
+  {
+   "audio_checksum_sha256": "0f6a5f8044e8c4480dafdd2a65c1eb8e66561b306337385a94b53d08373eb87a",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1887_0f6a5f8044e8.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "lorsqu'il travaillait \u00e0 l'h\u00f4pital liggins a commenc\u00e9 \u00e0 enqu\u00eater sur les accouchements pr\u00e9matur\u00e9s pendant son temps libre"
+  },
+  {
+   "audio_checksum_sha256": "0ff0c035c8c2d545adc540522bb55e8112b1d019dd3a79a679293cf01fea9115",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1791_0ff0c035c8c2.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ne d\u00e9figurez pas le site en marquant ou en grattant des graffitis sur les structures"
+  },
+  {
+   "audio_checksum_sha256": "101a6b30fe1e81196a9552d09f110bb5186cd32cd7a9f56717c80316c9811175",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_f_024_003_101a6b30fe1e.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "d o\u00f9 venez-vous"
+  },
+  {
+   "audio_checksum_sha256": "1058a8fff546de400d4c9bc7d4dadae84949950dc5c0b868cfdac41da0a7cc55",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_030_1058a8fff546.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "en g\u00e9n\u00e9ral n'injectez pas de vitamines"
+  },
+  {
+   "audio_checksum_sha256": "10b6e43ffeff9b8ba96c0d49447020da55f869416b6a4b021a4b3acc698eeb21",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1572_10b6e43ffeff.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "trois autres bombes ont explos\u00e9 pr\u00e8s des b\u00e2timents du gouvernement en l'espace de deux heures"
+  },
+  {
+   "audio_checksum_sha256": "113c6d7c5d7aeb1eac0e95e8944cbce42b90ac88d79ae3033f417b3bf8b7ab65",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1815_113c6d7c5d7a.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "la bombe \u00e0 fission fonctionne selon le principe suivant elle transforme l'\u00e9nergie en assemblant un noyau d'une myriade de protons et neutrons"
+  },
+  {
+   "audio_checksum_sha256": "12302acf8da3a2cb3b776862ca8218843a9a08039afe1fc37380a20491cb7a54",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1556_12302acf8da3.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "son milli\u00e8me timbre a \u00e9t\u00e9 le magnifique great deeds by swedish kings de david kl\u00f6cker ehrenstrahl en 2000 qui figure dans le livre guinness des records"
+  },
+  {
+   "audio_checksum_sha256": "129d3428968987131dd59010f2844cab636f31977d250452be999ec8ecf86b2f",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_012_129d34289689.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "bienvenu au centre d entrainement"
+  },
+  {
+   "audio_checksum_sha256": "131a2967d75543526d203d8a1083067bd5a49b443bf96ecf7420f2627255b6b5",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/fleurs-v1/audio/1645_131a2967d755.wav",
+   "language": "french",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "son pouvoir omnipr\u00e9sent touchait tout le monde du roi au roturier"
+  },
+  {
+   "audio_checksum_sha256": "13a080c37903f7f9305dabe9a7040c9fd1fdcdcffcb693d1d429e343b5ca05a0",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/cameroon_m_012_003_13a080c37903.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "oui que voulez-vous"
+  },
+  {
+   "audio_checksum_sha256": "152b52b656810bc5aa6e6055c39dc145672a44b8c8d529d44058e5ebe79a60b2",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_065_152b52b65681.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "appliquer le linge sur la peau \u00e0 soigner"
+  },
+  {
+   "audio_checksum_sha256": "15b5ff1224e4c3009183f576a1095b57e8e346ff8923ef08257a3e716f730f10",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_047_15b5ff1224e4.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "huit civiles et quatorze militaires alors"
+  },
+  {
+   "audio_checksum_sha256": "15c9dbdf0dfccd8e00716820c715e709619b9153721415766b53d43d59de1e9d",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_036_15c9dbdf0dfc.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "vous allez dormir ici n est-ce pas"
+  },
+  {
+   "audio_checksum_sha256": "164004f2aa10a02ce84725f6bb5a6d0079fd74409a6588cbf1463b6aa1734f0f",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_f_024_031_164004f2aa10.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "a tout \u00e0 suite \u00e0 l heure"
+  },
+  {
+   "audio_checksum_sha256": "16fca873852970f2d04f5775f9bccd11c989248df3ed6406ac8fd1fafe0053ec",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_003_029_16fca8738529.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "j'ai d\u00fb la laisser \u00e0 c\u00f4t\u00e9 de la route"
+  },
+  {
+   "audio_checksum_sha256": "19814877bec8ff5ffc63b7a231b4832dfaec7a4921c72d0e0d649a28c51d0ba3",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/cameroon_m_012_024_19814877bec8.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "merci bien de votre assistance"
+  },
+  {
+   "audio_checksum_sha256": "1a10484ee01f41e3461b69c8429f1b97a20ddce3ab002efd96e6a273dcc478c6",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_f_024_012_1a10484ee01f.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "il y a une pharmacie un kilom\u00e8tre plus loin sur cette route"
+  },
+  {
+   "audio_checksum_sha256": "1ae3b6d224973d80cd2c5c3536366be1a862771a2297878f849e7ba86d8950fe",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_004_1ae3b6d22497.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "avez-vous un v\u00e9hicule"
+  },
+  {
+   "audio_checksum_sha256": "1b2466621fad0839048973b1999a8af584bc3ef0341a2edfe990f8b28fbeeb59",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_003_014_1b2466621fad.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "quand est-ce qu ils vont arriver"
+  },
+  {
+   "audio_checksum_sha256": "1c45a8470148c4470da043e471d8d7a76e8f41a1e76360506fb454e154994ee1",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_003_020_1c45a8470148.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "est-ce que c est le cours qui commence lundi"
+  },
+  {
+   "audio_checksum_sha256": "1d2ba872e54f449e21200dc60284e772f75f95c4b80231f9c520be786e28f14c",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_013_1d2ba872e54f.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "est-ce que le m\u00e9decin est loin d ici"
+  },
+  {
+   "audio_checksum_sha256": "1de35a59a6eeaa04a9e7c89251ff3d47f28251df13e5480c49f6970cf338c49e",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_029_1de35a59a6ee.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "elle monte l'apr\u00e8s-midi et tombe la nuit"
+  },
+  {
+   "audio_checksum_sha256": "1e30d0c94fec78c643a947fb974f926d6e11b4fc25ea9c4025444d02020f2af9",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_003_044_1e30d0c94fec.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "\u00e7a m arrangera bien"
+  },
+  {
+   "audio_checksum_sha256": "1e9982826154fa905e4c7bfe8a672834ff4ec68a5182f326f9e301f28b5b8c74",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/cameroon_m_012_022_1e9982826154.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "a gauche sur la porte d un b\u00e2timent blanc"
+  },
+  {
+   "audio_checksum_sha256": "2012e60a2ca7185d209d7e0abf3b47078f5c28b615756eaa0e866cbb592897a4",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_f_024_018_2012e60a2ca7.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "bienvenu au centre d entrainement"
+  },
+  {
+   "audio_checksum_sha256": "20a95ff17f54df68512b6cbc474f9bd0af5318432053946928753a27d41bbe9a",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_058_008_20a95ff17f54.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "avez-vous un v\u00e9hicule"
+  },
+  {
+   "audio_checksum_sha256": "20ebd37b981dd98b83ad45b01e31568f1f76fdef6971ca463760b3b9f6370a50",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_059_20ebd37b981d.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "secouer la bouteille pendant trente secondes"
+  },
+  {
+   "audio_checksum_sha256": "21c721c25711db8be57a83a1a0bdedd6674da6f2a06c88884b3819edb62c0558",
+   "audio_s3_uri": "s3://medzen-speech/eval/french/asr/aaf_ca16_test/aaf-test-v1/audio/gabon_m_074_032_21c721c25711.wav",
+   "language": "french",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "reference": "faites attention \u00e0 ne pas trop en donner"
+  },
+  {
+   "audio_checksum_sha256": "0008221f469348722bd4e482d3524d16d671650e5b9193fc6c6be8172ac7eb52",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20331772_0008221f4693.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "com ni iki wumva kidasanzwe ushima imana ku myaka yawe wujuje uyu munsi"
+  },
+  {
+   "audio_checksum_sha256": "002e0298da00f439fe4fbd224e1978b76ba94322570d7094d3bada38fbde9ad2",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19988415_002e0298da00.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "uko umuririmba ugashya ururimbi"
+  },
+  {
+   "audio_checksum_sha256": "00750772be6cf09e98349150e369668849e70592d1af21f3ebeba1289dc2ba95",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20335457_00750772be6c.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "cy ubwishingizi bw amafaranga abikijwe mu mabanki n ibigo by imari"
+  },
+  {
+   "audio_checksum_sha256": "009c60419fc391ab6d957c2d17cbd0ff14acd441128cb04503602f0f6da6b549",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332913_009c60419fc3.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "minisitiri wa etiyopiya ku buyobozi"
+  },
+  {
+   "audio_checksum_sha256": "00c87d8db396392715fbf54715fa8881c6004e1d4885dbd96901fc8dce7ee5e9",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_18683387_00c87d8db396.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "umukuru w igihugu yitabiriye umukino wafunguye igikombe cy isi"
+  },
+  {
+   "audio_checksum_sha256": "00e19e71df90dfa50ac2a961a8100afbc90ce2a73ff03161e992381e2db85b49",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336135_00e19e71df90.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "marco abreu umukinnyi w umupira w amaguru w umunya angola nibwo yavutse"
+  },
+  {
+   "audio_checksum_sha256": "00ecee7132f9ec0a8f2f776ea18f430a0dbd75f042408b4b9d0d53ddb77c95e1",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19833793_00ecee7132f9.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "yiswe ibuku ku bari bujuje imyaka zisohoka zirimo n ubwoko"
+  },
+  {
+   "audio_checksum_sha256": "01108b5174092ee526f87c22e1c4e1086c148d20106efce6252bde8841d6417a",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334951_01108b517409.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "biteganyijwe ko azagezwa imbere y urukiko muri iki cyumweru"
+  },
+  {
+   "audio_checksum_sha256": "01151faf679c8e508315635c32d1959c5d8fa88c60aeedaf254370d346c37c78",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20338042_01151faf679c.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "inzu bahawe zubatswe ku buryo imwe igabanyijemo inzu ebyiri zitandukanyijwe n urukuta"
+  },
+  {
+   "audio_checksum_sha256": "0127509e441db7868e5626dac93a9f62783204e736d6617de329c14a7a3acb52",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332725_0127509e441d.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "agira ati aya matora agaragaza inzira twahisemo muri demokarasi"
+  },
+  {
+   "audio_checksum_sha256": "012a245ac223612f470bff75b688a0f5927b047a8893a1935b28acd23daa3542",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19985936_012a245ac223.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "mani martin ati nkiri muto mu byo nakundaga harimo kuzaba umunyamakuru ukomeye"
+  },
+  {
+   "audio_checksum_sha256": "017e6da32990450455c6e2d5acd051c3ab92585953828b296dc13c501ed88d80",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19829513_017e6da32990.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "demokarasi ya congo n u burayi bose bahurira mu"
+  },
+  {
+   "audio_checksum_sha256": "01962d650c5b79c3a27f2d7024176a00d721fc0b80e3bf911f79d2198325cbfa",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334254_01962d650c5b.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "umuvugizi wa polisi mu karere ko hagati supt gakara n"
+  },
+  {
+   "audio_checksum_sha256": "01abab60adc0336cb8f15b75ac5a49f7a760293d5775505518be9f3695f816d7",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334278_01abab60adc0.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "bwana zuma asa naho aguma anana yima amatwi abipfuza ko atanga imihoho"
+  },
+  {
+   "audio_checksum_sha256": "01f5331b1fd61fbd9f9522981a1468618606ea688b775f205030e1518ea14edc",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336594_01f5331b1fd6.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ibi biterwa n icyo bise mutima wanjye ntumvemo"
+  },
+  {
+   "audio_checksum_sha256": "021e7a96e9101f8dc00cf80c1bee9a6542f8e98d7532fb6a0f33fc0dc30a1468",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20335149_021e7a96e910.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "turashimishwa kandi n uko umwanzi wacu yambuwe intwaro agataha uko yaje"
+  },
+  {
+   "audio_checksum_sha256": "0261699cc6c5abe6b942f3200f758ddcdfaa1d497f6b2da09e0621c078fb7a9e",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332756_0261699cc6c5.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "imbwa yarusimbutse kubera kwitonda kwayo"
+  },
+  {
+   "audio_checksum_sha256": "02771bbfe11579519e7c44a53c9acb9dd26fe35bac4d44556c4d557f9f295e83",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19829988_02771bbfe115.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "kwiyegereza abaturage no kubavuganira"
+  },
+  {
+   "audio_checksum_sha256": "028f59d442651f3f72c87a755a9b0e6b0279064b7274b7fb8c9dce6d1fd7da5d",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20337179_028f59d44265.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "yakomeje avuga ku bikorwa bye by'umuziki"
+  },
+  {
+   "audio_checksum_sha256": "02bc0ea367449b6cda534c003863352f4a233497434a544c7974283a8c590fd0",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332076_02bc0ea36744.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "rugangura ahamya ko ubu ashima imana kuko yari yageretsweho ubusambanyi ubutabera bukamugoboka"
+  },
+  {
+   "audio_checksum_sha256": "02fa90d527d985492ba4057bb40f41e89b1e6177d6a04340d53e87a09b8f428a",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336668_02fa90d527d9.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "mu minsi mike ikurikiyeho imbehe ya nsengiyaremye baba barayubitse"
+  },
+  {
+   "audio_checksum_sha256": "031d8eab9f20d56c4f1b7928507da69e380fea44fec0ba962104c84a2e415833",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20331762_031d8eab9f20.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "musonera atunzwe n akazi ko kurinda ibisheke hafi y uruzi rwa nyabarongo"
+  },
+  {
+   "audio_checksum_sha256": "0359bfcd759fa6359253494bb7777eb823831d407d6f0ea9225033bfc12e72f0",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19829874_0359bfcd759f.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "rudahigwa yatanze hashize iminsi abakoloni bemeye ko mu"
+  },
+  {
+   "audio_checksum_sha256": "0363695ace34798f8ac74b523302973057853562fc8c1043eb673fdeb3783790",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334080_0363695ace34.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "iri rushanwa ryo kwibuka padiri kayumba rigiye kuba ku nshuro ya kabiri"
+  },
+  {
+   "audio_checksum_sha256": "03879ec27b8abc794ceaf9590bad124273f4b074f8bb2f7cd7a941b186896dba",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336110_03879ec27b8a.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "yongeye ko vyari kugira ico bifashije iyo biba vyashigikijwe igitsure ca diporomasi ca afrika"
+  },
+  {
+   "audio_checksum_sha256": "038bc5ce655112fa8123537afd539b832e7c161ad9e7ba936e5c3a77683285f3",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334282_038bc5ce6551.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "bakimara kubona abapolisi bagerageje kwiruka ariko abapolisi babirukaho abafashwe bahita bajya gufungwa"
+  },
+  {
+   "audio_checksum_sha256": "03b1ea507dc199f1f845b45cb96c529a0db4c9b8790a7f4c44d150658f261631",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19832885_03b1ea507dc1.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "muri mutarama uyu mwaka"
+  },
+  {
+   "audio_checksum_sha256": "03b62d6a831723ea97ae16744dbabf14a43a91e210ab60d714bfe918d3f41aad",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19833331_03b62d6a8317.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ati serwiri serwiri wa budeyi budeyi wa mushi"
+  },
+  {
+   "audio_checksum_sha256": "03b6820e7a2f8df7183160cc18812d263461f335e590cd399d17195e6aa79141",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19833664_03b6820e7a2f.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "wasobanura ute se ukuntu yaciye ubutabera mu"
+  },
+  {
+   "audio_checksum_sha256": "0440173893bb5f0f0d5ce112da2861fd6eb9a5c5a24cbeb26de723c0542ed1b7",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19833870_0440173893bb.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ati umwaka ushize twabigerageje mu bigo"
+  },
+  {
+   "audio_checksum_sha256": "045a3240c763033da87d45fe476041a7326d0ff75e7601f731def18802e90ac3",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19828326_045a3240c763.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "yagize ati ubutunzi dufite ni umurage"
+  },
+  {
+   "audio_checksum_sha256": "0472d9ee68002e5407237981e521c1a5bf03d52a95df6c76457bc6d8f3b9287e",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336946_0472d9ee6800.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "abantu bakoresha amakarita ya banki cyangwa telefoni igendanwa"
+  },
+  {
+   "audio_checksum_sha256": "048f9ffb1fc0127bf9967dd93151492ae2be3282f7cb77de7aadd1d1da4f3058",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20335224_048f9ffb1fc0.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ku bijyanye no kumenya ibimenyetso bya ebola"
+  },
+  {
+   "audio_checksum_sha256": "049e8f54f8511e12e562458639d79de27216d9e4e72a5fc9ba3c0d9d90cdc2c1",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19829411_049e8f54f851.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "nkunda kumva imiziki byaba nangombwa nkanabyina"
+  },
+  {
+   "audio_checksum_sha256": "04db8649bdcf742937e38c6ac53afe2f60684e39d00bd62acbb3f049183c4987",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19986704_04db8649bdcf.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "bwana pompeo yavuze ko ari ukubera ubu bushake amerika yiteguye kwitabira ibiganiro aka kanya"
+  },
+  {
+   "audio_checksum_sha256": "04f4cf792cecf14371b0d478ea668b662c262b037c434e841e68941f6eda6ac1",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20338610_04f4cf792cec.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "harorimana umuhuzabikorwa w amatora muri kimironko yishimiye uko amatora y inzego z abagore yagenze"
+  },
+  {
+   "audio_checksum_sha256": "055289e52b42ca694d6df8a822dcd0efddd0121be9b8e0274bd5c522d0dc6bdf",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336388_055289e52b42.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "bitangire ku isaha ya saa mbiri z'ijoro kugeza mu rukerera"
+  },
+  {
+   "audio_checksum_sha256": "057028392305f36c2b396daf1cae5404a7ced450467cea261f6dc986c0a01077",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19831245_057028392305.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "by abanyaburayi"
+  },
+  {
+   "audio_checksum_sha256": "05cd995fcbbd26b206fd99f50b804a9dfbe1a45e328f8fc0792e37a616fa68e8",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19989051_05cd995fcbbd.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ni umuhigo m-izzo yemeranyijweho na riderman umukuru w'ibisumizi"
+  },
+  {
+   "audio_checksum_sha256": "060c04ced6df7d212d12f6d8f0fe75b11130d395d8d9f10e839c57517b68fbe2",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19987047_060c04ced6df.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "nibyo dushishikariza abantu gukora kugira ngo icyo kibazo kitabaho"
+  },
+  {
+   "audio_checksum_sha256": "0612889bfb1da3e6bba21dd6dc269316f0a22741f9a79b75cc6b32b1920a8185",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334836_0612889bfb1d.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ibi byose yabikoze yita no ku rugo rwe mu buryo bw intangarugero"
+  },
+  {
+   "audio_checksum_sha256": "061631328a12e922418484f1f78f066967757ea81e1508699e2354fd02e2cc20",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19834477_061631328a12.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ibizamini bisoza umwaka bijyiye gutangira"
+  },
+  {
+   "audio_checksum_sha256": "06663d08ec33e1fdf4e61c812143f333257a6931d7de222dee023bd5ea7f25a5",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_18683351_06663d08ec33.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "uri stroke iterwa no kuvura kw amaraso yavuze ko ayavuze iyo"
+  },
+  {
+   "audio_checksum_sha256": "07374eba44966a5d8daa36847b8feb7481115df8c5a9bf538c9bd023c000ebb3",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20338125_07374eba4496.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "nshatse kumukingurira umuryango uwo muntu arambwira ati ba uhagaze gato"
+  },
+  {
+   "audio_checksum_sha256": "0762a30847a488e3b18945dddeddf697bfcc4a8fb6a4fe4cf3fddeafd7674efa",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19828869_0762a30847a4.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "bifata amafoto n amashusho gusa"
+  },
+  {
+   "audio_checksum_sha256": "07958c1affb3aa28429d8b2097e91b736a7f800273700d736fe950f5791f11c4",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19830764_07958c1affb3.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "kwishyira ukizana afite nta mibereho kandi ni mu gihe"
+  },
+  {
+   "audio_checksum_sha256": "07a419490cc2de5b0c1d9b4ffb781ef7e9141efa270dc3eac09e372dcc3e0a88",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20337577_07a419490cc2.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "igihugu cya libya cyabonye ubwigenge bwacyo ku butaliyani idris wa mbere ahita aba umwami"
+  },
+  {
+   "audio_checksum_sha256": "07e8893acc4eac74cef79b854f6160ecdbc8e84091c9855e06fab89d8f4c2c7b",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20335096_07e8893acc4e.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ariko se kuki ajya kwiyamamariza ku mbuga z abaturage mu mataba no ku misozi"
+  },
+  {
+   "audio_checksum_sha256": "080d8f0039c2b48ec7c5fda217b4c096dfebfa375690d28a03679945f1200c7c",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20333505_080d8f0039c2.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "amahirwe akaba agihari kuri buri wese ukoresha umurongo wa airtel"
+  },
+  {
+   "audio_checksum_sha256": "080fd5423f04f226ab0642a11b631974e76b3a6ab787a4732daa47f76ce5a935",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332014_080fd5423f04.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "christopher na bruce melody ubwo bari bageze ahabereye ubukwe bwa knowless na clement"
+  },
+  {
+   "audio_checksum_sha256": "082db9c37dcff10eea560cfbb21c2cf5f7dc5681dbba296a74db4b220f7a4012",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19987160_082db9c37dcf.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "abanyarwanda n inshuti zabo bifatanyije muri ibi birori"
+  },
+  {
+   "audio_checksum_sha256": "0836dd65b3600a3e16ac1cb3b58244f62ba9c8445ebf85688dab2409d6f33695",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20338387_0836dd65b360.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "akaba yari afite ibiro mu mujyi wa kigali i remera muri centre christus"
+  },
+  {
+   "audio_checksum_sha256": "0846777223d765f386933cdde638f8cc7f2b9e7dac11f80cc43d8cb9948e3ae1",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19831516_0846777223d7.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "mu itangazo ry ibyemezo by inama"
+  },
+  {
+   "audio_checksum_sha256": "084dc14959a6612421623462467e6f3566c97085d4294b345b21de3e3d98bb6d",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20332006_084dc14959a6.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ati itangazamakuru ni ijwi ry abantu batagira kivugira"
+  },
+  {
+   "audio_checksum_sha256": "084ef94d810fd062780941c0674c0dbba85cbb80215e94ae2e51ca0cc2e1f29e",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20335146_084ef94d810f.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "com ubusanzwe umuntu agira uburyo agaragazamo ibyishimo bye wowe ubwawe ni ubuhe"
+  },
+  {
+   "audio_checksum_sha256": "088f1ea423029acb945bd6109de459e5bd57120ccec99dd6c2386d117cb7a61d",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20336044_088f1ea42302.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "ariko bitandukanye n'uruhande rwa perezida trump usa n'uwifata"
+  },
+  {
+   "audio_checksum_sha256": "08a48e1b956535fba82d2d975e7a76a1c611307fc369b3513b4f3b652a5535de",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_19989496_08a48e1b9565.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "uko perezida wa amerika arahirira gukora imirimo ashinzwe"
+  },
+  {
+   "audio_checksum_sha256": "08d3ace557e3414b5e8ccd60877e1edc1a0d9122250d57cb5b2f6276fbcb213c",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20331825_08d3ace557e3.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "abantu benshi bari bitabiriye iki gikorwa"
+  },
+  {
+   "audio_checksum_sha256": "0909f1e87168f612a9c41e596dda68feeb37b2d34bc597f5b4837b060e9f7ef3",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20331575_0909f1e87168.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "twababonye batembera hirya no hino mu biro vya onu"
+  },
+  {
+   "audio_checksum_sha256": "091ed59a0809dce36a79e02635b4668e2c2710f8c9291183a2e200248f1dc107",
+   "audio_s3_uri": "s3://medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/common_voice_rw_20334716_091ed59a0809.wav",
+   "language": "kinyarwanda",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "reference": "umwe mu bagabo yagize ati ntushobora gukora ku mugore w inaha"
+  },
+  {
+   "audio_checksum_sha256": "013a96bc648eef54008af9d61b0cdad588d777ba5218bd6d8aabf87f9eaa1ea5",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1731_013a96bc648e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "na bisanga mpe na balake eza na ntina te kozala na yacht"
+  },
+  {
+   "audio_checksum_sha256": "01730f2506532922d141e1968080d6257e8bd87f4759617f16408e2446972611",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1584_01730f250653.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "rapore emonisi ete bato bakobaki kobotola biloko mingi na butu bapolisi bazalaki te na babalakabala ya bichkek"
+  },
+  {
+   "audio_checksum_sha256": "018eb30ca50967ef96f9d8c77cf098763e1d40e08ce8e9c20452da5e78054584",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1548_018eb30ca509.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "soki ozobenga moto moko oyo aza na bankoto ya bakilometele ozosalela satelite"
+  },
+  {
+   "audio_checksum_sha256": "020b08217a625ea390f7c245b2789599d5d97a95dbed63eb4a9dc721e4773f81",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1836_020b08217a62.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "bato bayebi biloko ya ntina ya chimie na ndakisa wolo arza pe palata banda kala mpe bato bakoki komona biloko oyo na bisika bafandaka ezalaka mpe pete na kotimola yango ata na bisaleli ya bongobongo"
+  },
+  {
+   "audio_checksum_sha256": "022dafeb3d7e2e5fc1fed567279cb78490a542018a5aa23427002a36dd3a6900",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1993_022dafeb3d7e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "mopepe ya zomi ya eleko oyo ya mipepe na atlantique mopepe ya se ya tropique jerry esalemaki na mbu ya atlantique lelo"
+  },
+  {
+   "audio_checksum_sha256": "0253eab6c22e16677f20217ff23c49a929f1b9d3fa75188c24267d3438887e45",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1772_0253eab6c22e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "yango wana ezomonana neti babakisaki bilembo kaka lokola etiquete"
+  },
+  {
+   "audio_checksum_sha256": "030131c427d6b8e6e26ab40a543bc5883f1e822c0dd82f4bf3570868823de7ed",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1919_030131c427d6.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "engumba eza mpe esika ya komata na volcan ya nyiragongo na mwa bangomba ya minkomboso ya talo moko mpenza ya afrika"
+  },
+  {
+   "audio_checksum_sha256": "037969b7e981178896fe15265b84159a4289647419e5643308b5baa19b4dc841",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1631_037969b7e981.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "bato ya egypte ya bokonzi ya sika basepelaki ntango bamonaka bamonima ya bakoko na bango oyo esi esala bambula koleka nkoto moko"
+  },
+  {
+   "audio_checksum_sha256": "03bac7944a854f5bd68e07a5cd71ae579700c1dd0e9a74a20a3430f6dbab7fa6",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1577_03bac7944a85.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "emonanaki neti eza na ntina te mpona ngai ezalaki malamu te"
+  },
+  {
+   "audio_checksum_sha256": "04753001a8ab7fc14b81a14ac20c6b29d402f03354420cb978afe824a21fba4a",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1901_04753001a8ab.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "atako ai eyebana mingi ete eza lisolo babongisa ai eza eteni monene mpenza ya siansi ya ordinatere elandelaka bizaleli mayele pe ndenge mashine emesanaka"
+  },
+  {
+   "audio_checksum_sha256": "0515a71c4a6d36091d60c3184b2691a0abd21ada60e9ef158056db5d077e1711",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_143_0515a71c4a6d.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nazoyeba malamu te"
+  },
+  {
+   "audio_checksum_sha256": "059188ef5d034c6e1dffceb221859e64d0097ac73525b16ae31973b82f0067ff",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1596_059188ef5d03.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ba naturaliste na bafilozofe batiaka likebi na makomi ya classique pe mingimingi na biblia na latini"
+  },
+  {
+   "audio_checksum_sha256": "05ee10e16b9ec58b1b9f149ed8f040175cb3b3d064f4d51263baf6ab46755f65",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1994_05ee10e16b9e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ntina ya koloba eza te soki oyebi lokota moko ya romane ekozala pete mpo oyekola lokota ya portugais"
+  },
+  {
+   "audio_checksum_sha256": "061448c32b468cf7a0a2fee58b9f4f2cb9f07f75c43e518ff43ce1d36816f7fb",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1923_061448c32b46.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "mayele wana esalisaki mpenza ekataki blei ya basoda pe ya basivile atako kokanga biloko wana ebukaki mibeko endimami na mikili mingi oyo babongisa na boyakani mingi oyo basala na bikeke mibale eleki"
+  },
+  {
+   "audio_checksum_sha256": "062cb5a89ac752ae8e900fd29a7ec773ae3d65b51734472a30cab6e4afda38f6",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_089_062cb5a89ac7.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "wapi ndako"
+  },
+  {
+   "audio_checksum_sha256": "067c0ba0ee18bdb99cf4bf1443ef3538b253bcdaae2e48a3c7c15f74326288af",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1861_067c0ba0ee18.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "yango wana basani bamelaka mbangi ntango bazosala teyatre mpe teyatre yango moko elendisaka bato na kosangana"
+  },
+  {
+   "audio_checksum_sha256": "06c2074e3d3e615647c4dbf37ea0cc74d1a38436f5b5e14bbae6325d9a1a9cfa",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_052_06c2074e3d3e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mokolo ya mibale"
+  },
+  {
+   "audio_checksum_sha256": "06da094a4c5bcb8cf27e0b9c5c188f9a2a5b977a4ef023443453a1177eb450bb",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1585_06da094a4c5b.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "nsima ya ntango bato ya sika babandaki komesana na esika na bango ya sika bakomaki kokesena mingi na bato mosusu"
+  },
+  {
+   "audio_checksum_sha256": "081066cec2d07f5c68a543a497ccd449c12a22d5057e752d5a153a42476ec212",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1554_081066cec2d0.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "alobaki ete asalaki eloko esalaka makelele ya wifi"
+  },
+  {
+   "audio_checksum_sha256": "0864093029f837d925ba179f75446968e57ae6fc040161c7d0bd9bec2650af33",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1642_0864093029f8.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "badepanse ya bitumba ya baniokoli ya etats-unis mpona kobotola philippines efutamaki na bato ya philippines bango moko"
+  },
+  {
+   "audio_checksum_sha256": "08986d1992b0eb203f9a98e6bf796a44f9a384cb1b0964e898ed421cd8b7c84b",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1794_08986d1992b0.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "civilisation eza bokoko oyo ekabolami na bato mingi mpenza oyo bafandaka mpe basalaka elongo lisanga"
+  },
+  {
+   "audio_checksum_sha256": "09899e01c7c03e3dd8f84e5b1083ed0d82f51b1a06e2743ba1f6638883540fad",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1830_09899e01c7c0.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "parti oyo ezoyangela south west africa people's organization swapo ebatelaki mpe bato mingi na maponi ya ebandeli ya parlema"
+  },
+  {
+   "audio_checksum_sha256": "09c78edd698b7ae4250ee12e3e335a251402a45f48ac3e8a55a70131fb64f0e0",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1629_09c78edd698b.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "barapore mosusu elobi ete bato bakufi baza mwambe kasi rapore ya bakonzi endimisa ete bato 30 bazokaki kasi motango ya suka eyebani naino te"
+  },
+  {
+   "audio_checksum_sha256": "09f2c1c0a218b738fd2314c49915b00006772eab9645efed6cc28c96ddfa2ab0",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1851_09f2c1c0a218.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "mipepe makasi ezalaka soki bambonge ezobeta na libongo bato bakufaka na yango mpo bamekaka kobeta mai na ndambu oyo mipepe ezouta yango wana balembaka"
+  },
+  {
+   "audio_checksum_sha256": "0cbacc5e6b4c4d2d21fd8f00b2a6704eacb5d4e80b717dd7d2f2cd88885dfa60",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1972_0cbacc5e6b4c.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "bato ebele bamonaka bango te neti badinosaure po baza na masala mpe bapumbwaka"
+  },
+  {
+   "audio_checksum_sha256": "0d6434bcb57bb64feb5e88141764f668c31abb5fad499bda913a40e23d282d7d",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1970_0d6434bcb57b.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "toyebi mpenza te kasi mbala mosusu eza na lolemo ekatana eliaka bakoba mbisi ya minene ba mosasaures mosusu pe mbala mosusu ezalaki kolia bato"
+  },
+  {
+   "audio_checksum_sha256": "0edd27197a5cf92ac9a0eaee7a666d0c372b44eec5e91aed6505aa2ccf627001",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1785_0edd27197a5c.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "motalaka to \u00e9chafaudage eza lolenge moko ya koyekola kasi esalisaka pe na kosunga bato oyo bazoyekola makambo ya sika na ndakisa programe ya sika ya ordinatere to ebandeli ya mosala ya sika"
+  },
+  {
+   "audio_checksum_sha256": "0f86aaa77df41f6abf4bc105696bdef864420c27ccd9d6b5c5c3ef1049b5a213",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1532_0f86aaa77df4.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "basani 108 ya chhappan bhog ya bahindu biloko 56 ekeseni oyo balyaka na ndakisa biloko ya sukali bambuma banguba bilei mpe bongo na bongo oyo bapesaka na nzambe bapesaki yango na baba shyam"
+  },
+  {
+   "audio_checksum_sha256": "103898a904f44d5d4d242d48a9fb085506e35135752301526dbfb35c22409e63",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1640_103898a904f4.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "na banzela oyo etondi na neige mpe glace friction ezalaka mingi te mpe okoki te kokumba motuka neti oza na nzela oyo eza na eloko te"
+  },
+  {
+   "audio_checksum_sha256": "10922ef17d56e5b815eed5909d6ea8df73cda490f759223a63c3ae7dc816f0a1",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_086_10922ef17d56.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "te botondi"
+  },
+  {
+   "audio_checksum_sha256": "112e75d1365e1348ed80b0a9753745fdf0bd9c28644d804fd8e6d847d099615d",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1886_112e75d1365e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "bokoko pe bikolo ya kala ezalaki kobatela yango po bazwa miliki suki misuni mpe bamposo"
+  },
+  {
+   "audio_checksum_sha256": "113f4fbe11d9df87105cf0c6a2236c0b160c6a48d09d5e6c45697770b8c4c9ca",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1664_113f4fbe11d9.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ningisa bapoudre mibale elongo na nsima na maboko ya peto pe ya mai kanga yango na boule"
+  },
+  {
+   "audio_checksum_sha256": "12394b0ddc2ec049c2cd475a8581e02b55475f55bd8327f6cb859d8cbdecd8e9",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1837_12394b0ddc2e.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kotonga ebengami liberale ya misala ya kotonga etiaki libeki na kofuta bakontra ya misala na bato ya washington oyo bango bakanisaki"
+  },
+  {
+   "audio_checksum_sha256": "134f4a2cf9609cd174d1cac1b961540520f8755fc9a71ce6ae33ecf6f36ec9e5",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/fleurs-v1/audio/1677_134f4a2cf960.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "lelo banyama mike oyo bakoki te kokanga mapapu na bango soki bazopumpwa eza banzinzi babengi dragon mpe ba \u00e9ph\u00e9m\u00e8res"
+  },
+  {
+   "audio_checksum_sha256": "163e22f96c5665ee8cae8abb507bbd600e56a5a6676d52958389f43c4d987d18",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_104_163e22f96c56.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "limbisa nakoki komela kawa"
+  },
+  {
+   "audio_checksum_sha256": "1a7540b08108a35f69f620475d9124554aec5860d353797f748685fe44ac6fa2",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_026_1a7540b08108.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "moambe"
+  },
+  {
+   "audio_checksum_sha256": "1c1c746d2593ec120d02f70586e0678605315d93484a22027a562c62c4bcb908",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_124_1c1c746d2593.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "galato"
+  },
+  {
+   "audio_checksum_sha256": "1f416ae69a62f2af25108dd52519b6bcd4d8bca98db5a4c8cfeaa935d52e84fd",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_039_1f416ae69a62.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ntuku mibale na moko"
+  },
+  {
+   "audio_checksum_sha256": "218ed057cb22069f9f029c534e9ae23014f7cb72b030414924a855abee78642f",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_112_218ed057cb22.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ndunda"
+  },
+  {
+   "audio_checksum_sha256": "222507d8b91467ea14f40ed9e3ce7cba82bec95aa6fde67863addeac49fb227c",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_103_222507d8b914.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "limbisa nakoki komela masanga"
+  },
+  {
+   "audio_checksum_sha256": "25e0340850d2d9af8d1d70bf9cd0f35121929e42d5d02a7df4491aa639edabbf",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_013_25e0340850d2.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "eza nini"
+  },
+  {
+   "audio_checksum_sha256": "2be28df44887efe4fbe548088b38cd7558eefad91fe5cb9ab733decf77bac841",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_116_2be28df44887.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mboma"
+  },
+  {
+   "audio_checksum_sha256": "2cec4c3856419f2d724cda034fe90da27764e654e1603173f2744cae40c27ed3",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_022_2cec4c385641.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mineyi"
+  },
+  {
+   "audio_checksum_sha256": "3cd0175d1d959d689ecadf32f90351f2fd5ce6b6a2c8168e21678a1c6f31a1b3",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_113_3cd0175d1d95.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "liki"
+  },
+  {
+   "audio_checksum_sha256": "443880590bc6db9d2cb2b0d48e21b14c520e4d0be1c2dc6e8ac5330656b1c9b8",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_117_443880590bc6.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "manioko"
+  },
+  {
+   "audio_checksum_sha256": "492245e7b5e656546a42cb0145d468664efdd993fb571e8affb69d1f212974b5",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_074_492245e7b5e6.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "eza ngonga na ntuku mineyi na mitano"
+  },
+  {
+   "audio_checksum_sha256": "49b8d0d5dff85889e82aa4d1d6e784e21f351f6112abafeef51de0e8962af713",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_115_49b8d0d5dff8.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "liboke ya ngombe"
+  },
+  {
+   "audio_checksum_sha256": "51fce2472ad098585d40c4a53b4d0d95b5ccd9c996dcb4d3df76c8214694c9c1",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_091_51fce2472ad0.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "motako nini ezali esika ya egunduka"
+  },
+  {
+   "audio_checksum_sha256": "52f776164a7aa5a2cff03d5ffcebfce0804a113e168c05af0e03bf9df258f781",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_061_52f776164a7a.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "sanza ya mineyi"
+  },
+  {
+   "audio_checksum_sha256": "53ba5c2f838627bea4f7f8ba1bbff7cecb9370155d4d30484cacaeae7520066c",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_126_53ba5c2f8386.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "potopoto"
+  },
+  {
+   "audio_checksum_sha256": "544a0a1300e8e9160d7240d4ce5d53398ef7fb6e3de5170889d2a295dba08e84",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_078_544a0a1300e8.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "malili ezali"
+  },
+  {
+   "audio_checksum_sha256": "6272e9ed632d101e6a0277c21e4de3d0fa831b6c8cdc22ca9b94203a0fc5769e",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_044_6272e9ed632d.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ntuku sambo"
+  },
+  {
+   "audio_checksum_sha256": "65f0ce6cba322a4bb1fdc4851dbfef3537e3a12c6330801f881ad9ef70c3c826",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_010_65f0ce6cba32.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nasepeli koyeba yo"
+  },
+  {
+   "audio_checksum_sha256": "65fc3ec336e03386f13cfccad86d5e614bad350276155bbaf3b93ba87528313b",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_076_65fc3ec336e0.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "na ndambo ya ngonga"
+  },
+  {
+   "audio_checksum_sha256": "661dd00769fe5868ddc024f3713c9c54de62e8ea2a0d9fc3295b934d84bdf785",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_093_661dd00769fe.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "loboko ya mobali"
+  },
+  {
+   "audio_checksum_sha256": "6ab316a1cbdb26309557528f7e7eceb21c88f1b47e2386fef95b807d28b897be",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_011_6ab316a1cbdb.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mbote ya suka"
+  },
+  {
+   "audio_checksum_sha256": "6dcaef385a95142309aca4e137c31b3b3ec3e85901097ba76320e7d0f82b5192",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_075_6dcaef385a95.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "tango nini"
+  },
+  {
+   "audio_checksum_sha256": "6ebe4cdc8542be1fce21f1a85672030e7009c00472ffef5decdb27bd2709086d",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_094_6ebe4cdc8542.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "loboko ya mwasi"
+  },
+  {
+   "audio_checksum_sha256": "6f6bfa72aaae22442ffc00b0961e8b9ec13116c645024f5dc6107e8f80e30167",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_122_6f6bfa72aaae.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "vino"
+  },
+  {
+   "audio_checksum_sha256": "710e0bdbf5f79b0d654498aea3c1b3483a82ea3a2cdc9734407f36aa7653416f",
+   "audio_s3_uri": "s3://medzen-speech/eval/lingala/asr/soreva_lin_cd/soreva-v1/audio/cm_lin_079_710e0bdbf5f7.wav",
+   "language": "lingala",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mopepe ezali moto"
+  },
+  {
+   "audio_checksum_sha256": "005309cd182a1a2059d59c85fc6d8661b2482fc1bbda8ef7030566c2bce8700c",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT3M1_ev_read_001.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "abeg de money wey you talk say you transfer give me i no receive am"
+  },
+  {
+   "audio_checksum_sha256": "00735bb0cc22cb328c97c4fd57346d3dba85ae7bca83e6fab11d9bdc16a660f0",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F30_he_spontaneous_070.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "wetin i mean be say some families dey like do prayer or tradition or tradition before doctor start work"
+  },
+  {
+   "audio_checksum_sha256": "00865b1dd832e7eab0246c5bd36b1aff6b3d15f696c2208793ff61245173da41",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PBUS1F1_bu_spontaneous_009.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dem tell people wey wey dey pass market to confirm the price wey dey for fresh food"
+  },
+  {
+   "audio_checksum_sha256": "00a44b378adaabfecff72148257719a43f5d81fd171c94e80e8f2729f99e6c8f",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PBUT1M8_bu_spontaneous_132.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "the ten ant no pay rent on time and e cause wahala between am and the landlord"
+  },
+  {
+   "audio_checksum_sha256": "00b32be1a483e187b1edd1f5ec8b6981a5db1036549aac11d246e6481f9afa3d",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECS1F25_ev_spontaneous_098.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "som pipo go open mouth tok sey na village pipo dey cause am"
+  },
+  {
+   "audio_checksum_sha256": "00ed8528a70804f2067b06e3c807646ebc6b57c7ba487cec2d180f56231a3cd3",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PECT1M115_ev_spontaneous_140.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "we go visit two cities for dis holiday make make we enjoy small"
+  },
+  {
+   "audio_checksum_sha256": "00fb1856d39afef68386cd7db597c76ac0082695a95daf9de4c6fe4a437e8f7f",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F68_ag_spontaneous_055.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "na coconut wey dem grate and rice and fresh tomatoes wey dey don fry na im dey take dey cook coconut rice"
+  },
+  {
+   "audio_checksum_sha256": "0134500118fd9fb09e270b65c697ec3414d873c07cf9024ea29efdc0ba96412d",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PBUS1F1_bu_spontaneous_060.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "plenty people dey do part time work for holiday time to add join their money"
+  },
+  {
+   "audio_checksum_sha256": "0144c0131134a4a3cee696f9d4dd34d45739096d922cf835eea36a81017a25c3",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT2F32_he_spontaneous_152.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "if doctor sabi wetin people believe for religious group e go help dem treat well but sometimes dem go wait before real treatment"
+  },
+  {
+   "audio_checksum_sha256": "0179277b4e452c5c315ec1963a84f07a9dd0daff070d66cda4c16c9f2b1f2191",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PBUT1M8_bu_spontaneous_032.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "de insurance for house dey cover damage wey dey no expect for poor wey dey carry water"
+  },
+  {
+   "audio_checksum_sha256": "018794427000bef4860e7bd187bdac18e75db762f3bf38ef57c442c038355667",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F105_ev_spontaneous_325.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "fela dey sit on a couch dress in just one pair of speedos swimming trunks"
+  },
+  {
+   "audio_checksum_sha256": "01ff15a395f2068034f03fff1b565aa9567573f16b4a2e7f9499d7d44c2f44cf",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PECT1M115_ev_spontaneous_173.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dis your birthday go sweet i no go fit wait make holiday come"
+  },
+  {
+   "audio_checksum_sha256": "02192be37a34200f92842ff34773e77f70f2f4077378db370d6e5fe4a619e973",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PECT1M115_ev_spontaneous_586.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "children wey dey do househelp na pipo wey their parents no get money"
+  },
+  {
+   "audio_checksum_sha256": "0230d459093f946b6c1823d8fdbb19ffefe400887d25ab67405bc349334078df",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PHTS1M1_he_spontaneous_226.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "people dey support make local clinic train more people about how to start give pikin food"
+  },
+  {
+   "audio_checksum_sha256": "026206e44f67a44c89f9dcd8d5d65ba8e275fc7f1cccff7c8a193985c07418b3",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT2M3_ev_read_515.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "to make di work sweet you fit share di work based on wetin each person dey enjoy"
+  },
+  {
+   "audio_checksum_sha256": "026981efd55395b0de3c0b0c497ce3cf0984b08664edfc093f2827e652bb7407",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F40_ev_spontaneous_428.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "we fit greet greet friend um with their guy name or wetin um we know dem as um from house"
+  },
+  {
+   "audio_checksum_sha256": "026a3b7be480c77046750336ec13e9b19ddf8e8315018c280286d72fb735348c",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECS1F25_ev_spontaneous_170.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dis mineral dem wey young pipu dey drink um fit dey cause diabetes for old age"
+  },
+  {
+   "audio_checksum_sha256": "028d24f3e50d889091c68e1026ee5825212c980ce12e0e7809fee137447180d8",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F45_ev_spontaneous_274.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "we don prepare everything for the party we just dey wait for the guests"
+  },
+  {
+   "audio_checksum_sha256": "02be096fe71ceeb65fc334af683df9f41a76068831de6d973b1f023a276c9253",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F105_ev_spontaneous_426.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "i bin um first pay for um consultation sessions wit orthodontists dat na even bifor i fit start treatment"
+  },
+  {
+   "audio_checksum_sha256": "02bf4ea0f9afad71c15cbc9070d2dc84aa76ab205538bf7ec8a1a5b187bf9b0d",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PS1M3_ev_read_416.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "small loan wey bank give me na im i pay times three"
+  },
+  {
+   "audio_checksum_sha256": "02e07490609a33d5e6e90ec0a9e5969f53e2423ebfbe4184438c5ccdf4ba94b8",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT2F24_ag_spontaneous_246.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "we dey check our gutter um wey water dey pass through around um our vegetable bed this morning"
+  },
+  {
+   "audio_checksum_sha256": "02ff09d4c24ec92db0b6a66bb5918fd1ca6ecfac861553f7c058c442c76ea1ce",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT2M3_ev_read_263.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "i dey encourage people make dem talk about their mental health e dey important"
+  },
+  {
+   "audio_checksum_sha256": "02ff8788cf30e5383d6bc923e944427892c0e88f65bec2066cd978627e609370",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT3M1_ev_read_360.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "hard time dey teach lessons wey soft time no fit teach"
+  },
+  {
+   "audio_checksum_sha256": "03212999b52be04c55810c1bea6bb4ec2a317d0a74f421f71b0b1759c1344425",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PAGT1M62_ag_spontaneous_014.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "even fowl dey like dig for bed wey get better crop mix because the soil dey soft and fine"
+  },
+  {
+   "audio_checksum_sha256": "034d253762ca56d9c295e805cc6b2b1eed06950765180ecef357a4db0aa0b9e8",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F61_ag_spontaneous_206.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "to turn fresh tomato to paste wey smooth dey make farmers get more money"
+  },
+  {
+   "audio_checksum_sha256": "034e06882b354be4630a2ebfa5396b13f487a7b230cd91f44f46c90cc473135b",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F30_ag_spontaneous_198.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "plenti green crops like spinach and amaranth dey grow well well for loamy soil wey we wey we dey use"
+  },
+  {
+   "audio_checksum_sha256": "0364047318b5f2049643f1519b2c5012a5c7e420f1ceca0a65b4f9a1ee965e2c",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT3M1_ev_read_431.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "boxing na sport wey be sey two pipo dey fight their self"
+  },
+  {
+   "audio_checksum_sha256": "03648e7ac736013c5b5a7dec1de095915c62aca1ce206318f1efe19ce957f070",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PHTS1M1_he_spontaneous_255.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "na true um say community um outreach um programs suppose dey happen more for schools and churches"
+  },
+  {
+   "audio_checksum_sha256": "0388e507b81aa0b26cb88cedc0c2b1bf96f0b32e13c5a7037fc417d5a8393578",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F18_he_spontaneous_517.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "see um um everybody get how dem take dey recover some go believe this way others go believe another way and um all join"
+  },
+  {
+   "audio_checksum_sha256": "03909ee80b5260f26d5f77c984886fa75ac3cf84f0aeda3e1041b31f9d927448",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F68_ag_spontaneous_301.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "smallscale poultry hatchery dey bring steady money for village pipo all year round"
+  },
+  {
+   "audio_checksum_sha256": "039c39dc66162c375d5836832ee6a47316164d9736c256c55c4bef4cbee7237c",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PBUT1M8_bu_spontaneous_266.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "people wey waka pass the coffee shop confirm say the price wey dey board no pure"
+  },
+  {
+   "audio_checksum_sha256": "03cf23a61516c9eb980052c2cd516a57a997908b543b7077b41e2b72400a1801",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PS1M3_ev_read_455.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "you no know sey everytin wey concern promotion for office dey oga hand"
+  },
+  {
+   "audio_checksum_sha256": "03db0bd89183999d370fa39ba7944fd2776eb2984a3022dc402bb166bb38b739",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F105_ev_spontaneous_274.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dis na some of di di issues we think say go mata to you"
+  },
+  {
+   "audio_checksum_sha256": "0402130e8fb6d56783399c1185e908ede8623718d377c2fd0d6f28a1f5de5641",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F221_ev_spontaneous_045.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "adetuyibi say wia um aduke gold die no dey in care of di doctor wey family bin dey ask for di singer death certificate"
+  },
+  {
+   "audio_checksum_sha256": "041044bb52c59ea8d86bc7f478ded806fd6cc7ee1eb8d78e245bc40ab1ea6a24",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT2M3_ev_read_001.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "pesin wey dey read bible go sabi wetin god want make im do"
+  },
+  {
+   "audio_checksum_sha256": "046403f2ae8a31d4238ea95243d452a949f832872813865f1c4d0f61a58dc1df",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PHTS1M1_he_spontaneous_111.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "our health center host one talk wey um concern giving pikin food join breast milk and i learn plenty things"
+  },
+  {
+   "audio_checksum_sha256": "04d02b5881968a2d5e03e5955b9881e2cc6ccd280a58179136f8f54dc9b8e99a",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PECT1M115_ev_spontaneous_042.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "when um di animals wey dey produce di material na endangered specie we fit avoid them"
+  },
+  {
+   "audio_checksum_sha256": "051d55cafa4d67d200eb316c9f47f47cb74c0d56ec904a9c93005dc22139f9e2",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT2F32_he_spontaneous_036.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "if dem fit build more clinic for village area e go area e go really help the people wey dey there"
+  },
+  {
+   "audio_checksum_sha256": "0571ce6edbe62936f19a50e29aa566d49d682102874ded3598143d31668f18b6",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F221_ev_spontaneous_001.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "blak rasta wan make dis artist consider many tins bifor dem go decide tu accept invitation by dis political parties"
+  },
+  {
+   "audio_checksum_sha256": "05b4d11eaf0a4deead02a6c91b7180ae458393f8e14f2b5eb48e2befacb52e66",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT2M3_ev_read_441.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "if i no mop house every saturday dust go full everywhere like say na desert"
+  },
+  {
+   "audio_checksum_sha256": "05c8ce177b6fa41d344686c048743a2360e986e8257a0f740b0dbd15fbaca361",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PS1M3_ev_read_009.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dat your friend help me do my hair for free she be beta person"
+  },
+  {
+   "audio_checksum_sha256": "067b1770032ff43e8673c4673f2fe0065f8cc9a8f6a7c36400407c9c40097e68",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F68_ag_spontaneous_024.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "she dey notice when leaf tip dey turn yellow e fit mean sickness or lack of food for plant"
+  },
+  {
+   "audio_checksum_sha256": "06e841145629126dbd7f953c7cbe77826ec626dbdd21500a38d293b6e639da1a",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F18_he_spontaneous_546.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "if doctor sabi how person belief dey work and na so um dem dey do for dia place e go help dem treat in another way"
+  },
+  {
+   "audio_checksum_sha256": "071500e83cbc520afc626d185e22e744565a23cc57dd0dbe8c64eefa96b9d577",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PP2F1_ev_read_259.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "i just dey surprised as ada dey take dis thing oo she dey take am well"
+  },
+  {
+   "audio_checksum_sha256": "0718c52480e664f232648dbc21ff2bfdc4cf7ef4eafb620cea5e227622b490a4",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT2F51_ev_spontaneous_056.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dis na all you need to know about di new rivers state ssg and di head of service wey resign"
+  },
+  {
+   "audio_checksum_sha256": "072015ea0b49bf159d1e6a25bd20dd845f85d995dbd4d5c91a6c278bf3d15c2f",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F30_he_spontaneous_361.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "to try make you for get help to carry belle dey give new hope if them dey find am hard to get pikin"
+  },
+  {
+   "audio_checksum_sha256": "0732e36a65b3d5d7273f0988d5f60f618032656198dd3ed66a6fa7a64ae25faa",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PBUS1F1_bu_spontaneous_256.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "emily quietly lend her correct business partner rachel five thousand dollars to settle one urgent tax bill wey come suddenly"
+  },
+  {
+   "audio_checksum_sha256": "073463c165aa0c523a693c33e58d99866f8c7abc3a9dc0101e73e0ab884b3d8f",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F61_ag_spontaneous_127.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "dem build small place to dey collect water when rain dey fall"
+  },
+  {
+   "audio_checksum_sha256": "073d6a388f76044f93c48756feefbdbdfaa5654c29c62dbc3a41e8a48bd38a2a",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F30_he_spontaneous_363.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "to find help to born ehnn e need better encouragement if e don pass one year wey person don dey try you know"
+  },
+  {
+   "audio_checksum_sha256": "07c834fa21c963d41e7c38f2a4fd0355afd21d9e52688eb2f8a096ee0d1712c8",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT2F24_ag_spontaneous_037.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "we dey sell better seed give farmers around because dem dey see as our harvest dey go well"
+  },
+  {
+   "audio_checksum_sha256": "07e49a53a7e233cc91fdc153e5710eacf41d2ec247604d6afab53c7cf52d9b9a",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PBUS1F1_bu_spontaneous_435.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "aunty mary show me shele her blessing um don cut um my um credit card wahala by force my debt just vamoose"
+  },
+  {
+   "audio_checksum_sha256": "0826d553551d31534151b9e24709599ca7c63bc831391ee77e2e9240716eaa7d",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PECT1M115_ev_spontaneous_016.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "you de show kindness if you de share information wey wey fit help another persin online"
+  },
+  {
+   "audio_checksum_sha256": "084500603eed2df5097544d5f483a6a1f88ae09901fe58ef1029ee98264d38a9",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT3M1_ev_read_202.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "i no dey share my personal tins wit my nebor e get why"
+  },
+  {
+   "audio_checksum_sha256": "08538c8d5b97fbb68925fe7ba4d4c69cbd1c68afc7c0f7af57c7e103be64be99",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT2F24_ag_spontaneous_420.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "na left um dem dey use dig the first tuber of yam so that more blessings go follow am come"
+  },
+  {
+   "audio_checksum_sha256": "08778b97b3dbe2523e606ac908759f780ebd030100c74c56c2ad3cc044bde421",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PT3M1_ev_read_272.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "i dey work night shift she dey work morning we no get time to gist"
+  },
+  {
+   "audio_checksum_sha256": "0892d099dd8db4dd503b2b3a065c5af2a90738e93010f6a06a1a42877d285ea2",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PAGT1F68_ag_spontaneous_057.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "na to eat egg sauce wey dey um um cook um with fresh pepper and onions with yam na im dey um go well pass"
+  },
+  {
+   "audio_checksum_sha256": "08afe50cace2b0ec06439ba929e8e482aaf48f19a966fd46109f6856f765572d",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT1F40_ev_spontaneous_453.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "um before i buy big thing i go save small um small make e no stress me"
+  },
+  {
+   "audio_checksum_sha256": "08ccd31381b5f01deed3c6420ddc299a6f2577f13af09ce352fbf90b6b8f2dae",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PECT2F51_ev_spontaneous_120.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "substitution victor osimhen out emmanuel arokodare is in bright um"
+  },
+  {
+   "audio_checksum_sha256": "0900dd88f182ec0241ad9fab36658805eb927a3887dc27fac8d13390b101033a",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_m_PHTS1M1_he_spontaneous_160.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "you know say some people plenty of them where still get wrong ideas for this syphilis"
+  },
+  {
+   "audio_checksum_sha256": "0911ac398122cef3103c56bb303bcaf5270ff4b093321dd40ce10fde75dd24f6",
+   "audio_s3_uri": "s3://medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/pcm_f_PHTT1F18_he_spontaneous_005.wav",
+   "language": "pidgin",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "reference": "as you don know to pump and store milk dey help mothers feed their pikins even when dem no dey together"
+  },
+  {
+   "audio_checksum_sha256": "00cbe4831837cb153f0cc1ddbc6a582f2ba03b8691653bbc41abfb6c0db2ff9d",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1530_00cbe4831837.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ulikuwa umeratibiwa kukatwa mnamo jumanne lakini uliokolewa na uamuzi wa dharura wa korti"
+  },
+  {
+   "audio_checksum_sha256": "010c6899881f553af58303e9a7c0c75a2cab60081c9647edf701c680cd217aa4",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1733_010c6899881f.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kwanza kati ya mapendekezo yake 78 ni kwamba mpango mpya wa kidiplomasia unapaswa kuchukuliwa kabla ya mwisho wa mwaka huu ili kuweka katika hali ya usalama mipaka ya iraq dhidi ya uingiliaji wa maadui na kuanzisha tena uhusiano wa kidiplomasia na majirani zake"
+  },
+  {
+   "audio_checksum_sha256": "02a2a1b4a668bc1c07fa28b047a8a34d85fb4866412f60aea776bdcad5a6e80d",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1523_02a2a1b4a668.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "alama ya mwisho ilikuwa ushindi wa nukta moja 21 hadi 20 na kumaliza mfuo wa ushindi wa michezo wa weusi wote"
+  },
+  {
+   "audio_checksum_sha256": "039f4343170ee9f6323cd2e491fbabe8edb85b4f8aabf117333efd111b5a3bbd",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1640_039f4343170e.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "katika barabara zenye barafu na theluji msuguano uko chini na huwezi kuendesha gari kana kwamba uko katika lami tupu"
+  },
+  {
+   "audio_checksum_sha256": "03c96bb7885ec907d4437259f435828b95eece7d2ea431cb20eef656db3e8475",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1758_03c96bb7885e.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "visiwa vimo kilomita 120 kaskazini mwa rasi kubwa zaidi ni kisiwa cha king george kilicho na makazi ya villa las estrellas"
+  },
+  {
+   "audio_checksum_sha256": "04167cebf200b03617b2af186be2482527ea9098fa804b3e17cf7a878e3646a8",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1970_04167cebf200.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "hatujui kwa kweli lakini inaweza kuwa alikuwa na ulimi uliogawanyika lishe yake ni pamoja na kasa samaki wakubwa mosasau wengine na labda anaweza kuwa kiumbe alaye wenziwe"
+  },
+  {
+   "audio_checksum_sha256": "047350d513ad342e1541d3375fe6039541f3fcf8b4e0648ff463061e894e22e7",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_111_047350d513ad.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nyama ya nguruwe"
+  },
+  {
+   "audio_checksum_sha256": "054fd55799fdcca8ff98a16e48e8ac584c3330c786d64b9df518ded8f2ebfb6a",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1719_054fd55799fd.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "hali kali ya hewa ni neno la kawaida kwa hali yoyote hatari ya hali ya hewa na ina uwezo wa kusababisha uharibifu usumbufu mkubwa wa kijamii au kupotea kwa maisha ya mwanadamu"
+  },
+  {
+   "audio_checksum_sha256": "05d31e3f0ea0b669be430925c130340e69d0d2a37c6640a3e2003d61168605e4",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1725_05d31e3f0ea0.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "tarakilishi ya asus eee iliyozinduliwa mapema dunia nzima kwa sababu za uokoaji fedha na utendaji ikawa mada moto mnamo 2007 mwezi wa teknolojia na mawasiliano wa taipei"
+  },
+  {
+   "audio_checksum_sha256": "0662bfb54bd1aa20a2716fe2483026b108c3181a0392bd02f46ad2eec58d2359",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1568_0662bfb54bd1.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "ingawa inatumika sana na hususana miongoni mwa watu wasio waromani neno jipsi mara nyingi huchukuliwa kama la kukera kwa sababu linahusishwa na ubaguzi hasi na mitazamo isiyo sahihi ya watu wa romani"
+  },
+  {
+   "audio_checksum_sha256": "0756022a2c7fc7af70532301ca9f5252553e18c3a54fc4c1de385f4127dcd3a8",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1985_0756022a2c7f.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "inahusiana na lakini kawaida haishirikiani na ziara za utelezaji kwenye theluji ya milima mirefu au upandaji wa milima hilo la mwisho hufanywa katika eneo lenye mteremko na linahitaji bao na buti ngumu"
+  },
+  {
+   "audio_checksum_sha256": "0851e49eb3a7a92a510450f44715f57decd9d9a5675d90ecec63ead1ddf7a81e",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1867_0851e49eb3a7.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "mimea hutengeneza oksijeni ambayo binadamu hupumua na huingiza kabonidioksidi ambayo binadamu hutoa nje yaani kupumua nje"
+  },
+  {
+   "audio_checksum_sha256": "09a458f306868eb89f607a691dc0335aeff28e916ea95d6681c47c8577004dbd",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1922_09a458f30686.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kwa kweli kuna maelezo ya thiolojia ya kikristo ya utamaduni huu lakini pia huenda ikawa ibada ya majira ya kuchipua na uzazi kabla ya ukristo"
+  },
+  {
+   "audio_checksum_sha256": "09f04c1fb74df8de94e366646981a4861f0d3fdd9d6e1d4b20bc40e98cee56f3",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1645_09f04c1fb74d.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "nguvu zake zilizoenea kote ziliathiri wote toka mfalme hadi mtu wa kawaida"
+  },
+  {
+   "audio_checksum_sha256": "0ae13f691e5ca31ff1caa0e269a2233288af6bf75e53b918488cb44db90c4b87",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_047_0ae13f691e5c.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mia mia moja"
+  },
+  {
+   "audio_checksum_sha256": "0b46c87d6e665b5959081aa1a29f4505b4b949c003801f2d548eb9a799837be7",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_120_0b46c87d6e66.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "maji ya matunda"
+  },
+  {
+   "audio_checksum_sha256": "0b57a59b0b3475def6e5ab9ba0d2c928f0b6e7f5a0c3a6fdd099db74ef06a261",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1924_0b57a59b0b34.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "wazungu wanne kwenye kundi la wanawake walishindwa kumaliza mbio zao na 45 ya 117 walifeli na kushindwa kupata nafasi kwenye mbio hizo"
+  },
+  {
+   "audio_checksum_sha256": "0bb11d4b0123060f9ba52d88e702eb90e4e0e4d6ca480d2d0309fae5e618ad66",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1741_0bb11d4b0123.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "maeneo mapana upande wa juu wa kaskazini hayana idadi kubwa ya watu na baadhi yake nyika isiyokuwa na watu"
+  },
+  {
+   "audio_checksum_sha256": "0bd87f124ecae9dea2923800328839ae355daa98c8c20cd7bac1dcdd3d569f05",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1592_0bd87f124eca.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "wakati ulienda ng ambo kwa mara ya kwanza watu walikuwa pengine na subira na kuelewa wakijua wasafiri katika nchi ya kigeni wanahitaji kuzoea"
+  },
+  {
+   "audio_checksum_sha256": "0be8181ef29bd168acf03b63b4fe9353a3e215cb1ac2943b1fcfc98a2a778e50",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1550_0be8181ef29b.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kuteleza juu ya theluji ni shughuli kubwa huku washiriki wengi ambao mara kwa mara hujulikana kama ski bums wakipanga likizo nzima kwa kuteleza juu ya theluji katika eneo fulani"
+  },
+  {
+   "audio_checksum_sha256": "0c7b119c9dad0d80ced783968903997d1dae2829890693bd8083f8f8877e840f",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_091_0c7b119c9dad.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "stesheni ya basi i umbali upi kutoka hapa"
+  },
+  {
+   "audio_checksum_sha256": "0d422080493866bca2a3612436b62a2625b3e4c327dad91d6fe7e7bb7407fc28",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1861_0d4220804938.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kama matokeo watendaji huvuta misokoto ya bangi kwenye jukwaa na ukumbi wenyewe unawahimiza hadhira kushiriki"
+  },
+  {
+   "audio_checksum_sha256": "0d7151c58028b7e89ad1256f95e5f07387cad49a2f60131ba56bc1eb788af6bc",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_008_0d7151c58028.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "mimi ni mwalimu"
+  },
+  {
+   "audio_checksum_sha256": "0e60684e97c483f9fb1fffe943b932693ffb07199b42114b27dbd7db02c91734",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1880_0e60684e97c4.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kwa hivyo hiyo penseli ilikua rafiki mzuri kwa watu wengi wakati ilitokea"
+  },
+  {
+   "audio_checksum_sha256": "0ef29a533ff945b73ace6814a67a84d870ba6b018cf2d355e3cefa021e71270f",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1754_0ef29a533ff9.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kunaweza kuwa na maria zaidi upande wa karibu kwa sababu ganda huwa jembamba ilikuwa rahisi kwa lava kupanda juu hadi usoni"
+  },
+  {
+   "audio_checksum_sha256": "0f0ac5aa1713e79ec42900e79f8a7dca1d38eb2be910b7a27f74e0b2b6a3b21f",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1678_0f0ac5aa1713.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "oliver sacks katika gazeti lake hotuba ya rais alionyesha namna watu ambao hawawezi kuelewa hotuba kutokana na uharibifu wa ubongo hata hivyo wana uwezo kwa kutathmini ukweli kwa usahihi"
+  },
+  {
+   "audio_checksum_sha256": "100ebec0e29a4c230da08e16b5ff37d947baa9851153ccf01c8647ebb6197a71",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1737_100ebec0e29a.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "simba ni baadhi ya wanyama wa jamii ya paka wanaopenda ujamii zaidi na wanaishi katika vikundi vikubwa vinavyoitwa prides"
+  },
+  {
+   "audio_checksum_sha256": "10db632ff7243b6f9df38a03146d0a638556a41bcf89393e3af6fbb65abb8903",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1841_10db632ff724.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "hakuna kingine kinachoweza kuonekana ila anga safi na nzuri huko juu na milima mingi inayolizunguka ni machache sana ya dunia hii yanayoweza kuonwa au kusikiwa ndani ya pango hili"
+  },
+  {
+   "audio_checksum_sha256": "1104c9b894959fbefd209aec7b861ac8fcd93873dac8a414bea4d285e3f5bfb7",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1942_1104c9b89495.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "sisi hutengeneza nyumba zetu kwa mimea na kutengeneza nguo zetu kwa mimea chakula kingi ambacho sisi hula ni mimea bila mimea wanyama hawawezi kuishi"
+  },
+  {
+   "audio_checksum_sha256": "1146fac24321ffc7127f7e00600d0bd64860089f3136404931eed81e4c95d53c",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1667_1146fac24321.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kwa ujumla tabia mbili zinaweza kuibuka wakati wasimamizi wanaanza kuwaongoza wenzao wa awali kwa upande mmoja watajaribu kujinasibisha kama mmojawapo wa wanaume au wanawake"
+  },
+  {
+   "audio_checksum_sha256": "118aaf4cd9b41000305ef37c2c38fb87def7332ec976d70c8b3746bee4acb5be",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1607_118aaf4cd9b4.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "inafaa nusu saa kutembeatembea katika kijiji hicho ambacho kinavutia"
+  },
+  {
+   "audio_checksum_sha256": "11991836128d44263bb76df37504179bb67c4d39a7846a8f5d33c55018863dad",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1712_11991836128d.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "tangu mwaka wa 1966 sandabani zimekuwa mbuga za wanyama pori na inakadiriwa kuwa sasa kuna chui 400 wa royal bengal na kulungu takribani 30 000 katika eneo hilo"
+  },
+  {
+   "audio_checksum_sha256": "11dfdd7e5d354b7c0721f49dd473ed19527d36bc35ff55c318ad063423d5ed4d",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1696_11dfdd7e5d35.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "kampaundi hizo mbili humenyuka pamojakutengeneza fuwele ambazo zinaweza kuzuia kazi za figo watafiti chuoni walisema"
+  },
+  {
+   "audio_checksum_sha256": "12b4d2f24ba79fb5e0549c2fe7db8b0421d84feb39bd546e613ba2f1d501e21d",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1850_12b4d2f24ba7.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "hii itaiwezesha kutangamana kwa nyuma na 802 11a 802 11b na 802 11g mradi tu kituo cha ardhini kina redio mbili"
+  },
+  {
+   "audio_checksum_sha256": "12e4f3531613f941f8a50072590afd29d5c36140b8ca7f8b05fe9908e90004b4",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/fleurs-v1/audio/1642_12e4f3531613.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "reference": "matumizi ya kivita kwa ubeberu wa marekani katika ushindi dhidi ya ufilipino yaligharimiwa na watu wa ufilipino wenyewe"
+  },
+  {
+   "audio_checksum_sha256": "15411cfce2d21119a2a91289f1e787c9b00f7265143d10f08c164835ca0f3764",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_146_15411cfce2d2.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ni mbaya"
+  },
+  {
+   "audio_checksum_sha256": "16ef99cc72cca18e8d74cc6391a49c65b2c488f6593806427b723ec32b923795",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_096_16ef99cc72cc.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "matatu"
+  },
+  {
+   "audio_checksum_sha256": "18fe6cca4608fbf8e2568d47464735a7c03000a33edb127fcc7a6d8a6ca0b667",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_124_18fe6cca4608.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "keki"
+  },
+  {
+   "audio_checksum_sha256": "1fc606eb7b589ace9fd101758a6bdaf89efde92e242a4a8e1c17bfaa14fb2221",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_135_1fc606eb7b58.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "naumwa na tumbo"
+  },
+  {
+   "audio_checksum_sha256": "219453442554fd81183444a85eeeb37dd06c2cfd28811bb3baaa96a94387825f",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_104_219453442554.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kahawa tafadhali"
+  },
+  {
+   "audio_checksum_sha256": "2d2f9581df2faa1597594e014e5284393f1a146531ca60b8e431aa82f8650f9d",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_139_2d2f9581df2f.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nimeumia"
+  },
+  {
+   "audio_checksum_sha256": "335e5292ef456cf5eb0a70194fa4a1caa2027f9c7065872b0fac6bfd20c5fd0b",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_059_335e5292ef45.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "februari"
+  },
+  {
+   "audio_checksum_sha256": "35f56b6204b62b0b7b9fad47299917d6381f3e2d41cec089d5c40d03e550610c",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_068_35f56b6204b6.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "novemba"
+  },
+  {
+   "audio_checksum_sha256": "360eb6b577be3e3bd63a747c15239d3e454178833aa7980ec1198868bf624cc5",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_093_360eb6b577be.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kulia"
+  },
+  {
+   "audio_checksum_sha256": "3a0bb55717507016300d538a0138ad7bcc94237abc5f66469a848f9311be0fce",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_129_3a0bb5571750.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ni bei gani"
+  },
+  {
+   "audio_checksum_sha256": "3db7c68d7fcfc500c61f6a0cca78edab24648f2f9ee51cc29107cdd893ab88d3",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_072_3db7c68d7fcf.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ni saa kumi na mbili unusu"
+  },
+  {
+   "audio_checksum_sha256": "41f91f6d5655a985679fb90d5543dcf2e9faa10a8df96dfff117693367c9bfe8",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_031_41f91f6d5655.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kumi na tatu"
+  },
+  {
+   "audio_checksum_sha256": "454a093bf98646e6104748cdf70216c228141b06aa21eed97a592e63162795bd",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_007_454a093bf986.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "naishi yaounde"
+  },
+  {
+   "audio_checksum_sha256": "455ef7ec7d6ceaceec9eec7ee86e3acb1b6764a4f4d9686f5283e7abd07d1778",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_148_455ef7ec7d6c.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "naweza piga picha"
+  },
+  {
+   "audio_checksum_sha256": "47636ee2431b388af403db83c96d21c083521a6e1e44adac5dcc7d022b57102a",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_090_47636ee2431b.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "soko i wapi"
+  },
+  {
+   "audio_checksum_sha256": "4a20fccd3bbf87c4f0932acd2e0d07b3a02947d2d838c48974abe8fc23573802",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_103_4a20fccd3bbf.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "pombe tafadhali"
+  },
+  {
+   "audio_checksum_sha256": "4f28d1892ab6e2c9b4c154df12ea992c8827772becdcecb439108afa81b36427",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_132_4f28d1892ab6.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ningependa risiti"
+  },
+  {
+   "audio_checksum_sha256": "51b2e0e81d4c7b8781561824f475f0873db75d1ee7d86c0892c0b7480efc2810",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_100_51b2e0e81d4c.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "ningependa kinywaji"
+  },
+  {
+   "audio_checksum_sha256": "5722a0c963e9f69007240742911274dec2581e202be081b9bb5af52ab43b0ba7",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_002_5722a0c963e9.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "habari zako hujambo"
+  },
+  {
+   "audio_checksum_sha256": "5756da5c3913bc85ef8f73bec5c35ac9fc15b1354f05771ec4556386f0a49336",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_023_5756da5c3913.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "tano"
+  },
+  {
+   "audio_checksum_sha256": "5bcee9be69d34cc2d4ee98269b27b65f8840cd15121589ecc3b70ba09652cb2b",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_026_5bcee9be69d3.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nane"
+  },
+  {
+   "audio_checksum_sha256": "5c64b81ca77bb7e6efbba5e20e36d2e00bdd75ce56b0cfbce2ac211a080969e3",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_018_5c64b81ca77b.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "sufuri"
+  },
+  {
+   "audio_checksum_sha256": "5c937f90af50a8a02c0ca78b62c0b7e8f7855ca331faab6fe27c5b02f189c2b3",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_140_5c937f90af50.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "nimeumwa na siafu"
+  },
+  {
+   "audio_checksum_sha256": "65d5cbcb76df5dc215bb1a2c784369084de2e37c792f808f78d91d0a580b6178",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_080_65d5cbcb76df.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kunanyesha"
+  },
+  {
+   "audio_checksum_sha256": "70b9601f4a8f006ef653a929da5f5602c1cdfb9c748e8af69230db653fdf1643",
+   "audio_s3_uri": "s3://medzen-speech/eval/swahili/asr/soreva_swa_ke/soreva-v1/audio/cm_swa_118_70b9601f4a8f.wav",
+   "language": "swahili",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "reference": "kiazi"
+  }
+ ],
+ "rows_sha256": "54897fff75b8c2c39901ef552f3e58c27340f774887eb09f05f4c7c37b835075",
+ "rule": "per language 60 rows split evenly across the listed dev pools in order; within a pool the first rows by ascending audio_checksum_sha256; source bytes verified against the committed tier-2 sha256 before selection",
+ "sources": {
+  "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl": {
+   "etag": "45153a78b1277112af43719c8f9e52d8",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 511,
+   "selected_rows": 60,
+   "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215",
+   "version_id": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP"
+  },
+  "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl": {
+   "etag": "fd04150112205a4ca206434cb8921f1f",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 76,
+   "selected_rows": 60,
+   "sha256": "f1e594173e68d19015a373d036234571f38e3712262ace2c0725e4f8d0ba734f",
+   "version_id": "QTeWOFGyMqKFaJbjcKgvDFAlSHId.1Vd"
+  },
+  "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl": {
+   "etag": "361fb4140b28609bad4e0e044c8cd80c",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 217,
+   "selected_rows": 30,
+   "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c",
+   "version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX"
+  },
+  "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl": {
+   "etag": "8d50bd3ed08521652ea662ce134ea2ff",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 495,
+   "selected_rows": 30,
+   "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58",
+   "version_id": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO"
+  },
+  "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl": {
+   "etag": "8437f66d881f3fad031b3f321eedac4f",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-KW-V2-GATE-PROTOCOL-2026-001.json",
+   "pool_rows": 1642,
+   "selected_rows": 60,
+   "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+   "version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6"
+  },
+  "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl": {
+   "etag": "f2c74de33edc0b6223c5f38b3e778030",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 317,
+   "selected_rows": 30,
+   "sha256": "fbc9d94c0a3881822a8328f156054532b96f08401c4d2bfafb8b802351d77b00",
+   "version_id": "517JjmUaGEfjP04.wC8v14zu0OCyIL8e"
+  },
+  "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl": {
+   "etag": "9a0b52d26852148afcae062a42b26df4",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 69,
+   "selected_rows": 30,
+   "sha256": "e87deac1e3b715fce9490c4fdd1adbb199aa12c30899cd1724509c2690f838d7",
+   "version_id": "hLpk__VAdpZRKkaGmX6HEzXQfHg8sMft"
+  },
+  "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl": {
+   "etag": "c702c8287d2bdd43a8b324b7aa8f7f32",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-004.json",
+   "pool_rows": 1500,
+   "selected_rows": 60,
+   "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1",
+   "version_id": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg"
+  },
+  "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl": {
+   "etag": "2b47dcf35570020313fa264fc822c2ea",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 354,
+   "selected_rows": 30,
+   "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a",
+   "version_id": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b"
+  },
+  "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl": {
+   "etag": "43bbf64470b9a90a58601d48e57344ab",
+   "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool_rows": 78,
+   "selected_rows": 30,
+   "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1",
+   "version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd"
+  }
+ }
+}
