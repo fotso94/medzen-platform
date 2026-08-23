@@ -568,6 +568,7 @@ def recompute_registry_totals(registry: dict) -> dict:
             effective[line["allocation_id"]] = line
     recognized = 0.0
     active_sum = 0.0
+    accrual_sum = 0.0
     for aid, line in effective.items():
         value = line.get("recognized_committed_usd")
         if value is not None:
@@ -577,8 +578,17 @@ def recompute_registry_totals(registry: dict) -> dict:
             active_sum += _finite_nonneg(
                 line.get("reservation_usd", 0),
                 f"allocation {aid} reservation_usd")
+        # Codex review #14 (finding 5): actual spend was invisible to the
+        # totals. CALCULATED_ACCRUAL rows carry a list-price actual_usd
+        # (Cost Explorer still Estimated:true, so an accrual — NOT settled
+        # billing). Surface it so the summary can reconcile against rows.
+        if line.get("financial_state") == "CALCULATED_ACCRUAL":
+            accrual_sum += _finite_nonneg(
+                line.get("actual_usd", 0),
+                f"allocation {aid} actual_usd")
     return {"effective": effective, "recognized": round(recognized, 10),
-            "active": round(active_sum, 10)}
+            "active": round(active_sum, 10),
+            "calculated_accrual": round(accrual_sum, 10)}
 
 
 def verify_active_reservation(registry_binding: dict, bindings: dict,

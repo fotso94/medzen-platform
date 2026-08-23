@@ -607,11 +607,17 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     }
     inference_bytes = _json.dumps(inference, sort_keys=True).encode()
     prefix = packet["sealed_run"]["output_s3_prefix"]
+    # round 14 (Codex finding 2): the evaluator SIGNS its inference receipt;
+    # admission verifies the signature so a bare S3 writer cannot forge it
+    eval_sig = _test_evaluator_sign(inference_bytes)
     sealed_outputs = {
         "inference_receipt": {"s3_uri": f"{prefix}inference-receipt.json",
                               "version_id": "v-inference",
                               "sha256": hashlib.sha256(
                                   inference_bytes).hexdigest()},
+        "evaluator_signature": {"s3_uri": f"{prefix}inference-receipt.json.sig",
+                                "version_id": "v-evalsig",
+                                "sha256": hashlib.sha256(eval_sig).hexdigest()},
         "rows": {label: {"s3_uri": f"{prefix}{label}.rows.jsonl",
                          "version_id": f"v-{label}",
                          "sha256": inference["rows_sha256"][label]}
@@ -625,6 +631,8 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     SEALED_OUTPUT_STORE[(sealed_outputs["inference_receipt"]["s3_uri"],
                          "v-inference")] = (inference_bytes,
                                             "2026-08-23T12:30:00Z")
+    SEALED_OUTPUT_STORE[(sealed_outputs["evaluator_signature"]["s3_uri"],
+                         "v-evalsig")] = (eval_sig, "2026-08-23T12:31:00Z")
     for label in row_labels:
         SEALED_OUTPUT_STORE[(f"{prefix}{label}.rows.jsonl", f"v-{label}")] = (
             files[f"{label}.rows.jsonl"], "2026-08-23T12:40:00Z")
@@ -821,6 +829,35 @@ def _test_sign(document: bytes) -> bytes:
     return _test_keypair().sign(document, ec.ECDSA(hashes.SHA256()))
 
 
+_TEST_EVALUATOR_KEY = None
+
+
+def _test_evaluator_keypair():
+    global _TEST_EVALUATOR_KEY
+    if _TEST_EVALUATOR_KEY is None:
+        from cryptography.hazmat.primitives.asymmetric import ec
+        _TEST_EVALUATOR_KEY = ec.generate_private_key(ec.SECP256R1())
+    return _TEST_EVALUATOR_KEY
+
+
+def _test_evaluator_sign(document: bytes) -> bytes:
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import ec
+    return _test_evaluator_keypair().sign(document, ec.ECDSA(hashes.SHA256()))
+
+
+def patch_evaluator_pubkey(monkeypatch):
+    """Round 14: inject the test sealed-evaluator public key (production
+    resolves the committed/baked pem; no env override)."""
+    import medzen_model_loader.signing as signing
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding, PublicFormat)
+    pem = _test_evaluator_keypair().public_key().public_bytes(
+        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
+    monkeypatch.setattr(signing, "_sealed_evaluator_public_key_bytes",
+                        lambda: pem)
+
+
 def _test_pubkey_pem(tmp_path) -> str:
     from cryptography.hazmat.primitives.serialization import (
         Encoding, PublicFormat)
@@ -850,6 +887,7 @@ def _arm_bundle(monkeypatch, bundle, pin):
     pem = _test_keypair().public_key().public_bytes(
         Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     monkeypatch.setattr(signing, "_public_key_bytes", lambda: pem)
+    patch_evaluator_pubkey(monkeypatch)
     # sign the evidence ROOT (the index) with the test key
     (bundle / "bundle.json.sig").write_bytes(
         _test_sign((bundle / "bundle.json").read_bytes()))

@@ -39,8 +39,15 @@ class Voice:
 _DEFAULT_REGISTRY: dict[str, dict] = {
     "kinyarwanda": {
         "reference_id": "da02ddd729004bb98133102da10c36ba",
-        "model": "s1",
-        "label": "Ikinyarwanda - owner-supplied voice (OWNER ORDER 2026-08-20)",
+        # OWNER ORDER 2026-08-23: switch s1 -> s2.1-pro-free. Fish "API
+        # credit" is a separate ledger from the 8,000 free web credits and
+        # is $0; paid models (s1) return 402. s2.1-pro-free is Fish's free
+        # API model (promo through 2026-08-31, Fair Use) and works with
+        # this owner-supplied reference voice (live-verified 2026-08-23:
+        # HTTP 200 + 56KB Kinyarwanda MP3 on the $0 account). Revert to a
+        # paid model once an API prepaid balance is funded for durability.
+        "model": "s2.1-pro-free",
+        "label": "Ikinyarwanda - owner-supplied voice (OWNER ORDER 2026-08-20); model s1->s2.1-pro-free owner order 2026-08-23",
         "approved": True,
         "consent_evidence": "owner order 2026-08-20 (chat, verbatim): owner-supplied voice for kinyarwanda",
     },

@@ -916,6 +916,18 @@ def verify_sealed_outputs(report: dict, *,
 
     receipt_ref = outputs.get("inference_receipt")
     receipt_body = fetch("inference receipt", receipt_ref)
+    # Codex review #14 finding 2 (sealed-output provenance forgeable): the
+    # object's prefix/version/window/hash prove WHAT was written, not WHO
+    # wrote it. The evaluator SIGNS its inference receipt with a dedicated
+    # KMS key only the sealed-evaluator role can use; admission verifies
+    # that signature so a bare S3 writer cannot forge internally-consistent
+    # results. The signature is itself a versioned output object.
+    from .signing import SignatureRefusal, verify_evaluator_signature
+    sig_body = fetch("evaluator signature", outputs.get("evaluator_signature"))
+    try:
+        verify_evaluator_signature(receipt_body, sig_body)
+    except SignatureRefusal as exc:
+        raise PromotionCheckRefusal(str(exc)) from exc
     try:
         inference = json.loads(receipt_body)
     except ValueError as exc:
@@ -967,6 +979,10 @@ def verify_sealed_outputs(report: dict, *,
                 "s3_uri": str(receipt_ref["s3_uri"]),
                 "version_id": str(receipt_ref["version_id"]),
                 "sha256": hashlib.sha256(receipt_body).hexdigest()},
+            "evaluator_signature": {
+                "s3_uri": str(outputs["evaluator_signature"]["s3_uri"]),
+                "version_id": str(outputs["evaluator_signature"]["version_id"]),
+                "sha256": hashlib.sha256(sig_body).hexdigest()},
             "rows": verified_rows,
             "decoding_config_sha256": decoding}
 
@@ -1127,6 +1143,12 @@ def verify_admission_receipt(report: dict, *,
             declared.get("inference_receipt")):
         raise PromotionCheckRefusal(
             "admission receipt attests a different inference receipt")
+    # round 14 (Codex finding 2): the evaluator-signature identity the
+    # admission verified must equal the report's declared one
+    if _canonical(attested.get("evaluator_signature")) != _canonical(
+            declared.get("evaluator_signature")):
+        raise PromotionCheckRefusal(
+            "admission receipt attests a different evaluator signature")
     if str(attested.get("decoding_config_sha256")) != str(
             candidate_packet.get("decoding_config_sha256")):
         raise PromotionCheckRefusal(

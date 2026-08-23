@@ -30,6 +30,9 @@ COPY services/model-loader/medzen_model_loader ./medzen_model_loader
 # image from reviewed source — the trust boundary a bundle author cannot
 # rewrite (signing happens only at admission with the KMS private key)
 COPY platform/decisions/PROMOTION-SIGNING-PUBLIC-KEY.pem ./PROMOTION-SIGNING-PUBLIC-KEY.pem
+# round 14 (Codex finding 2): the sealed-evaluator public key — admission
+# verifies the evaluator's signature on sealed-output inference receipts
+COPY platform/decisions/SEALED-EVALUATOR-SIGNING-PUBLIC-KEY.pem ./SEALED-EVALUATOR-SIGNING-PUBLIC-KEY.pem
 
 USER 10001:10001
 ENTRYPOINT ["python", "-m", "medzen_model_loader"]

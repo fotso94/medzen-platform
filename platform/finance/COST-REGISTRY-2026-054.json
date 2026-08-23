@@ -1,0 +1,509 @@
+{
+ "allocation_tag_standard": {
+  "cost_explorer_activation_state": "PROJECT_VALUES_NOT_AVAILABLE",
+  "future_rule": "Do not describe a future charge as tag-attributable until the billing console returns the required allocation-tag values.",
+  "required_keys": [
+   "Project",
+   "Environment",
+   "CostCenter",
+   "Stage",
+   "Workstream",
+   "BudgetRegistry"
+  ]
+ },
+ "allocations": [
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "PREDECESSOR-CONSOLIDATED-THROUGH-ATTEMPT-23",
+   "financial_state": "BOUND_TO_COST_REGISTRY_2026_019",
+   "recognized_committed_usd": 204.4286064216
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "actual_direct_compute_usd": null,
+   "allocation_id": "ASR-BASE-MODEL-EVALUATION-ATTEMPT-24",
+   "attempt_number": 24,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 553,
+   "recognized_committed_usd": 10.0
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "PLATFORM-STANDING-INFRASTRUCTURE",
+   "current_compute_posture": "CPU_DESIRED_0_GPU_DESIRED_0_CONTROL_PLANE_STILL_BILLS",
+   "financial_state": "CURRENT_BILLING_UNATTRIBUTED",
+   "recognized_committed_usd": null
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "GREEN-BUCKET-DATA-AGGREGATION",
+   "financial_state": "UNRECONCILED_NO_AMOUNT_INFERRED",
+   "recognized_committed_usd": null
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-32-SHARD-1",
+   "attempt_number": 32,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 10100,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 1,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-33-SHARD-2",
+   "attempt_number": 33,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 2700,
+   "outcome": "FAILED_CLOSED_EXECUTION_TERMINATION_GATE",
+   "recognized_committed_usd": 10.0,
+   "shard": 2,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-34-SHARD-2-RETRY",
+   "attempt_number": 34,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 5100,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 2,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-35-SHARD-3",
+   "attempt_number": 35,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_PASS_PILOT_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 9500,
+   "outcome": "PASS_PILOT",
+   "recognized_committed_usd": 10.0,
+   "shard": 3,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-36-SHARD-3",
+   "attempt_number": 36,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 10500,
+   "outcome": "FAILED_CLOSED_EXECUTION_WITH_VERIFIED_SALVAGE",
+   "recognized_committed_usd": 10.0,
+   "shard": 3,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-37-SHARD-5",
+   "attempt_number": 37,
+   "financial_state": "CONSERVATIVE_COMMITTED_GUARDRAIL_CLOSED_BILLING_PENDING",
+   "gpu_instance_type": "g6.xlarge",
+   "maximum_observed_gpu_seconds": 6600,
+   "outcome": "FAILED_CLOSED_POLL_BLIP_JOB_DESTROYED_BY_CLEANUP",
+   "recognized_committed_usd": 10.0,
+   "shard": 5,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-38-SHARD-6-META-ONLY",
+   "attempt_number": 38,
+   "financial_state": "CLOSED_FAILED_EXECUTION_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "FAILED_CLOSED_VALIDATOR_DEFECT_RUN_COMPLETE: all 8,634 Meta-only inferences finished; the runner aggregate validator still demanded whisper-era counts (fixed in 6b9d09e); results destroyed by clean teardown",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 6,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "B5-T5-CALIBRATION-YEMBA-SAGEMAKER",
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "ml.g6.xlarge (SageMaker managed spot)",
+   "outcome": "PASS_CALIBRATION: 7.48 audio-h/GPU-h measured; 600 steps, 1,298 billable s; estimated actual ~$1.09 incl. five instructive failures; CE reconciliation pending",
+   "packet": "B5-T5-CALIBRATION-PACKET-2026-001",
+   "recognized_committed_usd": 10.0,
+   "worst_case_on_demand_usd": 6.4
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-39-SHARD-6-RERUN",
+   "attempt_number": 39,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_6_COMPLETE_UNDER_FIXED_VALIDATOR (~3h GPU, ~$2.5 actual est.)",
+   "protocol": "META_ONLY_RERUN_UNDER_FIXED_VALIDATOR",
+   "recognized_committed_usd": 10.0,
+   "shard": 6
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-40-SHARD-7",
+   "attempt_number": 40,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_7_COMPLETE (~2.5h GPU)",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 7,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-41-SHARD-8",
+   "attempt_number": 41,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_8_COMPLETE (~2.7h GPU)",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 8,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-42-SHARD-9",
+   "attempt_number": 42,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_9_COMPLETE (~3.6h GPU)",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 9,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-43-SHARD-10",
+   "attempt_number": 43,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_10_COMPLETE (~1.7h GPU)",
+   "protocol": "META_ONLY_PER_OWNER_DIRECTIVE_2026_08_16",
+   "recognized_committed_usd": 10.0,
+   "shard": 10,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 0.0,
+   "allocation_id": "ASR-BASE-MODEL-FULL-SUITE-ATTEMPT-44-SHARD-5-RECOVER",
+   "attempt_number": 44,
+   "financial_state": "CLOSED_SUCCESS_CONSERVATIVE_COMMIT",
+   "gpu_instance_type": "g6.xlarge",
+   "outcome": "PASS_PILOT_SHARD_5_RECOVERED \u2014 SUITE COMPLETE 23,768/23,768",
+   "protocol": "META_ONLY_RECOVER_OF_ATTEMPT_37_LOSS",
+   "recognized_committed_usd": 10.0,
+   "shard": 5,
+   "shard_manifest": "ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-002"
+  },
+  {
+   "active_reservation_usd": 346.0,
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "estimate_usd": 160.0,
+   "financial_state": "RESERVED_BEFORE_BILLABLE_EXECUTION",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "owner_approval": "campaign table + language list + thresholds, 2026-08-17 chat",
+   "packet": "B5-CTC-CAMPAIGN-PACKET-2026-001",
+   "recognized_committed_usd": 346.0
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 888,
+   "financial_state": "CLOSED_FAILED_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-002",
+   "outcome": "FAILED CORRECTLY \u2014 bound gb7 pidgin manifest was overwritten mid-job by the review-#18 curation upload; immutability guard refused (correction promoted to gb8)",
+   "recognized_committed_usd": 0.4,
+   "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 1102,
+   "financial_state": "CLOSED_SUCCESS_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-003",
+   "outcome": "PASS \u2014 7-language gb8 chain proven (B5-UNIVERSAL-FTCAL-2026-003-RESULT)",
+   "recognized_committed_usd": 0.49,
+   "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "financial_state": "PENDING_OWNER_AUTHORIZATION",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate authorizations",
+   "owner_approval": "REQUIRED, NOT YET GIVEN \u2014 Codex review #19 finding 5: this exact allocation activates only with an owner authorization COMMITTED under platform/decisions/launch-authorizations/ binding the packet's canonical sha, the $70 ceiling and non-transferability; the prior $346 campaign reservation does NOT cover arm launches",
+   "packet": "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-002",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T21:36:01Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "billable_seconds": 1128,
+   "financial_state": "CLOSED_SUCCESS_RECONCILED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "job": "medzen-b5-b5-universal-ftcal-2026-004",
+   "outcome": "PASS \u2014 7-language gb9 chain proven (B5-UNIVERSAL-FTCAL-2026-004-RESULT)",
+   "recognized_committed_usd": 0.5,
+   "utc": "2026-08-21T21:59:58Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "basis": "campaign SageMaker work complete: v2 full FT (closed for futility), 20-checkpoint sweep, calibrations rev1-rev4 incl. the correctly-failed rev2; Cost Explorer gross actuals for the exact window",
+   "financial_state": "CLOSED_RECONCILED_TO_ACTUALS",
+   "outcome": "CAMPAIGN_CLOSED_gb9_CHAIN_PROVEN",
+   "recognized_committed_usd": 73.384139164,
+   "replaces_conservative_recognition_usd": 346.0,
+   "utc": "2026-08-21T22:12:25Z"
+  },
+  {
+   "activation_requires": "owner authorization COMMITTED at HEAD under platform/decisions/launch-authorizations/b5-universal-arm1-2026-003.json with the exact approval phrase attested in the shared reviews file; on activation this becomes the ONE active billable reservation",
+   "allocation_id": "B5-ARM1-2026-001",
+   "authorized_amount_note": "THE authorization amount is $70 HARD (packet cost ceiling; the launcher refuses above it). The owner's standing '+$100 on every reported max' is a REPORTING convention for conversational maxima only \u2014 it never reserves, authorizes or binds anything (Codex review #20 finding 3 resolution)",
+   "estimate_usd": 64.0,
+   "financial_state": "PENDING_OWNER_AUTHORIZATION",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate authorizations",
+   "packet": "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-003",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T22:12:25Z"
+  },
+  {
+   "allocation_id": "B5-CTC-CAMPAIGN-2026-001",
+   "financial_state": "CLOSED_PROVISIONAL_CONSERVATIVE",
+   "outcome": "CAMPAIGN_CLOSED_gb9_CHAIN_PROVEN",
+   "provisional_basis": "original owner-approved campaign estimate; list-price accrual ~$86.43 from SageMaker job receipts (61.34 billable hours); CE still Estimated:true for the window",
+   "recognized_committed_usd": 160.0,
+   "utc": "2026-08-21T22:42:14Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001-REV002",
+   "financial_state": "VOID_SUPERSEDED",
+   "note": "the arm1-002 packet line is superseded by arm1-003 rev4 below",
+   "utc": "2026-08-21T22:42:14Z"
+  },
+  {
+   "activation_semantics": "activation = a NEW registry revision (048) flipping THIS allocation_id's last line to ACTIVE_RESERVED, committed together with the owner-authorization record; the launcher REFUSES any state other than ACTIVE_RESERVED (verify_active_reservation) and the packet binds the exact registry file sha",
+   "allocation_id": "B5-ARM1-2026-001",
+   "authorized_amount_note": "$70 HARD; the owner's '+$100 reported max' is a non-binding reporting convention",
+   "estimate_usd": 64.0,
+   "financial_state": "PENDING_OWNER_AUTHORIZATION",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate authorizations",
+   "packet": "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-004",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T22:42:14Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "financial_state": "ACTIVE_RESERVED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate reservations + intents",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json",
+   "packet_bindings_sha256": "475621c45b4dd720fbfb74ad6474b672c627941f501d5d33807c11e2d3fe01c1",
+   "reservation_is_not_authorization": "per controls.reservation_is_aws_authorization=false this line only BOOKS the money (reserve-before-billable-execution); the SPEND is gated on the owner's SSH-signed launch intent verified against platform/decisions/OWNER-ALLOWED-SIGNERS at launch",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T23:10:32Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "expiry_note": "Codex review #23: reservations now expire; a stale booking cannot fund a launch weeks later \u2014 re-reserve via a fresh revision if the pilot slips",
+   "financial_state": "ACTIVE_RESERVED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate reservations + intents",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json",
+   "packet_bindings_sha256": "475621c45b4dd720fbfb74ad6474b672c627941f501d5d33807c11e2d3fe01c1",
+   "reservation_expires_utc": "2026-09-04T23:59:59Z",
+   "reservation_is_not_authorization": "per controls.reservation_is_aws_authorization=false this line only BOOKS the money (reserve-before-billable-execution); the SPEND is gated on the owner's SSH-signed launch intent verified against platform/decisions/OWNER-ALLOWED-SIGNERS at launch",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T23:35:41Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "expiry_note": "Codex review #23: reservations now expire; a stale booking cannot fund a launch weeks later \u2014 re-reserve via a fresh revision if the pilot slips",
+   "financial_state": "ACTIVE_RESERVED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate reservations + intents",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json",
+   "packet_bindings_sha256": "0cb9106ffa25a2acc35ba883dba9cd23e3537ff8bb78b56686c0fcb26239745c",
+   "rebind_note": "rev5 packet's registry tag made revision-agnostic (Codex review #24 provenance fix); reservation terms unchanged",
+   "reservation_expires_utc": "2026-09-04T23:59:59Z",
+   "reservation_is_not_authorization": "per controls.reservation_is_aws_authorization=false this line only BOOKS the money (reserve-before-billable-execution); the SPEND is gated on the owner's SSH-signed launch intent verified against platform/decisions/OWNER-ALLOWED-SIGNERS at launch",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-21T23:58:19Z"
+  },
+  {
+   "allocation_id": "B5-ARM1-2026-001",
+   "estimate_usd": 64.0,
+   "expiry_note": "Codex review #23: reservations now expire; a stale booking cannot fund a launch weeks later \u2014 re-reserve via a fresh revision if the pilot slips",
+   "financial_state": "ACTIVE_RESERVED",
+   "gpu_instance_type": "ml.g6.xlarge on-demand (SageMaker)",
+   "note": "arms 2-3 require their own separate reservations + intents",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json",
+   "packet_bindings_sha256": "2e1666866a435dcc4ab821052c1e0cac57d04ae2cd10da654302891300ead63d",
+   "rebind_note": "packet purpose corrected to the GitHub approval model; reservation terms unchanged",
+   "reservation_expires_utc": "2026-09-04T23:59:59Z",
+   "reservation_is_not_authorization": "per controls.reservation_is_aws_authorization=false this line only BOOKS the money; the SPEND is authorized solely by the OWNER's approval of the protected arm-launch workflow run (github.com identity) \u2014 the obsolete SSH-signed-intent language of revisions 048-050 is corrected here (Codex review #25 documentation finding)",
+   "reservation_usd": 70.0,
+   "utc": "2026-08-22T00:20:14Z"
+  },
+  {
+   "actual_billable_seconds": 121330,
+   "actual_usd": 47.49,
+   "allocation_id": "B5-ARM1-2026-001",
+   "financial_state": "SETTLED_ACTUAL",
+   "rate_basis": "EUC1-Train:ml.g6.xlarge on-demand $1.409/h (AWS pricing API, on-demand always per owner rule)",
+   "settlement_evidence": "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION-003/completion.json (job Completed, 121330 billable seconds)",
+   "under_reservation": "reservation was $70; actual $47.49; the $22.51 difference RELEASES \u2014 arms 2-3 still require their own reservations",
+   "utc": "2026-08-23T19:40:00Z"
+  },
+  {
+   "actual_runtime": "2026-08-23T18:57:15Z launch -> instance-initiated terminate ~19:33Z (~36 min)",
+   "actual_usd": 0.63,
+   "allocation_id": "B5-ARM1-DEV-SWEEP-2026-001",
+   "authorization": "owner approval of Codex round-13 recommendation 2 (development-only checkpoint sweep, ~$1)",
+   "evidence": "platform/evidence/receipts/ARM1-DEV-SWEEP-2026-001/{launch,sweep-receipt}.json",
+   "financial_state": "SETTLED_ACTUAL",
+   "gpu_instance_type": "g6.xlarge EC2 on-demand (NOT SageMaker)",
+   "hard_cap_was": "3.5h shutdown => $3.52 compute max",
+   "rate_basis": "$1.0064/h on-demand + 80GB gp3 for the hour (~$0.01)",
+   "utc": "2026-08-23T19:40:00Z"
+  },
+  {
+   "actual_usd": 0.97,
+   "allocation_id": "B5-ARM1-GPU-SMOKE-2026-001",
+   "authorization": "owner approval of Codex round-13 recommendation 10 (capped synthetic GPU smoke)",
+   "evidence": "platform/evidence/receipts/ARM1-GPU-SMOKE-2026-001/receipt.json (s3 VersionId O.ikX9Gm_0R_qAVaUoCnLrtMMblzqbGX)",
+   "financial_state": "SETTLED_ACTUAL",
+   "gpu_instance_type": "g6.xlarge EC2 on-demand x3 boxes (r1 failed closed on a missing ECR grant, 7 min; r2 failed closed on an absent marker, 25 min; r3 PASSED, 24 min)",
+   "hard_cap_was": "100 min shutdown per box",
+   "rate_basis": "$1.0064/h on-demand + gp3 pennies",
+   "utc": "2026-08-23T20:00:00Z"
+  },
+  {
+   "accrual_basis": "list-price calculation from billable seconds / on-demand rate; AWS Cost Explorer still Estimated:true so this is an ACCRUAL, not settled billing (Codex review #14)",
+   "actual_usd": 47.49,
+   "allocation_id": "B5-ARM1-2026-001",
+   "financial_state": "CALCULATED_ACCRUAL",
+   "settlement_evidence": "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION-003/completion.json",
+   "utc": "2026-08-23T21:20:00Z"
+  },
+  {
+   "accrual_basis": "list-price calculation from billable seconds / on-demand rate; AWS Cost Explorer still Estimated:true so this is an ACCRUAL, not settled billing (Codex review #14)",
+   "actual_usd": 0.63,
+   "allocation_id": "B5-ARM1-DEV-SWEEP-2026-001",
+   "financial_state": "CALCULATED_ACCRUAL",
+   "settlement_evidence": "platform/evidence/receipts/ARM1-DEV-SWEEP-2026-001/sweep-receipt.json",
+   "utc": "2026-08-23T21:20:00Z"
+  },
+  {
+   "accrual_basis": "list-price calculation from billable seconds / on-demand rate; AWS Cost Explorer still Estimated:true so this is an ACCRUAL, not settled billing (Codex review #14)",
+   "actual_usd": 0.97,
+   "allocation_id": "B5-ARM1-GPU-SMOKE-2026-001",
+   "financial_state": "CALCULATED_ACCRUAL",
+   "settlement_evidence": "platform/evidence/receipts/ARM1-GPU-SMOKE-2026-001/receipt.json",
+   "utc": "2026-08-23T21:20:00Z"
+  }
+ ],
+ "controls": {
+  "actual_and_conservative_amounts_separated": true,
+  "attempt_24_reservation_closed": true,
+  "credits_used_to_expand_headroom": false,
+  "current_active_billable_reservations": "1",
+  "historical_budget_records_edited": false,
+  "new_aws_resources_require_versioned_packet": true,
+  "next_reconciliation_creates_new_registry_revision": true,
+  "one_active_billable_reservation_at_a_time": true,
+  "owner_or_qualified_financial_review_required": true,
+  "reservation_is_aws_authorization": false,
+  "reserve_before_billable_execution": true,
+  "shared_service_costs_are_not_fabricated_as_attempt_costs": true,
+  "spend_reset_permitted": false
+ },
+ "currency": "USD",
+ "effective_state_rule": "the LAST allocations[] line per allocation_id is that allocation's effective state (the launcher's verify_active_reservation applies exactly this rule); earlier lines are immutable history",
+ "guardrail_summary": {
+  "active_reservations_usd": 0,
+  "actual_billing_granularity": "DAILY_RECONCILED_THROUGH_2026-08-14_NET_ZERO_VIA_CREDITS_2026-08-15_PENDING",
+  "aggregate_ceiling_usd": 800.0,
+  "attempt_28_outcome": "PASS_PILOT",
+  "attempt_31_outcome": "FAILED_CLOSED_EXECUTION_JOB_DEADLINE_78_PERCENT_COMPLETE",
+  "attempt_32_outcome": "PASS_PILOT_SHARD_1_COMPLETE",
+  "attempt_33_outcome": "FAILED_CLOSED_EXECUTION_TERMINATION_GATE_AT_ROW_1203",
+  "attempt_34_outcome": "PASS_PILOT_SHARD_2_COMPLETE_TERMINATION_PROTOCOL_LIVE_PROVEN",
+  "attempt_35_outcome": "PASS_PILOT_MANIFEST_SHARD_4_UNITS_COMPLETE",
+  "attempt_36_outcome": "FAILED_CLOSED_HOST_OUTAGE_JOB_COMPLETED_SALVAGE_VERIFIED",
+  "attempt_37_outcome": "FAILED_CLOSED_POLL_BLIP_AT_62_PERCENT",
+  "attempt_38_outcome": "FAILED_CLOSED_VALIDATOR_DEFECT_RUN_COMPLETE",
+  "attempt_39_outcome": "PASS_PILOT_SHARD_6_COMPLETE",
+  "attempt_40_outcome": "PASS_PILOT_SHARD_7_COMPLETE",
+  "attempt_41_outcome": "PASS_PILOT_SHARD_8_COMPLETE",
+  "attempt_42_outcome": "PASS_PILOT_SHARD_9_COMPLETE",
+  "attempt_43_outcome": "PASS_PILOT_SHARD_10_COMPLETE",
+  "attempt_44_outcome": "PASS_PILOT_SHARD_5_RECOVERED_SUITE_COMPLETE",
+  "calculated_accrual_note": "list-price accrual of arm-1/dev-sweep/gpu-smoke actual spend; Cost Explorer Estimated:true (not settled billing); separate from the recognized guardrail",
+  "calculated_accrual_usd": 49.09,
+  "ceiling_raise_record": {
+   "authority": "owner campaign approval 2026-08-17 ('approve the campaign table' with on-demand + $100 rules)",
+   "basis": "the owner-approved campaign ceiling ($346) exceeds remaining suite headroom; the aggregate ceiling moves to $800 to hold the suite lineage AND the approved campaign reservation; actual campaign estimate ~$160 on-demand",
+   "from_usd": 440.0,
+   "to_usd": 800.0
+  },
+  "claim_limit": "summary is the recompute: $514.43 recognized + $70.00 reserved = $584.43 of $800; ARM1 $70 expires 2026-09-04; spend gated on the protected workflow's owner approval",
+  "committed_plus_reserved_usd": 514.4286064216,
+  "guardrail_headroom_after_reservations_usd": 285.5713935784,
+  "incremental_recognized_guardrail_since_revision_026_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_027_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_028_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_029_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_030_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_031_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_032_usd": 10.0,
+  "incremental_recognized_guardrail_since_revision_033_usd": 10.0,
+  "recognized_committed_guardrail_usd": 514.4286064216,
+  "reconciliation": {
+   "path": "platform/evidence/ASR-BASE-MODEL-COST-RECONCILIATION-2026-011.json",
+   "sha256": "b229eb8fcc3b94c2e77e654232bd7ba08a96a4cbe287597299feeb30cd39fdca"
+  },
+  "suite_status": "COMPLETE_ALL_TEN_SHARDS_PLUS_RECOVERS",
+  "t5_outcome": "PASS_CALIBRATION_7_48_AUDIO_H_PER_GPU_H"
+ },
+ "id": "COST-REGISTRY-2026-051",
+ "reconciliation": {
+  "campaign_gross_actual_usd": 73.384139164,
+  "method": "AWS Cost Explorer GetCostAndUsage, SERVICE='Amazon SageMaker', RECORD_TYPE='Usage' (GROSS of credits per credits_used_to_expand_headroom:false), window 2026-08-17..2026-08-22 (the campaign approval window)",
+  "note": "replaces the $346 conservative recognition for B5-CTC-CAMPAIGN-2026-001; any residual same-window billing drift lands in the next revision, corrected upward only",
+  "queried_utc": "2026-08-21T22:12:25Z"
+ },
+ "record": "MEDZEN_SPEECH_CONSOLIDATED_COST_REGISTRY",
+ "recorded_utc": "2026-08-23T21:20:00Z",
+ "revision": 54,
+ "revision_045_incident": {
+  "disposition": "git history preserves every state of 045; those appended calibration lines are SUPERSEDED here (their $1.39 sits inside the campaign gross actuals below); append-only discipline restored: every future change is a new revision",
+  "what": "revision 045 was edited IN PLACE twice (commits d4edb34, a8d5d1d appended allocation lines) despite next_reconciliation_creates_new_registry_revision \u2014 Codex review #20 finding 2"
+ },
+ "revision_046_correction": {
+  "disposition": "provisional CONSERVATIVE accrual below: the campaign closes at the ORIGINAL $160 estimate (>= the ~$86.43 list-price accrual) until Cost Explorer finalizes; final actuals land in a later revision, corrected in either direction with the query bound",
+  "what": "046 said CLOSED_RECONCILED_TO_ACTUALS at $73.38 \u2014 Codex review #21: every Cost Explorer day was Estimated:true, ~9.26 SageMaker billable hours ($13.04 at list) had not been ingested yet (job receipts sum 61.34h vs 52.08h in CE), and $1.0985 of T5 work double-counted against its own allocation"
+ },
+ "revision_048_correction": {
+  "conservatism_note": "the campaign line's $160 provisional (vs ~$86 list accrual) keeps the ledger conservative even after this correction",
+  "what": "048's summary declared $584.43 recognized while its own effective rows totalled $514.43 (Codex review #23) \u2014 the $70 gap traces to pre-045 hand-maintained summaries; summaries are now PURE FUNCTIONS of effective rows and the launcher refuses any divergence (recompute_registry_totals)"
+ },
+ "revision_054_correction": "Codex review #14 finding 5: revision 053 was internally inconsistent. (a) The effective B5-ARM1-2026-001 line is a consumed actual, so recompute active=0, but the summary still claimed active_reservations_usd=70 and committed_plus_reserved=584.43. (b) The label SETTLED_ACTUAL overclaimed final billing when Cost Explorer is still Estimated:true \u2014 these are list-price accruals, relabelled CALCULATED_ACCRUAL. (c) recompute_registry_totals ignored actual_usd; it now returns calculated_accrual. This revision appends CALCULATED_ACCRUAL correcting lines for arm-1 / dev-sweep / gpu-smoke and sets the summary EQUAL to the recompute (active 0, committed_plus_reserved 514.43, headroom 285.57, calculated_accrual 49.09).",
+ "status": "SUMMARY_RECOMPUTED_FROM_EFFECTIVE_ROWS_ARM1_RESERVED",
+ "supersedes": "COST-REGISTRY-2026-053"
+}

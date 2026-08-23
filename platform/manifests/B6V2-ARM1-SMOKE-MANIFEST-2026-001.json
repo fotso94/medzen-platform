@@ -1,0 +1,34 @@
+{
+ "artifact": {
+  "format": "fairseq2_pt",
+  "s3_filename": "model.pt",
+  "sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c"
+ },
+ "artifact_tree_sha256": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "classification": "NONPROD_REAL_PROVIDER_V2",
+ "language_ids": {
+  "english": "eng_Latn",
+  "ewe": "ewe_Latn",
+  "french": "fra_Latn",
+  "kinyarwanda": "kin_Latn",
+  "lingala": "lin_Latn",
+  "pidgin": "pcm_Latn",
+  "swahili": "swh_Latn"
+ },
+ "languages": [
+  "english",
+  "ewe",
+  "french",
+  "kinyarwanda",
+  "lingala",
+  "pidgin",
+  "swahili"
+ ],
+ "model_family": "omniasr_ctc_1b",
+ "model_version": "omniasr_ctc_1b:34ca18bab2f7",
+ "schema_version": 2,
+ "tokenizer": {
+  "s3_filename": "omniASR_tokenizer_written_v2.model",
+  "sha256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e"
+ }
+}

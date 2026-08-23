@@ -23,7 +23,7 @@ import b7_model_promotion_check as admission  # noqa: E402
 from medzen_model_loader.loader_v2 import artifact_tree_sha256  # noqa: E402
 from test_b6v2_real_provider import (  # noqa: E402
     SEALED_OUTPUT_STORE, _promotion_bundle, _stub_output_fetch, _test_keypair,
-    _test_sign)
+    _test_sign, patch_evaluator_pubkey)
 
 
 def _synthetic_inputs(tmp_path, monkeypatch):
@@ -82,6 +82,7 @@ def _synthetic_inputs(tmp_path, monkeypatch):
     pem = _test_keypair().public_key().public_bytes(
         Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     monkeypatch.setattr(signing, "_public_key_bytes", lambda: pem)
+    patch_evaluator_pubkey(monkeypatch)
     # a local signer command standing in for the KMS signer
     from cryptography.hazmat.primitives.serialization import (
         NoEncryption, PrivateFormat)

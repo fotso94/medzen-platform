@@ -1,0 +1,1 @@
+{"audio_sha256": "73bbea15645149266bf3411e9b9f88cf0c83f5d107a7ad8e1b1e70e12a87578b", "call": 1, "degradation_reason": null, "latency_ms": 3262.1, "leg": "fish", "s3_delivery": true, "status": "PASS", "tts_backend": "fish", "tts_model_version": "fish:s2.1-pro-free", "utc": "2026-08-23T21:12:58Z"}

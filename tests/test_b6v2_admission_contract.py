@@ -22,7 +22,14 @@ from medzen_model_loader.loader_v2 import (  # noqa: E402
     describe_sealed_job_contract)
 from test_b6v2_real_provider import (  # noqa: E402
     SEALED_OUTPUT_STORE, SEALED_RUN_CONTRACT, _promotion_bundle,
-    _stub_output_fetch)
+    _stub_output_fetch, patch_evaluator_pubkey, _test_evaluator_sign)
+
+@pytest.fixture(autouse=True)
+def _evaluator_key(monkeypatch):
+    # round 14 (Codex finding 2): every admission-path test verifies the
+    # sealed evaluator signature against this injected test key
+    patch_evaluator_pubkey(monkeypatch)
+
 
 ARM1_DESCRIBE = ROOT / (
     "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION/"
@@ -185,8 +192,38 @@ def test_inference_receipt_for_another_artifact_refuses(tmp_path):
     new_body = json.dumps(doc, sort_keys=True).encode()
     SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])] = (new_body, modified)
     ref["sha256"] = hashlib.sha256(new_body).hexdigest()
+    # round 14: model an evaluator that LEGITIMATELY signed a receipt for a
+    # different artifact (re-sign), so the signature passes and the
+    # artifact-tree semantic check is what refuses
+    sig_ref = report["sealed_outputs"]["evaluator_signature"]
+    new_sig = _test_evaluator_sign(new_body)
+    sig_body, sig_mod = SEALED_OUTPUT_STORE[(sig_ref["s3_uri"], sig_ref["version_id"])]
+    SEALED_OUTPUT_STORE[(sig_ref["s3_uri"], sig_ref["version_id"])] = (new_sig, sig_mod)
+    sig_ref["sha256"] = hashlib.sha256(new_sig).hexdigest()
     described = _described_from_contract(packet["sealed_run"])
     with pytest.raises(PromotionCheckRefusal, match="did not attest to running THIS"):
+        verify_packet_chronology(
+            report, anchor_envelope=envelope, packet_bytes=packet_bytes,
+            candidate_packet=packet,
+            anchor_fetch=lambda s: (packet_bytes, "2026-08-23T10:00:00Z"),
+            sealed_start_fetch=lambda job: described,
+            artifact_tree_sha256=tree, rows_bytes=rows_bytes,
+            output_object_fetch=_stub_output_fetch)
+
+
+def test_forged_receipt_without_a_valid_evaluator_signature_refuses(tmp_path):
+    """Codex review #14 finding 2: a bare S3 writer fabricates an
+    internally-consistent receipt + rows but cannot produce the
+    evaluator's signature — admission refuses on producer authentication."""
+    tree, report, packet, packet_bytes, envelope, rows_bytes = (
+        _admission_material(tmp_path))
+    ref = report["sealed_outputs"]["inference_receipt"]
+    body, modified = SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])]
+    forged = body[:-1] + b" "  # tamper a byte; signature no longer matches
+    SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])] = (forged, modified)
+    ref["sha256"] = hashlib.sha256(forged).hexdigest()
+    described = _described_from_contract(packet["sealed_run"])
+    with pytest.raises(PromotionCheckRefusal, match="not signed by the committed sealed-evaluator"):
         verify_packet_chronology(
             report, anchor_envelope=envelope, packet_bytes=packet_bytes,
             candidate_packet=packet,
