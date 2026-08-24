@@ -104,7 +104,8 @@ def _good_artifact(steps: int = 30) -> dict:  # noqa: F811 (parity-aware)
                      "ASRInferencePipeline@145a12a6"),
         "rows_checked": {"lingala": 1, "swahili": 1},
         "rows": {lang: [{"audio_checksum_sha256": _first_checksum(lang),
-                         "hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest()}]
+                         "ours_hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest(),
+                         "upstream_hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest()}]
                  for lang in ("lingala", "swahili")},
         "scorer": CANONICAL_SCORER,
     }
@@ -1453,14 +1454,83 @@ def test_parity_receipt_binds_exact_identities_and_rows():
         (lambda a: a["parity"].update(upstream="fake-omnilingual-pipeline"),
          "!= the pinned"),
         (lambda a: a["parity"].update(scorer="wrong"), "canonical scorer"),
-        (lambda a: a["parity"]["rows"]["lingala"][0].update(hyp_sha256="x"),
-         "hypothesis hash"),
+        (lambda a: a["parity"]["rows"]["lingala"][0].update(ours_hyp_sha256="x"),
+         "lacks both"),
+        # Codex #27 finding 4: two 64-hex hashes that DISAGREE must fail
+        (lambda a: a["parity"]["rows"]["lingala"][0].update(
+            upstream_hyp_sha256="0" * 64), "did not actually agree"),
         (lambda a: a["parity"]["rows"].__setitem__("lingala", []),
          "count != rows_checked"),
     ]:
         bad = json.loads(json.dumps(art))
         mutate(bad)
         assert any(needle in f for f in verify_calibration(bad, _spec())), needle
+
+
+def test_protected_environment_verifier():
+    """Codex #27 finding 1/6: both environments must exist WITH required
+    reviewers before activation."""
+    from verify_protected_environments import (REQUIRED_ENVIRONMENTS,
+                                               check_environment,
+                                               required_reviewer_count)
+    protected = {"protection_rules": [
+        {"type": "required_reviewers",
+         "reviewers": [{"type": "User", "reviewer": {"login": "fotso94"}}]},
+        {"type": "wait_timer", "wait_timer": 0}]}
+    assert required_reviewer_count(protected) == 1
+    assert check_environment("arm2-calibration", protected) == []
+    # missing environment
+    assert any("does not exist" in f
+               for f in check_environment("arm2-calibration", None))
+    assert any("Not Found" in f or "does not exist" in f
+               for f in check_environment("arm2-calibration",
+                                          {"message": "Not Found"}))
+    # exists but unprotected (auto-created)
+    assert any("NO required reviewers" in f
+               for f in check_environment("arm2-calibration",
+                                          {"protection_rules": []}))
+    assert set(REQUIRED_ENVIRONMENTS) == {"trainer-image-publish",
+                                          "arm2-calibration"}
+
+
+def test_calibration_launch_exec_is_hardened():
+    """Codex #27 findings 2/3: exact reviewed SHA + master-ancestor + HEAD
+    equality BEFORE credentials, and PINNED deps installed BEFORE OIDC."""
+    text = (_REPO / ".github/workflows/"
+            "arm2-calibration-launch-exec.yml").read_text()
+    cred = text.index("configure-aws-credentials")
+    # the 40-hex gate, master-ancestor check, and pinned pip install precede
+    # the credentials step
+    assert text.index("single exact 40-hex commit") < cred
+    assert text.index("is not on origin/master") < cred
+    assert text.index('pip install "boto3==1.40.16" "PyYAML==6.0.2"') < cred
+    # PyYAML is pinned (was unpinned pyyaml)
+    assert "PyYAML==6.0.2" in text and "pyyaml\n" not in text
+    # the launch step is gated on confirm_launch == LAUNCH
+    assert "inputs.confirm_launch == 'LAUNCH'" in text
+
+
+def test_calibration_wrongref_canary_shares_the_environment():
+    """Codex #27 next-step 2: the negative canary runs in the SAME
+    arm2-calibration environment so only job_workflow_ref differs."""
+    text = (_REPO / ".github/workflows/"
+            "arm2-calibration-canary-wrongref-exec.yml").read_text()
+    assert "environment: arm2-calibration" in text
+    assert "AccessDenied" in text
+
+
+def test_activation_plan_evidence_is_current():
+    """Codex #27 finding 5: the committed plan evidence names exactly the 4
+    adds + 1 change + 0 destroys and no stale count."""
+    text = (_REPO / "infra/arm2-activation-plan.txt").read_text()
+    assert "Plan: 4 to add, 1 to change, 0 to destroy." in text
+    for resource in ("aws_iam_role.arm2_calibration",
+                     "aws_iam_role_policy.arm2_calibration",
+                     "aws_iam_role.trainer_image_publisher",
+                     "aws_iam_role_policy.trainer_image_publisher"):
+        assert f'"{resource.split(".")[0]}" "{resource.split(".")[1]}"' in text \
+            or resource in text
+    assert "arm_launch" in text and "will be updated in-place" in text
 
 
 def test_calibration_role_is_scoped_and_carries_the_deny():

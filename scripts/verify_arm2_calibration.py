@@ -318,9 +318,17 @@ def verify_calibration(metrics: dict[str, Any],
                       for r in (results.get(language) or {}).get("rows", [])}
             for receipt in receipts:
                 checksum = str(receipt.get("audio_checksum_sha256"))
-                if not _HEX64.fullmatch(str(receipt.get("hyp_sha256") or "")):
-                    fail(f"parity row {checksum[:12]} ({language}) has no "
-                         "hypothesis hash")
+                ours = str(receipt.get("ours_hyp_sha256") or "")
+                upstream = str(receipt.get("upstream_hyp_sha256") or "")
+                # Codex #27 finding 4: require TWO independently-recorded hashes
+                # that are EQUAL — a well-formed single hash proved nothing
+                if not _HEX64.fullmatch(ours) or not _HEX64.fullmatch(upstream):
+                    fail(f"parity row {checksum[:12]} ({language}) lacks both "
+                         "ours_hyp_sha256 and upstream_hyp_sha256 (64-hex)")
+                elif ours != upstream:
+                    fail(f"parity row {checksum[:12]} ({language}): our "
+                         "hypothesis hash != the upstream hypothesis hash — "
+                         "the decoders did not actually agree")
                 # the parity-proven rows must be a subset of the SCORED rows —
                 # parity on rows the WER never touched proves nothing
                 if scored and checksum not in scored:

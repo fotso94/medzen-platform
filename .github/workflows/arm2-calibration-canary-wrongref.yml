@@ -1,0 +1,16 @@
+# NEGATIVE canary caller for the Arm-2 calibration role (Codex review #27
+# next-step 2): dispatches a DIFFERENT reusable workflow than the calibration
+# role trusts, in the SAME arm2-calibration environment, proving the
+# job_workflow_ref condition (not merely the environment sub) is what refuses.
+name: arm2-calibration-canary-wrongref
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    uses: ./.github/workflows/arm2-calibration-canary-wrongref-exec.yml

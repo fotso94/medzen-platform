@@ -462,11 +462,14 @@ def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
                     f"{row['audio_checksum_sha256'][:12]}: ours={ours!r} vs "
                     f"upstream={theirs!r} — the scorer does not match the "
                     "pinned pipeline; refusing to score with it")
-            # Codex #26 finding 4: bind the checked row's checksum + the agreed
-            # hypothesis hash so the receipt names WHICH rows proved parity
+            # Codex #27 finding 4: record TWO independently-computed hypothesis
+            # hashes (ours vs the pinned upstream) so the verifier proves they
+            # MATCHED — a single self-consistent hash (or 64 zeros) can no
+            # longer stand in for actual agreement.
             row_receipts[language].append({
                 "audio_checksum_sha256": row["audio_checksum_sha256"],
-                "hyp_sha256": _sha256_bytes(ours.encode())})
+                "ours_hyp_sha256": _sha256_bytes(ours.encode()),
+                "upstream_hyp_sha256": _sha256_bytes(theirs.encode())})
         rows_checked[language] = len(rows)
     del upstream
     if device is not None and str(device).startswith("cuda"):

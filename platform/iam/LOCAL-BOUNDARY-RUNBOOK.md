@@ -91,3 +91,23 @@ aws iam create-user --user-name probe  # MUST fail AccessDenied
 aws iam delete-user-permissions-boundary --user-name <working-user> \
   # MUST fail AccessDenied
 ```
+
+## Arm-2 activation ORDER (Codex review #27 findings 1/6)
+
+GitHub auto-creates a referenced-but-missing environment WITHOUT protection,
+so the ORDER is mandatory:
+
+1. Create the protected environments `trainer-image-publish` and
+   `arm2-calibration` in the repo settings, each with the OWNER as a
+   REQUIRED REVIEWER.
+2. Verify them via the GitHub API before anything else:
+   `gh api repos/fotso94/medzen-platform/environments/<name> > <name>.json`
+   then `python -m scripts.verify_protected_environments --environment
+   trainer-image-publish=... --environment arm2-calibration=...` (MUST PASS).
+3. ONLY THEN: `terraform apply arm2-trainer-image-publisher.tfplan` (the saved
+   plan, infra/arm2-activation-plan.txt: 4 add / 1 change / 0 destroy), set
+   the repo variables, run the canaries, build the image, pin the digest.
+
+The launch/publish workflows also fail closed if the environment is missing
+or unprotected, but this pre-apply check stops the unprotected-auto-create
+window from ever opening.

@@ -54,7 +54,7 @@ resource "aws_iam_role" "arm2_calibration" {
   lifecycle {
     precondition {
       condition = (var.github_repo == "fotso94/medzen-platform"
-        && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937")
+      && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937")
       error_message = "arm2-calibration activation requires the exact github_repo AND github_repo_immutable (both are bound into the OIDC trust)"
     }
   }

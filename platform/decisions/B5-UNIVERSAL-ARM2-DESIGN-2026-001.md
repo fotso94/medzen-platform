@@ -446,6 +446,31 @@ writing the fixes:
   arm-1 job and a wrong tier. The saved plan is now **4 add / 1 change / 0
   destroy**.
 
+## Round 27 corrections (Codex review #27)
+
+- **Protected-environment ordering gate (critical):** GitHub auto-creates a
+  referenced-but-missing environment WITHOUT protection, so both
+  `trainer-image-publish` and `arm2-calibration` must exist WITH the owner as a
+  required reviewer BEFORE any Terraform apply or role-variable set.
+  `scripts/verify_protected_environments.py` (owner-run, unit-tested) enforces
+  it; the launch caller also fails closed via a GitHub-API preflight; the
+  runbook documents the mandatory order.
+- **Exact reviewed SHA + pinned deps before credentials (high):** the
+  calibration launch exec now takes an exact 40-hex SHA, proves it is on
+  origin/master and that the checkout equals it, and installs FULLY PINNED deps
+  (`boto3`, `PyYAML==6.0.2`, `jsonschema`) — all BEFORE OIDC federation
+  (mirrors the trainer-image workflow).
+- **Same-environment wrong-workflow canary:** `arm2-calibration-canary-wrongref`
+  runs in the `arm2-calibration` environment with a wrong `job_workflow_ref`,
+  proving the calibration role refuses it with an explicit AccessDenied.
+- **Two-hash parity receipt (medium):** the wrapper records `ours_hyp_sha256`
+  AND `upstream_hyp_sha256` per row; the verifier requires both 64-hex AND
+  equal — a single self-consistent hash (or 64 zeros) no longer proves parity.
+- **Plan/packet evidence (medium):** `infra/arm2-activation-plan.txt` (committed,
+  bound) records the exact 4 add / 1 change / 0 destroy resources + the binary
+  plan sha; the packet's stale "2 add / 1 change" line is corrected.
+- **terraform fmt (low):** `arm2_calibration_role.tf` reformatted.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

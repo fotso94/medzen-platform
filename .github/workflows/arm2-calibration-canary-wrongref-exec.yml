@@ -1,0 +1,50 @@
+# NEGATIVE canary, reusable half (Codex review #27 next-step 2): the token
+# carries a REAL (wrong) job_workflow_ref naming THIS file, in the SAME
+# arm2-calibration environment as the real launcher — so the token's sub
+# claim MATCHES the calibration role's trust and ONLY job_workflow_ref
+# differs. The role must refuse it with an explicit AccessDenied; a sub
+# mismatch would prove nothing about the workflow-identity restriction.
+# Missing variable FAILS (skipping is not passing).
+name: arm2-calibration-canary-wrongref-exec
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_call: {}
+
+jobs:
+  must-be-refused:
+    runs-on: ubuntu-24.04
+    environment: arm2-calibration
+    env:
+      ROLE_ARN: ${{ vars.MEDZEN_ARM2_CALIBRATION_ROLE_ARN }}
+    steps:
+      - name: the role variable must be configured (skipping is not passing)
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "MEDZEN_ARM2_CALIBRATION_ROLE_ARN is not set — refusing to pretend this canary ran"
+            exit 1
+          fi
+      - name: raw assume attempt must yield explicit AccessDenied
+        run: |
+          OIDC_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c "import json,sys; print(json.load(sys.stdin)['value'])")
+          set +e
+          ERR=$(aws sts assume-role-with-web-identity \
+            --role-arn "$ROLE_ARN" \
+            --role-session-name arm2-calibration-canary-wrongref \
+            --web-identity-token "$OIDC_TOKEN" 2>&1)
+          RC=$?
+          set -e
+          if [ $RC -eq 0 ]; then
+            echo "TRUST POLICY TOO BROAD: a WRONG reusable workflow assumed the calibration role"
+            exit 1
+          fi
+          echo "$ERR" | grep -q "AccessDenied" || {
+            echo "assumption failed but NOT with AccessDenied — inconclusive, failing:"
+            echo "$ERR"
+            exit 1
+          }
+          echo "WRONGREF_NEGATIVE_CANARY_OK: explicit AccessDenied for the wrong job_workflow_ref"
