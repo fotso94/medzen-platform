@@ -384,6 +384,32 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
                 f"declares {rows}")
 
 
+def inject_launcher_provenance(environment: dict, bindings: dict) -> dict:
+    """Reproduce, in ONE place, the self-reference-free provenance the launcher
+    stamps into a KD packet's rendered Environment (Codex review #20 F5, #22
+    blocker 2): the packet's own canonical sha, the real TrainingJobName, and
+    the in-image execution-contract path+sha derived from the packet's
+    execution_contract block. It is deterministic from `bindings`, so BOTH the
+    renderer (render_request) and the online receipt check
+    (verify_receipt_against_aws) reconstruct the SAME environment — a single
+    source of truth keeps them from drifting. The committed packet env carries
+    none of these keys (it cannot: the sha is a self-reference); they exist only
+    in the rendered/live environment. Returns a NEW dict; the input is untouched.
+    """
+    env = dict(environment)
+    if str(env.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE:
+        env["MEDZEN_CALIBRATION_PACKET_SHA256"] = \
+            canonical_bindings_sha256(bindings)
+        env["MEDZEN_TRAINING_JOB_NAME"] = f"medzen-b5-{bindings['job_id']}"
+        contract_decl = bindings.get("execution_contract") or {}
+        if str(contract_decl.get("path") or "").strip():
+            env["MEDZEN_EXECUTION_CONTRACT"] = \
+                "/opt/medzen/" + str(contract_decl["path"])
+            env["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
+                str(contract_decl.get("sha256") or "")
+    return env
+
+
 def render_request(bindings: dict) -> dict:
     job_id = _require(bindings, "job_id")
     if re.fullmatch(r"[a-z0-9-]{1,40}", job_id) is None:
@@ -427,31 +453,14 @@ def render_request(bindings: dict) -> dict:
             f"max_runtime {max_runtime_s}s costs up to ${worst_case:.2f} "
             f"on-demand, above the ${ceiling_usd:.2f} ceiling — shrink the "
             "runtime or raise the ceiling in review, never here")
-    environment = dict(_require(bindings, "environment"))
-    # Codex review #20 F5: bind the metrics to THIS packet without a
-    # self-reference. The packet's canonical sha cannot live inside the packet
-    # (adding it would change the sha), so the launcher INJECTS it into the
-    # rendered environment for KD packets — deterministic from `bindings`, so
-    # validate_request's exact-render comparison still holds. The wrapper
-    # records it as identity.packet_sha256; the reviewer's verifier recomputes
-    # canonical(committed packet) and checks equality.
-    if str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE:
-        environment["MEDZEN_CALIBRATION_PACKET_SHA256"] = \
-            canonical_bindings_sha256(bindings)
-        # inject the real TrainingJobName so the wrapper records it and the
-        # verifier can bind identity.training_job_name to the declared job
-        environment["MEDZEN_TRAINING_JOB_NAME"] = f"medzen-b5-{job_id}"
-        # Codex review #22 blocker 2: the wrapper reads the SELF-REFERENCE-FREE
-        # execution contract baked in the image; the launcher derives its
-        # in-image path + sha from the packet's execution_contract block so the
-        # committed files stay circularity-free while the receipt's Environment
-        # check still binds both values to the reviewed packet.
-        contract_decl = bindings.get("execution_contract") or {}
-        if str(contract_decl.get("path") or "").strip():
-            environment["MEDZEN_EXECUTION_CONTRACT"] = \
-                "/opt/medzen/" + str(contract_decl["path"])
-            environment["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
-                str(contract_decl.get("sha256") or "")
+    # The launcher stamps self-reference-free provenance (packet sha, real
+    # TrainingJobName, in-image execution-contract path+sha) into a KD packet's
+    # rendered environment. It is deterministic from `bindings`, so
+    # validate_request's exact-render comparison and verify_receipt_against_aws's
+    # live-Environment comparison both reconstruct it identically — see
+    # inject_launcher_provenance (the ONE definition of this injection).
+    environment = inject_launcher_provenance(
+        _require(bindings, "environment"), bindings)
     missing = [k for k in REQUIRED_ENVIRONMENT if not environment.get(k)]
     if missing:
         raise JobRefusal(f"environment lacks {missing}")
@@ -866,13 +875,23 @@ def verify_receipt_against_aws(record: dict, cal_packet: dict,
         raise JobRefusal("AWS training image does not match the committed "
                          "calibration packet")
     live_env = desc.get("Environment") or {}
-    cal_env = cal_packet.get("environment") or {}
-    if live_env != cal_env:
-        drift = sorted(set(live_env.items()) ^ set(cal_env.items()))
+    # The launcher deterministically injects self-reference-free provenance
+    # (packet sha, real TrainingJobName, in-image execution-contract path+sha)
+    # into a KD packet's Environment, so the LIVE environment is the committed
+    # packet env PLUS those keys. Reconstruct that exact rendered environment
+    # from the committed packet and require the live job to equal it byte-for-
+    # byte. This is NOT a loosening: every injected key is bound to a value
+    # derived from the committed packet (its own sha, its job_id, its
+    # execution_contract), so a foreign job (Codex review #23: gb8 passed as
+    # gb9) — or a forged provenance value — still fails.
+    expected_env = inject_launcher_provenance(
+        cal_packet.get("environment") or {}, cal_packet)
+    if live_env != expected_env:
+        drift = sorted(set(live_env.items()) ^ set(expected_env.items()))
         raise JobRefusal(
             f"the LIVE SageMaker Environment differs from the committed "
-            f"calibration packet ({drift[:4]}) — the job that actually "
-            "ran is not the calibration this packet claims "
+            f"calibration packet's rendered environment ({drift[:4]}) — the "
+            "job that actually ran is not the calibration this packet claims "
             "(Codex review #23)")
     artifact = record["artifact"]
     live_artifact = desc.get("ModelArtifacts", {}).get("S3ModelArtifacts")
