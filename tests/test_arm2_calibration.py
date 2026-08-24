@@ -1230,11 +1230,15 @@ _SERVICE_ADDED = {
 def _real_shaped_params(request):
     """A real MedZen creation record's requestParameters: the rendered request
     (camelCase) PLUS the empirically-observed inert SageMaker defaults, both
-    top-level and NESTED (confirmed against a live event)."""
+    top-level and NESTED (confirmed against a live event). Codex #26 adversarial
+    pass: CloudTrail also REORDERS tags and lowercases key/value, so mirror
+    that here — the comparator must be tag-order/casing insensitive."""
     params = _as_camel(request)
     params.update(_SERVICE_ADDED)
     params["algorithmSpecification"]["enableSageMakerMetricsTimeSeries"] = False
     params["resourceConfig"]["useReservedCapacity"] = False
+    tags = [{"key": t["Key"], "value": t["Value"]} for t in request["Tags"]]
+    params["tags"] = list(reversed(tags))            # different order, lowercased
     return params
 
 
@@ -1277,9 +1281,31 @@ def test_creation_request_comparison_is_two_sided():
         failures = verify_creation_request_parameters(
             bad, request, expected_job_arn=_JOB_ARN)
         assert any(needle in f for f in failures), (needle, failures)
+    # a genuinely DIFFERENT tag set (extra/changed value) still fails
+    wrong_tags = _real_shaped_params(request)
+    wrong_tags["tags"][0]["value"] = "TAMPERED"
+    assert any("tag set" in f for f in verify_creation_request_parameters(
+        wrong_tags, request, expected_job_arn=_JOB_ARN))
     # an empty record proves nothing
     assert verify_creation_request_parameters({}, request,
                                               expected_job_arn=_JOB_ARN)
+
+
+def test_creation_comparison_is_tag_order_and_casing_insensitive():
+    """Codex #26 adversarial pass: CloudTrail reorders tags and lowercases
+    key/value — a genuine event must NOT be rejected on tag ordering (the
+    round-26 blocker), while a real set difference must still fail."""
+    from b5_sagemaker_job import render_request
+    from verify_arm2_calibration import verify_creation_request_parameters
+    request = render_request(_launchable_packet())
+    reordered = _real_shaped_params(request)   # reversed + lowercased tags
+    assert verify_creation_request_parameters(
+        reordered, request, expected_job_arn=_JOB_ARN) == []
+    # a MISSING tag is caught
+    dropped = _real_shaped_params(request)
+    dropped["tags"] = dropped["tags"][:-1]
+    assert any("tag set" in f for f in verify_creation_request_parameters(
+        dropped, request, expected_job_arn=_JOB_ARN))
 
 
 def test_real_cloudtrail_fixture_shape_is_accepted():

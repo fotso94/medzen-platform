@@ -53,8 +53,9 @@ resource "aws_iam_role" "arm2_calibration" {
   assume_role_policy = data.aws_iam_policy_document.arm2_calibration_trust[0].json
   lifecycle {
     precondition {
-      condition     = var.github_repo == "fotso94/medzen-platform"
-      error_message = "arm2-calibration activation requires github_repo=fotso94/medzen-platform"
+      condition = (var.github_repo == "fotso94/medzen-platform"
+        && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937")
+      error_message = "arm2-calibration activation requires the exact github_repo AND github_repo_immutable (both are bound into the OIDC trust)"
     }
   }
 }

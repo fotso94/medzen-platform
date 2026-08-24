@@ -739,6 +739,25 @@ def verify_creation_request_parameters(
                 if sorted(map(str, exp)) != sorted(map(str, act)):
                     failures.append(
                         f"creation record {path} {act!r} != rendered {exp!r}")
+            elif path.lower().endswith("tags"):
+                # Codex #26 adversarial pass: AWS tags are an UNORDERED SET and
+                # CloudTrail neither preserves the request's tag order nor the
+                # Key/Value casing (it lowercases to key/value). Comparing
+                # positionally rejected every genuine event — compare as
+                # {tag key: tag value} maps, mirroring the receipt path.
+                def _tag_map(items):
+                    out = {}
+                    for item in items:
+                        if not isinstance(item, dict):
+                            return None
+                        keyed = {_camel(k): v for k, v in item.items()}
+                        out[str(keyed.get("key"))] = keyed.get("value")
+                    return out
+                exp_map, act_map = _tag_map(exp), _tag_map(act)
+                if exp_map is None or act_map is None or exp_map != act_map:
+                    failures.append(
+                        f"creation record {path} tag set {act_map!r} != "
+                        f"rendered {exp_map!r}")
             elif len(exp) != len(act):
                 failures.append(
                     f"creation record {path} has {len(act)} entries, "
