@@ -117,6 +117,13 @@ resource "aws_s3_bucket_policy" "sealed_results" {
       { Sid      = "TLSOnly", Effect = "Deny", Principal = "*", Action = ["s3:*"],
         Resource = ["${aws_s3_bucket.sealed_results[0].arn}", "${aws_s3_bucket.sealed_results[0].arn}/*"],
       Condition = { Bool = { "aws:SecureTransport" = "false" } } },
+      # Codex review #17: ENFORCE the exact KMS key at write time.
+      { Sid      = "RequireKmsEncryption", Effect = "Deny", Principal = "*", Action = ["s3:PutObject"],
+        Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"],
+      Condition = { StringNotEquals = { "s3:x-amz-server-side-encryption" = "aws:kms" } } },
+      { Sid      = "RequireExactKmsKey", Effect = "Deny", Principal = "*", Action = ["s3:PutObject"],
+        Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"],
+      Condition = { StringNotEquals = { "s3:x-amz-server-side-encryption-aws-kms-key-id" = local.medzen_kms_key_arn } } },
     ]
   })
 }

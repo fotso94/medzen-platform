@@ -107,7 +107,13 @@ def test_registry_failure_fails_closed_not_to_builtin_real_ids(monkeypatch):
     monkeypatch.delenv("MEDZEN_TTS_VOICES_INLINE", raising=False)
     monkeypatch.delenv("MEDZEN_TTS_ALLOW_BUILTIN_FALLBACK", raising=False)
     monkeypatch.setenv("MEDZEN_TTS_VOICES_SSM_PARAM", "/nonexistent/param")
-    monkeypatch.setattr(voices_mod, "boto3", None, raising=False)
+    # _load() does a LOCAL `import boto3`, so force SSM to fail
+    # DETERMINISTICALLY (no real network call — the old boto3=None patch was
+    # a no-op and left the test dependent on live SSM behaviour).
+    import boto3
+    def _boom(*a, **k):
+        raise RuntimeError("SSM unavailable (test)")
+    monkeypatch.setattr(boto3, "client", _boom)
     with pytest.raises(voices_mod.RegistryUnavailable):
         voices_mod._load()
 
@@ -711,7 +717,8 @@ SEALED_EXECUTION_ROLE = ("arn:aws:iam::558069890522:role/"
 SEALED_WRITER_PRINCIPAL = ("arn:aws:sts::558069890522:assumed-role/"
                            "medzen-sealed-eval-role/SageMaker-abc")
 SEALED_OBJECT_LOCK = {"object_lock_mode": "GOVERNANCE",
-                      "object_lock_retain_until": "2036-01-01T00:00:00+00:00"}
+                      "object_lock_retain_until": "2036-01-01T00:00:00+00:00",
+                      "object_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"}
 
 
 def _stub_output_fetch(s3_uri, version_id):
@@ -747,8 +754,8 @@ SEALED_RUN_CONTRACT = {
                         "s3_data_distribution_type": "FullyReplicated",
                         "content_type": None, "compression_type": "None",
                         "input_mode": "File"}},
-    "output_s3_prefix": "s3://medzen-speech/sealed-results/",
-    "output_kms_key_arn": "arn:aws:kms:eu-central-1:0:key/k",
+    "output_s3_prefix": "s3://medzen-sealed-results/medzen-sealed-eval-synthetic-1/output/",
+    "output_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
     "account_id": "558069890522",
     "region": "eu-central-1",
     "execution_role_arn": ("arn:aws:iam::558069890522:role/"

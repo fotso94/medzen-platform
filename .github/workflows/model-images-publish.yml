@@ -1,0 +1,85 @@
+# B6v2 round 17 (Codex finding 2): the REUSABLE, credential-bearing image
+# publish executor. Split out so the image-publisher OIDC role's trust can
+# bind job_workflow_ref to THIS file (job_workflow_ref is the documented
+# claim for reusable workflows). The caller (model-images.yml) invokes it
+# on master push; it builds ONCE, pushes to a quarantine tag, scans the
+# pushed repo@digest, and promotes the EXACT scanned manifest.
+name: model-images-publish
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        description: commit sha to build/publish
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-push-scan-promote:
+    if: vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN != ''
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: model-loader
+            dockerfile: services/model-loader/Dockerfile
+            ecr_repository: medzen-model-loader
+            free_disk: "false"
+          - name: asr-runtime-gpu
+            dockerfile: services/asr-runtime/Dockerfile.gpu
+            ecr_repository: medzen-asr-runtime
+            free_disk: "true"
+    env:
+      REGISTRY: 558069890522.dkr.ecr.eu-central-1.amazonaws.com
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+        with:
+          ref: ${{ inputs.sha }}
+      - name: reclaim runner disk for the CUDA image
+        if: matrix.free_disk == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" /opt/hostedtoolcache/CodeQL
+          sudo docker image prune -af >/dev/null 2>&1 || true
+      - name: OIDC federation as the DEDICATED non-deploy publisher role
+        uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: login to ECR
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
+      - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+      - name: build ONCE and push to the quarantine tag (records the digest)
+        id: build
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: |
+            SOURCE_COMMIT=${{ inputs.sha }}
+          platforms: linux/amd64
+          push: true
+          provenance: mode=max
+          sbom: true
+          tags: ${{ env.REGISTRY }}/${{ matrix.ecr_repository }}:quarantine-${{ inputs.sha }}
+      - name: fail-closed scan of the PUSHED digest (not a rebuild)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.REGISTRY }}/${{ matrix.ecr_repository }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          timeout: 30m
+      - name: promote the EXACT scanned manifest to the release tag (no rebuild)
+        run: |
+          docker buildx imagetools create \
+            --tag "${REGISTRY}/${{ matrix.ecr_repository }}:ci-${{ inputs.sha }}" \
+            "${REGISTRY}/${{ matrix.ecr_repository }}@${{ steps.build.outputs.digest }}"
+          echo "released ${{ matrix.ecr_repository }}:ci-${{ inputs.sha }} -> ${{ steps.build.outputs.digest }} (the scanned digest)"

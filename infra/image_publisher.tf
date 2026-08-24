@@ -37,7 +37,10 @@ data "aws_iam_policy_document" "image_publisher_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo}/.github/workflows/model-images.yml@refs/heads/master"]
+      # Codex review #17: job_workflow_ref is the documented claim for the
+      # REUSABLE workflow that contains the job (the arm-launch pattern);
+      # bind to the reusable exec, invoked by model-images.yml on master.
+      values = ["${var.github_repo}/.github/workflows/model-images-publish.yml@refs/heads/master"]
     }
   }
 }

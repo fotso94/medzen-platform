@@ -221,6 +221,35 @@ def test_output_without_object_lock_refuses(tmp_path, monkeypatch):
         _run_admission(tmp_path)
 
 
+def test_output_encrypted_under_wrong_kms_key_refuses(tmp_path, monkeypatch):
+    """Codex review #17: the object must be encrypted under the EXACT
+    predeclared output KMS key, not merely some KMS key."""
+    monkeypatch.setattr(rp, "SEALED_OBJECT_LOCK", dict(
+        rp.SEALED_OBJECT_LOCK,
+        object_kms_key="arn:aws:kms:eu-central-1:558069890522:key/deadbeef-0000-0000-0000-000000000000"))
+    with pytest.raises(PromotionCheckRefusal, match="not the predeclared output KMS key"):
+        _run_admission(tmp_path)
+
+
+def test_expired_object_lock_retention_refuses(tmp_path, monkeypatch):
+    """Codex review #17: an EXPIRED Object-Lock retention date is no
+    protection and must refuse."""
+    monkeypatch.setattr(rp, "SEALED_OBJECT_LOCK", dict(
+        rp.SEALED_OBJECT_LOCK,
+        object_lock_retain_until="2020-01-01T00:00:00+00:00"))
+    with pytest.raises(PromotionCheckRefusal, match="retention EXPIRED"):
+        _run_admission(tmp_path)
+
+
+def test_output_prefix_not_bound_to_the_job_refuses(tmp_path):
+    """Codex review #17: the output prefix must be THIS job's own so the
+    outputs are bound to the exact evaluation job, not just the role."""
+    with pytest.raises(PromotionCheckRefusal, match="not specific to the predeclared job"):
+        _run_admission(tmp_path, packet_over={
+            "sealed_run": dict(SEALED_RUN_CONTRACT,
+                               output_s3_prefix="s3://medzen-sealed-results/unbound/output/")})
+
+
 def test_missing_decoding_config_refuses(tmp_path):
     with pytest.raises(PromotionCheckRefusal, match="decoding_config_sha256"):
         _run_admission(tmp_path, packet_over={"decoding_config_sha256": ""})

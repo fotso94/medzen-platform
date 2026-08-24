@@ -268,23 +268,39 @@ def _s3_output_writer(s3_uri: str, version_id: str):
         '| filter requestParameters.key = "' + escaped_key + '" '
         '| filter responseElements.`x-amz-version-id` = "' + str(version_id) + '" '
         '| limit 1')
-    now = int(time.time())
-    qid = logs.start_query(
-        logGroupName=log_group,
-        startTime=now - 30 * 24 * 3600, endTime=now + 300,
-        queryString=query)["queryId"]
+    # Codex review #17: CloudTrail -> CloudWatch delivery averages ~5 min
+    # and is NOT guaranteed, so a single query is not enough. Re-issue
+    # FRESH queries with bounded backoff until the event appears (up to
+    # ~15 min total), each over a wide window.
     principal = None
-    for _ in range(30):
-        result = logs.get_query_results(queryId=qid)
-        if result.get("status") in ("Complete", "Failed", "Cancelled",
-                                    "Timeout"):
-            for row in result.get("results", []):
-                for cell in row:
-                    if cell.get("field") == "userIdentity.arn":
-                        principal = cell.get("value")
-            break
-        time.sleep(2)
-    return {"writer_principal": principal or "",
+    deadline = time.time() + 900
+    backoff = 20
+    while principal is None and time.time() < deadline:
+        now = int(time.time())
+        qid = logs.start_query(
+            logGroupName=log_group,
+            startTime=now - 30 * 24 * 3600, endTime=now + 300,
+            queryString=query)["queryId"]
+        for _ in range(30):
+            result = logs.get_query_results(queryId=qid)
+            if result.get("status") in ("Complete", "Failed", "Cancelled",
+                                        "Timeout"):
+                for row in result.get("results", []):
+                    for cell in row:
+                        if cell.get("field") == "userIdentity.arn":
+                            principal = cell.get("value")
+                break
+            time.sleep(2)
+        if principal is None and time.time() < deadline:
+            time.sleep(min(backoff, max(0.0, deadline - time.time())))
+            backoff = min(backoff * 2, 120)
+    if principal is None:
+        raise LoaderV2Refusal(
+            "no CloudTrail PutObject event found for the sealed output "
+            "object after bounded backoff — provenance cannot be "
+            "established (do NOT admit unverified outputs)")
+    return {"writer_principal": principal,
+            "object_kms_key": head.get("SSEKMSKeyId"),
             "object_lock_mode": head.get("ObjectLockMode"),
             "object_lock_retain_until": (
                 retain.astimezone(timezone.utc).isoformat()

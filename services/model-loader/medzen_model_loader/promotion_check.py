@@ -896,6 +896,15 @@ def verify_sealed_outputs(report: dict, *,
     # (CloudTrail S3 data events) into an Object-Lock, bucket-policy-
     # restricted prefix — an immutable, principal-attested boundary a bare
     # S3 writer cannot satisfy.
+    # Codex review #17: bind to the EXACT job, not just the role — the
+    # output prefix must be this job's own (SageMaker writes to
+    # .../<job-name>/output/), and outputs must be encrypted under the
+    # predeclared output KMS key.
+    if str(contract["job_name"]) not in prefix:
+        raise PromotionCheckRefusal(
+            "sealed-run output prefix is not specific to the predeclared "
+            "job — outputs are not bound to THIS evaluation job")
+    expected_output_kms = str(contract["output_kms_key_arn"])
     execution_role = str(contract["execution_role_arn"])
     # Codex review #16 finding 1: bind the EXACT account AND role — a
     # same-named role in ANOTHER account must NOT pass. arn:aws:iam::
@@ -956,9 +965,29 @@ def verify_sealed_outputs(report: dict, *,
             raise PromotionCheckRefusal(
                 f"{label}: object carries no Object-Lock retention — a "
                 "mutable output object is not tamper-evident")
-        if not str(provenance.get("object_lock_retain_until") or ""):
+        # Codex review #17: an EXPIRED retention date is no protection
+        retain_until = str(provenance.get("object_lock_retain_until") or "")
+        if not retain_until:
             raise PromotionCheckRefusal(
                 f"{label}: Object-Lock retention has no retain-until date")
+        import datetime as _dt
+        try:
+            _until = _dt.datetime.fromisoformat(
+                retain_until.replace("Z", "+00:00"))
+        except ValueError:
+            raise PromotionCheckRefusal(
+                f"{label}: Object-Lock retain-until is not a valid date")
+        if _until <= _dt.datetime.now(_dt.timezone.utc):
+            raise PromotionCheckRefusal(
+                f"{label}: Object-Lock retention EXPIRED at {retain_until} "
+                "— the object is no longer immutable")
+        # Codex review #17: enforce the EXACT predeclared output KMS key,
+        # not merely that some KMS key is present
+        object_kms = str(provenance.get("object_kms_key") or "")
+        if object_kms != expected_output_kms:
+            raise PromotionCheckRefusal(
+                f"{label}: object encrypted under {object_kms!r}, not the "
+                f"predeclared output KMS key {expected_output_kms!r}")
         return body
 
     receipt_ref = outputs.get("inference_receipt")
