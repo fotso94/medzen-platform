@@ -30,6 +30,17 @@ from verify_arm2_calibration import (CANONICAL_SCORER,  # noqa: E402
 _JOB_NAME = "medzen-b5-b5-universal-arm2-ftcal-2026-001"
 
 
+# In-image safety (round 29 activation): the trainer image ships only the
+# calibration RUNTIME (pipeline/*, the verifier, the packet, the dev slices).
+# These tests validate HOST/CI governance — workflow YAML, IAM JSON, the infra
+# plan, the CloudTrail fixture, the runbook, the Dockerfile, the dev-selection
+# provenance record, or render_request (which reads a protocol file) — none of
+# which are in the image. They run in host CI; in-image they skip.
+_HOSTONLY = pytest.mark.skipif(
+    not (_REPO / ".github/workflows/arm2-trainer-image.yml").exists(),
+    reason="host/CI-only: reads repo governance files not shipped in the trainer image")
+
+
 # --------------------------------------------------------------------------
 # helpers: build a fully-valid metrics artifact through the real code paths
 # --------------------------------------------------------------------------
@@ -476,6 +487,7 @@ def test_load_export_weights_fails_closed_on_a_non_mapping_export(tmp_path):
         _load_export_weights(model, bad)
 
 
+@_HOSTONLY
 def test_committed_dev_manifests_match_declaration_and_selection_record():
     """Codex review #21 F4: the committed dev-sentinel slices must match the
     packet's predeclaration (path/sha256/rows) AND every row must be copied
@@ -552,6 +564,7 @@ def _good_receipt():
     return packet, receipt
 
 
+@_HOSTONLY
 def test_training_receipt_verifies_and_each_drift_fails():
     """Codex #21 F3 + #23 critical: the COMPLETE canonical request is
     machine-checked — including the exact adversarial reproductions (wrong
@@ -700,6 +713,7 @@ def test_wall_time_accumulates_across_resume():
     assert art["throughput"]["steps_per_min"] < 1.5
 
 
+@_HOSTONLY
 def test_draft_packet_refuses_to_launch(tmp_path):
     """Codex review #21 rec 6: a DRAFT packet renders and validates but must
     NEVER launch."""
@@ -882,6 +896,7 @@ def _make_bundle(tmp_path, *, model_bytes=b"MODEL-BYTES", tamper_model=False,
     return packet, tar_path
 
 
+@_HOSTONLY
 def test_live_bundle_verifies_and_rejects_each_forgery(tmp_path):
     """Codex #22 blocker 1: the live core hashes everything itself from the
     fetched bundle; KMS/prefix/model tampering all fail."""
@@ -1184,6 +1199,7 @@ def test_real_model_decode_parity_against_upstream():
         assert ours == theirs, (wav.name, ours, theirs)
 
 
+@_HOSTONLY
 def test_wrongref_canary_runs_in_the_publisher_environment():
     """Codex #23 medium: the negative canary must share the publisher's
     protected environment so ONLY job_workflow_ref differs — a sub-mismatch
@@ -1247,6 +1263,7 @@ def _real_shaped_params(request):
     return params
 
 
+@_HOSTONLY
 def test_creation_request_comparison_is_two_sided():
     """Codex #26 finding 2: every RENDERED field must be present+equal, and the
     ONLY tolerated extras are the empirically-observed inert defaults — a
@@ -1296,6 +1313,7 @@ def test_creation_request_comparison_is_two_sided():
                                               expected_job_arn=_JOB_ARN)
 
 
+@_HOSTONLY
 def test_creation_comparison_is_tag_order_and_casing_insensitive():
     """Codex #26 adversarial pass: CloudTrail reorders tags and lowercases
     key/value — a genuine event must NOT be rejected on tag ordering (the
@@ -1313,6 +1331,7 @@ def test_creation_comparison_is_tag_order_and_casing_insensitive():
         dropped, request, expected_job_arn=_JOB_ARN))
 
 
+@_HOSTONLY
 def test_real_cloudtrail_fixture_shape_is_accepted():
     """The sanitized REAL CloudTrail event (Arm-1) must have exactly the
     service-added field shape the two-sided comparator tolerates — proving the
@@ -1337,6 +1356,7 @@ def test_real_cloudtrail_fixture_shape_is_accepted():
     assert params["resourceConfig"].get("useReservedCapacity") is False
 
 
+@_HOSTONLY
 def test_creation_event_envelope_binds_principal_account_and_success():
     """Codex #26 finding 2: the envelope proves WHICH role launched the job."""
     from b5_sagemaker_job import render_request
@@ -1486,6 +1506,7 @@ def _protected_env(name, *, login="fotso94", rid=16901658):
         {"type": "wait_timer", "wait_timer": 0}]}
 
 
+@_HOSTONLY
 def test_protected_environment_verifier_binds_name_and_owner():
     """Codex #28 finding 1: the verifier must reject a wrong-environment
     response and any reviewer that is not the OWNER."""
@@ -1518,6 +1539,7 @@ def test_protected_environment_verifier_binds_name_and_owner():
                                           "arm2-calibration"}
 
 
+@_HOSTONLY
 def test_protected_environment_cli_rejects_wrong_environment(tmp_path):
     """Codex #28 finding 1 end-to-end: feeding arm-launch-approval's JSON for
     both required environments must return FAIL (not PASS)."""
@@ -1539,6 +1561,7 @@ def test_protected_environment_cli_rejects_wrong_environment(tmp_path):
                      "--environment", f"arm2-calibration={good_c}"]) == 0
 
 
+@_HOSTONLY
 def test_both_publisher_paths_have_the_environment_preflight():
     """Codex #28 finding 2: BOTH the calibration launcher and the trainer-image
     publisher must run the live environment preflight."""
@@ -1551,6 +1574,7 @@ def test_both_publisher_paths_have_the_environment_preflight():
         assert "curl -sSf" in text and "api.github.com" in text
 
 
+@_HOSTONLY
 def test_launch_deps_are_hash_locked():
     """Codex #28 finding 5: the launcher installs a hash-locked closure with
     --require-hashes, covering the TRANSITIVE deps (not just direct pins)."""
@@ -1567,6 +1591,7 @@ def test_launch_deps_are_hash_locked():
         assert transitive in req, transitive
 
 
+@_HOSTONLY
 def test_calibration_launch_exec_is_hardened():
     """Codex #27 findings 2/3: exact reviewed SHA + master-ancestor + HEAD
     equality BEFORE credentials, and PINNED deps installed BEFORE OIDC."""
@@ -1584,6 +1609,7 @@ def test_calibration_launch_exec_is_hardened():
     assert "inputs.confirm_launch == 'LAUNCH'" in text
 
 
+@_HOSTONLY
 def test_calibration_wrongref_canary_shares_the_environment():
     """Codex #27 next-step 2: the negative canary runs in the SAME
     arm2-calibration environment so only job_workflow_ref differs."""
@@ -1593,6 +1619,7 @@ def test_calibration_wrongref_canary_shares_the_environment():
     assert "AccessDenied" in text
 
 
+@_HOSTONLY
 def test_activation_plan_evidence_is_current():
     """Codex #27 finding 5: the committed plan evidence names exactly the 4
     adds + 1 change + 0 destroys and no stale count."""
@@ -1607,6 +1634,7 @@ def test_activation_plan_evidence_is_current():
     assert "arm_launch" in text and "will be updated in-place" in text
 
 
+@_HOSTONLY
 def test_calibration_role_is_scoped_and_carries_the_deny():
     """Codex #26 finding 6: the calibration role can create ONLY the arm-2
     job, carries NoRemoteDebugEver, reads only the arm-2 artifact, and is
@@ -1636,6 +1664,7 @@ def test_patch_metrics_records_the_parity_receipt(tmp_path):
     assert merged["parity"]["upstream_equal"] is True
 
 
+@_HOSTONLY
 def test_runbook_requires_the_deny_on_the_calibration_role():
     """Codex #25 finding 4: the future calibration-scoped role must carry the
     NoRemoteDebugEver deny verbatim; the arm-launch role only authorizes the
@@ -1661,6 +1690,7 @@ def test_archive_caps_are_sized_to_the_real_model():
     assert BUNDLE_MEMBER_MAX_BYTES["export/model.pt"] >= 3 * 1024 ** 3
 
 
+@_HOSTONLY
 def test_dockerfile_ships_the_contract_not_the_launch_packet():
     """Codex #22 blocker 2: the FINAL image must bake the execution contract,
     never the launch packet (which binds the image's own digest)."""
