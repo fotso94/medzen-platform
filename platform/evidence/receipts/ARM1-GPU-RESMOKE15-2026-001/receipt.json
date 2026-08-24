@@ -1,5 +1,23 @@
 {
  "all_pass": true,
+ "artifact_tree_sha256": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "binding": {
+  "artifact_tree_sha256_full": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+  "box_exit_utc": "2026-08-24T05:52:47Z",
+  "gpu_image_digest": "sha256:67c81efd8458ea1e4424dc39349fdbf2254f4bf929cb7bce98bd284873cf1226",
+  "instance_id": "i-07062a839623a5e93",
+  "loader_image_digest": "sha256:8fa4c129fc1235485a1e979da941a5f61516a1eb1ab6a2f7371ce4f200182739",
+  "s3_log": {
+   "key": "s3://medzen-speech/research/b5-training/arm1-gpu-resmoke-2026-001/log/resmoke.log",
+   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "last_modified": "2026-08-24T05:52:50+00:00",
+   "sha256": "f535a1b8d0cdd31623e6a0ca98c0da75f0643f9ac96779a58bcd931fdd427f07",
+   "version_id": "MWshiuy3vTA8VhLNpwbmGVZisWSa85LJ"
+  },
+  "shutdown_scheduled": "Mon 2026-08-24 07:38:40 UTC, use 'shutdown -c' to cancel.",
+  "source_commit": "f39b34dadc6cfe868e11df5cec3399558fde70d1",
+  "user_data_sha256": "adae0bef2d6cd7214be7e97c10e9e6c3b9fa238b51b95a65d5e781ce668f2ae2"
+ },
  "classification": "NONPROD_REAL_PROVIDER_V2",
  "gpu_image": "medzen-asr-runtime@sha256:67c81efd8458ea1e4424dc39349fdbf2254f4bf929cb7bce98bd284873cf1226",
  "gpu_scan": {

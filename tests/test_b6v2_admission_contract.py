@@ -203,6 +203,16 @@ def test_output_written_by_a_non_execution_role_refuses(tmp_path, monkeypatch):
         _run_admission(tmp_path)
 
 
+def test_output_written_by_a_same_named_role_in_another_account_refuses(tmp_path, monkeypatch):
+    """Codex review #16 finding 1: a same-named execution role in a
+    DIFFERENT AWS account is a different principal and must refuse (the
+    check binds the EXACT account, not just the role name)."""
+    monkeypatch.setattr(rp, "SEALED_WRITER_PRINCIPAL",
+                        "arn:aws:sts::999999999999:assumed-role/medzen-sealed-eval-role/x")
+    with pytest.raises(PromotionCheckRefusal, match="not the predeclared sealed execution role"):
+        _run_admission(tmp_path)
+
+
 def test_output_without_object_lock_refuses(tmp_path, monkeypatch):
     """An output object with no Object-Lock retention is not tamper-evident."""
     monkeypatch.setattr(rp, "SEALED_OBJECT_LOCK",

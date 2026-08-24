@@ -897,7 +897,19 @@ def verify_sealed_outputs(report: dict, *,
     # restricted prefix — an immutable, principal-attested boundary a bare
     # S3 writer cannot satisfy.
     execution_role = str(contract["execution_role_arn"])
+    # Codex review #16 finding 1: bind the EXACT account AND role — a
+    # same-named role in ANOTHER account must NOT pass. arn:aws:iam::
+    # <account>:role/<name> -> the sts assumed-role session is
+    # arn:aws:sts::<account>:assumed-role/<name>/<session>.
+    _role_parts = execution_role.split(":")
+    if (len(_role_parts) < 6 or _role_parts[2] != "iam"
+            or not _role_parts[4] or not _role_parts[5].startswith("role/")):
+        raise PromotionCheckRefusal(
+            "sealed-run execution_role_arn is not a well-formed IAM role ARN")
+    _exec_account = _role_parts[4]
     execution_role_name = execution_role.rsplit("/", 1)[-1]
+    expected_writer_prefix = (
+        f"arn:aws:sts::{_exec_account}:assumed-role/{execution_role_name}/")
     start_utc, end_utc = job_window
     if not _utc_ok(start_utc) or not _utc_ok(end_utc):
         raise PromotionCheckRefusal(
@@ -930,14 +942,15 @@ def verify_sealed_outputs(report: dict, *,
                 f"{label}: no writer provenance for the object")
         writer = str(provenance.get("writer_principal") or "")
         # the CloudTrail PutObject principal must be the predeclared
-        # execution role (SageMaker writes isolated-job outputs under it);
-        # an assumed-role session ARN carries the role name
+        # execution role IN THE PREDECLARED ACCOUNT (SageMaker writes
+        # isolated-job outputs under it); a same-named role in another
+        # account is a DIFFERENT principal and refuses.
         if (writer != execution_role
-                and f":assumed-role/{execution_role_name}/" not in writer):
+                and not writer.startswith(expected_writer_prefix)):
             raise PromotionCheckRefusal(
                 f"{label}: object was written by {writer!r}, not the "
-                f"predeclared sealed execution role {execution_role!r} — "
-                "unauthenticated producer")
+                f"predeclared sealed execution role {execution_role!r} in "
+                f"account {_exec_account} — unauthenticated producer")
         if str(provenance.get("object_lock_mode") or "").upper() not in (
                 "GOVERNANCE", "COMPLIANCE"):
             raise PromotionCheckRefusal(

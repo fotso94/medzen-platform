@@ -107,7 +107,10 @@ jobs:
   # rebuild). The released digest is therefore always the scanned digest.
   build-push-scan-promote:
     needs: build-scan-sbom
-    if: vars.MEDZEN_CI_ROLE_ARN != '' && github.ref == 'refs/heads/master'
+    # Codex review #16 finding 2: publish through the DEDICATED non-deploy
+    # image-publisher role (never the shared CI role, which also grants
+    # deploy and is gated with the HELD deploy path).
+    if: vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN != '' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -133,7 +136,7 @@ jobs:
       - name: OIDC federation (no static keys)
         uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
         with:
-          role-to-assume: ${{ vars.MEDZEN_CI_ROLE_ARN }}
+          role-to-assume: ${{ vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN }}
           aws-region: eu-central-1
       - name: login to ECR
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6

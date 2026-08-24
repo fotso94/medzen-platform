@@ -232,15 +232,17 @@ def _s3_output_fetch(s3_uri: str, version_id: str):
 
 
 def _s3_output_writer(s3_uri: str, version_id: str):
-    """Round 15 (Codex finding 1): WHO wrote a sealed-output object, plus
-    its Object-Lock state. S3 records only an owner canonical id on the
+    """Round 15/16 (Codex): WHO wrote a sealed-output object, plus its
+    Object-Lock state. S3 records only an owner canonical id on the
     object, never the writer principal, so the writer identity comes from
-    CloudTrail S3 DATA EVENTS (a dedicated event data store over the
-    Object-Lock sealed-results prefix). Admission-only (needs
-    s3:GetObjectRetention + cloudtrail:StartQuery/GetQueryResults); the
-    runtime verifies the signed admission receipt offline. Under network
-    isolation SageMaker writes the job's outputs under the execution role,
-    so the PutObject principal is that role's assumed-role session."""
+    CloudTrail S3 DATA EVENTS delivered to a CloudWatch Logs group, queried
+    with Logs Insights (round 16: CloudTrail LAKE is unavailable to new
+    customers after 2026-05-31, so a standard trail -> CloudWatch Logs is
+    used instead). Admission-only (needs s3:GetObjectRetention +
+    logs:StartQuery/GetQueryResults); the runtime verifies the signed
+    admission receipt offline. Under network isolation SageMaker writes the
+    job's outputs under the execution role, so the PutObject principal is
+    that role's assumed-role session."""
     import time
     import boto3
     from datetime import timezone
@@ -251,32 +253,37 @@ def _s3_output_writer(s3_uri: str, version_id: str):
     s3 = boto3.client("s3", region_name=region)
     head = s3.head_object(Bucket=bucket, Key=key, VersionId=str(version_id))
     retain = head.get("ObjectLockRetainUntilDate")
-    store = os.environ.get("MEDZEN_SEALED_CLOUDTRAIL_STORE")
-    if not store:
+    log_group = os.environ.get("MEDZEN_SEALED_CLOUDTRAIL_LOG_GROUP")
+    if not log_group:
         raise LoaderV2Refusal(
-            "MEDZEN_SEALED_CLOUDTRAIL_STORE is unset — sealed-output "
-            "producer authentication requires the CloudTrail data-event "
-            "store (created with the sealed-evaluator infra)")
-    ct = boto3.client("cloudtrail", region_name=region)
+            "MEDZEN_SEALED_CLOUDTRAIL_LOG_GROUP is unset — sealed-output "
+            "producer authentication requires the CloudTrail S3 data-event "
+            "CloudWatch Logs group (created with the sealed-evaluator infra)")
+    logs = boto3.client("logs", region_name=region)
+    escaped_key = key.replace('"', '\\"')
     query = (
-        "SELECT userIdentity.arn FROM " + store + " WHERE eventName='PutObject' "
-        "AND element_at(requestParameters, 'bucketName')='" + bucket + "' "
-        "AND element_at(requestParameters, 'key')='" + key + "' "
-        "AND element_at(responseElements, 'x-amz-version-id')='" + str(version_id) + "' "
-        "LIMIT 1")
-    qid = ct.start_query(QueryStatement=query)["QueryId"]
+        'fields userIdentity.arn '
+        '| filter eventName = "PutObject" '
+        '| filter requestParameters.bucketName = "' + bucket + '" '
+        '| filter requestParameters.key = "' + escaped_key + '" '
+        '| filter responseElements.`x-amz-version-id` = "' + str(version_id) + '" '
+        '| limit 1')
+    now = int(time.time())
+    qid = logs.start_query(
+        logGroupName=log_group,
+        startTime=now - 30 * 24 * 3600, endTime=now + 300,
+        queryString=query)["queryId"]
+    principal = None
     for _ in range(30):
-        status = ct.get_query_results(EventDataStore=store, QueryId=qid)
-        state = status.get("QueryStatus")
-        if state in ("FINISHED", "FAILED", "CANCELLED"):
+        result = logs.get_query_results(queryId=qid)
+        if result.get("status") in ("Complete", "Failed", "Cancelled",
+                                    "Timeout"):
+            for row in result.get("results", []):
+                for cell in row:
+                    if cell.get("field") == "userIdentity.arn":
+                        principal = cell.get("value")
             break
         time.sleep(2)
-    rows = status.get("QueryResultRows", []) if state == "FINISHED" else []
-    principal = None
-    for row in rows:
-        for cell in row:
-            if "arn" in cell:
-                principal = cell["arn"]
     return {"writer_principal": principal or "",
             "object_lock_mode": head.get("ObjectLockMode"),
             "object_lock_retain_until": (

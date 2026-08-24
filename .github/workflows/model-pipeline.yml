@@ -97,6 +97,9 @@ jobs:
           ANCHOR_ENVELOPE: ${{ inputs.anchor_envelope_path }}
           INDEPENDENT_REVIEW: ${{ inputs.independent_review_path }}
           OWNER_AUTHORIZATION: ${{ inputs.owner_authorization_path }}
+          # round 16 (Codex finding 1): admission verifies the sealed-output
+          # writer principal via this CloudTrail S3 data-event Logs group
+          MEDZEN_SEALED_CLOUDTRAIL_LOG_GROUP: /medzen/sealed-results/cloudtrail
         run: |
           python scripts/assemble_promotion_bundle.py \
             --gate-report "$GATE_REPORT" \

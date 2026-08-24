@@ -1,26 +1,28 @@
-# B6v2 round 15 (Codex finding 1): the sealed-output PRODUCER boundary,
-# corrected. Round 14 required the isolated evaluator container to KMS-sign
-# its receipt — IMPOSSIBLE: the promotion contract REQUIRES SageMaker
-# network isolation, under which the container has NO credentials to reach
-# KMS. The evaluator therefore does NOT sign anything. Producer
-# authentication is established at ADMISSION (which HAS credentials):
+# B6v2 rounds 15-16 (Codex findings 1): the sealed-output PRODUCER boundary.
+#
+# The promotion contract REQUIRES SageMaker network isolation, so the
+# evaluator container has NO credentials to reach KMS — it does not sign.
+# Producer authentication is established at ADMISSION (which HAS creds):
 #   - the isolated job writes outputs under its DEDICATED execution role
-#     into a dedicated Object-Lock bucket;
+#     into a dedicated Object-Lock, KMS-encrypted, no-public-access bucket;
 #   - a bucket policy makes that execution role the ONLY writer;
-#   - CloudTrail S3 DATA EVENTS record the PutObject principal;
-#   - admission (the protected workflow) verifies, before KMS-signing the
-#     evidence ROOT, that every output object was written by the execution
-#     role and carries Object-Lock retention.
+#   - a standard CloudTrail trail (round 16: NOT Lake, which is closed to
+#     new customers after 2026-05-31) records S3 DATA EVENTS to a
+#     CloudWatch Logs group;
+#   - admission verifies, before KMS-signing the evidence root, that every
+#     output object was written by the EXACT execution role IN THE EXACT
+#     account (CloudWatch Logs Insights) and carries Object-Lock retention.
 # All gated behind sealed_evaluator_enabled (sealed evaluation is HELD).
 variable "sealed_evaluator_enabled" {
-  description = "owner switch: create the sealed-output provenance boundary (Object-Lock bucket, execution role, write-boundary policy, CloudTrail data-event store). OFF until sealed evaluation is authorized."
+  description = "owner switch: create the sealed-output provenance boundary. OFF until sealed evaluation is authorized."
   type        = bool
   default     = false
 }
 
-# Dedicated Object-Lock bucket for sealed evaluator outputs (Object Lock
-# can only be enabled at creation, so it is a dedicated bucket, not the
-# shared medzen-speech).
+locals {
+  medzen_kms_key_arn = "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+}
+
 resource "aws_s3_bucket" "sealed_results" {
   count               = var.sealed_evaluator_enabled ? 1 : 0
   bucket              = "medzen-sealed-results"
@@ -42,6 +44,28 @@ resource "aws_s3_bucket_object_lock_configuration" "sealed_results" {
       days = 3650
     }
   }
+}
+
+# Codex #16: KMS-at-rest enforcement + no public access were missing.
+resource "aws_s3_bucket_server_side_encryption_configuration" "sealed_results" {
+  count  = var.sealed_evaluator_enabled ? 1 : 0
+  bucket = aws_s3_bucket.sealed_results[0].id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = local.medzen_kms_key_arn
+    }
+    bucket_key_enabled = true
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "sealed_results" {
+  count                   = var.sealed_evaluator_enabled ? 1 : 0
+  bucket                  = aws_s3_bucket.sealed_results[0].id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_iam_role" "sealed_evaluator" {
@@ -69,46 +93,123 @@ resource "aws_iam_role_policy" "sealed_evaluator" {
       { Sid    = "WriteSealedResultsWithRetention", Effect = "Allow",
         Action = ["s3:PutObject", "s3:PutObjectRetention"],
       Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"] },
+      { Sid    = "UseTheDataKey", Effect = "Allow",
+        Action = ["kms:GenerateDataKey", "kms:Decrypt"],
+      Resource = [local.medzen_kms_key_arn] },
     ]
-    # NOTE: deliberately NO kms:Sign — the isolated evaluator cannot reach
-    # KMS and does not sign. Provenance is CloudTrail + Object Lock.
+    # deliberately NO kms:Sign — the isolated evaluator cannot reach KMS.
   })
 }
 
-# The write boundary: ONLY the execution role may write the bucket, and no
-# one may weaken Object-Lock retention.
 resource "aws_s3_bucket_policy" "sealed_results" {
   count  = var.sealed_evaluator_enabled ? 1 : 0
   bucket = aws_s3_bucket.sealed_results[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      {
-        Sid       = "OnlyEvaluatorWrites"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = ["s3:PutObject"]
-        Resource  = ["${aws_s3_bucket.sealed_results[0].arn}/*"]
-        Condition = { StringNotEquals = { "aws:PrincipalArn" = aws_iam_role.sealed_evaluator[0].arn } }
-      },
-      {
-        Sid       = "NoOneBypassesRetention"
-        Effect    = "Deny"
-        Principal = "*"
-        Action    = ["s3:PutObjectRetention", "s3:BypassGovernanceRetention"]
-        Resource  = ["${aws_s3_bucket.sealed_results[0].arn}/*"]
-        Condition = { StringNotEquals = { "aws:PrincipalArn" = aws_iam_role.sealed_evaluator[0].arn } }
-      },
+      { Sid    = "OnlyEvaluatorWrites", Effect = "Deny", Principal = "*",
+        Action = ["s3:PutObject"], Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"],
+      Condition = { StringNotEquals = { "aws:PrincipalArn" = aws_iam_role.sealed_evaluator[0].arn } } },
+      { Sid      = "NoOneBypassesRetention", Effect = "Deny", Principal = "*",
+        Action   = ["s3:PutObjectRetention", "s3:BypassGovernanceRetention"],
+        Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"],
+      Condition = { StringNotEquals = { "aws:PrincipalArn" = aws_iam_role.sealed_evaluator[0].arn } } },
+      { Sid      = "TLSOnly", Effect = "Deny", Principal = "*", Action = ["s3:*"],
+        Resource = ["${aws_s3_bucket.sealed_results[0].arn}", "${aws_s3_bucket.sealed_results[0].arn}/*"],
+      Condition = { Bool = { "aws:SecureTransport" = "false" } } },
     ]
   })
 }
 
-# CloudTrail S3 DATA-EVENT store (Lake) — admission queries it for the
-# PutObject principal of each sealed output object.
-resource "aws_cloudtrail_event_data_store" "sealed_results" {
-  count            = var.sealed_evaluator_enabled ? 1 : 0
-  name             = "medzen-sealed-results-data-events"
-  retention_period = 2555 # max (~7 years, days)
+# --- standard CloudTrail (NOT Lake): S3 data events -> CloudWatch Logs ---
+resource "aws_s3_bucket" "sealed_trail_logs" {
+  count         = var.sealed_evaluator_enabled ? 1 : 0
+  bucket        = "medzen-sealed-results-trail-logs"
+  force_destroy = false
+}
+
+resource "aws_s3_bucket_public_access_block" "sealed_trail_logs" {
+  count                   = var.sealed_evaluator_enabled ? 1 : 0
+  bucket                  = aws_s3_bucket.sealed_trail_logs[0].id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+data "aws_iam_policy_document" "sealed_trail_bucket" {
+  count = var.sealed_evaluator_enabled ? 1 : 0
+  statement {
+    sid       = "AWSCloudTrailAclCheck"
+    actions   = ["s3:GetBucketAcl"]
+    resources = [aws_s3_bucket.sealed_trail_logs[0].arn]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+  }
+  statement {
+    sid       = "AWSCloudTrailWrite"
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.sealed_trail_logs[0].arn}/AWSLogs/558069890522/*"]
+    principals {
+      type        = "Service"
+      identifiers = ["cloudtrail.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "sealed_trail_logs" {
+  count  = var.sealed_evaluator_enabled ? 1 : 0
+  bucket = aws_s3_bucket.sealed_trail_logs[0].id
+  policy = data.aws_iam_policy_document.sealed_trail_bucket[0].json
+}
+
+resource "aws_cloudwatch_log_group" "sealed_trail" {
+  count             = var.sealed_evaluator_enabled ? 1 : 0
+  name              = "/medzen/sealed-results/cloudtrail"
+  retention_in_days = 3653
+}
+
+resource "aws_iam_role" "sealed_trail_to_logs" {
+  count = var.sealed_evaluator_enabled ? 1 : 0
+  name  = "medzen-sealed-trail-to-logs"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "cloudtrail.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "sealed_trail_to_logs" {
+  count = var.sealed_evaluator_enabled ? 1 : 0
+  name  = "deliver-to-logs"
+  role  = aws_iam_role.sealed_trail_to_logs[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["logs:CreateLogStream", "logs:PutLogEvents"]
+      Resource = ["${aws_cloudwatch_log_group.sealed_trail[0].arn}:*"]
+    }]
+  })
+}
+
+resource "aws_cloudtrail" "sealed_results" {
+  count                         = var.sealed_evaluator_enabled ? 1 : 0
+  name                          = "medzen-sealed-results-data-events"
+  s3_bucket_name                = aws_s3_bucket.sealed_trail_logs[0].id
+  cloud_watch_logs_group_arn    = "${aws_cloudwatch_log_group.sealed_trail[0].arn}:*"
+  cloud_watch_logs_role_arn     = aws_iam_role.sealed_trail_to_logs[0].arn
+  include_global_service_events = false
   advanced_event_selector {
     name = "sealed-results S3 data events"
     field_selector {
@@ -124,11 +225,12 @@ resource "aws_cloudtrail_event_data_store" "sealed_results" {
       starts_with = ["${aws_s3_bucket.sealed_results[0].arn}/"]
     }
   }
+  depends_on = [aws_s3_bucket_policy.sealed_trail_logs]
 }
 
 output "sealed_results_bucket" {
   value = var.sealed_evaluator_enabled ? aws_s3_bucket.sealed_results[0].bucket : null
 }
-output "sealed_results_cloudtrail_store" {
-  value = var.sealed_evaluator_enabled ? aws_cloudtrail_event_data_store.sealed_results[0].arn : null
+output "sealed_results_log_group" {
+  value = var.sealed_evaluator_enabled ? aws_cloudwatch_log_group.sealed_trail[0].name : null
 }
