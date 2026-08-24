@@ -103,6 +103,10 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
             "targets_layout": BatchLayout(
                 tuple(target_seqs.shape), seq_lens=target_lens,
                 device=target_seqs.device),
+            # Arm-2 (Codex #14-#17): per-row language tag so the KD closure
+            # can mask the distillation term to the preservation languages.
+            "languages": [str(row.get("primary_language")
+                              or row.get("language") or "") for row in rows],
         }
 
     return batches

@@ -1,0 +1,64 @@
+{
+ "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the Arm-2 trainer image is built from the reviewed commit, (2) the in-image distillation tests (tests/test_omniasr_distill.py torch-marked) pass, (3) the image digest is pinned here. The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json.",
+ "cost_ceiling_usd": 10,
+ "cost_registry_line": "B5-ARM2-FTCAL-2026-001 (allocation id; the authoritative registry revision + sha travel in the launch intent)",
+ "distillation": {
+  "design": "platform/decisions/B5-UNIVERSAL-ARM2-DESIGN-2026-001.md",
+  "kd_alpha": 0.5,
+  "kd_temperature": 1.0,
+  "preservation_languages": [
+   "english",
+   "french",
+   "swahili",
+   "lingala"
+  ],
+  "teacher_card": "medzen_omniASR_CTC_1B_v2",
+  "teacher_mode": "base",
+  "teacher_note": "base teacher is byte-identical to the student's staged base; alignment by construction. Kinyarwanda-v1 teacher deferred (needs its own reviewed card)."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ALPHA": "0.5",
+  "MEDZEN_KD_ENABLE": "1",
+  "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
+  "MEDZEN_KD_TEACHER_CARD": "medzen_omniASR_CTC_1B_v2",
+  "MEDZEN_KD_TEACHER_MODE": "base",
+  "MEDZEN_KD_TEMPERATURE": "1.0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_LR": "1e-5",
+  "MEDZEN_LR_SCHEDULE": "constant",
+  "MEDZEN_MANIFEST_VERSION": "gb9",
+  "MEDZEN_MAX_STEPS": "30",
+  "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+  "MEDZEN_SEED": "20260820",
+  "MEDZEN_TEMPERATURE": "0.5",
+  "MEDZEN_TRAIN_MODE": "full",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_WARMUP_STEPS": "10"
+ },
+ "image_oci_index_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+ "image_tag": "PLACEHOLDER-arm2-ftcal (pin after in-image test pass)",
+ "image_uri_with_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "b5-universal-arm2-ftcal-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "owner rule: on-demand basis always",
+ "max_runtime_seconds": 7200,
+ "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+ "purpose": "UNSEALED Arm-2 preservation-aware-distillation CALIBRATION (design B5-UNIVERSAL-ARM2-DESIGN-2026-001). Tiny (30 steps) full-FT + KD anchoring on the 4 preservation sentinels with the FROZEN base teacher, to validate the KD loss numerics, teacher-freeze, alignment, resume and cost BEFORE any full Arm-2 training. NO sealed data, NO promotion, NO deployment. Authorization = the OWNER's approval of the protected arm-launch workflow run bound to this packet's sha + an APPROVED independent-review record + an ACTIVE_RESERVED registry line.",
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "ml.g6.xlarge SageMaker on-demand $1.409/h x max_runtime 2h = $2.82 compute; ceiling $10 covers staging + retries",
+ "worst_case_usd": 6.4
+}

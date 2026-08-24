@@ -142,11 +142,21 @@ class TrainerConfig:
     exclusions_ref: str | None
     expect_excluded: int | None
     adoption_key: str | None
+    # Arm-2 preservation-aware distillation (Codex reviews #14-#17); KD is
+    # OFF by default so non-KD runs are byte-identical to before.
+    kd_enable: bool
+    kd_alpha: float
+    kd_temperature: float
+    kd_teacher_card: str
+    kd_teacher_mode: str
+    kd_preservation_languages: tuple[str, ...]
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["languages"] = sorted(self.languages)
         payload["allowed_policies"] = sorted(self.allowed_policies)
+        payload["kd_preservation_languages"] = sorted(
+            self.kd_preservation_languages)
         payload["checkpoint_dir"] = str(self.checkpoint_dir)
         payload["output_dir"] = str(self.output_dir)
         return payload
@@ -285,6 +295,50 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                     "checkpoints (the 40k/50 default is ~2 TB on a 250 GB "
                     "disk)")
 
+    # --- Arm-2 KD knobs (bound into the fingerprint so a KD run cannot
+    # resume a non-KD checkpoint directory). OFF unless explicitly enabled.
+    kd_enable = env.get("MEDZEN_KD_ENABLE", "").strip() in ("1", "true", "True")
+    if kd_enable:
+        kd_alpha = _number("MEDZEN_KD_ALPHA", "0.5", float, 0.0)
+        if kd_alpha > 1.0:
+            raise TrainerRefusal(
+                f"MEDZEN_KD_ALPHA={kd_alpha} exceeds 1.0 — the KD weight is a "
+                "convex mixing coefficient in [0, 1]")
+        kd_temperature = _number("MEDZEN_KD_TEMPERATURE", "1.0", float, 0.0)
+        if kd_temperature <= 0.0:
+            raise TrainerRefusal("MEDZEN_KD_TEMPERATURE must be > 0")
+        kd_teacher_mode = env.get("MEDZEN_KD_TEACHER_MODE", "base").strip()
+        if kd_teacher_mode != "base":
+            # kw_v1 is alignment-eligible but needs its OWN sha-verified
+            # fairseq2 card + research-prefix staging (its S3 path contains
+            # the screen-forbidden 'approved/asr'); not wired for calibration.
+            raise TrainerRefusal(
+                f"MEDZEN_KD_TEACHER_MODE={kd_teacher_mode!r} is not wired — "
+                "Arm-2 calibration is base-teacher-only; a Kinyarwanda-v1 "
+                "teacher requires a reviewed sha-verified card first")
+        kd_teacher_card = env.get("MEDZEN_KD_TEACHER_CARD",
+                                  "").strip() or CTC_CARD
+        sentinel_default = "english,french,swahili,lingala"
+        pres = tuple(sorted({
+            token.strip().lower() for token in
+            env.get("MEDZEN_KD_PRESERVATION_LANGUAGES", sentinel_default).split(",")
+            if token.strip()}))
+        if not pres:
+            raise TrainerRefusal(
+                "KD is enabled but MEDZEN_KD_PRESERVATION_LANGUAGES is empty")
+        unknown = [lang for lang in pres if lang not in languages]
+        if unknown:
+            raise TrainerRefusal(
+                f"KD preservation languages {unknown} are not in the training "
+                f"language set {sorted(languages)}")
+        kd_preservation_languages = pres
+    else:
+        kd_alpha = 0.0
+        kd_temperature = 1.0
+        kd_teacher_mode = "base"
+        kd_teacher_card = ""
+        kd_preservation_languages = ()
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -313,6 +367,12 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         expect_excluded=(int(env["MEDZEN_EXPECT_EXCLUDED"])
                          if env.get("MEDZEN_EXPECT_EXCLUDED", "").strip() else None),
         adoption_key=env.get("MEDZEN_ADOPTION_KEY", "").strip() or None,
+        kd_enable=kd_enable,
+        kd_alpha=kd_alpha,
+        kd_temperature=kd_temperature,
+        kd_teacher_card=kd_teacher_card,
+        kd_teacher_mode=kd_teacher_mode,
+        kd_preservation_languages=kd_preservation_languages,
     )
 
 
@@ -691,6 +751,47 @@ def _batch_loss(model, batch):
     return loss / batch["seqs"].shape[0]
 
 
+def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
+                   preservation_languages):
+    """Arm-2 preservation-aware distillation loss (in-image / C3): the
+    student CTC loss PLUS alpha * KD(teacher||student) applied only to the
+    preservation/sentinel-language rows, kept batch-size-normalized so the
+    LR walls still hold. The teacher forward runs under no_grad; alpha
+    absorbs the KD reduction scale (validated by the calibration run)."""
+    import torch
+
+    from pipeline.omniasr_distill import kd_loss, preservation_mask
+
+    loss_ctc = model(batch["seqs"], batch["seqs_layout"],
+                     targets=batch["targets"],
+                     targets_layout=batch["targets_layout"])
+    # the CTC head log-probs path (no targets) for BOTH models — the
+    # net-new fairseq2 surface, verified in-container
+    student_logits = model(batch["seqs"], batch["seqs_layout"])
+    with torch.no_grad():
+        teacher_logits = teacher(batch["seqs"], batch["seqs_layout"])
+    mask = preservation_mask(batch["languages"], preservation_languages)
+    kd = kd_loss(student_logits, teacher_logits,
+                 temperature=temperature, language_mask=mask)
+    return (loss_ctc + alpha * kd) / batch["seqs"].shape[0]
+
+
+def make_batch_loss(config, teacher):
+    """The loss callable run_training_loop consumes: the plain CTC loss
+    unless KD is enabled, else a frozen-teacher-anchored closure. The
+    KD-disabled selection is host-testable (no torch)."""
+    if not config.kd_enable:
+        return _batch_loss
+
+    def _kd_closure(model, batch):
+        return _batch_loss_kd(
+            model, batch, teacher=teacher, alpha=config.kd_alpha,
+            temperature=config.kd_temperature,
+            preservation_languages=config.kd_preservation_languages)
+
+    return _kd_closure
+
+
 def main() -> int:
     from pipeline.omniasr_export import export_merged_checkpoint
     from pipeline.omniasr_lora import lora_state_dict, wrap_lora
@@ -727,6 +828,13 @@ def main() -> int:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(config.seed)
     model, tokenizer, device = _load_model_and_tokenizer(config)
+    # Arm-2: obtain the FROZEN teacher BEFORE any wrap/unfreeze so the
+    # student's updates can never mutate it (it is a distinct object).
+    teacher = None
+    if config.kd_enable:
+        from pipeline.omniasr_distill import load_teacher, teacher_freeze_audit
+        teacher = load_teacher(config.kd_teacher_card, device, torch.bfloat16)
+        teacher_freeze_audit(teacher)
     if config.train_mode == "lora":
         wrap_audit = wrap_lora(
             model, rank=config.lora_rank, alpha=config.lora_alpha,
@@ -782,7 +890,7 @@ def main() -> int:
 
     outcome = run_training_loop(
         model=model, optimizer=optimizer, batches=batches,
-        batch_loss=_batch_loss, config=config,
+        batch_loss=make_batch_loss(config, teacher), config=config,
         fingerprint=fingerprint, save_state=save_state,
         load_state=load_state, stop_flag=stop_flag)
     if outcome["status"] == "INTERRUPTED_CHECKPOINTED":
