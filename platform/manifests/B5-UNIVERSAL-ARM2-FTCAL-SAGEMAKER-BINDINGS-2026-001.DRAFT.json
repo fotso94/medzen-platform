@@ -1,14 +1,17 @@
 {
- "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the dev-sentinel slice manifests named in MEDZEN_DEV_SENTINEL_MANIFEST_FILES (platform/manifests/dev-sentinels/{lingala,swahili}.jsonl) are authored + committed (real frozen fleurs dev rows) and COPYed into the image; (2) the Arm-2 trainer image is built from the reviewed commit via .github/workflows/arm2-trainer-image.yml on a native amd64 builder; (3) the in-image tests (tests/test_omniasr_distill.py + tests/test_arm2_calibration.py, torch-marked) pass; (4) the image digest is pinned here. The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json. The entrypoint is pipeline.omniasr_calibrate (train -> export -> readyz -> dev-WER -> finalize -> verify -> exit nonzero on failure); the launcher renders that entrypoint automatically for KD packets and injects MEDZEN_CALIBRATION_PACKET_SHA256 for identity binding.",
+ "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the predeclared dev-sentinel slices (result_verifier.dev_manifests: platform/manifests/dev-sentinels/{lingala,swahili}.jsonl, 60 rows each, copied verbatim from B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001) are committed AND baked into the image \u2014 DONE this revision; (2) the Arm-2 trainer image is built from the reviewed master commit via the arm2-trainer-image caller -> arm2-trainer-image-publish reusable executor on a native amd64 builder; (3) the in-image tests pass; (4) the image digest is pinned here; (5) MEDZEN_CALIBRATION_PACKET is repointed at the committed (non-DRAFT) filename. The launcher REFUSES to launch any DRAFT packet (Codex review #21 rec 6). The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json. Entrypoint: pipeline.omniasr_calibrate (train -> export -> readyz -> dev-WER -> finalize -> verify -> exit nonzero); the launcher renders it for KD packets and injects MEDZEN_CALIBRATION_PACKET_SHA256 + MEDZEN_TRAINING_JOB_NAME for identity binding.",
  "acceptance_criteria": [
-  "the run completes 30 steps or fails closed (no silent success)",
-  "separate CTC / KD / total loss are logged per step (KD must be > 0 and finite on preservation batches)",
-  "per-language KD coverage logged: rows and VALID frames contributing to KD per preservation language",
-  "peak GPU memory (torch.cuda.max_memory_allocated) recorded and within the g6.xlarge envelope",
-  "throughput (steps/min, samples/s) recorded",
-  "the merged export loads and serves (readyz) \u2014 no adapter residue, finite weights",
-  "dev-sentinel WER on the frozen lingala/swahili dev slices recorded for a directional read (NOT a promotion signal)"
+  "the run completes exactly 30 steps or fails closed (no silent success)",
+  "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
+  "per-language KD coverage (rows and valid frames) recorded for every preservation language: english, french, lingala, swahili",
+  "peak GPU memory recorded and <= 23622320128 bytes",
+  "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
+  "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
+  "dev-sentinel WER recorded on the PREDECLARED frozen slices (path+sha256+rows bound in result_verifier.dev_manifests) for: lingala, swahili (directional read, NOT a promotion signal)",
+  "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, verifier bytes sha",
+  "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE mode (--export-manifest + --export-model + --receipt, all fetched from the job's KMS-encrypted S3 output / SageMaker API)"
  ],
+ "authorization": "CALIBRATION TIER (worst case $3.20 <= the $10 CALIBRATION_TIER_USD boundary in scripts/b5_sagemaker_job.py): this routes through the BELOW-tier launch branch, whose gate is an APPROVED independent-review record (review_record_approves) against the committed (non-DRAFT) packet sha with the image pinned by digest. The ABOVE-tier ceremony (the protected arm-launch workflow + an ACTIVE_RESERVED registry line) does NOT apply at this tier, and the protected workflow presently binds Arm-1 (Codex review #19 F6b: the earlier draft over-claimed above-tier authorization it never exercises). Should a future revision push the worst case past $10 it would cross into the above-tier branch and require that ceremony.",
  "cost_ceiling_usd": 10,
  "cost_registry_line": "B5-ARM2-FTCAL-2026-001 (allocation id; the authoritative registry revision + sha travel in the launch intent)",
  "distillation": {
@@ -73,25 +76,42 @@
  "max_runtime_seconds": 7200,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
  "purpose": "UNSEALED Arm-2 preservation-aware-distillation CALIBRATION (design B5-UNIVERSAL-ARM2-DESIGN-2026-001). Tiny (30 steps) full-FT + KD anchoring on the 4 preservation sentinels with the FROZEN base teacher, to validate the KD loss numerics, teacher-freeze, alignment, resume and cost BEFORE any full Arm-2 training. NO sealed data, NO promotion, NO deployment.",
- "authorization": "CALIBRATION TIER (worst case $3.20 <= the $10 CALIBRATION_TIER_USD boundary in scripts/b5_sagemaker_job.py): this routes through the BELOW-tier launch branch, whose gate is an APPROVED independent-review record (review_record_approves) against the committed (non-DRAFT) packet sha with the image pinned by digest. The ABOVE-tier ceremony (the protected arm-launch workflow + an ACTIVE_RESERVED registry line) does NOT apply at this tier, and the protected workflow presently binds Arm-1 (Codex review #19 F6b: the earlier draft over-claimed above-tier authorization it never exercises). Should a future revision push the worst case past $10 it would cross into the above-tier branch and require that ceremony.",
  "result_verifier": {
-  "script": "scripts/verify_arm2_calibration.py",
-  "metrics_schema": "b5-arm2-calibration-metrics/1",
-  "metrics_artifact": "calibration-metrics.json",
+  "dev_manifests": {
+   "lingala": {
+    "language": "lingala",
+    "path": "platform/manifests/dev-sentinels/lingala.jsonl",
+    "rows": 60,
+    "sha256": "59b2485c947d6f0556fffaeb83744dd814589a8dca9ccba6d7e52ec0cc4d0f5a",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   },
+   "swahili": {
+    "language": "swahili",
+    "path": "platform/manifests/dev-sentinels/swahili.jsonl",
+    "rows": 60,
+    "sha256": "613fad796b8629c351fa023944b384f6198d74125733ea89e61af60adaf4c4a8",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   }
+  },
+  "dev_sentinel_languages": [
+   "lingala",
+   "swahili"
+  ],
   "expected_steps": 30,
   "gpu_memory_ceiling_bytes": 23622320128,
-  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) — headroom for driver/fragmentation.",
+  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
+  "metrics_artifact": "calibration-metrics.json",
+  "metrics_schema": "b5-arm2-calibration-metrics/1",
+  "note": "Codex review #19 F3/F4 + #20 F5: the trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity, but NOT authoritative for export provenance). The AUTHORITATIVE verdict is the reviewer's out-of-image run: fetch calibration-metrics.json AND export/manifest.json from the job's KMS-encrypted S3 output, then run `python -m scripts.verify_arm2_calibration --metrics <fetched> --packet <this committed packet> --export-manifest <fetched manifest.json>`. That run binds identity to the committed packet's canonical sha, the verifier's own bytes, the derived job name (medzen-b5-<job_id>), the canonical scorer, and \u2014 via --export-manifest \u2014 the metrics' export_manifest_sha256/export_model_sha256 to the REAL authenticated export (a fabricated file that never exported is rejected). HONEST SCOPE: a self-reported metrics file is authenticated by WHERE it is fetched (the job's KMS S3 output) plus this export cross-check; the verifier does not otherwise prove a job ran.",
   "required_preservation_coverage": [
    "english",
    "french",
    "lingala",
    "swahili"
   ],
-  "dev_sentinel_languages": [
-   "lingala",
-   "swahili"
-  ],
-  "note": "Codex review #19 F3/F4 + #20 F5: the trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity, but NOT authoritative for export provenance). The AUTHORITATIVE verdict is the reviewer's out-of-image run: fetch calibration-metrics.json AND export/manifest.json from the job's KMS-encrypted S3 output, then run `python -m scripts.verify_arm2_calibration --metrics <fetched> --packet <this committed packet> --export-manifest <fetched manifest.json>`. That run binds identity to the committed packet's canonical sha, the verifier's own bytes, the derived job name (medzen-b5-<job_id>), the canonical scorer, and — via --export-manifest — the metrics' export_manifest_sha256/export_model_sha256 to the REAL authenticated export (a fabricated file that never exported is rejected). HONEST SCOPE: a self-reported metrics file is authenticated by WHERE it is fetched (the job's KMS S3 output) plus this export cross-check; the verifier does not otherwise prove a job ran."
+  "script": "scripts/verify_arm2_calibration.py"
  },
  "scope": "MECHANICS_AND_MEMORY_VALIDATION_ONLY",
  "security_group_ids": [
@@ -101,6 +121,6 @@
   "subnet-00232b25bc1ac407a"
  ],
  "volume_gb": 100,
- "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 2h = $3.20 worst-case compute. Codex review #19 F6c: the earlier draft carried three inconsistent figures ($2.82 real-rate, $6.40, and the launcher's $3.20) — the launcher's $3.20 is the one the gate actually enforces (worst_case <= cost_ceiling), so it is canonical here. The $10 ceiling covers staging + retries.",
+ "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 2h = $3.20 worst-case compute. Codex review #19 F6c: the earlier draft carried three inconsistent figures ($2.82 real-rate, $6.40, and the launcher's $3.20) \u2014 the launcher's $3.20 is the one the gate actually enforces (worst_case <= cost_ceiling), so it is canonical here. The $10 ceiling covers staging + retries.",
  "worst_case_usd": 3.2
 }

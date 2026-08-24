@@ -4,7 +4,8 @@
 # + medzen-asr-runtime — so the new workflow's assume-role simulated to
 # implicitDeny and could never push medzen-trainer-omniasr. This is a SEPARATE,
 # dedicated, non-deployment publisher role scoped to exactly that one repo and
-# bound to exactly the arm2-trainer-image.yml workflow. Owner sets the repo
+# bound to exactly the reusable arm2-trainer-image-publish.yml executor
+# (invoked by the arm2-trainer-image.yml caller). Owner sets the repo
 # variable MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN to switch it live; like the
 # other publisher role it grants NO eks/deploy, so activation never un-darks
 # deploys.
@@ -41,9 +42,13 @@ data "aws_iam_policy_document" "trainer_image_publisher_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      # arm2-trainer-image.yml is a top-level (non-reusable) workflow, so the
-      # job runs in it and job_workflow_ref IS this file at refs/heads/master.
-      values = ["${var.github_repo}/.github/workflows/arm2-trainer-image.yml@refs/heads/master"]
+      # Codex review #21 F1: job_workflow_ref is the DOCUMENTED claim for jobs
+      # running inside a REUSABLE workflow, so the credential-bearing job lives
+      # in the reusable arm2-trainer-image-publish.yml (caller/reusable split,
+      # the same proven structure as model-images-publish.yml) and the trust
+      # binds to that file at refs/heads/master. The earlier top-level binding
+      # relied on an undocumented claim shape and could have been unassumable.
+      values = ["${var.github_repo}/.github/workflows/arm2-trainer-image-publish.yml@refs/heads/master"]
     }
   }
 }

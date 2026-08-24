@@ -234,16 +234,24 @@ def verify_calibration(metrics: dict[str, Any],
             value = str(identity.get(field) or "")
             if value and not _HEX64.fullmatch(value):
                 fail(f"identity.{field}={value!r} is not a 64-hex sha256")
-        # dev_manifest_shas must cover every dev-sentinel language with a sha256
+        # dev_manifest_shas must EQUAL the packet's predeclared slice shas
+        # (Codex review #21 F4: 64-hex-shaped "plausible hashes" passed; now
+        # only the exact reviewed slices do)
         dev_shas = identity.get("dev_manifest_shas") or {}
+        dev_decl = verifier_spec.get("dev_manifests") or {}
         for language in verifier_spec["dev_sentinel_languages"]:
             sha = str(dev_shas.get(language) or "").strip()
+            declared = str((dev_decl.get(language) or {}).get("sha256") or "")
             if not sha:
                 fail(f"identity.dev_manifest_shas[{language!r}] absent — the "
                      "dev slice that produced the WER is not bound")
             elif not _HEX64.fullmatch(sha):
                 fail(f"identity.dev_manifest_shas[{language!r}]={sha!r} is not "
                      "a 64-hex sha256")
+            elif sha != declared:
+                fail(f"identity.dev_manifest_shas[{language!r}] != the "
+                     "PREDECLARED slice sha in result_verifier.dev_manifests — "
+                     "the WER was not scored on the reviewed frozen slice")
         # the scorer must be the CANONICAL one (a made-up scorer is rejected)
         if str(identity.get("scorer")) != CANONICAL_SCORER:
             fail(f"identity.scorer {identity.get('scorer')!r} != the canonical "
@@ -284,6 +292,77 @@ def verify_calibration(metrics: dict[str, Any],
                      "not match the real export")
 
     return failures
+
+
+def verify_training_receipt(receipt: dict[str, Any], packet: dict[str, Any],
+                            *, expected_job_name: str,
+                            packet_canonical_sha: str) -> list[str]:
+    """Machine-check the SageMaker DescribeTrainingJob receipt against the
+    reviewed packet (Codex review #21 F3: terminal status, image digest,
+    environment, KMS, output location and instance were previously unchecked).
+    Returns failure strings; empty means the receipt matches the packet."""
+    failures: list[str] = []
+
+    def fail(msg: str) -> None:
+        failures.append(msg)
+
+    if str(receipt.get("TrainingJobName")) != expected_job_name:
+        fail(f"receipt.TrainingJobName {receipt.get('TrainingJobName')!r} != "
+             f"the derived {expected_job_name!r}")
+    if str(receipt.get("TrainingJobStatus")) != "Completed":
+        fail(f"receipt.TrainingJobStatus {receipt.get('TrainingJobStatus')!r} "
+             "is not Completed — no silent success")
+    algo = receipt.get("AlgorithmSpecification") or {}
+    if str(algo.get("TrainingImage")) != str(packet.get("image_uri_with_digest")):
+        fail(f"receipt image {algo.get('TrainingImage')!r} != the packet's "
+             f"pinned digest {packet.get('image_uri_with_digest')!r}")
+    if list(algo.get("ContainerArguments") or []) != \
+            ["-m", "pipeline.omniasr_calibrate"]:
+        fail(f"receipt ContainerArguments {algo.get('ContainerArguments')!r} "
+             "!= the calibration entrypoint ['-m', 'pipeline.omniasr_calibrate']")
+    # the job's ACTUAL environment must equal the packet's, plus the two
+    # launcher-injected identity keys — an env drifted from the packet means
+    # the job that ran is not the reviewed calibration
+    expected_env = dict(packet.get("environment") or {})
+    expected_env["MEDZEN_CALIBRATION_PACKET_SHA256"] = packet_canonical_sha
+    expected_env["MEDZEN_TRAINING_JOB_NAME"] = expected_job_name
+    actual_env = dict(receipt.get("Environment") or {})
+    if actual_env != expected_env:
+        drift = sorted(set(expected_env.items()) ^ set(actual_env.items()))
+        fail(f"receipt Environment differs from the packet's rendered "
+             f"environment ({len(drift)} drifted entries, e.g. {drift[:3]})")
+    out = receipt.get("OutputDataConfig") or {}
+    if str(out.get("KmsKeyId")) != str(packet.get("kms_key_arn")):
+        fail(f"receipt output KMS {out.get('KmsKeyId')!r} != the packet's "
+             f"{packet.get('kms_key_arn')!r}")
+    job_id = str(packet.get("job_id") or "").strip()
+    expected_output = f"s3://medzen-speech/research/b5-training/{job_id}/output"
+    if str(out.get("S3OutputPath")) != expected_output:
+        fail(f"receipt S3OutputPath {out.get('S3OutputPath')!r} != the "
+             f"derived {expected_output!r} — fetch the artifacts from the "
+             "declared KMS-encrypted output only")
+    resources = receipt.get("ResourceConfig") or {}
+    if str(resources.get("InstanceType")) != str(packet.get("instance_type")):
+        fail(f"receipt instance {resources.get('InstanceType')!r} != the "
+             f"packet's {packet.get('instance_type')!r}")
+    stopping = receipt.get("StoppingCondition") or {}
+    if int(stopping.get("MaxRuntimeInSeconds") or -1) != \
+            int(packet.get("max_runtime_seconds") or -2):
+        fail(f"receipt MaxRuntimeInSeconds "
+             f"{stopping.get('MaxRuntimeInSeconds')!r} != the packet's "
+             f"{packet.get('max_runtime_seconds')!r}")
+    if bool(receipt.get("EnableManagedSpotTraining")) != \
+            bool(packet.get("managed_spot")):
+        fail("receipt EnableManagedSpotTraining differs from the packet")
+    return failures
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 22), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
@@ -345,6 +424,30 @@ def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
             f"result_verifier.dev_sentinel_languages must include the "
             f"regression sentinels {sorted(MANDATORY_DEV_SENTINELS)} — Arm-2 "
             "exists to protect them")
+    # Codex review #21 F4: the dev evaluation data must be PREDECLARED — path,
+    # sha256 and row count per dev-sentinel language — so the identity check
+    # can hard-bind the wrapper's reported dev-manifest shas to the reviewed
+    # declaration instead of accepting any plausible hash.
+    dev_decl = spec.get("dev_manifests")
+    if not isinstance(dev_decl, dict) or not dev_decl:
+        raise SystemExit(
+            "result_verifier.dev_manifests must predeclare each dev-sentinel "
+            "slice (path, sha256, rows) — Codex review #21 F4")
+    for lang in sorted(dev_set):
+        decl = dev_decl.get(lang)
+        if not isinstance(decl, dict):
+            raise SystemExit(f"result_verifier.dev_manifests lacks {lang!r}")
+        path = str(decl.get("path") or "")
+        if not path or path.startswith("/") or ".." in path:
+            raise SystemExit(
+                f"dev_manifests[{lang!r}].path {path!r} must be repo-relative "
+                "without traversal")
+        if not _HEX64.fullmatch(str(decl.get("sha256") or "")):
+            raise SystemExit(f"dev_manifests[{lang!r}].sha256 must be 64-hex")
+        rows = decl.get("rows")
+        if not isinstance(rows, int) or isinstance(rows, bool) or rows < 1:
+            raise SystemExit(
+                f"dev_manifests[{lang!r}].rows must be a positive int")
     return spec
 
 
@@ -361,10 +464,25 @@ def main(argv: list[str] | None = None) -> int:
                              "authoritative verdict (it binds the metrics' "
                              "export shas to the real export); omit only with "
                              "--smoke for an in-repo shape check.")
+    parser.add_argument("--export-model", type=Path, default=None,
+                        help="the exported model checkpoint (model.pt) FETCHED "
+                             "FROM THE JOB'S KMS-encrypted S3 output. REQUIRED "
+                             "for an authoritative verdict — it is HASHED and "
+                             "must equal both the manifest's declared "
+                             "model_sha256 and identity.export_model_sha256 "
+                             "(Codex review #21 F3: trusting the hash written "
+                             "inside the manifest is not authentication).")
+    parser.add_argument("--receipt", type=Path, default=None,
+                        help="the raw JSON of `aws sagemaker "
+                             "describe-training-job --training-job-name "
+                             "medzen-b5-<job_id>`. REQUIRED for an "
+                             "authoritative verdict — terminal status, image "
+                             "digest, environment, KMS, output location and "
+                             "instance are machine-checked against the packet.")
     parser.add_argument("--smoke", action="store_true",
                         help="allow a non-authoritative run WITHOUT the "
-                             "authenticated export manifest (shape/identity "
-                             "check only; does NOT bind the export)")
+                             "authenticated export/model/receipt (shape and "
+                             "identity check only; binds NO real artifact)")
     args = parser.parse_args(argv)
 
     packet = json.loads(args.packet.read_bytes())
@@ -378,11 +496,21 @@ def main(argv: list[str] | None = None) -> int:
     job_id = str(packet.get("job_id") or "").strip()
     expected_job_name = f"medzen-b5-{job_id}" if job_id else None
 
-    # authenticate the export identity against the real artifact (Codex review
-    # #20 F5 follow-up). The authoritative run REQUIRES the S3-fetched manifest;
-    # only --smoke may skip it, and then the verdict is explicitly not
-    # authoritative for export provenance.
+    # authenticate the export + job against the REAL artifacts (Codex reviews
+    # #20 F5 / #21 F3). The authoritative run REQUIRES all three fetched
+    # inputs; only --smoke may skip them, and then the verdict is explicitly
+    # non-authoritative (no real artifact is bound).
+    authoritative_inputs = (args.export_manifest, args.export_model,
+                            args.receipt)
+    if any(x is None for x in authoritative_inputs) and not args.smoke:
+        raise SystemExit(
+            "an authoritative verdict requires --export-manifest, "
+            "--export-model AND --receipt (all fetched from the job's "
+            "KMS-encrypted S3 output / the SageMaker API); pass --smoke for a "
+            "non-authoritative shape/identity check only")
+
     authenticated_export = None
+    receipt_failures: list[str] = []
     if args.export_manifest is not None:
         manifest_bytes = args.export_manifest.read_bytes()
         manifest = json.loads(manifest_bytes)
@@ -390,23 +518,46 @@ def main(argv: list[str] | None = None) -> int:
             "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
             "model_sha256": manifest.get("model_sha256"),
         }
-    elif not args.smoke:
-        raise SystemExit(
-            "--export-manifest is required for an authoritative verdict (fetch "
-            "manifest.json from the job's KMS-encrypted S3 output); pass "
-            "--smoke to run a non-authoritative shape/identity check only")
+        if args.export_model is not None:
+            # hash the ACTUAL model bytes — the manifest's declared hash is a
+            # claim until the artifact itself reproduces it
+            actual_model_sha = _sha256_file(args.export_model)
+            if actual_model_sha != str(manifest.get("model_sha256")):
+                receipt_failures.append(
+                    f"model.pt hashes to {actual_model_sha[:16]}, the export "
+                    f"manifest declares "
+                    f"{str(manifest.get('model_sha256'))[:16]} — the fetched "
+                    "model is not the manifest's model")
+            authenticated_export["model_sha256"] = actual_model_sha
+    if args.receipt is not None:
+        receipt = json.loads(args.receipt.read_bytes())
+        # tolerate the awscli top-level shape {"TrainingJobName": ...} or a
+        # wrapper {"TrainingJob": {...}}
+        if "TrainingJob" in receipt and "TrainingJobName" not in receipt:
+            receipt = receipt["TrainingJob"]
+        receipt_failures.extend(verify_training_receipt(
+            receipt, packet, expected_job_name=expected_job_name or "",
+            packet_canonical_sha=packet_sha))
 
     failures = verify_calibration(
         metrics, spec, packet_canonical_sha=packet_sha,
         verifier_script_sha=verifier_sha, expected_job_name=expected_job_name,
         authenticated_export=authenticated_export)
+    failures.extend(receipt_failures)
     report = {
         "verdict": "PASS" if not failures else "FAIL",
-        "authoritative": authenticated_export is not None,
+        "authoritative": all(x is not None for x in authoritative_inputs),
         "metrics": str(args.metrics),
         "packet": str(args.packet),
         "packet_canonical_sha256": packet_sha,
         "verifier_script_sha256": verifier_sha,
+        # byte-binding of every reviewed input, for the review record (the
+        # reviewer attaches the S3 VersionIds of the fetched objects alongside)
+        "metrics_sha256": hashlib.sha256(
+            args.metrics.read_bytes()).hexdigest(),
+        "export_manifest_sha256": (authenticated_export or {}).get(
+            "manifest_sha256"),
+        "export_model_sha256": (authenticated_export or {}).get("model_sha256"),
         "failures": failures,
     }
     print(json.dumps(report, indent=1, sort_keys=True))

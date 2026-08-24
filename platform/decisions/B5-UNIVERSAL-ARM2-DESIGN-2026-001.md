@@ -225,6 +225,51 @@ stages (export reload, readyz, CTC-greedy decode) validate only in-image via
 `arm2-trainer-image.yml`. The orchestration, metric-binding, verifier and WER
 math are host-tested.
 
+## Round 21 corrections (Codex review #21)
+
+Round 20 made the pipeline real; round 21 makes it assumable, loud, and
+artifact-authenticated:
+
+- **Caller → reusable executor (F1):** the credential-bearing job moved into
+  the reusable `arm2-trainer-image-publish.yml` (the proven model-images
+  structure); the role trust binds `job_workflow_ref` to that file — the
+  documented home of the claim — instead of relying on its shape for a
+  top-level workflow. Positive canary (`arm2-image-canary.yml`, dispatches the
+  real executor with `canary=true`: assume role + identity print, no build)
+  and negative wrong-ref canary (`arm2-image-canary-wrongref{,-exec}.yml`,
+  requires explicit AccessDenied) added.
+- **No silent green skip (F2):** the caller has NO job-level `if:` on the role
+  variable — a missing configuration FAILS a preflight loudly. The executor
+  additionally proves the commit is ON `origin/master` (ancestor gate) and the
+  checkout equals it, before credentials; the 40-hex gate is strict
+  single-line.
+- **Authoritative verification authenticates artifacts (F3):** the verifier
+  now requires `--export-model` (model.pt is HASHED; must equal the manifest's
+  declared sha and the metrics' identity) and `--receipt`
+  (DescribeTrainingJob JSON machine-checked: Completed status, pinned image
+  digest, exact rendered environment incl. the injected packet sha + job name,
+  KMS key, derived S3 output path, instance, max runtime, spot flag, and the
+  calibration ContainerArguments). `--smoke` alone is explicitly
+  non-authoritative. The wrapper performs the in-image halves: it hashes the
+  actual export bytes against the manifest before readyz.
+- **Dev data predeclared and bound (F4):**
+  `platform/manifests/dev-sentinels/{lingala,swahili}.jsonl` are AUTHORED —
+  all 60 frozen rows per language copied verbatim (uri+checksum+reference)
+  from `B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001` — and the packet's
+  `result_verifier.dev_manifests` predeclares path+sha256+rows+source. The
+  launcher verifies the committed files against the declaration; the wrapper
+  refuses to score an undeclared slice in-image; the verifier hard-binds
+  `identity.dev_manifest_shas` to the declaration (a plausible hash no longer
+  passes); a provenance test proves every committed row exists in the frozen
+  selection. The trainer role already holds `s3:GetObject` on the dev audio.
+- **Cumulative resume timing (F5):** the metrics sidecar persists elapsed wall
+  seconds; a resumed run's throughput divides the FULL trajectory by the
+  cumulative time, not the last process's runtime.
+- **Prose = machine contract (F6) + DRAFT refusal:** `acceptance_criteria`
+  must byte-equal the canonical list derived from `result_verifier`
+  (`arm2_acceptance_criteria`); `["PASS"]` refuses. Launch mode refuses any
+  packet carrying `DRAFT_STATUS` or a `.DRAFT.` filename.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

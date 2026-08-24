@@ -541,9 +541,17 @@ class CalibrationMetrics:
     requires them, so a run that skips them fails closed."""
 
     def __init__(self) -> None:
+        import time
         self._micro: list[dict[str, Any]] = []
         self.per_step: list[dict[str, Any]] = []
         self.coverage: dict[str, dict[str, int]] = {}
+        # Codex review #21 F5: wall time must be CUMULATIVE across resume — a
+        # resumed run dividing all steps by only its own process runtime
+        # overstated throughput. prior_wall_seconds carries the pre-reclaim
+        # elapsed time (restored from the progress sidecar); _proc_start times
+        # this process for checkpoint-time persistence.
+        self.prior_wall_seconds: float = 0.0
+        self._proc_start: float = time.perf_counter()
 
     def record_micro(self, sink: dict[str, Any]) -> None:
         """Capture one micro-batch's decomposed components (a copy of the
@@ -577,11 +585,19 @@ class CalibrationMetrics:
     # per_step reflects the FULL trajectory (the micro buffer is transient and
     # intentionally not persisted — a reclaim happens between steps).
     def to_state(self) -> dict[str, Any]:
-        return {"per_step": self.per_step, "coverage": self.coverage}
+        import time
+        return {"per_step": self.per_step, "coverage": self.coverage,
+                # cumulative elapsed at this checkpoint: prior runs' time plus
+                # this process's own (Codex review #21 F5)
+                "wall_seconds": self.prior_wall_seconds
+                + (time.perf_counter() - self._proc_start)}
 
     def restore(self, state: dict[str, Any]) -> None:
+        import time
         self.per_step = list(state.get("per_step", []))
         self.coverage = {k: dict(v) for k, v in state.get("coverage", {}).items()}
+        self.prior_wall_seconds = float(state.get("wall_seconds", 0.0))
+        self._proc_start = time.perf_counter()
         self._micro = []
 
     def finalize(self, *, status: str, steps_completed: int, max_steps: int,
@@ -593,6 +609,10 @@ class CalibrationMetrics:
         kd_values = [s["kd"] for s in self.per_step]
         positive_finite = sum(
             1 for v in kd_values if math.isfinite(v) and v > 0.0)
+        # Codex review #21 F5: total wall = prior processes' elapsed (restored
+        # across resume) + this process's elapsed — steps_completed covers the
+        # FULL trajectory, so the denominator must too.
+        wall_seconds = self.prior_wall_seconds + float(wall_seconds)
         steps_per_min = (steps_completed / (wall_seconds / 60.0)
                          if wall_seconds > 0 else 0.0)
         # Codex review #20 (F5): samples/s was promised but never recorded.

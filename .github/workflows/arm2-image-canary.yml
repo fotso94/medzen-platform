@@ -1,0 +1,20 @@
+# POSITIVE OIDC canary for the trainer-image publisher role (Codex #21 rec 1):
+# dispatches the REAL reusable executor with canary=true, which stops right
+# after the role assumption + sts get-caller-identity. Success proves the
+# job_workflow_ref trust binding to arm2-trainer-image-publish.yml works,
+# without a 40-minute image build. Fails loudly when the variable is unset.
+name: arm2-image-canary
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  positive-probe:
+    uses: ./.github/workflows/arm2-trainer-image-publish.yml
+    with:
+      sha: ${{ github.sha }}
+      canary: true

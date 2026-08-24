@@ -81,6 +81,15 @@ def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _sha256_file(path: Path) -> str:
+    """Chunked file hash (the export model.pt is ~2.6 GB)."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 22), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def parse_dev_manifest_files(raw: str) -> dict[str, str]:
     """`lang=repo/path.jsonl,lang2=...` -> {lang: path}. The dev slices are
     named by REPO PATH (baked into the image), never by an `eval/...` S3 key —
@@ -254,19 +263,42 @@ def main() -> int:
     # 2. reload the export -> readyz; 3. dev-sentinel WER (both fail closed)
     from pipeline.omniasr_train import _load_model_and_tokenizer
     model, tokenizer, device = _load_model_and_tokenizer(config)
-    export_ckpt = config.output_dir / "export" / export_manifest.get(
-        "checkpoint", "model.pt")
+    export_ckpt = config.output_dir / "export" / "model.pt"
+    # Codex review #21 F3 (in-image half): hash the ACTUAL export bytes and
+    # require the manifest's declared model_sha256 to reproduce it — the
+    # declared hash is a claim until the artifact itself matches. The recorded
+    # identity value is the ACTUAL hash, which the reviewer's authoritative
+    # --export-model run recomputes from the S3-fetched file.
+    actual_model_sha = _sha256_file(export_ckpt)
+    if actual_model_sha != str(export_manifest.get("model_sha256")):
+        raise CalibrationRefusal(
+            f"export model.pt hashes to {actual_model_sha[:16]}, the manifest "
+            f"declares {str(export_manifest.get('model_sha256'))[:16]} — the "
+            "export pair is torn; refusing to bind mismatched evidence")
     _load_export_weights(model, export_ckpt)
     serve = readyz_audit(model)
 
     dev_wer, dev_manifest_shas = _score_dev_sentinels(
         config, model, tokenizer, device, dev_files)
 
+    # Codex review #21 F4 (in-image half): the scored slices must BE the
+    # predeclared ones — compare each computed manifest sha against the
+    # packet's result_verifier.dev_manifests declaration before binding.
+    declared = (json.loads(packet_path.read_bytes())
+                .get("result_verifier", {}).get("dev_manifests", {}))
+    for language, sha in sorted(dev_manifest_shas.items()):
+        want = str((declared.get(language) or {}).get("sha256") or "")
+        if sha != want:
+            raise CalibrationRefusal(
+                f"dev slice for {language!r} hashes to {sha[:16]}, the packet "
+                f"predeclares {want[:16] or '<absent>'} — refusing to score an "
+                "undeclared slice")
+
     export_identity = {
         # raw manifest.json bytes sha (the reviewer recomputes it from the
-        # S3-fetched file) and the model sha the authenticated manifest declares
+        # S3-fetched file) and the ACTUAL model bytes sha (manifest-confirmed)
         "manifest_sha256": _sha256_bytes(manifest_bytes),
-        "model_sha256": export_manifest["model_sha256"],
+        "model_sha256": actual_model_sha,
     }
     identity = build_identity(
         run_fingerprint=provenance.get("run_fingerprint", ""),

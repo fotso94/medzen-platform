@@ -1,0 +1,17 @@
+# NEGATIVE canary caller for the trainer-image publisher role (Codex #21
+# rec 1): dispatches a DIFFERENT reusable workflow than the one the role
+# trusts, proving the job_workflow_ref condition rejects real-but-wrong
+# workflow identities, not merely absent claims. Mirrors the proven
+# arm-launch-canary-wrongref pattern.
+name: arm2-image-canary-wrongref
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    uses: ./.github/workflows/arm2-image-canary-wrongref-exec.yml

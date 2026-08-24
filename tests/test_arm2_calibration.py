@@ -36,13 +36,21 @@ def _spec() -> dict:
     return json.loads(_PACKET.read_bytes())["result_verifier"]
 
 
+# the PREDECLARED dev-slice shas (Codex #21 F4: identity must equal these)
+_DEV_SHAS = {
+    lang: json.loads(_PACKET.read_bytes())["result_verifier"]
+    ["dev_manifests"][lang]["sha256"]
+    for lang in ("lingala", "swahili")
+}
+
+
 def _identity() -> dict:
     return {
         "run_fingerprint": "f" * 64,
         "training_job_name": _JOB_NAME,
         "export_manifest_sha256": "a" * 64,
         "export_model_sha256": "b" * 64,
-        "dev_manifest_shas": {"lingala": "c" * 64, "swahili": "d" * 64},
+        "dev_manifest_shas": dict(_DEV_SHAS),
         "scorer": CANONICAL_SCORER,
         "packet_sha256": "e" * 64,
         "verifier_script_sha256": "9" * 64,
@@ -153,6 +161,10 @@ def test_verifier_passes_a_clean_calibration():
     (lambda a: a["identity"].update(export_model_sha256="deadbeef"), "not a 64-hex"),
     (lambda a: a["identity"]["dev_manifest_shas"].update(lingala="fake"),
      "not a 64-hex"),
+    # Codex review #21 F4: a well-formed but UNDECLARED dev-slice sha fails —
+    # the WER must come from the exact reviewed frozen slice
+    (lambda a: a["identity"]["dev_manifest_shas"].update(lingala="0" * 64),
+     "PREDECLARED"),
     (lambda a: a["identity"].update(scorer="made-up-scorer"), "canonical scorer"),
 ])
 def test_verifier_fails_each_defect(mutate, needle):
@@ -254,6 +266,13 @@ def test_load_verifier_spec_accepts_the_committed_packet():
     (lambda s: s.update(gpu_memory_ceiling_bytes=10 ** 15), "physical"),
     (lambda s: s.update(dev_sentinel_languages=[]), "non-empty"),
     (lambda s: s.update(dev_sentinel_languages=["french"]), "regression sentinels"),
+    # Codex review #21 F4: undeclared dev data refuses
+    (lambda s: s.pop("dev_manifests"), "dev_manifests"),
+    (lambda s: s["dev_manifests"]["lingala"].update(sha256="deadbeef"),
+     "64-hex"),
+    (lambda s: s["dev_manifests"]["lingala"].update(path="../../escape.jsonl"),
+     "traversal"),
+    (lambda s: s["dev_manifests"]["lingala"].update(rows=0), "positive int"),
 ])
 def test_load_verifier_spec_rejects_bypass_specs(mutate, needle):
     packet = json.loads(_PACKET.read_bytes())
@@ -315,6 +334,19 @@ def test_arm2_semantics_accepts_the_committed_packet():
      "slice for every"),
     (lambda b, e: b.pop("distillation"), "no top-level `distillation`"),
     (lambda b, e: e.update(MEDZEN_KD_ENABLE="0"), "disagree about whether"),
+    # Codex review #21 F6: the exact reproduction — ["PASS"] must refuse
+    (lambda b, e: b.update(acceptance_criteria=["PASS"]),
+     "canonical machine-derived"),
+    # Codex review #21 F4: undeclared / drifted dev data refuses
+    (lambda b, e: b["result_verifier"].pop("dev_manifests"), "dev_manifests"),
+    (lambda b, e: b["result_verifier"]["dev_manifests"]["lingala"].update(
+        sha256="0" * 64), "drifted from its declaration"),
+    (lambda b, e: b["result_verifier"]["dev_manifests"]["lingala"].update(
+        rows=7), "declares"),
+    (lambda b, e: e.update(
+        MEDZEN_DEV_SENTINEL_MANIFEST_FILES="lingala=other/path.jsonl,"
+        "swahili=platform/manifests/dev-sentinels/swahili.jsonl"),
+     "predeclared"),
 ])
 def test_arm2_semantics_refuses_internal_contradiction(mutate, needle):
     packet, env = _packet_and_env()
@@ -389,6 +421,175 @@ def test_load_export_weights_fails_closed_on_a_non_mapping_export(tmp_path):
     torch.save({"model": {"totally.different.key": torch.zeros(3)}}, bad)
     with pytest.raises(CalibrationRefusal, match="did not map onto the model"):
         _load_export_weights(model, bad)
+
+
+def test_committed_dev_manifests_match_declaration_and_selection_record():
+    """Codex review #21 F4: the committed dev-sentinel slices must match the
+    packet's predeclaration (path/sha256/rows) AND every row must be copied
+    VERBATIM from the frozen dev-selection record — no invented rows."""
+    import hashlib
+    sel = json.loads((_REPO / "platform/manifests/"
+                      "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json").read_bytes())
+    sel_rows = {(r["language"], r["audio_checksum_sha256"],
+                 r["audio_s3_uri"], r["reference"]) for r in sel["rows"]}
+    decl = json.loads(_PACKET.read_bytes())["result_verifier"]["dev_manifests"]
+    for lang in ("lingala", "swahili"):
+        d = decl[lang]
+        body = (_REPO / d["path"]).read_bytes()
+        assert hashlib.sha256(body).hexdigest() == d["sha256"]
+        rows = [json.loads(line) for line in body.decode().splitlines()
+                if line.strip()]
+        assert len(rows) == d["rows"] == 60
+        assert d["source_record"] == "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+        for row in rows:
+            assert row["language"] == lang
+            assert row["selection_record"] == d["source_record"]
+            key = (row["language"], row["audio_checksum_sha256"],
+                   row["audio_filepath"], row["text_normalized"])
+            assert key in sel_rows, f"row not in the frozen selection: {key[:2]}"
+
+
+def test_packet_criteria_equal_the_canonical_machine_derived_list():
+    """Codex review #21 F6: the committed packet's prose criteria are exactly
+    the machine-derived canonical list — drift is impossible."""
+    from b5_sagemaker_job import arm2_acceptance_criteria
+    packet = json.loads(_PACKET.read_bytes())
+    assert packet["acceptance_criteria"] == \
+        arm2_acceptance_criteria(packet["result_verifier"])
+
+
+def _good_receipt():
+    from verify_arm2_calibration import _canonical_sha256
+    packet = json.loads(_PACKET.read_bytes())
+    env = dict(packet["environment"])
+    env["MEDZEN_CALIBRATION_PACKET_SHA256"] = _canonical_sha256(packet)
+    env["MEDZEN_TRAINING_JOB_NAME"] = _JOB_NAME
+    return packet, {
+        "TrainingJobName": _JOB_NAME,
+        "TrainingJobStatus": "Completed",
+        "AlgorithmSpecification": {
+            "TrainingImage": packet["image_uri_with_digest"],
+            "ContainerArguments": ["-m", "pipeline.omniasr_calibrate"],
+        },
+        "Environment": env,
+        "OutputDataConfig": {
+            "KmsKeyId": packet["kms_key_arn"],
+            "S3OutputPath": "s3://medzen-speech/research/b5-training/"
+                            "b5-universal-arm2-ftcal-2026-001/output",
+        },
+        "ResourceConfig": {"InstanceType": packet["instance_type"]},
+        "StoppingCondition": {
+            "MaxRuntimeInSeconds": packet["max_runtime_seconds"]},
+        "EnableManagedSpotTraining": packet["managed_spot"],
+    }
+
+
+def test_training_receipt_verifies_and_each_drift_fails():
+    """Codex review #21 F3: terminal status, image digest, environment, KMS,
+    output location and instance are machine-checked against the packet."""
+    from verify_arm2_calibration import (_canonical_sha256,
+                                         verify_training_receipt)
+    packet, receipt = _good_receipt()
+    sha = _canonical_sha256(packet)
+    assert verify_training_receipt(
+        receipt, packet, expected_job_name=_JOB_NAME,
+        packet_canonical_sha=sha) == []
+    drifts = [
+        (lambda r: r.update(TrainingJobStatus="InProgress"), "Completed"),
+        (lambda r: r.update(TrainingJobName="medzen-b5-other"), "derived"),
+        (lambda r: r["AlgorithmSpecification"].update(
+            TrainingImage="x@sha256:" + "1" * 64), "pinned digest"),
+        (lambda r: r["AlgorithmSpecification"].update(
+            ContainerArguments=["-m", "pipeline.omniasr_train"]),
+         "calibration entrypoint"),
+        (lambda r: r["Environment"].update(MEDZEN_KD_ALPHA="0.9"),
+         "Environment differs"),
+        (lambda r: r["Environment"].pop("MEDZEN_TRAINING_JOB_NAME"),
+         "Environment differs"),
+        (lambda r: r["OutputDataConfig"].update(KmsKeyId="arn:aws:kms:x"),
+         "KMS"),
+        (lambda r: r["OutputDataConfig"].update(
+            S3OutputPath="s3://elsewhere/x"), "S3OutputPath"),
+        (lambda r: r["ResourceConfig"].update(InstanceType="ml.p4d.24xlarge"),
+         "instance"),
+        (lambda r: r["StoppingCondition"].update(MaxRuntimeInSeconds=99999),
+         "MaxRuntimeInSeconds"),
+        (lambda r: r.update(EnableManagedSpotTraining=True), "Spot"),
+    ]
+    for mutate, needle in drifts:
+        _, bad = _good_receipt()
+        mutate(bad)
+        failures = verify_training_receipt(
+            bad, packet, expected_job_name=_JOB_NAME, packet_canonical_sha=sha)
+        assert failures, f"expected a failure for {needle}"
+        assert any(needle in f for f in failures), (needle, failures)
+
+
+def test_authoritative_mode_requires_all_three_fetched_inputs(tmp_path):
+    """Codex review #21 F3: --export-manifest alone is not authoritative; the
+    model bytes and the SageMaker receipt are required too."""
+    from verify_arm2_calibration import main as verifier_main
+    metrics_path = tmp_path / "calibration-metrics.json"
+    metrics_path.write_bytes(json.dumps(_good_artifact()).encode())
+    with pytest.raises(SystemExit, match="export-model"):
+        verifier_main(["--metrics", str(metrics_path),
+                       "--packet", str(_PACKET)])
+    with pytest.raises(SystemExit, match="export-model"):
+        verifier_main(["--metrics", str(metrics_path),
+                       "--packet", str(_PACKET),
+                       "--export-manifest", str(metrics_path)])
+
+
+def test_wall_time_accumulates_across_resume():
+    """Codex review #21 F5: throughput must divide by CUMULATIVE wall time,
+    not just the resumed process's runtime."""
+    m1 = CalibrationMetrics()
+    m1.record_micro({"ctc": 1.0, "kd": 0.4, "total": 1.2, "alpha": 0.5,
+                     "kd_coverage": {"lingala": {"rows": 1, "frames": 5}}})
+    m1.commit_step(1, lr=1e-5)
+    state = m1.to_state()
+    assert state["wall_seconds"] >= 0.0
+    state["wall_seconds"] = 100.0            # pre-reclaim elapsed
+    m2 = CalibrationMetrics()
+    m2.restore(state)
+    m2.record_micro({"ctc": 1.0, "kd": 0.4, "total": 1.2, "alpha": 0.5,
+                     "kd_coverage": {"lingala": {"rows": 1, "frames": 5}}})
+    m2.commit_step(2, lr=1e-5)
+    art = m2.finalize(status="COMPLETED", steps_completed=2, max_steps=2,
+                      peak_gpu_bytes=1, wall_seconds=20.0, samples_per_step=16)
+    assert 119.0 < art["throughput"]["wall_seconds"] < 121.0
+    # 2 steps over ~120s, not 2 steps over 20s
+    assert art["throughput"]["steps_per_min"] < 1.5
+
+
+def test_draft_packet_refuses_to_launch(tmp_path):
+    """Codex review #21 rec 6: a DRAFT packet renders and validates but must
+    NEVER launch."""
+    import copy as _copy
+    import subprocess
+    packet = json.loads(_PACKET.read_bytes())
+    launchable = _copy.deepcopy(packet)
+    # give it a well-formed (fake) digest so render/validate succeed; keep
+    # DRAFT_STATUS so the launch gate must fire
+    uri = ("558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+           "medzen-trainer-omniasr@sha256:" + "0" * 64)
+    launchable["image_uri_with_digest"] = uri
+    launchable["image_oci_index_digest"] = uri
+    bindings = tmp_path / "packet.DRAFT.json"
+    bindings.write_bytes(json.dumps(launchable, sort_keys=True).encode())
+    render = subprocess.run(
+        [sys.executable, str(_REPO / "scripts/b5_sagemaker_job.py"),
+         "render", "--bindings", str(bindings)],
+        capture_output=True, text=True, cwd=_REPO)
+    assert render.returncode == 0, render.stderr
+    request = tmp_path / "request.json"
+    request.write_text(render.stdout)
+    launch = subprocess.run(
+        [sys.executable, str(_REPO / "scripts/b5_sagemaker_job.py"),
+         "launch", "--bindings", str(bindings), "--request", str(request)],
+        capture_output=True, text=True, cwd=_REPO)
+    assert launch.returncode != 0
+    assert "DRAFT" in (launch.stdout + launch.stderr)
 
 
 def test_run_verifier_smoke_passes_on_a_clean_artifact(tmp_path):

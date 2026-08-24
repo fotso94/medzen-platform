@@ -93,6 +93,30 @@ def _parse_env_weights(raw: str) -> dict[str, float]:
     return out
 
 
+def arm2_acceptance_criteria(spec: dict) -> list:
+    """The CANONICAL human-facing acceptance criteria, derived from the machine
+    contract (Codex review #21 F6: the prose criteria were freely mutable —
+    `["PASS"]` rendered fine — so the human contract could contradict the
+    machine contract; deriving the prose FROM result_verifier and requiring
+    byte-equality makes drift impossible)."""
+    steps = int(spec["expected_steps"])
+    ceiling = int(spec["gpu_memory_ceiling_bytes"])
+    dev = sorted(str(x).strip().lower() for x in spec["dev_sentinel_languages"])
+    cov = sorted(str(x).strip().lower()
+                 for x in spec["required_preservation_coverage"])
+    return [
+        f"the run completes exactly {steps} steps or fails closed (no silent success)",
+        "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
+        "per-language KD coverage (rows and valid frames) recorded for every preservation language: " + ", ".join(cov),
+        f"peak GPU memory recorded and <= {ceiling} bytes",
+        "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
+        "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
+        "dev-sentinel WER recorded on the PREDECLARED frozen slices (path+sha256+rows bound in result_verifier.dev_manifests) for: " + ", ".join(dev) + " (directional read, NOT a promotion signal)",
+        "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, verifier bytes sha",
+        "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE mode (--export-manifest + --export-model + --receipt, all fetched from the job's KMS-encrypted S3 output / SageMaker API)",
+    ]
+
+
 def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     """Codex review #19 F4: the top-level `distillation` recipe and the
     `environment` KD variables can silently DISAGREE — the launcher validated
@@ -248,6 +272,70 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     if not re.fullmatch(r"[0-9a-f]{64}", packet_sha):
         raise JobRefusal(
             "MEDZEN_CALIBRATION_PACKET_SHA256 must be a 64-hex canonical sha")
+
+    # Codex review #21 F6: the prose acceptance_criteria must EQUAL the
+    # canonical list derived from the machine contract — a human-facing
+    # contract that contradicts the machine contract refuses.
+    if bindings.get("acceptance_criteria") != arm2_acceptance_criteria(spec):
+        raise JobRefusal(
+            "acceptance_criteria does not equal the canonical machine-derived "
+            "list (arm2_acceptance_criteria) — the human-facing contract must "
+            "not drift from the machine contract (Codex review #21 F6)")
+
+    # Codex review #21 F4: the dev evaluation data must be PREDECLARED and
+    # BOUND — path, sha256 and row count per dev-sentinel language — and the
+    # committed files must match the declaration byte-for-byte. Without this
+    # the wrapper could score any plausible-looking slice.
+    dev_decl = spec.get("dev_manifests")
+    if not isinstance(dev_decl, dict):
+        raise JobRefusal(
+            "result_verifier.dev_manifests must predeclare each dev-sentinel "
+            "slice (path, sha256, rows, source) — Codex review #21 F4")
+    env_dev_paths = {
+        pair.partition("=")[0].strip().lower():
+        pair.partition("=")[2].strip()
+        for pair in str(environment["MEDZEN_DEV_SENTINEL_MANIFEST_FILES"]).split(",")
+        if pair.strip()}
+    repo_root = Path(__file__).resolve().parents[1]
+    for lang in sorted(dev_set):
+        decl = dev_decl.get(lang)
+        if not isinstance(decl, dict):
+            raise JobRefusal(
+                f"result_verifier.dev_manifests lacks {lang!r}")
+        path = str(decl.get("path") or "")
+        sha = str(decl.get("sha256") or "")
+        rows = decl.get("rows")
+        if not path or path.startswith("/") or ".." in path:
+            raise JobRefusal(
+                f"dev_manifests[{lang!r}].path {path!r} must be repo-relative "
+                "without traversal")
+        if not re.fullmatch(r"[0-9a-f]{64}", sha):
+            raise JobRefusal(
+                f"dev_manifests[{lang!r}].sha256 must be 64-hex")
+        if not isinstance(rows, int) or isinstance(rows, bool) or rows < 1:
+            raise JobRefusal(
+                f"dev_manifests[{lang!r}].rows must be a positive int")
+        if env_dev_paths.get(lang) != path:
+            raise JobRefusal(
+                f"MEDZEN_DEV_SENTINEL_MANIFEST_FILES path for {lang!r} "
+                f"({env_dev_paths.get(lang)!r}) != the predeclared "
+                f"dev_manifests path ({path!r})")
+        local = repo_root / path
+        if not local.exists():
+            raise JobRefusal(
+                f"predeclared dev manifest {path} does not exist in the repo — "
+                "author and commit the frozen slice before binding it")
+        body = local.read_bytes()
+        actual_sha = hashlib.sha256(body).hexdigest()
+        if actual_sha != sha:
+            raise JobRefusal(
+                f"dev manifest {path} hashes to {actual_sha[:16]}, the packet "
+                f"declares {sha[:16]} — the slice drifted from its declaration")
+        actual_rows = sum(1 for line in body.splitlines() if line.strip())
+        if actual_rows != rows:
+            raise JobRefusal(
+                f"dev manifest {path} has {actual_rows} rows, the packet "
+                f"declares {rows}")
 
 
 def render_request(bindings: dict) -> dict:
@@ -1032,6 +1120,14 @@ def main() -> int:
         if args.mode == "validate":
             print(json.dumps(result, sort_keys=True))
             return 0
+        # Codex review #21 rec 6: a DRAFT packet may be rendered and validated
+        # during authoring, but may NEVER launch — the launchable packet is the
+        # committed, reviewed, digest-pinned one.
+        if "DRAFT_STATUS" in bindings or ".DRAFT." in args.bindings.name:
+            raise JobRefusal(
+                "this packet is a DRAFT (DRAFT_STATUS present or .DRAFT. in "
+                "the filename) — launch requires the committed, reviewed, "
+                "digest-pinned packet")
         job_id = bindings["job_id"]
         worst_case = result["worst_case_on_demand_usd"]
         root = Path(__file__).resolve().parents[1]
