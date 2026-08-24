@@ -1,10 +1,8 @@
 # Hash-locked dependency closure for the Arm-2 calibration launcher
-# (Codex review #28 finding 5: 'fully pinned' must lock the TRANSITIVE
-# closure by hash, not just direct deps). Resolved 2026-08-24 via
-#   pip download --only-binary=:all: --python-version 312 \
-#     --platform manylinux2014_x86_64 --platform any \
-#     boto3==1.40.16 PyYAML==6.0.2 jsonschema==4.25.0
-# Install with: pip install --require-hashes --only-binary=:all: -r <this>
+# (Codex review #28 finding 5). Resolved 2026-08-24 for CPython 3.12 /
+# manylinux_2_17_x86_64 (the ubuntu-24.04 runner) — includes the py<3.13
+# conditional typing-extensions that referencing needs (round-29 launch fix).
+# Install: pip install --require-hashes --only-binary=:all: -r <this>
 
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
@@ -30,5 +28,7 @@ s3transfer==0.13.1 \
     --hash=sha256:a981aa7429be23fe6dfc13e80e4020057cbab622b08c0315288758d67cabc724
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
+typing-extensions==4.16.0 \
+    --hash=sha256:481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
 urllib3==2.7.0 \
     --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897
