@@ -471,6 +471,31 @@ writing the fixes:
   plan sha; the packet's stale "2 add / 1 change" line is corrected.
 - **terraform fmt (low):** `arm2_calibration_role.tf` reformatted.
 
+## Round 28 corrections (Codex review #28)
+
+- **Environment verifier binds name + owner (critical):** `check_environment`
+  now rejects a response whose `name` != the requested environment (the
+  reproduced bypass: arm-launch-approval's JSON passed as both required
+  environments) and requires the OWNER specifically (login `fotso94` OR id
+  `16901658`) as a required reviewer, not just any reviewer.
+- **Publisher path gets the same preflight (high):** `arm2-trainer-image.yml`
+  now runs the live environment preflight for `trainer-image-publish`, so it
+  can no longer be auto-created unprotected after activation. Both callers use
+  the SAME committed verifier.
+- **Explicit API access (high):** the preflight uses UNAUTHENTICATED `curl` to
+  the public API (the Get-an-environment endpoint needs Actions-read the
+  default job token lacks), avoiding an always-fail-closed check.
+- **Recomputable parity (medium):** the wrapper records the actual normalized
+  hypotheses (`ours_hyp`/`upstream_hyp`, one short public-research utterance
+  per language) alongside their hashes; the verifier RECOMPUTES
+  `sha256(text)==hash` and requires the two texts equal — a pair of all-zero
+  (or any non-real) hashes now fails.
+- **Hash-locked dependency closure (medium):** `scripts/requirements/arm2-launch.txt`
+  pins the FULL transitive closure by sha256 (13 wheels resolved for the
+  linux/py312 runner); the launcher installs with `--require-hashes
+  --only-binary=:all:` before credentials, so a substituted transitive
+  dependency fails the install.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

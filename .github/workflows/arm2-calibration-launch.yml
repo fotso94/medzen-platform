@@ -37,25 +37,23 @@ jobs:
             exit 1
           fi
           echo "calibration role variable present"
-      - name: the arm2-calibration environment must already exist WITH required reviewers
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: the arm2-calibration environment must exist WITH owner approval
         run: |
-          # Codex #27 finding 1: refuse to proceed unless the protected
-          # environment is real and gated — GitHub would otherwise auto-create
-          # it unprotected on first reference and bypass owner approval.
+          # Codex #27 finding 1 / #28 findings 1-3: refuse unless the protected
+          # environment is real, is the RIGHT environment, and requires the
+          # OWNER — GitHub would otherwise auto-create it unprotected on first
+          # reference and bypass approval. Unauthenticated curl (the repo is
+          # public; the Get-an-environment endpoint needs Actions-read that the
+          # default job token lacks), then the SHARED verifier binds name+owner.
           set -euo pipefail
-          RESP=$(gh api "repos/${{ github.repository }}/environments/arm2-calibration" 2>/dev/null || echo '{"__missing__":true}')
-          if printf '%s' "$RESP" | grep -q '"__missing__"'; then
-            echo "::error::the 'arm2-calibration' environment does not exist — create it with the OWNER as a required reviewer BEFORE launching"
-            exit 1
-          fi
-          REVIEWERS=$(printf '%s' "$RESP" | python3 -c "import json,sys; d=json.load(sys.stdin); rules=[r for r in d.get('protection_rules',[]) if r.get('type')=='required_reviewers']; print(sum(len(r.get('reviewers',[])) for r in rules))")
-          if [ "$REVIEWERS" -lt 1 ]; then
-            echo "::error::the 'arm2-calibration' environment has no required reviewers — owner approval is not enforced"
-            exit 1
-          fi
-          echo "arm2-calibration environment is protected ($REVIEWERS required reviewer(s))"
+          curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/arm2-calibration" \
+            -o env.json || echo '{"__missing__":true}' > env.json
+          python scripts/verify_protected_environments.py --only-supplied \
+            --environment arm2-calibration=env.json
 
   launch:
     needs: preflight

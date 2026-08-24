@@ -462,12 +462,16 @@ def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
                     f"{row['audio_checksum_sha256'][:12]}: ours={ours!r} vs "
                     f"upstream={theirs!r} — the scorer does not match the "
                     "pinned pipeline; refusing to score with it")
-            # Codex #27 finding 4: record TWO independently-computed hypothesis
-            # hashes (ours vs the pinned upstream) so the verifier proves they
-            # MATCHED — a single self-consistent hash (or 64 zeros) can no
-            # longer stand in for actual agreement.
+            # Codex #28 finding 4: record the actual NORMALIZED hypotheses (the
+            # dev slices are one short public-research utterance per language)
+            # plus their independently-computed hashes, so the verifier
+            # RECOMPUTES sha256(text)==hash and requires ours_hyp==upstream_hyp
+            # — 64 zeros (or any pair that is not the real hash of a real,
+            # matching hypothesis) can no longer pass.
             row_receipts[language].append({
                 "audio_checksum_sha256": row["audio_checksum_sha256"],
+                "ours_hyp": ours,
+                "upstream_hyp": theirs,
                 "ours_hyp_sha256": _sha256_bytes(ours.encode()),
                 "upstream_hyp_sha256": _sha256_bytes(theirs.encode())})
         rows_checked[language] = len(rows)

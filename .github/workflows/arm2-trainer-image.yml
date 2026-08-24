@@ -33,6 +33,20 @@ jobs:
             exit 1
           fi
           echo "publisher role variable present"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: the trainer-image-publish environment must exist WITH owner approval
+        run: |
+          # Codex #28 finding 2: the publisher path needs the SAME live
+          # environment preflight — otherwise trainer-image-publish could be
+          # auto-created without protection after Terraform activation.
+          set -euo pipefail
+          curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/trainer-image-publish" \
+            -o env.json || echo '{"__missing__":true}' > env.json
+          python scripts/verify_protected_environments.py --only-supplied \
+            --environment trainer-image-publish=env.json
 
   publish:
     needs: preflight

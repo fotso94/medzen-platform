@@ -318,17 +318,26 @@ def verify_calibration(metrics: dict[str, Any],
                       for r in (results.get(language) or {}).get("rows", [])}
             for receipt in receipts:
                 checksum = str(receipt.get("audio_checksum_sha256"))
-                ours = str(receipt.get("ours_hyp_sha256") or "")
-                upstream = str(receipt.get("upstream_hyp_sha256") or "")
-                # Codex #27 finding 4: require TWO independently-recorded hashes
-                # that are EQUAL — a well-formed single hash proved nothing
-                if not _HEX64.fullmatch(ours) or not _HEX64.fullmatch(upstream):
-                    fail(f"parity row {checksum[:12]} ({language}) lacks both "
-                         "ours_hyp_sha256 and upstream_hyp_sha256 (64-hex)")
-                elif ours != upstream:
+                ours_hash = str(receipt.get("ours_hyp_sha256") or "")
+                up_hash = str(receipt.get("upstream_hyp_sha256") or "")
+                ours_text = receipt.get("ours_hyp")
+                up_text = receipt.get("upstream_hyp")
+                # Codex #28 finding 4: the hashes must be the REAL sha256 of the
+                # RECORDED hypotheses, and the two hypotheses must MATCH — so a
+                # pair of fabricated (e.g. all-zero) hashes cannot stand in for
+                # a real agreement.
+                if not isinstance(ours_text, str) or not isinstance(up_text, str):
+                    fail(f"parity row {checksum[:12]} ({language}) lacks the "
+                         "recorded hypotheses (ours_hyp/upstream_hyp)")
+                elif hashlib.sha256(ours_text.encode()).hexdigest() != ours_hash \
+                        or hashlib.sha256(up_text.encode()).hexdigest() != up_hash:
+                    fail(f"parity row {checksum[:12]} ({language}): a hypothesis "
+                         "hash is not sha256 of the recorded hypothesis — "
+                         "fabricated hash")
+                elif ours_text != up_text:
                     fail(f"parity row {checksum[:12]} ({language}): our "
-                         "hypothesis hash != the upstream hypothesis hash — "
-                         "the decoders did not actually agree")
+                         "hypothesis != the upstream hypothesis — the decoders "
+                         "did not actually agree")
                 # the parity-proven rows must be a subset of the SCORED rows —
                 # parity on rows the WER never touched proves nothing
                 if scored and checksum not in scored:

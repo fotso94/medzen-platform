@@ -104,8 +104,12 @@ def _good_artifact(steps: int = 30) -> dict:  # noqa: F811 (parity-aware)
                      "ASRInferencePipeline@145a12a6"),
         "rows_checked": {"lingala": 1, "swahili": 1},
         "rows": {lang: [{"audio_checksum_sha256": _first_checksum(lang),
-                         "ours_hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest(),
-                         "upstream_hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest()}]
+                         "ours_hyp": f"hyp for {lang}",
+                         "upstream_hyp": f"hyp for {lang}",
+                         "ours_hyp_sha256": _hashlib.sha256(
+                             f"hyp for {lang}".encode()).hexdigest(),
+                         "upstream_hyp_sha256": _hashlib.sha256(
+                             f"hyp for {lang}".encode()).hexdigest()}]
                  for lang in ("lingala", "swahili")},
         "scorer": CANONICAL_SCORER,
     }
@@ -1454,11 +1458,18 @@ def test_parity_receipt_binds_exact_identities_and_rows():
         (lambda a: a["parity"].update(upstream="fake-omnilingual-pipeline"),
          "!= the pinned"),
         (lambda a: a["parity"].update(scorer="wrong"), "canonical scorer"),
-        (lambda a: a["parity"]["rows"]["lingala"][0].update(ours_hyp_sha256="x"),
-         "lacks both"),
-        # Codex #27 finding 4: two 64-hex hashes that DISAGREE must fail
+        # Codex #28 finding 4: a hash that is NOT sha256 of the recorded text
+        # fails (both 64 zeros no longer passes)
         (lambda a: a["parity"]["rows"]["lingala"][0].update(
-            upstream_hyp_sha256="0" * 64), "did not actually agree"),
+            ours_hyp_sha256="0" * 64, upstream_hyp_sha256="0" * 64),
+         "fabricated hash"),
+        (lambda a: a["parity"]["rows"]["lingala"][0].pop("ours_hyp"),
+         "lacks the recorded hypotheses"),
+        # texts (and thus hashes) that DISAGREE must fail
+        (lambda a: a["parity"]["rows"]["lingala"][0].update(
+            upstream_hyp="different",
+            upstream_hyp_sha256=_hashlib.sha256(b"different").hexdigest()),
+         "did not actually agree"),
         (lambda a: a["parity"]["rows"].__setitem__("lingala", []),
          "count != rows_checked"),
     ]:
@@ -1467,30 +1478,93 @@ def test_parity_receipt_binds_exact_identities_and_rows():
         assert any(needle in f for f in verify_calibration(bad, _spec())), needle
 
 
-def test_protected_environment_verifier():
-    """Codex #27 finding 1/6: both environments must exist WITH required
-    reviewers before activation."""
+def _protected_env(name, *, login="fotso94", rid=16901658):
+    return {"name": name, "protection_rules": [
+        {"type": "required_reviewers",
+         "reviewers": [{"type": "User",
+                        "reviewer": {"login": login, "id": rid}}]},
+        {"type": "wait_timer", "wait_timer": 0}]}
+
+
+def test_protected_environment_verifier_binds_name_and_owner():
+    """Codex #28 finding 1: the verifier must reject a wrong-environment
+    response and any reviewer that is not the OWNER."""
     from verify_protected_environments import (REQUIRED_ENVIRONMENTS,
                                                check_environment,
                                                required_reviewer_count)
-    protected = {"protection_rules": [
-        {"type": "required_reviewers",
-         "reviewers": [{"type": "User", "reviewer": {"login": "fotso94"}}]},
-        {"type": "wait_timer", "wait_timer": 0}]}
-    assert required_reviewer_count(protected) == 1
-    assert check_environment("arm2-calibration", protected) == []
-    # missing environment
+    good = _protected_env("arm2-calibration")
+    assert required_reviewer_count(good) == 1
+    assert check_environment("arm2-calibration", good) == []
+    # by numeric id alone (login changed) still passes
+    assert check_environment("arm2-calibration",
+                             _protected_env("arm2-calibration",
+                                            login="someone")) == []
+    # THE reproduced bypass: supplying arm-launch-approval's JSON for a
+    # required environment must FAIL on the name mismatch
+    assert any("not the requested" in f for f in check_environment(
+        "arm2-calibration", _protected_env("arm-launch-approval")))
+    # a reviewer who is NOT the owner fails
+    assert any("does not require the OWNER" in f for f in check_environment(
+        "arm2-calibration",
+        _protected_env("arm2-calibration", login="intruder", rid=999)))
+    # missing / unprotected
     assert any("does not exist" in f
                for f in check_environment("arm2-calibration", None))
-    assert any("Not Found" in f or "does not exist" in f
-               for f in check_environment("arm2-calibration",
-                                          {"message": "Not Found"}))
-    # exists but unprotected (auto-created)
     assert any("NO required reviewers" in f
                for f in check_environment("arm2-calibration",
-                                          {"protection_rules": []}))
+                                          {"name": "arm2-calibration",
+                                           "protection_rules": []}))
     assert set(REQUIRED_ENVIRONMENTS) == {"trainer-image-publish",
                                           "arm2-calibration"}
+
+
+def test_protected_environment_cli_rejects_wrong_environment(tmp_path):
+    """Codex #28 finding 1 end-to-end: feeding arm-launch-approval's JSON for
+    both required environments must return FAIL (not PASS)."""
+    from verify_protected_environments import main as env_main
+    wrong = tmp_path / "wrong.json"
+    wrong.write_text(json.dumps(_protected_env("arm-launch-approval")))
+    rc = env_main(["--environment", f"trainer-image-publish={wrong}",
+                   "--environment", f"arm2-calibration={wrong}"])
+    assert rc == 1
+    # the correctly-named+owned envs pass
+    good_c = tmp_path / "c.json"; good_c.write_text(
+        json.dumps(_protected_env("arm2-calibration")))
+    good_t = tmp_path / "t.json"; good_t.write_text(
+        json.dumps(_protected_env("trainer-image-publish")))
+    assert env_main(["--environment", f"trainer-image-publish={good_t}",
+                     "--environment", f"arm2-calibration={good_c}"]) == 0
+    # --only-supplied checks just the one
+    assert env_main(["--only-supplied",
+                     "--environment", f"arm2-calibration={good_c}"]) == 0
+
+
+def test_both_publisher_paths_have_the_environment_preflight():
+    """Codex #28 finding 2: BOTH the calibration launcher and the trainer-image
+    publisher must run the live environment preflight."""
+    for wf, env in (("arm2-calibration-launch.yml", "arm2-calibration"),
+                    ("arm2-trainer-image.yml", "trainer-image-publish")):
+        text = (_REPO / ".github/workflows" / wf).read_text()
+        assert "verify_protected_environments.py --only-supplied" in text
+        assert f"--environment {env}=env.json" in text
+        # Codex #28 finding 3: unauthenticated curl (no token permission issue)
+        assert "curl -sSf" in text and "api.github.com" in text
+
+
+def test_launch_deps_are_hash_locked():
+    """Codex #28 finding 5: the launcher installs a hash-locked closure with
+    --require-hashes, covering the TRANSITIVE deps (not just direct pins)."""
+    exec_wf = (_REPO / ".github/workflows/"
+               "arm2-calibration-launch-exec.yml").read_text()
+    assert "--require-hashes" in exec_wf
+    assert "scripts/requirements/arm2-launch.txt" in exec_wf
+    req = (_REPO / "scripts/requirements/arm2-launch.txt").read_text()
+    # every requirement line is version-pinned AND hash-locked; transitive
+    # deps (botocore, urllib3, rpds-py, …) are present, not just direct
+    pins = [ln for ln in req.splitlines() if "==" in ln]
+    assert all("--hash=sha256:" in req.split(ln, 1)[1][:120] for ln in pins)
+    for transitive in ("botocore==", "urllib3==", "rpds-py==", "s3transfer=="):
+        assert transitive in req, transitive
 
 
 def test_calibration_launch_exec_is_hardened():
@@ -1503,9 +1577,9 @@ def test_calibration_launch_exec_is_hardened():
     # the credentials step
     assert text.index("single exact 40-hex commit") < cred
     assert text.index("is not on origin/master") < cred
-    assert text.index('pip install "boto3==1.40.16" "PyYAML==6.0.2"') < cred
-    # PyYAML is pinned (was unpinned pyyaml)
-    assert "PyYAML==6.0.2" in text and "pyyaml\n" not in text
+    # Codex #28 finding 5: hash-locked closure installed before credentials
+    assert text.index("--require-hashes") < cred
+    assert text.index("scripts/requirements/arm2-launch.txt") < cred
     # the launch step is gated on confirm_launch == LAUNCH
     assert "inputs.confirm_launch == 'LAUNCH'" in text
 
