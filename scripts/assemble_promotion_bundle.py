@@ -110,7 +110,8 @@ def main() -> int:
                 anchor_fetch=admission._anchor_fetch,
                 sealed_start_fetch=admission._sealed_start_fetch,
                 artifact_tree_sha256=tree, rows_bytes=rows_bytes,
-                output_object_fetch=admission._output_object_fetch)
+                output_object_fetch=admission._output_object_fetch,
+                output_writer_fetch=admission._output_writer_fetch)
 
         # ---- 1. admission gate (live)
         protocol = admission._protocol_record()

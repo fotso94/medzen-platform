@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 from b5_sagemaker_job import recompute_registry_totals  # noqa: E402
 
-REG = ROOT / "platform/finance/COST-REGISTRY-2026-055.json"
+REG = ROOT / "platform/finance/COST-REGISTRY-2026-056.json"
 
 
 def test_summary_equals_recompute_including_actuals():

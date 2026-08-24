@@ -1,0 +1,32 @@
+{
+ "aggregate_note": "Arm-1 showed a promising ~7.1%% aggregate macro-WER improvement (base 0.3352 -> best s14000 0.3114); that does not override the preservation-sentinel failure.",
+ "basis": {
+  "either_way": "Under the design's any-loss rule the point-estimate loss already disqualifies Arm-1; the NI test independently fails to clear it. Both point to rejection.",
+  "lingala_point_estimate": {
+   "base_wer": 0.172301,
+   "candidate_wer": 0.1793,
+   "delta_abs_pct_points": 0.6999,
+   "reading": "the point estimate is a LOSS (+0.70 pts), which the design's any-loss rule disqualifies outright."
+  },
+  "noninferiority_test": {
+   "alpha": 0.05,
+   "margin_abs_wer": 0.01,
+   "non_inferior": false,
+   "reading": "non-inferiority to base within a 1-point margin was NOT ESTABLISHED (upper 95%% CI 0.0127 > 0.01). This is a FAILURE TO ESTABLISH non-inferiority, NOT a proof of regression beyond the margin.",
+   "upper_one_sided_ci": 0.012686
+  },
+  "preservation_requirement": "B5-UNIVERSAL-PILOT-DESIGN-2026-001: swahili/lingala are strong regression sentinels \u2014 ANY loss is disqualifying."
+ },
+ "data_caveat": "The 386-row lingala sentinel is an EXPANDED re-measurement drawn from the SAME development pools (fleurs + soreva tier2-dev) and CONTAINS the 60 rows used during checkpoint selection \u2014 it is a larger-sample dev-only preservation check, NOT independent held-out data. It is sufficient to REJECT (a dev regression is disqualifying) but must NOT be read as an independent confirmation.",
+ "decisions": [
+  "Reject Arm-1 (not a winner).",
+  "Route to the planned preservation/distillation Arm-2.",
+  "Do NOT weaken Arm-1's any-loss preservation rule.",
+  "Do NOT consume any sealed set."
+ ],
+ "record": "ARM1-B5-2026-005-VERDICT-2026-002",
+ "sealed_sets_consumed": false,
+ "statement": "Arm-1 FAILED the predeclared preservation requirement and non-inferiority was NOT established; route to the planned preservation/distillation Arm-2. No sealed data consumed.",
+ "supersedes": "ARM1-B5-2026-005-COMPLETION/verdict.json (Codex review #15 finding 3: prior record held contradictory states and overstated the statistics)",
+ "verdict": "ARM1_REJECTED__ROUTE_TO_ARM_2"
+}

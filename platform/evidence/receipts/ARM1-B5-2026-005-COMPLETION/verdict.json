@@ -14,7 +14,7 @@
   "If lingala still regresses under the predeclared rule, proceed to the planned preservation/distillation Arm 2",
   "Do NOT retroactively weaken Arm-1's disqualifying-loss rule"
  ],
- "final_verdict": "NOT_A_WINNER__PRESERVATION_GATE_FAILURE_CONFIRMED__ROUTE_TO_ARM_2",
+ "final_verdict": "SUPERSEDED_BY_ARM1-B5-2026-005-VERDICT-2026-002",
  "not_a_winner": true,
  "preservation_gate": {
   "lingala": {
@@ -39,7 +39,7 @@
    "rows": 386,
    "upper_ci": 0.012686
   },
-  "status": "CONFIRMED_REGRESSION_ON_386_ROW_SENTINEL",
+  "status": "SUPERSEDED \u2014 see the clean successor verdict",
   "swahili": {
    "base_wer": 0.148594,
    "best_checkpoint_wer": 0.149933,
@@ -49,5 +49,7 @@
  },
  "record": "B5-ARM1-2026-005-VERDICT-2026-001",
  "sealed_sets_consumed": false,
- "verdict": "PROMISING_AGGREGATE_IMPROVEMENT__PRESERVATION_GATE_UNRESOLVED"
+ "superseded_by": "platform/evidence/receipts/ARM1-B5-2026-005-VERDICT-2026-002/verdict.json",
+ "superseded_reason": "Codex review #15 finding 3: contradictory states + overstated statistics; see the clean successor.",
+ "verdict": "SUPERSEDED_BY_ARM1-B5-2026-005-VERDICT-2026-002"
 }

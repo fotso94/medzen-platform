@@ -231,9 +231,63 @@ def _s3_output_fetch(s3_uri: str, version_id: str):
         str(response.get("ETag", "")).strip('"'))
 
 
+def _s3_output_writer(s3_uri: str, version_id: str):
+    """Round 15 (Codex finding 1): WHO wrote a sealed-output object, plus
+    its Object-Lock state. S3 records only an owner canonical id on the
+    object, never the writer principal, so the writer identity comes from
+    CloudTrail S3 DATA EVENTS (a dedicated event data store over the
+    Object-Lock sealed-results prefix). Admission-only (needs
+    s3:GetObjectRetention + cloudtrail:StartQuery/GetQueryResults); the
+    runtime verifies the signed admission receipt offline. Under network
+    isolation SageMaker writes the job's outputs under the execution role,
+    so the PutObject principal is that role's assumed-role session."""
+    import time
+    import boto3
+    from datetime import timezone
+    if not s3_uri.startswith("s3://"):
+        raise LoaderV2Refusal(f"output object {s3_uri!r} is not an S3 URI")
+    bucket, _, key = s3_uri[5:].partition("/")
+    region = os.environ.get("AWS_REGION", "eu-central-1")
+    s3 = boto3.client("s3", region_name=region)
+    head = s3.head_object(Bucket=bucket, Key=key, VersionId=str(version_id))
+    retain = head.get("ObjectLockRetainUntilDate")
+    store = os.environ.get("MEDZEN_SEALED_CLOUDTRAIL_STORE")
+    if not store:
+        raise LoaderV2Refusal(
+            "MEDZEN_SEALED_CLOUDTRAIL_STORE is unset — sealed-output "
+            "producer authentication requires the CloudTrail data-event "
+            "store (created with the sealed-evaluator infra)")
+    ct = boto3.client("cloudtrail", region_name=region)
+    query = (
+        "SELECT userIdentity.arn FROM " + store + " WHERE eventName='PutObject' "
+        "AND element_at(requestParameters, 'bucketName')='" + bucket + "' "
+        "AND element_at(requestParameters, 'key')='" + key + "' "
+        "AND element_at(responseElements, 'x-amz-version-id')='" + str(version_id) + "' "
+        "LIMIT 1")
+    qid = ct.start_query(QueryStatement=query)["QueryId"]
+    for _ in range(30):
+        status = ct.get_query_results(EventDataStore=store, QueryId=qid)
+        state = status.get("QueryStatus")
+        if state in ("FINISHED", "FAILED", "CANCELLED"):
+            break
+        time.sleep(2)
+    rows = status.get("QueryResultRows", []) if state == "FINISHED" else []
+    principal = None
+    for row in rows:
+        for cell in row:
+            if "arn" in cell:
+                principal = cell["arn"]
+    return {"writer_principal": principal or "",
+            "object_lock_mode": head.get("ObjectLockMode"),
+            "object_lock_retain_until": (
+                retain.astimezone(timezone.utc).isoformat()
+                if retain is not None else None)}
+
+
 PROMOTION_ANCHOR_FETCH = _s3_anchor_fetch
 SEALED_START_FETCH = _sagemaker_sealed_start_fetch
 OUTPUT_OBJECT_FETCH = _s3_output_fetch
+OUTPUT_WRITER_FETCH = _s3_output_writer
 
 
 def _sha256_ok(value: Any) -> bool:

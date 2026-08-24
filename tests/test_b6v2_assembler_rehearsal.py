@@ -22,8 +22,8 @@ import assemble_promotion_bundle as assembler  # noqa: E402
 import b7_model_promotion_check as admission  # noqa: E402
 from medzen_model_loader.loader_v2 import artifact_tree_sha256  # noqa: E402
 from test_b6v2_real_provider import (  # noqa: E402
-    SEALED_OUTPUT_STORE, _promotion_bundle, _stub_output_fetch, _test_keypair,
-    _test_sign, patch_evaluator_pubkey)
+    SEALED_OUTPUT_STORE, _promotion_bundle, _stub_output_fetch,
+    _stub_output_writer, _test_keypair, _test_sign)
 
 
 def _synthetic_inputs(tmp_path, monkeypatch):
@@ -74,6 +74,7 @@ def _synthetic_inputs(tmp_path, monkeypatch):
     monkeypatch.setattr(admission, "_sealed_start_fetch",
                         lambda job: described)
     monkeypatch.setattr(admission, "_output_object_fetch", _stub_output_fetch)
+    monkeypatch.setattr(admission, "_output_writer_fetch", _stub_output_writer)
     # the runtime verifier resolves the TEST public key (production
     # resolves the baked/committed pem — no env override exists)
     import medzen_model_loader.signing as signing
@@ -82,7 +83,6 @@ def _synthetic_inputs(tmp_path, monkeypatch):
     pem = _test_keypair().public_key().public_bytes(
         Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     monkeypatch.setattr(signing, "_public_key_bytes", lambda: pem)
-    patch_evaluator_pubkey(monkeypatch)
     # a local signer command standing in for the KMS signer
     from cryptography.hazmat.primitives.serialization import (
         NoEncryption, PrivateFormat)

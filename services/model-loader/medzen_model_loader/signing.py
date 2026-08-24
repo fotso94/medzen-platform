@@ -34,26 +34,6 @@ def _public_key_bytes() -> bytes:
         "cannot be established")
 
 
-def _sealed_evaluator_public_key_bytes() -> bytes:
-    """Round 14 (Codex finding 2): the sealed EVALUATOR's public key. The
-    evaluator signs its output/inference receipt with a dedicated KMS key
-    (alias/medzen-sealed-evaluator-signing) that ONLY the sealed-evaluator
-    role can use; admission verifies the signature so a mere S3 writer
-    cannot forge internally-consistent results. Same no-env-override
-    discipline as the promotion key."""
-    candidates = [
-        "/opt/medzen/SEALED-EVALUATOR-SIGNING-PUBLIC-KEY.pem",
-        str(Path(__file__).resolve().parents[3]
-            / "platform/decisions/SEALED-EVALUATOR-SIGNING-PUBLIC-KEY.pem"),
-    ]
-    for candidate in candidates:
-        if Path(candidate).is_file():
-            return Path(candidate).read_bytes()
-    raise SignatureRefusal(
-        "sealed-evaluator signing public key is absent — sealed-output "
-        "producer authentication cannot be established")
-
-
 def _verify(document: bytes, signature: bytes, key_bytes: bytes,
             label: str) -> None:
     from cryptography.exceptions import InvalidSignature
@@ -76,13 +56,3 @@ def verify_signature(document: bytes, signature: bytes) -> None:
             "signature does not verify against the committed promotion "
             "signing key — the document was not produced by the "
             "admission authority")
-
-
-def verify_evaluator_signature(document: bytes, signature: bytes) -> None:
-    """Round 14 (Codex finding 2): verify a sealed-evaluator signature —
-    proof that the DEDICATED evaluator (holder of the evaluator private
-    key), not an arbitrary S3 writer, produced the sealed results."""
-    _verify(document, signature, _sealed_evaluator_public_key_bytes(),
-            "sealed-output inference receipt is not signed by the "
-            "committed sealed-evaluator key — its producer is "
-            "unauthenticated (a mere S3 writer could have forged it)")

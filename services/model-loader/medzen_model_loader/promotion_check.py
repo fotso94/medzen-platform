@@ -866,6 +866,8 @@ def verify_sealed_outputs(report: dict, *,
                           job_window: tuple[str, str],
                           output_object_fetch: Callable[
                               [str, str], tuple[bytes, str, str]],
+                          output_writer_fetch: Callable[
+                              [str, str], Mapping[str, Any]],
                           ) -> dict[str, Any]:
     """Round 13 (Codex, 'the evidence does not prove the model generated
     the hypotheses'): every bundled row file must be BYTE-IDENTICAL to an
@@ -886,6 +888,16 @@ def verify_sealed_outputs(report: dict, *,
             "candidate packet must predeclare decoding_config_sha256 — "
             "the decoding configuration is part of the method")
     prefix = str(contract["output_s3_prefix"]).rstrip("/") + "/"
+    # Codex review #15 finding 1: producer authentication CANNOT be an
+    # in-container signature — the contract REQUIRES network isolation, so
+    # the evaluator container has no credentials to reach KMS. Provenance
+    # is established at ADMISSION (which HAS credentials): every output
+    # object must have been WRITTEN by the predeclared execution role
+    # (CloudTrail S3 data events) into an Object-Lock, bucket-policy-
+    # restricted prefix — an immutable, principal-attested boundary a bare
+    # S3 writer cannot satisfy.
+    execution_role = str(contract["execution_role_arn"])
+    execution_role_name = execution_role.rsplit("/", 1)[-1]
     start_utc, end_utc = job_window
     if not _utc_ok(start_utc) or not _utc_ok(end_utc):
         raise PromotionCheckRefusal(
@@ -912,22 +924,32 @@ def verify_sealed_outputs(report: dict, *,
             raise PromotionCheckRefusal(
                 f"{label}: object written at {modified_utc}, outside the "
                 f"sealed job's window {start_utc}..{end_utc}")
+        provenance = output_writer_fetch(uri, str(ref["version_id"]))
+        if not isinstance(provenance, Mapping):
+            raise PromotionCheckRefusal(
+                f"{label}: no writer provenance for the object")
+        writer = str(provenance.get("writer_principal") or "")
+        # the CloudTrail PutObject principal must be the predeclared
+        # execution role (SageMaker writes isolated-job outputs under it);
+        # an assumed-role session ARN carries the role name
+        if (writer != execution_role
+                and f":assumed-role/{execution_role_name}/" not in writer):
+            raise PromotionCheckRefusal(
+                f"{label}: object was written by {writer!r}, not the "
+                f"predeclared sealed execution role {execution_role!r} — "
+                "unauthenticated producer")
+        if str(provenance.get("object_lock_mode") or "").upper() not in (
+                "GOVERNANCE", "COMPLIANCE"):
+            raise PromotionCheckRefusal(
+                f"{label}: object carries no Object-Lock retention — a "
+                "mutable output object is not tamper-evident")
+        if not str(provenance.get("object_lock_retain_until") or ""):
+            raise PromotionCheckRefusal(
+                f"{label}: Object-Lock retention has no retain-until date")
         return body
 
     receipt_ref = outputs.get("inference_receipt")
     receipt_body = fetch("inference receipt", receipt_ref)
-    # Codex review #14 finding 2 (sealed-output provenance forgeable): the
-    # object's prefix/version/window/hash prove WHAT was written, not WHO
-    # wrote it. The evaluator SIGNS its inference receipt with a dedicated
-    # KMS key only the sealed-evaluator role can use; admission verifies
-    # that signature so a bare S3 writer cannot forge internally-consistent
-    # results. The signature is itself a versioned output object.
-    from .signing import SignatureRefusal, verify_evaluator_signature
-    sig_body = fetch("evaluator signature", outputs.get("evaluator_signature"))
-    try:
-        verify_evaluator_signature(receipt_body, sig_body)
-    except SignatureRefusal as exc:
-        raise PromotionCheckRefusal(str(exc)) from exc
     try:
         inference = json.loads(receipt_body)
     except ValueError as exc:
@@ -979,10 +1001,12 @@ def verify_sealed_outputs(report: dict, *,
                 "s3_uri": str(receipt_ref["s3_uri"]),
                 "version_id": str(receipt_ref["version_id"]),
                 "sha256": hashlib.sha256(receipt_body).hexdigest()},
-            "evaluator_signature": {
-                "s3_uri": str(outputs["evaluator_signature"]["s3_uri"]),
-                "version_id": str(outputs["evaluator_signature"]["version_id"]),
-                "sha256": hashlib.sha256(sig_body).hexdigest()},
+            "producer_authentication": {
+                "execution_role_arn": execution_role,
+                "method": "cloudtrail_putobject_principal+object_lock",
+                "writer_principal": str(output_writer_fetch(
+                    str(receipt_ref["s3_uri"]),
+                    str(receipt_ref["version_id"])).get("writer_principal"))},
             "rows": verified_rows,
             "decoding_config_sha256": decoding}
 
@@ -999,6 +1023,8 @@ def verify_packet_chronology(report: dict, *,
                              rows_bytes: Callable[[str], bytes | None],
                              output_object_fetch: Callable[
                                  [str, str], tuple[bytes, str, str]],
+                             output_writer_fetch: Callable[
+                                 [str, str], Mapping[str, Any]],
                              ) -> dict[str, Any]:
     """The LIVE chronology + contract + output verification the
     ADMISSION pipeline runs (rounds 8-13, Codex): a separate envelope
@@ -1063,7 +1089,8 @@ def verify_packet_chronology(report: dict, *,
         report, candidate_packet=candidate_packet, contract=contract,
         artifact_tree_sha256=artifact_tree_sha256, rows_bytes=rows_bytes,
         job_window=(creation_utc, end_utc),
-        output_object_fetch=output_object_fetch)
+        output_object_fetch=output_object_fetch,
+        output_writer_fetch=output_writer_fetch)
     sealed_job = dict(view)
     sealed_job.update({"name": str(contract["job_name"]),
                        "creation_utc": creation_utc, "end_utc": end_utc,
@@ -1143,12 +1170,13 @@ def verify_admission_receipt(report: dict, *,
             declared.get("inference_receipt")):
         raise PromotionCheckRefusal(
             "admission receipt attests a different inference receipt")
-    # round 14 (Codex finding 2): the evaluator-signature identity the
-    # admission verified must equal the report's declared one
-    if _canonical(attested.get("evaluator_signature")) != _canonical(
-            declared.get("evaluator_signature")):
+    # round 15 (Codex finding 1): producer authentication is the
+    # admission-verified writer principal (CloudTrail), recorded in the
+    # receipt; it must equal the report's declared provenance
+    if _canonical(attested.get("producer_authentication")) != _canonical(
+            declared.get("producer_authentication")):
         raise PromotionCheckRefusal(
-            "admission receipt attests a different evaluator signature")
+            "admission receipt attests different producer authentication")
     if str(attested.get("decoding_config_sha256")) != str(
             candidate_packet.get("decoding_config_sha256")):
         raise PromotionCheckRefusal(

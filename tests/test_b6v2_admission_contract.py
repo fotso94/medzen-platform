@@ -20,16 +20,10 @@ from medzen_model_loader.promotion_check import (  # noqa: E402
     verify_packet_chronology, verify_sealed_outputs)
 from medzen_model_loader.loader_v2 import (  # noqa: E402
     describe_sealed_job_contract)
+import test_b6v2_real_provider as rp  # noqa: E402
 from test_b6v2_real_provider import (  # noqa: E402
     SEALED_OUTPUT_STORE, SEALED_RUN_CONTRACT, _promotion_bundle,
-    _stub_output_fetch, patch_evaluator_pubkey, _test_evaluator_sign)
-
-@pytest.fixture(autouse=True)
-def _evaluator_key(monkeypatch):
-    # round 14 (Codex finding 2): every admission-path test verifies the
-    # sealed evaluator signature against this injected test key
-    patch_evaluator_pubkey(monkeypatch)
-
+    _stub_output_fetch, _stub_output_writer)
 
 ARM1_DESCRIBE = ROOT / (
     "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION/"
@@ -83,7 +77,8 @@ def _run_admission(tmp_path, *, described_over=None, store_mutate=None,
         anchor_fetch=lambda storage: (packet_bytes, "2026-08-23T10:00:00Z"),
         sealed_start_fetch=lambda job: described,
         artifact_tree_sha256=tree, rows_bytes=rows_bytes,
-        output_object_fetch=_stub_output_fetch)
+        output_object_fetch=_stub_output_fetch,
+        output_writer_fetch=_stub_output_writer)
 
 
 def test_admission_path_passes_and_attests_the_verified_identities(tmp_path):
@@ -175,14 +170,8 @@ def test_bundled_rows_that_differ_from_the_job_output_refuse(tmp_path):
 
 
 def test_inference_receipt_for_another_artifact_refuses(tmp_path):
-    def foreign(store):
-        for key, (body, modified) in list(store.items()):
-            if key[0].endswith("inference-receipt.json"):
-                doc = json.loads(body)
-                doc["artifact_tree_sha256"] = "ee" * 32
-                store[key] = (body, modified)   # bytes must still match
-        # the report must bind the NEW receipt bytes for the sha to pass,
-        # so rebind it: the semantic check is what must fire
+    """A receipt naming a DIFFERENT artifact refuses at the artifact-tree
+    check (the provenance/hash checks pass first)."""
     tree, report, packet, packet_bytes, envelope, rows_bytes = (
         _admission_material(tmp_path))
     ref = report["sealed_outputs"]["inference_receipt"]
@@ -192,14 +181,6 @@ def test_inference_receipt_for_another_artifact_refuses(tmp_path):
     new_body = json.dumps(doc, sort_keys=True).encode()
     SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])] = (new_body, modified)
     ref["sha256"] = hashlib.sha256(new_body).hexdigest()
-    # round 14: model an evaluator that LEGITIMATELY signed a receipt for a
-    # different artifact (re-sign), so the signature passes and the
-    # artifact-tree semantic check is what refuses
-    sig_ref = report["sealed_outputs"]["evaluator_signature"]
-    new_sig = _test_evaluator_sign(new_body)
-    sig_body, sig_mod = SEALED_OUTPUT_STORE[(sig_ref["s3_uri"], sig_ref["version_id"])]
-    SEALED_OUTPUT_STORE[(sig_ref["s3_uri"], sig_ref["version_id"])] = (new_sig, sig_mod)
-    sig_ref["sha256"] = hashlib.sha256(new_sig).hexdigest()
     described = _described_from_contract(packet["sealed_run"])
     with pytest.raises(PromotionCheckRefusal, match="did not attest to running THIS"):
         verify_packet_chronology(
@@ -208,29 +189,26 @@ def test_inference_receipt_for_another_artifact_refuses(tmp_path):
             anchor_fetch=lambda s: (packet_bytes, "2026-08-23T10:00:00Z"),
             sealed_start_fetch=lambda job: described,
             artifact_tree_sha256=tree, rows_bytes=rows_bytes,
-            output_object_fetch=_stub_output_fetch)
+            output_object_fetch=_stub_output_fetch,
+            output_writer_fetch=_stub_output_writer)
 
 
-def test_forged_receipt_without_a_valid_evaluator_signature_refuses(tmp_path):
-    """Codex review #14 finding 2: a bare S3 writer fabricates an
-    internally-consistent receipt + rows but cannot produce the
-    evaluator's signature — admission refuses on producer authentication."""
-    tree, report, packet, packet_bytes, envelope, rows_bytes = (
-        _admission_material(tmp_path))
-    ref = report["sealed_outputs"]["inference_receipt"]
-    body, modified = SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])]
-    forged = body[:-1] + b" "  # tamper a byte; signature no longer matches
-    SEALED_OUTPUT_STORE[(ref["s3_uri"], ref["version_id"])] = (forged, modified)
-    ref["sha256"] = hashlib.sha256(forged).hexdigest()
-    described = _described_from_contract(packet["sealed_run"])
-    with pytest.raises(PromotionCheckRefusal, match="not signed by the committed sealed-evaluator"):
-        verify_packet_chronology(
-            report, anchor_envelope=envelope, packet_bytes=packet_bytes,
-            candidate_packet=packet,
-            anchor_fetch=lambda s: (packet_bytes, "2026-08-23T10:00:00Z"),
-            sealed_start_fetch=lambda job: described,
-            artifact_tree_sha256=tree, rows_bytes=rows_bytes,
-            output_object_fetch=_stub_output_fetch)
+def test_output_written_by_a_non_execution_role_refuses(tmp_path, monkeypatch):
+    """Codex review #15 finding 1: a bare S3 writer fabricates internally-
+    consistent outputs but CANNOT write as the sealed execution role —
+    the CloudTrail PutObject principal check refuses."""
+    monkeypatch.setattr(rp, "SEALED_WRITER_PRINCIPAL",
+                        "arn:aws:sts::558069890522:assumed-role/some-other-role/x")
+    with pytest.raises(PromotionCheckRefusal, match="not the predeclared sealed execution role"):
+        _run_admission(tmp_path)
+
+
+def test_output_without_object_lock_refuses(tmp_path, monkeypatch):
+    """An output object with no Object-Lock retention is not tamper-evident."""
+    monkeypatch.setattr(rp, "SEALED_OBJECT_LOCK",
+                        {"object_lock_mode": None, "object_lock_retain_until": None})
+    with pytest.raises(PromotionCheckRefusal, match="no Object-Lock retention"):
+        _run_admission(tmp_path)
 
 
 def test_missing_decoding_config_refuses(tmp_path):

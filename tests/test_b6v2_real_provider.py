@@ -607,17 +607,20 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     }
     inference_bytes = _json.dumps(inference, sort_keys=True).encode()
     prefix = packet["sealed_run"]["output_s3_prefix"]
-    # round 14 (Codex finding 2): the evaluator SIGNS its inference receipt;
-    # admission verifies the signature so a bare S3 writer cannot forge it
-    eval_sig = _test_evaluator_sign(inference_bytes)
+    # round 15 (Codex finding 1): producer authentication is the ADMISSION-
+    # verified CloudTrail writer principal + Object Lock, NOT an in-container
+    # signature (the isolated evaluator cannot reach KMS). The report
+    # DECLARES it; admission verifies + attests it; the runtime checks the
+    # two match.
     sealed_outputs = {
         "inference_receipt": {"s3_uri": f"{prefix}inference-receipt.json",
                               "version_id": "v-inference",
                               "sha256": hashlib.sha256(
                                   inference_bytes).hexdigest()},
-        "evaluator_signature": {"s3_uri": f"{prefix}inference-receipt.json.sig",
-                                "version_id": "v-evalsig",
-                                "sha256": hashlib.sha256(eval_sig).hexdigest()},
+        "producer_authentication": {
+            "execution_role_arn": SEALED_EXECUTION_ROLE,
+            "method": "cloudtrail_putobject_principal+object_lock",
+            "writer_principal": SEALED_WRITER_PRINCIPAL},
         "rows": {label: {"s3_uri": f"{prefix}{label}.rows.jsonl",
                          "version_id": f"v-{label}",
                          "sha256": inference["rows_sha256"][label]}
@@ -626,13 +629,13 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
     report["sealed_outputs"] = sealed_outputs
     report_body = _json.dumps(report).encode()
     files["T6-GATE-REPORT.json"] = report_body
-    # the in-memory "S3" the admission-path tests fetch from
+    # the in-memory "S3" the admission-path tests fetch from (adversarial
+    # tests override SEALED_WRITER_PRINCIPAL / SEALED_OBJECT_LOCK via
+    # monkeypatch, which auto-restores)
     SEALED_OUTPUT_STORE.clear()
     SEALED_OUTPUT_STORE[(sealed_outputs["inference_receipt"]["s3_uri"],
                          "v-inference")] = (inference_bytes,
                                             "2026-08-23T12:30:00Z")
-    SEALED_OUTPUT_STORE[(sealed_outputs["evaluator_signature"]["s3_uri"],
-                         "v-evalsig")] = (eval_sig, "2026-08-23T12:31:00Z")
     for label in row_labels:
         SEALED_OUTPUT_STORE[(f"{prefix}{label}.rows.jsonl", f"v-{label}")] = (
             files[f"{label}.rows.jsonl"], "2026-08-23T12:40:00Z")
@@ -701,6 +704,14 @@ def _promotion_bundle(tmp_path, tree_digest, *, break_rows_for=None,
 
 
 SEALED_OUTPUT_STORE: dict = {}
+SEALED_EXECUTION_ROLE = ("arn:aws:iam::558069890522:role/"
+                         "medzen-sealed-eval-role")
+# the valid CloudTrail PutObject principal: the execution role's assumed
+# session (SageMaker writes isolated-job outputs under it)
+SEALED_WRITER_PRINCIPAL = ("arn:aws:sts::558069890522:assumed-role/"
+                           "medzen-sealed-eval-role/SageMaker-abc")
+SEALED_OBJECT_LOCK = {"object_lock_mode": "GOVERNANCE",
+                      "object_lock_retain_until": "2036-01-01T00:00:00+00:00"}
 
 
 def _stub_output_fetch(s3_uri, version_id):
@@ -709,6 +720,11 @@ def _stub_output_fetch(s3_uri, version_id):
     except KeyError:
         raise RuntimeError(f"no such versioned object {s3_uri}@{version_id}")
     return body, modified, "etag"
+
+
+def _stub_output_writer(s3_uri, version_id):
+    # round 15: who wrote it (CloudTrail principal) + Object-Lock state
+    return {"writer_principal": SEALED_WRITER_PRINCIPAL, **SEALED_OBJECT_LOCK}
 
 
 SEALED_RUN_CONTRACT = {
@@ -829,35 +845,6 @@ def _test_sign(document: bytes) -> bytes:
     return _test_keypair().sign(document, ec.ECDSA(hashes.SHA256()))
 
 
-_TEST_EVALUATOR_KEY = None
-
-
-def _test_evaluator_keypair():
-    global _TEST_EVALUATOR_KEY
-    if _TEST_EVALUATOR_KEY is None:
-        from cryptography.hazmat.primitives.asymmetric import ec
-        _TEST_EVALUATOR_KEY = ec.generate_private_key(ec.SECP256R1())
-    return _TEST_EVALUATOR_KEY
-
-
-def _test_evaluator_sign(document: bytes) -> bytes:
-    from cryptography.hazmat.primitives import hashes
-    from cryptography.hazmat.primitives.asymmetric import ec
-    return _test_evaluator_keypair().sign(document, ec.ECDSA(hashes.SHA256()))
-
-
-def patch_evaluator_pubkey(monkeypatch):
-    """Round 14: inject the test sealed-evaluator public key (production
-    resolves the committed/baked pem; no env override)."""
-    import medzen_model_loader.signing as signing
-    from cryptography.hazmat.primitives.serialization import (
-        Encoding, PublicFormat)
-    pem = _test_evaluator_keypair().public_key().public_bytes(
-        Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
-    monkeypatch.setattr(signing, "_sealed_evaluator_public_key_bytes",
-                        lambda: pem)
-
-
 def _test_pubkey_pem(tmp_path) -> str:
     from cryptography.hazmat.primitives.serialization import (
         Encoding, PublicFormat)
@@ -887,7 +874,6 @@ def _arm_bundle(monkeypatch, bundle, pin):
     pem = _test_keypair().public_key().public_bytes(
         Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     monkeypatch.setattr(signing, "_public_key_bytes", lambda: pem)
-    patch_evaluator_pubkey(monkeypatch)
     # sign the evidence ROOT (the index) with the test key
     (bundle / "bundle.json.sig").write_bytes(
         _test_sign((bundle / "bundle.json").read_bytes()))

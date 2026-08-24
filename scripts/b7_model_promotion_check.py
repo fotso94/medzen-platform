@@ -177,6 +177,14 @@ def _output_object_fetch(s3_uri, version_id):
     return _s3_output_fetch(s3_uri, version_id)
 
 
+def _output_writer_fetch(s3_uri, version_id):
+    # round 15 (Codex finding 1): who WROTE the object — the CloudTrail
+    # PutObject principal (data events) + the object's Object-Lock state.
+    # Admission-only (needs cloudtrail:LookupEvents + s3:GetObjectRetention).
+    from medzen_model_loader.loader_v2 import _s3_output_writer
+    return _s3_output_writer(s3_uri, version_id)
+
+
 def _document_bytes(path):
     # round 13: licence/reservation documents resolve against the
     # COMMITTED repository tree, never an author-supplied directory
@@ -257,7 +265,8 @@ def main() -> int:
                 sealed_start_fetch=_sealed_start_fetch,
                 artifact_tree_sha256=str(args.artifact_tree),
                 rows_bytes=rows_bytes,
-                output_object_fetch=_output_object_fetch)
+                output_object_fetch=_output_object_fetch,
+                output_writer_fetch=_output_writer_fetch)
             if args.write_admission_receipt is not None:
                 args.write_admission_receipt.write_text(
                     json.dumps(receipt, indent=1, sort_keys=True) + "\n")
