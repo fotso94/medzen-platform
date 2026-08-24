@@ -1,0 +1,102 @@
+{
+ "approval": {
+  "authorized_by": "OWNER (repository owner, GitHub fotso94 / id 16901658) via chat directive 2026-08-24: 'codex review is clear and verdict is PASS so proceed with launch the calibration'",
+  "committed_by": "implementation-engineer (transcription of the committed review record only; the implementer did NOT self-approve)",
+  "independent_reviewer": "codex (independent technical review, rounds 14-29; final verdict PASS)",
+  "note": "Two distinct roles: Codex performed the independent code/packet review (PASS); the human owner authorized the launch. Neither the review nor this receipt authorizes sealed evaluation, promotion or deployment.",
+  "review_record": "platform/decisions/reviews/b5-universal-arm2-ftcal-2026-001.json"
+ },
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1548272554,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-ftcal-2026-001/output/medzen-b5-b5-universal-arm2-ftcal-2026-001/output/model.tar.gz",
+  "s3_version_id": "jm89QRM5FVt7gxT4vQDAshsov7gOPgqf"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "creation_event_verified": true,
+  "failures": [],
+  "image_digest": "sha256:b3321c8da2e29052da2cb113eb41e88cec1c0e366dfd65291f3d8da3da14ddeb",
+  "launch_principal": "arn:aws:iam::558069890522:role/medzen-arm2-calibration-role",
+  "metrics_sha256": "dc04ad18f42d7fcdedb9609eb633adc530bd9c5db8dfd8d88233f3920ac1f57c",
+  "mode": "live",
+  "packet_canonical_sha256": "3c5024edee3a9df098f1f9e3bdbccc044c963e53f761dc173dbafd1b6a4f9c7e",
+  "verdict": "PASS",
+  "verifier_script_sha256": "197a268c7a033e4080b98db8dfe92266c2fb59226e56711b8a39d0b4696c3936"
+ },
+ "billable_seconds": 1228,
+ "calibration_bindings_sha256": "3c5024edee3a9df098f1f9e3bdbccc044c963e53f761dc173dbafd1b6a4f9c7e",
+ "calibration_packet": "platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "cost": {
+  "actual_compute_usd_at_padded_rate": 0.55,
+  "billable_hours": 0.3411,
+  "billable_seconds": 1228,
+  "instance_type": "ml.g6.xlarge",
+  "on_demand_rate_usd_per_hour_authoritative_padded": 1.6,
+  "pricing": "on-demand (never spot)",
+  "reported_max_basis": "cost-reporting rule: worst-case ceiling $3.20 + $100 buffer on every reported max => report <= $110; ACTUAL billed compute was ~$0.55",
+  "reported_max_usd": 103.2,
+  "worst_case_basis": "padded $1.60/h x 2h max_runtime = $3.20; this is the pre-launch ceiling the launcher gate enforced (worst_case <= cost_ceiling $10)",
+  "worst_case_ceiling_usd": 3.2
+ },
+ "dataset_complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
+ "dataset_version": "gb9",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
+ "dev_sentinel_wer_DIRECTIONAL_NOT_A_PROMOTION_SIGNAL": {
+  "lingala": 0.1803,
+  "swahili": 0.1486
+ },
+ "export": {
+  "manifest_sha256": "9a0cdd047016632e0413849c41a90db684b2c111540eff2ec22c3759f9667ea8",
+  "model_sha256": "11d09fd2a5dd5cabc44fafa7e711e9d30ce70b6e1533d3aa2325346faaacef53",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "holds": "NOT hyperparameter selection, NOT sealed evaluation, NOT promotion, NOT deployment \u2014 all remain held for separate predeclared reviewed steps",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:b3321c8da2e29052da2cb113eb41e88cec1c0e366dfd65291f3d8da3da14ddeb",
+ "job": "medzen-b5-b5-universal-arm2-ftcal-2026-001",
+ "job_id": "b5-universal-arm2-ftcal-2026-001",
+ "mechanics": {
+  "ctc_step1_to_step30": [
+   57.2287,
+   30.1952
+  ],
+  "gpu_ceiling_gb": 22,
+  "kd_coverage_languages": [
+   "english",
+   "french",
+   "lingala",
+   "swahili"
+  ],
+  "kd_positive_finite_steps": 30,
+  "kd_step1_to_step30": [
+   0.498,
+   0.4811
+  ],
+  "parity": {
+   "upstream": "omnilingual_asr.models.inference.pipeline.ASRInferencePipeline@145a12a6",
+   "upstream_equal": true
+  },
+  "peak_gpu_gb": 20.2,
+  "serve": {
+   "adapter_residue": false,
+   "readyz": true,
+   "weights_finite": true
+  },
+  "status": "COMPLETED",
+  "steps": "30/30",
+  "throughput": {
+   "samples_per_sec": 3.0888,
+   "steps_per_min": 11.5832
+  }
+ },
+ "record": "ARM2-FTCAL-2026-001-COMPLETION",
+ "scope": "MECHANICS_AND_MEMORY_VALIDATION_ONLY",
+ "terminal_status": "Completed",
+ "utc": "2026-08-24T22:10:00Z",
+ "verdict": "PASS"
+}
