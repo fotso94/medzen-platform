@@ -50,8 +50,15 @@ IDENTITY_FIELDS = ("run_fingerprint", "training_job_name",
 MEDZEN_ACCOUNT = "558069890522"
 MEDZEN_REGION = "eu-central-1"
 # the ONLY members live mode extracts from model.tar.gz (path-traversal-safe)
+# with per-member size caps (Codex #23: unbounded extraction was a
+# disk-exhaustion path)
 BUNDLE_MEMBERS = ("calibration-metrics.json", "export/manifest.json",
                   "export/model.pt")
+BUNDLE_MEMBER_MAX_BYTES = {
+    "calibration-metrics.json": 64 * 1024 * 1024,       # generous for receipts
+    "export/manifest.json": 4 * 1024 * 1024,
+    "export/model.pt": 8 * 1024 * 1024 * 1024,          # ~2.6 GB real model
+}
 # identity fields that must be a 64-hex sha256 (Codex review #20 F5 follow-up:
 # presence-only let a fabricated file through — enforce the FORMAT of every
 # sha and the value of the derivable ones)
@@ -60,9 +67,10 @@ IDENTITY_SHA_FIELDS = ("run_fingerprint", "export_manifest_sha256",
                        "execution_contract_sha256", "verifier_script_sha256")
 # the canonical scorer string the calibration wrapper stamps; kept in lock-step
 # with pipeline.omniasr_calibrate.SCORER_ID (a host test asserts equality).
-CANONICAL_SCORER = ("ctc-greedy/argmax+collapse+blank-strip; "
+CANONICAL_SCORER = ("ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
+                    "skip-special-tokens; "
                     "normalizer=pipeline.normalizers.for_language; "
-                    "metric=corpus-word-error-rate/1")
+                    "metric=corpus-word-error-rate/2")
 import re as _re
 
 _HEX64 = _re.compile(r"^[0-9a-f]{64}$")
@@ -315,106 +323,96 @@ def verify_training_receipt(receipt: dict[str, Any], packet: dict[str, Any],
                             *, expected_job_name: str,
                             packet_canonical_sha: str) -> list[str]:
     """Machine-check the SageMaker DescribeTrainingJob receipt against the
-    reviewed packet (Codex review #21 F3: terminal status, image digest,
-    environment, KMS, output location and instance were previously unchecked).
-    Returns failure strings; empty means the receipt matches the packet."""
+    COMPLETE canonical request the launcher renders from the packet (Codex
+    review #23 critical: hand-picked field checks missed ContainerEntrypoint,
+    TrainingInputMode, CheckpointConfig.LocalPath, VolumeKmsKeyId and Tags —
+    a swapped entrypoint could run arbitrary code with the checked image/args/
+    environment unchanged). The single source of truth is
+    b5_sagemaker_job.render_request(packet): every field of the rendered
+    request that DescribeTrainingJob echoes must match exactly; the job's
+    Environment must equal the rendered one EXACTLY (no extra keys); a
+    VolumeKmsKeyId the request never set must not appear; no input channels;
+    and the job Tags (supplied via ListTags in live mode) must equal the
+    rendered Tags. Returns failure strings; empty means the receipt matches."""
     failures: list[str] = []
 
     def fail(msg: str) -> None:
         failures.append(msg)
 
-    if str(receipt.get("TrainingJobName")) != expected_job_name:
+    # render the canonical request from the packet — the launcher's own code
+    # path, so the comparison can never drift from what launch actually sends
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from b5_sagemaker_job import JobRefusal, render_request
+    try:
+        expected = render_request(packet)
+    except JobRefusal as exc:
+        return [f"the packet does not render a canonical request ({exc}) — "
+                "nothing to verify the receipt against"]
+
+    if str(receipt.get("TrainingJobName")) != expected["TrainingJobName"]:
         fail(f"receipt.TrainingJobName {receipt.get('TrainingJobName')!r} != "
-             f"the derived {expected_job_name!r}")
+             f"the rendered {expected['TrainingJobName']!r}")
+    if expected["TrainingJobName"] != expected_job_name:
+        fail("internal: rendered job name != derived expected_job_name")
     if str(receipt.get("TrainingJobStatus")) != "Completed":
         fail(f"receipt.TrainingJobStatus {receipt.get('TrainingJobStatus')!r} "
              "is not Completed — no silent success")
-    algo = receipt.get("AlgorithmSpecification") or {}
-    if str(algo.get("TrainingImage")) != str(packet.get("image_uri_with_digest")):
-        fail(f"receipt image {algo.get('TrainingImage')!r} != the packet's "
-             f"pinned digest {packet.get('image_uri_with_digest')!r}")
-    if list(algo.get("ContainerArguments") or []) != \
-            ["-m", "pipeline.omniasr_calibrate"]:
-        fail(f"receipt ContainerArguments {algo.get('ContainerArguments')!r} "
-             "!= the calibration entrypoint ['-m', 'pipeline.omniasr_calibrate']")
-    # the job's ACTUAL environment must equal the packet's, plus the FOUR
-    # launcher-injected identity keys — an env drifted from the packet means
-    # the job that ran is not the reviewed calibration
-    expected_env = dict(packet.get("environment") or {})
-    expected_env["MEDZEN_CALIBRATION_PACKET_SHA256"] = packet_canonical_sha
-    expected_env["MEDZEN_TRAINING_JOB_NAME"] = expected_job_name
-    contract_decl = packet.get("execution_contract") or {}
-    if str(contract_decl.get("path") or "").strip():
-        expected_env["MEDZEN_EXECUTION_CONTRACT"] = \
-            "/opt/medzen/" + str(contract_decl["path"])
-        expected_env["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
-            str(contract_decl.get("sha256") or "")
-    actual_env = dict(receipt.get("Environment") or {})
-    if actual_env != expected_env:
-        drift = sorted(set(expected_env.items()) ^ set(actual_env.items()))
+
+    def compare(exp: Any, act: Any, path: str) -> None:
+        """Every key/value of the RENDERED request must appear identically in
+        the receipt (AWS may add extra informational keys; it must never
+        change or drop a requested one)."""
+        if isinstance(exp, dict):
+            if not isinstance(act, dict):
+                fail(f"receipt {path} is {type(act).__name__}, expected object")
+                return
+            for key, value in exp.items():
+                compare(value, act.get(key), f"{path}.{key}")
+        elif isinstance(exp, list):
+            if path.endswith(("SecurityGroupIds", "Subnets")):
+                if sorted(map(str, exp)) != sorted(map(str, act or [])):
+                    fail(f"receipt {path} {act!r} != rendered {exp!r}")
+            elif list(exp) != list(act or []):
+                fail(f"receipt {path} {act!r} != rendered {exp!r}")
+        else:
+            if act != exp:
+                fail(f"receipt {path} {act!r} != rendered {exp!r}")
+
+    for key in ("RoleArn", "AlgorithmSpecification", "OutputDataConfig",
+                "CheckpointConfig", "ResourceConfig", "VpcConfig",
+                "StoppingCondition", "EnableManagedSpotTraining",
+                "EnableNetworkIsolation"):
+        compare(expected.get(key), receipt.get(key), key)
+
+    # Environment must be EXACT (a subset compare would allow smuggled keys)
+    if dict(receipt.get("Environment") or {}) != dict(expected["Environment"]):
+        drift = sorted(set(expected["Environment"].items())
+                       ^ set((receipt.get("Environment") or {}).items()))
         fail(f"receipt Environment differs from the packet's rendered "
              f"environment ({len(drift)} drifted entries, e.g. {drift[:3]})")
-    # Codex review #22 blocker 1: verify the COMPLETE job request, not just a
-    # sample of fields — role, network isolation, VPC, volume, instance count,
-    # checkpoint config, and no input channels (the trainer fetches its own
-    # governed data; a smuggled input channel would be ungoverned data).
-    if str(receipt.get("RoleArn")) != \
-            "arn:aws:iam::558069890522:role/medzen-trainer-role":
-        fail(f"receipt RoleArn {receipt.get('RoleArn')!r} is not the pinned "
-             "trainer role")
-    if bool(receipt.get("EnableNetworkIsolation")) is not False:
-        fail("receipt EnableNetworkIsolation is not False (the calibration "
-             "job fetches audio/model from S3 through the VPC endpoints)")
-    vpc = receipt.get("VpcConfig") or {}
-    if sorted(vpc.get("SecurityGroupIds") or []) != \
-            sorted(packet.get("security_group_ids") or []):
-        fail(f"receipt VpcConfig.SecurityGroupIds {vpc.get('SecurityGroupIds')!r}"
-             f" != the packet's {packet.get('security_group_ids')!r}")
-    if sorted(vpc.get("Subnets") or []) != sorted(packet.get("subnets") or []):
-        fail(f"receipt VpcConfig.Subnets {vpc.get('Subnets')!r} != the "
-             f"packet's {packet.get('subnets')!r}")
-    resources_full = receipt.get("ResourceConfig") or {}
-    if int(resources_full.get("InstanceCount") or 0) != 1:
-        fail(f"receipt InstanceCount {resources_full.get('InstanceCount')!r} "
-             "!= 1")
-    if int(resources_full.get("VolumeSizeInGB") or -1) != \
-            int(packet.get("volume_gb") or -2):
-        fail(f"receipt VolumeSizeInGB {resources_full.get('VolumeSizeInGB')!r}"
-             f" != the packet's {packet.get('volume_gb')!r}")
-    checkpoint = receipt.get("CheckpointConfig") or {}
-    packet_job_id = str(packet.get("job_id") or "").strip()
-    expected_ckpt = (f"s3://medzen-speech/research/b5-training/{packet_job_id}"
-                     "/checkpoints")
-    if str(checkpoint.get("S3Uri")) != expected_ckpt:
-        fail(f"receipt CheckpointConfig.S3Uri {checkpoint.get('S3Uri')!r} != "
-             f"the derived {expected_ckpt!r}")
+    if expected["Environment"].get("MEDZEN_CALIBRATION_PACKET_SHA256")             != packet_canonical_sha:
+        fail("internal: rendered packet sha != this packet's canonical sha")
+    # a VolumeKmsKeyId the request never set means the job was not created by
+    # this request (NVMe instance types take no volume key)
+    if "VolumeKmsKeyId" not in expected["ResourceConfig"] and             str((receipt.get("ResourceConfig") or {}).get("VolumeKmsKeyId")
+                or "").strip():
+        fail("receipt carries a VolumeKmsKeyId the rendered request never set")
     if receipt.get("InputDataConfig"):
         fail("receipt has InputDataConfig channels — the calibration job "
              "takes NO input channels (its data path is the governed mix + "
              "the baked dev slices); a channel would be ungoverned data")
-    out = receipt.get("OutputDataConfig") or {}
-    if str(out.get("KmsKeyId")) != str(packet.get("kms_key_arn")):
-        fail(f"receipt output KMS {out.get('KmsKeyId')!r} != the packet's "
-             f"{packet.get('kms_key_arn')!r}")
-    job_id = str(packet.get("job_id") or "").strip()
-    expected_output = f"s3://medzen-speech/research/b5-training/{job_id}/output"
-    if str(out.get("S3OutputPath")) != expected_output:
-        fail(f"receipt S3OutputPath {out.get('S3OutputPath')!r} != the "
-             f"derived {expected_output!r} — fetch the artifacts from the "
-             "declared KMS-encrypted output only")
-    resources = receipt.get("ResourceConfig") or {}
-    if str(resources.get("InstanceType")) != str(packet.get("instance_type")):
-        fail(f"receipt instance {resources.get('InstanceType')!r} != the "
-             f"packet's {packet.get('instance_type')!r}")
-    stopping = receipt.get("StoppingCondition") or {}
-    if int(stopping.get("MaxRuntimeInSeconds") or -1) != \
-            int(packet.get("max_runtime_seconds") or -2):
-        fail(f"receipt MaxRuntimeInSeconds "
-             f"{stopping.get('MaxRuntimeInSeconds')!r} != the packet's "
-             f"{packet.get('max_runtime_seconds')!r}")
-    if bool(receipt.get("EnableManagedSpotTraining")) != \
-            bool(packet.get("managed_spot")):
-        fail("receipt EnableManagedSpotTraining differs from the packet")
+    # Tags are not echoed by DescribeTrainingJob — live mode injects them from
+    # ListTags; their absence is a FAILURE, not a skip
+    receipt_tags = receipt.get("Tags")
+    if not isinstance(receipt_tags, list):
+        fail("receipt.Tags absent — live mode injects ListTags; a receipt "
+             "without tags cannot prove the cost/tier labels")
+    else:
+        expected_tags = {t["Key"]: t["Value"] for t in expected.get("Tags", [])}
+        actual_tags = {str(t.get("Key")): str(t.get("Value"))
+                       for t in receipt_tags}
+        if actual_tags != expected_tags:
+            fail(f"receipt Tags {actual_tags!r} != rendered {expected_tags!r}")
     return failures
 
 
@@ -528,10 +526,21 @@ def safe_extract_bundle(tar_path: Path, workdir: Path) -> dict[str, Path]:
                     or ".." in member.name:
                 raise SystemExit(
                     f"refusing unsafe tar member {member.name!r}")
+            cap = BUNDLE_MEMBER_MAX_BYTES[member_name]
+            if member.size > cap:
+                raise SystemExit(
+                    f"tar member {member_name!r} declares {member.size} bytes, "
+                    f"over the {cap}-byte cap — refusing disk exhaustion")
             dest = workdir / member_name
             dest.parent.mkdir(parents=True, exist_ok=True)
+            written = 0
             with archive.extractfile(member) as src, dest.open("wb") as dst:
                 for chunk in iter(lambda: src.read(1 << 22), b""):
+                    written += len(chunk)
+                    if written > cap:  # header lied about the size
+                        raise SystemExit(
+                            f"tar member {member_name!r} exceeded its declared "
+                            "size mid-stream — refusing disk exhaustion")
                     dst.write(chunk)
             out[member_name] = dest
     return out
@@ -561,11 +570,20 @@ def verify_live_bundle(*, packet: dict[str, Any], receipt: dict[str, Any],
             f"model.tar.gz SSEKMSKeyId {s3_meta.get('SSEKMSKeyId')!r} != the "
             f"packet's KMS key — the artifact is not the job's sealed output")
     model_uri = str(s3_meta.get("uri") or "")
-    expected_prefix = f"s3://medzen-speech/research/b5-training/{job_id}/output"
-    if not model_uri.startswith(expected_prefix):
+    # Codex #23 high: startswith() admitted `output-evil/...`. The EXACT
+    # SageMaker artifact path is <S3OutputPath>/<TrainingJobName>/output/
+    # model.tar.gz — require full equality, and require an EXPLICIT VersionId
+    # (S3 versioning is on; an unpinned fetch is mutable identity).
+    expected_uri = (f"s3://medzen-speech/research/b5-training/{job_id}/output/"
+                    f"{expected_job_name}/output/model.tar.gz")
+    if model_uri != expected_uri:
         failures.append(
-            f"ModelArtifacts {model_uri!r} is outside the derived output "
-            f"prefix {expected_prefix!r}")
+            f"ModelArtifacts {model_uri!r} != the exact expected artifact "
+            f"path {expected_uri!r}")
+    if not str(s3_meta.get("VersionId") or "").strip():
+        failures.append(
+            "the fetched artifact has no explicit S3 VersionId — the bucket "
+            "is versioned and identity must be pinned to one version")
 
     metrics = json.loads(extracted["calibration-metrics.json"].read_bytes())
     manifest_bytes = extracted["export/manifest.json"].read_bytes()
@@ -604,6 +622,33 @@ def verify_live_bundle(*, packet: dict[str, Any], receipt: dict[str, Any],
     return failures, facts
 
 
+def select_execution_window_version(versions: list[dict[str, Any]],
+                                    start, end, *, slack_seconds: int = 900):
+    """Pick the ONE object version created inside the job's AWS-recorded
+    execution window [TrainingStartTime, TrainingEndTime + slack] (SageMaker
+    uploads the bundle at job end; slack covers upload/clock skew). Zero or
+    multiple in-window versions is a hard refusal — the artifact identity
+    would be ambiguous or post-hoc (Codex #23 high)."""
+    import datetime as _dt
+
+    def as_dt(value):
+        if isinstance(value, _dt.datetime):
+            return value
+        return _dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    lo = as_dt(start)
+    hi = as_dt(end) + _dt.timedelta(seconds=slack_seconds)
+    in_window = [v for v in versions
+                 if lo <= as_dt(v["LastModified"]) <= hi]
+    if len(in_window) != 1:
+        raise SystemExit(
+            f"expected exactly ONE model.tar.gz version created in the job's "
+            f"execution window [{lo.isoformat()} .. {hi.isoformat()}], found "
+            f"{len(in_window)} of {len(versions)} total — artifact identity "
+            "is ambiguous or post-hoc; refusing")
+    return in_window[0]
+
+
 def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         dict[str, Any], dict[str, Path], dict[str, Any]]:
     """AWS side of authoritative mode: pin account+region, call
@@ -620,15 +665,43 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
             f"is in {identity.get('Account')!r}")
     job_id = str(packet.get("job_id") or "").strip()
     job_name = f"medzen-b5-{job_id}"
+    sagemaker = session.client("sagemaker")
     receipt = session.client("sagemaker").describe_training_job(
         TrainingJobName=job_name)
+    # Tags are NOT echoed by DescribeTrainingJob — inject them from ListTags
+    # so verify_training_receipt can compare against the rendered request
+    tags: list[dict[str, str]] = []
+    next_token = None
+    while True:
+        kwargs = {"ResourceArn": receipt["TrainingJobArn"]}
+        if next_token:
+            kwargs["NextToken"] = next_token
+        page = sagemaker.list_tags(**kwargs)
+        tags.extend(page.get("Tags") or [])
+        next_token = page.get("NextToken")
+        if not next_token:
+            break
+    receipt["Tags"] = tags
     model_uri = str(((receipt.get("ModelArtifacts") or {})
                      .get("S3ModelArtifacts")) or "")
     if not model_uri.startswith("s3://"):
         raise SystemExit(
             f"DescribeTrainingJob returned no S3ModelArtifacts ({model_uri!r})")
     bucket, _, key = model_uri.removeprefix("s3://").partition("/")
-    response = session.client("s3").get_object(Bucket=bucket, Key=key)
+    s3 = session.client("s3")
+    # Codex #23 high: the bucket is versioned — select the ONE version created
+    # in the job's execution window and fetch THAT explicit VersionId, never
+    # the mutable current version
+    versions = []
+    paginator = s3.get_paginator("list_object_versions")
+    for page in paginator.paginate(Bucket=bucket, Prefix=key):
+        versions.extend(v for v in (page.get("Versions") or [])
+                        if v.get("Key") == key)
+    chosen = select_execution_window_version(
+        versions, receipt.get("TrainingStartTime"),
+        receipt.get("TrainingEndTime"))
+    response = s3.get_object(Bucket=bucket, Key=key,
+                             VersionId=chosen["VersionId"])
     tar_path = workdir / "model.tar.gz"
     with tar_path.open("wb") as stream:
         for chunk in iter(lambda: response["Body"].read(1 << 22), b""):
@@ -636,6 +709,8 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
     s3_meta = {
         "uri": model_uri,
         "VersionId": response.get("VersionId"),
+        "version_selected_from_window": True,
+        "version_last_modified": str(chosen.get("LastModified")),
         "ETag": response.get("ETag"),
         "SSEKMSKeyId": response.get("SSEKMSKeyId"),
         "ContentLength": response.get("ContentLength"),

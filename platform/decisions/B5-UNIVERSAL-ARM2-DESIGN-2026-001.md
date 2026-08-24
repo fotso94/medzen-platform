@@ -313,6 +313,36 @@ faults; all three blockers plus the four concerns are fixed:
   printed identity.
 - The packet's verifier-command note now documents the `--live` form.
 
+## Round 23 corrections (Codex review #23)
+
+- **Complete canonical request comparison (critical):** hand-picked receipt
+  checks missed `ContainerEntrypoint`, `TrainingInputMode`,
+  `CheckpointConfig.LocalPath`, `VolumeKmsKeyId` and `Tags` — a swapped
+  entrypoint could run arbitrary code with the checked image/args/env intact.
+  `verify_training_receipt` now renders the expected request via the
+  launcher's OWN `render_request(packet)` and compares every rendered field
+  the API echoes (env exact, no smuggled `VolumeKmsKeyId`, no input channels,
+  Tags — injected from `ListTags` in live mode — must equal the rendered
+  tags). All five adversarial reproductions are regression tests.
+- **Pinned artifact identity (high):** the exact expected path
+  `<S3OutputPath>/<TrainingJobName>/output/model.tar.gz` is required by full
+  equality (the `output-evil/` startswith bypass is dead), and live mode
+  selects the ONE object version created inside the job's AWS-recorded
+  execution window (+15 min upload slack) via `list_object_versions`, then
+  fetches that explicit VersionId — zero or multiple in-window versions
+  refuse; an unpinned fetch fails the bundle check.
+- **Decode parity with the pinned OmniASR pipeline (medium):** the dev scorer
+  now truncates logits to the model's RETURNED output layout `seq_lens`
+  (padded frames cannot vote) and creates its decoder with
+  `skip_special_tokens=True`; `SCORER_ID`/`CANONICAL_SCORER` bumped to
+  `.../corpus-word-error-rate/2` in lock-step. A fairseq2-gated in-image test
+  proves the truncation behaviorally over the real committed slice.
+- **Negative canary isolation (medium):** the wrong-ref probe now runs in the
+  same `trainer-image-publish` environment as the real publisher job, so the
+  token's `sub` matches the trust and ONLY `job_workflow_ref` differs.
+- **Tar extraction caps (medium):** per-member size caps (metrics 64 MB,
+  manifest 4 MB, model 8 GB) enforced on the declared size AND mid-stream.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

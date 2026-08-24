@@ -479,51 +479,48 @@ def test_packet_criteria_equal_the_canonical_machine_derived_list():
         arm2_acceptance_criteria(packet["result_verifier"])
 
 
-def _good_receipt():
-    from verify_arm2_calibration import _canonical_sha256
+def _launchable_packet():
+    """The committed DRAFT with a well-formed (fake) digest so render_request
+    succeeds — receipt/live tests verify against the launcher's OWN render."""
     packet = json.loads(_PACKET.read_bytes())
-    env = dict(packet["environment"])
-    env["MEDZEN_CALIBRATION_PACKET_SHA256"] = _canonical_sha256(packet)
-    env["MEDZEN_TRAINING_JOB_NAME"] = _JOB_NAME
-    env["MEDZEN_EXECUTION_CONTRACT"] = \
-        "/opt/medzen/" + packet["execution_contract"]["path"]
-    env["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
-        packet["execution_contract"]["sha256"]
-    return packet, {
-        "TrainingJobName": _JOB_NAME,
+    uri = ("558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+           "medzen-trainer-omniasr@sha256:" + "0" * 64)
+    packet["image_uri_with_digest"] = uri
+    packet["image_oci_index_digest"] = uri
+    return packet
+
+
+def _good_receipt():
+    """A receipt derived from the launcher's OWN rendered request (Codex #23:
+    the verifier compares the COMPLETE canonical request, so the fixture must
+    be built from the same source of truth)."""
+    from b5_sagemaker_job import render_request
+    packet = _launchable_packet()
+    request = render_request(packet)
+    receipt = {
+        "TrainingJobName": request["TrainingJobName"],
         "TrainingJobStatus": "Completed",
-        "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
-        "EnableNetworkIsolation": False,
-        "AlgorithmSpecification": {
-            "TrainingImage": packet["image_uri_with_digest"],
-            "ContainerArguments": ["-m", "pipeline.omniasr_calibrate"],
-        },
-        "Environment": env,
-        "VpcConfig": {
-            "SecurityGroupIds": list(packet["security_group_ids"]),
-            "Subnets": list(packet["subnets"]),
-        },
-        "OutputDataConfig": {
-            "KmsKeyId": packet["kms_key_arn"],
-            "S3OutputPath": "s3://medzen-speech/research/b5-training/"
-                            "b5-universal-arm2-ftcal-2026-001/output",
-        },
-        "ResourceConfig": {"InstanceType": packet["instance_type"],
-                           "InstanceCount": 1,
-                           "VolumeSizeInGB": packet["volume_gb"]},
-        "CheckpointConfig": {
-            "S3Uri": "s3://medzen-speech/research/b5-training/"
-                     "b5-universal-arm2-ftcal-2026-001/checkpoints",
-            "LocalPath": "/opt/ml/checkpoints"},
-        "StoppingCondition": {
-            "MaxRuntimeInSeconds": packet["max_runtime_seconds"]},
-        "EnableManagedSpotTraining": packet["managed_spot"],
+        "RoleArn": request["RoleArn"],
+        "EnableNetworkIsolation": request["EnableNetworkIsolation"],
+        "AlgorithmSpecification": json.loads(
+            json.dumps(request["AlgorithmSpecification"])),
+        "Environment": dict(request["Environment"]),
+        "VpcConfig": json.loads(json.dumps(request["VpcConfig"])),
+        "OutputDataConfig": dict(request["OutputDataConfig"]),
+        "ResourceConfig": dict(request["ResourceConfig"]),
+        "CheckpointConfig": dict(request["CheckpointConfig"]),
+        "StoppingCondition": dict(request["StoppingCondition"]),
+        "EnableManagedSpotTraining": request["EnableManagedSpotTraining"],
+        "Tags": json.loads(json.dumps(request["Tags"])),
     }
+    return packet, receipt
 
 
 def test_training_receipt_verifies_and_each_drift_fails():
-    """Codex review #21 F3: terminal status, image digest, environment, KMS,
-    output location and instance are machine-checked against the packet."""
+    """Codex #21 F3 + #23 critical: the COMPLETE canonical request is
+    machine-checked — including the exact adversarial reproductions (wrong
+    ContainerEntrypoint, Pipe input mode, injected VolumeKmsKeyId, wrong
+    checkpoint LocalPath, Tags drift)."""
     from verify_arm2_calibration import (_canonical_sha256,
                                          verify_training_receipt)
     packet, receipt = _good_receipt()
@@ -533,32 +530,35 @@ def test_training_receipt_verifies_and_each_drift_fails():
         packet_canonical_sha=sha) == []
     drifts = [
         (lambda r: r.update(TrainingJobStatus="InProgress"), "Completed"),
-        (lambda r: r.update(TrainingJobName="medzen-b5-other"), "derived"),
+        (lambda r: r.update(TrainingJobName="medzen-b5-other"),
+         "TrainingJobName"),
         (lambda r: r["AlgorithmSpecification"].update(
-            TrainingImage="x@sha256:" + "1" * 64), "pinned digest"),
+            TrainingImage="x@sha256:" + "1" * 64), "TrainingImage"),
         (lambda r: r["AlgorithmSpecification"].update(
             ContainerArguments=["-m", "pipeline.omniasr_train"]),
-         "calibration entrypoint"),
+         "ContainerArguments"),
+        # Codex #23 reproductions — previously ALL passed:
+        (lambda r: r["AlgorithmSpecification"].update(
+            ContainerEntrypoint=["/bin/sh", "-c"]), "ContainerEntrypoint"),
+        (lambda r: r["AlgorithmSpecification"].update(
+            TrainingInputMode="Pipe"), "TrainingInputMode"),
+        (lambda r: r["ResourceConfig"].update(
+            VolumeKmsKeyId="arn:aws:kms:evil"), "never set"),
+        (lambda r: r["CheckpointConfig"].update(LocalPath="/tmp/elsewhere"),
+         "LocalPath"),
+        (lambda r: r["Tags"].__setitem__(
+            0, {"Key": r["Tags"][0]["Key"], "Value": "forged"}), "Tags"),
+        (lambda r: r.pop("Tags"), "Tags absent"),
         (lambda r: r["Environment"].update(MEDZEN_KD_ALPHA="0.9"),
          "Environment differs"),
-        (lambda r: r["Environment"].pop("MEDZEN_TRAINING_JOB_NAME"),
+        (lambda r: r["Environment"].pop("MEDZEN_EXECUTION_CONTRACT_SHA256"),
          "Environment differs"),
         (lambda r: r["OutputDataConfig"].update(KmsKeyId="arn:aws:kms:x"),
-         "KMS"),
+         "KmsKeyId"),
         (lambda r: r["OutputDataConfig"].update(
             S3OutputPath="s3://elsewhere/x"), "S3OutputPath"),
         (lambda r: r["ResourceConfig"].update(InstanceType="ml.p4d.24xlarge"),
-         "instance"),
-        (lambda r: r["StoppingCondition"].update(MaxRuntimeInSeconds=99999),
-         "MaxRuntimeInSeconds"),
-        (lambda r: r.update(EnableManagedSpotTraining=True), "Spot"),
-        # Codex #22 blocker 1: the COMPLETE job request is checked
-        (lambda r: r.update(RoleArn="arn:aws:iam::558069890522:role/other"),
-         "trainer role"),
-        (lambda r: r.update(EnableNetworkIsolation=True), "NetworkIsolation"),
-        (lambda r: r["VpcConfig"].update(Subnets=["subnet-evil"]), "Subnets"),
-        (lambda r: r["VpcConfig"].update(SecurityGroupIds=["sg-evil"]),
-         "SecurityGroupIds"),
+         "InstanceType"),
         (lambda r: r["ResourceConfig"].update(InstanceCount=2), "InstanceCount"),
         (lambda r: r["ResourceConfig"].update(VolumeSizeInGB=50),
          "VolumeSizeInGB"),
@@ -566,8 +566,17 @@ def test_training_receipt_verifies_and_each_drift_fails():
          "CheckpointConfig"),
         (lambda r: r.update(InputDataConfig=[{"ChannelName": "smuggled"}]),
          "InputDataConfig"),
-        (lambda r: r["Environment"].pop("MEDZEN_EXECUTION_CONTRACT_SHA256"),
-         "Environment differs"),
+        (lambda r: r["StoppingCondition"].update(MaxRuntimeInSeconds=99999),
+         "MaxRuntimeInSeconds"),
+        (lambda r: r.update(EnableManagedSpotTraining=True),
+         "EnableManagedSpotTraining"),
+        (lambda r: r.update(RoleArn="arn:aws:iam::558069890522:role/other"),
+         "RoleArn"),
+        (lambda r: r.update(EnableNetworkIsolation=True),
+         "EnableNetworkIsolation"),
+        (lambda r: r["VpcConfig"].update(Subnets=["subnet-evil"]), "Subnets"),
+        (lambda r: r["VpcConfig"].update(SecurityGroupIds=["sg-evil"]),
+         "SecurityGroupIds"),
     ]
     for mutate, needle in drifts:
         _, bad = _good_receipt()
@@ -765,7 +774,7 @@ def _make_bundle(tmp_path, *, model_bytes=b"MODEL-BYTES", tamper_model=False,
     import io
     import tarfile
     from verify_arm2_calibration import _canonical_sha256
-    packet = json.loads(_PACKET.read_bytes())
+    packet = _launchable_packet()
     model_sha = _hashlib.sha256(model_bytes).hexdigest()
     manifest = {"record": "OMNIASR_MERGED_CHECKPOINT_MANIFEST",
                 "model_sha256": model_sha}
@@ -807,8 +816,12 @@ def test_live_bundle_verifies_and_rejects_each_forgery(tmp_path):
     extracted = safe_extract_bundle(tar_path, tmp_path / "bundle")
     vsha = _hashlib.sha256(
         (_REPO / "scripts/verify_arm2_calibration.py").read_bytes()).hexdigest()
-    good_meta = {"uri": "s3://medzen-speech/research/b5-training/"
-                        "b5-universal-arm2-ftcal-2026-001/output/model.tar.gz",
+    # Codex #23: the EXACT SageMaker artifact path
+    # <S3OutputPath>/<TrainingJobName>/output/model.tar.gz
+    exact_uri = ("s3://medzen-speech/research/b5-training/"
+                 "b5-universal-arm2-ftcal-2026-001/output/"
+                 f"{_JOB_NAME}/output/model.tar.gz")
+    good_meta = {"uri": exact_uri,
                  "SSEKMSKeyId": packet["kms_key_arn"], "VersionId": "v1",
                  "ETag": "etag", "ContentLength": 1}
     _, receipt = _good_receipt()
@@ -828,7 +841,20 @@ def test_live_bundle_verifies_and_rejects_each_forgery(tmp_path):
     failures, _ = verify_live_bundle(
         packet=packet, receipt=receipt, extracted=extracted,
         s3_meta=bad_uri, verifier_script_sha=vsha, repo_root=_REPO)
-    assert any("output" in f for f in failures)
+    assert any("exact expected artifact" in f for f in failures)
+    # Codex #23 reproduction: `output-evil/...` beat the old startswith()
+    evil_uri = dict(good_meta, uri=good_meta["uri"].replace(
+        "/output/", "/output-evil/", 1))
+    failures, _ = verify_live_bundle(
+        packet=packet, receipt=receipt, extracted=extracted,
+        s3_meta=evil_uri, verifier_script_sha=vsha, repo_root=_REPO)
+    assert any("exact expected artifact" in f for f in failures)
+    # Codex #23 reproduction: an unpinned (no-VersionId) fetch must fail
+    no_version = dict(good_meta, VersionId=None)
+    failures, _ = verify_live_bundle(
+        packet=packet, receipt=receipt, extracted=extracted,
+        s3_meta=no_version, verifier_script_sha=vsha, repo_root=_REPO)
+    assert any("VersionId" in f for f in failures)
     # tampered model bytes: the verifier's own hash disagrees with the manifest
     (tmp_path / "t2").mkdir()
     packet2, tar2 = _make_bundle(tmp_path / "t2", tamper_model=True)
@@ -857,6 +883,139 @@ def test_safe_extract_refuses_missing_and_unsafe_members(tmp_path):
         archive.addfile(info, io.BytesIO(b"x"))
     with pytest.raises(SystemExit):
         safe_extract_bundle(evil, tmp_path / "b2")
+
+
+def test_execution_window_version_selection():
+    """Codex #23 high: exactly ONE artifact version created inside the job's
+    AWS-recorded execution window is acceptable; zero or many refuse."""
+    from verify_arm2_calibration import select_execution_window_version
+    start, end = "2026-08-24T10:00:00+00:00", "2026-08-24T11:00:00+00:00"
+    inside = {"VersionId": "good", "LastModified": "2026-08-24T11:05:00+00:00"}
+    before = {"VersionId": "old", "LastModified": "2026-08-24T09:00:00+00:00"}
+    after = {"VersionId": "posthoc",
+             "LastModified": "2026-08-24T12:00:00+00:00"}  # past slack
+    assert select_execution_window_version(
+        [before, inside, after], start, end)["VersionId"] == "good"
+    with pytest.raises(SystemExit, match="exactly ONE"):
+        select_execution_window_version([before, after], start, end)
+    with pytest.raises(SystemExit, match="exactly ONE"):
+        second = dict(inside, VersionId="dupe")
+        select_execution_window_version([inside, second], start, end)
+
+
+def test_tar_member_size_caps_refuse_disk_exhaustion(tmp_path):
+    """Codex #23: a declared-oversize member refuses before extraction."""
+    import io
+    import tarfile
+    from verify_arm2_calibration import (BUNDLE_MEMBER_MAX_BYTES,
+                                         safe_extract_bundle)
+    oversize = BUNDLE_MEMBER_MAX_BYTES["export/manifest.json"] + 1
+    tar_path = tmp_path / "big.tar.gz"
+    with tarfile.open(tar_path, "w:gz") as archive:
+        for name, data in (("calibration-metrics.json", b"{}"),
+                           ("export/model.pt", b"m"),
+                           ("export/manifest.json", b"x" * oversize)):
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+    with pytest.raises(SystemExit, match="byte cap"):
+        safe_extract_bundle(tar_path, tmp_path / "out")
+
+
+def test_ctc_greedy_truncates_to_valid_frames():
+    """Codex #23 medium: the decode must truncate to the model's RETURNED
+    output length — a junk token in the padded tail must not vote."""
+    torch = pytest.importorskip("torch")
+    from pipeline.omniasr_calibrate import _ctc_greedy_text
+
+    calls = []
+
+    def decoder(ids):
+        calls.append([int(x) for x in ids])
+        return " ".join(str(int(x)) for x in ids)
+
+    # 4 frames; frame 3 (index 3) is PADDING carrying a loud junk token 7
+    logits = torch.full((4, 8), -10.0)
+    logits[0, 2] = 10.0   # token 2
+    logits[1, 2] = 10.0   # repeat -> collapses
+    logits[2, 0] = 10.0   # blank -> dropped
+    logits[3, 7] = 10.0   # junk in the padded tail
+    full = _ctc_greedy_text(logits, decoder, blank_idx=0)
+    truncated = _ctc_greedy_text(logits, decoder, blank_idx=0, valid_frames=3)
+    assert "7" in full and "7" not in truncated
+    assert truncated == "2"
+
+
+def test_scorer_source_matches_upstream_decode_contract():
+    """Structural parity with the pinned OmniASR pipeline (Codex #23): the
+    scorer must create its decoder with skip_special_tokens=True and truncate
+    with the returned output layout's seq_lens. The full behavioral parity
+    test runs in-image (fairseq2 present)."""
+    source = (_REPO / "pipeline/omniasr_calibrate.py").read_text()
+    assert "create_decoder(skip_special_tokens=True)" in source
+    assert "out_layout" in source and "seq_lens" in source
+
+
+def test_in_image_scorer_decodes_with_layout_truncation(monkeypatch):
+    """In-image behavioral parity (Codex #23): with real fairseq2 BatchLayout,
+    the scorer truncates to the model's returned seq_lens and strips special
+    tokens via a skip_special_tokens=True decoder — verified with a fake model
+    whose padded tail carries a junk token, over the REAL committed slice."""
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("fairseq2")
+    pytest.importorskip("soundfile")
+    import numpy as np
+
+    import pipeline.omniasr_calibrate as calibrate
+    import pipeline.omniasr_data as omniasr_data
+    import pipeline.train_asr as train_asr
+
+    class _Tokenizer:
+        class vocab_info:
+            pad_idx = 0
+
+        def create_decoder(self, *, skip_special_tokens):
+            assert skip_special_tokens is True
+
+            def decode(ids):
+                return " ".join(f"tok{int(x)}" for x in ids)
+            return decode
+
+    class _Model:
+        def __call__(self, wave, layout):
+            from fairseq2.nn import BatchLayout
+            frames = torch.full((1, 4, 8), -10.0)
+            frames[0, 0, 2] = 10.0
+            frames[0, 1, 2] = 10.0
+            frames[0, 2, 0] = 10.0        # blank
+            frames[0, 3, 7] = 10.0        # junk in the padded tail
+            out = BatchLayout((1, 4), seq_lens=[3], device=frames.device)
+            return frames, out
+
+    monkeypatch.setattr(omniasr_data, "fetch_audio",
+                        lambda cli, row, cache: Path("/dev/null"))
+    import soundfile
+    monkeypatch.setattr(
+        soundfile, "read",
+        lambda *_a, **_k: (np.zeros(16000, dtype="float32"), 16000))
+    monkeypatch.setattr(train_asr, "s3", lambda: None)
+
+    wer, shas, results = calibrate._score_dev_sentinels(
+        object(), _Model(), _Tokenizer(), None,
+        {"lingala": "platform/manifests/dev-sentinels/lingala.jsonl"})
+    hyp = results["lingala"]["rows"][0]["hyp_normalized"]
+    assert "tok7" not in hyp and "tok2" in hyp        # tail junk truncated
+    assert shas["lingala"] == _DEV_SHAS["lingala"]    # real slice, real sha
+    assert len(results["lingala"]["rows"]) == 60
+
+
+def test_wrongref_canary_runs_in_the_publisher_environment():
+    """Codex #23 medium: the negative canary must share the publisher's
+    protected environment so ONLY job_workflow_ref differs — a sub-mismatch
+    denial would prove nothing about the workflow-identity restriction."""
+    text = (_REPO / ".github/workflows/arm2-image-canary-wrongref-exec.yml"
+            ).read_text()
+    assert "environment: trainer-image-publish" in text
 
 
 def test_dockerfile_ships_the_contract_not_the_launch_packet():

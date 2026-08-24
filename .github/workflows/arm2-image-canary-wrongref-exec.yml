@@ -1,9 +1,10 @@
-# NEGATIVE canary, reusable half (Codex #21 rec 1): the token carries a REAL
-# (wrong) job_workflow_ref naming THIS file — same repo, same master sub, only
-# the workflow identity differs from arm2-trainer-image-publish.yml. The
-# trainer-image publisher role must refuse it with an explicit AccessDenied.
-# Missing variable FAILS (skipping is not passing); only an explicit STS
-# AccessDenied passes.
+# NEGATIVE canary, reusable half (Codex #21 rec 1 / #22 C2 / #23): the token
+# carries a REAL (wrong) job_workflow_ref naming THIS file. Codex review #23:
+# the probe must run in the SAME protected environment as the real publisher
+# job, so the token's sub claim MATCHES the trust and ONLY job_workflow_ref
+# differs — otherwise the denial could come from the sub mismatch and prove
+# nothing about the workflow-identity restriction. Missing variable FAILS
+# (skipping is not passing); only an explicit STS AccessDenied passes.
 name: arm2-image-canary-wrongref-exec
 
 permissions:
@@ -16,6 +17,8 @@ on:
 jobs:
   must-be-refused:
     runs-on: ubuntu-24.04
+    # same environment as the real publisher job — isolates job_workflow_ref
+    environment: trainer-image-publish
     env:
       ROLE_ARN: ${{ vars.MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN }}
     steps:

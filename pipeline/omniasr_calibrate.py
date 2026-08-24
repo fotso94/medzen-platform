@@ -35,9 +35,10 @@ from pipeline.omniasr_train import (CALIBRATION_METRICS_FILE, TrainerRefusal,
 
 # scorer identity bound into the evidence (Codex review #20 F5): the decode +
 # normalizer + metric this WER was produced with.
-SCORER_ID = ("ctc-greedy/argmax+collapse+blank-strip; "
+SCORER_ID = ("ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
+             "skip-special-tokens; "
              "normalizer=pipeline.normalizers.for_language; "
-             "metric=corpus-word-error-rate/1")
+             "metric=corpus-word-error-rate/2")
 VERIFIER_REL = "scripts/verify_arm2_calibration.py"
 
 
@@ -244,19 +245,26 @@ def readyz_audit(model) -> dict[str, Any]:
             "weights_finite": bool(weights_finite)}
 
 
-def _ctc_greedy_text(logits, tokenizer, blank_idx: int) -> str:
-    """Greedy CTC decode of one utterance's frame logits [T, vocab]: argmax
-    per frame, collapse consecutive duplicates, drop the blank, decode."""
+def _ctc_greedy_text(logits, decoder, blank_idx: int,
+                     valid_frames: int | None = None) -> str:
+    """Greedy CTC decode of one utterance's frame logits [T, vocab], matching
+    the PINNED upstream OmniASR pipeline (Codex #23): logits are TRUNCATED to
+    the encoder output layout's valid frame count (`bl_out.seq_lens`) before
+    argmax — padded frames must not vote — then consecutive duplicates
+    collapse, the blank drops, and a decoder created with
+    skip_special_tokens=True renders the text."""
     import torch
 
-    ids = torch.as_tensor(logits).argmax(dim=-1).tolist()
+    frames = torch.as_tensor(logits)
+    if valid_frames is not None:
+        frames = frames[: int(valid_frames)]
+    ids = frames.argmax(dim=-1).tolist()
     collapsed: list[int] = []
     prev = None
     for token in ids:
         if token != prev and token != blank_idx:
             collapsed.append(int(token))
         prev = token
-    decoder = tokenizer.create_decoder()
     text = decoder(torch.as_tensor(collapsed, dtype=torch.int64))
     return text if isinstance(text, str) else str(text)
 
@@ -400,6 +408,9 @@ def _score_dev_sentinels(config, model, tokenizer, device,
             "slices must be provisioned and bound before calibration")
     blank_idx = int(getattr(getattr(tokenizer, "vocab_info", None),
                             "pad_idx", 0) or 0)
+    # decoder parity with the pinned upstream pipeline (Codex #23): special
+    # tokens are stripped by the DECODER, not left in the hypothesis
+    decoder = tokenizer.create_decoder(skip_special_tokens=True)
     cli = s3()
     cache = Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache"))
     root = Path(__file__).resolve().parents[1]
@@ -428,8 +439,13 @@ def _score_dev_sentinels(config, model, tokenizer, device,
             layout = BatchLayout(tuple(wave.shape), seq_lens=[wave.shape[1]],
                                  device=wave.device)
             with torch.no_grad():
-                logits, _ = model(wave, layout)
-            hyp = _ctc_greedy_text(logits[0], tokenizer, blank_idx)
+                logits, out_layout = model(wave, layout)
+            # upstream parity (Codex #23): truncate to the model's RETURNED
+            # output length — padded frames must not vote in the argmax
+            out_lens = getattr(out_layout, "seq_lens", None)
+            valid_frames = int(out_lens[0]) if out_lens is not None else None
+            hyp = _ctc_greedy_text(logits[0], decoder, blank_idx,
+                                   valid_frames=valid_frames)
             reference = norm(row["text_normalized"])
             hypothesis = norm(hyp)
             refs.append(reference)
