@@ -1,0 +1,67 @@
+{
+ "all_pass": true,
+ "classification": "NONPROD_REAL_PROVIDER_V2",
+ "gpu_image": "medzen-asr-runtime@sha256:67c81efd8458ea1e4424dc39349fdbf2254f4bf929cb7bce98bd284873cf1226",
+ "gpu_scan": {
+  "amd64_child": "sha256:f343c1ddeb870754cf9c51e6d2acd2642948696a630f1d7147b67ee92cee2059",
+  "findings": "none (counts null)",
+  "status": "COMPLETE"
+ },
+ "languages_tested": 7,
+ "loader_image": "medzen-model-loader@sha256:8fa4c129fc1235485a1e979da941a5f61516a1eb1ab6a2f7371ce4f200182739",
+ "loader_scan": {
+  "amd64_child": "sha256:12785f91dcb00df6daae0a054c107e1d1d7f6f6e6151ac4e5fa39822caa4e964",
+  "findings": "none (counts null)",
+  "status": "COMPLETE"
+ },
+ "model_version": "omniasr_ctc_1b:34ca18bab2f7",
+ "note": "re-smoke against the CI-SCANNED round-15 images (Codex review #15 finding 2). Reconstructed from the box log (the create-only S3 receipt path was taken by the round-14 receipt).",
+ "per_language": {
+  "english": {
+   "http": 200,
+   "iso": "en",
+   "latency_ms": 683.9,
+   "nonempty": true
+  },
+  "ewe": {
+   "http": 200,
+   "iso": "ewe",
+   "latency_ms": 39.4,
+   "nonempty": true
+  },
+  "french": {
+   "http": 200,
+   "iso": "fr",
+   "latency_ms": 49.7,
+   "nonempty": true
+  },
+  "kinyarwanda": {
+   "http": 200,
+   "iso": "kin",
+   "latency_ms": 40.7,
+   "nonempty": true
+  },
+  "lingala": {
+   "http": 200,
+   "iso": "lin",
+   "latency_ms": 47.4,
+   "nonempty": true
+  },
+  "pidgin": {
+   "http": 200,
+   "iso": "pcm",
+   "latency_ms": 41.8,
+   "nonempty": true
+  },
+  "swahili": {
+   "http": 200,
+   "iso": "swa",
+   "latency_ms": 49.0,
+   "nonempty": true
+  }
+ },
+ "readyz_all_true": true,
+ "real_loader_init": true,
+ "record": "ARM1-GPU-RESMOKE15-2026-001-RECEIPT",
+ "sealed_sets_read": false
+}
