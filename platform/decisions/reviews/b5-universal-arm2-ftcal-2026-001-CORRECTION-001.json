@@ -1,0 +1,17 @@
+{
+ "record": "b5-universal-arm2-ftcal-2026-001-CORRECTION-001",
+ "kind": "attribution-correction",
+ "corrects": {
+  "record": "platform/decisions/reviews/b5-universal-arm2-ftcal-2026-001.json",
+  "original_sha256": "5b242bf02bcfe43d322b9b9dd351cc66ed3f148a6b45fd5d25b8fb269a2fe5bd",
+  "launch_commit": "52dd514",
+  "note": "The original authorization record above is FROZEN at its launch-time bytes (the exact bytes review_record_approves() consumed when the calibration launched). This is an APPEND-ONLY correction of its wording ONLY; it does not modify the consumed record. Codex round 30 finding 4: an earlier round rewrote that file in place (sha 5b242bf0 -> 9e78a4); that in-place rewrite has been reverted and this successor published in its place."
+ },
+ "clarified_attribution": {
+  "independent_reviewer": "codex (independent technical review, rounds 14-29; final verdict PASS)",
+  "authorized_by": "OWNER — repository owner, GitHub fotso94 / id 16901658 — via chat directive 2026-08-24: 'codex review is clear and verdict is PASS so proceed with launch the calibration'",
+  "committed_by": "implementation-engineer (transcription of the owner-authorized decision ONLY; the implementer did NOT self-approve)",
+  "explanation": "Two distinct roles must not be conflated: Codex performed the independent code/packet review (PASS); the human owner authorized the launch. The original record's free-text 'basis' predates this separation; the roles above are the authoritative reading. Gate-relevant fields of the original (bindings_sha256, decision=APPROVED, job_id, packet, image_digest) are unchanged and still authorize ONLY the small unsealed mechanics/memory calibration (worst-case $3.20 on-demand), NOT sealed evaluation, promotion, or deployment."
+ },
+ "utc": "2026-08-24T23:05:00Z"
+}

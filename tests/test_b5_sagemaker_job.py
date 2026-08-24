@@ -358,6 +358,14 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
     repo = _mini_repo(tmp_path)
     (repo / "platform/evidence").mkdir(parents=True)
     (repo / "platform/manifests").mkdir(parents=True)
+    (repo / "scripts").mkdir(parents=True)
+    # the hardened gate (Codex round 30 finding 1) binds the receipt's
+    # authoritative attestation to the CURRENTLY COMMITTED authoritative
+    # verifier — the mini-repo must carry that file so its sha can be checked.
+    (repo / "scripts/verify_arm2_calibration.py").write_text(
+        "# authoritative verifier stub for the receipt-gate test\n")
+    VERIFIER_SHA = h.sha256(
+        (repo / "scripts/verify_arm2_calibration.py").read_bytes()).hexdigest()
     image = ("558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
              "medzen-trainer-omniasr@sha256:" + "b" * 64)
     cal_env = {"MEDZEN_VARIANT": "ctc", "MEDZEN_TRAIN_MODE": "full",
@@ -378,10 +386,18 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
     from b5_sagemaker_job import SCALE_KEYS
     KMS = ("arn:aws:kms:eu-central-1:558069890522:key/"
            "9c336116-c648-4548-95c6-1b926478ae57")
+    S3_BYTES = 1548272554
 
-    def receipt_record(**over):
+    def auth_block(**over):
+        a = {"authoritative": True, "verdict": "PASS",
+             "creation_event_verified": True, "failures": [], "mode": "live",
+             "verifier_script_sha256": VERIFIER_SHA, "metrics_sha256": "d" * 64}
+        a.update(over)
+        return a
+
+    def receipt_record(auth_over=None, **over):
         rec = {"terminal_status": "Completed", "billable_seconds": 1128,
-               "verdict": "PASS — chain proven", "job": "medzen-b5-cal-1",
+               "verdict": "PASS", "job": "medzen-b5-cal-1",
                "declared_scale_keys": sorted(SCALE_KEYS),
                "dataset_version": "gb9",
                "dataset_complete_raw_sha256": "e0" * 32,
@@ -393,7 +409,8 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
                           "model_sha256": "1" * 64,
                           "manifest_sha256": "2" * 64},
                "artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
-                            "kms_key": KMS}}
+                            "kms_key": KMS, "s3_bytes": S3_BYTES},
+               "authoritative_verification": auth_block(**(auth_over or {}))}
         rec.update(over)
         return rec
 
@@ -421,16 +438,30 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
         with pytest.raises(JR, match="recipe drift"):
             verify_calibration_receipt(arm(**{key: value}), repo)
 
-    # fabricated-receipt fields Codex reproduced
+    # fabricated-receipt fields Codex reproduced (#22) + round 30 finding 1
     fabrications = [
-        ({"verdict": "PASSWORD"}, "not PASS"),
+        # a 'PASS …' phrase — including a self-contradictory one — is not PASS
+        ({"verdict": "PASSWORD"}, "not exactly 'PASS'"),
+        ({"verdict": "PASS — CALIBRATION FAILED"}, "not exactly 'PASS'"),
         ({"billable_seconds": True}, "positive integer"),
         ({"artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
                         "kms_key": "arn:aws:kms:eu-central-1:"
-                                    "999999999999:key/x"}},
-         "not this account"),
+                                    "999999999999:key/x",
+                        "s3_bytes": S3_BYTES}}, "not this account"),
+        ({"artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
+                        "kms_key": KMS, "s3_bytes": 0}}, "s3_bytes"),
         ({"declared_scale_keys": ["MEDZEN_MAX_STEPS"]}, "scale keys"),
         ({"calibration_bindings_sha256": "9" * 64}, "calibration packet"),
+        # round 30 finding 1: the authoritative attestation must be a real PASS
+        ({"authoritative_verification": {}}, "lacks 'authoritative_verificat"),
+        ({"auth_over": {"authoritative": False}}, "authoritative is not True"),
+        ({"auth_over": {"verdict": "FAIL"}},
+         "authoritative_verification.verdict"),
+        ({"auth_over": {"failures": ["boom"]}}, "failures is non-empty"),
+        ({"auth_over": {"creation_event_verified": False}},
+         "creation_event_verified"),
+        ({"auth_over": {"verifier_script_sha256": "0" * 64}},
+         "verifier_script_sha256 does not match"),
     ]
     for over, needle in fabrications:
         rec_path.write_text(_json.dumps(receipt_record(**over)))
@@ -440,9 +471,9 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
     rec_path.write_text(_json.dumps(receipt_record()))
     _commit(repo)
 
-    # AWS re-verification: the COMPLETE live job contract vs the
-    # committed calibration packet (Codex review #23 reproduced the
-    # genuine gb8 job passing as a gb9 calibration)
+    # AWS re-verification: identity/cost/size + reconstructed Environment
+    # (Codex review #23 reproduced the genuine gb8 job passing as a gb9
+    # calibration; round 30 finding 1 adds the ContentLength/size bind)
     from b5_sagemaker_job import verify_receipt_against_aws
     record = receipt_record()
 
@@ -460,10 +491,11 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
             return self.desc
 
     class S3:
-        def __init__(self, vid="V1", kms=KMS):
-            self.vid, self.kms = vid, kms
+        def __init__(self, vid="V1", kms=KMS, clen=S3_BYTES):
+            self.vid, self.kms, self.clen = vid, kms, clen
         def head_object(self, Bucket, Key):
-            return {"VersionId": self.vid, "SSEKMSKeyId": self.kms}
+            return {"VersionId": self.vid, "SSEKMSKeyId": self.kms,
+                    "ContentLength": self.clen}
 
     verify_receipt_against_aws(record, cal, SM(), S3())
     # a receipt naming a different job than the packet derives refuses
@@ -492,6 +524,41 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
     with pytest.raises(JR, match="KMS identity"):
         verify_receipt_against_aws(record, cal, SM(),
                                    S3(kms=KMS.replace("9c33", "dead")))
+    # round 30 finding 1: a lying byte size is caught against head ContentLength
+    with pytest.raises(JR, match="ContentLength"):
+        verify_receipt_against_aws(record, cal, SM(), S3(clen=999))
+
+
+def test_cross_check_receipt_content_binds_every_content_fact():
+    """Codex round 30 finding 1: cross_check_receipt_content requires every
+    self-reported content fact to equal the value the authoritative verifier
+    re-derived from the real artifact — a fabricated hash/size cannot pass."""
+    from b5_sagemaker_job import (JobRefusal as JR,
+                                  cross_check_receipt_content)
+    KMS = ("arn:aws:kms:eu-central-1:558069890522:key/"
+           "9c336116-c648-4548-95c6-1b926478ae57")
+    record = {
+        "export": {"model_sha256": "1" * 64, "manifest_sha256": "2" * 64},
+        "authoritative_verification": {"metrics_sha256": "3" * 64},
+        "artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
+                     "kms_key": KMS, "s3_bytes": 1548272554},
+    }
+    facts = {"export_model_sha256": "1" * 64, "export_manifest_sha256": "2" * 64,
+             "metrics_sha256": "3" * 64, "model_artifacts_uri": "s3://b/k",
+             "s3_version_id": "V1", "s3_kms_key": KMS, "s3_bytes": 1548272554}
+    cross_check_receipt_content(record, facts)   # all match -> passes
+    import copy
+    for path, bad in (
+            (("export", "model_sha256"), "9" * 64),
+            (("export", "manifest_sha256"), "9" * 64),
+            (("authoritative_verification", "metrics_sha256"), "9" * 64),
+            (("artifact", "s3_version_id"), "FORGED"),
+            (("artifact", "kms_key"), KMS.replace("9c33", "dead")),
+            (("artifact", "s3_bytes"), 1)):
+        forged = copy.deepcopy(record)
+        forged[path[0]][path[1]] = bad
+        with pytest.raises(JR, match="does not match the value"):
+            cross_check_receipt_content(forged, facts)
 
 
 def test_reservation_must_bind_this_packet_and_registry_arithmetic(tmp_path):

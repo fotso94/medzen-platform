@@ -781,9 +781,14 @@ def verify_calibration_receipt(bindings: dict,
     if type(billable) is not int or billable <= 0:
         raise JobRefusal("billable_seconds must be a positive integer")
     verdict = str(field("verdict"))
-    if not (verdict == "PASS" or verdict.startswith(("PASS ", "PASS —"))):
-        raise JobRefusal(f"verdict {verdict[:20]!r} is not PASS — "
-                         "PASS-prefixed words (reproduced: PASSWORD) refuse")
+    # Codex round 30 finding 1 (reproduced: a committed receipt with
+    # verdict='PASS — CALIBRATION FAILED' passed): the prefix branch admitted
+    # any 'PASS …' phrase, including a contradictory one. There is no
+    # legitimate PASS verdict that is not exactly "PASS".
+    if verdict != "PASS":
+        raise JobRefusal(f"verdict {verdict[:24]!r} is not exactly 'PASS' — "
+                         "a 'PASS …' phrase (reproduced: 'PASS — CALIBRATION "
+                         "FAILED', 'PASSWORD') is not a PASS")
     if sorted(record.get("declared_scale_keys") or []) != \
             sorted(SCALE_KEYS):
         raise JobRefusal("receipt must declare EXACTLY the permitted "
@@ -846,17 +851,75 @@ def verify_calibration_receipt(bindings: dict,
         raise JobRefusal("receipt artifact KMS key is not this account's "
                          "in-region key (Codex review #22: wrong-account "
                          "ARN was accepted)")
+    if type(artifact.get("s3_bytes")) is not int or artifact["s3_bytes"] <= 0:
+        raise JobRefusal("receipt artifact block lacks a positive integer "
+                         "s3_bytes (Codex round 30 finding 1: a false size "
+                         "was accepted) — the live gate binds it to "
+                         "head_object ContentLength")
+    # Codex round 30 finding 1 (reproduced: a receipt whose
+    # authoritative_verification block said verdict='FAIL' still PASSED,
+    # because the gate never read that block). The gate now REQUIRES the
+    # receipt to carry the authoritative verifier's own attestation and
+    # requires that attestation to be an unambiguous PASS produced by the
+    # CURRENTLY COMMITTED authoritative verifier. A fabricated receipt can no
+    # longer self-report a failed verification and pass; and because the
+    # attested verifier sha is bound to the committed verify_arm2_calibration
+    # script, the online step (and the launch-time full re-hash) re-derive
+    # every content fact this attestation claims.
+    auth = field("authoritative_verification")
+    if not isinstance(auth, dict):
+        raise JobRefusal("receipt lacks an authoritative_verification block")
+    if auth.get("authoritative") is not True:
+        raise JobRefusal("authoritative_verification.authoritative is not "
+                         "True — only the --live authoritative verdict counts")
+    if auth.get("verdict") != "PASS":
+        raise JobRefusal("authoritative_verification.verdict is not 'PASS' — "
+                         "a receipt cannot ride a non-PASS verification")
+    if auth.get("creation_event_verified") is not True:
+        raise JobRefusal("authoritative_verification.creation_event_verified "
+                         "is not True — the CloudTrail creator was not proven")
+    if auth.get("failures") != []:
+        raise JobRefusal("authoritative_verification.failures is non-empty — "
+                         f"the verification reported {auth.get('failures')!r}")
+    if auth.get("mode") != "live":
+        raise JobRefusal("authoritative_verification.mode is not 'live'")
+    # bind the attestation to the CURRENTLY COMMITTED authoritative verifier —
+    # a stale/tampered verifier's attestation cannot authorize this chain
+    verifier_rel = "scripts/verify_arm2_calibration.py"
+    verifier_body = _show_at(root, oid, verifier_rel)
+    if verifier_body is None:
+        raise JobRefusal(f"the authoritative verifier {verifier_rel} is not "
+                         f"committed at {oid[:12]}")
+    if auth.get("verifier_script_sha256") != \
+            hashlib.sha256(verifier_body).hexdigest():
+        raise JobRefusal("authoritative_verification.verifier_script_sha256 "
+                         "does not match the committed authoritative verifier "
+                         "— the attestation was not produced by this verifier")
+    if not _hex(str(auth.get("metrics_sha256", "")), 64):
+        raise JobRefusal("authoritative_verification.metrics_sha256 is not a "
+                         "64-hex digest")
+    # structural consistency: the receipt cannot claim PASS at the top while
+    # its terminal status or its own attestation disagree
+    if record.get("terminal_status") != "Completed" or \
+            auth.get("verdict") != verdict:
+        raise JobRefusal("receipt verdict / terminal_status / authoritative "
+                         "verdict are not all a consistent PASS/Completed")
     return record
 
 
 def verify_receipt_against_aws(record: dict, cal_packet: dict,
                                 sagemaker_client, s3_client) -> None:
-    """Codex reviews #22-#23 (reproduced: the genuine gb8 ftcal-003 job
-    passed as a gb9 calibration). The COMPLETE live job contract is
-    compared against the COMMITTED calibration packet, not just three
-    convenient fields: job name derived from the packet, the full
-    Environment, image, artifact URI + VersionId + KMS, and the output
-    KMS configuration."""
+    """Fast online IDENTITY + COST + SIZE + Environment pre-check against the
+    committed calibration packet (Codex reviews #22-#23: the genuine gb8 job
+    passed as a gb9 calibration). This checks the receipt's own claims and the
+    reconstructed Environment cheaply, WITHOUT downloading the artifact.
+
+    The AUTHORITATIVE, complete verification — the full rendered request
+    (entrypoint, arguments, role, VPC, runtime, remote-debug, tags), the
+    CloudTrail creator, and a re-hash of the actual KMS-encrypted artifact —
+    is derive_live_artifact_facts() + cross_check_receipt_content() (Codex
+    round 30 finding 2), which the launcher runs immediately after this and
+    which reuses verify_arm2_calibration end-to-end."""
     expected_job = f"medzen-b5-{cal_packet['job_id']}"
     if record.get("job") != expected_job:
         raise JobRefusal(
@@ -876,14 +939,9 @@ def verify_receipt_against_aws(record: dict, cal_packet: dict,
                          "calibration packet")
     live_env = desc.get("Environment") or {}
     # The launcher deterministically injects self-reference-free provenance
-    # (packet sha, real TrainingJobName, in-image execution-contract path+sha)
-    # into a KD packet's Environment, so the LIVE environment is the committed
-    # packet env PLUS those keys. Reconstruct that exact rendered environment
-    # from the committed packet and require the live job to equal it byte-for-
-    # byte. This is NOT a loosening: every injected key is bound to a value
-    # derived from the committed packet (its own sha, its job_id, its
-    # execution_contract), so a foreign job (Codex review #23: gb8 passed as
-    # gb9) — or a forged provenance value — still fails.
+    # into a KD packet's Environment, so the live env is the packet env PLUS
+    # those keys — reconstruct and require byte-for-byte equality (Codex #23:
+    # gb8 wearing a gb9 receipt fails; a forged provenance value fails).
     expected_env = inject_launcher_provenance(
         cal_packet.get("environment") or {}, cal_packet)
     if live_env != expected_env:
@@ -910,6 +968,75 @@ def verify_receipt_against_aws(record: dict, cal_packet: dict,
         raise JobRefusal("artifact S3 VersionId does not match AWS")
     if head.get("SSEKMSKeyId") != artifact["kms_key"]:
         raise JobRefusal("artifact KMS identity does not match AWS")
+    if head.get("ContentLength") != artifact["s3_bytes"]:
+        raise JobRefusal("artifact byte size does not match head_object "
+                         "ContentLength (Codex round 30 finding 1: a false "
+                         "s3_bytes was accepted)")
+
+
+def cross_check_receipt_content(record: dict, facts: dict) -> None:
+    """Codex round 30 finding 1: the receipt's self-reported CONTENT (export
+    model/manifest shas, metrics sha, artifact size/version/KMS) was never
+    re-derived, so a well-formed-but-fabricated 64-hex or a false size passed.
+    This PURE function requires every content fact the receipt claims to equal
+    the value the AUTHORITATIVE verifier re-derived by re-hashing the actual
+    KMS-encrypted artifact it fetched by explicit VersionId (`facts` is the
+    report from verify_arm2_calibration.verify_live_bundle). A fabricated
+    content value cannot survive a re-hash of the real bytes."""
+    auth = record.get("authoritative_verification") or {}
+    checks = [
+        ("export.model_sha256", (record.get("export") or {}).get("model_sha256"),
+         facts.get("export_model_sha256")),
+        ("export.manifest_sha256",
+         (record.get("export") or {}).get("manifest_sha256"),
+         facts.get("export_manifest_sha256")),
+        ("authoritative_verification.metrics_sha256", auth.get("metrics_sha256"),
+         facts.get("metrics_sha256")),
+        ("artifact.s3_uri", (record.get("artifact") or {}).get("s3_uri"),
+         facts.get("model_artifacts_uri")),
+        ("artifact.s3_version_id",
+         (record.get("artifact") or {}).get("s3_version_id"),
+         facts.get("s3_version_id")),
+        ("artifact.kms_key", (record.get("artifact") or {}).get("kms_key"),
+         facts.get("s3_kms_key")),
+        ("artifact.s3_bytes", (record.get("artifact") or {}).get("s3_bytes"),
+         facts.get("s3_bytes")),
+    ]
+    for name, claimed, derived in checks:
+        if derived in (None, "") or claimed != derived:
+            raise JobRefusal(
+                f"receipt {name} = {claimed!r} does not match the value "
+                f"{derived!r} re-derived from the live artifact — the receipt "
+                "misreports its own content (Codex round 30 finding 1)")
+
+
+def derive_live_artifact_facts(cal_packet: dict, workdir) -> dict:
+    """The AWS side of the launch-time full re-verification: reuse the
+    authoritative verifier IN-PROCESS (single source of truth) — fetch the
+    real job + its exact-VersionId KMS-encrypted artifact, re-hash it, and
+    re-run the CloudTrail creation-event + request + metrics checks. Returns
+    the re-derived content facts for cross_check_receipt_content; raises
+    JobRefusal if the authoritative verification itself fails."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import verify_arm2_calibration as v2
+    receipt, extracted, s3_meta, creation_event = v2.live_fetch(
+        cal_packet, workdir)
+    verifier_sha = hashlib.sha256(
+        Path(v2.__file__).read_bytes()).hexdigest()
+    failures, facts = v2.verify_live_bundle(
+        packet=cal_packet, receipt=receipt, extracted=extracted,
+        s3_meta=s3_meta, verifier_script_sha=verifier_sha)
+    failures = list(failures) + v2.verify_creation_event(
+        creation_event, render_request(cal_packet),
+        expected_job_name=f"medzen-b5-{cal_packet['job_id']}",
+        expected_job_arn=str(receipt.get("TrainingJobArn") or ""),
+        expected_principal_role_arn=v2.CALIBRATION_LAUNCH_ROLE_ARN)
+    if failures:
+        raise JobRefusal(
+            "the authoritative live re-verification of the calibration "
+            f"artifact FAILED ({failures[0]}) — refusing to ride this chain")
+    facts["verifier_script_sha256"] = verifier_sha
+    return facts
 
 
 def _hex(value: str, length: int) -> bool:
@@ -1266,6 +1393,16 @@ def main() -> int:
             verify_receipt_against_aws(receipt_record, cal_packet,
                                        session.client("sagemaker"),
                                        session.client("s3"))
+            # Codex round 30 findings 1-2: the request+identity check above is
+            # not enough — re-derive the artifact CONTENT (re-hash the real
+            # KMS-encrypted model by explicit VersionId + re-run the CloudTrail
+            # creation-event/metrics checks via the authoritative verifier) and
+            # require the committed receipt's content to match byte-for-byte, so
+            # a fabricated export/metrics/size cannot ride an above-tier launch.
+            import tempfile
+            _workdir = Path(tempfile.mkdtemp(prefix="arm2-launch-verify-"))
+            _facts = derive_live_artifact_facts(cal_packet, _workdir)
+            cross_check_receipt_content(receipt_record, _facts)
         response = session.client("sagemaker").create_training_job(**request)
         print(json.dumps({"TrainingJobArn": response["TrainingJobArn"]},
                          indent=4))
