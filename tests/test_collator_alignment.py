@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 torch = pytest.importorskip("torch")
+pytest.importorskip("transformers")  # skip cleanly when the HF dep is absent
 from transformers.models.whisper.modeling_whisper import (  # noqa: E402
     shift_tokens_right)
 

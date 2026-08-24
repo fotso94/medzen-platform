@@ -1,11 +1,27 @@
 {
  "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the Arm-2 trainer image is built from the reviewed commit, (2) the in-image distillation tests (tests/test_omniasr_distill.py torch-marked) pass, (3) the image digest is pinned here. The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json.",
+ "acceptance_criteria": [
+  "the run completes 30 steps or fails closed (no silent success)",
+  "separate CTC / KD / total loss are logged per step (KD must be > 0 and finite on preservation batches)",
+  "per-language KD coverage logged: rows and VALID frames contributing to KD per preservation language",
+  "peak GPU memory (torch.cuda.max_memory_allocated) recorded and within the g6.xlarge envelope",
+  "throughput (steps/min, samples/s) recorded",
+  "the merged export loads and serves (readyz) \u2014 no adapter residue, finite weights",
+  "dev-sentinel WER on the frozen lingala/swahili dev slices recorded for a directional read (NOT a promotion signal)"
+ ],
  "cost_ceiling_usd": 10,
  "cost_registry_line": "B5-ARM2-FTCAL-2026-001 (allocation id; the authoritative registry revision + sha travel in the launch intent)",
  "distillation": {
   "design": "platform/decisions/B5-UNIVERSAL-ARM2-DESIGN-2026-001.md",
   "kd_alpha": 0.5,
   "kd_temperature": 1.0,
+  "language_weights": {
+   "english": 0.5,
+   "french": 0.5,
+   "lingala": 1.5,
+   "swahili": 1.5
+  },
+  "language_weights_rationale": "Codex review #18: French/English improved in Arm-1, so a uniform preservation weight could suppress those gains. Heavier weight on the regressed sentinels (lingala, swahili), lighter on the anchors (english, french). These are DRAFT values the comparison confirms.",
   "preservation_languages": [
    "english",
    "french",
@@ -25,6 +41,7 @@
   "MEDZEN_GRAD_ACCUM": "8",
   "MEDZEN_KD_ALPHA": "0.5",
   "MEDZEN_KD_ENABLE": "1",
+  "MEDZEN_KD_LANGUAGE_WEIGHTS": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
   "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
   "MEDZEN_KD_TEACHER_CARD": "medzen_omniASR_CTC_1B_v2",
   "MEDZEN_KD_TEACHER_MODE": "base",
@@ -41,9 +58,11 @@
   "MEDZEN_VARIANT": "ctc",
   "MEDZEN_WARMUP_STEPS": "10"
  },
+ "hyperparameter_selection": "A single 30-step run validates MECHANICS + MEMORY + the KD numerics in-image, but CANNOT scientifically select alpha/temperature/per-language weights. Hyperparameter selection is a SEPARATE, predeclared UNSEALED comparison (a small set of KD settings evaluated on the frozen dev sentinels) authored and reviewed before any full Arm-2 training. This packet is the mechanics/memory gate only.",
  "image_oci_index_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
  "image_tag": "PLACEHOLDER-arm2-ftcal (pin after in-image test pass)",
  "image_uri_with_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+ "in_image_validation": "pipeline/Dockerfile.trainer-omniasr now COPYs pipeline/omniasr_distill.py and tests/test_omniasr_distill.py into BOTH stages and the trainer-test stage RUNS all distillation tests at build (torch present). The image digest is pinned into the committed packet ONLY after that build passes on a native amd64 builder; the KD numerics + fairseq2 (loss, logits, layout) unpacking were validated locally with real torch (19 passed, peak-memory needs CUDA).",
  "instance_type": "ml.g6.xlarge",
  "job_id": "b5-universal-arm2-ftcal-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
@@ -52,6 +71,7 @@
  "max_runtime_seconds": 7200,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
  "purpose": "UNSEALED Arm-2 preservation-aware-distillation CALIBRATION (design B5-UNIVERSAL-ARM2-DESIGN-2026-001). Tiny (30 steps) full-FT + KD anchoring on the 4 preservation sentinels with the FROZEN base teacher, to validate the KD loss numerics, teacher-freeze, alignment, resume and cost BEFORE any full Arm-2 training. NO sealed data, NO promotion, NO deployment. Authorization = the OWNER's approval of the protected arm-launch workflow run bound to this packet's sha + an APPROVED independent-review record + an ACTIVE_RESERVED registry line.",
+ "scope": "MECHANICS_AND_MEMORY_VALIDATION_ONLY",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
  ],

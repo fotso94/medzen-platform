@@ -150,6 +150,7 @@ class TrainerConfig:
     kd_teacher_card: str
     kd_teacher_mode: str
     kd_preservation_languages: tuple[str, ...]
+    kd_language_weights: tuple[tuple[str, float], ...]
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -157,6 +158,7 @@ class TrainerConfig:
         payload["allowed_policies"] = sorted(self.allowed_policies)
         payload["kd_preservation_languages"] = sorted(
             self.kd_preservation_languages)
+        payload["kd_language_weights"] = sorted(self.kd_language_weights)
         payload["checkpoint_dir"] = str(self.checkpoint_dir)
         payload["output_dir"] = str(self.output_dir)
         return payload
@@ -297,27 +299,39 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
 
     # --- Arm-2 KD knobs (bound into the fingerprint so a KD run cannot
     # resume a non-KD checkpoint directory). OFF unless explicitly enabled.
-    kd_enable = env.get("MEDZEN_KD_ENABLE", "").strip() in ("1", "true", "True")
+    # Codex review #18: STRICT boolean — an unrecognised value (e.g. "TRUE",
+    # "yes") must NOT silently disable KD.
+    kd_raw = env.get("MEDZEN_KD_ENABLE", "0").strip().lower()
+    if kd_raw not in ("0", "false", "no", "off", "1", "true", "yes", "on"):
+        raise TrainerRefusal(
+            f"MEDZEN_KD_ENABLE={env.get('MEDZEN_KD_ENABLE')!r} is not a boolean")
+    kd_enable = kd_raw in ("1", "true", "yes", "on")
     if kd_enable:
-        kd_alpha = _number("MEDZEN_KD_ALPHA", "0.5", float, 0.0)
-        if kd_alpha > 1.0:
+        # alpha is a POSITIVE weight — 0 would silently disable KD while the
+        # run still claims to be a KD run (Codex review #18)
+        kd_alpha = _number("MEDZEN_KD_ALPHA", "0.5", float, None)
+        if not (0.0 < kd_alpha <= 1.0):
             raise TrainerRefusal(
-                f"MEDZEN_KD_ALPHA={kd_alpha} exceeds 1.0 — the KD weight is a "
-                "convex mixing coefficient in [0, 1]")
-        kd_temperature = _number("MEDZEN_KD_TEMPERATURE", "1.0", float, 0.0)
+                f"MEDZEN_KD_ALPHA={kd_alpha} must be in (0, 1] when KD is enabled")
+        kd_temperature = _number("MEDZEN_KD_TEMPERATURE", "1.0", float, None)
         if kd_temperature <= 0.0:
             raise TrainerRefusal("MEDZEN_KD_TEMPERATURE must be > 0")
         kd_teacher_mode = env.get("MEDZEN_KD_TEACHER_MODE", "base").strip()
         if kd_teacher_mode != "base":
-            # kw_v1 is alignment-eligible but needs its OWN sha-verified
-            # fairseq2 card + research-prefix staging (its S3 path contains
-            # the screen-forbidden 'approved/asr'); not wired for calibration.
             raise TrainerRefusal(
                 f"MEDZEN_KD_TEACHER_MODE={kd_teacher_mode!r} is not wired — "
                 "Arm-2 calibration is base-teacher-only; a Kinyarwanda-v1 "
                 "teacher requires a reviewed sha-verified card first")
-        kd_teacher_card = env.get("MEDZEN_KD_TEACHER_CARD",
-                                  "").strip() or CTC_CARD
+        # Codex review #18: enforce EXACT teacher == student == pinned CTC_CARD.
+        # A different card would break vocab/frame alignment; only the base is
+        # byte-identical to the student's staged bytes.
+        model_card = env.get("MEDZEN_MODEL_CARD", CTC_CARD)
+        kd_teacher_card = env.get("MEDZEN_KD_TEACHER_CARD", CTC_CARD).strip()
+        if not (kd_teacher_card == model_card == CTC_CARD):
+            raise TrainerRefusal(
+                "KD requires teacher card == student card == the pinned "
+                f"{CTC_CARD} (got teacher={kd_teacher_card!r}, "
+                f"student={model_card!r}) — alignment holds only for the base")
         sentinel_default = "english,french,swahili,lingala"
         pres = tuple(sorted({
             token.strip().lower() for token in
@@ -332,12 +346,41 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                 f"KD preservation languages {unknown} are not in the training "
                 f"language set {sorted(languages)}")
         kd_preservation_languages = pres
+        # Optional per-language KD weights (Codex review #18: one uniform
+        # weight may suppress a real Arm-1 gain like French). Default uniform
+        # 1.0; every named language must be a preservation language and the
+        # weight finite > 0.
+        weights: dict[str, float] = {lang: 1.0 for lang in pres}
+        raw_weights = env.get("MEDZEN_KD_LANGUAGE_WEIGHTS", "").strip()
+        if raw_weights:
+            for pair in raw_weights.split(","):
+                if not pair.strip():
+                    continue
+                if "=" not in pair:
+                    raise TrainerRefusal(
+                        f"MEDZEN_KD_LANGUAGE_WEIGHTS entry {pair!r} is not lang=weight")
+                lang, _, val = pair.partition("=")
+                lang = lang.strip().lower()
+                if lang not in pres:
+                    raise TrainerRefusal(
+                        f"KD weight for {lang!r} which is not a preservation language")
+                try:
+                    weight = float(val)
+                except ValueError as exc:
+                    raise TrainerRefusal(
+                        f"KD weight {val!r} for {lang} is not a number") from exc
+                if not math.isfinite(weight) or weight <= 0.0:
+                    raise TrainerRefusal(
+                        f"KD weight for {lang} must be finite > 0, got {weight}")
+                weights[lang] = weight
+        kd_language_weights = tuple(sorted(weights.items()))
     else:
         kd_alpha = 0.0
         kd_temperature = 1.0
         kd_teacher_mode = "base"
         kd_teacher_card = ""
         kd_preservation_languages = ()
+        kd_language_weights = ()
 
     return TrainerConfig(
         variant=variant,
@@ -373,6 +416,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         kd_teacher_card=kd_teacher_card,
         kd_teacher_mode=kd_teacher_mode,
         kd_preservation_languages=kd_preservation_languages,
+        kd_language_weights=kd_language_weights,
     )
 
 
@@ -751,29 +795,54 @@ def _batch_loss(model, batch):
     return loss / batch["seqs"].shape[0]
 
 
+def _layout_valid_lengths(layout, rows: int) -> list[int]:
+    """Per-row count of VALID (non-padded) frames from a fairseq2 BatchLayout
+    (Codex review #18: padded frames must not contribute to KD). Falls back
+    to the full frame count only if the layout exposes no seq_lens."""
+    lengths = getattr(layout, "seq_lens", None)
+    if lengths is None:
+        raise TrainerRefusal(
+            "encoder output layout exposes no seq_lens — cannot exclude "
+            "padded frames from the KD term")
+    return [int(v) for v in lengths]
+
+
 def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
-                   preservation_languages):
-    """Arm-2 preservation-aware distillation loss (in-image / C3): the
-    student CTC loss PLUS alpha * KD(teacher||student) applied only to the
-    preservation/sentinel-language rows, kept batch-size-normalized so the
-    LR walls still hold. The teacher forward runs under no_grad; alpha
-    absorbs the KD reduction scale (validated by the calibration run)."""
+                   preservation_languages, language_weights):
+    """Arm-2 preservation-aware distillation loss (in-image / C3).
+
+    ONE clean objective (Codex review #18): CTC_mean + alpha * KD_mean.
+    fairseq2 v0.6 Wav2Vec2AsrModel.forward returns (loss, logits, layout) with
+    return_logits=True, and (logits, layout) without targets — so both calls
+    are UNPACKED (a bare tensor was the round-17 crash). KD is a MEAN over
+    only the VALID, preservation-weighted encoder frames; the student and
+    teacher encoder output lengths must match."""
     import torch
 
-    from pipeline.omniasr_distill import kd_loss, preservation_mask
+    from pipeline.omniasr_distill import (DistillationRefusal, kd_loss,
+                                          preservation_mask)
 
-    loss_ctc = model(batch["seqs"], batch["seqs_layout"],
-                     targets=batch["targets"],
-                     targets_layout=batch["targets_layout"])
-    # the CTC head log-probs path (no targets) for BOTH models — the
-    # net-new fairseq2 surface, verified in-container
-    student_logits = model(batch["seqs"], batch["seqs_layout"])
+    loss_ctc, student_logits, student_layout = model(
+        batch["seqs"], batch["seqs_layout"],
+        targets=batch["targets"], targets_layout=batch["targets_layout"],
+        return_logits=True)
     with torch.no_grad():
-        teacher_logits = teacher(batch["seqs"], batch["seqs_layout"])
-    mask = preservation_mask(batch["languages"], preservation_languages)
-    kd = kd_loss(student_logits, teacher_logits,
-                 temperature=temperature, language_mask=mask)
-    return (loss_ctc + alpha * kd) / batch["seqs"].shape[0]
+        teacher_logits, teacher_layout = teacher(
+            batch["seqs"], batch["seqs_layout"])
+    rows = int(student_logits.shape[0])
+    student_lengths = _layout_valid_lengths(student_layout, rows)
+    teacher_lengths = _layout_valid_lengths(teacher_layout, rows)
+    if student_lengths != teacher_lengths:
+        raise DistillationRefusal(
+            "student and teacher encoder output lengths differ — KD frames "
+            "are not aligned")
+    weights = preservation_mask(
+        batch["languages"], preservation_languages,
+        weights=dict(language_weights), strict=True)
+    kd = kd_loss(student_logits, teacher_logits, temperature=temperature,
+                 row_weights=weights, valid_lengths=student_lengths)
+    ctc_mean = loss_ctc / batch["seqs"].shape[0]
+    return ctc_mean + alpha * kd
 
 
 def make_batch_loss(config, teacher):
@@ -787,7 +856,8 @@ def make_batch_loss(config, teacher):
         return _batch_loss_kd(
             model, batch, teacher=teacher, alpha=config.kd_alpha,
             temperature=config.kd_temperature,
-            preservation_languages=config.kd_preservation_languages)
+            preservation_languages=config.kd_preservation_languages,
+            language_weights=config.kd_language_weights)
 
     return _kd_closure
 

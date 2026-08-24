@@ -102,3 +102,40 @@ every teacher parameter is non-trainable.
    in-image distillation tests, pin the image digest into
    `B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json`, then the
    independent reviewer issues `reviews/b5-universal-arm2-ftcal-2026-001.json`.
+
+## Round 18 corrections (Codex review #18)
+
+The first implementation had real defects, fixed here and validated with real
+torch (`tests/test_omniasr_distill.py`: 19 passed, peak-memory needs CUDA):
+
+- **fairseq2 contract:** `_batch_loss_kd` now UNPACKS `(loss, logits, layout)`
+  from one student call with `return_logits=True` and `(logits, layout)` from
+  the teacher — the round-17 code treated the return as a bare tensor and would
+  have crashed on the first batch.
+- **KD reduction:** the term is a MEAN over only the VALID, preservation-
+  weighted encoder frames. The previous code summed over frames but divided by
+  rows (frames-times too large) and included padded frames (making the weight
+  depend on clip length). Student and teacher output lengths must match.
+- **One clear objective:** `CTC_mean + alpha * KD_mean` (both terms cleanly
+  normalized), not the previous double-normalization.
+- **Config hardening:** strict boolean `MEDZEN_KD_ENABLE` (a garbage value
+  refuses, not silently disables); `alpha ∈ (0, 1]` (0 refused); teacher card
+  == student card == pinned `CTC_CARD`; authoritative language tags (a missing
+  tag refuses rather than silently dropping preservation).
+- **Per-language KD weights** (`MEDZEN_KD_LANGUAGE_WEIGHTS`): Arm-1 improved
+  French/English, so a uniform preservation weight could suppress those gains;
+  weights let the comparison put heavier pressure on the regressed sentinels
+  (lingala, swahili) and lighter on the anchors (english, french).
+- **Trainer image:** `Dockerfile.trainer-omniasr` COPYs the module + tests into
+  both stages and RUNS all distillation tests at build.
+
+## Calibration is a two-step gate
+
+1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the
+   KD numerics in-image, separate CTC/KD/total loss, per-language KD coverage,
+   peak GPU memory, throughput, export/serve, and a directional dev-sentinel
+   read. Acceptance criteria are enumerated in the packet.
+2. **Hyperparameter selection** (separate, predeclared UNSEALED comparison): a
+   single run cannot select alpha/temperature/weights scientifically — a small
+   predeclared set of KD settings is compared on the frozen dev sentinels,
+   authored and reviewed before any full Arm-2 training.

@@ -35,14 +35,28 @@ class DistillationRefusal(RuntimeError):
 
 
 def preservation_mask(language_tags: Sequence[Any],
-                      preservation_languages: Sequence[Any]) -> list[float]:
-    """1.0 for rows whose language is a preservation/sentinel language, 0.0
-    otherwise. The KD term is applied ONLY to preservation rows so the
-    student is free to move on the target languages (pidgin, kinyarwanda,
-    ewe) while being held to the teacher on the sentinels."""
+                      preservation_languages: Sequence[Any],
+                      *, weights: dict[str, float] | None = None,
+                      strict: bool = False) -> list[float]:
+    """Per-row KD weight: 0.0 for non-preservation rows, else the language's
+    weight (default 1.0). The KD term is applied ONLY to preservation rows so
+    the student is free to move on the target languages (pidgin, kinyarwanda,
+    ewe) while being held to the teacher on the sentinels. Codex review #18:
+    in ``strict`` mode a MISSING or unknown language tag on a row REFUSES
+    (never silently drops preservation) — the tag must be authoritative."""
     pres = {str(lang).strip().lower() for lang in preservation_languages}
-    return [1.0 if str(tag).strip().lower() in pres else 0.0
-            for tag in language_tags]
+    weight_map = {str(k).strip().lower(): float(v)
+                  for k, v in (weights or {}).items()}
+    out: list[float] = []
+    for tag in language_tags:
+        norm = str(tag).strip().lower()
+        if strict and not norm:
+            raise DistillationRefusal(
+                "a batch row has no authoritative language tag — KD cannot "
+                "decide preservation membership; refusing rather than "
+                "silently dropping the term")
+        out.append(weight_map.get(norm, 1.0) if norm in pres else 0.0)
+    return out
 
 
 def _validated_temperature(temperature: Any) -> float:
@@ -81,7 +95,8 @@ def _softmax(row: Sequence[float]) -> list[float]:
 
 def kd_divergence_reference(student_logits: Sequence[Sequence[float]],
                             teacher_logits: Sequence[Sequence[float]],
-                            *, temperature: float) -> float:
+                            *, temperature: float,
+                            valid_length: int | None = None) -> float:
     """Deterministic, torch-FREE reference numerics for one sequence.
 
     Temperature-scaled KL(teacher || student) averaged over frames, then
@@ -96,9 +111,12 @@ def kd_divergence_reference(student_logits: Sequence[Sequence[float]],
     if len(student_logits) != len(teacher_logits):
         raise DistillationRefusal(
             "KD reference: student and teacher frame counts differ")
+    n_valid = len(student_logits) if valid_length is None else int(valid_length)
     total = 0.0
-    frames = 0
-    for srow, trow in zip(student_logits, teacher_logits):
+    counted = 0
+    for index, (srow, trow) in enumerate(zip(student_logits, teacher_logits)):
+        if index >= n_valid:
+            break                       # padded frames do not contribute
         if len(srow) != len(trow):
             raise DistillationRefusal(
                 "KD reference: student and teacher vocab sizes differ")
@@ -109,40 +127,58 @@ def kd_divergence_reference(student_logits: Sequence[Sequence[float]],
             if p_t > 0.0:
                 kl += p_t * (math.log(p_t) - math.log(max(p_s, 1e-12)))
         total += kl
-        frames += 1
-    if frames == 0:
+        counted += 1
+    if counted == 0:
         return 0.0
-    return (total / frames) * (temp * temp)
+    # MEAN over valid frames (Codex review #18: dividing by rows made this
+    # frames-times too large) then Hinton T^2 scaling
+    return (total / counted) * (temp * temp)
 
 
 def kd_loss(student_logits: Any, teacher_logits: Any, *,
-            temperature: float, language_mask: Sequence[float]) -> Any:
-    """DIFFERENTIABLE torch KD term (in-image / C3 only).
+            temperature: float, row_weights: Sequence[float],
+            valid_lengths: Sequence[int]) -> Any:
+    """DIFFERENTIABLE torch KD term (in-image / C3 only). Logits are
+    [rows, frames, vocab].
 
     Upcasts bf16 logits to fp32 for a stable softmax/KL, computes
-    KL(teacher || student) * T^2 per frame, masks to preservation-language
-    rows and averages over the retained rows. The teacher log-probs are
-    detached (the teacher is fixed). Alignment and temperature are validated
-    BEFORE any tensor math so a mis-shaped or degenerate KD refuses cleanly.
+    KL(teacher || student) per frame, and reduces as a MEAN over ONLY the
+    VALID (non-padded), preservation-weighted frames — Codex review #18:
+    (a) dividing by rows made the term frames-times too large; (b) padded
+    frames (discarded layouts) must not contribute or the effective KD
+    weight would depend on clip length. row_weights is the per-row
+    preservation weight (0 = excluded); valid_lengths is the per-row count of
+    real frames (from the encoder output layout, identical for student and
+    teacher). Alignment and temperature are validated BEFORE any tensor math.
     """
     import torch
     import torch.nn.functional as functional
 
     assert_kd_alignment(tuple(student_logits.shape), tuple(teacher_logits.shape))
+    if student_logits.dim() != 3:
+        raise DistillationRefusal(
+            f"KD expects [rows, frames, vocab] logits, got {tuple(student_logits.shape)}")
     temp = _validated_temperature(temperature)
+    rows, frames = int(student_logits.shape[0]), int(student_logits.shape[1])
+    if len(row_weights) != rows or len(valid_lengths) != rows:
+        raise DistillationRefusal(
+            "KD row_weights/valid_lengths length must equal the row count")
     student = student_logits.float() / temp
     teacher = teacher_logits.float() / temp
     log_student = functional.log_softmax(student, dim=-1)
     log_teacher = functional.log_softmax(teacher.detach(), dim=-1)
     probs_teacher = log_teacher.exp()
-    # KL(teacher || student), summed over the vocab dim -> per-frame KL
-    per_frame_kl = (probs_teacher * (log_teacher - log_student)).sum(dim=-1)
-    mask = torch.as_tensor(language_mask, dtype=per_frame_kl.dtype,
-                           device=per_frame_kl.device)
-    while mask.dim() < per_frame_kl.dim():
-        mask = mask.unsqueeze(-1)
-    denominator = mask.sum().clamp_min(1.0)
-    kd = (per_frame_kl * mask).sum() / denominator
+    per_frame_kl = (probs_teacher * (log_teacher - log_student)).sum(dim=-1)  # [rows, frames]
+    device, dtype = per_frame_kl.device, per_frame_kl.dtype
+    frame_index = torch.arange(frames, device=device).unsqueeze(0)           # [1, frames]
+    lengths = torch.as_tensor([int(v) for v in valid_lengths],
+                              device=device).unsqueeze(1)                    # [rows, 1]
+    valid = (frame_index < lengths).to(dtype)                                # [rows, frames]
+    weights = torch.as_tensor([float(w) for w in row_weights], dtype=dtype,
+                              device=device).unsqueeze(1)                    # [rows, 1]
+    selected = valid * weights                                              # [rows, frames]
+    denominator = selected.sum().clamp_min(1.0)
+    kd = (per_frame_kl * selected).sum() / denominator
     return kd * (temp * temp)
 
 
