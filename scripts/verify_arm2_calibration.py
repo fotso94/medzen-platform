@@ -49,6 +49,11 @@ IDENTITY_FIELDS = ("run_fingerprint", "training_job_name",
 # read another account's artifacts)
 MEDZEN_ACCOUNT = "558069890522"
 MEDZEN_REGION = "eu-central-1"
+# the dedicated calibration-launch role the Arm-2 calibration MUST run under
+# (Codex #26 finding 6; created by infra/arm2_calibration_role.tf). The live
+# verifier binds the CloudTrail principal to exactly this role.
+CALIBRATION_LAUNCH_ROLE_ARN = (
+    "arn:aws:iam::558069890522:role/medzen-arm2-calibration-role")
 # the ONLY members live mode extracts from model.tar.gz (path-traversal-safe)
 # with per-member size caps (Codex #23: unbounded extraction was a
 # disk-exhaustion path)
@@ -90,6 +95,14 @@ UNRENDERED_INERT_KEYS = frozenset({
 CREATE_ONLY_GOVERNED = frozenset({"SessionChainingConfig", "Tags"})
 
 
+def required_free_bytes(declared_archive_bytes: int) -> int:
+    """Codex #26 finding 5: peak disk = the compressed archive on disk PLUS the
+    full aggregate extraction cap (extracted bytes are NOT bounded by the
+    compressed size) PLUS the safety margin — not archive*2."""
+    return (int(declared_archive_bytes) + ARCHIVE_MAX_AGGREGATE_BYTES
+            + DISK_SAFETY_MARGIN_BYTES)
+
+
 def stream_with_cap(body, dest: Path, cap: int, *, label: str) -> int:
     """Stream a response body to disk, refusing past `cap` bytes — a lying
     ContentLength cannot exhaust the disk mid-download."""
@@ -116,6 +129,10 @@ CANONICAL_SCORER = ("preproc=resample16k+utterance-znorm; "
                     "skip-special-tokens; "
                     "normalizer=pipeline.normalizers.for_language; "
                     "metric=corpus-word-error-rate/3")
+# the exact pinned upstream decoder the mandatory in-run parity probe names
+# (kept in lock-step with pipeline.omniasr_calibrate.UPSTREAM_PIPELINE_ID)
+CANONICAL_UPSTREAM_PIPELINE = ("omnilingual_asr.models.inference.pipeline."
+                               "ASRInferencePipeline@145a12a6")
 import re as _re
 
 _HEX64 = _re.compile(r"^[0-9a-f]{64}$")
@@ -280,13 +297,35 @@ def verify_calibration(metrics: dict[str, Any],
         if parity.get("upstream_equal") is not True:
             fail(f"parity.upstream_equal is {parity.get('upstream_equal')!r} "
                  "— the scorer does not match the pinned upstream decoder")
-        if "omnilingual" not in str(parity.get("upstream") or ""):
-            fail("parity.upstream does not name the pinned omnilingual_asr "
-                 "pipeline")
+        # Codex #26 finding 4: EXACT identities, not a substring
+        if str(parity.get("upstream")) != CANONICAL_UPSTREAM_PIPELINE:
+            fail(f"parity.upstream {parity.get('upstream')!r} != the pinned "
+                 f"{CANONICAL_UPSTREAM_PIPELINE!r}")
+        if str(parity.get("scorer")) != CANONICAL_SCORER:
+            fail(f"parity.scorer {parity.get('scorer')!r} != the canonical "
+                 "scorer")
         rows_checked = parity.get("rows_checked") or {}
+        parity_rows = parity.get("rows") or {}
+        # the per-language rows the WER was scored on
+        results = metrics.get("dev_sentinel_results") or {}
         for language in verifier_spec["dev_sentinel_languages"]:
             if int(rows_checked.get(language) or 0) < 1:
                 fail(f"parity checked no rows for {language!r}")
+            receipts = parity_rows.get(language) or []
+            if len(receipts) != int(rows_checked.get(language) or 0):
+                fail(f"parity.rows[{language!r}] count != rows_checked")
+            scored = {str(r.get("audio_checksum_sha256"))
+                      for r in (results.get(language) or {}).get("rows", [])}
+            for receipt in receipts:
+                checksum = str(receipt.get("audio_checksum_sha256"))
+                if not _HEX64.fullmatch(str(receipt.get("hyp_sha256") or "")):
+                    fail(f"parity row {checksum[:12]} ({language}) has no "
+                         "hypothesis hash")
+                # the parity-proven rows must be a subset of the SCORED rows —
+                # parity on rows the WER never touched proves nothing
+                if scored and checksum not in scored:
+                    fail(f"parity row {checksum[:12]} ({language}) is not among "
+                         "the scored dev rows")
 
     # (8) IDENTITY BINDING (Codex review #20 F5, hardened after the adversarial
     # pass found presence-only checks let a FABRICATED file through). Scope,
@@ -637,30 +676,66 @@ def _camel(key: str) -> str:
     return key[:1].lower() + key[1:] if key else key
 
 
+# Codex #26 finding 2: EVERY real MedZen CreateTrainingJob record carries
+# service-added fields the render never sent (confirmed against a live event).
+# The comparison is TWO-SIDED — every rendered field present+equal, and the
+# ONLY tolerated extras are these empirically-observed inert defaults with
+# their exact values (all False; anywhere in the tree, since SageMaker injects
+# them at the level their field belongs). `trainingJobArn` is special: an extra
+# by that name must equal the job's real ARN, bound from the receipt.
+SERVICE_ADDED_INERT_FALSE = frozenset({
+    "disableEFA", "withWarmPoolValidationError",
+    "enableSageMakerMetricsTimeSeries", "removeJobNameFromS3OutputPath",
+    "disableModelUpload", "useReservedCapacity",
+})
+
+
 def verify_creation_request_parameters(
-        params: dict[str, Any], expected_request: dict[str, Any]) -> list[str]:
-    """Codex #25 finding 1: create-only fields (SessionChainingConfig) never
-    appear in DescribeTrainingJob, so the receipt cannot prove their absence.
-    The CloudTrail CreateTrainingJob record carries the ORIGINAL request
-    parameters — every key present there must exist in the launcher's rendered
-    request with an equal value, and NOTHING may appear that the render never
-    sent (this closes every create-only and future-field gap at create time)."""
+        params: dict[str, Any], expected_request: dict[str, Any],
+        *, expected_job_arn: str | None = None) -> list[str]:
+    """Codex #26 findings 1-2: TWO-SIDED comparison of the CloudTrail
+    CreateTrainingJob requestParameters against the launcher's rendered request.
+    Every RENDERED field must be PRESENT and EQUAL (a record with only a correct
+    job name no longer passes), and every EXTRA field must be an
+    empirically-observed inert SageMaker default with its exact value (a
+    genuine record's service defaults no longer refuse). Create-only fields the
+    render never sent (e.g. sessionChainingConfig with tag chaining on) are
+    caught here at create time."""
     failures: list[str] = []
-    expected_by_camel = {_camel(k): v for k, v in expected_request.items()}
+
+    def extra_ok(key: str, value: Any) -> bool:
+        camel = _camel(key)
+        if camel in SERVICE_ADDED_INERT_FALSE:
+            return value is False
+        if camel == "trainingJobArn":
+            return expected_job_arn is not None and value == expected_job_arn
+        return False
 
     def compare(exp: Any, act: Any, path: str) -> None:
-        if isinstance(exp, dict) and isinstance(act, dict):
-            exp_by_camel = {_camel(k): v for k, v in exp.items()}
-            for key, value in act.items():
-                if _camel(key) not in exp_by_camel:
+        if isinstance(exp, dict):
+            if not isinstance(act, dict):
+                failures.append(f"creation record {path} is not an object")
+                return
+            act_by_camel = {_camel(k): (k, v) for k, v in act.items()}
+            for ekey, evalue in exp.items():
+                camel = _camel(ekey)
+                if camel not in act_by_camel:            # RENDERED field missing
                     failures.append(
-                        f"creation record carries {path}.{key} which the "
-                        "rendered request never sent")
+                        f"creation record {path}.{ekey} is ABSENT — the "
+                        "rendered request set it (a partial record must fail)")
                 else:
-                    compare(exp_by_camel[_camel(key)], value,
-                            f"{path}.{key}")
-        elif isinstance(exp, list) and isinstance(act, list):
-            if path.lower().endswith(("securitygroupids", "subnets")):
+                    compare(evalue, act_by_camel[camel][1], f"{path}.{ekey}")
+            rendered_camels = {_camel(k) for k in exp}
+            for akey, avalue in act.items():             # EXTRA fields
+                if _camel(akey) not in rendered_camels and \
+                        not extra_ok(akey, avalue):
+                    failures.append(
+                        f"creation record {path}.{akey}={avalue!r} was never "
+                        "rendered and is not a tolerated inert default")
+        elif isinstance(exp, list):
+            if not isinstance(act, list):
+                failures.append(f"creation record {path} is not a list")
+            elif path.lower().endswith(("securitygroupids", "subnets")):
                 if sorted(map(str, exp)) != sorted(map(str, act)):
                     failures.append(
                         f"creation record {path} {act!r} != rendered {exp!r}")
@@ -678,18 +753,50 @@ def verify_creation_request_parameters(
 
     if not isinstance(params, dict) or not params:
         return ["CloudTrail creation record has no requestParameters"]
-    for key, value in params.items():
-        camel = _camel(key)
-        if camel not in expected_by_camel:
-            failures.append(
-                f"creation record carries top-level {key!r} which the "
-                "rendered request never sent (create-only smuggling)")
-        else:
-            compare(expected_by_camel[camel], value, key)
-    # the record must at least name the job — an empty/foreign record proves
-    # nothing
-    if _camel("TrainingJobName") not in {_camel(k) for k in params}:
-        failures.append("creation record lacks trainingJobName")
+    compare(expected_request, params, "requestParameters")
+    return failures
+
+
+def verify_creation_event(event: dict[str, Any], expected_request: dict[str, Any],
+                          *, expected_job_name: str, expected_job_arn: str,
+                          expected_principal_role_arn: str) -> list[str]:
+    """Codex #26 finding 2: the CloudTrail ENVELOPE proves WHICH role launched
+    the job, in the right account/region, successfully — the requestParameters
+    alone do not. Checks event source/name, region, account, no error, the
+    response + request ARN, and the session-issuer principal, then delegates the
+    two-sided requestParameters comparison."""
+    failures: list[str] = []
+
+    def fail(msg: str) -> None:
+        failures.append(msg)
+
+    if str(event.get("eventName")) != "CreateTrainingJob":
+        fail(f"event is {event.get('eventName')!r}, not CreateTrainingJob")
+    if str(event.get("eventSource")) != "sagemaker.amazonaws.com":
+        fail(f"eventSource {event.get('eventSource')!r} is not sagemaker")
+    if str(event.get("awsRegion")) != MEDZEN_REGION:
+        fail(f"event awsRegion {event.get('awsRegion')!r} != {MEDZEN_REGION}")
+    if str(event.get("recipientAccountId")) != MEDZEN_ACCOUNT:
+        fail(f"event recipientAccountId {event.get('recipientAccountId')!r} "
+             f"!= {MEDZEN_ACCOUNT}")
+    if event.get("errorCode") or event.get("errorMessage"):
+        fail(f"the creation event carries an error "
+             f"({event.get('errorCode')!r}) — it did not succeed")
+    response = event.get("responseElements") or {}
+    if str(response.get("trainingJobArn")) != expected_job_arn:
+        fail(f"event responseElements.trainingJobArn "
+             f"{response.get('trainingJobArn')!r} != {expected_job_arn!r}")
+    identity = event.get("userIdentity") or {}
+    issuer = (identity.get("sessionContext") or {}).get("sessionIssuer") or {}
+    if str(issuer.get("arn")) != expected_principal_role_arn:
+        fail(f"event was launched by {issuer.get('arn')!r}, not the expected "
+             f"calibration launch role {expected_principal_role_arn!r}")
+    params = event.get("requestParameters") or {}
+    if str(params.get("trainingJobName")) != expected_job_name:
+        fail(f"requestParameters.trainingJobName {params.get('trainingJobName')!r}"
+             f" != {expected_job_name!r}")
+    failures.extend(verify_creation_request_parameters(
+        params, expected_request, expected_job_arn=expected_job_arn))
     return failures
 
 
@@ -846,32 +953,54 @@ def select_execution_window_version(versions: list[dict[str, Any]],
     return in_window[0]
 
 
-def fetch_creation_request(session, job_name: str) -> dict[str, Any]:
-    """Fetch the CloudTrail CreateTrainingJob record's requestParameters for
-    this job (management events; delivery can lag ~15 min after creation).
-    Exactly one record is required."""
+def fetch_creation_event(session, job_name: str, creation_time,
+                         *, window_seconds: int = 1800) -> dict[str, Any]:
+    """Fetch the SUCCESSFUL CloudTrail CreateTrainingJob event for this job.
+
+    Codex #26 finding 1: a real SageMaker job's CloudTrail record has an EMPTY
+    Resources list, so a ResourceName lookup returns ZERO — a genuine job would
+    fail verification. Query by EventName within the job's creation window
+    instead, decode each event, and filter by requestParameters.trainingJobName.
+    Codex #26 finding 4: among matches, keep only SUCCESSFUL events (no
+    errorCode) so a failed-then-retried create cannot supply a stale record;
+    exactly one successful event is required."""
+    import datetime as _dt
+
+    def as_dt(value):
+        if isinstance(value, _dt.datetime):
+            return value
+        return _dt.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+
+    center = as_dt(creation_time)
+    lo = center - _dt.timedelta(seconds=window_seconds)
+    hi = center + _dt.timedelta(seconds=window_seconds)
     trail = session.client("cloudtrail")
-    events = []
+    matches: list[dict[str, Any]] = []
     token = None
     while True:
-        kwargs = {"LookupAttributes": [
-            {"AttributeKey": "ResourceName", "AttributeValue": job_name}]}
+        kwargs = {
+            "LookupAttributes": [{"AttributeKey": "EventName",
+                                  "AttributeValue": "CreateTrainingJob"}],
+            "StartTime": lo, "EndTime": hi}
         if token:
             kwargs["NextToken"] = token
         page = trail.lookup_events(**kwargs)
-        events.extend(e for e in (page.get("Events") or [])
-                      if e.get("EventName") == "CreateTrainingJob")
+        for entry in page.get("Events") or []:
+            detail = json.loads(entry["CloudTrailEvent"])
+            params = detail.get("requestParameters") or {}
+            if str(params.get("trainingJobName")) == job_name \
+                    and not detail.get("errorCode"):
+                matches.append(detail)
         token = page.get("NextToken")
         if not token:
             break
-    if len(events) != 1:
+    if len(matches) != 1:
         raise SystemExit(
-            f"expected exactly ONE CloudTrail CreateTrainingJob record for "
-            f"{job_name}, found {len(events)} — management-event delivery "
-            "can lag ~15 minutes; re-run once it lands (zero), or the job "
-            "was created more than once (multiple)")
-    detail = json.loads(events[0]["CloudTrailEvent"])
-    return dict(detail.get("requestParameters") or {})
+            f"expected exactly ONE SUCCESSFUL CloudTrail CreateTrainingJob "
+            f"event for {job_name} in [{lo.isoformat()} .. {hi.isoformat()}], "
+            f"found {len(matches)} — management-event delivery can lag ~15 min "
+            "(re-run once it lands), or the job name was created more than once")
+    return matches[0]
 
 
 def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
@@ -934,11 +1063,13 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         raise SystemExit(
             f"model.tar.gz declares {declared} bytes, over the "
             f"{ARCHIVE_MAX_BYTES} cap — refusing disk exhaustion")
-    # Codex #25 finding 3: preflight the runner's ACTUAL free disk — archive
-    # + extraction + safety margin must fit before a byte is streamed
+    # Codex #26 finding 5: the peak footprint is the compressed archive PLUS
+    # the full aggregate extraction cap PLUS the margin (extracted bytes are
+    # NOT bounded by the compressed size — a well-compressed archive extracts
+    # to much more), so preflight archive + aggregate-extraction + margin.
     import shutil as _shutil
     free = _shutil.disk_usage(workdir).free
-    needed = declared * 2 + DISK_SAFETY_MARGIN_BYTES
+    needed = required_free_bytes(declared)
     if free < needed:
         raise SystemExit(
             f"workdir has {free} bytes free; archive + extraction need "
@@ -956,8 +1087,9 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         "ContentLength": response.get("ContentLength"),
     }
     extracted = safe_extract_bundle(tar_path, workdir / "bundle")
-    creation_request = fetch_creation_request(session, job_name)
-    return receipt, extracted, s3_meta, creation_request
+    creation_event = fetch_creation_event(
+        session, job_name, receipt.get("CreationTime"))
+    return receipt, extracted, s3_meta, creation_event
 
 
 def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
@@ -1095,18 +1227,25 @@ def main(argv: list[str] | None = None) -> int:
         import tempfile
         workdir = args.workdir or Path(tempfile.mkdtemp(prefix="arm2-verify-"))
         workdir.mkdir(parents=True, exist_ok=True)
-        receipt, extracted, s3_meta, creation_request = live_fetch(
+        receipt, extracted, s3_meta, creation_event = live_fetch(
             packet, workdir)
         failures, facts = verify_live_bundle(
             packet=packet, receipt=receipt, extracted=extracted,
             s3_meta=s3_meta, verifier_script_sha=verifier_sha)
-        # Codex #25 finding 1: create-only fields are provable only in the
-        # CloudTrail creation record — nothing unrendered may appear there
+        # Codex #26 findings 1-2: the CloudTrail creation event proves which
+        # role created the job, in the right account/region, successfully, with
+        # a two-sided requestParameters match (create-only smuggling caught).
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from b5_sagemaker_job import render_request as _render
-        failures.extend(verify_creation_request_parameters(
-            creation_request, _render(packet)))
-        facts["creation_record_verified"] = True
+        failures.extend(verify_creation_event(
+            creation_event, _render(packet),
+            expected_job_name=expected_job_name or "",
+            expected_job_arn=str(receipt.get("TrainingJobArn") or ""),
+            expected_principal_role_arn=CALIBRATION_LAUNCH_ROLE_ARN))
+        facts["creation_event_verified"] = True
+        facts["launch_principal"] = (
+            (creation_event.get("userIdentity") or {}).get("sessionContext")
+            or {}).get("sessionIssuer", {}).get("arn")
         report = {
             "verdict": "PASS" if not failures else "FAIL",
             "mode": "live",

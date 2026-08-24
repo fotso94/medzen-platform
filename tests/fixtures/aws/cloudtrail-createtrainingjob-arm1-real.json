@@ -1,0 +1,108 @@
+{
+ "awsRegion": "eu-central-1",
+ "eventName": "CreateTrainingJob",
+ "eventSource": "sagemaker.amazonaws.com",
+ "eventTime": "2026-08-21T21:38:48Z",
+ "eventVersion": "1.11",
+ "managementEvent": true,
+ "recipientAccountId": "558069890522",
+ "requestParameters": {
+  "algorithmSpecification": {
+   "containerArguments": [
+    "-m",
+    "pipeline.omniasr_train"
+   ],
+   "containerEntrypoint": [
+    "/opt/venv/bin/python"
+   ],
+   "enableSageMakerMetricsTimeSeries": false,
+   "trainingImage": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:059f4bfb27d2dc5aeca8a5f609398f3590379bdf0a8e40c6b59680cf02507a7b",
+   "trainingInputMode": "File"
+  },
+  "checkpointConfig": {
+   "localPath": "/opt/ml/checkpoints",
+   "s3Uri": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/checkpoints"
+  },
+  "disableEFA": false,
+  "enableInterContainerTrafficEncryption": false,
+  "enableManagedSpotTraining": false,
+  "enableNetworkIsolation": false,
+  "environment": {
+   "MEDZEN_AUDIO_CAP_HOURS": "100",
+   "MEDZEN_BATCH_SIZE": "2",
+   "MEDZEN_CHECKPOINT_EVERY": "2000",
+   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+   "MEDZEN_EXPECT_EXCLUDED": "1579",
+   "MEDZEN_GRAD_ACCUM": "8",
+   "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+   "MEDZEN_LR": "1e-5",
+   "MEDZEN_LR_SCHEDULE": "constant",
+   "MEDZEN_MANIFEST_VERSION": "gb9",
+   "MEDZEN_MAX_STEPS": "40000",
+   "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+   "MEDZEN_SEED": "20260820",
+   "MEDZEN_TEMPERATURE": "0.5",
+   "MEDZEN_TRAIN_MODE": "full",
+   "MEDZEN_VARIANT": "ctc",
+   "MEDZEN_WARMUP_STEPS": "500"
+  },
+  "outputDataConfig": {
+   "disableModelUpload": false,
+   "kmsKeyId": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "removeJobNameFromS3OutputPath": false,
+   "s3OutputPath": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output"
+  },
+  "resourceConfig": {
+   "instanceCount": 1,
+   "instanceType": "ml.g6.xlarge",
+   "useReservedCapacity": false,
+   "volumeSizeInGB": 100
+  },
+  "roleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+  "stoppingCondition": {
+   "maxRuntimeInSeconds": 144000
+  },
+  "tags": [
+   {
+    "key": "medzen:classification",
+    "value": "OFFLINE_TRAINING_PUBLIC_RESEARCH_NO_PHI"
+   },
+   {
+    "key": "medzen:cost-registry",
+    "value": "B5-ARM1-2026-001 allocation id the AUTHORITATIVE registry revision + sha travel in the launch intent never in this packet  Codex review 24: revision tags here go stale"
+   },
+   {
+    "key": "medzen:job",
+    "value": "b5-universal-arm1-2026-005"
+   },
+   {
+    "key": "medzen-tier",
+    "value": "arm"
+   }
+  ],
+  "trainingJobArn": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm1-2026-005",
+  "trainingJobName": "medzen-b5-b5-universal-arm1-2026-005",
+  "vpcConfig": {
+   "securityGroupIds": [
+    "sg-0fee72d218ac002a7"
+   ],
+   "subnets": [
+    "subnet-00232b25bc1ac407a"
+   ]
+  },
+  "withWarmPoolValidationError": false
+ },
+ "responseElements": {
+  "trainingJobArn": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm1-2026-005"
+ },
+ "userIdentity": {
+  "accountId": "558069890522",
+  "arn": "arn:aws:sts::558069890522:assumed-role/medzen-arm-launch-role/GitHubActions",
+  "sessionContext": {
+   "sessionIssuer": {
+    "arn": "arn:aws:iam::558069890522:role/medzen-arm-launch-role"
+   }
+  },
+  "type": "AssumedRole"
+ }
+}

@@ -1,0 +1,88 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "DescribeB5TrainingJobs",
+   "Effect": "Allow",
+   "Action": "sagemaker:DescribeTrainingJob",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+  },
+  {
+   "Sid": "CreateOnlyTheArm2CalibrationJobUnderHardConditions",
+   "Effect": "Allow",
+   "Action": "sagemaker:CreateTrainingJob",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-ftcal-2026-001",
+   "Condition": {
+    "StringEquals": {
+     "aws:RequestTag/medzen-tier": "calibration",
+     "sagemaker:OutputKmsKeyArn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+    },
+    "ForAllValues:StringEquals": {
+     "sagemaker:InstanceTypes": [
+      "ml.g6.xlarge"
+     ],
+     "sagemaker:VpcSubnets": [
+      "subnet-00232b25bc1ac407a"
+     ],
+     "sagemaker:VpcSecurityGroupIds": [
+      "sg-0fee72d218ac002a7"
+     ]
+    },
+    "NumericLessThanEquals": {
+     "sagemaker:MaxRuntimeInSeconds": "7200"
+    },
+    "Null": {
+     "sagemaker:InstanceTypes": "false",
+     "sagemaker:VpcSubnets": "false",
+     "sagemaker:VpcSecurityGroupIds": "false"
+    }
+   }
+  },
+  {
+   "Sid": "NoRemoteDebugEver",
+   "Effect": "Deny",
+   "Action": [
+    "sagemaker:CreateTrainingJob",
+    "sagemaker:UpdateTrainingJob"
+   ],
+   "Resource": "*",
+   "Condition": {
+    "Bool": {
+     "sagemaker:EnableRemoteDebug": "true"
+    }
+   }
+  },
+  {
+   "Sid": "TagOnlyTheArm2CalibrationJob",
+   "Effect": "Allow",
+   "Action": "sagemaker:AddTags",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-ftcal-2026-001"
+  },
+  {
+   "Sid": "PassOnlyTheTrainerRoleToSageMaker",
+   "Effect": "Allow",
+   "Action": "iam:PassRole",
+   "Resource": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+   "Condition": {
+    "StringEquals": {
+     "iam:PassedToService": "sagemaker.amazonaws.com"
+    }
+   }
+  },
+  {
+   "Sid": "ReadExactlyTheArm2CalibrationArtifact",
+   "Effect": "Allow",
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Resource": "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-ftcal-2026-001/output/*"
+  },
+  {
+   "Sid": "DecryptWithTheCampaignKeyOnly",
+   "Effect": "Allow",
+   "Action": "kms:Decrypt",
+   "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  }
+ ]
+}

@@ -390,13 +390,17 @@ def _preprocess_wave(audio, sr: int):
     by the mandatory in-run parity probe (_parity_probe) — if it ever drifts
     from upstream, parity fails and the calibration refuses."""
     import torch
+    import torch.nn.functional as functional
 
     wave = torch.as_tensor(audio, dtype=torch.float32)
     if int(sr) != 16000:
         import torchaudio.functional as taf
         wave = taf.resample(wave, int(sr), 16000)
-    wave = (wave - wave.mean()) / torch.sqrt(wave.var() + 1e-5)
-    return wave
+    # Codex #26 finding 3: match the pinned upstream EXACTLY — Meta's
+    # audio.py uses layer_norm(waveform, waveform.shape) (POPULATION variance,
+    # eps 1e-5), not sample variance (wave.var() is unbiased and drifted by
+    # ~1.4e-4 on 16k samples, more on shorter inputs).
+    return functional.layer_norm(wave, wave.shape, eps=1e-5)
 
 
 def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
@@ -427,11 +431,13 @@ def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
     cache = Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache"))
     root = Path(__file__).resolve().parents[1]
     rows_checked: dict[str, int] = {}
+    row_receipts: dict[str, list] = {}
     for language, rel in sorted(dev_files.items()):
         norm = for_language(language)
         rows = [json.loads(line)
                 for line in (root / rel).read_text().splitlines()
                 if line.strip()][:rows_per_language]
+        row_receipts[language] = []
         for row in rows:
             audio_path = fetch_audio(cli, row, cache)
             audio, sr = sf.read(audio_path, dtype="float32", always_2d=False)
@@ -456,12 +462,18 @@ def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
                     f"{row['audio_checksum_sha256'][:12]}: ours={ours!r} vs "
                     f"upstream={theirs!r} — the scorer does not match the "
                     "pinned pipeline; refusing to score with it")
+            # Codex #26 finding 4: bind the checked row's checksum + the agreed
+            # hypothesis hash so the receipt names WHICH rows proved parity
+            row_receipts[language].append({
+                "audio_checksum_sha256": row["audio_checksum_sha256"],
+                "hyp_sha256": _sha256_bytes(ours.encode())})
         rows_checked[language] = len(rows)
     del upstream
     if device is not None and str(device).startswith("cuda"):
         torch.cuda.empty_cache()
     return {"upstream_equal": True, "upstream": UPSTREAM_PIPELINE_ID,
-            "rows_checked": rows_checked, "scorer": SCORER_ID}
+            "rows_checked": rows_checked, "rows": row_receipts,
+            "scorer": SCORER_ID}
 
 
 def _load_export_weights(model, checkpoint_path: Path) -> None:

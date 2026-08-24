@@ -90,6 +90,12 @@ def _good_artifact_base(steps: int = 30) -> dict:
         dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13})
 
 
+def _first_checksum(language: str) -> str:
+    decl = json.loads(_PACKET.read_bytes())["result_verifier"]["dev_manifests"]
+    first = (_REPO / decl[language]["path"]).read_text().splitlines()[0]
+    return json.loads(first)["audio_checksum_sha256"]
+
+
 def _good_artifact(steps: int = 30) -> dict:  # noqa: F811 (parity-aware)
     art = _good_artifact_base(steps)
     art["parity"] = {
@@ -97,6 +103,9 @@ def _good_artifact(steps: int = 30) -> dict:  # noqa: F811 (parity-aware)
         "upstream": ("omnilingual_asr.models.inference.pipeline."
                      "ASRInferencePipeline@145a12a6"),
         "rows_checked": {"lingala": 1, "swahili": 1},
+        "rows": {lang: [{"audio_checksum_sha256": _first_checksum(lang),
+                         "hyp_sha256": _hashlib.sha256(lang.encode()).hexdigest()}]
+                 for lang in ("lingala", "swahili")},
         "scorer": CANONICAL_SCORER,
     }
     return art
@@ -1203,51 +1212,248 @@ def test_botocore_model_every_field_is_governed():
         f"{sorted(create_only - CREATE_ONLY_GOVERNED)}")
 
 
-def test_creation_request_parameters_close_create_only_gaps():
-    """Codex #25 finding 1: SessionChainingConfig never appears in Describe —
-    the CloudTrail creation record is where create-only smuggling is caught."""
+def _as_camel(obj):
+    if isinstance(obj, dict):
+        return {k[:1].lower() + k[1:]: _as_camel(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_as_camel(v) for v in obj]
+    return obj
+
+
+_JOB_ARN = ("arn:aws:sagemaker:eu-central-1:558069890522:training-job/"
+            + _JOB_NAME)
+_SERVICE_ADDED = {
+    "disableEFA": False, "withWarmPoolValidationError": False,
+    "trainingJobArn": _JOB_ARN}
+
+
+def _real_shaped_params(request):
+    """A real MedZen creation record's requestParameters: the rendered request
+    (camelCase) PLUS the empirically-observed inert SageMaker defaults, both
+    top-level and NESTED (confirmed against a live event)."""
+    params = _as_camel(request)
+    params.update(_SERVICE_ADDED)
+    params["algorithmSpecification"]["enableSageMakerMetricsTimeSeries"] = False
+    params["resourceConfig"]["useReservedCapacity"] = False
+    return params
+
+
+def test_creation_request_comparison_is_two_sided():
+    """Codex #26 finding 2: every RENDERED field must be present+equal, and the
+    ONLY tolerated extras are the empirically-observed inert defaults — a
+    genuine record (with those defaults) passes, a partial record fails, and
+    smuggled/altered fields fail."""
     from b5_sagemaker_job import render_request
     from verify_arm2_calibration import verify_creation_request_parameters
-    packet = _launchable_packet()
-    request = render_request(packet)
+    request = render_request(_launchable_packet())
 
-    def as_camel(obj):
-        if isinstance(obj, dict):
-            return {k[:1].lower() + k[1:]: as_camel(v) for k, v in obj.items()}
-        if isinstance(obj, list):
-            return [as_camel(v) for v in obj]
-        return obj
+    # a REAL-shaped record (rendered + service defaults, top-level AND nested)
+    good = _real_shaped_params(request)
+    assert verify_creation_request_parameters(
+        good, request, expected_job_arn=_JOB_ARN) == []
 
-    good = as_camel(request)
-    assert verify_creation_request_parameters(good, request) == []
-    # create-only smuggling: sessionChainingConfig in the creation record
-    smuggled = dict(good, sessionChainingConfig={
-        "enableSessionTagChaining": True})
-    failures = verify_creation_request_parameters(smuggled, request)
-    assert any("sessionChainingConfig" in f for f in failures)
-    # unknown/future field
-    unknown = dict(good, futureConfig={"x": 1})
-    assert any("futureConfig" in f for f in
-               verify_creation_request_parameters(unknown, request))
-    # drifted value inside a nested block
-    drifted = as_camel(request)
-    drifted["algorithmSpecification"]["containerEntrypoint"] = ["/bin/sh"]
-    assert any("containerEntrypoint" in f for f in
-               verify_creation_request_parameters(drifted, request))
+    # partial record (only the job name) must FAIL now (was a bypass)
+    partial = {"trainingJobName": _JOB_NAME}
+    assert any("ABSENT" in f for f in verify_creation_request_parameters(
+        partial, request, expected_job_arn=_JOB_ARN))
+
+    # create-only smuggling and unknown/altered fields FAIL
+    for mutate, needle in [
+        (lambda p: p.update(sessionChainingConfig={
+            "enableSessionTagChaining": True}), "sessionChainingConfig"),
+        (lambda p: p.update(futureConfig={"x": 1}), "futureConfig"),
+        (lambda p: p.__setitem__("disableEFA", True), "disableEFA"),
+        (lambda p: p.update(trainingJobArn="arn:aws:sagemaker:evil"),
+         "trainingJobArn"),
+        (lambda p: p["algorithmSpecification"].__setitem__(
+            "containerEntrypoint", ["/bin/sh"]), "ContainerEntrypoint"),
+        (lambda p: p["algorithmSpecification"].pop("containerEntrypoint"),
+         "ABSENT"),
+        (lambda p: p["resourceConfig"].__setitem__("useReservedCapacity", True),
+         "useReservedCapacity"),
+    ]:
+        bad = _real_shaped_params(request)
+        mutate(bad)
+        failures = verify_creation_request_parameters(
+            bad, request, expected_job_arn=_JOB_ARN)
+        assert any(needle in f for f in failures), (needle, failures)
     # an empty record proves nothing
-    assert verify_creation_request_parameters({}, request)
+    assert verify_creation_request_parameters({}, request,
+                                              expected_job_arn=_JOB_ARN)
 
 
-def test_preprocess_wave_normalizes_like_upstream():
-    """Codex #25 finding 2: the scorer must z-normalize the waveform (and
-    resample when needed) — raw audio diverged from the pinned pipeline."""
+def test_real_cloudtrail_fixture_shape_is_accepted():
+    """The sanitized REAL CloudTrail event (Arm-1) must have exactly the
+    service-added field shape the two-sided comparator tolerates — proving the
+    comparator was built against reality, not a guess."""
+    from verify_arm2_calibration import (SERVICE_ADDED_INERT_FALSE, _camel)
+    event = json.loads((_REPO / "tests/fixtures/aws/"
+                        "cloudtrail-createtrainingjob-arm1-real.json").read_bytes())
+    params = event["requestParameters"]
+    # every top-level extra beyond a rendered-shape key is a tolerated default
+    tolerated = SERVICE_ADDED_INERT_FALSE | {"trainingJobArn"}
+    rendered_like = {"algorithmSpecification", "checkpointConfig",
+                     "enableInterContainerTrafficEncryption",
+                     "enableManagedSpotTraining", "enableNetworkIsolation",
+                     "environment", "outputDataConfig", "resourceConfig",
+                     "roleArn", "stoppingCondition", "tags", "trainingJobName",
+                     "vpcConfig"}
+    for key in params:
+        assert _camel(key) in rendered_like | tolerated, key
+    # the nested defaults are exactly the ones the comparator allows
+    assert params["algorithmSpecification"].get(
+        "enableSageMakerMetricsTimeSeries") is False
+    assert params["resourceConfig"].get("useReservedCapacity") is False
+
+
+def test_creation_event_envelope_binds_principal_account_and_success():
+    """Codex #26 finding 2: the envelope proves WHICH role launched the job."""
+    from b5_sagemaker_job import render_request
+    from verify_arm2_calibration import (CALIBRATION_LAUNCH_ROLE_ARN,
+                                         verify_creation_event)
+    request = render_request(_launchable_packet())
+    event = {
+        "eventName": "CreateTrainingJob",
+        "eventSource": "sagemaker.amazonaws.com",
+        "awsRegion": "eu-central-1",
+        "recipientAccountId": "558069890522",
+        "userIdentity": {"sessionContext": {"sessionIssuer": {
+            "arn": CALIBRATION_LAUNCH_ROLE_ARN}}},
+        "responseElements": {"trainingJobArn": _JOB_ARN},
+        "requestParameters": _real_shaped_params(request),
+    }
+    assert verify_creation_event(
+        event, request, expected_job_name=_JOB_NAME,
+        expected_job_arn=_JOB_ARN,
+        expected_principal_role_arn=CALIBRATION_LAUNCH_ROLE_ARN) == []
+    for mutate, needle in [
+        (lambda e: e["userIdentity"]["sessionContext"]["sessionIssuer"].update(
+            arn="arn:aws:iam::558069890522:role/medzen-arm-launch-role"),
+         "expected calibration launch role"),
+        (lambda e: e.update(recipientAccountId="111111111111"), "recipientAccountId"),
+        (lambda e: e.update(awsRegion="us-east-1"), "awsRegion"),
+        (lambda e: e.update(errorCode="AccessDenied"), "did not succeed"),
+        (lambda e: e["responseElements"].update(
+            trainingJobArn="arn:aws:sagemaker:evil"), "trainingJobArn"),
+        (lambda e: e["requestParameters"].update(trainingJobName="other"),
+         "trainingJobName"),
+    ]:
+        import copy as _c
+        bad = _c.deepcopy(event)
+        mutate(bad)
+        failures = verify_creation_event(
+            bad, request, expected_job_name=_JOB_NAME,
+            expected_job_arn=_JOB_ARN,
+            expected_principal_role_arn=CALIBRATION_LAUNCH_ROLE_ARN)
+        assert any(needle in f for f in failures), (needle, failures)
+
+
+def test_fetch_creation_event_queries_by_name_and_selects_success():
+    """Codex #26 finding 1+4: query by EventName in the window, filter by
+    trainingJobName, keep only the SUCCESSFUL event (failed-then-retried)."""
+    import datetime
+    from verify_arm2_calibration import fetch_creation_event
+
+    def ev(name, error=None, arn="a"):
+        detail = {"eventName": "CreateTrainingJob",
+                  "requestParameters": {"trainingJobName": name},
+                  "responseElements": {"trainingJobArn": arn}}
+        if error:
+            detail["errorCode"] = error
+        return {"CloudTrailEvent": json.dumps(detail)}
+
+    class _Trail:
+        def lookup_events(self, **kwargs):
+            # a different job, a FAILED create for ours, then the SUCCESS
+            return {"Events": [
+                ev("medzen-b5-other"),
+                ev(_JOB_NAME, error="ResourceLimitExceeded"),
+                ev(_JOB_NAME, arn=_JOB_ARN),
+            ]}
+
+    class _Session:
+        def client(self, name):
+            assert name == "cloudtrail"
+            return _Trail()
+
+    now = datetime.datetime(2026, 8, 24, 12, 0, tzinfo=datetime.timezone.utc)
+    got = fetch_creation_event(_Session(), _JOB_NAME, now)
+    assert got["responseElements"]["trainingJobArn"] == _JOB_ARN
+    assert "errorCode" not in got
+
+    # zero successful -> refuse
+    class _TrailFail(_Trail):
+        def lookup_events(self, **kwargs):
+            return {"Events": [ev(_JOB_NAME, error="Throttling")]}
+    with pytest.raises(SystemExit, match="exactly ONE SUCCESSFUL"):
+        fetch_creation_event(type("S", (), {"client": lambda s, n: _TrailFail()})(),
+                             _JOB_NAME, now)
+
+
+def test_preprocess_wave_matches_upstream_layer_norm():
+    """Codex #26 finding 3: population variance (layer_norm), not sample var."""
     torch = pytest.importorskip("torch")
+    import torch.nn.functional as functional
     from pipeline.omniasr_calibrate import _preprocess_wave
-    raw = (torch.randn(16000) * 3.7 + 2.5).numpy()
+    raw = (torch.randn(777) * 3.7 + 2.5).numpy()   # short input widens the gap
     wave = _preprocess_wave(raw, 16000)
-    assert abs(float(wave.mean())) < 1e-3
-    assert abs(float(wave.var()) - 1.0) < 1e-2
-    assert wave.dtype == torch.float32
+    ref = functional.layer_norm(torch.as_tensor(raw, dtype=torch.float32),
+                                (len(raw),), eps=1e-5)
+    assert torch.allclose(wave, ref, atol=1e-6)
+    # population variance -> ~1.0 with unbiased=False, and the biased/unbiased
+    # gap is what round-25 got wrong
+    assert abs(float(wave.var(unbiased=False)) - 1.0) < 1e-3
+
+
+def test_disk_preflight_accounts_for_full_extraction():
+    """Codex #26 finding 5: needed = archive + aggregate extraction + margin,
+    NOT archive*2 (extracted bytes exceed the compressed size)."""
+    from verify_arm2_calibration import (ARCHIVE_MAX_AGGREGATE_BYTES,
+                                         DISK_SAFETY_MARGIN_BYTES,
+                                         required_free_bytes)
+    declared = 2_600_000_000
+    assert required_free_bytes(declared) == (
+        declared + ARCHIVE_MAX_AGGREGATE_BYTES + DISK_SAFETY_MARGIN_BYTES)
+    # strictly larger than the old archive*2 estimate whenever aggregate>archive
+    assert required_free_bytes(declared) > declared * 2
+
+
+def test_parity_receipt_binds_exact_identities_and_rows():
+    """Codex #26 finding 4: exact upstream + scorer identity (not a substring),
+    and the parity-proven rows are bound with hypothesis hashes."""
+    art = _good_artifact()
+    assert verify_calibration(art, _spec()) == []
+    for mutate, needle in [
+        (lambda a: a["parity"].update(upstream="fake-omnilingual-pipeline"),
+         "!= the pinned"),
+        (lambda a: a["parity"].update(scorer="wrong"), "canonical scorer"),
+        (lambda a: a["parity"]["rows"]["lingala"][0].update(hyp_sha256="x"),
+         "hypothesis hash"),
+        (lambda a: a["parity"]["rows"].__setitem__("lingala", []),
+         "count != rows_checked"),
+    ]:
+        bad = json.loads(json.dumps(art))
+        mutate(bad)
+        assert any(needle in f for f in verify_calibration(bad, _spec())), needle
+
+
+def test_calibration_role_is_scoped_and_carries_the_deny():
+    """Codex #26 finding 6: the calibration role can create ONLY the arm-2
+    job, carries NoRemoteDebugEver, reads only the arm-2 artifact, and is
+    valid Access-Analyzer JSON (no non-schema keys)."""
+    doc = json.loads((_REPO / "platform/iam/"
+                      "medzen-arm2-calibration-role.json").read_bytes())
+    assert set(doc) <= {"Version", "Statement", "Id"}
+    body = json.dumps(doc)
+    assert "medzen-b5-b5-universal-arm2-ftcal-2026-001" in body
+    assert "medzen-b5-b5-universal-arm1-2026-005" not in body   # not arm-1
+    assert any(s.get("Sid") == "NoRemoteDebugEver" for s in doc["Statement"])
+    create = [s for s in doc["Statement"]
+              if s.get("Sid", "").startswith("CreateOnly")][0]
+    assert create["Condition"]["StringEquals"][
+        "aws:RequestTag/medzen-tier"] == "calibration"
+    assert "research/b5-training/b5-universal-arm2-ftcal-2026-001/output/*" in body
+    assert "research/b5-training/*" not in body                 # no broad prefix
 
 
 def test_patch_metrics_records_the_parity_receipt(tmp_path):

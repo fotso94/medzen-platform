@@ -1,0 +1,38 @@
+# Codex review #26 finding 6: CALLER for the Arm-2 calibration launch. The
+# credential-bearing job lives in the reusable arm2-calibration-launch-exec.yml
+# (the file the calibration role's job_workflow_ref trusts). Owner-initiated;
+# a preflight fails loudly if the role variable is unset. Pass confirm_launch
+# = LAUNCH to actually create the job — otherwise it is a safe render/validate
+# dry-run.
+name: arm2-calibration-launch
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_launch:
+        description: pass LAUNCH to create the job; anything else is a dry-run
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: configuration must be present (a skip is not a pass)
+        run: |
+          if [ -z "${{ vars.MEDZEN_ARM2_CALIBRATION_ROLE_ARN }}" ]; then
+            echo "::error::MEDZEN_ARM2_CALIBRATION_ROLE_ARN is not set. Apply infra/arm2_calibration_role.tf (arm2_calibration_enabled=true) and set the repo variable — this run FAILS rather than silently skipping."
+            exit 1
+          fi
+          echo "calibration role variable present"
+
+  launch:
+    needs: preflight
+    uses: ./.github/workflows/arm2-calibration-launch-exec.yml
+    with:
+      confirm_launch: ${{ inputs.confirm_launch }}

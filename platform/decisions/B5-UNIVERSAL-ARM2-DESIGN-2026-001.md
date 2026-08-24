@@ -404,6 +404,48 @@ faults; all three blockers plus the four concerns are fixed:
   calibration-scoped role to carry the `NoRemoteDebugEver` deny verbatim
   (the arm-launch role only authorizes the historical Arm-1 job).
 
+## Round 26 corrections (Codex review #26)
+
+Verified against a REAL MedZen CloudTrail event + live IAM simulation before
+writing the fixes:
+
+- **CloudTrail lookup by EventName+window (critical-1):** a real job's event
+  has an EMPTY `Resources` list, so the round-25 `ResourceName` lookup returned
+  zero — a genuine job would fail verification. `fetch_creation_event` now
+  queries by `EventName=CreateTrainingJob` within the job's creation window,
+  filters decoded events by `requestParameters.trainingJobName`, and keeps only
+  the SUCCESSFUL one (failed-then-retried creates cannot supply a stale record);
+  exactly one is required.
+- **Two-sided creation comparison + envelope (critical-2):** the comparator was
+  backwards — it rejected the seven service-added defaults every real event
+  carries (`disableEFA`, `withWarmPoolValidationError`, `trainingJobArn`,
+  nested `enableSageMakerMetricsTimeSeries`/`useReservedCapacity`, …) while a
+  record with only a correct job name passed. Now every RENDERED field must be
+  present+equal, and the ONLY tolerated extras are those empirically-observed
+  inert defaults (all `False`; `trainingJobArn` bound to the receipt ARN). And
+  `verify_creation_event` checks the ENVELOPE — event source/name, region,
+  account, no error, response ARN, and the session-issuer **principal** (bound
+  to the calibration role) — so it proves WHICH role launched the job.
+- **Exact upstream preprocessing (high):** `_preprocess_wave` uses
+  `F.layer_norm(wave, wave.shape, eps=1e-5)` (population variance) exactly like
+  Meta's pinned `audio.py`, not sample variance; scorer id `/3` unchanged.
+- **Parity receipt hardened (medium):** the verifier requires the EXACT
+  upstream pipeline id and canonical scorer (not a substring), and the parity
+  receipt now binds each checked row's checksum + hypothesis hash, cross-checked
+  to be among the scored dev rows.
+- **Disk preflight = archive + full extraction + margin (medium):** extracted
+  bytes are not bounded by the compressed size; `required_free_bytes` sums the
+  archive, the aggregate extraction cap, and the margin.
+- **Real calibration-scoped IAM role (medium):** `infra/arm2_calibration_role.tf`
+  + `platform/iam/medzen-arm2-calibration-role.json` create
+  `medzen-arm2-calibration-role` — CreateTrainingJob ONLY for the Arm-2 job,
+  tag `calibration`, same hard conditions, the `NoRemoteDebugEver` deny, exact
+  artifact read, trainer-role PassRole — trust bound to the owner-approved
+  `arm2-calibration` environment + the reusable launch exec. LIVE-SIMULATED:
+  allow the calibration job, `explicitDeny` remote debug, `implicitDeny` the
+  arm-1 job and a wrong tier. The saved plan is now **4 add / 1 change / 0
+  destroy**.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

@@ -1,0 +1,72 @@
+# Codex review #26 finding 6: the reusable, credential-bearing launcher for
+# the Arm-2 calibration. Its job_workflow_ref is what the dedicated
+# medzen-arm2-calibration-role trusts (infra/arm2_calibration_role.tf), and it
+# runs in the owner-approved `arm2-calibration` environment, so a human gates
+# every launch. It OIDC-assumes the calibration role, ASSERTS the exact
+# account + role (a printed identity is not an assertion), and by default runs
+# the launcher in a SAFE dry-run (render + validate — no side effects). The
+# real mutating launch requires the explicit `confirm_launch: LAUNCH` input, so
+# an accidental dispatch cannot create a job.
+name: arm2-calibration-launch-exec
+
+on:
+  workflow_call:
+    inputs:
+      confirm_launch:
+        description: pass the literal LAUNCH to actually create the job (else dry-run)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  launch:
+    runs-on: ubuntu-24.04
+    environment: arm2-calibration
+    steps:
+      - name: the calibration role variable must be configured (a skip is not a pass)
+        run: |
+          if [ -z "${{ vars.MEDZEN_ARM2_CALIBRATION_ROLE_ARN }}" ]; then
+            echo "::error::MEDZEN_ARM2_CALIBRATION_ROLE_ARN is not set — apply infra/arm2_calibration_role.tf and set the repo variable"
+            exit 1
+          fi
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: OIDC federation as the dedicated Arm-2 calibration role
+        uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
+        with:
+          role-to-assume: ${{ vars.MEDZEN_ARM2_CALIBRATION_ROLE_ARN }}
+          aws-region: eu-central-1
+      - name: assert the EXACT assumed identity (account + calibration role)
+        run: |
+          IDENTITY=$(aws sts get-caller-identity --output json)
+          echo "$IDENTITY"
+          ACCOUNT=$(printf '%s' "$IDENTITY" | python3 -c "import json,sys; print(json.load(sys.stdin)['Account'])")
+          ARN=$(printf '%s' "$IDENTITY" | python3 -c "import json,sys; print(json.load(sys.stdin)['Arn'])")
+          if [ "$ACCOUNT" != "558069890522" ]; then
+            echo "::error::assumed account $ACCOUNT != 558069890522"; exit 1
+          fi
+          case "$ARN" in
+            *":assumed-role/medzen-arm2-calibration-role/"*) ;;
+            *) echo "::error::assumed role ARN $ARN is not medzen-arm2-calibration-role"; exit 1 ;;
+          esac
+          echo "identity OK: account 558069890522, role medzen-arm2-calibration-role"
+      - name: pip install launcher deps
+        run: pip install "boto3==1.40.16" pyyaml "jsonschema==4.25.0"
+      - name: render + validate the calibration request (always; no side effects)
+        env:
+          PACKET: platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json
+        run: |
+          python scripts/b5_sagemaker_job.py render --bindings "$PACKET" > request.json
+          python scripts/b5_sagemaker_job.py validate --bindings "$PACKET" --request request.json
+      - name: launch (ONLY when confirm_launch == LAUNCH)
+        if: ${{ inputs.confirm_launch == 'LAUNCH' }}
+        env:
+          PACKET: platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json
+        run: |
+          python scripts/b5_sagemaker_job.py launch --bindings "$PACKET" --request request.json
