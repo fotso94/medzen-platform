@@ -161,13 +161,15 @@ def run_verifier(metrics_path: Path, packet_path: Path,
     spec = load_verifier_spec(packet)
     verifier_path = Path(__file__).resolve().parents[1] / VERIFIER_REL
     verifier_sha = _sha256_bytes(verifier_path.read_bytes())
+    job_id = str(packet.get("job_id") or "").strip()
+    expected_job_name = f"medzen-b5-{job_id}" if job_id else None
     packet_sha = None
     if bind_packet_sha:
         packet_sha = _sha256_bytes(json.dumps(
             packet, sort_keys=True, separators=(",", ":")).encode())
     failures = verify_calibration(
         metrics, spec, packet_canonical_sha=packet_sha,
-        verifier_script_sha=verifier_sha)
+        verifier_script_sha=verifier_sha, expected_job_name=expected_job_name)
     print(json.dumps({"status": "CALIBRATION_VERIFY",
                       "verdict": "PASS" if not failures else "FAIL",
                       "failures": failures}, sort_keys=True), flush=True)
@@ -223,8 +225,12 @@ def main() -> int:
     dev_files = parse_dev_manifest_files(
         os.environ.get("MEDZEN_DEV_SENTINEL_MANIFEST_FILES", ""))
     packet_sha256 = os.environ.get("MEDZEN_CALIBRATION_PACKET_SHA256", "").strip()
-    job_name = os.environ.get("TRAINING_JOB_NAME") \
-        or os.environ.get("SM_TRAINING_ENV_JOB_NAME", "").strip()
+    # the launcher injects the real SageMaker TrainingJobName (medzen-b5-<job_id>)
+    # for KD packets; the verifier requires identity.training_job_name to equal
+    # the name DERIVED from the packet, so a fabricated file naming another job
+    # fails (Codex review #20 F5 follow-up).
+    job_name = (os.environ.get("MEDZEN_TRAINING_JOB_NAME")
+                or os.environ.get("TRAINING_JOB_NAME") or "").strip()
 
     # 1. train + export + training-side metrics (byte-identical to the trainer)
     from pipeline.omniasr_train import main as train_main
@@ -235,8 +241,13 @@ def main() -> int:
         return rc
 
     metrics_path = config.output_dir / CALIBRATION_METRICS_FILE
-    export_manifest = json.loads(
-        (config.output_dir / "export" / "manifest.json").read_bytes())
+    # bind the export identity to the EXACT authenticated artifact (Codex
+    # review #20 F5 follow-up): export_manifest_sha256 is the sha of the raw
+    # manifest.json bytes (the reviewer recomputes it from the S3-fetched file),
+    # and export_model_sha256 is the model sha that (authenticated) manifest
+    # DECLARES — so the verifier can cross-check both against the real export.
+    manifest_bytes = (config.output_dir / "export" / "manifest.json").read_bytes()
+    export_manifest = json.loads(manifest_bytes)
     provenance = json.loads(
         (config.output_dir / "training-provenance.json").read_bytes())
 
@@ -252,9 +263,10 @@ def main() -> int:
         config, model, tokenizer, device, dev_files)
 
     export_identity = {
-        "manifest_sha256": _sha256_bytes(json.dumps(
-            export_manifest, sort_keys=True, separators=(",", ":")).encode()),
-        "checkpoint_sha256": _sha256_bytes(export_ckpt.read_bytes()),
+        # raw manifest.json bytes sha (the reviewer recomputes it from the
+        # S3-fetched file) and the model sha the authenticated manifest declares
+        "manifest_sha256": _sha256_bytes(manifest_bytes),
+        "model_sha256": export_manifest["model_sha256"],
     }
     identity = build_identity(
         run_fingerprint=provenance.get("run_fingerprint", ""),
@@ -271,9 +283,22 @@ def main() -> int:
 
 
 def _load_export_weights(model, checkpoint_path: Path) -> None:
+    """Load the merged full-FT export into the base architecture. Codex review
+    #20 F3 follow-up: strict=False silently loaded NOTHING when the keys did not
+    map (a renamed/corrupt export), so readyz then reported healthy BASE weights
+    and the job PASSED without serving the export. Refuse any missing/unexpected
+    key — a non-loading export must fail closed, not serve un-updated weights."""
     import torch
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
-    model.load_state_dict(state.get("model", state), strict=False)
+    result = model.load_state_dict(state.get("model", state), strict=False)
+    missing = list(getattr(result, "missing_keys", []) or [])
+    unexpected = list(getattr(result, "unexpected_keys", []) or [])
+    if missing or unexpected:
+        raise CalibrationRefusal(
+            f"the export did not map onto the model — {len(missing)} missing / "
+            f"{len(unexpected)} unexpected keys (e.g. missing={missing[:3]}, "
+            f"unexpected={unexpected[:3]}); refusing to readyz un-updated "
+            "base weights as if the export had loaded")
     model.eval()
 
 

@@ -91,7 +91,7 @@
    "lingala",
    "swahili"
   ],
-  "note": "Codex review #19 F3/F4: the trainer writes the training-side fields of calibration-metrics.json (status, per-step CTC/KD/total, per-language kd_coverage, peak_gpu_bytes, throughput); the in-image calibration wrapper patches serve{readyz,adapter_residue,weights_finite} and dev_sentinel_wer AFTER export. scripts/verify_arm2_calibration.py refuses unless every field is present and within bounds — a run that omits serve/dev-WER or produces no positive KD FAILS CLOSED."
+  "note": "Codex review #19 F3/F4 + #20 F5: the trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity, but NOT authoritative for export provenance). The AUTHORITATIVE verdict is the reviewer's out-of-image run: fetch calibration-metrics.json AND export/manifest.json from the job's KMS-encrypted S3 output, then run `python -m scripts.verify_arm2_calibration --metrics <fetched> --packet <this committed packet> --export-manifest <fetched manifest.json>`. That run binds identity to the committed packet's canonical sha, the verifier's own bytes, the derived job name (medzen-b5-<job_id>), the canonical scorer, and — via --export-manifest — the metrics' export_manifest_sha256/export_model_sha256 to the REAL authenticated export (a fabricated file that never exported is rejected). HONEST SCOPE: a self-reported metrics file is authenticated by WHERE it is fetched (the job's KMS S3 output) plus this export cross-check; the verifier does not otherwise prove a job ran."
  },
  "scope": "MECHANICS_AND_MEMORY_VALIDATION_ONLY",
  "security_group_ids": [

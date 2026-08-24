@@ -496,6 +496,7 @@ def test_amharic_aggregate_audit_helpers_emit_distributions_not_rows():
 
 def test_decode_score_reduces_private_row_to_aggregate_only():
     torch = pytest.importorskip("torch")
+    pytest.importorskip("jiwer")  # torch-host optional dep; skip cleanly if absent
     from types import SimpleNamespace
 
     class Tokenizer:

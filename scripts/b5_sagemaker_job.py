@@ -304,6 +304,9 @@ def render_request(bindings: dict) -> dict:
     if str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE:
         environment["MEDZEN_CALIBRATION_PACKET_SHA256"] = \
             canonical_bindings_sha256(bindings)
+        # inject the real TrainingJobName so the wrapper records it and the
+        # verifier can bind identity.training_job_name to the declared job
+        environment["MEDZEN_TRAINING_JOB_NAME"] = f"medzen-b5-{job_id}"
     missing = [k for k in REQUIRED_ENVIRONMENT if not environment.get(k)]
     if missing:
         raise JobRefusal(f"environment lacks {missing}")

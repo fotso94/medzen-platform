@@ -181,6 +181,50 @@ gaps; all six are addressed here and validated with real torch:
   branch it actually routes through, and KD refuses valid frame lengths outside
   `1..frames`.
 
+## Round 20 corrections (Codex review #20)
+
+Round 19 fixed the training math but the image + calibration pipeline was not
+executable or secure. All six blocking findings fixed:
+
+- **Dedicated publisher role (F1):** the workflow assumed a role that trusts
+  only `model-images-publish.yml` and grants two unrelated ECR repos (AWS sim:
+  implicitDeny). `infra/trainer_image_publisher.tf` is a new non-deploy role
+  trusting `arm2-trainer-image.yml@master`, scoped to `medzen-trainer-omniasr`
+  only; the workflow uses `MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN`.
+- **Injection-hardened workflow (F2):** `inputs.sha` must be exactly 40-hex
+  (validated first), reaches shell ONLY as the quoted `$SHA` env, and the
+  checkout is proven `== sha` BEFORE any credentials are acquired.
+- **Real calibration entrypoint (F3):** `pipeline/omniasr_calibrate.py` runs
+  train → export → readyz → dev-sentinel WER → finalize → verify → exit
+  non-zero on failure, and is rendered as the ContainerArguments for KD
+  packets. It fails CLOSED: an exception in any stage leaves serve/dev-WER
+  unset, so the verifier refuses and the job exits non-zero — a broken decode
+  can never produce a false PASS. WER is a pure, host-tested word-level edit
+  distance (no new image dependency).
+- **Non-bypassable verifier + canonical contract (F4):** both
+  `load_verifier_spec` and `validate_arm2_semantics` pin the canonical contract
+  (script, artifact, `expected_steps == MEDZEN_MAX_STEPS`, ceiling ≤ the L4's
+  physical 24 GiB, dev-languages a non-empty subset of the preservation set
+  that includes lingala+swahili) and require the calibration env inputs. Every
+  bypass Codex reproduced now refuses.
+- **Evidence binding + samples/s + resume (F5):** metrics carry an `identity`
+  block (run fingerprint, job name, export manifest/model sha, per-dev-manifest
+  sha, scorer, packet sha, verifier sha); the verifier binds the metrics to the
+  reviewed packet's canonical sha (launcher-injected, no self-reference) and to
+  its own bytes; samples/s is recorded; the loss equation and step contiguity
+  are checked; and the accumulator is persisted/restored across a checkpoint so
+  a resumed run keeps the full trajectory.
+- **In-image verifier tests (F6):** the Dockerfile COPYs and RUNS
+  `tests/test_arm2_calibration.py` in the trainer-test stage and ships the
+  entrypoint, verifier and packet in the final image.
+
+**Honest prerequisites** (parallel to the image digest): the dev-sentinel slice
+manifests (`platform/manifests/dev-sentinels/{lingala,swahili}.jsonl`) must be
+authored, committed and baked into the image, and the wrapper's model-touching
+stages (export reload, readyz, CTC-greedy decode) validate only in-image via
+`arm2-trainer-image.yml`. The orchestration, metric-binding, verifier and WER
+math are host-tested.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

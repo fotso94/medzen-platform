@@ -45,6 +45,20 @@ IDENTITY_FIELDS = ("run_fingerprint", "training_job_name",
                    "export_manifest_sha256", "export_model_sha256",
                    "dev_manifest_shas", "scorer", "packet_sha256",
                    "verifier_script_sha256")
+# identity fields that must be a 64-hex sha256 (Codex review #20 F5 follow-up:
+# presence-only let a fabricated file through — enforce the FORMAT of every
+# sha and the value of the derivable ones)
+IDENTITY_SHA_FIELDS = ("run_fingerprint", "export_manifest_sha256",
+                       "export_model_sha256", "packet_sha256",
+                       "verifier_script_sha256")
+# the canonical scorer string the calibration wrapper stamps; kept in lock-step
+# with pipeline.omniasr_calibrate.SCORER_ID (a host test asserts equality).
+CANONICAL_SCORER = ("ctc-greedy/argmax+collapse+blank-strip; "
+                    "normalizer=pipeline.normalizers.for_language; "
+                    "metric=corpus-word-error-rate/1")
+import re as _re
+
+_HEX64 = _re.compile(r"^[0-9a-f]{64}$")
 
 
 def _finite_number(value: Any) -> bool:
@@ -60,7 +74,9 @@ def _canonical_sha256(obj: Any) -> str:
 def verify_calibration(metrics: dict[str, Any],
                        verifier_spec: dict[str, Any],
                        *, packet_canonical_sha: str | None = None,
-                       verifier_script_sha: str | None = None) -> list[str]:
+                       verifier_script_sha: str | None = None,
+                       expected_job_name: str | None = None,
+                       authenticated_export: dict[str, Any] | None = None) -> list[str]:
     """Return a list of human-readable FAILURE strings — empty means PASS.
 
     Every acceptance criterion is checked independently so one run surfaces
@@ -127,9 +143,16 @@ def verify_calibration(metrics: dict[str, Any],
              "was not positive-and-finite on every step")
 
     # (3) per-language KD coverage: every required preservation language must
-    # have contributed real rows AND valid frames
+    # have contributed real rows AND valid frames. Codex review #20 F4
+    # defense-in-depth: an EMPTY required_preservation_coverage must FAIL here
+    # (not silently skip), so the standalone verifier cannot be defanged even
+    # if it were run against a spec the launcher never validated.
+    required_coverage = verifier_spec.get("required_preservation_coverage") or []
+    if not required_coverage:
+        fail("result_verifier.required_preservation_coverage is empty — the "
+             "KD-coverage check cannot be defanged to a no-op")
     coverage = metrics.get("kd_coverage") or {}
-    for language in verifier_spec["required_preservation_coverage"]:
+    for language in required_coverage:
         bucket = coverage.get(language)
         if not bucket:
             fail(f"no KD coverage recorded for preservation language "
@@ -184,9 +207,19 @@ def verify_calibration(metrics: dict[str, Any],
                 fail(f"dev_sentinel_wer[{language!r}] is not a finite number "
                      f"({dev_wer.get(language)!r})")
 
-    # (8) IDENTITY BINDING (Codex review #20 F5): prove the metrics came from
-    # the declared run, export, scorer, dev manifests, this exact packet, and
-    # this exact verifier — not an unbound file a caller hand-crafted.
+    # (8) IDENTITY BINDING (Codex review #20 F5, hardened after the adversarial
+    # pass found presence-only checks let a FABRICATED file through). Scope,
+    # stated honestly: the metrics file is SELF-REPORTED by the job — its
+    # AUTHENTICITY (that a real training/export actually produced these bytes)
+    # rests on fetching it from the job's KMS-encrypted S3 OUTPUT path plus the
+    # AWS training-job receipt, NOT on any field inside the file. What the
+    # verifier enforces here is (a) the format of every sha, (b) equality of the
+    # DERIVABLE identities — the packet canonical sha, the verifier's own bytes,
+    # the declared job name (medzen-b5-<job_id>), the canonical scorer — and (c)
+    # coverage of the dev-manifest shas. A fabricated file that names a wrong
+    # job, a made-up scorer, a malformed sha, a different packet or a different
+    # verifier now fails; establishing that the file is the one the job wrote is
+    # the reviewer's S3-provenance/receipt step, documented in the packet.
     identity = metrics.get("identity")
     if not isinstance(identity, dict):
         fail("identity block is absent — the metrics are not bound to a run, "
@@ -196,12 +229,32 @@ def verify_calibration(metrics: dict[str, Any],
             value = identity.get(field)
             if value in (None, "", {}, []):
                 fail(f"identity.{field} is absent — evidence is not bound")
-        # dev_manifest_shas must cover every dev-sentinel language
+        # every sha field must be a well-formed sha256 (not 'deadbeef')
+        for field in IDENTITY_SHA_FIELDS:
+            value = str(identity.get(field) or "")
+            if value and not _HEX64.fullmatch(value):
+                fail(f"identity.{field}={value!r} is not a 64-hex sha256")
+        # dev_manifest_shas must cover every dev-sentinel language with a sha256
         dev_shas = identity.get("dev_manifest_shas") or {}
         for language in verifier_spec["dev_sentinel_languages"]:
-            if not str(dev_shas.get(language) or "").strip():
+            sha = str(dev_shas.get(language) or "").strip()
+            if not sha:
                 fail(f"identity.dev_manifest_shas[{language!r}] absent — the "
                      "dev slice that produced the WER is not bound")
+            elif not _HEX64.fullmatch(sha):
+                fail(f"identity.dev_manifest_shas[{language!r}]={sha!r} is not "
+                     "a 64-hex sha256")
+        # the scorer must be the CANONICAL one (a made-up scorer is rejected)
+        if str(identity.get("scorer")) != CANONICAL_SCORER:
+            fail(f"identity.scorer {identity.get('scorer')!r} != the canonical "
+                 f"scorer {CANONICAL_SCORER!r}")
+        # the training job name must be the one DERIVED from the packet's job_id
+        if expected_job_name is not None \
+                and str(identity.get("training_job_name")) != expected_job_name:
+            fail(f"identity.training_job_name "
+                 f"{identity.get('training_job_name')!r} != the name derived "
+                 f"from the packet {expected_job_name!r} — the metrics do not "
+                 "name the declared job")
         # the metrics must be bound to THIS packet and THIS verifier
         if packet_canonical_sha is not None \
                 and str(identity.get("packet_sha256")) != packet_canonical_sha:
@@ -212,6 +265,23 @@ def verify_calibration(metrics: dict[str, Any],
                 and str(identity.get("verifier_script_sha256")) != verifier_script_sha:
             fail("identity.verifier_script_sha256 does not match this "
                  "verifier's own bytes — the run used a different verifier")
+        # Codex review #20 F5 follow-up (the adversary's residual): bind the
+        # metrics' self-reported export shas to the ACTUAL authenticated export
+        # artifact the reviewer fetched from the job's KMS-encrypted S3 output.
+        # This turns export_manifest_sha256/export_model_sha256 from format-only
+        # into a real cross-check, so a competent fabrication that never
+        # exported (arbitrary-but-64-hex export shas) is rejected.
+        if authenticated_export is not None:
+            if str(identity.get("export_manifest_sha256")) \
+                    != str(authenticated_export.get("manifest_sha256")):
+                fail("identity.export_manifest_sha256 != the sha of the "
+                     "authenticated export manifest.json — the metrics do not "
+                     "match the real export")
+            if str(identity.get("export_model_sha256")) \
+                    != str(authenticated_export.get("model_sha256")):
+                fail("identity.export_model_sha256 != the model sha the "
+                     "authenticated export manifest declares — the metrics do "
+                     "not match the real export")
 
     return failures
 
@@ -258,6 +328,13 @@ def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
             f"result_verifier.gpu_memory_ceiling_bytes {ceiling!r} must be in "
             f"1..{L4_PHYSICAL_BYTES} (the g6.xlarge L4's physical 24 GiB) — an "
             "enormous ceiling is not a real memory bound")
+    # Codex review #20 F4 defense-in-depth: the standalone verifier must also
+    # reject a defanged (empty/non-list) required_preservation_coverage, not
+    # rely on the launcher having validated it.
+    cov = spec["required_preservation_coverage"]
+    if not isinstance(cov, list) or not cov:
+        raise SystemExit("result_verifier.required_preservation_coverage must "
+                         "be a non-empty list")
     dev_langs = spec["dev_sentinel_languages"]
     if not isinstance(dev_langs, list) or not dev_langs:
         raise SystemExit("result_verifier.dev_sentinel_languages must be a "
@@ -278,21 +355,54 @@ def main(argv: list[str] | None = None) -> int:
                              "+ calibration wrapper")
     parser.add_argument("--packet", type=Path, required=True,
                         help="the Arm-2 calibration bindings packet")
+    parser.add_argument("--export-manifest", type=Path, default=None,
+                        help="the export manifest.json FETCHED FROM THE JOB'S "
+                             "KMS-encrypted S3 output. REQUIRED for an "
+                             "authoritative verdict (it binds the metrics' "
+                             "export shas to the real export); omit only with "
+                             "--smoke for an in-repo shape check.")
+    parser.add_argument("--smoke", action="store_true",
+                        help="allow a non-authoritative run WITHOUT the "
+                             "authenticated export manifest (shape/identity "
+                             "check only; does NOT bind the export)")
     args = parser.parse_args(argv)
 
     packet = json.loads(args.packet.read_bytes())
     metrics = json.loads(args.metrics.read_bytes())
     spec = load_verifier_spec(packet)
 
-    # bind the metrics to THIS packet (canonical sha) and THIS verifier's bytes
+    # bind the metrics to THIS packet (canonical sha), THIS verifier's bytes,
+    # and the job name DERIVED from the packet's job_id (medzen-b5-<job_id>)
     packet_sha = _canonical_sha256(packet)
     verifier_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    job_id = str(packet.get("job_id") or "").strip()
+    expected_job_name = f"medzen-b5-{job_id}" if job_id else None
+
+    # authenticate the export identity against the real artifact (Codex review
+    # #20 F5 follow-up). The authoritative run REQUIRES the S3-fetched manifest;
+    # only --smoke may skip it, and then the verdict is explicitly not
+    # authoritative for export provenance.
+    authenticated_export = None
+    if args.export_manifest is not None:
+        manifest_bytes = args.export_manifest.read_bytes()
+        manifest = json.loads(manifest_bytes)
+        authenticated_export = {
+            "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "model_sha256": manifest.get("model_sha256"),
+        }
+    elif not args.smoke:
+        raise SystemExit(
+            "--export-manifest is required for an authoritative verdict (fetch "
+            "manifest.json from the job's KMS-encrypted S3 output); pass "
+            "--smoke to run a non-authoritative shape/identity check only")
 
     failures = verify_calibration(
         metrics, spec, packet_canonical_sha=packet_sha,
-        verifier_script_sha=verifier_sha)
+        verifier_script_sha=verifier_sha, expected_job_name=expected_job_name,
+        authenticated_export=authenticated_export)
     report = {
         "verdict": "PASS" if not failures else "FAIL",
+        "authoritative": authenticated_export is not None,
         "metrics": str(args.metrics),
         "packet": str(args.packet),
         "packet_canonical_sha256": packet_sha,

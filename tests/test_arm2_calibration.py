@@ -22,8 +22,10 @@ _PACKET = (_REPO / "platform/manifests/"
 
 sys.path.insert(0, str(_REPO / "scripts"))
 from b5_sagemaker_job import JobRefusal, validate_arm2_semantics  # noqa: E402
-from verify_arm2_calibration import (load_verifier_spec,  # noqa: E402
-                                     verify_calibration)
+from verify_arm2_calibration import (CANONICAL_SCORER,  # noqa: E402
+                                     load_verifier_spec, verify_calibration)
+
+_JOB_NAME = "medzen-b5-b5-universal-arm2-ftcal-2026-001"
 
 
 # --------------------------------------------------------------------------
@@ -37,14 +39,22 @@ def _spec() -> dict:
 def _identity() -> dict:
     return {
         "run_fingerprint": "f" * 64,
-        "training_job_name": "medzen-b5-b5-universal-arm2-ftcal-2026-001",
+        "training_job_name": _JOB_NAME,
         "export_manifest_sha256": "a" * 64,
         "export_model_sha256": "b" * 64,
         "dev_manifest_shas": {"lingala": "c" * 64, "swahili": "d" * 64},
-        "scorer": "ctc-greedy/argmax+collapse; metric=corpus-word-error-rate/1",
+        "scorer": CANONICAL_SCORER,
         "packet_sha256": "e" * 64,
         "verifier_script_sha256": "9" * 64,
     }
+
+
+def test_wrapper_scorer_matches_the_verifier_canonical():
+    """Codex review #20 F5 follow-up: the wrapper's stamped scorer and the
+    verifier's canonical scorer must stay byte-identical, or every real run
+    fails the scorer check."""
+    from pipeline.omniasr_calibrate import SCORER_ID
+    assert SCORER_ID == CANONICAL_SCORER
 
 
 def _good_artifact(steps: int = 30) -> dict:
@@ -138,6 +148,12 @@ def test_verifier_passes_a_clean_calibration():
     (lambda a: a["identity"].update(scorer=""), "scorer"),
     (lambda a: a["identity"]["dev_manifest_shas"].pop("lingala"),
      "dev_manifest_shas"),
+    # Codex review #20 F5 follow-up: presence-only let fabricated fields pass
+    (lambda a: a["identity"].update(run_fingerprint="deadbeef"), "not a 64-hex"),
+    (lambda a: a["identity"].update(export_model_sha256="deadbeef"), "not a 64-hex"),
+    (lambda a: a["identity"]["dev_manifest_shas"].update(lingala="fake"),
+     "not a 64-hex"),
+    (lambda a: a["identity"].update(scorer="made-up-scorer"), "canonical scorer"),
 ])
 def test_verifier_fails_each_defect(mutate, needle):
     artifact = _good_artifact()
@@ -145,6 +161,63 @@ def test_verifier_fails_each_defect(mutate, needle):
     failures = verify_calibration(artifact, _spec())
     assert failures, f"expected a failure for {needle}"
     assert any(needle in f for f in failures), (needle, failures)
+
+
+def test_fabricated_metrics_that_never_ran_is_rejected():
+    """The adversarial pass' HIGH finding: a hand-built metrics file that names
+    a wrong job / made-up scorer / malformed export sha must be rejected once
+    the derivable identities are cross-checked (job name from the packet)."""
+    art = _good_artifact()
+    art["identity"].update(
+        run_fingerprint="FABRICATED-never-ran",           # not 64-hex
+        training_job_name="FABRICATED-no-such-job",        # != derived
+        export_manifest_sha256="deadbeef",                 # not 64-hex
+        scorer="made-up")                                  # != canonical
+    failures = verify_calibration(art, _spec(),
+                                  expected_job_name=_JOB_NAME)
+    assert any("training_job_name" in f for f in failures)
+    assert any("canonical scorer" in f for f in failures)
+    assert any("not a 64-hex" in f for f in failures)
+
+
+def test_job_name_must_match_the_packet_derived_name():
+    art = _good_artifact()
+    ok = verify_calibration(art, _spec(), expected_job_name=_JOB_NAME)
+    assert ok == []
+    art["identity"]["training_job_name"] = "medzen-b5-some-other-job"
+    bad = verify_calibration(art, _spec(), expected_job_name=_JOB_NAME)
+    assert any("training_job_name" in f for f in bad)
+
+
+def test_export_binding_rejects_a_fabrication_that_never_exported():
+    """Codex review #20 F5 follow-up (the adversary's residual): a competent
+    fabrication with correct derivable identities and arbitrary-but-64-hex
+    export shas passes the shape/identity SMOKE, but the authoritative run —
+    which binds the export shas to the real S3-fetched manifest — rejects it."""
+    art = _good_artifact()  # export shas are "a"*64 / "b"*64
+    # smoke (no authenticated_export): passes shape/identity
+    assert verify_calibration(art, _spec()) == []
+    # authoritative: the real export declares DIFFERENT shas -> reject
+    authentic = {"manifest_sha256": "1" * 64, "model_sha256": "2" * 64}
+    bad = verify_calibration(art, _spec(), authenticated_export=authentic)
+    assert any("export_manifest_sha256" in f for f in bad)
+    assert any("export_model_sha256" in f for f in bad)
+    # when the metrics DO match the real export, the binding passes
+    matching = {"manifest_sha256": "a" * 64, "model_sha256": "b" * 64}
+    assert verify_calibration(art, _spec(), authenticated_export=matching) == []
+
+
+def test_empty_required_coverage_cannot_defang_the_verifier():
+    """Codex review #20 F4 defense-in-depth: the standalone verifier must
+    reject an empty required_preservation_coverage, not skip the KD check."""
+    packet = json.loads(_PACKET.read_bytes())
+    packet["result_verifier"]["required_preservation_coverage"] = []
+    with pytest.raises(SystemExit, match="non-empty list"):
+        load_verifier_spec(packet)
+    # and verify_calibration itself fails closed if handed such a spec
+    spec = {**_spec(), "required_preservation_coverage": []}
+    failures = verify_calibration(_good_artifact(), spec)
+    assert any("cannot be defanged" in f for f in failures)
 
 
 def test_verifier_binds_packet_and_verifier_sha():
@@ -298,6 +371,24 @@ def test_build_identity_and_patch_metrics(tmp_path):
     with pytest.raises(CalibrationRefusal):
         patch_metrics(tmp_path / "missing.json", serve={}, dev_sentinel_wer={},
                       identity=identity)
+
+
+def test_load_export_weights_fails_closed_on_a_non_mapping_export(tmp_path):
+    """Codex review #20 F3 follow-up: strict=False silently loaded nothing when
+    the export keys did not map, so readyz reported healthy BASE weights. Now a
+    missing/unexpected key refuses."""
+    torch = pytest.importorskip("torch")
+    from pipeline.omniasr_calibrate import CalibrationRefusal, _load_export_weights
+    model = torch.nn.Linear(4, 4)
+    # happy path: the model's OWN state dict maps cleanly
+    good = tmp_path / "good.pt"
+    torch.save({"model": model.state_dict()}, good)
+    _load_export_weights(model, good)  # no raise
+    # a checkpoint whose keys don't map must fail closed, not silently no-op
+    bad = tmp_path / "bad.pt"
+    torch.save({"model": {"totally.different.key": torch.zeros(3)}}, bad)
+    with pytest.raises(CalibrationRefusal, match="did not map onto the model"):
+        _load_export_weights(model, bad)
 
 
 def test_run_verifier_smoke_passes_on_a_clean_artifact(tmp_path):
