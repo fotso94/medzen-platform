@@ -857,6 +857,7 @@ def test_saved_adapter_smoke_is_a_hard_gate():
 def test_real_tiny_whisper_lora_collate_save_reload_and_generate(tmp_path):
     """The exact boundary the previous source-only task-type test missed."""
     torch = pytest.importorskip("torch")
+    pytest.importorskip("peft")  # torch-host optional dep; skip cleanly if absent
     from peft import LoraConfig, PeftModel, get_peft_model
     from transformers import (BatchEncoding, WhisperConfig,
                               WhisperForConditionalGeneration)

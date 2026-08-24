@@ -25,14 +25,23 @@ The student stays free to move on the target languages (pidgin, kinyarwanda,
 ewe) where Arm-1's gains came from; the KD term penalises drift away from
 what the base already serves well, preventing the Lingala-style regression.
 
-Combined per-batch loss (`pipeline/omniasr_train.py::_batch_loss_kd`):
+Combined per-batch loss (`pipeline/omniasr_train.py::_batch_loss_kd`) — ONE
+clean objective, each term separately normalized (see "Round 18/19
+corrections" below; the earlier double-normalized `(ctc + α·KD)/batch_size`
+form is obsolete):
 
 ```
-(loss_ctc  +  alpha * KD(teacher || student))  /  batch_size
+CTC_mean  +  alpha * KD_mean
+  CTC_mean = loss_ctc / batch_size
+  KD_mean  = ( sum_r weight[r] * mean_over_valid_frames KL(teacher_r||student_r)
+               / count(weight>0) ) * T^2
 ```
 
-kept batch-size-normalized so the LR calibration walls (≤1e-4 full-mode) hold.
-`alpha` absorbs the KD reduction scale and is fixed by the calibration run.
+CTC stays batch-size-normalized so the LR calibration walls (≤1e-4 full-mode)
+hold. The KD term is a per-row mean over valid frames, weighted per language
+and averaged over the UNWEIGHTED count of preservation rows (Codex review #19:
+a weighted numerator over a weighted denominator cancelled the weight). `alpha`
+fixes the KD-to-CTC balance and is chosen by the hyperparameter comparison.
 
 ## Teacher eligibility (alignment-constrained)
 
@@ -82,11 +91,17 @@ every teacher parameter is non-trainable.
 - `pipeline/omniasr_distill.py` — KD numerics (host-safe reference +
   differentiable torch), alignment, mask, teacher load/freeze.
 - `pipeline/omniasr_train.py` — KD knobs in `TrainerConfig`/`parse_config`,
-  `_batch_loss_kd`, `make_batch_loss`, teacher load in `main()`.
-- `pipeline/omniasr_data.py` — per-row language tag in the batch (KD mask).
-- `tests/test_omniasr_distill.py` — 5 required tests (deterministic loss,
-  teacher-freezing, alignment, non-finite, resume/fingerprint), host-safe +
-  torch-marked in-image.
+  `_batch_loss_kd`, `make_batch_loss`, `CalibrationMetrics`, teacher load and
+  metrics-artifact write in `main()`.
+- `pipeline/omniasr_data.py` — AUTHORITATIVE per-row language tag
+  (`authoritative_language`, manifest `_lang`, conflicts refused) for the mask.
+- `scripts/verify_arm2_calibration.py` — machine-enforced acceptance checker
+  over the `calibration-metrics.json` artifact (Codex review #19 F3).
+- `.github/workflows/arm2-trainer-image.yml` — native-amd64 build that
+  EXPLICITLY runs `--target trainer-test`, builds+scans+SBOMs the final image,
+  and prints the digest to pin (Codex review #19 F5).
+- `tests/test_omniasr_distill.py` — host-safe + torch-marked KD tests.
+- `tests/test_arm2_calibration.py` — host-safe metrics/verifier/semantics tests.
 
 ## Open items before compute
 
@@ -98,8 +113,9 @@ every teacher parameter is non-trainable.
    student keeps identical frame counts to the un-adapted teacher.
 3. **KD hyperparameters** (alpha 0.5, temperature 1.0 are draft placeholders):
    the calibration run fixes them; a sweep would need multiple packets.
-4. **Image + calibration packet:** build the Arm-2 trainer image, run the
-   in-image distillation tests, pin the image digest into
+4. **Image + calibration packet:** run `arm2-trainer-image.yml` (native amd64;
+   it builds `--target trainer-test`, then the final image, scans + SBOMs it,
+   and prints the digest), pin that digest into the committed
    `B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json`, then the
    independent reviewer issues `reviews/b5-universal-arm2-ftcal-2026-001.json`.
 
@@ -128,6 +144,42 @@ torch (`tests/test_omniasr_distill.py`: 19 passed, peak-memory needs CUDA):
   (lingala, swahili) and lighter on the anchors (english, french).
 - **Trainer image:** `Dockerfile.trainer-omniasr` COPYs the module + tests into
   both stages and RUNS all distillation tests at build.
+
+## Round 19 corrections (Codex review #19)
+
+Round 18 fixed the tuple/padding/scaling crashes but left higher-severity
+gaps; all six are addressed here and validated with real torch:
+
+- **Per-language weights now WORK (F1):** the old reduction divided a weighted
+  numerator by a weighted denominator, so a single-preservation-language batch
+  (common at batch size 2) cancelled the weight — 0.5 and 1.5 produced the
+  same loss. KD is now a per-row mean over valid frames, the weight scales that
+  per-row mean, and the normaliser is the UNWEIGHTED preservation-row count.
+  Regression proves 1.5 gives exactly 3× the loss AND gradient of 0.5.
+- **Authoritative language (F2):** the batch keys KD off the manifest-derived
+  `_lang` (not free-text `primary_language`/`language`), refuses a row without
+  it, and refuses metadata that conflicts; strict masking now also refuses a
+  non-empty tag outside the training-language set (was: silent zero KD).
+- **Structured metrics + executable verifier (F3):** `CalibrationMetrics`
+  writes `calibration-metrics.json` (separate CTC/KD/total per step,
+  per-language KD row/frame coverage, peak GPU memory, throughput);
+  `scripts/verify_arm2_calibration.py` machine-checks the full acceptance set
+  and FAILS CLOSED on any gap — including the `serve{readyz}` and
+  `dev_sentinel_wer` fields the in-image wrapper must fill post-training.
+- **Packet semantics enforced (F4):** `validate_arm2_semantics` cross-checks
+  the top-level `distillation` recipe against the `environment` KD variables
+  (alpha, temperature, teacher card/mode, preservation set, per-language
+  weights), requires a non-empty `acceptance_criteria`, and binds the
+  `result_verifier`. A recipe/env disagreement or emptied criteria now refuses.
+- **Image test auto-enforced (F5):** `arm2-trainer-image.yml` explicitly builds
+  `--target trainer-test` (the in-image distillation tests + fairseq2 contract),
+  builds the final image from the same commit, scans it fail-closed, attaches
+  SBOM + provenance, and surfaces the digest to pin — no path skips the tests.
+- **Docs/cost reconciled (F6):** this doc's combined-loss formula (above) is
+  corrected; the packet's cost is the launcher-authoritative $3.20 (one figure,
+  not three), its authorization language matches the below-tier calibration
+  branch it actually routes through, and KD refuses valid frame lengths outside
+  `1..frames`.
 
 ## Calibration is a two-step gate
 

@@ -62,7 +62,7 @@
  "image_oci_index_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
  "image_tag": "PLACEHOLDER-arm2-ftcal (pin after in-image test pass)",
  "image_uri_with_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
- "in_image_validation": "pipeline/Dockerfile.trainer-omniasr now COPYs pipeline/omniasr_distill.py and tests/test_omniasr_distill.py into BOTH stages and the trainer-test stage RUNS all distillation tests at build (torch present). The image digest is pinned into the committed packet ONLY after that build passes on a native amd64 builder; the KD numerics + fairseq2 (loss, logits, layout) unpacking were validated locally with real torch (19 passed, peak-memory needs CUDA).",
+ "in_image_validation": "The native-amd64 workflow .github/workflows/arm2-trainer-image.yml (Codex review #19 F5) EXPLICITLY builds --target trainer-test (runs tests/test_omniasr_distill.py + the fairseq2 (loss, logits, layout) contact-surface assertion in-image on real torch/CUDA libs; a failure fails the build), then builds the FINAL image from the same commit, scans it fail-closed (CRITICAL/HIGH), attaches SBOM + max provenance, pushes, and prints the digest to pin here. The image_uri_with_digest/image_oci_index_digest above stay PLACEHOLDER until that workflow passes and the digest is pinned into the committed (non-DRAFT) packet. The KD numerics, per-language weighting, fairseq2 tuple unpacking and out-of-range-length refusal were validated locally with real torch.",
  "instance_type": "ml.g6.xlarge",
  "job_id": "b5-universal-arm2-ftcal-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
@@ -70,7 +70,27 @@
  "managed_spot_reason": "owner rule: on-demand basis always",
  "max_runtime_seconds": 7200,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
- "purpose": "UNSEALED Arm-2 preservation-aware-distillation CALIBRATION (design B5-UNIVERSAL-ARM2-DESIGN-2026-001). Tiny (30 steps) full-FT + KD anchoring on the 4 preservation sentinels with the FROZEN base teacher, to validate the KD loss numerics, teacher-freeze, alignment, resume and cost BEFORE any full Arm-2 training. NO sealed data, NO promotion, NO deployment. Authorization = the OWNER's approval of the protected arm-launch workflow run bound to this packet's sha + an APPROVED independent-review record + an ACTIVE_RESERVED registry line.",
+ "purpose": "UNSEALED Arm-2 preservation-aware-distillation CALIBRATION (design B5-UNIVERSAL-ARM2-DESIGN-2026-001). Tiny (30 steps) full-FT + KD anchoring on the 4 preservation sentinels with the FROZEN base teacher, to validate the KD loss numerics, teacher-freeze, alignment, resume and cost BEFORE any full Arm-2 training. NO sealed data, NO promotion, NO deployment.",
+ "authorization": "CALIBRATION TIER (worst case $3.20 <= the $10 CALIBRATION_TIER_USD boundary in scripts/b5_sagemaker_job.py): this routes through the BELOW-tier launch branch, whose gate is an APPROVED independent-review record (review_record_approves) against the committed (non-DRAFT) packet sha with the image pinned by digest. The ABOVE-tier ceremony (the protected arm-launch workflow + an ACTIVE_RESERVED registry line) does NOT apply at this tier, and the protected workflow presently binds Arm-1 (Codex review #19 F6b: the earlier draft over-claimed above-tier authorization it never exercises). Should a future revision push the worst case past $10 it would cross into the above-tier branch and require that ceremony.",
+ "result_verifier": {
+  "script": "scripts/verify_arm2_calibration.py",
+  "metrics_schema": "b5-arm2-calibration-metrics/1",
+  "metrics_artifact": "calibration-metrics.json",
+  "expected_steps": 30,
+  "gpu_memory_ceiling_bytes": 23622320128,
+  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) — headroom for driver/fragmentation.",
+  "required_preservation_coverage": [
+   "english",
+   "french",
+   "lingala",
+   "swahili"
+  ],
+  "dev_sentinel_languages": [
+   "lingala",
+   "swahili"
+  ],
+  "note": "Codex review #19 F3/F4: the trainer writes the training-side fields of calibration-metrics.json (status, per-step CTC/KD/total, per-language kd_coverage, peak_gpu_bytes, throughput); the in-image calibration wrapper patches serve{readyz,adapter_residue,weights_finite} and dev_sentinel_wer AFTER export. scripts/verify_arm2_calibration.py refuses unless every field is present and within bounds — a run that omits serve/dev-WER or produces no positive KD FAILS CLOSED."
+ },
  "scope": "MECHANICS_AND_MEMORY_VALIDATION_ONLY",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
@@ -79,6 +99,6 @@
   "subnet-00232b25bc1ac407a"
  ],
  "volume_gb": 100,
- "worst_case_basis": "ml.g6.xlarge SageMaker on-demand $1.409/h x max_runtime 2h = $2.82 compute; ceiling $10 covers staging + retries",
- "worst_case_usd": 6.4
+ "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 2h = $3.20 worst-case compute. Codex review #19 F6c: the earlier draft carried three inconsistent figures ($2.82 real-rate, $6.40, and the launcher's $3.20) — the launcher's $3.20 is the one the gate actually enforces (worst_case <= cost_ceiling), so it is canonical here. The $10 ceiling covers staging + retries.",
+ "worst_case_usd": 3.2
 }

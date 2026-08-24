@@ -58,6 +58,29 @@ def batch_rows(mix: list[dict], batch_size: int, index: int) -> list[dict]:
     return [mix[(start + offset) % len(mix)] for offset in range(batch_size)]
 
 
+def authoritative_language(row: dict[str, Any]) -> str:
+    """The trusted per-row language is `_lang`, set by load_mix from the
+    manifest PARTITION path (train_asr.py) — not the optional, free-text
+    `primary_language`/`language` metadata a row may also carry. Codex review
+    #19 (F2): KD masking must key off the authoritative tag, refuse a row that
+    has none, and refuse a row whose optional metadata CONFLICTS with `_lang`
+    (a data-integrity fault, not a thing to silently ignore). Host-safe (no
+    torch) so the invariant is unit-tested off the GPU."""
+    lang = str(row.get("_lang") or "").strip().lower()
+    if not lang:
+        raise DataRefusal(
+            "a mix row has no authoritative `_lang` (set by load_mix from the "
+            "manifest partition) — KD cannot trust unlabelled data")
+    for key in ("primary_language", "language"):
+        meta = row.get(key)
+        if meta is not None and str(meta).strip().lower() not in ("", lang):
+            raise DataRefusal(
+                f"row {key}={meta!r} conflicts with authoritative "
+                f"_lang={lang!r}; refusing rather than trusting metadata "
+                "that disagrees with the manifest partition")
+    return lang
+
+
 def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
                       *, device=None) -> Callable[[int], dict[str, Any]]:
     """Collate micro-batch `index` into the tensors _batch_loss consumes:
@@ -82,7 +105,7 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
 
     def batches(index: int) -> dict[str, Any]:
         rows = batch_rows(mix, config.batch_size, index)
-        waves, targets = [], []
+        waves, targets, languages = [], [], []
         for row in rows:
             audio, _ = sf.read(fetch_audio(cli, row, cache),
                                dtype="float32", always_2d=False)
@@ -90,6 +113,7 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
                 audio = audio.mean(axis=1)
             waves.append(torch.from_numpy(audio))
             targets.append(encoder(row["text_normalized"]))
+            languages.append(authoritative_language(row))
         # The model loads in bf16; float32 audio dies in its first conv
         # ("Input type (float) and bias type (c10::BFloat16)", run r5).
         seqs, seq_lens = _pad(waves, torch.float32)
@@ -103,10 +127,10 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
             "targets_layout": BatchLayout(
                 tuple(target_seqs.shape), seq_lens=target_lens,
                 device=target_seqs.device),
-            # Arm-2 (Codex #14-#17): per-row language tag so the KD closure
-            # can mask the distillation term to the preservation languages.
-            "languages": [str(row.get("primary_language")
-                              or row.get("language") or "") for row in rows],
+            # Arm-2 (Codex #14-#19): AUTHORITATIVE per-row language tag
+            # (manifest-partition `_lang`, conflicts refused) so the KD closure
+            # masks the distillation term to the preservation languages.
+            "languages": languages,
         }
 
     return batches

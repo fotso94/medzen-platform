@@ -37,14 +37,23 @@ class DistillationRefusal(RuntimeError):
 def preservation_mask(language_tags: Sequence[Any],
                       preservation_languages: Sequence[Any],
                       *, weights: dict[str, float] | None = None,
-                      strict: bool = False) -> list[float]:
+                      strict: bool = False,
+                      known_languages: Sequence[Any] | None = None) -> list[float]:
     """Per-row KD weight: 0.0 for non-preservation rows, else the language's
     weight (default 1.0). The KD term is applied ONLY to preservation rows so
     the student is free to move on the target languages (pidgin, kinyarwanda,
-    ewe) while being held to the teacher on the sentinels. Codex review #18:
-    in ``strict`` mode a MISSING or unknown language tag on a row REFUSES
-    (never silently drops preservation) — the tag must be authoritative."""
+    ewe) while being held to the teacher on the sentinels.
+
+    Codex reviews #18/#19: in ``strict`` mode the tag must be AUTHORITATIVE.
+    A missing (empty) tag refuses; and when ``known_languages`` is supplied a
+    non-empty tag OUTSIDE that training-language set ALSO refuses — an unknown
+    tag must never silently receive zero KD (which would quietly drop a
+    preservation language mislabelled upstream). The caller passes the trusted
+    training-language set (`config.languages`, derived from the manifest
+    partition) so a typo or a stray label fails closed instead of mis-masking."""
     pres = {str(lang).strip().lower() for lang in preservation_languages}
+    known = ({str(lang).strip().lower() for lang in known_languages}
+             if known_languages is not None else None)
     weight_map = {str(k).strip().lower(): float(v)
                   for k, v in (weights or {}).items()}
     out: list[float] = []
@@ -55,6 +64,11 @@ def preservation_mask(language_tags: Sequence[Any],
                 "a batch row has no authoritative language tag — KD cannot "
                 "decide preservation membership; refusing rather than "
                 "silently dropping the term")
+        if strict and known is not None and norm and norm not in known:
+            raise DistillationRefusal(
+                f"batch row language tag {norm!r} is not in the training "
+                f"language set {sorted(known)} — an unknown tag would "
+                "silently receive zero KD; refusing rather than mis-masking")
         out.append(weight_map.get(norm, 1.0) if norm in pres else 0.0)
     return out
 
@@ -141,15 +155,27 @@ def kd_loss(student_logits: Any, teacher_logits: Any, *,
     """DIFFERENTIABLE torch KD term (in-image / C3 only). Logits are
     [rows, frames, vocab].
 
-    Upcasts bf16 logits to fp32 for a stable softmax/KL, computes
-    KL(teacher || student) per frame, and reduces as a MEAN over ONLY the
-    VALID (non-padded), preservation-weighted frames — Codex review #18:
-    (a) dividing by rows made the term frames-times too large; (b) padded
-    frames (discarded layouts) must not contribute or the effective KD
-    weight would depend on clip length. row_weights is the per-row
-    preservation weight (0 = excluded); valid_lengths is the per-row count of
-    real frames (from the encoder output layout, identical for student and
-    teacher). Alignment and temperature are validated BEFORE any tensor math.
+    Upcasts bf16 logits to fp32 for a stable softmax/KL, then reduces as a
+    PER-ROW MEAN over the row's valid (non-padded) frames FIRST, applies the
+    per-language weight to that per-row mean, and averages over the
+    UNWEIGHTED count of preservation rows:
+
+        row_kl[r]  = mean_over_valid_frames KL(teacher_r || student_r)
+        KD         = ( sum_r weight[r] * row_kl[r] / count(weight>0) ) * T^2
+
+    Codex review #19 (High): the previous reduction divided a weighted
+    numerator by a weighted denominator, so a single-preservation-language
+    batch (common at batch size 2) cancelled the weight entirely — 0.5 and
+    1.5 produced identical loss. Weighting the per-row mean and normalising
+    by an UNWEIGHTED preservation-row count makes the weight scale the loss
+    and its gradient monotonically. Codex reviews #18: padded frames must not
+    contribute (or the KD weight would depend on clip length), and the term
+    is a MEAN not a frame-sum (which was frames-times too large).
+
+    row_weights is the per-row preservation weight (0 = excluded);
+    valid_lengths is the per-row count of real frames from the encoder output
+    layout (identical for student and teacher). Alignment, temperature and
+    the frame-length bounds are validated BEFORE any reduction.
     """
     import torch
     import torch.nn.functional as functional
@@ -163,6 +189,16 @@ def kd_loss(student_logits: Any, teacher_logits: Any, *,
     if len(row_weights) != rows or len(valid_lengths) != rows:
         raise DistillationRefusal(
             "KD row_weights/valid_lengths length must equal the row count")
+    # Codex review #19 (F6d): a valid length outside 1..frames silently
+    # became a zero-KD row (negative) or an all-frames row (oversized).
+    # Refuse it — the layout must report a real frame count.
+    lengths_list = [int(v) for v in valid_lengths]
+    for row_index, length in enumerate(lengths_list):
+        if not (1 <= length <= frames):
+            raise DistillationRefusal(
+                f"KD valid_length {length} for row {row_index} is outside "
+                f"1..{frames}; the encoder layout must report a real "
+                "frame count, not a padded or negative one")
     student = student_logits.float() / temp
     teacher = teacher_logits.float() / temp
     log_student = functional.log_softmax(student, dim=-1)
@@ -171,14 +207,17 @@ def kd_loss(student_logits: Any, teacher_logits: Any, *,
     per_frame_kl = (probs_teacher * (log_teacher - log_student)).sum(dim=-1)  # [rows, frames]
     device, dtype = per_frame_kl.device, per_frame_kl.dtype
     frame_index = torch.arange(frames, device=device).unsqueeze(0)           # [1, frames]
-    lengths = torch.as_tensor([int(v) for v in valid_lengths],
-                              device=device).unsqueeze(1)                    # [rows, 1]
+    lengths = torch.as_tensor(lengths_list, device=device).unsqueeze(1)      # [rows, 1]
     valid = (frame_index < lengths).to(dtype)                                # [rows, frames]
+    # per-row MEAN over that row's valid frames (bounds guarantee >= 1)
+    row_valid = valid.sum(dim=1).clamp_min(1.0)                              # [rows]
+    row_kl = (per_frame_kl * valid).sum(dim=1) / row_valid                   # [rows]
     weights = torch.as_tensor([float(w) for w in row_weights], dtype=dtype,
-                              device=device).unsqueeze(1)                    # [rows, 1]
-    selected = valid * weights                                              # [rows, frames]
-    denominator = selected.sum().clamp_min(1.0)
-    kd = (per_frame_kl * selected).sum() / denominator
+                              device=device)                                 # [rows]
+    # weight scales the per-row mean; normalise by the UNWEIGHTED count of
+    # preservation rows so the weight cannot cancel out of numerator+denominator
+    pres_count = (weights > 0).to(dtype).sum().clamp_min(1.0)
+    kd = (weights * row_kl).sum() / pres_count
     return kd * (temp * temp)
 
 

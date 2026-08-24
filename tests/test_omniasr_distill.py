@@ -108,6 +108,8 @@ def test_kd_alignment_matches_and_refuses_mismatch():
 def test_preservation_mask_weights_and_strict_authoritative_tags():
     tags = ["English", "pidgin", "lingala", "kinyarwanda", "swahili"]
     pres = ["english", "french", "swahili", "lingala"]
+    known = ["english", "french", "swahili", "lingala", "pidgin",
+             "kinyarwanda", "ewe"]
     assert preservation_mask(tags, pres) == [1.0, 0.0, 1.0, 0.0, 1.0]
     # per-language weights (Codex #18: heavier sentinels, lighter anchors)
     weighted = preservation_mask(tags, pres,
@@ -116,6 +118,33 @@ def test_preservation_mask_weights_and_strict_authoritative_tags():
     # strict: a missing/empty language tag REFUSES rather than dropping KD
     with pytest.raises(DistillationRefusal, match="authoritative language"):
         preservation_mask(["english", ""], pres, strict=True)
+    # Codex review #19 (F2): a non-empty tag OUTSIDE the training-language set
+    # must also refuse in strict mode — an unknown tag silently receiving zero
+    # KD would quietly drop a mislabelled preservation row
+    with pytest.raises(DistillationRefusal, match="not in the training"):
+        preservation_mask(["english", "klingon"], pres, strict=True,
+                          known_languages=known)
+    # a known non-preservation tag (pidgin) is fine — just weight 0.0
+    assert preservation_mask(["english", "pidgin"], pres, strict=True,
+                             known_languages=known) == [1.0, 0.0]
+
+
+def test_authoritative_language_uses_lang_and_refuses_conflicts():
+    """Codex review #19 (F2): the batch must key KD off the manifest-derived
+    `_lang`, refuse a row that lacks it, and refuse metadata that CONFLICTS."""
+    from pipeline.omniasr_data import DataRefusal, authoritative_language
+    # trusts `_lang` (lower-cased), not the optional metadata when it agrees
+    assert authoritative_language(
+        {"_lang": "Lingala", "primary_language": "lingala"}) == "lingala"
+    assert authoritative_language({"_lang": "swahili"}) == "swahili"
+    # a row with no authoritative tag refuses
+    with pytest.raises(DataRefusal, match="authoritative `_lang`"):
+        authoritative_language({"primary_language": "english"})
+    # metadata that disagrees with `_lang` refuses rather than being trusted
+    with pytest.raises(DataRefusal, match="conflicts with authoritative"):
+        authoritative_language({"_lang": "lingala", "primary_language": "swahili"})
+    with pytest.raises(DataRefusal, match="conflicts with authoritative"):
+        authoritative_language({"_lang": "lingala", "language": "english"})
 
 
 def test_kd_is_off_by_default_and_leaves_config_neutral():
@@ -247,6 +276,50 @@ def test_kd_weight_zero_row_and_per_language_weighting():
 
 
 @_needs_torch
+def test_language_weight_scales_loss_and_gradient():
+    """Codex review #19 (F1): the previous reduction divided a weighted
+    numerator by a weighted denominator, so on a single-preservation-language
+    batch (common at batch size 2) the weight CANCELLED — 0.5 and 1.5 gave the
+    same loss. This proves the weight now scales BOTH the loss and the gradient
+    monotonically, single-language batch included."""
+    import torch
+
+    from pipeline.omniasr_distill import kd_loss
+
+    def loss_and_grad(weight):
+        torch.manual_seed(3)
+        student = torch.randn(1, 4, 6, requires_grad=True)  # ONE row = one language
+        teacher = torch.randn(1, 4, 6)
+        kd = kd_loss(student, teacher, temperature=1.0,
+                     row_weights=[weight], valid_lengths=[4])
+        kd.backward()
+        return kd.item(), student.grad.norm().item()
+
+    l05, g05 = loss_and_grad(0.5)
+    l15, g15 = loss_and_grad(1.5)
+    # linear in the weight: 1.5x pressure is exactly 3x the 0.5x pressure
+    assert l05 > 0 and math.isclose(l15 / l05, 3.0, rel_tol=1e-4)
+    assert math.isclose(g15 / g05, 3.0, rel_tol=1e-4)
+    assert l15 > l05 and g15 > g05
+
+
+@_needs_torch
+def test_kd_refuses_out_of_range_valid_length():
+    """Codex review #19 (F6d): a valid_length outside 1..frames silently
+    became a zero-KD (negative) or all-frames (oversized) row. Refuse it."""
+    import torch
+
+    from pipeline.omniasr_distill import kd_loss
+
+    student = torch.randn(1, 4, 6)
+    teacher = torch.randn(1, 4, 6)
+    for bad in (0, -1, 5, 99):
+        with pytest.raises(DistillationRefusal, match="valid_length"):
+            kd_loss(student, teacher, temperature=1.0,
+                    row_weights=[1.0], valid_lengths=[bad])
+
+
+@_needs_torch
 def test_teacher_weights_unchanged_after_an_optimizer_step():
     import copy
 
@@ -310,7 +383,10 @@ def test_batch_loss_kd_unpacks_the_fairseq2_tuple_contract():
     out = _batch_loss_kd(student, batch, teacher=teacher, alpha=0.5,
                          temperature=1.0,
                          preservation_languages=("english", "french", "swahili", "lingala"),
-                         language_weights=(("english", 1.0),))
+                         language_weights=(("english", 1.0),),
+                         known_languages=("english", "french", "swahili",
+                                          "lingala", "pidgin", "kinyarwanda",
+                                          "ewe"))
     assert torch.isfinite(out)
 
 

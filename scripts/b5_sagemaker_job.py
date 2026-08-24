@@ -74,6 +74,113 @@ def _require(bindings: dict, key: str):
     return value
 
 
+_KD_TRUE = {"1", "true", "yes", "on"}
+
+
+def _parse_env_weights(raw: str) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for pair in (raw or "").split(","):
+        if not pair.strip():
+            continue
+        lang, _, val = pair.partition("=")
+        out[lang.strip().lower()] = float(val)
+    return out
+
+
+def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
+    """Codex review #19 F4: the top-level `distillation` recipe and the
+    `environment` KD variables can silently DISAGREE — the launcher validated
+    the environment via parse_config but never cross-checked the human-facing
+    recipe against it, and accepted an EMPTY acceptance_criteria. Reproduced:
+    top-level alpha 0.9 vs env alpha 0.5 with emptied criteria still PASSED.
+
+    This makes the packet self-consistent or refuses:
+      - KD-enabled env <=> a `distillation` block (both, or neither);
+      - every duplicated field (alpha, temperature, teacher card/mode,
+        preservation languages, per-language weights) is byte-equal across the
+        two representations;
+      - acceptance_criteria is a NON-EMPTY list;
+      - a `result_verifier` block binds the executable checker + schema so the
+        result is machine-enforced, not eyeballed."""
+    kd_on = str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE
+    recipe = bindings.get("distillation")
+    if kd_on and not isinstance(recipe, dict):
+        raise JobRefusal(
+            "MEDZEN_KD_ENABLE is truthy but the packet has no top-level "
+            "`distillation` recipe to cross-check — a KD run must declare its "
+            "recipe in one canonical, reviewable place")
+    if recipe is not None and not kd_on:
+        raise JobRefusal(
+            "the packet declares a `distillation` recipe but "
+            "MEDZEN_KD_ENABLE is not truthy — the recipe and the environment "
+            "disagree about whether this is a KD run")
+    if not kd_on:
+        return
+
+    def _mismatch(field: str, recipe_value, env_value) -> None:
+        raise JobRefusal(
+            f"Arm-2 recipe/environment disagree on {field}: recipe "
+            f"{recipe_value!r} vs environment {env_value!r} — one canonical "
+            "recipe, no silent divergence (Codex review #19 F4)")
+
+    if float(recipe.get("kd_alpha")) != float(environment.get("MEDZEN_KD_ALPHA")):
+        _mismatch("kd_alpha", recipe.get("kd_alpha"),
+                  environment.get("MEDZEN_KD_ALPHA"))
+    if float(recipe.get("kd_temperature")) != float(
+            environment.get("MEDZEN_KD_TEMPERATURE")):
+        _mismatch("kd_temperature", recipe.get("kd_temperature"),
+                  environment.get("MEDZEN_KD_TEMPERATURE"))
+    if str(recipe.get("teacher_card")) != str(
+            environment.get("MEDZEN_KD_TEACHER_CARD")):
+        _mismatch("teacher_card", recipe.get("teacher_card"),
+                  environment.get("MEDZEN_KD_TEACHER_CARD"))
+    if str(recipe.get("teacher_mode")) != str(
+            environment.get("MEDZEN_KD_TEACHER_MODE")):
+        _mismatch("teacher_mode", recipe.get("teacher_mode"),
+                  environment.get("MEDZEN_KD_TEACHER_MODE"))
+    recipe_pres = {str(x).strip().lower() for x in
+                   recipe.get("preservation_languages", [])}
+    env_pres = {t.strip().lower() for t in
+                str(environment.get("MEDZEN_KD_PRESERVATION_LANGUAGES", "")
+                    ).split(",") if t.strip()}
+    if recipe_pres != env_pres:
+        _mismatch("preservation_languages", sorted(recipe_pres),
+                  sorted(env_pres))
+    recipe_weights = {str(k).strip().lower(): float(v)
+                      for k, v in (recipe.get("language_weights") or {}).items()}
+    env_weights = _parse_env_weights(
+        str(environment.get("MEDZEN_KD_LANGUAGE_WEIGHTS", "")))
+    if recipe_weights != env_weights:
+        _mismatch("language_weights", recipe_weights, env_weights)
+
+    criteria = bindings.get("acceptance_criteria")
+    if not isinstance(criteria, list) or not criteria:
+        raise JobRefusal(
+            "an Arm-2 KD packet must carry a NON-EMPTY acceptance_criteria "
+            "list — emptying it (Codex review #19 F4 reproduction) must refuse")
+    spec = bindings.get("result_verifier")
+    if not isinstance(spec, dict):
+        raise JobRefusal(
+            "an Arm-2 KD packet must bind a `result_verifier` block (the "
+            "executable checker + metrics schema) so the calibration result "
+            "is machine-enforced, not eyeballed (Codex review #19 F3/F4)")
+    for key in ("script", "metrics_schema", "metrics_artifact",
+                "expected_steps", "gpu_memory_ceiling_bytes",
+                "required_preservation_coverage", "dev_sentinel_languages"):
+        if key not in spec:
+            raise JobRefusal(f"result_verifier lacks {key!r}")
+    if str(spec["metrics_schema"]) != "b5-arm2-calibration-metrics/1":
+        raise JobRefusal(
+            "result_verifier.metrics_schema must be "
+            "'b5-arm2-calibration-metrics/1' (the trainer's artifact schema)")
+    # the verifier's declared coverage must equal the recipe's preservation set
+    if {str(x).strip().lower()
+            for x in spec["required_preservation_coverage"]} != recipe_pres:
+        raise JobRefusal(
+            "result_verifier.required_preservation_coverage must equal the "
+            "recipe's preservation_languages")
+
+
 def render_request(bindings: dict) -> dict:
     job_id = _require(bindings, "job_id")
     if re.fullmatch(r"[a-z0-9-]{1,40}", job_id) is None:
@@ -134,6 +241,11 @@ def render_request(bindings: dict) -> dict:
         raise JobRefusal(
             f"the trainer would refuse this environment at container "
             f"start: {exc}") from exc
+    # Codex review #19 F4: the trainer parser validates the environment in
+    # isolation; this cross-checks the human-facing `distillation` recipe and
+    # the acceptance/result-verifier bindings against it so the packet cannot
+    # be internally self-contradictory.
+    validate_arm2_semantics(bindings, environment)
     # Codex review #8 step 6: a multilingual-full packet must bind the
     # EXACT approved pilot profile, not merely satisfy generic limits.
     if environment.get("MEDZEN_MULTILINGUAL_FULL_ACK"):

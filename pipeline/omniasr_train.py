@@ -516,6 +516,87 @@ def write_checkpoint_marker(checkpoint_dir: Path, *, step: int,
 
 
 # --------------------------------------------------------------------------
+# Calibration metrics (Codex review #19 F3): the Arm-2 calibration must PROVE
+# separate CTC/KD/total loss, per-language KD coverage, peak GPU memory and
+# throughput — the old loop returned one combined scalar and logged only
+# mean_loss, so the acceptance criteria were unverifiable. This accumulator is
+# PURE (host-testable, no torch) and produces the exact artifact schema
+# scripts/verify_arm2_calibration.py machine-checks.
+# --------------------------------------------------------------------------
+
+CALIBRATION_METRICS_SCHEMA = "b5-arm2-calibration-metrics/1"
+CALIBRATION_METRICS_FILE = "calibration-metrics.json"
+
+
+class CalibrationMetrics:
+    """Aggregates the KD loss decomposition across grad-accumulation micro
+    batches into per-step means and running per-language coverage. `finalize`
+    stamps the run-level facts (status, peak GPU memory, throughput) the
+    verifier enforces. The serve (readyz) and dev-sentinel-WER fields are
+    filled by the in-image calibration wrapper AFTER training; the verifier
+    requires them, so a run that skips them fails closed."""
+
+    def __init__(self) -> None:
+        self._micro: list[dict[str, Any]] = []
+        self.per_step: list[dict[str, Any]] = []
+        self.coverage: dict[str, dict[str, int]] = {}
+
+    def record_micro(self, sink: dict[str, Any]) -> None:
+        """Capture one micro-batch's decomposed components (a copy of the
+        sink the KD closure just wrote). No-op if the closure produced none
+        (e.g. a non-KD run)."""
+        if sink:
+            self._micro.append(dict(sink))
+
+    def commit_step(self, step: int, lr: float) -> None:
+        """Fold the accumulated micro-batches into one per-step record
+        (mean CTC/KD/total) and roll per-language coverage forward."""
+        if not self._micro:
+            return
+        n = len(self._micro)
+        ctc = sum(m["ctc"] for m in self._micro) / n
+        kd = sum(m["kd"] for m in self._micro) / n
+        total = sum(m["total"] for m in self._micro) / n
+        for m in self._micro:
+            for language, bucket in m.get("kd_coverage", {}).items():
+                run = self.coverage.setdefault(language, {"rows": 0, "frames": 0})
+                run["rows"] += int(bucket.get("rows", 0))
+                run["frames"] += int(bucket.get("frames", 0))
+        self.per_step.append({"step": int(step), "ctc": ctc, "kd": kd,
+                              "total": total, "lr": float(lr)})
+        self._micro = []
+
+    def finalize(self, *, status: str, steps_completed: int, max_steps: int,
+                 peak_gpu_bytes: int | None, wall_seconds: float,
+                 serve: dict[str, Any] | None = None,
+                 dev_sentinel_wer: dict[str, Any] | None = None) -> dict[str, Any]:
+        kd_values = [s["kd"] for s in self.per_step]
+        positive_finite = sum(
+            1 for v in kd_values if math.isfinite(v) and v > 0.0)
+        steps_per_min = (steps_completed / (wall_seconds / 60.0)
+                         if wall_seconds > 0 else 0.0)
+        return {
+            "schema": CALIBRATION_METRICS_SCHEMA,
+            "status": status,
+            "steps_completed": int(steps_completed),
+            "max_steps": int(max_steps),
+            "per_step": self.per_step,
+            "kd_min": min(kd_values) if kd_values else None,
+            "kd_max": max(kd_values) if kd_values else None,
+            "kd_positive_finite_steps": positive_finite,
+            "kd_coverage": self.coverage,
+            "peak_gpu_bytes": (int(peak_gpu_bytes)
+                               if peak_gpu_bytes is not None else None),
+            "throughput": {"steps_per_min": round(steps_per_min, 4),
+                           "wall_seconds": round(float(wall_seconds), 4)},
+            # filled post-training by the in-image calibration wrapper; the
+            # verifier requires both, so omission fails closed
+            "serve": serve,
+            "dev_sentinel_wer": dev_sentinel_wer,
+        }
+
+
+# --------------------------------------------------------------------------
 # Generic training loop — model-agnostic so a CPU-sized stand-in exercises
 # the exact step/accumulation/checkpoint/resume arithmetic that will run on
 # the GPU. The fairseq2 pieces plug in via batch_loss.
@@ -692,6 +773,8 @@ def run_training_loop(
     save_state: Callable[[Path, int], None],
     load_state: Callable[[Path], int],
     stop_flag: dict[str, bool] | None = None,
+    metrics: "CalibrationMetrics | None" = None,
+    metrics_sink: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     import torch
 
@@ -727,6 +810,8 @@ def run_training_loop(
             loss = batch_loss(model, batches(step * config.grad_accum + micro))
             (loss / config.grad_accum).backward()
             accumulated += float(loss.detach())
+            if metrics is not None and metrics_sink is not None:
+                metrics.record_micro(metrics_sink)
         step_loss = accumulated / config.grad_accum
         # Codex review #4 (reproduced): a NaN loss used to sail through to
         # COMPLETED with non-finite parameters. Fail closed BEFORE the
@@ -750,6 +835,8 @@ def run_training_loop(
         optimizer.step()
         step += 1
         losses.append(step_loss)
+        if metrics is not None:
+            metrics.commit_step(step, rate)
         if step % config.checkpoint_every_steps == 0 or step == config.max_steps:
             for parameter in model.parameters():
                 if not bool(torch.isfinite(parameter).all()):
@@ -808,7 +895,8 @@ def _layout_valid_lengths(layout, rows: int) -> list[int]:
 
 
 def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
-                   preservation_languages, language_weights):
+                   preservation_languages, language_weights,
+                   known_languages, metrics_sink=None):
     """Arm-2 preservation-aware distillation loss (in-image / C3).
 
     ONE clean objective (Codex review #18): CTC_mean + alpha * KD_mean.
@@ -838,17 +926,42 @@ def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
             "are not aligned")
     weights = preservation_mask(
         batch["languages"], preservation_languages,
-        weights=dict(language_weights), strict=True)
+        weights=dict(language_weights), strict=True,
+        known_languages=known_languages)
     kd = kd_loss(student_logits, teacher_logits, temperature=temperature,
                  row_weights=weights, valid_lengths=student_lengths)
     ctc_mean = loss_ctc / batch["seqs"].shape[0]
-    return ctc_mean + alpha * kd
+    total = ctc_mean + alpha * kd
+    # Codex review #19 (F3): the calibration must PROVE the KD term is live
+    # and covers each preservation language. Stash the decomposed components
+    # and per-language KD coverage (rows + valid frames) so the training loop
+    # can write a machine-checkable metrics artifact. Detached: reporting only.
+    if metrics_sink is not None:
+        coverage: dict[str, dict[str, int]] = {}
+        for language, weight, length in zip(
+                batch["languages"], weights, student_lengths):
+            if weight > 0:
+                bucket = coverage.setdefault(
+                    str(language).strip().lower(), {"rows": 0, "frames": 0})
+                bucket["rows"] += 1
+                bucket["frames"] += int(length)
+        metrics_sink.clear()
+        metrics_sink.update({
+            "ctc": float(ctc_mean.detach()),
+            "kd": float(kd.detach()),
+            "total": float(total.detach()),
+            "alpha": float(alpha),
+            "kd_coverage": coverage,
+        })
+    return total
 
 
-def make_batch_loss(config, teacher):
+def make_batch_loss(config, teacher, *, metrics_sink=None):
     """The loss callable run_training_loop consumes: the plain CTC loss
     unless KD is enabled, else a frozen-teacher-anchored closure. The
-    KD-disabled selection is host-testable (no torch)."""
+    KD-disabled selection is host-testable (no torch). When ``metrics_sink``
+    is a dict, the KD closure writes its decomposed CTC/KD/total loss and
+    per-language coverage into it each call (Codex review #19 F3)."""
     if not config.kd_enable:
         return _batch_loss
 
@@ -857,7 +970,9 @@ def make_batch_loss(config, teacher):
             model, batch, teacher=teacher, alpha=config.kd_alpha,
             temperature=config.kd_temperature,
             preservation_languages=config.kd_preservation_languages,
-            language_weights=config.kd_language_weights)
+            language_weights=config.kd_language_weights,
+            known_languages=config.languages,
+            metrics_sink=metrics_sink)
 
     return _kd_closure
 
@@ -958,11 +1073,38 @@ def main() -> int:
             torch.cuda.set_rng_state_all(state["cuda_rng"])
         return int(state["step"])
 
+    # Arm-2 calibration metrics (Codex review #19 F3): decomposed CTC/KD/total
+    # loss + per-language coverage + peak GPU memory + throughput, written for
+    # scripts/verify_arm2_calibration.py to machine-check the acceptance
+    # criteria. Only populated on KD runs; non-KD runs are byte-identical.
+    import time as _time
+    metrics = CalibrationMetrics() if config.kd_enable else None
+    metrics_sink: dict[str, Any] | None = {} if config.kd_enable else None
+    if config.kd_enable and torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+    _wall_start = _time.perf_counter()
     outcome = run_training_loop(
         model=model, optimizer=optimizer, batches=batches,
-        batch_loss=make_batch_loss(config, teacher), config=config,
-        fingerprint=fingerprint, save_state=save_state,
-        load_state=load_state, stop_flag=stop_flag)
+        batch_loss=make_batch_loss(config, teacher, metrics_sink=metrics_sink),
+        config=config, fingerprint=fingerprint, save_state=save_state,
+        load_state=load_state, stop_flag=stop_flag,
+        metrics=metrics, metrics_sink=metrics_sink)
+    if metrics is not None:
+        peak = (int(torch.cuda.max_memory_allocated())
+                if torch.cuda.is_available() else None)
+        artifact = metrics.finalize(
+            status=outcome["status"], steps_completed=outcome["step"],
+            max_steps=config.max_steps, peak_gpu_bytes=peak,
+            wall_seconds=_time.perf_counter() - _wall_start)
+        (config.output_dir / CALIBRATION_METRICS_FILE).write_bytes(
+            json.dumps(artifact, sort_keys=True,
+                       separators=(",", ":")).encode() + b"\n")
+        print(json.dumps({"status": "CALIBRATION_METRICS_WRITTEN",
+                          "file": CALIBRATION_METRICS_FILE,
+                          "kd_positive_finite_steps":
+                          artifact["kd_positive_finite_steps"],
+                          "peak_gpu_bytes": artifact["peak_gpu_bytes"]},
+                         sort_keys=True))
     if outcome["status"] == "INTERRUPTED_CHECKPOINTED":
         return SIGTERM_EXIT
     if outcome["status"] == "TRAINING_DIVERGED_NONFINITE":
