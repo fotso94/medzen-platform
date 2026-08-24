@@ -54,17 +54,40 @@ MEDZEN_REGION = "eu-central-1"
 # disk-exhaustion path)
 BUNDLE_MEMBERS = ("calibration-metrics.json", "export/manifest.json",
                   "export/model.pt")
+# Codex #25 finding 3: caps sized to the REAL ~2.6 GB model (not 8-9 GB
+# ceilings that could still overwhelm a runner) — archive + extraction peak
+# is ~8 GB under these bounds, and live_fetch ALSO preflights free disk.
 BUNDLE_MEMBER_MAX_BYTES = {
     "calibration-metrics.json": 64 * 1024 * 1024,       # generous for receipts
     "export/manifest.json": 4 * 1024 * 1024,
-    "export/model.pt": 8 * 1024 * 1024 * 1024,          # ~2.6 GB real model
+    "export/model.pt": 4 * 1024 * 1024 * 1024,          # ~2.6 GB real model
 }
-# Codex #24 finding 2: cap the COMPRESSED archive before/while downloading
-# (member caps alone let a huge archive exhaust the runner's disk first),
-# and bound the archive's member count + aggregate declared size.
-ARCHIVE_MAX_BYTES = 9 * 1024 * 1024 * 1024
+ARCHIVE_MAX_BYTES = 4 * 1024 * 1024 * 1024
 ARCHIVE_MAX_MEMBERS = 64
-ARCHIVE_MAX_AGGREGATE_BYTES = 9 * 1024 * 1024 * 1024
+ARCHIVE_MAX_AGGREGATE_BYTES = 4_800_000_000
+DISK_SAFETY_MARGIN_BYTES = 2 * 1024 * 1024 * 1024
+
+# ---- the GOVERNED field sets (Codex #25 finding 1) ----
+# Every member of the pinned botocore CreateTrainingJob∩DescribeTrainingJob
+# model must be RENDERED (exact-compared), UNRENDERED-INERT (must be absent
+# or provably inert in the receipt), or CREATE-ONLY-GOVERNED (not echoed by
+# Describe — verified against the CloudTrail creation record + the exclusive
+# workflow/IAM boundary). A botocore upgrade that adds a field FAILS the
+# model-coverage test until the field is governed here.
+RENDERED_TOP_KEYS = frozenset({
+    "TrainingJobName", "RoleArn", "AlgorithmSpecification",
+    "OutputDataConfig", "CheckpointConfig", "ResourceConfig", "VpcConfig",
+    "StoppingCondition", "EnableManagedSpotTraining",
+    "EnableNetworkIsolation", "EnableInterContainerTrafficEncryption",
+    "ProfilerConfig", "RemoteDebugConfig", "Environment",
+})
+UNRENDERED_INERT_KEYS = frozenset({
+    "HyperParameters", "InputDataConfig", "DebugHookConfig",
+    "DebugRuleConfigurations", "TensorBoardOutputConfig", "ExperimentConfig",
+    "ProfilerRuleConfigurations", "RetryStrategy", "InfraCheckConfig",
+    "MlflowConfig", "ModelPackageConfig", "ServerlessJobConfig",
+})
+CREATE_ONLY_GOVERNED = frozenset({"SessionChainingConfig", "Tags"})
 
 
 def stream_with_cap(body, dest: Path, cap: int, *, label: str) -> int:
@@ -88,10 +111,11 @@ IDENTITY_SHA_FIELDS = ("run_fingerprint", "export_manifest_sha256",
                        "execution_contract_sha256", "verifier_script_sha256")
 # the canonical scorer string the calibration wrapper stamps; kept in lock-step
 # with pipeline.omniasr_calibrate.SCORER_ID (a host test asserts equality).
-CANONICAL_SCORER = ("ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
+CANONICAL_SCORER = ("preproc=resample16k+utterance-znorm; "
+                    "ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
                     "skip-special-tokens; "
                     "normalizer=pipeline.normalizers.for_language; "
-                    "metric=corpus-word-error-rate/2")
+                    "metric=corpus-word-error-rate/3")
 import re as _re
 
 _HEX64 = _re.compile(r"^[0-9a-f]{64}$")
@@ -243,6 +267,26 @@ def verify_calibration(metrics: dict[str, Any],
             if not _finite_number(dev_wer.get(language)):
                 fail(f"dev_sentinel_wer[{language!r}] is not a finite number "
                      f"({dev_wer.get(language)!r})")
+
+    # (7c) MANDATORY upstream decode parity (Codex #25 finding 2): the run
+    # itself must have proven our scorer path decodes identically to the
+    # pinned upstream ASRInferencePipeline on the BASE model, at least one
+    # real fetched row per dev-sentinel language — fail, never skip.
+    parity = metrics.get("parity")
+    if not isinstance(parity, dict):
+        fail("parity block is absent — the run did not prove upstream decode "
+             "parity (mandatory, not skippable)")
+    else:
+        if parity.get("upstream_equal") is not True:
+            fail(f"parity.upstream_equal is {parity.get('upstream_equal')!r} "
+                 "— the scorer does not match the pinned upstream decoder")
+        if "omnilingual" not in str(parity.get("upstream") or ""):
+            fail("parity.upstream does not name the pinned omnilingual_asr "
+                 "pipeline")
+        rows_checked = parity.get("rows_checked") or {}
+        for language in verifier_spec["dev_sentinel_languages"]:
+            if int(rows_checked.get(language) or 0) < 1:
+                fail(f"parity checked no rows for {language!r}")
 
     # (8) IDENTITY BINDING (Codex review #20 F5, hardened after the adversarial
     # pass found presence-only checks let a FABRICATED file through). Scope,
@@ -423,14 +467,19 @@ def verify_training_receipt(receipt: dict[str, Any], packet: dict[str, Any],
         "TensorBoardOutputConfig": _inert,
         "ExperimentConfig": _inert,
         "ProfilerRuleConfigurations": _inert,
-        "RetryStrategy": lambda v: _inert(v) or (
-            isinstance(v, dict)
-            and int(v.get("MaximumRetryAttempts") or 1) <= 1),
+        # Codex #25: MaximumRetryAttempts=1 is NOT inert (it changes
+        # execution behavior) — only absent/empty is acceptable
+        "RetryStrategy": _inert,
         "InfraCheckConfig": lambda v: _inert(v) or (
             isinstance(v, dict) and v.get("EnableInfraCheck") in (None, False)),
-        "SessionChainingConfig": lambda v: _inert(v) or (
-            isinstance(v, dict)
-            and v.get("EnableSessionTagChaining") in (None, False)),
+        # Codex #25: the current API's remaining shared fields
+        "MlflowConfig": _inert,
+        "ModelPackageConfig": _inert,
+        "ServerlessJobConfig": _inert,
+        # NOTE: SessionChainingConfig is CREATE-ONLY — DescribeTrainingJob
+        # never echoes it, so a receipt check would be theater. It is
+        # governed by verify_creation_request_parameters (the CloudTrail
+        # creation record) + the exclusive workflow/IAM boundary.
     }
     for key, is_ok in unrendered_top.items():
         value = receipt.get(key)
@@ -579,6 +628,68 @@ def verify_dev_row_receipts(metrics: dict[str, Any],
                     f"dev_sentinel_wer[{language!r}]={scalar!r} does not equal "
                     f"the WER recomputed from the per-row receipts "
                     f"({recomputed})")
+    return failures
+
+
+def _camel(key: str) -> str:
+    """CloudTrail requestParameters serialize SageMaker's PascalCase members
+    with a lowered first letter; normalize for comparison."""
+    return key[:1].lower() + key[1:] if key else key
+
+
+def verify_creation_request_parameters(
+        params: dict[str, Any], expected_request: dict[str, Any]) -> list[str]:
+    """Codex #25 finding 1: create-only fields (SessionChainingConfig) never
+    appear in DescribeTrainingJob, so the receipt cannot prove their absence.
+    The CloudTrail CreateTrainingJob record carries the ORIGINAL request
+    parameters — every key present there must exist in the launcher's rendered
+    request with an equal value, and NOTHING may appear that the render never
+    sent (this closes every create-only and future-field gap at create time)."""
+    failures: list[str] = []
+    expected_by_camel = {_camel(k): v for k, v in expected_request.items()}
+
+    def compare(exp: Any, act: Any, path: str) -> None:
+        if isinstance(exp, dict) and isinstance(act, dict):
+            exp_by_camel = {_camel(k): v for k, v in exp.items()}
+            for key, value in act.items():
+                if _camel(key) not in exp_by_camel:
+                    failures.append(
+                        f"creation record carries {path}.{key} which the "
+                        "rendered request never sent")
+                else:
+                    compare(exp_by_camel[_camel(key)], value,
+                            f"{path}.{key}")
+        elif isinstance(exp, list) and isinstance(act, list):
+            if path.lower().endswith(("securitygroupids", "subnets")):
+                if sorted(map(str, exp)) != sorted(map(str, act)):
+                    failures.append(
+                        f"creation record {path} {act!r} != rendered {exp!r}")
+            elif len(exp) != len(act):
+                failures.append(
+                    f"creation record {path} has {len(act)} entries, "
+                    f"rendered {len(exp)}")
+            else:
+                for index, (e, a) in enumerate(zip(exp, act)):
+                    compare(e, a, f"{path}[{index}]")
+        else:
+            if str(act) != str(exp):
+                failures.append(
+                    f"creation record {path} {act!r} != rendered {exp!r}")
+
+    if not isinstance(params, dict) or not params:
+        return ["CloudTrail creation record has no requestParameters"]
+    for key, value in params.items():
+        camel = _camel(key)
+        if camel not in expected_by_camel:
+            failures.append(
+                f"creation record carries top-level {key!r} which the "
+                "rendered request never sent (create-only smuggling)")
+        else:
+            compare(expected_by_camel[camel], value, key)
+    # the record must at least name the job — an empty/foreign record proves
+    # nothing
+    if _camel("TrainingJobName") not in {_camel(k) for k in params}:
+        failures.append("creation record lacks trainingJobName")
     return failures
 
 
@@ -735,8 +846,36 @@ def select_execution_window_version(versions: list[dict[str, Any]],
     return in_window[0]
 
 
+def fetch_creation_request(session, job_name: str) -> dict[str, Any]:
+    """Fetch the CloudTrail CreateTrainingJob record's requestParameters for
+    this job (management events; delivery can lag ~15 min after creation).
+    Exactly one record is required."""
+    trail = session.client("cloudtrail")
+    events = []
+    token = None
+    while True:
+        kwargs = {"LookupAttributes": [
+            {"AttributeKey": "ResourceName", "AttributeValue": job_name}]}
+        if token:
+            kwargs["NextToken"] = token
+        page = trail.lookup_events(**kwargs)
+        events.extend(e for e in (page.get("Events") or [])
+                      if e.get("EventName") == "CreateTrainingJob")
+        token = page.get("NextToken")
+        if not token:
+            break
+    if len(events) != 1:
+        raise SystemExit(
+            f"expected exactly ONE CloudTrail CreateTrainingJob record for "
+            f"{job_name}, found {len(events)} — management-event delivery "
+            "can lag ~15 minutes; re-run once it lands (zero), or the job "
+            "was created more than once (multiple)")
+    detail = json.loads(events[0]["CloudTrailEvent"])
+    return dict(detail.get("requestParameters") or {})
+
+
 def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
-        dict[str, Any], dict[str, Path], dict[str, Any]]:
+        dict[str, Any], dict[str, Path], dict[str, Any], dict[str, Any]]:
     """AWS side of authoritative mode: pin account+region, call
     DescribeTrainingJob ITSELF, follow ModelArtifacts.S3ModelArtifacts, fetch
     that exact object (VersionId + KMS captured from the response), and
@@ -795,6 +934,15 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         raise SystemExit(
             f"model.tar.gz declares {declared} bytes, over the "
             f"{ARCHIVE_MAX_BYTES} cap — refusing disk exhaustion")
+    # Codex #25 finding 3: preflight the runner's ACTUAL free disk — archive
+    # + extraction + safety margin must fit before a byte is streamed
+    import shutil as _shutil
+    free = _shutil.disk_usage(workdir).free
+    needed = declared * 2 + DISK_SAFETY_MARGIN_BYTES
+    if free < needed:
+        raise SystemExit(
+            f"workdir has {free} bytes free; archive + extraction need "
+            f"~{needed} — refusing to fill the disk")
     tar_path = workdir / "model.tar.gz"
     stream_with_cap(response["Body"], tar_path, ARCHIVE_MAX_BYTES,
                     label="model.tar.gz download")
@@ -808,7 +956,8 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         "ContentLength": response.get("ContentLength"),
     }
     extracted = safe_extract_bundle(tar_path, workdir / "bundle")
-    return receipt, extracted, s3_meta
+    creation_request = fetch_creation_request(session, job_name)
+    return receipt, extracted, s3_meta, creation_request
 
 
 def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
@@ -946,10 +1095,18 @@ def main(argv: list[str] | None = None) -> int:
         import tempfile
         workdir = args.workdir or Path(tempfile.mkdtemp(prefix="arm2-verify-"))
         workdir.mkdir(parents=True, exist_ok=True)
-        receipt, extracted, s3_meta = live_fetch(packet, workdir)
+        receipt, extracted, s3_meta, creation_request = live_fetch(
+            packet, workdir)
         failures, facts = verify_live_bundle(
             packet=packet, receipt=receipt, extracted=extracted,
             s3_meta=s3_meta, verifier_script_sha=verifier_sha)
+        # Codex #25 finding 1: create-only fields are provable only in the
+        # CloudTrail creation record — nothing unrendered may appear there
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from b5_sagemaker_job import render_request as _render
+        failures.extend(verify_creation_request_parameters(
+            creation_request, _render(packet)))
+        facts["creation_record_verified"] = True
         report = {
             "verdict": "PASS" if not failures else "FAIL",
             "mode": "live",

@@ -29,7 +29,10 @@ launches — calibration and arm — go through workflows and their
 scoped roles), cannot touch IAM, and cannot lift their own limits.
 Calibration launches move to a non-protected workflow with a
 calibration-scoped role (runtime-capped by policy conditions) — built
-when this runbook is applied.
+when this runbook is applied. That calibration-scoped role MUST carry
+the `NoRemoteDebugEver` deny below VERBATIM (Codex review #25: the
+existing arm-launch role only authorizes the historical Arm-1 job, so
+the Arm-2 calibration path needs its own carrier of this deny).
 
 ## medzen-local-boundary (permissions boundary policy)
 ```json

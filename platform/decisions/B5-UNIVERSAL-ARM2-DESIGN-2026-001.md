@@ -372,6 +372,38 @@ faults; all three blockers plus the four concerns are fixed:
   `MEDZEN_PARITY_AUDIO_DIR`, run in-image by the reviewer before the
   calibration is accepted.
 
+## Round 25 corrections (Codex review #25)
+
+- **Schema-derived governance (high):** the hand-list trailed AWS — the
+  pinned botocore model proved `MlflowConfig`, `ModelPackageConfig` and
+  `ServerlessJobConfig` ungoverned, and `RetryStrategy(MaximumRetryAttempts=1)`
+  was wrongly treated as inert. Now the governed sets are module constants
+  (RENDERED / UNRENDERED-INERT / CREATE-ONLY), the three fields refuse,
+  retries accept only absent/empty, and a model-coverage test asserts every
+  member of the pinned botocore `CreateTrainingJob ∩ DescribeTrainingJob`
+  shape is governed — a botocore upgrade that adds a field FAILS the test
+  until governed. `SessionChainingConfig` is create-only (never echoed), so
+  its receipt check was honest-removed; create-only smuggling is caught by
+  `verify_creation_request_parameters` against the **CloudTrail
+  CreateTrainingJob record** (live mode fetches exactly one event and
+  compares every requestParameter to the rendered request, camelCase-
+  normalized; anything unrendered refuses).
+- **Upstream preprocessing + mandatory parity (high):** the scorer fed RAW
+  audio; the pinned pipeline resamples to 16 kHz and z-normalizes the
+  waveform. `_preprocess_wave` now mirrors upstream (resample + per-utterance
+  zero-mean/unit-variance in fp32), the scorer id bumped to `/3`, and parity
+  is ENFORCED, not skippable: the wrapper's `_parity_probe` decodes ≥1 real
+  fetched row per dev language through OUR path and the pinned
+  `ASRInferencePipeline` on the fresh BASE model (`model.eval()`), refuses on
+  any mismatch, and records a digest-bound `metrics.parity` receipt the
+  verifier requires. The standalone env-gated test is reviewer tooling only.
+- **Right-sized archive caps + disk preflight (medium):** archive ≤4 GB,
+  model member ≤4 GB, aggregate ≤4.8 GB (real model ~2.6 GB), and live mode
+  preflights `disk_usage(workdir).free ≥ 2×archive + 2 GB` before streaming.
+- **Arm-2 role continuity (medium):** the runbook now REQUIRES the future
+  calibration-scoped role to carry the `NoRemoteDebugEver` deny verbatim
+  (the arm-launch role only authorizes the historical Arm-1 job).
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

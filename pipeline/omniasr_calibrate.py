@@ -35,10 +35,14 @@ from pipeline.omniasr_train import (CALIBRATION_METRICS_FILE, TrainerRefusal,
 
 # scorer identity bound into the evidence (Codex review #20 F5): the decode +
 # normalizer + metric this WER was produced with.
-SCORER_ID = ("ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
+SCORER_ID = ("preproc=resample16k+utterance-znorm; "
+             "ctc-greedy/seqlen-truncate+argmax+collapse+blank-strip+"
              "skip-special-tokens; "
              "normalizer=pipeline.normalizers.for_language; "
-             "metric=corpus-word-error-rate/2")
+             "metric=corpus-word-error-rate/3")
+# the pinned upstream decoder the mandatory in-run parity probe compares against
+UPSTREAM_PIPELINE_ID = ("omnilingual_asr.models.inference.pipeline."
+                        "ASRInferencePipeline@145a12a6")
 VERIFIER_REL = "scripts/verify_arm2_calibration.py"
 
 
@@ -165,7 +169,8 @@ def build_identity(*, run_fingerprint: str, training_job_name: str,
 def patch_metrics(metrics_path: Path, *, serve: dict[str, Any],
                   dev_sentinel_wer: dict[str, Any],
                   identity: dict[str, Any],
-                  dev_sentinel_results: dict[str, Any] | None = None) -> dict[str, Any]:
+                  dev_sentinel_results: dict[str, Any] | None = None,
+                  parity: dict[str, Any] | None = None) -> dict[str, Any]:
     """Merge the post-training fields into the trainer's metrics artifact.
     Refuses to invent numbers: the training-side artifact must already exist."""
     if not metrics_path.exists():
@@ -181,6 +186,10 @@ def patch_metrics(metrics_path: Path, *, serve: dict[str, Any],
         # edit distance, ref word count) so the corpus WER is RECOMPUTABLE
         # against the committed references — not a bare scalar.
         metrics["dev_sentinel_results"] = dev_sentinel_results
+    if parity is not None:
+        # Codex #25 finding 2: the digest-bound receipt of the MANDATORY
+        # in-run upstream decode parity probe
+        metrics["parity"] = parity
     metrics_path.write_bytes(
         json.dumps(metrics, sort_keys=True, separators=(",", ":")).encode()
         + b"\n")
@@ -315,9 +324,11 @@ def main() -> int:
     provenance = json.loads(
         (config.output_dir / "training-provenance.json").read_bytes())
 
-    # 2. reload the export -> readyz; 3. dev-sentinel WER (both fail closed)
+    # 2. MANDATORY upstream parity on the fresh BASE model (Codex #25) —
+    # then reload the export -> readyz; dev-sentinel WER (all fail closed)
     from pipeline.omniasr_train import _load_model_and_tokenizer
     model, tokenizer, device = _load_model_and_tokenizer(config)
+    parity = _parity_probe(model, tokenizer, device, dev_files)
     export_ckpt = config.output_dir / "export" / "model.pt"
     # Codex review #21 F3 (in-image half): hash the ACTUAL export bytes and
     # require the manifest's declared model_sha256 to reproduce it — the
@@ -366,8 +377,91 @@ def main() -> int:
 
     # 4. finalize; 5. verify (fail closed)
     patch_metrics(metrics_path, serve=serve, dev_sentinel_wer=dev_wer,
-                  identity=identity, dev_sentinel_results=dev_results)
+                  identity=identity, dev_sentinel_results=dev_results,
+                  parity=parity)
     return run_verifier(metrics_path, packet_path, bind_packet_sha=False)
+
+
+def _preprocess_wave(audio, sr: int):
+    """Upstream-equivalent audio preprocessing (Codex #25 finding 2): the
+    pinned OmniASR pipeline resamples to 16 kHz and applies per-utterance
+    zero-mean/unit-variance waveform normalization before inference; feeding
+    raw audio produced different hypotheses. This mirror is PROVEN equivalent
+    by the mandatory in-run parity probe (_parity_probe) — if it ever drifts
+    from upstream, parity fails and the calibration refuses."""
+    import torch
+
+    wave = torch.as_tensor(audio, dtype=torch.float32)
+    if int(sr) != 16000:
+        import torchaudio.functional as taf
+        wave = taf.resample(wave, int(sr), 16000)
+    wave = (wave - wave.mean()) / torch.sqrt(wave.var() + 1e-5)
+    return wave
+
+
+def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
+                  *, rows_per_language: int = 1) -> dict[str, Any]:
+    """MANDATORY upstream decode parity (Codex #25 finding 2): on the FRESH
+    BASE model (before the export is loaded), decode the first row(s) of each
+    dev slice through OUR scorer path AND through the pinned upstream
+    ASRInferencePipeline; post-normalization hypotheses must be IDENTICAL.
+    Any mismatch refuses the calibration — fail, never skip. Returns the
+    digest-bound parity receipt recorded into calibration-metrics.json."""
+    import soundfile as sf
+    import torch
+    from fairseq2.nn import BatchLayout
+    from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
+
+    from pipeline.normalizers import for_language
+    from pipeline.omniasr_data import fetch_audio
+    from pipeline.train_asr import s3
+
+    model.eval()
+    upstream = ASRInferencePipeline(
+        model_card="medzen_omniASR_CTC_1B_v2", device=device,
+        dtype=torch.bfloat16)
+    decoder = tokenizer.create_decoder(skip_special_tokens=True)
+    blank_idx = int(getattr(getattr(tokenizer, "vocab_info", None),
+                            "pad_idx", 0) or 0)
+    cli = s3()
+    cache = Path(os.environ.get("MEDZEN_AUDIO_CACHE", "/tmp/medzen-audio-cache"))
+    root = Path(__file__).resolve().parents[1]
+    rows_checked: dict[str, int] = {}
+    for language, rel in sorted(dev_files.items()):
+        norm = for_language(language)
+        rows = [json.loads(line)
+                for line in (root / rel).read_text().splitlines()
+                if line.strip()][:rows_per_language]
+        for row in rows:
+            audio_path = fetch_audio(cli, row, cache)
+            audio, sr = sf.read(audio_path, dtype="float32", always_2d=False)
+            if getattr(audio, "ndim", 1) > 1:
+                audio = audio.mean(axis=1)
+            wave = _preprocess_wave(audio, sr).to(torch.bfloat16).unsqueeze(0)
+            if device is not None:
+                wave = wave.to(device)
+            layout = BatchLayout(tuple(wave.shape), seq_lens=[wave.shape[1]],
+                                 device=wave.device)
+            with torch.no_grad():
+                logits, out_layout = model(wave, layout)
+            out_lens = getattr(out_layout, "seq_lens", None)
+            ours = norm(_ctc_greedy_text(
+                logits[0], decoder, blank_idx,
+                valid_frames=int(out_lens[0]) if out_lens is not None else None))
+            theirs = norm(str(upstream.transcribe(
+                [str(audio_path)], lang=None, batch_size=1)[0]))
+            if ours != theirs:
+                raise CalibrationRefusal(
+                    f"upstream decode parity FAILED on {language} row "
+                    f"{row['audio_checksum_sha256'][:12]}: ours={ours!r} vs "
+                    f"upstream={theirs!r} — the scorer does not match the "
+                    "pinned pipeline; refusing to score with it")
+        rows_checked[language] = len(rows)
+    del upstream
+    if device is not None and str(device).startswith("cuda"):
+        torch.cuda.empty_cache()
+    return {"upstream_equal": True, "upstream": UPSTREAM_PIPELINE_ID,
+            "rows_checked": rows_checked, "scorer": SCORER_ID}
 
 
 def _load_export_weights(model, checkpoint_path: Path) -> None:
@@ -432,7 +526,7 @@ def _score_dev_sentinels(config, model, tokenizer, device,
                                 dtype="float32", always_2d=False)
             if getattr(audio, "ndim", 1) > 1:
                 audio = audio.mean(axis=1)
-            wave = torch.from_numpy(audio).to(torch.bfloat16).unsqueeze(0)
+            wave = _preprocess_wave(audio, sr).to(torch.bfloat16).unsqueeze(0)
             if device is not None:
                 wave = wave.to(device)
             from fairseq2.nn import BatchLayout

@@ -73,7 +73,7 @@ def test_wrapper_scorer_matches_the_verifier_canonical():
     assert SCORER_ID == CANONICAL_SCORER
 
 
-def _good_artifact(steps: int = 30) -> dict:
+def _good_artifact_base(steps: int = 30) -> dict:
     metrics = CalibrationMetrics()
     for step in range(1, steps + 1):
         metrics.record_micro({
@@ -88,6 +88,18 @@ def _good_artifact(steps: int = 30) -> dict:
         samples_per_step=16, identity=_identity(),
         serve={"readyz": True, "adapter_residue": False, "weights_finite": True},
         dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13})
+
+
+def _good_artifact(steps: int = 30) -> dict:  # noqa: F811 (parity-aware)
+    art = _good_artifact_base(steps)
+    art["parity"] = {
+        "upstream_equal": True,
+        "upstream": ("omnilingual_asr.models.inference.pipeline."
+                     "ASRInferencePipeline@145a12a6"),
+        "rows_checked": {"lingala": 1, "swahili": 1},
+        "scorer": CANONICAL_SCORER,
+    }
+    return art
 
 
 # --------------------------------------------------------------------------
@@ -174,6 +186,12 @@ def test_verifier_passes_a_clean_calibration():
     (lambda a: a["identity"]["dev_manifest_shas"].update(lingala="0" * 64),
      "PREDECLARED"),
     (lambda a: a["identity"].update(scorer="made-up-scorer"), "canonical scorer"),
+    # Codex #25 finding 2: parity is mandatory, fail-never-skip
+    (lambda a: a.pop("parity"), "parity block is absent"),
+    (lambda a: a["parity"].update(upstream_equal=False), "upstream_equal"),
+    (lambda a: a["parity"].update(upstream="something-else"), "omnilingual"),
+    (lambda a: a["parity"]["rows_checked"].pop("swahili"),
+     "parity checked no rows"),
 ])
 def test_verifier_fails_each_defect(mutate, needle):
     artifact = _good_artifact()
@@ -602,8 +620,15 @@ def test_training_receipt_verifies_and_each_drift_fails():
          "ExperimentConfig"),
         (lambda r: r.update(EnableInterContainerTrafficEncryption=True),
          "EnableInterContainerTrafficEncryption"),
-        (lambda r: r.update(SessionChainingConfig={
-            "EnableSessionTagChaining": True}), "SessionChainingConfig"),
+        # Codex #25: MaximumRetryAttempts=1 changes behavior — NOT inert
+        (lambda r: r.update(RetryStrategy={"MaximumRetryAttempts": 1}),
+         "RetryStrategy"),
+        (lambda r: r.update(MlflowConfig={
+            "MlflowResourceArn": "arn:aws:sagemaker:mlflow"}), "MlflowConfig"),
+        (lambda r: r.update(ModelPackageConfig={"ModelPackageGroupName": "x"}),
+         "ModelPackageConfig"),
+        (lambda r: r.update(ServerlessJobConfig={"Enabled": True}),
+         "ServerlessJobConfig"),
         (lambda r: r["AlgorithmSpecification"].update(TrainingImageConfig={
             "TrainingRepositoryAccessMode": "Vpc"}), "TrainingImageConfig"),
         (lambda r: r["AlgorithmSpecification"].update(
@@ -1120,16 +1145,19 @@ def test_real_model_decode_parity_against_upstream():
     class _Cfg:
         model_card = "medzen_omniASR_CTC_1B_v2"
     model, tokenizer, dev = _load_model_and_tokenizer(_Cfg())
+    model.eval()          # Codex #25: no dropout in the parity comparison
     decoder = tokenizer.create_decoder(skip_special_tokens=True)
     blank = int(getattr(getattr(tokenizer, "vocab_info", None), "pad_idx", 0)
                 or 0)
     norm = for_language("lingala")
     from fairseq2.nn import BatchLayout
+    from pipeline.omniasr_calibrate import _preprocess_wave
     for wav in wavs:
         audio, _sr = sf.read(wav, dtype="float32", always_2d=False)
         if getattr(audio, "ndim", 1) > 1:
             audio = audio.mean(axis=1)
-        wave = torch.from_numpy(audio).to(torch.bfloat16).unsqueeze(0).to(dev)
+        wave = _preprocess_wave(audio, _sr).to(torch.bfloat16)\
+            .unsqueeze(0).to(dev)
         layout = BatchLayout(tuple(wave.shape), seq_lens=[wave.shape[1]],
                              device=wave.device)
         with torch.no_grad():
@@ -1149,6 +1177,112 @@ def test_wrongref_canary_runs_in_the_publisher_environment():
     text = (_REPO / ".github/workflows/arm2-image-canary-wrongref-exec.yml"
             ).read_text()
     assert "environment: trainer-image-publish" in text
+
+
+def test_botocore_model_every_field_is_governed():
+    """Codex #25 finding 1: a hand-list trails AWS. Every member of the
+    pinned botocore CreateTrainingJob∩DescribeTrainingJob model must be
+    RENDERED, UNRENDERED-INERT, or CREATE-ONLY-GOVERNED — a botocore upgrade
+    that introduces a new field FAILS this test until it is governed."""
+    botocore = pytest.importorskip("botocore.session")
+    from verify_arm2_calibration import (CREATE_ONLY_GOVERNED,
+                                         RENDERED_TOP_KEYS,
+                                         UNRENDERED_INERT_KEYS)
+    model = botocore.get_session().get_service_model("sagemaker")
+    create = set(model.operation_model("CreateTrainingJob").input_shape.members)
+    describe = set(
+        model.operation_model("DescribeTrainingJob").output_shape.members)
+    governed = RENDERED_TOP_KEYS | UNRENDERED_INERT_KEYS
+    ungoverned = (create & describe) - governed
+    assert not ungoverned, (
+        f"NEW/ungoverned CreateTrainingJob fields: {sorted(ungoverned)} — "
+        "extend RENDERED_TOP_KEYS or UNRENDERED_INERT_KEYS deliberately")
+    create_only = create - describe
+    assert create_only <= CREATE_ONLY_GOVERNED, (
+        f"create-only fields not governed: "
+        f"{sorted(create_only - CREATE_ONLY_GOVERNED)}")
+
+
+def test_creation_request_parameters_close_create_only_gaps():
+    """Codex #25 finding 1: SessionChainingConfig never appears in Describe —
+    the CloudTrail creation record is where create-only smuggling is caught."""
+    from b5_sagemaker_job import render_request
+    from verify_arm2_calibration import verify_creation_request_parameters
+    packet = _launchable_packet()
+    request = render_request(packet)
+
+    def as_camel(obj):
+        if isinstance(obj, dict):
+            return {k[:1].lower() + k[1:]: as_camel(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [as_camel(v) for v in obj]
+        return obj
+
+    good = as_camel(request)
+    assert verify_creation_request_parameters(good, request) == []
+    # create-only smuggling: sessionChainingConfig in the creation record
+    smuggled = dict(good, sessionChainingConfig={
+        "enableSessionTagChaining": True})
+    failures = verify_creation_request_parameters(smuggled, request)
+    assert any("sessionChainingConfig" in f for f in failures)
+    # unknown/future field
+    unknown = dict(good, futureConfig={"x": 1})
+    assert any("futureConfig" in f for f in
+               verify_creation_request_parameters(unknown, request))
+    # drifted value inside a nested block
+    drifted = as_camel(request)
+    drifted["algorithmSpecification"]["containerEntrypoint"] = ["/bin/sh"]
+    assert any("containerEntrypoint" in f for f in
+               verify_creation_request_parameters(drifted, request))
+    # an empty record proves nothing
+    assert verify_creation_request_parameters({}, request)
+
+
+def test_preprocess_wave_normalizes_like_upstream():
+    """Codex #25 finding 2: the scorer must z-normalize the waveform (and
+    resample when needed) — raw audio diverged from the pinned pipeline."""
+    torch = pytest.importorskip("torch")
+    from pipeline.omniasr_calibrate import _preprocess_wave
+    raw = (torch.randn(16000) * 3.7 + 2.5).numpy()
+    wave = _preprocess_wave(raw, 16000)
+    assert abs(float(wave.mean())) < 1e-3
+    assert abs(float(wave.var()) - 1.0) < 1e-2
+    assert wave.dtype == torch.float32
+
+
+def test_patch_metrics_records_the_parity_receipt(tmp_path):
+    from pipeline.omniasr_calibrate import patch_metrics
+    metrics_path = tmp_path / "calibration-metrics.json"
+    metrics_path.write_bytes(json.dumps({"schema": "x"}).encode())
+    merged = patch_metrics(
+        metrics_path, serve={"readyz": True}, dev_sentinel_wer={},
+        identity={}, parity={"upstream_equal": True, "rows_checked": {}})
+    assert merged["parity"]["upstream_equal"] is True
+
+
+def test_runbook_requires_the_deny_on_the_calibration_role():
+    """Codex #25 finding 4: the future calibration-scoped role must carry the
+    NoRemoteDebugEver deny verbatim; the arm-launch role only authorizes the
+    historical Arm-1 job."""
+    text = (_REPO / "platform/iam/LOCAL-BOUNDARY-RUNBOOK.md").read_text()
+    assert "calibration-scoped role MUST carry" in text
+    assert "NoRemoteDebugEver" in text
+    arm = json.loads(
+        (_REPO / "platform/iam/medzen-arm-launch-role.json").read_bytes())
+    assert any(s.get("Sid") == "NoRemoteDebugEver" for s in arm["Statement"])
+
+
+def test_archive_caps_are_sized_to_the_real_model():
+    """Codex #25 finding 3: caps must reflect the ~2.6 GB reality, not 8-9 GB
+    ceilings."""
+    from verify_arm2_calibration import (ARCHIVE_MAX_AGGREGATE_BYTES,
+                                         ARCHIVE_MAX_BYTES,
+                                         BUNDLE_MEMBER_MAX_BYTES)
+    assert ARCHIVE_MAX_BYTES <= 4 * 1024 ** 3
+    assert BUNDLE_MEMBER_MAX_BYTES["export/model.pt"] <= 4 * 1024 ** 3
+    assert ARCHIVE_MAX_AGGREGATE_BYTES <= 5 * 1024 ** 3
+    # and still comfortably fits the real ~2.6 GB model
+    assert BUNDLE_MEMBER_MAX_BYTES["export/model.pt"] >= 3 * 1024 ** 3
 
 
 def test_dockerfile_ships_the_contract_not_the_launch_packet():
