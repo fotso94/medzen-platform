@@ -27,5 +27,22 @@
 !tests/
 !tests/test_omniasr_lora.py
 !tests/test_omniasr_train.py
+# Arm-2 trainer image (rounds 19-28): every file pipeline/Dockerfile.trainer-
+# omniasr COPYs must be in the build context. This allowlist-style ignore was
+# written for the original trainer image and never updated as the Arm-2 files
+# landed; the first real image build (round 29) surfaced the omission.
+!pipeline/omniasr_distill.py
+!pipeline/omniasr_calibrate.py
+!pipeline/normalizers.py
+!scripts/
+!scripts/verify_arm2_calibration.py
+!scripts/b5_sagemaker_job.py
+!tests/test_omniasr_distill.py
+!tests/test_arm2_calibration.py
+!platform/manifests/
+!platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json
+!platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
+!platform/manifests/dev-sentinels/
+!platform/manifests/dev-sentinels/**
 **/__pycache__/
 **/*.pyc
