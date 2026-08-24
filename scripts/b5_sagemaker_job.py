@@ -75,6 +75,12 @@ def _require(bindings: dict, key: str):
 
 
 _KD_TRUE = {"1", "true", "yes", "on"}
+# Codex review #20 F4: canonical Arm-2 verifier contract, pinned so the packet
+# cannot defang the checker. Mirrors scripts/verify_arm2_calibration.py.
+ARM2_CANONICAL_VERIFIER_SCRIPT = "scripts/verify_arm2_calibration.py"
+ARM2_CANONICAL_METRICS_ARTIFACT = "calibration-metrics.json"
+ARM2_L4_PHYSICAL_BYTES = 24 * 1024 * 1024 * 1024  # g6.xlarge single NVIDIA L4
+ARM2_MANDATORY_DEV_SENTINELS = frozenset({"lingala", "swahili"})
 
 
 def _parse_env_weights(raw: str) -> dict[str, float]:
@@ -169,16 +175,79 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
                 "required_preservation_coverage", "dev_sentinel_languages"):
         if key not in spec:
             raise JobRefusal(f"result_verifier lacks {key!r}")
+    # Codex review #20 F4: the earlier check validated PRESENCE, not the
+    # canonical contract — a nonexistent script, a traversal artifact,
+    # expected_steps=1 while training runs 30, an enormous GPU ceiling and an
+    # empty dev-language list all passed. Pin every field to its canonical
+    # value/bound so the packet cannot smuggle a defanged verifier.
     if str(spec["metrics_schema"]) != "b5-arm2-calibration-metrics/1":
         raise JobRefusal(
             "result_verifier.metrics_schema must be "
             "'b5-arm2-calibration-metrics/1' (the trainer's artifact schema)")
+    if str(spec["script"]) != ARM2_CANONICAL_VERIFIER_SCRIPT:
+        raise JobRefusal(
+            f"result_verifier.script must be {ARM2_CANONICAL_VERIFIER_SCRIPT!r}"
+            " — a packet cannot substitute its own checker")
+    if str(spec["metrics_artifact"]) != ARM2_CANONICAL_METRICS_ARTIFACT:
+        raise JobRefusal(
+            "result_verifier.metrics_artifact must be "
+            f"{ARM2_CANONICAL_METRICS_ARTIFACT!r} (no path traversal)")
+    # expected_steps must equal the run's OWN MEDZEN_MAX_STEPS — not an
+    # arbitrary tiny number that a 30-step run would trivially satisfy
+    env_max_steps = int(environment.get("MEDZEN_MAX_STEPS"))
+    if int(spec["expected_steps"]) != env_max_steps:
+        raise JobRefusal(
+            f"result_verifier.expected_steps {spec['expected_steps']} must "
+            f"equal MEDZEN_MAX_STEPS {env_max_steps} — the verifier must "
+            "require the full step budget the job actually runs")
+    ceiling = spec["gpu_memory_ceiling_bytes"]
+    if not isinstance(ceiling, int) or isinstance(ceiling, bool) \
+            or not (0 < ceiling <= ARM2_L4_PHYSICAL_BYTES):
+        raise JobRefusal(
+            f"result_verifier.gpu_memory_ceiling_bytes {ceiling!r} must be in "
+            f"1..{ARM2_L4_PHYSICAL_BYTES} (the g6.xlarge L4's physical 24 GiB)")
+    dev_langs = spec["dev_sentinel_languages"]
+    if not isinstance(dev_langs, list) or not dev_langs:
+        raise JobRefusal(
+            "result_verifier.dev_sentinel_languages must be a non-empty list")
+    dev_set = {str(x).strip().lower() for x in dev_langs}
+    if not ARM2_MANDATORY_DEV_SENTINELS.issubset(dev_set):
+        raise JobRefusal(
+            "result_verifier.dev_sentinel_languages must include the "
+            f"regression sentinels {sorted(ARM2_MANDATORY_DEV_SENTINELS)}")
+    if not dev_set.issubset(recipe_pres):
+        raise JobRefusal(
+            "result_verifier.dev_sentinel_languages must be a subset of the "
+            "preservation_languages")
     # the verifier's declared coverage must equal the recipe's preservation set
     if {str(x).strip().lower()
             for x in spec["required_preservation_coverage"]} != recipe_pres:
         raise JobRefusal(
             "result_verifier.required_preservation_coverage must equal the "
             "recipe's preservation_languages")
+
+    # Codex review #20 F3: the calibration WRAPPER needs its inputs bound in the
+    # environment — the packet path it verifies against, that packet's canonical
+    # sha for identity binding, and a dev-sentinel manifest file for EVERY
+    # dev-sentinel language. A KD packet missing any of these refuses.
+    for key in ("MEDZEN_CALIBRATION_PACKET", "MEDZEN_CALIBRATION_PACKET_SHA256",
+                "MEDZEN_DEV_SENTINEL_MANIFEST_FILES"):
+        if not str(environment.get(key, "")).strip():
+            raise JobRefusal(
+                f"KD calibration requires {key} in the environment (the "
+                "wrapper's inputs — Codex review #20 F3)")
+    dev_manifest_langs = {
+        pair.partition("=")[0].strip().lower()
+        for pair in str(environment["MEDZEN_DEV_SENTINEL_MANIFEST_FILES"]).split(",")
+        if pair.strip()}
+    if not dev_set.issubset(dev_manifest_langs):
+        raise JobRefusal(
+            "MEDZEN_DEV_SENTINEL_MANIFEST_FILES must provide a slice for every "
+            f"dev-sentinel language {sorted(dev_set)}; got {sorted(dev_manifest_langs)}")
+    packet_sha = str(environment["MEDZEN_CALIBRATION_PACKET_SHA256"]).strip()
+    if not re.fullmatch(r"[0-9a-f]{64}", packet_sha):
+        raise JobRefusal(
+            "MEDZEN_CALIBRATION_PACKET_SHA256 must be a 64-hex canonical sha")
 
 
 def render_request(bindings: dict) -> dict:
@@ -225,6 +294,16 @@ def render_request(bindings: dict) -> dict:
             f"on-demand, above the ${ceiling_usd:.2f} ceiling — shrink the "
             "runtime or raise the ceiling in review, never here")
     environment = dict(_require(bindings, "environment"))
+    # Codex review #20 F5: bind the metrics to THIS packet without a
+    # self-reference. The packet's canonical sha cannot live inside the packet
+    # (adding it would change the sha), so the launcher INJECTS it into the
+    # rendered environment for KD packets — deterministic from `bindings`, so
+    # validate_request's exact-render comparison still holds. The wrapper
+    # records it as identity.packet_sha256; the reviewer's verifier recomputes
+    # canonical(committed packet) and checks equality.
+    if str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE:
+        environment["MEDZEN_CALIBRATION_PACKET_SHA256"] = \
+            canonical_bindings_sha256(bindings)
     missing = [k for k in REQUIRED_ENVIRONMENT if not environment.get(k)]
     if missing:
         raise JobRefusal(f"environment lacks {missing}")
@@ -291,7 +370,14 @@ def render_request(bindings: dict) -> dict:
             # 'train' argument to the image ENTRYPOINT — the first T5 attempt
             # died in seconds on python trying to open a file named 'train'.
             "ContainerEntrypoint": ["/opt/venv/bin/python"],
-            "ContainerArguments": ["-m", "pipeline.omniasr_train"],
+            # Codex review #20 F3: a KD calibration runs the WRAPPER
+            # (train -> export -> readyz -> dev-WER -> finalize -> verify ->
+            # exit nonzero on failure), NOT the bare trainer that wrote
+            # null serve/dev-WER and could never pass its own verifier.
+            "ContainerArguments": (
+                ["-m", "pipeline.omniasr_calibrate"]
+                if str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower()
+                in _KD_TRUE else ["-m", "pipeline.omniasr_train"]),
         },
         "OutputDataConfig": {
             "S3OutputPath": f"s3://{BUCKET}/{prefix}/output",

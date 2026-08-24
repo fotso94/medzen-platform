@@ -526,6 +526,10 @@ def write_checkpoint_marker(checkpoint_dir: Path, *, step: int,
 
 CALIBRATION_METRICS_SCHEMA = "b5-arm2-calibration-metrics/1"
 CALIBRATION_METRICS_FILE = "calibration-metrics.json"
+# Codex review #20 (F5): the per-step accumulator is checkpointed here so a
+# resumed (spot-reclaimed) run keeps the FULL trajectory, not just post-resume
+# steps. Lives beside LATEST.json in the checkpoint dir; write-then-rename.
+CALIBRATION_METRICS_PROGRESS = "calibration-metrics-progress.json"
 
 
 class CalibrationMetrics:
@@ -557,17 +561,33 @@ class CalibrationMetrics:
         ctc = sum(m["ctc"] for m in self._micro) / n
         kd = sum(m["kd"] for m in self._micro) / n
         total = sum(m["total"] for m in self._micro) / n
+        alpha = sum(m["alpha"] for m in self._micro) / n
         for m in self._micro:
             for language, bucket in m.get("kd_coverage", {}).items():
                 run = self.coverage.setdefault(language, {"rows": 0, "frames": 0})
                 run["rows"] += int(bucket.get("rows", 0))
                 run["frames"] += int(bucket.get("frames", 0))
         self.per_step.append({"step": int(step), "ctc": ctc, "kd": kd,
-                              "total": total, "lr": float(lr)})
+                              "total": total, "alpha": alpha, "lr": float(lr)})
+        self._micro = []
+
+    # Codex review #20 (F5): the accumulator restarted EMPTY on resume, so a
+    # spot-reclaimed run wrote a short per_step and failed its own verifier.
+    # Persist/restore the committed record + coverage across a checkpoint so
+    # per_step reflects the FULL trajectory (the micro buffer is transient and
+    # intentionally not persisted — a reclaim happens between steps).
+    def to_state(self) -> dict[str, Any]:
+        return {"per_step": self.per_step, "coverage": self.coverage}
+
+    def restore(self, state: dict[str, Any]) -> None:
+        self.per_step = list(state.get("per_step", []))
+        self.coverage = {k: dict(v) for k, v in state.get("coverage", {}).items()}
         self._micro = []
 
     def finalize(self, *, status: str, steps_completed: int, max_steps: int,
                  peak_gpu_bytes: int | None, wall_seconds: float,
+                 samples_per_step: int | None = None,
+                 identity: dict[str, Any] | None = None,
                  serve: dict[str, Any] | None = None,
                  dev_sentinel_wer: dict[str, Any] | None = None) -> dict[str, Any]:
         kd_values = [s["kd"] for s in self.per_step]
@@ -575,12 +595,20 @@ class CalibrationMetrics:
             1 for v in kd_values if math.isfinite(v) and v > 0.0)
         steps_per_min = (steps_completed / (wall_seconds / 60.0)
                          if wall_seconds > 0 else 0.0)
+        # Codex review #20 (F5): samples/s was promised but never recorded.
+        samples_per_sec = (
+            (steps_completed * int(samples_per_step) / wall_seconds)
+            if (wall_seconds > 0 and samples_per_step) else 0.0)
+        # per-step contiguity 1..N is asserted by the verifier; expose it so a
+        # torn/resumed accumulator is caught rather than silently short.
+        step_sequence = [int(s["step"]) for s in self.per_step]
         return {
             "schema": CALIBRATION_METRICS_SCHEMA,
             "status": status,
             "steps_completed": int(steps_completed),
             "max_steps": int(max_steps),
             "per_step": self.per_step,
+            "step_sequence": step_sequence,
             "kd_min": min(kd_values) if kd_values else None,
             "kd_max": max(kd_values) if kd_values else None,
             "kd_positive_finite_steps": positive_finite,
@@ -588,7 +616,12 @@ class CalibrationMetrics:
             "peak_gpu_bytes": (int(peak_gpu_bytes)
                                if peak_gpu_bytes is not None else None),
             "throughput": {"steps_per_min": round(steps_per_min, 4),
+                           "samples_per_sec": round(float(samples_per_sec), 4),
                            "wall_seconds": round(float(wall_seconds), 4)},
+            # identity bindings (Codex review #20 F5): prove the metrics came
+            # from the declared run/export/scorer/packet/verifier. Filled by
+            # the calibration wrapper; the verifier requires them.
+            "identity": identity,
             # filled post-training by the in-image calibration wrapper; the
             # verifier requires both, so omission fails closed
             "serve": serve,
@@ -782,12 +815,17 @@ def run_training_loop(
     config.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     marker = read_resume_state(config.checkpoint_dir, fingerprint)
     start_step = 0
+    progress_path = config.checkpoint_dir / CALIBRATION_METRICS_PROGRESS
     if marker is not None:
         start_step = load_state(config.checkpoint_dir / marker["checkpoint"])
         if start_step != marker["step"]:
             raise TrainerRefusal(
                 f"checkpoint reports step {start_step}, marker says "
                 f"{marker['step']}; refusing an inconsistent resume")
+        # Codex review #20 (F5): restore the metrics trajectory so per_step is
+        # not silently truncated to the post-resume steps.
+        if metrics is not None and progress_path.exists():
+            metrics.restore(json.loads(progress_path.read_text()))
 
     def checkpoint(step: int) -> None:
         name = f"step-{step:07d}.pt"
@@ -796,6 +834,13 @@ def run_training_loop(
         tmp.replace(config.checkpoint_dir / name)
         write_checkpoint_marker(config.checkpoint_dir, step=step,
                                 checkpoint_name=name, fingerprint=fingerprint)
+        # persist the metrics trajectory alongside the marker (write-then-
+        # rename) so a resume after this checkpoint keeps every recorded step
+        if metrics is not None:
+            tmp_m = config.checkpoint_dir / (CALIBRATION_METRICS_PROGRESS + ".tmp")
+            tmp_m.write_bytes(json.dumps(metrics.to_state(), sort_keys=True,
+                                         separators=(",", ":")).encode() + b"\n")
+            tmp_m.replace(progress_path)
 
     losses: list[float] = []
     step = start_step
@@ -1095,7 +1140,8 @@ def main() -> int:
         artifact = metrics.finalize(
             status=outcome["status"], steps_completed=outcome["step"],
             max_steps=config.max_steps, peak_gpu_bytes=peak,
-            wall_seconds=_time.perf_counter() - _wall_start)
+            wall_seconds=_time.perf_counter() - _wall_start,
+            samples_per_step=config.batch_size * config.grad_accum)
         (config.output_dir / CALIBRATION_METRICS_FILE).write_bytes(
             json.dumps(artifact, sort_keys=True,
                        separators=(",", ":")).encode() + b"\n")

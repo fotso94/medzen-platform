@@ -1,5 +1,5 @@
 {
- "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the Arm-2 trainer image is built from the reviewed commit, (2) the in-image distillation tests (tests/test_omniasr_distill.py torch-marked) pass, (3) the image digest is pinned here. The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json.",
+ "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the dev-sentinel slice manifests named in MEDZEN_DEV_SENTINEL_MANIFEST_FILES (platform/manifests/dev-sentinels/{lingala,swahili}.jsonl) are authored + committed (real frozen fleurs dev rows) and COPYed into the image; (2) the Arm-2 trainer image is built from the reviewed commit via .github/workflows/arm2-trainer-image.yml on a native amd64 builder; (3) the in-image tests (tests/test_omniasr_distill.py + tests/test_arm2_calibration.py, torch-marked) pass; (4) the image digest is pinned here. The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json. The entrypoint is pipeline.omniasr_calibrate (train -> export -> readyz -> dev-WER -> finalize -> verify -> exit nonzero on failure); the launcher renders that entrypoint automatically for KD packets and injects MEDZEN_CALIBRATION_PACKET_SHA256 for identity binding.",
  "acceptance_criteria": [
   "the run completes 30 steps or fails closed (no silent success)",
   "separate CTC / KD / total loss are logged per step (KD must be > 0 and finite on preservation batches)",
@@ -35,7 +35,9 @@
  "environment": {
   "MEDZEN_AUDIO_CAP_HOURS": "2",
   "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CALIBRATION_PACKET": "/opt/medzen/platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json",
   "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl",
   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
   "MEDZEN_EXPECT_EXCLUDED": "1579",
   "MEDZEN_GRAD_ACCUM": "8",

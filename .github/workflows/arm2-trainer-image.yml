@@ -1,31 +1,33 @@
-# Codex review #19 F5: the Arm-2 trainer image's in-image test stage
-# (pipeline/Dockerfile.trainer-omniasr `trainer-test`) is a SIBLING Docker
-# stage — a plain `docker build` of the final image never runs it, and no CI
-# built this image at all. That let the round-17 KD bugs (which skip on the
-# torch-less engineering host) reach a "ready" claim untested in-image.
+# Codex review #19 F5 / #20 F1-F2: the Arm-2 trainer image's in-image test
+# stage (pipeline/Dockerfile.trainer-omniasr `trainer-test`) is a SIBLING
+# Docker stage — a plain `docker build` of the final image never runs it, and
+# no CI built this image. This workflow makes the in-image tests a HARD gate
+# before any digest is pinned into the calibration packet, and does so through
+# a DEDICATED, correctly-trusted publisher role with NO shell-injection path.
 #
-# This workflow makes the in-image tests a HARD gate before any digest is
-# pinned into the calibration packet. It EXPLICITLY:
-#   1. builds `--target trainer-test` (runs the distillation tests + the
-#      fairseq2 (loss, logits, layout) contact-surface check IN the image on
-#      real torch/CUDA libs) — a failure fails the build, hence the workflow;
-#   2. builds the FINAL image from the SAME commit;
-#   3. scans the pushed digest fail-closed (CRITICAL/HIGH);
-#   4. attaches SBOM + max provenance and pushes;
-#   5. prints the digest to pin into
-#      platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json.
+# It EXPLICITLY:
+#   1. requires an exact 40-hex reviewed commit and verifies the checkout
+#      equals it BEFORE any credentials are acquired;
+#   2. builds `--target trainer-test` (distillation + calibration tests + the
+#      fairseq2 contact-surface check, in-image on real torch/CUDA);
+#   3. builds the FINAL image from the SAME commit;
+#   4. scans the pushed digest fail-closed (CRITICAL/HIGH);
+#   5. attaches SBOM + max provenance and pushes;
+#   6. prints the digest to pin into the committed calibration packet.
 #
-# Owner-initiated (workflow_dispatch): building this image is the deliberate
-# step that precedes promoting the DRAFT packet. Dark until the owner sets the
-# repo variable MEDZEN_IMAGE_PUBLISHER_ROLE_ARN (the same dedicated non-deploy
-# publisher role model-images-publish.yml uses).
+# Security (Codex review #20 F2): inputs.sha is validated to ^[0-9a-f]{40}$ and
+# only ever reaches shell as a quoted env var ($SHA) — never interpolated into
+# a run block — and the working tree is proven to equal it before credentials.
+# Owner-initiated (workflow_dispatch). Dark until the owner sets the repo
+# variable MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN (the dedicated non-deploy
+# role in infra/trainer_image_publisher.tf, scoped to medzen-trainer-omniasr).
 name: arm2-trainer-image
 
 on:
   workflow_dispatch:
     inputs:
       sha:
-        description: commit sha to build/test/publish (the reviewed Arm-2 commit)
+        description: exact 40-hex reviewed commit to build/test/publish
         required: true
         type: string
 
@@ -33,39 +35,58 @@ permissions:
   contents: read
   id-token: write
 
+env:
+  # inputs.sha reaches shell ONLY as this quoted env var, never inline in a run
+  SHA: ${{ inputs.sha }}
+  REGISTRY: 558069890522.dkr.ecr.eu-central-1.amazonaws.com
+  ECR_REPOSITORY: medzen-trainer-omniasr
+  DOCKERFILE: pipeline/Dockerfile.trainer-omniasr
+
 jobs:
   build-test-scan-publish:
-    if: vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN != ''
+    if: vars.MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN != ''
     runs-on: ubuntu-24.04
-    env:
-      REGISTRY: 558069890522.dkr.ecr.eu-central-1.amazonaws.com
-      ECR_REPOSITORY: medzen-trainer-omniasr
-      DOCKERFILE: pipeline/Dockerfile.trainer-omniasr
     steps:
+      # (0) exact-commit gate BEFORE anything else — fail loudly on a branch,
+      # tag, short sha or injected text
+      - name: require an exact 40-hex commit
+        run: |
+          if ! printf '%s' "$SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::inputs.sha must be an exact 40-hex commit, got '$SHA'"
+            exit 1
+          fi
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
         with:
           ref: ${{ inputs.sha }}
+          fetch-depth: 0
+      # (1) prove the working tree IS that commit, BEFORE credentials exist
+      - name: verify checkout equals the requested commit (pre-credential)
+        run: |
+          HEAD_OID="$(git rev-parse HEAD)"
+          if [ "$HEAD_OID" != "$SHA" ]; then
+            echo "::error::checkout HEAD $HEAD_OID != requested $SHA"
+            exit 1
+          fi
+          echo "checkout verified at $HEAD_OID"
       - name: reclaim runner disk for the CUDA image
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
             /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" /opt/hostedtoolcache/CodeQL
           sudo docker image prune -af >/dev/null 2>&1 || true
-      - name: OIDC federation as the DEDICATED non-deploy publisher role
+      - name: OIDC federation as the DEDICATED non-deploy trainer-image publisher role
         uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
         with:
-          role-to-assume: ${{ vars.MEDZEN_IMAGE_PUBLISHER_ROLE_ARN }}
+          role-to-assume: ${{ vars.MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN }}
           aws-region: eu-central-1
       - name: login to ECR
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
       - uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
 
-      # (1) The in-image gate. `--target trainer-test` runs pytest on
-      # tests/test_omniasr_distill.py (the KD numerics + fairseq2 tuple
-      # contract that SKIP on the torch-less host) plus the fairseq2 forward
-      # signature assertion INSIDE the image. push:false/load:false — the test
-      # stage is never shipped; its only job is to fail the build if a KD test
-      # or the contract check fails.
-      - name: build --target trainer-test (in-image distillation tests, must pass)
+      # (2) in-image gate: --target trainer-test runs the distillation +
+      # calibration tests + fairseq2 contract INSIDE the image; push:false so
+      # the test stage never ships. A failing test fails the build, so this
+      # cannot be skipped.
+      - name: build --target trainer-test (in-image tests, must pass)
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
@@ -75,8 +96,8 @@ jobs:
           push: false
           load: false
 
-      # (2) The final runtime image from the SAME commit, pushed to a
-      # quarantine tag so the scan runs on the exact bytes that ship.
+      # (3) the final runtime image from the SAME commit, pushed to a
+      # quarantine tag so the scan runs on the exact bytes that ship
       - name: build the FINAL image and push to the quarantine tag
         id: build
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
@@ -89,7 +110,7 @@ jobs:
           sbom: true
           tags: ${{ env.REGISTRY }}/${{ env.ECR_REPOSITORY }}:quarantine-${{ inputs.sha }}
 
-      # (3) Fail-closed scan of the PUSHED digest (not a rebuild).
+      # (4) fail-closed scan of the PUSHED digest (not a rebuild)
       - name: fail-closed vulnerability scan of the pushed digest
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -101,25 +122,26 @@ jobs:
           format: table
           timeout: 30m
 
-      # (4) Promote the EXACT scanned manifest (no rebuild) and surface the
-      # digest to pin into the committed calibration packet.
+      # (5) promote the EXACT scanned manifest (no rebuild) and surface the
+      # digest to pin. inputs.sha reaches shell only via the quoted $SHA env.
       - name: promote the scanned manifest and print the digest to pin
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          RELEASE_TAG="arm2-ftcal-${{ inputs.sha }}"
+          RELEASE_TAG="arm2-ftcal-${SHA}"
           docker buildx imagetools create \
             --tag "${REGISTRY}/${ECR_REPOSITORY}:${RELEASE_TAG}" \
-            "${REGISTRY}/${ECR_REPOSITORY}@${{ steps.build.outputs.digest }}"
-          PINNED="${REGISTRY}/${ECR_REPOSITORY}@${{ steps.build.outputs.digest }}"
+            "${REGISTRY}/${ECR_REPOSITORY}@${DIGEST}"
+          PINNED="${REGISTRY}/${ECR_REPOSITORY}@${DIGEST}"
           echo "image_uri_with_digest to pin: ${PINNED}"
           {
             echo "## Arm-2 trainer image published"
             echo ""
-            echo "- in-image \`trainer-test\` stage: PASSED (distillation tests + fairseq2 contract)"
+            echo "- in-image trainer-test stage: PASSED (distillation + calibration tests + fairseq2 contract)"
             echo "- scanned digest (CRITICAL/HIGH, fail-closed): PASSED"
-            echo "- release tag: \`${ECR_REPOSITORY}:${RELEASE_TAG}\`"
+            echo "- release tag: ${ECR_REPOSITORY}:${RELEASE_TAG}"
             echo ""
             echo "Pin into B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json:"
-            echo ""
             echo '```'
             echo "\"image_uri_with_digest\": \"${PINNED}\","
             echo "\"image_oci_index_digest\": \"${PINNED}\""
