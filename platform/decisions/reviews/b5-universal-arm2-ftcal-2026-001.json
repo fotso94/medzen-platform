@@ -1,0 +1,11 @@
+{
+ "basis": "Independent technical review (Codex/ChatGPT) of the committed, digest-pinned Arm-2 calibration packet returned verdict PASS across rounds 14-29; the final review of the digest-pinned committed packet (image sha256:b3321c8da2e29052da2cb113eb41e88cec1c0e366dfd65291f3d8da3da14ddeb, built + fail-closed-scanned by arm2-trainer-image-publish from reviewed commit 9449918) was relayed by the OWNER (chat, 2026-08-24: 'codex review is clear and verdict is PASS so proceed with launch the calibration'). This record is committed by the IMPLEMENTATION ENGINEER on the owner's explicit directive as the machine-readable capture of that owner-relayed reviewer approval; it authorizes ONLY the small unsealed mechanics/memory calibration (worst case $3.20 on-demand), NOT sealed evaluation, promotion or deployment. render + validate on this exact packet returns PASS_EXACT_TRAINING_REQUEST.",
+ "bindings_sha256": "3c5024edee3a9df098f1f9e3bdbccc044c963e53f761dc173dbafd1b6a4f9c7e",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:b3321c8da2e29052da2cb113eb41e88cec1c0e366dfd65291f3d8da3da14ddeb",
+ "job_id": "b5-universal-arm2-ftcal-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "codex (independent) \u2014 owner-relayed",
+ "utc": "2026-08-24T21:10:00Z"
+}
