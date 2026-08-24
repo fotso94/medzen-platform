@@ -511,6 +511,10 @@ def _good_receipt():
         "CheckpointConfig": dict(request["CheckpointConfig"]),
         "StoppingCondition": dict(request["StoppingCondition"]),
         "EnableManagedSpotTraining": request["EnableManagedSpotTraining"],
+        "EnableInterContainerTrafficEncryption":
+            request["EnableInterContainerTrafficEncryption"],
+        "ProfilerConfig": dict(request["ProfilerConfig"]),
+        "RemoteDebugConfig": dict(request["RemoteDebugConfig"]),
         "Tags": json.loads(json.dumps(request["Tags"])),
     }
     return packet, receipt
@@ -577,6 +581,38 @@ def test_training_receipt_verifies_and_each_drift_fails():
         (lambda r: r["VpcConfig"].update(Subnets=["subnet-evil"]), "Subnets"),
         (lambda r: r["VpcConfig"].update(SecurityGroupIds=["sg-evil"]),
          "SecurityGroupIds"),
+        # Codex #24 finding 1 reproductions — ALL previously passed:
+        (lambda r: r.update(RemoteDebugConfig={"EnableRemoteDebug": True}),
+         "RemoteDebugConfig"),
+        (lambda r: r.update(HyperParameters={"smuggled": "1"}),
+         "HyperParameters"),
+        (lambda r: r.update(RetryStrategy={"MaximumRetryAttempts": 5}),
+         "RetryStrategy"),
+        (lambda r: r.update(DebugHookConfig={
+            "S3OutputPath": "s3://exfil/hook"}), "DebugHookConfig"),
+        (lambda r: r.update(InfraCheckConfig={"EnableInfraCheck": True}),
+         "InfraCheckConfig"),
+        (lambda r: r.update(TensorBoardOutputConfig={
+            "S3OutputPath": "s3://exfil/tb"}), "TensorBoardOutputConfig"),
+        (lambda r: r.update(ProfilerConfig={
+            "S3OutputPath": "s3://exfil/prof"}), "ProfilerConfig"),
+        (lambda r: r.update(ProfilerRuleConfigurations=[{"RuleConfigName": "x"}]),
+         "ProfilerRuleConfigurations"),
+        (lambda r: r.update(ExperimentConfig={"ExperimentName": "x"}),
+         "ExperimentConfig"),
+        (lambda r: r.update(EnableInterContainerTrafficEncryption=True),
+         "EnableInterContainerTrafficEncryption"),
+        (lambda r: r.update(SessionChainingConfig={
+            "EnableSessionTagChaining": True}), "SessionChainingConfig"),
+        (lambda r: r["AlgorithmSpecification"].update(TrainingImageConfig={
+            "TrainingRepositoryAccessMode": "Vpc"}), "TrainingImageConfig"),
+        (lambda r: r["AlgorithmSpecification"].update(
+            MetricDefinitions=[{"Name": "x", "Regex": ".*"}]),
+         "MetricDefinitions"),
+        (lambda r: r["ResourceConfig"].update(KeepAlivePeriodInSeconds=3600),
+         "KeepAlivePeriodInSeconds"),
+        (lambda r: r["ResourceConfig"].update(
+            TrainingPlanArn="arn:aws:sagemaker:plan"), "TrainingPlanArn"),
     ]
     for mutate, needle in drifts:
         _, bad = _good_receipt()
@@ -922,6 +958,44 @@ def test_tar_member_size_caps_refuse_disk_exhaustion(tmp_path):
         safe_extract_bundle(tar_path, tmp_path / "out")
 
 
+class _ZeroReader:
+    """Streams `size` zero bytes without allocating them (tar test helper)."""
+
+    def __init__(self, size: int):
+        self.remaining = size
+
+    def read(self, n: int = -1) -> bytes:
+        if self.remaining <= 0:
+            return b""
+        take = self.remaining if n in (-1, None) else min(n, self.remaining)
+        self.remaining -= take
+        return b"\0" * take
+
+
+def test_archive_member_count_and_stream_caps(tmp_path):
+    """Codex #24 finding 2: too many members refuses, and the download
+    streamer aborts past its cap even when ContentLength lied."""
+    import io
+    import tarfile
+    from verify_arm2_calibration import (ARCHIVE_MAX_MEMBERS,
+                                         safe_extract_bundle, stream_with_cap)
+    crowded = tmp_path / "crowded.tar.gz"
+    with tarfile.open(crowded, "w:gz") as archive:
+        for index in range(ARCHIVE_MAX_MEMBERS + 1):
+            info = tarfile.TarInfo(f"junk-{index}")
+            info.size = 1
+            archive.addfile(info, io.BytesIO(b"x"))
+    with pytest.raises(SystemExit, match="members"):
+        safe_extract_bundle(crowded, tmp_path / "out")
+    # streaming cap: the body claims nothing but streams past the cap
+    with pytest.raises(SystemExit, match="mid-stream"):
+        stream_with_cap(_ZeroReader(2048), tmp_path / "capped.bin", 1024,
+                        label="test download")
+    # under the cap streams fine and reports the byte count
+    assert stream_with_cap(_ZeroReader(512), tmp_path / "ok.bin", 1024,
+                           label="test download") == 512
+
+
 def test_ctc_greedy_truncates_to_valid_frames():
     """Codex #23 medium: the decode must truncate to the model's RETURNED
     output length — a junk token in the padded tail must not vote."""
@@ -956,11 +1030,14 @@ def test_scorer_source_matches_upstream_decode_contract():
     assert "out_layout" in source and "seq_lens" in source
 
 
-def test_in_image_scorer_decodes_with_layout_truncation(monkeypatch):
-    """In-image behavioral parity (Codex #23): with real fairseq2 BatchLayout,
-    the scorer truncates to the model's returned seq_lens and strips special
-    tokens via a skip_special_tokens=True decoder — verified with a fake model
-    whose padded tail carries a junk token, over the REAL committed slice."""
+def test_in_image_scorer_layout_decode_contract(monkeypatch):
+    """LAYOUT/DECODE CONTRACT test (Codex #24 finding 3: this is NOT full
+    upstream parity — the model, tokenizer and audio are fakes). It proves the
+    scorer's mechanics with a real fairseq2 BatchLayout: truncation to the
+    returned seq_lens and a skip_special_tokens=True decoder, over the real
+    committed slice. TRUE parity against the pinned upstream decoder is
+    test_real_model_decode_parity_against_upstream below (model+audio gated,
+    run in-image before calibration)."""
     torch = pytest.importorskip("torch")
     pytest.importorskip("fairseq2")
     pytest.importorskip("soundfile")
@@ -1007,6 +1084,62 @@ def test_in_image_scorer_decodes_with_layout_truncation(monkeypatch):
     assert "tok7" not in hyp and "tok2" in hyp        # tail junk truncated
     assert shas["lingala"] == _DEV_SHAS["lingala"]    # real slice, real sha
     assert len(results["lingala"]["rows"]) == 60
+
+
+def test_real_model_decode_parity_against_upstream():
+    """TRUE decode parity (Codex #24 finding 3): the scorer's CTC-greedy path
+    must transcribe REAL audio identically (post-normalization) to the pinned
+    upstream ASRInferencePipeline on the REAL model. Needs the GPU image with
+    staged weights + fetched audio, so it is gated on MEDZEN_PARITY_AUDIO_DIR
+    (a directory of .wav files) — the reviewer runs it in-image before the
+    calibration is accepted:
+      MEDZEN_PARITY_AUDIO_DIR=/tmp/parity-audio python -m pytest \
+        tests/test_arm2_calibration.py::test_real_model_decode_parity_against_upstream -q
+    """
+    import os
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("fairseq2")
+    omni = pytest.importorskip("omnilingual_asr")
+    audio_dir = os.environ.get("MEDZEN_PARITY_AUDIO_DIR", "")
+    if not audio_dir or not Path(audio_dir).is_dir():
+        pytest.skip("set MEDZEN_PARITY_AUDIO_DIR to a directory of wav files "
+                    "(in-image, with staged weights) to run true parity")
+    import soundfile as sf
+    from omnilingual_asr.models.inference.pipeline import ASRInferencePipeline
+
+    from pipeline.normalizers import for_language
+    from pipeline.omniasr_calibrate import _ctc_greedy_text
+    from pipeline.omniasr_train import TrainerConfig, _load_model_and_tokenizer
+
+    wavs = sorted(Path(audio_dir).glob("*.wav"))[:4]
+    assert wavs, "no wav files in MEDZEN_PARITY_AUDIO_DIR"
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    upstream = ASRInferencePipeline(model_card="medzen_omniASR_CTC_1B_v2",
+                                    device=device, dtype=torch.bfloat16)
+
+    class _Cfg:
+        model_card = "medzen_omniASR_CTC_1B_v2"
+    model, tokenizer, dev = _load_model_and_tokenizer(_Cfg())
+    decoder = tokenizer.create_decoder(skip_special_tokens=True)
+    blank = int(getattr(getattr(tokenizer, "vocab_info", None), "pad_idx", 0)
+                or 0)
+    norm = for_language("lingala")
+    from fairseq2.nn import BatchLayout
+    for wav in wavs:
+        audio, _sr = sf.read(wav, dtype="float32", always_2d=False)
+        if getattr(audio, "ndim", 1) > 1:
+            audio = audio.mean(axis=1)
+        wave = torch.from_numpy(audio).to(torch.bfloat16).unsqueeze(0).to(dev)
+        layout = BatchLayout(tuple(wave.shape), seq_lens=[wave.shape[1]],
+                             device=wave.device)
+        with torch.no_grad():
+            logits, out_layout = model(wave, layout)
+        ours = norm(_ctc_greedy_text(
+            logits[0], decoder, blank,
+            valid_frames=int(out_layout.seq_lens[0])))
+        theirs = norm(str(upstream.transcribe(
+            [str(wav)], lang=None, batch_size=1)[0]))
+        assert ours == theirs, (wav.name, ours, theirs)
 
 
 def test_wrongref_canary_runs_in_the_publisher_environment():

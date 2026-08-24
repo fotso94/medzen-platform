@@ -343,6 +343,35 @@ faults; all three blockers plus the four concerns are fixed:
 - **Tar extraction caps (medium):** per-member size caps (metrics 64 MB,
   manifest 4 MB, model 8 GB) enforced on the declared size AND mid-stream.
 
+## Round 24 corrections (Codex review #24)
+
+- **Closed enumeration of the job request (high):** the render-based compare
+  was forward-only — fields the request never set (`RemoteDebugConfig` = shell
+  access, `HyperParameters`, `RetryStrategy`, debugger/profiler/experiment/
+  TensorBoard configs, warm pools, `TrainingImageConfig`, `TrainingPlanArn`)
+  passed. Now: `EnableInterContainerTrafficEncryption`, `ProfilerConfig
+  {DisableProfiler}` and `RemoteDebugConfig {EnableRemoteDebug: false}` are
+  RENDERED explicitly-off (exact-compared), and every other CreateTrainingJob
+  field the Describe response echoes must be absent or provably inert —
+  including nested extras inside AlgorithmSpecification and ResourceConfig.
+  Sixteen new adversarial regressions. IAM belt: a `NoRemoteDebugEver` deny
+  (service condition key `sagemaker:EnableRemoteDebug` — not a caller tag)
+  rides `medzen-arm-launch-role.json` (the saved plan is now 2 add / 1 change
+  / 0 destroy — the change IS this deny) and the LOCAL-BOUNDARY-RUNBOOK
+  boundary, whose NotAction ceiling also gains `sagemaker:UpdateTrainingJob`
+  (the running-job remote-debug toggle). A resurrected tag-based boundary
+  file was caught by the round-25 honesty test and correctly NOT reintroduced.
+- **Archive-size protection (medium):** the S3 `ContentLength` is capped
+  BEFORE streaming, the download counts bytes mid-stream (a lying length
+  aborts), and the archive is bounded to 64 members / 9 GB aggregate declared
+  size on top of the per-member caps.
+- **Parity honesty (low/medium):** the fake-model test is renamed and
+  described as a LAYOUT/DECODE CONTRACT test; TRUE parity is the new
+  `test_real_model_decode_parity_against_upstream` — real model + real audio
+  against the pinned upstream `ASRInferencePipeline`, gated on
+  `MEDZEN_PARITY_AUDIO_DIR`, run in-image by the reviewer before the
+  calibration is accepted.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

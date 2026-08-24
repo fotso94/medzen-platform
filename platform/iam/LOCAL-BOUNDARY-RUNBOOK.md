@@ -44,6 +44,7 @@ when this runbook is applied.
     "organizations:*",
     "account:*",
     "sagemaker:CreateTrainingJob",
+    "sagemaker:UpdateTrainingJob",
     "sagemaker:CreateEndpoint*",
     "sagemaker:CreateNotebookInstance",
     "ec2:RunInstances",
@@ -57,10 +58,24 @@ when this runbook is applied.
    "Effect": "Allow",
    "Action": ["iam:Get*", "iam:List*"],
    "Resource": "*"
+  },
+  {
+   "Sid": "NoRemoteDebugEver",
+   "Effect": "Deny",
+   "Action": ["sagemaker:CreateTrainingJob", "sagemaker:UpdateTrainingJob"],
+   "Resource": "*",
+   "Condition": {"Bool": {"sagemaker:EnableRemoteDebug": "true"}}
   }
  ]
 }
 ```
+
+Codex review #24: `UpdateTrainingJob` joined the ceiling's NotAction (it can
+toggle `EnableRemoteDebug` on a RUNNING job — shell access to the training
+container), and the explicit `NoRemoteDebugEver` deny uses the SERVICE
+condition key `sagemaker:EnableRemoteDebug` (request-body-derived, NOT a
+caller-controlled tag — this one is not theater). The same deny now rides
+`medzen-arm-launch-role.json` for the workflow caller.
 (EC2 compute creation rides the existing reviewed EC2-stage packets —
 if those remain local for now, remove the three ec2 lines and accept
 the residual, stated; revisit at the next activation step.)

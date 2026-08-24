@@ -59,6 +59,27 @@ BUNDLE_MEMBER_MAX_BYTES = {
     "export/manifest.json": 4 * 1024 * 1024,
     "export/model.pt": 8 * 1024 * 1024 * 1024,          # ~2.6 GB real model
 }
+# Codex #24 finding 2: cap the COMPRESSED archive before/while downloading
+# (member caps alone let a huge archive exhaust the runner's disk first),
+# and bound the archive's member count + aggregate declared size.
+ARCHIVE_MAX_BYTES = 9 * 1024 * 1024 * 1024
+ARCHIVE_MAX_MEMBERS = 64
+ARCHIVE_MAX_AGGREGATE_BYTES = 9 * 1024 * 1024 * 1024
+
+
+def stream_with_cap(body, dest: Path, cap: int, *, label: str) -> int:
+    """Stream a response body to disk, refusing past `cap` bytes — a lying
+    ContentLength cannot exhaust the disk mid-download."""
+    written = 0
+    with dest.open("wb") as stream:
+        for chunk in iter(lambda: body.read(1 << 22), b""):
+            written += len(chunk)
+            if written > cap:
+                raise SystemExit(
+                    f"{label} exceeded the {cap}-byte cap mid-stream — "
+                    "refusing disk exhaustion")
+            stream.write(chunk)
+    return written
 # identity fields that must be a 64-hex sha256 (Codex review #20 F5 follow-up:
 # presence-only let a fabricated file through — enforce the FORMAT of every
 # sha and the value of the derivable ones)
@@ -381,8 +402,62 @@ def verify_training_receipt(receipt: dict[str, Any], packet: dict[str, Any],
     for key in ("RoleArn", "AlgorithmSpecification", "OutputDataConfig",
                 "CheckpointConfig", "ResourceConfig", "VpcConfig",
                 "StoppingCondition", "EnableManagedSpotTraining",
-                "EnableNetworkIsolation"):
+                "EnableNetworkIsolation",
+                "EnableInterContainerTrafficEncryption", "ProfilerConfig",
+                "RemoteDebugConfig"):
         compare(expected.get(key), receipt.get(key), key)
+
+    # Codex review #24 finding 1: the forward compare is FAIL-OPEN for
+    # anything the rendered request never sets — an injected RemoteDebugConfig
+    # (container shell access), HyperParameters, RetryStrategy, debugger/
+    # profiler/experiment configs or warm-pool settings all passed. CLOSED
+    # ENUMERATION: every CreateTrainingJob field the Describe response echoes
+    # that the render does not set must be ABSENT or provably inert.
+    def _inert(value: Any) -> bool:
+        return value in (None, {}, [], "", False, 0)
+
+    unrendered_top = {
+        "HyperParameters": _inert,               # config travels ONLY via env
+        "DebugHookConfig": _inert,
+        "DebugRuleConfigurations": _inert,
+        "TensorBoardOutputConfig": _inert,
+        "ExperimentConfig": _inert,
+        "ProfilerRuleConfigurations": _inert,
+        "RetryStrategy": lambda v: _inert(v) or (
+            isinstance(v, dict)
+            and int(v.get("MaximumRetryAttempts") or 1) <= 1),
+        "InfraCheckConfig": lambda v: _inert(v) or (
+            isinstance(v, dict) and v.get("EnableInfraCheck") in (None, False)),
+        "SessionChainingConfig": lambda v: _inert(v) or (
+            isinstance(v, dict)
+            and v.get("EnableSessionTagChaining") in (None, False)),
+    }
+    for key, is_ok in unrendered_top.items():
+        value = receipt.get(key)
+        if not is_ok(value):
+            fail(f"receipt carries {key}={value!r} which the rendered request "
+                 "never set — the job was not created by this request")
+    # nested extras the subset compare cannot see: the effective config dicts
+    # must contain NO keys beyond the rendered ones (plus AWS-inert extras)
+    algo_extra_ok = {"MetricDefinitions": _inert,
+                     "EnableSageMakerMetricsTimeSeries": _inert,
+                     "TrainingImageConfig": _inert,
+                     "AlgorithmName": _inert}
+    algo_actual = dict(receipt.get("AlgorithmSpecification") or {})
+    for key in set(algo_actual) - set(expected["AlgorithmSpecification"]):
+        if key not in algo_extra_ok or not algo_extra_ok[key](algo_actual[key]):
+            fail(f"receipt AlgorithmSpecification.{key}="
+                 f"{algo_actual[key]!r} was never rendered — refusing an "
+                 "altered algorithm specification")
+    resource_extra_ok = {"VolumeKmsKeyId": lambda v: True,  # ruled below
+                         "KeepAlivePeriodInSeconds": _inert,  # no warm pools
+                         "TrainingPlanArn": _inert,
+                         "InstanceGroups": _inert}
+    resource_actual = dict(receipt.get("ResourceConfig") or {})
+    for key in set(resource_actual) - set(expected["ResourceConfig"]):
+        if key not in resource_extra_ok                 or not resource_extra_ok[key](resource_actual[key]):
+            fail(f"receipt ResourceConfig.{key}={resource_actual[key]!r} was "
+                 "never rendered — refusing an altered resource config")
 
     # Environment must be EXACT (a subset compare would allow smuggled keys)
     if dict(receipt.get("Environment") or {}) != dict(expected["Environment"]):
@@ -515,7 +590,18 @@ def safe_extract_bundle(tar_path: Path, workdir: Path) -> dict[str, Path]:
 
     out: dict[str, Path] = {}
     with tarfile.open(tar_path, "r:*") as archive:
-        names = {m.name.lstrip("./"): m for m in archive.getmembers()}
+        members = archive.getmembers()
+        if len(members) > ARCHIVE_MAX_MEMBERS:
+            raise SystemExit(
+                f"archive has {len(members)} members, over the "
+                f"{ARCHIVE_MAX_MEMBERS} cap — not a calibration bundle")
+        aggregate = sum(max(0, int(m.size)) for m in members)
+        if aggregate > ARCHIVE_MAX_AGGREGATE_BYTES:
+            raise SystemExit(
+                f"archive declares {aggregate} aggregate bytes, over the "
+                f"{ARCHIVE_MAX_AGGREGATE_BYTES} cap — refusing disk "
+                "exhaustion")
+        names = {m.name.lstrip("./"): m for m in members}
         for member_name in BUNDLE_MEMBERS:
             member = names.get(member_name)
             if member is None:
@@ -702,10 +788,16 @@ def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
         receipt.get("TrainingEndTime"))
     response = s3.get_object(Bucket=bucket, Key=key,
                              VersionId=chosen["VersionId"])
+    # Codex #24 finding 2: refuse an oversized archive BEFORE streaming, and
+    # count bytes WHILE streaming (a lying ContentLength cannot fill the disk)
+    declared = int(response.get("ContentLength") or 0)
+    if declared > ARCHIVE_MAX_BYTES:
+        raise SystemExit(
+            f"model.tar.gz declares {declared} bytes, over the "
+            f"{ARCHIVE_MAX_BYTES} cap — refusing disk exhaustion")
     tar_path = workdir / "model.tar.gz"
-    with tar_path.open("wb") as stream:
-        for chunk in iter(lambda: response["Body"].read(1 << 22), b""):
-            stream.write(chunk)
+    stream_with_cap(response["Body"], tar_path, ARCHIVE_MAX_BYTES,
+                    label="model.tar.gz download")
     s3_meta = {
         "uri": model_uri,
         "VersionId": response.get("VersionId"),

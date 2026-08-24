@@ -69,6 +69,20 @@
    "Effect": "Allow",
    "Action": "kms:Decrypt",
    "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+  },
+  {
+   "Sid": "NoRemoteDebugEver",
+   "Effect": "Deny",
+   "Action": [
+    "sagemaker:CreateTrainingJob",
+    "sagemaker:UpdateTrainingJob"
+   ],
+   "Resource": "*",
+   "Condition": {
+    "Bool": {
+     "sagemaker:EnableRemoteDebug": "true"
+    }
+   }
   }
  ]
 }

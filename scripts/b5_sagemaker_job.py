@@ -553,6 +553,14 @@ def render_request(bindings: dict) -> dict:
         ),
         "EnableManagedSpotTraining": managed_spot,
         "EnableNetworkIsolation": False,
+        # Codex review #24 finding 1: render these EXPLICITLY-OFF so the
+        # receipt comparison covers them by exact equality — remote debugging
+        # is shell access to the container, the profiler writes an unreviewed
+        # output stream, and inter-container encryption is meaningless on one
+        # instance; none may ever be silently enabled.
+        "EnableInterContainerTrafficEncryption": False,
+        "ProfilerConfig": {"DisableProfiler": True},
+        "RemoteDebugConfig": {"EnableRemoteDebug": False},
         "Environment": dict(sorted(environment.items())),
         # AWS tag values allow only [letters spaces digits _.:/=+-@]
         # (live ValidationException at the first real arm launch: the
