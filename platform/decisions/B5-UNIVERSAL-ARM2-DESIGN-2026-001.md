@@ -270,6 +270,49 @@ artifact-authenticated:
   (`arm2_acceptance_criteria`); `["PASS"]` refuses. Launch mode refuses any
   packet carrying `DRAFT_STATUS` or a `.DRAFT.` filename.
 
+## Round 22 corrections (Codex review #22)
+
+Round 21's "authoritative" verification and image lifecycle had structural
+faults; all three blockers plus the four concerns are fixed:
+
+- **Live authoritative verification (blocker 1):** local files are
+  caller-suppliable, so ONLY `--live` may claim authoritative: the verifier
+  itself pins account 558069890522 / eu-central-1, calls DescribeTrainingJob,
+  verifies the COMPLETE job request (role, network isolation, VPC, volume,
+  instance count, checkpoint config, NO input channels, exact rendered
+  environment incl. the injected packet+contract shas), follows
+  `ModelArtifacts.S3ModelArtifacts`, fetches that exact KMS-encrypted object
+  (VersionId captured), safe-extracts and hashes model.pt/manifest/metrics
+  itself. Local modes self-label `smoke` / `local-crosscheck`, never
+  authoritative.
+- **Circularity-free image lifecycle (blocker 2):** the image bakes a
+  SELF-REFERENCE-FREE **execution contract**
+  (`B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json`: job_id +
+  environment + distillation + result_verifier, no digest/cost). The launch
+  packet binds the contract's sha alongside the image digest; the launcher
+  verifies byte-equality of the shared blocks and injects
+  `MEDZEN_EXECUTION_CONTRACT{,_SHA256}`; the wrapper refuses a contract whose
+  bytes do not hash to the injected declaration. Pinning the digest never
+  requires an image rebuild.
+- **Safe Terraform activation (blocker 3):** `infra/terraform.tfvars` now
+  PERSISTS every live activation flag (arm-launch, image-publisher,
+  promotion-admission, the exact live github_repo values read back from the
+  deployed trusts) plus the new trainer flag; the saved plan
+  `arm2-trainer-image-publisher.tfplan` shows exactly **2 add / 0 change /
+  0 destroy** (the plain-plan 6-deletion hazard is gone).
+- **Per-row dev receipts:** the wrapper records per-row (audio checksum,
+  normalized hypothesis, edit distance, ref words); the verifier RECOMPUTES
+  row coverage, every edit distance and the corpus WER against the committed
+  slices — a scalar can no longer stand alone.
+- **Owner-approval environment:** the publish job runs in the
+  `trainer-image-publish` environment (required reviewer: the owner — the
+  arm-launch-approval pattern) and the role trust's `sub` binds to that
+  environment, compensating for the unprotected master branch.
+- **Canary asserts identity:** the positive canary requires account
+  558069890522 AND `assumed-role/medzen-trainer-image-publisher-role`, not a
+  printed identity.
+- The packet's verifier-command note now documents the `--live` form.
+
 ## Calibration is a two-step gate
 
 1. **Mechanics + memory** (this DRAFT packet, one 30-step run): validates the

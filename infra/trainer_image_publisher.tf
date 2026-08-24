@@ -36,8 +36,12 @@ data "aws_iam_policy_document" "trainer_image_publisher_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      # workflow_dispatch on master only (the deliberate, owner-run image build)
-      values = ["repo:${var.github_repo_immutable}:ref:refs/heads/master"]
+      # Codex review #22: master is unprotected, so the sub binds to the
+      # OWNER-APPROVAL environment (`trainer-image-publish`, required
+      # reviewer: the owner) instead of the bare master ref — the exact
+      # arm-launch-approval pattern. The job declares this environment, so
+      # its token's sub carries the environment form.
+      values = ["repo:${var.github_repo_immutable}:environment:trainer-image-publish"]
     }
     condition {
       test     = "StringEquals"

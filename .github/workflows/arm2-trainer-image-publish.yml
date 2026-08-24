@@ -50,6 +50,13 @@ env:
 jobs:
   build-test-scan-publish:
     runs-on: ubuntu-24.04
+    # Codex #22: master is unprotected, so "only reviewed commits" needs a
+    # human gate — this environment requires the OWNER's approval before the
+    # job (and its OIDC token) exists, exactly the arm-launch-approval
+    # pattern. The role trust's sub claim binds to THIS environment. Owner
+    # setup: create environment `trainer-image-publish` with themselves as
+    # required reviewer.
+    environment: trainer-image-publish
     steps:
       - name: the role variable must be configured (skipping is not passing)
         run: |
@@ -98,11 +105,28 @@ jobs:
         with:
           role-to-assume: ${{ vars.MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN }}
           aws-region: eu-central-1
-      - name: positive canary — print the assumed identity and stop
+      - name: positive canary — assert the EXACT assumed identity and stop
         if: ${{ inputs.canary }}
         run: |
-          aws sts get-caller-identity
-          echo "POSITIVE_CANARY_OK: the reusable executor assumed the trainer-image publisher role"
+          # Codex #22: printing the identity is not asserting it — the canary
+          # must prove the exact account AND role, not merely that some
+          # credential worked.
+          IDENTITY=$(aws sts get-caller-identity --output json)
+          echo "$IDENTITY"
+          ACCOUNT=$(printf '%s' "$IDENTITY" | python3 -c "import json,sys; print(json.load(sys.stdin)['Account'])")
+          ARN=$(printf '%s' "$IDENTITY" | python3 -c "import json,sys; print(json.load(sys.stdin)['Arn'])")
+          if [ "$ACCOUNT" != "558069890522" ]; then
+            echo "::error::assumed account $ACCOUNT != 558069890522"
+            exit 1
+          fi
+          case "$ARN" in
+            *":assumed-role/medzen-trainer-image-publisher-role/"*) ;;
+            *)
+              echo "::error::assumed role ARN $ARN is not medzen-trainer-image-publisher-role"
+              exit 1
+              ;;
+          esac
+          echo "POSITIVE_CANARY_OK: account 558069890522, role medzen-trainer-image-publisher-role"
       - name: login to ECR
         if: ${{ !inputs.canary }}
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6

@@ -52,7 +52,10 @@ COPY pipeline/__init__.py pipeline/omniasr_lora.py pipeline/omniasr_export.py \
 # IN the image so a shipped image is proven to carry a working, non-bypassable
 # verifier (the entrypoint runs it at calibration time).
 COPY scripts/verify_arm2_calibration.py scripts/b5_sagemaker_job.py ./scripts/
+# test stage carries BOTH the launch packet (tests validate it) and the
+# execution contract (the runtime artifact); only the CONTRACT ships (below)
 COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json \
      ./platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4) — the in-image
 # tests assert they match the packet's path/sha256/rows declaration
@@ -105,8 +108,12 @@ COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py
 # the packet's ContainerArguments) runs the canonical verifier in-image after
 # training, so both the verifier and the packet it checks against must ship.
 COPY scripts/verify_arm2_calibration.py /opt/medzen/scripts/verify_arm2_calibration.py
-COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json \
-     /opt/medzen/platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json
+# Codex #22 blocker 2: the image bakes the SELF-REFERENCE-FREE execution
+# contract, NEVER the launch packet (the packet binds this image's digest and
+# so cannot exist inside it). The launcher injects the contract path + sha;
+# the wrapper refuses a contract whose bytes do not hash to the declaration.
+COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json \
+     /opt/medzen/platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4): the calibration
 # wrapper refuses to score any slice whose sha differs from the packet's
 # declaration, so the exact reviewed bytes must ship

@@ -19,6 +19,8 @@ from pipeline.omniasr_train import (CALIBRATION_METRICS_SCHEMA,
 _REPO = Path(__file__).resolve().parents[1]
 _PACKET = (_REPO / "platform/manifests/"
            "B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json")
+_CONTRACT = (_REPO / "platform/manifests/"
+             "B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json")
 
 sys.path.insert(0, str(_REPO / "scripts"))
 from b5_sagemaker_job import JobRefusal, validate_arm2_semantics  # noqa: E402
@@ -44,6 +46,11 @@ _DEV_SHAS = {
 }
 
 
+import hashlib as _hashlib
+
+_CONTRACT_SHA = _hashlib.sha256(_CONTRACT.read_bytes()).hexdigest()
+
+
 def _identity() -> dict:
     return {
         "run_fingerprint": "f" * 64,
@@ -53,6 +60,7 @@ def _identity() -> dict:
         "dev_manifest_shas": dict(_DEV_SHAS),
         "scorer": CANONICAL_SCORER,
         "packet_sha256": "e" * 64,
+        "execution_contract_sha256": _CONTRACT_SHA,
         "verifier_script_sha256": "9" * 64,
     }
 
@@ -298,9 +306,9 @@ def test_expected_steps_one_is_caught_by_the_metrics_cross_check():
 
 def _packet_and_env():
     packet = json.loads(_PACKET.read_bytes())
+    # the launcher-injected identity keys are validated via the RENDERED env
+    # elsewhere; validate_arm2_semantics reads the committed env directly
     env = dict(packet["environment"])
-    # the launcher injects this at render time; emulate for the unit test
-    env["MEDZEN_CALIBRATION_PACKET_SHA256"] = "a" * 64
     return packet, env
 
 
@@ -326,10 +334,17 @@ def test_arm2_semantics_accepts_the_committed_packet():
      "regression sentinels"),
     (lambda b, e: e.update(MEDZEN_KD_LANGUAGE_WEIGHTS="lingala=9.0"),
      "language_weights"),
-    (lambda b, e: e.pop("MEDZEN_CALIBRATION_PACKET_SHA256"),
-     "MEDZEN_CALIBRATION_PACKET_SHA256"),
     (lambda b, e: e.pop("MEDZEN_DEV_SENTINEL_MANIFEST_FILES"),
      "MEDZEN_DEV_SENTINEL_MANIFEST_FILES"),
+    # Codex #22 blocker 2: the execution-contract binding refuses when absent,
+    # drifted, block-divergent, or when the committed env pre-defines the
+    # launcher-injected identity keys
+    (lambda b, e: b.pop("execution_contract"), "execution_contract"),
+    (lambda b, e: b["execution_contract"].update(sha256="0" * 64), "drifted"),
+    (lambda b, e: b["distillation"].update(teacher_note="patched"),
+     "differs from the launch packet"),
+    (lambda b, e: b["environment"].update(MEDZEN_TRAINING_JOB_NAME="x"),
+     "must not pre-define"),
     (lambda b, e: e.update(MEDZEN_DEV_SENTINEL_MANIFEST_FILES="lingala=x.jsonl"),
      "slice for every"),
     (lambda b, e: b.pop("distillation"), "no top-level `distillation`"),
@@ -338,11 +353,16 @@ def test_arm2_semantics_accepts_the_committed_packet():
     (lambda b, e: b.update(acceptance_criteria=["PASS"]),
      "canonical machine-derived"),
     # Codex review #21 F4: undeclared / drifted dev data refuses
-    (lambda b, e: b["result_verifier"].pop("dev_manifests"), "dev_manifests"),
+    # spec mutations now diverge from the baked contract FIRST (Codex #22
+    # blocker 2): the contract-equality gate refuses before the per-field
+    # dev-manifest checks (which load_verifier_spec + the provenance test
+    # still cover directly)
+    (lambda b, e: b["result_verifier"].pop("dev_manifests"),
+     "differs from the launch packet"),
     (lambda b, e: b["result_verifier"]["dev_manifests"]["lingala"].update(
-        sha256="0" * 64), "drifted from its declaration"),
+        sha256="0" * 64), "differs from the launch packet"),
     (lambda b, e: b["result_verifier"]["dev_manifests"]["lingala"].update(
-        rows=7), "declares"),
+        rows=7), "differs from the launch packet"),
     (lambda b, e: e.update(
         MEDZEN_DEV_SENTINEL_MANIFEST_FILES="lingala=other/path.jsonl,"
         "swahili=platform/manifests/dev-sentinels/swahili.jsonl"),
@@ -389,7 +409,8 @@ def test_build_identity_and_patch_metrics(tmp_path):
         run_fingerprint="f" * 64, training_job_name="job",
         export={"manifest_sha256": "a" * 64, "checkpoint_sha256": "b" * 64},
         dev_manifest_shas={"lingala": "c" * 64, "swahili": "d" * 64},
-        packet_sha256="e" * 64, verifier_script_sha256="9" * 64)
+        packet_sha256="e" * 64, execution_contract_sha256="7" * 64,
+        verifier_script_sha256="9" * 64)
     assert identity["export_model_sha256"] == "b" * 64
     # patch merges into the trainer's artifact (must already exist)
     metrics_path = tmp_path / "calibration-metrics.json"
@@ -464,20 +485,36 @@ def _good_receipt():
     env = dict(packet["environment"])
     env["MEDZEN_CALIBRATION_PACKET_SHA256"] = _canonical_sha256(packet)
     env["MEDZEN_TRAINING_JOB_NAME"] = _JOB_NAME
+    env["MEDZEN_EXECUTION_CONTRACT"] = \
+        "/opt/medzen/" + packet["execution_contract"]["path"]
+    env["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
+        packet["execution_contract"]["sha256"]
     return packet, {
         "TrainingJobName": _JOB_NAME,
         "TrainingJobStatus": "Completed",
+        "RoleArn": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+        "EnableNetworkIsolation": False,
         "AlgorithmSpecification": {
             "TrainingImage": packet["image_uri_with_digest"],
             "ContainerArguments": ["-m", "pipeline.omniasr_calibrate"],
         },
         "Environment": env,
+        "VpcConfig": {
+            "SecurityGroupIds": list(packet["security_group_ids"]),
+            "Subnets": list(packet["subnets"]),
+        },
         "OutputDataConfig": {
             "KmsKeyId": packet["kms_key_arn"],
             "S3OutputPath": "s3://medzen-speech/research/b5-training/"
                             "b5-universal-arm2-ftcal-2026-001/output",
         },
-        "ResourceConfig": {"InstanceType": packet["instance_type"]},
+        "ResourceConfig": {"InstanceType": packet["instance_type"],
+                           "InstanceCount": 1,
+                           "VolumeSizeInGB": packet["volume_gb"]},
+        "CheckpointConfig": {
+            "S3Uri": "s3://medzen-speech/research/b5-training/"
+                     "b5-universal-arm2-ftcal-2026-001/checkpoints",
+            "LocalPath": "/opt/ml/checkpoints"},
         "StoppingCondition": {
             "MaxRuntimeInSeconds": packet["max_runtime_seconds"]},
         "EnableManagedSpotTraining": packet["managed_spot"],
@@ -515,6 +552,22 @@ def test_training_receipt_verifies_and_each_drift_fails():
         (lambda r: r["StoppingCondition"].update(MaxRuntimeInSeconds=99999),
          "MaxRuntimeInSeconds"),
         (lambda r: r.update(EnableManagedSpotTraining=True), "Spot"),
+        # Codex #22 blocker 1: the COMPLETE job request is checked
+        (lambda r: r.update(RoleArn="arn:aws:iam::558069890522:role/other"),
+         "trainer role"),
+        (lambda r: r.update(EnableNetworkIsolation=True), "NetworkIsolation"),
+        (lambda r: r["VpcConfig"].update(Subnets=["subnet-evil"]), "Subnets"),
+        (lambda r: r["VpcConfig"].update(SecurityGroupIds=["sg-evil"]),
+         "SecurityGroupIds"),
+        (lambda r: r["ResourceConfig"].update(InstanceCount=2), "InstanceCount"),
+        (lambda r: r["ResourceConfig"].update(VolumeSizeInGB=50),
+         "VolumeSizeInGB"),
+        (lambda r: r["CheckpointConfig"].update(S3Uri="s3://elsewhere/ckpt"),
+         "CheckpointConfig"),
+        (lambda r: r.update(InputDataConfig=[{"ChannelName": "smuggled"}]),
+         "InputDataConfig"),
+        (lambda r: r["Environment"].pop("MEDZEN_EXECUTION_CONTRACT_SHA256"),
+         "Environment differs"),
     ]
     for mutate, needle in drifts:
         _, bad = _good_receipt()
@@ -525,19 +578,20 @@ def test_training_receipt_verifies_and_each_drift_fails():
         assert any(needle in f for f in failures), (needle, failures)
 
 
-def test_authoritative_mode_requires_all_three_fetched_inputs(tmp_path):
-    """Codex review #21 F3: --export-manifest alone is not authoritative; the
-    model bytes and the SageMaker receipt are required too."""
+def test_only_live_mode_is_authoritative(tmp_path):
+    """Codex review #22 blocker 1: local files are caller-suppliable, so ONLY
+    --live (the verifier fetches everything itself) may claim authoritative;
+    local modes must self-label non-authoritative or refuse."""
     from verify_arm2_calibration import main as verifier_main
+    # no --live and no metrics: point the caller at --live
+    with pytest.raises(SystemExit, match="--live"):
+        verifier_main(["--packet", str(_PACKET)])
+    # metrics alone (no smoke, incomplete local set) refuses and names --live
     metrics_path = tmp_path / "calibration-metrics.json"
     metrics_path.write_bytes(json.dumps(_good_artifact()).encode())
-    with pytest.raises(SystemExit, match="export-model"):
+    with pytest.raises(SystemExit, match="local cross-check needs"):
         verifier_main(["--metrics", str(metrics_path),
                        "--packet", str(_PACKET)])
-    with pytest.raises(SystemExit, match="export-model"):
-        verifier_main(["--metrics", str(metrics_path),
-                       "--packet", str(_PACKET),
-                       "--export-manifest", str(metrics_path)])
 
 
 def test_wall_time_accumulates_across_resume():
@@ -592,17 +646,223 @@ def test_draft_packet_refuses_to_launch(tmp_path):
     assert "DRAFT" in (launch.stdout + launch.stderr)
 
 
+def _perfect_dev_receipts():
+    """Per-row receipts where hyp == normalized reference (corpus WER 0.0),
+    built from the COMMITTED slices — the shape a real perfect run would
+    produce, recomputable by the verifier."""
+    from pipeline.normalizers import for_language
+    decl = json.loads(_PACKET.read_bytes())["result_verifier"]["dev_manifests"]
+    results, wer = {}, {}
+    for lang in ("lingala", "swahili"):
+        norm = for_language(lang)
+        rows = []
+        for line in (_REPO / decl[lang]["path"]).read_text().splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            reference = norm(row["text_normalized"])
+            rows.append({"audio_checksum_sha256": row["audio_checksum_sha256"],
+                         "hyp_normalized": reference,
+                         "edit_distance": 0,
+                         "ref_words": len(reference.split())})
+        results[lang] = {"rows": rows}
+        wer[lang] = 0.0
+    return results, wer
+
+
 def test_run_verifier_smoke_passes_on_a_clean_artifact(tmp_path):
-    """The wrapper's in-image smoke: writes a clean artifact and the canonical
-    verifier returns 0. bind_packet_sha=False (the in-image packet is DRAFT)."""
+    """The wrapper's in-image smoke: a clean artifact (with recomputable
+    per-row receipts) against the BAKED execution contract returns 0."""
     from pipeline.omniasr_calibrate import run_verifier
     art = _good_artifact()
-    # verifier_script_sha256 must match the ACTUAL in-repo verifier bytes for
-    # the smoke's self-bind; recompute and stamp it
-    import hashlib
-    vsha = hashlib.sha256(
+    results, wer = _perfect_dev_receipts()
+    art["dev_sentinel_results"] = results
+    art["dev_sentinel_wer"] = wer
+    # self-binds: the verifier's own bytes + the contract's own sha
+    art["identity"]["verifier_script_sha256"] = _hashlib.sha256(
         (_REPO / "scripts/verify_arm2_calibration.py").read_bytes()).hexdigest()
-    art["identity"]["verifier_script_sha256"] = vsha
     metrics_path = tmp_path / "calibration-metrics.json"
     metrics_path.write_bytes(json.dumps(art).encode())
-    assert run_verifier(metrics_path, _PACKET, bind_packet_sha=False) == 0
+    assert run_verifier(metrics_path, _CONTRACT, bind_packet_sha=False) == 0
+
+
+def test_contract_binds_and_matches_packet():
+    """Codex #22 blocker 2: the committed contract's sha equals the packet's
+    declaration and the shared blocks are byte-equal — and the contract holds
+    no self-reference (no image digest, no cost, no execution_contract)."""
+    packet = json.loads(_PACKET.read_bytes())
+    contract = json.loads(_CONTRACT.read_bytes())
+    assert packet["execution_contract"]["path"] == \
+        str(_CONTRACT.relative_to(_REPO).as_posix())
+    assert packet["execution_contract"]["sha256"] == _CONTRACT_SHA
+    for block in ("environment", "distillation", "result_verifier", "job_id"):
+        assert contract[block] == packet[block], block
+    for absent in ("image_uri_with_digest", "execution_contract",
+                   "cost_ceiling_usd", "worst_case_usd"):
+        assert absent not in contract, absent
+    # and the committed env carries no launcher-injected key
+    for injected in ("MEDZEN_CALIBRATION_PACKET",
+                     "MEDZEN_CALIBRATION_PACKET_SHA256",
+                     "MEDZEN_TRAINING_JOB_NAME", "MEDZEN_EXECUTION_CONTRACT",
+                     "MEDZEN_EXECUTION_CONTRACT_SHA256"):
+        assert injected not in packet["environment"], injected
+
+
+def test_wrapper_contract_gate_refuses_a_swapped_contract():
+    from pipeline.omniasr_calibrate import (CalibrationRefusal,
+                                            verify_contract_binding)
+    body = _CONTRACT.read_bytes()
+    assert verify_contract_binding(body, _CONTRACT_SHA) == _CONTRACT_SHA
+    with pytest.raises(CalibrationRefusal, match="unreviewed contract"):
+        verify_contract_binding(body + b" ", _CONTRACT_SHA)
+    with pytest.raises(CalibrationRefusal, match="unreviewed contract"):
+        verify_contract_binding(body, "0" * 64)
+
+
+def test_identity_binds_the_execution_contract_sha():
+    art = _good_artifact()
+    ok = verify_calibration(art, _spec(), expected_contract_sha=_CONTRACT_SHA)
+    assert ok == []
+    art["identity"]["execution_contract_sha256"] = "0" * 64
+    bad = verify_calibration(art, _spec(), expected_contract_sha=_CONTRACT_SHA)
+    assert any("execution_contract_sha256" in f for f in bad)
+
+
+def test_dev_row_receipts_recompute_and_reject_tampering():
+    """Codex #22: the scalar WER must be RECOMPUTABLE — per-row receipts are
+    verified against the committed slices, and any tamper fails."""
+    from verify_arm2_calibration import verify_dev_row_receipts
+    read = lambda rel: (_REPO / rel).read_bytes()  # noqa: E731
+    art = _good_artifact()
+    results, wer = _perfect_dev_receipts()
+    art["dev_sentinel_results"] = results
+    art["dev_sentinel_wer"] = wer
+    assert verify_dev_row_receipts(art, _spec(), read_manifest=read) == []
+    # missing block
+    bare = _good_artifact()
+    assert any("per-row receipts" in f for f in
+               verify_dev_row_receipts(bare, _spec(), read_manifest=read))
+    # tampered edit distance does not reproduce
+    tampered = json.loads(json.dumps(art))
+    tampered["dev_sentinel_results"]["lingala"]["rows"][0]["edit_distance"] = 3
+    assert any("do not reproduce" in f for f in
+               verify_dev_row_receipts(tampered, _spec(), read_manifest=read))
+    # dropped row breaks coverage
+    short = json.loads(json.dumps(art))
+    short["dev_sentinel_results"]["swahili"]["rows"].pop()
+    assert any("cover the manifest exactly" in f for f in
+               verify_dev_row_receipts(short, _spec(), read_manifest=read))
+    # scalar that disagrees with the receipts
+    lying = json.loads(json.dumps(art))
+    lying["dev_sentinel_wer"]["lingala"] = 0.42
+    assert any("does not equal the WER recomputed" in f for f in
+               verify_dev_row_receipts(lying, _spec(), read_manifest=read))
+
+
+def _make_bundle(tmp_path, *, model_bytes=b"MODEL-BYTES", tamper_model=False,
+                 drop_member=None):
+    """Craft a model.tar.gz shaped like a real calibration output bundle."""
+    import io
+    import tarfile
+    from verify_arm2_calibration import _canonical_sha256
+    packet = json.loads(_PACKET.read_bytes())
+    model_sha = _hashlib.sha256(model_bytes).hexdigest()
+    manifest = {"record": "OMNIASR_MERGED_CHECKPOINT_MANIFEST",
+                "model_sha256": model_sha}
+    manifest_bytes = json.dumps(manifest, sort_keys=True,
+                                separators=(",", ":")).encode() + b"\n"
+    art = _good_artifact()
+    results, wer = _perfect_dev_receipts()
+    art["dev_sentinel_results"] = results
+    art["dev_sentinel_wer"] = wer
+    art["identity"].update(
+        packet_sha256=_canonical_sha256(packet),
+        verifier_script_sha256=_hashlib.sha256(
+            (_REPO / "scripts/verify_arm2_calibration.py").read_bytes()
+        ).hexdigest(),
+        export_manifest_sha256=_hashlib.sha256(manifest_bytes).hexdigest(),
+        export_model_sha256=model_sha)
+    metrics_bytes = json.dumps(art, sort_keys=True).encode()
+    stored_model = (model_bytes + b"-TAMPERED") if tamper_model else model_bytes
+    members = {"calibration-metrics.json": metrics_bytes,
+               "export/manifest.json": manifest_bytes,
+               "export/model.pt": stored_model}
+    if drop_member:
+        members.pop(drop_member)
+    tar_path = tmp_path / "model.tar.gz"
+    with tarfile.open(tar_path, "w:gz") as archive:
+        for name, data in members.items():
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+    return packet, tar_path
+
+
+def test_live_bundle_verifies_and_rejects_each_forgery(tmp_path):
+    """Codex #22 blocker 1: the live core hashes everything itself from the
+    fetched bundle; KMS/prefix/model tampering all fail."""
+    from verify_arm2_calibration import (safe_extract_bundle,
+                                         verify_live_bundle)
+    packet, tar_path = _make_bundle(tmp_path)
+    extracted = safe_extract_bundle(tar_path, tmp_path / "bundle")
+    vsha = _hashlib.sha256(
+        (_REPO / "scripts/verify_arm2_calibration.py").read_bytes()).hexdigest()
+    good_meta = {"uri": "s3://medzen-speech/research/b5-training/"
+                        "b5-universal-arm2-ftcal-2026-001/output/model.tar.gz",
+                 "SSEKMSKeyId": packet["kms_key_arn"], "VersionId": "v1",
+                 "ETag": "etag", "ContentLength": 1}
+    _, receipt = _good_receipt()
+    failures, facts = verify_live_bundle(
+        packet=packet, receipt=receipt, extracted=extracted,
+        s3_meta=good_meta, verifier_script_sha=vsha, repo_root=_REPO)
+    assert failures == [], failures
+    assert facts["s3_version_id"] == "v1"
+    # wrong KMS key on the fetched object
+    bad_kms = dict(good_meta, SSEKMSKeyId="arn:aws:kms:other")
+    failures, _ = verify_live_bundle(
+        packet=packet, receipt=receipt, extracted=extracted,
+        s3_meta=bad_kms, verifier_script_sha=vsha, repo_root=_REPO)
+    assert any("SSEKMSKeyId" in f for f in failures)
+    # artifact outside the derived output prefix
+    bad_uri = dict(good_meta, uri="s3://elsewhere/model.tar.gz")
+    failures, _ = verify_live_bundle(
+        packet=packet, receipt=receipt, extracted=extracted,
+        s3_meta=bad_uri, verifier_script_sha=vsha, repo_root=_REPO)
+    assert any("output" in f for f in failures)
+    # tampered model bytes: the verifier's own hash disagrees with the manifest
+    (tmp_path / "t2").mkdir()
+    packet2, tar2 = _make_bundle(tmp_path / "t2", tamper_model=True)
+    extracted2 = safe_extract_bundle(tar2, tmp_path / "t2" / "bundle")
+    failures, _ = verify_live_bundle(
+        packet=packet2, receipt=receipt, extracted=extracted2,
+        s3_meta=good_meta, verifier_script_sha=vsha, repo_root=_REPO)
+    assert any("torn export" in f for f in failures)
+
+
+def test_safe_extract_refuses_missing_and_unsafe_members(tmp_path):
+    import io
+    import tarfile
+    from verify_arm2_calibration import safe_extract_bundle
+    _, tar_missing = _make_bundle(tmp_path, drop_member="export/model.pt")
+    with pytest.raises(SystemExit, match="lacks"):
+        safe_extract_bundle(tar_missing, tmp_path / "b1")
+    evil = tmp_path / "evil.tar.gz"
+    with tarfile.open(evil, "w:gz") as archive:
+        for name in ("calibration-metrics.json", "export/manifest.json"):
+            info = tarfile.TarInfo(name)
+            info.size = 2
+            archive.addfile(info, io.BytesIO(b"{}"))
+        info = tarfile.TarInfo("../../export/model.pt")
+        info.size = 1
+        archive.addfile(info, io.BytesIO(b"x"))
+    with pytest.raises(SystemExit):
+        safe_extract_bundle(evil, tmp_path / "b2")
+
+
+def test_dockerfile_ships_the_contract_not_the_launch_packet():
+    """Codex #22 blocker 2: the FINAL image must bake the execution contract,
+    never the launch packet (which binds the image's own digest)."""
+    text = (_REPO / "pipeline/Dockerfile.trainer-omniasr").read_text()
+    final_stage = text.split("# Shipped venv keeps", 1)[1]
+    assert "EXECUTION-CONTRACT-2026-001.json" in final_stage
+    assert "SAGEMAKER-BINDINGS-2026-001.DRAFT.json" not in final_stage

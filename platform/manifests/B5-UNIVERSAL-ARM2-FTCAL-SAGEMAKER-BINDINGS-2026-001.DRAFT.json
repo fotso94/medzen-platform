@@ -1,5 +1,5 @@
 {
- "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Promote this .DRAFT to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json ONLY after: (1) the predeclared dev-sentinel slices (result_verifier.dev_manifests: platform/manifests/dev-sentinels/{lingala,swahili}.jsonl, 60 rows each, copied verbatim from B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001) are committed AND baked into the image \u2014 DONE this revision; (2) the Arm-2 trainer image is built from the reviewed master commit via the arm2-trainer-image caller -> arm2-trainer-image-publish reusable executor on a native amd64 builder; (3) the in-image tests pass; (4) the image digest is pinned here; (5) MEDZEN_CALIBRATION_PACKET is repointed at the committed (non-DRAFT) filename. The launcher REFUSES to launch any DRAFT packet (Codex review #21 rec 6). The reviewer then issues reviews/b5-universal-arm2-ftcal-2026-001.json. Entrypoint: pipeline.omniasr_calibrate (train -> export -> readyz -> dev-WER -> finalize -> verify -> exit nonzero); the launcher renders it for KD packets and injects MEDZEN_CALIBRATION_PACKET_SHA256 + MEDZEN_TRAINING_JOB_NAME for identity binding.",
+ "DRAFT_STATUS": "image_uri_with_digest + image_oci_index_digest are PLACEHOLDERS. Lifecycle (circularity-free, Codex #22 blocker 2): (1) the EXECUTION CONTRACT (B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json, sha bound in execution_contract) and the dev-sentinel slices are committed and baked into the image; (2) the owner applies the SAVED terraform plan (2 add / 0 change / 0 destroy \u2014 infra/terraform.tfvars now persists ALL activation flags), sets MEDZEN_TRAINER_IMAGE_PUBLISHER_ROLE_ARN, dispatches both OIDC canaries, then arm2-trainer-image on the reviewed master commit; (3) the digest is pinned HERE (the image needs no rebuild \u2014 it never contains this launch packet); (4) this .DRAFT is promoted to the committed B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json (launch REFUSES any DRAFT); (5) the reviewer issues reviews/b5-universal-arm2-ftcal-2026-001.json. Entrypoint: pipeline.omniasr_calibrate under the baked contract; the launcher injects MEDZEN_CALIBRATION_PACKET_SHA256, MEDZEN_TRAINING_JOB_NAME and MEDZEN_EXECUTION_CONTRACT{,_SHA256}.",
  "acceptance_criteria": [
   "the run completes exactly 30 steps or fails closed (no silent success)",
   "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
@@ -8,8 +8,9 @@
   "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
   "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
   "dev-sentinel WER recorded on the PREDECLARED frozen slices (path+sha256+rows bound in result_verifier.dev_manifests) for: lingala, swahili (directional read, NOT a promotion signal)",
-  "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, verifier bytes sha",
-  "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE mode (--export-manifest + --export-model + --receipt, all fetched from the job's KMS-encrypted S3 output / SageMaker API)"
+  "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, execution-contract sha, verifier bytes sha",
+  "per-row dev receipts (audio checksum, normalized hypothesis, edit distance, ref words) recorded and RECOMPUTED against the committed slices",
+  "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)"
  ],
  "authorization": "CALIBRATION TIER (worst case $3.20 <= the $10 CALIBRATION_TIER_USD boundary in scripts/b5_sagemaker_job.py): this routes through the BELOW-tier launch branch, whose gate is an APPROVED independent-review record (review_record_approves) against the committed (non-DRAFT) packet sha with the image pinned by digest. The ABOVE-tier ceremony (the protected arm-launch workflow + an ACTIVE_RESERVED registry line) does NOT apply at this tier, and the protected workflow presently binds Arm-1 (Codex review #19 F6b: the earlier draft over-claimed above-tier authorization it never exercises). Should a future revision push the worst case past $10 it would cross into the above-tier branch and require that ceremony.",
  "cost_ceiling_usd": 10,
@@ -38,7 +39,6 @@
  "environment": {
   "MEDZEN_AUDIO_CAP_HOURS": "2",
   "MEDZEN_BATCH_SIZE": "2",
-  "MEDZEN_CALIBRATION_PACKET": "/opt/medzen/platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json",
   "MEDZEN_CHECKPOINT_EVERY": "30",
   "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl",
   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
@@ -62,6 +62,11 @@
   "MEDZEN_TRAIN_MODE": "full",
   "MEDZEN_VARIANT": "ctc",
   "MEDZEN_WARMUP_STEPS": "10"
+ },
+ "execution_contract": {
+  "note": "the image bakes THIS file; the wrapper runs under it; the launcher derives MEDZEN_EXECUTION_CONTRACT{,_SHA256} from this block, so committing the digest here never requires an image rebuild (circularity resolved, Codex #22 blocker 2)",
+  "path": "platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json",
+  "sha256": "79cb3ef9bb3f29c45b0f2d692daf13632be959db4b8b505c239b4e776d036c4e"
  },
  "hyperparameter_selection": "A single 30-step run validates MECHANICS + MEMORY + the KD numerics in-image, but CANNOT scientifically select alpha/temperature/per-language weights. Hyperparameter selection is a SEPARATE, predeclared UNSEALED comparison (a small set of KD settings evaluated on the frozen dev sentinels) authored and reviewed before any full Arm-2 training. This packet is the mechanics/memory gate only.",
  "image_oci_index_digest": "PLACEHOLDER@sha256:0000000000000000000000000000000000000000000000000000000000000000",
@@ -104,7 +109,7 @@
   "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
   "metrics_artifact": "calibration-metrics.json",
   "metrics_schema": "b5-arm2-calibration-metrics/1",
-  "note": "Codex review #19 F3/F4 + #20 F5: the trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity, but NOT authoritative for export provenance). The AUTHORITATIVE verdict is the reviewer's out-of-image run: fetch calibration-metrics.json AND export/manifest.json from the job's KMS-encrypted S3 output, then run `python -m scripts.verify_arm2_calibration --metrics <fetched> --packet <this committed packet> --export-manifest <fetched manifest.json>`. That run binds identity to the committed packet's canonical sha, the verifier's own bytes, the derived job name (medzen-b5-<job_id>), the canonical scorer, and \u2014 via --export-manifest \u2014 the metrics' export_manifest_sha256/export_model_sha256 to the REAL authenticated export (a fabricated file that never exported is rejected). HONEST SCOPE: a self-reported metrics file is authenticated by WHERE it is fetched (the job's KMS S3 output) plus this export cross-check; the verifier does not otherwise prove a job ran.",
+  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
   "required_preservation_coverage": [
    "english",
    "french",

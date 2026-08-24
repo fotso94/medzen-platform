@@ -112,8 +112,9 @@ def arm2_acceptance_criteria(spec: dict) -> list:
         "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
         "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
         "dev-sentinel WER recorded on the PREDECLARED frozen slices (path+sha256+rows bound in result_verifier.dev_manifests) for: " + ", ".join(dev) + " (directional read, NOT a promotion signal)",
-        "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, verifier bytes sha",
-        "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE mode (--export-manifest + --export-model + --receipt, all fetched from the job's KMS-encrypted S3 output / SageMaker API)",
+        "identity bound: run fingerprint, derived job name, export manifest+model shas, predeclared dev-manifest shas, canonical scorer, packet canonical sha, execution-contract sha, verifier bytes sha",
+        "per-row dev receipts (audio checksum, normalized hypothesis, edit distance, ref words) recorded and RECOMPUTED against the committed slices",
+        "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)",
     ]
 
 
@@ -253,13 +254,11 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     # Codex review #20 F3: the calibration WRAPPER needs its inputs bound in the
     # environment — the packet path it verifies against, that packet's canonical
     # sha for identity binding, and a dev-sentinel manifest file for EVERY
-    # dev-sentinel language. A KD packet missing any of these refuses.
-    for key in ("MEDZEN_CALIBRATION_PACKET", "MEDZEN_CALIBRATION_PACKET_SHA256",
-                "MEDZEN_DEV_SENTINEL_MANIFEST_FILES"):
-        if not str(environment.get(key, "")).strip():
-            raise JobRefusal(
-                f"KD calibration requires {key} in the environment (the "
-                "wrapper's inputs — Codex review #20 F3)")
+    # dev-sentinel language. A KD packet missing this refuses.
+    if not str(environment.get("MEDZEN_DEV_SENTINEL_MANIFEST_FILES", "")).strip():
+        raise JobRefusal(
+            "KD calibration requires MEDZEN_DEV_SENTINEL_MANIFEST_FILES in "
+            "the environment (the wrapper's inputs — Codex review #20 F3)")
     dev_manifest_langs = {
         pair.partition("=")[0].strip().lower()
         for pair in str(environment["MEDZEN_DEV_SENTINEL_MANIFEST_FILES"]).split(",")
@@ -268,10 +267,56 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
         raise JobRefusal(
             "MEDZEN_DEV_SENTINEL_MANIFEST_FILES must provide a slice for every "
             f"dev-sentinel language {sorted(dev_set)}; got {sorted(dev_manifest_langs)}")
-    packet_sha = str(environment["MEDZEN_CALIBRATION_PACKET_SHA256"]).strip()
-    if not re.fullmatch(r"[0-9a-f]{64}", packet_sha):
+
+    # Codex review #22 blocker 2: the image/packet lifecycle was CIRCULAR —
+    # the image baked the launch packet, but the final packet must contain the
+    # image digest, which cannot exist inside an image built before it. The
+    # image now bakes a SELF-REFERENCE-FREE EXECUTION CONTRACT (environment +
+    # distillation + result_verifier + job_id, NO digest/cost fields), and the
+    # launch packet binds that contract's path + sha alongside the digest.
+    contract_decl = bindings.get("execution_contract")
+    if not isinstance(contract_decl, dict):
         raise JobRefusal(
-            "MEDZEN_CALIBRATION_PACKET_SHA256 must be a 64-hex canonical sha")
+            "a KD packet must bind `execution_contract` {path, sha256} — the "
+            "self-reference-free contract the image bakes (Codex #22 blocker 2)")
+    contract_path = str(contract_decl.get("path") or "")
+    contract_sha = str(contract_decl.get("sha256") or "")
+    if not contract_path or contract_path.startswith("/") or ".." in contract_path:
+        raise JobRefusal(
+            f"execution_contract.path {contract_path!r} must be repo-relative "
+            "without traversal")
+    if not re.fullmatch(r"[0-9a-f]{64}", contract_sha):
+        raise JobRefusal("execution_contract.sha256 must be 64-hex")
+    repo_root_ec = Path(__file__).resolve().parents[1]
+    contract_file = repo_root_ec / contract_path
+    if not contract_file.exists():
+        raise JobRefusal(
+            f"execution contract {contract_path} is not committed")
+    contract_bytes = contract_file.read_bytes()
+    actual_contract_sha = hashlib.sha256(contract_bytes).hexdigest()
+    if actual_contract_sha != contract_sha:
+        raise JobRefusal(
+            f"execution contract {contract_path} hashes to "
+            f"{actual_contract_sha[:16]}, the packet declares "
+            f"{contract_sha[:16]} — the contract drifted")
+    contract = json.loads(contract_bytes)
+    # the committed env must not pre-define the launcher-injected identity
+    # keys — they are DERIVED at render, never hand-authored (checked FIRST so
+    # the error names the real fault, not a downstream block mismatch)
+    for injected in ("MEDZEN_CALIBRATION_PACKET", "MEDZEN_CALIBRATION_PACKET_SHA256",
+                     "MEDZEN_TRAINING_JOB_NAME", "MEDZEN_EXECUTION_CONTRACT",
+                     "MEDZEN_EXECUTION_CONTRACT_SHA256"):
+        if injected in (bindings.get("environment") or {}):
+            raise JobRefusal(
+                f"the committed environment must not pre-define {injected} — "
+                "the launcher derives and injects it at render")
+    # the contract's shared blocks must BYTE-EQUAL the packet's — one truth
+    for block in ("environment", "distillation", "result_verifier", "job_id"):
+        if contract.get(block) != bindings.get(block):
+            raise JobRefusal(
+                f"execution contract {block!r} differs from the launch "
+                "packet's — the image would run a different recipe than the "
+                "one reviewed (Codex #22 blocker 2)")
 
     # Codex review #21 F6: the prose acceptance_criteria must EQUAL the
     # canonical list derived from the machine contract — a human-facing
@@ -395,6 +440,17 @@ def render_request(bindings: dict) -> dict:
         # inject the real TrainingJobName so the wrapper records it and the
         # verifier can bind identity.training_job_name to the declared job
         environment["MEDZEN_TRAINING_JOB_NAME"] = f"medzen-b5-{job_id}"
+        # Codex review #22 blocker 2: the wrapper reads the SELF-REFERENCE-FREE
+        # execution contract baked in the image; the launcher derives its
+        # in-image path + sha from the packet's execution_contract block so the
+        # committed files stay circularity-free while the receipt's Environment
+        # check still binds both values to the reviewed packet.
+        contract_decl = bindings.get("execution_contract") or {}
+        if str(contract_decl.get("path") or "").strip():
+            environment["MEDZEN_EXECUTION_CONTRACT"] = \
+                "/opt/medzen/" + str(contract_decl["path"])
+            environment["MEDZEN_EXECUTION_CONTRACT_SHA256"] = \
+                str(contract_decl.get("sha256") or "")
     missing = [k for k in REQUIRED_ENVIRONMENT if not environment.get(k)]
     if missing:
         raise JobRefusal(f"environment lacks {missing}")

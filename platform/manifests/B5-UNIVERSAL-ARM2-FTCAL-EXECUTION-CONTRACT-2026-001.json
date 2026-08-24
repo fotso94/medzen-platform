@@ -1,0 +1,90 @@
+{
+ "distillation": {
+  "design": "platform/decisions/B5-UNIVERSAL-ARM2-DESIGN-2026-001.md",
+  "kd_alpha": 0.5,
+  "kd_temperature": 1.0,
+  "language_weights": {
+   "english": 0.5,
+   "french": 0.5,
+   "lingala": 1.5,
+   "swahili": 1.5
+  },
+  "language_weights_rationale": "Codex review #18: French/English improved in Arm-1, so a uniform preservation weight could suppress those gains. Heavier weight on the regressed sentinels (lingala, swahili), lighter on the anchors (english, french). These are DRAFT values the comparison confirms.",
+  "preservation_languages": [
+   "english",
+   "french",
+   "swahili",
+   "lingala"
+  ],
+  "teacher_card": "medzen_omniASR_CTC_1B_v2",
+  "teacher_mode": "base",
+  "teacher_note": "base teacher is byte-identical to the student's staged base; alignment by construction. Kinyarwanda-v1 teacher deferred (needs its own reviewed card)."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ALPHA": "0.5",
+  "MEDZEN_KD_ENABLE": "1",
+  "MEDZEN_KD_LANGUAGE_WEIGHTS": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
+  "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
+  "MEDZEN_KD_TEACHER_CARD": "medzen_omniASR_CTC_1B_v2",
+  "MEDZEN_KD_TEACHER_MODE": "base",
+  "MEDZEN_KD_TEMPERATURE": "1.0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_LR": "1e-5",
+  "MEDZEN_LR_SCHEDULE": "constant",
+  "MEDZEN_MANIFEST_VERSION": "gb9",
+  "MEDZEN_MAX_STEPS": "30",
+  "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+  "MEDZEN_SEED": "20260820",
+  "MEDZEN_TEMPERATURE": "0.5",
+  "MEDZEN_TRAIN_MODE": "full",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_WARMUP_STEPS": "10"
+ },
+ "job_id": "b5-universal-arm2-ftcal-2026-001",
+ "purpose": "SELF-REFERENCE-FREE execution contract baked into the Arm-2 trainer image (Codex review #22 blocker 2: the launch packet binds the image digest, so it cannot exist inside the image). The launch packet B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001 binds this file's sha256 alongside the image digest; the launcher injects MEDZEN_EXECUTION_CONTRACT{,_SHA256} and the wrapper refuses a contract whose bytes do not hash to the injected declaration. The shared blocks below must BYTE-EQUAL the launch packet's (enforced by validate_arm2_semantics).",
+ "record": "B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001",
+ "result_verifier": {
+  "dev_manifests": {
+   "lingala": {
+    "language": "lingala",
+    "path": "platform/manifests/dev-sentinels/lingala.jsonl",
+    "rows": 60,
+    "sha256": "59b2485c947d6f0556fffaeb83744dd814589a8dca9ccba6d7e52ec0cc4d0f5a",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   },
+   "swahili": {
+    "language": "swahili",
+    "path": "platform/manifests/dev-sentinels/swahili.jsonl",
+    "rows": 60,
+    "sha256": "613fad796b8629c351fa023944b384f6198d74125733ea89e61af60adaf4c4a8",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   }
+  },
+  "dev_sentinel_languages": [
+   "lingala",
+   "swahili"
+  ],
+  "expected_steps": 30,
+  "gpu_memory_ceiling_bytes": 23622320128,
+  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
+  "metrics_artifact": "calibration-metrics.json",
+  "metrics_schema": "b5-arm2-calibration-metrics/1",
+  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
+  "required_preservation_coverage": [
+   "english",
+   "french",
+   "lingala",
+   "swahili"
+  ],
+  "script": "scripts/verify_arm2_calibration.py"
+ }
+}

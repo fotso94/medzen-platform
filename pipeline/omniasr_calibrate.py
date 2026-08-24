@@ -41,6 +41,23 @@ SCORER_ID = ("ctc-greedy/argmax+collapse+blank-strip; "
 VERIFIER_REL = "scripts/verify_arm2_calibration.py"
 
 
+def word_edits(ref: str, hyp: str) -> tuple[int, int]:
+    """(word-level Levenshtein edit distance, reference word count) for ONE
+    pair. Pure and host-tested; the per-row receipts store exactly these two
+    numbers so the corpus WER is recomputable by anyone (Codex #22: a scalar
+    WER without per-row receipts could not be recomputed)."""
+    r = ref.split()
+    h = hyp.split()
+    prev = list(range(len(h) + 1))
+    for i, rw in enumerate(r, 1):
+        cur = [i] + [0] * len(h)
+        for j, hw in enumerate(h, 1):
+            cost = 0 if rw == hw else 1
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+        prev = cur
+    return prev[len(h)], len(r)
+
+
 def word_error_rate(refs: list[str], hyps: list[str]) -> float:
     """Corpus word error rate = (sum of word-level Levenshtein edit distances)
     / (total reference words). Pure and host-tested so the dev-sentinel score
@@ -51,18 +68,9 @@ def word_error_rate(refs: list[str], hyps: list[str]) -> float:
     total_edits = 0
     total_ref_words = 0
     for ref, hyp in zip(refs, hyps):
-        r = ref.split()
-        h = hyp.split()
-        total_ref_words += len(r)
-        # word-level Levenshtein
-        prev = list(range(len(h) + 1))
-        for i, rw in enumerate(r, 1):
-            cur = [i] + [0] * len(h)
-            for j, hw in enumerate(h, 1):
-                cost = 0 if rw == hw else 1
-                cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-            prev = cur
-        total_edits += prev[len(h)]
+        edits, ref_words = word_edits(ref, hyp)
+        total_edits += edits
+        total_ref_words += ref_words
     if total_ref_words == 0:
         raise CalibrationRefusal(
             "dev slice has zero reference words — cannot score WER")
@@ -117,13 +125,28 @@ def parse_dev_manifest_files(raw: str) -> dict[str, str]:
     return out
 
 
+def verify_contract_binding(contract_bytes: bytes, declared_sha: str) -> str:
+    """The wrapper's contract gate (Codex #22 blocker 2): the baked execution
+    contract's bytes must hash to the launcher-injected declaration, or the
+    run refuses — a swapped/patched contract cannot execute. Returns the sha."""
+    actual = _sha256_bytes(contract_bytes)
+    if actual != str(declared_sha or "").strip():
+        raise CalibrationRefusal(
+            f"the baked execution contract hashes to {actual[:16]}, the "
+            f"launcher declared {str(declared_sha)[:16] or '<absent>'} — "
+            "refusing to run an unreviewed contract")
+    return actual
+
+
 def build_identity(*, run_fingerprint: str, training_job_name: str,
                    export: dict[str, Any], dev_manifest_shas: dict[str, str],
-                   packet_sha256: str, verifier_script_sha256: str,
+                   packet_sha256: str, execution_contract_sha256: str,
+                   verifier_script_sha256: str,
                    scorer: str = SCORER_ID) -> dict[str, Any]:
     """The evidence-binding block the verifier requires (Codex review #20 F5):
-    which run, export, scorer, dev slices, packet and verifier produced these
-    numbers. Absent/blank fields make the verifier refuse."""
+    which run, export, scorer, dev slices, packet, execution contract and
+    verifier produced these numbers. Absent/blank fields make the verifier
+    refuse."""
     return {
         "run_fingerprint": run_fingerprint,
         "training_job_name": training_job_name,
@@ -133,13 +156,15 @@ def build_identity(*, run_fingerprint: str, training_job_name: str,
         "dev_manifest_shas": dict(sorted(dev_manifest_shas.items())),
         "scorer": scorer,
         "packet_sha256": packet_sha256,
+        "execution_contract_sha256": execution_contract_sha256,
         "verifier_script_sha256": verifier_script_sha256,
     }
 
 
 def patch_metrics(metrics_path: Path, *, serve: dict[str, Any],
                   dev_sentinel_wer: dict[str, Any],
-                  identity: dict[str, Any]) -> dict[str, Any]:
+                  identity: dict[str, Any],
+                  dev_sentinel_results: dict[str, Any] | None = None) -> dict[str, Any]:
     """Merge the post-training fields into the trainer's metrics artifact.
     Refuses to invent numbers: the training-side artifact must already exist."""
     if not metrics_path.exists():
@@ -150,35 +175,49 @@ def patch_metrics(metrics_path: Path, *, serve: dict[str, Any],
     metrics["serve"] = serve
     metrics["dev_sentinel_wer"] = dev_sentinel_wer
     metrics["identity"] = identity
+    if dev_sentinel_results is not None:
+        # Codex #22: per-row receipts (audio checksum, normalized hypothesis,
+        # edit distance, ref word count) so the corpus WER is RECOMPUTABLE
+        # against the committed references — not a bare scalar.
+        metrics["dev_sentinel_results"] = dev_sentinel_results
     metrics_path.write_bytes(
         json.dumps(metrics, sort_keys=True, separators=(",", ":")).encode()
         + b"\n")
     return metrics
 
 
-def run_verifier(metrics_path: Path, packet_path: Path,
+def run_verifier(metrics_path: Path, contract_path: Path,
                  *, bind_packet_sha: bool) -> int:
-    """Invoke the canonical verifier in-process. In-image this is a fail-closed
-    SMOKE (bind_packet_sha=False: the in-image packet is the pre-pin DRAFT, so
-    the committed-packet cross-bind is left to the reviewer's out-of-image
-    run); every other acceptance check runs. Returns 0 on PASS, 1 on FAIL."""
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    from verify_arm2_calibration import (load_verifier_spec, verify_calibration)
+    """Invoke the canonical verifier in-process against the EXECUTION CONTRACT
+    baked in the image (Codex #22 blocker 2). In-image this is a fail-closed
+    SMOKE (bind_packet_sha=False: the launch packet — with the image digest —
+    cannot exist inside the image, so the committed-packet cross-bind is the
+    reviewer's --live run); every other acceptance check runs, including the
+    per-row dev receipts recompute. Returns 0 on PASS, 1 on FAIL."""
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "scripts"))
+    from verify_arm2_calibration import (load_verifier_spec,
+                                         verify_calibration,
+                                         verify_dev_row_receipts)
 
-    packet = json.loads(packet_path.read_bytes())
+    contract_bytes = contract_path.read_bytes()
+    contract = json.loads(contract_bytes)
     metrics = json.loads(metrics_path.read_bytes())
-    spec = load_verifier_spec(packet)
-    verifier_path = Path(__file__).resolve().parents[1] / VERIFIER_REL
+    spec = load_verifier_spec(contract)
+    verifier_path = root / VERIFIER_REL
     verifier_sha = _sha256_bytes(verifier_path.read_bytes())
-    job_id = str(packet.get("job_id") or "").strip()
+    job_id = str(contract.get("job_id") or "").strip()
     expected_job_name = f"medzen-b5-{job_id}" if job_id else None
     packet_sha = None
     if bind_packet_sha:
         packet_sha = _sha256_bytes(json.dumps(
-            packet, sort_keys=True, separators=(",", ":")).encode())
+            contract, sort_keys=True, separators=(",", ":")).encode())
     failures = verify_calibration(
         metrics, spec, packet_canonical_sha=packet_sha,
-        verifier_script_sha=verifier_sha, expected_job_name=expected_job_name)
+        verifier_script_sha=verifier_sha, expected_job_name=expected_job_name,
+        expected_contract_sha=_sha256_bytes(contract_bytes))
+    failures.extend(verify_dev_row_receipts(
+        metrics, spec, read_manifest=lambda rel: (root / rel).read_bytes()))
     print(json.dumps({"status": "CALIBRATION_VERIFY",
                       "verdict": "PASS" if not failures else "FAIL",
                       "failures": failures}, sort_keys=True), flush=True)
@@ -230,7 +269,15 @@ def main() -> int:
             "MEDZEN_KD_ENABLE must be set. A non-KD training run uses "
             "pipeline.omniasr_train directly.")
 
-    packet_path = Path(os.environ["MEDZEN_CALIBRATION_PACKET"])
+    # Codex #22 blocker 2: the image bakes the SELF-REFERENCE-FREE execution
+    # contract (the launch packet, which carries the image digest, cannot exist
+    # inside the image). The launcher injects the contract's in-image path AND
+    # its sha; the wrapper refuses a contract whose bytes do not hash to the
+    # injected declaration — a swapped contract cannot run.
+    packet_path = Path(os.environ["MEDZEN_EXECUTION_CONTRACT"])
+    execution_contract_sha256 = verify_contract_binding(
+        packet_path.read_bytes(),
+        os.environ.get("MEDZEN_EXECUTION_CONTRACT_SHA256", ""))
     dev_files = parse_dev_manifest_files(
         os.environ.get("MEDZEN_DEV_SENTINEL_MANIFEST_FILES", ""))
     packet_sha256 = os.environ.get("MEDZEN_CALIBRATION_PACKET_SHA256", "").strip()
@@ -278,7 +325,7 @@ def main() -> int:
     _load_export_weights(model, export_ckpt)
     serve = readyz_audit(model)
 
-    dev_wer, dev_manifest_shas = _score_dev_sentinels(
+    dev_wer, dev_manifest_shas, dev_results = _score_dev_sentinels(
         config, model, tokenizer, device, dev_files)
 
     # Codex review #21 F4 (in-image half): the scored slices must BE the
@@ -305,12 +352,13 @@ def main() -> int:
         training_job_name=job_name,
         export=export_identity, dev_manifest_shas=dev_manifest_shas,
         packet_sha256=packet_sha256,
+        execution_contract_sha256=execution_contract_sha256,
         verifier_script_sha256=_sha256_bytes(
             (Path(__file__).resolve().parents[1] / VERIFIER_REL).read_bytes()))
 
     # 4. finalize; 5. verify (fail closed)
     patch_metrics(metrics_path, serve=serve, dev_sentinel_wer=dev_wer,
-                  identity=identity)
+                  identity=identity, dev_sentinel_results=dev_results)
     return run_verifier(metrics_path, packet_path, bind_packet_sha=False)
 
 
@@ -357,6 +405,7 @@ def _score_dev_sentinels(config, model, tokenizer, device,
     root = Path(__file__).resolve().parents[1]
     wer_by_lang: dict[str, float] = {}
     manifest_shas: dict[str, str] = {}
+    results_by_lang: dict[str, Any] = {}
     for language, rel in sorted(dev_files.items()):
         raw = (root / rel).read_bytes()
         manifest_shas[language] = _sha256_bytes(raw)
@@ -366,6 +415,7 @@ def _score_dev_sentinels(config, model, tokenizer, device,
             raise CalibrationRefusal(f"dev slice {rel} for {language} is empty")
         norm = for_language(language)
         refs, hyps = [], []
+        row_receipts = []
         for row in rows:
             audio, sr = sf.read(fetch_audio(cli, row, cache),
                                 dtype="float32", always_2d=False)
@@ -380,10 +430,23 @@ def _score_dev_sentinels(config, model, tokenizer, device,
             with torch.no_grad():
                 logits, _ = model(wave, layout)
             hyp = _ctc_greedy_text(logits[0], tokenizer, blank_idx)
-            refs.append(norm(row["text_normalized"]))
-            hyps.append(norm(hyp))
+            reference = norm(row["text_normalized"])
+            hypothesis = norm(hyp)
+            refs.append(reference)
+            hyps.append(hypothesis)
+            # Codex #22: per-row receipt so the corpus WER is RECOMPUTABLE —
+            # the committed manifest holds the reference; the receipt holds
+            # the hypothesis + the numbers the verifier reproduces from both.
+            edits, ref_words = word_edits(reference, hypothesis)
+            row_receipts.append({
+                "audio_checksum_sha256": row["audio_checksum_sha256"],
+                "hyp_normalized": hypothesis,
+                "edit_distance": edits,
+                "ref_words": ref_words,
+            })
         wer_by_lang[language] = round(word_error_rate(refs, hyps), 4)
-    return wer_by_lang, manifest_shas
+        results_by_lang[language] = {"rows": row_receipts}
+    return wer_by_lang, manifest_shas, results_by_lang
 
 
 if __name__ == "__main__":
