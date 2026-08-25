@@ -98,34 +98,78 @@ def build() -> dict:
         })
         union |= set(cks)
 
-    # 4) S3-pinned pools (per-row identities NOT in repo): recorded by pinned
-    #    pool-level identity so a mint-time disjointness check can fetch them.
-    pinned_pools = []
-    for pool, meta in sorted((ds.get("sources") or {}).items()):
-        pinned_pools.append({
-            "pool": pool,
-            "pool_rows": meta.get("pool_rows"),
-            "selected_rows": meta.get("selected_rows"),
-            "sha256": meta.get("sha256"),
-            "version_id": meta.get("version_id"),
-            "etag": meta.get("etag"),
-            "pinned_by": meta.get("pinned_by"),
-            "note": "per-row audio_checksum_sha256 not materialised in-repo; "
-                    "disjointness checked at mint against this pinned S3 manifest",
+    # 4) EVERY S3-pinned exposure source, CLASSIFIED and PINNED (rev 006).
+    #    Per-row identities are not in the repo, so each source is recorded by
+    #    its pinned identity (sha256 + s3_version_id) so a mint-time per-row
+    #    class assignment can fetch it. A pool's eval-dev half is BASE_EXPOSED
+    #    iff the zero-shot base model scored it (fleurs/soreva/aaf/cv17 were in
+    #    the base 47/54-language suite; pidgin av-heldout was NEVER scored by
+    #    the base, so its dev half is base-blind AND candidate-blind).
+    BASE_SCORED_POOL_TAGS = ("fleurs-v1", "soreva-v1", "aaf-test", "cv17-test")
+    pinned_sources = []
+    tier2 = ROOT / "platform/evidence"
+    for rec in sorted(tier2.glob("B5-TIER2-HOLDOUTS-2026-0*.json")):
+        rel = str(rec.relative_to(ROOT))
+        hold = json.loads(rec.read_bytes())
+        for lang, entries in sorted((hold.get("pools") or {}).items()):
+            for e in entries:
+                pool = e.get("pool", "")
+                base_scored = any(t in pool for t in BASE_SCORED_POOL_TAGS)
+                dev = e.get("tier2-dev") or {}
+                sealed = e.get("tier2-sealed") or {}
+                if dev:
+                    pinned_sources.append({
+                        "class": "BASE_EXPOSED" if base_scored
+                        else "BASE_BLIND_CANDIDATE_ELIGIBLE",
+                        "role": "eval_dev_half",
+                        "base_scored_by_zero_shot_base": base_scored,
+                        "language": lang, "pool": pool,
+                        "key": dev.get("key"), "rows": dev.get("rows"),
+                        "sha256": dev.get("sha256"),
+                        "s3_version_id": dev.get("s3_version_id"),
+                        "source_record": rel,
+                    })
+                if sealed:
+                    pinned_sources.append({
+                        "class": "SEALED", "role": "sealed_holdout_half",
+                        "language": lang, "pool": pool,
+                        "key": sealed.get("key"), "rows": sealed.get("rows"),
+                        "sha256": sealed.get("sha256"),
+                        "s3_version_id": sealed.get("s3_version_id"),
+                        "source_record": rel,
+                    })
+    for rec, tag in (("B5-GB9-ADOPTION-2026-001.json", "gb9"),
+                     ("B5-GB8-ADOPTION-2026-001.json", "gb8")):
+        adopt = json.loads((tier2 / rec).read_bytes())
+        pinned_sources.append({
+            "class": "TRAINING_EXPOSED", "role": "training_corpus",
+            "dataset": tag,
+            "complete_raw_sha256": adopt.get("complete_raw_sha256"),
+            "source_record": f"platform/evidence/{rec}",
         })
+    pinned_sources.append({
+        "class": "TRAINING_EXPOSED", "role": "training_corpus",
+        "dataset": "gb3-kinyarwanda",
+        "source_record": "platform/manifests/"
+                         "B5-KINYARWANDA-FULL-SAGEMAKER-BINDINGS-2026-001.json",
+        "note": "kinyarwanda-only training at gb3 (300h cap); pinned by the "
+                "manifest's dataset identity at mint",
+    })
 
     union_count, union_agg = _agg(union)
     return {
         "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001",
         "status": "PENDING_DESIGN_REVIEW",
         "generator": "scripts/build_arm2_exposure_index.py",
-        "note": "MACHINE-DERIVED (rev 005): rebuilt by the generator from "
+        "note": "MACHINE-DERIVED (rev 006): rebuilt by the generator from "
                 "committed source records; `--check` proves the committed file "
-                "byte-equals a fresh build. Surfaces are tagged by EXPOSURE "
-                "CLASS; phase_eligibility defines per-row eligibility per phase.",
+                "byte-equals a fresh build. In-repo surfaces (CANDIDATE_EXPOSED) "
+                "carry full per-row identities; EVERY S3-pinned source is "
+                "classified + pinned in pinned_sources; phase_eligibility "
+                "defines per-row eligibility per phase.",
         "identity_key": "audio_checksum_sha256",
         "surfaces": surfaces,
-        "s3_pinned_pools": pinned_pools,
+        "pinned_sources": pinned_sources,
         "candidate_exposed_union": {
             "unique_checksums": union_count,
             "checksums_aggregate_sha256": union_agg,
@@ -149,6 +193,10 @@ def build() -> dict:
                 "S3-pinned (adoption records). Excluded from ALL evaluation.",
             "SEALED": "the per-language sealed promotion holdout. NEVER touched "
                 "by Part-2.",
+            "BASE_BLIND_CANDIDATE_ELIGIBLE": "an eval-dev half the base model "
+                "NEVER scored (pidgin av-heldout): base-blind AND candidate-"
+                "blind, so eligible for BOTH Phase-A nomination and Phase-B "
+                "confirmation (minus the 60 CANDIDATE_EXPOSED selection rows).",
         },
         "phase_eligibility": {
             "phase_A_nomination": "a row is eligible iff its "
@@ -164,7 +212,7 @@ def build() -> dict:
         "disjointness_contract": "class-based per-row eligibility by "
             "audio_checksum_sha256 (never whole-pool count subtraction). At "
             "mint the exact class membership is enumerated from the in-repo "
-            "identities here PLUS the s3_pinned_pools + training adoption + "
+            "identities here PLUS the pinned_sources (BASE/SEALED/TRAINING) adoption + "
             "sealed-half manifests fetched by pinned sha/version_id; the mint "
             "commits the row-level proof that the split satisfies the "
             "phase_eligibility rule for its phase.",

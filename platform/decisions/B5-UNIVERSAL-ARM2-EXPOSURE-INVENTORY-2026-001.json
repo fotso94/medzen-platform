@@ -3,7 +3,7 @@
  "holds": "Nothing here authorizes minting, selection, sealed evaluation, promotion, or deployment. The sealed holdout is never touched. kinyarwanda/lingala/ewe confirmation and the base-blind 7-language gate are data-acquisition prerequisites, held.",
  "machine_derived_index": {
   "generator": "scripts/build_arm2_exposure_index.py",
-  "note": "full per-row audio_checksum_sha256 identities for the in-repo used surfaces + used_union + intersection tests; the nomination/confirmation split must pass its disjointness test (scripts.build_arm2_exposure_index.split_is_disjoint)",
+  "note": "full per-row audio_checksum_sha256 identities for the in-repo CANDIDATE_EXPOSED surfaces + the candidate_exposed_union + every S3-pinned source classified and pinned (pinned_sources: BASE/SEALED/TRAINING) + phase_eligibility + intersection tests; the nomination split must pass split_is_disjoint (scripts.build_arm2_exposure_index).",
   "path": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json"
  },
  "method": "read of platform/manifests/* and platform/evidence/receipts/* + the holdout ledger; identity fields are complete_raw_sha256 (dataset), rows_sha256 (record), and per-row audio_checksum_sha256 (the disjointness key).",
@@ -52,7 +52,7 @@
   }
  },
  "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
- "revision": "005 (design re-review 4): exposure modelled as CANDIDATE/BASE/TRAINING/SEALED classes; Phase-A nomination excludes CANDIDATE_EXPOSED+TRAINING_EXPOSED+SEALED but ALLOWS BASE_EXPOSED (base-scored candidate-blind rows) so english/french/swahili splits are non-empty; Phase-B confirmation additionally excludes BASE_EXPOSED.",
+ "revision": "006 (design re-review 5, narrow): every exposure source classified + pinned (pinned_sources); index note corrected off the stale used_union wording.",
  "sealed_holdout": {
   "governed_by": [
    "platform/decisions/PROMOTION-PROTOCOL-2026-004.json",

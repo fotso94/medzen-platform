@@ -39,8 +39,8 @@ def test_both_records_are_pending_review_and_authorize_nothing():
 
 def test_exposure_is_classes_and_base_exposed_is_phase_a_eligible():
     idx = json.loads(IDX.read_bytes())
-    assert set(idx["exposure_classes"]) == {
-        "CANDIDATE_EXPOSED", "BASE_EXPOSED", "TRAINING_EXPOSED", "SEALED"}
+    assert {"CANDIDATE_EXPOSED", "BASE_EXPOSED", "TRAINING_EXPOSED",
+            "SEALED"} <= set(idx["exposure_classes"])
     # every in-repo surface is tagged with a class
     assert all("exposure_class" in s for s in idx["surfaces"])
     pa = idx["phase_eligibility"]["phase_A_nomination"]
@@ -202,3 +202,44 @@ def test_identical_rows_across_all_scored_models():
     for who in ("base_teacher", "arm1", "H0", "KD_CONTROL"):
         assert who in req
     assert "paired" in req
+
+
+# ---- rev 006: narrow fixes -----------------------------------------------
+
+def test_evaluation_pointer_is_corrected_off_used_union():
+    ptr = _p()["evaluation"]["exposure_index"]
+    assert "used_union" not in ptr
+    assert "phase_eligibility" in ptr and "pinned_sources" in ptr
+
+
+def test_no_seed_pooled_wording_survives():
+    d = _p()
+    d.pop("revision", None)  # the changelog legitimately names the removed term
+    assert "seed-pooled" not in json.dumps(d)
+
+
+def test_directional_veto_surfaces_are_exempt_from_nomination_eligibility():
+    ex = _p()["nomination_data_rules"]["directional_veto_surface_exemption"]
+    assert "EXEMPT" in ex
+    assert "386-row lingala sentinel" in ex
+    assert "DISJOINT surfaces" in ex
+
+
+def test_positive_holm_tests_are_separated_from_safety_vetoes_executably():
+    sp = _p()["statistical_procedure"]
+    pos = sp["positive_qualification_tests"]
+    vet = sp["safety_vetoes"]
+    # positive tests carry executable p-value + CI semantics
+    for name in ("preservation_non_inferiority", "pidgin_retention",
+                 "beat_KD_CONTROL", "beat_H0"):
+        t = pos[name]
+        assert "p_value" in t and "ci" in t and "pass" in t and "statistic" in t
+    assert "Holm" in pos["holm"]
+    # vetoes are SEPARATE, RAW (not Holm), executable, and catch the history
+    assert vet["languages"] == ["lingala", "kinyarwanda", "ewe"]
+    assert "NOT Holm-adjusted" in vet["veto"] or "RAW" in vet["veto"]
+    assert "0.01" in vet["veto"]
+    assert "0.012685" in vet["veto"]
+    # the Holm family explicitly excludes the vetoes
+    assert "SEPARATE" in sp["multiplicity"]["stage_1"]
+    assert "not Holm-corrected" in sp["multiplicity"]["stage_1"]
