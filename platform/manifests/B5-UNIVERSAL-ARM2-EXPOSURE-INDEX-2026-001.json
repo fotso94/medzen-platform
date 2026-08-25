@@ -1,0 +1,157 @@
+{
+ "disjointness_contract": "at mint time, EVERY nomination/confirmation split row's audio_checksum_sha256 MUST be absent from used_union AND from each s3_pinned_pool (fetched by its pinned sha/version_id) AND from every sealed holdout half; the mint commits the proof.",
+ "generator": "scripts/build_arm2_exposure_index.py",
+ "identity_key": "audio_checksum_sha256",
+ "note": "MACHINE-DERIVED (Codex r31 design re-review): rebuilt by the generator from committed source records; `--check` proves the committed file byte-equals a fresh build. The USED_UNION is the identity set a future held-out development NOMINATION split (and any Phase-B confirmation split) MUST be disjoint from.",
+ "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001",
+ "s3_pinned_pools": [
+  {
+   "etag": "45153a78b1277112af43719c8f9e52d8",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 511,
+   "selected_rows": 60,
+   "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215",
+   "version_id": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP"
+  },
+  {
+   "etag": "fd04150112205a4ca206434cb8921f1f",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 76,
+   "selected_rows": 60,
+   "sha256": "f1e594173e68d19015a373d036234571f38e3712262ace2c0725e4f8d0ba734f",
+   "version_id": "QTeWOFGyMqKFaJbjcKgvDFAlSHId.1Vd"
+  },
+  {
+   "etag": "361fb4140b28609bad4e0e044c8cd80c",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 217,
+   "selected_rows": 30,
+   "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c",
+   "version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX"
+  },
+  {
+   "etag": "8d50bd3ed08521652ea662ce134ea2ff",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 495,
+   "selected_rows": 30,
+   "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58",
+   "version_id": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO"
+  },
+  {
+   "etag": "8437f66d881f3fad031b3f321eedac4f",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-KW-V2-GATE-PROTOCOL-2026-001.json",
+   "pool": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "pool_rows": 1642,
+   "selected_rows": 60,
+   "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+   "version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6"
+  },
+  {
+   "etag": "f2c74de33edc0b6223c5f38b3e778030",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 317,
+   "selected_rows": 30,
+   "sha256": "fbc9d94c0a3881822a8328f156054532b96f08401c4d2bfafb8b802351d77b00",
+   "version_id": "517JjmUaGEfjP04.wC8v14zu0OCyIL8e"
+  },
+  {
+   "etag": "9a0b52d26852148afcae062a42b26df4",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 69,
+   "selected_rows": 30,
+   "sha256": "e87deac1e3b715fce9490c4fdd1adbb199aa12c30899cd1724509c2690f838d7",
+   "version_id": "hLpk__VAdpZRKkaGmX6HEzXQfHg8sMft"
+  },
+  {
+   "etag": "c702c8287d2bdd43a8b324b7aa8f7f32",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-004.json",
+   "pool": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "pool_rows": 1500,
+   "selected_rows": 60,
+   "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1",
+   "version_id": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg"
+  },
+  {
+   "etag": "2b47dcf35570020313fa264fc822c2ea",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 354,
+   "selected_rows": 30,
+   "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a",
+   "version_id": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b"
+  },
+  {
+   "etag": "43bbf64470b9a90a58601d48e57344ab",
+   "note": "per-row audio_checksum_sha256 not materialised in-repo; disjointness checked at mint against this pinned S3 manifest",
+   "pinned_by": "B5-TIER2-HOLDOUTS-2026-001.json",
+   "pool": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "pool_rows": 78,
+   "selected_rows": 30,
+   "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1",
+   "version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd"
+  }
+ ],
+ "status": "PENDING_DESIGN_REVIEW",
+ "surfaces": [
+  {
+   "checksums_aggregate_sha256": "90a13a6a985cd6cfa17fcf962c71010249bc6bcc6c1f0330c6b9030d4c3e3516",
+   "exposure": "USED_DEV_SELECTION",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
+   "per_language_unique": {
+    "english": 60,
+    "ewe": 60,
+    "french": 60,
+    "kinyarwanda": 60,
+    "lingala": 60,
+    "pidgin": 60,
+    "swahili": 60
+   },
+   "row_count": 420,
+   "surface": "arm1-dev-selection",
+   "unique_checksums": 420
+  },
+  {
+   "checksums_aggregate_sha256": "eab932fbe034509f71823f57849d2c04679c23a9eebd4ee1e97d5b49757f56b4",
+   "exposure": "USED_DEV_SENTINEL",
+   "path": "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json",
+   "row_count": 386,
+   "surface": "arm1-lingala-sentinel-386",
+   "unique_checksums": 386
+  },
+  {
+   "checksums_aggregate_sha256": "37c8fa3d89810c5423241379291598c72be86b7d08e098fb840268b0c91e69c2",
+   "exposure": "USED_DEV_SENTINEL",
+   "path": "platform/manifests/dev-sentinels/lingala.jsonl",
+   "row_count": 60,
+   "surface": "dev-sentinel-lingala-60",
+   "unique_checksums": 60
+  },
+  {
+   "checksums_aggregate_sha256": "422949ee1cf036edb81f7f152f25ee5e83757cbce556a6707207230898e244ec",
+   "exposure": "USED_DEV_SENTINEL",
+   "path": "platform/manifests/dev-sentinels/swahili.jsonl",
+   "row_count": 60,
+   "surface": "dev-sentinel-swahili-60",
+   "unique_checksums": 60
+  }
+ ],
+ "used_union": {
+  "checksums_aggregate_sha256": "5c959745b95615ab824532a046841e2c62f93183ba44b709fc6097f32b6f65e4",
+  "unique_checksums": 746
+ }
+}
