@@ -91,14 +91,22 @@ def test_mode_is_bound_into_the_run_fingerprint():
     env = {"MEDZEN_VARIANT": "ctc", "MEDZEN_MANIFEST_VERSION": "gb9",
            "MEDZEN_LANGUAGES": "english", "MEDZEN_SEED": "7",
            "MEDZEN_MAX_STEPS": "10", "MEDZEN_TRAIN_MODE": "lora"}
+    from pipeline.omniasr_train import run_fingerprint
     plain = parse_config(dict(env))
     comp = parse_config(dict(env, MEDZEN_EXECUTION_MODE="arm2_comparative"))
     assert plain.execution_mode == "plain"
     assert comp.execution_mode == "arm2_comparative"
-    # the mode is part of the fingerprint payload -> a resume cannot switch it
-    assert plain.fingerprint_payload()["execution_mode"] == "plain"
+    # LEGACY MIGRATION (Codex round 33): a PLAIN run OMITS execution_mode from
+    # its fingerprint payload, so its fingerprint is byte-identical to the
+    # pre-enum fingerprint and old plain checkpoints still resume.
+    assert "execution_mode" not in plain.fingerprint_payload()
+    # comparative BINDS the mode into the fingerprint (resume cannot switch it)
     assert comp.fingerprint_payload()["execution_mode"] == "arm2_comparative"
+    # the two payloads/fingerprints differ, so plain and comparative can never
+    # resume each other's checkpoint
     assert plain.fingerprint_payload() != comp.fingerprint_payload()
+    prov = {"complete_raw_sha256": "a" * 64}
+    assert run_fingerprint(plain, prov) != run_fingerprint(comp, prov)
 
 
 # ---- provenance injection follows the mode -------------------------------

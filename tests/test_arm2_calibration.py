@@ -1851,3 +1851,128 @@ def test_kd_off_comparative_run_writes_metrics_and_passes_verifier_with_resume()
     art_resumed = _finalize(m2)
     assert len(art_resumed["per_step"]) == 30
     assert verify_calibration(art_resumed, dict(_spec(), kd_enabled=False)) == []
+
+
+def test_kd_off_comparative_main_end_to_end_writes_metrics_through_calibrate(
+        tmp_path, monkeypatch):
+    """Codex round 33 (#1): a TRULY end-to-end KD-off comparative run.
+
+    Unlike test_kd_off_comparative_run_writes_metrics_..._with_resume (fake
+    loss + a MANUAL metrics.finalize), this invokes the REAL
+    ``pipeline.omniasr_train.main()``, which runs the REAL run_training_loop
+    over a REAL torch model, records the CTC-only decomposition through the
+    real metrics sink, finalizes, and WRITES ``calibration-metrics.json`` — and
+    that file is then finalized through the REAL wrapper step
+    ``pipeline.omniasr_calibrate.patch_metrics`` at the EXACT path
+    ``config.output_dir / CALIBRATION_METRICS_FILE`` that
+    ``pipeline.omniasr_calibrate.main()`` consumes. No fake loss, no manual
+    finalize.
+
+    In-image (torch present) — validated at trainer-image build; skips on the
+    host, like the other torch-touching tests. The heavy externals (1B base
+    load, S3, data collation, merged export) are replaced by lightweight fakes
+    so the TRAINING-SIDE metrics path is exercised without a GPU or the real
+    weights; the GPU-only acceptance thresholds (peak_gpu_bytes, throughput)
+    are covered by the full-run verifier tests above, so here we assert that no
+    KD-CONTROL violation survives on this real-run artifact.
+    """
+    import os
+
+    torch = pytest.importorskip("torch")
+    from pipeline import (omniasr_calibrate, omniasr_data, omniasr_export,
+                          omniasr_train)
+    from pipeline.omniasr_train import CALIBRATION_METRICS_FILE
+
+    class _TinyCTC(torch.nn.Module):
+        """Honors the exact forward contract _batch_loss relies on
+        (fairseq2 Wav2Vec2AsrModel.forward): with targets it returns the
+        sum-reduced CTC loss as a differentiable POSITIVE scalar; a real
+        trainable parameter makes backward()/optimizer.step()/clip_grad_norm_
+        exercise the true loop rather than a stub."""
+
+        def __init__(self, vocab: int = 8):
+            super().__init__()
+            self.proj = torch.nn.Linear(1, vocab)
+
+        def forward(self, seqs, seqs_layout, targets=None,
+                    targets_layout=None, return_logits=False):
+            logits = self.proj(seqs.float().unsqueeze(-1))
+            if targets is None:
+                return logits, seqs_layout
+            loss = logits.pow(2).sum() / logits.shape[-1]
+            return (loss, logits, seqs_layout) if return_logits else loss
+
+    def _fake_batch_source(*args, **kwargs):
+        def batch(index: int) -> dict:
+            return {"seqs": torch.arange(8, dtype=torch.float32).reshape(2, 4),
+                    "seqs_layout": None,
+                    "targets": torch.zeros(2, 4, dtype=torch.long),
+                    "targets_layout": None, "languages": ["swahili", "swahili"]}
+        return batch
+
+    # replace only the heavy, GPU/S3/data externals — the training loop,
+    # fingerprint, metrics sink, finalize and file write are the REAL code
+    monkeypatch.setattr(omniasr_train, "build_gated_mix",
+                        lambda config, client=None: ([{"language": "swahili"}],
+                                                     {"source": "test-fixture"}))
+    monkeypatch.setattr(omniasr_train, "check_disk_envelope",
+                        lambda config, mix, cache_root=None: {"headroom": "ok"})
+    monkeypatch.setattr(omniasr_train, "stage_model_artifacts",
+                        lambda *a, **k: None)
+    monkeypatch.setattr(omniasr_train, "s3", lambda: None)
+    monkeypatch.setattr(omniasr_train, "_load_model_and_tokenizer",
+                        lambda config: (_TinyCTC(), object(), "cpu"))
+    monkeypatch.setattr(omniasr_data, "make_batch_source", _fake_batch_source)
+    monkeypatch.setattr(omniasr_export, "export_merged_checkpoint",
+                        lambda *a, **k: {"manifest_sha256": "0" * 64,
+                                         "model_sha256": "0" * 64})
+
+    env = {
+        "MEDZEN_VARIANT": "ctc", "MEDZEN_MANIFEST_VERSION": "gb9",
+        "MEDZEN_LANGUAGES": "swahili", "MEDZEN_SEED": "7",
+        "MEDZEN_TRAIN_MODE": "full", "MEDZEN_LR": "1e-4",
+        "MEDZEN_WARMUP_STEPS": "1", "MEDZEN_MAX_STEPS": "2",
+        "MEDZEN_LR_SCHEDULE": "constant", "MEDZEN_BATCH_SIZE": "2",
+        "MEDZEN_GRAD_ACCUM": "1", "MEDZEN_CHECKPOINT_EVERY": "2",
+        "MEDZEN_EXECUTION_MODE": "arm2_comparative", "MEDZEN_KD_ENABLE": "0",
+        "MEDZEN_OUTPUT_DIR": str(tmp_path / "out"),
+        "MEDZEN_CHECKPOINT_DIR": str(tmp_path / "ckpt"),
+        "MEDZEN_AUDIO_CACHE": str(tmp_path / "cache"),
+    }
+    monkeypatch.setattr(os, "environ", env)
+
+    # 1. the REAL trainer entrypoint runs the loop and writes the metrics file
+    assert omniasr_train.main() == 0
+    metrics_path = Path(env["MEDZEN_OUTPUT_DIR"]) / CALIBRATION_METRICS_FILE
+    assert metrics_path.exists(), "main() did not write calibration-metrics.json"
+
+    # 2. the REAL loop produced the KD-off decomposition (not a manual finalize)
+    art = json.loads(metrics_path.read_text())
+    assert art["kd_positive_finite_steps"] == 0
+    assert art["kd_coverage"] == {}
+    assert len(art["per_step"]) == 2
+    for entry in art["per_step"]:
+        assert entry["kd"] == 0.0 and entry["alpha"] == 0.0
+        assert entry["total"] == entry["ctc"]
+
+    # 3. the wrapper handoff: the file main() wrote is finalized THROUGH the
+    # real omniasr_calibrate step (patch_metrics), at the exact path
+    # omniasr_calibrate.main() reads (config.output_dir / CALIBRATION_METRICS_FILE)
+    merged = omniasr_calibrate.patch_metrics(
+        metrics_path,
+        serve={"readyz": True, "adapter_residue": False, "weights_finite": True},
+        dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13},
+        identity=_identity(), parity=_good_artifact(2)["parity"])
+    assert merged["serve"]["readyz"] is True
+    assert merged["identity"]["training_job_name"] == _JOB_NAME
+
+    # 4. the KD-CONTROL checks Codex hardened PASS on this REAL-run artifact.
+    # (The toy CPU run cannot meet the GPU peak-memory/throughput acceptance
+    # thresholds — those are exercised by the full-run verifier tests above —
+    # so we assert no KD-control violation survives, not a clean full PASS.)
+    patched = json.loads(metrics_path.read_text())
+    failures = verify_calibration(
+        patched, dict(_spec(), kd_enabled=False, expected_steps=2))
+    kd_family = [f for f in failures
+                 if any(tok in f.lower() for tok in ("kd", "alpha", "coverage"))]
+    assert kd_family == [], kd_family

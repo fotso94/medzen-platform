@@ -164,6 +164,14 @@ class TrainerConfig:
         payload["kd_language_weights"] = sorted(self.kd_language_weights)
         payload["checkpoint_dir"] = str(self.checkpoint_dir)
         payload["output_dir"] = str(self.output_dir)
+        # Safe one-way legacy migration (Codex round 33): a PLAIN run keeps its
+        # PRE-enum fingerprint (execution_mode omitted) so old plain checkpoints
+        # still resume byte-identically; only arm2_comparative binds the mode
+        # into the fingerprint. The two payload SHAPES differ (comparative has
+        # the extra key), so a plain and a comparative run can never resume each
+        # other's checkpoint — the mode-switch guard is preserved.
+        if self.execution_mode == "plain":
+            payload.pop("execution_mode", None)
         return payload
 
 
