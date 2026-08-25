@@ -95,3 +95,13 @@ jobs:
           name: nomination-split-result
           path: nomination-split-result.json
           retention-days: 7
+      # ACTIVATION TODO (Codex round 37 #5, external authentication of the
+      # receipt): once a real FROZEN result exists, EXTERNALLY attest it. Add,
+      # under review with the activation change:
+      #   permissions: attestations: write   (documented in test_b7_pipelines)
+      #   - uses: actions/attest-build-provenance@<pinned-sha>
+      #       with: { subject-path: nomination-split-result.json }
+      # The result already binds commit_oid + running_script_sha256 (as
+      # committed at the OID) + the packet canonical sha; attestation adds an
+      # external signature over the emitted artifact. B6 acceptance additionally
+      # requires the committed split file sha == the emitted result_sha256.

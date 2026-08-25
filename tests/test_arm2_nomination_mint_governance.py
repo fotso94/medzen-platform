@@ -216,3 +216,53 @@ def test_packet_names_both_roles_environments_and_execs():
     assert auth["mint"]["environment"] == _MINT_ENV
     assert _PRODUCER_EXEC in auth["producer"]["exec_workflow"]
     assert _MINT_EXEC in auth["mint"]["exec_workflow"]
+
+
+# --------------------------------------------------------------------------
+# Codex round 37 #1 — branch-protection verifier + CODEOWNERS self-coverage
+# --------------------------------------------------------------------------
+
+def test_branch_protection_verifier_requires_codeowner_review():
+    import sys
+    sys.path.insert(0, str(_REPO / "scripts"))
+    from verify_branch_protection import require_code_owner_review
+    assert require_code_owner_review({"__missing__": True})
+    assert require_code_owner_review({"message": "Branch not protected"})
+    assert require_code_owner_review(
+        {"required_pull_request_reviews": {"require_code_owner_reviews": False,
+                                           "required_approving_review_count": 1}})
+    assert require_code_owner_review(
+        {"required_pull_request_reviews": {"require_code_owner_reviews": True,
+                                           "required_approving_review_count": 0}})
+    # a properly-protected branch passes
+    assert require_code_owner_review(
+        {"required_pull_request_reviews": {"require_code_owner_reviews": True,
+                                           "required_approving_review_count": 1}}) == []
+
+
+def test_codeowners_covers_itself_and_every_trust_path():
+    import sys
+    sys.path.insert(0, str(_REPO / "scripts"))
+    from verify_branch_protection import codeowners_covers, REQUIRED_CODEOWNER_PATHS
+    co = (_REPO / ".github/CODEOWNERS").read_text()
+    assert codeowners_covers(co) == []          # every required path is owned
+    assert "/.github/CODEOWNERS" in REQUIRED_CODEOWNER_PATHS   # protects itself
+    # a CODEOWNERS missing itself fails
+    stripped = "\n".join(l for l in co.splitlines()
+                         if "/.github/CODEOWNERS" not in l)
+    assert any("CODEOWNERS" in f for f in codeowners_covers(stripped))
+
+
+def test_packet_requires_review_record_and_branch_protection():
+    assert _PACKET["independent_review_record"]["record_id"].endswith("REVIEW-2026-001")
+    assert "trust_oid_binding" in _PACKET
+    joined = " ".join(_PACKET["preconditions"]).lower()
+    assert "branch-protected" in joined or "branch protection" in joined
+    assert "approved independent-review" in joined
+    assert _PACKET["sealed_exclusion"]["by_construction_rule"]
+
+
+def test_by_construction_rule_names_partition_and_forbids_quarantine():
+    rule = _PACKET["sealed_exclusion"]["by_construction_rule"].lower()
+    assert "partition" in rule and "actual" in rule
+    assert "quarantined" in rule and "cannot be by_construction" in rule

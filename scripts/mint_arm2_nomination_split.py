@@ -59,8 +59,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from build_arm2_exposure_index import (DEV_SELECTION, LINGALA_SENTINEL, ROOT,
-                                       used_union_checksums)
+from build_arm2_exposure_index import ROOT
 
 INDEX = ROOT / "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json"
 LIVE_MINT_PACKET = (ROOT / "platform/decisions/"
@@ -159,23 +158,59 @@ def _agg(checksums) -> tuple[int, str]:
 # committed-source loader (Codex round 36 A5 — mirrors holdout_ledger #13)
 # --------------------------------------------------------------------------
 
+# The trust operation reads EVERY trust-bearing file through ONE immutable git
+# OID (Codex round 37 #3/#5: a re-resolved HEAD or a working-tree read is
+# mutable). live_mint / the offline mint capture the OID once via _trust_oid();
+# _read_committed reads `git show <oid>:<path>` for the captured OID.
+_ACTIVE_OID: str | None = None
+
+
+def _resolve_head_oid(repo_root: Path = ROOT) -> str:
+    got = subprocess.run(["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+                         capture_output=True)
+    if got.returncode != 0:
+        raise MintRefusal("cannot resolve the git HEAD OID")
+    return got.stdout.decode().strip()
+
+
+class _trust_oid:
+    """Capture one immutable OID for the duration of a trust operation, so every
+    _read_committed reads the SAME commit (not a re-resolved HEAD / working
+    tree). Nestable and restoring."""
+
+    def __init__(self, oid: str):
+        self.oid = oid
+
+    def __enter__(self) -> str:
+        global _ACTIVE_OID
+        self._prev = _ACTIVE_OID
+        _ACTIVE_OID = self.oid
+        return self.oid
+
+    def __exit__(self, *exc) -> None:
+        global _ACTIVE_OID
+        _ACTIVE_OID = self._prev
+
+
 def _read_committed(relpath: str, *, allowed_prefixes: tuple[str, ...],
                     repo_root: Path = ROOT) -> bytes:
-    """Read a TRUST-BEARING file from git HEAD (git show HEAD:<path>), never a
-    bare working-tree read. Rejects absolute / traversal / non-normalised /
-    symlinked / out-of-prefix / untracked paths. Tests monkeypatch THIS
-    function to inject ledger + approval-record fixtures — it is the single
-    committed-source seam, never a caller argument."""
+    """Read a TRUST-BEARING file from the captured immutable git OID (git show
+    <oid>:<path>; falls back to HEAD only when no OID is captured), never a bare
+    working-tree read. Rejects absolute / traversal / non-normalised / symlinked
+    / out-of-prefix / untracked paths. Tests monkeypatch THIS function to inject
+    ledger + approval-record fixtures — it is the single committed-source seam,
+    never a caller argument."""
     p = str(relpath)
     if (p != str(Path(p)) or Path(p).is_absolute() or ".." in Path(p).parts
             or not any(p.startswith(pre) for pre in allowed_prefixes)):
         raise MintRefusal(f"refusing untrusted committed path {p!r}")
     if (repo_root / p).is_symlink():
         raise MintRefusal(f"refusing symlinked committed path {p!r}")
-    got = subprocess.run(["git", "-C", str(repo_root), "show", f"HEAD:{p}"],
+    oid = _ACTIVE_OID or "HEAD"
+    got = subprocess.run(["git", "-C", str(repo_root), "show", f"{oid}:{p}"],
                          capture_output=True)
     if got.returncode != 0:
-        raise MintRefusal(f"{p} is not committed at git HEAD")
+        raise MintRefusal(f"{p} is not committed at git {oid}")
     return got.stdout
 
 
@@ -332,12 +367,44 @@ def read_pool_keys(index: dict) -> set[str]:
             | set(candidate_pinned_pool_keys(index)))
 
 
+_DEV_SELECTION_REL = "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json"
+_LINGALA_SENTINEL_REL = "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json"
+_SENTINEL_JSONL_REL = {
+    "lingala": "platform/manifests/dev-sentinels/lingala.jsonl",
+    "swahili": "platform/manifests/dev-sentinels/swahili.jsonl"}
+_MANIFEST_PREFIX = ("platform/manifests/",)
+
+
+def _committed_used_union() -> set[str]:
+    """The in-repo CANDIDATE_EXPOSED union, read through the captured OID (Codex
+    round 37 #3): dev-selection + the 386-row lingala sentinel + the 60-row
+    sentinels. Replaces the working-tree build_arm2_exposure_index.used_union."""
+    union: set[str] = set()
+    ds = _loads_strict(_read_committed(_DEV_SELECTION_REL,
+                                       allowed_prefixes=_MANIFEST_PREFIX))
+    union |= {r["audio_checksum_sha256"] for r in ds["rows"]}
+    ls = _loads_strict(_read_committed(_LINGALA_SENTINEL_REL,
+                                       allowed_prefixes=_MANIFEST_PREFIX))
+    union |= {r["audio_checksum_sha256"] for r in ls["rows"]}
+    for rel in _SENTINEL_JSONL_REL.values():
+        for line in _read_committed(rel, allowed_prefixes=_MANIFEST_PREFIX
+                                    ).decode().splitlines():
+            if line.strip():
+                union.add(json.loads(line)["audio_checksum_sha256"])
+    return union
+
+
 def veto_surface_checksums() -> set[str]:
+    """The directional-veto identities, read through the captured OID (Codex
+    round 37 #3): the 386-row lingala sentinel + the kinyarwanda/ewe dev-
+    selection rows."""
     veto: set[str] = set()
-    ds = json.loads(DEV_SELECTION.read_bytes())
+    ds = _loads_strict(_read_committed(_DEV_SELECTION_REL,
+                                       allowed_prefixes=_MANIFEST_PREFIX))
     veto |= {r["audio_checksum_sha256"] for r in ds["rows"]
              if r.get("language") in VETO_LANGUAGES}
-    ls = json.loads(LINGALA_SENTINEL.read_bytes())
+    ls = _loads_strict(_read_committed(_LINGALA_SENTINEL_REL,
+                                       allowed_prefixes=_MANIFEST_PREFIX))
     veto |= {r["audio_checksum_sha256"] for r in ls["rows"]}
     return veto
 
@@ -449,7 +516,66 @@ def authenticate_training_index(artifact_bytes: bytes, *, index: dict,
     return set(identities)
 
 
-def authenticate_sealed_authorities(authorities, *, index: dict, packet: dict
+def _verify_partition_receipt(ref, *, sealed_key: str, sealed_pin: dict,
+                              index: dict, pool_identities: dict) -> str:
+    """Machine-verifiable BY_CONSTRUCTION_DISJOINT proof (Codex round 37 #2): a
+    committed partition receipt binding the sealed manifest to a COMPLEMENTARY
+    NOMINATION READ pool, verified against the mint's ACTUAL read identities so
+    that nomination_split subseteq dev-half => disjoint from the sealed half. No
+    sealed identities are read; a bare attestation is refused. Returns the
+    complementary read-pool key; raises MintRefusal on any failure."""
+    if not isinstance(ref, dict):
+        raise MintRefusal(
+            f"sealed pool {sealed_key!r} is BY_CONSTRUCTION_DISJOINT but carries "
+            "no partition_receipt {path,sha256,record_id} — a bare attestation "
+            "is not a proof")
+    raw = _read_committed(str(ref.get("path", "")),
+                          allowed_prefixes=("platform/decisions/",))
+    if hashlib.sha256(raw).hexdigest() != ref.get("sha256"):
+        raise MintRefusal(f"partition receipt for {sealed_key!r} sha256 mismatch")
+    doc = _loads_strict(raw)
+    if doc.get("record") != ref.get("record_id") \
+            or doc.get("authorizes") != "ATTEST_SEALED_PARTITION" \
+            or doc.get("sealed_key") != sealed_key \
+            or not str(doc.get("owner_verbatim", "")).strip():
+        raise MintRefusal(
+            f"partition receipt for {sealed_key!r} is not a valid owner-"
+            "authorized ATTEST_SEALED_PARTITION record for this pool")
+    if doc.get("partition_verified") is not True:
+        raise MintRefusal(
+            f"partition receipt for {sealed_key!r} does not assert a verified "
+            "dev/sealed partition (dev disjoint sealed, dev union sealed == parent)")
+    for field in ("sha256", "s3_version_id"):
+        if doc.get("sealed_" + field) != sealed_pin.get(field):
+            raise MintRefusal(
+                f"partition receipt sealed {field} != the exposure-index pin")
+    comp = str(doc.get("complementary_read_pool_key") or "")
+    if comp not in read_pool_keys(index):
+        raise MintRefusal(
+            f"partition receipt complementary pool {comp!r} is not a nomination "
+            "READ pool — a BY_CONSTRUCTION seal must partition a pool the mint "
+            "actually reads (cross-language/quarantined seals cannot qualify)")
+    comp_pin = next((sp for sp in index.get("pinned_sources", [])
+                     if sp.get("key") == comp), {})
+    for field in ("sha256", "s3_version_id"):
+        if doc.get("complementary_" + field) != comp_pin.get(field):
+            raise MintRefusal(
+                f"partition receipt complementary {field} != the exposure-index pin")
+    if comp not in pool_identities:
+        raise MintRefusal(
+            f"partition receipt complementary pool {comp!r} identities are not "
+            "available to the mint")
+    got_n, got_agg = _agg(pool_identities[comp])
+    if doc.get("dev_aggregate_sha256") != got_agg or doc.get("dev_count") != got_n:
+        raise MintRefusal(
+            f"partition receipt dev aggregate does not reproduce from the mint's "
+            f"ACTUAL read identities for {comp!r} — the read pool is not the "
+            "partitioned dev half; refusing an unproven disjointness")
+    return comp
+
+
+def authenticate_sealed_authorities(authorities, *, index: dict, packet: dict,
+                                    pool_identities: dict | None = None
                                     ) -> tuple[set[str], list[dict]]:
     """Admit sealed exclusion ONLY through the committed sealed ledger. Every
     pinned SEALED pool must have exactly one ACTIVE ledger entry with an
@@ -534,16 +660,27 @@ def authenticate_sealed_authorities(authorities, *, index: dict, packet: dict
                                     authorizes="CLEAR_SEALED_QUARANTINE",
                                     subject_field="key", subject_value=key)
         if disposition == "BY_CONSTRUCTION_DISJOINT":
+            # Codex round 37 #2: the quarantined pool can NEVER be cleared by a
+            # by-construction disposition — it must carry identities.
+            if pin.get("role") == _QUARANTINED_ROLE:
+                raise MintRefusal(
+                    f"the quarantined pool {key!r} may NOT use "
+                    "BY_CONSTRUCTION_DISJOINT — a partition attestation cannot "
+                    "clear the quarantine; use CLEARED_FOR_EXCLUSION")
             if key in supplied:
                 raise MintRefusal(
                     f"an identity authority was supplied for {key!r} which is "
                     "BY_CONSTRUCTION_DISJOINT — such a pool carries NO "
                     "identities; refusing the meaningless authority")
-            _verify_approval_record(entry.get("disjointness_record"),
-                                    authorizes="ATTEST_SEALED_DISJOINT",
-                                    subject_field="key", subject_value=key)
+            if pool_identities is None:
+                raise MintRefusal(
+                    "BY_CONSTRUCTION_DISJOINT requires the mint's read "
+                    "identities to verify the partition receipt")
+            comp = _verify_partition_receipt(
+                entry.get("partition_receipt"), sealed_key=key, sealed_pin=pin,
+                index=index, pool_identities=pool_identities)
             provenance.append({"key": key, "disposition": disposition,
-                               "identities": 0})
+                               "identities": 0, "complementary_read_pool": comp})
             continue
         # CLEARED_FOR_EXCLUSION — needs a supplied identity authority
         auth = supplied.get(key)
@@ -596,13 +733,14 @@ def _pool_pins(index: dict, keys) -> list[dict]:
 
 def mint_phase_a_split(index: dict, pool_identities: dict[str, list[str]],
                        *, packet: dict | None = None, training_index=None,
-                       sealed_authorities=None,
+                       sealed_authorities=None, oid: str | None = None,
                        status: str = "MINTED_OFFLINE_FIXTURE") -> dict:
     """Mint the Phase-A nomination split. PURE apart from reading the committed
     ledgers/records (through the monkeypatchable ``_read_committed``) when
-    authenticating supplied evidence. Refuses on any leak, duplicate,
-    incompleteness, empty split, veto collision, or — for FROZEN — missing/
-    unauthenticated training index or sealed authorities."""
+    authenticating supplied evidence, ALL through one captured immutable OID.
+    Refuses on any leak, duplicate, incompleteness, empty split, veto collision,
+    or — for FROZEN — missing/unauthenticated training index or sealed
+    authorities."""
     if status not in ALLOWED_STATUSES:
         raise MintRefusal(f"unknown mint status {status!r} — fail closed")
     if status == "FROZEN":
@@ -614,15 +752,19 @@ def mint_phase_a_split(index: dict, pool_identities: dict[str, list[str]],
             and packet is None:
         raise MintRefusal("authenticating supplied evidence requires the packet")
 
-    training = (authenticate_training_index(training_index, index=index,
-                                            packet=packet)
-                if training_index is not None else None)
-    if sealed_authorities is not None:
-        sealed, sealed_provenance = authenticate_sealed_authorities(
-            sealed_authorities, index=index, packet=packet)
-    else:
-        sealed, sealed_provenance = None, None
+    with _trust_oid(oid or _resolve_head_oid()):
+        return _mint_under_oid(
+            index, pool_identities, packet=packet, training_index=training_index,
+            sealed_authorities=sealed_authorities, status=status)
 
+
+def _mint_under_oid(index, pool_identities, *, packet, training_index,
+                    sealed_authorities, status):
+    """The split computation, executed with a captured trust OID active so every
+    committed read (candidate/veto/ledgers/approvals/pool identities) is bound
+    to ONE immutable commit."""
+    # validate the input pool set FIRST (complete + no extras) so a missing
+    # nomination pool is an INCOMPLETE refusal, not a downstream partition miss
     required = read_pool_keys(index)
     supplied = set(pool_identities)
     missing = sorted(required - supplied)
@@ -633,7 +775,17 @@ def mint_phase_a_split(index: dict, pool_identities: dict[str, list[str]],
         raise MintRefusal(
             f"pool identities include {extra} NOT in the reviewed read set")
 
-    candidate = set(used_union_checksums())
+    training = (authenticate_training_index(training_index, index=index,
+                                            packet=packet)
+                if training_index is not None else None)
+    if sealed_authorities is not None:
+        sealed, sealed_provenance = authenticate_sealed_authorities(
+            sealed_authorities, index=index, packet=packet,
+            pool_identities=pool_identities)
+    else:
+        sealed, sealed_provenance = None, None
+
+    candidate = set(_committed_used_union())
     for key in candidate_pinned_pool_keys(index):
         rows = list(pool_identities[key])
         for value in rows:
@@ -840,13 +992,53 @@ def _verify_fetched_object(pin: dict, fetched: dict, *, expected_kms: str,
     return identities
 
 
+_THIS_SCRIPT_REL = "scripts/mint_arm2_nomination_split.py"
+
+
 def _running_script_sha256() -> str:
-    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    # Codex round 37 #5: hash the script as COMMITTED at the captured OID, not
+    # the mutable working-tree bytes, so the receipt names the reviewed code.
+    return hashlib.sha256(_read_committed(
+        _THIS_SCRIPT_REL, allowed_prefixes=("scripts/",))).hexdigest()
+
+
+def _verify_independent_review(packet: dict, *, packet_sha256: str,
+                               oid: str) -> dict:
+    """Codex round 37 #4: PENDING_REVIEW is not executable. A live mint runs only
+    if the packet cites an independent-review record (committed, read at the
+    captured OID) whose status is APPROVED, that authorizes APPROVE_LIVE_MINT,
+    binds THIS packet's canonical sha256 AND this commit OID, and carries the
+    owner's verbatim words. Until such a record is committed, the mint refuses."""
+    ref = packet.get("independent_review_record")
+    if not isinstance(ref, dict) or not ref.get("path") or not ref.get("record_id"):
+        raise MintRefusal(
+            "the packet cites no independent_review_record {path,record_id} — a "
+            "PENDING_REVIEW packet cannot run a live mint (Codex round 37 #4)")
+    # the packet references the review by committed path + record_id (NOT sha —
+    # the review binds the packet's sha, which would be circular); both files are
+    # committed at this OID and CODEOWNERS-protected.
+    raw = _read_committed(str(ref.get("path", "")),
+                          allowed_prefixes=("platform/decisions/",))
+    doc = _loads_strict(raw)
+    if doc.get("record") != ref.get("record_id") \
+            or doc.get("authorizes") != "APPROVE_LIVE_MINT" \
+            or str(doc.get("status")) != "APPROVED" \
+            or not str(doc.get("owner_verbatim", "")).strip():
+        raise MintRefusal(
+            "independent-review record is not an APPROVED APPROVE_LIVE_MINT "
+            "record with owner_verbatim")
+    if doc.get("packet_sha256") != packet_sha256:
+        raise MintRefusal(
+            "independent-review record does not bind THIS packet's sha256")
+    if str(doc.get("commit_oid")) != oid:
+        raise MintRefusal(
+            "independent-review record binds a different commit OID than the "
+            "one running — refusing a review approved for other code")
+    return doc
 
 
 def live_mint(packet: dict, *, index_bytes: bytes, s3_reader, caller_identity,
-              training_index_bytes: bytes, sealed_authorities,
-              commit_sha: str = "") -> dict:
+              training_index_bytes: bytes, sealed_authorities) -> dict:
     """Read ONLY the 7 nomination + pinned-candidate identity manifests through
     the injected ``s3_reader`` and mint the FROZEN split. Loads the committed
     admission ledgers ITSELF (through the module-level ``_read_committed``) —
@@ -857,6 +1049,18 @@ def live_mint(packet: dict, *, index_bytes: bytes, s3_reader, caller_identity,
     if s3_reader is None:
         raise LiveMintForbidden(
             "no s3_reader was injected — this harness has NO default AWS client")
+    # Codex round 37 #5: one immutable OID for the whole trust operation.
+    oid = _resolve_head_oid()
+    with _trust_oid(oid):
+        return _live_mint_under_oid(
+            packet, index_bytes=index_bytes, s3_reader=s3_reader,
+            caller_identity=caller_identity,
+            training_index_bytes=training_index_bytes,
+            sealed_authorities=sealed_authorities, oid=oid)
+
+
+def _live_mint_under_oid(packet, *, index_bytes, s3_reader, caller_identity,
+                         training_index_bytes, sealed_authorities, oid):
     account = str((packet.get("aws") or {}).get("account") or "")
     role_name = str(((packet.get("minimal_read_role") or {})
                      .get("role_name")) or "")
@@ -876,14 +1080,21 @@ def live_mint(packet: dict, *, index_bytes: bytes, s3_reader, caller_identity,
     expected_kms = str(((packet.get("aws") or {}).get("kms_key")) or "")
     if not expected_kms:
         raise MintRefusal("the packet pins no KMS key")
-
-    packet_pins = {p.get("key"): p for p in packet.get("pinned_objects", [])}
-    wanted = read_pool_keys(index)          # NEVER includes sealed pools
+    # structural guard BEFORE authorization: the mint NEVER reads a sealed object
+    packet_pins_early = {p.get("key"): p for p in packet.get("pinned_objects", [])}
     for key in sorted(sealed_pool_keys(index)):
-        if key in packet_pins:
+        if key in packet_pins_early:
             raise MintRefusal(
                 f"the packet pins sealed object {key!r} for fetching — the mint "
                 "NEVER reads sealed manifests")
+    # Codex round 37 #4: require an APPROVED independent-review record bound to
+    # this packet (its CANONICAL sha256) AND this OID (read at the OID). Fails
+    # closed while none exists.
+    packet_sha256 = hashlib.sha256(_canon(packet)).hexdigest()
+    _verify_independent_review(packet, packet_sha256=packet_sha256, oid=oid)
+
+    packet_pins = packet_pins_early
+    wanted = read_pool_keys(index)          # NEVER includes sealed pools
     index_pins = {}
     for src in index.get("pinned_sources", []):
         if src.get("key") in wanted and src["key"] not in index_pins:
@@ -906,7 +1117,7 @@ def live_mint(packet: dict, *, index_bytes: bytes, s3_reader, caller_identity,
             pin, fetched, expected_kms=expected_kms, key=key)
 
     manifest = mint_phase_a_split(
-        index, pool_identities, packet=packet,
+        index, pool_identities, packet=packet, oid=oid,
         training_index=training_index_bytes,
         sealed_authorities=sealed_authorities, status="FROZEN")
 
@@ -925,8 +1136,9 @@ def live_mint(packet: dict, *, index_bytes: bytes, s3_reader, caller_identity,
             "sealed_dispositions":
                 manifest["exclusion_provenance"].get("sealed_authorities"),
             "caller_arn": str(caller_identity.get("Arn")),
-            "commit_sha": str(commit_sha),
+            "commit_oid": oid,   # the resolved immutable OID, not caller-supplied
             "running_script_sha256": _running_script_sha256(),
+            "packet_sha256": packet_sha256,
         },
     }
     result["result_sha256"] = hashlib.sha256(_canon(
@@ -939,7 +1151,6 @@ def _dump(obj) -> str:
 
 
 def main(argv=None) -> int:
-    import os
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--live", action="store_true",
                     help="perform the LIVE S3-reading mint — only inside the "
@@ -1005,8 +1216,7 @@ def main(argv=None) -> int:
         result = live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                            caller_identity=caller,
                            training_index_bytes=training_bytes,
-                           sealed_authorities=sealed,
-                           commit_sha=os.environ.get("GITHUB_SHA", ""))
+                           sealed_authorities=sealed)
     except MintRefusal as exc:
         raise SystemExit(f"FROZEN mint refused (fail-closed): {exc}")
     Path(args.out).write_bytes(_canon(result) + b"\n")
