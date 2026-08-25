@@ -53,6 +53,11 @@ DOCUMENTED_JOB_ADDITIONS = {
         # PR; deployment pins come from the merged record
         "open-admission-pr": {"contents": "write", "id-token": "write", "pull-requests": "write"},
     },
+    "arm2-nomination-mint-mint-exec.yml": {
+        # final activation patch: the mint job externally attests the frozen
+        # result (actions/attest-build-provenance needs attestations:write)
+        "mint": {**MINIMAL, "attestations": "write"},
+    },
 }
 
 

@@ -16,6 +16,9 @@ on:
       producer_artifact_sha256:
         required: true
         type: string
+      sealed_authorities_sha256:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,6 +28,10 @@ jobs:
   mint:
     runs-on: ubuntu-24.04
     environment: arm2-nomination-mint-mint
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     steps:
       - name: the mint role variable must be configured (a skip is not a pass)
         run: |
@@ -56,13 +63,21 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: training-identity-index
-      - name: bind the downloaded artifact to the producer's exported sha (same-run handoff)
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: sealed-authorities
+      - name: bind both downloaded artifacts to the producers' exported shas (same-run handoff)
         env:
-          WANT: ${{ inputs.producer_artifact_sha256 }}
+          WANT_TI: ${{ inputs.producer_artifact_sha256 }}
+          WANT_SA: ${{ inputs.sealed_authorities_sha256 }}
         run: |
-          GOT=$(python3 -c "import hashlib; print(hashlib.sha256(open('training-identity-index.json','rb').read()).hexdigest())")
-          if [ "$GOT" != "$WANT" ]; then
-            echo "::error::downloaded training index sha $GOT != producer output $WANT"; exit 1
+          GOT_TI=$(python3 -c "import hashlib; print(hashlib.sha256(open('training-identity-index.json','rb').read()).hexdigest())")
+          GOT_SA=$(python3 -c "import hashlib; print(hashlib.sha256(open('sealed-authorities.json','rb').read()).hexdigest())")
+          if [ "$GOT_TI" != "$WANT_TI" ]; then
+            echo "::error::downloaded training index sha $GOT_TI != producer output $WANT_TI"; exit 1
+          fi
+          if [ "$GOT_SA" != "$WANT_SA" ]; then
+            echo "::error::downloaded sealed authorities sha $GOT_SA != sealed producer output $WANT_SA"; exit 1
           fi
       - name: OIDC federation as the dedicated nomination-mint role
         uses: aws-actions/configure-aws-credentials@a159d7bb5354cf786f855f2f5d1d8d768d9a08d1 # v5.0.0
@@ -88,6 +103,7 @@ jobs:
           # reviewed terminal state, reached through the full executable path.
           PYTHONPATH=scripts python scripts/mint_arm2_nomination_split.py --live \
             --training-index training-identity-index.json \
+            --sealed-authorities sealed-authorities.json \
             --out nomination-split-result.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: ${{ success() }}
@@ -95,13 +111,15 @@ jobs:
           name: nomination-split-result
           path: nomination-split-result.json
           retention-days: 7
-      # ACTIVATION TODO (Codex round 37 #5, external authentication of the
-      # receipt): once a real FROZEN result exists, EXTERNALLY attest it. Add,
-      # under review with the activation change:
-      #   permissions: attestations: write   (documented in test_b7_pipelines)
-      #   - uses: actions/attest-build-provenance@<pinned-sha>
-      #       with: { subject-path: nomination-split-result.json }
-      # The result already binds commit_oid + running_script_sha256 (as
-      # committed at the OID) + the packet canonical sha; attestation adds an
-      # external signature over the emitted artifact. B6 acceptance additionally
-      # requires the committed split file sha == the emitted result_sha256.
+      # EXTERNAL artifact attestation (Codex #5): a GitHub-signed build
+      # provenance attestation over the exact emitted result bytes. This is the
+      # durable, externally-verifiable record (the 7-day artifact is not the
+      # record of truth); the result also binds commit_oid + running_script (as
+      # committed at the OID) + trust_manifest + artifact_sha256.
+      # OWNER: verify this action pin against the published release before the
+      # first live run (added offline; the sha could not be network-verified).
+      - name: externally attest the frozen result (GitHub build provenance)
+        if: ${{ success() }}
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3 — OWNER: verify this sha
+        with:
+          subject-path: nomination-split-result.json

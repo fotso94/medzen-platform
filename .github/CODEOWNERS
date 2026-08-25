@@ -24,6 +24,7 @@
 # the code that authenticates the evidence + verifies enforcement
 /scripts/mint_arm2_nomination_split.py                    @fotso94
 /scripts/build_arm2_training_identity_index.py            @fotso94
+/scripts/build_arm2_sealed_identity_index.py              @fotso94
 /scripts/build_arm2_exposure_index.py                     @fotso94
 /scripts/verify_branch_protection.py                      @fotso94
 /scripts/verify_protected_environments.py                 @fotso94
@@ -33,10 +34,12 @@
 # trust, and the terraform/IAM that create the federated roles
 /.github/workflows/arm2-nomination-mint.yml               @fotso94
 /.github/workflows/arm2-nomination-mint-producer-exec.yml @fotso94
+/.github/workflows/arm2-nomination-mint-sealed-exec.yml   @fotso94
 /.github/workflows/arm2-nomination-mint-mint-exec.yml     @fotso94
 /infra/arm2_nomination_mint_role.tf                       @fotso94
 /platform/iam/medzen-arm2-nomination-mint-role.json       @fotso94
 /platform/iam/medzen-arm2-training-index-role.json        @fotso94
+/platform/iam/medzen-arm2-sealed-identity-role.json       @fotso94
 
 # the pinned identity manifests the mint reads through the trust OID
 /platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json    @fotso94

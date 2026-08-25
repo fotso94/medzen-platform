@@ -1,0 +1,243 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject00ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject01ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject02ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "39xzQDaj2Kbl5A_ncGh1IpG7QDoUe3qV"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject03ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject04ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject05ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject06ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "Fa.zlXFBDkDYmSc.ymU4oTPIW5N8eEcl"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject07ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject08ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject09ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "NhicuR6DvwTEXSQ4Pv8gKn_rQtrrChAw"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject10ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "kms:Decrypt"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "kms:ViaService": "s3.eu-central-1.amazonaws.com"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+   ],
+   "Sid": "DecryptOnlyThePinnedCMKAndOnlyViaS3"
+  },
+  {
+   "Action": [
+    "s3:PutObject",
+    "s3:DeleteObject",
+    "s3:DeleteObjectVersion",
+    "s3:ListBucket",
+    "s3:ListBucketVersions",
+    "s3:PutObjectAcl"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech",
+    "arn:aws:s3:::medzen-speech/*"
+   ],
+   "Sid": "DenyEveryWriteListAndDelete"
+  },
+  {
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/*"
+   ],
+   "Sid": "DenyUnversionedReadsEverywhere"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Deny",
+   "NotResource": [
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "DenyVersionedReadsOutsideTheSealedObjects"
+  },
+  {
+   "Action": [
+    "kms:Encrypt",
+    "kms:GenerateDataKey*",
+    "kms:CreateGrant"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "*"
+   ],
+   "Sid": "DenyCuratedAndKmsBeyondDecrypt"
+  }
+ ],
+ "Version": "2012-10-17"
+}

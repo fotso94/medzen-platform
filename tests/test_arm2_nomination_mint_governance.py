@@ -53,8 +53,9 @@ def test_producer_and_mint_trust_distinct_job_workflow_refs():
 
 
 def test_every_trust_pins_aud_and_has_no_wildcards():
-    assert _TF.count('variable = "token.actions.githubusercontent.com:aud"') == 2
-    assert _TF.count('values   = ["sts.amazonaws.com"]') == 2
+    # three roles now: mint, producer (training-index), sealed-identity
+    assert _TF.count('variable = "token.actions.githubusercontent.com:aud"') == 3
+    assert _TF.count('values   = ["sts.amazonaws.com"]') == 3
     # no StringLike / wildcard over sub or job_workflow_ref
     assert "StringLike" not in _TF
     assert "*" not in re.sub(r"#.*", "", _TF)   # no wildcard outside comments
@@ -95,13 +96,19 @@ def test_caller_preflight_verifies_both_environments():
 # carries that exec's job_workflow_ref and can assume ONLY its own role.
 # --------------------------------------------------------------------------
 
-def test_all_three_workflows_are_minimal_oidc_permissions():
+def test_all_workflows_are_minimal_oidc_permissions():
     import yaml
-    for name in ("arm2-nomination-mint.yml", _PRODUCER_EXEC, _MINT_EXEC):
+    _SEALED_EXEC = "arm2-nomination-mint-sealed-exec.yml"
+    for name in ("arm2-nomination-mint.yml", _PRODUCER_EXEC, _SEALED_EXEC, _MINT_EXEC):
         doc = yaml.safe_load((_WF / name).read_text())
         assert doc.get("permissions") == {"contents": "read", "id-token": "write"}
-        for job in doc.get("jobs", {}).values():
-            assert not (isinstance(job, dict) and job.get("permissions")),                 f"{name}: no undocumented job-level permissions"
+        for jn, job in doc.get("jobs", {}).items():
+            jp = job.get("permissions") if isinstance(job, dict) else None
+            if name == _MINT_EXEC and jn == "mint":
+                assert jp == {"contents": "read", "id-token": "write",
+                              "attestations": "write"}
+            else:
+                assert not jp, f"{name}:{jn}: undocumented job-level permissions"
 
 
 # --------------------------------------------------------------------------
@@ -113,12 +120,14 @@ def test_producer_exports_artifact_sha_and_mint_binds_it():
     mint = (_WF / _MINT_EXEC).read_text()
     caller = (_WF / "arm2-nomination-mint.yml").read_text()
     assert "artifact_sha256:" in prod and "GITHUB_OUTPUT" in prod
-    assert "producer_artifact_sha256" in mint
-    assert "!= \"$WANT\"" in mint or "!= \"${WANT}\"" in mint
-    # the caller wires the producer output into the mint input, mint needs produce
+    assert "producer_artifact_sha256" in mint and "sealed_authorities_sha256" in mint
+    assert '!= "$WANT_TI"' in mint and '!= "$WANT_SA"' in mint   # both handoffs bound
+    assert "attest-build-provenance" in mint                     # external attestation
+    # the caller wires both producers into the mint; mint needs [produce, seal]
     assert "needs.produce.outputs.artifact_sha256" in caller
-    assert "needs: produce" in caller
-    # id-token lives ONLY at the top level (repo convention), not per job
+    assert "needs.seal.outputs.authorities_sha256" in caller
+    assert "needs: [produce, seal]" in caller
+    # id-token at the top level (repo convention) on caller + 3 execs
     assert caller.count("id-token: write") == 1
 
 

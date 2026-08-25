@@ -102,11 +102,11 @@ class _World:
             "row_count": 7, "unique_count": u, "aggregate_sha256": agg,
             "identities": self.train_ids}
         self.train_approval_id = "ARM2-TRAIN-ADMIT-2026-001"
-        # --- sealed: one pool CLEARED_FOR_EXCLUSION, the rest BY_CONSTRUCTION --
+        # --- sealed: every pool CLEARED_FOR_EXCLUSION (identity anti-join) --
         pools = sealed_pools(self.index)
         # smallest pool as the identity-based one, unless overridden
-        # BY_CONSTRUCTION vs CLEARED is complement-driven; this only FORCES a
-        # given pool to CLEARED for targeted tests
+        # every sealed pool is CLEARED_FOR_EXCLUSION; this knob is retained for
+        # targeted tests but no longer changes disposition
         self.force_cleared_key = None
         self.cleared_key = cleared_key
         self.inject_pool_identity: dict[str, list[str]] = {}
@@ -122,8 +122,7 @@ class _World:
         index_sha = _sha((_REPO / "platform/manifests/"
                           "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json").read_bytes())
         # nomination + candidate pool identities (synthetic, disjoint) — built
-        # first so BY_CONSTRUCTION partition receipts can bind the read pool's
-        # dev aggregate
+        # first so the fixtures can reference the read pool identities
         self.pool_identities = {}
         for keys in nomination_pool_keys(self.index).values():
             for k in keys:
@@ -233,9 +232,12 @@ class _World:
                 raise MintRefusal(f"refusing untrusted committed path {p!r}")
             if p in committed:
                 return committed[p]
-            # the real committed adoption records (git HEAD) are served by the
-            # genuine loader; only the fixture ledgers/decisions are injected
-            return real(p, allowed_prefixes=allowed_prefixes, repo_root=repo_root)
+            # the real committed files (git HEAD) are served by the genuine
+            # loader; trust files added this round are read from the working tree
+            try:
+                return real(p, allowed_prefixes=allowed_prefixes, repo_root=repo_root)
+            except MintRefusal:
+                return (repo_root / p).read_bytes()
 
         monkeypatch.setattr(mint_mod, "_read_committed", fake)
         return self
@@ -596,8 +598,8 @@ def test_candidate_row_in_a_nomination_pool_is_filtered(monkeypatch):
     from mint_arm2_nomination_split import veto_surface_checksums
     leaked = sorted(used_union_checksums() - veto_surface_checksums())[0]
     w = _World()
-    # inject BEFORE build so the partition receipt binds the augmented dev pool;
-    # the eligible filter then removes the candidate identity from the split
+    # inject BEFORE build so the fixture pools reflect it; the eligible filter
+    # then removes the candidate identity from the split
     key = nomination_pool_keys(w.index)["english"][0]
     w.inject_pool_identity = {key: [leaked]}
     w.build(monkeypatch)
@@ -609,8 +611,8 @@ def test_candidate_row_in_a_nomination_pool_is_filtered(monkeypatch):
 def test_cross_language_duplicate_refuses(monkeypatch):
     w = _World()
     dup = _ck("shared", 0)
-    # inject before build so the partition receipts bind the augmented pools;
-    # the cross-language duplicate is then caught at split assembly
+    # inject before build so the fixture pools reflect it; the cross-language
+    # duplicate is then caught at split assembly
     w.inject_pool_identity = {
         nomination_pool_keys(w.index)["english"][0]: [dup],
         nomination_pool_keys(w.index)["french"][0]: [dup]}
@@ -743,10 +745,13 @@ def _synthetic_world(monkeypatch, n=3):
     def fake_read(relpath, *, allowed_prefixes, repo_root=mint_mod.ROOT):
         if relpath in committed:
             return committed[relpath]
-        # the real committed adoption records (git HEAD) are served by the
-        # genuine loader; only the fixture ledgers/decisions are injected
-        return real_read(relpath, allowed_prefixes=allowed_prefixes,
-                         repo_root=repo_root)
+        # the real committed files (git HEAD) are served by the genuine loader;
+        # trust files added this round are read from the working tree pre-commit
+        try:
+            return real_read(relpath, allowed_prefixes=allowed_prefixes,
+                             repo_root=repo_root)
+        except MintRefusal:
+            return (repo_root / relpath).read_bytes()
 
     monkeypatch.setattr(mint_mod, "_read_committed", fake_read)
     # the APPROVED review binds the trust manifest INCLUDING the fixture

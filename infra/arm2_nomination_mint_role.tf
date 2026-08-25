@@ -125,3 +125,58 @@ resource "aws_iam_role_policy" "arm2_training_index" {
 output "arm2_training_index_role_arn" {
   value = var.arm2_nomination_mint_enabled ? aws_iam_role.arm2_training_index[0].arn : null
 }
+
+# Final activation patch: the SEALED-IDENTITY producer role — reads ONLY the
+# pinned sealed manifests (by exact VersionId; curated/* and every non-sealed
+# eval read denied) to extract audio_checksum_sha256 ONLY. Its own protected
+# environment + reusable exec workflow (distinct sub AND job_workflow_ref), so
+# it is isolated from the mint and training-index roles. Dark until enabled.
+data "aws_iam_policy_document" "arm2_sealed_identity_trust" {
+  count = var.arm2_nomination_mint_enabled ? 1 : 0
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github_for_nomination_mint[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint-sealed"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:job_workflow_ref"
+      values   = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-sealed-exec.yml@refs/heads/master"]
+    }
+  }
+}
+
+resource "aws_iam_role" "arm2_sealed_identity" {
+  count              = var.arm2_nomination_mint_enabled ? 1 : 0
+  name               = "medzen-arm2-sealed-identity-role"
+  assume_role_policy = data.aws_iam_policy_document.arm2_sealed_identity_trust[0].json
+  lifecycle {
+    precondition {
+      condition = (var.github_repo == "fotso94/medzen-platform"
+      && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937")
+      error_message = "sealed-identity activation requires the exact github_repo AND github_repo_immutable"
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "arm2_sealed_identity" {
+  count  = var.arm2_nomination_mint_enabled ? 1 : 0
+  name   = "medzen-arm2-sealed-identity-access"
+  role   = aws_iam_role.arm2_sealed_identity[0].id
+  policy = file("${local.iam_dir}/medzen-arm2-sealed-identity-role.json")
+}
+
+output "arm2_sealed_identity_role_arn" {
+  value = var.arm2_nomination_mint_enabled ? aws_iam_role.arm2_sealed_identity[0].arn : null
+}

@@ -32,8 +32,9 @@ jobs:
       - name: both role variables must be present (a skip is not a pass)
         run: |
           if [ -z "${{ vars.MEDZEN_ARM2_TRAINING_INDEX_ROLE_ARN }}" ] \
+              || [ -z "${{ vars.MEDZEN_ARM2_SEALED_IDENTITY_ROLE_ARN }}" ] \
               || [ -z "${{ vars.MEDZEN_ARM2_NOMINATION_MINT_ROLE_ARN }}" ]; then
-            echo "::error::MEDZEN_ARM2_TRAINING_INDEX_ROLE_ARN and MEDZEN_ARM2_NOMINATION_MINT_ROLE_ARN must both be set. Apply infra/arm2_nomination_mint_role.tf (arm2_nomination_mint_enabled=true) and set the repo variables."
+            echo "::error::MEDZEN_ARM2_TRAINING_INDEX_ROLE_ARN, MEDZEN_ARM2_SEALED_IDENTITY_ROLE_ARN and MEDZEN_ARM2_NOMINATION_MINT_ROLE_ARN must all be set. Apply infra/arm2_nomination_mint_role.tf (arm2_nomination_mint_enabled=true) and set the repo variables."
             exit 1
           fi
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
@@ -43,12 +44,13 @@ jobs:
       - name: BOTH protected environments must exist WITH owner approval
         run: |
           set -euo pipefail
-          for ENV in arm2-nomination-mint-producer arm2-nomination-mint-mint; do
+          for ENV in arm2-nomination-mint-producer arm2-nomination-mint-sealed arm2-nomination-mint-mint; do
             curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/$ENV" \
               -o "$ENV.json" || echo '{"__missing__":true}' > "$ENV.json"
           done
           python scripts/verify_protected_environments.py --only-supplied \
             --environment arm2-nomination-mint-producer=arm2-nomination-mint-producer.json \
+            --environment arm2-nomination-mint-sealed=arm2-nomination-mint-sealed.json \
             --environment arm2-nomination-mint-mint=arm2-nomination-mint-mint.json
       # NOTE (Codex round 39 #2): master branch protection is NOT verified here.
       # The GITHUB_TOKEN cannot read the branch-protection REST endpoint (it
@@ -65,10 +67,17 @@ jobs:
     with:
       sha: ${{ inputs.sha }}
 
+  seal:
+    needs: preflight
+    uses: ./.github/workflows/arm2-nomination-mint-sealed-exec.yml
+    with:
+      sha: ${{ inputs.sha }}
+
   mint:
-    needs: produce
+    needs: [produce, seal]
     if: ${{ inputs.confirm_mint == 'MINT' }}
     uses: ./.github/workflows/arm2-nomination-mint-mint-exec.yml
     with:
       sha: ${{ inputs.sha }}
       producer_artifact_sha256: ${{ needs.produce.outputs.artifact_sha256 }}
+      sealed_authorities_sha256: ${{ needs.seal.outputs.authorities_sha256 }}
