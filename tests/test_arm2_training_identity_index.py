@@ -196,3 +196,33 @@ def test_cli_live_fails_closed_without_aws_sdk(monkeypatch):
     monkeypatch.setattr(builtins, "__import__", no_aws)
     with pytest.raises(SystemExit, match="protected workflow"):
         main(["--live"])
+
+
+def test_producer_cli_reads_the_real_packet_aws_and_fails_closed(monkeypatch):
+    """Codex round 38 #1: drive the producer --live CLI against the ACTUAL
+    committed packet — it must read aws.account + the producer role (the packet
+    regeneration had dropped the aws block) and then fail closed, not error on a
+    missing contract."""
+    import sys, types
+    from pathlib import Path
+    repo = Path(__file__).resolve().parents[1]
+    pkt = json.loads((repo / "platform/decisions/"
+                      "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001.json"
+                      ).read_bytes())
+    account = pkt["aws"]["account"]
+    role = pkt["training_identity_index"]["producer_role"]["role_name"]
+    arn = f"arn:aws:sts::{account}:assumed-role/{role}/run"
+
+    class _STS:
+        def get_caller_identity(self):
+            return {"Account": account, "Arn": arn}
+
+    class _S3:
+        def get_object(self, **kw):
+            return {"Body": types.SimpleNamespace(read=lambda: b"{}")}
+
+    monkeypatch.setitem(sys.modules, "boto3", types.SimpleNamespace(
+        client=lambda svc: _STS() if svc == "sts" else _S3()))
+    from build_arm2_training_identity_index import main as producer_main
+    with pytest.raises((SystemExit, ProducerRefusal)):
+        producer_main(["--live"])   # gets past aws/identity, fails on the corpus hash

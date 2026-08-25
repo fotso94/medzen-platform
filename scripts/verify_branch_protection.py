@@ -45,7 +45,12 @@ REQUIRED_CODEOWNER_PATHS = (
     "/platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
     "/platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
     "/platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json",
+    "/platform/manifests/dev-sentinels/",     # the 60-row dev sentinels (candidate identities)
 )
+
+# the exact owner handle every trust-bearing path must be owned by (Codex round
+# 38 #4: "the exact owner identity")
+OWNER_HANDLE = "@fotso94"
 
 
 def require_code_owner_review(protection: dict[str, Any] | None) -> list[str]:
@@ -64,36 +69,58 @@ def require_code_owner_review(protection: dict[str, Any] | None) -> list[str]:
                         "— CODEOWNERS is advisory without it")
     if int(prr.get("required_approving_review_count") or 0) < 1:
         failures.append("branch protection requires 0 approving reviews")
+    # Codex round 38 #4: a weak protection (admin bypass, force-push, deletion,
+    # stale reviews, no last-push approval, bypass allowances) is not enough.
+    if not (protection.get("enforce_admins") or {}).get("enabled"):
+        failures.append("branch protection does not enforce admins (admins can "
+                        "bypass CODEOWNER review)")
+    if (protection.get("allow_force_pushes") or {}).get("enabled"):
+        failures.append("branch protection allows force pushes")
+    if (protection.get("allow_deletions") or {}).get("enabled"):
+        failures.append("branch protection allows branch deletion")
+    if not prr.get("dismiss_stale_reviews"):
+        failures.append("branch protection does not dismiss stale reviews")
+    if not prr.get("require_last_push_approval"):
+        failures.append("branch protection does not require approval of the "
+                        "latest push")
+    if prr.get("bypass_pull_request_allowances") not in (None, {}, [], ) \
+            and any((prr.get("bypass_pull_request_allowances") or {}).get(k)
+                    for k in ("users", "teams", "apps")):
+        failures.append("branch protection grants pull-request bypass allowances")
     return failures
 
 
-def _codeowners_patterns(codeowners_text: str) -> list[str]:
+def _codeowners_patterns(codeowners_text: str) -> list[tuple[str, list[str]]]:
     patterns = []
     for line in codeowners_text.splitlines():
         line = line.strip()
         if not line or line.startswith("#"):
             continue
         parts = line.split()
-        if len(parts) >= 2 and any(o.startswith("@") for o in parts[1:]):
-            patterns.append(parts[0])
+        owners = [o for o in parts[1:] if o.startswith("@")]
+        if len(parts) >= 2 and owners:
+            patterns.append((parts[0], owners))
     return patterns
 
 
 def codeowners_covers(codeowners_text: str,
-                      required: tuple[str, ...] = REQUIRED_CODEOWNER_PATHS
-                      ) -> list[str]:
-    """Failures for any required path not covered by an owned CODEOWNERS
-    pattern. A directory pattern (trailing '/') covers paths beneath it."""
+                      required: tuple[str, ...] = REQUIRED_CODEOWNER_PATHS,
+                      owner: str = OWNER_HANDLE) -> list[str]:
+    """Failures for any required path not covered by a pattern owned by EXACTLY
+    the owner handle. A directory pattern (trailing '/') covers paths beneath
+    it. Codex round 38 #4: the exact owner identity, not merely 'some @'."""
     patterns = _codeowners_patterns(codeowners_text)
     failures = []
     for path in required:
-        covered = False
-        for pat in patterns:
+        owners = None
+        for pat, pat_owners in patterns:
             if pat == path or (pat.endswith("/") and path.startswith(pat)):
-                covered = True
+                owners = pat_owners
                 break
-        if not covered:
+        if owners is None:
             failures.append(f"CODEOWNERS does not require owner review on {path}")
+        elif owner not in owners:
+            failures.append(f"CODEOWNERS path {path} is not owned by {owner}")
     return failures
 
 

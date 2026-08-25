@@ -50,6 +50,21 @@ jobs:
           python scripts/verify_protected_environments.py --only-supplied \
             --environment arm2-nomination-mint-producer=arm2-nomination-mint-producer.json \
             --environment arm2-nomination-mint-mint=arm2-nomination-mint-mint.json
+      - name: master must be branch-protected with CODEOWNER review (fails closed; Codex round 38 #4)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # CODEOWNERS is advisory without a protection rule requiring CODEOWNER
+          # review with no admin bypass / force-push / deletion. Read it here
+          # BEFORE any credentials; if the token cannot confirm it (or master is
+          # unprotected), REFUSE — a mint must never run on an unenforced tree.
+          set -euo pipefail
+          if ! gh api "repos/${{ github.repository }}/branches/master/protection" > prot.json 2>gh_err.txt; then
+            echo "::error::cannot read master branch protection (unprotected, or the token lacks admin) — refusing"
+            cat gh_err.txt
+            exit 1
+          fi
+          python scripts/verify_branch_protection.py --protection prot.json --codeowners .github/CODEOWNERS
 
   produce:
     needs: preflight

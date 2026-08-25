@@ -544,11 +544,30 @@ def _verify_partition_receipt(ref, *, sealed_key: str, sealed_pin: dict,
     if doc.get("partition_verified") is not True:
         raise MintRefusal(
             f"partition receipt for {sealed_key!r} does not assert a verified "
-            "dev/sealed partition (dev disjoint sealed, dev union sealed == parent)")
+            "dev/sealed partition")
+    # the generator/algorithm/seed that produced the one-time partition proof
+    for field in ("generator", "algorithm"):
+        if not str(doc.get(field, "")).strip():
+            raise MintRefusal(
+                f"partition receipt for {sealed_key!r} omits {field!r}")
+    # sealed side bound to the exposure-index pin + a committed sealed aggregate
     for field in ("sha256", "s3_version_id"):
         if doc.get("sealed_" + field) != sealed_pin.get(field):
             raise MintRefusal(
                 f"partition receipt sealed {field} != the exposure-index pin")
+    if not _is_identity(str(doc.get("sealed_aggregate_sha256") or "")) \
+            or not isinstance(doc.get("sealed_count"), int) \
+            or doc.get("sealed_count") < 0:
+        raise MintRefusal(
+            f"partition receipt for {sealed_key!r} lacks a sealed_aggregate_sha256"
+            " + sealed_count (the sealed side of the partition)")
+    if sealed_pin.get("rows") is not None \
+            and doc.get("sealed_count") != int(sealed_pin["rows"]):
+        raise MintRefusal(
+            f"partition receipt sealed_count {doc.get('sealed_count')} != the "
+            f"pinned sealed rows {sealed_pin.get('rows')}")
+    # complementary DEV read pool bound to the index pin AND reproduced from the
+    # mint's ACTUAL read identities (=> the read pool IS the partitioned dev half)
     comp = str(doc.get("complementary_read_pool_key") or "")
     if comp not in read_pool_keys(index):
         raise MintRefusal(
@@ -571,6 +590,19 @@ def _verify_partition_receipt(ref, *, sealed_key: str, sealed_pin: dict,
             f"partition receipt dev aggregate does not reproduce from the mint's "
             f"ACTUAL read identities for {comp!r} — the read pool is not the "
             "partitioned dev half; refusing an unproven disjointness")
+    # PARENT population + the partition ARITHMETIC (necessary condition the mint
+    # can check without a sealed read): dev_count + sealed_count == parent_count
+    if not str(doc.get("parent_manifest_key", "")).strip() \
+            or not _is_identity(str(doc.get("parent_aggregate_sha256") or "")) \
+            or not isinstance(doc.get("parent_count"), int):
+        raise MintRefusal(
+            f"partition receipt for {sealed_key!r} omits the parent manifest / "
+            "aggregate / count")
+    if int(doc["dev_count"]) + int(doc["sealed_count"]) != int(doc["parent_count"]):
+        raise MintRefusal(
+            f"partition receipt for {sealed_key!r} is not a partition: dev_count"
+            f" {doc['dev_count']} + sealed_count {doc['sealed_count']} != "
+            f"parent_count {doc['parent_count']}")
     return comp
 
 
@@ -679,8 +711,10 @@ def authenticate_sealed_authorities(authorities, *, index: dict, packet: dict,
             comp = _verify_partition_receipt(
                 entry.get("partition_receipt"), sealed_key=key, sealed_pin=pin,
                 index=index, pool_identities=pool_identities)
-            provenance.append({"key": key, "disposition": disposition,
-                               "identities": 0, "complementary_read_pool": comp})
+            provenance.append({
+                "key": key, "disposition": disposition,
+                "sealed_disjointness": "PARTITION_PROVEN_NOT_IDENTITY_COMPUTED",
+                "complementary_read_pool": comp})
             continue
         # CLEARED_FOR_EXCLUSION — needs a supplied identity authority
         auth = supplied.get(key)
@@ -710,6 +744,7 @@ def authenticate_sealed_authorities(authorities, *, index: dict, packet: dict,
                 "ledger aggregate/unique — refusing a substituted identity set")
         union |= set(ids)
         provenance.append({"key": key, "disposition": disposition,
+                           "sealed_disjointness": "IDENTITY_COMPUTED",
                            "identities": u})
     unused = sorted(set(supplied) - set(pools))
     if unused:
@@ -871,6 +906,22 @@ def _mint_under_oid(index, pool_identities, *, packet, training_index,
         provenance["sealed_unique"] = s_n
         provenance["sealed_aggregate_sha256"] = s_agg
         provenance["sealed_authorities"] = sealed_provenance
+        # Codex round 38 #3: report per-method honestly — a BY_CONSTRUCTION 0 is
+        # PARTITION_PROVEN, not an identity anti-join of the split vs sealed.
+        provenance["sealed_disjointness"] = {
+            "identity_computed_pools": sorted(
+                pv["key"] for pv in sealed_provenance
+                if pv.get("sealed_disjointness") == "IDENTITY_COMPUTED"),
+            "partition_proven_pools": sorted(
+                pv["key"] for pv in sealed_provenance
+                if pv.get("sealed_disjointness")
+                == "PARTITION_PROVEN_NOT_IDENTITY_COMPUTED"),
+            "identity_computed_overlap": len(set(all_split) & sealed),
+            "note": "aggregate_overlap_counts.sealed is the IDENTITY-COMPUTED "
+                    "anti-join over the CLEARED_FOR_EXCLUSION pools only; the "
+                    "partition_proven_pools were proven disjoint by a verified "
+                    "partition receipt (dev-half == the mint's read pool, "
+                    "dev+sealed==parent), NOT by comparing sealed identities."}
     else:
         provenance["sealed_unique"] = "UNVERIFIED"
     if training is not None:
@@ -1003,12 +1054,14 @@ def _running_script_sha256() -> str:
 
 
 def _verify_independent_review(packet: dict, *, packet_sha256: str,
-                               oid: str) -> dict:
-    """Codex round 37 #4: PENDING_REVIEW is not executable. A live mint runs only
-    if the packet cites an independent-review record (committed, read at the
-    captured OID) whose status is APPROVED, that authorizes APPROVE_LIVE_MINT,
-    binds THIS packet's canonical sha256 AND this commit OID, and carries the
-    owner's verbatim words. Until such a record is committed, the mint refuses."""
+                               approved_script_sha256: str) -> dict:
+    """Codex round 37 #4 / round 38 #2: PENDING_REVIEW is not executable, and the
+    approval must NOT be self-referential (binding the OID it is committed at is
+    circular — committing the record changes that OID). Instead the review binds
+    CONTENT: this packet's canonical sha256 AND the mint script's sha256 as
+    committed at the running OID. A live mint runs only if the cited review
+    record (committed, read at the OID) is APPROVED, authorizes APPROVE_LIVE_MINT,
+    binds both content shas, and carries owner_verbatim."""
     ref = packet.get("independent_review_record")
     if not isinstance(ref, dict) or not ref.get("path") or not ref.get("record_id"):
         raise MintRefusal(
@@ -1030,10 +1083,10 @@ def _verify_independent_review(packet: dict, *, packet_sha256: str,
     if doc.get("packet_sha256") != packet_sha256:
         raise MintRefusal(
             "independent-review record does not bind THIS packet's sha256")
-    if str(doc.get("commit_oid")) != oid:
+    if doc.get("approved_script_sha256") != approved_script_sha256:
         raise MintRefusal(
-            "independent-review record binds a different commit OID than the "
-            "one running — refusing a review approved for other code")
+            "independent-review record does not bind the mint script sha256 that "
+            "is running — refusing a review approved for other code")
     return doc
 
 
@@ -1091,7 +1144,9 @@ def _live_mint_under_oid(packet, *, index_bytes, s3_reader, caller_identity,
     # this packet (its CANONICAL sha256) AND this OID (read at the OID). Fails
     # closed while none exists.
     packet_sha256 = hashlib.sha256(_canon(packet)).hexdigest()
-    _verify_independent_review(packet, packet_sha256=packet_sha256, oid=oid)
+    running_script_sha256 = _running_script_sha256()   # committed at the OID
+    _verify_independent_review(packet, packet_sha256=packet_sha256,
+                               approved_script_sha256=running_script_sha256)
 
     packet_pins = packet_pins_early
     wanted = read_pool_keys(index)          # NEVER includes sealed pools
@@ -1137,12 +1192,16 @@ def _live_mint_under_oid(packet, *, index_bytes, s3_reader, caller_identity,
                 manifest["exclusion_provenance"].get("sealed_authorities"),
             "caller_arn": str(caller_identity.get("Arn")),
             "commit_oid": oid,   # the resolved immutable OID, not caller-supplied
-            "running_script_sha256": _running_script_sha256(),
+            "running_script_sha256": running_script_sha256,
             "packet_sha256": packet_sha256,
         },
     }
-    result["result_sha256"] = hashlib.sha256(_canon(
-        {k: v for k, v in result.items() if k != "result_sha256"})).hexdigest()
+    # Codex round 38 #5: payload_sha256 is the sha of the PAYLOAD (record +
+    # manifest + provenance). The FILE artifact_sha256 (what B6 acceptance and
+    # any external attestation bind) is computed by the CLI over the EXACT
+    # written bytes — result_sha256 could never equal the file sha because the
+    # file also contains that field + a trailing newline.
+    result["payload_sha256"] = hashlib.sha256(_canon(result)).hexdigest()
     return result
 
 
@@ -1219,9 +1278,14 @@ def main(argv=None) -> int:
                            sealed_authorities=sealed)
     except MintRefusal as exc:
         raise SystemExit(f"FROZEN mint refused (fail-closed): {exc}")
-    Path(args.out).write_bytes(_canon(result) + b"\n")
+    written = _canon(result) + b"\n"
+    Path(args.out).write_bytes(written)
+    # the durable identity B6 acceptance + external attestation bind is the sha
+    # of the EXACT written file bytes (Codex round 38 #5)
+    artifact_sha256 = hashlib.sha256(written).hexdigest()
     print(json.dumps({"status": "NOMINATION_SPLIT_FROZEN",
-                      "result_sha256": result["result_sha256"],
+                      "payload_sha256": result["payload_sha256"],
+                      "artifact_sha256": artifact_sha256,
                       "out": args.out}, sort_keys=True))
     return 0
 

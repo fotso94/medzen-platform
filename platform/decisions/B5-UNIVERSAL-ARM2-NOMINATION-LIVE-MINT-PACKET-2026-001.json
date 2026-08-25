@@ -19,6 +19,14 @@
   "replaces": "the round-33 magic-string token AND the round-35 single-environment/single-exec split (Codex round 36 F3: identical env + job_workflow_ref let either job assume either role)",
   "two_claim_split": "producer and mint tokens now differ in TWO independent OIDC claims \u2014 distinct protected environment AND distinct job_workflow_ref \u2014 so neither role's trust is satisfiable by the other's token"
  },
+ "aws": {
+  "account": "558069890522",
+  "bucket": "medzen-speech",
+  "bucket_is_versioned": true,
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "note": "the immutable AWS contract both live CLIs read from the packet at the trust OID: exact account (caller-identity assertion + ExpectedBucketOwner), versioned bucket, and the ONE KMS CMK.",
+  "region": "eu-central-1"
+ },
  "execution_contract": {
   "fail_closed": "any unauthenticated artifact, incomplete/duplicate input, empty split, ledger chain/head-sha break, missing active ledger entry, unverified approval record, wrong caller identity, or sealed-fetch request refuses (MintRefusal); today the ledgers are PENDING so the mint refuses through the FULL live_mint chain (not an unconditional exit)",
   "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json",
@@ -30,9 +38,9 @@
  "exposure_index_sha256": "9eee1039cac03bd784516d6e01d85fe02626991ac9bec989fb9c392a3e95763c",
  "holds": "the six 2000-step runs, sealed evaluation, promotion, deployment, and the $0.80 benchmark remain HELD; the sealed holdout is NEVER read by the mint; sealed identity extraction (if ever CLEARED_FOR_EXCLUSION) is a separate owner-adjudicated step with its own role and is NOT in scope here.",
  "independent_review_record": {
+  "binds": "the APPROVED record binds this packet's canonical sha256 AND the mint-script sha256 (approved_script_sha256) \u2014 CONTENT, not the self-referential commit OID (Codex round 38 #2). It is NOT_YET_CREATED; until the owner commits it, live_mint fails closed at the review gate.",
   "path": "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-REVIEW-2026-001.json",
-  "record_id": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-REVIEW-2026-001",
-  "status": "NOT_YET_CREATED \u2014 the owner commits an APPROVED APPROVE_LIVE_MINT record binding this packet's committed sha256 AND the exact commit OID; until then live_mint fails closed at the review gate (Codex round 37 #4)."
+  "record_id": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-REVIEW-2026-001"
  },
  "minimal_read_role": {
   "environment": "arm2-nomination-mint-mint",
@@ -308,21 +316,13 @@
  "reads_count": 7,
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001",
  "result_manifest": {
-  "b6_acceptance_rule": "the committed split file sha256 MUST equal the result_sha256 the approved run emitted \u2014 never a human-recopied file.",
-  "binds": [
-   "result_sha256 (over the canonical result)",
-   "running_script_sha256",
-   "exposure_index_sha256",
-   "training_index_artifact_sha256",
-   "training_index_ledger_sha256",
-   "sealed_exclusion_ledger_sha256",
-   "sealed dispositions",
-   "caller_arn",
-   "commit_sha"
-  ],
+  "artifact_sha256": "sha256 of the EXACT written file bytes (payload + the payload_sha256 field + trailing newline) \u2014 the durable identity B6 acceptance and any external attestation bind; the CLI prints it",
+  "b6_acceptance_rule": "the committed split file's sha256 MUST equal the artifact_sha256 the approved run printed \u2014 never the payload sha, never a human-recopied file",
+  "external_attestation": "ACTIVATION TODO: attest the artifact externally (actions/attest-build-provenance @ pinned sha, with attestations:write documented in test_b7_pipelines) or a KMS signature, and store it durably \u2014 the 7-day Actions artifact is not the record of truth.",
+  "payload_sha256": "sha256 of the canonical payload (record+manifest+provenance)",
   "record": "B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-RESULT-2026-001"
  },
- "revision": "005 (Codex round 37: one immutable Git OID for every trust read incl. candidate/veto; BY_CONSTRUCTION_DISJOINT is now a machine-verified partition receipt checked against the mint's ACTUAL read identities [never a bare attestation; the quarantined pool may not use it]; a live mint requires an APPROVED independent-review record bound to this packet + OID; the result binds the OID + the script-as-committed; activation additionally requires genuine branch protection)",
+ "revision": "006 (Codex round 38: restored the top-level aws contract [the packet regeneration had dropped it \u2014 both live CLIs need aws.account/bucket/kms_key]; the review binds CONTENT [packet + mint-script sha] not the self-referential commit OID; the partition receipt binds parent+dev+sealed aggregates+counts and the mint checks dev+sealed==parent; sealed disjointness is reported per-method [identity-computed vs partition-proven]; the durable identity is the FILE artifact_sha256, not the payload result_sha256; branch protection must forbid admin bypass / force-push / deletion and dismiss stale reviews)",
  "sealed_exclusion": {
   "by_construction_rule": "Codex round 37 #2: BY_CONSTRUCTION_DISJOINT is a MACHINE-VERIFIED PARTITION, not an attestation. The ledger entry cites a partition_receipt (committed, ATTEST_SEALED_PARTITION) binding the sealed manifest (key/sha256/VersionId) to a COMPLEMENTARY NOMINATION READ pool (key/sha256/VersionId + dev_aggregate_sha256 + dev_count) and asserting partition_verified. The mint verifies the complementary pool is one it actually reads AND that the read pool's ACTUAL identities reproduce the receipt's dev_aggregate \u2014 so nomination_split \u2286 dev-half \u21d2 disjoint from the sealed half, proven WITHOUT reading a sealed identity. Cross-language seals (no nomination read-pool complement) and the QUARANTINED cv17 pool therefore CANNOT be BY_CONSTRUCTION \u2014 they require CLEARED_FOR_EXCLUSION (identity anti-join), and the quarantined pool additionally a separate quarantine_clearance.",
   "mechanism": "identity-only, ledger-adjudicated. The mint NEVER fetches sealed manifest bytes. Each of the 11 pinned SEALED pools needs one ACTIVE ledger entry: BY_CONSTRUCTION_DISJOINT (a committed disjointness record; NO identities \u2014 the correct disposition for the dev/sealed complements and the cross-language seals, so an untouched seal is never read) or CLEARED_FOR_EXCLUSION (a supplied identity authority reproducing the committed aggregate).",
@@ -331,6 +331,7 @@
   "quarantined_pool": [
    "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl"
   ],
+  "reporting": "aggregate_overlap_counts.sealed is the IDENTITY-COMPUTED anti-join over CLEARED_FOR_EXCLUSION pools only; BY_CONSTRUCTION pools are PARTITION_PROVEN (dev-half == the mint's read pool; dev+sealed==parent), never reported as an identity-compared 0. See exclusion_provenance.sealed_disjointness.",
   "sealed_pools": [
    "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
    "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",

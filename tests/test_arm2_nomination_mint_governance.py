@@ -234,10 +234,58 @@ def test_branch_protection_verifier_requires_codeowner_review():
     assert require_code_owner_review(
         {"required_pull_request_reviews": {"require_code_owner_reviews": True,
                                            "required_approving_review_count": 0}})
-    # a properly-protected branch passes
-    assert require_code_owner_review(
-        {"required_pull_request_reviews": {"require_code_owner_reviews": True,
-                                           "required_approving_review_count": 1}}) == []
+    # a FULLY-hardened branch passes (Codex round 38 #4)
+    strong = {"required_pull_request_reviews": {
+                  "require_code_owner_reviews": True,
+                  "required_approving_review_count": 1,
+                  "dismiss_stale_reviews": True,
+                  "require_last_push_approval": True},
+              "enforce_admins": {"enabled": True},
+              "allow_force_pushes": {"enabled": False},
+              "allow_deletions": {"enabled": False}}
+    assert require_code_owner_review(strong) == []
+
+
+def test_branch_protection_verifier_rejects_weak_configs():
+    import sys
+    sys.path.insert(0, str(_REPO / "scripts"))
+    from verify_branch_protection import require_code_owner_review
+    base = {"required_pull_request_reviews": {
+                "require_code_owner_reviews": True,
+                "required_approving_review_count": 1,
+                "dismiss_stale_reviews": True, "require_last_push_approval": True},
+            "enforce_admins": {"enabled": True},
+            "allow_force_pushes": {"enabled": False},
+            "allow_deletions": {"enabled": False}}
+    import copy
+    for weaken in (
+            lambda c: c["enforce_admins"].update(enabled=False),
+            lambda c: c["allow_force_pushes"].update(enabled=True),
+            lambda c: c["allow_deletions"].update(enabled=True),
+            lambda c: c["required_pull_request_reviews"].update(dismiss_stale_reviews=False),
+            lambda c: c["required_pull_request_reviews"].update(require_last_push_approval=False)):
+        cfg = copy.deepcopy(base)
+        weaken(cfg)
+        assert require_code_owner_review(cfg), "weak protection must be rejected"
+
+
+def test_codeowners_names_the_exact_owner_and_covers_dev_sentinels():
+    import sys
+    sys.path.insert(0, str(_REPO / "scripts"))
+    from verify_branch_protection import codeowners_covers
+    co = (_REPO / ".github/CODEOWNERS").read_text()
+    assert "dev-sentinels" in co
+    assert codeowners_covers(co) == []                      # exact owner @fotso94
+    assert codeowners_covers(co, owner="@someone-else")     # wrong owner fails
+
+
+def test_branch_protection_is_wired_into_the_caller_preflight():
+    caller = (_WF / "arm2-nomination-mint.yml").read_text()
+    assert "verify_branch_protection.py" in caller
+    assert "branches/master/protection" in caller
+    # it runs in preflight (before the produce/mint credential jobs)
+    pre, _, rest = caller.partition("  produce:")
+    assert "verify_branch_protection.py" in pre
 
 
 def test_codeowners_covers_itself_and_every_trust_path():

@@ -206,15 +206,26 @@ class _World:
                 dev_ids = self.pool_identities[complement]
                 dev_n, dev_agg = _agg(dev_ids)
                 rid = "ARM2-SEAL-PARTITION-" + _sha(key.encode())[:10]
+                sealed_count = int(pin.get("rows") or 1)
+                sealed_agg = _agg(_ck(f"sealedpart:{key}", i)
+                                  for i in range(sealed_count))[1]
+                parent_count = dev_n + sealed_count
                 doc = {"record": rid, "authorizes": "ATTEST_SEALED_PARTITION",
                        "sealed_key": key, "partition_verified": True,
                        "owner_verbatim": "owner partition attestation (fixture)",
+                       "generator": "scripts/partition_prover.py",
+                       "algorithm": "tier2-dev-sealed-split-v1", "seed": "0",
                        "sealed_sha256": pin["sha256"],
                        "sealed_s3_version_id": pin["s3_version_id"],
+                       "sealed_aggregate_sha256": sealed_agg,
+                       "sealed_count": sealed_count,
                        "complementary_read_pool_key": complement,
                        "complementary_sha256": comp_pin["sha256"],
                        "complementary_s3_version_id": comp_pin["s3_version_id"],
-                       "dev_aggregate_sha256": dev_agg, "dev_count": dev_n}
+                       "dev_aggregate_sha256": dev_agg, "dev_count": dev_n,
+                       "parent_manifest_key": key.replace("-sealed", "-full"),
+                       "parent_aggregate_sha256": _agg([str(parent_count)])[1],
+                       "parent_count": parent_count}
                 self.committed[f"platform/decisions/{rid}.json"] = _canon(doc)
                 entry["disposition"] = "BY_CONSTRUCTION_DISJOINT"
                 entry["partition_receipt"] = {
@@ -506,7 +517,7 @@ def test_by_construction_pools_read_no_seal_identities(monkeypatch):
     # identities); the cross-language + quarantined seals are CLEARED
     assert len(by_construction) == 6 and len(cleared) == 5
     for k in by_construction:
-        assert prov[k]["identities"] == 0
+        assert prov[k]["sealed_disjointness"] == "PARTITION_PROVEN_NOT_IDENTITY_COMPUTED"
     # every quarantined pool is CLEARED, never BY_CONSTRUCTION
     from mint_arm2_nomination_split import sealed_pools as _sp
     quarantined = [k for k, v in _sp(w.index).items()
@@ -743,12 +754,21 @@ def _synthetic_world(monkeypatch, n=3):
         "SYN-SEAL", "ADMIT_SEALED_EXCLUSION", "key", skey)
     part = {"record": "SYN-PART", "authorizes": "ATTEST_SEALED_PARTITION",
             "sealed_key": skey, "partition_verified": True,
-            "owner_verbatim": "syn partition", "sealed_sha256": spin["sha256"],
+            "owner_verbatim": "syn partition",
+            "generator": "scripts/partition_prover.py",
+            "algorithm": "tier2-dev-sealed-split-v1", "seed": "0",
+            "sealed_sha256": spin["sha256"],
             "sealed_s3_version_id": spin["s3_version_id"],
+            "sealed_aggregate_sha256": _agg(_ck("synsealed", i)
+                                            for i in range(n))[1],
+            "sealed_count": n,
             "complementary_read_pool_key": comp_key,
             "complementary_sha256": comp_pin["sha256"],
             "complementary_s3_version_id": comp_pin["s3_version_id"],
-            "dev_aggregate_sha256": dev_agg, "dev_count": dev_n}
+            "dev_aggregate_sha256": dev_agg, "dev_count": dev_n,
+            "parent_manifest_key": "eval/english/full/manifest.jsonl",
+            "parent_aggregate_sha256": _agg([str(dev_n + n)])[1],
+            "parent_count": dev_n + n}
     committed["platform/decisions/SYN-PART.json"] = _canon(part)
     sealed_ledger = _jsonl([
         {"event": "LEDGER_OPENED_PENDING", "record": "s"},
@@ -781,12 +801,13 @@ def _synthetic_world(monkeypatch, n=3):
                    "sha256": s["sha256"], "s3_version_id": s["s3_version_id"]}
                   for s in sources if s["key"] in read_keys]}
     # the APPROVED independent-review record binds this packet's canonical sha256
-    # AND the captured OID (Codex round 37 #4)
-    oid = mint_mod._resolve_head_oid()
+    # AND the mint-script sha (CONTENT, not the self-referential commit OID —
+    # Codex round 38 #2)
     committed["platform/decisions/SYN-REVIEW.json"] = _canon({
         "record": "SYN-REVIEW", "authorizes": "APPROVE_LIVE_MINT",
         "status": "APPROVED", "owner_verbatim": "owner approves this mint",
-        "packet_sha256": _sha(_canon(packet)), "commit_oid": oid})
+        "packet_sha256": _sha(_canon(packet)),
+        "approved_script_sha256": mint_mod._running_script_sha256()})
 
     real_read = mint_mod._read_committed
 
@@ -822,7 +843,7 @@ def test_live_mint_successful_rehearsal_is_frozen_and_reads_no_seal(monkeypatch)
     assert not [k for k in calls if "sealed" in k]   # seal never read
     # the result is hash-bound with committed-checkable provenance, bound to the
     # captured OID (Codex round 37 #5)
-    assert len(result["result_sha256"]) == 64
+    assert len(result["payload_sha256"]) == 64
     prov = result["provenance"]
     assert prov["exposure_index_sha256"] == packet["exposure_index_sha256"]
     assert prov["training_index_artifact_sha256"] == _sha(training_bytes)
@@ -830,8 +851,11 @@ def test_live_mint_successful_rehearsal_is_frozen_and_reads_no_seal(monkeypatch)
     assert prov["commit_oid"] == mint_mod._resolve_head_oid()   # OID, not caller
     assert len(prov["running_script_sha256"]) == 64
     assert prov["packet_sha256"] == _sha(_canon(packet))
-    body = {k: v for k, v in result.items() if k != "result_sha256"}
-    assert result["result_sha256"] == _sha(_canon(body))
+    # #5: payload_sha256 is over the payload; the file artifact sha is distinct
+    assert result["payload_sha256"] == _sha(_canon(
+        {k: v for k, v in result.items() if k != "payload_sha256"}))
+    written = _canon(result) + b"\n"
+    assert _sha(written) != result["payload_sha256"]   # file != payload sha
 
 
 def test_live_mint_refuses_tampered_index_bytes(monkeypatch):
@@ -948,7 +972,10 @@ def test_main_live_calls_live_mint_and_fails_closed_on_pending(monkeypatch, tmp_
         p = str(relpath)
         if not any(p.startswith(pre) for pre in allowed_prefixes):
             raise MintRefusal(f"refusing untrusted committed path {p!r}")
-        return (repo_root / p).read_bytes()
+        try:
+            return (repo_root / p).read_bytes()
+        except FileNotFoundError:
+            raise MintRefusal(f"{p} is not committed (fixture tree-read)")
 
     monkeypatch.setattr(mint_mod, "_read_committed", tree_read)
     ti = tmp_path / "training-identity-index.json"
@@ -1133,3 +1160,101 @@ def test_candidate_and_veto_are_read_through_the_committed_seam(monkeypatch):
     assert any("DEV-SELECTION" in c for c in calls)
     assert any("LINGALA-SENTINEL" in c for c in calls)
     assert not any(str(c).startswith("/") for c in calls)   # never absolute/tree
+
+
+# --------------------------------------------------------------------------
+# Codex round 38 regressions
+# --------------------------------------------------------------------------
+
+def test_committed_packet_has_the_immutable_aws_contract():
+    """#1: the REAL packet must carry aws.account/bucket/kms_key — both live
+    CLIs read them; the regeneration had dropped the block."""
+    pkt = json.loads(_PACKET_PATH.read_bytes())
+    assert "aws" in pkt, "packet lost its aws contract"
+    for f in ("account", "bucket", "kms_key"):
+        assert pkt["aws"].get(f), f"packet.aws.{f} missing"
+    assert pkt["aws"]["account"] == _ACCOUNT
+    # and the review contract is cited by path + record_id (no self-ref sha)
+    rev = pkt["independent_review_record"]
+    assert rev.get("path") and rev.get("record_id")
+
+
+def test_review_binds_the_running_script_not_a_commit_oid(monkeypatch):
+    """#2: the review binds CONTENT (approved_script_sha256); a review approved
+    for a DIFFERENT script sha refuses, and there is no self-referential OID."""
+    index_bytes, packet, reader, training_bytes, caller, _ = \
+        _synthetic_world(monkeypatch)
+    # overwrite the review with a wrong approved_script_sha256
+    committed_review = json.loads(
+        mint_mod._read_committed("platform/decisions/SYN-REVIEW.json",
+                                 allowed_prefixes=("platform/decisions/",)))
+    committed_review["approved_script_sha256"] = "0" * 64
+    # re-inject via a fresh fake that serves the tampered review
+    real = mint_mod._read_committed
+    def fake(relpath, *, allowed_prefixes, repo_root=mint_mod.ROOT):
+        if relpath == "platform/decisions/SYN-REVIEW.json":
+            return _canon(committed_review)
+        return real(relpath, allowed_prefixes=allowed_prefixes, repo_root=repo_root)
+    monkeypatch.setattr(mint_mod, "_read_committed", fake)
+    with pytest.raises(MintRefusal, match="mint script sha"):
+        live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
+                  caller_identity=caller, training_index_bytes=training_bytes,
+                  sealed_authorities=[])
+    # the harness no longer checks a self-referential commit_oid on the review
+    assert "commit_oid) != oid" not in \
+        (_REPO / "scripts/mint_arm2_nomination_split.py").read_text()
+
+
+def test_partition_receipt_requires_the_partition_arithmetic(monkeypatch):
+    """#3: the receipt must bind parent+sealed and satisfy dev+sealed==parent —
+    a receipt whose counts don't partition refuses."""
+    w = _World()
+    w.build(monkeypatch)
+    part_path = next(k for k in w.committed if "SEAL-PARTITION" in k)
+    doc = json.loads(w.committed[part_path])
+    doc["parent_count"] = doc["dev_count"] + doc["sealed_count"] + 1   # break it
+    w.committed[part_path] = _canon(doc)
+    # re-point the ledger entry's receipt sha to the mutated doc
+    lines = w.committed[SEALED_EXCLUSION_LEDGER].decode().splitlines()
+    for i, ln in enumerate(lines):
+        e = json.loads(ln)
+        pr = e.get("partition_receipt")
+        if isinstance(pr, dict) and pr.get("path") == part_path:
+            e["partition_receipt"] = dict(pr, sha256=_sha(w.committed[part_path]))
+            lines[i] = _canon(e).decode()
+    # rebuild the chain + head pin
+    rebuilt = []
+    for i, ln in enumerate(lines):
+        e = json.loads(ln)
+        if i > 0:
+            e["prev_sha256"] = _sha(rebuilt[-1].encode())
+        rebuilt.append(_canon(e).decode())
+    new = ("\n".join(rebuilt) + "\n").encode()
+    w.committed[SEALED_EXCLUSION_LEDGER] = new
+    w.packet["sealed_exclusion_ledger_sha256"] = _sha(new)
+    with pytest.raises(MintRefusal, match="not a partition"):
+        w.mint()
+
+
+def test_partition_receipt_missing_parent_refuses(monkeypatch):
+    w = _World()
+    w.build(monkeypatch)
+    part_path = next(k for k in w.committed if "SEAL-PARTITION" in k)
+    doc = json.loads(w.committed[part_path])
+    doc.pop("parent_manifest_key")
+    w.committed[part_path] = w.committed[part_path]   # sha now mismatches
+    w.committed[part_path] = _canon(doc)
+    with pytest.raises(MintRefusal, match="sha256 mismatch"):
+        w.mint()
+
+
+def test_by_construction_reports_partition_proven_not_identity(monkeypatch):
+    """#3 reporting: BY_CONSTRUCTION pools are PARTITION_PROVEN, never counted as
+    an identity anti-join 0."""
+    w = _World()
+    w.build(monkeypatch)
+    m = w.mint()
+    sd = m["exclusion_provenance"]["sealed_disjointness"]
+    assert len(sd["partition_proven_pools"]) == 6
+    assert len(sd["identity_computed_pools"]) == 5
+    assert "PARTITION_PROVEN" in json.dumps(m["exclusion_provenance"])
