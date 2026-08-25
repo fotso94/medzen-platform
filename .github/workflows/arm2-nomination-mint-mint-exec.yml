@@ -116,10 +116,11 @@ jobs:
       # durable, externally-verifiable record (the 7-day artifact is not the
       # record of truth); the result also binds commit_oid + running_script (as
       # committed at the OID) + trust_manifest + artifact_sha256.
-      # OWNER: verify this action pin against the published release before the
-      # first live run (added offline; the sha could not be network-verified).
+      # the pin below is actions/attest-build-provenance v2.2.3, VERIFIED via
+      # `gh api repos/actions/attest-build-provenance/git/ref/tags/v2.2.3`
+      # (c074443f1aee8d4aeeae555aebba3282517141b2).
       - name: externally attest the frozen result (GitHub build provenance)
         if: ${{ success() }}
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3 — OWNER: verify this sha
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3 (verified)
         with:
           subject-path: nomination-split-result.json
