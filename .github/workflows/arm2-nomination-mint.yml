@@ -76,6 +76,12 @@ jobs:
   mint:
     needs: [produce, seal]
     if: ${{ inputs.confirm_mint == 'MINT' }}
+    # a reusable workflow cannot request MORE than the caller grants it; the
+    # mint-exec attests the result, so the caller must pass attestations:write
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/arm2-nomination-mint-mint-exec.yml
     with:
       sha: ${{ inputs.sha }}

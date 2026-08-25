@@ -58,6 +58,11 @@ DOCUMENTED_JOB_ADDITIONS = {
         # result (actions/attest-build-provenance needs attestations:write)
         "mint": {**MINIMAL, "attestations": "write"},
     },
+    "arm2-nomination-mint.yml": {
+        # the caller's mint uses-job must PASS attestations:write to the
+        # reusable exec (a reusable cannot request more than the caller grants)
+        "mint": {**MINIMAL, "attestations": "write"},
+    },
 }
 
 

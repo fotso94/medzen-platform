@@ -104,7 +104,7 @@ def test_all_workflows_are_minimal_oidc_permissions():
         assert doc.get("permissions") == {"contents": "read", "id-token": "write"}
         for jn, job in doc.get("jobs", {}).items():
             jp = job.get("permissions") if isinstance(job, dict) else None
-            if name == _MINT_EXEC and jn == "mint":
+            if jn == "mint" and name in (_MINT_EXEC, "arm2-nomination-mint.yml"):
                 assert jp == {"contents": "read", "id-token": "write",
                               "attestations": "write"}
             else:
@@ -127,8 +127,9 @@ def test_producer_exports_artifact_sha_and_mint_binds_it():
     assert "needs.produce.outputs.artifact_sha256" in caller
     assert "needs.seal.outputs.authorities_sha256" in caller
     assert "needs: [produce, seal]" in caller
-    # id-token at the top level (repo convention) on caller + 3 execs
-    assert caller.count("id-token: write") == 1
+    # id-token at the top level (repo convention) + on the caller's mint
+    # uses-job (which must pass attestations:write to the reusable exec)
+    assert caller.count("id-token: write") == 2
 
 
 def test_mint_downloads_same_run_artifact_no_cross_run():
