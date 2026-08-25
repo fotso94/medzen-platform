@@ -146,44 +146,50 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
             "the packet declares a `distillation` recipe but "
             "MEDZEN_KD_ENABLE is not truthy — the recipe and the environment "
             "disagree about whether this is a KD run")
-    if not kd_on:
-        return
+    comparative = is_arm2_comparative(environment)
+    if not comparative:
+        return                  # plain training carries no Arm-2 semantics
 
-    def _mismatch(field: str, recipe_value, env_value) -> None:
-        raise JobRefusal(
-            f"Arm-2 recipe/environment disagree on {field}: recipe "
-            f"{recipe_value!r} vs environment {env_value!r} — one canonical "
-            "recipe, no silent divergence (Codex review #19 F4)")
+    # KD-on candidates cross-check the human-facing recipe against the env; the
+    # KD-off comparative CONTROL has no `distillation` block, so it skips these
+    # and carries only the shared acceptance_criteria + result_verifier below.
+    if kd_on:
+        def _mismatch(field: str, recipe_value, env_value) -> None:
+            raise JobRefusal(
+                f"Arm-2 recipe/environment disagree on {field}: recipe "
+                f"{recipe_value!r} vs environment {env_value!r} — one canonical "
+                "recipe, no silent divergence (Codex review #19 F4)")
 
-    if float(recipe.get("kd_alpha")) != float(environment.get("MEDZEN_KD_ALPHA")):
-        _mismatch("kd_alpha", recipe.get("kd_alpha"),
-                  environment.get("MEDZEN_KD_ALPHA"))
-    if float(recipe.get("kd_temperature")) != float(
-            environment.get("MEDZEN_KD_TEMPERATURE")):
-        _mismatch("kd_temperature", recipe.get("kd_temperature"),
-                  environment.get("MEDZEN_KD_TEMPERATURE"))
-    if str(recipe.get("teacher_card")) != str(
-            environment.get("MEDZEN_KD_TEACHER_CARD")):
-        _mismatch("teacher_card", recipe.get("teacher_card"),
-                  environment.get("MEDZEN_KD_TEACHER_CARD"))
-    if str(recipe.get("teacher_mode")) != str(
-            environment.get("MEDZEN_KD_TEACHER_MODE")):
-        _mismatch("teacher_mode", recipe.get("teacher_mode"),
-                  environment.get("MEDZEN_KD_TEACHER_MODE"))
-    recipe_pres = {str(x).strip().lower() for x in
-                   recipe.get("preservation_languages", [])}
-    env_pres = {t.strip().lower() for t in
-                str(environment.get("MEDZEN_KD_PRESERVATION_LANGUAGES", "")
-                    ).split(",") if t.strip()}
-    if recipe_pres != env_pres:
-        _mismatch("preservation_languages", sorted(recipe_pres),
-                  sorted(env_pres))
-    recipe_weights = {str(k).strip().lower(): float(v)
-                      for k, v in (recipe.get("language_weights") or {}).items()}
-    env_weights = _parse_env_weights(
-        str(environment.get("MEDZEN_KD_LANGUAGE_WEIGHTS", "")))
-    if recipe_weights != env_weights:
-        _mismatch("language_weights", recipe_weights, env_weights)
+        if float(recipe.get("kd_alpha")) != \
+                float(environment.get("MEDZEN_KD_ALPHA")):
+            _mismatch("kd_alpha", recipe.get("kd_alpha"),
+                      environment.get("MEDZEN_KD_ALPHA"))
+        if float(recipe.get("kd_temperature")) != float(
+                environment.get("MEDZEN_KD_TEMPERATURE")):
+            _mismatch("kd_temperature", recipe.get("kd_temperature"),
+                      environment.get("MEDZEN_KD_TEMPERATURE"))
+        if str(recipe.get("teacher_card")) != str(
+                environment.get("MEDZEN_KD_TEACHER_CARD")):
+            _mismatch("teacher_card", recipe.get("teacher_card"),
+                      environment.get("MEDZEN_KD_TEACHER_CARD"))
+        if str(recipe.get("teacher_mode")) != str(
+                environment.get("MEDZEN_KD_TEACHER_MODE")):
+            _mismatch("teacher_mode", recipe.get("teacher_mode"),
+                      environment.get("MEDZEN_KD_TEACHER_MODE"))
+        recipe_pres = {str(x).strip().lower() for x in
+                       recipe.get("preservation_languages", [])}
+        env_pres = {t.strip().lower() for t in
+                    str(environment.get("MEDZEN_KD_PRESERVATION_LANGUAGES", "")
+                        ).split(",") if t.strip()}
+        if recipe_pres != env_pres:
+            _mismatch("preservation_languages", sorted(recipe_pres),
+                      sorted(env_pres))
+        recipe_weights = {str(k).strip().lower(): float(v) for k, v in
+                          (recipe.get("language_weights") or {}).items()}
+        env_weights = _parse_env_weights(
+            str(environment.get("MEDZEN_KD_LANGUAGE_WEIGHTS", "")))
+        if recipe_weights != env_weights:
+            _mismatch("language_weights", recipe_weights, env_weights)
 
     criteria = bindings.get("acceptance_criteria")
     if not isinstance(criteria, list) or not criteria:
@@ -384,6 +390,41 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
                 f"declares {rows}")
 
 
+EXECUTION_MODES = ("plain", "arm2_comparative")
+
+
+def resolve_execution_mode(environment: dict) -> str:
+    """The STRICT execution-mode enum (owner-directed): MEDZEN_EXECUTION_MODE is
+    'plain' (bare trainer) or 'arm2_comparative' (the shared KD-on/KD-off
+    calibration wrapper). It does NOT overload MEDZEN_TRAIN_MODE (lora|full) or
+    MEDZEN_VARIANT (ctc|llm). Fail-closed:
+      - an unknown value refuses;
+      - 'plain' with KD enabled is contradictory and refuses;
+      - when the key is ABSENT, KD-on implies 'arm2_comparative' (so the frozen
+        pre-enum Arm-2 calibration packet renders byte-identically) and KD-off
+        is 'plain' (so every existing plain-training packet is unchanged)."""
+    raw = str(environment.get("MEDZEN_EXECUTION_MODE", "")).strip()
+    kd_on = str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower() \
+        in _KD_TRUE
+    if raw == "":
+        return "arm2_comparative" if kd_on else "plain"
+    if raw not in EXECUTION_MODES:
+        raise JobRefusal(
+            f"MEDZEN_EXECUTION_MODE={raw!r} is not one of {EXECUTION_MODES} — "
+            "unknown execution modes fail closed")
+    if raw == "plain" and kd_on:
+        raise JobRefusal(
+            "MEDZEN_EXECUTION_MODE=plain with MEDZEN_KD_ENABLE truthy is "
+            "contradictory — plain training runs no KD (fail closed)")
+    return raw
+
+
+def is_arm2_comparative(environment: dict) -> bool:
+    """True iff this packet runs the shared Arm-2 comparative calibration
+    wrapper (KD-on candidate OR the KD-off control)."""
+    return resolve_execution_mode(environment) == "arm2_comparative"
+
+
 def inject_launcher_provenance(environment: dict, bindings: dict) -> dict:
     """Reproduce, in ONE place, the self-reference-free provenance the launcher
     stamps into a KD packet's rendered Environment (Codex review #20 F5, #22
@@ -397,7 +438,12 @@ def inject_launcher_provenance(environment: dict, bindings: dict) -> dict:
     in the rendered/live environment. Returns a NEW dict; the input is untouched.
     """
     env = dict(environment)
-    if str(env.get("MEDZEN_KD_ENABLE", "0")).strip().lower() in _KD_TRUE:
+    # Injected for every Arm-2 comparative packet — the KD-on candidates AND
+    # the KD-off control — since both run the wrapper and both need the
+    # execution contract + packet-sha + job-name provenance. (For KD-on with no
+    # explicit mode this is unchanged from the prior KD-enable gate, so the
+    # frozen calibration packet renders byte-identically.)
+    if is_arm2_comparative(env):
         env["MEDZEN_CALIBRATION_PACKET_SHA256"] = \
             canonical_bindings_sha256(bindings)
         env["MEDZEN_TRAINING_JOB_NAME"] = f"medzen-b5-{bindings['job_id']}"
@@ -531,10 +577,13 @@ def render_request(bindings: dict) -> dict:
             # (train -> export -> readyz -> dev-WER -> finalize -> verify ->
             # exit nonzero on failure), NOT the bare trainer that wrote
             # null serve/dev-WER and could never pass its own verifier.
+            # arm2_comparative (KD-on candidate OR KD-off control) runs the
+            # shared wrapper; plain training runs the bare trainer. Resolved by
+            # the strict MEDZEN_EXECUTION_MODE enum (fail-closed).
             "ContainerArguments": (
                 ["-m", "pipeline.omniasr_calibrate"]
-                if str(environment.get("MEDZEN_KD_ENABLE", "0")).strip().lower()
-                in _KD_TRUE else ["-m", "pipeline.omniasr_train"]),
+                if is_arm2_comparative(environment)
+                else ["-m", "pipeline.omniasr_train"]),
         },
         "OutputDataConfig": {
             "S3OutputPath": f"s3://{BUCKET}/{prefix}/output",

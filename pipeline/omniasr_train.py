@@ -151,6 +151,9 @@ class TrainerConfig:
     kd_teacher_mode: str
     kd_preservation_languages: tuple[str, ...]
     kd_language_weights: tuple[tuple[str, float], ...]
+    # Strict Arm-2 execution-mode enum ('plain' | 'arm2_comparative'), bound
+    # into the fingerprint so a run cannot resume across a different mode.
+    execution_mode: str
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -306,6 +309,23 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         raise TrainerRefusal(
             f"MEDZEN_KD_ENABLE={env.get('MEDZEN_KD_ENABLE')!r} is not a boolean")
     kd_enable = kd_raw in ("1", "true", "yes", "on")
+    # Strict execution-mode enum (owner-directed), resolved WITH the same
+    # fail-closed rules as scripts/b5_sagemaker_job.resolve_execution_mode
+    # (a parity test locks the two together): unknown value refuses; 'plain'
+    # with KD refuses; absent => KD-on is arm2_comparative, KD-off is plain.
+    _mode_raw = env.get("MEDZEN_EXECUTION_MODE", "").strip()
+    if _mode_raw == "":
+        execution_mode = "arm2_comparative" if kd_enable else "plain"
+    elif _mode_raw not in ("plain", "arm2_comparative"):
+        raise TrainerRefusal(
+            f"MEDZEN_EXECUTION_MODE={_mode_raw!r} is not one of "
+            "('plain', 'arm2_comparative') — unknown modes fail closed")
+    elif _mode_raw == "plain" and kd_enable:
+        raise TrainerRefusal(
+            "MEDZEN_EXECUTION_MODE=plain with MEDZEN_KD_ENABLE truthy is "
+            "contradictory — plain training runs no KD (fail closed)")
+    else:
+        execution_mode = _mode_raw
     if kd_enable:
         # alpha is a POSITIVE weight — 0 would silently disable KD while the
         # run still claims to be a KD run (Codex review #18)
@@ -417,6 +437,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         kd_teacher_mode=kd_teacher_mode,
         kd_preservation_languages=kd_preservation_languages,
         kd_language_weights=kd_language_weights,
+        execution_mode=execution_mode,
     )
 
 

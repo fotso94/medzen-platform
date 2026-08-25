@@ -280,10 +280,11 @@ def _ctc_greedy_text(logits, decoder, blank_idx: int,
 
 def main() -> int:
     config = parse_config(dict(os.environ))
-    if not config.kd_enable:
+    if config.execution_mode != "arm2_comparative":
         raise TrainerRefusal(
-            "pipeline.omniasr_calibrate is the Arm-2 KD calibration entrypoint; "
-            "MEDZEN_KD_ENABLE must be set. A non-KD training run uses "
+            "pipeline.omniasr_calibrate is the Arm-2 COMPARATIVE calibration "
+            "wrapper; MEDZEN_EXECUTION_MODE must be 'arm2_comparative' (a KD-on "
+            "candidate OR the KD-off control). Plain training runs "
             "pipeline.omniasr_train directly.")
 
     # Codex #22 blocker 2: the image bakes the SELF-REFERENCE-FREE execution
