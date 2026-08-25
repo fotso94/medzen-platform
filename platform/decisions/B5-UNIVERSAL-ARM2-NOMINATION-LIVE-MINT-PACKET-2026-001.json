@@ -1,0 +1,294 @@
+{
+ "NOT_AN_AUTHORIZATION": "This packet PROPOSES the live mint. It is NOT an authorization record. The live read requires independent review AND explicit owner authorization; only then is the noninteractive step run.",
+ "aws": {
+  "account": "558069890522",
+  "bucket": "medzen-speech",
+  "bucket_is_versioned": true,
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "note": "VersionId pins the exact bytes even if a key is later overwritten (same basis as B5-IMMUTABILITY-BINDINGS-2026-001).",
+  "region": "eu-central-1"
+ },
+ "execution_contract": {
+  "fail_closed": "any non-zero overlap against candidate/sealed/veto, any empty language split, any missing pinned identity, or any unpinned nomination source refuses the mint (MintRefusal); the harness has NO default AWS client and refuses --live without an injected reader + explicit authorization (LiveMintForbidden)",
+  "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json (committed after review of the aggregate counts)",
+  "invocation": "noninteractive; the authorized step wires a minimal read-only reader (assuming minimal_read_role) and calls mint_arm2_nomination_split.live_mint(index, s3_reader=<reader>, authorization=<owner token>) with MEDZEN_NOMINATION_LIVE_MINT set to the same token",
+  "never_outputs": [
+   "sealed rows",
+   "transcript text",
+   "audio",
+   "any per-row content beyond audio_checksum_sha256"
+  ],
+  "outputs_only": [
+   "the FROZEN nomination manifest (identities + per-pool pins + aggregate overlap counts)",
+   "the aggregate overlap counts"
+  ]
+ },
+ "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
+ "generator": "scripts/mint_arm2_nomination_split.py",
+ "holds": "the six 2000-step runs, sealed evaluation, promotion and deployment remain HELD; the sealed promotion holdout is NEVER touched (its manifests are read for IDENTITIES ONLY, to prove the split excludes them).",
+ "minimal_read_role": {
+  "explicitly_denied": [
+   "s3:ListBucket",
+   "s3:PutObject",
+   "s3:DeleteObject",
+   "any key outside pinned_objects",
+   "kms:Encrypt",
+   "kms:GenerateDataKey"
+  ],
+  "policy": {
+   "Statement": [
+    {
+     "Action": [
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+     ],
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedIdentityManifestsOnly"
+    },
+    {
+     "Action": [
+      "kms:Decrypt"
+     ],
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+     ],
+     "Sid": "DecryptWithTheOnePinnedCMK"
+    }
+   ],
+   "Version": "2012-10-17"
+  },
+  "trust": "assumed only by the owner-authorized mint principal; no service/instance profile is granted this by default"
+ },
+ "pinned_objects": [
+  {
+   "class": "BASE_EXPOSED",
+   "key": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "language": "english",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 511,
+   "s3_version_id": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP",
+   "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "language": "english",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 529,
+   "s3_version_id": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD",
+   "sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "language": "ewe",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 66,
+   "s3_version_id": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi",
+   "sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4"
+  },
+  {
+   "class": "BASE_EXPOSED",
+   "key": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+   "language": "french",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 217,
+   "s3_version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX",
+   "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+   "language": "french",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 258,
+   "s3_version_id": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G",
+   "sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b"
+  },
+  {
+   "class": "BASE_EXPOSED",
+   "key": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "language": "french",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 495,
+   "s3_version_id": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO",
+   "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "language": "french",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 469,
+   "s3_version_id": "39xzQDaj2Kbl5A_ncGh1IpG7QDoUe3qV",
+   "sha256": "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf"
+  },
+  {
+   "class": "CANDIDATE_EXPOSED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "language": "kinyarwanda",
+   "read_purpose": "CANDIDATE_EXPOSED pool \u2014 identities read ONLY to exclude",
+   "role": "kinyarwanda_eval",
+   "rows": 1642,
+   "s3_version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6",
+   "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+   "language": "kinyarwanda",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "kinyarwanda_eval_quarantined",
+   "rows": 3373,
+   "s3_version_id": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ",
+   "sha256": "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+   "language": "kinyarwanda",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "kinyarwanda_eval",
+   "rows": 1642,
+   "s3_version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa",
+   "sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "language": "lingala",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 325,
+   "s3_version_id": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd",
+   "sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "language": "lingala",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 81,
+   "s3_version_id": "Fa.zlXFBDkDYmSc.ymU4oTPIW5N8eEcl",
+   "sha256": "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63"
+  },
+  {
+   "class": "BASE_BLIND_CANDIDATE_ELIGIBLE",
+   "key": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+   "language": "pidgin",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 1500,
+   "s3_version_id": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg",
+   "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+   "language": "pidgin",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 1500,
+   "s3_version_id": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN",
+   "sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91"
+  },
+  {
+   "class": "BASE_EXPOSED",
+   "key": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+   "language": "swahili",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 354,
+   "s3_version_id": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b",
+   "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "language": "swahili",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 343,
+   "s3_version_id": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p",
+   "sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb"
+  },
+  {
+   "class": "BASE_EXPOSED",
+   "key": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+   "language": "swahili",
+   "read_purpose": "nomination eval-dev pool (source of eligible rows)",
+   "role": "eval_dev_half",
+   "rows": 78,
+   "s3_version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd",
+   "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "language": "swahili",
+   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
+   "role": "sealed_holdout_half",
+   "rows": 68,
+   "s3_version_id": "NhicuR6DvwTEXSQ4Pv8gKn_rQtrrChAw",
+   "sha256": "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c"
+  }
+ ],
+ "preconditions": [
+  "independent review of THIS packet (keys, VersionIds, hashes, KMS, role)",
+  "explicit owner authorization of the live read",
+  "the exposure index is machine-derived + current (python -m scripts.build_arm2_exposure_index --check)"
+ ],
+ "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
+ "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key and a minimal read-only IAM role for the eventual FROZEN Phase-A nomination mint (scripts/mint_arm2_nomination_split.py::live_mint). The mint reads ONLY the pinned identity manifests, keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts \u2014 never sealed rows, transcript text or audio.",
+ "reads_count": 18,
+ "record": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001",
+ "sealed_objects_are_identity_only": [
+  "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+  "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+  "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+  "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+  "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+  "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+  "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+  "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+  "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+  "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+  "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+ ],
+ "status": "PENDING_REVIEW",
+ "unpinned_eligible_pools_excluded": [
+  "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
+  "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl"
+ ],
+ "unpinned_note": "these eligible eval-dev pools are NOT fully pinned (missing sha256/VersionId) and are therefore EXCLUDED from the frozen mint; to include them, pin them in the exposure-index source records first, under separate review.",
+ "written_utc": "2026-08-25T04:41:38Z"
+}
