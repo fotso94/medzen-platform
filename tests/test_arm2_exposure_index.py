@@ -38,11 +38,16 @@ def test_index_captures_the_known_surfaces_with_full_identities():
     classes = {x["class"] for x in ps}
     assert {"BASE_EXPOSED", "SEALED", "TRAINING_EXPOSED"} <= classes
     assert "BASE_BLIND_CANDIDATE_ELIGIBLE" in classes  # pidgin av-heldout dev
-    # every pinned source carries a class + an identity (sha/version or raw sha)
+    # every pinned source carries a class + a REAL CONTENT identity — a bare
+    # source_record path is NOT an identity (owner blocker 1)
+    def _hex64(v):
+        return isinstance(v, str) and len(v) == 64 and \
+            all(c in "0123456789abcdef" for c in v)
     for x in ps:
         assert x.get("class")
-        assert x.get("sha256") or x.get("s3_version_id") or \
-            x.get("complete_raw_sha256") or x.get("source_record")
+        has_identity = _hex64(x.get("sha256")) or _hex64(x.get("complete_raw_sha256")) \
+            or (isinstance(x.get("s3_version_id"), str) and x["s3_version_id"])
+        assert has_identity, f"pinned source lacks a real identity: {x}"
 
 
 def test_sentinels_are_subsets_of_the_dev_selection_from_source():
@@ -78,3 +83,47 @@ def test_disjointness_harness_rejects_overlap_and_accepts_novel_rows():
     assert ok is False and a_used in overlap, "an overlapping row must be caught"
     ok, overlap = ix.split_is_disjoint(["f" * 64, "e" * 64])
     assert ok is True and overlap == [], "genuinely novel rows must pass"
+
+
+def test_kinyarwanda_eval_identities_are_present_and_exact():
+    """Owner blocker 1: the three Kinyarwanda cv17 eval sources must be pinned
+    with their exact identities read from the authoritative records."""
+    import json
+    d = json.loads(INDEX.read_bytes())
+    kw = {x["pool"]: x for x in d["pinned_sources"]
+          if x.get("language") == "kinyarwanda"}
+    dev = kw["dev-selection"]
+    assert dev["class"] == "CANDIDATE_EXPOSED" and dev["rows"] == 1642
+    assert dev["sha256"] == "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569"
+    assert dev["s3_version_id"] == "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6"
+    us = kw["universal-sealed"]
+    assert us["class"] == "SEALED" and us["rows"] == 1642
+    assert us["sha256"] == "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df"
+    q = kw["cv17-test-v1-sealed-QUARANTINED"]
+    assert q["class"] == "SEALED" and q["rows"] == 3373
+    assert q["sha256"] == "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
+    assert q["s3_version_id"] == "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ"
+
+
+def test_gb3_training_has_a_real_content_digest_not_a_path():
+    """Owner blocker 1: the GB3 Kinyarwanda training entry must carry a real
+    content digest, not a bare file path."""
+    import json
+    d = json.loads(INDEX.read_bytes())
+    gb3 = next(x for x in d["pinned_sources"]
+               if x.get("dataset") == "gb3-kinyarwanda")
+    assert gb3["complete_raw_sha256"] == (
+        "25427f567756ef28c2e8d8dc0e3c485a8a385f54e4c714177bffbd86b871166a")
+
+
+def test_no_pinned_source_relies_on_a_path_only_identity():
+    """Adversarial (owner blocker 1): assert NO pinned source would pass on a
+    path alone — every one has a real hash or S3 VersionId."""
+    import json
+    d = json.loads(INDEX.read_bytes())
+    for x in d["pinned_sources"]:
+        real = (isinstance(x.get("sha256"), str) and len(x["sha256"]) == 64) \
+            or (isinstance(x.get("complete_raw_sha256"), str)
+                and len(x["complete_raw_sha256"]) == 64) \
+            or bool(x.get("s3_version_id"))
+        assert real, f"path-only identity: {x.get('pool') or x.get('dataset')}"

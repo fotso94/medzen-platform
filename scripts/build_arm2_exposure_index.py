@@ -138,23 +138,58 @@ def build() -> dict:
                         "s3_version_id": sealed.get("s3_version_id"),
                         "source_record": rel,
                     })
-    for rec, tag in (("B5-GB9-ADOPTION-2026-001.json", "gb9"),
-                     ("B5-GB8-ADOPTION-2026-001.json", "gb8")):
-        adopt = json.loads((tier2 / rec).read_bytes())
+    # 4b) KINYARWANDA eval sources (rev 007): the immutability bindings carry
+    #     rows+sha256 for dev-selection + universal-sealed and the S3 VersionId
+    #     for all three; the quarantined cv17-test-v1-sealed rows+sha256 come
+    #     from the gate protocol. Join by the S3 manifest key.
+    imm = json.loads(
+        (tier2 / "B5-IMMUTABILITY-BINDINGS-2026-001.json").read_bytes())
+    imm_obj = imm.get("objects") or {}
+    ukh = imm.get("universal_kinyarwanda_holdout") or {}
+    IMM_REL = "platform/evidence/B5-IMMUTABILITY-BINDINGS-2026-001.json"
+    for name, cls in (("dev-selection", "CANDIDATE_EXPOSED"),
+                      ("universal-sealed", "SEALED")):
+        ent = ukh.get(name) or {}
+        key = ent.get("key")
+        pinned_sources.append({
+            "class": cls, "role": "kinyarwanda_eval",
+            "language": "kinyarwanda", "pool": name,
+            "key": key, "rows": ent.get("rows"),
+            "sha256": ent.get("sha256"),
+            "s3_version_id": (imm_obj.get(key) or {}).get("s3_version_id"),
+            "source_record": IMM_REL,
+        })
+    kw_gate = json.loads(
+        (ROOT / "platform/decisions/B5-KW-V2-GATE-PROTOCOL-2026-001.json")
+        .read_bytes())
+    q = kw_gate.get("sealed_holdout") or {}
+    q_key = q.get("key")
+    pinned_sources.append({
+        "class": "SEALED", "role": "kinyarwanda_eval_quarantined",
+        "language": "kinyarwanda", "pool": "cv17-test-v1-sealed-QUARANTINED",
+        "key": q_key, "rows": q.get("rows"),
+        "sha256": q.get("manifest_sha256"),
+        "s3_version_id": (imm_obj.get(q_key) or {}).get("s3_version_id"),
+        "source_record": "platform/decisions/B5-KW-V2-GATE-PROTOCOL-2026-001.json"
+                         " + " + IMM_REL,
+    })
+    # training corpora, each with a REAL content digest (rev 007: gb3 too)
+    for rec, tag, field in (
+            ("platform/evidence/B5-GB9-ADOPTION-2026-001.json", "gb9",
+             "complete_raw_sha256"),
+            ("platform/evidence/B5-GB8-ADOPTION-2026-001.json", "gb8",
+             "complete_raw_sha256"),
+            ("platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json",
+             "gb3-kinyarwanda", "provenance.complete_raw_sha256")):
+        doc = json.loads((ROOT / rec).read_bytes())
+        digest = (doc.get("provenance", {}).get("complete_raw_sha256")
+                  if field.startswith("provenance.")
+                  else doc.get(field))
         pinned_sources.append({
             "class": "TRAINING_EXPOSED", "role": "training_corpus",
-            "dataset": tag,
-            "complete_raw_sha256": adopt.get("complete_raw_sha256"),
-            "source_record": f"platform/evidence/{rec}",
+            "dataset": tag, "complete_raw_sha256": digest,
+            "source_record": rec,
         })
-    pinned_sources.append({
-        "class": "TRAINING_EXPOSED", "role": "training_corpus",
-        "dataset": "gb3-kinyarwanda",
-        "source_record": "platform/manifests/"
-                         "B5-KINYARWANDA-FULL-SAGEMAKER-BINDINGS-2026-001.json",
-        "note": "kinyarwanda-only training at gb3 (300h cap); pinned by the "
-                "manifest's dataset identity at mint",
-    })
 
     union_count, union_agg = _agg(union)
     return {

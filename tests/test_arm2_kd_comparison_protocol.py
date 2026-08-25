@@ -234,7 +234,7 @@ def test_positive_holm_tests_are_separated_from_safety_vetoes_executably():
                  "beat_KD_CONTROL", "beat_H0"):
         t = pos[name]
         assert "p_value" in t and "ci" in t and "pass" in t and "statistic" in t
-    assert "Holm" in pos["holm"]
+    assert "Holm" in pos["positive_gate"]
     # vetoes are SEPARATE, RAW (not Holm), executable, and catch the history
     assert vet["languages"] == ["lingala", "kinyarwanda", "ewe"]
     assert "NOT Holm-adjusted" in vet["veto"] or "RAW" in vet["veto"]
@@ -243,3 +243,43 @@ def test_positive_holm_tests_are_separated_from_safety_vetoes_executably():
     # the Holm family explicitly excludes the vetoes
     assert "SEPARATE" in sp["multiplicity"]["stage_1"]
     assert "not Holm-corrected" in sp["multiplicity"]["stage_1"]
+
+
+# ---- rev 007: Holm sole gate + exact no-reversal (owner blocker 2) --------
+
+def test_holm_is_the_sole_positive_gate_no_false_equivalence():
+    d = _p()
+    # the false "raw 95% CI == Holm p<=0.05" equivalence is struck everywhere
+    assert "equivalently Holm-adjusted" not in json.dumps(d)
+    pos = d["statistical_procedure"]["positive_qualification_tests"]
+    pg = pos["positive_gate"]
+    assert "SOLE" in pg and "Holm" in pg
+    assert "DESCRIPTIVE ONLY" in pg
+    assert "0.05/24" in pg  # the owner's 24 x p=0.04 counterexample
+    # each per-test "pass" is relabelled descriptive, NOT the gate
+    for name in ("preservation_non_inferiority", "pidgin_retention",
+                 "beat_KD_CONTROL", "beat_H0"):
+        assert "DESCRIPTIVE" in pos[name]["pass"]
+        assert "NOT the gate" in pos[name]["pass"]
+    # the executable gate is named
+    assert "arm2_holm" in d["statistical_procedure"]["executable_gate"]
+
+
+def test_exact_no_reversal_rule_is_defined():
+    sr = _p()["statistical_procedure"]["stage_2_replication"]
+    rd = sr["reversal_definition"]
+    assert "POSITIVE reversal" in rd and "SAFETY reversal" in rd
+    assert "NO SEED REVERSAL" in rd
+    assert "CONJUNCTIVELY" in sr["confirm"] or "AND" in sr["confirm"]
+    assert "NEVER pooled" in sr["confirm"]
+    assert "NO_RECIPE_QUALIFIES" in sr["confirm"]
+
+
+def test_the_protocol_holm_gate_matches_the_executable_holm():
+    """Adversarial: the design's stated Holm gate, implemented in code, gives
+    the owner's answer on the 24 x p=0.04 example."""
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from arm2_holm import qualifies, raw_ci_passes
+    p = [0.04] * 24
+    assert sum(raw_ci_passes(p)) == 24 and qualifies(p) is False

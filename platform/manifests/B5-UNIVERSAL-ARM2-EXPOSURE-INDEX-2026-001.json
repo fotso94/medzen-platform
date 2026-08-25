@@ -274,6 +274,39 @@
    "source_record": "platform/evidence/B5-TIER2-HOLDOUTS-2026-004.json"
   },
   {
+   "class": "CANDIDATE_EXPOSED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+   "language": "kinyarwanda",
+   "pool": "dev-selection",
+   "role": "kinyarwanda_eval",
+   "rows": 1642,
+   "s3_version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6",
+   "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
+   "source_record": "platform/evidence/B5-IMMUTABILITY-BINDINGS-2026-001.json"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+   "language": "kinyarwanda",
+   "pool": "universal-sealed",
+   "role": "kinyarwanda_eval",
+   "rows": 1642,
+   "s3_version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa",
+   "sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
+   "source_record": "platform/evidence/B5-IMMUTABILITY-BINDINGS-2026-001.json"
+  },
+  {
+   "class": "SEALED",
+   "key": "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+   "language": "kinyarwanda",
+   "pool": "cv17-test-v1-sealed-QUARANTINED",
+   "role": "kinyarwanda_eval_quarantined",
+   "rows": 3373,
+   "s3_version_id": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ",
+   "sha256": "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9",
+   "source_record": "platform/decisions/B5-KW-V2-GATE-PROTOCOL-2026-001.json + platform/evidence/B5-IMMUTABILITY-BINDINGS-2026-001.json"
+  },
+  {
    "class": "TRAINING_EXPOSED",
    "complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
    "dataset": "gb9",
@@ -289,10 +322,10 @@
   },
   {
    "class": "TRAINING_EXPOSED",
+   "complete_raw_sha256": "25427f567756ef28c2e8d8dc0e3c485a8a385f54e4c714177bffbd86b871166a",
    "dataset": "gb3-kinyarwanda",
-   "note": "kinyarwanda-only training at gb3 (300h cap); pinned by the manifest's dataset identity at mint",
    "role": "training_corpus",
-   "source_record": "platform/manifests/B5-KINYARWANDA-FULL-SAGEMAKER-BINDINGS-2026-001.json"
+   "source_record": "platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json"
   }
  ],
  "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001",

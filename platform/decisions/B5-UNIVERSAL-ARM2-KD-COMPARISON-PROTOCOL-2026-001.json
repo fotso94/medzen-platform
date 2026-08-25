@@ -242,12 +242,13 @@
  },
  "purpose": "An UNSEALED, directional HELD-OUT DEVELOPMENT NOMINATION: compare KD candidate recipes against a matched KD-disabled control and the mechanics-proven anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It is NOT a confirmation and touches no sealed data.",
  "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "revision": "006 (design re-review 5, narrow): classify+pin EVERY exposure source (index pinned_sources across CANDIDATE/BASE/SEALED/TRAINING + base-blind pidgin); correct the stale evaluation pointer (used_union -> class rule); explicitly EXEMPT directional-veto surfaces from nomination eligibility; SEPARATE positive Holm qualification tests from safety vetoes with executable p-value/CI semantics; remove seed-pooled tie-break wording. Design-only; no machinery; no compute; no sealed data.",
+ "revision": "007 (design re-review 6, narrow): added the three Kinyarwanda cv17 eval identities (dev-selection 1642 / universal-sealed 1642 / quarantined-sealed 3373) + a real GB3 content digest to the machine-derived index, all read from the authoritative records; made HOLM rejection the SOLE positive gate (struck the false 'raw 95% CI == Holm p<=0.05' equivalence; raw CIs are descriptive-only) with an executable gate scripts/arm2_holm.py; defined the exact seed-2/no-reversal rule. Design-only; no machinery; no compute; no sealed data.",
  "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / parity / dev-WER / authoritative receipts (post-approval implementation).",
  "statistical_procedure": {
   "H0_comparator_only": "H0 (mechanics-proven anchor) can NEVER be nominated; candidates must beat it, else NO_RECIPE_QUALIFIES",
   "NO_RECIPE_QUALIFIES": "an explicit terminal state at either stage; the procedure NEVER silently nominates the least-bad recipe",
   "constraints_ref": "the positive qualification tests + safety vetoes are defined executably in positive_qualification_tests and safety_vetoes below (and summarized in `constraints`).",
+  "executable_gate": "scripts/arm2_holm.py (holm_reject / qualifies): the positive gate is code, adversarially tested (tests/test_arm2_holm.py incl. the 24x p=0.04 -> 0 rejections counterexample).",
   "metric": "WER = sum(edit_distance)/sum(reference_words) per language, from per-row edit-distance receipts; absolute WER points (pp)",
   "multiplicity": {
    "stage_1": "Holm-Bonferroni over the POSITIVE family = {4 candidates x (3 preservation non-inferiority + pidgin retention + beat-KD_CONTROL + beat-H0) = 24 tests}, family-wise alpha=0.05. The 3 directional vetoes per candidate are SEPARATE (safety_vetoes; not Holm-corrected).",
@@ -257,24 +258,24 @@
    "beat_H0": {
     "ci": "lower_CI95 of {red_b}",
     "p_value": "p = mean_b[ red_b <= 0 ]",
-    "pass": "iff lower_CI95 > 0",
+    "pass": "DESCRIPTIVE per-test summary: lower_CI95 > 0 (== raw p <= 0.05). NOT the gate \u2014 see positive_gate.",
     "statistic": "red_b = macroWER_H0,b - macroWER_cand,b on the preservation macro"
    },
    "beat_KD_CONTROL": {
     "ci": "lower_CI95 = 5th percentile of {red_b}",
     "p_value": "p = mean_b[ red_b <= 0 ]",
-    "pass": "superior iff lower_CI95 > 0 (equivalently Holm-adjusted p <= 0.05)",
+    "pass": "DESCRIPTIVE per-test summary: lower_CI95 > 0 (== raw p <= 0.05). NOT the gate \u2014 see positive_gate.",
     "statistic": "red_b = macroWER_KD_CONTROL,b - macroWER_cand,b on the preservation macro"
    },
-   "holm": "collect the per-test one-sided bootstrap p-values, sort ascending p(1)<=...<=p(m); Holm rejects H0_(k) iff p(j) <= 0.05/(m-j+1) for all j<=k; a candidate qualifies iff EVERY positive test is rejected after Holm at family-wise alpha 0.05",
    "note": "these MUST pass for a candidate to qualify; Holm-Bonferroni is applied over THIS family ONLY (per stage). Vetoes are NOT in this family.",
    "pidgin_retention": {
     "ci": "upper_CI95 of {diff_b}",
     "language": "pidgin",
     "p_value": "p = mean_b[ diff_b >= 0.005 ]",
-    "pass": "iff upper_CI95 <= 0.005",
+    "pass": "DESCRIPTIVE per-test summary: upper_CI95 <= 0.005 (== raw p <= 0.05). NOT the gate \u2014 see positive_gate.",
     "statistic": "diff_b = WER_cand,b - WER_arm1,b"
    },
+   "positive_gate": "HOLM REJECTION IS THE SOLE positive-qualification decision (executable: scripts/arm2_holm.qualifies). Collect the family's one-sided bootstrap p-values, sort ascending p(1)<=...<=p(m), reject the rank-j test iff p(i) <= 0.05/(m-i+1) for ALL i<=j; a candidate QUALIFIES iff EVERY one of its positive tests is Holm-rejected at FWER 0.05. The per-test raw 95% CI (above) is DESCRIPTIVE ONLY and equals the raw unadjusted p<=0.05 decision \u2014 it is NECESSARY but NOT SUFFICIENT and is NEVER the gate. Raw-CI success is NOT Holm significance for any m>1: e.g. 24 tests each with raw p=0.04 all pass the raw rule but Holm rejects NONE (0.04 > 0.05/24). If a bound must express the gate it must be the multiplicity-adjusted level 1 - 0.05/(m-j+1) for the rank-j test, not a flat 95%.",
    "preservation_non_inferiority": {
     "ci": "upper_CI95 = 95th percentile of {diff_b}",
     "languages": [
@@ -283,7 +284,7 @@
      "swahili"
     ],
     "p_value": "p = mean_b[ diff_b >= 0.005 ]",
-    "pass": "non-inferior iff upper_CI95 <= 0.005 (equivalently Holm-adjusted p <= 0.05)",
+    "pass": "DESCRIPTIVE per-test summary: upper_CI95 <= 0.005 (== raw p <= 0.05). NOT the gate \u2014 see positive_gate.",
     "statistic": "diff_b = WER_cand,b - WER_base,b per paired bootstrap resample b"
    }
   },
@@ -310,7 +311,8 @@
    "tie_break_seed1_only": "the PROVISIONAL finalist = among Stage-1 qualifiers, DETERMINISTIC on SEED-1 RESULTS ONLY (seed-2 does not exist yet and is NEVER used for ranking): (1) lowest seed-1 preservation macro WER; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id"
   },
   "stage_2_replication": {
-   "confirm": "the finalist is the FINAL nomination iff it passes ALL constraints at Stage 2 (Stage-2 correction) with NO seed reversal; if it FAILS Stage 2 -> NO_RECIPE_QUALIFIES (no fallback to a Stage-1 runner-up)",
+   "confirm": "the finalist is the FINAL nomination iff NO seed reversal occurs (see reversal_definition): all 6 positive tests Holm-rejected at Stage-2 (fresh Holm, FWER 0.05, NOT re-corrected against Stage-1) AND no veto fires. The two seeds combine CONJUNCTIVELY (AND) \u2014 both stages must independently pass; seeds are NEVER pooled into one bootstrap, and ranking/tie-break uses seed-1 only. ANY reversal (or Stage-1 no qualifier) -> NO_RECIPE_QUALIFIES; NO fallback to a Stage-1 runner-up.",
+   "reversal_definition": "REVERSAL = seed-2 evidence overturns any component of the Stage-1 qualification: (a) POSITIVE reversal = any positive test Holm-rejected at Stage-1 is NOT Holm-rejected at Stage-2 (in the fresh 6-test finalist family, FWER 0.05); OR (b) SAFETY reversal = any directional veto that did NOT fire at Stage-1 FIRES at Stage-2 (raw upper_CI95 > 0.01). NO SEED REVERSAL <=> neither (a) nor (b) <=> at Stage-2 the finalist has ALL 6 positive tests Holm-rejected AND fires NO veto.",
    "runs": "ONLY the provisional finalist + H0 + KD_CONTROL trained FRESH @2000 under seed 2; re-scored on the SAME frozen nomination split",
    "seed": "seed 2"
   }
@@ -339,5 +341,5 @@
   "first_review": "THIS design + the exposure inventory + the machine-derived exposure index (PENDING_DESIGN_REVIEW); no code, no packets, no launch",
   "second_review": "AFTER implementation + tests + the measured-throughput benchmark: bind the exact code sha, trainer image digest, nomination manifest, and per-recipe execution packets BEFORE any launch"
  },
- "utc": "2026-08-25T05:00:00Z"
+ "utc": "2026-08-25T06:00:00Z"
 }
