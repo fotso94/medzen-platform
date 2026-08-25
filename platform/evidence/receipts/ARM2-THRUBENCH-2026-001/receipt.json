@@ -1,4 +1,32 @@
 {
+ "authoritative_reverification": {
+  "reading": "PASS, zero failures, against the SAME immutable job (no benchmark rerun): the corrected verifier scopes the CloudTrail principal by tier (below-tier: the calibration workflow role OR the owner's exact IAM user - the documented Codex-#24 local route this launch used) and accepts the run's in-image verifier sha as committed at the run's reviewed commit 40ae44b (da15b9ef...), supplied explicitly via --run-verifier-sha256 and recorded in the report. The original authoritative_verification block above is retained verbatim as history.",
+  "utc": "2026-08-25T21:04:30Z",
+  "verdict_verbatim": {
+   "authoritative": true,
+   "creation_event_verified": true,
+   "export_manifest_sha256": "c86b5dc4d2830882c600d05b176e78f362ec7eede239c3da037494b251b455b6",
+   "export_model_sha256": "2e9a1f6d59bd3d5f08633cb8b32a88441e01bca7c1bcb2f3685dc3f561719f5c",
+   "failures": [],
+   "launch_principal": null,
+   "metrics_sha256": "c42f04285eeda8b04f2e1b5cefcdd592d53c8bb1d235d999ad79f4ccdcd0ec51",
+   "mode": "live",
+   "model_artifacts_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-thrubench-2026-001/output/medzen-b5-b5-universal-arm2-thrubench-2026-001/output/model.tar.gz",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-SAGEMAKER-BINDINGS-2026-001.json",
+   "packet_canonical_sha256": "e8869f8d139b10965a2a8afde7bae04898d03961f5998037813836cc1af2bf6c",
+   "reverification": {
+    "note": "retrospective reverification after a reviewed verifier correction: the run's recorded in-image verifier sha was required to equal the sha of this script AS COMMITTED at the run's reviewed commit (supplied by the reviewer), not this reviewing verifier's own newer bytes",
+    "reviewing_verifier_own_sha256": "706a5ba8af32836ea214e09bd013e421dd2ee49e7e01a33b6545c53053134501",
+    "run_verifier_sha256": "da15b9efffcef54ffb63b9d98b8a4d29ed92eb3a479bb67ecaec9e72f2328a46"
+   },
+   "s3_bytes": 1548278411,
+   "s3_etag": "\"e85ecbf8e41de19dce19c61b11f88ba6-185\"",
+   "s3_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "k3L_AWgvDSDHvpYqU9Q_62BIaNcnuVWA",
+   "verdict": "PASS",
+   "verifier_script_sha256": "da15b9efffcef54ffb63b9d98b8a4d29ed92eb3a479bb67ecaec9e72f2328a46"
+  }
+ },
  "authoritative_verification": {
   "mode": "live",
   "reading": "EXACTLY ONE failing check of the full authoritative battery: the CloudTrail launch-principal pin (verifier expects the arm2-calibration workflow role, Codex #26 F6). This job was launched via the DOCUMENTED BELOW-TIER LOCAL route (Codex #24 boundary: medzen-tier=calibration jobs are locally creatable; b5_sagemaker_job.assert_launch_identity passes below-tier), under the owner's own IAM user s.fotso - which is exactly what CloudTrail honestly shows (an IAM user has no sessionIssuer, hence 'launched by None'). The protected calibration workflow could NOT have launched this packet: its exec workflow hardcodes the FTCAL bindings path. Every OTHER check PASSED: KMS-encrypted artifact fetched by exact VersionId and hashed; export model + manifest + metrics sha256 bound; the CloudTrail creation event located, error-free, response-ARN-matched and its requestParameters compared two-sided against the launcher's rendered request; per-row dev receipts recomputed. The verifier is NOT weakened by this receipt.",
@@ -26,6 +54,11 @@
   }
  },
  "billable_seconds": 1229,
+ "corrections": {
+  "principal_reverification": "see authoritative_reverification (appended by the same correction round)",
+  "timestamp_correction": "the original utc field (22:00:00Z) postdated the record's own commit (~20:19Z); the receipt was WRITTEN ~20:15Z. Codex stage-1 review finding 6.",
+  "utc_of_correction": "2026-08-25T20:56:55Z"
+ },
  "cost": {
   "billable_hours": 0.3414,
   "billable_seconds": 1229,

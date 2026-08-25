@@ -1086,6 +1086,19 @@ def make_batch_loss(config, teacher, *, metrics_sink=None):
     return _kd_closure
 
 
+def reseed_matched_rng(seed: int) -> None:
+    """Reset the torch (and CUDA) global RNG to `seed`. Called AFTER every
+    KD-conditional construction (teacher load) so KD-on and KD-off arms enter
+    the training path with an IDENTICAL RNG trajectory under a matched seed
+    (Codex stage-1 review 2026-08-25 finding 2). Kept as a tiny named helper
+    so the alignment is directly regression-testable without running main()."""
+    import torch
+
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
 def main() -> int:
     from pipeline.omniasr_export import export_merged_checkpoint
     from pipeline.omniasr_lora import lora_state_dict, wrap_lora
@@ -1129,6 +1142,13 @@ def main() -> int:
         from pipeline.omniasr_distill import load_teacher, teacher_freeze_audit
         teacher = load_teacher(config.kd_teacher_card, device, torch.bfloat16)
         teacher_freeze_audit(teacher)
+    # Codex stage-1 review (2026-08-25) finding 2: the teacher load above
+    # consumes torch RNG ONLY on KD-enabled arms, so under the SAME seed a
+    # KD-on candidate and the KD-off control would enter wrap/training with
+    # DIFFERENT RNG trajectories — breaking the matched-seed comparison the
+    # protocol requires. Re-seed after every conditional construction so both
+    # arms start the training path at the identical state.
+    reseed_matched_rng(config.seed)
     if config.train_mode == "lora":
         wrap_audit = wrap_lora(
             model, rank=config.lora_rank, alpha=config.lora_alpha,

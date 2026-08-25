@@ -1387,7 +1387,7 @@ def test_creation_event_envelope_binds_principal_account_and_success():
     for mutate, needle in [
         (lambda e: e["userIdentity"]["sessionContext"]["sessionIssuer"].update(
             arn="arn:aws:iam::558069890522:role/medzen-arm-launch-role"),
-         "expected calibration launch role"),
+         "expected tier-scoped launch principals"),
         (lambda e: e.update(recipientAccountId="111111111111"), "recipientAccountId"),
         (lambda e: e.update(awsRegion="us-east-1"), "awsRegion"),
         (lambda e: e.update(errorCode="AccessDenied"), "did not succeed"),

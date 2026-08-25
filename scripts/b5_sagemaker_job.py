@@ -109,16 +109,27 @@ def arm2_acceptance_criteria(spec: dict) -> list:
     contract (Codex review #21 F6: the prose criteria were freely mutable —
     `["PASS"]` rendered fine — so the human contract could contradict the
     machine contract; deriving the prose FROM result_verifier and requiring
-    byte-equality makes drift impossible)."""
+    byte-equality makes drift impossible).
+
+    Codex stage-1 review (2026-08-25) finding 4a: the KD-OFF comparative
+    control declares result_verifier.kd_enabled=false and its verifier requires
+    ZERO KD — the criteria must say the same thing, not demand positive KD."""
     steps = int(spec["expected_steps"])
     ceiling = int(spec["gpu_memory_ceiling_bytes"])
     dev = sorted(str(x).strip().lower() for x in spec["dev_sentinel_languages"])
     cov = sorted(str(x).strip().lower()
                  for x in spec["required_preservation_coverage"])
-    return [
-        f"the run completes exactly {steps} steps or fails closed (no silent success)",
+    kd_off = spec.get("kd_enabled") is False
+    kd_lines = ([
+        "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD identically ZERO on every step (KD-disabled control); total == ctc",
+        "no per-language KD coverage requirement (KD disabled) — the control still records the shared preservation coverage surface: " + ", ".join(cov),
+    ] if kd_off else [
         "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
         "per-language KD coverage (rows and valid frames) recorded for every preservation language: " + ", ".join(cov),
+    ])
+    return [
+        f"the run completes exactly {steps} steps or fails closed (no silent success)",
+        *kd_lines,
         f"peak GPU memory recorded and <= {ceiling} bytes",
         "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
         "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
@@ -697,11 +708,15 @@ def render_request(bindings: dict) -> dict:
             # Codex review #24: the OWNER-APPLIED local IAM boundary
             # (platform/iam/medzen-local-boundary-policy.json) denies
             # local CreateTrainingJob unless medzen-tier=calibration —
-            # arm-tier jobs are only creatable by the arm-launch role
+            # arm-tier jobs are only creatable by the arm-launch role.
+            # Codex stage-1 review (2026-08-25) finding 1: tier is decided by
+            # JOB CLASS, not price alone — a full comparative training arm
+            # (steps > the calibration boundary) is a CAMPAIGN job even at
+            # $5.60, so it can never ride the below-tier local path.
             {"Key": "medzen-tier",
-             "Value": ("calibration"
-                        if worst_case <= CALIBRATION_TIER_USD
-                        else "arm")},
+             "Value": ("arm"
+                        if is_campaign_arm_job(environment, worst_case)
+                        else "calibration")},
         ],
     }
 
@@ -738,6 +753,30 @@ def canonical_bindings_sha256(bindings: dict) -> str:
 
 
 CALIBRATION_TIER_USD = 10.0
+# Codex stage-1 review (2026-08-25) finding 1: calibration-SHAPED jobs
+# (mechanics receipts, the throughput benchmark) run <= this many steps; a
+# comparative job above it is a full training ARM regardless of its price.
+STAGE1_STEP_BOUNDARY = 30
+
+
+def is_campaign_arm_job(environment: dict, worst_case: float) -> bool:
+    """ARM (campaign) tier iff the worst case exceeds the calibration tier OR
+    the job is an Arm-2 comparative run training past the calibration step
+    boundary (Codex stage-1 review finding 1: the six 2000-step arms cost
+    $5.60 — below $10 — and would otherwise ride the below-tier local path,
+    bypassing the protected workflow, owner click, campaign reservation and
+    the atomic-$70 controls). Fail-closed: an unparseable MEDZEN_MAX_STEPS on
+    a comparative packet refuses upstream in parse/validate paths; here it is
+    treated as arm tier."""
+    if worst_case > CALIBRATION_TIER_USD:
+        return True
+    if is_arm2_comparative(environment):
+        try:
+            steps = int(str(environment.get("MEDZEN_MAX_STEPS", "")).strip())
+        except ValueError:
+            return True
+        return steps > STAGE1_STEP_BOUNDARY
+    return False
 AUTH_DIR = "platform/decisions/launch-authorizations"
 REVIEWS_DIR = "platform/decisions/reviews"
 INTENTS_DIR = "platform/decisions/launch-intents"
@@ -1457,7 +1496,11 @@ def main() -> int:
         head = repo_head_oid(root)
         receipt_record = None
         cal_packet = None
-        if worst_case > CALIBRATION_TIER_USD:
+        # Codex stage-1 review finding 1: tier by JOB CLASS, not price — a
+        # 2000-step comparative arm is a campaign job at any worst case.
+        above_tier = is_campaign_arm_job(bindings.get("environment") or {},
+                                         worst_case)
+        if above_tier:
             # the OUTERMOST boundary first: locally, above-tier launches
             # refuse no matter what the other gates say
             import os
@@ -1499,8 +1542,7 @@ def main() -> int:
             raise JobRefusal(
                 f"effective AWS account is {identity.get('Account')!r}, "
                 f"not the MedZen account {ACCOUNT} — refusing to launch")
-        assert_launch_identity(identity.get("Arn"),
-                               worst_case > CALIBRATION_TIER_USD)
+        assert_launch_identity(identity.get("Arn"), above_tier)
         if receipt_record is not None:
             verify_receipt_against_aws(receipt_record, cal_packet,
                                        session.client("sagemaker"),

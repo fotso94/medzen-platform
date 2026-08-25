@@ -54,6 +54,13 @@ MEDZEN_REGION = "eu-central-1"
 # verifier binds the CloudTrail principal to exactly this role.
 CALIBRATION_LAUNCH_ROLE_ARN = (
     "arn:aws:iam::558069890522:role/medzen-arm2-calibration-role")
+# Codex stage-1 review (2026-08-25) finding 4c — tier-scoped principals:
+# campaign/arm jobs are created ONLY by the protected arm-launch role; the
+# documented below-tier LOCAL route (Codex #24) runs under the owner's exact
+# IAM user (never an arbitrary principal).
+ARM_LAUNCH_ROLE_ARN = (
+    "arn:aws:iam::558069890522:role/medzen-arm-launch-role")
+OWNER_LOCAL_PRINCIPAL_ARN = "arn:aws:iam::558069890522:user/s.fotso"
 # the ONLY members live mode extracts from model.tar.gz (path-traversal-safe)
 # with per-member size caps (Codex #23: unbounded extraction was a
 # disk-exhaustion path)
@@ -876,9 +883,18 @@ def verify_creation_event(event: dict[str, Any], expected_request: dict[str, Any
              f"{response.get('trainingJobArn')!r} != {expected_job_arn!r}")
     identity = event.get("userIdentity") or {}
     issuer = (identity.get("sessionContext") or {}).get("sessionIssuer") or {}
-    if str(issuer.get("arn")) != expected_principal_role_arn:
-        fail(f"event was launched by {issuer.get('arn')!r}, not the expected "
-             f"calibration launch role {expected_principal_role_arn!r}")
+    # Codex stage-1 review (2026-08-25) finding 4c: an assumed role shows in
+    # sessionContext.sessionIssuer; a plain IAM user (the DOCUMENTED below-tier
+    # local route, Codex #24) has no sessionIssuer — its principal is
+    # userIdentity.arn. Extract the effective principal, then require it to be
+    # in the tier-scoped allowlist the caller supplies (exact ARNs only).
+    principal = str(issuer.get("arn") or identity.get("arn") or "")
+    allowed = (expected_principal_role_arn
+               if isinstance(expected_principal_role_arn, (tuple, list, set))
+               else (expected_principal_role_arn,))
+    if principal not in {str(a) for a in allowed}:
+        fail(f"event was launched by {principal!r}, not one of the expected "
+             f"tier-scoped launch principals {sorted(map(str, allowed))!r}")
     params = event.get("requestParameters") or {}
     if str(params.get("trainingJobName")) != expected_job_name:
         fail(f"requestParameters.trainingJobName {params.get('trainingJobName')!r}"
@@ -1290,6 +1306,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workdir", type=Path, default=None,
                         help="scratch directory for the --live download "
                              "(~2.6 GB); default: a temp dir")
+    parser.add_argument("--run-verifier-sha256", default=None,
+                        help="RETROSPECTIVE reverification after a REVIEWED "
+                             "verifier correction (Codex stage-1 review "
+                             "2026-08-25): the sha256 of scripts/"
+                             "verify_arm2_calibration.py AS COMMITTED at the "
+                             "run's reviewed commit (git show <run-commit>:"
+                             "scripts/verify_arm2_calibration.py | sha256). "
+                             "The run's recorded in-image verifier sha must "
+                             "equal EXACTLY this value; without the flag it "
+                             "must equal this verifier's own bytes (default, "
+                             "fail-closed). The report records both shas.")
     parser.add_argument("--metrics", type=Path, default=None,
                         help="LOCAL-CROSSCHECK/SMOKE only: a local "
                              "calibration-metrics.json. Never authoritative — "
@@ -1312,6 +1339,15 @@ def main(argv: list[str] | None = None) -> int:
     spec = load_verifier_spec(packet)
     packet_sha = _canonical_sha256(packet)
     verifier_sha = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
+    # retrospective reverification: the run must have used the reviewed
+    # verifier OF ITS OWN COMMIT (exact sha supplied by the reviewer); the
+    # report still records this verifier's own bytes separately.
+    own_verifier_sha = verifier_sha
+    if args.run_verifier_sha256:
+        import re as _re
+        if not _re.fullmatch(r"[0-9a-f]{64}", args.run_verifier_sha256):
+            raise SystemExit("--run-verifier-sha256 must be 64-hex")
+        verifier_sha = args.run_verifier_sha256
     job_id = str(packet.get("job_id") or "").strip()
     expected_job_name = f"medzen-b5-{job_id}" if job_id else None
     expected_contract_sha = str(
@@ -1331,12 +1367,26 @@ def main(argv: list[str] | None = None) -> int:
         # role created the job, in the right account/region, successfully, with
         # a two-sided requestParameters match (create-only smuggling caught).
         sys.path.insert(0, str(Path(__file__).resolve().parent))
-        from b5_sagemaker_job import render_request as _render
+        from b5_sagemaker_job import (ON_DEMAND_USD_PER_HOUR,
+                                      is_campaign_arm_job,
+                                      render_request as _render)
+        # Codex stage-1 review (2026-08-25) finding 4c: scope the principal
+        # expectation by TIER. Campaign/arm jobs must be created by the
+        # protected arm-launch role. Below-tier calibration-shaped jobs may be
+        # created by the calibration workflow role OR the documented local
+        # route under the OWNER's exact IAM user (Codex #24 boundary) — never
+        # an arbitrary principal.
+        _wc = (float(packet.get("max_runtime_seconds")) / 3600.0
+               * ON_DEMAND_USD_PER_HOUR[str(packet.get("instance_type"))])
+        _above = is_campaign_arm_job(packet.get("environment") or {}, _wc)
+        _expected = ((ARM_LAUNCH_ROLE_ARN,) if _above
+                     else (CALIBRATION_LAUNCH_ROLE_ARN,
+                           OWNER_LOCAL_PRINCIPAL_ARN))
         failures.extend(verify_creation_event(
             creation_event, _render(packet),
             expected_job_name=expected_job_name or "",
             expected_job_arn=str(receipt.get("TrainingJobArn") or ""),
-            expected_principal_role_arn=CALIBRATION_LAUNCH_ROLE_ARN))
+            expected_principal_role_arn=_expected))
         facts["creation_event_verified"] = True
         facts["launch_principal"] = (
             (creation_event.get("userIdentity") or {}).get("sessionContext")
@@ -1351,6 +1401,17 @@ def main(argv: list[str] | None = None) -> int:
             **facts,
             "failures": failures,
         }
+        if args.run_verifier_sha256:
+            report["reverification"] = {
+                "run_verifier_sha256": args.run_verifier_sha256,
+                "reviewing_verifier_own_sha256": own_verifier_sha,
+                "note": ("retrospective reverification after a reviewed "
+                         "verifier correction: the run's recorded in-image "
+                         "verifier sha was required to equal the sha of this "
+                         "script AS COMMITTED at the run's reviewed commit "
+                         "(supplied by the reviewer), not this reviewing "
+                         "verifier's own newer bytes"),
+            }
         print(json.dumps(report, indent=1, sort_keys=True, default=str))
         return 0 if not failures else 1
 

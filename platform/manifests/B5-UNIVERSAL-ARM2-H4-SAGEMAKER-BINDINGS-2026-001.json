@@ -75,7 +75,7 @@
  "execution_contract": {
   "note": "the image bakes THIS file; environment/distillation/result_verifier/job_id below are byte-equal to it by law (b5_sagemaker_job render refuses drift).",
   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H4-EXECUTION-CONTRACT-2026-001.json",
-  "sha256": "4a043fa2750dba145ae497ddec20526ec128d11c0e36bcd2cd1a74d1818766a9"
+  "sha256": "e6100478ebc9eb53917f37ea8e0e62354fd5e46ab0ea908e81e19a7e05c1dfdc"
  },
  "image_provenance": "built + scanned by .github/workflows/arm2-trainer-image-publish.yml (https://github.com/fotso94/medzen-platform/actions/runs/32889353847) from reviewed master commit 40ae44befa730c789b5f994cc75d61a3b2acf7b5",
  "image_tag": "arm2-ftcal-40ae44befa730c789b5f994cc75d61a3b2acf7b5",
@@ -117,7 +117,7 @@
   "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
   "metrics_artifact": "calibration-metrics.json",
   "metrics_schema": "b5-arm2-calibration-metrics/1",
-  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
+  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-H4-SAGEMAKER-BINDINGS-2026-001.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
   "required_preservation_coverage": [
    "english",
    "french",
@@ -135,6 +135,6 @@
   "subnet-00232b25bc1ac407a"
  ],
  "volume_gb": 100,
- "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 2h = $3.20 worst-case compute. Codex review #19 F6c: the earlier draft carried three inconsistent figures ($2.82 real-rate, $6.40, and the launcher's $3.20) \u2014 the launcher's $3.20 is the one the gate actually enforces (worst_case <= cost_ceiling), so it is canonical here. The $10 ceiling covers staging + retries.",
+ "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 3.5h (12,600 s) = $5.60 worst-case compute, under the $6 packet ceiling. Cap FINALIZED from the measured-throughput benchmark (fixed ~1073 s + ~5.18 s/step -> ~11,437 s projected; ~10.2% margin). Tier: CAMPAIGN/ARM by job class (Codex stage-1 review finding 1) \u2014 NEVER launchable below-tier despite the sub-$10 price.",
  "worst_case_usd": 5.6
 }

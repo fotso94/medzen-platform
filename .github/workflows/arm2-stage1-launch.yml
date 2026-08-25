@@ -1,0 +1,67 @@
+# Codex stage-1 review (2026-08-25) finding 1 item 2: CALLER for the six
+# 2000-step Arm-2 stage-1 campaign launches. The credential-bearing job lives
+# in the reusable arm2-stage1-launch-exec.yml (the file the stage-1 role's
+# job_workflow_ref trusts). Owner-initiated with an EXACT reviewed SHA and an
+# allowlisted packet; the preflight FAILS unless the `arm2-stage1-launch`
+# environment already exists WITH the owner as required reviewer (GitHub
+# silently creates referenced-but-missing environments WITHOUT protection).
+name: arm2-stage1-launch
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: exact 40-hex reviewed commit to launch from (must be on master)
+        required: true
+        type: string
+      packet:
+        description: exact stage-1 packet path (one of the six; allowlisted in the exec)
+        required: true
+        type: choice
+        options:
+          - platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.json
+          - platform/manifests/B5-UNIVERSAL-ARM2-H0-SAGEMAKER-BINDINGS-2026-001.json
+          - platform/manifests/B5-UNIVERSAL-ARM2-H1-SAGEMAKER-BINDINGS-2026-001.json
+          - platform/manifests/B5-UNIVERSAL-ARM2-H2-SAGEMAKER-BINDINGS-2026-001.json
+          - platform/manifests/B5-UNIVERSAL-ARM2-H3-SAGEMAKER-BINDINGS-2026-001.json
+          - platform/manifests/B5-UNIVERSAL-ARM2-H4-SAGEMAKER-BINDINGS-2026-001.json
+      confirm_launch:
+        description: pass LAUNCH to create the job; anything else is a dry-run
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: configuration must be present (a skip is not a pass)
+        run: |
+          if [ -z "${{ vars.MEDZEN_ARM2_STAGE1_ROLE_ARN }}" ]; then
+            echo "::error::MEDZEN_ARM2_STAGE1_ROLE_ARN is not set. Apply infra/arm2_stage1_launch_role.tf (arm2_stage1_launch_enabled=true) and set the repo variable — this run FAILS rather than silently skipping."
+            exit 1
+          fi
+          echo "stage-1 launch role variable present"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: the arm2-stage1-launch environment must exist WITH owner approval
+        run: |
+          set -euo pipefail
+          curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/arm2-stage1-launch" \
+            -o env.json || echo '{"__missing__":true}' > env.json
+          python scripts/verify_protected_environments.py --only-supplied \
+            --environment arm2-stage1-launch=env.json
+
+  launch:
+    needs: preflight
+    uses: ./.github/workflows/arm2-stage1-launch-exec.yml
+    with:
+      sha: ${{ inputs.sha }}
+      packet: ${{ inputs.packet }}
+      confirm_launch: ${{ inputs.confirm_launch }}
