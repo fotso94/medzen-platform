@@ -38,7 +38,7 @@
  "exposure_index_sha256": "9eee1039cac03bd784516d6e01d85fe02626991ac9bec989fb9c392a3e95763c",
  "holds": "the six 2000-step runs, sealed evaluation, promotion, deployment, and the $0.80 benchmark remain HELD; the sealed holdout is NEVER read by the mint; sealed identity extraction (if ever CLEARED_FOR_EXCLUSION) is a separate owner-adjudicated step with its own role and is NOT in scope here.",
  "independent_review_record": {
-  "binds": "the APPROVED record binds this packet's canonical sha256 AND the mint-script sha256 (approved_script_sha256) \u2014 CONTENT, not the self-referential commit OID (Codex round 38 #2). It is NOT_YET_CREATED; until the owner commits it, live_mint fails closed at the review gate.",
+  "binds": "the APPROVED record binds ONE trust_manifest_sha256 (Codex round 39 concern) \u2014 the canonical sha over EVERY trust-bearing file (packet, mint + producer + exposure-index generator + verifier scripts, the dependency lock, the three workflows, terraform, both IAM policies, the exposure index + dev-selection + lingala sentinel + dev-sentinels, and both admission ledgers + CODEOWNERS) read at the mint OID \u2014 so it approves the COMPLETE system, not just the packet + script, without OID circularity. NOT_YET_CREATED; live_mint fails closed until the owner commits it.",
   "path": "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-REVIEW-2026-001.json",
   "record_id": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-REVIEW-2026-001"
  },
@@ -304,11 +304,11 @@
   }
  ],
  "preconditions": [
-  "GENUINE OWNER ENFORCEMENT (Codex round 37 #1): master is branch-protected with a ruleset requiring CODEOWNER review, CODEOWNERS protects ITSELF and every trust-bearing path (scripts/workflows/tf/IAM/dep-locks/packets/ledgers), verified by scripts/verify_branch_protection.py BEFORE activation \u2014 without it CODEOWNERS is advisory and a writer could rewrite an approval, ledger and packet together",
-  "an APPROVED independent-review record (independent_review_record) committed and binding this packet's sha256 + the exact commit OID",
-  "independent review of this packet + the two admission ledgers + the approval / partition / quarantine / review records they cite",
+  "OWNER-RUN BRANCH-PROTECTION RECEIPT (Codex round 39 #2): the owner runs scripts/verify_branch_protection.py with admin auth against master's protection JSON, confirms it PASSES (CODEOWNER review, admin-enforced, no force-push/deletion, dismiss-stale, last-push approval, exact owner on every CODEOWNERS path), and commits the passing verdict as an activation receipt under platform/decisions/. The workflow does NOT read the protection API (the GITHUB_TOKEN lacks Administration:read); the LIVE authorization boundary is the two owner-approved protected environments (a human owner approves every producer and mint job).",
+  "an APPROVED independent-review record binding the trust_manifest_sha256 (the complete reviewed system)",
   "the OWNER creates BOTH protected environments and verifies them",
-  "the two legacy UNPINNED pidgin SEALED pools are pinned (exact VersionIds) or formally retired via a reviewed supersession record \u2014 the mint already refuses while they are unpinned (Codex round 37 #6)",
+  "the sealed identity-only authorities are produced (protected job) and the sealed-exclusion ledger admits one CLEARED_FOR_EXCLUSION entry per pinned sealed pool (quarantined cv17 with a separate clearance)",
+  "the two legacy UNPINNED pidgin SEALED pools are pinned (exact VersionIds) or formally retired via a reviewed supersession record \u2014 the mint refuses while they are unpinned",
   "the exposure index is machine-derived + current (--check)"
  ],
  "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
@@ -322,16 +322,16 @@
   "payload_sha256": "sha256 of the canonical payload (record+manifest+provenance)",
   "record": "B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-RESULT-2026-001"
  },
- "revision": "006 (Codex round 38: restored the top-level aws contract [the packet regeneration had dropped it \u2014 both live CLIs need aws.account/bucket/kms_key]; the review binds CONTENT [packet + mint-script sha] not the self-referential commit OID; the partition receipt binds parent+dev+sealed aggregates+counts and the mint checks dev+sealed==parent; sealed disjointness is reported per-method [identity-computed vs partition-proven]; the durable identity is the FILE artifact_sha256, not the payload result_sha256; branch protection must forbid admin bypass / force-push / deletion and dismiss stale reviews)",
+ "revision": "007 (Codex round 39: BY_CONSTRUCTION_DISJOINT removed \u2014 every sealed pool is proven disjoint by an IDENTITY ANTI-JOIN against a committed identity-only authority [the partition receipt proved only arithmetic]; the review binds ONE trust_manifest_sha256 over every trust-bearing file; branch protection is an owner-run activation RECEIPT + the protected-environment approval is the live boundary [the workflow token cannot read the protection API])",
  "sealed_exclusion": {
-  "by_construction_rule": "Codex round 37 #2: BY_CONSTRUCTION_DISJOINT is a MACHINE-VERIFIED PARTITION, not an attestation. The ledger entry cites a partition_receipt (committed, ATTEST_SEALED_PARTITION) binding the sealed manifest (key/sha256/VersionId) to a COMPLEMENTARY NOMINATION READ pool (key/sha256/VersionId + dev_aggregate_sha256 + dev_count) and asserting partition_verified. The mint verifies the complementary pool is one it actually reads AND that the read pool's ACTUAL identities reproduce the receipt's dev_aggregate \u2014 so nomination_split \u2286 dev-half \u21d2 disjoint from the sealed half, proven WITHOUT reading a sealed identity. Cross-language seals (no nomination read-pool complement) and the QUARANTINED cv17 pool therefore CANNOT be BY_CONSTRUCTION \u2014 they require CLEARED_FOR_EXCLUSION (identity anti-join), and the quarantined pool additionally a separate quarantine_clearance.",
+  "identity_only_rule": "Codex round 39 #1: every one of the pinned SEALED pools is proven disjoint from the nomination split by an IDENTITY ANTI-JOIN \u2014 a committed identity-only authority (audio_checksum_sha256 ONLY; never audio/transcripts/predictions/scores) whose count == the pinned rows and whose aggregate reproduces the sealed-ledger entry. The sealed IDENTITIES are produced ONCE by a protected identity-only job (its own role, reading only checksums) and admitted through the sealed-exclusion ledger. The quarantined cv17 pool additionally requires a SEPARATE quarantine_clearance. There is no by-construction/attestation path.",
   "mechanism": "identity-only, ledger-adjudicated. The mint NEVER fetches sealed manifest bytes. Each of the 11 pinned SEALED pools needs one ACTIVE ledger entry: BY_CONSTRUCTION_DISJOINT (a committed disjointness record; NO identities \u2014 the correct disposition for the dev/sealed complements and the cross-language seals, so an untouched seal is never read) or CLEARED_FOR_EXCLUSION (a supplied identity authority reproducing the committed aggregate).",
   "mint_reads_sealed_bytes": false,
   "quarantine_rule": "the quarantined cv17-test-v1-sealed pool needs a SEPARATE quarantine_clearance record (authorizes=CLEAR_SEALED_QUARANTINE), distinct from its ordinary admission \u2014 ordinary admission can never implicitly clear the quarantine.",
   "quarantined_pool": [
    "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl"
   ],
-  "reporting": "aggregate_overlap_counts.sealed is the IDENTITY-COMPUTED anti-join over CLEARED_FOR_EXCLUSION pools only; BY_CONSTRUCTION pools are PARTITION_PROVEN (dev-half == the mint's read pool; dev+sealed==parent), never reported as an identity-compared 0. See exclusion_provenance.sealed_disjointness.",
+  "reporting": "aggregate_overlap_counts.sealed is the real IDENTITY anti-join of the split against the union of ALL sealed authorities; exclusion_provenance.sealed_disjointness.method == IDENTITY_ANTI_JOIN_ALL_POOLS.",
   "sealed_pools": [
    "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
    "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
@@ -379,6 +379,32 @@
   "status": "PENDING (genesis only) \u2014 no artifact admitted; mint fails closed"
  },
  "training_index_ledger_sha256": "42ed07497727fe5ce0e203acd7f09c3a5959c3a1f0361fdbd9d3d97af511ebfa",
+ "trust_manifest": {
+  "files": [
+   "scripts/mint_arm2_nomination_split.py",
+   "scripts/build_arm2_training_identity_index.py",
+   "scripts/build_arm2_exposure_index.py",
+   "scripts/verify_branch_protection.py",
+   "scripts/verify_protected_environments.py",
+   "scripts/requirements/arm2-launch.txt",
+   ".github/workflows/arm2-nomination-mint.yml",
+   ".github/workflows/arm2-nomination-mint-producer-exec.yml",
+   ".github/workflows/arm2-nomination-mint-mint-exec.yml",
+   "infra/arm2_nomination_mint_role.tf",
+   "platform/iam/medzen-arm2-nomination-mint-role.json",
+   "platform/iam/medzen-arm2-training-index-role.json",
+   "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
+   "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
+   "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json",
+   "platform/manifests/dev-sentinels/lingala.jsonl",
+   "platform/manifests/dev-sentinels/swahili.jsonl",
+   "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001.json",
+   "platform/evidence/ARM2-TRAINING-INDEX-ADMISSION-LEDGER.jsonl",
+   "platform/evidence/ARM2-SEALED-EXCLUSION-LEDGER.jsonl",
+   ".github/CODEOWNERS"
+  ],
+  "note": "build_trust_manifest() reads each file at the mint OID -> canonical {path: sha256} -> trust_manifest_sha256; the review binds that hash."
+ },
  "trust_oid_binding": "Codex round 37 #3/#5: live_mint captures ONE immutable git OID (git rev-parse HEAD) and reads EVERY trust-bearing file through git show <OID>:<path> \u2014 the exposure index, both ledgers, all approval/partition/review records, the candidate + veto identity manifests, AND the running script. commit_oid in the result is that OID (not a caller-supplied GITHUB_SHA); running_script_sha256 is the script as committed at the OID. Working-tree reads of trust inputs are eliminated.",
  "unpinned_eligible_pools_excluded": [
   "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",

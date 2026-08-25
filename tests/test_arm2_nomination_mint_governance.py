@@ -279,13 +279,12 @@ def test_codeowners_names_the_exact_owner_and_covers_dev_sentinels():
     assert codeowners_covers(co, owner="@someone-else")     # wrong owner fails
 
 
-def test_branch_protection_is_wired_into_the_caller_preflight():
+def test_branch_protection_verifier_is_referenced_as_owner_receipt():
+    # round 39 #2: the verifier is an OWNER-RUN receipt (referenced in the caller
+    # note + the packet precondition), NOT an in-workflow API call
     caller = (_WF / "arm2-nomination-mint.yml").read_text()
     assert "verify_branch_protection.py" in caller
-    assert "branches/master/protection" in caller
-    # it runs in preflight (before the produce/mint credential jobs)
-    pre, _, rest = caller.partition("  produce:")
-    assert "verify_branch_protection.py" in pre
+    assert "branches/master/protection" not in caller
 
 
 def test_codeowners_covers_itself_and_every_trust_path():
@@ -305,12 +304,34 @@ def test_packet_requires_review_record_and_branch_protection():
     assert _PACKET["independent_review_record"]["record_id"].endswith("REVIEW-2026-001")
     assert "trust_oid_binding" in _PACKET
     joined = " ".join(_PACKET["preconditions"]).lower()
-    assert "branch-protected" in joined or "branch protection" in joined
+    assert "branch-protection receipt" in joined or "branch protection" in joined
     assert "approved independent-review" in joined
-    assert _PACKET["sealed_exclusion"]["by_construction_rule"]
+    # round 39: sealed exclusion is identity-only (no by-construction rule)
+    assert _PACKET["sealed_exclusion"]["identity_only_rule"]
+    assert "trust_manifest" in _PACKET
+    assert _PACKET["independent_review_record"]["binds"].count("trust_manifest_sha256")
 
 
-def test_by_construction_rule_names_partition_and_forbids_quarantine():
-    rule = _PACKET["sealed_exclusion"]["by_construction_rule"].lower()
-    assert "partition" in rule and "actual" in rule
-    assert "quarantined" in rule and "cannot be by_construction" in rule
+def test_sealed_exclusion_is_identity_only():
+    """Codex round 39 #1: no by-construction; every sealed pool is an identity
+    anti-join."""
+    se = _PACKET["sealed_exclusion"]
+    assert "by_construction_rule" not in se
+    rule = se["identity_only_rule"].lower()
+    assert "identity anti-join" in rule and "audio_checksum_sha256 only" in rule
+    assert "no by-construction" in rule
+    assert se["mint_reads_sealed_bytes"] is False
+
+
+def test_branch_protection_is_an_owner_receipt_not_a_workflow_api_call():
+    """Codex round 39 #2: the workflow does NOT read the protection API (the
+    token lacks Administration:read); it is an owner-run receipt + the protected
+    environment is the live boundary."""
+    caller = (_WF / "arm2-nomination-mint.yml").read_text()
+    assert "branches/master/protection" not in caller   # no broken API call
+    assert "OWNER-RUN ACTIVATION RECEIPT" in caller
+    # the protected environments remain the live authorization boundary
+    assert "verify_protected_environments.py --only-supplied" in caller
+    joined = " ".join(_PACKET["preconditions"]).lower()
+    assert "owner-run branch-protection receipt" in joined
+    assert "administration:read" in joined

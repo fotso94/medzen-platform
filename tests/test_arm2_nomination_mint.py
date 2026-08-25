@@ -195,54 +195,16 @@ class _World:
                     "path": f"platform/decisions/{qid}.json",
                     "sha256": _sha(self.committed[f"platform/decisions/{qid}.json"]),
                     "record_id": qid}
-            complement = key.replace("sealed", "dev")
-            quarantined = pin.get("role") == "kinyarwanda_eval_quarantined"
-            if (complement in read_pool_keys(self.index) and not quarantined
-                    and key != self.force_cleared_key):
-                # BY_CONSTRUCTION: a machine-verified partition receipt binding
-                # the complementary nomination READ pool
-                comp_pin = next(sp for sp in self.index["pinned_sources"]
-                                if sp.get("key") == complement)
-                dev_ids = self.pool_identities[complement]
-                dev_n, dev_agg = _agg(dev_ids)
-                rid = "ARM2-SEAL-PARTITION-" + _sha(key.encode())[:10]
-                sealed_count = int(pin.get("rows") or 1)
-                sealed_agg = _agg(_ck(f"sealedpart:{key}", i)
-                                  for i in range(sealed_count))[1]
-                parent_count = dev_n + sealed_count
-                doc = {"record": rid, "authorizes": "ATTEST_SEALED_PARTITION",
-                       "sealed_key": key, "partition_verified": True,
-                       "owner_verbatim": "owner partition attestation (fixture)",
-                       "generator": "scripts/partition_prover.py",
-                       "algorithm": "tier2-dev-sealed-split-v1", "seed": "0",
-                       "sealed_sha256": pin["sha256"],
-                       "sealed_s3_version_id": pin["s3_version_id"],
-                       "sealed_aggregate_sha256": sealed_agg,
-                       "sealed_count": sealed_count,
-                       "complementary_read_pool_key": complement,
-                       "complementary_sha256": comp_pin["sha256"],
-                       "complementary_s3_version_id": comp_pin["s3_version_id"],
-                       "dev_aggregate_sha256": dev_agg, "dev_count": dev_n,
-                       "parent_manifest_key": key.replace("-sealed", "-full"),
-                       "parent_aggregate_sha256": _agg([str(parent_count)])[1],
-                       "parent_count": parent_count}
-                self.committed[f"platform/decisions/{rid}.json"] = _canon(doc)
-                entry["disposition"] = "BY_CONSTRUCTION_DISJOINT"
-                entry["partition_receipt"] = {
-                    "path": f"platform/decisions/{rid}.json",
-                    "sha256": _sha(self.committed[f"platform/decisions/{rid}.json"]),
-                    "record_id": rid}
-            else:
-                # CLEARED_FOR_EXCLUSION: identity anti-join (cross-language +
-                # quarantined seals with no nomination read-pool complement)
-                ids = sorted(_ck(f"sealed:{key}", i)
-                             for i in range(int(pin.get("rows") or 1)))
-                self.sealed_ids[key] = ids
-                su, sagg = _agg(ids)
-                entry["disposition"] = "CLEARED_FOR_EXCLUSION"
-                entry["identity_unique"] = su
-                entry["identity_aggregate_sha256"] = sagg
-                self.sealed_authorities.append({"key": key, "identities": ids})
+            # Codex round 39: EVERY sealed pool is CLEARED_FOR_EXCLUSION —
+            # proven disjoint by an identity anti-join (no by-construction path)
+            ids = sorted(_ck(f"sealed:{key}", i)
+                         for i in range(int(pin.get("rows") or 1)))
+            self.sealed_ids[key] = ids
+            su, sagg = _agg(ids)
+            entry["disposition"] = "CLEARED_FOR_EXCLUSION"
+            entry["identity_unique"] = su
+            entry["identity_aggregate_sha256"] = sagg
+            self.sealed_authorities.append({"key": key, "identities": ids})
             entry.update(self.sealed_entries_extra.get(key, {}))
             sealed_entries.append(entry)
         sealed_ledger = _jsonl(sealed_entries)
@@ -503,27 +465,22 @@ def test_rolled_back_ledger_head_sha_refuses(monkeypatch):
 # Codex round 36 A7 — completeness never forces reading an untouched seal
 # --------------------------------------------------------------------------
 
-def test_by_construction_pools_read_no_seal_identities(monkeypatch):
+def test_every_sealed_pool_is_identity_anti_join(monkeypatch):
+    """Codex round 39 #1: no BY_CONSTRUCTION path — EVERY pinned sealed pool is
+    CLEARED_FOR_EXCLUSION (identity anti-join), reported honestly."""
     w = _World()
     w.build(monkeypatch)
     m = w.mint()
     assert m["status"] == "FROZEN"
     prov = {p["key"]: p for p in m["exclusion_provenance"]["sealed_authorities"]}
-    by_construction = [k for k, v in prov.items()
-                       if v["disposition"] == "BY_CONSTRUCTION_DISJOINT"]
-    cleared = [k for k, v in prov.items()
-               if v["disposition"] == "CLEARED_FOR_EXCLUSION"]
-    # the 6 same-language dev/sealed complements are BY_CONSTRUCTION (zero
-    # identities); the cross-language + quarantined seals are CLEARED
-    assert len(by_construction) == 6 and len(cleared) == 5
-    for k in by_construction:
-        assert prov[k]["sealed_disjointness"] == "PARTITION_PROVEN_NOT_IDENTITY_COMPUTED"
-    # every quarantined pool is CLEARED, never BY_CONSTRUCTION
     from mint_arm2_nomination_split import sealed_pools as _sp
-    quarantined = [k for k, v in _sp(w.index).items()
-                   if v.get("role") == "kinyarwanda_eval_quarantined"]
-    for q in quarantined:
-        assert q in cleared
+    assert set(prov) == set(_sp(w.index))                 # complete coverage
+    for v in prov.values():
+        assert v["disposition"] == "CLEARED_FOR_EXCLUSION"
+        assert v["sealed_disjointness"] == "IDENTITY_COMPUTED"
+    sd = m["exclusion_provenance"]["sealed_disjointness"]
+    assert sd["method"] == "IDENTITY_ANTI_JOIN_ALL_POOLS"
+    assert len(sd["identity_computed_pools"]) == len(_sp(w.index))
 
 
 def test_incomplete_sealed_ledger_refuses(monkeypatch):
@@ -742,49 +699,27 @@ def _synthetic_world(monkeypatch, n=3):
                              "sha256": _sha(committed["platform/decisions/SYN-TRAIN.json"]),
                              "record_id": "SYN-TRAIN"}}])
     committed[TRAINING_INDEX_LEDGER] = train_ledger
-    # sealed: the one sealed pool as BY_CONSTRUCTION, proven by a partition
-    # receipt binding the english DEV read pool (no sealed read)
+    # sealed: CLEARED_FOR_EXCLUSION with identities (identity anti-join)
     skey = "eval/english/sealed/manifest.jsonl"
     spin = next(s for s in sources if s["key"] == skey)
-    comp_key = "eval/english/dev/manifest.jsonl"
-    comp_pin = next(s for s in sources if s["key"] == comp_key)
-    dev_ids = [_ck(comp_key, i) for i in range(n)]
-    dev_n, dev_agg = _agg(dev_ids)
+    sealed_ids = sorted(_ck("synsealed", i) for i in range(n))
+    su, sagg = _agg(sealed_ids)
     committed["platform/decisions/SYN-SEAL.json"] = _approval(
         "SYN-SEAL", "ADMIT_SEALED_EXCLUSION", "key", skey)
-    part = {"record": "SYN-PART", "authorizes": "ATTEST_SEALED_PARTITION",
-            "sealed_key": skey, "partition_verified": True,
-            "owner_verbatim": "syn partition",
-            "generator": "scripts/partition_prover.py",
-            "algorithm": "tier2-dev-sealed-split-v1", "seed": "0",
-            "sealed_sha256": spin["sha256"],
-            "sealed_s3_version_id": spin["s3_version_id"],
-            "sealed_aggregate_sha256": _agg(_ck("synsealed", i)
-                                            for i in range(n))[1],
-            "sealed_count": n,
-            "complementary_read_pool_key": comp_key,
-            "complementary_sha256": comp_pin["sha256"],
-            "complementary_s3_version_id": comp_pin["s3_version_id"],
-            "dev_aggregate_sha256": dev_agg, "dev_count": dev_n,
-            "parent_manifest_key": "eval/english/full/manifest.jsonl",
-            "parent_aggregate_sha256": _agg([str(dev_n + n)])[1],
-            "parent_count": dev_n + n}
-    committed["platform/decisions/SYN-PART.json"] = _canon(part)
     sealed_ledger = _jsonl([
         {"event": "LEDGER_OPENED_PENDING", "record": "s"},
         {"event": "ADMITTED", "key": skey, "class": "SEALED",
          "language": "english", "rows": n, "sha256": spin["sha256"],
          "s3_version_id": spin["s3_version_id"],
-         "disposition": "BY_CONSTRUCTION_DISJOINT",
+         "disposition": "CLEARED_FOR_EXCLUSION",
+         "identity_unique": su, "identity_aggregate_sha256": sagg,
          "exposure_index_sha256": index_sha, "producer_role": "o",
          "workflow_run_ref": "t", "commit_sha": "t",
          "approval_record": {"path": "platform/decisions/SYN-SEAL.json",
                              "sha256": _sha(committed["platform/decisions/SYN-SEAL.json"]),
-                             "record_id": "SYN-SEAL"},
-         "partition_receipt": {"path": "platform/decisions/SYN-PART.json",
-                               "sha256": _sha(committed["platform/decisions/SYN-PART.json"]),
-                               "record_id": "SYN-PART"}}])
+                             "record_id": "SYN-SEAL"}}])
     committed[SEALED_EXCLUSION_LEDGER] = sealed_ledger
+    syn_sealed_authorities = [{"key": skey, "identities": sealed_ids}]
 
     packet = {"aws": {"account": _ACCOUNT, "kms_key": _SYN_KMS,
                       "bucket": "medzen-speech"},
@@ -803,12 +738,6 @@ def _synthetic_world(monkeypatch, n=3):
     # the APPROVED independent-review record binds this packet's canonical sha256
     # AND the mint-script sha (CONTENT, not the self-referential commit OID —
     # Codex round 38 #2)
-    committed["platform/decisions/SYN-REVIEW.json"] = _canon({
-        "record": "SYN-REVIEW", "authorizes": "APPROVE_LIVE_MINT",
-        "status": "APPROVED", "owner_verbatim": "owner approves this mint",
-        "packet_sha256": _sha(_canon(packet)),
-        "approved_script_sha256": mint_mod._running_script_sha256()})
-
     real_read = mint_mod._read_committed
 
     def fake_read(relpath, *, allowed_prefixes, repo_root=mint_mod.ROOT):
@@ -820,6 +749,15 @@ def _synthetic_world(monkeypatch, n=3):
                          repo_root=repo_root)
 
     monkeypatch.setattr(mint_mod, "_read_committed", fake_read)
+    # the APPROVED review binds the trust manifest INCLUDING the fixture
+    # (populated) ledgers — computed under the fake, exactly as the mint will
+    # (Codex round 39: the review approves the complete system incl. ledgers)
+    with mint_mod._trust_oid(mint_mod._resolve_head_oid()):
+        _tm_sha = mint_mod.build_trust_manifest()[1]
+    committed["platform/decisions/SYN-REVIEW.json"] = _canon({
+        "record": "SYN-REVIEW", "authorizes": "APPROVE_LIVE_MINT",
+        "status": "APPROVED", "owner_verbatim": "owner approves this mint",
+        "trust_manifest_sha256": _tm_sha})
     calls = []
 
     def reader(key, s3_version_id):
@@ -829,15 +767,16 @@ def _synthetic_world(monkeypatch, n=3):
 
     caller = {"Account": _ACCOUNT,
               "Arn": f"arn:aws:sts::{_ACCOUNT}:assumed-role/{_MINT_ROLE}/run"}
-    return (index_bytes, packet, reader, training_bytes, caller, calls)
+    return (index_bytes, packet, reader, training_bytes, caller, calls,
+            syn_sealed_authorities)
 
 
 def test_live_mint_successful_rehearsal_is_frozen_and_reads_no_seal(monkeypatch):
-    index_bytes, packet, reader, training_bytes, caller, calls = \
+    index_bytes, packet, reader, training_bytes, caller, calls, syn_sealed = \
         _synthetic_world(monkeypatch)
     result = live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                        caller_identity=caller, training_index_bytes=training_bytes,
-                       sealed_authorities=[])
+                       sealed_authorities=syn_sealed)
     assert result["manifest"]["status"] == "FROZEN"
     assert result["manifest"]["aggregate_overlap_counts"]["sealed"] == 0
     assert not [k for k in calls if "sealed" in k]   # seal never read
@@ -859,16 +798,16 @@ def test_live_mint_successful_rehearsal_is_frozen_and_reads_no_seal(monkeypatch)
 
 
 def test_live_mint_refuses_tampered_index_bytes(monkeypatch):
-    index_bytes, packet, reader, training_bytes, caller, _ = \
+    index_bytes, packet, reader, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     with pytest.raises(MintRefusal, match="tampered index"):
         live_mint(packet, index_bytes=index_bytes + b" ", s3_reader=reader,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
 
 def test_live_mint_refuses_fabricated_object_bytes(monkeypatch):
-    index_bytes, packet, _, training_bytes, caller, _ = \
+    index_bytes, packet, _, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
 
     def evil(key, s3_version_id):
@@ -878,16 +817,16 @@ def test_live_mint_refuses_fabricated_object_bytes(monkeypatch):
     with pytest.raises(MintRefusal, match="unverified bytes"):
         live_mint(packet, index_bytes=index_bytes, s3_reader=evil,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
 
 def test_live_mint_refuses_without_reader(monkeypatch):
-    index_bytes, packet, _, training_bytes, caller, _ = \
+    index_bytes, packet, _, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     with pytest.raises(LiveMintForbidden, match="reader"):
         live_mint(packet, index_bytes=index_bytes, s3_reader=None,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
 
 @pytest.mark.parametrize("caller,pattern", [
@@ -900,16 +839,16 @@ def test_live_mint_refuses_without_reader(monkeypatch):
       "Arn": f"arn:aws:sts::999:assumed-role/{_MINT_ROLE}/x"}, "not exactly"),
 ])
 def test_live_mint_asserts_exact_caller_identity(monkeypatch, caller, pattern):
-    index_bytes, packet, reader, training_bytes, _, _ = \
+    index_bytes, packet, reader, training_bytes, _, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     with pytest.raises(MintRefusal, match=pattern):
         live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
 
 def test_live_mint_refuses_packet_pinning_a_sealed_fetch(monkeypatch):
-    index_bytes, packet, reader, training_bytes, caller, _ = \
+    index_bytes, packet, reader, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     packet["pinned_objects"].append(
         {"key": "eval/english/sealed/manifest.jsonl", "class": "SEALED",
@@ -918,7 +857,7 @@ def test_live_mint_refuses_packet_pinning_a_sealed_fetch(monkeypatch):
     with pytest.raises(MintRefusal, match="NEVER reads sealed"):
         live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
 
 # --------------------------------------------------------------------------
@@ -934,11 +873,11 @@ def test_pure_and_live_paths_touch_no_aws_sdk(monkeypatch):
         return real_import(name, *a, **k)
 
     monkeypatch.setattr(builtins, "__import__", no_aws)
-    index_bytes, packet, reader, training_bytes, caller, _ = \
+    index_bytes, packet, reader, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     assert live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                      caller_identity=caller, training_index_bytes=training_bytes,
-                     sealed_authorities=[])["manifest"]["status"] == "FROZEN"
+                     sealed_authorities=syn_sealed)["manifest"]["status"] == "FROZEN"
 
 
 def test_main_live_calls_live_mint_and_fails_closed_on_pending(monkeypatch, tmp_path):
@@ -1065,83 +1004,24 @@ def test_real_index_with_unpinned_seals_refuses(monkeypatch):
                            sealed_authorities=w.sealed_authorities, status="FROZEN")
 
 
-def test_identity_authority_for_a_by_construction_pool_refuses(monkeypatch):
-    """Self-audit tightening: supplying identities for a BY_CONSTRUCTION_DISJOINT
-    pool is meaningless and refuses (it was previously silently ignored)."""
-    from mint_arm2_nomination_split import sealed_pools as _sp
-    w = _World()
-    w.build(monkeypatch)
-    # find a BY_CONSTRUCTION pool (any sealed pool except the cleared one)
-    by_construction = next(k for k in sorted(_sp(w.index))
-                           if k != w.cleared_key)
-    w.sealed_authorities = w.sealed_authorities + [
-        {"key": by_construction, "identities": [_ck("x", 0)]}]
-    with pytest.raises(MintRefusal, match="BY_CONSTRUCTION"):
-        w.mint()
-
 
 # --------------------------------------------------------------------------
 # Codex round 37 regressions
 # --------------------------------------------------------------------------
 
-def test_quarantined_pool_cannot_be_by_construction(monkeypatch):
-    """#2: a bare/partition disposition may NEVER clear the quarantined pool."""
-    from mint_arm2_nomination_split import sealed_pools as _sp
-    quarantined = next(k for k, v in _sp(_PINNED_INDEX).items()
-                       if v.get("role") == "kinyarwanda_eval_quarantined")
-    w = _World()
-    w.sealed_entries_extra = {quarantined: {
-        "disposition": "BY_CONSTRUCTION_DISJOINT",
-        "identity_unique": None, "identity_aggregate_sha256": None}}
-    w.build(monkeypatch)
-    with pytest.raises(MintRefusal, match="may NOT use"):
-        w.mint()
 
-
-def test_partition_receipt_sha_mismatch_refuses(monkeypatch):
-    """#2: the partition receipt is sha-bound to the committed doc."""
-    w = _World()
-    w.build(monkeypatch)
-    # corrupt a BY_CONSTRUCTION pool's committed partition receipt doc
-    part_path = next(k for k in w.committed if "SEAL-PARTITION" in k)
-    w.committed[part_path] = w.committed[part_path] + b" "
-    with pytest.raises(MintRefusal, match="sha256 mismatch"):
-        w.mint()
-
-
-def test_partition_receipt_must_match_actual_read_identities(monkeypatch):
-    """#2 core: the receipt's dev_aggregate must reproduce from the mint's
-    ACTUAL read identities — a bare attestation cannot stand in."""
-    w = _World()
-    w.build(monkeypatch)
-    # after build, change the complement read pool the mint actually uses so it
-    # no longer matches the receipt's committed dev aggregate
-    comp = "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl"
-    w.pool_identities[comp] = w.pool_identities[comp] + [_ck("extra", 0)]
-    with pytest.raises(MintRefusal, match="dev aggregate does not reproduce"):
-        w.mint()
 
 
 def test_live_mint_refuses_without_approved_review(monkeypatch):
     """#4: no APPROVED independent-review record => refuse."""
-    index_bytes, packet, reader, training_bytes, caller, _ = \
+    index_bytes, packet, reader, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
     packet.pop("independent_review_record")
     with pytest.raises(MintRefusal, match="independent_review_record"):
         live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
+                  sealed_authorities=syn_sealed)
 
-
-def test_live_mint_refuses_review_bound_to_a_different_packet(monkeypatch):
-    """#4: the review must bind THIS packet's canonical sha256."""
-    index_bytes, packet, reader, training_bytes, caller, _ = \
-        _synthetic_world(monkeypatch)
-    packet["aws"] = dict(packet["aws"], bucket="tampered")  # changes canon sha
-    with pytest.raises(MintRefusal, match="does not bind THIS packet"):
-        live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
-                  caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
 
 
 def test_candidate_and_veto_are_read_through_the_committed_seam(monkeypatch):
@@ -1179,82 +1059,52 @@ def test_committed_packet_has_the_immutable_aws_contract():
     assert rev.get("path") and rev.get("record_id")
 
 
-def test_review_binds_the_running_script_not_a_commit_oid(monkeypatch):
-    """#2: the review binds CONTENT (approved_script_sha256); a review approved
-    for a DIFFERENT script sha refuses, and there is no self-referential OID."""
-    index_bytes, packet, reader, training_bytes, caller, _ = \
+
+def test_review_binds_the_full_trust_manifest_not_a_commit_oid(monkeypatch):
+    """Codex round 39 concern: the review binds ONE trust_manifest_sha256 over
+    every trust-bearing file; a review approving a different system refuses, and
+    there is no self-referential commit OID."""
+    index_bytes, packet, reader, training_bytes, caller, _, syn_sealed = \
         _synthetic_world(monkeypatch)
-    # overwrite the review with a wrong approved_script_sha256
-    committed_review = json.loads(
-        mint_mod._read_committed("platform/decisions/SYN-REVIEW.json",
-                                 allowed_prefixes=("platform/decisions/",)))
-    committed_review["approved_script_sha256"] = "0" * 64
-    # re-inject via a fresh fake that serves the tampered review
+    tampered = json.loads(mint_mod._read_committed(
+        "platform/decisions/SYN-REVIEW.json", allowed_prefixes=("platform/decisions/",)))
+    tampered["trust_manifest_sha256"] = "0" * 64
     real = mint_mod._read_committed
     def fake(relpath, *, allowed_prefixes, repo_root=mint_mod.ROOT):
         if relpath == "platform/decisions/SYN-REVIEW.json":
-            return _canon(committed_review)
+            return _canon(tampered)
         return real(relpath, allowed_prefixes=allowed_prefixes, repo_root=repo_root)
     monkeypatch.setattr(mint_mod, "_read_committed", fake)
-    with pytest.raises(MintRefusal, match="mint script sha"):
+    with pytest.raises(MintRefusal, match="trust manifest"):
         live_mint(packet, index_bytes=index_bytes, s3_reader=reader,
                   caller_identity=caller, training_index_bytes=training_bytes,
-                  sealed_authorities=[])
-    # the harness no longer checks a self-referential commit_oid on the review
-    assert "commit_oid) != oid" not in \
-        (_REPO / "scripts/mint_arm2_nomination_split.py").read_text()
+                  sealed_authorities=syn_sealed)
+    # no self-referential commit_oid check remains on the review
+    src = (_REPO / "scripts/mint_arm2_nomination_split.py").read_text()
+    assert "commit_oid) != oid" not in src
 
 
-def test_partition_receipt_requires_the_partition_arithmetic(monkeypatch):
-    """#3: the receipt must bind parent+sealed and satisfy dev+sealed==parent —
-    a receipt whose counts don't partition refuses."""
-    w = _World()
-    w.build(monkeypatch)
-    part_path = next(k for k in w.committed if "SEAL-PARTITION" in k)
-    doc = json.loads(w.committed[part_path])
-    doc["parent_count"] = doc["dev_count"] + doc["sealed_count"] + 1   # break it
-    w.committed[part_path] = _canon(doc)
-    # re-point the ledger entry's receipt sha to the mutated doc
-    lines = w.committed[SEALED_EXCLUSION_LEDGER].decode().splitlines()
-    for i, ln in enumerate(lines):
-        e = json.loads(ln)
-        pr = e.get("partition_receipt")
-        if isinstance(pr, dict) and pr.get("path") == part_path:
-            e["partition_receipt"] = dict(pr, sha256=_sha(w.committed[part_path]))
-            lines[i] = _canon(e).decode()
-    # rebuild the chain + head pin
-    rebuilt = []
-    for i, ln in enumerate(lines):
-        e = json.loads(ln)
-        if i > 0:
-            e["prev_sha256"] = _sha(rebuilt[-1].encode())
-        rebuilt.append(_canon(e).decode())
-    new = ("\n".join(rebuilt) + "\n").encode()
-    w.committed[SEALED_EXCLUSION_LEDGER] = new
-    w.packet["sealed_exclusion_ledger_sha256"] = _sha(new)
-    with pytest.raises(MintRefusal, match="not a partition"):
-        w.mint()
+def test_trust_manifest_covers_the_complete_system():
+    from mint_arm2_nomination_split import TRUST_MANIFEST_FILES
+    needed = ("scripts/mint_arm2_nomination_split.py",
+              "scripts/build_arm2_training_identity_index.py",
+              "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001.json",
+              "platform/evidence/ARM2-TRAINING-INDEX-ADMISSION-LEDGER.jsonl",
+              "platform/evidence/ARM2-SEALED-EXCLUSION-LEDGER.jsonl",
+              ".github/workflows/arm2-nomination-mint-mint-exec.yml",
+              "infra/arm2_nomination_mint_role.tf",
+              "platform/iam/medzen-arm2-nomination-mint-role.json",
+              ".github/CODEOWNERS")
+    for f in needed:
+        assert f in TRUST_MANIFEST_FILES, f
+    # every listed file exists + is committed-readable
+    for rel in TRUST_MANIFEST_FILES:
+        assert (_REPO / rel).exists(), rel
 
 
-def test_partition_receipt_missing_parent_refuses(monkeypatch):
-    w = _World()
-    w.build(monkeypatch)
-    part_path = next(k for k in w.committed if "SEAL-PARTITION" in k)
-    doc = json.loads(w.committed[part_path])
-    doc.pop("parent_manifest_key")
-    w.committed[part_path] = w.committed[part_path]   # sha now mismatches
-    w.committed[part_path] = _canon(doc)
-    with pytest.raises(MintRefusal, match="sha256 mismatch"):
-        w.mint()
-
-
-def test_by_construction_reports_partition_proven_not_identity(monkeypatch):
-    """#3 reporting: BY_CONSTRUCTION pools are PARTITION_PROVEN, never counted as
-    an identity anti-join 0."""
-    w = _World()
-    w.build(monkeypatch)
-    m = w.mint()
-    sd = m["exclusion_provenance"]["sealed_disjointness"]
-    assert len(sd["partition_proven_pools"]) == 6
-    assert len(sd["identity_computed_pools"]) == 5
-    assert "PARTITION_PROVEN" in json.dumps(m["exclusion_provenance"])
+def test_no_by_construction_disposition_exists():
+    from mint_arm2_nomination_split import SEALED_DISPOSITIONS
+    assert SEALED_DISPOSITIONS == ("CLEARED_FOR_EXCLUSION",)
+    src = (_REPO / "scripts/mint_arm2_nomination_split.py").read_text()
+    assert "BY_CONSTRUCTION" not in src
+    assert "_verify_partition_receipt" not in src
