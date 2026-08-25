@@ -178,8 +178,15 @@ def verify_calibration(metrics: dict[str, Any],
     expected_steps = int(verifier_spec["expected_steps"])
     # The KD-only checks apply only to a KD-on candidate; a KD-off comparative
     # CONTROL declares kd_enabled=false (owner-directed shared wrapper). Absent
-    # => legacy KD-on, so existing calibration specs are unchanged.
-    kd_enabled = bool(verifier_spec.get("kd_enabled", True))
+    # => legacy KD-on, so existing calibration specs are unchanged. kd_enabled
+    # must be an EXACT JSON boolean — never a bool(...) coercion that would let
+    # a truthy string/int pass as a flag (Codex round 32).
+    _raw_kd = verifier_spec.get("kd_enabled", True)
+    if not isinstance(_raw_kd, bool):
+        fail(f"result_verifier.kd_enabled must be a JSON boolean, got "
+             f"{_raw_kd!r}")
+        _raw_kd = True   # after failing, run the KD checks (fail closed)
+    kd_enabled = _raw_kd
     status = metrics.get("status")
     if status != "COMPLETED":
         fail(f"status is {status!r}, not COMPLETED (no silent success)")
@@ -204,10 +211,29 @@ def verify_calibration(metrics: dict[str, Any],
             if not _finite_number(record.get(key)):
                 fail(f"step {record.get('step')}: {key} is not a finite number "
                      f"({record.get(key)!r})")
-        if kd_enabled and _finite_number(record.get("kd")) \
-                and float(record["kd"]) <= 0.0:
-            fail(f"step {record.get('step')}: KD={record['kd']} is not > 0 "
-                 "(the distillation term is not live on preservation batches)")
+        if kd_enabled:
+            if _finite_number(record.get("kd")) and float(record["kd"]) <= 0.0:
+                fail(f"step {record.get('step')}: KD={record['kd']} is not > 0 "
+                     "(the distillation term is not live on preservation "
+                     "batches)")
+        else:
+            # KD-off CONTROL: the distillation term must be PROVABLY zero on
+            # EVERY step, not merely a summary counter (Codex round 32 bypass:
+            # kd=0.2, alpha=0.5, total=ctc+alpha*kd passed with the counter=0).
+            if _finite_number(record.get("kd")) and float(record["kd"]) != 0.0:
+                fail(f"step {record.get('step')}: KD={record['kd']} != 0 for a "
+                     "KD-off control — the distillation term must be off")
+            if _finite_number(record.get("alpha")) \
+                    and float(record["alpha"]) != 0.0:
+                fail(f"step {record.get('step')}: alpha={record['alpha']} != 0 "
+                     "for a KD-off control")
+            if _finite_number(record.get("ctc")) \
+                    and _finite_number(record.get("total")) \
+                    and not math.isclose(float(record["total"]),
+                                         float(record["ctc"]),
+                                         rel_tol=1e-4, abs_tol=1e-5):
+                fail(f"step {record.get('step')}: total={record['total']} != "
+                     f"ctc={record['ctc']} for a KD-off control")
         if all(_finite_number(record.get(k)) for k in ("ctc", "kd", "total",
                                                        "alpha")):
             expected_total = float(record["ctc"]) + float(record["alpha"]) \
@@ -228,6 +254,21 @@ def verify_calibration(metrics: dict[str, Any],
     elif positive != 0:
         fail(f"kd_positive_finite_steps={positive} != 0 for a KD-off control "
              "— the distillation term must NOT be live in the control")
+    if not kd_enabled:
+        # RECOMPUTE the positive-KD count from per_step — never trust the
+        # self-reported summary counter alone (Codex round 32).
+        recomputed = sum(1 for r in per_step
+                         if _finite_number(r.get("kd")) and float(r["kd"]) > 0.0)
+        if recomputed != 0:
+            fail(f"recomputed positive-KD steps = {recomputed} != 0 for a "
+                 "KD-off control (the summary counter alone is not trusted)")
+        cov = metrics.get("kd_coverage") or {}
+        for lang, bucket in cov.items():
+            b = bucket or {}
+            if int(b.get("rows", 0)) != 0 or int(b.get("frames", 0)) != 0:
+                fail(f"KD coverage for {lang!r} is nonzero (rows="
+                     f"{b.get('rows')}, frames={b.get('frames')}) on a KD-off "
+                     "control — the distillation term must not have run")
 
     # (3) per-language KD coverage: KD-ON only. Every required preservation
     # language must have contributed real rows AND valid frames. Codex review

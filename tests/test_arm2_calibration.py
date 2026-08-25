@@ -349,9 +349,16 @@ def test_expected_steps_one_is_caught_by_the_metrics_cross_check():
 
 def _packet_and_env():
     packet = json.loads(_PACKET.read_bytes())
-    # the launcher-injected identity keys are validated via the RENDERED env
-    # elsewhere; validate_arm2_semantics reads the committed env directly
+    # a NEW comparative packet declares MEDZEN_EXECUTION_MODE (rendered env) +
+    # a top-level `comparative` block (sha-bound legacy inference is only for
+    # the exact frozen packet). The `comparative` block mirrors the canonical
+    # preservation set; the contract comparison uses the COMMITTED env, so the
+    # rendered-env mode does not disturb it.
+    packet["comparative"] = {
+        "preservation_languages":
+            list(packet["result_verifier"]["required_preservation_coverage"])}
     env = dict(packet["environment"])
+    env["MEDZEN_EXECUTION_MODE"] = "arm2_comparative"
     return packet, env
 
 
@@ -1731,3 +1738,41 @@ def test_kd_off_control_passes_verification_without_the_kd_checks():
     assert failures, "a KD-on spec must reject a KD-off (zero-KD) artifact"
     assert any("kd_positive_finite_steps" in f or "KD=" in f or "KD coverage"
                in f for f in failures)
+
+
+def test_kd_off_control_rejects_a_fabricated_live_kd_artifact():
+    """Codex round 32 bypass: a KD-off spec whose per_step has kd=0.2, alpha=0.5,
+    total=ctc+alpha*kd but kd_positive_finite_steps=0 (forged counter) MUST be
+    rejected — the verifier proves the per-step term is zero, not just the
+    summary counter."""
+    from verify_arm2_calibration import verify_calibration
+    metrics = CalibrationMetrics()
+    for step in range(1, 31):
+        metrics.record_micro({"ctc": 1.0, "kd": 0.2,
+                              "total": 1.0 + 0.5 * 0.2, "alpha": 0.5})
+        metrics.commit_step(step, lr=1e-5)
+    art = metrics.finalize(
+        status="COMPLETED", steps_completed=30, max_steps=30,
+        peak_gpu_bytes=10_000_000_000, wall_seconds=120.0, samples_per_step=16,
+        identity=_identity(),
+        serve={"readyz": True, "adapter_residue": False, "weights_finite": True},
+        dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13})
+    art["parity"] = _good_artifact(30)["parity"]
+    art["kd_positive_finite_steps"] = 0            # the forged summary counter
+    art["kd_coverage"] = {}
+    failures = verify_calibration(art, dict(_spec(), kd_enabled=False))
+    assert failures, "a live-KD artifact must not pass as a KD-off control"
+    assert any("!= 0 for a KD-off control" in f for f in failures)
+    # a nonzero kd_coverage is also caught
+    art2 = _kd_off_artifact()
+    art2["kd_coverage"] = {"english": {"rows": 3, "frames": 9}}
+    f2 = verify_calibration(art2, dict(_spec(), kd_enabled=False))
+    assert any("KD coverage for 'english' is nonzero" in f for f in f2)
+
+
+def test_kd_enabled_must_be_an_exact_json_boolean():
+    from verify_arm2_calibration import verify_calibration
+    art = _kd_off_artifact()
+    for bad in ("false", 0, 1, "true", None):
+        failures = verify_calibration(art, dict(_spec(), kd_enabled=bad))
+        assert any("kd_enabled must be a JSON boolean" in f for f in failures), bad

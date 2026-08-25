@@ -197,13 +197,19 @@ def test_new_comparative_packet_must_declare_execution_mode_explicitly():
     with pytest.raises(JobRefusal, match="must set MEDZEN_EXECUTION_MODE"):
         validate_arm2_semantics({"job_id": "arm2-cand-h1",
                                  "distillation": {}}, env)
-    # the exact historical job may still omit it (legacy) — it gets PAST the
-    # mode gate (and fails later for other reasons, never the mode one)
-    with pytest.raises(Exception) as ei:
-        validate_arm2_semantics(
-            {"job_id": "b5-universal-arm2-ftcal-2026-001", "distillation": {}},
-            env)
-    assert "MEDZEN_EXECUTION_MODE" not in str(ei.value)
+    # the EXACT frozen historical packet (bound by SHA) still validates fully
+    # without an explicit mode — legacy inference + the coverage fallback apply
+    # only to it, not to any packet merely reusing its job_id.
+    frozen = json.loads((ROOT / "platform/manifests/"
+                         "B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.json"
+                         ).read_bytes())
+    validate_arm2_semantics(frozen, frozen["environment"])  # no raise
+    # a NEW packet reusing the historical job_id but with different content is
+    # NOT the frozen SHA -> still refused for the missing mode
+    tampered = dict(frozen, job_id="b5-universal-arm2-ftcal-2026-001")
+    tampered["acceptance_criteria"] = list(frozen["acceptance_criteria"]) + ["x"]
+    with pytest.raises(JobRefusal, match="MEDZEN_EXECUTION_MODE"):
+        validate_arm2_semantics(tampered, tampered["environment"])
 
 
 def test_the_frozen_arm2_calibration_packet_still_routes_to_the_wrapper():

@@ -81,10 +81,17 @@ ARM2_CANONICAL_VERIFIER_SCRIPT = "scripts/verify_arm2_calibration.py"
 ARM2_CANONICAL_METRICS_ARTIFACT = "calibration-metrics.json"
 ARM2_L4_PHYSICAL_BYTES = 24 * 1024 * 1024 * 1024  # g6.xlarge single NVIDIA L4
 ARM2_MANDATORY_DEV_SENTINELS = frozenset({"lingala", "swahili"})
-# The one historical Arm-2 calibration JOB that predates the explicit
-# MEDZEN_EXECUTION_MODE enum and may therefore rely on legacy KD-on inference.
-# Every NEW comparative job (a different job_id) must declare the mode.
-FROZEN_ARM2_CALIBRATION_JOB_ID = "b5-universal-arm2-ftcal-2026-001"
+# The EXACT frozen historical Arm-2 calibration packet — bound by CANONICAL SHA
+# (not job_id, which a new packet could reuse). Only this packet, in its
+# committed / DRAFT pre-image / launchable forms, may rely on legacy KD-on mode
+# inference AND the result_verifier-coverage preservation fallback. Every new
+# comparative packet must declare MEDZEN_EXECUTION_MODE and a `comparative`
+# block explicitly.
+FROZEN_ARM2_CALIBRATION_SHAS = frozenset({
+    "3c5024edee3a9df098f1f9e3bdbccc044c963e53f761dc173dbafd1b6a4f9c7e",  # committed
+    "3d2dc03e9064371b30c2dc48267a03f8f7814ad26146e60955187ec8bcd5193a",  # DRAFT
+    "52eb689b4593a598583861d89032608d536c3ef5afc73ce35925a8f8709500e4",  # launchable
+})
 
 
 def _parse_env_weights(raw: str) -> dict[str, float]:
@@ -154,15 +161,16 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     if not comparative:
         return                  # plain training carries no Arm-2 semantics
 
-    # Legacy KD-on inference (absent MEDZEN_EXECUTION_MODE => arm2_comparative)
-    # is limited to the EXACT frozen historical calibration packet; every new
-    # comparative packet must declare the mode explicitly (owner-directed).
+    # Legacy KD-on mode inference AND the coverage fallback below are limited to
+    # the EXACT frozen historical calibration packet, bound by CANONICAL SHA.
+    frozen_historical = \
+        canonical_bindings_sha256(bindings) in FROZEN_ARM2_CALIBRATION_SHAS
     if not str(environment.get("MEDZEN_EXECUTION_MODE", "")).strip() and \
-            str(bindings.get("job_id") or "") != FROZEN_ARM2_CALIBRATION_JOB_ID:
+            not frozen_historical:
         raise JobRefusal(
             "a new Arm-2 comparative packet must set MEDZEN_EXECUTION_MODE="
             "'arm2_comparative' explicitly — legacy KD-on inference is limited "
-            "to the frozen historical calibration job")
+            "to the frozen historical calibration packet (bound by SHA)")
 
     # KD-on candidates cross-check the human-facing recipe against the env; the
     # KD-off comparative CONTROL has no `distillation` block, so it skips these
@@ -274,8 +282,14 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
             raise JobRefusal(
                 "result_verifier.required_preservation_coverage must equal the "
                 "comparative.preservation_languages")
+    elif frozen_historical:
+        pres = coverage        # coverage fallback ONLY for the frozen packet
     else:
-        pres = coverage
+        raise JobRefusal(
+            "a new Arm-2 comparative packet must carry a top-level "
+            "`comparative` block with preservation_languages — the "
+            "result_verifier-coverage fallback is limited to the frozen "
+            "historical calibration packet")
     if not pres:
         raise JobRefusal(
             "no preservation languages resolved for the comparative arm")
