@@ -160,6 +160,7 @@
   "note": "base_teacher and arm1 are existing checkpoints scored within the scoring passes (no training job).",
   "scoring_throughput_basis": "the flat one-hour scoring assumption is REPLACED. A MANDATORY throughput micro-benchmark is the FIRST budgeted job (table row 1): it measures actual omniASR CTC 1B inference utt/s on ml.g6.xlarge, and the scoring-pass MaxRuntimeInSeconds caps are FINALIZED from it at the second review. The caps below are sized to a conservative ~2 utt/s floor over ~3,234 nomination+directional rows/model as an upper bound until the benchmark refines them."
  },
+ "design_review_verdict": "APPROVED TO IMPLEMENT (owner + Codex, 2026-08-25). Approved scope: implement+test the shared KD-on/KD-off machinery + nomination-split minting; correct the Holm helper (done); run ONLY the capped throughput micro-benchmark; then submit exact code/image/manifests/execution-packets for the SECOND review. The six 2000-step runs, sealed evaluation, promotion and deployment REMAIN HELD.",
  "evaluation": {
   "all_seven_evaluated": [
    "english",
@@ -248,7 +249,7 @@
   "H0_comparator_only": "H0 (mechanics-proven anchor) can NEVER be nominated; candidates must beat it, else NO_RECIPE_QUALIFIES",
   "NO_RECIPE_QUALIFIES": "an explicit terminal state at either stage; the procedure NEVER silently nominates the least-bad recipe",
   "constraints_ref": "the positive qualification tests + safety vetoes are defined executably in positive_qualification_tests and safety_vetoes below (and summarized in `constraints`).",
-  "executable_gate": "scripts/arm2_holm.py (holm_reject / qualifies): the positive gate is code, adversarially tested (tests/test_arm2_holm.py incl. the 24x p=0.04 -> 0 rejections counterexample).",
+  "executable_gate": "scripts/arm2_holm.py: Stage-1 uses candidate_qualifies(family_pvalues, candidate_indices) \u2014 Holm over the COMPLETE 24-test family, then the candidate qualifies iff ALL its 6 INDEXED tests are rejected in that full-family mask; Stage-2 uses qualifies() (the finalist's 6 tests ARE the whole family). Adversarially tested (tests/test_arm2_holm.py: the 24x p=0.04 -> 0 rejections counterexample; full-family-vs-six correction; mixed-candidate; malformed-input validation).",
   "metric": "WER = sum(edit_distance)/sum(reference_words) per language, from per-row edit-distance receipts; absolute WER points (pp)",
   "multiplicity": {
    "stage_1": "Holm-Bonferroni over the POSITIVE family = {4 candidates x (3 preservation non-inferiority + pidgin retention + beat-KD_CONTROL + beat-H0) = 24 tests}, family-wise alpha=0.05. The 3 directional vetoes per candidate are SEPARATE (safety_vetoes; not Holm-corrected).",
