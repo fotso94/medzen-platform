@@ -1,0 +1,27 @@
+{
+ "note": "Recorded on codex/asr-base-model-evaluation: with enforce_admins + CODEOWNER review + last-push approval active and a single owner, master accepts no further direct pushes or self-approved PRs \u2014 frozen at the protected_head_commit above, which is the exact OID the live mint must be dispatched from. That freeze is the point (Protect LAST).",
+ "protected_branch": "master",
+ "protected_head_commit": "33804d3c2ff1d669a5633c089c4da30f6f482430",
+ "protection_json_sha256": "ce9faa3df407471374202067af758b06bdad837f740ce0692741be8e6864764a",
+ "protection_settings": {
+  "allow_deletions": false,
+  "allow_force_pushes": false,
+  "dismiss_stale_reviews": true,
+  "enforce_admins": true,
+  "require_code_owner_reviews": true,
+  "require_last_push_approval": true,
+  "required_approving_review_count": 1
+ },
+ "purpose": "Owner-run activation receipt (Codex round 39 #2 / packet precondition): master branch protection verified BEFORE the live mint dispatch.",
+ "record": "ARM2-MASTER-BRANCH-PROTECTION-RECEIPT-2026-001",
+ "trust_manifest_sha256_at_head": "a5b48e3447ca6fdf85c452d88e5e42dd853bcabbf42c785f57c4293b7ef90dca",
+ "verdict": {
+  "failures": [],
+  "verdict": "PASS"
+ },
+ "verified_utc": "2026-08-25",
+ "verifier": {
+  "path": "scripts/verify_branch_protection.py",
+  "sha256_at_head": "03a838149e2a9e17bffb444829bd0537c873cc80c4944475d895e04401bfe662"
+ }
+}
