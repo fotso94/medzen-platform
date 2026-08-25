@@ -20,8 +20,8 @@ from build_arm2_training_identity_index import (  # noqa: E402
     ProducerRefusal, build_training_identity_index, enumerate_corpus,
     main, produce_live)
 from mint_arm2_nomination_split import (  # noqa: E402
-    MintRefusal, committed_training_source_digests, mint_phase_a_split,
-    validate_training_index)
+    MintRefusal, _canon, _validate_training_structure,
+    committed_training_source_digests, mint_phase_a_split)
 
 
 def _ck(tag: str, i: int) -> str:
@@ -63,8 +63,8 @@ def test_hash_chained_enumeration_builds_a_validating_artifact():
     documents = {d: enumerate_corpus(_get_object(store), d, committed=committed)
                  for d in sorted(committed)}
     artifact = build_training_identity_index(documents, committed=committed)
-    # the artifact validates through the CONSUMER's validator (same committed)
-    identities = validate_training_index(artifact, committed=committed)
+    # the artifact is structurally valid (authentication is the ledger's job)
+    identities = _validate_training_structure(artifact)
     assert len(identities) == 18            # 3 corpora x 2 manifests x 3 rows
     assert artifact["row_count"] == 18
     assert artifact["unique_count"] == 18
@@ -154,10 +154,14 @@ def test_artifact_feeds_the_mint_as_the_training_exclusion():
     documents = {d: enumerate_corpus(_get_object(store), d, committed=committed)
                  for d in sorted(committed)}
     artifact = build_training_identity_index(documents, committed=committed)
-    with pytest.raises(MintRefusal, match="not derived from the pinned corpus"):
-        # against the REAL adoption records the fixture artifact refuses —
-        # the source binding is enforced end-to-end
-        validate_training_index(artifact)
+    # structural validity holds; the source binding to the REAL committed
+    # adoption records is enforced by the producer (test_produce_live_*) and by
+    # the consumer's ledger admission (authenticate_training_index), not by the
+    # structural validator. The artifact must round-trip through the ONE
+    # canonical serializer (no admission/governance field).
+    assert _canon(artifact)
+    assert "admission" not in artifact and "governance" not in artifact
+    assert _validate_training_structure(artifact)
 
 
 def test_producer_touches_no_aws_sdk(monkeypatch):

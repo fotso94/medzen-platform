@@ -30,11 +30,11 @@ from pathlib import Path
 
 from mint_arm2_nomination_split import (TRAINING_INDEX_RECORD,
                                         TRAINING_SOURCE_RECORDS, MintRefusal,
-                                        _agg, _is_identity,
+                                        _agg, _canon, _is_identity,
+                                        _validate_training_structure,
                                         committed_training_source_digests,
                                         load_packet,
-                                        validate_caller_identity,
-                                        validate_training_index)
+                                        validate_caller_identity)
 
 
 class ProducerRefusal(RuntimeError):
@@ -127,11 +127,15 @@ def build_training_identity_index(corpus_documents: dict, *,
         "identities": sorted(identities),
     }
     try:
-        validate_training_index(artifact, committed=committed)
+        _validate_training_structure(artifact)
     except MintRefusal as exc:                      # pragma: no cover - guard
         raise ProducerRefusal(
-            f"internal error: the produced artifact fails its own consumer "
+            f"internal error: the produced artifact fails structural "
             f"validation: {exc}") from exc
+    # emit-and-reparse note: the caller serialises with _canon(); the artifact
+    # carries NO admission/governance field (Codex round 36 A10) — all
+    # governance lives in the committed admission ledger, and the owner commits
+    # the ledger entry binding _canon(artifact) sha256 after review.
     return artifact
 
 
@@ -246,7 +250,7 @@ def main(argv=None) -> int:
 
     artifact = produce_live(get_object)
     out = Path("training-identity-index.json")
-    out.write_text(json.dumps(artifact, indent=1, sort_keys=True) + "\n")
+    out.write_bytes(_canon(artifact))   # canonical bytes; sha256 is the digest
     # print counts + aggregate ONLY — identities stay in the artifact file
     print(json.dumps({"status": "TRAINING_INDEX_PRODUCED",
                       "row_count": artifact["row_count"],

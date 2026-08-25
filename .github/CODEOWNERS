@@ -1,0 +1,24 @@
+# Owner review is REQUIRED on the trust-bearing files of the Arm-2 nomination
+# mint (Codex round 36 A11): the two admission ledgers are the authentication
+# root, and the platform/decisions/ approval / disjointness / quarantine records
+# they cite are what a ledger entry is verified against. A GitHub Action or bot
+# must never be able to write these — with branch protection requiring
+# CODEOWNERS review, only an owner-approved PR can change them.
+#
+# @fotso94 is the repository owner (id 16901658), the same required reviewer the
+# protected environments enforce (scripts/verify_protected_environments.py).
+
+# the admission ledgers (mint authentication root)
+/platform/evidence/ARM2-TRAINING-INDEX-ADMISSION-LEDGER.jsonl   @fotso94
+/platform/evidence/ARM2-SEALED-EXCLUSION-LEDGER.jsonl           @fotso94
+
+# every decision record (approval / disjointness / quarantine-clearance records
+# the ledgers cite live here, alongside the live-mint packet and the protocol)
+/platform/decisions/                                            @fotso94
+
+# the mint workflows: their filenames are the job_workflow_ref baked into each
+# role's OIDC trust (infra/arm2_nomination_mint_role.tf), so a rename/edit must
+# be owner-reviewed (Codex round 36 impl red-team #8).
+/.github/workflows/arm2-nomination-mint.yml               @fotso94
+/.github/workflows/arm2-nomination-mint-producer-exec.yml @fotso94
+/.github/workflows/arm2-nomination-mint-mint-exec.yml     @fotso94

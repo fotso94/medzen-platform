@@ -1,54 +1,37 @@
 {
- "NOT_AN_AUTHORIZATION": "This packet PROPOSES the live mint. It is NOT an authorization record. The live read requires independent review AND explicit owner authorization; only then is the noninteractive step run.",
+ "NOT_AN_AUTHORIZATION": "This packet PROPOSES the live mint. The live read requires independent review AND explicit owner authorization AND owner appends to the two admission ledgers; until then the mint FAILS CLOSED.",
  "authorization_mechanism": {
-  "environment_requirements": "created by the OWNER with themselves as a required reviewer BEFORE any trust references it, and verified with the scripts/verify_protected_environments.py pattern (owner login fotso94 / id 16901658 bound)",
-  "in_path_assertion": "Codex round 35 finding 7: live_mint() ITSELF validates the STS caller document \u2014 exact Account == 558069890522 AND Arn parsing to exactly arn:aws:sts::558069890522:assumed-role/medzen-arm2-nomination-mint-role/<session> \u2014 a same-named role in another account refuses; the CLI performs the same assertion via validate_caller_identity",
-  "protected_environment": "arm2-nomination-mint",
-  "replaces": "the round-33 magic-string token (a committed constant proves configuration, not authorization)",
-  "role_trust": "each dedicated role trusts ONLY the GitHub OIDC federation with sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint and job_workflow_ref pinned to .github/workflows/arm2-nomination-mint-exec.yml@refs/heads/master (infra/arm2_nomination_mint_role.tf, dark until owner-enabled)",
-  "workflows": {
-   "caller": ".github/workflows/arm2-nomination-mint.yml",
-   "exec": ".github/workflows/arm2-nomination-mint-exec.yml",
-   "note": "built (Codex round 35 scope 5); dispatch-only, environment-gated, hardened per the arm2-calibration pattern (pinned actions, pre-credential commit verification, hash-locked deps, exact identity assertion). Dark until the environment + roles exist."
-  }
- },
- "aws": {
-  "account": "558069890522",
-  "bucket": "medzen-speech",
-  "bucket_is_versioned": true,
-  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
-  "note": "VersionId pins the exact bytes; the mint ADDITIONALLY verifies sha256 of the downloaded bytes against the pin, and IAM permits ONLY s3:GetObjectVersion with the exact reviewed VersionId per object (unversioned/current reads are explicitly denied).",
-  "region": "eu-central-1"
+  "caller": ".github/workflows/arm2-nomination-mint.yml (runs producer-exec then mint-exec as two `uses:` jobs, mint needs producer, same-run artifact handoff; id-token:write scoped to the federating job only)",
+  "environment_requirements": "the OWNER creates BOTH environments with themselves as required reviewer BEFORE any trust references them, verified with scripts/verify_protected_environments.py (owner fotso94/id 16901658); the caller preflight verifies BOTH.",
+  "in_path_assertion": "live_mint() and both CLIs assert sts:GetCallerIdentity returns exact Account==558069890522 AND an assumed-role ARN of the role that job federates as (validate_caller_identity).",
+  "mint": {
+   "environment": "arm2-nomination-mint-mint",
+   "exec_workflow": ".github/workflows/arm2-nomination-mint-mint-exec.yml",
+   "job_workflow_ref": "fotso94/medzen-platform/.github/workflows/arm2-nomination-mint-mint-exec.yml@refs/heads/master",
+   "role": "medzen-arm2-nomination-mint-role"
+  },
+  "producer": {
+   "environment": "arm2-nomination-mint-producer",
+   "exec_workflow": ".github/workflows/arm2-nomination-mint-producer-exec.yml",
+   "job_workflow_ref": "fotso94/medzen-platform/.github/workflows/arm2-nomination-mint-producer-exec.yml@refs/heads/master",
+   "role": "medzen-arm2-training-index-role"
+  },
+  "replaces": "the round-33 magic-string token AND the round-35 single-environment/single-exec split (Codex round 36 F3: identical env + job_workflow_ref let either job assume either role)",
+  "two_claim_split": "producer and mint tokens now differ in TWO independent OIDC claims \u2014 distinct protected environment AND distinct job_workflow_ref \u2014 so neither role's trust is satisfiable by the other's token"
  },
  "execution_contract": {
-  "fail_closed": "any non-zero overlap, duplicate identity (within or across languages), empty language split, missing OR extra input pool, invalid/absent training index or sealed authorities, index-bytes hash mismatch, packet-vs-index pin disagreement on ANY field, wrong caller account/role, or a sealed fetch request refuses (MintRefusal); no injected reader refuses before any AWS SDK is touched (LiveMintForbidden)",
-  "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json (committed after review of the aggregate counts)",
-  "invocation": "noninteractive, inside the owner-approved protected workflow only: the exec job assumes the dedicated role, obtains the STS caller document, and calls live_mint(packet, index_bytes=<committed index bytes>, s3_reader=<role-scoped reader>, caller_identity=<STS document>, training_index=<produced artifact>, sealed_authorities=<adjudicated authorities>) \u2014 every one of those inputs is verified INSIDE live_mint",
-  "never_outputs": [
-   "sealed rows",
-   "transcript text",
-   "audio",
-   "any per-row content beyond audio_checksum_sha256"
-  ],
-  "outputs_only": [
-   "the FROZEN nomination manifest (identities + pins + aggregate overlap counts)",
-   "the aggregate overlap counts"
-  ],
-  "verified_per_object": [
-   "sha256 of the ACTUAL downloaded bytes == pin",
-   "echoed S3 VersionId == pin",
-   "echoed KMS key == the one pinned CMK",
-   "row count == pin",
-   "every row is JSON with a 64-hex lowercase audio_checksum_sha256",
-   "row language (when present) == the pinned pool language"
-  ]
+  "fail_closed": "any unauthenticated artifact, incomplete/duplicate input, empty split, ledger chain/head-sha break, missing active ledger entry, unverified approval record, wrong caller identity, or sealed-fetch request refuses (MintRefusal); today the ledgers are PENDING so the mint refuses through the FULL live_mint chain (not an unconditional exit)",
+  "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json",
+  "mint_job": "needs producer; assumes MINT_ROLE in MINT_ENV via MINT_EXEC; downloads the same-run artifact; runs mint_arm2_nomination_split.py --live which loads committed index+ledgers (git HEAD), builds the role-scoped reader, calls live_mint(), and writes the hash-bound result",
+  "producer_job": "assumes PRODUCER_ROLE in PRODUCER_ENV via PRODUCER_EXEC; runs build_arm2_training_identity_index.py --live; uploads the canonical training-identity-index.json + exports its sha as a job output"
  },
  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
- "exposure_index_binding": "live_mint takes the index as RAW BYTES and refuses unless sha256(bytes) == exposure_index_sha256 (Codex round 35 finding 2: a caller-supplied index could reclassify a sealed pool as eligible); every packet pin is additionally compared to the index pin on class, role, language, rows, sha256 AND s3_version_id.",
+ "exposure_index_binding": "live_mint takes the index as RAW BYTES and refuses unless sha256(bytes)==exposure_index_sha256; every packet pin is compared to the index pin on class/role/language/rows/sha256/s3_version_id.",
  "exposure_index_sha256": "9eee1039cac03bd784516d6e01d85fe02626991ac9bec989fb9c392a3e95763c",
- "generator": "scripts/mint_arm2_nomination_split.py",
- "holds": "the six 2000-step runs, sealed evaluation, promotion and deployment remain HELD; the sealed promotion holdout is NEVER read by the mint (sealed exclusion is identity-authority-based); the $0.80 benchmark cost reservation is added only after this successor passes review (Codex round 35 scope 10).",
+ "holds": "the six 2000-step runs, sealed evaluation, promotion, deployment, and the $0.80 benchmark remain HELD; the sealed holdout is NEVER read by the mint; sealed identity extraction (if ever CLEARED_FOR_EXCLUSION) is a separate owner-adjudicated step with its own role and is NOT in scope here.",
  "minimal_read_role": {
+  "environment": "arm2-nomination-mint-mint",
+  "exec_workflow": ".github/workflows/arm2-nomination-mint-mint-exec.yml",
   "policy": {
    "Statement": [
     {
@@ -229,11 +212,11 @@
    "Version": "2012-10-17"
   },
   "policy_file": "platform/iam/medzen-arm2-nomination-mint-role.json",
-  "policy_note": "s3:GetObjectVersion ONLY, one statement per object conditioned on the exact reviewed s3:VersionId (unversioned s3:GetObject is explicitly DENIED bucket-wide \u2014 Codex round 35 scope 8); kms:Decrypt only ViaService S3; every write/list/delete denied; versioned reads outside the 7 pins denied via NotResource; KMS beyond Decrypt denied.",
+  "policy_note": "s3:GetObjectVersion ONLY, per-object exact s3:VersionId; unversioned reads denied bucket-wide; reads outside the 7 pins denied via NotResource; kms:Decrypt only ViaService S3.",
   "role_arn": "arn:aws:iam::558069890522:role/medzen-arm2-nomination-mint-role",
   "role_name": "medzen-arm2-nomination-mint-role",
-  "status": "PROPOSED \u2014 does not exist; created dark-until-enabled via infra/arm2_nomination_mint_role.tf after this packet passes review",
-  "trust": "GitHub OIDC, sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint, job_workflow_ref pinned to arm2-nomination-mint-exec.yml@refs/heads/master"
+  "status": "PROPOSED \u2014 dark until owner-enabled (infra/arm2_nomination_mint_role.tf)",
+  "trust": "GitHub OIDC, sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint-mint AND job_workflow_ref == fotso94/medzen-platform/.github/workflows/arm2-nomination-mint-mint-exec.yml@refs/heads/master"
  },
  "pinned_objects": [
   {
@@ -308,21 +291,38 @@
   }
  ],
  "preconditions": [
-  "independent review of THIS packet (keys, VersionIds, hashes, KMS, roles, environment, training-index production, sealed-authority governance)",
+  "independent review of THIS packet + the two admission ledgers + the approval/disjointness/quarantine decision records they will cite",
   "explicit owner authorization of the live read",
-  "the OWNER creates the protected environment 'arm2-nomination-mint' with themselves as required reviewer and verifies it (verify_protected_environments pattern) BEFORE any trust references it",
-  "owner ledger adjudication of the sealed-authority mechanism (per pool; quarantined cv17 requires explicit quarantine adjudication)",
-  "the exposure index is machine-derived + current (python -m scripts.build_arm2_exposure_index --check)"
+  "the OWNER creates BOTH protected environments ('arm2-nomination-mint-producer', 'arm2-nomination-mint-mint') with themselves as required reviewer and verifies them",
+  "the exposure index is machine-derived + current (--check)"
  ],
  "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key, the TWO dedicated roles (mint read + training-index producer) and the protected-environment authorization for the eventual FROZEN Phase-A nomination mint. The mint reads ONLY the 7 nomination/candidate identity manifests (NEVER a sealed manifest), VERIFIES every downloaded object (actual-bytes sha256, echoed VersionId, echoed KMS key, exact row count, per-row schema + language), keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts.",
+ "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key, TWO dedicated roles (each with its OWN protected environment + reusable exec workflow), and the head sha256 of the two owner-committed admission ledgers, for the eventual FROZEN Phase-A nomination mint. The mint reads ONLY the 7 nomination/candidate identity manifests (NEVER a sealed manifest), authenticates the training index and sealed exclusion against the committed ledgers, and outputs ONLY the frozen manifest + aggregate counts + a hash-bound result.",
  "reads_count": 7,
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001",
- "revision": "003 (Codex round 35: structured hash-bound training index; exact-set completeness; index bound by canonical bytes + full-field pin comparison; canonical-regeneration verifier; SEALED manifest reads REMOVED (identity-only exclusion authorities under separate ledger adjudication); dedicated training-index producer role; in-path exact STS account+role assertion; S3 restricted to exact VersionIds and KMS to the S3 context; workflows built)",
+ "result_manifest": {
+  "b6_acceptance_rule": "the committed split file sha256 MUST equal the result_sha256 the approved run emitted \u2014 never a human-recopied file.",
+  "binds": [
+   "result_sha256 (over the canonical result)",
+   "running_script_sha256",
+   "exposure_index_sha256",
+   "training_index_artifact_sha256",
+   "training_index_ledger_sha256",
+   "sealed_exclusion_ledger_sha256",
+   "sealed dispositions",
+   "caller_arn",
+   "commit_sha"
+  ],
+  "record": "B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-RESULT-2026-001"
+ },
+ "revision": "004 (Codex round 36: AUTHENTICATION via owner-committed admission ledgers [training-index + sealed-exclusion, hash-chained JSONL, git-HEAD read, head sha pinned here]; the consumer admits an artifact ONLY if its canonical digest matches an ACTIVE ledger entry with a verified owner approval record; disposition-driven sealed completeness never reads an untouched seal; TWO-CLAIM OIDC split [distinct environment AND distinct job_workflow_ref per role, two exec workflows]; the real end-to-end CLI loads all bound artifacts and calls live_mint, emitting a hash-bound result)",
  "sealed_exclusion": {
-  "mechanism": "IDENTITY-ONLY EXCLUSION AUTHORITIES (Codex round 35 findings 3/6): the mint NEVER fetches sealed manifest bytes (full bytes include references/metadata). Sealed disjointness is proven by anti-join against per-pool identity-only authorities validated by validate_sealed_authorities: complete coverage of every sealed pool, per-authority pin match (key/rows/sha256/VersionId vs the exposure index), identity count == pinned rows, aggregate reproduction, and an explicit governance adjudication.",
+  "mechanism": "identity-only, ledger-adjudicated. The mint NEVER fetches sealed manifest bytes. Each of the 11 pinned SEALED pools needs one ACTIVE ledger entry: BY_CONSTRUCTION_DISJOINT (a committed disjointness record; NO identities \u2014 the correct disposition for the dev/sealed complements and the cross-language seals, so an untouched seal is never read) or CLEARED_FOR_EXCLUSION (a supplied identity authority reproducing the committed aggregate).",
   "mint_reads_sealed_bytes": false,
-  "production_governance": "producing an authority touches sealed bytes ONCE (identity extraction only) and therefore requires ITS OWN owner ledger adjudication per pool, separately reviewed \u2014 it is NOT covered by this packet, and the QUARANTINED cv17-test-v1-sealed pool additionally requires explicit quarantine adjudication before ANY read. Alternative for owner adjudication: accept the committed tier2 split construction (B5-TIER2-HOLDOUTS-2026-001 split_rule \u2014 dev/sealed halves of one pool are disjoint by construction) as the disjointness proof for same-pool halves, leaving only cross-pool anti-joins to authority production.",
+  "quarantine_rule": "the quarantined cv17-test-v1-sealed pool needs a SEPARATE quarantine_clearance record (authorizes=CLEAR_SEALED_QUARANTINE), distinct from its ordinary admission \u2014 ordinary admission can never implicitly clear the quarantine.",
+  "quarantined_pool": [
+   "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl"
+  ],
   "sealed_pools": [
    "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
    "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
@@ -337,27 +337,42 @@
    "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
   ]
  },
+ "sealed_exclusion_ledger": {
+  "head_sha256": "868876ee203b1890c81ebfe57258eac25b16a7b7326a121bcdec76b6ae5a8b62",
+  "note": "one active entry per sealed pool required (disposition allow-list CLEARED_FOR_EXCLUSION|BY_CONSTRUCTION_DISJOINT); the mint reads no sealed bytes.",
+  "path": "platform/evidence/ARM2-SEALED-EXCLUSION-LEDGER.jsonl",
+  "status": "PENDING (genesis only) \u2014 no sealed disposition adjudicated"
+ },
+ "sealed_exclusion_ledger_sha256": "868876ee203b1890c81ebfe57258eac25b16a7b7326a121bcdec76b6ae5a8b62",
  "status": "PENDING_REVIEW",
  "training_identity_index": {
   "producer_role": {
+   "environment": "arm2-nomination-mint-producer",
+   "exec_workflow": ".github/workflows/arm2-nomination-mint-producer-exec.yml",
    "policy_file": "platform/iam/medzen-arm2-training-index-role.json",
    "role_arn": "arn:aws:iam::558069890522:role/medzen-arm2-training-index-role",
    "role_name": "medzen-arm2-training-index-role",
-   "scope": "curated/* read-only (the corpus listings' integrity authority is the content hash pinned in the committed adoption records); eval/* reads EXPLICITLY DENIED \u2014 the producer can never touch an eval or sealed object, and the mint role conversely cannot read curated/* (Codex round 35 finding 5: one role could not lawfully do both jobs)"
+   "scope": "curated/* read-only (content-hash authority); eval/* reads DENIED \u2014 can never touch an eval or sealed object"
   },
   "producer_script": "scripts/build_arm2_training_identity_index.py",
-  "required": "a FROZEN mint REFUSES without the STRUCTURED training identity index (validate_training_index): record-named, source-bound to the committed gb9/gb8/gb3 adoption records' complete_raw_sha256, producer receipt, NONEMPTY 64-hex identities with self-consistent row/unique counts and aggregate sha \u2014 an empty or arbitrary collection refuses (Codex round 35 finding 1)",
+  "required": "a FROZEN mint refuses unless the produced index's canonical digest matches an ACTIVE training-index ledger entry (see training_index_ledger)",
   "source_records": [
    "platform/evidence/B5-GB9-ADOPTION-2026-001.json",
    "platform/evidence/B5-GB8-ADOPTION-2026-001.json",
    "platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json"
   ],
-  "workstation_prohibition": "training manifests contain transcript text: the producer keeps only audio_checksum_sha256 in the protected job's memory and emits only identities + counts + aggregates; raw manifests never persist and never reach a workstation."
+  "workstation_prohibition": "identities only; transcript text never survives the producer's memory; the artifact is emitted as canonical bytes and its digest is what the owner admits to the ledger."
  },
+ "training_index_ledger": {
+  "head_sha256": "42ed07497727fe5ce0e203acd7f09c3a5959c3a1f0361fdbd9d3d97af511ebfa",
+  "note": "hash-chained JSONL; the consumer reads it from git HEAD, verifies the chain, requires this head sha, and admits a training index only if its canonical digest matches an ACTIVE ADMITTED entry.",
+  "path": "platform/evidence/ARM2-TRAINING-INDEX-ADMISSION-LEDGER.jsonl",
+  "status": "PENDING (genesis only) \u2014 no artifact admitted; mint fails closed"
+ },
+ "training_index_ledger_sha256": "42ed07497727fe5ce0e203acd7f09c3a5959c3a1f0361fdbd9d3d97af511ebfa",
  "unpinned_eligible_pools_excluded": [
   "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
   "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl"
  ],
- "unpinned_note": "these eligible eval-dev pools are NOT fully pinned (missing sha256/VersionId) and are therefore EXCLUDED from the frozen mint; to include them, pin them in the exposure-index source records first, under separate review.",
- "written_utc": "2026-08-25T05:34:02Z"
+ "written_utc": "2026-08-25T13:18:00Z"
 }

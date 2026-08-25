@@ -1,16 +1,16 @@
-# Codex round 34 finding 5: the nomination live mint must be authorized by the
-# owner-approved protected GitHub environment + a DEDICATED scoped read role —
-# never by a committed token. This is that role: it can read EXACTLY the 18
-# pinned identity manifests (policy file carries REAL Deny statements for
-# everything else — writes, lists, deletes, reads outside the pins, KMS beyond
-# Decrypt), and its trust admits ONLY the owner-approved `arm2-nomination-mint`
-# environment through the pinned exec workflow on master. Dark until the owner
-# sets arm2_nomination_mint_enabled=true AFTER the live-mint packet
+# Codex round 36 finding 3: the producer and mint roles must be ISOLATED. Round
+# 35 gave both roles the IDENTICAL OIDC subject (environment:arm2-nomination-
+# mint) AND the identical job_workflow_ref (one exec file), so a token minted by
+# either job satisfied BOTH trusts. This file gives each role its OWN protected
+# environment AND its OWN reusable exec workflow, so producer and mint tokens
+# differ in TWO independent claims and neither trust is satisfiable by the
+# other's token. Both roles are dark until the owner sets
+# arm2_nomination_mint_enabled=true AFTER the live-mint packet
 # (B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001) passes review and
-# scripts/verify_protected_environments.py confirms the environment enforces
+# scripts/verify_protected_environments.py confirms BOTH environments enforce
 # the owner as required reviewer.
 variable "arm2_nomination_mint_enabled" {
-  description = "owner switch: create the dedicated Arm-2 nomination-mint read-only OIDC role"
+  description = "owner switch: create the dedicated Arm-2 nomination-mint + training-index OIDC roles"
   type        = bool
   default     = false
 }
@@ -20,6 +20,7 @@ data "aws_iam_openid_connect_provider" "github_for_nomination_mint" {
   url   = "https://token.actions.githubusercontent.com"
 }
 
+# ---- MINT role: reads the 7 pinned nomination/candidate identity manifests ---
 data "aws_iam_policy_document" "arm2_nomination_mint_trust" {
   count = var.arm2_nomination_mint_enabled ? 1 : 0
   statement {
@@ -36,15 +37,14 @@ data "aws_iam_policy_document" "arm2_nomination_mint_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      # owner-approved environment (required reviewer: the owner) — verified
-      # via verify_protected_environments BEFORE activation, because GitHub
-      # silently creates referenced-but-missing environments unprotected
-      values = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint"]
+      # distinct environment for the mint role (finding 3)
+      values = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint-mint"]
     }
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-exec.yml@refs/heads/master"]
+      # distinct exec workflow for the mint role (finding 3)
+      values = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-mint-exec.yml@refs/heads/master"]
     }
   }
 }
@@ -73,12 +73,7 @@ output "arm2_nomination_mint_role_arn" {
   value = var.arm2_nomination_mint_enabled ? aws_iam_role.arm2_nomination_mint[0].arn : null
 }
 
-# Codex round 35 finding 5: the training-identity-index PRODUCER needs its OWN
-# role — the mint role reads only the 7 pinned eval objects and can never read
-# curated/*, while this role reads ONLY curated/* (content-hash-verified
-# against the committed adoption records) and is EXPLICITLY DENIED every
-# eval/* read, so it can never touch an eval or sealed object. Same protected
-# environment + exec workflow; same dark-until-enabled switch.
+# ---- PRODUCER role: reads curated/* only; eval/* explicitly denied ----------
 data "aws_iam_policy_document" "arm2_training_index_trust" {
   count = var.arm2_nomination_mint_enabled ? 1 : 0
   statement {
@@ -95,12 +90,14 @@ data "aws_iam_policy_document" "arm2_training_index_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint"]
+      # distinct environment for the producer role (finding 3)
+      values = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint-producer"]
     }
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:job_workflow_ref"
-      values   = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-exec.yml@refs/heads/master"]
+      # distinct exec workflow for the producer role (finding 3)
+      values = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-producer-exec.yml@refs/heads/master"]
     }
   }
 }

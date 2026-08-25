@@ -33,7 +33,8 @@ REQUIRED_ENVIRONMENTS = ("trainer-image-publish", "arm2-calibration")
 # the two-environment activation gate above (Codex round 35 scope 5: the
 # nomination-mint preflight verifies ITS environment without changing the
 # owner's pre-apply gate)
-KNOWN_ENVIRONMENTS = REQUIRED_ENVIRONMENTS + ("arm2-nomination-mint",)
+KNOWN_ENVIRONMENTS = REQUIRED_ENVIRONMENTS + (
+    "arm2-nomination-mint-producer", "arm2-nomination-mint-mint")
 # the OWNER whose approval every activation environment must require (Codex
 # review #28 finding 1: accepting any reviewer, or a mismatched environment
 # response, let the existing arm-launch-approval JSON pass as both required
