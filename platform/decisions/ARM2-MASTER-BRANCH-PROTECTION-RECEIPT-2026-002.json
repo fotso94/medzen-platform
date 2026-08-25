@@ -1,0 +1,15 @@
+{
+ "authorization": "Owner choice in-session 2026-08-25: 'proceed with Temporary lift + restore.'",
+ "negative_proof": "post-restore push to master rejected: 'protected branch hook declined'",
+ "protected_branch": "master",
+ "protected_head_commit": "40ae44befa730c789b5f994cc75d61a3b2acf7b5",
+ "protection_json_sha256": "ce9faa3df407471374202067af758b06bdad837f740ce0692741be8e6864764a",
+ "purpose": "Owner-authorized POST-MINT master evolution window (2026-08-25): protection temporarily lifted, master fast-forwarded 33804d3 -> 40ae44b with the already-reviewed post-mint commits (mint acceptance + split + the 7 baked Arm-2 execution contracts + DRAFT packets), then the IDENTICAL protection restored in the same session. The mint remains attested at 33804d3 (Sigstore 42937334); no history rewrite (fast-forward only).",
+ "record": "ARM2-MASTER-BRANCH-PROTECTION-RECEIPT-2026-002",
+ "supersedes_for_current_state": "ARM2-MASTER-BRANCH-PROTECTION-RECEIPT-2026-001",
+ "verdict": {
+  "failures": [],
+  "verdict": "PASS"
+ },
+ "verified_utc": "2026-08-25"
+}
