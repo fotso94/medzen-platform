@@ -1,17 +1,25 @@
 {
  "NOT_AN_AUTHORIZATION": "This packet PROPOSES the live mint. It is NOT an authorization record. The live read requires independent review AND explicit owner authorization; only then is the noninteractive step run.",
+ "authorization_mechanism": {
+  "cli_assertion": "scripts/mint_arm2_nomination_split.py --live additionally asserts sts:GetCallerIdentity returns an assumed-role ARN of medzen-arm2-nomination-mint-role before reading anything; any other caller refuses",
+  "environment_requirements": "created by the OWNER with themselves as a required reviewer BEFORE any trust references it, and verified with the scripts/verify_protected_environments.py pattern (owner login fotso94 / id 16901658 bound) \u2014 GitHub silently creates referenced-but-missing environments WITHOUT protection, so verification precedes activation",
+  "protected_environment": "arm2-nomination-mint",
+  "replaces": "the round-33 magic-string token (Codex round 34 finding 5: a committed constant proves configuration, not authorization)",
+  "role_trust": "the dedicated role trusts ONLY the GitHub OIDC federation with sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint and a job_workflow_ref pinned to the activation exec workflow on master (the same hardened pattern as infra/arm2_calibration_role.tf) \u2014 no other principal can assume it",
+  "workflow": "the dispatch-only caller/exec workflow pair follows the hardened arm-launch pattern (no credentials in the caller, environment gate + master guard + hash-locked deps in the exec, positive and negative canaries) and is added in the ACTIVATION round AFTER this packet passes review \u2014 not before"
+ },
  "aws": {
   "account": "558069890522",
   "bucket": "medzen-speech",
   "bucket_is_versioned": true,
   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
-  "note": "VersionId pins the exact bytes even if a key is later overwritten (same basis as B5-IMMUTABILITY-BINDINGS-2026-001).",
+  "note": "VersionId pins the exact bytes even if a key is later overwritten (same basis as B5-IMMUTABILITY-BINDINGS-2026-001). The mint ADDITIONALLY verifies sha256 of the downloaded bytes against the pin \u2014 a VersionId alone is a claim until the bytes reproduce the hash.",
   "region": "eu-central-1"
  },
  "execution_contract": {
-  "fail_closed": "any non-zero overlap against candidate/sealed/veto, any empty language split, any missing pinned identity, or any unpinned nomination source refuses the mint (MintRefusal); the harness has NO default AWS client and refuses --live without an injected reader + explicit authorization (LiveMintForbidden)",
+  "fail_closed": "any non-zero overlap against candidate/sealed/veto/training, any duplicate identity within or across languages, any empty language split, any missing/unverified pinned identity, any packet-vs-index pin disagreement, or a missing training identity index refuses the mint (MintRefusal); the harness has NO default AWS client and refuses --live under any principal other than the dedicated role; no injected reader refuses before any AWS SDK is touched (LiveMintForbidden)",
   "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json (committed after review of the aggregate counts)",
-  "invocation": "noninteractive; the authorized step wires a minimal read-only reader (assuming minimal_read_role) and calls mint_arm2_nomination_split.live_mint(index, s3_reader=<reader>, authorization=<owner token>) with MEDZEN_NOMINATION_LIVE_MINT set to the same token",
+  "invocation": "noninteractive, inside the owner-approved protected workflow only: the exec job assumes the dedicated role, asserts caller identity, wires the role-scoped reader (get_object with VersionId + ExpectedBucketOwner, echoing VersionId + SSEKMSKeyId), supplies the training identity index, and calls mint_arm2_nomination_split.live_mint(index, packet, s3_reader=<reader>, training_identities=<index>)",
   "never_outputs": [
    "sealed rows",
    "transcript text",
@@ -21,20 +29,20 @@
   "outputs_only": [
    "the FROZEN nomination manifest (identities + per-pool pins + aggregate overlap counts)",
    "the aggregate overlap counts"
+  ],
+  "verified_per_object": [
+   "sha256 of the ACTUAL downloaded bytes == pin",
+   "echoed S3 VersionId == pin",
+   "echoed KMS key == the one pinned CMK",
+   "row count == pin",
+   "every row is JSON with a 64-hex lowercase audio_checksum_sha256",
+   "row language (when present) == the pinned pool language"
   ]
  },
  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
  "generator": "scripts/mint_arm2_nomination_split.py",
  "holds": "the six 2000-step runs, sealed evaluation, promotion and deployment remain HELD; the sealed promotion holdout is NEVER touched (its manifests are read for IDENTITIES ONLY, to prove the split excludes them).",
  "minimal_read_role": {
-  "explicitly_denied": [
-   "s3:ListBucket",
-   "s3:PutObject",
-   "s3:DeleteObject",
-   "any key outside pinned_objects",
-   "kms:Encrypt",
-   "kms:GenerateDataKey"
-  ],
   "policy": {
    "Statement": [
     {
@@ -74,11 +82,71 @@
       "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
      ],
      "Sid": "DecryptWithTheOnePinnedCMK"
+    },
+    {
+     "Action": [
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:DeleteObjectVersion",
+      "s3:ListBucket",
+      "s3:ListBucketVersions",
+      "s3:PutObjectAcl"
+     ],
+     "Effect": "Deny",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech",
+      "arn:aws:s3:::medzen-speech/*"
+     ],
+     "Sid": "DenyEveryWriteListAndDelete"
+    },
+    {
+     "Action": [
+      "s3:GetObject",
+      "s3:GetObjectVersion"
+     ],
+     "Effect": "Deny",
+     "NotResource": [
+      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+     ],
+     "Sid": "DenyReadingAnythingButThePinnedObjects"
+    },
+    {
+     "Action": [
+      "kms:Encrypt",
+      "kms:GenerateDataKey*",
+      "kms:CreateGrant"
+     ],
+     "Effect": "Deny",
+     "Resource": [
+      "*"
+     ],
+     "Sid": "DenyKmsBeyondDecrypt"
     }
    ],
    "Version": "2012-10-17"
   },
-  "trust": "assumed only by the owner-authorized mint principal; no service/instance profile is granted this by default"
+  "policy_note": "the Deny statements are REAL policy (finding 5): every write/list/delete on the bucket is denied, reads outside the pinned objects are denied via NotResource, and KMS use beyond Decrypt is denied \u2014 not an informational list.",
+  "role_arn": "arn:aws:iam::558069890522:role/medzen-arm2-nomination-mint-role",
+  "role_name": "medzen-arm2-nomination-mint-role",
+  "status": "PROPOSED \u2014 does not exist; created dark-until-enabled via infra/arm2_nomination_mint_role.tf after this packet passes review (Codex round 34 verified no mint role exists)",
+  "trust": "GitHub OIDC, sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint, job_workflow_ref pinned to the activation exec workflow on master"
  },
  "pinned_objects": [
   {
@@ -263,14 +331,16 @@
   }
  ],
  "preconditions": [
-  "independent review of THIS packet (keys, VersionIds, hashes, KMS, role)",
+  "independent review of THIS packet (keys, VersionIds, hashes, KMS, role, environment, training-index production)",
   "explicit owner authorization of the live read",
+  "the OWNER creates the protected environment 'arm2-nomination-mint' with themselves as required reviewer and verifies it (verify_protected_environments pattern) BEFORE any trust references it",
   "the exposure index is machine-derived + current (python -m scripts.build_arm2_exposure_index --check)"
  ],
  "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key and a minimal read-only IAM role for the eventual FROZEN Phase-A nomination mint (scripts/mint_arm2_nomination_split.py::live_mint). The mint reads ONLY the pinned identity manifests, keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts \u2014 never sealed rows, transcript text or audio.",
+ "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key, the dedicated minimal read role and the protected-environment authorization for the eventual FROZEN Phase-A nomination mint (scripts/mint_arm2_nomination_split.py::live_mint). The mint reads ONLY the pinned identity manifests, VERIFIES every downloaded object (actual-bytes sha256, echoed VersionId, echoed KMS key, exact row count, per-row schema + language), keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts \u2014 never sealed rows, transcript text or audio.",
  "reads_count": 18,
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001",
+ "revision": "002 (Codex round 34: token authorization REPLACED by the protected-environment + dedicated-role mechanism; Deny statements are REAL policy; downloaded-byte verification and the training identity index are REQUIRED; raw manifests never touch a workstation)",
  "sealed_objects_are_identity_only": [
   "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
   "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
@@ -285,10 +355,21 @@
   "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
  ],
  "status": "PENDING_REVIEW",
+ "training_identity_index": {
+  "anti_join": "mint_phase_a_split(training_identities=<index>) excludes every training identity and RECOMPUTES the final split's training overlap (must be 0, or the mint refuses)",
+  "production": "the SAME owner-approved protected job enumerates the gb9/gb8/gb3 training manifests exactly as the fail-closed trainer data path does (pipeline/train_asr.load_mix semantics), verifies them against the adoption records' complete_raw_sha256, extracts ONLY audio_checksum_sha256 per row (training rows carry it), and emits an identity-only index pinned by row count + aggregate sha256. Raw training manifests (which contain transcript text) exist only in the job's memory.",
+  "required": "a FROZEN mint REFUSES without the per-row training identity index (Codex round 34 finding 1) \u2014 until it exists, every minted manifest reports training_exposed=UNVERIFIED, never zero",
+  "source_records": [
+   "platform/evidence/B5-GB9-ADOPTION-2026-001.json",
+   "platform/evidence/B5-GB8-ADOPTION-2026-001.json",
+   "platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json"
+  ]
+ },
  "unpinned_eligible_pools_excluded": [
   "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
   "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl"
  ],
  "unpinned_note": "these eligible eval-dev pools are NOT fully pinned (missing sha256/VersionId) and are therefore EXCLUDED from the frozen mint; to include them, pin them in the exposure-index source records first, under separate review.",
- "written_utc": "2026-08-25T04:41:38Z"
+ "workstation_prohibition": "raw identity/sealed/training manifests are NEVER downloaded to a workstation: the protected job streams them in memory, keeps only 64-hex identities, and emits only the frozen manifest + aggregate counts. Transcript/reference fields are never extracted, logged or persisted.",
+ "written_utc": "2026-08-25T05:06:02Z"
 }

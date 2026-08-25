@@ -1,0 +1,99 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadPinnedIdentityManifestsOnly"
+  },
+  {
+   "Action": [
+    "kms:Decrypt"
+   ],
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+   ],
+   "Sid": "DecryptWithTheOnePinnedCMK"
+  },
+  {
+   "Action": [
+    "s3:PutObject",
+    "s3:DeleteObject",
+    "s3:DeleteObjectVersion",
+    "s3:ListBucket",
+    "s3:ListBucketVersions",
+    "s3:PutObjectAcl"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech",
+    "arn:aws:s3:::medzen-speech/*"
+   ],
+   "Sid": "DenyEveryWriteListAndDelete"
+  },
+  {
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Deny",
+   "NotResource": [
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "DenyReadingAnythingButThePinnedObjects"
+  },
+  {
+   "Action": [
+    "kms:Encrypt",
+    "kms:GenerateDataKey*",
+    "kms:CreateGrant"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "*"
+   ],
+   "Sid": "DenyKmsBeyondDecrypt"
+  }
+ ],
+ "Version": "2012-10-17"
+}
