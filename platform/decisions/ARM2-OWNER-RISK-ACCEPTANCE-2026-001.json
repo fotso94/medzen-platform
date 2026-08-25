@@ -1,0 +1,14 @@
+{
+ "decision": "The owner KEEPS full AWS access on IAM user s.fotso and DECLINES the permissions-boundary attachment in this dev phase. The local arm-tier bypass therefore remains technically executable under local credentials; accepted as a dev-phase risk by the owner.",
+ "note": "Recorded for the conditional second review; supersedes nothing.",
+ "owner_verbatim": "id like to keep my permission as full access on any aws service..this is dev lets not worry about and move on with full permission",
+ "record": "ARM2-OWNER-RISK-ACCEPTANCE-2026-001",
+ "remaining_controls": [
+  "launcher tier-by-class refusal (is_campaign_arm_job; medzen-tier=arm tags)",
+  "protected serial exact-six-job workflow + owner-approved environment (dark until enabled)",
+  "dedicated stage-1 role restricted to the six exact job ARNs",
+  "per-job APPROVED review records, launch intents, campaign reservation, $70 atomic ceiling"
+ ],
+ "subject": "Codex stage-1 review finding 1, IAM closure component",
+ "utc": "2026-08-25T21:11:03Z"
+}
