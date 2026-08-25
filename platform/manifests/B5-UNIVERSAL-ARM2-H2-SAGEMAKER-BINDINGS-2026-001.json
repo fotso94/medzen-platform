@@ -1,5 +1,4 @@
 {
- "DRAFT_STATUS": "DRAFT - launch-blocked by scripts/b5_sagemaker_job.py. MaxRuntimeInSeconds cap + image digest finalized AFTER the measured-throughput benchmark (protocol budget.per_job_runtime) at second review.",
  "acceptance_criteria": [
   "the run completes exactly 2000 steps or fails closed (no silent success)",
   "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
@@ -13,7 +12,7 @@
   "MANDATORY in-run upstream decode parity: the scorer path (resample16k + utterance z-norm + seqlen-truncated CTC-greedy + skip-special decode) matches the pinned omnilingual_asr ASRInferencePipeline on >=1 fetched row per dev language, on the fresh base model, fail-never-skip; receipt in metrics.parity",
   "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)"
  ],
- "authorization": "Stage-1 training arm of the approved $70 atomic Phase-A budget (protocol cost_runtime_table row 3). Launch requires: the measured-throughput benchmark completed, this packet finalized + second review (bind code sha, image digest, nomination manifest), an APPROVED review record, and explicit owner launch authorization. Sealed evaluation, promotion and deployment remain separately HELD.",
+ "authorization": "Stage-1 training arm of the approved $70 atomic Phase-A budget (protocol cost_runtime_table row 3). Launch requires: the measured-throughput benchmark COMPLETED 2026-08-25 (utt/s floor 2.35, caps confirmed), this packet finalized; STILL REQUIRED before launch: second review (bind code sha, image digest, nomination manifest), an APPROVED review record, and explicit owner launch authorization. Sealed evaluation, promotion and deployment remain separately HELD.",
  "comparative": {
   "preservation_languages": [
    "english",
@@ -23,10 +22,10 @@
   ]
  },
  "cost_ceiling_usd": 6.0,
- "cost_registry_line": "B5-ARM2-STAGE1-H0-2026-001",
+ "cost_registry_line": "B5-ARM2-STAGE1-H2-2026-001",
  "distillation": {
   "design": "platform/decisions/B5-UNIVERSAL-ARM2-DESIGN-2026-001.md",
-  "kd_alpha": 0.5,
+  "kd_alpha": 1.0,
   "kd_temperature": 1.0,
   "language_weights": {
    "english": 0.5,
@@ -54,7 +53,7 @@
   "MEDZEN_EXECUTION_MODE": "arm2_comparative",
   "MEDZEN_EXPECT_EXCLUDED": "1579",
   "MEDZEN_GRAD_ACCUM": "8",
-  "MEDZEN_KD_ALPHA": "0.5",
+  "MEDZEN_KD_ALPHA": "1.0",
   "MEDZEN_KD_ENABLE": "1",
   "MEDZEN_KD_LANGUAGE_WEIGHTS": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
   "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
@@ -75,21 +74,21 @@
  },
  "execution_contract": {
   "note": "the image bakes THIS file; environment/distillation/result_verifier/job_id below are byte-equal to it by law (b5_sagemaker_job render refuses drift).",
-  "path": "platform/manifests/B5-UNIVERSAL-ARM2-H0-EXECUTION-CONTRACT-2026-001.json",
-  "sha256": "7f1127b5542298cd1b39c63ff993a3147a4fbe2382d7375c955dd55f7d0d7a36"
+  "path": "platform/manifests/B5-UNIVERSAL-ARM2-H2-EXECUTION-CONTRACT-2026-001.json",
+  "sha256": "bd5c4440e6d4716b1519ebe93cfe7953f6cd175b31943e9c4a70772370eb39ba"
  },
- "image_provenance": "to be filled from arm2-trainer-image-publish run output at finalization",
- "image_tag": "PENDING-IMAGE-PUBLISH",
- "image_uri_with_digest": "PENDING-IMAGE-PUBLISH",
+ "image_provenance": "built + scanned by .github/workflows/arm2-trainer-image-publish.yml (https://github.com/fotso94/medzen-platform/actions/runs/32889353847) from reviewed master commit 40ae44befa730c789b5f994cc75d61a3b2acf7b5",
+ "image_tag": "arm2-ftcal-40ae44befa730c789b5f994cc75d61a3b2acf7b5",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:c32aa8fddc38d204bbb937a3972222d17faca19f2208276b17f113dddfa35a2b",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-universal-arm2-h0-2026-001",
+ "job_id": "b5-universal-arm2-h2-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always",
  "max_runtime_seconds": 12600,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
- "purpose": "Stage-1 arm H0: mechanics-proven anchor recipe (alpha 0.5, T 1.0, weights lingala=1.5,swahili=1.5,english=0.5,french=0.5). COMPARATOR-ONLY - candidates must beat it; H0 can never be nominated.",
- "record": "B5-UNIVERSAL-ARM2-H0-SAGEMAKER-BINDINGS-2026-001",
+ "purpose": "Stage-1 candidate H2: alpha 1.0, T 1.0, anchor language weights.",
+ "record": "B5-UNIVERSAL-ARM2-H2-SAGEMAKER-BINDINGS-2026-001",
  "result_verifier": {
   "dev_manifests": {
    "lingala": {
@@ -127,6 +126,7 @@
   ],
   "script": "scripts/verify_arm2_calibration.py"
  },
+ "runtime_cap_basis": "FINALIZED from the measured-throughput benchmark (medzen-b5-b5-universal-arm2-thrubench-2026-001, 2026-08-25): two matched 30-step runs measured 1228/1229 billable s -> fixed overhead ~1073 s + ~5.18 s/step, and the 120-row scoring window measured 51.0 s (utt/s floor 2.35 >= the protocol's 2.0). Projected 2000-step total ~11,437 s; the protocol cap 12,600 s carries a confirmed ~10.2% margin and is RETAINED.",
  "scope": "ARM2_STAGE1_FRESH_2000_STEP_RUN - PENDING_SECOND_REVIEW",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"

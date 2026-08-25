@@ -1,0 +1,64 @@
+{
+ "authoritative_verification": {
+  "mode": "live",
+  "reading": "EXACTLY ONE failing check of the full authoritative battery: the CloudTrail launch-principal pin (verifier expects the arm2-calibration workflow role, Codex #26 F6). This job was launched via the DOCUMENTED BELOW-TIER LOCAL route (Codex #24 boundary: medzen-tier=calibration jobs are locally creatable; b5_sagemaker_job.assert_launch_identity passes below-tier), under the owner's own IAM user s.fotso - which is exactly what CloudTrail honestly shows (an IAM user has no sessionIssuer, hence 'launched by None'). The protected calibration workflow could NOT have launched this packet: its exec workflow hardcodes the FTCAL bindings path. Every OTHER check PASSED: KMS-encrypted artifact fetched by exact VersionId and hashed; export model + manifest + metrics sha256 bound; the CloudTrail creation event located, error-free, response-ARN-matched and its requestParameters compared two-sided against the launcher's rendered request; per-row dev receipts recomputed. The verifier is NOT weakened by this receipt.",
+  "second_review_flag": "MACHINERY GAP for the second review: either parameterize the calibration launch workflow's packet path (so below-tier jobs can ride the protected route and satisfy the principal pin), or scope the live verifier's principal expectation to above-tier launches. Until resolved, below-tier local launches will always carry this single explained failing check.",
+  "verdict_verbatim": {
+   "authoritative": true,
+   "creation_event_verified": true,
+   "export_manifest_sha256": "c86b5dc4d2830882c600d05b176e78f362ec7eede239c3da037494b251b455b6",
+   "export_model_sha256": "2e9a1f6d59bd3d5f08633cb8b32a88441e01bca7c1bcb2f3685dc3f561719f5c",
+   "failures": [
+    "event was launched by None, not the expected calibration launch role 'arn:aws:iam::558069890522:role/medzen-arm2-calibration-role'"
+   ],
+   "launch_principal": null,
+   "metrics_sha256": "c42f04285eeda8b04f2e1b5cefcdd592d53c8bb1d235d999ad79f4ccdcd0ec51",
+   "mode": "live",
+   "model_artifacts_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-thrubench-2026-001/output/medzen-b5-b5-universal-arm2-thrubench-2026-001/output/model.tar.gz",
+   "packet": "platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-SAGEMAKER-BINDINGS-2026-001.json",
+   "packet_canonical_sha256": "e8869f8d139b10965a2a8afde7bae04898d03961f5998037813836cc1af2bf6c",
+   "s3_bytes": 1548278411,
+   "s3_etag": "\"e85ecbf8e41de19dce19c61b11f88ba6-185\"",
+   "s3_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "s3_version_id": "k3L_AWgvDSDHvpYqU9Q_62BIaNcnuVWA",
+   "verdict": "FAIL",
+   "verifier_script_sha256": "da15b9efffcef54ffb63b9d98b8a4d29ed92eb3a479bb67ecaec9e72f2328a46"
+  }
+ },
+ "billable_seconds": 1229,
+ "cost": {
+  "billable_hours": 0.3414,
+  "billable_seconds": 1229,
+  "calculated_accrual_usd_at_padded_rate": 0.5462,
+  "on_demand_rate_usd_per_hour_authoritative_padded": 1.6,
+  "reporting_rule": "on-demand always; +$100 on every reported max => reported max <= $100.80",
+  "worst_case_was_usd": 0.8
+ },
+ "holds": "six stage-1 launches (finalized packets carry NO review records - launch-blocked pending second review + owner authorization); sealed evaluation, promotion and deployment remain HELD",
+ "image_provenance": "arm2-trainer-image-publish run 32889353847 from reviewed master commit 40ae44befa730c789b5f994cc75d61a3b2acf7b5 (bakes the 7 Arm-2 stage-1 execution contracts)",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:c32aa8fddc38d204bbb937a3972222d17faca19f2208276b17f113dddfa35a2b",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-universal-arm2-thrubench-2026-001",
+ "measurement": {
+  "beats_protocol_floor": true,
+  "budget_fail_closed_check": "benchmark-adjusted cumulative WORST case: protocol-form $67.20 <= $70 (with the benchmark's actual accrual banked: $66.95) - the HALT rule is NOT triggered",
+  "ftcal_crosscheck": {
+   "billable_seconds": 1228,
+   "note": "the 2026-08-24 FTCAL run's identical phase measured 47.1 s; two matched runs on fresh ml.g6.xlarge instances agree within 8% - repeatable",
+   "window_seconds": 47.1
+  },
+  "protocol_conservative_floor_utt_per_s": 2.0,
+  "runtime_model_confirmed": "fixed overhead ~1073 s + ~5.18 s/step (both 30-step runs: 1228/1229 billable s, dead-on); projected 2000-step arm total ~11,437 s -> the protocol's 12,600 s stage-1 cap carries ~10.2% margin and is CONFIRMED/RETAINED",
+  "scored_rows": 120,
+  "scoring_pass_projection": "seed-1 pass (8 models x ~3,234 rows = 25,872 utts) at the measured window rate: ~(25872/120)x51.0 = ~10,996 s + staging -> the protocol's 18,000 s cap (sized at the 2.0 floor) holds with wide margin; the second review MAY tighten to 14,400 s on this measurement",
+  "utt_per_s_floor": 2.35,
+  "window_law": "window = T(CALIBRATION_VERIFY log line) - T(export log line); it contains fresh-base model load + 1-row/language upstream parity (incl. pipeline load) + export weight reload + readyz + THE 120-ROW DEV-SENTINEL SCORING + in-image verify, ALL charged against scoring -> the derived rate is a STRICT LOWER BOUND on inference throughput",
+  "window_seconds": 51.0
+ },
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-SAGEMAKER-BINDINGS-2026-001.json",
+ "packet_canonical_sha256": "e8869f8d139b10965a2a8afde7bae04898d03961f5998037813836cc1af2bf6c",
+ "purpose": "Completion + MEASUREMENT receipt for the Arm-2 throughput micro-benchmark (protocol B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001 cost_runtime_table row 1, the FIRST budgeted job of the $70 atomic Phase-A budget).",
+ "record": "ARM2-THRUBENCH-2026-001-COMPLETION",
+ "status": "Completed",
+ "utc": "2026-08-25T22:00:00Z"
+}
