@@ -127,10 +127,21 @@ def build() -> dict:
             "unique_checksums": union_count,
             "checksums_aggregate_sha256": union_agg,
         },
-        "disjointness_contract": "at mint time, EVERY nomination/confirmation "
-            "split row's audio_checksum_sha256 MUST be absent from used_union "
-            "AND from each s3_pinned_pool (fetched by its pinned sha/version_id) "
-            "AND from every sealed holdout half; the mint commits the proof.",
+        "used_exact_definition": "USED_EXACT(language) = the EXACT set of "
+            "audio_checksum_sha256 of (a) the dev-selection rows + (b) the "
+            "sentinel rows [both enumerated above] UNION (c) every row of the "
+            "base-eval pools the base model was scored on (the FULL "
+            "fleurs/soreva/aaf pools per the base-eval receipts; pidgin's "
+            "av-heldout was NEVER base-scored). SEALED_EXACT(language) = the "
+            "exact set of the sealed half's rows. Neither is a pool-size count.",
+        "disjointness_contract": "the nomination split is defined by EXACT "
+            "PER-ROW SET DIFFERENCE, never whole-pool count subtraction: "
+            "split(language) = { r in source pool : audio_checksum_sha256(r) "
+            "NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. "
+            "At mint the exact USED_EXACT/SEALED_EXACT are enumerated from the "
+            "in-repo identities here PLUS the s3_pinned_pools and sealed-half "
+            "manifests fetched by their pinned sha/version_id; the mint commits "
+            "the row-level disjointness proof.",
     }
 
 

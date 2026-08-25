@@ -1,128 +1,297 @@
 {
- "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "status": "PENDING_DESIGN_REVIEW",
- "revision": "003 (design re-review 2): owner approved Phase A as a held-out DEVELOPMENT NOMINATION (not confirmation) with Phase-B licensed data pursued in parallel, and required: hard directional development vetoes for lingala/kinyarwanda/ewe; the preservation objective separated from pidgin retention; the H0 second-seed contradiction resolved; the one-hour scoring assumption replaced with measured throughput + a ~$70 ceiling; a machine-derived exposure index with full identities + intersection tests; H0 relabelled mechanics-proven; and Phase A renamed held-out development nomination. No machinery implemented; no compute; no sealed data.",
  "NOT_AN_APPROVAL": "SCIENTIFIC PROTOCOL for design RE-REVIEW only. NO approved execution record, NO launch packet, NO image digest, NO pipeline code change. Two-review gate: (1) this + the exposure inventory + the machine-derived exposure index are re-reviewed for FINAL design approval; (2) after approval the machinery is implemented + tested; (3) a SECOND review binds exact code sha, image digest, manifests and execution packets before any launch. Sealed evaluation, promotion and deployment remain HELD.",
- "purpose": "An UNSEALED, directional HELD-OUT DEVELOPMENT NOMINATION: compare KD candidate recipes against a matched KD-disabled control and the mechanics-proven anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It is NOT a confirmation and touches no sealed data.",
- "terminology": {
-  "held_out_development_nomination": "Phase A scores candidates on HELD-OUT DEVELOPMENT remainders. For english/french/swahili the base model has already been scored on these pools, so they are candidate-blind but NOT base-blind: this is NOMINATION, not confirmation.",
-  "confirmation": "reserved for the base-blind Phase B on newly-acquired untouched data + the sealed holdout; HELD."
- },
- "modes": {
-  "KD_CONTROL": {"MEDZEN_KD_ENABLE": "0", "distillation": "none (alpha=0)", "role": "matched control at identical budget/seed/data-order so preservation is attributable to KD versus base under-training"},
-  "KD_CANDIDATE": {"MEDZEN_KD_ENABLE": "1", "swept_knobs": ["MEDZEN_KD_ALPHA", "MEDZEN_KD_TEMPERATURE", "MEDZEN_KD_LANGUAGE_WEIGHTS"], "frozen": ["base teacher medzen_omniASR_CTC_1B_v2", "seed", "data order"]}
- },
- "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / parity / dev-WER / authoritative receipts (post-approval implementation).",
  "arm_roles": {
-  "comparators_not_nominable": [
-   {"id": "base_teacher", "kind": "frozen base checkpoint (inference only on the nomination rows; seed-independent)"},
-   {"id": "arm1", "kind": "existing Arm-1 checkpoint (inference only; seed-independent)"},
-   {"id": "H0", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5", "status": "MECHANICS_PROVEN (has the completed 30-step mechanics/memory receipt ARM2-FTCAL-2026-001; that receipt proves MECHANICS only, not a comparator result)", "note": "COMPARATOR-ONLY anchor: H0 can never be the nominated winner; candidates must BEAT it"},
-   {"id": "KD_CONTROL", "mode": "KD_CONTROL"}
-  ],
   "candidates_nominable": [
-   {"id": "H1", "mode": "KD_CANDIDATE", "alpha": 0.25, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-   {"id": "H2", "mode": "KD_CANDIDATE", "alpha": 1.0, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-   {"id": "H3", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 2.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-   {"id": "H4", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=2.0,swahili=2.0,english=0.5,french=0.5"}
+   {
+    "alpha": 0.25,
+    "id": "H1",
+    "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
+    "mode": "KD_CANDIDATE",
+    "temperature": 1.0
+   },
+   {
+    "alpha": 1.0,
+    "id": "H2",
+    "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
+    "mode": "KD_CANDIDATE",
+    "temperature": 1.0
+   },
+   {
+    "alpha": 0.5,
+    "id": "H3",
+    "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
+    "mode": "KD_CANDIDATE",
+    "temperature": 2.0
+   },
+   {
+    "alpha": 0.5,
+    "id": "H4",
+    "language_weights": "lingala=2.0,swahili=2.0,english=0.5,french=0.5",
+    "mode": "KD_CANDIDATE",
+    "temperature": 1.0
+   }
+  ],
+  "comparators_not_nominable": [
+   {
+    "id": "base_teacher",
+    "kind": "frozen base checkpoint (inference only on the nomination rows; seed-independent)"
+   },
+   {
+    "id": "arm1",
+    "kind": "existing Arm-1 checkpoint (inference only; seed-independent)"
+   },
+   {
+    "alpha": 0.5,
+    "id": "H0",
+    "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
+    "mode": "KD_CANDIDATE",
+    "note": "COMPARATOR-ONLY anchor: H0 can never be the nominated winner; candidates must BEAT it",
+    "status": "MECHANICS_PROVEN (has the completed 30-step mechanics/memory receipt ARM2-FTCAL-2026-001; that receipt proves MECHANICS only, not a comparator result)",
+    "temperature": 1.0
+   },
+   {
+    "id": "KD_CONTROL",
+    "mode": "KD_CONTROL"
+   }
   ]
  },
- "no_selection_stage": "The 600-step diagnostic screen is REMOVED. All six training arms (KD_CONTROL, H0, H1-H4) are trained FRESH to 2000 steps under one matched seed + data order, then scored once on the frozen nomination rows. No config is dropped on a partial-step heuristic.",
- "training": {
-  "steps": 2000, "run_type": "FRESH from base", "data_cap_hours": 100, "warmup_steps": 500,
-  "matched": "identical MEDZEN_SEED AND identical data ordering across all six arms",
-  "second_seed": {
-   "runs": ["the nominated finalist", "H0", "KD_CONTROL"],
-   "resolves_contradiction": "H0 is the comparator every candidate must beat, so H0 MUST have both seeds for a balanced paired seed-pooled comparison; the second seed therefore re-runs the finalist AND H0 AND KD_CONTROL (base_teacher and arm1 are seed-independent fixed checkpoints)"
+ "budget": {
+  "automatic_retries": "NONE \u2014 any retry requires separate owner authorization",
+  "ceiling_usd": 70,
+  "per_job_runtime": "hard MaxRuntimeInSeconds per job (table above), finalized from the measured-throughput benchmark at second review",
+  "reporting_rule": "on-demand always; +$100 on every reported max => reported max <= $170",
+  "reservation": "serial (one job reserved at a time)",
+  "type": "single atomic cumulative (worst-case $67.2 <= $70, INCLUDING the throughput benchmark)"
+ },
+ "constraints": {
+  "directional_development_vetoes": {
+   "historical_calibration": "B5-ARM1-LINGALA-SENTINEL-2026-001 detected the Arm-1 Lingala regression under EXACTLY this rule: base_lingala_wer 0.172301 vs step-0014000 0.1793 (delta_abs_wer 0.006999), noninferiority upper_ci 0.012685598962087357 > margin 0.01 -> verdict PRESERVATION_GATE_FAILURE_CONFIRMED. Since 0.012685 > 0.01, a candidate reproducing that behaviour is VETOED. (The rev-003 '95% lower bound > +2.0pp' veto would NOT have fired.)",
+   "languages": [
+    "lingala",
+    "kinyarwanda",
+    "ewe"
+   ],
+   "nature": "HARD VETO, never a positive gate. These languages have NO untouched data (already-seen surfaces), so a good score CANNOT confirm preservation; but a GROSS regression is still disqualifying.",
+   "not_a_gate": "passing the veto is NOT evidence of preservation for these languages (seen data); that requires Phase-B base-blind data. The veto only DISQUALIFIES regression.",
+   "reference_by_language": {
+    "ewe": "Arm-1 checkpoint (retention role)",
+    "kinyarwanda": "Arm-1 checkpoint (retention role)",
+    "lingala": "frozen base teacher (preservation role)"
+   },
+   "surfaces": {
+    "ewe": "the 60-row soreva dev-selection rows (vs Arm-1)",
+    "kinyarwanda": "the 60-row cv17 dev-selection rows (vs Arm-1)",
+    "lingala": "the 386-row lingala sentinel (vs base)"
+   },
+   "veto_margin_abs_wer": 0.01,
+   "veto_rule": "a candidate is VETOED (removed from nomination, even if it passes english/french/swahili/pidgin) iff it FAILS non-inferiority on the language's directional surface: the one-sided 95% UPPER CI bound of (WER_candidate - reference) > 0.01 (1.0 absolute WER point), cluster bootstrap by audio_checksum_sha256 (row-level; these pools have placeholder speakers), B >= 10000. This is the SAME predeclared rule that detected the historical Lingala regression \u2014 NOT the rev-003 +2.0pp lower-bound floor, which was too weak to catch it."
+  },
+  "kd_attribution": "each candidate is compared DIRECTLY to the matched KD_CONTROL at identical budget/seed/data-order; a candidate must beat the control on the preservation macro to credit any gain to KD",
+  "pidgin_retention": {
+   "gated_language": "pidgin",
+   "reference": "Arm-1's WER on the SAME pidgin rows (arm1 scored on the frozen split)",
+   "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_arm1) <= +0.005 (0.5pp), after multiplicity correction"
+  },
+  "preservation_non_inferiority": {
+   "gated_languages": [
+    "english",
+    "french",
+    "swahili"
+   ],
+   "reference": "the frozen base teacher's per-language WER on the SAME rows",
+   "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_base) <= +0.005 (0.5pp) per gated language, after multiplicity correction"
   }
  },
+ "cost_runtime_table": {
+  "cumulative_expected_usd": 57.81,
+  "cumulative_worst_case_usd": 67.2,
+  "instance": "ml.g6.xlarge on-demand (never spot); padded rate $1.60/h; measured 30-step calibration = 1228 billable s (fixed overhead ~1073 s + ~5.18 s/step)",
+  "jobs": [
+   {
+    "count": 1,
+    "expected_usd": 0.3,
+    "job": "throughput micro-benchmark (score ~100 rows on 1 model to MEASURE utt/s and finalize scoring caps)",
+    "max_runtime_s": 1800,
+    "worst_case_usd": 0.8,
+    "worst_case_usd_each": 0.8
+   },
+   {
+    "count": 6,
+    "expected_usd": 3.28,
+    "job": "6 mechanics receipts (KD_CONTROL,H0,H1-H4 @ 30 steps)",
+    "max_runtime_s": 1800,
+    "worst_case_usd": 4.8,
+    "worst_case_usd_each": 0.8
+   },
+   {
+    "count": 6,
+    "expected_usd": 30.49,
+    "job": "6 fresh training runs (@ 2000 steps, seed 1)",
+    "max_runtime_s": 12600,
+    "worst_case_usd": 33.6,
+    "worst_case_usd_each": 5.6
+   },
+   {
+    "count": 3,
+    "expected_usd": 15.24,
+    "job": "3 second-seed runs (finalist + H0 + KD_CONTROL @ 2000 steps, seed 2)",
+    "max_runtime_s": 12600,
+    "worst_case_usd": 16.8,
+    "worst_case_usd_each": 5.6
+   },
+   {
+    "count": 1,
+    "expected_usd": 6.18,
+    "job": "seed-1 scoring pass (8 models x ~3,234 rows, ~2 utt/s floor)",
+    "max_runtime_s": 18000,
+    "worst_case_usd": 8.0,
+    "worst_case_usd_each": 8.0
+   },
+   {
+    "count": 1,
+    "expected_usd": 2.32,
+    "job": "seed-2 scoring pass (3 models x ~3,234 rows)",
+    "max_runtime_s": 7200,
+    "worst_case_usd": 3.2,
+    "worst_case_usd_each": 3.2
+   }
+  ],
+  "note": "base_teacher and arm1 are existing checkpoints scored within the scoring passes (no training job).",
+  "scoring_throughput_basis": "the flat one-hour scoring assumption is REPLACED. A MANDATORY throughput micro-benchmark is the FIRST budgeted job (table row 1): it measures actual omniASR CTC 1B inference utt/s on ml.g6.xlarge, and the scoring-pass MaxRuntimeInSeconds caps are FINALIZED from it at the second review. The caps below are sized to a conservative ~2 utt/s floor over ~3,234 nomination+directional rows/model as an upper bound until the benchmark refines them."
+ },
  "evaluation": {
-  "all_seven_evaluated": ["english", "ewe", "french", "kinyarwanda", "lingala", "pidgin", "swahili"],
-  "identical_rows_requirement": "for every language, base_teacher, arm1, H0, KD_CONTROL and every candidate/finalist are scored on the SAME frozen rows, paired row-for-row",
-  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json (machine-derived); the nomination split MUST pass its intersection test (audio_checksum_sha256 disjoint from used_union + every s3_pinned_pool + every sealed half)"
+  "all_seven_evaluated": [
+   "english",
+   "ewe",
+   "french",
+   "kinyarwanda",
+   "lingala",
+   "pidgin",
+   "swahili"
+  ],
+  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json (machine-derived); the nomination split MUST pass its intersection test (audio_checksum_sha256 disjoint from used_union + every s3_pinned_pool + every sealed half)",
+  "identical_rows_requirement": "for every language, base_teacher, arm1, H0, KD_CONTROL and every candidate/finalist are scored on the SAME frozen rows, paired row-for-row"
+ },
+ "holds": "hyperparameter SELECTION output, sealed evaluation, promotion, deployment ALL remain HELD. The base-blind 7-language confirmation gate (Phase B) is a data-acquisition prerequisite, held (pursued in parallel). This protocol authorizes NOTHING to run.",
+ "modes": {
+  "KD_CANDIDATE": {
+   "MEDZEN_KD_ENABLE": "1",
+   "frozen": [
+    "base teacher medzen_omniASR_CTC_1B_v2",
+    "seed",
+    "data order"
+   ],
+   "swept_knobs": [
+    "MEDZEN_KD_ALPHA",
+    "MEDZEN_KD_TEMPERATURE",
+    "MEDZEN_KD_LANGUAGE_WEIGHTS"
+   ]
+  },
+  "KD_CONTROL": {
+   "MEDZEN_KD_ENABLE": "0",
+   "distillation": "none (alpha=0)",
+   "role": "matched control at identical budget/seed/data-order so preservation is attributable to KD versus base under-training"
+  }
+ },
+ "no_selection_stage": "The 600-step diagnostic screen is REMOVED. All six training arms (KD_CONTROL, H0, H1-H4) are trained FRESH to 2000 steps under one matched seed + data order, then scored once on the frozen nomination rows. No config is dropped on a partial-step heuristic.",
+ "nomination_data_rules": {
+  "phaseA_split_source": "EXACT per-row set difference (see the machine-derived exposure index used_exact_definition + disjointness_contract): split(language) = { pool rows whose audio_checksum_sha256 is NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. This is NOT a pool-size-minus-counts remainder. USED_EXACT includes the dev-selection rows, the sentinel rows, AND every base-eval-scored row (the FULL fleurs/soreva/aaf pools for english/french/swahili -> candidate-blind only; pidgin av-heldout was never base-scored -> base-blind).",
+  "rules": [
+   "DISJOINT by EXACT audio_checksum_sha256 SET DIFFERENCE from USED_EXACT and SEALED_EXACT (enumerated at mint from the in-repo identities in the exposure index PLUS the s3_pinned_pools + sealed-half manifests fetched by pinned sha/version_id); never a whole-pool count subtraction; the row-level disjointness proof is committed at mint",
+   "PREDECLARED + committed + FROZEN (per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS) BEFORE any arm is scored",
+   "opened ONCE per seed: all arms + comparators scored in a single pass; no iterative re-fitting",
+   "the sealed promotion holdout is NEVER touched"
+  ],
+  "status": "NOT YET MINTED \u2014 post-approval; see exposure inventory + the machine-derived exposure index"
+ },
+ "objectives": {
+  "pidgin_retention_objective": {
+   "gate": "a SEPARATE pass/fail non-inferiority-vs-Arm-1 constraint; pidgin is the only base+candidate-blind language, so it is the retention anchor but is scored and gated on its OWN objective, not averaged into preservation",
+   "language": "pidgin"
+  },
+  "preservation_objective": {
+   "languages": [
+    "english",
+    "french",
+    "swahili"
+   ],
+   "macro": "unweighted mean WER over {english, french, swahili} on the seed-pooled nomination split; this is the SOLE macro used for beat-H0, beat-KD_CONTROL and the tie-break",
+   "separated_from": "pidgin retention is a SEPARATE gate (below), NOT folded into the preservation macro"
+  }
  },
  "phases": {
   "phase_A_held_out_development_nomination_now": {
-   "nomination_gated_languages": ["english", "french", "swahili", "pidgin"],
-   "directional_veto_languages": ["lingala", "kinyarwanda", "ewe"],
+   "directional_veto_languages": [
+    "lingala",
+    "kinyarwanda",
+    "ewe"
+   ],
+   "nomination_gated_languages": [
+    "english",
+    "french",
+    "swahili",
+    "pidgin"
+   ],
    "outcome": "nominates at most one candidate recipe (directional); confirms nothing for promotion"
   },
   "phase_B_base_blind_confirmation_HELD": {
    "requirement": "a base-blind, never-scored, untouched confirmation set for lingala/kinyarwanda/ewe (and base-blind english/french/swahili) does NOT exist in-repo and requires NEW licensed/commissioned acquisition (pursued in PARALLEL per owner). The atomic 7-language blind promotion gate is BLOCKED on that acquisition and remains HELD. Part-2 alone can never promote."
   }
  },
- "objectives": {
-  "preservation_objective": {
-   "languages": ["english", "french", "swahili"],
-   "macro": "unweighted mean WER over {english, french, swahili} on the seed-pooled nomination split; this is the SOLE macro used for beat-H0, beat-KD_CONTROL and the tie-break",
-   "separated_from": "pidgin retention is a SEPARATE gate (below), NOT folded into the preservation macro"
+ "purpose": "An UNSEALED, directional HELD-OUT DEVELOPMENT NOMINATION: compare KD candidate recipes against a matched KD-disabled control and the mechanics-proven anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It is NOT a confirmation and touches no sealed data.",
+ "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
+ "revision": "004 (design re-review 3): exposure model uses EXACT used/sealed row identities (not whole-pool exclusion); the directional veto is strengthened to the historical non-inferiority rule that caught the Lingala failure; seed-1 provisional / seed-2 replication defined with STAGE-SPECIFIC multiplicity; the throughput micro-benchmark is a budgeted line inside the $70 ceiling. No machinery; no compute; no sealed data.",
+ "seed_procedure": {
+  "stage_1_provisional_seed1": {
+   "multiplicity": "STAGE-1 Holm-Bonferroni over the family = {4 candidates x (3 preservation non-inferiority + pidgin retention + 3 directional vetoes + beat-KD_CONTROL + beat-H0)}, family-wise alpha = 0.05",
+   "output": "a PROVISIONAL finalist = the qualifying candidate that wins the deterministic tie-break, or NO_RECIPE_QUALIFIES",
+   "runs": "all 6 arms (KD_CONTROL, H0, H1-H4) trained FRESH @2000 under seed 1; scored once on the frozen nomination split"
   },
-  "pidgin_retention_objective": {
-   "language": "pidgin",
-   "gate": "a SEPARATE pass/fail non-inferiority-vs-Arm-1 constraint; pidgin is the only base+candidate-blind language, so it is the retention anchor but is scored and gated on its OWN objective, not averaged into preservation"
-  }
- },
- "constraints": {
-  "preservation_non_inferiority": {"gated_languages": ["english", "french", "swahili"], "reference": "the frozen base teacher's per-language WER on the SAME rows", "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_base) <= +0.005 (0.5pp) per gated language, after multiplicity correction"},
-  "pidgin_retention": {"gated_language": "pidgin", "reference": "Arm-1's WER on the SAME pidgin rows (arm1 scored on the frozen split)", "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_arm1) <= +0.005 (0.5pp), after multiplicity correction"},
-  "directional_development_vetoes": {
-   "languages": ["lingala", "kinyarwanda", "ewe"],
-   "nature": "HARD VETO, never a positive gate. These languages have NO untouched data (already-seen surfaces), so a good score CANNOT confirm preservation; but a GROSS regression is still disqualifying.",
-   "surfaces": {"lingala": "the 386-row lingala sentinel (vs base)", "kinyarwanda": "the 60-row cv17 dev-selection rows (vs Arm-1)", "ewe": "the 60-row soreva dev-selection rows (vs Arm-1)"},
-   "veto_rule": "a candidate is VETOED (removed from nomination, even if it passes english/french/swahili/pidgin) iff, on the language's directional surface, the one-sided 95% LOWER bound of (WER_candidate - reference) > +0.02 (i.e. we are 95% confident it regressed by MORE than 2.0 absolute WER points). The 2.0pp floor is deliberately generous (seen data, so only gross breakage vetoes).",
-   "not_a_gate": "passing the veto is NOT evidence of preservation for these languages; that requires Phase-B base-blind data."
+  "stage_2_replication_seed2": {
+   "confirm": "the finalist is CONFIRMED (final nomination) iff it passes Stage-2 with NO seed reversal; if it FAILS Stage-2, the outcome is NO_RECIPE_QUALIFIES (no silent fallback to a Stage-1 runner-up)",
+   "multiplicity": "STAGE-2 Holm-Bonferroni over the SMALLER family = {1 finalist x (3 preservation + pidgin retention + 3 vetoes + beat-KD_CONTROL + beat-H0)}, family-wise alpha = 0.05 \u2014 a single pre-specified hypothesis set, NOT re-corrected against the Stage-1 candidates",
+   "runs": "ONLY the provisional finalist + H0 + KD_CONTROL trained FRESH @2000 under seed 2; re-scored on the SAME frozen nomination split"
   },
-  "kd_attribution": "each candidate is compared DIRECTLY to the matched KD_CONTROL at identical budget/seed/data-order; a candidate must beat the control on the preservation macro to credit any gain to KD"
- },
- "statistics": {
-  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from per-row edit-distance receipts",
-  "clustering": "SPEAKER-level cluster bootstrap: resample SPEAKERS with replacement, B >= 10000, paired (same resampled speaker set across compared arms). Pools with placeholder/single speaker ids (ewe soreva) fall back to utterance-level and are directional-veto-only regardless",
-  "units": "absolute WER points (pp)",
-  "seed_aggregation": "the finalist + H0 + KD_CONTROL run under two matched seeds; a gated verdict PASSES only if it holds on the seed-POOLED cluster bootstrap AND under EACH seed individually (no seed reversal)",
-  "multiplicity_correction": "Holm-Bonferroni across the family = {4 candidates x (3 preservation langs + pidgin retention + 3 directional vetoes)} + the beat-KD_CONTROL and beat-H0 preservation-macro tests, family-wise alpha = 0.05"
+  "why_stage_specific": "Stage 1 SELECTS among many (large family); Stage 2 REPLICATES one pre-specified selection (small family). Correcting each stage separately is correct; pooling both into one family would over-correct the replication."
  },
  "selection_rule": {
+  "H0_is_comparator_only": "H0 (mechanics-proven anchor) can never be the nominated winner; if no candidate beats H0 the outcome is NO_RECIPE_QUALIFIES",
+  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the terminal outcome is NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold at H0), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe",
   "qualify": "a CANDIDATE (H1-H4) QUALIFIES iff, on the Phase-A nomination split, after Holm-Bonferroni AND under both seeds: (a) preservation non-inferiority passes for english, french, swahili; AND (b) pidgin retention passes; AND (c) NO directional veto fires for lingala/kinyarwanda/ewe; AND (d) it beats the matched KD_CONTROL on the preservation macro (one-sided 95% lower bound of (WER_control - WER_candidate) > 0); AND (e) it beats the H0 mechanics-proven anchor on the preservation macro (one-sided 95% lower bound of (WER_H0 - WER_candidate) > 0)",
   "tie_break": "among qualifiers, DETERMINISTIC: (1) lowest preservation macro WER on the seed-pooled split; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id",
-  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the terminal outcome is NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold at H0), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe",
-  "H0_is_comparator_only": "H0 (mechanics-proven anchor) can never be the nominated winner; if no candidate beats H0 the outcome is NO_RECIPE_QUALIFIES"
+  "two_stage": "qualification is decided by seed_procedure: a candidate must qualify at Stage 1 (seed-1, Stage-1 multiplicity) to become the provisional finalist, then the finalist must be CONFIRMED at Stage 2 (seed-2, Stage-2 multiplicity); failing Stage 2 -> NO_RECIPE_QUALIFIES."
  },
- "nomination_data_rules": {
-  "status": "NOT YET MINTED — post-approval; see exposure inventory + the machine-derived exposure index",
-  "phaseA_split_source": "the per-language HELD-OUT DEVELOPMENT remainder for english/french/swahili/pidgin (pool minus the 60 selection rows minus the sealed half); pidgin (av-heldout remainder) is the only base+candidate-blind language",
-  "rules": [
-   "DISJOINT by audio_checksum_sha256 from the machine-derived exposure index used_union AND every s3_pinned_pool AND every sealed half (proven by the index intersection test at mint)",
-   "PREDECLARED + committed + FROZEN (per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS) BEFORE any arm is scored",
-   "opened ONCE per seed: all arms + comparators scored in a single pass; no iterative re-fitting",
-   "the sealed promotion holdout is NEVER touched"
-  ]
+ "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / parity / dev-WER / authoritative receipts (post-approval implementation).",
+ "statistics": {
+  "clustering": "SPEAKER-level cluster bootstrap: resample SPEAKERS with replacement, B >= 10000, paired (same resampled speaker set across compared arms). Pools with placeholder/single speaker ids (ewe soreva) fall back to utterance-level and are directional-veto-only regardless",
+  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from per-row edit-distance receipts",
+  "multiplicity_correction": "Holm-Bonferroni across the family = {4 candidates x (3 preservation langs + pidgin retention + 3 directional vetoes)} + the beat-KD_CONTROL and beat-H0 preservation-macro tests, family-wise alpha = 0.05",
+  "seed_aggregation": "see seed_procedure: seed-1 provisional selection (Stage-1 multiplicity) then seed-2 replication of the single provisional finalist (Stage-2 multiplicity); a gated verdict must hold under BOTH stages (no seed reversal).",
+  "units": "absolute WER points (pp)"
  },
- "cost_runtime_table": {
-  "instance": "ml.g6.xlarge on-demand (never spot); padded rate $1.60/h; measured 30-step calibration = 1228 billable s (fixed overhead ~1073 s + ~5.18 s/step)",
-  "scoring_throughput_basis": "the flat one-hour scoring assumption is REPLACED. Scoring caps are sized to a CONSERVATIVE inference-throughput FLOOR of ~2 utterances/sec for omniASR CTC 1B on ml.g6.xlarge across ~3,234 nomination+directional rows/model. A MANDATORY predeclared micro-benchmark (a small scoring probe) MEASURES actual throughput and the scoring caps are FINALIZED from it at the second review before any scoring job runs.",
-  "jobs": [
-   {"job": "6 mechanics receipts (KD_CONTROL,H0,H1-H4 @ 30 steps)", "count": 6, "max_runtime_s": 1800, "worst_case_usd_each": 0.80, "worst_case_usd": 4.80, "expected_usd": 3.28},
-   {"job": "6 fresh training runs (@ 2000 steps, seed 1)", "count": 6, "max_runtime_s": 12600, "worst_case_usd_each": 5.60, "worst_case_usd": 33.60, "expected_usd": 30.49},
-   {"job": "3 second-seed runs (finalist + H0 + KD_CONTROL @ 2000 steps, seed 2)", "count": 3, "max_runtime_s": 12600, "worst_case_usd_each": 5.60, "worst_case_usd": 16.80, "expected_usd": 15.24},
-   {"job": "seed-1 scoring pass (8 models x ~3,234 rows, ~2 utt/s floor)", "count": 1, "max_runtime_s": 18000, "worst_case_usd_each": 8.00, "worst_case_usd": 8.00, "expected_usd": 6.18},
-   {"job": "seed-2 scoring pass (3 models x ~3,234 rows)", "count": 1, "max_runtime_s": 7200, "worst_case_usd_each": 3.20, "worst_case_usd": 3.20, "expected_usd": 2.32}
-  ],
-  "cumulative_worst_case_usd": 66.40,
-  "cumulative_expected_usd": 57.51,
-  "note": "base_teacher and arm1 are existing checkpoints scored within the scoring passes (no training job)."
+ "status": "PENDING_DESIGN_REVIEW",
+ "terminology": {
+  "confirmation": "reserved for the base-blind Phase B on newly-acquired untouched data + the sealed holdout; HELD.",
+  "held_out_development_nomination": "Phase A scores candidates on HELD-OUT DEVELOPMENT remainders. For english/french/swahili the base model has already been scored on these pools, so they are candidate-blind but NOT base-blind: this is NOMINATION, not confirmation."
  },
- "budget": {
-  "ceiling_usd": 70,
-  "type": "single atomic cumulative (worst-case $66.40 <= $70)",
-  "reservation": "serial (one job reserved at a time)",
-  "automatic_retries": "NONE — any retry requires separate owner authorization",
-  "per_job_runtime": "hard MaxRuntimeInSeconds per job (table above), finalized from the measured-throughput benchmark at second review",
-  "reporting_rule": "on-demand always; +$100 on every reported max => reported max <= $170"
+ "training": {
+  "data_cap_hours": 100,
+  "matched": "identical MEDZEN_SEED AND identical data ordering across all six arms",
+  "run_type": "FRESH from base",
+  "second_seed": {
+   "resolves_contradiction": "H0 is the comparator every candidate must beat, so H0 MUST have both seeds for a balanced paired seed-pooled comparison; the second seed therefore re-runs the finalist AND H0 AND KD_CONTROL (base_teacher and arm1 are seed-independent fixed checkpoints)",
+   "runs": [
+    "the nominated finalist",
+    "H0",
+    "KD_CONTROL"
+   ]
+  },
+  "steps": 2000,
+  "warmup_steps": 500
  },
  "two_review_gate": {
   "first_review": "THIS design + the exposure inventory + the machine-derived exposure index (PENDING_DESIGN_REVIEW); no code, no packets, no launch",
   "second_review": "AFTER implementation + tests + the measured-throughput benchmark: bind the exact code sha, trainer image digest, nomination manifest, and per-recipe execution packets BEFORE any launch"
  },
- "holds": "hyperparameter SELECTION output, sealed evaluation, promotion, deployment ALL remain HELD. The base-blind 7-language confirmation gate (Phase B) is a data-acquisition prerequisite, held (pursued in parallel). This protocol authorizes NOTHING to run.",
- "utc": "2026-08-25T02:00:00Z"
+ "utc": "2026-08-25T03:00:00Z"
 }

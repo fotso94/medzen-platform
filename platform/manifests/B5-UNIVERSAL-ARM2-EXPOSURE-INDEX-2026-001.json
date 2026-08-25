@@ -1,5 +1,5 @@
 {
- "disjointness_contract": "at mint time, EVERY nomination/confirmation split row's audio_checksum_sha256 MUST be absent from used_union AND from each s3_pinned_pool (fetched by its pinned sha/version_id) AND from every sealed holdout half; the mint commits the proof.",
+ "disjointness_contract": "the nomination split is defined by EXACT PER-ROW SET DIFFERENCE, never whole-pool count subtraction: split(language) = { r in source pool : audio_checksum_sha256(r) NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. At mint the exact USED_EXACT/SEALED_EXACT are enumerated from the in-repo identities here PLUS the s3_pinned_pools and sealed-half manifests fetched by their pinned sha/version_id; the mint commits the row-level disjointness proof.",
  "generator": "scripts/build_arm2_exposure_index.py",
  "identity_key": "audio_checksum_sha256",
  "note": "MACHINE-DERIVED (Codex r31 design re-review): rebuilt by the generator from committed source records; `--check` proves the committed file byte-equals a fresh build. The USED_UNION is the identity set a future held-out development NOMINATION split (and any Phase-B confirmation split) MUST be disjoint from.",
@@ -150,6 +150,7 @@
    "unique_checksums": 60
   }
  ],
+ "used_exact_definition": "USED_EXACT(language) = the EXACT set of audio_checksum_sha256 of (a) the dev-selection rows + (b) the sentinel rows [both enumerated above] UNION (c) every row of the base-eval pools the base model was scored on (the FULL fleurs/soreva/aaf pools per the base-eval receipts; pidgin's av-heldout was NEVER base-scored). SEALED_EXACT(language) = the exact set of the sealed half's rows. Neither is a pool-size count.",
  "used_union": {
   "checksums_aggregate_sha256": "5c959745b95615ab824532a046841e2c62f93183ba44b709fc6097f32b6f65e4",
   "unique_checksums": 746

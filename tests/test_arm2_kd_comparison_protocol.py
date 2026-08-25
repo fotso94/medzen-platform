@@ -72,12 +72,48 @@ def test_preservation_objective_is_separated_from_pidgin_retention():
         "preservation macro" in sel["qualify"]
 
 
-def test_directional_vetoes_are_hard_and_numeric_for_lin_kin_ewe():
+def test_directional_veto_would_catch_the_historical_lingala_failure():
+    """rev-004: the veto must replicate the non-inferiority rule that actually
+    caught the Arm-1 Lingala regression (upper_ci 0.012685 > margin 0.01)."""
     v = _p()["constraints"]["directional_development_vetoes"]
     assert set(v["languages"]) == {"lingala", "kinyarwanda", "ewe"}
     assert "HARD VETO" in v["nature"]
-    assert "0.02" in v["veto_rule"], "the 2.0pp veto floor must be explicit"
-    assert "not" in v["not_a_gate"].lower()
+    assert v["veto_margin_abs_wer"] == 0.01
+    assert "UPPER CI" in v["veto_rule"]
+    # cross-check against the real historical receipt: the veto margin is below
+    # the historical upper CI, so the historical failure WOULD fire the veto
+    rcpt = json.loads((ROOT / "platform/evidence/receipts/"
+                       "ARM1-LINGALA-SENTINEL-2026-001/receipt.json").read_bytes())
+    hist_upper = rcpt["noninferiority"]["upper_ci"]
+    assert v["veto_margin_abs_wer"] < hist_upper, (
+        "the veto must catch the historical Lingala regression")
+    assert "0.012685" in v["historical_calibration"]
+    # and the rev-003 too-weak +2.0pp floor is gone
+    assert "0.02" not in v["veto_rule"]
+
+
+def test_exposure_model_uses_exact_row_identities_not_whole_pool():
+    nd = _p()["nomination_data_rules"]
+    src = nd["phaseA_split_source"]
+    assert "SET DIFFERENCE" in src or "set difference" in src
+    assert "audio_checksum_sha256" in src
+    assert "NOT a pool-size" in src
+    # the machine-derived index must carry the exact-row contract
+    ix = json.loads((ROOT / "platform/manifests/"
+                     "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json").read_bytes())
+    assert "EXACT PER-ROW SET DIFFERENCE" in ix["disjointness_contract"]
+    assert "used_exact_definition" in ix
+
+
+def test_seed_procedure_is_two_stage_with_stage_specific_multiplicity():
+    sp = _p()["seed_procedure"]
+    assert "STAGE-1" in sp["stage_1_provisional_seed1"]["multiplicity"]
+    assert "STAGE-2" in sp["stage_2_replication_seed2"]["multiplicity"]
+    assert "SMALLER" in sp["stage_2_replication_seed2"]["multiplicity"]
+    # stage 2 replicates only the finalist + its two comparators
+    assert "provisional finalist + H0 + KD_CONTROL" in \
+        sp["stage_2_replication_seed2"]["runs"]
+    assert "NO_RECIPE_QUALIFIES" in sp["stage_2_replication_seed2"]["confirm"]
 
 
 def test_h0_second_seed_contradiction_resolved():
@@ -92,7 +128,8 @@ def test_statistics_speaker_cluster_bootstrap_and_seed_aggregation():
     st = _p()["statistics"]
     assert "SPEAKER-level cluster" in st["clustering"]
     assert "10000" in st["clustering"]
-    assert "seed individually" in st["seed_aggregation"]
+    assert "seed_procedure" in st["seed_aggregation"]
+    assert "no seed reversal" in st["seed_aggregation"]
     assert "Holm-Bonferroni" in st["multiplicity_correction"]
 
 
@@ -113,6 +150,9 @@ def test_cost_table_is_measured_throughput_and_under_seventy():
     jobs = t["jobs"]
     assert next(j for j in jobs if "mechanics" in j["job"])["count"] == 6
     assert next(j for j in jobs if "second-seed" in j["job"])["count"] == 3
+    # rev-004: the throughput benchmark is a BUDGETED line inside the ceiling
+    assert any("benchmark" in j["job"] for j in jobs), \
+        "the throughput benchmark must be in the $70 budget"
     worst = 0.0
     for j in jobs:
         assert round(j["count"] * j["worst_case_usd_each"], 2) == j["worst_case_usd"]
