@@ -223,7 +223,7 @@
    "pool": "eval/pidgin/asr/soreva-v1",
    "role": "sealed_holdout_half",
    "rows": 70,
-   "s3_version_id": null,
+   "s3_version_id": "dLYaa8w8wVkFirOo.JljicC.RLTuiwfl",
    "sha256": "962df457dfb42274f6dc324750df995c10e7349e276caa46b9132e9e7a99d9ab",
    "source_record": "platform/evidence/B5-TIER2-HOLDOUTS-2026-002.json"
   },
@@ -246,7 +246,7 @@
    "pool": "curated pidgin av_pcm (held-out speakers)",
    "role": "sealed_holdout_half",
    "rows": 1500,
-   "s3_version_id": null,
+   "s3_version_id": "60ZtmgfQLR5Za1pphc8Ntl6UoNi.31Mb",
    "sha256": "c52af8c7e8bb53b92f4d3fed48fb908c52288144581f5a2138b114b82293eba8",
    "source_record": "platform/evidence/B5-TIER2-HOLDOUTS-2026-003.json"
   },

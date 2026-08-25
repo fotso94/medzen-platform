@@ -35,7 +35,7 @@
  },
  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
  "exposure_index_binding": "live_mint takes the index as RAW BYTES and refuses unless sha256(bytes)==exposure_index_sha256; every packet pin is compared to the index pin on class/role/language/rows/sha256/s3_version_id.",
- "exposure_index_sha256": "9eee1039cac03bd784516d6e01d85fe02626991ac9bec989fb9c392a3e95763c",
+ "exposure_index_sha256": "4fb029ae8715de84cbd758276517070cee5d183882f22a4e952b03d5f97c896e",
  "holds": "the six 2000-step runs, sealed evaluation, promotion, deployment, and the $0.80 benchmark remain HELD; the sealed holdout is NEVER read by the mint; sealed identity extraction (if ever CLEARED_FOR_EXCLUSION) is a separate owner-adjudicated step with its own role and is NOT in scope here.",
  "independent_review_record": {
   "binds": "the APPROVED record binds ONE trust_manifest_sha256 (Codex round 39 concern) \u2014 the canonical sha over EVERY trust-bearing file (packet, mint + producer + exposure-index generator + verifier scripts, the dependency lock, the three workflows, terraform, both IAM policies, the exposure index + dev-selection + lingala sentinel + dev-sentinels, and both admission ledgers + CODEOWNERS) read at the mint OID \u2014 so it approves the COMPLETE system, not just the packet + script, without OID circularity. NOT_YET_CREATED; live_mint fails closed until the owner commits it.",
@@ -322,7 +322,7 @@
   "payload_sha256": "sha256 of the canonical payload (record+manifest+provenance)",
   "record": "B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-RESULT-2026-001"
  },
- "revision": "008 (final activation patch: the protected identity-only SEALED-IDENTITY producer + its role/environment/workflow + hash-verified --sealed-authorities handoff; the sealed producer script, workflow and IAM policy bound into the trust manifest + CODEOWNERS; the external artifact-attestation step implemented; all stale by-construction language removed)",
+ "revision": "009 (activation: pinned the 2 legacy pidgin seals [av-heldout-sealed, soreva-v1-tier2-sealed] via their S3 VersionIds so ALL 13 sealed pools are pinned + adjudicable; exposure_index_sha256 updated] \u2014 final activation patch: the protected identity-only SEALED-IDENTITY producer + its role/environment/workflow + hash-verified --sealed-authorities handoff; the sealed producer script, workflow and IAM policy bound into the trust manifest + CODEOWNERS; the external artifact-attestation step implemented; all stale by-construction language removed)",
  "sealed_exclusion": {
   "identity_only_rule": "Codex round 39 #1: every one of the pinned SEALED pools is proven disjoint from the nomination split by an IDENTITY ANTI-JOIN \u2014 a committed identity-only authority (audio_checksum_sha256 ONLY; never audio/transcripts/predictions/scores) whose count == the pinned rows and whose aggregate reproduces the sealed-ledger entry. The sealed IDENTITIES are produced ONCE by a protected identity-only job (its own role, reading only checksums) and admitted through the sealed-exclusion ledger. The quarantined cv17 pool additionally requires a SEPARATE quarantine_clearance. There is no by-construction/attestation path.",
   "mechanism": "identity-only, ledger-adjudicated. The mint NEVER fetches sealed manifest bytes. Each pinned SEALED pool needs one ACTIVE ledger entry with disposition CLEARED_FOR_EXCLUSION and a supplied identity authority (audio_checksum_sha256 only) reproducing the committed aggregate; the quarantined cv17 pool additionally needs a separate quarantine_clearance.",
@@ -342,6 +342,8 @@
    "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
    "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
    "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+   "eval/pidgin/asr/av-heldout-sealed/manifest.jsonl",
+   "eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
    "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
    "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
   ]

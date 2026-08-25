@@ -21,6 +21,7 @@
     "tier2-sealed": {
      "key": "eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
      "rows": 70,
+     "s3_version_id": "dLYaa8w8wVkFirOo.JljicC.RLTuiwfl",
      "sha256": "962df457dfb42274f6dc324750df995c10e7349e276caa46b9132e9e7a99d9ab"
     },
     "total_rows": 142

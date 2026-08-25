@@ -31,10 +31,9 @@ from mint_arm2_nomination_split import (  # noqa: E402
     sealed_pools, validate_caller_identity, verify_frozen_manifest)
 
 _INDEX = load_index()
-# a fully-pinned index view: the real committed index carries two LEGACY
-# unpinned pidgin SEALED pools (see test_real_index_with_unpinned_seals_refuses)
-# which the round-36 impl-red-team #6 guard refuses; the fixtures model the
-# required post-cleanup state (every SEALED pool pinned).
+# a fully-pinned index view. The real committed index is now fully pinned (the
+# 2 legacy pidgin seals were pinned at activation), so this filter is a no-op;
+# it is retained so the fixtures stay valid if an unpinned pool is ever added.
 _PINNED_INDEX = copy.deepcopy(_INDEX)
 _PINNED_INDEX["pinned_sources"] = [
     s for s in _PINNED_INDEX["pinned_sources"]
@@ -995,16 +994,26 @@ def test_dangling_supersede_marker_fails_closed(monkeypatch):
         w.mint()
 
 
-def test_real_index_with_unpinned_seals_refuses(monkeypatch):
-    """Impl red-team #6: the REAL committed exposure index carries two legacy
-    unpinned pidgin SEALED pools; a FROZEN mint refuses because an unpinned seal
-    cannot be adjudicated (disjointness unprovable). This forces the index
-    cleanup before any mint."""
+def test_real_index_is_fully_pinned_and_the_unpinned_guard_still_fires(monkeypatch):
+    """The REAL committed exposure index is now fully pinned (the 2 legacy
+    pidgin seals were pinned at activation), so it no longer triggers the guard.
+    But the guard is NOT dead code: an unpinned SEALED pool injected into the
+    index still refuses."""
+    from mint_arm2_nomination_split import sealed_pools as _sp
+    pools = _sp(_INDEX, pinned_only=False)
+    unpinned = [k for k, v in pools.items()
+                if not (v.get("sha256") and v.get("s3_version_id"))]
+    assert unpinned == [], f"real index still has unpinned seals: {unpinned}"
+    # inject a synthetic unpinned SEALED pool -> the guard fires
+    import copy
     w = _World()
     w.build(monkeypatch)
-    # authenticate against the UNFILTERED real index (with unpinned SEALED pools)
+    tampered = copy.deepcopy(_INDEX)
+    tampered["pinned_sources"].append(
+        {"key": "eval/x/sealed/manifest.jsonl", "class": "SEALED",
+         "language": "english", "rows": 1, "sha256": None, "s3_version_id": None})
     with pytest.raises(MintRefusal, match="unpinned SEALED pools"):
-        mint_phase_a_split(_INDEX, w.pool_identities, packet=w.packet,
+        mint_phase_a_split(tampered, w.pool_identities, packet=w.packet,
                            training_index=w.training_bytes,
                            sealed_authorities=w.sealed_authorities, status="FROZEN")
 
