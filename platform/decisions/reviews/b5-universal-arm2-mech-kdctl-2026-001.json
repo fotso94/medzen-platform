@@ -1,0 +1,11 @@
+{
+ "basis": "Codex stage-1 verdict (owner-relayed 2026-08-25) item 7 directs the six budgeted 30-step mechanics receipts on the corrected image BEFORE any 2000-step launch; the owner directed 'move on'. This record authorizes ONLY this $0.80-worst-case below-tier mechanics receipt (protocol cost_runtime_table row 2, allocation B5-ARM2-MECH-2026-001, serial). The six 2000-step campaign launches, sealed evaluation, promotion and deployment remain SEPARATELY HELD. render+validate on this exact packet returns PASS_EXACT_TRAINING_REQUEST at $0.80 / tier=calibration.",
+ "bindings_sha256": "ea16cc1c20bbcdd3218a37dc8cf93b333392f3649c828199eb798622317147b5",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
+ "job_id": "b5-universal-arm2-mech-kdctl-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "codex (independent) stage-1 verdict \u2014 owner-relayed",
+ "utc": "2026-08-25T21:26:01Z"
+}

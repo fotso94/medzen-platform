@@ -1,9 +1,8 @@
 {
- "DRAFT_STATUS": "PENDING_CORRECTED_IMAGE - finalized (digest + contract sha + own-packet note path) after the corrected trainer image bakes this job's execution contract; a DRAFT can never launch.",
  "acceptance_criteria": [
   "the run completes exactly 30 steps or fails closed (no silent success)",
-  "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
-  "per-language KD coverage (rows and valid frames) recorded for every preservation language: english, french, lingala, swahili",
+  "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD identically ZERO on every step (KD-disabled control); total == ctc",
+  "no per-language KD coverage requirement (KD disabled) \u2014 the control still records the shared preservation coverage surface: english, french, lingala, swahili",
   "peak GPU memory recorded and <= 23622320128 bytes",
   "throughput recorded: steps/min and samples/s both > 0 (wall time cumulative across resume)",
   "the merged export loads (strict key mapping) and serves (readyz) with no adapter residue and finite weights",
@@ -24,27 +23,6 @@
  },
  "cost_ceiling_usd": 0.8,
  "cost_registry_line": "B5-ARM2-MECH-2026-001",
- "distillation": {
-  "design": "platform/decisions/B5-UNIVERSAL-ARM2-DESIGN-2026-001.md",
-  "kd_alpha": 0.25,
-  "kd_temperature": 1.0,
-  "language_weights": {
-   "english": 0.5,
-   "french": 0.5,
-   "lingala": 1.5,
-   "swahili": 1.5
-  },
-  "language_weights_rationale": "Codex review #18: French/English improved in Arm-1, so a uniform preservation weight could suppress those gains. Heavier weight on the regressed sentinels (lingala, swahili), lighter on the anchors (english, french). These are DRAFT values the comparison confirms.",
-  "preservation_languages": [
-   "english",
-   "french",
-   "swahili",
-   "lingala"
-  ],
-  "teacher_card": "medzen_omniASR_CTC_1B_v2",
-  "teacher_mode": "base",
-  "teacher_note": "base teacher is byte-identical to the student's staged base; alignment by construction. Kinyarwanda-v1 teacher deferred (needs its own reviewed card)."
- },
  "environment": {
   "MEDZEN_AUDIO_CAP_HOURS": "2",
   "MEDZEN_BATCH_SIZE": "2",
@@ -54,13 +32,7 @@
   "MEDZEN_EXECUTION_MODE": "arm2_comparative",
   "MEDZEN_EXPECT_EXCLUDED": "1579",
   "MEDZEN_GRAD_ACCUM": "8",
-  "MEDZEN_KD_ALPHA": "0.25",
-  "MEDZEN_KD_ENABLE": "1",
-  "MEDZEN_KD_LANGUAGE_WEIGHTS": "lingala=1.5,swahili=1.5,english=0.5,french=0.5",
-  "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
-  "MEDZEN_KD_TEACHER_CARD": "medzen_omniASR_CTC_1B_v2",
-  "MEDZEN_KD_TEACHER_MODE": "base",
-  "MEDZEN_KD_TEMPERATURE": "1.0",
+  "MEDZEN_KD_ENABLE": "0",
   "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
   "MEDZEN_LR": "1e-5",
   "MEDZEN_LR_SCHEDULE": "constant",
@@ -75,21 +47,21 @@
  },
  "execution_contract": {
   "note": "the image bakes THIS file; the launcher injects its path + sha; the wrapper refuses a contract whose bytes do not hash to the injection",
-  "path": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-H1-EXECUTION-CONTRACT-2026-001.json",
-  "sha256": "b6aec27db500fc4488b991f409ef2b03781a050eb708dc03402f56c7ab99264a"
+  "path": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-EXECUTION-CONTRACT-2026-001.json",
+  "sha256": "651a4f247e3e06bede3edf2a3ca151eaa117d3a9f9ad55a711de55da8bd8bac5"
  },
- "image_provenance": "built + scanned by .github/workflows/arm2-trainer-image-publish.yml (https://github.com/fotso94/medzen-platform/actions/runs/32889353847) from reviewed master commit 40ae44befa730c789b5f994cc75d61a3b2acf7b5",
- "image_tag": "arm2-ftcal-40ae44befa730c789b5f994cc75d61a3b2acf7b5",
- "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:c32aa8fddc38d204bbb937a3972222d17faca19f2208276b17f113dddfa35a2b",
+ "image_provenance": "built + scanned by .github/workflows/arm2-trainer-image-publish.yml (https://github.com/fotso94/medzen-platform/actions/runs/32899140441) from reviewed master commit c1179c968fce453885bfd75ba6c3b3fe4b025730 (the Codex stage-1 correction round: matched-RNG reseed, kd-aware criteria, tier-by-class launcher, 13 baked execution contracts)",
+ "image_tag": "arm2-ftcal-c1179c968fce453885bfd75ba6c3b3fe4b025730",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-universal-arm2-mech-h1-2026-001",
+ "job_id": "b5-universal-arm2-mech-kdctl-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always",
  "max_runtime_seconds": 1800,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
- "purpose": "30-step MECHANICS RECEIPT for stage-1 arm H1 (protocol cost_runtime_table row 2): proves the arm's exact recipe runs the shared comparative wrapper end-to-end (train -> export -> parity -> readyz -> dev-WER -> verify) on the corrected image BEFORE the 2000-step campaign launch. NOT a promotion signal; NOT hyperparameter selection; the H0-shaped receipt doubles as the throughput remeasure on the corrected image.",
- "record": "B5-UNIVERSAL-ARM2-MECH-H1-SAGEMAKER-BINDINGS-2026-001",
+ "purpose": "30-step MECHANICS RECEIPT for stage-1 arm KDCONTROL (protocol cost_runtime_table row 2): proves the arm's exact recipe runs the shared comparative wrapper end-to-end (train -> export -> parity -> readyz -> dev-WER -> verify) on the corrected image BEFORE the 2000-step campaign launch. NOT a promotion signal; NOT hyperparameter selection; the H0-shaped receipt doubles as the throughput remeasure on the corrected image.",
+ "record": "B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-001",
  "result_verifier": {
   "dev_manifests": {
    "lingala": {
@@ -116,9 +88,10 @@
   "expected_steps": 30,
   "gpu_memory_ceiling_bytes": 23622320128,
   "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
+  "kd_enabled": false,
   "metrics_artifact": "calibration-metrics.json",
   "metrics_schema": "b5-arm2-calibration-metrics/1",
-  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-MECH-H1-SAGEMAKER-BINDINGS-2026-001.DRAFT.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
+  "note": "The trainer writes the training-side fields of calibration-metrics.json; the in-image wrapper (pipeline.omniasr_calibrate) patches serve, dev_sentinel_wer, per-row dev_sentinel_results and identity AFTER export and runs the verifier as an in-image SMOKE (fail-closed on shape/identity/receipt-recompute, NOT authoritative). The AUTHORITATIVE verdict is the reviewer's LIVE run from a repo checkout of the reviewed commit: `python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json --live` \u2014 the verifier itself pins account 558069890522/eu-central-1, calls DescribeTrainingJob, verifies the complete job request (role, isolation, VPC, volume, count, checkpoint/input config, environment incl the injected packet+contract shas), follows ModelArtifacts.S3ModelArtifacts, fetches that exact KMS-encrypted object (VersionId captured), extracts and hashes model.pt/manifest/metrics itself, recomputes the per-row dev receipts against the committed slices, and binds identity to the packet canonical sha + contract sha + its own bytes. Local-file modes are explicitly NON-authoritative (mode: smoke | local-crosscheck).",
   "required_preservation_coverage": [
    "english",
    "french",
@@ -135,6 +108,7 @@
  "subnets": [
   "subnet-00232b25bc1ac407a"
  ],
+ "verify_note_deviation": "KNOWN COSMETIC DEVIATION (second-review item): result_verifier.note cites this packet's authoring-time .DRAFT. filename because the baked execution contract pins that exact rv text byte-for-byte. The authoritative verify command for THIS packet is: python -m scripts.verify_arm2_calibration --packet platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.json --live",
  "volume_gb": 100,
  "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h; $1.60/h x max_runtime 0.5h (1,800 s) = $0.80 worst-case compute (== the $0.80 packet ceiling; protocol cost_runtime_table row 2, count 6, cumulative worst $4.80). 30-step calibration-SHAPED mechanics receipt -> legitimately calibration tier (steps <= the STAGE1_STEP_BOUNDARY).",
  "worst_case_usd": 0.8
