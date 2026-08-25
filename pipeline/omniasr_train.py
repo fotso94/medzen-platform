@@ -1049,6 +1049,21 @@ def make_batch_loss(config, teacher, *, metrics_sink=None):
     is a dict, the KD closure writes its decomposed CTC/KD/total loss and
     per-language coverage into it each call (Codex review #19 F3)."""
     if not config.kd_enable:
+        # KD-off comparative CONTROL (Codex round 33): the plain CTC path must
+        # STILL emit the decomposed metrics so the wrapper can write + verify
+        # the artifact — ctc=loss, kd=0, alpha=0, total=loss, empty coverage.
+        # Plain training (execution_mode 'plain') records nothing, unchanged.
+        if config.execution_mode == "arm2_comparative" \
+                and metrics_sink is not None:
+            def _ctc_only_closure(model, batch):
+                loss = _batch_loss(model, batch)
+                value = float(loss.detach())
+                metrics_sink.clear()
+                metrics_sink.update({
+                    "ctc": value, "kd": 0.0, "alpha": 0.0,
+                    "total": value, "kd_coverage": {}})
+                return loss
+            return _ctc_only_closure
         return _batch_loss
 
     def _kd_closure(model, batch):
@@ -1162,11 +1177,13 @@ def main() -> int:
     # Arm-2 calibration metrics (Codex review #19 F3): decomposed CTC/KD/total
     # loss + per-language coverage + peak GPU memory + throughput, written for
     # scripts/verify_arm2_calibration.py to machine-check the acceptance
-    # criteria. Only populated on KD runs; non-KD runs are byte-identical.
+    # criteria. Emitted for EVERY arm2_comparative run — the KD-on candidates
+    # AND the KD-off control (Codex round 33). Plain training is byte-identical.
     import time as _time
-    metrics = CalibrationMetrics() if config.kd_enable else None
-    metrics_sink: dict[str, Any] | None = {} if config.kd_enable else None
-    if config.kd_enable and torch.cuda.is_available():
+    _emit_metrics = config.execution_mode == "arm2_comparative"
+    metrics = CalibrationMetrics() if _emit_metrics else None
+    metrics_sink: dict[str, Any] | None = {} if _emit_metrics else None
+    if _emit_metrics and torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats()
     _wall_start = _time.perf_counter()
     outcome = run_training_loop(

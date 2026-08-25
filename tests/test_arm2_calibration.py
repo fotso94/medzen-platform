@@ -1776,3 +1776,78 @@ def test_kd_enabled_must_be_an_exact_json_boolean():
     for bad in ("false", 0, 1, "true", None):
         failures = verify_calibration(art, dict(_spec(), kd_enabled=bad))
         assert any("kd_enabled must be a JSON boolean" in f for f in failures), bad
+
+
+class _FakeLoss:
+    def __init__(self, v): self.v = float(v)
+    def __truediv__(self, other): return _FakeLoss(self.v / other)
+    def detach(self): return self.v
+    def __float__(self): return self.v
+
+
+class _FakeModel:
+    def __call__(self, seqs, layout, targets=None, targets_layout=None, **kw):
+        return _FakeLoss(2.0)   # sum-reduced CTC loss
+
+
+def _fake_batch():
+    return {"seqs": type("S", (), {"shape": (4,)})(), "seqs_layout": None,
+            "targets": None, "targets_layout": None, "languages": ["english"]}
+
+
+def test_kd_off_comparative_run_writes_metrics_and_passes_verifier_with_resume():
+    """Codex round 33: a REAL KD-off comparative run (execution_mode=
+    arm2_comparative, KD off) must emit calibration-metrics via the plain CTC
+    path, and that artifact must pass the KD-off verifier — including resume."""
+    from pipeline.omniasr_train import parse_config, make_batch_loss
+    from verify_arm2_calibration import verify_calibration
+    env = {"MEDZEN_VARIANT": "ctc", "MEDZEN_MANIFEST_VERSION": "gb9",
+           "MEDZEN_LANGUAGES": "english", "MEDZEN_SEED": "7",
+           "MEDZEN_MAX_STEPS": "30", "MEDZEN_TRAIN_MODE": "lora",
+           "MEDZEN_EXECUTION_MODE": "arm2_comparative", "MEDZEN_KD_ENABLE": "0"}
+    config = parse_config(env)
+    assert config.execution_mode == "arm2_comparative" and not config.kd_enable
+
+    sink: dict = {}
+    loss_fn = make_batch_loss(config, teacher=None, metrics_sink=sink)
+    # the KD-off comparative loss DECOMPOSES + records (ctc=loss, kd=0, alpha=0,
+    # total=loss, empty coverage) — the plain trainer used to ignore metrics
+    loss_fn(_FakeModel(), _fake_batch())
+    assert sink == {"ctc": 0.5, "kd": 0.0, "alpha": 0.0, "total": 0.5,
+                    "kd_coverage": {}}
+
+    def _run(metrics, first, last):
+        for step in range(first, last + 1):
+            loss_fn(_FakeModel(), _fake_batch())
+            metrics.record_micro(sink)
+            metrics.commit_step(step, lr=1e-5)
+
+    def _finalize(metrics):
+        art = metrics.finalize(
+            status="COMPLETED", steps_completed=30, max_steps=30,
+            peak_gpu_bytes=10_000_000_000, wall_seconds=120.0,
+            samples_per_step=16, identity=_identity(),
+            serve={"readyz": True, "adapter_residue": False,
+                   "weights_finite": True},
+            dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13})
+        art["parity"] = _good_artifact(30)["parity"]
+        return art
+
+    # (a) a straight-through run writes an artifact that PASSES the KD-off spec
+    m = CalibrationMetrics()
+    _run(m, 1, 30)
+    art = _finalize(m)
+    assert art["kd_positive_finite_steps"] == 0
+    assert art["kd_coverage"] == {}
+    assert verify_calibration(art, dict(_spec(), kd_enabled=False)) == []
+
+    # (b) RESUME: 15 steps -> persist -> restore -> 15 more -> full 30 verify
+    m1 = CalibrationMetrics()
+    _run(m1, 1, 15)
+    state = m1.to_state()
+    m2 = CalibrationMetrics()
+    m2.restore(state)
+    _run(m2, 16, 30)
+    art_resumed = _finalize(m2)
+    assert len(art_resumed["per_step"]) == 30
+    assert verify_calibration(art_resumed, dict(_spec(), kd_enabled=False)) == []
