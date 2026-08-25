@@ -56,6 +56,13 @@ COPY scripts/verify_arm2_calibration.py scripts/b5_sagemaker_job.py ./scripts/
 # execution contract (the runtime artifact); only the CONTRACT ships (below)
 COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json \
      platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H0-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H1-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H2-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H3-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H4-EXECUTION-CONTRACT-2026-001.json \
      ./platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4) — the in-image
 # tests assert they match the packet's path/sha256/rows declaration
@@ -113,7 +120,14 @@ COPY scripts/verify_arm2_calibration.py /opt/medzen/scripts/verify_arm2_calibrat
 # so cannot exist inside it). The launcher injects the contract path + sha;
 # the wrapper refuses a contract whose bytes do not hash to the declaration.
 COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json \
-     /opt/medzen/platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
+     platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H0-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H1-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H2-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H3-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H4-EXECUTION-CONTRACT-2026-001.json \
+     /opt/medzen/platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4): the calibration
 # wrapper refuses to score any slice whose sha differs from the packet's
 # declaration, so the exact reviewed bytes must ship
