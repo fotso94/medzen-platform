@@ -58,6 +58,7 @@
  "budget": {
   "automatic_retries": "NONE \u2014 any retry requires separate owner authorization",
   "ceiling_usd": 70,
+  "fail_closed_over_ceiling": "if the throughput micro-benchmark's MEASURED utt/s makes the benchmark-adjusted cumulative WORST-CASE cost EXCEED $70, the procedure HALTS (fail-closed) and requires NEW owner approval of a revised ceiling BEFORE any further job; it NEVER auto-proceeds above $70.",
   "per_job_runtime": "hard MaxRuntimeInSeconds per job (table above), finalized from the measured-throughput benchmark at second review",
   "reporting_rule": "on-demand always; +$100 on every reported max => reported max <= $170",
   "reservation": "serial (one job reserved at a time)",
@@ -195,9 +196,9 @@
  },
  "no_selection_stage": "The 600-step diagnostic screen is REMOVED. All six training arms (KD_CONTROL, H0, H1-H4) are trained FRESH to 2000 steps under one matched seed + data order, then scored once on the frozen nomination rows. No config is dropped on a partial-step heuristic.",
  "nomination_data_rules": {
-  "phaseA_split_source": "EXACT per-row set difference (see the machine-derived exposure index used_exact_definition + disjointness_contract): split(language) = { pool rows whose audio_checksum_sha256 is NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. This is NOT a pool-size-minus-counts remainder. USED_EXACT includes the dev-selection rows, the sentinel rows, AND every base-eval-scored row (the FULL fleurs/soreva/aaf pools for english/french/swahili -> candidate-blind only; pidgin av-heldout was never base-scored -> base-blind).",
+  "phaseA_split_source": "per-row EXPOSURE-CLASS eligibility (see the exposure index exposure_classes + phase_eligibility): a Phase-A nomination row is eligible iff its audio_checksum_sha256 is NOT in CANDIDATE_EXPOSED, NOT in TRAINING_EXPOSED, and NOT in SEALED. BASE_EXPOSED rows (zero-shot base-scored) REMAIN ELIGIBLE for Phase A \u2014 nomination compares CANDIDATES, so base-blindness is not required \u2014 which keeps english/french/swahili splits NON-EMPTY. Phase B additionally excludes BASE_EXPOSED (base-blind). This replaces the rev-004 single USED_EXACT set, which would have emptied the english/french/swahili splits.",
   "rules": [
-   "DISJOINT by EXACT audio_checksum_sha256 SET DIFFERENCE from USED_EXACT and SEALED_EXACT (enumerated at mint from the in-repo identities in the exposure index PLUS the s3_pinned_pools + sealed-half manifests fetched by pinned sha/version_id); never a whole-pool count subtraction; the row-level disjointness proof is committed at mint",
+   "eligible per the phase_eligibility CLASS rule by exact audio_checksum_sha256 (never whole-pool count subtraction); class membership enumerated at mint from the in-repo identities in the exposure index PLUS the s3_pinned_pools (BASE/TRAINING) + sealed-half manifests fetched by pinned sha/version_id; the row-level class proof is committed at mint",
    "PREDECLARED + committed + FROZEN (per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS) BEFORE any arm is scored",
    "opened ONCE per seed: all arms + comparators scored in a single pass; no iterative re-fitting",
    "the sealed promotion holdout is NEVER touched"
@@ -240,34 +241,32 @@
  },
  "purpose": "An UNSEALED, directional HELD-OUT DEVELOPMENT NOMINATION: compare KD candidate recipes against a matched KD-disabled control and the mechanics-proven anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It is NOT a confirmation and touches no sealed data.",
  "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "revision": "004 (design re-review 3): exposure model uses EXACT used/sealed row identities (not whole-pool exclusion); the directional veto is strengthened to the historical non-inferiority rule that caught the Lingala failure; seed-1 provisional / seed-2 replication defined with STAGE-SPECIFIC multiplicity; the throughput micro-benchmark is a budgeted line inside the $70 ceiling. No machinery; no compute; no sealed data.",
- "seed_procedure": {
-  "stage_1_provisional_seed1": {
-   "multiplicity": "STAGE-1 Holm-Bonferroni over the family = {4 candidates x (3 preservation non-inferiority + pidgin retention + 3 directional vetoes + beat-KD_CONTROL + beat-H0)}, family-wise alpha = 0.05",
-   "output": "a PROVISIONAL finalist = the qualifying candidate that wins the deterministic tie-break, or NO_RECIPE_QUALIFIES",
-   "runs": "all 6 arms (KD_CONTROL, H0, H1-H4) trained FRESH @2000 under seed 1; scored once on the frozen nomination split"
-  },
-  "stage_2_replication_seed2": {
-   "confirm": "the finalist is CONFIRMED (final nomination) iff it passes Stage-2 with NO seed reversal; if it FAILS Stage-2, the outcome is NO_RECIPE_QUALIFIES (no silent fallback to a Stage-1 runner-up)",
-   "multiplicity": "STAGE-2 Holm-Bonferroni over the SMALLER family = {1 finalist x (3 preservation + pidgin retention + 3 vetoes + beat-KD_CONTROL + beat-H0)}, family-wise alpha = 0.05 \u2014 a single pre-specified hypothesis set, NOT re-corrected against the Stage-1 candidates",
-   "runs": "ONLY the provisional finalist + H0 + KD_CONTROL trained FRESH @2000 under seed 2; re-scored on the SAME frozen nomination split"
-  },
-  "why_stage_specific": "Stage 1 SELECTS among many (large family); Stage 2 REPLICATES one pre-specified selection (small family). Correcting each stage separately is correct; pooling both into one family would over-correct the replication."
- },
- "selection_rule": {
-  "H0_is_comparator_only": "H0 (mechanics-proven anchor) can never be the nominated winner; if no candidate beats H0 the outcome is NO_RECIPE_QUALIFIES",
-  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the terminal outcome is NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold at H0), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe",
-  "qualify": "a CANDIDATE (H1-H4) QUALIFIES iff, on the Phase-A nomination split, after Holm-Bonferroni AND under both seeds: (a) preservation non-inferiority passes for english, french, swahili; AND (b) pidgin retention passes; AND (c) NO directional veto fires for lingala/kinyarwanda/ewe; AND (d) it beats the matched KD_CONTROL on the preservation macro (one-sided 95% lower bound of (WER_control - WER_candidate) > 0); AND (e) it beats the H0 mechanics-proven anchor on the preservation macro (one-sided 95% lower bound of (WER_H0 - WER_candidate) > 0)",
-  "tie_break": "among qualifiers, DETERMINISTIC: (1) lowest preservation macro WER on the seed-pooled split; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id",
-  "two_stage": "qualification is decided by seed_procedure: a candidate must qualify at Stage 1 (seed-1, Stage-1 multiplicity) to become the provisional finalist, then the finalist must be CONFIRMED at Stage 2 (seed-2, Stage-2 multiplicity); failing Stage 2 -> NO_RECIPE_QUALIFIES."
- },
+ "revision": "005 (design re-review 4): replaced the single USED_EXACT set with CANDIDATE/BASE/TRAINING/SEALED exposure classes (base-scored candidate-blind rows stay eligible for Phase A, so english/french/swahili splits are non-empty); consolidated ONE unambiguous two-stage statistical_procedure; Stage-1 tie-break is seed-1-ONLY; benchmark-adjusted cost over $70 fails closed pending new owner approval. Design-only; no machinery; no compute; no sealed data.",
  "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / parity / dev-WER / authoritative receipts (post-approval implementation).",
- "statistics": {
-  "clustering": "SPEAKER-level cluster bootstrap: resample SPEAKERS with replacement, B >= 10000, paired (same resampled speaker set across compared arms). Pools with placeholder/single speaker ids (ewe soreva) fall back to utterance-level and are directional-veto-only regardless",
-  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from per-row edit-distance receipts",
-  "multiplicity_correction": "Holm-Bonferroni across the family = {4 candidates x (3 preservation langs + pidgin retention + 3 directional vetoes)} + the beat-KD_CONTROL and beat-H0 preservation-macro tests, family-wise alpha = 0.05",
-  "seed_aggregation": "see seed_procedure: seed-1 provisional selection (Stage-1 multiplicity) then seed-2 replication of the single provisional finalist (Stage-2 multiplicity); a gated verdict must hold under BOTH stages (no seed reversal).",
-  "units": "absolute WER points (pp)"
+ "statistical_procedure": {
+  "H0_comparator_only": "H0 (mechanics-proven anchor) can NEVER be nominated; candidates must beat it, else NO_RECIPE_QUALIFIES",
+  "NO_RECIPE_QUALIFIES": "an explicit terminal state at either stage; the procedure NEVER silently nominates the least-bad recipe",
+  "constraints_ref": "see `constraints`: preservation_non_inferiority (english/french/swahili, +0.5pp upper CI), pidgin_retention (+0.5pp upper CI), directional_development_vetoes (lingala/kinyarwanda/ewe: VETO iff upper CI of regression > 0.01), plus beat_KD_CONTROL and beat_H0 (95% lower CI of the reduction on the preservation macro > 0)",
+  "metric": "WER = sum(edit_distance)/sum(reference_words) per language, from per-row edit-distance receipts; absolute WER points (pp)",
+  "multiplicity": {
+   "stage_1": "Holm-Bonferroni over the family = {4 candidates x (3 preservation + pidgin retention + 3 directional vetoes + beat-KD_CONTROL + beat-H0)}, family-wise alpha = 0.05",
+   "stage_2": "Holm-Bonferroni over the SMALLER family = {1 finalist x (the same tests)}, family-wise alpha = 0.05 \u2014 NOT re-corrected against the Stage-1 candidates"
+  },
+  "preservation_macro": "unweighted mean WER over {english, french, swahili} (SEPARATE from pidgin retention)",
+  "resampling": "cluster bootstrap, B >= 10000, paired (same resampled clusters across compared arms). Cluster unit = SPEAKER, except placeholder/single-speaker pools (ewe soreva, and the directional lingala/kinyarwanda/ewe surfaces) which cluster by audio_checksum_sha256 (row-level), matching the historical lingala sentinel",
+  "single_authority": "This is the ONE authoritative statistical procedure; no other selection logic applies. It replaces the former separate statistics/seed_procedure/selection_rule blocks.",
+  "stage_1_provisional": {
+   "no_qualifier": "if no candidate qualifies at Stage 1 -> NO_RECIPE_QUALIFIES (hold at H0)",
+   "qualify": "a candidate qualifies iff, under seed-1 after Stage-1 correction: preservation non-inferiority passes for english/french/swahili AND pidgin retention passes AND NO directional veto fires AND it beats KD_CONTROL on the preservation macro AND it beats H0 on the preservation macro",
+   "runs": "all 6 arms (KD_CONTROL, H0, H1-H4) trained FRESH @2000 under seed 1; scored once on the frozen nomination split",
+   "seed": "seed 1 ONLY",
+   "tie_break_seed1_only": "the PROVISIONAL finalist = among Stage-1 qualifiers, DETERMINISTIC on SEED-1 RESULTS ONLY (seed-2 does not exist yet and is NEVER used for ranking): (1) lowest seed-1 preservation macro WER; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id"
+  },
+  "stage_2_replication": {
+   "confirm": "the finalist is the FINAL nomination iff it passes ALL constraints at Stage 2 (Stage-2 correction) with NO seed reversal; if it FAILS Stage 2 -> NO_RECIPE_QUALIFIES (no fallback to a Stage-1 runner-up)",
+   "runs": "ONLY the provisional finalist + H0 + KD_CONTROL trained FRESH @2000 under seed 2; re-scored on the SAME frozen nomination split",
+   "seed": "seed 2"
+  }
  },
  "status": "PENDING_DESIGN_REVIEW",
  "terminology": {
@@ -293,5 +292,5 @@
   "first_review": "THIS design + the exposure inventory + the machine-derived exposure index (PENDING_DESIGN_REVIEW); no code, no packets, no launch",
   "second_review": "AFTER implementation + tests + the measured-throughput benchmark: bind the exact code sha, trainer image digest, nomination manifest, and per-recipe execution packets BEFORE any launch"
  },
- "utc": "2026-08-25T03:00:00Z"
+ "utc": "2026-08-25T04:00:00Z"
 }

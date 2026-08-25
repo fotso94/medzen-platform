@@ -30,7 +30,9 @@ def test_index_captures_the_known_surfaces_with_full_identities():
     assert by["dev-sentinel-lingala-60"]["row_count"] == 60
     assert by["dev-sentinel-swahili-60"]["row_count"] == 60
     assert d["identity_key"] == "audio_checksum_sha256"
-    assert d["used_union"]["unique_checksums"] == 746
+    assert d["candidate_exposed_union"]["unique_checksums"] == 746
+    assert set(d["exposure_classes"]) == {"CANDIDATE_EXPOSED","BASE_EXPOSED","TRAINING_EXPOSED","SEALED"}
+    assert "phase_A_nomination" in d["phase_eligibility"]
     assert len(d["s3_pinned_pools"]) >= 7  # per-language source pools recorded
 
 

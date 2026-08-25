@@ -1,9 +1,10 @@
 """Machine-derived Arm-2 exposure index (Codex/owner design re-review, rev 003).
 
 Deterministically derives, FROM THE COMMITTED SOURCE RECORDS, the audio identity
-(audio_checksum_sha256) sets of every IN-REPO used unsealed surface, plus the
-USED_UNION that a future held-out development NOMINATION split (and any Phase-B
-confirmation split) must be provably disjoint from. Surfaces whose per-row rows
+(audio_checksum_sha256) sets of every IN-REPO used unsealed surface, tagged by
+EXPOSURE CLASS (CANDIDATE_EXPOSED / BASE_EXPOSED / TRAINING_EXPOSED / SEALED), so
+phase-specific eligibility (Phase-A nomination allows BASE_EXPOSED rows; Phase-B
+confirmation excludes them) is a per-row class test, not whole-pool exclusion. Surfaces whose per-row rows
 are S3-pinned and not materialised in the repo (training corpora, base-eval
 pools) are recorded by their pinned POOL-LEVEL identity so disjointness against
 them is checked at mint time against the pinned S3 manifest.
@@ -55,6 +56,7 @@ def build() -> dict:
         "surface": "arm1-dev-selection",
         "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
         "exposure": "USED_DEV_SELECTION",
+        "exposure_class": "CANDIDATE_EXPOSED",
         "row_count": len(ds["rows"]),
         "unique_checksums": n,
         "checksums_aggregate_sha256": agg,
@@ -70,6 +72,7 @@ def build() -> dict:
         "surface": "arm1-lingala-sentinel-386",
         "path": "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json",
         "exposure": "USED_DEV_SENTINEL",
+        "exposure_class": "CANDIDATE_EXPOSED",
         "row_count": len(ls["rows"]),
         "unique_checksums": n,
         "checksums_aggregate_sha256": agg,
@@ -88,6 +91,7 @@ def build() -> dict:
             "surface": f"dev-sentinel-{lang}-60",
             "path": f"platform/manifests/dev-sentinels/{lang}.jsonl",
             "exposure": "USED_DEV_SENTINEL",
+            "exposure_class": "CANDIDATE_EXPOSED",
             "row_count": len(cks),
             "unique_checksums": n,
             "checksums_aggregate_sha256": agg,
@@ -115,33 +119,55 @@ def build() -> dict:
         "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001",
         "status": "PENDING_DESIGN_REVIEW",
         "generator": "scripts/build_arm2_exposure_index.py",
-        "note": "MACHINE-DERIVED (Codex r31 design re-review): rebuilt by the "
-                "generator from committed source records; `--check` proves the "
-                "committed file byte-equals a fresh build. The USED_UNION is the "
-                "identity set a future held-out development NOMINATION split (and "
-                "any Phase-B confirmation split) MUST be disjoint from.",
+        "note": "MACHINE-DERIVED (rev 005): rebuilt by the generator from "
+                "committed source records; `--check` proves the committed file "
+                "byte-equals a fresh build. Surfaces are tagged by EXPOSURE "
+                "CLASS; phase_eligibility defines per-row eligibility per phase.",
         "identity_key": "audio_checksum_sha256",
         "surfaces": surfaces,
         "s3_pinned_pools": pinned_pools,
-        "used_union": {
+        "candidate_exposed_union": {
             "unique_checksums": union_count,
             "checksums_aggregate_sha256": union_agg,
+            "note": "the in-repo CANDIDATE_EXPOSED identities (dev-selection + "
+                    "sentinels); split_is_disjoint() checks a candidate split "
+                    "against THIS set (the Phase-A exclusion of the in-repo "
+                    "class).",
         },
-        "used_exact_definition": "USED_EXACT(language) = the EXACT set of "
-            "audio_checksum_sha256 of (a) the dev-selection rows + (b) the "
-            "sentinel rows [both enumerated above] UNION (c) every row of the "
-            "base-eval pools the base model was scored on (the FULL "
-            "fleurs/soreva/aaf pools per the base-eval receipts; pidgin's "
-            "av-heldout was NEVER base-scored). SEALED_EXACT(language) = the "
-            "exact set of the sealed half's rows. Neither is a pool-size count.",
-        "disjointness_contract": "the nomination split is defined by EXACT "
-            "PER-ROW SET DIFFERENCE, never whole-pool count subtraction: "
-            "split(language) = { r in source pool : audio_checksum_sha256(r) "
-            "NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. "
-            "At mint the exact USED_EXACT/SEALED_EXACT are enumerated from the "
-            "in-repo identities here PLUS the s3_pinned_pools and sealed-half "
-            "manifests fetched by their pinned sha/version_id; the mint commits "
-            "the row-level disjointness proof.",
+        "exposure_classes": {
+            "CANDIDATE_EXPOSED": "rows the CANDIDATE-selection process saw "
+                "(dev-selection used to pick Arm-1 checkpoints + sentinel rows "
+                "scored on candidate checkpoints). In-repo, full per-row "
+                "identities above. Excluded from BOTH Phase-A nomination and "
+                "Phase-B confirmation.",
+            "BASE_EXPOSED": "rows the ZERO-SHOT BASE model scored (the full "
+                "fleurs/soreva/aaf pools per the base-eval receipts). S3-pinned "
+                "(s3_pinned_pools). Candidate-blind but NOT base-blind: "
+                "ELIGIBLE for Phase-A nomination, EXCLUDED from Phase-B "
+                "confirmation.",
+            "TRAINING_EXPOSED": "rows in the training corpus (gb9/gb8/gb3). "
+                "S3-pinned (adoption records). Excluded from ALL evaluation.",
+            "SEALED": "the per-language sealed promotion holdout. NEVER touched "
+                "by Part-2.",
+        },
+        "phase_eligibility": {
+            "phase_A_nomination": "a row is eligible iff its "
+                "audio_checksum_sha256 is NOT in CANDIDATE_EXPOSED, NOT in "
+                "TRAINING_EXPOSED, and NOT in SEALED. BASE_EXPOSED rows ARE "
+                "eligible (nomination compares CANDIDATES; base-blindness is "
+                "not required here). This keeps english/french/swahili splits "
+                "non-empty.",
+            "phase_B_confirmation": "additionally excludes BASE_EXPOSED "
+                "(base-blind); among existing data only pidgin av-heldout "
+                "qualifies -> the rest require new licensed acquisition.",
+        },
+        "disjointness_contract": "class-based per-row eligibility by "
+            "audio_checksum_sha256 (never whole-pool count subtraction). At "
+            "mint the exact class membership is enumerated from the in-repo "
+            "identities here PLUS the s3_pinned_pools + training adoption + "
+            "sealed-half manifests fetched by pinned sha/version_id; the mint "
+            "commits the row-level proof that the split satisfies the "
+            "phase_eligibility rule for its phase.",
     }
 
 

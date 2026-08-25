@@ -52,7 +52,7 @@
   }
  },
  "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
- "revision": "004 (design re-review 3): exposure model uses EXACT used/sealed row identities (audio_checksum_sha256 set difference), not whole-pool count exclusion; references the sharpened machine-derived exposure index disjointness_contract.",
+ "revision": "005 (design re-review 4): exposure modelled as CANDIDATE/BASE/TRAINING/SEALED classes; Phase-A nomination excludes CANDIDATE_EXPOSED+TRAINING_EXPOSED+SEALED but ALLOWS BASE_EXPOSED (base-scored candidate-blind rows) so english/french/swahili splits are non-empty; Phase-B confirmation additionally excludes BASE_EXPOSED.",
  "sealed_holdout": {
   "governed_by": [
    "platform/decisions/PROMOTION-PROTOCOL-2026-004.json",
@@ -84,7 +84,7 @@
     "pidgin"
    ],
    "naming": "HELD-OUT DEVELOPMENT NOMINATION, not confirmation (english/french/swahili are base-scored; only pidgin is base-blind)",
-   "split_rows": "EXACT per-row set difference: { pool rows whose audio_checksum_sha256 is NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) } (see the exposure index used_exact_definition/disjointness_contract). NOT a pool-size-minus-counts remainder. USED_EXACT = dev-selection rows + sentinel rows + every base-eval-scored row (the full fleurs/soreva/aaf pools); predeclared + frozen with per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS before any arm is scored."
+   "split_rows": "per-row EXPOSURE-CLASS eligibility (see the machine-derived exposure index exposure_classes + phase_eligibility): eligible iff audio_checksum_sha256 NOT in CANDIDATE_EXPOSED, NOT in TRAINING_EXPOSED, NOT in SEALED. BASE_EXPOSED (zero-shot base-scored) rows REMAIN ELIGIBLE for Phase-A nomination (candidate-blind is what matters here), which keeps english/french/swahili splits non-empty; Phase-B additionally excludes BASE_EXPOSED. Predeclared + frozen with per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS before any arm is scored."
   },
   "phase_B_base_blind_confirmation_held": {
    "languages": [
@@ -151,5 +151,5 @@
    "surface": "base-model zero-shot evaluation pools (fleurs-v1 + soreva-v1 + aaf-test + av per language)"
   }
  ],
- "utc": "2026-08-25T03:00:00Z"
+ "utc": "2026-08-25T04:00:00Z"
 }

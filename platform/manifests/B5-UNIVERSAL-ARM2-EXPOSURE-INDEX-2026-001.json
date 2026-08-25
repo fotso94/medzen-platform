@@ -1,8 +1,23 @@
 {
- "disjointness_contract": "the nomination split is defined by EXACT PER-ROW SET DIFFERENCE, never whole-pool count subtraction: split(language) = { r in source pool : audio_checksum_sha256(r) NOT in USED_EXACT(language) AND NOT in SEALED_EXACT(language) }. At mint the exact USED_EXACT/SEALED_EXACT are enumerated from the in-repo identities here PLUS the s3_pinned_pools and sealed-half manifests fetched by their pinned sha/version_id; the mint commits the row-level disjointness proof.",
+ "candidate_exposed_union": {
+  "checksums_aggregate_sha256": "5c959745b95615ab824532a046841e2c62f93183ba44b709fc6097f32b6f65e4",
+  "note": "the in-repo CANDIDATE_EXPOSED identities (dev-selection + sentinels); split_is_disjoint() checks a candidate split against THIS set (the Phase-A exclusion of the in-repo class).",
+  "unique_checksums": 746
+ },
+ "disjointness_contract": "class-based per-row eligibility by audio_checksum_sha256 (never whole-pool count subtraction). At mint the exact class membership is enumerated from the in-repo identities here PLUS the s3_pinned_pools + training adoption + sealed-half manifests fetched by pinned sha/version_id; the mint commits the row-level proof that the split satisfies the phase_eligibility rule for its phase.",
+ "exposure_classes": {
+  "BASE_EXPOSED": "rows the ZERO-SHOT BASE model scored (the full fleurs/soreva/aaf pools per the base-eval receipts). S3-pinned (s3_pinned_pools). Candidate-blind but NOT base-blind: ELIGIBLE for Phase-A nomination, EXCLUDED from Phase-B confirmation.",
+  "CANDIDATE_EXPOSED": "rows the CANDIDATE-selection process saw (dev-selection used to pick Arm-1 checkpoints + sentinel rows scored on candidate checkpoints). In-repo, full per-row identities above. Excluded from BOTH Phase-A nomination and Phase-B confirmation.",
+  "SEALED": "the per-language sealed promotion holdout. NEVER touched by Part-2.",
+  "TRAINING_EXPOSED": "rows in the training corpus (gb9/gb8/gb3). S3-pinned (adoption records). Excluded from ALL evaluation."
+ },
  "generator": "scripts/build_arm2_exposure_index.py",
  "identity_key": "audio_checksum_sha256",
- "note": "MACHINE-DERIVED (Codex r31 design re-review): rebuilt by the generator from committed source records; `--check` proves the committed file byte-equals a fresh build. The USED_UNION is the identity set a future held-out development NOMINATION split (and any Phase-B confirmation split) MUST be disjoint from.",
+ "note": "MACHINE-DERIVED (rev 005): rebuilt by the generator from committed source records; `--check` proves the committed file byte-equals a fresh build. Surfaces are tagged by EXPOSURE CLASS; phase_eligibility defines per-row eligibility per phase.",
+ "phase_eligibility": {
+  "phase_A_nomination": "a row is eligible iff its audio_checksum_sha256 is NOT in CANDIDATE_EXPOSED, NOT in TRAINING_EXPOSED, and NOT in SEALED. BASE_EXPOSED rows ARE eligible (nomination compares CANDIDATES; base-blindness is not required here). This keeps english/french/swahili splits non-empty.",
+  "phase_B_confirmation": "additionally excludes BASE_EXPOSED (base-blind); among existing data only pidgin av-heldout qualifies -> the rest require new licensed acquisition."
+ },
  "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001",
  "s3_pinned_pools": [
   {
@@ -111,6 +126,7 @@
   {
    "checksums_aggregate_sha256": "90a13a6a985cd6cfa17fcf962c71010249bc6bcc6c1f0330c6b9030d4c3e3516",
    "exposure": "USED_DEV_SELECTION",
+   "exposure_class": "CANDIDATE_EXPOSED",
    "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
    "per_language_unique": {
     "english": 60,
@@ -128,6 +144,7 @@
   {
    "checksums_aggregate_sha256": "eab932fbe034509f71823f57849d2c04679c23a9eebd4ee1e97d5b49757f56b4",
    "exposure": "USED_DEV_SENTINEL",
+   "exposure_class": "CANDIDATE_EXPOSED",
    "path": "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json",
    "row_count": 386,
    "surface": "arm1-lingala-sentinel-386",
@@ -136,6 +153,7 @@
   {
    "checksums_aggregate_sha256": "37c8fa3d89810c5423241379291598c72be86b7d08e098fb840268b0c91e69c2",
    "exposure": "USED_DEV_SENTINEL",
+   "exposure_class": "CANDIDATE_EXPOSED",
    "path": "platform/manifests/dev-sentinels/lingala.jsonl",
    "row_count": 60,
    "surface": "dev-sentinel-lingala-60",
@@ -144,15 +162,11 @@
   {
    "checksums_aggregate_sha256": "422949ee1cf036edb81f7f152f25ee5e83757cbce556a6707207230898e244ec",
    "exposure": "USED_DEV_SENTINEL",
+   "exposure_class": "CANDIDATE_EXPOSED",
    "path": "platform/manifests/dev-sentinels/swahili.jsonl",
    "row_count": 60,
    "surface": "dev-sentinel-swahili-60",
    "unique_checksums": 60
   }
- ],
- "used_exact_definition": "USED_EXACT(language) = the EXACT set of audio_checksum_sha256 of (a) the dev-selection rows + (b) the sentinel rows [both enumerated above] UNION (c) every row of the base-eval pools the base model was scored on (the FULL fleurs/soreva/aaf pools per the base-eval receipts; pidgin's av-heldout was NEVER base-scored). SEALED_EXACT(language) = the exact set of the sealed half's rows. Neither is a pool-size count.",
- "used_union": {
-  "checksums_aggregate_sha256": "5c959745b95615ab824532a046841e2c62f93183ba44b709fc6097f32b6f65e4",
-  "unique_checksums": 746
- }
+ ]
 }

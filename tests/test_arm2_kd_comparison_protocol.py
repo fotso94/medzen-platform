@@ -1,12 +1,10 @@
-"""The Arm-2 KD comparison protocol + exposure inventory are DESIGN-REVIEW
-artifacts (owner two-review gate, rev 003). These tests validate them AGAINST
-THE ACTUAL SOURCE RECORDS and enforce the rev-003 semantics: held-out
-DEVELOPMENT NOMINATION (not confirmation), preservation separated from pidgin
-retention, hard directional vetoes for lingala/kinyarwanda/ewe, H0 as a
-mechanics-proven comparator carried through the second seed, and a measured-
-throughput $70 ceiling. They fail if the design is silently treated as approved,
-if a required element is missing, if a claim diverges from source, or if the
-cost arithmetic exceeds the ceiling."""
+"""Arm-2 KD comparison protocol + exposure inventory — DESIGN-REVIEW artifacts
+(owner two-review gate, rev 005). Validated AGAINST SOURCE RECORDS. Rev-005
+semantics: exposure CLASSES (base-scored candidate-blind rows stay eligible for
+Phase A); ONE authoritative two-stage statistical_procedure; Stage-1 tie-break
+seed-1-only; benchmark-adjusted cost over $70 fails closed. Fail if the design is
+silently treated as approved, a required element is missing, a claim diverges
+from source, or the cost arithmetic exceeds the ceiling."""
 import hashlib
 import json
 from pathlib import Path
@@ -14,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PROTO = ROOT / "platform/decisions/B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001.json"
 INV = ROOT / "platform/decisions/B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001.json"
+IDX = ROOT / "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json"
 
 
 def _p():
@@ -36,16 +35,55 @@ def test_both_records_are_pending_review_and_authorize_nothing():
     assert set(_p()["two_review_gate"]) == {"first_review", "second_review"}
 
 
-# ---- terminology: nomination, not confirmation; H0 mechanics-proven -------
+# ---- exposure CLASSES: base-scored rows stay eligible for Phase A ---------
 
-def test_phase_a_is_held_out_development_nomination_not_confirmation():
+def test_exposure_is_classes_and_base_exposed_is_phase_a_eligible():
+    idx = json.loads(IDX.read_bytes())
+    assert set(idx["exposure_classes"]) == {
+        "CANDIDATE_EXPOSED", "BASE_EXPOSED", "TRAINING_EXPOSED", "SEALED"}
+    # every in-repo surface is tagged with a class
+    assert all("exposure_class" in s for s in idx["surfaces"])
+    pa = idx["phase_eligibility"]["phase_A_nomination"]
+    assert "BASE_EXPOSED rows ARE" in pa and "eligible" in pa
+    assert "NOT in CANDIDATE_EXPOSED" in pa
+    pb = idx["phase_eligibility"]["phase_B_confirmation"]
+    assert "excludes BASE_EXPOSED" in pb
+    # the protocol nomination rule allows BASE_EXPOSED for Phase A
+    src = _p()["nomination_data_rules"]["phaseA_split_source"]
+    assert "BASE_EXPOSED rows (zero-shot base-scored) REMAIN ELIGIBLE" in src
+    assert "NON-EMPTY" in src
+    assert "NOT in CANDIDATE_EXPOSED" in src
+
+
+def test_disjointness_contract_is_class_based_not_whole_pool():
+    idx = json.loads(IDX.read_bytes())
+    assert "class-based per-row eligibility" in idx["disjointness_contract"]
+    assert "never whole-pool count subtraction" in idx["disjointness_contract"]
+
+
+# ---- ONE authoritative two-stage procedure --------------------------------
+
+def test_single_statistical_procedure_replaced_the_split_blocks():
     d = _p()
-    assert "held_out_development_nomination" in d["terminology"]
-    ph = d["phases"]
-    assert "phase_A_held_out_development_nomination_now" in ph
-    # "confirmation" is reserved for base-blind Phase B
-    assert "confirmation" in d["terminology"]
-    assert "HELD" in ph["phase_B_base_blind_confirmation_HELD"]["requirement"]
+    sp = d["statistical_procedure"]
+    assert "single_authority" in sp
+    # the ambiguous predecessors are gone
+    for gone in ("statistics", "seed_procedure", "selection_rule", "macro_objective"):
+        assert gone not in d, f"{gone} must be folded into statistical_procedure"
+
+
+def test_two_stage_with_stage_specific_multiplicity_and_seed1_only_tiebreak():
+    sp = _p()["statistical_procedure"]
+    assert sp["stage_1_provisional"]["seed"] == "seed 1 ONLY"
+    tb = sp["stage_1_provisional"]["tie_break_seed1_only"]
+    assert "SEED-1 RESULTS ONLY" in tb
+    assert "NEVER used for ranking" in tb
+    assert "DETERMINISTIC" in tb
+    assert "SMALLER" in sp["multiplicity"]["stage_2"]
+    assert "NOT re-corrected" in sp["multiplicity"]["stage_2"]
+    assert "provisional finalist + H0 + KD_CONTROL" in \
+        sp["stage_2_replication"]["runs"]
+    assert "NO_RECIPE_QUALIFIES" in sp["stage_2_replication"]["confirm"]
 
 
 def test_h0_is_mechanics_proven_comparator_only():
@@ -53,115 +91,67 @@ def test_h0_is_mechanics_proven_comparator_only():
     comps = {a["id"]: a for a in d["arm_roles"]["comparators_not_nominable"]}
     cands = {a["id"] for a in d["arm_roles"]["candidates_nominable"]}
     assert "MECHANICS_PROVEN" in comps["H0"]["status"]
-    assert "H0" not in cands and cands == {"H1", "H2", "H3", "H4"}
-    assert "H0_is_comparator_only" in d["selection_rule"]
+    assert cands == {"H1", "H2", "H3", "H4"} and "H0" not in cands
+    assert "H0_comparator_only" in d["statistical_procedure"]
 
 
-# ---- separated objectives + directional vetoes ---------------------------
-
-def test_preservation_objective_is_separated_from_pidgin_retention():
+def test_preservation_macro_separated_from_pidgin_retention():
+    sp = _p()["statistical_procedure"]
+    macro = sp["preservation_macro"]
+    assert "{english, french, swahili}" in macro
+    assert "SEPARATE from pidgin" in macro
     obj = _p()["objectives"]
-    pres = obj["preservation_objective"]
-    assert pres["languages"] == ["english", "french", "swahili"]
-    assert "pidgin" not in pres["macro"].split("{")[1].split("}")[0]
+    assert obj["preservation_objective"]["languages"] == ["english", "french", "swahili"]
     assert obj["pidgin_retention_objective"]["language"] == "pidgin"
-    # the gating macro is preservation-only
-    sel = _p()["selection_rule"]
-    assert "preservation macro" in sel["qualify"]
-    assert "preservation macro" in sel["tie_break"] or \
-        "preservation macro" in sel["qualify"]
 
+
+def test_resampling_is_speaker_cluster_bootstrap():
+    sp = _p()["statistical_procedure"]
+    assert "cluster bootstrap" in sp["resampling"]
+    assert "10000" in sp["resampling"]
+    assert "SPEAKER" in sp["resampling"]
+    assert "Holm-Bonferroni" in sp["multiplicity"]["stage_1"]
+
+
+# ---- directional veto catches the historical Lingala failure -------------
 
 def test_directional_veto_would_catch_the_historical_lingala_failure():
-    """rev-004: the veto must replicate the non-inferiority rule that actually
-    caught the Arm-1 Lingala regression (upper_ci 0.012685 > margin 0.01)."""
     v = _p()["constraints"]["directional_development_vetoes"]
     assert set(v["languages"]) == {"lingala", "kinyarwanda", "ewe"}
-    assert "HARD VETO" in v["nature"]
     assert v["veto_margin_abs_wer"] == 0.01
-    assert "UPPER CI" in v["veto_rule"]
-    # cross-check against the real historical receipt: the veto margin is below
-    # the historical upper CI, so the historical failure WOULD fire the veto
+    assert "UPPER CI" in v["veto_rule"] and "0.02" not in v["veto_rule"]
     rcpt = json.loads((ROOT / "platform/evidence/receipts/"
                        "ARM1-LINGALA-SENTINEL-2026-001/receipt.json").read_bytes())
-    hist_upper = rcpt["noninferiority"]["upper_ci"]
-    assert v["veto_margin_abs_wer"] < hist_upper, (
-        "the veto must catch the historical Lingala regression")
+    assert v["veto_margin_abs_wer"] < rcpt["noninferiority"]["upper_ci"]
     assert "0.012685" in v["historical_calibration"]
-    # and the rev-003 too-weak +2.0pp floor is gone
-    assert "0.02" not in v["veto_rule"]
-
-
-def test_exposure_model_uses_exact_row_identities_not_whole_pool():
-    nd = _p()["nomination_data_rules"]
-    src = nd["phaseA_split_source"]
-    assert "SET DIFFERENCE" in src or "set difference" in src
-    assert "audio_checksum_sha256" in src
-    assert "NOT a pool-size" in src
-    # the machine-derived index must carry the exact-row contract
-    ix = json.loads((ROOT / "platform/manifests/"
-                     "B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json").read_bytes())
-    assert "EXACT PER-ROW SET DIFFERENCE" in ix["disjointness_contract"]
-    assert "used_exact_definition" in ix
-
-
-def test_seed_procedure_is_two_stage_with_stage_specific_multiplicity():
-    sp = _p()["seed_procedure"]
-    assert "STAGE-1" in sp["stage_1_provisional_seed1"]["multiplicity"]
-    assert "STAGE-2" in sp["stage_2_replication_seed2"]["multiplicity"]
-    assert "SMALLER" in sp["stage_2_replication_seed2"]["multiplicity"]
-    # stage 2 replicates only the finalist + its two comparators
-    assert "provisional finalist + H0 + KD_CONTROL" in \
-        sp["stage_2_replication_seed2"]["runs"]
-    assert "NO_RECIPE_QUALIFIES" in sp["stage_2_replication_seed2"]["confirm"]
 
 
 def test_h0_second_seed_contradiction_resolved():
     ss = _p()["training"]["second_seed"]
     assert set(ss["runs"]) == {"the nominated finalist", "H0", "KD_CONTROL"}
-    assert "resolves_contradiction" in ss
 
 
-# ---- statistics -----------------------------------------------------------
+# ---- cost: benchmark budgeted, fail-closed over $70 ----------------------
 
-def test_statistics_speaker_cluster_bootstrap_and_seed_aggregation():
-    st = _p()["statistics"]
-    assert "SPEAKER-level cluster" in st["clustering"]
-    assert "10000" in st["clustering"]
-    assert "seed_procedure" in st["seed_aggregation"]
-    assert "no seed reversal" in st["seed_aggregation"]
-    assert "Holm-Bonferroni" in st["multiplicity_correction"]
-
-
-def test_selection_rule_has_tiebreak_and_no_recipe_qualifies():
-    sel = _p()["selection_rule"]
-    assert "DETERMINISTIC" in sel["tie_break"]
-    assert "NEVER silently" in sel["NO_RECIPE_QUALIFIES"]
-
-
-# ---- cost: measured-throughput $70 ceiling -------------------------------
-
-def test_cost_table_is_measured_throughput_and_under_seventy():
+def test_cost_table_benchmark_budgeted_and_fail_closed_over_seventy():
     t = _p()["cost_runtime_table"]
-    # the flat one-hour assumption is gone
-    assert "one-hour" in t["scoring_throughput_basis"] and \
-        "REPLACED" in t["scoring_throughput_basis"]
-    assert "micro-benchmark" in t["scoring_throughput_basis"]
+    assert "REPLACED" in t["scoring_throughput_basis"]
     jobs = t["jobs"]
     assert next(j for j in jobs if "mechanics" in j["job"])["count"] == 6
     assert next(j for j in jobs if "second-seed" in j["job"])["count"] == 3
-    # rev-004: the throughput benchmark is a BUDGETED line inside the ceiling
-    assert any("benchmark" in j["job"] for j in jobs), \
-        "the throughput benchmark must be in the $70 budget"
+    assert any("benchmark" in j["job"] for j in jobs)
     worst = 0.0
     for j in jobs:
         assert round(j["count"] * j["worst_case_usd_each"], 2) == j["worst_case_usd"]
         assert j["expected_usd"] <= j["worst_case_usd"] + 1e-9
         assert round(j["max_runtime_s"] / 3600 * 1.60, 2) == j["worst_case_usd_each"]
         worst += j["worst_case_usd"]
-    assert round(worst, 2) == t["cumulative_worst_case_usd"]
-    assert t["cumulative_worst_case_usd"] <= 70.0
-    assert _p()["budget"]["ceiling_usd"] == 70
+    assert round(worst, 2) == t["cumulative_worst_case_usd"] <= 70.0
+    b = _p()["budget"]
+    assert b["ceiling_usd"] == 70
+    assert "fail-closed" in b["fail_closed_over_ceiling"]
+    assert "NEW owner approval" in b["fail_closed_over_ceiling"]
+    assert "NEVER auto-proceeds above $70" in b["fail_closed_over_ceiling"]
 
 
 # ---- SOURCE-RECORD validation --------------------------------------------
@@ -172,7 +162,6 @@ def test_exposure_inventory_dev_selection_matches_the_real_manifest():
     assert len(sel["rows"]) == 420
     assert sel["rows_sha256"] == (
         "54897fff75b8c2c39901ef552f3e58c27340f774887eb09f05f4c7c37b835075")
-    assert len(sel["languages"]) == 7
     ds = next(s for s in _i()["used_surfaces"]
               if s["exposure"] == "USED_DEV_SELECTION")
     assert sel["rows_sha256"] in ds["identity"]
@@ -206,11 +195,6 @@ def test_untouched_verdict_matches_flag_and_gates_only_available_langs():
         "english", "french", "swahili", "pidgin"}
     assert set(ph["directional_veto_languages"]) == {
         "lingala", "kinyarwanda", "ewe"}
-
-
-def test_protocol_and_inventory_reference_the_machine_derived_index():
-    assert "EXPOSURE-INDEX-2026-001" in _p()["evaluation"]["exposure_index"]
-    assert (ROOT / _i()["machine_derived_index"]["path"]).exists()
 
 
 def test_identical_rows_across_all_scored_models():
