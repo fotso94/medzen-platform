@@ -29,6 +29,11 @@ import sys
 from typing import Any
 
 REQUIRED_ENVIRONMENTS = ("trainer-image-publish", "arm2-calibration")
+# environments a per-workflow preflight may verify with --only-supplied, beyond
+# the two-environment activation gate above (Codex round 35 scope 5: the
+# nomination-mint preflight verifies ITS environment without changing the
+# owner's pre-apply gate)
+KNOWN_ENVIRONMENTS = REQUIRED_ENVIRONMENTS + ("arm2-nomination-mint",)
 # the OWNER whose approval every activation environment must require (Codex
 # review #28 finding 1: accepting any reviewer, or a mismatched environment
 # response, let the existing arm-launch-approval JSON pass as both required
@@ -112,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("--only-supplied requires at least one --environment")
     failures: list[str] = []
     for name in names:
-        if name not in REQUIRED_ENVIRONMENTS:
+        if name not in KNOWN_ENVIRONMENTS:
             failures.append(f"{name!r} is not an activation environment")
             continue
         failures.extend(check_environment(name, supplied.get(name)))

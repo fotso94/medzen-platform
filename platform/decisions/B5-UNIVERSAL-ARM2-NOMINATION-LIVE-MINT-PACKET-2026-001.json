@@ -1,25 +1,29 @@
 {
  "NOT_AN_AUTHORIZATION": "This packet PROPOSES the live mint. It is NOT an authorization record. The live read requires independent review AND explicit owner authorization; only then is the noninteractive step run.",
  "authorization_mechanism": {
-  "cli_assertion": "scripts/mint_arm2_nomination_split.py --live additionally asserts sts:GetCallerIdentity returns an assumed-role ARN of medzen-arm2-nomination-mint-role before reading anything; any other caller refuses",
-  "environment_requirements": "created by the OWNER with themselves as a required reviewer BEFORE any trust references it, and verified with the scripts/verify_protected_environments.py pattern (owner login fotso94 / id 16901658 bound) \u2014 GitHub silently creates referenced-but-missing environments WITHOUT protection, so verification precedes activation",
+  "environment_requirements": "created by the OWNER with themselves as a required reviewer BEFORE any trust references it, and verified with the scripts/verify_protected_environments.py pattern (owner login fotso94 / id 16901658 bound)",
+  "in_path_assertion": "Codex round 35 finding 7: live_mint() ITSELF validates the STS caller document \u2014 exact Account == 558069890522 AND Arn parsing to exactly arn:aws:sts::558069890522:assumed-role/medzen-arm2-nomination-mint-role/<session> \u2014 a same-named role in another account refuses; the CLI performs the same assertion via validate_caller_identity",
   "protected_environment": "arm2-nomination-mint",
-  "replaces": "the round-33 magic-string token (Codex round 34 finding 5: a committed constant proves configuration, not authorization)",
-  "role_trust": "the dedicated role trusts ONLY the GitHub OIDC federation with sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint and a job_workflow_ref pinned to the activation exec workflow on master (the same hardened pattern as infra/arm2_calibration_role.tf) \u2014 no other principal can assume it",
-  "workflow": "the dispatch-only caller/exec workflow pair follows the hardened arm-launch pattern (no credentials in the caller, environment gate + master guard + hash-locked deps in the exec, positive and negative canaries) and is added in the ACTIVATION round AFTER this packet passes review \u2014 not before"
+  "replaces": "the round-33 magic-string token (a committed constant proves configuration, not authorization)",
+  "role_trust": "each dedicated role trusts ONLY the GitHub OIDC federation with sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint and job_workflow_ref pinned to .github/workflows/arm2-nomination-mint-exec.yml@refs/heads/master (infra/arm2_nomination_mint_role.tf, dark until owner-enabled)",
+  "workflows": {
+   "caller": ".github/workflows/arm2-nomination-mint.yml",
+   "exec": ".github/workflows/arm2-nomination-mint-exec.yml",
+   "note": "built (Codex round 35 scope 5); dispatch-only, environment-gated, hardened per the arm2-calibration pattern (pinned actions, pre-credential commit verification, hash-locked deps, exact identity assertion). Dark until the environment + roles exist."
+  }
  },
  "aws": {
   "account": "558069890522",
   "bucket": "medzen-speech",
   "bucket_is_versioned": true,
   "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
-  "note": "VersionId pins the exact bytes even if a key is later overwritten (same basis as B5-IMMUTABILITY-BINDINGS-2026-001). The mint ADDITIONALLY verifies sha256 of the downloaded bytes against the pin \u2014 a VersionId alone is a claim until the bytes reproduce the hash.",
+  "note": "VersionId pins the exact bytes; the mint ADDITIONALLY verifies sha256 of the downloaded bytes against the pin, and IAM permits ONLY s3:GetObjectVersion with the exact reviewed VersionId per object (unversioned/current reads are explicitly denied).",
   "region": "eu-central-1"
  },
  "execution_contract": {
-  "fail_closed": "any non-zero overlap against candidate/sealed/veto/training, any duplicate identity within or across languages, any empty language split, any missing/unverified pinned identity, any packet-vs-index pin disagreement, or a missing training identity index refuses the mint (MintRefusal); the harness has NO default AWS client and refuses --live under any principal other than the dedicated role; no injected reader refuses before any AWS SDK is touched (LiveMintForbidden)",
+  "fail_closed": "any non-zero overlap, duplicate identity (within or across languages), empty language split, missing OR extra input pool, invalid/absent training index or sealed authorities, index-bytes hash mismatch, packet-vs-index pin disagreement on ANY field, wrong caller account/role, or a sealed fetch request refuses (MintRefusal); no injected reader refuses before any AWS SDK is touched (LiveMintForbidden)",
   "frozen_output_key_proposal": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json (committed after review of the aggregate counts)",
-  "invocation": "noninteractive, inside the owner-approved protected workflow only: the exec job assumes the dedicated role, asserts caller identity, wires the role-scoped reader (get_object with VersionId + ExpectedBucketOwner, echoing VersionId + SSEKMSKeyId), supplies the training identity index, and calls mint_arm2_nomination_split.live_mint(index, packet, s3_reader=<reader>, training_identities=<index>)",
+  "invocation": "noninteractive, inside the owner-approved protected workflow only: the exec job assumes the dedicated role, obtains the STS caller document, and calls live_mint(packet, index_bytes=<committed index bytes>, s3_reader=<role-scoped reader>, caller_identity=<STS document>, training_index=<produced artifact>, sealed_authorities=<adjudicated authorities>) \u2014 every one of those inputs is verified INSIDE live_mint",
   "never_outputs": [
    "sealed rows",
    "transcript text",
@@ -27,7 +31,7 @@
    "any per-row content beyond audio_checksum_sha256"
   ],
   "outputs_only": [
-   "the FROZEN nomination manifest (identities + per-pool pins + aggregate overlap counts)",
+   "the FROZEN nomination manifest (identities + pins + aggregate overlap counts)",
    "the aggregate overlap counts"
   ],
   "verified_per_object": [
@@ -40,48 +44,132 @@
   ]
  },
  "exposure_index": "platform/manifests/B5-UNIVERSAL-ARM2-EXPOSURE-INDEX-2026-001.json",
+ "exposure_index_binding": "live_mint takes the index as RAW BYTES and refuses unless sha256(bytes) == exposure_index_sha256 (Codex round 35 finding 2: a caller-supplied index could reclassify a sealed pool as eligible); every packet pin is additionally compared to the index pin on class, role, language, rows, sha256 AND s3_version_id.",
+ "exposure_index_sha256": "9eee1039cac03bd784516d6e01d85fe02626991ac9bec989fb9c392a3e95763c",
  "generator": "scripts/mint_arm2_nomination_split.py",
- "holds": "the six 2000-step runs, sealed evaluation, promotion and deployment remain HELD; the sealed promotion holdout is NEVER touched (its manifests are read for IDENTITIES ONLY, to prove the split excludes them).",
+ "holds": "the six 2000-step runs, sealed evaluation, promotion and deployment remain HELD; the sealed promotion holdout is NEVER read by the mint (sealed exclusion is identity-authority-based); the $0.80 benchmark cost reservation is added only after this successor passes review (Codex round 35 scope 10).",
  "minimal_read_role": {
   "policy": {
    "Statement": [
     {
      "Action": [
-      "s3:GetObject",
       "s3:GetObjectVersion"
      ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP"
+      }
+     },
      "Effect": "Allow",
      "Resource": [
-      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl"
      ],
-     "Sid": "ReadPinnedIdentityManifestsOnly"
+     "Sid": "ReadPinnedObject00ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject01ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject02ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject03ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject04ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject05ExactVersionOnly"
+    },
+    {
+     "Action": [
+      "s3:GetObjectVersion"
+     ],
+     "Condition": {
+      "StringEquals": {
+       "s3:VersionId": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd"
+      }
+     },
+     "Effect": "Allow",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl"
+     ],
+     "Sid": "ReadPinnedObject06ExactVersionOnly"
     },
     {
      "Action": [
       "kms:Decrypt"
      ],
+     "Condition": {
+      "StringEquals": {
+       "kms:ViaService": "s3.eu-central-1.amazonaws.com"
+      }
+     },
      "Effect": "Allow",
      "Resource": [
       "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
      ],
-     "Sid": "DecryptWithTheOnePinnedCMK"
+     "Sid": "DecryptOnlyThePinnedCMKAndOnlyViaS3"
     },
     {
      "Action": [
@@ -101,31 +189,29 @@
     },
     {
      "Action": [
-      "s3:GetObject",
+      "s3:GetObject"
+     ],
+     "Effect": "Deny",
+     "Resource": [
+      "arn:aws:s3:::medzen-speech/*"
+     ],
+     "Sid": "DenyUnversionedReadsEverywhere"
+    },
+    {
+     "Action": [
       "s3:GetObjectVersion"
      ],
      "Effect": "Deny",
      "NotResource": [
       "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
       "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
       "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
       "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
       "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
       "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
-      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+      "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl"
      ],
-     "Sid": "DenyReadingAnythingButThePinnedObjects"
+     "Sid": "DenyVersionedReadsOutsideThePinnedObjects"
     },
     {
      "Action": [
@@ -142,11 +228,12 @@
    ],
    "Version": "2012-10-17"
   },
-  "policy_note": "the Deny statements are REAL policy (finding 5): every write/list/delete on the bucket is denied, reads outside the pinned objects are denied via NotResource, and KMS use beyond Decrypt is denied \u2014 not an informational list.",
+  "policy_file": "platform/iam/medzen-arm2-nomination-mint-role.json",
+  "policy_note": "s3:GetObjectVersion ONLY, one statement per object conditioned on the exact reviewed s3:VersionId (unversioned s3:GetObject is explicitly DENIED bucket-wide \u2014 Codex round 35 scope 8); kms:Decrypt only ViaService S3; every write/list/delete denied; versioned reads outside the 7 pins denied via NotResource; KMS beyond Decrypt denied.",
   "role_arn": "arn:aws:iam::558069890522:role/medzen-arm2-nomination-mint-role",
   "role_name": "medzen-arm2-nomination-mint-role",
-  "status": "PROPOSED \u2014 does not exist; created dark-until-enabled via infra/arm2_nomination_mint_role.tf after this packet passes review (Codex round 34 verified no mint role exists)",
-  "trust": "GitHub OIDC, sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint, job_workflow_ref pinned to the activation exec workflow on master"
+  "status": "PROPOSED \u2014 does not exist; created dark-until-enabled via infra/arm2_nomination_mint_role.tf after this packet passes review",
+  "trust": "GitHub OIDC, sub == repo:fotso94/medzen-platform:environment:arm2-nomination-mint, job_workflow_ref pinned to arm2-nomination-mint-exec.yml@refs/heads/master"
  },
  "pinned_objects": [
   {
@@ -160,26 +247,6 @@
    "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215"
   },
   {
-   "class": "SEALED",
-   "key": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-   "language": "english",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 529,
-   "s3_version_id": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD",
-   "sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-   "language": "ewe",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 66,
-   "s3_version_id": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi",
-   "sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4"
-  },
-  {
    "class": "BASE_EXPOSED",
    "key": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
    "language": "french",
@@ -188,16 +255,6 @@
    "rows": 217,
    "s3_version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX",
    "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
-   "language": "french",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 258,
-   "s3_version_id": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G",
-   "sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b"
   },
   {
    "class": "BASE_EXPOSED",
@@ -210,16 +267,6 @@
    "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58"
   },
   {
-   "class": "SEALED",
-   "key": "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-   "language": "french",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 469,
-   "s3_version_id": "39xzQDaj2Kbl5A_ncGh1IpG7QDoUe3qV",
-   "sha256": "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf"
-  },
-  {
    "class": "CANDIDATE_EXPOSED",
    "key": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
    "language": "kinyarwanda",
@@ -228,46 +275,6 @@
    "rows": 1642,
    "s3_version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6",
    "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
-   "language": "kinyarwanda",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "kinyarwanda_eval_quarantined",
-   "rows": 3373,
-   "s3_version_id": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ",
-   "sha256": "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
-   "language": "kinyarwanda",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "kinyarwanda_eval",
-   "rows": 1642,
-   "s3_version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa",
-   "sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-   "language": "lingala",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 325,
-   "s3_version_id": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd",
-   "sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-   "language": "lingala",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 81,
-   "s3_version_id": "Fa.zlXFBDkDYmSc.ymU4oTPIW5N8eEcl",
-   "sha256": "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63"
   },
   {
    "class": "BASE_BLIND_CANDIDATE_ELIGIBLE",
@@ -280,16 +287,6 @@
    "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1"
   },
   {
-   "class": "SEALED",
-   "key": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
-   "language": "pidgin",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 1500,
-   "s3_version_id": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN",
-   "sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91"
-  },
-  {
    "class": "BASE_EXPOSED",
    "key": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
    "language": "swahili",
@@ -300,16 +297,6 @@
    "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a"
   },
   {
-   "class": "SEALED",
-   "key": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-   "language": "swahili",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 343,
-   "s3_version_id": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p",
-   "sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb"
-  },
-  {
    "class": "BASE_EXPOSED",
    "key": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
    "language": "swahili",
@@ -318,58 +305,59 @@
    "rows": 78,
    "s3_version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd",
    "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1"
-  },
-  {
-   "class": "SEALED",
-   "key": "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-   "language": "swahili",
-   "read_purpose": "SEALED holdout \u2014 identities read ONLY to PROVE disjointness; rows NEVER emitted",
-   "role": "sealed_holdout_half",
-   "rows": 68,
-   "s3_version_id": "NhicuR6DvwTEXSQ4Pv8gKn_rQtrrChAw",
-   "sha256": "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c"
   }
  ],
  "preconditions": [
-  "independent review of THIS packet (keys, VersionIds, hashes, KMS, role, environment, training-index production)",
+  "independent review of THIS packet (keys, VersionIds, hashes, KMS, roles, environment, training-index production, sealed-authority governance)",
   "explicit owner authorization of the live read",
   "the OWNER creates the protected environment 'arm2-nomination-mint' with themselves as required reviewer and verifies it (verify_protected_environments pattern) BEFORE any trust references it",
+  "owner ledger adjudication of the sealed-authority mechanism (per pool; quarantined cv17 requires explicit quarantine adjudication)",
   "the exposure index is machine-derived + current (python -m scripts.build_arm2_exposure_index --check)"
  ],
  "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key, the dedicated minimal read role and the protected-environment authorization for the eventual FROZEN Phase-A nomination mint (scripts/mint_arm2_nomination_split.py::live_mint). The mint reads ONLY the pinned identity manifests, VERIFIES every downloaded object (actual-bytes sha256, echoed VersionId, echoed KMS key, exact row count, per-row schema + language), keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts \u2014 never sealed rows, transcript text or audio.",
- "reads_count": 18,
+ "purpose": "Pin the exact S3 objects, VersionIds, hashes, KMS key, the TWO dedicated roles (mint read + training-index producer) and the protected-environment authorization for the eventual FROZEN Phase-A nomination mint. The mint reads ONLY the 7 nomination/candidate identity manifests (NEVER a sealed manifest), VERIFIES every downloaded object (actual-bytes sha256, echoed VersionId, echoed KMS key, exact row count, per-row schema + language), keeps ONLY audio_checksum_sha256, and OUTPUTS ONLY the frozen nomination manifest + aggregate overlap counts.",
+ "reads_count": 7,
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-LIVE-MINT-PACKET-2026-001",
- "revision": "002 (Codex round 34: token authorization REPLACED by the protected-environment + dedicated-role mechanism; Deny statements are REAL policy; downloaded-byte verification and the training identity index are REQUIRED; raw manifests never touch a workstation)",
- "sealed_objects_are_identity_only": [
-  "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-  "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-  "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
-  "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-  "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
-  "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
-  "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-  "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
-  "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
-  "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
-  "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
- ],
+ "revision": "003 (Codex round 35: structured hash-bound training index; exact-set completeness; index bound by canonical bytes + full-field pin comparison; canonical-regeneration verifier; SEALED manifest reads REMOVED (identity-only exclusion authorities under separate ledger adjudication); dedicated training-index producer role; in-path exact STS account+role assertion; S3 restricted to exact VersionIds and KMS to the S3 context; workflows built)",
+ "sealed_exclusion": {
+  "mechanism": "IDENTITY-ONLY EXCLUSION AUTHORITIES (Codex round 35 findings 3/6): the mint NEVER fetches sealed manifest bytes (full bytes include references/metadata). Sealed disjointness is proven by anti-join against per-pool identity-only authorities validated by validate_sealed_authorities: complete coverage of every sealed pool, per-authority pin match (key/rows/sha256/VersionId vs the exposure index), identity count == pinned rows, aggregate reproduction, and an explicit governance adjudication.",
+  "mint_reads_sealed_bytes": false,
+  "production_governance": "producing an authority touches sealed bytes ONCE (identity extraction only) and therefore requires ITS OWN owner ledger adjudication per pool, separately reviewed \u2014 it is NOT covered by this packet, and the QUARANTINED cv17-test-v1-sealed pool additionally requires explicit quarantine adjudication before ANY read. Alternative for owner adjudication: accept the committed tier2 split construction (B5-TIER2-HOLDOUTS-2026-001 split_rule \u2014 dev/sealed halves of one pool are disjoint by construction) as the disjointness proof for same-pool halves, leaving only cross-pool anti-joins to authority production.",
+  "sealed_pools": [
+   "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+   "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+   "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+   "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+   "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+  ]
+ },
  "status": "PENDING_REVIEW",
  "training_identity_index": {
-  "anti_join": "mint_phase_a_split(training_identities=<index>) excludes every training identity and RECOMPUTES the final split's training overlap (must be 0, or the mint refuses)",
-  "production": "the SAME owner-approved protected job enumerates the gb9/gb8/gb3 training manifests exactly as the fail-closed trainer data path does (pipeline/train_asr.load_mix semantics), verifies them against the adoption records' complete_raw_sha256, extracts ONLY audio_checksum_sha256 per row (training rows carry it), and emits an identity-only index pinned by row count + aggregate sha256. Raw training manifests (which contain transcript text) exist only in the job's memory.",
-  "required": "a FROZEN mint REFUSES without the per-row training identity index (Codex round 34 finding 1) \u2014 until it exists, every minted manifest reports training_exposed=UNVERIFIED, never zero",
+  "producer_role": {
+   "policy_file": "platform/iam/medzen-arm2-training-index-role.json",
+   "role_arn": "arn:aws:iam::558069890522:role/medzen-arm2-training-index-role",
+   "role_name": "medzen-arm2-training-index-role",
+   "scope": "curated/* read-only (the corpus listings' integrity authority is the content hash pinned in the committed adoption records); eval/* reads EXPLICITLY DENIED \u2014 the producer can never touch an eval or sealed object, and the mint role conversely cannot read curated/* (Codex round 35 finding 5: one role could not lawfully do both jobs)"
+  },
+  "producer_script": "scripts/build_arm2_training_identity_index.py",
+  "required": "a FROZEN mint REFUSES without the STRUCTURED training identity index (validate_training_index): record-named, source-bound to the committed gb9/gb8/gb3 adoption records' complete_raw_sha256, producer receipt, NONEMPTY 64-hex identities with self-consistent row/unique counts and aggregate sha \u2014 an empty or arbitrary collection refuses (Codex round 35 finding 1)",
   "source_records": [
    "platform/evidence/B5-GB9-ADOPTION-2026-001.json",
    "platform/evidence/B5-GB8-ADOPTION-2026-001.json",
    "platform/evidence/B5-GB3-MIX-PROVENANCE-2026-001.json"
-  ]
+  ],
+  "workstation_prohibition": "training manifests contain transcript text: the producer keeps only audio_checksum_sha256 in the protected job's memory and emits only identities + counts + aggregates; raw manifests never persist and never reach a workstation."
  },
  "unpinned_eligible_pools_excluded": [
   "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
   "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl"
  ],
  "unpinned_note": "these eligible eval-dev pools are NOT fully pinned (missing sha256/VersionId) and are therefore EXCLUDED from the frozen mint; to include them, pin them in the exposure-index source records first, under separate review.",
- "workstation_prohibition": "raw identity/sealed/training manifests are NEVER downloaded to a workstation: the protected job streams them in memory, keeps only 64-hex identities, and emits only the frozen manifest + aggregate counts. Transcript/reference fields are never extracted, logged or persisted.",
- "written_utc": "2026-08-25T05:06:02Z"
+ "written_utc": "2026-08-25T05:34:02Z"
 }

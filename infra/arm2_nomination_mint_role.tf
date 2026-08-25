@@ -72,3 +72,59 @@ resource "aws_iam_role_policy" "arm2_nomination_mint" {
 output "arm2_nomination_mint_role_arn" {
   value = var.arm2_nomination_mint_enabled ? aws_iam_role.arm2_nomination_mint[0].arn : null
 }
+
+# Codex round 35 finding 5: the training-identity-index PRODUCER needs its OWN
+# role — the mint role reads only the 7 pinned eval objects and can never read
+# curated/*, while this role reads ONLY curated/* (content-hash-verified
+# against the committed adoption records) and is EXPLICITLY DENIED every
+# eval/* read, so it can never touch an eval or sealed object. Same protected
+# environment + exec workflow; same dark-until-enabled switch.
+data "aws_iam_policy_document" "arm2_training_index_trust" {
+  count = var.arm2_nomination_mint_enabled ? 1 : 0
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [data.aws_iam_openid_connect_provider.github_for_nomination_mint[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${var.github_repo_immutable}:environment:arm2-nomination-mint"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:job_workflow_ref"
+      values   = ["${var.github_repo}/.github/workflows/arm2-nomination-mint-exec.yml@refs/heads/master"]
+    }
+  }
+}
+
+resource "aws_iam_role" "arm2_training_index" {
+  count              = var.arm2_nomination_mint_enabled ? 1 : 0
+  name               = "medzen-arm2-training-index-role"
+  assume_role_policy = data.aws_iam_policy_document.arm2_training_index_trust[0].json
+  lifecycle {
+    precondition {
+      condition = (var.github_repo == "fotso94/medzen-platform"
+      && var.github_repo_immutable == "fotso94@16901658/medzen-platform@1322233937")
+      error_message = "training-index activation requires the exact github_repo AND github_repo_immutable (both are bound into the OIDC trust)"
+    }
+  }
+}
+
+resource "aws_iam_role_policy" "arm2_training_index" {
+  count  = var.arm2_nomination_mint_enabled ? 1 : 0
+  name   = "medzen-arm2-training-index-access"
+  role   = aws_iam_role.arm2_training_index[0].id
+  policy = file("${local.iam_dir}/medzen-arm2-training-index-role.json")
+}
+
+output "arm2_training_index_role_arn" {
+  value = var.arm2_nomination_mint_enabled ? aws_iam_role.arm2_training_index[0].arn : null
+}

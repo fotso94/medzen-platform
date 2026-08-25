@@ -1,0 +1,62 @@
+# Codex round 35 scope 5: CALLER for the Arm-2 nomination mint. The
+# credential-bearing jobs live in the reusable arm2-nomination-mint-exec.yml
+# (the file BOTH dedicated roles' job_workflow_ref trusts:
+# medzen-arm2-training-index-role and medzen-arm2-nomination-mint-role).
+# Owner-initiated with an EXACT reviewed SHA.
+#
+# GitHub silently creates a referenced-but-missing environment WITHOUT
+# protection, so the preflight FAILS unless the `arm2-nomination-mint`
+# environment already exists WITH the owner as required reviewer — an
+# unprotected environment can never run the mint through this workflow.
+name: arm2-nomination-mint
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: exact 40-hex reviewed commit to run from (must be on master)
+        required: true
+        type: string
+      confirm_mint:
+        description: pass MINT to attempt the frozen mint after the training-index production; anything else runs the producer only
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: configuration must be present (a skip is not a pass)
+        run: |
+          if [ -z "${{ vars.MEDZEN_ARM2_TRAINING_INDEX_ROLE_ARN }}" ] \
+              || [ -z "${{ vars.MEDZEN_ARM2_NOMINATION_MINT_ROLE_ARN }}" ]; then
+            echo "::error::MEDZEN_ARM2_TRAINING_INDEX_ROLE_ARN and MEDZEN_ARM2_NOMINATION_MINT_ROLE_ARN must both be set. Apply infra/arm2_nomination_mint_role.tf (arm2_nomination_mint_enabled=true) and set the repo variables — this run FAILS rather than silently skipping."
+            exit 1
+          fi
+          echo "both role variables present"
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: the arm2-nomination-mint environment must exist WITH owner approval
+        run: |
+          # refuse unless the protected environment is real, is the RIGHT
+          # environment, and requires the OWNER — GitHub would otherwise
+          # auto-create it unprotected on first reference and bypass approval.
+          set -euo pipefail
+          curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/arm2-nomination-mint" \
+            -o env.json || echo '{"__missing__":true}' > env.json
+          python scripts/verify_protected_environments.py --only-supplied \
+            --environment arm2-nomination-mint=env.json
+
+  run:
+    needs: preflight
+    uses: ./.github/workflows/arm2-nomination-mint-exec.yml
+    with:
+      sha: ${{ inputs.sha }}
+      confirm_mint: ${{ inputs.confirm_mint }}

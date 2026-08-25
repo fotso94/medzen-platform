@@ -1,0 +1,80 @@
+{
+ "Statement": [
+  {
+   "Action": [
+    "s3:GetObject"
+   ],
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/curated/*"
+   ],
+   "Sid": "ReadTrainingCorpusObjectsOnly"
+  },
+  {
+   "Action": [
+    "kms:Decrypt"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "kms:ViaService": "s3.eu-central-1.amazonaws.com"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+   ],
+   "Sid": "DecryptOnlyThePinnedCMKAndOnlyViaS3"
+  },
+  {
+   "Action": [
+    "s3:DeleteObject",
+    "s3:DeleteObjectVersion",
+    "s3:ListBucket",
+    "s3:ListBucketVersions",
+    "s3:PutObject",
+    "s3:PutObjectAcl"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech",
+    "arn:aws:s3:::medzen-speech/*"
+   ],
+   "Sid": "DenyEveryWriteListAndDelete"
+  },
+  {
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/*"
+   ],
+   "Sid": "DenyEvalAndSealedReadsAbsolutely"
+  },
+  {
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Deny",
+   "NotResource": [
+    "arn:aws:s3:::medzen-speech/curated/*"
+   ],
+   "Sid": "DenyReadsOutsideCurated"
+  },
+  {
+   "Action": [
+    "kms:Encrypt",
+    "kms:GenerateDataKey*",
+    "kms:CreateGrant"
+   ],
+   "Effect": "Deny",
+   "Resource": [
+    "*"
+   ],
+   "Sid": "DenyKmsBeyondDecrypt"
+  }
+ ],
+ "Version": "2012-10-17"
+}
