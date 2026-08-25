@@ -529,6 +529,49 @@ def test_calibration_receipt_recipe_authority_is_the_committed_packet(tmp_path):
         verify_receipt_against_aws(record, cal, SM(), S3(clen=999))
 
 
+def test_above_tier_verification_precedes_and_gates_create_training_job():
+    """Codex round 31 smaller correction: a verify-only rehearsal — the
+    above-tier launcher runs full re-verification BEFORE create_training_job,
+    and any verification failure raises so ZERO CreateTrainingJob calls happen.
+    (1) structural ordering in main(); (2) a failing live check raises, and the
+    create counter stays at zero."""
+    import b5_sagemaker_job as b5
+    from b5_sagemaker_job import JobRefusal as JR
+    src = Path(b5.__file__).read_text()
+    body = src[src.index("def main("):]
+    i_verify = body.index("verify_receipt_against_aws(receipt_record")
+    i_derive = body.index("derive_live_artifact_facts(cal_packet")
+    i_cross = body.index("cross_check_receipt_content(receipt_record")
+    i_create = body.index("create_training_job(**request)")
+    assert i_verify < i_create and i_derive < i_create and i_cross < i_create, (
+        "above-tier verification must precede CreateTrainingJob")
+
+    KMS = ("arn:aws:kms:eu-central-1:558069890522:key/"
+           "9c336116-c648-4548-95c6-1b926478ae57")
+    image = ("558069890522.dkr.ecr.eu-central-1.amazonaws.com/"
+             "medzen-trainer-omniasr@sha256:" + "b" * 64)
+    cal = {"job_id": "cal-1", "image_uri_with_digest": image,
+           "environment": {"MEDZEN_MANIFEST_VERSION": "gb9"}}
+    record = {"job": "medzen-b5-cal-1", "billable_seconds": 1128,
+              "artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
+                           "kms_key": KMS, "s3_bytes": 1}}
+    creates = []
+
+    class SMbad:
+        def describe_training_job(self, TrainingJobName):
+            return {"TrainingJobStatus": "Stopped"}   # verification fails here
+        def create_training_job(self, **kw):
+            creates.append(kw); return {"TrainingJobArn": "x"}
+
+    class S3:
+        def head_object(self, Bucket, Key):
+            return {"VersionId": "V1", "SSEKMSKeyId": KMS, "ContentLength": 1}
+
+    with pytest.raises(JR, match="not Completed"):
+        b5.verify_receipt_against_aws(record, cal, SMbad(), S3())
+    assert creates == [], "a failed verification must create nothing"
+
+
 def test_cross_check_receipt_content_binds_every_content_fact():
     """Codex round 30 finding 1: cross_check_receipt_content requires every
     self-reported content fact to equal the value the authoritative verifier
@@ -872,8 +915,12 @@ def test_arm_launch_workflow_is_hardened():
     pos = (wf / "arm-launch-canary.yml").read_text()
     neg = (wf / "arm-launch-canary-unauthorized.yml").read_text()
 
-    assert "workflow_dispatch: {}" in caller
-    assert "${{ inputs" not in caller, "caller must reference no inputs"
+    # Codex round 31 finding 5B: the caller now binds an exact reviewed
+    # commit (sha) and forwards ONLY sha + mode to the exec; it still carries
+    # NO credentials. The sha pass-through lives in `with:` (a workflow input,
+    # not shell), so it is not an injection surface — the run-block scan below
+    # still enforces that no run block interpolates an expression.
+    assert "sha: ${{ inputs.sha }}" in caller
     assert "configure-aws-credentials" not in caller, "caller carries no creds"
     assert "uses: ./.github/workflows/arm-launch-exec.yml" in caller
     assert "concurrency:" in caller
@@ -883,7 +930,13 @@ def test_arm_launch_workflow_is_hardened():
     assert "github.ref == 'refs/heads/master'" in exec_body
     assert "MEDZEN_ARM_LAUNCH_ROLE_ARN" in exec_body
     assert "MEDZEN_CI_ROLE_ARN" not in exec_body
-    assert "boto3==" in exec_body and "torch==" in exec_body
+    # Codex round 31 finding 5B: launch is bound to an exact 40-hex commit on
+    # master and installs a HASH-LOCKED closure before credentials (torch is
+    # deferred and never needed on the render/validate/launch/verify path).
+    assert "ref: ${{ inputs.sha }}" in exec_body
+    assert "merge-base --is-ancestor" in exec_body
+    assert "--require-hashes" in exec_body and \
+        "scripts/requirements/arm2-launch.txt" in exec_body
     for body, name in ((caller, "caller"), (exec_body, "exec"),
                         (pos, "canary"), (neg, "neg-canary")):
         for step_body in body.split("run: |")[1:]:
@@ -906,9 +959,12 @@ def test_arm_launch_workflow_is_hardened():
             f"{cname}: only an explicit STS AccessDenied may pass")
         assert "assume-role-with-web-identity" in canary_body
 
-    # Codex review #26: deps must install BEFORE credential acquisition
-    assert exec_body.index("install pinned") < exec_body.index(
+    # Codex review #26 + round 31: deps must install BEFORE credentials,
+    # and the pre-credential commit-binding must precede them too
+    assert exec_body.index("--require-hashes") < exec_body.index(
         "configure-aws-credentials")
+    assert exec_body.index("merge-base --is-ancestor") < exec_body.index(
+        "--require-hashes")
     # the wrong-ref negative canary is a REAL reusable workflow, so the
     # token carries an actual (wrong) job_workflow_ref
     wr_exec = (wf / "arm-launch-canary-wrongref-exec.yml").read_text()

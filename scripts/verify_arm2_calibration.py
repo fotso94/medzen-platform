@@ -1039,15 +1039,22 @@ def fetch_creation_event(session, job_name: str, creation_time,
     return matches[0]
 
 
-def live_fetch(packet: dict[str, Any], workdir: Path) -> tuple[
+def live_fetch(packet: dict[str, Any], workdir: Path,
+               session=None) -> tuple[
         dict[str, Any], dict[str, Path], dict[str, Any], dict[str, Any]]:
     """AWS side of authoritative mode: pin account+region, call
     DescribeTrainingJob ITSELF, follow ModelArtifacts.S3ModelArtifacts, fetch
     that exact object (VersionId + KMS captured from the response), and
-    safe-extract the bundle. Nothing here is caller-suppliable."""
+    safe-extract the bundle. Nothing here is caller-suppliable.
+
+    Codex round 31: an optional already-authenticated `session` may be passed
+    so the launcher's ONE role-asserted session is reused (no second STS /
+    second credential path); the account pin below still runs on it. When
+    None (the standalone --live CLI), a fresh region-pinned session is made."""
     import boto3
 
-    session = boto3.session.Session(region_name=MEDZEN_REGION)
+    if session is None:
+        session = boto3.session.Session(region_name=MEDZEN_REGION)
     identity = session.client("sts").get_caller_identity()
     if identity.get("Account") != MEDZEN_ACCOUNT:
         raise SystemExit(

@@ -1010,7 +1010,7 @@ def cross_check_receipt_content(record: dict, facts: dict) -> None:
                 "misreports its own content (Codex round 30 finding 1)")
 
 
-def derive_live_artifact_facts(cal_packet: dict, workdir) -> dict:
+def derive_live_artifact_facts(cal_packet: dict, workdir, session=None) -> dict:
     """The AWS side of the launch-time full re-verification: reuse the
     authoritative verifier IN-PROCESS (single source of truth) — fetch the
     real job + its exact-VersionId KMS-encrypted artifact, re-hash it, and
@@ -1020,7 +1020,7 @@ def derive_live_artifact_facts(cal_packet: dict, workdir) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import verify_arm2_calibration as v2
     receipt, extracted, s3_meta, creation_event = v2.live_fetch(
-        cal_packet, workdir)
+        cal_packet, workdir, session=session)
     verifier_sha = hashlib.sha256(
         Path(v2.__file__).read_bytes()).hexdigest()
     failures, facts = v2.verify_live_bundle(
@@ -1401,7 +1401,11 @@ def main() -> int:
             # a fabricated export/metrics/size cannot ride an above-tier launch.
             import tempfile
             _workdir = Path(tempfile.mkdtemp(prefix="arm2-launch-verify-"))
-            _facts = derive_live_artifact_facts(cal_packet, _workdir)
+            # Codex round 31: reuse the launcher's ONE role-asserted session so
+            # the re-verification runs under the SAME assumed launch role, not a
+            # second credential path.
+            _facts = derive_live_artifact_facts(cal_packet, _workdir,
+                                                session=session)
             cross_check_receipt_content(receipt_record, _facts)
         response = session.client("sagemaker").create_training_job(**request)
         print(json.dumps({"TrainingJobArn": response["TrainingJobArn"]},

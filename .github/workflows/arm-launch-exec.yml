@@ -15,6 +15,11 @@ on:
         description: "canary = STS identity probe only (non-mutating); launch = the real arm launch"
         required: true
         type: string
+      sha:
+        description: "exact 40-hex reviewed commit to launch from (must be on master); required for launch"
+        required: false
+        type: string
+        default: ""
 jobs:
   exec:
     runs-on: ubuntu-latest
@@ -23,6 +28,10 @@ jobs:
     env:
       MEDZEN_EXECUTOR: github-protected-workflow
       ROLE_ARN: ${{ vars.MEDZEN_ARM_LAUNCH_ROLE_ARN }}
+      # Codex round 31 finding 5B: bind launch to an exact reviewed commit.
+      # SHA is referenced ONLY as $SHA in shell after a 40-hex validation
+      # (injection-safe, same discipline as `mode`).
+      SHA: ${{ inputs.sha }}
       ARM_PACKET: platform/manifests/B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json
       ARM_REQUEST: platform/manifests/B5-UNIVERSAL-ARM1-REQUEST-2026-005.json
     steps:
@@ -34,16 +43,39 @@ jobs:
           fi
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
         with:
+          ref: ${{ inputs.sha }}
           fetch-depth: 0
+      - name: "launch: require an exact 40-hex commit on master; checkout must equal it (pre-credential)"
+        if: inputs.mode == 'launch'
+        run: |
+          if [ "$(printf '%s' "$SHA" | wc -l)" -ne 0 ] \
+              || ! printf '%s' "$SHA" | grep -Exq '[0-9a-f]{40}'; then
+            echo "::error::inputs.sha must be a single exact 40-hex commit for launch"
+            exit 1
+          fi
+          git fetch --quiet origin master
+          if ! git merge-base --is-ancestor "$SHA" origin/master; then
+            echo "::error::$SHA is not on origin/master — only reviewed master commits are launchable"
+            exit 1
+          fi
+          HEAD_OID="$(git rev-parse HEAD)"
+          if [ "$HEAD_OID" != "$SHA" ]; then
+            echo "::error::checkout HEAD $HEAD_OID != requested $SHA"
+            exit 1
+          fi
+          echo "checkout verified at $HEAD_OID (on master)"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: inputs.mode == 'launch'
         with:
           python-version: "3.12"
-      - name: install pinned launch dependencies (BEFORE credentials — Codex review #26)
+      - name: install the HASH-LOCKED dependency closure BEFORE any credentials exist
+        # Codex round 31 finding 5B: match arm2-calibration-launch-exec.yml —
+        # the FULL transitive closure is sha256-locked (torch is deferred and
+        # never imported on the render/validate/launch/verify path, so the
+        # torch-free calibration closure is exactly what launch needs).
         if: inputs.mode == 'launch'
         run: |
-          pip install "boto3==1.40.16" "pyyaml==6.0.2" "jsonschema==4.25.0" "numpy==2.3.2"
-          pip install "torch==2.8.0" --index-url https://download.pytorch.org/whl/cpu
+          pip install --require-hashes --only-binary=:all: -r scripts/requirements/arm2-launch.txt
       - name: "canary: print the token's identity claims (non-secret; the negatives prove tokens alone unlock nothing)"
         if: inputs.mode == 'canary'
         run: |

@@ -14,9 +14,15 @@ concurrency:
   group: arm-launch
   cancel-in-progress: false
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "exact 40-hex reviewed commit to launch from (must be on master)"
+        required: true
+        type: string
 jobs:
   launch:
     uses: ./.github/workflows/arm-launch-exec.yml
     with:
       mode: launch
+      sha: ${{ inputs.sha }}

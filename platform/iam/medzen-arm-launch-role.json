@@ -71,6 +71,29 @@
    "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
   },
   {
+   "Sid": "ListTagsForTheCalibrationJobVerification",
+   "Effect": "Allow",
+   "Action": "sagemaker:ListTags",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*"
+  },
+  {
+   "Sid": "ListArtifactObjectVersionsForRehash",
+   "Effect": "Allow",
+   "Action": "s3:ListBucketVersions",
+   "Resource": "arn:aws:s3:::medzen-speech",
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": "research/b5-training/b5-universal-ftcal-2026-004/output/*"
+    }
+   }
+  },
+  {
+   "Sid": "LookupTheCreationEventForTheCreatorProof",
+   "Effect": "Allow",
+   "Action": "cloudtrail:LookupEvents",
+   "Resource": "*"
+  },
+  {
    "Sid": "NoRemoteDebugEver",
    "Effect": "Deny",
    "Action": [
