@@ -349,12 +349,12 @@
   ]
  },
  "sealed_exclusion_ledger": {
-  "head_sha256": "868876ee203b1890c81ebfe57258eac25b16a7b7326a121bcdec76b6ae5a8b62",
+  "head_sha256": "22f12fa5d8ef82313a603186e3f78a70b56ab8d50e88fc471623e23502595bcf",
   "note": "one active CLEARED_FOR_EXCLUSION entry per pinned sealed pool (identity aggregate); the mint reads no sealed bytes \u2014 the identities come from the protected sealed producer.",
   "path": "platform/evidence/ARM2-SEALED-EXCLUSION-LEDGER.jsonl",
-  "status": "PENDING (genesis only) \u2014 no sealed disposition adjudicated"
+  "status": "ADMITTED - 13 active CLEARED_FOR_EXCLUSION entries; cv17 quarantine separately cleared"
  },
- "sealed_exclusion_ledger_sha256": "868876ee203b1890c81ebfe57258eac25b16a7b7326a121bcdec76b6ae5a8b62",
+ "sealed_exclusion_ledger_sha256": "22f12fa5d8ef82313a603186e3f78a70b56ab8d50e88fc471623e23502595bcf",
  "sealed_identity_producer": {
   "environment": "arm2-nomination-mint-sealed",
   "exec_workflow": ".github/workflows/arm2-nomination-mint-sealed-exec.yml",
@@ -387,12 +387,12 @@
   "workstation_prohibition": "identities only; transcript text never survives the producer's memory; the artifact is emitted as canonical bytes and its digest is what the owner admits to the ledger."
  },
  "training_index_ledger": {
-  "head_sha256": "42ed07497727fe5ce0e203acd7f09c3a5959c3a1f0361fdbd9d3d97af511ebfa",
+  "head_sha256": "d2834159d54ea56df58cc854e0258bbec838a6d07e4233f5c1f5f9562f6afd6b",
   "note": "hash-chained JSONL; the consumer reads it from git HEAD, verifies the chain, requires this head sha, and admits a training index only if its canonical digest matches an ACTIVE ADMITTED entry.",
   "path": "platform/evidence/ARM2-TRAINING-INDEX-ADMISSION-LEDGER.jsonl",
-  "status": "PENDING (genesis only) \u2014 no artifact admitted; mint fails closed"
+  "status": "ADMITTED - 1 active ADMITTED training-index entry"
  },
- "training_index_ledger_sha256": "42ed07497727fe5ce0e203acd7f09c3a5959c3a1f0361fdbd9d3d97af511ebfa",
+ "training_index_ledger_sha256": "d2834159d54ea56df58cc854e0258bbec838a6d07e4233f5c1f5f9562f6afd6b",
  "trust_manifest": {
   "files": [
    "scripts/mint_arm2_nomination_split.py",

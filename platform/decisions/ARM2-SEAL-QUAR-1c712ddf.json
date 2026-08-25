@@ -1,0 +1,1 @@
+{"authorizes":"CLEAR_SEALED_QUARANTINE","key":"eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl","owner_verbatim":"I authorize clearing the Kinyarwanda cv17 sealed-set quarantine strictly for identity exclusion\u2014never for training, scoring, or model selection.","record":"ARM2-SEAL-QUAR-1c712ddf"}
