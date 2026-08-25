@@ -1,41 +1,51 @@
 {
  "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
  "status": "PENDING_DESIGN_REVIEW",
+ "revision": "002 (design re-review): REBUILT from all historical manifests + receipts (Codex/owner design review CHANGES_REQUIRED). Enumerates every unsealed audio surface, its exposure grade, the sealed promotion holdout (never-touch), and the per-language untouched-data verdict that determines which languages Part-2 can confirmation-gate.",
  "companion_of": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "purpose": "Enumerate every UNSEALED data surface that has already been used or seen, so the Part-2 CONFIRMATION split can be PROVEN disjoint (untouched) at mint time; and mark the sealed promotion holdout as never-touch. This is a review artifact; it approves nothing and mints nothing.",
+ "method": "read of platform/manifests/* and platform/evidence/receipts/* + the holdout ledger; identity fields are complete_raw_sha256 (dataset), rows_sha256 (record), and per-row audio_checksum_sha256 (the disjointness key).",
  "used_surfaces": [
-  {
-   "surface": "Arm-1 dev-selection (7 languages x 60 = 420 held-out DEV rows)",
-   "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
-   "exposure": "USED for Arm-1 checkpoint / development selection",
-   "eligibility": "SCREENING ONLY — already seen; NOT valid as an independent confirmation set (Codex round 31 finding 3)"
-  },
-  {
-   "surface": "frozen dev sentinels — lingala (60 rows), swahili (60 rows)",
-   "path": ["platform/manifests/dev-sentinels/lingala.jsonl", "platform/manifests/dev-sentinels/swahili.jsonl"],
-   "exposure": "USED as the Arm-2 calibration dev sentinels (directional dev-WER)",
-   "eligibility": "SCREENING ONLY — already seen"
-  },
-  {
-   "surface": "Arm-1 / gb9 training corpus",
-   "path": "platform/evidence/B5-GB9-ADOPTION-2026-001.json (complete_raw_sha256 a11df981...)",
-   "exposure": "USED for training (Arm-1 and the Arm-2 calibration)",
-   "eligibility": "TRAINING — never an evaluation set"
-  }
+  {"surface": "gb9 training corpus (13 curated corpora, 7 languages)", "path": "platform/evidence/B5-GB9-COMPLETE-2026-001.json", "identity": "complete_raw_sha256 a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d", "exposure": "USED_TRAINING", "evidence": "trained by the 40,000-step Arm-1 job b5-universal-arm1-2026-005 and the Arm-2 FTCAL calibration (dataset_complete_raw_sha256 a11df981...)"},
+  {"surface": "gb8 training corpus (predecessor of gb9)", "path": "platform/evidence/B5-GB8-COMPLETE-2026-001.json", "identity": "complete_raw_sha256 e69f405e112a00557dd7e78ace4778ddbf82caefd4f0cf428cf32a50a12e6063", "exposure": "USED_TRAINING_SUPERSEDED", "evidence": "adopted then superseded by gb9 ~1h later; gb9 = gb8 minus 4 english cv17_en rows"},
+  {"surface": "kinyarwanda-only training data (gb3, 300h cap)", "path": "platform/manifests/B5-KINYARWANDA-FULL-SAGEMAKER-BINDINGS-2026-001.json", "identity": "gb3 curated kinyarwanda", "exposure": "USED_TRAINING", "evidence": "~1.02M curated kinyarwanda rows consumed by the kinyarwanda-full probe"},
+  {"surface": "Arm-1 dev-selection (60 rows/language x 7 = 420)", "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json", "identity": "rows_sha256 54897fff75b8c2c39901ef552f3e58c27340f774887eb09f05f4c7c37b835075; per-row audio_checksum_sha256", "exposure": "USED_DEV_SELECTION", "evidence": "scored on the base model + all 21 Arm-1 checkpoints in ARM1-DEV-SWEEP-2026-001 (best-macro step-0014000); source pools pinned per-language by B5-TIER2-HOLDOUTS-2026-001..004"},
+  {"surface": "lingala regression sentinel (whole 386-row lingala dev half)", "path": "platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json", "identity": "rows_sha256 b457b84e...; cluster_by audio_checksum_sha256", "exposure": "USED_DEV_SENTINEL", "evidence": "ARM1-LINGALA-SENTINEL-2026-001/receipt.json scored paired_rows=386 (base 0.1723 vs step-0014000 0.1793, preservation-gate FAILURE); CONTAINS the 60 lingala selection rows"},
+  {"surface": "frozen dev sentinels lingala.jsonl + swahili.jsonl (60 each)", "path": ["platform/manifests/dev-sentinels/lingala.jsonl", "platform/manifests/dev-sentinels/swahili.jsonl"], "identity": "file sha256 59b2485c... / 613fad79...; per-row audio_checksum_sha256", "exposure": "USED_DEV_SENTINEL", "evidence": "verbatim copies of the selection rows; scored as directional dev-WER by the Arm-2 FTCAL calibration (lingala 0.1803, swahili 0.1486)"},
+  {"surface": "base-model zero-shot evaluation pools (fleurs-v1 + soreva-v1 + aaf-test + av per language)", "path": "platform/manifests/ASR-BASE-MODEL-PILOT-BINDINGS-2026-002*/003B-* + ASR-FULL-EVAL-SUITE-SHARD-MANIFEST-2026-001/002", "identity": "public_row_list_sha256 per attempt; per-row audio_checksum_sha256", "exposure": "USED_BASE_EVAL", "evidence": "the FULL per-language dev+? pools were scored zero-shot by the ~44 base-model pilot-selection LIVE receipts + the 47/54-language suite; this makes english/french/swahili/ewe FLEURS/soreva pools NOT base-blind"}
  ],
- "sealed_never_touch": [
-  {
-   "surface": "sealed promotion holdout",
-   "governed_by": ["platform/decisions/HOLDOUT-GRADES-2026-001.json", "platform/decisions/PROMOTION-PROTOCOL-2026-004.json"],
-   "rule": "NEVER opened by this protocol. Promotion/qualification only. Part-2 is unsealed and directional; it must not read or derive from the sealed holdout."
+ "sealed_holdout": {
+  "rule": "NEVER touched by Part-2. One final untouched sealed holdout per language, frozen before any arm launched, consumed exactly once by a WINNING promotion arm.",
+  "governed_by": ["platform/decisions/PROMOTION-PROTOCOL-2026-004.json", "platform/evidence/B5-TIER2-HOLDOUTS-2026-001.json", "platform/evidence/B5-TIER2-HOLDOUTS-2026-002.json", "platform/evidence/B5-TIER2-HOLDOUTS-2026-003.json", "platform/evidence/B5-TIER2-HOLDOUTS-2026-004.json", "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl", "platform/decisions/B5-KW-V2-GATE-PROTOCOL-2026-001.json"],
+  "sealed_halves_by_language": {
+   "kinyarwanda": "cv17-test-v1-universal-sealed 1642 rows (promotion-grade) + cv17-test-v1-sealed 3373 (QUARANTINED)",
+   "french": "aaf-test-v1-tier2-sealed 258 + fleurs-v1-tier2-sealed 469 (CONDITIONAL: text-overlap disclosed)",
+   "pidgin": "av-heldout-sealed-e1 1500 rows / 24 real held-out speakers (CONDITIONAL: training text-overlap)",
+   "english": "fleurs-v1-tier2-sealed 529 (DEVELOPMENT-GRADE: placeholder speaker ids, already base-scored)",
+   "ewe": "soreva-v1-tier2-sealed 66 (DEVELOPMENT-GRADE)",
+   "lingala": "fleurs-v1-tier2-sealed 325 + soreva-v1-tier2-sealed 81 (DEVELOPMENT-GRADE)",
+   "swahili": "fleurs-v1-tier2-sealed 343 + soreva-v1-tier2-sealed 68 (DEVELOPMENT-GRADE)"
   }
- ],
- "confirmation_split_requirements": {
-  "status": "NOT YET MINTED",
-  "source": "the UNSELECTED remainder of each tier-2 dev pool (rows never drawn into the 420 selection surface, the screening sentinels, or Arm-1 training), NEVER the sealed holdout",
-  "disjointness_proof_required": "at mint, every confirmation row's audio_checksum_sha256 MUST be disjoint from EVERY used_surface above AND from the sealed_never_touch holdout; the proof is committed alongside the frozen manifest",
-  "freeze_requirements": ["per-row sha256", "per-pool S3 version_id + etag + KMS pins", "committed to git BEFORE any finalist run", "opened ONCE for finalist + KD_CONTROL confirmation"]
  },
- "holds": "Nothing here authorizes minting, selection, sealed evaluation, promotion, or deployment. All remain held.",
- "utc": "2026-08-25T00:20:00Z"
+ "per_language_untouched_verdict": {
+  "pidgin": {"available": "YES_FULLY_BLIND", "rows_estimate": 1440, "source": "eval/pidgin/asr/av-heldout-dev-e1 remainder (1500 dev minus 60 selected); speakers held out of training; NEVER in the base 47-language suite", "grade": "base-blind AND candidate-blind (strongest); caveat = training text-overlap"},
+  "english": {"available": "YES_CANDIDATE_BLIND", "rows_estimate": 451, "source": "eval/english/asr/fleurs-v1-tier2-dev remainder (511 dev minus 60 selected)", "grade": "candidate-blind only (already zero-shot base-scored)"},
+  "french": {"available": "YES_CANDIDATE_BLIND", "rows_estimate": 465, "source": "eval/french/asr/fleurs-v1-tier2-dev remainder (~465); +187 aaf-test-dev remainder available but text-overlap caveated", "grade": "candidate-blind only"},
+  "swahili": {"available": "YES_CANDIDATE_BLIND", "rows_estimate": 372, "source": "eval/swahili/asr/fleurs-v1-tier2-dev (~324) + soreva-v1-tier2-dev (~48) remainders", "grade": "candidate-blind only"},
+  "kinyarwanda": {"available": "NO", "rows_estimate": 0, "source": "NONE in-repo: entire 6,657-row cv17 pool is sealed or decision-exposed (dev-selection 1642 is the v2 sweep surface); no FLEURS kinyarwanda; new licensed acquisition (AfriVoice/Mbaza, directional-only) required", "grade": "none"},
+  "lingala": {"available": "NO", "rows_estimate": 0, "source": "NONE: the entire 386-row dev half was scored by ARM1-LINGALA-SENTINEL; both sealed halves reserved; new licensed acquisition required (deferred language B4-B5-SCOPE-2026-003)", "grade": "none"},
+  "ewe": {"available": "NO", "rows_estimate": 16, "source": "functionally NONE: only ~16 dev-remainder rows (also base-scored); no FLEURS ewe; commissioned SOREVA ewe collection required", "grade": "none"}
+ },
+ "confirmation_split_plan": {
+  "phase_A_gated_now": {
+   "languages": ["english", "french", "swahili", "pidgin"],
+   "blindness": "pidgin is base+candidate blind; english/french/swahili are candidate-blind (base already scored) -> Phase A is a candidate-checkpoint-selection confirmation, NOT a base-blind confirmation",
+   "split_rows": "the per-language dev-half REMAINDERS above, minus the 60 selection rows and minus the sealed halves; predeclared + frozen (per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS) BEFORE any arm is scored; DISJOINT-checked against every used_surface and the sealed halves"
+  },
+  "phase_B_prerequisite_held": {
+   "languages": ["lingala", "kinyarwanda", "ewe", "(base-blind english/french/swahili)"],
+   "requirement": "a truly base-blind, never-scored, untouched confirmation set for these REQUIRES NEW licensed/commissioned data acquisition; it does NOT exist in-repo. The atomic 7-language BLIND promotion gate is therefore BLOCKED on data acquisition and remains HELD. No promotion can occur on Part-2 evidence alone."
+  }
+ },
+ "holds": "Nothing here authorizes minting, selection, sealed evaluation, promotion, or deployment. The sealed holdout is never touched. kinyarwanda/lingala/ewe confirmation and the base-blind 7-language gate are data-acquisition prerequisites, held.",
+ "utc": "2026-08-25T01:10:00Z"
 }

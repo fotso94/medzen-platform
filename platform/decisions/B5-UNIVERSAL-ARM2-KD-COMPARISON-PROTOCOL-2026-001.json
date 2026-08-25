@@ -1,92 +1,112 @@
 {
  "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
  "status": "PENDING_DESIGN_REVIEW",
- "NOT_AN_APPROVAL": "This is a SCIENTIFIC PROTOCOL for design review ONLY. There is deliberately NO approved execution record, NO launch packet, NO image digest, and NO code change bound here. Per the owner's two-review gate: (1) THIS design + the companion exposure inventory are reviewed first; (2) only after design approval are the machinery (shared wrapper, verifier language separation, confirmation-split minting) implemented and tested; (3) a SECOND review then binds the exact code sha, image digest, manifests and execution packets before anything launches. Sealed evaluation, promotion and deployment remain HELD throughout; this protocol defines only an unsealed DIRECTIONAL comparison that INFORMS a future, separately-predeclared hyperparameter selection.",
- "purpose": "Compare KD hyperparameter recipes for Arm-2 preservation-aware distillation against a matched KD-disabled control, to nominate at most one recipe to carry into a future full-Arm-2 training request. Directional and unsealed; not a promotion or qualification.",
+ "revision": "002 (design re-review): addresses every CHANGES_REQUIRED item — rebuilt exposure inventory (companion); resolved untouched kinyarwanda/lingala/ewe data via a two-phase gate; identical confirmation rows across all scored models; the 600-step selection stage REMOVED (all arms trained fresh to 2000); H0 made comparator-only; margins/clustering/seed-aggregation/macro objective finalized; exact job/cost/runtime table with six fresh mechanics receipts; sealed data untouched.",
+ "NOT_AN_APPROVAL": "SCIENTIFIC PROTOCOL for design RE-REVIEW only. NO approved execution record, NO launch packet, NO image digest, NO pipeline code change is bound here. Two-review gate: (1) this + the exposure inventory are re-reviewed; (2) after design approval the machinery is implemented + tested; (3) a SECOND review binds exact code sha, image digest, manifests and execution packets before any launch. Sealed evaluation, promotion and deployment remain HELD throughout.",
+ "purpose": "An UNSEALED, directional NOMINATION step: compare KD candidate recipes against a matched KD-disabled control and the calibrated anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It confirms nothing for promotion and touches no sealed data.",
  "modes": {
-  "KD_CONTROL": {
-   "MEDZEN_KD_ENABLE": "0",
-   "distillation": "none (alpha=0, no teacher term)",
-   "role": "matched control at identical budget/seed/data-order, so any preservation effect can be ATTRIBUTED to KD versus base under-training/drift (Codex round 31 finding 2b)"
-  },
-  "KD_CANDIDATE": {
-   "MEDZEN_KD_ENABLE": "1",
-   "swept_knobs": ["MEDZEN_KD_ALPHA", "MEDZEN_KD_TEMPERATURE", "MEDZEN_KD_LANGUAGE_WEIGHTS"],
-   "frozen": ["teacher medzen_omniASR_CTC_1B_v2 (base, frozen)", "preservation set", "seed", "data order"]
-  }
+  "KD_CONTROL": {"MEDZEN_KD_ENABLE": "0", "distillation": "none (alpha=0)", "role": "matched control at identical budget/seed/data-order so preservation is attributable to KD versus base under-training (Codex r31 f2)"},
+  "KD_CANDIDATE": {"MEDZEN_KD_ENABLE": "1", "swept_knobs": ["MEDZEN_KD_ALPHA", "MEDZEN_KD_TEMPERATURE", "MEDZEN_KD_LANGUAGE_WEIGHTS"], "frozen": ["base teacher medzen_omniASR_CTC_1B_v2", "seed", "data order"]}
  },
- "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit the SAME serving-readyz / upstream-parity / dev-WER / authoritative-verifier receipts and are comparable through one evidence pipeline. Post-approval implementation: remove the KD-enable entrypoint fork (scripts/b5_sagemaker_job.py) and the two KD-off short-circuits (omniasr_calibrate refusal + validate_arm2_semantics early return) so KD_CONTROL trains with distillation off but is otherwise gated identically (Codex round 31 finding 2a).",
- "arms": [
-  {"id": "KD_CONTROL", "mode": "KD_CONTROL"},
-  {"id": "H0", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5", "note": "calibrated anchor"},
-  {"id": "H1", "mode": "KD_CANDIDATE", "alpha": 0.25, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-  {"id": "H2", "mode": "KD_CANDIDATE", "alpha": 1.0, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-  {"id": "H3", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 2.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
-  {"id": "H4", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=2.0,swahili=2.0,english=0.5,french=0.5"}
- ],
- "languages": {
-  "base_preservation_gated": ["english", "french", "lingala", "swahili"],
-  "arm1_retention_gated": ["pidgin", "kinyarwanda", "ewe"],
+ "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / upstream-parity / dev-WER / authoritative receipts (post-approval implementation: remove the KD-enable entrypoint fork + the two KD-off short-circuits).",
+ "arm_roles": {
+  "comparators_not_nominable": [
+   {"id": "base_teacher", "kind": "frozen base checkpoint (inference only on the confirmation rows)"},
+   {"id": "arm1", "kind": "existing Arm-1 checkpoint (inference only on the confirmation rows)"},
+   {"id": "H0", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5", "note": "calibrated anchor; COMPARATOR-ONLY (Codex r31): H0 can never be the nominated winner; candidates must BEAT it"},
+   {"id": "KD_CONTROL", "mode": "KD_CONTROL"}
+  ],
+  "candidates_nominable": [
+   {"id": "H1", "mode": "KD_CANDIDATE", "alpha": 0.25, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+   {"id": "H2", "mode": "KD_CANDIDATE", "alpha": 1.0, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+   {"id": "H3", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 2.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+   {"id": "H4", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=2.0,swahili=2.0,english=0.5,french=0.5"}
+  ]
+ },
+ "no_selection_stage": "The 600-step diagnostic screen is REMOVED (Codex r31: 'remove or fully predeclare its numerical rule'). There is NO intermediate selection. All six training arms (KD_CONTROL, H0, H1-H4) are trained FRESH to 2000 steps under one matched seed + data order, then scored once on the frozen confirmation split. No config is dropped on a partial-step heuristic.",
+ "training": {
+  "steps": 2000, "run_type": "FRESH from base (not continued)", "data_cap_hours": 100, "warmup_steps": 500,
+  "matched": "identical MEDZEN_SEED AND identical data ordering across all six arms",
+  "second_seed": "the nominated finalist AND the KD_CONTROL are EACH re-run under a second matched seed; base_teacher and arm1 are existing checkpoints (no training)"
+ },
+ "evaluation": {
   "all_seven_evaluated": ["english", "ewe", "french", "kinyarwanda", "lingala", "pidgin", "swahili"],
-  "verifier_change_required": "the verifier's evaluated-languages-subset-of-preservation gate must be split into FOUR preservation languages (non-inferiority GATED) and SEVEN monitored/evaluated languages (three of which are RETENTION-gated); to be implemented post-approval (Codex round 31 finding 2b)."
+  "identical_rows_requirement": "for every language, base_teacher, arm1, H0, KD_CONTROL and every candidate/finalist are scored on the SAME frozen confirmation rows, paired row-for-row (Codex r31: identical confirmation rows across all scored models)",
+  "gating_tier_dictated_by_data": "see the exposure inventory: only english/french/swahili/pidgin have an untouched candidate-blind split, so only those can be CONFIRMATION-GATED now (Phase A). lingala/kinyarwanda/ewe have NO untouched data and are DIRECTIONAL-only (reported, non-gating) pending Phase-B data acquisition."
+ },
+ "phases": {
+  "phase_A_nomination_now": {
+   "confirmation_gated_languages": ["english", "french", "swahili", "pidgin"],
+   "directional_only_languages": ["lingala", "kinyarwanda", "ewe"],
+   "outcome": "nominates at most one candidate recipe (directional); confirms nothing for promotion"
+  },
+  "phase_B_blind_gate_HELD": {
+   "requirement": "a truly base-blind, never-scored, untouched confirmation set for lingala/kinyarwanda/ewe (and base-blind english/french/swahili) does NOT exist in-repo and requires NEW licensed/commissioned data acquisition; the atomic 7-language blind promotion gate is BLOCKED on that acquisition and remains HELD. Part-2 alone can never promote."
+  }
  },
  "constraints": {
   "base_preservation_non_inferiority": {
-   "languages": ["english", "french", "lingala", "swahili"],
-   "reference": "the FROZEN base teacher's WER per language on the confirmation split",
-   "test": "paired bootstrap; PASS iff the one-sided 95% upper bound of (WER_candidate - WER_base) <= +0.005 (0.5 absolute WER points) per language, after multiplicity correction"
+   "gated_languages_phaseA": ["english", "french", "swahili"],
+   "directional_only": ["lingala"],
+   "reference": "the frozen base teacher's per-language WER on the SAME confirmation rows",
+   "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_base) <= +0.005 (0.5 absolute WER points) per gated language, after multiplicity correction"
   },
   "arm1_retention": {
-   "languages": ["pidgin", "kinyarwanda", "ewe"],
-   "reference": "Arm-1's achieved per-language WER, to be PINNED from committed Arm-1 evaluation evidence (platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION*) at confirmation-manifest mint time (predeclared before any run)",
-   "test": "paired bootstrap; PASS iff the one-sided 95% upper bound of (WER_candidate - WER_arm1_reference) <= +delta_pp per language, after multiplicity correction; delta_pp pinned at mint (proposed 0.5pp, subject to design review)"
+   "gated_languages_phaseA": ["pidgin"],
+   "directional_only": ["kinyarwanda", "ewe"],
+   "reference": "Arm-1's per-language WER on the SAME confirmation rows (arm1 checkpoint scored on the frozen split; not a stale number)",
+   "test": "speaker cluster-bootstrap; PASS iff one-sided 95% upper bound of (WER_candidate - WER_arm1) <= +0.005 (0.5pp) for pidgin, after multiplicity correction"
   },
-  "kd_attribution": "every KD_CANDIDATE is compared DIRECTLY to the matched KD_CONTROL at identical step budget, seed and data order; a candidate must beat the control on the macro preservation objective to be creditable to KD, not to training"
- },
- "stages": {
-  "stage1_screen": {"steps": 600, "arms": "all 6", "purpose": "DIAGNOSTIC ONLY: drop configurations that diverge or grossly regress on the screening sentinels; NO winner is declared here (600 steps ~ 1.5% of the intended 40,000-step train, and Arm-1's Lingala regression only surfaced over thousands of steps)"},
-  "stage2_confirm": {"steps": 2000, "run_type": "FRESH from base (NOT continued from the Stage-1 screen checkpoints)", "arms": "H0 + the best 1-2 Stage-1 survivors + KD_CONTROL", "data_cap_hours": 100, "warmup_steps": 500, "matched": "identical MEDZEN_SEED AND identical data ordering across every compared arm"},
-  "second_seed_replicate": "the finalist AND the KD_CONTROL are EACH re-run under a second, matched MEDZEN_SEED to separate recipe effect from seed noise (not the finalist alone) (Codex round 31 finding 4)"
+  "kd_attribution": "each candidate is compared DIRECTLY to the matched KD_CONTROL at identical budget/seed/data-order; a candidate must beat the control on the macro objective to credit any gain to KD, not training"
  },
  "statistics": {
-  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from the per-row edit-distance receipts",
-  "resampling": "paired bootstrap, B >= 10000, the SAME resampled row indices applied to both arms in each comparison",
-  "units": "absolute WER points (pp) — no relative-% ambiguity",
-  "multiplicity_correction": "Holm-Bonferroni across the FULL family of (arm x language x constraint) one-sided tests at family-wise alpha = 0.05 (predeclared); a candidate must pass every constraint AFTER correction"
+  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from per-row edit-distance receipts",
+  "clustering": "SPEAKER-level cluster bootstrap (utterances from one speaker are correlated): resample SPEAKERS with replacement, B >= 10000, paired (the same resampled speaker set applied to both arms in each comparison). Pools with placeholder/single speaker ids (ewe soreva) fall back to utterance-level and are DIRECTIONAL-only regardless",
+  "units": "absolute WER points (pp)",
+  "seed_aggregation": "the finalist + KD_CONTROL run under two matched seeds; a gated verdict PASSES only if it holds on the seed-POOLED cluster bootstrap AND under EACH seed individually (no seed reversal)",
+  "multiplicity_correction": "Holm-Bonferroni across the FULL family = {4 candidates x 4 Phase-A gated languages x applicable constraint} + the beat-KD_CONTROL and beat-H0 macro tests, family-wise alpha = 0.05"
  },
+ "macro_objective": "unweighted mean WER across the four Phase-A confirmation-gated languages {english, french, swahili, pidgin}, on the seed-pooled confirmation split (lingala/kinyarwanda/ewe are directional and excluded from the gating macro)",
  "selection_rule": {
-  "qualify": "a KD_CANDIDATE QUALIFIES iff, on the CONFIRMATION split and after multiplicity correction: (a) all 4 base-preservation non-inferiority constraints pass; AND (b) all 3 Arm-1-retention constraints pass; AND (c) it beats the matched KD_CONTROL on the macro preservation objective (one-sided 95% lower bound of (WER_control - WER_candidate) > 0); AND (d) it beats H0 similarly",
-  "tie_break": "among qualifiers, DETERMINISTIC: (1) lowest macro preservation WER on the confirmation split; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id",
-  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the outcome is the explicit terminal state NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe"
+  "qualify": "a CANDIDATE (H1-H4) QUALIFIES iff, on the Phase-A confirmation split, after Holm-Bonferroni AND under both seeds: (a) base-preservation non-inferiority passes for english, french, swahili; AND (b) Arm-1 retention passes for pidgin; AND (c) it beats the matched KD_CONTROL on the macro objective (one-sided 95% lower bound of (WER_control - WER_candidate) > 0); AND (d) it beats the H0 anchor comparator on the macro objective (one-sided 95% lower bound of (WER_H0 - WER_candidate) > 0)",
+  "tie_break": "among qualifiers, DETERMINISTIC: (1) lowest macro WER on the seed-pooled confirmation split; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id",
+  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the terminal outcome is NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold at H0), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe",
+  "H0_is_comparator_only": "H0 can never be the nominated winner; if no candidate beats H0 the outcome is NO_RECIPE_QUALIFIES"
  },
  "confirmation_data_rules": {
-  "screening_set": "the frozen dev sentinels (lingala + swahili exist today; english/french/pidgin/kinyarwanda/ewe to be minted post-approval) — used ONLY for Stage-1 screening and candidate selection",
-  "confirmation_split": {
-   "status": "NOT YET MINTED — minting is part of the post-approval implementation; see the companion exposure inventory B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
-   "source": "the UNSELECTED remainder of each tier-2 dev pool (never the sealed promotion holdout)",
-   "rules": [
-    "DISJOINT by audio_checksum_sha256 from: the 420 Arm-1 dev-selection rows, the lingala/swahili screening sentinels, all Arm-1/gb9 training data, and the sealed promotion holdout",
-    "NEVER surfaced during development, checkpoint selection, or Stage-1 screening",
-    "PREDECLARED + committed + FROZEN (per-row sha256 + per-pool S3 version_id/etag/KMS pins) BEFORE any finalist runs",
-    "opened ONCE, for the finalist + KD_CONTROL confirmation only",
-    "the sealed promotion holdout (HOLDOUT-GRADES-2026-001 / PROMOTION-PROTOCOL-2026-004) is NEVER touched by this protocol"
-   ]
-  }
+  "status": "NOT YET MINTED — minting is post-approval; see exposure inventory B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
+  "phaseA_split_source": "the per-language dev-half REMAINDER for english/french/swahili/pidgin (pool minus the 60 selection rows minus the sealed half); pidgin (av-heldout remainder) is the only base+candidate-blind anchor",
+  "rules": [
+   "DISJOINT by audio_checksum_sha256 from EVERY used_surface in the exposure inventory (training, the 420 dev-selection rows, the 386-row lingala sentinel, the 60-row sentinels, and all base-eval pools) AND from every sealed half",
+   "PREDECLARED + committed + FROZEN (per-row audio_checksum_sha256 + per-pool S3 version_id/etag/KMS) BEFORE any arm is scored",
+   "opened ONCE: all arms + comparators scored in a single pass per seed; no iterative re-fitting",
+   "the sealed promotion holdout is NEVER touched"
+  ]
+ },
+ "cost_runtime_table": {
+  "instance": "ml.g6.xlarge on-demand (never spot); padded rate $1.60/h; fixed overhead ~1073 s/job; ~5.18 s/step",
+  "jobs": [
+   {"job": "6 mechanics receipts (KD_CONTROL,H0,H1,H2,H3,H4 @ 30 steps)", "count": 6, "max_runtime_s": 3600, "worst_case_usd_each": 1.60, "worst_case_usd": 9.60, "expected_usd": 3.28},
+   {"job": "6 fresh confirmation training runs (@ 2000 steps, seed 1)", "count": 6, "max_runtime_s": 12600, "worst_case_usd_each": 5.60, "worst_case_usd": 33.60, "expected_usd": 30.49},
+   {"job": "2 second-seed runs (finalist + KD_CONTROL @ 2000 steps, seed 2)", "count": 2, "max_runtime_s": 12600, "worst_case_usd_each": 5.60, "worst_case_usd": 11.20, "expected_usd": 10.16},
+   {"job": "2 confirmation-scoring inference passes (all arms seed1; finalist+control seed2)", "count": 2, "max_runtime_s": 3600, "worst_case_usd_each": 1.60, "worst_case_usd": 3.20, "expected_usd": 3.20}
+  ],
+  "cumulative_worst_case_usd": 57.60,
+  "cumulative_expected_usd": 47.13,
+  "note": "base_teacher and arm1 are existing checkpoints scored within the confirmation-scoring passes (no training job)."
  },
  "budget": {
   "ceiling_usd": 60,
-  "type": "single atomic cumulative",
+  "type": "single atomic cumulative (worst-case $57.60 <= $60)",
   "reservation": "serial (one job reserved at a time)",
   "automatic_retries": "NONE — any retry requires separate owner authorization",
-  "per_job_runtime": "hard MaxRuntimeInSeconds per job",
-  "instance": "on-demand ml.g6.xlarge (never spot)",
-  "fixed_overhead_note": "~1073 s per-job fixed overhead measured from the calibration is included in the budget",
-  "reporting_rule": "on-demand pricing always; +$100 on every reported max => reported max <= $160"
+  "per_job_runtime": "hard MaxRuntimeInSeconds per job (table above)",
+  "reporting_rule": "on-demand always; +$100 on every reported max => reported max <= $160"
  },
  "two_review_gate": {
-  "first_review": "THIS design + the exposure inventory (status PENDING_DESIGN_REVIEW); no code, no packets, no launch",
-  "second_review": "AFTER implementation + tests: a review binding the exact code sha, trainer image digest, screening/confirmation manifests, and per-recipe execution packets — BEFORE any launch"
+  "first_review": "THIS design + the exposure inventory (PENDING_DESIGN_REVIEW); no code, no packets, no launch",
+  "second_review": "AFTER implementation + tests: bind the exact code sha, trainer image digest, screening/confirmation manifests, and per-recipe execution packets BEFORE any launch"
  },
- "holds": "hyperparameter SELECTION output, sealed evaluation, promotion, and deployment ALL remain HELD for separate predeclared reviewed steps. This protocol authorizes NOTHING to run.",
- "utc": "2026-08-25T00:20:00Z"
+ "holds": "hyperparameter SELECTION output, sealed evaluation, promotion, deployment ALL remain HELD. The full 7-language blind gate is a data-acquisition prerequisite (Phase B), held. This protocol authorizes NOTHING to run.",
+ "utc": "2026-08-25T01:10:00Z"
 }
