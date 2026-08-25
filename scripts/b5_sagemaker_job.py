@@ -81,6 +81,10 @@ ARM2_CANONICAL_VERIFIER_SCRIPT = "scripts/verify_arm2_calibration.py"
 ARM2_CANONICAL_METRICS_ARTIFACT = "calibration-metrics.json"
 ARM2_L4_PHYSICAL_BYTES = 24 * 1024 * 1024 * 1024  # g6.xlarge single NVIDIA L4
 ARM2_MANDATORY_DEV_SENTINELS = frozenset({"lingala", "swahili"})
+# The one historical Arm-2 calibration JOB that predates the explicit
+# MEDZEN_EXECUTION_MODE enum and may therefore rely on legacy KD-on inference.
+# Every NEW comparative job (a different job_id) must declare the mode.
+FROZEN_ARM2_CALIBRATION_JOB_ID = "b5-universal-arm2-ftcal-2026-001"
 
 
 def _parse_env_weights(raw: str) -> dict[str, float]:
@@ -150,6 +154,16 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     if not comparative:
         return                  # plain training carries no Arm-2 semantics
 
+    # Legacy KD-on inference (absent MEDZEN_EXECUTION_MODE => arm2_comparative)
+    # is limited to the EXACT frozen historical calibration packet; every new
+    # comparative packet must declare the mode explicitly (owner-directed).
+    if not str(environment.get("MEDZEN_EXECUTION_MODE", "")).strip() and \
+            str(bindings.get("job_id") or "") != FROZEN_ARM2_CALIBRATION_JOB_ID:
+        raise JobRefusal(
+            "a new Arm-2 comparative packet must set MEDZEN_EXECUTION_MODE="
+            "'arm2_comparative' explicitly — legacy KD-on inference is limited "
+            "to the frozen historical calibration job")
+
     # KD-on candidates cross-check the human-facing recipe against the env; the
     # KD-off comparative CONTROL has no `distillation` block, so it skips these
     # and carries only the shared acceptance_criteria + result_verifier below.
@@ -176,14 +190,9 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
                 environment.get("MEDZEN_KD_TEACHER_MODE")):
             _mismatch("teacher_mode", recipe.get("teacher_mode"),
                       environment.get("MEDZEN_KD_TEACHER_MODE"))
-        recipe_pres = {str(x).strip().lower() for x in
-                       recipe.get("preservation_languages", [])}
-        env_pres = {t.strip().lower() for t in
-                    str(environment.get("MEDZEN_KD_PRESERVATION_LANGUAGES", "")
-                        ).split(",") if t.strip()}
-        if recipe_pres != env_pres:
-            _mismatch("preservation_languages", sorted(recipe_pres),
-                      sorted(env_pres))
+        # preservation_languages agreement is checked below against the SHARED
+        # comparative preservation set (so KD-on and the KD-off control use one
+        # source of truth); here only the KD-specific recipe fields.
         recipe_weights = {str(k).strip().lower(): float(v) for k, v in
                           (recipe.get("language_weights") or {}).items()}
         env_weights = _parse_env_weights(
@@ -247,16 +256,56 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
         raise JobRefusal(
             "result_verifier.dev_sentinel_languages must include the "
             f"regression sentinels {sorted(ARM2_MANDATORY_DEV_SENTINELS)}")
-    if not dev_set.issubset(recipe_pres):
+    # SHARED preservation set for BOTH comparative arms (fixes the KD-off
+    # UnboundLocalError): a comparative packet may declare it in a top-level
+    # `comparative.preservation_languages` block; the frozen historical packet
+    # predates that block, so its result_verifier.required_preservation_coverage
+    # is the equivalent (backward-compat).
+    coverage = {str(x).strip().lower()
+                for x in spec["required_preservation_coverage"]}
+    comp_block = bindings.get("comparative") or {}
+    if comp_block:
+        pres = {str(x).strip().lower()
+                for x in comp_block.get("preservation_languages", [])}
+        if not pres:
+            raise JobRefusal(
+                "comparative.preservation_languages must be a non-empty list")
+        if coverage != pres:
+            raise JobRefusal(
+                "result_verifier.required_preservation_coverage must equal the "
+                "comparative.preservation_languages")
+    else:
+        pres = coverage
+    if not pres:
+        raise JobRefusal(
+            "no preservation languages resolved for the comparative arm")
+    if not dev_set.issubset(pres):
         raise JobRefusal(
             "result_verifier.dev_sentinel_languages must be a subset of the "
             "preservation_languages")
-    # the verifier's declared coverage must equal the recipe's preservation set
-    if {str(x).strip().lower()
-            for x in spec["required_preservation_coverage"]} != recipe_pres:
+    # KD-on: the distillation recipe AND the env must agree with the SHARED set;
+    # the KD-off control has no distillation block and skips this.
+    if kd_on:
+        recipe_pres = {str(x).strip().lower()
+                       for x in recipe.get("preservation_languages", [])}
+        env_pres = {t.strip().lower() for t in
+                    str(environment.get("MEDZEN_KD_PRESERVATION_LANGUAGES", "")
+                        ).split(",") if t.strip()}
+        if recipe_pres != pres or env_pres != pres:
+            _mismatch("preservation_languages",
+                      sorted(recipe_pres or env_pres), sorted(pres))
+    # KD-state must be honest: a KD-off comparative CONTROL declares
+    # result_verifier.kd_enabled=false so the verifier skips the KD-only checks;
+    # a KD-on packet must not claim otherwise (absent => legacy KD-on).
+    spec_kd = spec.get("kd_enabled")
+    if kd_on and spec_kd is False:
+        raise JobRefusal("result_verifier.kd_enabled is false but the packet "
+                         "enables KD — contradictory")
+    if not kd_on and spec_kd is not False:
         raise JobRefusal(
-            "result_verifier.required_preservation_coverage must equal the "
-            "recipe's preservation_languages")
+            "the KD-off comparative control must declare "
+            "result_verifier.kd_enabled=false so the verifier skips the "
+            "KD-only checks (kd_positive_finite_steps, kd_coverage)")
 
     # Codex review #20 F3: the calibration WRAPPER needs its inputs bound in the
     # environment — the packet path it verifies against, that packet's canonical

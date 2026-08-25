@@ -176,6 +176,10 @@ def verify_calibration(metrics: dict[str, Any],
 
     # (1) completed the declared step budget — no silent short/over run
     expected_steps = int(verifier_spec["expected_steps"])
+    # The KD-only checks apply only to a KD-on candidate; a KD-off comparative
+    # CONTROL declares kd_enabled=false (owner-directed shared wrapper). Absent
+    # => legacy KD-on, so existing calibration specs are unchanged.
+    kd_enabled = bool(verifier_spec.get("kd_enabled", True))
     status = metrics.get("status")
     if status != "COMPLETED":
         fail(f"status is {status!r}, not COMPLETED (no silent success)")
@@ -200,7 +204,8 @@ def verify_calibration(metrics: dict[str, Any],
             if not _finite_number(record.get(key)):
                 fail(f"step {record.get('step')}: {key} is not a finite number "
                      f"({record.get(key)!r})")
-        if _finite_number(record.get("kd")) and float(record["kd"]) <= 0.0:
+        if kd_enabled and _finite_number(record.get("kd")) \
+                and float(record["kd"]) <= 0.0:
             fail(f"step {record.get('step')}: KD={record['kd']} is not > 0 "
                  "(the distillation term is not live on preservation batches)")
         if all(_finite_number(record.get(k)) for k in ("ctc", "kd", "total",
@@ -216,30 +221,36 @@ def verify_calibration(metrics: dict[str, Any],
     if metrics.get("step_sequence") != [r.get("step") for r in per_step]:
         fail("step_sequence does not match per_step ordering")
     positive = int(metrics.get("kd_positive_finite_steps", 0))
-    if positive != expected_steps:
-        fail(f"kd_positive_finite_steps={positive} != {expected_steps} — KD "
-             "was not positive-and-finite on every step")
+    if kd_enabled:
+        if positive != expected_steps:
+            fail(f"kd_positive_finite_steps={positive} != {expected_steps} — "
+                 "KD was not positive-and-finite on every step")
+    elif positive != 0:
+        fail(f"kd_positive_finite_steps={positive} != 0 for a KD-off control "
+             "— the distillation term must NOT be live in the control")
 
-    # (3) per-language KD coverage: every required preservation language must
-    # have contributed real rows AND valid frames. Codex review #20 F4
-    # defense-in-depth: an EMPTY required_preservation_coverage must FAIL here
-    # (not silently skip), so the standalone verifier cannot be defanged even
-    # if it were run against a spec the launcher never validated.
-    required_coverage = verifier_spec.get("required_preservation_coverage") or []
-    if not required_coverage:
-        fail("result_verifier.required_preservation_coverage is empty — the "
-             "KD-coverage check cannot be defanged to a no-op")
-    coverage = metrics.get("kd_coverage") or {}
-    for language in required_coverage:
-        bucket = coverage.get(language)
-        if not bucket:
-            fail(f"no KD coverage recorded for preservation language "
-                 f"{language!r}")
-            continue
-        if int(bucket.get("rows", 0)) <= 0:
-            fail(f"preservation language {language!r} contributed 0 KD rows")
-        if int(bucket.get("frames", 0)) <= 0:
-            fail(f"preservation language {language!r} contributed 0 KD frames")
+    # (3) per-language KD coverage: KD-ON only. Every required preservation
+    # language must have contributed real rows AND valid frames. Codex review
+    # #20 F4 defense-in-depth: an EMPTY required_preservation_coverage must FAIL
+    # here (not silently skip) for a KD run. The KD-off control skips this.
+    if kd_enabled:
+        required_coverage = verifier_spec.get(
+            "required_preservation_coverage") or []
+        if not required_coverage:
+            fail("result_verifier.required_preservation_coverage is empty — "
+                 "the KD-coverage check cannot be defanged to a no-op")
+        coverage = metrics.get("kd_coverage") or {}
+        for language in required_coverage:
+            bucket = coverage.get(language)
+            if not bucket:
+                fail(f"no KD coverage recorded for preservation language "
+                     f"{language!r}")
+                continue
+            if int(bucket.get("rows", 0)) <= 0:
+                fail(f"preservation language {language!r} contributed 0 KD rows")
+            if int(bucket.get("frames", 0)) <= 0:
+                fail(f"preservation language {language!r} contributed 0 KD "
+                     "frames")
 
     # (4) peak GPU memory recorded and within the reviewed envelope
     ceiling = int(verifier_spec["gpu_memory_ceiling_bytes"])

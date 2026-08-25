@@ -1698,3 +1698,36 @@ def test_dockerfile_ships_the_contract_not_the_launch_packet():
     final_stage = text.split("# Shipped venv keeps", 1)[1]
     assert "EXECUTION-CONTRACT-2026-001.json" in final_stage
     assert "SAGEMAKER-BINDINGS-2026-001.DRAFT.json" not in final_stage
+
+
+def _kd_off_artifact(steps: int = 30) -> dict:
+    """A KD-OFF comparative CONTROL artifact: distillation term off (kd=0,
+    alpha=0, total==ctc), no kd_coverage, kd_positive_finite_steps=0."""
+    metrics = CalibrationMetrics()
+    for step in range(1, steps + 1):
+        metrics.record_micro({"ctc": 1.0, "kd": 0.0, "total": 1.0, "alpha": 0.0})
+        metrics.commit_step(step, lr=1e-5)
+    art = metrics.finalize(
+        status="COMPLETED", steps_completed=steps, max_steps=steps,
+        peak_gpu_bytes=10_000_000_000, wall_seconds=120.0,
+        samples_per_step=16, identity=_identity(),
+        serve={"readyz": True, "adapter_residue": False, "weights_finite": True},
+        dev_sentinel_wer={"lingala": 0.18, "swahili": 0.13})
+    art["parity"] = _good_artifact(steps)["parity"]
+    return art
+
+
+def test_kd_off_control_passes_verification_without_the_kd_checks():
+    """Item 1B: with result_verifier.kd_enabled=false the verifier SKIPS the
+    KD-only checks (kd_positive_finite_steps, kd_coverage, per-step KD>0) and a
+    KD-off control passes on the shared checks. With kd_enabled default (True)
+    the same artifact FAILS the KD checks."""
+    from verify_arm2_calibration import verify_calibration
+    art = _kd_off_artifact()
+    spec_off = dict(_spec(), kd_enabled=False)
+    assert verify_calibration(art, spec_off) == []
+    # kd_enabled default True (a KD-on spec): the KD-off artifact is rejected
+    failures = verify_calibration(art, _spec())
+    assert failures, "a KD-on spec must reject a KD-off (zero-KD) artifact"
+    assert any("kd_positive_finite_steps" in f or "KD=" in f or "KD coverage"
+               in f for f in failures)

@@ -116,20 +116,40 @@ def test_injection_fires_for_kd_off_comparative_control():
     assert "MEDZEN_TRAINING_JOB_NAME" not in plain
 
 
-# ---- every existing plain-training packet renders BYTE-FOR-BYTE unchanged -
+# ---- every existing plain-training packet is accounted for (no silent skip) -
 
-def _renderable_plain_packets():
+# The EXACT renderable plain packets pinned to their golden rendered-request
+# sha256 (deterministic render_request output). No broad exception, no silent
+# skip: every committed plain packet is either here (renders to golden) or in
+# the fail-closed set below (refuses cleanly with JobRefusal).
+PLAIN_GOLDEN = {
+    "B5-KINYARWANDA-FTCAL-SAGEMAKER-BINDINGS-2026-004.json":
+        "903a2c326af059db621e62d0f59e05651974adb335ba5d097c26b947b41891cd",
+    "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-002.json":
+        "77937097fc3b154f5d7c3ba59ae249003bf43e65ba4265c67dd56c3aef0c64d4",
+    "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-003.json":
+        "4c8b8b49e183882fc400ef72946c5efd64e4320032c2bb7919f719dd57d49e15",
+    "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-004.json":
+        "31e078ebdb5d1ccee6562e8aadd7a669814f94ae8273b0e0d2f99c1d6933eec5",
+    "B5-UNIVERSAL-ARM1-SAGEMAKER-BINDINGS-2026-005.json":
+        "8857742e1ac6788e9a73191f2f559c54ad01e53024f19481ae2a99ab230a7003",
+    "B5-UNIVERSAL-FTCAL-SAGEMAKER-BINDINGS-2026-004.json":
+        "4c0a2065a452219022318402c0f094e6fdeac665e3de25b798c782df10deeb88",
+}
+
+
+def _all_plain_packet_files():
     out = []
-    for p in sorted((ROOT / "platform/manifests").glob("*SAGEMAKER-BINDINGS*.json")):
+    for p in sorted((ROOT / "platform/manifests").glob(
+            "*SAGEMAKER-BINDINGS*.json")):
         try:
             b = json.loads(p.read_bytes())
         except Exception:
             continue
-        env = b.get("environment") or {}
         if not isinstance(b, dict) or "job_id" not in b:
             continue
         try:
-            if resolve_execution_mode(env) != "plain":
+            if resolve_execution_mode(b.get("environment") or {}) != "plain":
                 continue
         except JobRefusal:
             continue
@@ -137,28 +157,53 @@ def _renderable_plain_packets():
     return out
 
 
-def test_all_plain_packets_route_to_the_bare_trainer_and_get_no_injection():
-    packets = _renderable_plain_packets()
-    assert packets, "expected several committed plain-training packets"
-    rendered_any = False
-    for name, b in packets:
+def test_every_plain_packet_is_accounted_for_no_silent_skip():
+    import hashlib
+    files = _all_plain_packet_files()
+    names = {n for n, _ in files}
+    # the golden set is a subset of the actual committed plain packets
+    assert set(PLAIN_GOLDEN) <= names
+    checked_golden = 0
+    for name, b in files:
         try:
             req = render_request(b)
-        except Exception:
-            # some historical packets are not fully renderable in isolation;
-            # the mode routing is still asserted below on the ones that render
+        except JobRefusal:
+            # a historical packet that no longer fully renders must fail CLOSED
+            # (clean JobRefusal), never crash (e.g. the KD-off UnboundLocalError)
+            assert name not in PLAIN_GOLDEN, f"{name} should render but refused"
             continue
-        rendered_any = True
+        # it rendered => it MUST be a pinned golden and match byte-for-byte
+        assert name in PLAIN_GOLDEN, f"{name} newly renders — pin its golden sha"
         assert req["AlgorithmSpecification"]["ContainerArguments"] == \
-            ["-m", "pipeline.omniasr_train"], f"{name} must stay on the bare trainer"
-        # plain packets receive NO launcher-injected provenance keys
+            ["-m", "pipeline.omniasr_train"], f"{name} left the bare trainer"
         live_env = req["Environment"]
-        for injected in ("MEDZEN_EXECUTION_MODE", "MEDZEN_CALIBRATION_PACKET_SHA256",
+        for injected in ("MEDZEN_EXECUTION_MODE",
+                         "MEDZEN_CALIBRATION_PACKET_SHA256",
                          "MEDZEN_TRAINING_JOB_NAME", "MEDZEN_EXECUTION_CONTRACT"):
             assert injected not in live_env, f"{name} leaked {injected}"
-        # and the rendered Environment equals the packet's own environment
         assert live_env == (b.get("environment") or {}), f"{name} env changed"
-    assert rendered_any, "at least one plain packet must render for the proof"
+        digest = hashlib.sha256(
+            json.dumps(req, sort_keys=True, default=str).encode()).hexdigest()
+        assert digest == PLAIN_GOLDEN[name], f"{name} rendered request drifted"
+        checked_golden += 1
+    assert checked_golden == len(PLAIN_GOLDEN), "every golden packet must render"
+
+
+def test_new_comparative_packet_must_declare_execution_mode_explicitly():
+    # a KD-on packet with a NEW job_id and NO explicit mode is refused; legacy
+    # inference is limited to the frozen historical calibration job.
+    from b5_sagemaker_job import validate_arm2_semantics
+    env = {"MEDZEN_KD_ENABLE": "1", "MEDZEN_KD_ALPHA": "0.5"}
+    with pytest.raises(JobRefusal, match="must set MEDZEN_EXECUTION_MODE"):
+        validate_arm2_semantics({"job_id": "arm2-cand-h1",
+                                 "distillation": {}}, env)
+    # the exact historical job may still omit it (legacy) — it gets PAST the
+    # mode gate (and fails later for other reasons, never the mode one)
+    with pytest.raises(Exception) as ei:
+        validate_arm2_semantics(
+            {"job_id": "b5-universal-arm2-ftcal-2026-001", "distillation": {}},
+            env)
+    assert "MEDZEN_EXECUTION_MODE" not in str(ei.value)
 
 
 def test_the_frozen_arm2_calibration_packet_still_routes_to_the_wrapper():
@@ -173,3 +218,57 @@ def test_the_frozen_arm2_calibration_packet_still_routes_to_the_wrapper():
     from b5_sagemaker_job import canonical_bindings_sha256
     assert canonical_bindings_sha256(cal) == (
         "3c5024edee3a9df098f1f9e3bdbccc044c963e53f761dc173dbafd1b6a4f9c7e")
+
+
+# ---- Codex's reproduction: a KD-off comparative control now VALIDATES --------
+
+def test_kd_off_comparative_control_no_longer_crashes_at_recipe_pres():
+    """The exact bug Codex reproduced: a KD-off comparative arm hit
+    `UnboundLocalError: recipe_pres`. With the shared preservation block it now
+    gets PAST that line and fails cleanly (JobRefusal) on a later, real check."""
+    from b5_sagemaker_job import (validate_arm2_semantics,
+                                  ARM2_CANONICAL_VERIFIER_SCRIPT)
+    pres = ["english", "french", "swahili", "lingala"]
+    bindings = {
+        "job_id": "arm2-control-1",
+        "comparative": {"preservation_languages": pres},
+        "acceptance_criteria": ["PASS"],
+        "result_verifier": {
+            "script": ARM2_CANONICAL_VERIFIER_SCRIPT,
+            "metrics_schema": "b5-arm2-calibration-metrics/1",
+            "metrics_artifact": "calibration-metrics.json",
+            "expected_steps": 30,
+            "gpu_memory_ceiling_bytes": 22 * 1024 ** 3,
+            "required_preservation_coverage": pres,
+            "dev_sentinel_languages": ["lingala", "swahili"],
+            "kd_enabled": False,
+        },
+    }
+    env = {"MEDZEN_EXECUTION_MODE": "arm2_comparative", "MEDZEN_KD_ENABLE": "0",
+           "MEDZEN_MAX_STEPS": "30",
+           "MEDZEN_DEV_SENTINEL_MANIFEST_FILES":
+               "lingala=a.jsonl,swahili=b.jsonl"}
+    # it reaches the execution_contract check (a clean JobRefusal), NOT a crash
+    with pytest.raises(JobRefusal, match="execution_contract"):
+        validate_arm2_semantics(bindings, env)
+
+
+def test_kd_off_control_missing_kd_enabled_false_is_refused():
+    from b5_sagemaker_job import (validate_arm2_semantics,
+                                  ARM2_CANONICAL_VERIFIER_SCRIPT)
+    pres = ["english", "french", "swahili", "lingala"]
+    spec = {"script": ARM2_CANONICAL_VERIFIER_SCRIPT,
+            "metrics_schema": "b5-arm2-calibration-metrics/1",
+            "metrics_artifact": "calibration-metrics.json",
+            "expected_steps": 30, "gpu_memory_ceiling_bytes": 22 * 1024 ** 3,
+            "required_preservation_coverage": pres,
+            "dev_sentinel_languages": ["lingala", "swahili"]}  # NO kd_enabled
+    bindings = {"job_id": "arm2-control-1",
+                "comparative": {"preservation_languages": pres},
+                "acceptance_criteria": ["PASS"], "result_verifier": spec}
+    env = {"MEDZEN_EXECUTION_MODE": "arm2_comparative", "MEDZEN_KD_ENABLE": "0",
+           "MEDZEN_MAX_STEPS": "30",
+           "MEDZEN_DEV_SENTINEL_MANIFEST_FILES":
+               "lingala=a.jsonl,swahili=b.jsonl"}
+    with pytest.raises(JobRefusal, match="kd_enabled=false"):
+        validate_arm2_semantics(bindings, env)
