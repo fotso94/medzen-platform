@@ -1,0 +1,41 @@
+{
+ "record": "B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
+ "status": "PENDING_DESIGN_REVIEW",
+ "companion_of": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
+ "purpose": "Enumerate every UNSEALED data surface that has already been used or seen, so the Part-2 CONFIRMATION split can be PROVEN disjoint (untouched) at mint time; and mark the sealed promotion holdout as never-touch. This is a review artifact; it approves nothing and mints nothing.",
+ "used_surfaces": [
+  {
+   "surface": "Arm-1 dev-selection (7 languages x 60 = 420 held-out DEV rows)",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json",
+   "exposure": "USED for Arm-1 checkpoint / development selection",
+   "eligibility": "SCREENING ONLY — already seen; NOT valid as an independent confirmation set (Codex round 31 finding 3)"
+  },
+  {
+   "surface": "frozen dev sentinels — lingala (60 rows), swahili (60 rows)",
+   "path": ["platform/manifests/dev-sentinels/lingala.jsonl", "platform/manifests/dev-sentinels/swahili.jsonl"],
+   "exposure": "USED as the Arm-2 calibration dev sentinels (directional dev-WER)",
+   "eligibility": "SCREENING ONLY — already seen"
+  },
+  {
+   "surface": "Arm-1 / gb9 training corpus",
+   "path": "platform/evidence/B5-GB9-ADOPTION-2026-001.json (complete_raw_sha256 a11df981...)",
+   "exposure": "USED for training (Arm-1 and the Arm-2 calibration)",
+   "eligibility": "TRAINING — never an evaluation set"
+  }
+ ],
+ "sealed_never_touch": [
+  {
+   "surface": "sealed promotion holdout",
+   "governed_by": ["platform/decisions/HOLDOUT-GRADES-2026-001.json", "platform/decisions/PROMOTION-PROTOCOL-2026-004.json"],
+   "rule": "NEVER opened by this protocol. Promotion/qualification only. Part-2 is unsealed and directional; it must not read or derive from the sealed holdout."
+  }
+ ],
+ "confirmation_split_requirements": {
+  "status": "NOT YET MINTED",
+  "source": "the UNSELECTED remainder of each tier-2 dev pool (rows never drawn into the 420 selection surface, the screening sentinels, or Arm-1 training), NEVER the sealed holdout",
+  "disjointness_proof_required": "at mint, every confirmation row's audio_checksum_sha256 MUST be disjoint from EVERY used_surface above AND from the sealed_never_touch holdout; the proof is committed alongside the frozen manifest",
+  "freeze_requirements": ["per-row sha256", "per-pool S3 version_id + etag + KMS pins", "committed to git BEFORE any finalist run", "opened ONCE for finalist + KD_CONTROL confirmation"]
+ },
+ "holds": "Nothing here authorizes minting, selection, sealed evaluation, promotion, or deployment. All remain held.",
+ "utc": "2026-08-25T00:20:00Z"
+}

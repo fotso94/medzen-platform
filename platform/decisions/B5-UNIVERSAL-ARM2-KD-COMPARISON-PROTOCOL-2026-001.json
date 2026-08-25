@@ -1,0 +1,92 @@
+{
+ "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
+ "status": "PENDING_DESIGN_REVIEW",
+ "NOT_AN_APPROVAL": "This is a SCIENTIFIC PROTOCOL for design review ONLY. There is deliberately NO approved execution record, NO launch packet, NO image digest, and NO code change bound here. Per the owner's two-review gate: (1) THIS design + the companion exposure inventory are reviewed first; (2) only after design approval are the machinery (shared wrapper, verifier language separation, confirmation-split minting) implemented and tested; (3) a SECOND review then binds the exact code sha, image digest, manifests and execution packets before anything launches. Sealed evaluation, promotion and deployment remain HELD throughout; this protocol defines only an unsealed DIRECTIONAL comparison that INFORMS a future, separately-predeclared hyperparameter selection.",
+ "purpose": "Compare KD hyperparameter recipes for Arm-2 preservation-aware distillation against a matched KD-disabled control, to nominate at most one recipe to carry into a future full-Arm-2 training request. Directional and unsealed; not a promotion or qualification.",
+ "modes": {
+  "KD_CONTROL": {
+   "MEDZEN_KD_ENABLE": "0",
+   "distillation": "none (alpha=0, no teacher term)",
+   "role": "matched control at identical budget/seed/data-order, so any preservation effect can be ATTRIBUTED to KD versus base under-training/drift (Codex round 31 finding 2b)"
+  },
+  "KD_CANDIDATE": {
+   "MEDZEN_KD_ENABLE": "1",
+   "swept_knobs": ["MEDZEN_KD_ALPHA", "MEDZEN_KD_TEMPERATURE", "MEDZEN_KD_LANGUAGE_WEIGHTS"],
+   "frozen": ["teacher medzen_omniASR_CTC_1B_v2 (base, frozen)", "preservation set", "seed", "data order"]
+  }
+ },
+ "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit the SAME serving-readyz / upstream-parity / dev-WER / authoritative-verifier receipts and are comparable through one evidence pipeline. Post-approval implementation: remove the KD-enable entrypoint fork (scripts/b5_sagemaker_job.py) and the two KD-off short-circuits (omniasr_calibrate refusal + validate_arm2_semantics early return) so KD_CONTROL trains with distillation off but is otherwise gated identically (Codex round 31 finding 2a).",
+ "arms": [
+  {"id": "KD_CONTROL", "mode": "KD_CONTROL"},
+  {"id": "H0", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5", "note": "calibrated anchor"},
+  {"id": "H1", "mode": "KD_CANDIDATE", "alpha": 0.25, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+  {"id": "H2", "mode": "KD_CANDIDATE", "alpha": 1.0, "temperature": 1.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+  {"id": "H3", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 2.0, "language_weights": "lingala=1.5,swahili=1.5,english=0.5,french=0.5"},
+  {"id": "H4", "mode": "KD_CANDIDATE", "alpha": 0.5, "temperature": 1.0, "language_weights": "lingala=2.0,swahili=2.0,english=0.5,french=0.5"}
+ ],
+ "languages": {
+  "base_preservation_gated": ["english", "french", "lingala", "swahili"],
+  "arm1_retention_gated": ["pidgin", "kinyarwanda", "ewe"],
+  "all_seven_evaluated": ["english", "ewe", "french", "kinyarwanda", "lingala", "pidgin", "swahili"],
+  "verifier_change_required": "the verifier's evaluated-languages-subset-of-preservation gate must be split into FOUR preservation languages (non-inferiority GATED) and SEVEN monitored/evaluated languages (three of which are RETENTION-gated); to be implemented post-approval (Codex round 31 finding 2b)."
+ },
+ "constraints": {
+  "base_preservation_non_inferiority": {
+   "languages": ["english", "french", "lingala", "swahili"],
+   "reference": "the FROZEN base teacher's WER per language on the confirmation split",
+   "test": "paired bootstrap; PASS iff the one-sided 95% upper bound of (WER_candidate - WER_base) <= +0.005 (0.5 absolute WER points) per language, after multiplicity correction"
+  },
+  "arm1_retention": {
+   "languages": ["pidgin", "kinyarwanda", "ewe"],
+   "reference": "Arm-1's achieved per-language WER, to be PINNED from committed Arm-1 evaluation evidence (platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION*) at confirmation-manifest mint time (predeclared before any run)",
+   "test": "paired bootstrap; PASS iff the one-sided 95% upper bound of (WER_candidate - WER_arm1_reference) <= +delta_pp per language, after multiplicity correction; delta_pp pinned at mint (proposed 0.5pp, subject to design review)"
+  },
+  "kd_attribution": "every KD_CANDIDATE is compared DIRECTLY to the matched KD_CONTROL at identical step budget, seed and data order; a candidate must beat the control on the macro preservation objective to be creditable to KD, not to training"
+ },
+ "stages": {
+  "stage1_screen": {"steps": 600, "arms": "all 6", "purpose": "DIAGNOSTIC ONLY: drop configurations that diverge or grossly regress on the screening sentinels; NO winner is declared here (600 steps ~ 1.5% of the intended 40,000-step train, and Arm-1's Lingala regression only surfaced over thousands of steps)"},
+  "stage2_confirm": {"steps": 2000, "run_type": "FRESH from base (NOT continued from the Stage-1 screen checkpoints)", "arms": "H0 + the best 1-2 Stage-1 survivors + KD_CONTROL", "data_cap_hours": 100, "warmup_steps": 500, "matched": "identical MEDZEN_SEED AND identical data ordering across every compared arm"},
+  "second_seed_replicate": "the finalist AND the KD_CONTROL are EACH re-run under a second, matched MEDZEN_SEED to separate recipe effect from seed noise (not the finalist alone) (Codex round 31 finding 4)"
+ },
+ "statistics": {
+  "metric": "WER = sum(edit_distance) / sum(reference_words) per language, from the per-row edit-distance receipts",
+  "resampling": "paired bootstrap, B >= 10000, the SAME resampled row indices applied to both arms in each comparison",
+  "units": "absolute WER points (pp) — no relative-% ambiguity",
+  "multiplicity_correction": "Holm-Bonferroni across the FULL family of (arm x language x constraint) one-sided tests at family-wise alpha = 0.05 (predeclared); a candidate must pass every constraint AFTER correction"
+ },
+ "selection_rule": {
+  "qualify": "a KD_CANDIDATE QUALIFIES iff, on the CONFIRMATION split and after multiplicity correction: (a) all 4 base-preservation non-inferiority constraints pass; AND (b) all 3 Arm-1-retention constraints pass; AND (c) it beats the matched KD_CONTROL on the macro preservation objective (one-sided 95% lower bound of (WER_control - WER_candidate) > 0); AND (d) it beats H0 similarly",
+  "tie_break": "among qualifiers, DETERMINISTIC: (1) lowest macro preservation WER on the confirmation split; (2) ties -> lowest KD alpha; (3) ties -> lexicographically smallest recipe id",
+  "NO_RECIPE_QUALIFIES": "if NO candidate qualifies, the outcome is the explicit terminal state NO_RECIPE_QUALIFIES -> no Arm-2 recipe change is nominated (hold), and a new design is predeclared; the protocol NEVER silently nominates the least-bad recipe"
+ },
+ "confirmation_data_rules": {
+  "screening_set": "the frozen dev sentinels (lingala + swahili exist today; english/french/pidgin/kinyarwanda/ewe to be minted post-approval) — used ONLY for Stage-1 screening and candidate selection",
+  "confirmation_split": {
+   "status": "NOT YET MINTED — minting is part of the post-approval implementation; see the companion exposure inventory B5-UNIVERSAL-ARM2-EXPOSURE-INVENTORY-2026-001",
+   "source": "the UNSELECTED remainder of each tier-2 dev pool (never the sealed promotion holdout)",
+   "rules": [
+    "DISJOINT by audio_checksum_sha256 from: the 420 Arm-1 dev-selection rows, the lingala/swahili screening sentinels, all Arm-1/gb9 training data, and the sealed promotion holdout",
+    "NEVER surfaced during development, checkpoint selection, or Stage-1 screening",
+    "PREDECLARED + committed + FROZEN (per-row sha256 + per-pool S3 version_id/etag/KMS pins) BEFORE any finalist runs",
+    "opened ONCE, for the finalist + KD_CONTROL confirmation only",
+    "the sealed promotion holdout (HOLDOUT-GRADES-2026-001 / PROMOTION-PROTOCOL-2026-004) is NEVER touched by this protocol"
+   ]
+  }
+ },
+ "budget": {
+  "ceiling_usd": 60,
+  "type": "single atomic cumulative",
+  "reservation": "serial (one job reserved at a time)",
+  "automatic_retries": "NONE — any retry requires separate owner authorization",
+  "per_job_runtime": "hard MaxRuntimeInSeconds per job",
+  "instance": "on-demand ml.g6.xlarge (never spot)",
+  "fixed_overhead_note": "~1073 s per-job fixed overhead measured from the calibration is included in the budget",
+  "reporting_rule": "on-demand pricing always; +$100 on every reported max => reported max <= $160"
+ },
+ "two_review_gate": {
+  "first_review": "THIS design + the exposure inventory (status PENDING_DESIGN_REVIEW); no code, no packets, no launch",
+  "second_review": "AFTER implementation + tests: a review binding the exact code sha, trainer image digest, screening/confirmation manifests, and per-recipe execution packets — BEFORE any launch"
+ },
+ "holds": "hyperparameter SELECTION output, sealed evaluation, promotion, and deployment ALL remain HELD for separate predeclared reviewed steps. This protocol authorizes NOTHING to run.",
+ "utc": "2026-08-25T00:20:00Z"
+}
