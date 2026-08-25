@@ -141,6 +141,36 @@
    ],
    "Condition": {
     "StringEquals": {
+     "s3:VersionId": "60ZtmgfQLR5Za1pphc8Ntl6UoNi.31Mb"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject09ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
+     "s3:VersionId": "dLYaa8w8wVkFirOo.JljicC.RLTuiwfl"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl"
+   ],
+   "Sid": "ReadSealedObject10ExactVersionOnly"
+  },
+  {
+   "Action": [
+    "s3:GetObjectVersion"
+   ],
+   "Condition": {
+    "StringEquals": {
      "s3:VersionId": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p"
     }
    },
@@ -148,7 +178,7 @@
    "Resource": [
     "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl"
    ],
-   "Sid": "ReadSealedObject09ExactVersionOnly"
+   "Sid": "ReadSealedObject11ExactVersionOnly"
   },
   {
    "Action": [
@@ -163,7 +193,7 @@
    "Resource": [
     "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
    ],
-   "Sid": "ReadSealedObject10ExactVersionOnly"
+   "Sid": "ReadSealedObject12ExactVersionOnly"
   },
   {
    "Action": [
@@ -221,6 +251,8 @@
     "arn:aws:s3:::medzen-speech/eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
     "arn:aws:s3:::medzen-speech/eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
     "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/av-heldout-sealed/manifest.jsonl",
+    "arn:aws:s3:::medzen-speech/eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
     "arn:aws:s3:::medzen-speech/eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
     "arn:aws:s3:::medzen-speech/eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl"
    ],
