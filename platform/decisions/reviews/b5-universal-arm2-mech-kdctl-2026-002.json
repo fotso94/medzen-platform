@@ -1,0 +1,11 @@
+{
+ "basis": "Owner directive: KDCONTROL reruns on the hardened image (arm-1 listing-crash fix). This authorizes ONLY the $0.80 below-tier 30-step mechanics receipt mech-kdctl-2026-002; render+validate returns PASS_EXACT_TRAINING_REQUEST.",
+ "bindings_sha256": "05d338f06fccfd912e69a479ecf69738a129b2180c249961fb3e275e1003f150",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:5fd66aa814766943ecfb56e7b1e72cb2c3a33b70d9beba5d3291ef353e83d0fc",
+ "job_id": "b5-universal-arm2-mech-kdctl-2026-002",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-002.json",
+ "reviewer": "owner directive \u2014 KDCONTROL rerun on the hardened image",
+ "utc": "2026-08-26T20:32:12Z"
+}
