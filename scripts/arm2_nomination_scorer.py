@@ -256,32 +256,132 @@ def load_scoring_packet(root: Path, path: Path, *,
 # authenticated receipts
 # --------------------------------------------------------------------------
 
+def verify_receipt_attestation(receipts_path: Path, bundle_path: Path, *,
+                               evaluator: dict, workflow_run_ref: str,
+                               gh_runner=None) -> dict:
+    """Codex final-gap correction item 2: CRYPTOGRAPHIC verification of the
+    receipts file's GitHub attestation — never URL strings. Runs
+    `gh attestation verify <file> --bundle <bundle>` (offline Sigstore bundle
+    verification against the repo's trusted root), then requires:
+      - the in-toto subject digest == sha256(the exact receipts bytes);
+      - the signing certificate's workflow identity == the packet-pinned
+        protected evaluator workflow at refs/heads/master;
+      - the certificate's run invocation matching the receipt's
+        workflow_run_ref.
+    `gh_runner` is an injectable seam (tests); the default shells out to gh."""
+    repo = str(evaluator.get("repository") or "fotso94/medzen-platform")
+    want_identity = str(evaluator.get("workflow_identity") or "")
+    if not want_identity:
+        raise ScorerRefusal("scoring packet pins no evaluator workflow_identity")
+    if gh_runner is None:
+        def gh_runner(args):
+            proc = subprocess.run(["gh", *args], capture_output=True, text=True)
+            return proc.returncode, proc.stdout, proc.stderr
+    code, out, err = gh_runner([
+        "attestation", "verify", str(receipts_path),
+        "--bundle", str(bundle_path), "--repo", repo, "--format", "json"])
+    if code != 0:
+        raise ScorerRefusal(
+            f"attestation verification FAILED for {receipts_path.name}: "
+            f"{(err or out)[:200]} — unattested hypotheses cannot gate a "
+            "nomination")
+    try:
+        results = json.loads(out)
+    except ValueError:
+        raise ScorerRefusal("attestation verifier returned non-JSON output")
+    if not isinstance(results, list) or not results:
+        raise ScorerRefusal("attestation verifier returned no verified bundle")
+    res = results[0].get("verificationResult") or results[0]
+    stmt = res.get("statement") or {}
+    subject = (stmt.get("subject") or [{}])[0]
+    digest = (subject.get("digest") or {}).get("sha256")
+    actual = _sha256_bytes(receipts_path.read_bytes())
+    if digest != actual:
+        raise ScorerRefusal(
+            f"attestation subject digest {str(digest)[:16]} != the receipts "
+            f"file bytes {actual[:16]} — the attestation covers a DIFFERENT "
+            "file")
+    cert = (res.get("signature") or {}).get("certificate") or {}
+    san = str(cert.get("subjectAlternativeName") or "")
+    if san != want_identity:
+        raise ScorerRefusal(
+            f"attestation signer identity {san!r} != the packet-pinned "
+            f"protected evaluator {want_identity!r}")
+    run_uri = str(cert.get("runInvocationURI") or "")
+    if workflow_run_ref and not workflow_run_ref.startswith(run_uri.split(
+            "/attempts")[0]) and not run_uri.startswith(workflow_run_ref):
+        raise ScorerRefusal(
+            f"attestation run {run_uri!r} does not match the receipt's "
+            f"workflow_run_ref {workflow_run_ref!r}")
+    return {"subject_sha256": digest, "signer_identity": san,
+            "run_invocation_uri": run_uri}
+
+
 def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
-                  evaluator: dict | None = None
-                  ) -> tuple[dict[str, str], str]:
-    """One arm's hypothesis receipts. Returns ({identity: hyp_normalized},
-    file sha). REFUSES caller-supplied edit counts, identity mismatches, and
-    (item 3) receipts lacking protected-evaluator provenance: job_name
-    matching the packet-declared pattern + workflow_run_ref +
-    attestation_ref — hypotheses produced outside the attested evaluator
-    cannot gate a nomination."""
+                  evaluator: dict, cfg: dict,
+                  expected_model_artifact: dict | None = None,
+                  expected_training_packet_sha: str | None = None,
+                  bundle_path: Path | None = None,
+                  gh_runner=None) -> tuple[dict[str, str], str, dict]:
+    """One arm's hypothesis receipts, FULLY BOUND (item 3): protected-job
+    name, cryptographically verified attestation over these exact bytes,
+    model sha AND artifact VersionId (vs the arm's completion receipt), the
+    arm's training-packet canonical sha, the evaluator image digest and the
+    frozen split sha. Returns ({identity: hyp}, file sha, attestation facts).
+    REFUSES caller-supplied edit counts."""
     raw = path.read_bytes()
     doc = json.loads(raw)
-    for key in ("job_name", "model_sha256", "packet_canonical_sha256", "rows",
-                "workflow_run_ref", "attestation_ref"):
+    for key in ("job_name", "model_sha256", "rows", "workflow_run_ref",
+                "model_artifact", "split_sha256", "evaluator_image_digest"):
         if not doc.get(key):
             raise ScorerRefusal(f"receipts[{arm}] lack {key!r}")
-    if evaluator:
-        pattern = str(evaluator.get("job_name_pattern") or "")
-        if pattern and not re.fullmatch(pattern, str(doc["job_name"])):
-            raise ScorerRefusal(
-                f"receipts[{arm}] job_name {doc['job_name']!r} does not match "
-                f"the packet-declared protected-evaluator pattern {pattern!r}")
+    pattern = str(evaluator.get("job_name_pattern") or "")
+    if pattern and not re.fullmatch(pattern, str(doc["job_name"])):
+        raise ScorerRefusal(
+            f"receipts[{arm}] job_name {doc['job_name']!r} does not match "
+            f"the packet-declared protected-evaluator pattern {pattern!r}")
     if str(doc["model_sha256"]) != expected_model_sha:
         raise ScorerRefusal(
             f"receipts[{arm}] declare model {str(doc['model_sha256'])[:16]} "
-            f"but the arm-model binding requires {expected_model_sha[:16]} — "
-            "refusing hypotheses from an unproven model")
+            f"but the arm's completion receipt requires "
+            f"{expected_model_sha[:16]} — refusing hypotheses from an "
+            "unproven model")
+    if expected_model_artifact is not None:
+        got = doc.get("model_artifact") or {}
+        for field in ("s3_uri", "s3_version_id"):
+            if str(got.get(field)) != str(expected_model_artifact.get(field)):
+                raise ScorerRefusal(
+                    f"receipts[{arm}] model_artifact.{field} "
+                    f"{got.get(field)!r} != the completion receipt's "
+                    f"{expected_model_artifact.get(field)!r}")
+    if expected_training_packet_sha is not None:
+        if str(doc.get("training_packet_canonical_sha256") or "") != \
+                expected_training_packet_sha:
+            raise ScorerRefusal(
+                f"receipts[{arm}] training_packet_canonical_sha256 does not "
+                "match the arm's committed training packet")
+    if str(doc["split_sha256"]) != \
+            str((cfg["packet"].get("split") or {}).get("sha256")):
+        raise ScorerRefusal(
+            f"receipts[{arm}] split_sha256 != the frozen nomination split")
+    want_image = str((cfg["packet"].get("evaluator") or {}).get(
+        "image_digest") or "")
+    if not want_image:
+        raise ScorerRefusal(
+            "the scoring packet pins no evaluator image_digest yet — the "
+            "digest is pinned by a reviewed packet update BEFORE any scoring "
+            "pass; receipts refuse until then (fail closed)")
+    if str(doc["evaluator_image_digest"]) != want_image:
+        raise ScorerRefusal(
+            f"receipts[{arm}] evaluator_image_digest != the packet-pinned "
+            "evaluator image")
+    if bundle_path is None:
+        raise ScorerRefusal(
+            f"receipts[{arm}] have no attestation bundle — unattested "
+            "hypotheses cannot gate a nomination")
+    attestation = verify_receipt_attestation(
+        path, bundle_path, evaluator=evaluator,
+        workflow_run_ref=str(doc["workflow_run_ref"]), gh_runner=gh_runner)
     out: dict[str, str] = {}
     for row in doc["rows"]:
         if "edit_distance" in row or "ref_words" in row:
@@ -294,7 +394,7 @@ def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
         if "hyp_normalized" not in row:
             raise ScorerRefusal(f"receipts[{arm}]: row lacks hyp_normalized")
         out[identity] = str(row["hyp_normalized"])
-    return out, _sha256_bytes(raw)
+    return out, _sha256_bytes(raw), attestation
 
 
 def load_arm_completion_receipt(raw: bytes, *, arm: str) -> str:
@@ -315,7 +415,54 @@ def load_arm_completion_receipt(raw: bytes, *, arm: str) -> str:
             "unambiguous live PASS — an unverified model cannot be scored")
     if doc.get("terminal_status") not in (None, "Completed"):
         raise ScorerRefusal(f"arm receipt[{arm}] terminal_status is not Completed")
-    return model
+    return {"model_sha256": model,
+            "artifact": doc.get("artifact") or {},
+            "training_packet_canonical_sha256":
+                str(doc.get("calibration_bindings_sha256") or "") or None,
+            "doc": doc}
+
+
+def aws_reverify_completion(doc: dict, *, arm: str, session=None) -> None:
+    """Codex final-gap correction item 4: a completion receipt's self-declared
+    PASS is not enough — reverify the AWS-observable facts live: the training
+    job exists, Completed, ran the receipt's image, produced the receipt's
+    artifact URI; the artifact object exists at the EXACT VersionId with the
+    receipt's byte size and KMS key. `session` is an injectable boto3-like
+    seam (tests inject fakes; the default builds a real session)."""
+    if session is None:
+        import boto3
+        session = boto3.session.Session(region_name="eu-central-1")
+    job = str(doc.get("job") or "")
+    if not job:
+        raise ScorerRefusal(f"arm receipt[{arm}] names no job to reverify")
+    desc = session.client("sagemaker").describe_training_job(
+        TrainingJobName=job)
+    if desc.get("TrainingJobStatus") != "Completed":
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] job {job} is "
+            f"{desc.get('TrainingJobStatus')!r} in AWS, not Completed")
+    image = str((desc.get("AlgorithmSpecification") or {}).get(
+        "TrainingImage") or "")
+    if image != str(doc.get("image_uri_with_digest") or ""):
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] image does not match the AWS job's image")
+    artifact = doc.get("artifact") or {}
+    aws_uri = str((desc.get("ModelArtifacts") or {}).get(
+        "S3ModelArtifacts") or "")
+    if aws_uri != str(artifact.get("s3_uri") or ""):
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] artifact URI does not match the AWS job's")
+    bucket, _, key = aws_uri.removeprefix("s3://").partition("/")
+    head = session.client("s3").head_object(
+        Bucket=bucket, Key=key, VersionId=str(artifact.get("s3_version_id")))
+    if int(head.get("ContentLength") or -1) != int(artifact.get("s3_bytes")
+                                                   or -2):
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] artifact byte size does not match S3")
+    if str(head.get("SSEKMSKeyId") or "") != str(artifact.get("kms_key")
+                                                 or ""):
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] artifact KMS key does not match S3")
 
 
 def surface_rows(identities: list[str], hyps: dict[str, str],
@@ -545,34 +692,59 @@ def score_stage(*, stage: int, cfg: dict,
     return stage2_decision(str(finalist), wers, veto_wers)
 
 
-def main(argv: list[str] | None = None) -> int:
+def _load_bound_receipts(specs, *, cfg, arm_ids, evaluator, gh_runner,
+                         what: str):
+    """Shared loader for a set of ARM=PATH:BUNDLE hypothesis-receipt specs,
+    fully bound + attested against each arm's completion identity."""
+    hyps, shas, att = {}, {}, {}
+    for spec in specs:
+        arm, _, rest = spec.partition("=")
+        path_s, _, bundle_s = rest.rpartition(":")
+        if not path_s or not bundle_s:
+            raise ScorerRefusal(
+                f"{what}[{arm}] must be ARM=RECEIPTS_PATH:BUNDLE_PATH")
+        if arm in hyps:
+            raise ScorerRefusal(f"duplicate {what} for arm {arm!r}")
+        if arm not in arm_ids:
+            raise ScorerRefusal(f"--arm-receipts lacks an entry for {arm!r}")
+        ident = arm_ids[arm]
+        hyps[arm], shas[arm], att[arm] = load_receipts(
+            Path(path_s), arm=arm,
+            expected_model_sha=ident["model_sha256"],
+            evaluator=evaluator, cfg=cfg,
+            expected_model_artifact=ident["artifact"] or None,
+            expected_training_packet_sha=ident[
+                "training_packet_canonical_sha256"],
+            bundle_path=Path(bundle_s), gh_runner=gh_runner)
+    return hyps, shas, att
+
+
+def main(argv: list[str] | None = None, *, gh_runner=None,
+         aws_session=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("stage1", "stage2"))
-    parser.add_argument("--scoring-packet", default=SCORING_PACKET_PATH,
-                        help="repo-relative path; BYTES ARE READ FROM THE "
-                             "COMMITTED TREE AT HEAD (item 1)")
-    parser.add_argument("--scoring-packet-sha256", required=True,
-                        help="expected sha256 of the committed scoring packet "
-                             "bytes — the caller states which exact frozen "
-                             "packet it intends (item 1)")
-    parser.add_argument("--references-dir", type=Path, required=True,
-                        help="directory holding the fetched S3-pinned "
-                             "reference files (sha-verified against the "
-                             "packet pins; item 6)")
+    parser.add_argument("--scoring-packet", default=SCORING_PACKET_PATH)
+    parser.add_argument("--scoring-packet-sha256", required=True)
+    parser.add_argument("--references-dir", type=Path, required=True)
     parser.add_argument("--arm-receipts", action="append", default=[],
                         metavar="ARM=RELPATH", required=True,
-                        help="per arm: the COMMITTED completion-receipt "
-                             "record (platform/evidence/...) whose "
-                             "AWS-verified export.model_sha256 is the arm's "
-                             "required model identity (item 2)")
+                        help="per arm: the COMMITTED completion receipt; its "
+                             "AWS-observable facts are REVERIFIED live "
+                             "(item 4)")
     parser.add_argument("--receipts", action="append", default=[],
-                        metavar="ARM=PATH", required=True,
+                        metavar="ARM=PATH:BUNDLE", required=True,
                         help="per arm: the protected evaluator's hypothesis "
-                             "receipts file (item 3 provenance enforced)")
-    parser.add_argument("--stage1-result", default=None,
-                        help="stage2: repo-relative path of the COMMITTED "
-                             "stage-1 decision (item 4)")
+                             "receipts + its Sigstore attestation bundle "
+                             "(cryptographically verified; items 2-3)")
+    parser.add_argument("--stage1-result", default=None)
     parser.add_argument("--stage1-result-sha256", default=None)
+    parser.add_argument("--stage1-receipts", action="append", default=[],
+                        metavar="ARM=PATH:BUNDLE",
+                        help="stage2: the ORIGINAL stage-1 hypothesis "
+                             "receipts for every stage-1 arm — stage 2 "
+                             "RECOMPUTES the stage-1 decision from these "
+                             "authenticated inputs and requires it to match "
+                             "the committed result (item 5)")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
 
@@ -598,14 +770,16 @@ def main(argv: list[str] | None = None) -> int:
                               packet_bytes=packet_bytes)
     evaluator = (cfg["packet"].get("evaluator") or {})
 
-    arm_models: dict[str, str] = {}
+    arm_ids: dict[str, dict] = {}
     arm_receipt_shas: dict[str, str] = {}
     for spec in args.arm_receipts:
         arm, _, rel = spec.partition("=")
-        if arm in arm_models:
+        if arm in arm_ids:
             raise ScorerRefusal(f"duplicate arm receipt for {arm!r}")
         raw = _committed_bytes(root, rel)
-        arm_models[arm] = load_arm_completion_receipt(raw, arm=arm)
+        arm_ids[arm] = load_arm_completion_receipt(raw, arm=arm)
+        aws_reverify_completion(arm_ids[arm]["doc"], arm=arm,
+                                session=aws_session)
         arm_receipt_shas[arm] = _sha256_bytes(raw)
 
     finalist = None
@@ -620,28 +794,38 @@ def main(argv: list[str] | None = None) -> int:
             raise ScorerRefusal(
                 "the stage-1 result was produced under a DIFFERENT scoring "
                 "packet — the two stages must share one frozen packet")
-        decision = (s1.get("decision") or {})
-        if decision.get("outcome") != "PROVISIONAL_FINALIST":
+        # item 5: RECOMPUTE Stage 1 from the authenticated stage-1 receipts
+        # and require the recomputed decision to match the committed result.
+        if not args.stage1_receipts:
             raise ScorerRefusal(
-                f"stage-1 outcome is {decision.get('outcome')!r} — stage2 "
+                "stage2 requires --stage1-receipts for EVERY stage-1 arm — "
+                "the committed stage-1 result is verified by RECOMPUTATION, "
+                "never trusted")
+        s1_hyps, _, _ = _load_bound_receipts(
+            args.stage1_receipts, cfg=cfg, arm_ids=arm_ids,
+            evaluator=evaluator, gh_runner=gh_runner, what="stage1-receipts")
+        recomputed = score_stage(stage=1, cfg=cfg, hyps_by_arm=s1_hyps)
+        committed_decision = s1.get("decision") or {}
+        for field in ("outcome", "provisional_finalist", "family_pvalues"):
+            if recomputed.get(field) != committed_decision.get(field):
+                raise ScorerRefusal(
+                    f"stage-1 RECOMPUTATION disagrees with the committed "
+                    f"result on {field!r} — the committed stage-1 decision "
+                    "is not reproducible from its authenticated inputs")
+        if recomputed.get("outcome") != "PROVISIONAL_FINALIST":
+            raise ScorerRefusal(
+                f"stage-1 outcome is {recomputed.get('outcome')!r} — stage2 "
                 "runs only after a PROVISIONAL_FINALIST")
-        finalist = str(decision.get("provisional_finalist"))
+        finalist = str(recomputed.get("provisional_finalist"))
         if finalist not in CANDIDATES:
             raise ScorerRefusal(f"stage-1 finalist {finalist!r} invalid")
         stage1_binding = {"path": str(args.stage1_result),
-                          "sha256": args.stage1_result_sha256}
+                          "sha256": args.stage1_result_sha256,
+                          "recomputed_and_matched": True}
 
-    hyps_by_arm: dict[str, dict[str, str]] = {}
-    receipt_shas: dict[str, str] = {}
-    for spec in args.receipts:
-        arm, _, path = spec.partition("=")
-        if arm in hyps_by_arm:
-            raise ScorerRefusal(f"duplicate receipts for arm {arm!r}")
-        if arm not in arm_models:
-            raise ScorerRefusal(f"--arm-receipts lacks an entry for {arm!r}")
-        hyps_by_arm[arm], receipt_shas[arm] = load_receipts(
-            Path(path), arm=arm, expected_model_sha=arm_models[arm],
-            evaluator=evaluator)
+    hyps_by_arm, receipt_shas, attestations = _load_bound_receipts(
+        args.receipts, cfg=cfg, arm_ids=arm_ids, evaluator=evaluator,
+        gh_runner=gh_runner, what="receipts")
 
     decision = score_stage(stage=1 if args.stage == "stage1" else 2,
                            cfg=cfg, hyps_by_arm=hyps_by_arm,
@@ -655,8 +839,11 @@ def main(argv: list[str] | None = None) -> int:
             "repo_head_oid": head_oid,
             **identity,
             "arm_completion_receipts_sha256": arm_receipt_shas,
-            "arm_model_sha256": arm_models,
+            "arm_model_sha256": {a: i["model_sha256"]
+                                 for a, i in arm_ids.items()},
+            "aws_reverified": sorted(arm_ids),
             "receipts_sha256": receipt_shas,
+            "receipt_attestations": attestations,
             "stage1_result": stage1_binding,
             "B": cfg["B"], "master_seed": cfg["master_seed"],
             "alpha": ALPHA, "noninferiority_margin": NONINF_MARGIN,

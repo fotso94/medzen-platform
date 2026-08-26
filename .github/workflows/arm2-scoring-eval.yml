@@ -1,0 +1,89 @@
+# CALLER for the PROTECTED ATTESTED EVALUATOR (Codex final-gap correction
+# 2026-08-26 item 1). Two owner-gated modes in the reusable exec:
+#   launch — create the scoring SageMaker job from an allowlisted
+#            B5-UNIVERSAL-ARM2-SCORE-* packet (render/validate/launch chain);
+#   attest — fetch the completed job's receipts.json by EXACT S3 VersionId,
+#            verify its sha, and sign it with actions/attest-build-provenance
+#            (the Sigstore bundle the nomination scorer cryptographically
+#            verifies; hypotheses without it refuse).
+name: arm2-scoring-eval
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: launch (create the scoring job) or attest (sign its receipts)
+        required: true
+        type: choice
+        options: [launch, attest]
+      sha:
+        description: exact 40-hex reviewed commit (must be on master)
+        required: true
+        type: string
+      packet:
+        description: "launch: the B5-UNIVERSAL-ARM2-SCORE-* packet path"
+        required: false
+        type: string
+        default: ""
+      confirm_launch:
+        description: "launch: pass LAUNCH to create the job (else dry-run)"
+        required: false
+        type: string
+        default: ""
+      receipts_s3_uri:
+        description: "attest: s3://... of the completed job's receipts.json"
+        required: false
+        type: string
+        default: ""
+      receipts_version_id:
+        description: "attest: the EXACT S3 VersionId of receipts.json"
+        required: false
+        type: string
+        default: ""
+      receipts_sha256:
+        description: "attest: the expected sha256 of the receipts bytes"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: configuration must be present (a skip is not a pass)
+        run: |
+          if [ -z "${{ vars.MEDZEN_ARM2_SCORING_ROLE_ARN }}" ]; then
+            echo "::error::MEDZEN_ARM2_SCORING_ROLE_ARN is not set. Apply infra/arm2_scoring_launch_role.tf (arm2_scoring_launch_enabled=true) and set the repo variable."
+            exit 1
+          fi
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v5.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: the arm2-scoring-eval environment must exist WITH owner approval
+        run: |
+          set -euo pipefail
+          curl -sSf "https://api.github.com/repos/${{ github.repository }}/environments/arm2-scoring-eval" \
+            -o env.json || echo '{"__missing__":true}' > env.json
+          python scripts/verify_protected_environments.py --only-supplied \
+            --environment arm2-scoring-eval=env.json
+
+  run:
+    needs: preflight
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/arm2-scoring-eval-exec.yml
+    with:
+      mode: ${{ inputs.mode }}
+      sha: ${{ inputs.sha }}
+      packet: ${{ inputs.packet }}
+      confirm_launch: ${{ inputs.confirm_launch }}
+      receipts_s3_uri: ${{ inputs.receipts_s3_uri }}
+      receipts_version_id: ${{ inputs.receipts_version_id }}
+      receipts_sha256: ${{ inputs.receipts_sha256 }}

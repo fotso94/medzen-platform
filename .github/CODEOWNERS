@@ -62,3 +62,11 @@
 /platform/manifests/arm2-scoring/                        @fotso94
 /platform/evidence/receipts/ARM2-MECH-2026-001/          @fotso94
 /platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json  @fotso94
+
+# Protected attested evaluator (Codex final-gap correction 2026-08-26)
+/pipeline/omniasr_score.py                               @fotso94
+/.github/workflows/arm2-scoring-eval.yml                 @fotso94
+/.github/workflows/arm2-scoring-eval-exec.yml            @fotso94
+/platform/iam/medzen-arm2-scoring-launch-role.json       @fotso94
+/infra/arm2_scoring_launch_role.tf                       @fotso94
+/platform/decisions/B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001.json  @fotso94

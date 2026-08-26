@@ -464,7 +464,7 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
                 f"declares {rows}")
 
 
-EXECUTION_MODES = ("plain", "arm2_comparative")
+EXECUTION_MODES = ("plain", "arm2_comparative", "arm2_scoring")
 
 
 def resolve_execution_mode(environment: dict) -> str:
@@ -490,6 +490,10 @@ def resolve_execution_mode(environment: dict) -> str:
         raise JobRefusal(
             "MEDZEN_EXECUTION_MODE=plain with MEDZEN_KD_ENABLE truthy is "
             "contradictory — plain training runs no KD (fail closed)")
+    if raw == "arm2_scoring" and kd_on:
+        raise JobRefusal(
+            "MEDZEN_EXECUTION_MODE=arm2_scoring with MEDZEN_KD_ENABLE truthy "
+            "is contradictory — the evaluator decodes, it never trains")
     return raw
 
 
@@ -655,7 +659,9 @@ def render_request(bindings: dict) -> dict:
             # shared wrapper; plain training runs the bare trainer. Resolved by
             # the strict MEDZEN_EXECUTION_MODE enum (fail-closed).
             "ContainerArguments": (
-                ["-m", "pipeline.omniasr_calibrate"]
+                ["-m", "pipeline.omniasr_score"]
+                if resolve_execution_mode(environment) == "arm2_scoring"
+                else ["-m", "pipeline.omniasr_calibrate"]
                 if is_arm2_comparative(environment)
                 else ["-m", "pipeline.omniasr_train"]),
         },
@@ -769,6 +775,12 @@ def is_campaign_arm_job(environment: dict, worst_case: float) -> bool:
     a comparative packet refuses upstream in parse/validate paths; here it is
     treated as arm tier."""
     if worst_case > CALIBRATION_TIER_USD:
+        return True
+    # Codex final-gap correction (2026-08-26): evaluator/scoring jobs decode
+    # candidate models on the frozen split — ALWAYS campaign tier, at any
+    # price, so hypotheses can only originate from the protected workflow.
+    if str(environment.get("MEDZEN_EXECUTION_MODE", "")).strip() \
+            == "arm2_scoring":
         return True
     if is_arm2_comparative(environment):
         try:

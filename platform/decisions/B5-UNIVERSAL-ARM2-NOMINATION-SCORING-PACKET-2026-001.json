@@ -34,16 +34,28 @@
   "sha256": "8e4ddf7f7eea52720e2ab297c61854040ddd49ce875c496babb41e285d418339"
  },
  "evaluator": {
+  "attestation_rule": "every receipts file carries a Sigstore bundle from the exec's attest mode; the scorer verifies subject digest == the exact receipts bytes AND the signing certificate identity == workflow_identity \u2014 URL strings alone are never provenance",
+  "decoding_contract": {
+   "path": "platform/decisions/B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001.json",
+   "sha256": "bddf7fe1a535c83c0c2009259bf5454cc86ed65078ef1e57ec7c27bff0c2dbdf"
+  },
+  "evaluator_script": {
+   "path": "pipeline/omniasr_score.py",
+   "sha256": "2f5c65ecf1963adca1a0368916d8f04c761bca5d7d0e4c8029b50459ac07b3fe"
+  },
+  "iam_policy": {
+   "path": "platform/iam/medzen-arm2-scoring-launch-role.json",
+   "sha256": "dd9cdb020f057beee8da6a6e8ff14c04280548a22ec4bf3b6955fa74e38a765e"
+  },
+  "image_digest": null,
+  "image_digest_rule": "the evaluator image (baking pipeline/omniasr_score.py at THIS pinned sha) is built and its digest pinned here by a REVIEWED packet update BEFORE any scoring pass; hypothesis receipts REFUSE while this is null (fail closed). Pinning the digest after training but before any decoding keeps the pre-results freeze: hypotheses cannot exist before the digest is pinned.",
   "job_name_pattern": "medzen-b5-b5-universal-arm2-score-[a-z0-9-]+",
-  "receipt_provenance_required": [
-   "job_name (matching job_name_pattern)",
-   "workflow_run_ref",
-   "attestation_ref (actions/attest-build-provenance over the exact receipts file)",
-   "model_sha256",
-   "packet_canonical_sha256"
-  ],
-  "requirement": "hypothesis receipts are produced ONLY by the PROTECTED, ATTESTED evaluator job \u2014 never on a workstation (Codex final correction item 3). The scorer refuses receipts lacking this provenance.",
-  "status": "EVALUATOR MACHINERY NOT YET IMPLEMENTED \u2014 it is scoring-stage machinery (protocol cost_runtime_table rows 5-6), to be authored + reviewed before any scoring pass; this packet freezes its REQUIRED identity surface now so receipts from any other origin already refuse."
+  "repository": "fotso94/medzen-platform",
+  "workflow_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+  "workflows": {
+   ".github/workflows/arm2-scoring-eval-exec.yml": "bb2dfc2ee3a5ea978799754d04938a861687d4d4d1763cae6837e8bb4909dd05",
+   ".github/workflows/arm2-scoring-eval.yml": "155fa8fb8d3af937deef2d73f8b55d3dc8c8686643f00b8ff90f5177e196671a"
+  }
  },
  "margins": {
   "family_alpha": 0.05,
@@ -110,5 +122,5 @@
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
  "stage_chain": "stage2 reads the COMMITTED stage-1 decision (git HEAD bytes + caller-stated sha), requires it to have been produced under THIS exact scoring packet (inputs.scoring_packet_sha256 equality), and derives the finalist from decision.provisional_finalist; caller-chosen finalists refuse",
- "utc": "2026-08-26T02:25:26Z"
+ "utc": "2026-08-26T02:48:06Z"
 }

@@ -1,0 +1,19 @@
+{
+ "audio": "fetch by manifest URI, mono-mean, resample16k + utterance z-norm (calibrate _preprocess_wave), bfloat16",
+ "decode": "CTC greedy over model logits truncated to the returned seq_len; consecutive-duplicate collapse; blank drop; skip-special decode (calibrate _ctc_greedy_text)",
+ "decode_parity_rule": "the evaluator IMPORTS _preprocess_wave and _ctc_greedy_text from pipeline.omniasr_calibrate \u2014 the exact functions the mandatory in-run upstream-parity probe validates on every calibration; the evaluator adds NO decode logic of its own",
+ "environment_contract": "MEDZEN_EXECUTION_MODE=arm2_scoring (strict enum, launcher+trainer parity); MEDZEN_SCORE_* pins injected by the launcher from the reviewed scoring packet",
+ "evaluator_script": {
+  "path": "pipeline/omniasr_score.py",
+  "sha256": "2f5c65ecf1963adca1a0368916d8f04c761bca5d7d0e4c8029b50459ac07b3fe"
+ },
+ "inputs": "scoring manifest fetched by EXACT VersionId + sha; identities only + audio locations; the evaluator NEVER sees references",
+ "model_loading": "student architecture from the staged base config; export weights fetched by EXACT S3 VersionId and sha-verified (torch.load weights_only strict load) \u2014 a substituted model refuses",
+ "purpose": "Frozen decoding contract for the PROTECTED ATTESTED EVALUATOR (Codex final-gap correction item 1): pins the exact decode path, audio preprocessing, model-loading rule and receipts schema BEFORE any candidate hypotheses exist.",
+ "receipts_schema": {
+  "attestation": "the workflow's attest mode signs the EXACT receipts bytes with actions/attest-build-provenance (pinned v2.2.3); the scorer verifies the Sigstore bundle cryptographically",
+  "file": "{record, job_name, arm, model_sha256, model_artifact{s3_uri,s3_version_id}, training_packet_canonical_sha256, split_sha256, evaluator_image_digest, manifest_sha256, rows:[{audio_checksum_sha256, hyp_normalized}]}"
+ },
+ "record": "B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001",
+ "utc": "2026-08-26T02:48:06Z"
+}

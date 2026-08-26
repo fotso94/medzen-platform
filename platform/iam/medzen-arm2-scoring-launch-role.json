@@ -1,0 +1,118 @@
+{
+ "Statement": [
+  {
+   "Action": "sagemaker:DescribeTrainingJob",
+   "Effect": "Allow",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*",
+   "Sid": "DescribeB5TrainingJobs"
+  },
+  {
+   "Action": "sagemaker:CreateTrainingJob",
+   "Condition": {
+    "ForAllValues:StringEquals": {
+     "sagemaker:InstanceTypes": [
+      "ml.g6.xlarge"
+     ],
+     "sagemaker:VpcSecurityGroupIds": [
+      "sg-0fee72d218ac002a7"
+     ],
+     "sagemaker:VpcSubnets": [
+      "subnet-00232b25bc1ac407a"
+     ]
+    },
+    "Null": {
+     "sagemaker:InstanceTypes": "false",
+     "sagemaker:VpcSecurityGroupIds": "false",
+     "sagemaker:VpcSubnets": "false"
+    },
+    "NumericLessThanEquals": {
+     "sagemaker:MaxRuntimeInSeconds": "18000"
+    },
+    "StringEquals": {
+     "aws:RequestTag/medzen-tier": "arm",
+     "sagemaker:OutputKmsKeyArn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-score-*",
+   "Sid": "CreateOnlyArm2ScoringJobsUnderHardConditions"
+  },
+  {
+   "Action": [
+    "sagemaker:CreateTrainingJob",
+    "sagemaker:UpdateTrainingJob"
+   ],
+   "Condition": {
+    "Bool": {
+     "sagemaker:EnableRemoteDebug": "true"
+    }
+   },
+   "Effect": "Deny",
+   "Resource": "*",
+   "Sid": "NoRemoteDebugEver"
+  },
+  {
+   "Action": "sagemaker:AddTags",
+   "Effect": "Allow",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-score-*",
+   "Sid": "TagOnlyArm2ScoringJobs"
+  },
+  {
+   "Action": "iam:PassRole",
+   "Condition": {
+    "StringEquals": {
+     "iam:PassedToService": "sagemaker.amazonaws.com"
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:iam::558069890522:role/medzen-trainer-role",
+   "Sid": "PassOnlyTheTrainerRoleToSageMaker"
+  },
+  {
+   "Action": [
+    "s3:GetObject",
+    "s3:GetObjectVersion"
+   ],
+   "Effect": "Allow",
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/curated/_arm2_scoring/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-score-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*"
+   ],
+   "Sid": "ReadScoringInputsAndReceipts"
+  },
+  {
+   "Action": "kms:Decrypt",
+   "Effect": "Allow",
+   "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+   "Sid": "DecryptWithTheCampaignKeyOnly"
+  },
+  {
+   "Action": "sagemaker:ListTags",
+   "Effect": "Allow",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*",
+   "Sid": "ListTagsForTheChainVerification"
+  },
+  {
+   "Action": "s3:ListBucketVersions",
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "curated/_arm2_scoring/*",
+      "research/b5-training/b5-universal-arm2-score-*/output/*"
+     ]
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:s3:::medzen-speech",
+   "Sid": "ListMechanicsArtifactVersionsForRehash"
+  },
+  {
+   "Action": "cloudtrail:LookupEvents",
+   "Effect": "Allow",
+   "Resource": "*",
+   "Sid": "LookupTheCreationEventForTheCreatorProof"
+  }
+ ],
+ "Version": "2012-10-17"
+}

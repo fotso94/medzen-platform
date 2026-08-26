@@ -39,7 +39,10 @@ KNOWN_ENVIRONMENTS = REQUIRED_ENVIRONMENTS + (
     # Codex final correction (2026-08-26) item 5: the six-run stage-1
     # campaign launch environment (owner-approved; arm2-stage1-launch.yml
     # preflight verifies it with --only-supplied)
-    "arm2-stage1-launch")
+    "arm2-stage1-launch",
+    # Codex final-gap correction (2026-08-26) item 1: the protected attested
+    # evaluator's environment
+    "arm2-scoring-eval")
 # the OWNER whose approval every activation environment must require (Codex
 # review #28 finding 1: accepting any reviewer, or a mismatched environment
 # response, let the existing arm-launch-approval JSON pass as both required

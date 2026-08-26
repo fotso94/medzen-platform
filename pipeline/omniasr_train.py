@@ -324,14 +324,19 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
     _mode_raw = env.get("MEDZEN_EXECUTION_MODE", "").strip()
     if _mode_raw == "":
         execution_mode = "arm2_comparative" if kd_enable else "plain"
-    elif _mode_raw not in ("plain", "arm2_comparative"):
+    elif _mode_raw not in ("plain", "arm2_comparative", "arm2_scoring"):
         raise TrainerRefusal(
             f"MEDZEN_EXECUTION_MODE={_mode_raw!r} is not one of "
-            "('plain', 'arm2_comparative') — unknown modes fail closed")
+            "('plain', 'arm2_comparative', 'arm2_scoring') — unknown modes "
+            "fail closed")
     elif _mode_raw == "plain" and kd_enable:
         raise TrainerRefusal(
             "MEDZEN_EXECUTION_MODE=plain with MEDZEN_KD_ENABLE truthy is "
             "contradictory — plain training runs no KD (fail closed)")
+    elif _mode_raw == "arm2_scoring" and kd_enable:
+        raise TrainerRefusal(
+            "MEDZEN_EXECUTION_MODE=arm2_scoring with MEDZEN_KD_ENABLE truthy "
+            "is contradictory — the evaluator decodes, it never trains")
     else:
         execution_mode = _mode_raw
     if kd_enable:

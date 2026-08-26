@@ -63,6 +63,15 @@ DOCUMENTED_JOB_ADDITIONS = {
         # reusable exec (a reusable cannot request more than the caller grants)
         "mint": {**MINIMAL, "attestations": "write"},
     },
+    "arm2-scoring-eval-exec.yml": {
+        # Codex final-gap correction: the evaluator exec's attest mode signs
+        # the exact receipts bytes (actions/attest-build-provenance)
+        "run": {**MINIMAL, "attestations": "write"},
+    },
+    "arm2-scoring-eval.yml": {
+        # the caller's run uses-job must PASS attestations:write through
+        "run": {**MINIMAL, "attestations": "write"},
+    },
 }
 
 

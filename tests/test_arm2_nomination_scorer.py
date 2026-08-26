@@ -95,8 +95,11 @@ def build_world(tmp_path: Path):
                      "sha256": sha((tmp_path / "platform/manifests/arm2-scoring/clusters.json").read_bytes())},
         "candidate_packets": cand_pins,
         "bootstrap": {"B": 10000, "master_seed": 7},
-        "evaluator": {"job_name_pattern":
-                      r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+"},
+        "evaluator": {"repository": "fotso94/medzen-platform",
+                      "workflow_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+                      "job_name_pattern":
+                      r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+",
+                      "image_digest": "sha256:" + "e" * 64},
     }
     pp = tmp_path / "platform/decisions/scoring-packet.json"
     pp.write_bytes(json.dumps(packet).encode())
@@ -181,51 +184,203 @@ def test_tie_break_alpha_then_lexicographic(tmp_path):
 
 # --------------------------------------------------------------- refusals
 RECEIPT_PROV = {"job_name": "medzen-b5-b5-universal-arm2-score-h1-2026-001",
-                "workflow_run_ref": "https://github.com/x/actions/runs/1",
-                "attestation_ref": "https://github.com/x/attestations/1"}
-EVAL = {"job_name_pattern": r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+"}
+                "workflow_run_ref": "https://github.com/fotso94/medzen-platform/actions/runs/1",
+                "model_artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1"},
+                "split_sha256": None,           # filled per-test from cfg
+                "evaluator_image_digest": "sha256:" + "e" * 64}
+WFID = ("https://github.com/fotso94/medzen-platform/.github/workflows/"
+        "arm2-scoring-eval-exec.yml@refs/heads/master")
+EVAL = {"repository": "fotso94/medzen-platform",
+        "workflow_identity": WFID,
+        "job_name_pattern": r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+"}
+
+
+def make_receipts(tmp_path, cfg, rows, *, model="ab" * 32, **over):
+    doc = {**RECEIPT_PROV, "model_sha256": model,
+           "training_packet_canonical_sha256": None,
+           "split_sha256": (cfg["packet"]["split"]["sha256"]
+                            if cfg else "s" * 64),
+           "rows": rows}
+    doc.update(over)
+    p = tmp_path / "receipts.json"
+    p.write_bytes(json.dumps(doc, sort_keys=True).encode())
+    b = tmp_path / "receipts.sigstore.json"
+    b.write_bytes(b"{}")
+    return p, b
+
+
+def fake_gh_ok(receipts_path):
+    """A gh runner that emits a structurally valid verification for the exact
+    receipts bytes signed by the pinned evaluator identity."""
+    def runner(args):
+        digest = sha(Path(receipts_path).read_bytes())
+        return 0, json.dumps([{"verificationResult": {
+            "statement": {"subject": [{"digest": {"sha256": digest}}]},
+            "signature": {"certificate": {
+                "subjectAlternativeName": WFID,
+                "runInvocationURI":
+                    "https://github.com/fotso94/medzen-platform/actions/runs/1/attempts/1"}},
+        }}]), ""
+    return runner
+
+
+def _cfg_for_receipts(tmp_path):
+    _, _, cfg, _, _ = build_world(tmp_path)
+    return cfg
 
 
 def test_caller_supplied_edit_counts_refuse(tmp_path):
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({**RECEIPT_PROV, "model_sha256": "m" * 64,
-        "packet_canonical_sha256": "p" * 64,
-        "rows": [{"audio_checksum_sha256": "a" * 64,
-                  "hyp_normalized": "x", "edit_distance": 0}]}))
+    cfg = _cfg_for_receipts(tmp_path)
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x",
+          "edit_distance": 0}])
     with pytest.raises(SystemExit, match="caller-supplied edit counts"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
-                             evaluator=EVAL)
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=fake_gh_ok(p))
 
 
 def test_wrong_model_sha_refuses(tmp_path):
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({**RECEIPT_PROV, "model_sha256": "m" * 64,
-        "packet_canonical_sha256": "p" * 64,
-        "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
+    cfg = _cfg_for_receipts(tmp_path)
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}])
     with pytest.raises(SystemExit, match="unproven model"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="n" * 64,
-                             evaluator=EVAL)
+        scorer.load_receipts(p, arm="H1", expected_model_sha="cd" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=fake_gh_ok(p))
 
 
-def test_missing_evaluator_provenance_refuses(tmp_path):
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({"job_name": "medzen-b5-b5-universal-arm2-score-x",
-        "model_sha256": "m" * 64, "packet_canonical_sha256": "p" * 64,
-        "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
-    with pytest.raises(SystemExit, match="workflow_run_ref"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
-                             evaluator=EVAL)
+# ---- Codex reproduction #1 (regression): forged workflow/attestation
+# STRINGS with no verifiable bundle were ACCEPTED — they must now REFUSE.
+def test_codex_repro_fake_workflow_and_attestation_refuse(tmp_path):
+    cfg = _cfg_for_receipts(tmp_path)
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}],
+        workflow_run_ref="https://github.com/fake/actions/runs/999",
+        attestation_ref="https://github.com/fake/attestations/999")
+    # no bundle at all
+    with pytest.raises(SystemExit, match="no attestation bundle"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=None)
+    # a bundle that fails cryptographic verification
+    def gh_fail(args):
+        return 1, "", "verification failed: no matching signature"
+    with pytest.raises(SystemExit, match="attestation verification FAILED"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=gh_fail)
 
 
-def test_wrong_evaluator_job_name_refuses(tmp_path):
-    p = tmp_path / "r.json"
-    p.write_text(json.dumps({**RECEIPT_PROV,
-        "job_name": "medzen-b5-someones-laptop",
-        "model_sha256": "m" * 64, "packet_canonical_sha256": "p" * 64,
-        "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
-    with pytest.raises(SystemExit, match="protected-evaluator pattern"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
-                             evaluator=EVAL)
+def test_attestation_subject_digest_must_match_the_bytes(tmp_path):
+    cfg = _cfg_for_receipts(tmp_path)
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}])
+    def gh_wrong_subject(args):
+        return 0, json.dumps([{"verificationResult": {
+            "statement": {"subject": [{"digest": {"sha256": "f" * 64}}]},
+            "signature": {"certificate": {
+                "subjectAlternativeName": WFID,
+                "runInvocationURI": RECEIPT_PROV["workflow_run_ref"]}}}}]), ""
+    with pytest.raises(SystemExit, match="DIFFERENT\s+file|DIFFERENT"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=gh_wrong_subject)
+
+
+def test_attestation_signer_identity_must_be_the_pinned_evaluator(tmp_path):
+    cfg = _cfg_for_receipts(tmp_path)
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}])
+    def gh_wrong_signer(args):
+        digest = sha(p.read_bytes())
+        return 0, json.dumps([{"verificationResult": {
+            "statement": {"subject": [{"digest": {"sha256": digest}}]},
+            "signature": {"certificate": {
+                "subjectAlternativeName":
+                    "https://github.com/attacker/repo/.github/workflows/x.yml@refs/heads/main",
+                "runInvocationURI": RECEIPT_PROV["workflow_run_ref"]}}}}]), ""
+    with pytest.raises(SystemExit, match="packet-pinned\s+protected evaluator|signer identity"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=gh_wrong_signer)
+
+
+def test_null_evaluator_image_digest_fails_closed(tmp_path):
+    cfg = _cfg_for_receipts(tmp_path)
+    cfg["packet"]["evaluator"]["image_digest"] = None
+    p, b = make_receipts(tmp_path, cfg,
+        [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}])
+    with pytest.raises(SystemExit, match="no evaluator image_digest"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="ab" * 32,
+                             evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+                             bundle_path=b, gh_runner=fake_gh_ok(p))
+
+
+# ---- Codex reproduction #2 (regression): self-declared PASS completion
+# receipts were trusted — AWS facts must now be REVERIFIED live.
+class FakeAWS:
+    def __init__(self, desc, head):
+        self._desc, self._head = desc, head
+    def client(self, name):
+        outer = self
+        class C:
+            def describe_training_job(self, TrainingJobName):
+                return outer._desc
+            def head_object(self, **kw):
+                return outer._head
+        return C()
+
+
+GOOD_DOC = {"job": "medzen-b5-x", "image_uri_with_digest": "img@sha256:aa",
+            "artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1",
+                         "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+                         "s3_bytes": 10}}
+GOOD_DESC = {"TrainingJobStatus": "Completed",
+             "AlgorithmSpecification": {"TrainingImage": "img@sha256:aa"},
+             "ModelArtifacts": {"S3ModelArtifacts": "s3://b/k"}}
+GOOD_HEAD = {"ContentLength": 10,
+             "SSEKMSKeyId": GOOD_DOC["artifact"]["kms_key"]}
+
+
+def test_codex_repro_forged_completion_receipt_refuses_on_aws_reverify():
+    scorer.aws_reverify_completion(dict(GOOD_DOC), arm="H1",
+                                   session=FakeAWS(GOOD_DESC, GOOD_HEAD))
+    with pytest.raises(SystemExit, match="not Completed"):
+        scorer.aws_reverify_completion(dict(GOOD_DOC), arm="H1",
+            session=FakeAWS({**GOOD_DESC, "TrainingJobStatus": "Failed"},
+                            GOOD_HEAD))
+    with pytest.raises(SystemExit, match="image does not match"):
+        scorer.aws_reverify_completion(dict(GOOD_DOC), arm="H1",
+            session=FakeAWS({**GOOD_DESC, "AlgorithmSpecification":
+                             {"TrainingImage": "other"}}, GOOD_HEAD))
+    with pytest.raises(SystemExit, match="byte size does not match"):
+        scorer.aws_reverify_completion(dict(GOOD_DOC), arm="H1",
+            session=FakeAWS(GOOD_DESC, {**GOOD_HEAD, "ContentLength": 11}))
+    with pytest.raises(SystemExit, match="KMS key does not match"):
+        scorer.aws_reverify_completion(dict(GOOD_DOC), arm="H1",
+            session=FakeAWS(GOOD_DESC, {**GOOD_HEAD, "SSEKMSKeyId": "other"}))
+
+
+def test_codex_repro_stage2_cannot_trust_a_committed_stage1_json(tmp_path):
+    """The forged-stage-1 path is structurally gone: stage2 REQUIRES the
+    original stage-1 receipts and RECOMPUTES; without them it refuses."""
+    with pytest.raises(SystemExit) as exc:
+        scorer.main(["stage2", "--scoring-packet", "x",
+                     "--scoring-packet-sha256", "0" * 64,
+                     "--references-dir", str(tmp_path),
+                     "--arm-receipts", "base=y",
+                     "--receipts", "base=z:w",
+                     "--stage1-result", "r",
+                     "--stage1-result-sha256", "0" * 64,
+                     "--out", str(tmp_path / "o")])
+    # refuses BEFORE ever trusting the stage-1 JSON: the uncommitted-scorer
+    # gate, the committed-read gate, or the packet-sha gate all precede any
+    # use of its decision — the trust-the-JSON path is structurally gone
+    msg = str(exc.value)
+    assert ("uncommitted scorer" in msg
+            or "not committed at HEAD" in msg
+            or "stage-1" in msg), msg
 
 
 def test_arm_completion_receipt_gates_model_identity():
@@ -233,8 +388,9 @@ def test_arm_completion_receipt_gates_model_identity():
             "terminal_status": "Completed",
             "authoritative_verification": {"authoritative": True,
                 "verdict": "PASS", "failures": [], "mode": "live"}}
-    assert scorer.load_arm_completion_receipt(
-        json.dumps(good).encode(), arm="H1") == "ab" * 32
+    ident = scorer.load_arm_completion_receipt(
+        json.dumps(good).encode(), arm="H1")
+    assert ident["model_sha256"] == "ab" * 32
     bad = json.loads(json.dumps(good))
     bad["authoritative_verification"]["verdict"] = "FAIL"
     with pytest.raises(SystemExit, match="unambiguous live PASS"):
@@ -271,7 +427,7 @@ def test_stage2_requires_derived_finalist(tmp_path):
                      "--scoring-packet-sha256", "0" * 64,
                      "--references-dir", str(tmp_path),
                      "--arm-receipts", "base=y",
-                     "--receipts", "base=z", "--out", "o"])
+                     "--receipts", "base=z:w", "--out", "o"])
 
 
 def test_stage2_reversal_and_confirmation(tmp_path):
