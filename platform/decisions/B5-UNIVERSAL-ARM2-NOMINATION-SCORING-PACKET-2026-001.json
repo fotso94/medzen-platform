@@ -1,4 +1,5 @@
 {
+ "arm_model_identity_rule": "each arm's required model sha comes from its COMMITTED completion receipt's AWS-verified export.model_sha256 (authoritative --live PASS required) via --arm-receipts \u2014 never a caller-supplied map",
  "bootstrap": {
   "B": 10000,
   "law": "paired cluster bootstrap: ONE resample plan per surface (random.Random(sha256(master_seed:surface)[:8])) applied to EVERY arm",
@@ -32,6 +33,18 @@
   "rule": "FROZEN placeholder rule: speaker ids ending '_fleurs' are pool-level placeholders -> those rows cluster by ROW; all other rows cluster by real speaker_id (english 451 / french 470 / pidgin 25 / swahili 325 clusters). Veto surfaces always cluster by row.",
   "sha256": "8e4ddf7f7eea52720e2ab297c61854040ddd49ce875c496babb41e285d418339"
  },
+ "evaluator": {
+  "job_name_pattern": "medzen-b5-b5-universal-arm2-score-[a-z0-9-]+",
+  "receipt_provenance_required": [
+   "job_name (matching job_name_pattern)",
+   "workflow_run_ref",
+   "attestation_ref (actions/attest-build-provenance over the exact receipts file)",
+   "model_sha256",
+   "packet_canonical_sha256"
+  ],
+  "requirement": "hypothesis receipts are produced ONLY by the PROTECTED, ATTESTED evaluator job \u2014 never on a workstation (Codex final correction item 3). The scorer refuses receipts lacking this provenance.",
+  "status": "EVALUATOR MACHINERY NOT YET IMPLEMENTED \u2014 it is scoring-stage machinery (protocol cost_runtime_table rows 5-6), to be authored + reviewed before any scoring pass; this packet freezes its REQUIRED identity surface now so receipts from any other origin already refuse."
+ },
  "margins": {
   "family_alpha": 0.05,
   "noninferiority_abs_wer": 0.005,
@@ -47,40 +60,55 @@
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001",
  "references": {
   "english": {
-   "path": "platform/manifests/arm2-scoring/references-english.jsonl",
+   "rows": 451,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-english.jsonl",
+   "s3_version_id": "hOuZFkbY3JsHWUBpMYAhFxlrINX3_UNV",
    "sha256": "a1193a4c05bce162758d67c34ca79c2935ce1d2a6a7f714cb042e66ccd833c86"
   },
   "ewe": {
-   "path": "platform/manifests/arm2-scoring/references-ewe.jsonl",
+   "rows": 60,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-ewe.jsonl",
+   "s3_version_id": "MxJQnNw6DvAORbTMyUu_TG9Pj31NZNUI",
    "sha256": "f3d4267aebafe8467026221301df20e1bd0eff8bc90cbbea98a6430bcbc807ec"
   },
   "french": {
-   "path": "platform/manifests/arm2-scoring/references-french.jsonl",
+   "rows": 652,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-french.jsonl",
+   "s3_version_id": "VDzyUI7KNLNoG6nWierWkmoec_pSUmBG",
    "sha256": "a2966be273d4461622c9e6ebb87e57743b42c2b13bad248d70e7e21c8bee3505"
   },
   "kinyarwanda": {
-   "path": "platform/manifests/arm2-scoring/references-kinyarwanda.jsonl",
+   "rows": 60,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-kinyarwanda.jsonl",
+   "s3_version_id": "yNC_BqIcrEePizIV27oBtfim1sg7oZJC",
    "sha256": "081e28f1370f8a8d9dfec032ae6d262c3dd9501314e9020855d67aa4e379b355"
   },
   "lingala": {
-   "path": "platform/manifests/arm2-scoring/references-lingala.jsonl",
+   "rows": 386,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-lingala.jsonl",
+   "s3_version_id": "KDvfvWqsm7yWj0qOYKT2J9wOqQhSxJ_C",
    "sha256": "4c70896d66756f9cf1f12e5323d1e786fbf263ea07f1514357705a8f58daaa8d"
   },
   "pidgin": {
-   "path": "platform/manifests/arm2-scoring/references-pidgin.jsonl",
+   "rows": 1440,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-pidgin.jsonl",
+   "s3_version_id": "xkayoW2PGQiKc549TPR09KGoed_3cw1D",
    "sha256": "eb7e5331937da79193867ce4c556fbcd1186a642390a4bc47429c14159c297b7"
   },
   "swahili": {
-   "path": "platform/manifests/arm2-scoring/references-swahili.jsonl",
+   "rows": 372,
+   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-swahili.jsonl",
+   "s3_version_id": "k8w_I787vZjlaYTw4KOc9pCnJyPYwv_E",
    "sha256": "41cae8b2ea6222fd781d339ba42f86bad1b55b74e628651fb8212572eadac3ad"
   }
  },
- "references_provenance": "nomination-language references extracted from the exposure-index-pinned eval-dev pool manifests (fetched by exact S3 VersionId, sha-verified against the index pins) filtered to EXACTLY the frozen split identities; veto references copied verbatim from the committed B5-ARM1-LINGALA-SENTINEL-2026-001 rows (386) and the B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001 kinyarwanda/ewe rows (60+60)",
+ "references_provenance": "reference transcripts are NOT committed to the (public) repository \u2014 Codex final correction item 6 (licence redistribution): they live in the private, versioned, KMS-encrypted bucket (s3://medzen-speech/curated/_arm2_scoring/), pinned here by exact S3 VersionId + sha256; the sha pin is the integrity boundary the scorer enforces on the fetched local copy. Content provenance unchanged: nomination-language references extracted from the exposure-index-pinned eval-dev pool manifests (sha-verified VersionId fetches) filtered to EXACTLY the frozen split identities; veto references copied verbatim from the committed lingala sentinel (386) and dev-selection kinyarwanda/ewe rows (60+60).",
+ "scorer_identity_rule": "the scorer reads THIS packet from the COMMITTED tree at HEAD, requires the caller to state its expected sha (--scoring-packet-sha256), refuses to run with uncommitted scorer/holm bytes, and records repo_head_oid + both script shas in every decision",
  "split": {
   "note": "the FROZEN minted nomination split (artifact sha == the attested mint output)",
   "path": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json",
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
- "stage_chain": "stage2 CONSUMES the committed stage-1 decision JSON (path + sha256) and DERIVES the finalist from decision.provisional_finalist; a caller-chosen finalist refuses; stage2 runs only after outcome PROVISIONAL_FINALIST",
- "utc": "2026-08-26T01:20:52Z"
+ "stage_chain": "stage2 reads the COMMITTED stage-1 decision (git HEAD bytes + caller-stated sha), requires it to have been produced under THIS exact scoring packet (inputs.scoring_packet_sha256 equality), and derives the finalist from decision.provisional_finalist; caller-chosen finalists refuse",
+ "utc": "2026-08-26T02:25:26Z"
 }

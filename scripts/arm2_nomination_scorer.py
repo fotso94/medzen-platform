@@ -40,6 +40,8 @@ import argparse
 import hashlib
 import json
 import random
+import re
+import subprocess
 from pathlib import Path
 
 from arm2_holm import candidate_qualifies, holm_reject, qualifies
@@ -65,6 +67,45 @@ MIN_B = 10000
 class ScorerRefusal(SystemExit):
     """Any malformed, incomplete, unauthenticated or inconsistent input
     refuses loudly."""
+
+
+def _committed_bytes(root: Path, rel: str) -> bytes:
+    """Codex final correction (2026-08-26) items 1/2/4: trust-bearing inputs
+    (the scoring packet, arm completion receipts, the stage-1 result) are read
+    from the COMMITTED tree at HEAD — working-tree or caller-supplied bytes
+    are never authoritative."""
+    if rel.startswith("/") or ".." in rel:
+        raise ScorerRefusal(f"non-repo-relative path {rel!r} refused")
+    proc = subprocess.run(["git", "-C", str(root), "show", f"HEAD:{rel}"],
+                          capture_output=True)
+    if proc.returncode != 0:
+        raise ScorerRefusal(f"{rel} is not committed at HEAD — the scorer "
+                            "consumes only committed inputs")
+    return proc.stdout
+
+
+def _head_oid(root: Path) -> str:
+    proc = subprocess.run(["git", "-C", str(root), "rev-parse", "HEAD"],
+                          capture_output=True, text=True)
+    oid = (proc.stdout or "").strip()
+    if proc.returncode != 0 or not re.fullmatch(r"[0-9a-f]{40}", oid):
+        raise ScorerRefusal("cannot resolve the repo HEAD commit")
+    return oid
+
+
+def self_identity(root: Path) -> dict:
+    """Item 1: the result binds the EXACT scorer + Holm-gate code that
+    produced it (their committed shas must equal the running files)."""
+    out = {}
+    for rel in ("scripts/arm2_nomination_scorer.py", "scripts/arm2_holm.py"):
+        running = (root / rel).read_bytes()
+        committed = _committed_bytes(root, rel)
+        if hashlib.sha256(running).hexdigest() !=                 hashlib.sha256(committed).hexdigest():
+            raise ScorerRefusal(
+                f"{rel} working bytes differ from the committed bytes — an "
+                "uncommitted scorer cannot produce an authoritative decision")
+        out[rel.split("/")[-1] + "_sha256"] =             hashlib.sha256(committed).hexdigest()
+    return out
 
 
 def _sha256_bytes(raw: bytes) -> str:
@@ -111,13 +152,16 @@ def _pinned_bytes(root: Path, pin: dict, what: str) -> bytes:
     return raw
 
 
-def load_scoring_packet(root: Path, path: Path) -> dict:
-    raw = path.read_bytes()
+def load_scoring_packet(root: Path, path: Path, *,
+                        references_dir: Path,
+                        packet_bytes: bytes | None = None) -> dict:
+    raw = packet_bytes if packet_bytes is not None else path.read_bytes()
     packet = json.loads(raw)
     if packet.get("record") != \
             "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001":
         raise ScorerRefusal("not the Arm-2 nomination scoring packet")
-    cfg: dict = {"packet_sha256": _sha256_bytes(raw), "packet": packet}
+    cfg: dict = {"packet_sha256": _sha256_bytes(raw), "packet": packet,
+                 "references_dir": str(references_dir)}
 
     # frozen split
     split_doc = json.loads(_pinned_bytes(root, packet["split"], "frozen split"))
@@ -129,11 +173,29 @@ def load_scoring_packet(root: Path, path: Path) -> dict:
             raise ScorerRefusal(f"frozen split rows for {language!r} invalid")
         cfg["split"][language] = [str(r) for r in rows]
 
-    # per-surface references (nomination + veto)
+    # per-surface references (nomination + veto). Item 6 (licence
+    # redistribution): reference transcripts are NOT in the repo — the packet
+    # pins their exact S3 object (uri + VersionId) and sha256; the caller
+    # fetches them to --references-dir and the SHA is the integrity boundary.
+    refs_dir = Path(cfg["references_dir"])
     cfg["references"] = {}
     for surface in (*NOMINATION_LANGUAGES, *VETO_SURFACES):
-        raw_refs = _pinned_bytes(root, packet["references"][surface],
-                                 f"references[{surface}]")
+        pin = packet["references"][surface]
+        want = str(pin.get("sha256") or "")
+        if not re.fullmatch(r"[0-9a-f]{64}", want):
+            raise ScorerRefusal(f"references[{surface}] pin lacks a sha256")
+        local = refs_dir / f"references-{surface}.jsonl"
+        if not local.exists():
+            raise ScorerRefusal(
+                f"references[{surface}] not fetched to {local} — fetch the "
+                f"pinned object {pin.get('s3_uri')} (VersionId "
+                f"{pin.get('s3_version_id')}) first")
+        raw_refs = local.read_bytes()
+        actual = _sha256_bytes(raw_refs)
+        if actual != want:
+            raise ScorerRefusal(
+                f"references[{surface}] hash to {actual[:16]}, the scoring "
+                f"packet pins {want[:16]} — refusing a substituted input")
         refs: dict[str, str] = {}
         for line in raw_refs.decode().splitlines():
             if not line.strip():
@@ -194,15 +256,27 @@ def load_scoring_packet(root: Path, path: Path) -> dict:
 # authenticated receipts
 # --------------------------------------------------------------------------
 
-def load_receipts(path: Path, *, arm: str,
-                  expected_model_sha: str) -> tuple[dict[str, str], str]:
+def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
+                  evaluator: dict | None = None
+                  ) -> tuple[dict[str, str], str]:
     """One arm's hypothesis receipts. Returns ({identity: hyp_normalized},
-    file sha). REFUSES caller-supplied edit counts and identity mismatches."""
+    file sha). REFUSES caller-supplied edit counts, identity mismatches, and
+    (item 3) receipts lacking protected-evaluator provenance: job_name
+    matching the packet-declared pattern + workflow_run_ref +
+    attestation_ref — hypotheses produced outside the attested evaluator
+    cannot gate a nomination."""
     raw = path.read_bytes()
     doc = json.loads(raw)
-    for key in ("job_name", "model_sha256", "packet_canonical_sha256", "rows"):
+    for key in ("job_name", "model_sha256", "packet_canonical_sha256", "rows",
+                "workflow_run_ref", "attestation_ref"):
         if not doc.get(key):
             raise ScorerRefusal(f"receipts[{arm}] lack {key!r}")
+    if evaluator:
+        pattern = str(evaluator.get("job_name_pattern") or "")
+        if pattern and not re.fullmatch(pattern, str(doc["job_name"])):
+            raise ScorerRefusal(
+                f"receipts[{arm}] job_name {doc['job_name']!r} does not match "
+                f"the packet-declared protected-evaluator pattern {pattern!r}")
     if str(doc["model_sha256"]) != expected_model_sha:
         raise ScorerRefusal(
             f"receipts[{arm}] declare model {str(doc['model_sha256'])[:16]} "
@@ -221,6 +295,27 @@ def load_receipts(path: Path, *, arm: str,
             raise ScorerRefusal(f"receipts[{arm}]: row lacks hyp_normalized")
         out[identity] = str(row["hyp_normalized"])
     return out, _sha256_bytes(raw)
+
+
+def load_arm_completion_receipt(raw: bytes, *, arm: str) -> str:
+    """Item 2: an arm's REQUIRED model identity comes from its COMMITTED,
+    AWS-verified completion receipt — never a caller-supplied map. Returns
+    export.model_sha256 after requiring the receipt's authoritative --live
+    attestation to be an unambiguous PASS."""
+    doc = json.loads(raw)
+    export = doc.get("export") or {}
+    model = str(export.get("model_sha256") or "")
+    if not re.fullmatch(r"[0-9a-f]{64}", model):
+        raise ScorerRefusal(f"arm receipt[{arm}] lacks export.model_sha256")
+    auth = doc.get("authoritative_verification") or {}
+    if auth.get("authoritative") is not True or auth.get("verdict") != "PASS" \
+            or auth.get("failures") != [] or auth.get("mode") != "live":
+        raise ScorerRefusal(
+            f"arm receipt[{arm}] authoritative_verification is not an "
+            "unambiguous live PASS — an unverified model cannot be scored")
+    if doc.get("terminal_status") not in (None, "Completed"):
+        raise ScorerRefusal(f"arm receipt[{arm}] terminal_status is not Completed")
+    return model
 
 
 def surface_rows(identities: list[str], hyps: dict[str, str],
@@ -453,16 +548,30 @@ def score_stage(*, stage: int, cfg: dict,
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("stage1", "stage2"))
-    parser.add_argument("--scoring-packet", type=Path,
-                        default=Path(SCORING_PACKET_PATH))
-    parser.add_argument("--arm-models", type=Path, required=True,
-                        help="JSON {arm: export model_sha256} from the arms' "
-                             "completion receipts; every receipts file's "
-                             "model_sha256 must match its arm's entry")
+    parser.add_argument("--scoring-packet", default=SCORING_PACKET_PATH,
+                        help="repo-relative path; BYTES ARE READ FROM THE "
+                             "COMMITTED TREE AT HEAD (item 1)")
+    parser.add_argument("--scoring-packet-sha256", required=True,
+                        help="expected sha256 of the committed scoring packet "
+                             "bytes — the caller states which exact frozen "
+                             "packet it intends (item 1)")
+    parser.add_argument("--references-dir", type=Path, required=True,
+                        help="directory holding the fetched S3-pinned "
+                             "reference files (sha-verified against the "
+                             "packet pins; item 6)")
+    parser.add_argument("--arm-receipts", action="append", default=[],
+                        metavar="ARM=RELPATH", required=True,
+                        help="per arm: the COMMITTED completion-receipt "
+                             "record (platform/evidence/...) whose "
+                             "AWS-verified export.model_sha256 is the arm's "
+                             "required model identity (item 2)")
     parser.add_argument("--receipts", action="append", default=[],
-                        metavar="ARM=PATH", required=True)
-    parser.add_argument("--stage1-result", type=Path, default=None,
-                        help="stage2: the committed stage-1 decision JSON")
+                        metavar="ARM=PATH", required=True,
+                        help="per arm: the protected evaluator's hypothesis "
+                             "receipts file (item 3 provenance enforced)")
+    parser.add_argument("--stage1-result", default=None,
+                        help="stage2: repo-relative path of the COMMITTED "
+                             "stage-1 decision (item 4)")
     parser.add_argument("--stage1-result-sha256", default=None)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
@@ -475,23 +584,42 @@ def main(argv: list[str] | None = None) -> int:
             "caller-chosen")
 
     root = Path(__file__).resolve().parents[1]
-    cfg = load_scoring_packet(root, args.scoring_packet)
+    identity = self_identity(root)
+    head_oid = _head_oid(root)
 
-    models_raw = args.arm_models.read_bytes()
-    arm_models = {str(k): str(v)
-                  for k, v in json.loads(models_raw).items()}
+    packet_bytes = _committed_bytes(root, str(args.scoring_packet))
+    if _sha256_bytes(packet_bytes) != args.scoring_packet_sha256:
+        raise ScorerRefusal(
+            "the committed scoring packet hashes to "
+            f"{_sha256_bytes(packet_bytes)[:16]}, the caller expected "
+            f"{str(args.scoring_packet_sha256)[:16]} — refusing")
+    cfg = load_scoring_packet(root, Path(args.scoring_packet),
+                              references_dir=args.references_dir,
+                              packet_bytes=packet_bytes)
+    evaluator = (cfg["packet"].get("evaluator") or {})
+
+    arm_models: dict[str, str] = {}
+    arm_receipt_shas: dict[str, str] = {}
+    for spec in args.arm_receipts:
+        arm, _, rel = spec.partition("=")
+        if arm in arm_models:
+            raise ScorerRefusal(f"duplicate arm receipt for {arm!r}")
+        raw = _committed_bytes(root, rel)
+        arm_models[arm] = load_arm_completion_receipt(raw, arm=arm)
+        arm_receipt_shas[arm] = _sha256_bytes(raw)
 
     finalist = None
+    stage1_binding = None
     if args.stage == "stage2":
-        if args.stage1_result is None or not args.stage1_result_sha256:
-            raise ScorerRefusal(
-                "stage2 requires --stage1-result + --stage1-result-sha256 — "
-                "the finalist is DERIVED from the Stage-1 decision, never "
-                "caller-chosen")
-        s1_raw = args.stage1_result.read_bytes()
+        s1_raw = _committed_bytes(root, str(args.stage1_result))
         if _sha256_bytes(s1_raw) != args.stage1_result_sha256:
             raise ScorerRefusal("stage-1 result sha mismatch")
         s1 = json.loads(s1_raw)
+        if (s1.get("inputs") or {}).get("scoring_packet_sha256") != \
+                cfg["packet_sha256"]:
+            raise ScorerRefusal(
+                "the stage-1 result was produced under a DIFFERENT scoring "
+                "packet — the two stages must share one frozen packet")
         decision = (s1.get("decision") or {})
         if decision.get("outcome") != "PROVISIONAL_FINALIST":
             raise ScorerRefusal(
@@ -500,6 +628,8 @@ def main(argv: list[str] | None = None) -> int:
         finalist = str(decision.get("provisional_finalist"))
         if finalist not in CANDIDATES:
             raise ScorerRefusal(f"stage-1 finalist {finalist!r} invalid")
+        stage1_binding = {"path": str(args.stage1_result),
+                          "sha256": args.stage1_result_sha256}
 
     hyps_by_arm: dict[str, dict[str, str]] = {}
     receipt_shas: dict[str, str] = {}
@@ -508,9 +638,10 @@ def main(argv: list[str] | None = None) -> int:
         if arm in hyps_by_arm:
             raise ScorerRefusal(f"duplicate receipts for arm {arm!r}")
         if arm not in arm_models:
-            raise ScorerRefusal(f"--arm-models lacks an entry for {arm!r}")
+            raise ScorerRefusal(f"--arm-receipts lacks an entry for {arm!r}")
         hyps_by_arm[arm], receipt_shas[arm] = load_receipts(
-            Path(path), arm=arm, expected_model_sha=arm_models[arm])
+            Path(path), arm=arm, expected_model_sha=arm_models[arm],
+            evaluator=evaluator)
 
     decision = score_stage(stage=1 if args.stage == "stage1" else 2,
                            cfg=cfg, hyps_by_arm=hyps_by_arm,
@@ -521,9 +652,12 @@ def main(argv: list[str] | None = None) -> int:
         "inputs": {
             "scoring_packet": str(args.scoring_packet),
             "scoring_packet_sha256": cfg["packet_sha256"],
-            "arm_models_sha256": _sha256_bytes(models_raw),
+            "repo_head_oid": head_oid,
+            **identity,
+            "arm_completion_receipts_sha256": arm_receipt_shas,
+            "arm_model_sha256": arm_models,
             "receipts_sha256": receipt_shas,
-            "stage1_result_sha256": args.stage1_result_sha256,
+            "stage1_result": stage1_binding,
             "B": cfg["B"], "master_seed": cfg["master_seed"],
             "alpha": ALPHA, "noninferiority_margin": NONINF_MARGIN,
             "veto_margin": VETO_MARGIN,

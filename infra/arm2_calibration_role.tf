@@ -11,7 +11,7 @@
 variable "arm2_calibration_enabled" {
   description = "owner switch: create the dedicated Arm-2 calibration launch OIDC role"
   type        = bool
-  default     = false
+  default     = true # LIVE since activation — default reflects reality (Codex final correction item 5: a bare plan must be zero-destroy)
 }
 
 data "aws_iam_openid_connect_provider" "github_for_arm2_calibration" {

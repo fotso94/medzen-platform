@@ -46,3 +46,19 @@
 /platform/manifests/B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001.json     @fotso94
 /platform/manifests/B5-ARM1-LINGALA-SENTINEL-2026-001.json           @fotso94
 /platform/manifests/dev-sentinels/                                   @fotso94
+
+# Arm-2 stage-1 campaign launch + scoring trust surfaces (Codex final
+# correction 2026-08-26 item 5: every stage-1/scoring trust file is
+# owner-review-gated)
+/.github/workflows/arm2-stage1-launch.yml                @fotso94
+/.github/workflows/arm2-stage1-launch-exec.yml           @fotso94
+/.github/workflows/arm2-stage1-canary-wrongref.yml       @fotso94
+/.github/workflows/arm2-stage1-canary-wrongref-exec.yml  @fotso94
+/platform/iam/medzen-arm2-stage1-launch-role.json        @fotso94
+/infra/arm2_stage1_launch_role.tf                        @fotso94
+/scripts/arm2_nomination_scorer.py                       @fotso94
+/scripts/arm2_holm.py                                    @fotso94
+/scripts/verify_protected_environments.py                @fotso94
+/platform/manifests/arm2-scoring/                        @fotso94
+/platform/evidence/receipts/ARM2-MECH-2026-001/          @fotso94
+/platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json  @fotso94

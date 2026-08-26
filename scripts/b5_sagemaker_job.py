@@ -1623,8 +1623,8 @@ def main() -> int:
             # Codex round 31: reuse the launcher's ONE role-asserted session so
             # the re-verification runs under the SAME assumed launch role, not a
             # second credential path.
-            _facts = derive_live_artifact_facts(
-                cal_packet, _workdir, session=session,
+            _facts = derive_live_artifact_facts(cal_packet, _workdir,
+                session=session,
                 metrics_verifier_sha=(receipt_record or {}).get(
                     "run_verifier_sha256"))
             cross_check_receipt_content(receipt_record, _facts)

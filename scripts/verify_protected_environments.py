@@ -35,7 +35,11 @@ REQUIRED_ENVIRONMENTS = ("trainer-image-publish", "arm2-calibration")
 # owner's pre-apply gate)
 KNOWN_ENVIRONMENTS = REQUIRED_ENVIRONMENTS + (
     "arm2-nomination-mint-producer", "arm2-nomination-mint-sealed",
-    "arm2-nomination-mint-mint")
+    "arm2-nomination-mint-mint",
+    # Codex final correction (2026-08-26) item 5: the six-run stage-1
+    # campaign launch environment (owner-approved; arm2-stage1-launch.yml
+    # preflight verifies it with --only-supplied)
+    "arm2-stage1-launch")
 # the OWNER whose approval every activation environment must require (Codex
 # review #28 finding 1: accepting any reviewer, or a mismatched environment
 # response, let the existing arm-launch-approval JSON pass as both required

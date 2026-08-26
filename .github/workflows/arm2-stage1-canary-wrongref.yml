@@ -1,0 +1,17 @@
+# NEGATIVE canary caller for the Arm-2 stage-1 launch role (Codex final
+# correction 2026-08-26 item 5, mirroring the calibration canary): dispatches
+# a DIFFERENT reusable workflow than the stage-1 role trusts, in the SAME
+# arm2-stage1-launch environment, proving the job_workflow_ref condition (not
+# merely the environment sub) is what refuses.
+name: arm2-stage1-canary-wrongref
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  probe:
+    uses: ./.github/workflows/arm2-stage1-canary-wrongref-exec.yml

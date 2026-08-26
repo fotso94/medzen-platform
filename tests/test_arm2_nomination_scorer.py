@@ -86,7 +86,8 @@ def build_world(tmp_path: Path):
         "record": "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001",
         "split": {"path": "platform/manifests/split.json",
                   "sha256": sha(sp.read_bytes())},
-        "references": {s: {"path": f"platform/manifests/arm2-scoring/references-{s}.jsonl",
+        "references": {s: {"s3_uri": f"s3://x/references-{s}.jsonl",
+                            "s3_version_id": "V1",
                             "sha256": sha((tmp_path / f"platform/manifests/arm2-scoring/references-{s}.jsonl").read_bytes())}
                        for s in (*scorer.NOMINATION_LANGUAGES,
                                  *scorer.VETO_SURFACES)},
@@ -94,10 +95,14 @@ def build_world(tmp_path: Path):
                      "sha256": sha((tmp_path / "platform/manifests/arm2-scoring/clusters.json").read_bytes())},
         "candidate_packets": cand_pins,
         "bootstrap": {"B": 10000, "master_seed": 7},
+        "evaluator": {"job_name_pattern":
+                      r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+"},
     }
     pp = tmp_path / "platform/decisions/scoring-packet.json"
     pp.write_bytes(json.dumps(packet).encode())
-    cfg = scorer.load_scoring_packet(tmp_path, pp)
+    cfg = scorer.load_scoring_packet(
+        tmp_path, pp,
+        references_dir=tmp_path / "platform/manifests/arm2-scoring")
     return tmp_path, pp, cfg, split, refs
 
 
@@ -175,23 +180,69 @@ def test_tie_break_alpha_then_lexicographic(tmp_path):
 
 
 # --------------------------------------------------------------- refusals
+RECEIPT_PROV = {"job_name": "medzen-b5-b5-universal-arm2-score-h1-2026-001",
+                "workflow_run_ref": "https://github.com/x/actions/runs/1",
+                "attestation_ref": "https://github.com/x/attestations/1"}
+EVAL = {"job_name_pattern": r"medzen-b5-b5-universal-arm2-score-[a-z0-9-]+"}
+
+
 def test_caller_supplied_edit_counts_refuse(tmp_path):
     p = tmp_path / "r.json"
-    p.write_text(json.dumps({"job_name": "j", "model_sha256": "m" * 64,
+    p.write_text(json.dumps({**RECEIPT_PROV, "model_sha256": "m" * 64,
         "packet_canonical_sha256": "p" * 64,
         "rows": [{"audio_checksum_sha256": "a" * 64,
                   "hyp_normalized": "x", "edit_distance": 0}]}))
     with pytest.raises(SystemExit, match="caller-supplied edit counts"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64)
+        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
+                             evaluator=EVAL)
 
 
 def test_wrong_model_sha_refuses(tmp_path):
     p = tmp_path / "r.json"
-    p.write_text(json.dumps({"job_name": "j", "model_sha256": "m" * 64,
+    p.write_text(json.dumps({**RECEIPT_PROV, "model_sha256": "m" * 64,
         "packet_canonical_sha256": "p" * 64,
         "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
     with pytest.raises(SystemExit, match="unproven model"):
-        scorer.load_receipts(p, arm="H1", expected_model_sha="n" * 64)
+        scorer.load_receipts(p, arm="H1", expected_model_sha="n" * 64,
+                             evaluator=EVAL)
+
+
+def test_missing_evaluator_provenance_refuses(tmp_path):
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({"job_name": "medzen-b5-b5-universal-arm2-score-x",
+        "model_sha256": "m" * 64, "packet_canonical_sha256": "p" * 64,
+        "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
+    with pytest.raises(SystemExit, match="workflow_run_ref"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
+                             evaluator=EVAL)
+
+
+def test_wrong_evaluator_job_name_refuses(tmp_path):
+    p = tmp_path / "r.json"
+    p.write_text(json.dumps({**RECEIPT_PROV,
+        "job_name": "medzen-b5-someones-laptop",
+        "model_sha256": "m" * 64, "packet_canonical_sha256": "p" * 64,
+        "rows": [{"audio_checksum_sha256": "a" * 64, "hyp_normalized": "x"}]}))
+    with pytest.raises(SystemExit, match="protected-evaluator pattern"):
+        scorer.load_receipts(p, arm="H1", expected_model_sha="m" * 64,
+                             evaluator=EVAL)
+
+
+def test_arm_completion_receipt_gates_model_identity():
+    good = {"export": {"model_sha256": "ab" * 32},
+            "terminal_status": "Completed",
+            "authoritative_verification": {"authoritative": True,
+                "verdict": "PASS", "failures": [], "mode": "live"}}
+    assert scorer.load_arm_completion_receipt(
+        json.dumps(good).encode(), arm="H1") == "ab" * 32
+    bad = json.loads(json.dumps(good))
+    bad["authoritative_verification"]["verdict"] = "FAIL"
+    with pytest.raises(SystemExit, match="unambiguous live PASS"):
+        scorer.load_arm_completion_receipt(json.dumps(bad).encode(), arm="H1")
+    bad2 = json.loads(json.dumps(good))
+    del bad2["export"]["model_sha256"]
+    with pytest.raises(SystemExit, match="export.model_sha256"):
+        scorer.load_arm_completion_receipt(json.dumps(bad2).encode(), arm="H1")
 
 
 def test_missing_rows_refuse(tmp_path):
@@ -205,16 +256,21 @@ def test_missing_rows_refuse(tmp_path):
 
 def test_pin_mismatch_refuses(tmp_path):
     root, pp, cfg, _, _ = build_world(tmp_path)
-    # tamper one pinned reference file after packet authoring
+    # tamper one fetched reference file after packet authoring
     target = root / "platform/manifests/arm2-scoring/references-english.jsonl"
     target.write_text(target.read_text() + "\n")
     with pytest.raises(SystemExit, match="substituted input"):
-        scorer.load_scoring_packet(root, pp)
+        scorer.load_scoring_packet(
+            root, pp,
+            references_dir=root / "platform/manifests/arm2-scoring")
 
 
 def test_stage2_requires_derived_finalist(tmp_path):
     with pytest.raises(SystemExit, match="DERIVED from the Stage-1"):
-        scorer.main(["stage2", "--scoring-packet", "x", "--arm-models", "y",
+        scorer.main(["stage2", "--scoring-packet", "x",
+                     "--scoring-packet-sha256", "0" * 64,
+                     "--references-dir", str(tmp_path),
+                     "--arm-receipts", "base=y",
                      "--receipts", "base=z", "--out", "o"])
 
 
@@ -237,20 +293,37 @@ def test_stage2_reversal_and_confirmation(tmp_path):
 
 
 # ----------------------------------------------------- real committed pins
-def test_real_scoring_packet_loads_and_pins_hold():
-    cfg = scorer.load_scoring_packet(
-        ROOT, ROOT / scorer.SCORING_PACKET_PATH)
-    assert {k: len(v) for k, v in cfg["split"].items()} == {
-        "english": 451, "french": 652, "pidgin": 1440, "swahili": 372}
-    assert {s: len(cfg["references"][s]) for s in scorer.VETO_SURFACES} == {
-        "lingala": 386, "kinyarwanda": 60, "ewe": 60}
-    assert set(cfg["alphas"]) == set(scorer.CANDIDATES)
-    assert cfg["B"] >= scorer.MIN_B
-    # frozen cluster structure (pre-results): placeholder rule applied
+def test_real_scoring_packet_shape_and_pins():
+    packet = json.loads(
+        (ROOT / scorer.SCORING_PACKET_PATH).read_bytes())
+    # item 6: reference transcripts are NOT in the repo — every pin is an
+    # exact S3 object (uri + VersionId) + sha256
+    for s in (*scorer.NOMINATION_LANGUAGES, *scorer.VETO_SURFACES):
+        pin = packet["references"][s]
+        assert pin["s3_uri"].startswith(
+            "s3://medzen-speech/curated/_arm2_scoring/"), s
+        assert pin["s3_version_id"], s
+        assert len(pin["sha256"]) == 64, s
+        assert not (ROOT / "platform/manifests/arm2-scoring" /
+                    f"references-{s}.jsonl").exists(), (
+            s, "transcripts must not be committed (item 6)")
+    # item 3: the evaluator identity surface is frozen
+    ev = packet["evaluator"]
+    assert ev["job_name_pattern"].startswith("medzen-b5-b5-universal-arm2-score-")
+    # clusters (no transcripts) stay committed; frozen structure holds
+    clusters = json.loads((ROOT / packet["clusters"]["path"]).read_bytes())
+    split = json.loads((ROOT / packet["split"]["path"]).read_bytes())[
+        "manifest"]["split"]
     for lang, want in (("english", 451), ("french", 470),
                        ("pidgin", 25), ("swahili", 325)):
-        got = len({cfg["clusters"][i] for i in cfg["split"][lang]})
+        got = len({clusters["clusters"][i] for i in split[lang]})
         assert got == want, (lang, got)
+    # candidate alphas pinned by canonical sha
+    for c in scorer.CANDIDATES:
+        pin = packet["candidate_packets"][c]
+        raw = (ROOT / pin["path"]).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == pin["sha256"], c
+    assert packet["bootstrap"]["B"] >= scorer.MIN_B
 
 
 # ------------------------------------------------------------- determinism

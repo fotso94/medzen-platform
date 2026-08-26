@@ -12,7 +12,7 @@
 variable "arm2_nomination_mint_enabled" {
   description = "owner switch: create the dedicated Arm-2 nomination-mint + training-index OIDC roles"
   type        = bool
-  default     = false
+  default     = true # LIVE since activation — default reflects reality (Codex final correction item 5: a bare plan must be zero-destroy)
 }
 
 data "aws_iam_openid_connect_provider" "github_for_nomination_mint" {
