@@ -1,0 +1,25 @@
+{
+ "ceiling_usd": 6,
+ "expires_utc": "2026-08-28T14:48:31Z",
+ "job_id": "b5-universal-arm2-h2-2026-001",
+ "note": "arm 4/6 (H2); owner gate click = launch authorization",
+ "packet": {
+  "canonical_sha256": "2980a9966f041884a7afd6283f3ce2dbbebcab4cab5a4065114d7303a57d8b54",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM2-H2-SAGEMAKER-BINDINGS-2026-001.json"
+ },
+ "receipt": {
+  "record_sha256": "cce0574e64a902c1b397851b9a5357e85b8cd89c8fceea61e4ab9f6935661316"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM2-STAGE1-H2-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-068.json",
+  "sha256": "83ab747ff9d6f9a322cece90b8789c5bcf70c16372a3089481427f510a672e90"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-universal-arm2-h2-2026-001.json",
+  "reviewer": "codex (independent) + owner \u2014 final stage-1 verdict PASS (2026-08-26)",
+  "sha256": "f79e4ea98e1d4d0cd4d7a823ed446e56444ffed62e07cf9ceea230da3596df53"
+ },
+ "utc": "2026-08-26T14:48:31Z"
+}
