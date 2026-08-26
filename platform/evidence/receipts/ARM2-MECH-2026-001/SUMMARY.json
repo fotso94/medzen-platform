@@ -1,0 +1,68 @@
+{
+ "aggregate": {
+  "all_in_image_PASS": true,
+  "all_live_PASS": true,
+  "beats_floor": true,
+  "protocol_floor": 2.0,
+  "throughput_floor_min_utt_per_s": 2.4489795918367347,
+  "total_accrual_usd": 3.2738,
+  "total_billable_seconds": 7366,
+  "worst_case_usd": 4.8
+ },
+ "all_six": {
+  "H0": {
+   "billable_s": 1228,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-h0-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 2.45
+  },
+  "H1": {
+   "billable_s": 1228,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-h1-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 3.0
+  },
+  "H2": {
+   "billable_s": 1228,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-h2-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 2.86
+  },
+  "H3": {
+   "billable_s": 1228,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-h3-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 2.79
+  },
+  "H4": {
+   "billable_s": 1226,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-h4-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 2.73
+  },
+  "KDCONTROL": {
+   "billable_s": 1228,
+   "in_image": "PASS",
+   "job": "medzen-b5-b5-universal-arm2-mech-kdctl-2026-001",
+   "live_failures": 0,
+   "live_verdict": "PASS",
+   "utt_per_s_floor": 3.08
+  }
+ },
+ "gate": "CONDITIONAL SECOND REVIEW: all six mechanics receipts PASS (in-image + authoritative --live) -> the six 2000-step runs may be authorized by the owner AFTER Codex's second review. Until then they remain HELD.",
+ "held": "six 2000-step runs, sealed evaluation, promotion, deployment",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
+ "purpose": "Completion summary for the six budgeted 30-step mechanics receipts (protocol cost_runtime_table row 2) on the corrected image.",
+ "record": "ARM2-MECH-2026-001-SUMMARY",
+ "utc": "2026-08-26T00:00:14Z"
+}

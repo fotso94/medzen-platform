@@ -1,0 +1,31 @@
+{
+ "arm": "KDCONTROL",
+ "authoritative_live_verification": {
+  "export_model_sha256": "1605899b454ff018829bc8c1456352f5d3260dac52e43614b1f14b5a101cb2fd",
+  "failures": [],
+  "packet_canonical_sha256": "ea16cc1c20bbcdd3218a37dc8cf93b333392f3649c828199eb798622317147b5",
+  "s3_bytes": 1548268811,
+  "s3_version_id": ".8yQ_iJTTYSmBCk2gJsjPLb.bYTM3d_3",
+  "verdict": "PASS"
+ },
+ "billable_seconds": 1228,
+ "cost": {
+  "accrual_usd_padded_rate": 0.5458,
+  "billable_seconds": 1228,
+  "worst_case_usd": 0.8
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-universal-arm2-mech-kdctl-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.json",
+ "record": "ARM2-MECH-KDCONTROL-2026-001-COMPLETION",
+ "scope": "MECHANICS_RECEIPT_ONLY - not a promotion signal, not hyperparameter selection, not sealed evaluation",
+ "status": "Completed",
+ "throughput_remeasure": {
+  "note": "30-step mechanics receipt; the scoring window doubles as a per-arm throughput point on the corrected image",
+  "scored_rows": 120,
+  "utt_per_s_floor": 3.08,
+  "window_seconds": 39.0
+ },
+ "utc": "2026-08-26T00:00:14Z"
+}

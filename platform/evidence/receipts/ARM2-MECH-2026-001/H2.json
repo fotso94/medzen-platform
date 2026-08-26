@@ -1,0 +1,31 @@
+{
+ "arm": "H2",
+ "authoritative_live_verification": {
+  "export_model_sha256": "80ebe5df188c906ad4f147195a5b5cc87de49e4ce264b7e65487a5b2ef45e870",
+  "failures": [],
+  "packet_canonical_sha256": "83d0ad948322fea1fdbaaf2290b98cd7a2460569300ba60ce08978ae33f4e16f",
+  "s3_bytes": 1548271774,
+  "s3_version_id": "ZZy2A6EJMZeBUzSX8Zqwh4OUiEnjLs11",
+  "verdict": "PASS"
+ },
+ "billable_seconds": 1228,
+ "cost": {
+  "accrual_usd_padded_rate": 0.5458,
+  "billable_seconds": 1228,
+  "worst_case_usd": 0.8
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-universal-arm2-mech-h2-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-H2-SAGEMAKER-BINDINGS-2026-001.json",
+ "record": "ARM2-MECH-H2-2026-001-COMPLETION",
+ "scope": "MECHANICS_RECEIPT_ONLY - not a promotion signal, not hyperparameter selection, not sealed evaluation",
+ "status": "Completed",
+ "throughput_remeasure": {
+  "note": "30-step mechanics receipt; the scoring window doubles as a per-arm throughput point on the corrected image",
+  "scored_rows": 120,
+  "utt_per_s_floor": 2.86,
+  "window_seconds": 42.0
+ },
+ "utc": "2026-08-26T00:00:14Z"
+}
