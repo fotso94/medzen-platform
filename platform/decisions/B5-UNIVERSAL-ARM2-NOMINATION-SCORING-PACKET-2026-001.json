@@ -47,8 +47,8 @@
    "path": "platform/iam/medzen-arm2-scoring-launch-role.json",
    "sha256": "dd9cdb020f057beee8da6a6e8ff14c04280548a22ec4bf3b6955fa74e38a765e"
   },
-  "image_digest": "sha256:23edd13c4c3ba76f025b151a294460523eebfecd650c4d8bbff8e82c3d457911",
-  "image_digest_rule": "PINNED 2026-08-26 after the corrected image e84076f build (run 32926004500) and validated by the SMOKE1 end-to-end run; pinned BEFORE any candidate hypotheses exist (the pre-results freeze holds). Any image change requires a reviewed re-pin here.",
+  "image_digest": "sha256:c12e5080f14f0bdfee7141df28c36c4170136f2624227b472020b531834e574f",
+  "image_digest_rule": "PINNED 2026-08-26 after the corrected image e84076f build (run 32926004500) and validated by the SMOKE2 end-to-end run; pinned BEFORE any candidate hypotheses exist (the pre-results freeze holds). Any image change requires a reviewed re-pin here.",
   "job_name_pattern": "medzen-b5-b5-universal-arm2-score-[a-z0-9-]+",
   "repository": "fotso94/medzen-platform",
   "workflow_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
@@ -122,5 +122,5 @@
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
  "stage_chain": "stage2 reads the COMMITTED stage-1 decision (git HEAD bytes + caller-stated sha), requires it to have been produced under THIS exact scoring packet (inputs.scoring_packet_sha256 equality), and derives the finalist from decision.provisional_finalist; caller-chosen finalists refuse",
- "utc": "2026-08-26T04:10:08Z"
+ "utc": "2026-08-26T04:28:40Z"
 }

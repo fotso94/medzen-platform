@@ -1,0 +1,11 @@
+{
+ "basis": "Owner directive 2026-08-26 explicitly orders one unsealed end-to-end GPU smoke of the evaluator. This record authorizes ONLY job b5-universal-arm2-score-smoke2-2026-001 ($1.20 worst case, 60 unsealed sentinel rows, mech-H0 model). render+validate returns PASS_EXACT_TRAINING_REQUEST; entrypoint pipeline.omniasr_score.",
+ "bindings_sha256": "6a510aa694784a294c3ff40d3d5bd9f75a8575253d319d871c535b322566b941",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:c12e5080f14f0bdfee7141df28c36c4170136f2624227b472020b531834e574f",
+ "job_id": "b5-universal-arm2-score-smoke2-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-SMOKE2-2026-001.json",
+ "reviewer": "owner directive (narrow functional correction) \u2014 Codex final review pending on the smoke's output",
+ "utc": "2026-08-26T04:28:40Z"
+}
