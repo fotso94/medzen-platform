@@ -159,7 +159,7 @@
         "s3:GetObjectVersion"
       ],
       "Resource": [
-        "arn:aws:s3:::medzen-speech/curated/_arm2_scoring/*"
+        "arn:aws:s3:::medzen-speech/research/arm2-scoring/*"
       ]
     },
     {

@@ -72,49 +72,42 @@
  "record": "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001",
  "references": {
   "english": {
-   "rows": 451,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-english.jsonl",
-   "s3_version_id": "hOuZFkbY3JsHWUBpMYAhFxlrINX3_UNV",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-english.jsonl",
+   "s3_version_id": "FrOJvJNB2oIkYMf67prhxcTWlEM37ALD",
    "sha256": "a1193a4c05bce162758d67c34ca79c2935ce1d2a6a7f714cb042e66ccd833c86"
   },
   "ewe": {
-   "rows": 60,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-ewe.jsonl",
-   "s3_version_id": "MxJQnNw6DvAORbTMyUu_TG9Pj31NZNUI",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-ewe.jsonl",
+   "s3_version_id": "AtXqCNq1GVRgxSd0N8tbSmxjAxlpbaL4",
    "sha256": "f3d4267aebafe8467026221301df20e1bd0eff8bc90cbbea98a6430bcbc807ec"
   },
   "french": {
-   "rows": 652,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-french.jsonl",
-   "s3_version_id": "VDzyUI7KNLNoG6nWierWkmoec_pSUmBG",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-french.jsonl",
+   "s3_version_id": "OZVFMQKBYukzR4v61fqNkNjjf2Og28Ph",
    "sha256": "a2966be273d4461622c9e6ebb87e57743b42c2b13bad248d70e7e21c8bee3505"
   },
   "kinyarwanda": {
-   "rows": 60,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-kinyarwanda.jsonl",
-   "s3_version_id": "yNC_BqIcrEePizIV27oBtfim1sg7oZJC",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-kinyarwanda.jsonl",
+   "s3_version_id": "uCjixbNlnQHBxV1fjWKVCI.SLm2S5hdL",
    "sha256": "081e28f1370f8a8d9dfec032ae6d262c3dd9501314e9020855d67aa4e379b355"
   },
   "lingala": {
-   "rows": 386,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-lingala.jsonl",
-   "s3_version_id": "KDvfvWqsm7yWj0qOYKT2J9wOqQhSxJ_C",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-lingala.jsonl",
+   "s3_version_id": "NqGYCd_axryXovQ1zBs.5Dnzu0sSDKKw",
    "sha256": "4c70896d66756f9cf1f12e5323d1e786fbf263ea07f1514357705a8f58daaa8d"
   },
   "pidgin": {
-   "rows": 1440,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-pidgin.jsonl",
-   "s3_version_id": "xkayoW2PGQiKc549TPR09KGoed_3cw1D",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-pidgin.jsonl",
+   "s3_version_id": "_gEqhiNDMXTx7SH0dnb_YUYmMjPtz9.P",
    "sha256": "eb7e5331937da79193867ce4c556fbcd1186a642390a4bc47429c14159c297b7"
   },
   "swahili": {
-   "rows": 372,
-   "s3_uri": "s3://medzen-speech/curated/_arm2_scoring/references-swahili.jsonl",
-   "s3_version_id": "k8w_I787vZjlaYTw4KOc9pCnJyPYwv_E",
+   "s3_uri": "s3://medzen-speech/research/arm2-scoring/references-swahili.jsonl",
+   "s3_version_id": "DoScvsIoiS4_wrqx.JbOXYar33QgpYa6",
    "sha256": "41cae8b2ea6222fd781d339ba42f86bad1b55b74e628651fb8212572eadac3ad"
   }
  },
- "references_provenance": "reference transcripts are NOT committed to the (public) repository \u2014 Codex final correction item 6 (licence redistribution): they live in the private, versioned, KMS-encrypted bucket (s3://medzen-speech/curated/_arm2_scoring/), pinned here by exact S3 VersionId + sha256; the sha pin is the integrity boundary the scorer enforces on the fetched local copy. Content provenance unchanged: nomination-language references extracted from the exposure-index-pinned eval-dev pool manifests (sha-verified VersionId fetches) filtered to EXACTLY the frozen split identities; veto references copied verbatim from the committed lingala sentinel (386) and dev-selection kinyarwanda/ewe rows (60+60).",
+ "references_provenance": "reference transcripts are NOT committed to the (public) repository \u2014 Codex final correction item 6 (licence redistribution): they live in the private, versioned, KMS-encrypted bucket (s3://medzen-speech/research/arm2-scoring/), pinned here by exact S3 VersionId + sha256; the sha pin is the integrity boundary the scorer enforces on the fetched local copy. Content provenance unchanged: nomination-language references extracted from the exposure-index-pinned eval-dev pool manifests (sha-verified VersionId fetches) filtered to EXACTLY the frozen split identities; veto references copied verbatim from the committed lingala sentinel (386) and dev-selection kinyarwanda/ewe rows (60+60). RELOCATED 2026-08-26: the objects moved out of curated/ because the trainer's mix loader lists every curated/**/manifest.jsonl (the smoke manifest there broke arm-1's version parser); research/arm2-scoring/ is outside every trainer listing. Content shas unchanged; new VersionIds.",
  "scorer_identity_rule": "the scorer reads THIS packet from the COMMITTED tree at HEAD, requires the caller to state its expected sha (--scoring-packet-sha256), refuses to run with uncommitted scorer/holm bytes, and records repo_head_oid + both script shas in every decision",
  "split": {
   "note": "the FROZEN minted nomination split (artifact sha == the attested mint output)",
@@ -122,5 +115,5 @@
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
  "stage_chain": "stage2 reads the COMMITTED stage-1 decision (git HEAD bytes + caller-stated sha), requires it to have been produced under THIS exact scoring packet (inputs.scoring_packet_sha256 equality), and derives the finalist from decision.provisional_finalist; caller-chosen finalists refuse",
- "utc": "2026-08-26T04:28:40Z"
+ "utc": "2026-08-26T05:39:05Z"
 }

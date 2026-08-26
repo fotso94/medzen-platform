@@ -75,7 +75,7 @@
    ],
    "Effect": "Allow",
    "Resource": [
-    "arn:aws:s3:::medzen-speech/curated/_arm2_scoring/*",
+    "arn:aws:s3:::medzen-speech/research/arm2-scoring/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-score-*/output/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*"
    ],
@@ -98,7 +98,7 @@
    "Condition": {
     "StringLike": {
      "s3:prefix": [
-      "curated/_arm2_scoring/*",
+      "research/arm2-scoring/*",
       "research/b5-training/b5-universal-arm2-score-*/output/*"
      ]
     }

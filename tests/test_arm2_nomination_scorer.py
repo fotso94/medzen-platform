@@ -495,7 +495,7 @@ def test_real_scoring_packet_shape_and_pins():
     for s in (*scorer.NOMINATION_LANGUAGES, *scorer.VETO_SURFACES):
         pin = packet["references"][s]
         assert pin["s3_uri"].startswith(
-            "s3://medzen-speech/curated/_arm2_scoring/"), s
+            "s3://medzen-speech/research/arm2-scoring/"), s
         assert pin["s3_version_id"], s
         assert len(pin["sha256"]) == 64, s
         assert not (ROOT / "platform/manifests/arm2-scoring" /

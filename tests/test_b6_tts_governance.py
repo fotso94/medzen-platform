@@ -48,7 +48,7 @@ def test_additive_status_and_architecture_now_point_to_the_owned_service():
     # is CMK-encrypted — verified live) + prefix-scoped s3:ListBucket for
     # the audio cache's 404-miss semantics
     assert sha(ROOT / "platform/services.yaml") == (
-        "36a44aad811509cda7bdbfcb457f674fbb800533b44e58af81a38f173d8f8b4e"
+        "44c723a89f6827082b6c26fc09d411b891bead72ec0712deb0f526fc9e9fe98a"
     )
     status = yaml.safe_load((
         ROOT / "platform/service-implementation-status/v1.yaml"
