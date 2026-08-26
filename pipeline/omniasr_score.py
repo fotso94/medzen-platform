@@ -97,7 +97,8 @@ def main() -> int:
 
     from pipeline.omniasr_calibrate import _ctc_greedy_text, _preprocess_wave
     from pipeline.omniasr_data import fetch_audio
-    from pipeline.omniasr_train import _load_model_and_tokenizer, parse_config
+    from pipeline.omniasr_train import (_load_model_and_tokenizer,
+                                        parse_config, stage_model_artifacts)
     from pipeline.train_asr import s3
 
     manifest_uri = _require("MEDZEN_SCORE_MANIFEST_S3_URI")
@@ -127,6 +128,9 @@ def main() -> int:
             "binding is broken")
 
     cli = s3()
+    # the student architecture loads from the STAGED base checkpoint (the
+    # same stage_model_artifacts step the trainer runs before model load)
+    stage_model_artifacts(cli)
     work = Path("/opt/ml/model")          # ONLY receipts.json lands here
     work.mkdir(parents=True, exist_ok=True)
     scratch = Path("/tmp/medzen-score-scratch")
