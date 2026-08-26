@@ -1510,10 +1510,16 @@ ARM_LAUNCH_ROLE = "medzen-arm-launch-role"
 # launch as the DEDICATED stage-1 role (arm2-stage1-launch-exec.yml); the
 # legacy arm-launch role remains only for non-comparative (Arm-1) arm jobs.
 STAGE1_LAUNCH_ROLE = "medzen-arm2-stage1-launch-role"
+SCORING_LAUNCH_ROLE = "medzen-arm2-scoring-launch-role"
 
 
 def expected_arm_launch_role(environment: dict) -> str:
-    """The above-tier launch role, by job class."""
+    """The above-tier launch role, by job class: evaluator/scoring jobs use
+    the dedicated scoring role; comparative campaign arms the stage-1 role;
+    legacy (Arm-1) jobs the original arm-launch role."""
+    if str(environment.get("MEDZEN_EXECUTION_MODE", "")).strip() \
+            == "arm2_scoring":
+        return SCORING_LAUNCH_ROLE
     return (STAGE1_LAUNCH_ROLE if is_arm2_comparative(environment)
             else ARM_LAUNCH_ROLE)
 
@@ -1576,7 +1582,25 @@ def main() -> int:
         # 2000-step comparative arm is a campaign job at any worst case.
         above_tier = is_campaign_arm_job(bindings.get("environment") or {},
                                          worst_case)
-        if above_tier:
+        scoring_job = (str((bindings.get("environment") or {}).get(
+            "MEDZEN_EXECUTION_MODE", "")).strip() == "arm2_scoring")
+        if above_tier and scoring_job:
+            # owner narrow functional correction (2026-08-26): evaluator jobs
+            # are READ-ONLY decode jobs — they launch ONLY from the protected
+            # workflow with a committed APPROVED review record; the
+            # training-campaign chain (intent, calibration receipt, campaign
+            # reservation, committed profile) is training machinery and does
+            # not apply to a decode job.
+            import os
+            if not (os.environ.get(EXECUTOR_ENV) == PROTECTED_EXECUTOR
+                    and os.environ.get("GITHUB_ACTIONS") == "true"):
+                raise JobRefusal(
+                    "scoring launches go through the protected workflow "
+                    "(.github/workflows/arm2-scoring-eval.yml) — its "
+                    "environment requires the OWNER's approval and its "
+                    "dedicated role is the only intended creator")
+            review_record_approves(job_id, bindings, root, head)
+        elif above_tier:
             # the OUTERMOST boundary first: locally, above-tier launches
             # refuse no matter what the other gates say
             import os

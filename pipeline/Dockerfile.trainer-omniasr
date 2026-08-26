@@ -46,6 +46,7 @@ COPY pipeline/__init__.py pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/licence_filter.py pipeline/omniasr_train.py \
      pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
      pipeline/omniasr_distill.py pipeline/omniasr_calibrate.py \
+     pipeline/omniasr_score.py \
      pipeline/normalizers.py \
      ./pipeline/
 # Codex review #20 F6: the calibration verifier + launcher semantics run
@@ -114,6 +115,7 @@ COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/licence_filter.py pipeline/omniasr_train.py \
      pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
      pipeline/omniasr_distill.py pipeline/omniasr_calibrate.py \
+     pipeline/omniasr_score.py \
      pipeline/normalizers.py \
      /opt/medzen/pipeline/
 COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py

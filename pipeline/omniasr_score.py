@@ -49,17 +49,47 @@ def _require(name: str) -> str:
 
 
 def _fetch_pinned(cli, s3_uri: str, version_id: str, sha256: str,
-                  dest: Path) -> bytes:
+                  dest: Path, *, expected_sha_of: str = "object") -> bytes:
+    """Fetch by EXACT VersionId. When `expected_sha_of` is 'object' the raw
+    bytes must hash to `sha256`. When it is 'member:export/model.pt' the
+    object is a SageMaker model.tar.gz — the member export/model.pt is
+    SAFELY extracted (no links/traversal) and ITS bytes must hash to
+    `sha256` (the arm completion receipt's export.model_sha256)."""
+    import tarfile
+
     bucket, _, key = s3_uri.removeprefix("s3://").partition("/")
     body = cli.get_object(Bucket=bucket, Key=key,
                           VersionId=version_id)["Body"].read()
-    actual = hashlib.sha256(body).hexdigest()
+    if expected_sha_of == "object":
+        actual = hashlib.sha256(body).hexdigest()
+        if actual != sha256:
+            raise EvaluatorRefusal(
+                f"{s3_uri}@{version_id} hashes to {actual[:16]}, the packet "
+                f"pins {sha256[:16]} — refusing a substituted input")
+        dest.write_bytes(body)
+        return body
+    member_name = expected_sha_of.removeprefix("member:")
+    tar_path = dest.with_suffix(".tar.gz")
+    tar_path.write_bytes(body)
+    with tarfile.open(tar_path, "r:*") as archive:
+        member = None
+        for cand in archive.getmembers():
+            if cand.name.lstrip("./") == member_name:
+                member = cand
+                break
+        if member is None or not member.isreg():
+            raise EvaluatorRefusal(
+                f"{s3_uri} carries no regular member {member_name!r}")
+        extracted = archive.extractfile(member).read()
+    tar_path.unlink()
+    actual = hashlib.sha256(extracted).hexdigest()
     if actual != sha256:
         raise EvaluatorRefusal(
-            f"{s3_uri}@{version_id} hashes to {actual[:16]}, the packet pins "
-            f"{sha256[:16]} — refusing a substituted input")
-    dest.write_bytes(body)
-    return body
+            f"{member_name} inside {s3_uri}@{version_id} hashes to "
+            f"{actual[:16]}, the arm's completion receipt requires "
+            f"{sha256[:16]} — refusing a substituted model")
+    dest.write_bytes(extracted)
+    return extracted
 
 
 def main() -> int:
@@ -87,11 +117,23 @@ def main() -> int:
         raise EvaluatorRefusal("no injected TrainingJobName — the evaluator "
                                "runs only inside the protected job")
 
+    # the ARM label must be bound into the job's own name — the launcher
+    # derives job names as medzen-b5-<job_id> and every scoring job_id embeds
+    # its arm; a receipts file whose arm disagrees with its job refuses here,
+    # before a single row is decoded.
+    if f"-score-{arm.lower()}" not in job_name.lower():
+        raise EvaluatorRefusal(
+            f"job {job_name!r} does not embed arm {arm!r} — the arm/job "
+            "binding is broken")
+
     cli = s3()
-    work = Path("/opt/ml/model")
+    work = Path("/opt/ml/model")          # ONLY receipts.json lands here
     work.mkdir(parents=True, exist_ok=True)
+    scratch = Path("/tmp/medzen-score-scratch")
+    scratch.mkdir(parents=True, exist_ok=True)
     manifest_raw = _fetch_pinned(cli, manifest_uri, manifest_vid,
-                                 manifest_sha, work / "score-manifest.jsonl")
+                                 manifest_sha,
+                                 scratch / "score-manifest.jsonl")
     rows = [json.loads(line) for line in manifest_raw.decode().splitlines()
             if line.strip()]
     if not rows:
@@ -101,8 +143,11 @@ def main() -> int:
     # the EXPORT weights are then loaded over it (mirrors the calibrate flow)
     config = parse_config(dict(os.environ))
     model, tokenizer, device = _load_model_and_tokenizer(config)
-    export_path = work / "score-model.pt"
-    _fetch_pinned(cli, model_uri, model_vid, model_sha, export_path)
+    export_path = scratch / "score-model.pt"
+    _fetch_pinned(cli, model_uri, model_vid, model_sha, export_path,
+                  expected_sha_of=("member:export/model.pt"
+                                   if model_uri.endswith(".tar.gz")
+                                   else "object"))
     state = torch.load(export_path, map_location="cpu", weights_only=True)
     model.load_state_dict(state, strict=True)
     model.eval()

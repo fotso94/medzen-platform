@@ -118,7 +118,7 @@ jobs:
         if: ${{ inputs.mode == 'launch' && inputs.confirm_launch == 'LAUNCH' }}
         run: |
           python scripts/b5_sagemaker_job.py launch --bindings "$PACKET" --request request.json
-      - name: "attest: fetch receipts by EXACT VersionId, verify sha"
+      - name: "attest: fetch the job output tar by EXACT VersionId, recover receipts.json, verify sha"
         if: ${{ inputs.mode == 'attest' }}
         run: |
           set -euo pipefail
@@ -127,11 +127,24 @@ jobs:
           WANT="${{ inputs.receipts_sha256 }}"
           if [ -z "$URI" ] || [ -z "$VID" ] \
               || ! printf '%s' "$WANT" | grep -Exq '[0-9a-f]{64}'; then
-            echo "::error::attest needs receipts_s3_uri + receipts_version_id + 64-hex receipts_sha256"
+            echo "::error::attest needs receipts_s3_uri (the job's model.tar.gz) + receipts_version_id + 64-hex receipts_sha256"
             exit 1
           fi
           BUCKET="${URI#s3://}"; KEY="${BUCKET#*/}"; BUCKET="${BUCKET%%/*}"
-          aws s3api get-object --bucket "$BUCKET" --key "$KEY" --version-id "$VID" receipts.json >/dev/null
+          aws s3api get-object --bucket "$BUCKET" --key "$KEY" --version-id "$VID" output.tar.gz >/dev/null
+          # SageMaker tars /opt/ml/model — SAFELY extract ONLY receipts.json
+          python3 - <<'EOF'
+          import hashlib, tarfile, sys
+          with tarfile.open("output.tar.gz", "r:*") as a:
+              member = next((m for m in a.getmembers()
+                             if m.name.lstrip("./") == "receipts.json"
+                             and m.isreg()), None)
+              if member is None:
+                  sys.exit("no regular receipts.json member in the output tar")
+              open("receipts.json", "wb").write(a.extractfile(member).read())
+          print("receipts.json recovered:",
+                hashlib.sha256(open("receipts.json","rb").read()).hexdigest())
+          EOF
           GOT=$(python3 -c "import hashlib;print(hashlib.sha256(open('receipts.json','rb').read()).hexdigest())")
           [ "$GOT" = "$WANT" ] || { echo "::error::receipts sha $GOT != expected $WANT"; exit 1; }
       - name: "attest: sign the exact receipts bytes (Sigstore)"
