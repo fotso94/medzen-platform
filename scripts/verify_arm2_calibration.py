@@ -1343,11 +1343,18 @@ def main(argv: list[str] | None = None) -> int:
     # verifier OF ITS OWN COMMIT (exact sha supplied by the reviewer); the
     # report still records this verifier's own bytes separately.
     own_verifier_sha = verifier_sha
+    # Semantics correction (second-review bundle): the supplied run-commit sha
+    # feeds ONLY the metrics-identity comparison (the run's in-image verifier
+    # must equal ITS commit's reviewed verifier); the REPORT always records
+    # THIS reviewing verifier's own bytes — that is what the launch gate binds
+    # (a receipt must carry an attestation produced by the currently committed
+    # verifier, while honestly acknowledging the run's own baked one).
+    identity_expect_sha = verifier_sha
     if args.run_verifier_sha256:
         import re as _re
         if not _re.fullmatch(r"[0-9a-f]{64}", args.run_verifier_sha256):
             raise SystemExit("--run-verifier-sha256 must be 64-hex")
-        verifier_sha = args.run_verifier_sha256
+        identity_expect_sha = args.run_verifier_sha256
     job_id = str(packet.get("job_id") or "").strip()
     expected_job_name = f"medzen-b5-{job_id}" if job_id else None
     expected_contract_sha = str(
@@ -1362,7 +1369,7 @@ def main(argv: list[str] | None = None) -> int:
             packet, workdir)
         failures, facts = verify_live_bundle(
             packet=packet, receipt=receipt, extracted=extracted,
-            s3_meta=s3_meta, verifier_script_sha=verifier_sha)
+            s3_meta=s3_meta, verifier_script_sha=identity_expect_sha)
         # Codex #26 findings 1-2: the CloudTrail creation event proves which
         # role created the job, in the right account/region, successfully, with
         # a two-sided requestParameters match (create-only smuggling caught).
