@@ -1,0 +1,57 @@
+{
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1548266396,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-mech-kdctl-2026-002/output/medzen-b5-b5-universal-arm2-mech-kdctl-2026-002/output/model.tar.gz",
+  "s3_version_id": "TkRmaIZmO9thaKgcvO_ENAqXczAgOkLo"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "creation_event_verified": true,
+  "export_manifest_sha256": "72e3734903c2f6f27553a9db8062975a5e8fa0af881f654a8aa04bbb67e98cf6",
+  "export_model_sha256": "74d5b084c75d82702ce3d442cf854fe6a990e91c894508221a1b736e5168841a",
+  "failures": [],
+  "launch_principal": null,
+  "metrics_sha256": "46e1c3796ea9086bc0d89f09350b47076dfd94e44429eb79e6a2eda5e0e82c06",
+  "mode": "live",
+  "model_artifacts_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-mech-kdctl-2026-002/output/medzen-b5-b5-universal-arm2-mech-kdctl-2026-002/output/model.tar.gz",
+  "packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-002.json",
+  "packet_canonical_sha256": "05d338f06fccfd912e69a479ecf69738a129b2180c249961fb3e275e1003f150",
+  "s3_bytes": 1548266396,
+  "s3_etag": "\"0cd62edce992d69929eb7f3e56e29ffe-185\"",
+  "s3_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_version_id": "TkRmaIZmO9thaKgcvO_ENAqXczAgOkLo",
+  "verdict": "PASS",
+  "verifier_script_sha256": "43a60c3d29e6bb4b00e25ccdd3a39af30be53b2eb0177ac9c96ea14d6e71fbe6"
+ },
+ "billable_seconds": 1229,
+ "calibration_bindings_sha256": "05d338f06fccfd912e69a479ecf69738a129b2180c249961fb3e275e1003f150",
+ "calibration_packet": "platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-SAGEMAKER-BINDINGS-2026-002.json",
+ "cost": {
+  "accrual_usd_padded_rate": 0.5462,
+  "billable_seconds": 1229
+ },
+ "dataset_complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
+ "dataset_version": "gb9",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
+ "export": {
+  "manifest_sha256": "72e3734903c2f6f27553a9db8062975a5e8fa0af881f654a8aa04bbb67e98cf6",
+  "model_sha256": "74d5b084c75d82702ce3d442cf854fe6a990e91c894508221a1b736e5168841a",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:5fd66aa814766943ecfb56e7b1e72cb2c3a33b70d9beba5d3291ef353e83d0fc",
+ "job": "medzen-b5-b5-universal-arm2-mech-kdctl-2026-002",
+ "job_id": "b5-universal-arm2-mech-kdctl-2026-002",
+ "record": "ARM2-MECH-KDCONTROL-2026-002-LAUNCH-RECEIPT",
+ "run_commit": "9ba8ef5bbec3a49013473ed99e3d74fbe46d5bbb",
+ "run_verifier_sha256": "43a60c3d29e6bb4b00e25ccdd3a39af30be53b2eb0177ac9c96ea14d6e71fbe6",
+ "scope": "MECHANICS RECEIPT (hardened image) for KDCONTROL attempt 2",
+ "terminal_status": "Completed",
+ "utc": "2026-08-26T21:03:06Z",
+ "verdict": "PASS"
+}
