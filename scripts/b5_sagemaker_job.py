@@ -1177,11 +1177,26 @@ def derive_live_artifact_facts(cal_packet: dict, workdir, session=None) -> dict:
     failures, facts = v2.verify_live_bundle(
         packet=cal_packet, receipt=receipt, extracted=extracted,
         s3_meta=s3_meta, verifier_script_sha=verifier_sha)
+    # Codex second review (2026-08-25) finding 5 / item 5: the calibration
+    # chain being re-verified may have been launched via the DOCUMENTED
+    # below-tier local route (the owner's exact IAM user) or the calibration
+    # workflow role — scope the expectation by the cal packet's own tier
+    # instead of hardcoding the workflow role.
+    _cal_wc = (float(cal_packet.get("max_runtime_seconds")) / 3600.0
+               * ON_DEMAND_USD_PER_HOUR[str(cal_packet.get("instance_type"))])
+    _cal_above = is_campaign_arm_job(cal_packet.get("environment") or {},
+                                     _cal_wc)
+    _expected = ((f"arn:aws:iam::{ACCOUNT}:role/"
+                  + expected_arm_launch_role(cal_packet.get("environment")
+                                             or {}),)
+                 if _cal_above else
+                 (v2.CALIBRATION_LAUNCH_ROLE_ARN,
+                  v2.OWNER_LOCAL_PRINCIPAL_ARN))
     failures = list(failures) + v2.verify_creation_event(
         creation_event, render_request(cal_packet),
         expected_job_name=f"medzen-b5-{cal_packet['job_id']}",
         expected_job_arn=str(receipt.get("TrainingJobArn") or ""),
-        expected_principal_role_arn=v2.CALIBRATION_LAUNCH_ROLE_ARN)
+        expected_principal_role_arn=_expected)
     if failures:
         raise JobRefusal(
             "the authoritative live re-verification of the calibration "
@@ -1444,23 +1459,37 @@ def assert_committed_profile(bindings: dict, root: Path, oid: str) -> None:
 EXECUTOR_ENV = "MEDZEN_EXECUTOR"
 PROTECTED_EXECUTOR = "github-protected-workflow"
 ARM_LAUNCH_ROLE = "medzen-arm-launch-role"
+# Codex second review (2026-08-25) finding 2: Arm-2 comparative campaign jobs
+# launch as the DEDICATED stage-1 role (arm2-stage1-launch-exec.yml); the
+# legacy arm-launch role remains only for non-comparative (Arm-1) arm jobs.
+STAGE1_LAUNCH_ROLE = "medzen-arm2-stage1-launch-role"
 
 
-def assert_launch_identity(arn: str, above_tier: bool) -> None:
+def expected_arm_launch_role(environment: dict) -> str:
+    """The above-tier launch role, by job class."""
+    return (STAGE1_LAUNCH_ROLE if is_arm2_comparative(environment)
+            else ARM_LAUNCH_ROLE)
+
+
+def assert_launch_identity(arn: str, above_tier: bool,
+                           environment: dict | None = None) -> None:
     """Codex review #25 finding 5: the launcher only checked the account
     number, so forged executor variables under LOCAL credentials would
     have sailed past the identity check. Above-tier launches must run as
-    an assumed session of the DEDICATED arm-launch role — local users
-    and the general CI role refuse."""
+    an assumed session of the DEDICATED launch role for the job class
+    (Codex second review 2026-08-25 finding 2: Arm-2 comparative campaign
+    jobs use the stage-1 role; legacy arm jobs keep the arm-launch role) —
+    local users and the general CI role refuse."""
     if not above_tier:
         return
-    prefix = f"arn:aws:sts::{ACCOUNT}:assumed-role/{ARM_LAUNCH_ROLE}/"
+    role = expected_arm_launch_role(environment or {})
+    prefix = f"arn:aws:sts::{ACCOUNT}:assumed-role/{role}/"
     if not str(arn or "").startswith(prefix):
         raise JobRefusal(
-            f"above-tier launches must run as {ARM_LAUNCH_ROLE} (the "
-            f"protected workflow's dedicated role); caller is {arn!r} — "
-            "forged executor variables under other credentials refuse "
-            "(Codex review #25)")
+            f"above-tier launches must run as {role} (the protected "
+            f"workflow's dedicated role for this job class); caller is "
+            f"{arn!r} — forged executor variables under other credentials "
+            "refuse (Codex review #25)")
 
 
 def main() -> int:
@@ -1542,7 +1571,8 @@ def main() -> int:
             raise JobRefusal(
                 f"effective AWS account is {identity.get('Account')!r}, "
                 f"not the MedZen account {ACCOUNT} — refusing to launch")
-        assert_launch_identity(identity.get("Arn"), above_tier)
+        assert_launch_identity(identity.get("Arn"), above_tier,
+                               bindings.get("environment") or {})
         if receipt_record is not None:
             verify_receipt_against_aws(receipt_record, cal_packet,
                                        session.client("sagemaker"),

@@ -1,0 +1,86 @@
+{
+ "bootstrap": {
+  "B": 10000,
+  "law": "paired cluster bootstrap: ONE resample plan per surface (random.Random(sha256(master_seed:surface)[:8])) applied to EVERY arm",
+  "master_seed": 20260825
+ },
+ "candidate_alphas_note": "kd alphas are READ FROM the pinned candidate packets' distillation.kd_alpha at scoring time \u2014 never CLI-supplied",
+ "candidate_packets": {
+  "H1": {
+   "canonical_sha256": "3c74866c0746cdf537cfdd64699885800f46022de7d50dc41494d92eb5463ee8",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H1-SAGEMAKER-BINDINGS-2026-001.json",
+   "sha256": "1b09064ecbc0297fc29f8e832493333fb505f9f97743d69debd0afdbd926ec70"
+  },
+  "H2": {
+   "canonical_sha256": "b7c6ebe16cd35fa77820143459e07df0eb6211a009af491118be52fb6a0bafe7",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H2-SAGEMAKER-BINDINGS-2026-001.json",
+   "sha256": "33401ec350dabb3ff544c846d0267cd6f77a64c4caeadf76a93da1c19a6c9242"
+  },
+  "H3": {
+   "canonical_sha256": "ac439ecbd75885bdcb6a8352567c5a1b99c0ddd6ae153601eb25754095a1abc7",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H3-SAGEMAKER-BINDINGS-2026-001.json",
+   "sha256": "eda7c806138ca8b7a8599d13a535bb9241c7b945ecb850425f30d0231a3730dc"
+  },
+  "H4": {
+   "canonical_sha256": "9e03feb484af7e7744e595982c64d8ec49665cf4ce362b1862a2dd8882a2c02e",
+   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H4-SAGEMAKER-BINDINGS-2026-001.json",
+   "sha256": "8de825ce9c43fc35ff37afca71d7dfc2ec55f00116b8f6947e61e4ccab850669"
+  }
+ },
+ "clusters": {
+  "path": "platform/manifests/arm2-scoring/clusters.json",
+  "rule": "FROZEN placeholder rule: speaker ids ending '_fleurs' are pool-level placeholders -> those rows cluster by ROW; all other rows cluster by real speaker_id (english 451 / french 470 / pidgin 25 / swahili 325 clusters). Veto surfaces always cluster by row.",
+  "sha256": "8e4ddf7f7eea52720e2ab297c61854040ddd49ce875c496babb41e285d418339"
+ },
+ "margins": {
+  "family_alpha": 0.05,
+  "noninferiority_abs_wer": 0.005,
+  "veto_abs_wer": 0.01
+ },
+ "metric": "WER = sum(edit_distance)/sum(ref_words); edit_distance = word-level Levenshtein on whitespace tokens of (pinned reference text_normalized, receipt hyp_normalized), RECOMPUTED by the scorer \u2014 caller-supplied edit counts REFUSE",
+ "note": "if the stage-1 packets are revised before launch (e.g. the 13,200 s cap repin), candidate_packets pins here are refreshed in the SAME commit \u2014 the scorer refuses any drift",
+ "purpose": "FROZEN pre-results scoring packet (Codex second review 2026-08-25 finding 5): pins EVERY input of the nomination decision so no scoring choice can be made after candidate results exist. Consumed exclusively by scripts/arm2_nomination_scorer.py.",
+ "receipt_schema": {
+  "authentication": "every receipts file's model_sha256 must equal the arm's entry in the --arm-models map, which must carry the export model_sha256 from each arm's completion receipt; rows must cover each scored surface exactly (no partial scoring)",
+  "file": "{job_name, model_sha256, packet_canonical_sha256, rows:[{audio_checksum_sha256, hyp_normalized}]}"
+ },
+ "record": "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001",
+ "references": {
+  "english": {
+   "path": "platform/manifests/arm2-scoring/references-english.jsonl",
+   "sha256": "a1193a4c05bce162758d67c34ca79c2935ce1d2a6a7f714cb042e66ccd833c86"
+  },
+  "ewe": {
+   "path": "platform/manifests/arm2-scoring/references-ewe.jsonl",
+   "sha256": "f3d4267aebafe8467026221301df20e1bd0eff8bc90cbbea98a6430bcbc807ec"
+  },
+  "french": {
+   "path": "platform/manifests/arm2-scoring/references-french.jsonl",
+   "sha256": "a2966be273d4461622c9e6ebb87e57743b42c2b13bad248d70e7e21c8bee3505"
+  },
+  "kinyarwanda": {
+   "path": "platform/manifests/arm2-scoring/references-kinyarwanda.jsonl",
+   "sha256": "081e28f1370f8a8d9dfec032ae6d262c3dd9501314e9020855d67aa4e379b355"
+  },
+  "lingala": {
+   "path": "platform/manifests/arm2-scoring/references-lingala.jsonl",
+   "sha256": "4c70896d66756f9cf1f12e5323d1e786fbf263ea07f1514357705a8f58daaa8d"
+  },
+  "pidgin": {
+   "path": "platform/manifests/arm2-scoring/references-pidgin.jsonl",
+   "sha256": "eb7e5331937da79193867ce4c556fbcd1186a642390a4bc47429c14159c297b7"
+  },
+  "swahili": {
+   "path": "platform/manifests/arm2-scoring/references-swahili.jsonl",
+   "sha256": "41cae8b2ea6222fd781d339ba42f86bad1b55b74e628651fb8212572eadac3ad"
+  }
+ },
+ "references_provenance": "nomination-language references extracted from the exposure-index-pinned eval-dev pool manifests (fetched by exact S3 VersionId, sha-verified against the index pins) filtered to EXACTLY the frozen split identities; veto references copied verbatim from the committed B5-ARM1-LINGALA-SENTINEL-2026-001 rows (386) and the B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001 kinyarwanda/ewe rows (60+60)",
+ "split": {
+  "note": "the FROZEN minted nomination split (artifact sha == the attested mint output)",
+  "path": "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json",
+  "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
+ },
+ "stage_chain": "stage2 CONSUMES the committed stage-1 decision JSON (path + sha256) and DERIVES the finalist from decision.provisional_finalist; a caller-chosen finalist refuses; stage2 runs only after outcome PROVISIONAL_FINALIST",
+ "utc": "2026-08-26T00:46:36Z"
+}

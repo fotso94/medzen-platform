@@ -105,8 +105,8 @@
  },
  "cost_runtime_table": {
   "cumulative_expected_usd": 57.81,
-  "cumulative_worst_case_usd": 67.2,
-  "instance": "ml.g6.xlarge on-demand (never spot); padded rate $1.60/h; measured 30-step calibration = 1228 billable s (fixed overhead ~1073 s + ~5.18 s/step)",
+  "cumulative_worst_case_usd": 69.63,
+  "instance": "ml.g6.xlarge on-demand (never spot); padded rate $1.60/h; measured 30-step calibration = 1228 billable s; HASH-VERIFIED benchmark metrics: 160.9608 s train time / 30 steps = 5.365 s/step -> 2000-step projection ~11,799 s; the 13,200 s cap carries ~11.9% margin (rev 008 \u2014 the earlier 5.18 s/step fit overstated margin at 12,600 s as 10.2%; true margin there was ~6.8%)",
   "jobs": [
    {
     "count": 1,
@@ -127,18 +127,18 @@
    {
     "count": 6,
     "expected_usd": 30.49,
-    "job": "6 fresh training runs (@ 2000 steps, seed 1)",
-    "max_runtime_s": 12600,
-    "worst_case_usd": 33.6,
-    "worst_case_usd_each": 5.6
+    "job": "6 fresh training runs (@ 2000 steps, seed 1) [rev 008: cap 13,200 s from the hash-verified benchmark metrics]",
+    "max_runtime_s": 13200,
+    "worst_case_usd": 35.22,
+    "worst_case_usd_each": 5.87
    },
    {
     "count": 3,
     "expected_usd": 15.24,
     "job": "3 second-seed runs (finalist + H0 + KD_CONTROL @ 2000 steps, seed 2)",
-    "max_runtime_s": 12600,
-    "worst_case_usd": 16.8,
-    "worst_case_usd_each": 5.6
+    "max_runtime_s": 13200,
+    "worst_case_usd": 17.61,
+    "worst_case_usd_each": 5.87
    },
    {
     "count": 1,
@@ -243,7 +243,7 @@
  },
  "purpose": "An UNSEALED, directional HELD-OUT DEVELOPMENT NOMINATION: compare KD candidate recipes against a matched KD-disabled control and the mechanics-proven anchor, to nominate at most one recipe to carry into a future full-Arm-2 training request. It is NOT a confirmation and touches no sealed data.",
  "record": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
- "revision": "007 (design re-review 6, narrow): added the three Kinyarwanda cv17 eval identities (dev-selection 1642 / universal-sealed 1642 / quarantined-sealed 3373) + a real GB3 content digest to the machine-derived index, all read from the authoritative records; made HOLM rejection the SOLE positive gate (struck the false 'raw 95% CI == Holm p<=0.05' equivalence; raw CIs are descriptive-only) with an executable gate scripts/arm2_holm.py; defined the exact seed-2/no-reversal rule. Design-only; no machinery; no compute; no sealed data.",
+ "revision": "008 (second review 2026-08-25 finding 6: stage-1 run caps FINALIZED from the hash-verified benchmark metrics \u2014 5.365 s/step measured -> 12,600 s carried only ~6.8% margin; caps raised to 13,200 s = $5.87 worst each, cumulative worst recomputed and still under the $70 fail-closed ceiling). Prior: 007 (design re-review 6, narrow): added the three Kinyarwanda cv17 eval identities (dev-selection 1642 / universal-sealed 1642 / quarantined-sealed 3373) + a real GB3 content digest to the machine-derived index, all read from the authoritative records; made HOLM rejection the SOLE positive gate (struck the false 'raw 95% CI == Holm p<=0.05' equivalence; raw CIs are descriptive-only) with an executable gate scripts/arm2_holm.py; defined the exact seed-2/no-reversal rule. Design-only; no machinery; no compute; no sealed data.",
  "shared_wrapper_requirement": "BOTH modes MUST run pipeline.omniasr_calibrate so both emit identical serving-readyz / parity / dev-WER / authoritative receipts (post-approval implementation).",
  "statistical_procedure": {
   "H0_comparator_only": "H0 (mechanics-proven anchor) can NEVER be nominated; candidates must beat it, else NO_RECIPE_QUALIFIES",

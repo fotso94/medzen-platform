@@ -26,7 +26,7 @@
      "sagemaker:VpcSubnets": "false"
     },
     "NumericLessThanEquals": {
-     "sagemaker:MaxRuntimeInSeconds": "7200"
+     "sagemaker:MaxRuntimeInSeconds": "13200"
     },
     "StringEquals": {
      "aws:RequestTag/medzen-tier": "arm",
@@ -103,6 +103,36 @@
    "Effect": "Allow",
    "Resource": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
    "Sid": "DecryptWithTheCampaignKeyOnly"
+  },
+  {
+   "Action": "sagemaker:ListTags",
+   "Effect": "Allow",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-*",
+   "Sid": "ListTagsForTheChainVerification"
+  },
+  {
+   "Action": "s3:ListBucketVersions",
+   "Condition": {
+    "StringLike": {
+     "s3:prefix": [
+      "research/b5-training/b5-universal-arm2-mech-kdctl-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-h0-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-h1-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-h2-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-h3-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-h4-2026-001/output/*"
+     ]
+    }
+   },
+   "Effect": "Allow",
+   "Resource": "arn:aws:s3:::medzen-speech",
+   "Sid": "ListMechanicsArtifactVersionsForRehash"
+  },
+  {
+   "Action": "cloudtrail:LookupEvents",
+   "Effect": "Allow",
+   "Resource": "*",
+   "Sid": "LookupTheCreationEventForTheCreatorProof"
   }
  ],
  "Version": "2012-10-17"

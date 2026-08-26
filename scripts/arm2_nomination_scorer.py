@@ -1,37 +1,38 @@
-"""Arm-2 Phase-A nomination scorer — the COMPLETE executable decision pipeline
-(Codex stage-1 review 2026-08-25 finding 3: committed BEFORE any candidate
-results exist, so no implementation choice can be made after seeing results).
+"""Arm-2 Phase-A nomination scorer v2 — the COMPLETE executable decision
+pipeline, driven by ONE frozen, committed SCORING PACKET (Codex second-review
+2026-08-25 finding 5: v1 accepted caller-chosen splits/vetoes/clusters/alphas
+and caller-supplied edit counts; v2 authenticates every input).
 
-Single authority implemented: the `statistical_procedure` of
-platform/decisions/B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001.json
-(rev 007). This module binds together, with every input sha-pinned:
+Authority: statistical_procedure of
+platform/decisions/B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001.json.
 
-  - the FROZEN nomination split
-    (platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json,
-    artifact sha fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e)
-  - per-arm per-row edit-distance receipts for EVERY scored model
-    (base teacher, arm1, KD_CONTROL, H0, H1..H4 at Stage 1;
-     base, arm1, KD_CONTROL, H0 and the finalist at Stage 2)
-  - the three directional-veto surfaces (lingala 386-row sentinel;
-    kinyarwanda + ewe 60-row dev-selection slices)
-  - a speaker-cluster map for the nomination languages
-  - WER + paired cluster bootstrap (B >= 10000, one shared resample plan)
-  - the three safety vetoes (RAW upper CI, never Holm-relaxed)
-  - the Holm positive gate (scripts/arm2_holm.py) — Stage-1
-    candidate_qualifies over the COMPLETE 24-test family; Stage-2 qualifies()
-  - the deterministic tie-break and the NO_RECIPE_QUALIFIES terminal states
+What the frozen scoring packet
+(platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json)
+pins, and this scorer enforces:
 
-Determinism: the bootstrap uses `random.Random(derive_seed(master_seed,
-surface))` per language surface; the SAME cluster resample plan is applied to
-every arm (paired), so re-running with identical inputs reproduces the result
-byte-for-byte. No wall-clock, no environment reads.
+  - the FROZEN nomination split (path + artifact sha256)
+  - per-surface REFERENCE files (identity -> text_normalized [+ speaker_id]),
+    sha-pinned, committed, built from the exposure-index-pinned pool
+    manifests and the committed veto records BEFORE any candidate results
+  - the frozen CLUSTER map (placeholder-speaker rule applied pre-results)
+  - candidate KD alphas READ FROM the six committed stage-1 packets
+    (path + canonical sha pinned; never CLI-supplied)
+  - bootstrap settings (B >= 10000, master_seed) and both margins
+  - the receipt schema: per arm a JSON {job_name, model_sha256,
+    packet_canonical_sha256, rows: [{audio_checksum_sha256, hyp_normalized}]}.
+    Receipts carry HYPOTHESES ONLY — this scorer RECOMPUTES edit_distance and
+    ref_words from the hypothesis vs the PINNED reference (word-level
+    Levenshtein on whitespace tokens); caller-supplied edit counts REFUSE.
+  - the arm->model identity rule: at scoring time an --arm-models JSON maps
+    every arm to its REQUIRED export model_sha256 (from the arms' completion
+    receipts); every receipts file's model_sha256 must equal its arm's entry.
+  - the Stage-1 -> Stage-2 chain: stage2 takes the committed stage-1 RESULT
+    (path + sha256) and DERIVES the finalist from it; a caller-chosen
+    finalist is not an input.
 
-WER metric: sum(edit_distance) / sum(reference_words) per language, from the
-per-row receipts (absolute WER points).
-
-This scorer only COMPUTES the nomination decision; it launches nothing and
-holds no credentials. Sealed evaluation, promotion and deployment are outside
-its scope entirely.
+Determinism: random.Random(derive_seed(master_seed, surface)) per surface;
+ONE shared resample plan applied to every arm (paired). No wall-clock, no
+environment reads. This scorer launches nothing and holds no credentials.
 """
 from __future__ import annotations
 
@@ -43,30 +44,27 @@ from pathlib import Path
 
 from arm2_holm import candidate_qualifies, holm_reject, qualifies
 
-FROZEN_SPLIT_PATH = (
-    "platform/manifests/B5-UNIVERSAL-ARM2-NOMINATION-SPLIT-2026-001.json")
-FROZEN_SPLIT_SHA256 = (
-    "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e")
+SCORING_PACKET_PATH = (
+    "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json")
 
 NOMINATION_LANGUAGES = ("english", "french", "pidgin", "swahili")
-PRESERVATION_LANGUAGES = ("english", "french", "swahili")   # macro components
+PRESERVATION_LANGUAGES = ("english", "french", "swahili")
 VETO_SURFACES = ("lingala", "kinyarwanda", "ewe")
-# reference arm per veto surface (protocol safety_vetoes.statistic)
 VETO_REFERENCE = {"lingala": "base", "kinyarwanda": "arm1", "ewe": "arm1"}
 CANDIDATES = ("H1", "H2", "H3", "H4")
 COMPARATORS = ("base", "arm1", "KD_CONTROL", "H0")
-# fixed per-candidate test order inside every Holm family (predeclared)
 TEST_ORDER = ("preservation_english", "preservation_french",
               "preservation_swahili", "pidgin_retention",
               "beat_KD_CONTROL", "beat_H0")
-NONINF_MARGIN = 0.005          # +0.5pp non-inferiority margin
-VETO_MARGIN = 0.01             # +1.0pp raw veto margin
+NONINF_MARGIN = 0.005
+VETO_MARGIN = 0.01
 ALPHA = 0.05
 MIN_B = 10000
 
 
 class ScorerRefusal(SystemExit):
-    """Any malformed, incomplete or inconsistent input refuses loudly."""
+    """Any malformed, incomplete, unauthenticated or inconsistent input
+    refuses loudly."""
 
 
 def _sha256_bytes(raw: bytes) -> str:
@@ -74,118 +72,172 @@ def _sha256_bytes(raw: bytes) -> str:
 
 
 def derive_seed(master_seed: int, surface: str) -> int:
-    """Deterministic per-surface bootstrap seed: sha256(master:surface)."""
     digest = hashlib.sha256(f"{master_seed}:{surface}".encode()).digest()
     return int.from_bytes(digest[:8], "big")
 
 
+def word_edits(reference: str, hypothesis: str) -> tuple[int, int]:
+    """Word-level Levenshtein distance on whitespace tokens + the reference
+    word count — the packet-declared metric (recomputed here, never trusted
+    from a caller)."""
+    ref = reference.split()
+    hyp = hypothesis.split()
+    m, n = len(ref), len(hyp)
+    prev = list(range(n + 1))
+    for i in range(1, m + 1):
+        cur = [i] + [0] * n
+        for j in range(1, n + 1):
+            cost = 0 if ref[i - 1] == hyp[j - 1] else 1
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
+        prev = cur
+    return prev[n], m
+
+
 # --------------------------------------------------------------------------
-# input loading (everything sha-pinned + coverage-validated)
+# scoring-packet loading (every pin verified)
 # --------------------------------------------------------------------------
 
-def load_frozen_split(path: Path, expected_sha: str = FROZEN_SPLIT_SHA256
-                      ) -> dict[str, list[str]]:
-    raw = path.read_bytes()
+def _pinned_bytes(root: Path, pin: dict, what: str) -> bytes:
+    rel = str(pin.get("path") or "")
+    want = str(pin.get("sha256") or "")
+    if not rel or not want:
+        raise ScorerRefusal(f"scoring packet pins no {{path,sha256}} for {what}")
+    raw = (root / rel).read_bytes()
     actual = _sha256_bytes(raw)
-    if actual != expected_sha:
+    if actual != want:
         raise ScorerRefusal(
-            f"frozen split {path} hashes to {actual[:16]}, expected "
-            f"{expected_sha[:16]} — refusing a substituted split")
-    doc = json.loads(raw)
-    split = (doc.get("manifest") or {}).get("split") or {}
-    out: dict[str, list[str]] = {}
+            f"{what} {rel} hashes to {actual[:16]}, the scoring packet pins "
+            f"{want[:16]} — refusing a substituted input")
+    return raw
+
+
+def load_scoring_packet(root: Path, path: Path) -> dict:
+    raw = path.read_bytes()
+    packet = json.loads(raw)
+    if packet.get("record") != \
+            "B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001":
+        raise ScorerRefusal("not the Arm-2 nomination scoring packet")
+    cfg: dict = {"packet_sha256": _sha256_bytes(raw), "packet": packet}
+
+    # frozen split
+    split_doc = json.loads(_pinned_bytes(root, packet["split"], "frozen split"))
+    split = (split_doc.get("manifest") or {}).get("split") or {}
+    cfg["split"] = {}
     for language in NOMINATION_LANGUAGES:
         rows = split.get(language)
-        if not isinstance(rows, list) or not rows:
-            raise ScorerRefusal(f"frozen split has no rows for {language!r}")
-        if len(set(rows)) != len(rows):
-            raise ScorerRefusal(f"frozen split rows for {language!r} duplicate")
-        out[language] = [str(r) for r in rows]
-    return out
+        if not isinstance(rows, list) or not rows or len(set(rows)) != len(rows):
+            raise ScorerRefusal(f"frozen split rows for {language!r} invalid")
+        cfg["split"][language] = [str(r) for r in rows]
 
+    # per-surface references (nomination + veto)
+    cfg["references"] = {}
+    for surface in (*NOMINATION_LANGUAGES, *VETO_SURFACES):
+        raw_refs = _pinned_bytes(root, packet["references"][surface],
+                                 f"references[{surface}]")
+        refs: dict[str, str] = {}
+        for line in raw_refs.decode().splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            identity = str(row.get("audio_checksum_sha256") or "")
+            if len(identity) != 64 or identity in refs:
+                raise ScorerRefusal(
+                    f"references[{surface}]: malformed/duplicate identity")
+            refs[identity] = str(row.get("text_normalized") or "")
+        if not refs:
+            raise ScorerRefusal(f"references[{surface}] empty")
+        cfg["references"][surface] = refs
+    # nomination reference coverage must equal the split exactly
+    for language in NOMINATION_LANGUAGES:
+        if set(cfg["references"][language]) != set(cfg["split"][language]):
+            raise ScorerRefusal(
+                f"references[{language}] do not cover the frozen split exactly")
 
-def load_veto_surface(path: Path, *, expected_sha: str, language: str
-                      ) -> list[str]:
-    """A veto surface is a committed JSONL manifest; identity per row =
-    audio_checksum_sha256. The caller pins its sha."""
-    raw = path.read_bytes()
-    actual = _sha256_bytes(raw)
-    if actual != expected_sha:
+    # frozen cluster map
+    cl_doc = json.loads(_pinned_bytes(root, packet["clusters"], "cluster map"))
+    cfg["clusters"] = {str(k): str(v)
+                       for k, v in (cl_doc.get("clusters") or {}).items()}
+    for language in NOMINATION_LANGUAGES:
+        missing = [i for i in cfg["split"][language]
+                   if i not in cfg["clusters"]]
+        if missing:
+            raise ScorerRefusal(
+                f"cluster map misses {len(missing)} {language} rows")
+
+    # candidate alphas from the six committed stage-1 packets
+    cfg["alphas"] = {}
+    for candidate, pin in sorted((packet.get("candidate_packets") or {}).items()):
+        body = _pinned_bytes(root, pin, f"stage-1 packet[{candidate}]")
+        doc = json.loads(body)
+        canonical = hashlib.sha256(json.dumps(
+            doc, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        if canonical != str(pin.get("canonical_sha256") or ""):
+            raise ScorerRefusal(
+                f"stage-1 packet[{candidate}] canonical sha mismatch")
+        cfg["alphas"][candidate] = float(doc["distillation"]["kd_alpha"])
+    if set(cfg["alphas"]) != set(CANDIDATES):
         raise ScorerRefusal(
-            f"veto surface {path} ({language}) hashes to {actual[:16]}, "
-            f"expected {expected_sha[:16]}")
-    rows = []
-    for line in raw.decode().splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        identity = str(row.get("audio_checksum_sha256") or "")
-        if len(identity) != 64:
-            raise ScorerRefusal(f"veto row in {path} lacks a 64-hex identity")
-        rows.append(identity)
-    if not rows or len(set(rows)) != len(rows):
-        raise ScorerRefusal(f"veto surface {path} empty or duplicated")
-    return rows
+            f"scoring packet must pin exactly the candidate packets "
+            f"{CANDIDATES}; got {sorted(cfg['alphas'])}")
+
+    boot = packet.get("bootstrap") or {}
+    cfg["B"] = int(boot.get("B") or 0)
+    cfg["master_seed"] = int(boot.get("master_seed") or 0)
+    if cfg["B"] < MIN_B:
+        raise ScorerRefusal(f"scoring packet B={cfg['B']} < {MIN_B}")
+    if not cfg["master_seed"]:
+        raise ScorerRefusal("scoring packet lacks a master_seed")
+    return cfg
 
 
-def load_receipts(path: Path) -> tuple[dict[str, tuple[int, int]], str]:
-    """One arm's per-row receipts: JSON {rows: [{audio_checksum_sha256,
-    edit_distance, ref_words}, ...]} (language-agnostic — coverage is checked
-    against each surface). Returns ({identity: (edits, ref_words)}, sha256)."""
+# --------------------------------------------------------------------------
+# authenticated receipts
+# --------------------------------------------------------------------------
+
+def load_receipts(path: Path, *, arm: str,
+                  expected_model_sha: str) -> tuple[dict[str, str], str]:
+    """One arm's hypothesis receipts. Returns ({identity: hyp_normalized},
+    file sha). REFUSES caller-supplied edit counts and identity mismatches."""
     raw = path.read_bytes()
     doc = json.loads(raw)
-    rows = doc.get("rows")
-    if not isinstance(rows, list) or not rows:
-        raise ScorerRefusal(f"receipts {path} carry no rows")
-    out: dict[str, tuple[int, int]] = {}
-    for row in rows:
+    for key in ("job_name", "model_sha256", "packet_canonical_sha256", "rows"):
+        if not doc.get(key):
+            raise ScorerRefusal(f"receipts[{arm}] lack {key!r}")
+    if str(doc["model_sha256"]) != expected_model_sha:
+        raise ScorerRefusal(
+            f"receipts[{arm}] declare model {str(doc['model_sha256'])[:16]} "
+            f"but the arm-model binding requires {expected_model_sha[:16]} — "
+            "refusing hypotheses from an unproven model")
+    out: dict[str, str] = {}
+    for row in doc["rows"]:
+        if "edit_distance" in row or "ref_words" in row:
+            raise ScorerRefusal(
+                f"receipts[{arm}] carry caller-supplied edit counts — the "
+                "scorer RECOMPUTES from hypotheses; precomputed numbers refuse")
         identity = str(row.get("audio_checksum_sha256") or "")
-        if len(identity) != 64:
-            raise ScorerRefusal(f"receipts {path}: malformed identity")
-        if identity in out:
-            raise ScorerRefusal(f"receipts {path}: duplicate row {identity[:12]}")
-        edits = row.get("edit_distance")
-        words = row.get("ref_words")
-        if not isinstance(edits, int) or isinstance(edits, bool) or edits < 0:
-            raise ScorerRefusal(f"receipts {path}: bad edit_distance {edits!r}")
-        if not isinstance(words, int) or isinstance(words, bool) or words < 0:
-            raise ScorerRefusal(f"receipts {path}: bad ref_words {words!r}")
-        out[identity] = (edits, words)
+        if len(identity) != 64 or identity in out:
+            raise ScorerRefusal(f"receipts[{arm}]: malformed/duplicate row")
+        if "hyp_normalized" not in row:
+            raise ScorerRefusal(f"receipts[{arm}]: row lacks hyp_normalized")
+        out[identity] = str(row["hyp_normalized"])
     return out, _sha256_bytes(raw)
 
 
-def load_cluster_map(path: Path) -> tuple[dict[str, str], str]:
-    """{audio_checksum_sha256: cluster_id} for the nomination languages
-    (speaker clustering). Veto surfaces NEVER use this — they cluster by row
-    (protocol safety_vetoes.statistic)."""
-    raw = path.read_bytes()
-    doc = json.loads(raw)
-    mapping = doc.get("clusters")
-    if not isinstance(mapping, dict) or not mapping:
-        raise ScorerRefusal(f"cluster map {path} carries no clusters")
-    out = {}
-    for identity, cluster in mapping.items():
-        if len(str(identity)) != 64 or not str(cluster).strip():
-            raise ScorerRefusal(f"cluster map {path}: malformed entry")
-        out[str(identity)] = str(cluster)
-    return out, _sha256_bytes(raw)
-
-
-def surface_rows(identities: list[str], receipts: dict[str, tuple[int, int]],
-                 *, arm: str, surface: str) -> list[tuple[int, int]]:
-    """Exact-coverage extraction: every surface identity must be scored by the
-    arm exactly once; missing rows refuse (a partial score cannot gate)."""
-    missing = [i for i in identities if i not in receipts]
+def surface_rows(identities: list[str], hyps: dict[str, str],
+                 refs: dict[str, str], *, arm: str, surface: str
+                 ) -> list[tuple[int, int]]:
+    """Exact coverage + RECOMPUTED (edits, ref_words) per row."""
+    missing = [i for i in identities if i not in hyps]
     if missing:
         raise ScorerRefusal(
             f"arm {arm!r} receipts are missing {len(missing)} row(s) of the "
             f"{surface!r} surface (first: {missing[0][:12]}) — refusing a "
             "partial scoring")
-    return [receipts[i] for i in identities]
+    return [word_edits(refs[i], hyps[i]) for i in identities]
 
 
 # --------------------------------------------------------------------------
-# WER + paired cluster bootstrap
+# WER + paired cluster bootstrap (unchanged core)
 # --------------------------------------------------------------------------
 
 def corpus_wer(rows: list[tuple[int, int]]) -> float:
@@ -198,8 +250,6 @@ def corpus_wer(rows: list[tuple[int, int]]) -> float:
 
 def build_clusters(identities: list[str], cluster_map: dict[str, str] | None
                    ) -> list[list[int]]:
-    """Group surface row INDICES into clusters. cluster_map None => row-level
-    (each row its own cluster: the veto surfaces + placeholder pools)."""
     if cluster_map is None:
         return [[i] for i in range(len(identities))]
     grouped: dict[str, list[int]] = {}
@@ -207,16 +257,12 @@ def build_clusters(identities: list[str], cluster_map: dict[str, str] | None
         cluster = cluster_map.get(identity)
         if cluster is None:
             raise ScorerRefusal(
-                f"identity {identity[:12]} has no speaker cluster — the "
-                "cluster map must cover every nomination row")
+                f"identity {identity[:12]} has no cluster assignment")
         grouped.setdefault(cluster, []).append(index)
     return [grouped[k] for k in sorted(grouped)]
 
 
 def resample_plan(n_clusters: int, B: int, seed: int) -> list[list[int]]:
-    """The SHARED plan: B resamples of n_clusters cluster-indices drawn with
-    replacement. Applying ONE plan to every arm is what makes the bootstrap
-    PAIRED (identical resampled clusters across compared arms)."""
     rng = random.Random(seed)
     return [[rng.randrange(n_clusters) for _ in range(n_clusters)]
             for _ in range(B)]
@@ -225,8 +271,6 @@ def resample_plan(n_clusters: int, B: int, seed: int) -> list[list[int]]:
 def bootstrap_wers(rows_by_arm: dict[str, list[tuple[int, int]]],
                    clusters: list[list[int]], plan: list[list[int]]
                    ) -> dict[str, list[float]]:
-    """WER_b per arm under the shared plan. Precomputes per-cluster (edits,
-    words) so each resample is a simple sum."""
     per_cluster: dict[str, list[tuple[int, int]]] = {}
     for arm, rows in rows_by_arm.items():
         per_cluster[arm] = [
@@ -243,14 +287,11 @@ def bootstrap_wers(rows_by_arm: dict[str, list[tuple[int, int]]],
 
 def one_sided_p_and_ci(samples: list[float], *, direction: str,
                        threshold: float) -> dict:
-    """direction 'ge': p = mean[ x >= threshold ], CI = 95th pct (upper);
-    direction 'le': p = mean[ x <= threshold ], CI = 5th pct (lower)."""
     n = len(samples)
     ordered = sorted(samples)
     if direction == "ge":
         p = sum(1 for x in samples if x >= threshold) / n
-        ci = ordered[min(n - 1, int(0.95 * n))]
-        return {"p": p, "upper_ci95": ci}
+        return {"p": p, "upper_ci95": ordered[min(n - 1, int(0.95 * n))]}
     if direction == "le":
         p = sum(1 for x in samples if x <= threshold) / n
         ci = ordered[max(0, int(0.05 * n) - 1)] if n >= 20 else ordered[0]
@@ -259,13 +300,10 @@ def one_sided_p_and_ci(samples: list[float], *, direction: str,
 
 
 # --------------------------------------------------------------------------
-# the decision pipeline
+# the decision pipeline (identical statistics to v1)
 # --------------------------------------------------------------------------
 
-def candidate_tests(candidate: str, wers: dict[str, dict[str, list[float]]]
-                    ) -> dict[str, dict]:
-    """The six positive tests for one candidate, in TEST_ORDER, from the
-    per-surface paired bootstrap samples `wers[surface][arm][b]`."""
+def candidate_tests(candidate: str, wers) -> dict[str, dict]:
     tests: dict[str, dict] = {}
     for language in PRESERVATION_LANGUAGES:
         cand = wers[language][candidate]
@@ -291,11 +329,7 @@ def candidate_tests(candidate: str, wers: dict[str, dict[str, list[float]]]
     return tests
 
 
-def candidate_vetoes(candidate: str,
-                     veto_wers: dict[str, dict[str, list[float]]]
-                     ) -> dict[str, dict]:
-    """The three RAW safety vetoes (never Holm-relaxed): upper_CI95 of
-    (cand - reference) > 0.01 => VETO."""
+def candidate_vetoes(candidate: str, veto_wers) -> dict[str, dict]:
     out: dict[str, dict] = {}
     for surface in VETO_SURFACES:
         reference = VETO_REFERENCE[surface]
@@ -311,11 +345,9 @@ def candidate_vetoes(candidate: str,
 
 
 def stage1_decision(wers, veto_wers, *, alphas: dict[str, float]) -> dict:
-    """The complete Stage-1 decision: 24-test Holm family + raw vetoes +
-    deterministic tie-break, or NO_RECIPE_QUALIFIES."""
     family: list[float] = []
     per_candidate: dict[str, dict] = {}
-    for candidate in CANDIDATES:            # fixed, predeclared family order
+    for candidate in CANDIDATES:
         tests = candidate_tests(candidate, wers)
         vetoes = candidate_vetoes(candidate, veto_wers)
         per_candidate[candidate] = {"tests": tests, "vetoes": vetoes}
@@ -343,9 +375,7 @@ def stage1_decision(wers, veto_wers, *, alphas: dict[str, float]) -> dict:
     if not qualifiers:
         decision["outcome"] = "NO_RECIPE_QUALIFIES"
         return decision
-    # tie-break (protocol stage_1_provisional.tie_break_seed1_only):
-    # (1) lowest seed-1 preservation macro point WER; (2) lowest KD alpha;
-    # (3) lexicographically smallest recipe id. Seed-2 is NEVER consulted.
+
     def macro_point(candidate: str) -> float:
         return sum(wers[lang][candidate + "__point"][0]
                    for lang in PRESERVATION_LANGUAGES) / 3.0
@@ -360,9 +390,6 @@ def stage1_decision(wers, veto_wers, *, alphas: dict[str, float]) -> dict:
 
 
 def stage2_decision(finalist: str, wers, veto_wers) -> dict:
-    """Stage-2 replication: the finalist's 6 tests ARE the whole family
-    (fresh Holm, NOT re-corrected against Stage 1) + raw vetoes. ANY failure
-    => NO_RECIPE_QUALIFIES (no fallback to a runner-up)."""
     tests = candidate_tests(finalist, wers)
     vetoes = candidate_vetoes(finalist, veto_wers)
     family = [tests[name]["p"] for name in TEST_ORDER]
@@ -383,122 +410,129 @@ def stage2_decision(finalist: str, wers, veto_wers) -> dict:
 # orchestration
 # --------------------------------------------------------------------------
 
-def score_stage(*, stage: int, split: dict[str, list[str]],
-                veto_surfaces: dict[str, list[str]],
-                receipts: dict[str, dict[str, tuple[int, int]]],
-                cluster_map: dict[str, str], B: int, master_seed: int,
-                alphas: dict[str, float], finalist: str | None = None) -> dict:
-    """Assemble every surface's paired bootstrap and run the stage decision.
-    `receipts` maps arm name -> {identity: (edits, ref_words)}."""
-    if B < MIN_B:
-        raise ScorerRefusal(f"B={B} < the protocol minimum {MIN_B}")
-    arms = (["base", "arm1", "KD_CONTROL", "H0"]
+def score_stage(*, stage: int, cfg: dict,
+                hyps_by_arm: dict[str, dict[str, str]],
+                finalist: str | None = None) -> dict:
+    arms = (list(COMPARATORS)
             + (list(CANDIDATES) if stage == 1 else [str(finalist)]))
-    missing_arms = [a for a in arms if a not in receipts]
+    missing_arms = [a for a in arms if a not in hyps_by_arm]
     if missing_arms:
         raise ScorerRefusal(f"receipts missing for arms {missing_arms}")
+    B, seed = cfg["B"], cfg["master_seed"]
     wers: dict[str, dict[str, list[float]]] = {}
     for language in NOMINATION_LANGUAGES:
-        identities = split[language]
-        clusters = build_clusters(identities, cluster_map)
+        identities = cfg["split"][language]
+        refs = cfg["references"][language]
+        clusters = build_clusters(identities, cfg["clusters"])
         plan = resample_plan(len(clusters), B,
-                             derive_seed(master_seed, f"nom:{language}"))
-        rows_by_arm = {arm: surface_rows(identities, receipts[arm],
+                             derive_seed(seed, f"nom:{language}"))
+        rows_by_arm = {arm: surface_rows(identities, hyps_by_arm[arm], refs,
                                          arm=arm, surface=language)
                        for arm in arms}
         wers[language] = bootstrap_wers(rows_by_arm, clusters, plan)
-        for arm in arms:            # point estimates for the tie-break
+        for arm in arms:
             wers[language][arm + "__point"] = [corpus_wer(rows_by_arm[arm])]
     veto_wers: dict[str, dict[str, list[float]]] = {}
     for surface in VETO_SURFACES:
-        identities = veto_surfaces[surface]
+        refs = cfg["references"][surface]
+        identities = sorted(refs)
         clusters = build_clusters(identities, None)      # ROW-level, always
         plan = resample_plan(len(clusters), B,
-                             derive_seed(master_seed, f"veto:{surface}"))
+                             derive_seed(seed, f"veto:{surface}"))
         needed = ([VETO_REFERENCE[surface]]
                   + (list(CANDIDATES) if stage == 1 else [str(finalist)]))
-        rows_by_arm = {arm: surface_rows(identities, receipts[arm],
+        rows_by_arm = {arm: surface_rows(identities, hyps_by_arm[arm], refs,
                                          arm=arm, surface=surface)
                        for arm in needed}
         veto_wers[surface] = bootstrap_wers(rows_by_arm, clusters, plan)
     if stage == 1:
-        return stage1_decision(wers, veto_wers, alphas=alphas)
+        return stage1_decision(wers, veto_wers, alphas=cfg["alphas"])
     return stage2_decision(str(finalist), wers, veto_wers)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("stage1", "stage2"))
-    parser.add_argument("--split", type=Path, default=Path(FROZEN_SPLIT_PATH))
-    parser.add_argument("--split-sha256", default=FROZEN_SPLIT_SHA256)
-    parser.add_argument("--clusters", type=Path, required=True,
-                        help="speaker cluster map for the nomination rows")
-    parser.add_argument("--veto-surface", action="append", default=[],
-                        metavar="LANG=PATH:SHA256", required=True,
-                        help="one per veto language (lingala/kinyarwanda/ewe)")
+    parser.add_argument("--scoring-packet", type=Path,
+                        default=Path(SCORING_PACKET_PATH))
+    parser.add_argument("--arm-models", type=Path, required=True,
+                        help="JSON {arm: export model_sha256} from the arms' "
+                             "completion receipts; every receipts file's "
+                             "model_sha256 must match its arm's entry")
     parser.add_argument("--receipts", action="append", default=[],
                         metavar="ARM=PATH", required=True)
-    parser.add_argument("--kd-alpha", action="append", default=[],
-                        metavar="CANDIDATE=ALPHA",
-                        help="tie-break alphas (stage1; from the packets)")
-    parser.add_argument("--finalist", default=None)
-    parser.add_argument("--B", type=int, default=MIN_B)
-    parser.add_argument("--seed", type=int, required=True)
+    parser.add_argument("--stage1-result", type=Path, default=None,
+                        help="stage2: the committed stage-1 decision JSON")
+    parser.add_argument("--stage1-result-sha256", default=None)
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args(argv)
 
-    split = load_frozen_split(args.split, args.split_sha256)
-    vetoes: dict[str, list[str]] = {}
-    for spec in args.veto_surface:
-        lang, _, rest = spec.partition("=")
-        path, _, sha = rest.rpartition(":")
-        if lang not in VETO_SURFACES:
-            raise ScorerRefusal(f"unknown veto surface {lang!r}")
-        vetoes[lang] = load_veto_surface(Path(path), expected_sha=sha,
-                                         language=lang)
-    if set(vetoes) != set(VETO_SURFACES):
-        raise ScorerRefusal(f"veto surfaces incomplete: have {sorted(vetoes)}")
-    receipts: dict[str, dict[str, tuple[int, int]]] = {}
+    if args.stage == "stage2" and (args.stage1_result is None
+                                   or not args.stage1_result_sha256):
+        raise ScorerRefusal(
+            "stage2 requires --stage1-result + --stage1-result-sha256 — "
+            "the finalist is DERIVED from the Stage-1 decision, never "
+            "caller-chosen")
+
+    root = Path(__file__).resolve().parents[1]
+    cfg = load_scoring_packet(root, args.scoring_packet)
+
+    models_raw = args.arm_models.read_bytes()
+    arm_models = {str(k): str(v)
+                  for k, v in json.loads(models_raw).items()}
+
+    finalist = None
+    if args.stage == "stage2":
+        if args.stage1_result is None or not args.stage1_result_sha256:
+            raise ScorerRefusal(
+                "stage2 requires --stage1-result + --stage1-result-sha256 — "
+                "the finalist is DERIVED from the Stage-1 decision, never "
+                "caller-chosen")
+        s1_raw = args.stage1_result.read_bytes()
+        if _sha256_bytes(s1_raw) != args.stage1_result_sha256:
+            raise ScorerRefusal("stage-1 result sha mismatch")
+        s1 = json.loads(s1_raw)
+        decision = (s1.get("decision") or {})
+        if decision.get("outcome") != "PROVISIONAL_FINALIST":
+            raise ScorerRefusal(
+                f"stage-1 outcome is {decision.get('outcome')!r} — stage2 "
+                "runs only after a PROVISIONAL_FINALIST")
+        finalist = str(decision.get("provisional_finalist"))
+        if finalist not in CANDIDATES:
+            raise ScorerRefusal(f"stage-1 finalist {finalist!r} invalid")
+
+    hyps_by_arm: dict[str, dict[str, str]] = {}
     receipt_shas: dict[str, str] = {}
     for spec in args.receipts:
         arm, _, path = spec.partition("=")
-        if arm in receipts:
+        if arm in hyps_by_arm:
             raise ScorerRefusal(f"duplicate receipts for arm {arm!r}")
-        receipts[arm], receipt_shas[arm] = load_receipts(Path(path))
-    cluster_map, cluster_sha = load_cluster_map(args.clusters)
-    alphas: dict[str, float] = {}
-    for spec in args.kd_alpha:
-        cand, _, value = spec.partition("=")
-        alphas[cand] = float(value)
-    if args.stage == "stage1" and set(alphas) != set(CANDIDATES):
-        raise ScorerRefusal(
-            f"stage1 tie-break needs --kd-alpha for all of {CANDIDATES}")
-    if args.stage == "stage2" and not args.finalist:
-        raise ScorerRefusal("stage2 requires --finalist")
+        if arm not in arm_models:
+            raise ScorerRefusal(f"--arm-models lacks an entry for {arm!r}")
+        hyps_by_arm[arm], receipt_shas[arm] = load_receipts(
+            Path(path), arm=arm, expected_model_sha=arm_models[arm])
 
-    decision = score_stage(
-        stage=1 if args.stage == "stage1" else 2, split=split,
-        veto_surfaces=vetoes, receipts=receipts, cluster_map=cluster_map,
-        B=args.B, master_seed=args.seed, alphas=alphas,
-        finalist=args.finalist)
+    decision = score_stage(stage=1 if args.stage == "stage1" else 2,
+                           cfg=cfg, hyps_by_arm=hyps_by_arm,
+                           finalist=finalist)
     result = {
         "record": f"B5-UNIVERSAL-ARM2-NOMINATION-{args.stage.upper()}-DECISION",
         "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
         "inputs": {
-            "split": str(args.split), "split_sha256": args.split_sha256,
-            "clusters_sha256": cluster_sha,
+            "scoring_packet": str(args.scoring_packet),
+            "scoring_packet_sha256": cfg["packet_sha256"],
+            "arm_models_sha256": _sha256_bytes(models_raw),
             "receipts_sha256": receipt_shas,
-            "veto_surfaces": args.veto_surface,
-            "B": args.B, "master_seed": args.seed, "alpha": ALPHA,
-            "noninferiority_margin": NONINF_MARGIN,
+            "stage1_result_sha256": args.stage1_result_sha256,
+            "B": cfg["B"], "master_seed": cfg["master_seed"],
+            "alpha": ALPHA, "noninferiority_margin": NONINF_MARGIN,
             "veto_margin": VETO_MARGIN,
         },
         "decision": decision,
     }
     payload = json.dumps(result, indent=1, sort_keys=True).encode() + b"\n"
     args.out.write_bytes(payload)
-    print(json.dumps({"outcome": decision["outcome"],
-                      "out": str(args.out),
+    print(json.dumps({"outcome": decision["outcome"], "out": str(args.out),
                       "result_sha256": _sha256_bytes(payload)},
                      sort_keys=True))
     return 0

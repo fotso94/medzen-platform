@@ -1379,9 +1379,14 @@ def main(argv: list[str] | None = None) -> int:
         _wc = (float(packet.get("max_runtime_seconds")) / 3600.0
                * ON_DEMAND_USD_PER_HOUR[str(packet.get("instance_type"))])
         _above = is_campaign_arm_job(packet.get("environment") or {}, _wc)
-        _expected = ((ARM_LAUNCH_ROLE_ARN,) if _above
-                     else (CALIBRATION_LAUNCH_ROLE_ARN,
-                           OWNER_LOCAL_PRINCIPAL_ARN))
+        # Codex second review (2026-08-25) finding 2: comparative campaign
+        # jobs launch as the stage-1 role; legacy arm jobs as the arm role.
+        from b5_sagemaker_job import expected_arm_launch_role
+        _expected = (
+            (f"arn:aws:iam::{MEDZEN_ACCOUNT}:role/"
+             + expected_arm_launch_role(packet.get("environment") or {}),)
+            if _above else
+            (CALIBRATION_LAUNCH_ROLE_ARN, OWNER_LOCAL_PRINCIPAL_ARN))
         failures.extend(verify_creation_event(
             creation_event, _render(packet),
             expected_job_name=expected_job_name or "",
