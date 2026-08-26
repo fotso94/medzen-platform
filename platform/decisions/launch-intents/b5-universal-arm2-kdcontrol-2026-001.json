@@ -1,0 +1,25 @@
+{
+ "ceiling_usd": 6,
+ "expires_utc": "2026-08-28T05:08:36Z",
+ "job_id": "b5-universal-arm2-kdcontrol-2026-001",
+ "note": "arm 1/6 of the serial stage-1 campaign; owner authorization = the owner's click on the protected arm2-stage1-launch environment",
+ "packet": {
+  "canonical_sha256": "8ec6d42c7d3c26600a9d67598fc93c37c168d40e23359d6e89c22f363a62e47b",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-SAGEMAKER-BINDINGS-2026-001.json"
+ },
+ "receipt": {
+  "record_sha256": "e4b0427a80dc98fdcf75d4a775c6c7a821adca2e152b6d191c60846c22235897"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM2-STAGE1-KDCONTROL-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-065.json",
+  "sha256": "f7b01ab23653d65d7b28a50bca822076bdbbdfd6bc928e5ad42c1fa699c62044"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-universal-arm2-kdcontrol-2026-001.json",
+  "reviewer": "codex (independent) + owner \u2014 final stage-1 verdict PASS (2026-08-26)",
+  "sha256": "dd4fd9f162f5252a2e2d7b80708fdd7ff2ad3056c5f665ffbe685dcf7e600726"
+ },
+ "utc": "2026-08-26T05:08:36Z"
+}
