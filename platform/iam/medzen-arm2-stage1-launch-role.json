@@ -40,7 +40,8 @@
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h1-2026-001",
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h2-2026-001",
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h3-2026-001",
-    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h4-2026-001"
+    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h4-2026-001",
+    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-002"
    ],
    "Sid": "CreateOnlyTheSixArm2Stage1JobsUnderHardConditions"
   },
@@ -67,7 +68,8 @@
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h1-2026-001",
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h2-2026-001",
     "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h3-2026-001",
-    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h4-2026-001"
+    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h4-2026-001",
+    "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-002"
    ],
    "Sid": "TagOnlyTheSixArm2Stage1Jobs"
   },
