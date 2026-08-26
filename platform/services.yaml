@@ -248,6 +248,12 @@ offline:
       # start is a rate-limitable 3 GB download, but training must never be
       # able to rewrite the base weights it is fine-tuning from.
       - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "models/*"}
+      # The Arm-2 protected evaluator (pipeline/omniasr_score.py) fetches its
+      # pinned scoring inputs by EXACT S3 VersionId — a versioned read is the
+      # separate s3:GetObjectVersion action (final-verdict fix 3: this grant
+      # lives HERE so the generator owns the trainer policy end-to-end).
+      - {actions: [s3:GetObjectVersion], resource: data, path: "curated/_arm2_scoring/*"}
+      - {actions: [s3:GetObjectVersion], resource: data, path: "research/b5-training/b5-universal-arm2-*/output/*"}
       # Pull the trainer image by digest. READ ONLY, and the deny below makes
       # that structural: a training job must not be able to publish or overwrite
       # the image it is running from.

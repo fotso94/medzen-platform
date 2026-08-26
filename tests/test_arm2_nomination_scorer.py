@@ -383,6 +383,44 @@ def test_codex_repro_stage2_cannot_trust_a_committed_stage1_json(tmp_path):
             or "stage-1" in msg), msg
 
 
+def test_fix1_receipts_without_workflow_run_ref_load(tmp_path):
+    """Final-verdict fix 1 regression: the evaluator cannot know the future
+    attest run — a receipt WITHOUT workflow_run_ref must load; the verified
+    certificate supplies the run identity."""
+    cfg = _cfg_for_receipts(tmp_path)
+    doc = {k: v for k, v in RECEIPT_PROV.items() if k != "workflow_run_ref"}
+    p = tmp_path / "r.json"
+    doc.update({"model_sha256": "ab" * 32,
+                "training_packet_canonical_sha256": None,
+                "split_sha256": cfg["packet"]["split"]["sha256"],
+                "rows": [{"audio_checksum_sha256": "a" * 64,
+                          "hyp_normalized": "x"}]})
+    p.write_bytes(json.dumps(doc, sort_keys=True).encode())
+    b = tmp_path / "b.json"; b.write_bytes(b"{}")
+    hyps, _, att = scorer.load_receipts(
+        p, arm="H1", expected_model_sha="ab" * 32,
+        evaluator=cfg["packet"]["evaluator"], cfg=cfg,
+        bundle_path=b, gh_runner=fake_gh_ok(p))
+    assert hyps == {"a" * 64: "x"}
+    assert att["run_invocation_uri"]        # the cert supplied the run
+
+
+def test_fix2_real_arm1_and_base_records_resolve():
+    """Final-verdict fix 2 regression: the EXISTING committed Arm-1 and Base
+    records (their real shapes) must resolve model identities."""
+    arm1 = scorer.load_arm_completion_receipt(
+        (ROOT / "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION-003/"
+         "completion.json").read_bytes(), arm="arm1")
+    assert arm1["identity_class"] == "frozen_arm1"
+    assert arm1["model_sha256"].startswith("ecedfd30")
+    base = scorer.load_arm_completion_receipt(
+        (ROOT / "platform/manifests/"
+         "B5-UNIVERSAL-ARM1-DEV-SWEEP-BINDINGS-2026-001.json").read_bytes(),
+        arm="base")
+    assert base["identity_class"] == "frozen_base"
+    assert base["model_sha256"].startswith("354f9817")
+
+
 def test_arm_completion_receipt_gates_model_identity():
     good = {"export": {"model_sha256": "ab" * 32},
             "terminal_status": "Completed",

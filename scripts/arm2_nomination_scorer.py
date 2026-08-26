@@ -331,7 +331,11 @@ def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
     REFUSES caller-supplied edit counts."""
     raw = path.read_bytes()
     doc = json.loads(raw)
-    for key in ("job_name", "model_sha256", "rows", "workflow_run_ref",
+    # workflow_run_ref is OPTIONAL (final-verdict fix 1): the evaluator
+    # cannot know the FUTURE attest run's id; the verified attestation
+    # certificate's runInvocationURI is the authoritative run identity, and
+    # a receipt-declared value (if any) is cross-checked against it.
+    for key in ("job_name", "model_sha256", "rows",
                 "model_artifact", "split_sha256", "evaluator_image_digest"):
         if not doc.get(key):
             raise ScorerRefusal(f"receipts[{arm}] lack {key!r}")
@@ -381,7 +385,8 @@ def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
             "hypotheses cannot gate a nomination")
     attestation = verify_receipt_attestation(
         path, bundle_path, evaluator=evaluator,
-        workflow_run_ref=str(doc["workflow_run_ref"]), gh_runner=gh_runner)
+        workflow_run_ref=str(doc.get("workflow_run_ref") or ""),
+        gh_runner=gh_runner)
     out: dict[str, str] = {}
     for row in doc["rows"]:
         if "edit_distance" in row or "ref_words" in row:
@@ -397,29 +402,51 @@ def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
     return out, _sha256_bytes(raw), attestation
 
 
-def load_arm_completion_receipt(raw: bytes, *, arm: str) -> str:
-    """Item 2: an arm's REQUIRED model identity comes from its COMMITTED,
-    AWS-verified completion receipt — never a caller-supplied map. Returns
-    export.model_sha256 after requiring the receipt's authoritative --live
-    attestation to be an unambiguous PASS."""
+def load_arm_completion_receipt(raw: bytes, *, arm: str) -> dict:
+    """The arm's REQUIRED model identity from its COMMITTED record. Three
+    EXISTING record shapes are accepted (final-verdict fix 2 — adapt to the
+    real Base and Arm-1 records, no new schema invented):
+      1. trained-arm launch receipts: export.model_sha256 + an unambiguous
+         authoritative --live PASS block (strict; the six stage-1 arms);
+      2. the Arm-1 completion record (ARM1-B5-2026-005-COMPLETION-003):
+         objects["LATEST.json"].content.checkpoint_sha256;
+      3. the frozen-base bindings record: base_model.sha256."""
     doc = json.loads(raw)
     export = doc.get("export") or {}
     model = str(export.get("model_sha256") or "")
-    if not re.fullmatch(r"[0-9a-f]{64}", model):
-        raise ScorerRefusal(f"arm receipt[{arm}] lacks export.model_sha256")
-    auth = doc.get("authoritative_verification") or {}
-    if auth.get("authoritative") is not True or auth.get("verdict") != "PASS" \
-            or auth.get("failures") != [] or auth.get("mode") != "live":
-        raise ScorerRefusal(
-            f"arm receipt[{arm}] authoritative_verification is not an "
-            "unambiguous live PASS — an unverified model cannot be scored")
-    if doc.get("terminal_status") not in (None, "Completed"):
-        raise ScorerRefusal(f"arm receipt[{arm}] terminal_status is not Completed")
-    return {"model_sha256": model,
-            "artifact": doc.get("artifact") or {},
-            "training_packet_canonical_sha256":
-                str(doc.get("calibration_bindings_sha256") or "") or None,
-            "doc": doc}
+    if re.fullmatch(r"[0-9a-f]{64}", model):
+        auth = doc.get("authoritative_verification") or {}
+        if auth.get("authoritative") is not True \
+                or auth.get("verdict") != "PASS" \
+                or auth.get("failures") != [] or auth.get("mode") != "live":
+            raise ScorerRefusal(
+                f"arm receipt[{arm}] authoritative_verification is not an "
+                "unambiguous live PASS — an unverified model cannot be scored")
+        if doc.get("terminal_status") not in (None, "Completed"):
+            raise ScorerRefusal(
+                f"arm receipt[{arm}] terminal_status is not Completed")
+        return {"model_sha256": model, "identity_class": "trained_arm",
+                "artifact": doc.get("artifact") or {},
+                "training_packet_canonical_sha256":
+                    str(doc.get("calibration_bindings_sha256") or "") or None,
+                "doc": doc}
+    # shape 2: the Arm-1 completion record
+    latest = ((doc.get("objects") or {}).get("LATEST.json") or {})
+    ckpt = str((latest.get("content") or {}).get("checkpoint_sha256") or "")
+    if re.fullmatch(r"[0-9a-f]{64}", ckpt):
+        return {"model_sha256": ckpt, "identity_class": "frozen_arm1",
+                "artifact": {}, "training_packet_canonical_sha256": None,
+                "doc": doc}
+    # shape 3: the frozen-base bindings record
+    base = str((doc.get("base_model") or {}).get("sha256") or "")
+    if re.fullmatch(r"[0-9a-f]{64}", base):
+        return {"model_sha256": base, "identity_class": "frozen_base",
+                "artifact": {}, "training_packet_canonical_sha256": None,
+                "doc": doc}
+    raise ScorerRefusal(
+        f"arm receipt[{arm}] carries no recognizable model identity "
+        "(export.model_sha256 / objects.LATEST.json checkpoint_sha256 / "
+        "base_model.sha256)")
 
 
 def aws_reverify_completion(doc: dict, *, arm: str, session=None) -> None:
