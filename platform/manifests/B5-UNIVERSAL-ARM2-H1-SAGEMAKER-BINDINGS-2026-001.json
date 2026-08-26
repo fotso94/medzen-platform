@@ -13,6 +13,11 @@
   "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)"
  ],
  "authorization": "Stage-1 training arm of the approved $70 atomic Phase-A budget (protocol cost_runtime_table row 3). Launch requires: the measured-throughput benchmark COMPLETED 2026-08-25 (utt/s floor 2.35, caps confirmed), this packet finalized; STILL REQUIRED before launch: second review (bind code sha, image digest, nomination manifest), an APPROVED review record, and explicit owner launch authorization. Sealed evaluation, promotion and deployment remain separately HELD.",
+ "calibration_receipt": {
+  "note": "this arm's OWN 30-step mechanics receipt on the SAME image digest \u2014 the proven chain the launch gate re-verifies online (second review finding 4)",
+  "record": "platform/evidence/receipts/ARM2-MECH-2026-001/H1-launch-receipt.json",
+  "record_sha256": "cea9f922d9ac981b3bdcd042fd6ab027c779b549d80c4e47c0cd0af2cdc7af1b"
+ },
  "comparative": {
   "preservation_languages": [
    "english",
@@ -77,15 +82,15 @@
   "path": "platform/manifests/B5-UNIVERSAL-ARM2-H1-EXECUTION-CONTRACT-2026-001.json",
   "sha256": "cedfc9703374459c27bffc7150925fa311b594879843882715b96f558f23456b"
  },
- "image_provenance": "built + scanned by .github/workflows/arm2-trainer-image-publish.yml (https://github.com/fotso94/medzen-platform/actions/runs/32889353847) from reviewed master commit 40ae44befa730c789b5f994cc75d61a3b2acf7b5",
- "image_tag": "arm2-ftcal-40ae44befa730c789b5f994cc75d61a3b2acf7b5",
- "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:c32aa8fddc38d204bbb937a3972222d17faca19f2208276b17f113dddfa35a2b",
+ "image_provenance": "built + scanned by arm2-trainer-image-publish (run 32899140441) from reviewed master commit c1179c968fce453885bfd75ba6c3b3fe4b025730 (the stage-1 correction round; bakes all 13 execution contracts)",
+ "image_tag": "arm2-ftcal-c1179c968fce453885bfd75ba6c3b3fe4b025730",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
  "instance_type": "ml.g6.xlarge",
  "job_id": "b5-universal-arm2-h1-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always",
- "max_runtime_seconds": 12600,
+ "max_runtime_seconds": 13200,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
  "purpose": "Stage-1 candidate H1: alpha 0.25, T 1.0, anchor language weights.",
  "record": "B5-UNIVERSAL-ARM2-H1-SAGEMAKER-BINDINGS-2026-001",
@@ -126,7 +131,7 @@
   ],
   "script": "scripts/verify_arm2_calibration.py"
  },
- "runtime_cap_basis": "FINALIZED from the measured-throughput benchmark (medzen-b5-b5-universal-arm2-thrubench-2026-001, 2026-08-25): two matched 30-step runs measured 1228/1229 billable s -> fixed overhead ~1073 s + ~5.18 s/step, and the 120-row scoring window measured 51.0 s (utt/s floor 2.35 >= the protocol's 2.0). Projected 2000-step total ~11,437 s; the protocol cap 12,600 s carries a confirmed ~10.2% margin and is RETAINED.",
+ "runtime_cap_basis": "FINALIZED per protocol rev 008 (second review finding 6): the hash-verified benchmark metrics show 160.9608 s / 30 steps = 5.365 s/step (the earlier 5.18 fit overstated margin); 2000-step projection ~11,799 s; cap 13,200 s carries ~11.9% margin at $5.87 worst (<= the $6 ceiling; cumulative protocol worst $69.63 <= $70).",
  "scope": "ARM2_STAGE1_FRESH_2000_STEP_RUN - PENDING_SECOND_REVIEW",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
@@ -135,6 +140,6 @@
   "subnet-00232b25bc1ac407a"
  ],
  "volume_gb": 100,
- "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (deliberately padded above the ~$1.409 real SageMaker on-demand rate); $1.60/h x max_runtime 3.5h (12,600 s) = $5.60 worst-case compute, under the $6 packet ceiling. Cap FINALIZED from the measured-throughput benchmark (fixed ~1073 s + ~5.18 s/step -> ~11,437 s projected; ~10.2% margin). Tier: CAMPAIGN/ARM by job class (Codex stage-1 review finding 1) \u2014 NEVER launchable below-tier despite the sub-$10 price.",
- "worst_case_usd": 5.6
+ "worst_case_basis": "AUTHORITATIVE rate = scripts/b5_sagemaker_job.py ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'] = $1.60/h (padded above the ~$1.409 real rate); $1.60/h x max_runtime 13,200 s (3.667 h) = $5.87 worst-case compute, under the $6 packet ceiling. Cap per protocol rev 008: hash-verified benchmark metrics 5.365 s/step -> 2000-step projection ~11,799 s -> ~11.9% margin. Tier: CAMPAIGN/ARM by job class \u2014 never launchable below-tier.",
+ "worst_case_usd": 5.87
 }

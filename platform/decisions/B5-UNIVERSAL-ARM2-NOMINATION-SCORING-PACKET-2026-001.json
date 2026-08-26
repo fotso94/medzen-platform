@@ -7,24 +7,24 @@
  "candidate_alphas_note": "kd alphas are READ FROM the pinned candidate packets' distillation.kd_alpha at scoring time \u2014 never CLI-supplied",
  "candidate_packets": {
   "H1": {
-   "canonical_sha256": "3c74866c0746cdf537cfdd64699885800f46022de7d50dc41494d92eb5463ee8",
+   "canonical_sha256": "13349dc3d2ad8ce5175848c9a8d09f5204a8a5bdbd36070a8214c8a03805d930",
    "path": "platform/manifests/B5-UNIVERSAL-ARM2-H1-SAGEMAKER-BINDINGS-2026-001.json",
-   "sha256": "1b09064ecbc0297fc29f8e832493333fb505f9f97743d69debd0afdbd926ec70"
+   "sha256": "95787e1eef2f49954931dc19c55ff5aedc095b6e56236003bf4dc090dd5fe34b"
   },
   "H2": {
-   "canonical_sha256": "b7c6ebe16cd35fa77820143459e07df0eb6211a009af491118be52fb6a0bafe7",
+   "canonical_sha256": "2980a9966f041884a7afd6283f3ce2dbbebcab4cab5a4065114d7303a57d8b54",
    "path": "platform/manifests/B5-UNIVERSAL-ARM2-H2-SAGEMAKER-BINDINGS-2026-001.json",
-   "sha256": "33401ec350dabb3ff544c846d0267cd6f77a64c4caeadf76a93da1c19a6c9242"
+   "sha256": "63e2309324d3ce6982a7d7f58b9b66d8db343215628a443c69c08d1c631721d1"
   },
   "H3": {
-   "canonical_sha256": "ac439ecbd75885bdcb6a8352567c5a1b99c0ddd6ae153601eb25754095a1abc7",
+   "canonical_sha256": "835d1223190050a1d6dcc6715717d808ce2c6855fadab664a4e5764cd4aefcd8",
    "path": "platform/manifests/B5-UNIVERSAL-ARM2-H3-SAGEMAKER-BINDINGS-2026-001.json",
-   "sha256": "eda7c806138ca8b7a8599d13a535bb9241c7b945ecb850425f30d0231a3730dc"
+   "sha256": "fd3007a779c2cc07d9843f9898d8f222a2f1b122d2ffc36dc48223a47152399e"
   },
   "H4": {
-   "canonical_sha256": "9e03feb484af7e7744e595982c64d8ec49665cf4ce362b1862a2dd8882a2c02e",
+   "canonical_sha256": "43ec96932e40e74ff9ce00aac07fcf27c04910088d6c9e303ac3f564c328e093",
    "path": "platform/manifests/B5-UNIVERSAL-ARM2-H4-SAGEMAKER-BINDINGS-2026-001.json",
-   "sha256": "8de825ce9c43fc35ff37afca71d7dfc2ec55f00116b8f6947e61e4ccab850669"
+   "sha256": "9e7500cac048d0c85f73850e52d448a191e29353e683073cc0f33563516c0391"
   }
  },
  "clusters": {
@@ -82,5 +82,5 @@
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
  "stage_chain": "stage2 CONSUMES the committed stage-1 decision JSON (path + sha256) and DERIVES the finalist from decision.provisional_finalist; a caller-chosen finalist refuses; stage2 runs only after outcome PROVISIONAL_FINALIST",
- "utc": "2026-08-26T00:46:36Z"
+ "utc": "2026-08-26T01:20:52Z"
 }
