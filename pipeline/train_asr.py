@@ -74,14 +74,31 @@ def s3():
 # data
 # --------------------------------------------------------------------------- #
 def list_manifests(cli) -> list[str]:
-    keys, tok = [], {"Bucket": BUCKET, "Prefix": "curated/"}
+    """Return the WELL-FORMED trainer manifests only: exactly
+    curated/<lang>/<task>/<cfg>/<version>/manifest.jsonl (6 path segments).
+    Anything else ending in manifest.jsonl under curated/ is NOT a trainer
+    manifest — arm-1 of the stage-1 campaign (2026-08-26) failed fast when a
+    stray 3-segment scoring upload crashed the version parser downstream.
+    Non-conforming keys are SKIPPED and logged loudly, never parsed; the
+    version-completeness checks still run over the well-formed set."""
+    keys, skipped, tok = [], [], {"Bucket": BUCKET, "Prefix": "curated/"}
     while True:
         r = cli.list_objects_v2(**tok)
-        keys += [o["Key"] for o in r.get("Contents", [])
-                 if o["Key"].endswith("manifest.jsonl")]
+        for o in r.get("Contents", []):
+            key = o["Key"]
+            if not key.endswith("manifest.jsonl"):
+                continue
+            if len(key.split("/")) == 6:
+                keys.append(key)
+            else:
+                skipped.append(key)
         if not r.get("IsTruncated"):
             break
         tok["ContinuationToken"] = r["NextContinuationToken"]
+    if skipped:
+        print(json.dumps({"status": "NON_MANIFEST_KEYS_SKIPPED",
+                          "count": len(skipped),
+                          "keys": sorted(skipped)[:20]}, sort_keys=True))
     return sorted(keys)
 
 

@@ -126,3 +126,29 @@ def test_without_reseed_the_trajectories_diverge():
     _ = torch.rand(37)
     b = torch.rand(4)
     assert not torch.equal(a, b)           # the bug the reseed fixes
+
+
+# ------------------------------------------------- arm-1 failure regression
+def test_list_manifests_skips_malformed_keys_that_crashed_arm1():
+    """Arm-1 (KDCONTROL) regression 2026-08-26: a stray 3-segment
+    curated/**manifest.jsonl key crashed load_mix's version parser. The
+    hardened list_manifests returns ONLY well-formed 6-segment trainer
+    manifests and skips (loudly) everything else."""
+    sys.path.insert(0, str(ROOT))
+    from pipeline.train_asr import list_manifests
+
+    class FakeS3:
+        def list_objects_v2(self, **kw):
+            return {"Contents": [
+                {"Key": "curated/swahili/asr/cfg/gb9/manifest.jsonl"},
+                {"Key": "curated/_arm2_scoring/smoke0-manifest.jsonl"},   # the killer
+                {"Key": "curated/x/manifest.jsonl"},
+                {"Key": "curated/english/asr/cfg/gb9/manifest.jsonl"},
+                {"Key": "curated/english/asr/cfg/gb9/other.txt"},
+            ], "IsTruncated": False}
+
+    keys = list_manifests(FakeS3())
+    assert keys == ["curated/english/asr/cfg/gb9/manifest.jsonl",
+                    "curated/swahili/asr/cfg/gb9/manifest.jsonl"]
+    # the downstream parse that crashed arm 1 is now safe by construction
+    assert all(len(k.split("/")) == 6 for k in keys)
