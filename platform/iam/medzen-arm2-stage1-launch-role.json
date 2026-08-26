@@ -94,7 +94,8 @@
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-h1-2026-001/output/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-h2-2026-001/output/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-h3-2026-001/output/*",
-    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-h4-2026-001/output/*"
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-h4-2026-001/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-mech-kdctl-2026-002/output/*"
    ],
    "Sid": "HeadExactlyTheSixMechanicsReceiptArtifacts"
   },
@@ -120,7 +121,8 @@
       "research/b5-training/b5-universal-arm2-mech-h1-2026-001/output/*",
       "research/b5-training/b5-universal-arm2-mech-h2-2026-001/output/*",
       "research/b5-training/b5-universal-arm2-mech-h3-2026-001/output/*",
-      "research/b5-training/b5-universal-arm2-mech-h4-2026-001/output/*"
+      "research/b5-training/b5-universal-arm2-mech-h4-2026-001/output/*",
+      "research/b5-training/b5-universal-arm2-mech-kdctl-2026-002/output/*"
      ]
     }
    },
