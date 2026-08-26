@@ -1049,6 +1049,35 @@ def verify_calibration_receipt(bindings: dict,
     if not _hex(str(auth.get("metrics_sha256", "")), 64):
         raise JobRefusal("authoritative_verification.metrics_sha256 is not a "
                          "64-hex digest")
+    # Second-review bundle (2026-08-25): a receipt MAY declare the run's own
+    # reviewed commit + the verifier sha BAKED AT THAT COMMIT (the in-image
+    # verifier that wrote the metrics identity). When declared, both are
+    # verified against git — the sha must equal the verifier's committed
+    # bytes AT THAT COMMIT — and the launch-time re-verification compares the
+    # metrics identity against it instead of the current verifier (which
+    # legitimately evolves between the calibration run and the launch).
+    # Absent => the metrics identity must match the CURRENT verifier (the
+    # original, stricter behavior; correct when nothing changed in between).
+    run_commit = record.get("run_commit")
+    run_verifier = record.get("run_verifier_sha256")
+    if (run_commit is None) != (run_verifier is None):
+        raise JobRefusal("run_commit and run_verifier_sha256 must be "
+                         "declared together or not at all")
+    if run_commit is not None:
+        if not _HEX40.fullmatch(str(run_commit)):
+            raise JobRefusal("run_commit must be an exact 40-hex commit")
+        if not _hex(str(run_verifier), 64):
+            raise JobRefusal("run_verifier_sha256 must be 64-hex")
+        run_verifier_body = _show_at(root, str(run_commit),
+                                     "scripts/verify_arm2_calibration.py")
+        if run_verifier_body is None:
+            raise JobRefusal(f"run_commit {str(run_commit)[:12]} does not "
+                             "carry the authoritative verifier")
+        if hashlib.sha256(run_verifier_body).hexdigest() != str(run_verifier):
+            raise JobRefusal(
+                "run_verifier_sha256 does not match the verifier committed "
+                "at the receipt's own run_commit — a receipt cannot invent "
+                "the in-image verifier identity")
     # structural consistency: the receipt cannot claim PASS at the top while
     # its terminal status or its own attestation disagree
     if record.get("terminal_status") != "Completed" or \
@@ -1161,7 +1190,9 @@ def cross_check_receipt_content(record: dict, facts: dict) -> None:
                 "misreports its own content (Codex round 30 finding 1)")
 
 
-def derive_live_artifact_facts(cal_packet: dict, workdir, session=None) -> dict:
+def derive_live_artifact_facts(cal_packet: dict, workdir, session=None,
+                               metrics_verifier_sha: str | None = None
+                               ) -> dict:
     """The AWS side of the launch-time full re-verification: reuse the
     authoritative verifier IN-PROCESS (single source of truth) — fetch the
     real job + its exact-VersionId KMS-encrypted artifact, re-hash it, and
@@ -1174,9 +1205,13 @@ def derive_live_artifact_facts(cal_packet: dict, workdir, session=None) -> dict:
         cal_packet, workdir, session=session)
     verifier_sha = hashlib.sha256(
         Path(v2.__file__).read_bytes()).hexdigest()
+    # the metrics identity was written by the RUN's in-image verifier; when
+    # the receipt declares (and the gate verified) that commit's verifier
+    # sha, compare against IT — else against this current verifier.
     failures, facts = v2.verify_live_bundle(
         packet=cal_packet, receipt=receipt, extracted=extracted,
-        s3_meta=s3_meta, verifier_script_sha=verifier_sha)
+        s3_meta=s3_meta,
+        verifier_script_sha=metrics_verifier_sha or verifier_sha)
     # Codex second review (2026-08-25) finding 5 / item 5: the calibration
     # chain being re-verified may have been launched via the DOCUMENTED
     # below-tier local route (the owner's exact IAM user) or the calibration
@@ -1588,8 +1623,10 @@ def main() -> int:
             # Codex round 31: reuse the launcher's ONE role-asserted session so
             # the re-verification runs under the SAME assumed launch role, not a
             # second credential path.
-            _facts = derive_live_artifact_facts(cal_packet, _workdir,
-                                                session=session)
+            _facts = derive_live_artifact_facts(
+                cal_packet, _workdir, session=session,
+                metrics_verifier_sha=(receipt_record or {}).get(
+                    "run_verifier_sha256"))
             cross_check_receipt_content(receipt_record, _facts)
         response = session.client("sagemaker").create_training_job(**request)
         print(json.dumps({"TrainingJobArn": response["TrainingJobArn"]},
