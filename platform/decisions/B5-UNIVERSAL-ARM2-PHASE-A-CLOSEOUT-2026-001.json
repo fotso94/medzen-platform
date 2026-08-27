@@ -1,0 +1,18 @@
+{
+ "record": "B5-UNIVERSAL-ARM2-PHASE-A-CLOSEOUT-2026-001",
+ "kind": "owner_decision",
+ "utc": "2026-08-27T04:20:00Z",
+ "subject": "Arm-2 Phase-A CLOSED — accept NO_RECIPE_QUALIFIES, no promotion, Arm-1 remains research incumbent",
+ "owner_decision": {
+  "verdict": "ACCEPT_AND_CLOSE_PHASE_A",
+  "basis": "Frozen Stage-1 nomination scorer returned NO_RECIPE_QUALIFIES (decision B5-UNIVERSAL-ARM2-NOMINATION-STAGE1-DECISION-2026-001, result sha 648db3fc, committed a58c0cc; independently WER-cross-checked, evidence B6-091). None of the fresh-from-base KD recipes H1-H4 is non-inferior to base on preservation AND retains Arm-1 pidgin performance AND beats the KD-off control; the binding constraint is pidgin retention (~2 abs WER pts worse than Arm-1).",
+  "incumbent": "Arm-1 (b5-universal-arm1-2026-005, checkpoint ecedfd30 / export c6604a68) remains the RESEARCH incumbent.",
+  "promotion": "NONE. No candidate promoted. Sealed evaluation, promotion, and deployment remain HELD with nothing queued.",
+  "do_not": "Do NOT extend the current fresh-from-base recipes — the fresh-from-base initialization is judged the root cause of the pidgin regression, not the step budget."
+ },
+ "next": {
+  "successor_experiment": "Arm-2b — a small, feature-focused, inexpensive experiment initialized FROM Arm-1 (not from base), using the frozen base teacher only on preservation languages and an Arm-1 retention anchor on Pidgin/Kinyarwanda/Ewe. Design record: B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001.",
+  "governance": "Arm-2b REUSES the existing Phase-A machinery unchanged — same protected launch/scoring workflows, same evaluator image 985c4d9e, same frozen scoring packet 94968e64 (3421-row manifest + 7 reference surfaces + 24-test Holm family + margins). NO new governance architecture."
+ },
+ "supersedes": null
+}
