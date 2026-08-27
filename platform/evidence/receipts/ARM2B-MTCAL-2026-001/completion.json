@@ -1,0 +1,47 @@
+{
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1545802890,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-arm2b-mtcal-2026-001/output/medzen-b5-b5-arm2b-mtcal-2026-001/output/model.tar.gz",
+  "s3_version_id": "08UKK4aS2tOIPXPZUw9tzMQtF06MrUXq"
+ },
+ "billable_seconds": 2744,
+ "cost": {
+  "basis": ".60/h padded on-demand (owner rule)",
+  "billable_seconds": 2744,
+  "on_demand_usd": 1.22
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:bf8b7b44c99ed7c46d5fa88cfd0773d486c79cdf81b5399069fd62b4e0ae2ee7",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-arm2b-mtcal-2026-001",
+ "job_id": "b5-arm2b-mtcal-2026-001",
+ "metrics": {
+  "dev_sentinel_errors": {
+   "lingala": "136/671",
+   "pidgin": "214/925"
+  },
+  "dev_sentinel_wer": {
+   "lingala": 0.2027,
+   "pidgin": 0.2314,
+   "swahili": 0.1513
+  },
+  "kd_min_max": [
+   0.10245572775602341,
+   0.8913473188877106
+  ],
+  "kd_retention_min_max": [
+   0.0902653019875288,
+   0.7050294540822506
+  ],
+  "metrics_sha256": "c33c7974d48126b345c9b29d5293ecc6a4da4944cb1c4c3d46ba89b94d58aebe",
+  "peak_gpu_bytes": 22297381888,
+  "schema": "b5-arm2-calibration-metrics/2",
+  "steps_completed": 300
+ },
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "record": "ARM2B-MTCAL-2026-001-COMPLETION",
+ "scope": "MEMORY_TRAJECTORY_CALIBRATION_RECEIPT - the 300-step dual-teacher warm-started run whose dev-sentinel endpoint the owner's grid gate reads; not a promotion signal, not sealed evaluation",
+ "status": "Completed",
+ "utc": "2026-08-27T21:40:00Z",
+ "workflow_run": 33108046607
+}
