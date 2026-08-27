@@ -1,0 +1,37 @@
+{
+ "record": "B6-LOCAL-ENGINEERING-2026-090-arm2-scoring-pair1-attested-repin",
+ "kind": "append_only_engineering_evidence",
+ "supersedes": null,
+ "successor_of": "B6-LOCAL-ENGINEERING-2026-089-arm2-scoring-quota-paced",
+ "utc": "2026-08-27T03:30:00Z",
+ "subject": "Arm-2 scoring pair 1 (base, arm1) complete + attested + cryptographically verified; forced evaluator re-pin in the frozen scoring packet",
+ "pair1_outcome": {
+  "base": {
+   "job": "medzen-b5-b5-arm2-score-base-2026-001", "status": "Completed", "billable_seconds": 571,
+   "receipts_sha256": "8bc1e981b8c7b014f5b5c3c86bda7bc7281e635090a56dafe96baa99a0a722a3",
+   "output_tar_version_id": "oUIV0vFyCnG97TBuURxezucblPmM4IAb",
+   "rows": 3421, "empty_hyps": 0, "model_sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+   "base_mode": true
+  },
+  "arm1": {
+   "job": "medzen-b5-b5-arm2-score-arm1-2026-001", "status": "Completed", "billable_seconds": 556,
+   "receipts_sha256": "0fbea7eaf22be21c13addcb198b8328d48e0d510939d9f448a4b23686f5222af",
+   "output_tar_version_id": "qfP8rtgwsl5vcy3ud8sq7uElnqOa85zZ",
+   "rows": 3421, "empty_hyps": 0, "model_sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c"
+  }
+ },
+ "verification": {
+  "integrity": "For both arms every committed packet pin matched the receipt: manifest_sha 74735138, split_sha fccadc46, evaluator_image_digest 985c4d9e, per-arm model_sha256, arm label; 3421 rows, 0 empty hyps, unique_keys==rows (full coverage, no dupes); base vs arm1 decodes genuinely diverge.",
+  "attestation": "Both receipts Sigstore-signed by the exec attest mode. Strict `gh attestation verify --signer-workflow arm2-scoring-eval-exec.yml` PASSED (exit 0). Offline path proven: `gh attestation download` then `gh attestation verify --bundle <sha>.jsonl` returns exit 0 with signer SAN == https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master, matching the packet-pinned workflow_identity — the exact mechanism the nomination scorer runs."
+ },
+ "forced_repin": {
+  "commit": "b78cf69",
+  "artifact": "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json",
+  "why": "Two scorer-ENFORCED evaluator pins had lagged owner-authorized changes and would have refused all 8 receipts: image_digest was still sha256:c12e5080 (pre-base-mode image e84076f) vs the receipts' sha256:985c4d9e; job_name_pattern still matched the old 'medzen-b5-b5-universal-arm2-score-*' naming vs the compact 'medzen-b5-b5-arm2-score-*' scheme adopted in the final narrow correction. Also caught up two non-enforced audit shas (iam_policy, exec-workflow).",
+  "not_results_influenced": "The re-pin is forced, not discretionary. 985c4d9e is the image the base-mode smoke passed on BEFORE any scoring job ran, built by run 33032959623 / reviewed commit 96992c3f at 02:20Z (39 min before the first scoring launch at 02:59Z), and the sole evaluator_image_digest carried by every attested receipt. There is no alternative image or pattern consistent with the receipts, so the pre-results freeze holds on the real artifacts; only the packet text lagged. Commit 96992c3f had refreshed the evaluator_script + decoding_contract pins but missed these two.",
+  "post_fix_validation": "JSON well-formed; all five file-sha pins now current; image_digest==985c4d9e; job_name_pattern fullmatches all 8 real job names and rejects the old universal name."
+ },
+ "pacing": "kdcontrol + h0 launched into the freed slots (both InProgress/Training); h1+h2 and h3+h4 remain queued behind the g6.xlarge=2 quota.",
+ "held": ["sealed_evaluation", "promotion", "deployment"],
+ "next": "kdcontrol+h0 complete -> recover/verify/attest -> launch h1+h2 -> h3+h4. When all 8 receipt sets are attested + bundle-verified, run the committed Stage-1 Holm scorer over the 24-test family."
+}
