@@ -1,0 +1,88 @@
+{
+ "record": "B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001",
+ "kind": "experiment_design_proposal",
+ "status": "DESIGN — owner review required before any implementation or GPU spend",
+ "utc": "2026-08-27T04:45:00Z",
+ "successor_of": "B5-UNIVERSAL-ARM2-PHASE-A-CLOSEOUT-2026-001",
+ "adversarial_review": "Hardened by a 5-lens adversarial critique (loss-correctness, forgetting-behavior, governance-minimality, machinery-reuse, cost/grid) that read the actual code; every blocker/major below was found by that panel and its fix is folded in.",
+
+ "objective": "Produce a student that keeps Arm-1's Pidgin (and Kinyarwanda/Ewe) performance while matching the base on the preservation sentinels — i.e. clear the Holm family that Phase A failed. Phase A's binding failure was pidgin_retention (KD students ~2 abs WER pts worse than Arm-1 on pidgin) caused SOLELY by the fresh-from-base initialization; the preservation-masked base-teacher KD already works.",
+
+ "two_features": {
+  "1_warm_start_from_arm1": "Initialize the student from the Arm-1 export (NOT from base) so it STARTS at Arm-1's pidgin 21.76. Implemented by loading the pinned Arm-1 export over the base-built architecture (strict=True), the exact pattern pipeline/omniasr_score.py:177-178 already uses.",
+  "2_arm1_retention_anchor": "Add a SECOND frozen teacher (Arm-1 itself) applying a KD term ONLY on the free languages {pidgin, kinyarwanda, ewe}, holding the student near Arm-1 there while the existing frozen BASE teacher preserves {english, french, swahili, lingala}. Each veto surface is thus anchored to the teacher matching its scorer reference (lingala->base, kinyarwanda/ewe->arm1, pidgin->arm1)."
+ },
+
+ "loss": {
+  "formula": "L = CTC_mean(all training langs) + alpha_pres * KD_base({english,french,swahili,lingala}, weight lingala=1.5) + alpha_ret * KD_arm1({pidgin,kinyarwanda,ewe})",
+  "fixed": "alpha_pres = 1.0, temperature T = 1.0 (Phase-A H2 preservation setting).",
+  "numeric_safety": "Two DISJOINT preservation_mask calls (base set vs retention set) feeding two kd_loss calls, each with its OWN teacher logits. Verified safe: omniasr_distill.kd_loss normalizes by the per-call unweighted preservation-row count (:219) and is pure — no double-count, no NaN (pres_count.clamp_min). REQUIRED INVARIANT: never pass one combined weight vector to both teacher calls (would score retention rows against BASE logits)."
+ },
+
+ "CRITICAL_lingala_defense": {
+  "blocker_caught": "The first draft dropped lingala from the base preservation set. Lingala is a VETO surface referenced to BASE (arm2_nomination_scorer.py:54-55, vetoed if upper_ci95(cand-base) > 0.01), and Arm-1 REGRESSED lingala vs base (omniasr_distill.py:3-8). Warm-starting from Arm-1 imports that regression; with lingala anchored to neither teacher, nothing pulls it back -> every grid arm auto-vetoes -> a fresh NO_RECIPE_QUALIFIES for a NEW reason.",
+  "resolution": "Lingala STAYS in the base-teacher preservation set {english,french,swahili,lingala} at its Phase-A weight lingala=1.5 (this is exactly why Phase-A fresh-from-base students passed the lingala veto), and lingala remains an actual training language so batches exist for the term. GATE: a pre-grid dev probe must confirm the warm-started student is within base+1% on lingala BEFORE spending the grid."
+ },
+
+ "recipe_grid": {
+  "note": "Exactly FOUR candidates (scorer hard-requires H1-H4: arm2_nomination_scorer.py:56,240-243,707-711). All warm-started from Arm-1; alpha_pres=1.0; lingala in base set @1.5. The grid isolates the NEW anchor knob with a zero-dose control.",
+  "H1": "anchor OFF — MEDZEN_KD_TEACHER_MODE=base, NO retention teacher ('the Phase-A recipe, warm-started'). The causal control: anchor effect = (anchor-on) - H1.",
+  "H2": "alpha_ret = 0.5",
+  "H3": "alpha_ret = 1.0 (the (0,1] cap)",
+  "H4": "alpha_ret = 1.0 + per-language KD weights raising english/french via existing MEDZEN_KD_LANGUAGE_WEIGHTS (a robustness point that does NOT weaken the already-marginal preservation gates).",
+  "dose_response": "{H1,H2,H3} = clean {0, 0.5, 1.0} anchor dose-response including the zero dose. Minimal question-answering pair if ever forced to two: {H1, H3}.",
+  "rejected": "alpha_ret=2.0 dropped (violates the (0,1] KD-alpha bound omniasr_train.py:345-348); light-preservation alpha_pres=0.5 dropped (pushes the marginal english/french gates the wrong way)."
+ },
+
+ "trainer_changes_in_image": {
+  "honest_scope": "This is a real, contained in-image (C3) trainer change — NOT 'two tiny toggles'. preservation_mask/kd_loss/assert_kd_alignment are reused as-is, but the ORCHESTRATION, config, fingerprint, and calibration-verifier are not.",
+  "sites": {
+   "warm_start": "MEDZEN_STUDENT_INIT_MODE(base|arm1)/_S3_URI/_VERSION_ID/_SHA256; apply after _load_model_and_tokenizer (omniasr_train.py:~1142) via load_state_dict(strict=True); reseed_matched_rng(:1156) preserves matched-seed equivalence.",
+   "second_teacher_loader": "NEW frozen-export-teacher loader mirroring omniasr_score.py:177-178 + teacher_freeze_audit (load_teacher at omniasr_distill.py:224-238 resolves a fairseq2 CARD and CANNOT load the Arm-1 export). Pinned by MEDZEN_KD_RETENTION_TEACHER_S3_URI/_VERSION_ID/_SHA256.",
+   "guard_relaxations": "Add mode 'base+arm1_retention' to the enum at omniasr_train.py:352-357; keep the card-equality guard :363-367 intact for teacher #1 (base); gate teacher #2 on the sha+VersionId pin.",
+   "retention_alpha": "MEDZEN_KD_RETENTION_ALPHA validated by a COPY of the (0,1] finite/>0 check at :345-348.",
+   "retention_languages": "MEDZEN_KD_RETENTION_LANGUAGES='pidgin,kinyarwanda,ewe' validated against config.languages exactly like the preservation set at :376-380.",
+   "two_term_objective": "Parameterize _batch_loss_kd/make_batch_loss (:996-1091) for two (teacher,mask,alpha) terms.",
+   "fingerprint": "Thread student_init(mode+sha) + retention(teacher sha, alpha, languages) into TrainerConfig (:118-156), parse_config, and fingerprint_payload (:158-175) — else a base-init and an arm1-warm-start run hash identically and a spot-resume splices two histories (read_resume_state :506-534).",
+   "metrics_verifier": "Record two KD scalars + a union coverage; extend verify_arm2_calibration required_preservation_coverage to include pidgin/kinyarwanda/ewe, or the retention teacher's coverage goes unverified.",
+   "alignment": "assert_kd_alignment (omniasr_distill.py:87) passes for Arm-1 — same CTC family/tokenizer/frame grid (Kinyarwanda-v1 precedent, docstring :16-19); it gives the pre-GPU first-batch refusal if a wrong teacher is ever wired."
+  }
+ },
+
+ "arm1_identity_pin": {
+  "requirement": "ONE Arm-1 export identity (sha256 + S3 VersionId) used for BOTH warm-start AND the retention teacher, and asserted EQUAL to the scorer's arm1 veto-reference decode sha (arm2_nomination_scorer.py:55, decode identity :423-436).",
+  "candidate": "Arm-1 export c6604a68 (s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/.../model.tar.gz, VersionId QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4) — the same export the scorer already uses as the arm1 anchor (ARM2-ARM1-SCORING-REFERENCE-2026-001). If warm-start/teacher used a different arm1 than the veto reference, the anchor would pull toward a different target than the veto measures."
+ },
+
+ "scoring_reuse": {
+  "code_unchanged": "TRUE — arm2_nomination_scorer.py and pipeline/omniasr_score.py need NO edit. They authenticate export sha + Sigstore attestation + AWS facts + split/image/packet shas, none of which encode HOW a model was trained; a warm-started dual-teacher candidate yields normal completion + hypothesis receipts, and the kin/ewe vetoes vs arm1 align with the anchor target.",
+  "new_sealed_packet_required": "The frozen scoring packet 94968e64 CANNOT be reused: it pins Phase-A's four stage-1 bindings by canonical_sha256 and the scorer refuses drift (arm2_nomination_scorer.py:231-243) and any non-94968e64 packet sha (:812-816). Arm-2b needs a NEW reviewed+sealed scoring packet that repins the four Arm-2b bindings packets, KEEPING split/references/clusters/evaluator-image(985c4d9e)/master_seed/margins identical so the committed base/arm1/KD_CONTROL/H0 anchor receipts still validate. This is the EXISTING governance path (a new packet instance + seal), not new architecture.",
+  "anchors_reused": "base/arm1/KD_CONTROL/H0 completion + attested hypothesis receipts from Phase A are reused unchanged as the fixed comparators.",
+  "alpha_attribution": "The packet's single distillation.kd_alpha (scorer reads it only for the qualifier tie-break, :239,674) will denote alpha_ret (the knob under test); record the full (alpha_pres, alpha_ret) pair in a documented adjacent field. Holm gates ignore alpha, so the DECISION is unaffected."
+ },
+
+ "budget": {
+  "arms": 4,
+  "steps_per_arm": 2000,
+  "steps_rationale": "Keep the Phase-A-proven 2000 steps; the ~$4-6 saved by cutting to 1500 is not worth under-training a newly-combined CTC+2xKD objective.",
+  "per_arm_usd": "~5.0-5.5 (H1 single-teacher; H2-H4 add a second frozen-teacher forward per micro-batch, ~15-30% slower/step)",
+  "total_usd": "~20-22 (revised UP from the draft's understated $12-16)",
+  "pacing": "Serial under the ml.g6.xlarge=2 concurrency quota (two waves of two).",
+  "memory": "State MEDZEN_TRAIN_MODE explicitly and sanity-check peak memory against the reviewed gpu_memory_ceiling_bytes BEFORE GPU spend — three resident 1B models (student + 2 frozen teachers) on a 24 GiB L4; if full-FT, keep teacher #2 in bf16."
+ },
+
+ "no_new_governance_architecture": "HONORED in the architectural sense: no new gates, no new workflows, no new decision/packet SCHEMA, no scorer/evaluator code changes, same seal process, same 24-test Holm family + margins. The changes are (a) contained in-image trainer code for the two features, and (b) a new sealed scoring-packet INSTANCE (existing schema, repinned) — the normal existing path.",
+
+ "risk_register": [
+  "Arm-1 Lingala recovery is UNPROVEN: warm-start imports Arm-1's regressed lingala; base-KD@1.5 is the only force pulling it back within 2000 steps. GATE the grid on a dev probe (student within base+1% on lingala) before spending GPU.",
+  "Arm-1 export identity must be verified EQUAL across warm-start, retention teacher, and the scorer's arm1 veto-reference decode sha, else the anchor silently misdirects.",
+  "Peak-memory/OOM with three resident 1B models + AdamW fp32 moments if full-FT; train_mode + memory ceiling must be checked pre-spend.",
+  "Metrics/verifier schema decision: fold both KD terms into one kd scalar with union coverage, OR bump the b5-arm2-calibration-metrics/1 schema — pick one before implementation or retention coverage goes unverified.",
+  "Tie-break attribution: with alpha_pres fixed and kd_alpha<-alpha_ret, confirm the (macro_point, alpha_ret, name) tie-break still discriminates qualifiers.",
+  "2000 steps may still under-train the new two-teacher objective; treat the step count as a calibration output if the learning curve is unhealthy."
+ ],
+
+ "expected_effect": "Warm-start puts pidgin at ~21.76 at step 0; base-KD is masked off pidgin so it does not erode it; the Arm-1 retention spring (~0 at step 0, growing with drift) resists movement on {pidgin,kinyarwanda,ewe}; base-KD@1.5 holds {english,french,swahili,lingala} to base. This directly relieves the pidgin_retention constraint that failed Phase A, while the anchor-OFF H1 control measures how much of any pass is warm-start alone vs the anchor.",
+
+ "held": ["sealed_evaluation", "promotion", "deployment", "implementation (awaiting owner review of this design)"]
+}
