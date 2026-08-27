@@ -66,7 +66,7 @@
   "MEDZEN_TEMPERATURE": "0.5",
   "MEDZEN_TRAIN_MODE": "full",
   "MEDZEN_VARIANT": "ctc",
-  "MEDZEN_WARMUP_STEPS": "75"
+  "MEDZEN_WARMUP_STEPS": "8"
  },
  "job_id": "b5-arm2b-mech-mtcal-2026-001",
  "purpose": "SELF-REFERENCE-FREE execution contract for the Arm-2b mtcal MECHANICS receipt: a 30-step below-tier run of the IDENTICAL dual-teacher warm-started recipe (differs from the 300-step mtcal ONLY on the declared scale keys), producing the calibration receipt the arm-tier mtcal launch chain requires (Codex reviews #20-#22: an arm may never launch on an unproven chain).",
