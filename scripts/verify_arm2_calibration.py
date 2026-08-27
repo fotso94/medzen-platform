@@ -276,12 +276,18 @@ def verify_calibration(metrics: dict[str, Any],
                     if not _finite_number(record.get(key)):
                         fail(f"step {record.get('step')}: {key} is not a "
                              f"finite number ({record.get(key)!r})")
+                # Codex Arm-2b review finding 2: a WARM-STARTED student is
+                # initially identical to the Arm-1 teacher, so ZERO retention
+                # KL is legitimate early in the run — require finite and
+                # NON-NEGATIVE per step (KL cannot be negative; a negative
+                # value is numerically broken), and require the run-level
+                # drift check below (kd_retention_max > 0) to prove the
+                # anchor is connected, not dead.
                 if _finite_number(record.get("kd_retention")) \
-                        and float(record["kd_retention"]) <= 0.0:
+                        and float(record["kd_retention"]) < 0.0:
                     fail(f"step {record.get('step')}: "
-                         f"kd_retention={record['kd_retention']} is not > 0 "
-                         "(the retention anchor is not live on retention "
-                         "batches)")
+                         f"kd_retention={record['kd_retention']} is negative "
+                         "— a KL divergence cannot be negative")
                 if _finite_number(record.get("retention_alpha")) \
                         and float(record["retention_alpha"]) <= 0.0:
                     fail(f"step {record.get('step')}: retention_alpha="
@@ -313,23 +319,44 @@ def verify_calibration(metrics: dict[str, Any],
         fail(f"kd_positive_finite_steps={positive} != 0 for a KD-off control "
              "— the distillation term must NOT be live in the control")
     if dual_kd:
-        # the retention anchor must be provably live on EVERY step, and the
-        # summary counter is RECOMPUTED from per_step — never trusted alone
-        # (same discipline as the KD-off control recompute, Codex round 32)
+        # Codex Arm-2b review finding 2: the retention term must be finite
+        # and NON-NEGATIVE on every step (zero is legitimate for a warm-
+        # started student identical to its teacher), the summary counter must
+        # equal the RECOMPUTED positive count (never trusted alone — same
+        # discipline as the KD-off control recompute, Codex round 32), and
+        # the anchor must register SOME positive divergence over the run
+        # (kd_retention_max > 0) — an all-zero trajectory means the anchor
+        # is disconnected/dead, not merely warm.
+        ret_nonneg = sum(
+            1 for r in per_step
+            if _finite_number(r.get("kd_retention"))
+            and float(r["kd_retention"]) >= 0.0)
+        if ret_nonneg != expected_steps:
+            fail(f"finite-nonnegative retention steps = {ret_nonneg} != "
+                 f"{expected_steps} — the retention term is broken on "
+                 "some step")
         ret_positive = int(metrics.get(
             "kd_retention_positive_finite_steps", 0))
-        if ret_positive != expected_steps:
-            fail(f"kd_retention_positive_finite_steps={ret_positive} != "
-                 f"{expected_steps} — the retention anchor was not "
-                 "positive-and-finite on every step")
         ret_recomputed = sum(
             1 for r in per_step
             if _finite_number(r.get("kd_retention"))
             and float(r["kd_retention"]) > 0.0)
-        if ret_recomputed != expected_steps:
-            fail(f"recomputed positive-retention steps = {ret_recomputed} != "
-                 f"{expected_steps} (the summary counter alone is not "
-                 "trusted)")
+        if ret_positive != ret_recomputed:
+            fail(f"kd_retention_positive_finite_steps={ret_positive} != "
+                 f"recomputed {ret_recomputed} (the summary counter alone "
+                 "is not trusted)")
+        ret_max = metrics.get("kd_retention_max")
+        ret_values = [float(r["kd_retention"]) for r in per_step
+                      if _finite_number(r.get("kd_retention"))]
+        if ret_values and _finite_number(ret_max) and not math.isclose(
+                float(ret_max), max(ret_values),
+                rel_tol=1e-9, abs_tol=1e-12):
+            fail(f"kd_retention_max={ret_max} != recomputed "
+                 f"{max(ret_values)} (the summary alone is not trusted)")
+        if not _finite_number(ret_max) or float(ret_max) <= 0.0:
+            fail(f"kd_retention_max={ret_max!r} is not > 0 — the retention "
+                 "anchor never registered any divergence over the whole run "
+                 "(dead/disconnected anchor)")
     if not kd_enabled:
         # RECOMPUTE the positive-KD count from per_step — never trust the
         # self-reported summary counter alone (Codex round 32).

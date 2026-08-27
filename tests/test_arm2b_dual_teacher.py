@@ -129,6 +129,10 @@ def test_warm_start_and_retention_configs_parse():
      "missing student-init uri"),
     (lambda e: e.__setitem__("MEDZEN_KD_TEACHER_MODE", "kinyarwanda_v1"),
      "unknown teacher mode"),
+    (lambda e: e.__setitem__("MEDZEN_STUDENT_INIT_VERSION_ID", "OTHER"),
+     "warm-start and retention teacher must pin ONE arm1 identity"),
+    (lambda e: e.__setitem__("MEDZEN_STUDENT_INIT_SHA256", "d" * 64),
+     "same-identity sha drift refuses"),
 ])
 def test_arm2b_parse_refusals(mutate, why):
     env = _arm2b_env()
@@ -275,13 +279,40 @@ def test_v2_artifact_passes_the_dual_kd_checks():
     assert _retention_failures(failures) == [], failures
 
 
-def test_dead_anchor_step_fails():
+def test_warm_zero_retention_step_is_legitimate():
+    """Codex Arm-2b review finding 2: a warm-started student is initially
+    IDENTICAL to the Arm-1 teacher, so kd_retention == 0 on a step (with
+    consistent loss arithmetic) must NOT fail."""
     art = _dual_artifact()
     art["per_step"][1]["kd_retention"] = 0.0
     art["per_step"][1]["total"] = art["per_step"][1]["ctc"] \
         + art["per_step"][1]["alpha"] * art["per_step"][1]["kd"]
+    art["kd_retention_min"] = 0.0
+    art["kd_retention_positive_finite_steps"] = 3
     failures = verify_calibration(art, _v2_spec())
-    assert any("kd_retention=0.0 is not > 0" in f for f in failures), failures
+    assert _retention_failures(failures) == [], failures
+
+
+def test_all_zero_retention_run_is_a_dead_anchor():
+    """...but an anchor that NEVER registers any divergence over the whole
+    run is disconnected, not warm — kd_retention_max must be > 0."""
+    art = _dual_artifact()
+    for r in art["per_step"]:
+        r["kd_retention"] = 0.0
+        r["total"] = r["ctc"] + r["alpha"] * r["kd"]
+    art["kd_retention_min"] = 0.0
+    art["kd_retention_max"] = 0.0
+    art["kd_retention_positive_finite_steps"] = 0
+    failures = verify_calibration(art, _v2_spec())
+    assert any("never registered any divergence" in f
+               for f in failures), failures
+
+
+def test_negative_retention_kl_is_broken():
+    art = _dual_artifact()
+    art["per_step"][2]["kd_retention"] = -0.1
+    failures = verify_calibration(art, _v2_spec())
+    assert any("cannot be negative" in f for f in failures), failures
 
 
 def test_equation_must_include_the_retention_term():
@@ -320,7 +351,15 @@ def test_tampered_retention_summary_counter_fails():
     art = _dual_artifact()
     art["kd_retention_positive_finite_steps"] = 0
     failures = verify_calibration(art, _v2_spec())
-    assert any("kd_retention_positive_finite_steps=0" in f
+    assert any("kd_retention_positive_finite_steps=0 != recomputed" in f
+               for f in failures), failures
+
+
+def test_tampered_retention_max_fails():
+    art = _dual_artifact()
+    art["kd_retention_max"] = 9.9
+    failures = verify_calibration(art, _v2_spec())
+    assert any("the summary alone is not trusted" in f
                for f in failures), failures
 
 
@@ -461,3 +500,157 @@ def test_v2_pins_on_a_plain_kd_packet_are_contradictory():
     p2["student_init"] = {"mode": "arm1"}
     with pytest.raises(JobRefusal, match="contradictory"):
         validate_arm2_semantics(p2, p2["environment"])
+
+
+# --------------------------------------------------------------------------
+# REAL dual-teacher torch tests (Codex Arm-2b review finding 3) — these run
+# in the trainer image test stage (C3); the host skips them without torch.
+# --------------------------------------------------------------------------
+
+import importlib.util
+
+_needs_torch = pytest.mark.skipif(
+    importlib.util.find_spec("torch") is None,
+    reason="torch loss tests execute inside the trainer image (C3)")
+
+
+class _Layout:
+    def __init__(self, seq_lens):
+        self.seq_lens = seq_lens
+
+
+def _dual_batch(rows, frames, vocab, languages, torch):
+    return {
+        "seqs": torch.zeros(rows, 8),
+        "seqs_layout": _Layout([8] * rows),
+        "targets": torch.zeros(rows, 2, dtype=torch.long),
+        "targets_layout": _Layout([2] * rows),
+        "languages": list(languages),
+    }
+
+
+@_needs_torch
+def test_dual_loss_forward_backward_torch():
+    """The REAL two-term objective: total == ctc + a*kd_base + ar*kd_ret
+    numerically, gradient flows through BOTH KD terms, and the metrics sink
+    decomposes both."""
+    import torch
+
+    from pipeline.omniasr_train import _batch_loss_kd
+    from pipeline.omniasr_distill import kd_loss
+
+    torch.manual_seed(7)
+    rows, frames, vocab = 4, 5, 6
+    languages = ["english", "english", "pidgin", "ewe"]
+    param = torch.nn.Parameter(torch.randn(rows, frames, vocab))
+    base_logits = torch.randn(rows, frames, vocab)
+    ret_logits = torch.randn(rows, frames, vocab)
+    lengths = [5, 4, 5, 3]
+
+    def model(seqs, layout, *, targets, targets_layout, return_logits):
+        assert return_logits
+        return param.pow(2).mean(), param, _Layout(list(lengths))
+
+    def base_teacher(seqs, layout):
+        return base_logits, _Layout(list(lengths))
+
+    def ret_teacher(seqs, layout):
+        return ret_logits, _Layout(list(lengths))
+
+    sink: dict = {}
+    batch = _dual_batch(rows, frames, vocab, languages, torch)
+    total = _batch_loss_kd(
+        model, batch, teacher=base_teacher, alpha=1.0, temperature=1.0,
+        preservation_languages=("english",), language_weights=(),
+        known_languages=("english", "pidgin", "ewe"), metrics_sink=sink,
+        retention_teacher=ret_teacher, retention_alpha=0.5,
+        retention_languages=("pidgin", "ewe"))
+    pres_w = [1.0, 1.0, 0.0, 0.0]
+    ret_w = [0.0, 0.0, 1.0, 1.0]
+    want_kd = kd_loss(param.detach(), base_logits, temperature=1.0,
+                      row_weights=pres_w, valid_lengths=lengths)
+    want_ret = kd_loss(param.detach(), ret_logits, temperature=1.0,
+                       row_weights=ret_w, valid_lengths=lengths)
+    # ctc_mean = model_loss / rows (the closure divides by the row count)
+    want_total = (param.pow(2).mean().detach() / rows) \
+        + 1.0 * want_kd + 0.5 * want_ret
+    assert torch.isclose(total.detach(), want_total, rtol=1e-5, atol=1e-6)
+    assert sink["kd_retention"] == pytest.approx(float(want_ret), rel=1e-5)
+    assert sink["retention_alpha"] == 0.5
+    assert set(sink["kd_retention_coverage"]) == {"pidgin", "ewe"}
+    assert set(sink["kd_coverage"]) == {"english"}
+    total.backward()
+    assert param.grad is not None and torch.isfinite(param.grad).all()
+    assert param.grad.abs().sum() > 0
+
+
+@_needs_torch
+def test_warm_identical_retention_teacher_gives_zero_kl_torch():
+    """Finding 2's numeric ground truth: student logits identical to the
+    retention teacher's give EXACTLY zero retention KL — the verifier must
+    treat that as legitimate (warm start), which it now does."""
+    import torch
+
+    from pipeline.omniasr_distill import kd_loss
+
+    torch.manual_seed(11)
+    logits = torch.randn(2, 4, 5)
+    kl = kd_loss(logits, logits.clone(), temperature=1.0,
+                 row_weights=[1.0, 1.0], valid_lengths=[4, 4])
+    assert float(kl) == pytest.approx(0.0, abs=1e-6)
+
+
+@_needs_torch
+def test_dual_loss_mask_contamination_refuses_torch():
+    """Belt-and-braces: a language present in BOTH masks refuses at runtime
+    even though parse_config already forbids the overlap."""
+    import torch
+
+    from pipeline.omniasr_train import _batch_loss_kd
+    from pipeline.omniasr_distill import DistillationRefusal
+
+    rows, frames, vocab = 2, 3, 4
+    param = torch.nn.Parameter(torch.randn(rows, frames, vocab))
+
+    def model(seqs, layout, *, targets, targets_layout, return_logits):
+        return param.sum(), param, _Layout([3, 3])
+
+    def teacher(seqs, layout):
+        return torch.randn(rows, frames, vocab), _Layout([3, 3])
+
+    batch = _dual_batch(rows, frames, vocab, ["english", "english"], torch)
+    with pytest.raises(DistillationRefusal, match="disjointness violated"):
+        _batch_loss_kd(
+            model, batch, teacher=teacher, alpha=1.0, temperature=1.0,
+            preservation_languages=("english",), language_weights=(),
+            known_languages=("english",), metrics_sink=None,
+            retention_teacher=teacher, retention_alpha=1.0,
+            retention_languages=("english",))
+
+
+@_needs_torch
+def test_load_export_teacher_strict_and_frozen_torch(monkeypatch):
+    """load_export_teacher: a full-state export loads strict over the fresh
+    base instance and comes back frozen+eval; a partial export refuses."""
+    import torch
+
+    from pipeline import omniasr_distill
+
+    def fake_load_teacher(card, device, dtype):
+        model = torch.nn.Linear(3, 2)
+        model.eval()
+        model.requires_grad_(False)
+        return model
+
+    monkeypatch.setattr(omniasr_distill, "load_teacher", fake_load_teacher)
+    donor = torch.nn.Linear(3, 2)
+    teacher = omniasr_distill.load_export_teacher(
+        "card", donor.state_dict(), device=None, dtype=None)
+    audit = omniasr_distill.teacher_freeze_audit(teacher)
+    assert audit["frozen"] is True
+    assert not teacher.training
+    assert torch.equal(teacher.weight, donor.weight)
+    with pytest.raises(Exception):
+        omniasr_distill.load_export_teacher(
+            "card", {"weight": donor.weight.detach()}, device=None,
+            dtype=None)

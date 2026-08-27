@@ -26,6 +26,7 @@ on:
           - platform/manifests/B5-UNIVERSAL-ARM2-H3-SAGEMAKER-BINDINGS-2026-001.json
           - platform/manifests/B5-UNIVERSAL-ARM2-H4-SAGEMAKER-BINDINGS-2026-001.json
           - platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-SAGEMAKER-BINDINGS-2026-002.json
+          - platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001.json
       confirm_launch:
         description: pass LAUNCH to create the job; anything else is a dry-run
         required: false

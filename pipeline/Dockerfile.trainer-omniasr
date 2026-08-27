@@ -72,15 +72,18 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAF
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-H4-EXECUTION-CONTRACT-2026-001.json \
      platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
+     platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-EXECUTION-CONTRACT-2026-001.json \
      ./platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4) — the in-image
 # tests assert they match the packet's path/sha256/rows declaration
 COPY platform/manifests/dev-sentinels/ ./platform/manifests/dev-sentinels/
 COPY tests/test_omniasr_lora.py tests/test_omniasr_train.py \
-     tests/test_omniasr_distill.py tests/test_arm2_calibration.py ./tests/
+     tests/test_omniasr_distill.py tests/test_arm2_calibration.py \
+     tests/test_arm2b_dual_teacher.py ./tests/
 ENV PYTHONPATH=/opt/medzen
 RUN python -m pytest tests/test_omniasr_lora.py tests/test_omniasr_train.py \
-        tests/test_omniasr_distill.py tests/test_arm2_calibration.py -q \
+        tests/test_omniasr_distill.py tests/test_arm2_calibration.py \
+        tests/test_arm2b_dual_teacher.py -q \
     && python - <<'VERIFY'
 # fairseq2 contact-surface check: every name the trainer touches must
 # resolve on the pinned dependency set, and the model forward signature
@@ -145,6 +148,7 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-H4-EXECUTION-CONTRACT-2026-001.json \
      platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
+     platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-EXECUTION-CONTRACT-2026-001.json \
      /opt/medzen/platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4): the calibration
 # wrapper refuses to score any slice whose sha differs from the packet's

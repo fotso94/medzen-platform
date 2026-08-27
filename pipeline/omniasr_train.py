@@ -553,6 +553,21 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                 c not in "0123456789abcdef" for c in student_init_sha256):
             raise TrainerRefusal(
                 "MEDZEN_STUDENT_INIT_SHA256 must be 64 hex chars")
+        # Codex Arm-2b review finding 5: when BOTH the warm start and the
+        # retention anchor are on, they must name ONE Arm-1 identity — the
+        # design's single pinned export. A drift between them would anchor
+        # the student to a different Arm-1 than it started from (and than
+        # the scorer's arm1 veto reference measures). Fail closed.
+        if kd_teacher_mode == "base+arm1_retention" and (
+                (student_init_s3_uri, student_init_version_id,
+                 student_init_sha256)
+                != (kd_retention_teacher_s3_uri,
+                    kd_retention_teacher_version_id,
+                    kd_retention_teacher_sha256)):
+            raise TrainerRefusal(
+                "warm-start and retention-teacher identities differ — "
+                "Arm-2b pins ONE Arm-1 export for both (uri, VersionId and "
+                "sha256 must be identical)")
 
     return TrainerConfig(
         variant=variant,
