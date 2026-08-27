@@ -1,0 +1,26 @@
+{
+ "authorization": "Owner directive 2026-08-27: run one inexpensive memory and trajectory calibration after the Arm-2b implementation + Codex fixes; the owner's click on the arm2-stage1-launch protected environment is the launch authorization (Codex review #24: the click IS the signature)",
+ "ceiling_usd": 4,
+ "expires_utc": "2026-08-29T20:00:00Z",
+ "job_id": "b5-arm2b-mtcal-2026-001",
+ "packet": {
+  "canonical_sha256": "4056d5365316d93959d0523c28df2d2e7a51f3313a38a7f80e8f11ebfbb3179d",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001.json"
+ },
+ "receipt": {
+  "record": "platform/evidence/receipts/ARM2B-MTCAL-2026-001/mech-002-launch-receipt.json",
+  "record_sha256": "c398c7e14e21605fa39a0009a9e36ef6536083d619dcf93ea00891ceda55f362"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM2B-MTCAL-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-073.json",
+  "sha256": "f8d8b1246b526cc54085e2978b18d25ecd473312be173c78d43b0a12a1991d82"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-arm2b-mtcal-2026-001.json",
+  "reviewer": "owner approval 2026-08-27 \u2014 Arm-2b calibration directive + Codex execution-review verdict implemented",
+  "sha256": "b3e1e39bcde6ea3ccd62256962f181dfaa7e5935c2f7ba7f5f6e508bc19e1053"
+ },
+ "utc": "2026-08-27T19:35:00Z"
+}

@@ -1,11 +1,11 @@
 {
- "basis": "Authorizes ONLY job b5-arm2b-mtcal-2026-001 ($3.2 worst, 300 steps, dual-teacher warm-started, image sha256:bf8b7b44c99e...). render+validate returns PASS_EXACT_TRAINING_REQUEST; tier=arm; entrypoint ['-m', 'pipeline.omniasr_calibrate'].",
- "bindings_sha256": "4a0e15c1e98257b9a676faf30ad7c570fff828eb90fc1bf9118fd73245f18463",
+ "basis": "Authorizes ONLY job b5-arm2b-mtcal-2026-001 ($3.20 worst, 300 steps, dual-teacher warm-started, image bf8b7b44) riding the PASSED mech-002 chain (receipt c398c7e14e21605f, live-PASS attested). render+validate returns PASS_EXACT_TRAINING_REQUEST; tier=arm; entrypoint pipeline.omniasr_calibrate.",
+ "bindings_sha256": "4056d5365316d93959d0523c28df2d2e7a51f3313a38a7f80e8f11ebfbb3179d",
  "committed_by": "implementation-engineer-on-owner-directive",
  "decision": "APPROVED",
  "image_digest": "sha256:bf8b7b44c99ed7c46d5fa88cfd0773d486c79cdf81b5399069fd62b4e0ae2ee7",
  "job_id": "b5-arm2b-mtcal-2026-001",
  "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001.json",
  "reviewer": "owner approval 2026-08-27 \u2014 Arm-2b calibration directive + Codex execution-review verdict implemented",
- "utc": "2026-08-27T18:40:00Z"
+ "utc": "2026-08-27T19:35:00Z"
 }
