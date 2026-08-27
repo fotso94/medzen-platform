@@ -1,0 +1,49 @@
+{
+ "record": "B6-LOCAL-ENGINEERING-2026-091-arm2-nomination-stage1-decision",
+ "kind": "append_only_engineering_evidence",
+ "successor_of": "B6-LOCAL-ENGINEERING-2026-090-arm2-scoring-pair1-attested-repin",
+ "utc": "2026-08-27T04:05:00Z",
+ "subject": "Arm-2 Phase-A nomination scoring pass COMPLETE — Stage-1 outcome NO_RECIPE_QUALIFIES",
+ "scoring_pass": {
+  "models_scored": 8,
+  "arms": ["base", "arm1", "KD_CONTROL", "H0", "H1", "H2", "H3", "H4"],
+  "evaluator_image": "sha256:985c4d9e (base-mode)",
+  "scoring_manifest_rows": 3421,
+  "quota_pacing": "ml.g6.xlarge=2 concurrent -> 4 serial pairs (base+arm1, kdcontrol+h0, h1+h2, h3+h4); all 8 Completed",
+  "receipts": "all 8 recovered, pin-verified, Sigstore-attested by arm2-scoring-eval-exec.yml@refs/heads/master, offline bundle-verified",
+  "completion_receipts": "authored + committed 6 trained_arm receipts (KD_CONTROL,H0-H4) + base scoring-reference (commit abf5e65); all 6 export/model.pt independently re-hashed from S3 (ALL_EXPORT_HASHES_MATCH); each job live-reverified Completed"
+ },
+ "decision": {
+  "record": "B5-UNIVERSAL-ARM2-NOMINATION-STAGE1-DECISION-2026-001",
+  "result_sha256": "648db3fc0e87c6815e31662bd2861a9c33ebd74239a1d7bad73b0b34fd95e9c5",
+  "committed": "a58c0cc",
+  "outcome": "NO_RECIPE_QUALIFIES",
+  "provisional_finalist": null,
+  "scoring_packet_sha256": "94968e6494bf06b4ef513e665138c3bd0520c95166394f5d1d7b14fbe94c6b6f",
+  "bootstrap_B": 10000, "master_seed": 20260825, "alpha": 0.05,
+  "noninferiority_margin_abs_wer": 0.005, "veto_margin_abs_wer": 0.01
+ },
+ "why_no_qualifier": {
+  "pidgin_retention": "p=1.0 for ALL of H1-H4 — every KD student is ~2 abs WER points worse than arm1 on pidgin (arm1 21.76 vs students ~23.8-24.0), far beyond the 0.5% non-inferiority margin; this alone prevents all-6-tests Holm rejection",
+  "preservation": "candidates ~0.3-0.6 abs WER worse than base on english/french (base 12.42/14.40); swahili is the only surface some candidates match/beat base (H2 13.57 < base 13.78)",
+  "beat_controls": "candidates do not convincingly beat KD_CONTROL or H0 on the macro reduction (p mostly 0.1-0.9)",
+  "vetoes": "H1,H2 ewe-vetoed (upper_ci95 0.0213/0.0267 > 0.01) — small-sample (60-row) bootstrap variance, not a point regression (H1 ewe 91.72 < arm1 93.79); H3,H4 not vetoed"
+ },
+ "raw_wer_point_estimates_pct": {
+  "english":    {"base":12.42,"arm1":12.59,"KD_CONTROL":12.85,"H0":12.80,"H1":12.98,"H2":12.89,"H3":12.80,"H4":12.95},
+  "french":     {"base":14.40,"arm1":14.29,"KD_CONTROL":14.87,"H0":14.97,"H1":14.88,"H2":14.78,"H3":14.65,"H4":14.85},
+  "swahili":    {"base":13.78,"arm1":13.39,"KD_CONTROL":13.60,"H0":13.68,"H1":13.66,"H2":13.57,"H3":13.72,"H4":13.69},
+  "pidgin":     {"base":32.02,"arm1":21.76,"KD_CONTROL":23.81,"H0":23.91,"H1":23.87,"H2":24.00,"H3":23.86,"H4":23.90},
+  "lingala":    {"base":17.56,"arm1":18.20,"KD_CONTROL":17.68,"H0":17.74,"H1":17.92,"H2":17.80,"H3":17.72,"H4":17.78},
+  "kinyarwanda":{"base":47.19,"arm1":42.83,"KD_CONTROL":41.92,"H0":42.29,"H1":42.11,"H2":42.11,"H3":41.92,"H4":41.74},
+  "ewe":        {"base":95.17,"arm1":93.79,"KD_CONTROL":92.41,"H0":91.03,"H1":91.72,"H2":92.41,"H3":90.34,"H4":89.66}
+ },
+ "independent_verification": "Raw per-arm per-surface WER recomputed OUTSIDE the scorer (word-level Levenshtein, sum-edits/sum-ref-words) reproduces the qualitative decision drivers — the outcome is grounded in real numbers, not a scorer artifact.",
+ "interpretation": "At the 2000-step calibration budget, none of the predeclared KD recipes (H0-H4) yields a student that is non-inferior to the base on preservation AND retains arm1's pidgin performance AND beats the KD-off control. The frozen protocol correctly returns a negative result rather than manufacturing a winner.",
+ "held": ["sealed_evaluation", "promotion", "deployment"],
+ "next_options_for_owner": [
+  "Accept the negative Phase-A result; arm1 remains the incumbent (no promotion).",
+  "Extend training beyond the 2000-step calibration budget and re-run the frozen scoring pass (pidgin retention is the binding constraint).",
+  "Revise the KD recipe space (the current alpha/temperature/weight grid did not separate from the controls)."
+ ]
+}
