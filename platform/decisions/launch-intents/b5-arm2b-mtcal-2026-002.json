@@ -1,0 +1,26 @@
+{
+ "authorization": "Owner probe directive 2026-08-27 (lingala weight 4.0 only; numeric grid gate); the owner's click on the arm2-stage1-launch protected environment is the launch authorization",
+ "ceiling_usd": 4,
+ "expires_utc": "2026-08-29T23:59:00Z",
+ "job_id": "b5-arm2b-mtcal-2026-002",
+ "packet": {
+  "canonical_sha256": "490289b9cfa7e513957030a38bbb715e1a7e030a832f6b5ce09d2e853054d760",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-002.json"
+ },
+ "receipt": {
+  "record": "platform/evidence/receipts/ARM2B-MTCAL-2026-002/mech-003-launch-receipt.json",
+  "record_sha256": "4158b4c0b499ade267af1c7fbec5433441efb0df4607daf7312c4a8e8bd57531"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM2B-MTCAL-2026-002",
+  "file": "platform/finance/COST-REGISTRY-2026-075.json",
+  "sha256": "87d7d3a1a5c112c6a2a56fc2960517cce047eee9616eebc2c5f05d5a5341c6fa"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-arm2b-mtcal-2026-002.json",
+  "reviewer": "owner probe directive 2026-08-27 \u2014 lingala weight 4.0, numeric grid gate",
+  "sha256": "eb0e8bbdb7a5579e1e4039b21692a75d2acf87d7927d5ee23ff91bd7aa3c3cc3"
+ },
+ "utc": "2026-08-27T23:05:00Z"
+}

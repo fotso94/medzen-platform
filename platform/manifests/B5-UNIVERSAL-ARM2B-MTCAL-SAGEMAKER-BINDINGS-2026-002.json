@@ -13,6 +13,11 @@
   "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)"
  ],
  "authorization": "Owner approval 2026-08-27: Arm-2b implementation + 'run one inexpensive memory and trajectory calibration'; Codex execution review verdict (five narrow fixes) implemented and rebuilt. Design: B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001.",
+ "calibration_receipt": {
+  "note": "this probe's OWN 30-step weight-4.0 mechanics receipt on the SAME image digest \u2014 the proven chain the launch gate re-verifies online",
+  "record": "platform/evidence/receipts/ARM2B-MTCAL-2026-002/mech-003-launch-receipt.json",
+  "record_sha256": "4158b4c0b499ade267af1c7fbec5433441efb0df4607daf7312c4a8e8bd57531"
+ },
  "comparative": {
   "preservation_languages": [
    "english",
@@ -21,7 +26,7 @@
    "swahili"
   ]
  },
- "cost_ceiling_usd": 3.8,
+ "cost_ceiling_usd": 5.0,
  "cost_registry_line": "B5-ARM2B-MTCAL-2026-002",
  "distillation": {
   "design": "platform/decisions/B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001.json",

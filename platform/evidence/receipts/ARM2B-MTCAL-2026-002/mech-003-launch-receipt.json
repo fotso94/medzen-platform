@@ -1,0 +1,63 @@
+{
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1545750091,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-arm2b-mech-mtcal-2026-003/output/medzen-b5-b5-arm2b-mech-mtcal-2026-003/output/model.tar.gz",
+  "s3_version_id": "DXwU6mF9EA3aYWYuKpYxoSF6NingakaB"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "creation_event_verified": true,
+  "export_manifest_sha256": "0187a2d5935515c6a8f9de889f0b0f730a737dc16acb940c93d72507e7ea65d4",
+  "export_model_sha256": "676200a1230b10abec1ea243f7fd74646587294f819efafaaf3216a74378c4b2",
+  "failures": [],
+  "launch_principal": null,
+  "metrics_sha256": "858a2cb5807523d3957ad45ca5a417aced970f096a07405a56ea624215e4e863",
+  "mode": "live",
+  "model_artifacts_uri": "s3://medzen-speech/research/b5-training/b5-arm2b-mech-mtcal-2026-003/output/medzen-b5-b5-arm2b-mech-mtcal-2026-003/output/model.tar.gz",
+  "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-SAGEMAKER-BINDINGS-2026-003.json",
+  "packet_canonical_sha256": "9e693a936fd1a72c99cd1e2539b586bfdc16045ba92330a95db55a891f82d25d",
+  "reverification": {
+   "note": "retrospective reverification after a reviewed verifier correction: the run's recorded in-image verifier sha was required to equal the sha of this script AS COMMITTED at the run's reviewed commit (supplied by the reviewer), not this reviewing verifier's own newer bytes",
+   "reviewing_verifier_own_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523",
+   "run_verifier_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523"
+  },
+  "s3_bytes": 1545750091,
+  "s3_etag": "\"134c1d086c77378a4726eb00d15ee9db-185\"",
+  "s3_kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_version_id": "DXwU6mF9EA3aYWYuKpYxoSF6NingakaB",
+  "verdict": "PASS",
+  "verifier_script_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523"
+ },
+ "billable_seconds": 1314,
+ "calibration_bindings_sha256": "9e693a936fd1a72c99cd1e2539b586bfdc16045ba92330a95db55a891f82d25d",
+ "calibration_packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-SAGEMAKER-BINDINGS-2026-003.json",
+ "cost": {
+  "basis": "$1.60/h padded on-demand (owner rule)",
+  "billable_seconds": 1314,
+  "on_demand_usd": 0.584
+ },
+ "dataset_complete_raw_sha256": "a11df981cfb723e0074c711b79c859a7e688c084da19a59573034b270ddbd21d",
+ "dataset_version": "gb9",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
+ "export": {
+  "manifest_sha256": "0187a2d5935515c6a8f9de889f0b0f730a737dc16acb940c93d72507e7ea65d4",
+  "model_sha256": "676200a1230b10abec1ea243f7fd74646587294f819efafaaf3216a74378c4b2",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:f7e412092250c6a555fd3cb0d5f7ef607671df52025271a4af834ea0d24063b3",
+ "job": "medzen-b5-b5-arm2b-mech-mtcal-2026-003",
+ "job_id": "b5-arm2b-mech-mtcal-2026-003",
+ "record": "ARM2B-MECH-MTCAL-2026-003-LAUNCH-RECEIPT",
+ "run_commit": "fe4fa6d561466aa431bc6629101f5a80f71e03a9",
+ "run_verifier_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523",
+ "scope": "MECHANICS_RECEIPT_ONLY (owner directive: the 30-step run is mechanics only, no trajectory reading) - proves the weight-4.0 recipe executes end-to-end",
+ "terminal_status": "Completed",
+ "utc": "2026-08-27T23:05:00Z",
+ "verdict": "PASS"
+}

@@ -1,11 +1,11 @@
 {
- "basis": "Authorizes ONLY job b5-arm2b-mtcal-2026-002 ($3.2 worst, 300 steps, dual-teacher warm-started, image sha256:f7e412092250...). render+validate returns PASS_EXACT_TRAINING_REQUEST; tier=arm; entrypoint ['-m', 'pipeline.omniasr_calibrate'].",
- "bindings_sha256": "efe8932840159462eca46eb8088f062726408a0f12b90bd957b8002863d9a3e0",
+ "basis": "Authorizes ONLY job b5-arm2b-mtcal-2026-002 ($3.20 worst, 300 steps, lingala weight 4.0 sole change) riding the PASSED mech-003 chain (4158b4c0b499ade2). GRID GATE: lingala<=130/671, pidgin<=218/925, GPU<22GiB. render+validate PASS_EXACT_TRAINING_REQUEST.",
+ "bindings_sha256": "490289b9cfa7e513957030a38bbb715e1a7e030a832f6b5ce09d2e853054d760",
  "committed_by": "implementation-engineer-on-owner-directive",
  "decision": "APPROVED",
  "image_digest": "sha256:f7e412092250c6a555fd3cb0d5f7ef607671df52025271a4af834ea0d24063b3",
  "job_id": "b5-arm2b-mtcal-2026-002",
  "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-002.json",
- "reviewer": "owner approval 2026-08-27 \u2014 Arm-2b calibration directive + Codex execution-review verdict implemented",
- "utc": "2026-08-27T22:20:00Z"
+ "reviewer": "owner probe directive 2026-08-27 \u2014 lingala weight 4.0, numeric grid gate",
+ "utc": "2026-08-27T23:05:00Z"
 }
