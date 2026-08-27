@@ -34,7 +34,7 @@
     }
    },
    "Effect": "Allow",
-   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-score-*",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2-score-*",
    "Sid": "CreateOnlyArm2ScoringJobsUnderHardConditions"
   },
   {
@@ -54,7 +54,7 @@
   {
    "Action": "sagemaker:AddTags",
    "Effect": "Allow",
-   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-score-*",
+   "Resource": "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2-score-*",
    "Sid": "TagOnlyArm2ScoringJobs"
   },
   {
@@ -77,7 +77,9 @@
    "Resource": [
     "arn:aws:s3:::medzen-speech/research/arm2-scoring/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-score-*/output/*",
-    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*"
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-arm2-score-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/*"
    ],
    "Sid": "ReadScoringInputsAndReceipts"
   },
@@ -99,7 +101,8 @@
     "StringLike": {
      "s3:prefix": [
       "research/arm2-scoring/*",
-      "research/b5-training/b5-universal-arm2-score-*/output/*"
+      "research/b5-training/b5-universal-arm2-score-*/output/*",
+      "research/b5-training/b5-arm2-score-*/output/*"
      ]
     }
    },

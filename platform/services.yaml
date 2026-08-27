@@ -254,6 +254,7 @@ offline:
       # lives HERE so the generator owns the trainer policy end-to-end).
       - {actions: [s3:GetObjectVersion], resource: data, path: "research/arm2-scoring/*"}
       - {actions: [s3:GetObjectVersion], resource: data, path: "research/b5-training/b5-universal-arm2-*/output/*"}
+      - {actions: [s3:GetObjectVersion], resource: data, path: "research/b5-training/b5-universal-arm1-2026-005/output/*"}  # arm1 frozen ref for scoring
       # Pull the trainer image by digest. READ ONLY, and the deny below makes
       # that structural: a training job must not be able to publish or overwrite
       # the image it is running from.
