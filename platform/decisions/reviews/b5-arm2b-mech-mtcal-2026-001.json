@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY job b5-arm2b-mech-mtcal-2026-001 ($1.87 worst, 30 steps, dual-teacher warm-started, image sha256:8c926030b3ce...). render+validate returns PASS_EXACT_TRAINING_REQUEST; tier=calibration; entrypoint ['-m', 'pipeline.omniasr_calibrate'].",
+ "bindings_sha256": "e9b80012f606aacbaa39235b845b9313c1ba4905dde4b56cbd5abb1c5d60ceeb",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:8c926030b3cebb9a75fc48d9b2f9d7777bd5fb694748bbe17a27fb8340a587ad",
+ "job_id": "b5-arm2b-mech-mtcal-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner approval 2026-08-27 \u2014 Arm-2b calibration directive + Codex execution-review verdict implemented",
+ "utc": "2026-08-27T17:50:00Z"
+}
