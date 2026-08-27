@@ -45,15 +45,16 @@
   },
   "iam_policy": {
    "path": "platform/iam/medzen-arm2-scoring-launch-role.json",
-   "sha256": "dd9cdb020f057beee8da6a6e8ff14c04280548a22ec4bf3b6955fa74e38a765e"
+   "sha256": "cd64878254db3dc8c1197a9621374cbd45d2e58d5d5a8a739ef500ffa3233a91"
   },
-  "image_digest": "sha256:c12e5080f14f0bdfee7141df28c36c4170136f2624227b472020b531834e574f",
-  "image_digest_rule": "PINNED 2026-08-26 after the corrected image e84076f build (run 32926004500) and validated by the SMOKE2 end-to-end run; pinned BEFORE any candidate hypotheses exist (the pre-results freeze holds). Any image change requires a reviewed re-pin here.",
-  "job_name_pattern": "medzen-b5-b5-universal-arm2-score-[a-z0-9-]+",
+  "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+  "image_digest_rule": "RE-PINNED 2026-08-27 to the BASE-MODE evaluator image sha256:985c4d9e (build run 33032959623, reviewed commit 96992c3f 'contract/pins refreshed', 2026-08-27T02:20Z). Supersedes the prior pin sha256:c12e5080 (old image e84076f, run 32926004500): the owner base-mode decision (2026-08-27) authorized rebuilding the evaluator once and pinning the new digest; commit 96992c3f refreshed the evaluator_script + decoding_contract pins but this image_digest and the job_name_pattern were missed here. The re-pin is FORCED, not discretionary and NOT results-influenced: 985c4d9e is (a) the image the base-mode smoke test passed on BEFORE any scoring job ran, (b) built 39 min before the first scoring launch (02:59Z), and (c) the sole evaluator_image_digest carried by ALL scoring receipts (cryptographically attested) — there is no alternative image consistent with the receipts, so the pre-results freeze holds on the real artifact; only this text lagged it. Any further image change requires a reviewed re-pin here.",
+  "job_name_pattern": "medzen-b5-b5-arm2-score-[a-z0-9-]+",
+  "job_name_pattern_rule": "RE-PINNED 2026-08-27 from 'medzen-b5-b5-universal-arm2-score-[a-z0-9-]+' to match the compact job_id scheme adopted in the final narrow correction (job_id 'b5-arm2-score-<arm>-2026-001' keeps the SageMaker TrainingJobName under the 40-char limit; the launcher derives medzen-b5-<job_id>). Forced by the actual committed SCORE packets and the launched job names; no discretion.",
   "repository": "fotso94/medzen-platform",
   "workflow_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
   "workflows": {
-   ".github/workflows/arm2-scoring-eval-exec.yml": "bb2dfc2ee3a5ea978799754d04938a861687d4d4d1763cae6837e8bb4909dd05",
+   ".github/workflows/arm2-scoring-eval-exec.yml": "61912cd2c40ae0a951bbdbcedc151d854b30c6b5e4780d06283f58ed717a42b5",
    ".github/workflows/arm2-scoring-eval.yml": "155fa8fb8d3af937deef2d73f8b55d3dc8c8686643f00b8ff90f5177e196671a"
   }
  },
