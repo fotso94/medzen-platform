@@ -1492,6 +1492,14 @@ def main() -> int:
                                   config.kd_retention_teacher_sha256},
                              sort_keys=True))
     _export_state_cache.clear()
+    # Arm-2b OOM fix (mech-mtcal-001 failure): the load phase (staged base +
+    # warm-start state + up to two teacher constructions) leaves the CUDA
+    # cache fragmented — mech-001 died with 1.92 GiB reserved-but-unallocated
+    # against a 368 MiB request. Release the load-phase blocks so the
+    # steady-state training allocation pattern starts from a clean pool
+    # (pairs with PYTORCH_CUDA_ALLOC_CONF=expandable_segments in the image).
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     # Codex stage-1 review (2026-08-25) finding 2: the teacher load above
     # consumes torch RNG ONLY on KD-enabled arms, so under the SAME seed a
     # KD-on candidate and the KD-off control would enter wrap/training with
