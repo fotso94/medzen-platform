@@ -73,6 +73,7 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAF
      platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-EXECUTION-CONTRACT-2026-001.json \
      ./platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4) — the in-image
 # tests assert they match the packet's path/sha256/rows declaration
@@ -149,6 +150,7 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
      platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2-MECH-KDCONTROL-EXECUTION-CONTRACT-2026-002.json \
      platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-EXECUTION-CONTRACT-2026-001.json \
+     platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-EXECUTION-CONTRACT-2026-001.json \
      /opt/medzen/platform/manifests/
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4): the calibration
 # wrapper refuses to score any slice whose sha differs from the packet's
