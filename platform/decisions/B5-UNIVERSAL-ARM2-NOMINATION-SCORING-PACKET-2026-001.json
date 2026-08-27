@@ -37,11 +37,11 @@
   "attestation_rule": "every receipts file carries a Sigstore bundle from the exec's attest mode; the scorer verifies subject digest == the exact receipts bytes AND the signing certificate identity == workflow_identity \u2014 URL strings alone are never provenance",
   "decoding_contract": {
    "path": "platform/decisions/B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001.json",
-   "sha256": "041999b90ec6ab389f7efa1a403bc3395f8a4c41b0afa343ab5ca817ee1ee3d7"
+   "sha256": "b797fb5efdcdf950fd26e5417de5beb9ebf497ac9c5953ccefd3690d1e23091f"
   },
   "evaluator_script": {
    "path": "pipeline/omniasr_score.py",
-   "sha256": "177e3dbc28d879b81514e00d8ace732156f6ac61730fff2412d6d81f8570abc2"
+   "sha256": "51d6e6987c442c556f3558f889d57c5e495615571618933e69f28cf9391e51b4"
   },
   "iam_policy": {
    "path": "platform/iam/medzen-arm2-scoring-launch-role.json",
@@ -115,5 +115,5 @@
   "sha256": "fccadc462e2097e619eac495e047412486b449bdc6add97286b37fdbe6cb968e"
  },
  "stage_chain": "stage2 reads the COMMITTED stage-1 decision (git HEAD bytes + caller-stated sha), requires it to have been produced under THIS exact scoring packet (inputs.scoring_packet_sha256 equality), and derives the finalist from decision.provisional_finalist; caller-chosen finalists refuse",
- "utc": "2026-08-26T05:39:05Z"
+ "utc": "2026-08-27T02:18:24Z"
 }

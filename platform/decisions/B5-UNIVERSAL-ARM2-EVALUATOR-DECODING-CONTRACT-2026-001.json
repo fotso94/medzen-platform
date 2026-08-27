@@ -1,11 +1,12 @@
 {
  "audio": "fetch by manifest URI, mono-mean, resample16k + utterance z-norm (calibrate _preprocess_wave), bfloat16",
+ "base_mode_rule": "owner decision 2026-08-27: when MEDZEN_SCORE_ARM=='base' the export-weight fetch/load is skipped and the sha-verified STAGED base checkpoint (omniASR-CTC-1B-v2.pt == the pinned MEDZEN_SCORE_MODEL_SHA256) is the model; ALL other arms unchanged (fetch + strict-load their export).",
  "decode": "CTC greedy over model logits truncated to the returned seq_len; consecutive-duplicate collapse; blank drop; skip-special decode (calibrate _ctc_greedy_text)",
  "decode_parity_rule": "the evaluator IMPORTS _preprocess_wave and _ctc_greedy_text from pipeline.omniasr_calibrate \u2014 the exact functions the mandatory in-run upstream-parity probe validates on every calibration; the evaluator adds NO decode logic of its own",
  "environment_contract": "MEDZEN_EXECUTION_MODE=arm2_scoring (strict enum, launcher+trainer parity); MEDZEN_SCORE_* pins injected by the launcher from the reviewed scoring packet",
  "evaluator_script": {
   "path": "pipeline/omniasr_score.py",
-  "sha256": "177e3dbc28d879b81514e00d8ace732156f6ac61730fff2412d6d81f8570abc2"
+  "sha256": "51d6e6987c442c556f3558f889d57c5e495615571618933e69f28cf9391e51b4"
  },
  "inputs": "scoring manifest fetched by EXACT VersionId + sha; identities only + audio locations; the evaluator NEVER sees references",
  "model_loading": "stage_model_artifacts (the trainer's own staging step) pulls the base checkpoint to /models BEFORE architecture load; export weights fetched by EXACT S3 VersionId and sha-verified (strict load) \u2014 a substituted model refuses",
@@ -15,5 +16,5 @@
   "file": "{record, job_name, arm, model_sha256, model_artifact{s3_uri,s3_version_id}, training_packet_canonical_sha256, split_sha256, evaluator_image_digest, manifest_sha256, rows:[{audio_checksum_sha256, hyp_normalized}]}"
  },
  "record": "B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001",
- "utc": "2026-08-26T04:10:08Z"
+ "utc": "2026-08-27T02:18:24Z"
 }

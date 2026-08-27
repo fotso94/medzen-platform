@@ -104,10 +104,17 @@ def main() -> int:
     manifest_uri = _require("MEDZEN_SCORE_MANIFEST_S3_URI")
     manifest_vid = _require("MEDZEN_SCORE_MANIFEST_VERSION_ID")
     manifest_sha = _require("MEDZEN_SCORE_MANIFEST_SHA256")
-    model_uri = _require("MEDZEN_SCORE_MODEL_S3_URI")
-    model_vid = _require("MEDZEN_SCORE_MODEL_VERSION_ID")
-    model_sha = _require("MEDZEN_SCORE_MODEL_SHA256")
     arm = _require("MEDZEN_SCORE_ARM")
+    # BASE MODE (owner decision 2026-08-27): the frozen base teacher has NO
+    # fine-tuned export/model.pt — the staged base checkpoint IS the model. So
+    # ONLY when the arm is exactly 'base' the export-weight fetch+load is
+    # skipped; every other arm still fetches and strict-loads its export. The
+    # model identity for base is the staged base checkpoint sha (verified by
+    # stage_model_artifacts), which MEDZEN_SCORE_MODEL_SHA256 must equal.
+    base_mode = (arm.lower() == "base")
+    model_sha = _require("MEDZEN_SCORE_MODEL_SHA256")
+    model_uri = "" if base_mode else _require("MEDZEN_SCORE_MODEL_S3_URI")
+    model_vid = "" if base_mode else _require("MEDZEN_SCORE_MODEL_VERSION_ID")
     split_sha = _require("MEDZEN_SCORE_SPLIT_SHA256")
     image_digest = _require("MEDZEN_SCORE_EVALUATOR_IMAGE_DIGEST")
     training_packet_sha = os.environ.get(
@@ -129,8 +136,17 @@ def main() -> int:
 
     cli = s3()
     # the student architecture loads from the STAGED base checkpoint (the
-    # same stage_model_artifacts step the trainer runs before model load)
-    stage_model_artifacts(cli)
+    # same stage_model_artifacts step the trainer runs before model load).
+    # stage_model_artifacts sha-verifies the base against CTC_MODEL_ARTIFACTS
+    # (omniASR-CTC-1B-v2.pt == 354f9817…); in base mode that IS the model.
+    staged = stage_model_artifacts(cli)
+    if base_mode:
+        staged_base_sha = staged.get("omniASR-CTC-1B-v2.pt", "")
+        if staged_base_sha != model_sha:
+            raise EvaluatorRefusal(
+                f"base mode: the staged base checkpoint hashes to "
+                f"{staged_base_sha[:16]}, the packet pins {model_sha[:16]} — "
+                "refusing a base identity mismatch")
     work = Path("/opt/ml/model")          # ONLY receipts.json lands here
     work.mkdir(parents=True, exist_ok=True)
     scratch = Path("/tmp/medzen-score-scratch")
@@ -147,13 +163,19 @@ def main() -> int:
     # the EXPORT weights are then loaded over it (mirrors the calibrate flow)
     config = parse_config(dict(os.environ))
     model, tokenizer, device = _load_model_and_tokenizer(config)
-    export_path = scratch / "score-model.pt"
-    _fetch_pinned(cli, model_uri, model_vid, model_sha, export_path,
-                  expected_sha_of=("member:export/model.pt"
-                                   if model_uri.endswith(".tar.gz")
-                                   else "object"))
-    state = torch.load(export_path, map_location="cpu", weights_only=True)
-    model.load_state_dict(state, strict=True)
+    if base_mode:
+        # the staged, sha-verified base loaded above IS the model — no export
+        # weights to fetch or load (owner base-mode decision)
+        print(json.dumps({"status": "BASE_MODE_NO_EXPORT_LOAD",
+                          "base_sha256": model_sha}, sort_keys=True))
+    else:
+        export_path = scratch / "score-model.pt"
+        _fetch_pinned(cli, model_uri, model_vid, model_sha, export_path,
+                      expected_sha_of=("member:export/model.pt"
+                                       if model_uri.endswith(".tar.gz")
+                                       else "object"))
+        state = torch.load(export_path, map_location="cpu", weights_only=True)
+        model.load_state_dict(state, strict=True)
     model.eval()
 
     import soundfile as sf
@@ -189,7 +211,9 @@ def main() -> int:
         "job_name": job_name,
         "arm": arm,
         "model_sha256": model_sha,
-        "model_artifact": {"s3_uri": model_uri, "s3_version_id": model_vid},
+        "model_artifact": ({"base_mode": True, "base_sha256": model_sha}
+                           if base_mode else
+                           {"s3_uri": model_uri, "s3_version_id": model_vid}),
         "training_packet_canonical_sha256": training_packet_sha or None,
         "split_sha256": split_sha,
         "evaluator_image_digest": image_digest,
