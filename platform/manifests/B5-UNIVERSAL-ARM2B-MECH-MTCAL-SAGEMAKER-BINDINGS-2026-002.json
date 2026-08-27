@@ -1,6 +1,6 @@
 {
  "acceptance_criteria": [
-  "the run completes exactly 300 steps or fails closed (no silent success)",
+  "the run completes exactly 30 steps or fails closed (no silent success)",
   "separate CTC / KD / total loss logged per step, steps contiguous 1..N; KD positive and finite on every step; total == ctc + alpha*kd",
   "per-language KD coverage (rows and valid frames) recorded for every preservation language: english, french, lingala, swahili",
   "peak GPU memory recorded and <= 23622320128 bytes",
@@ -21,8 +21,8 @@
    "swahili"
   ]
  },
- "cost_ceiling_usd": 3.8,
- "cost_registry_line": "B5-ARM2B-MTCAL-2026-001",
+ "cost_ceiling_usd": 2.47,
+ "cost_registry_line": "B5-ARM2B-MECH-MTCAL-2026-002",
  "distillation": {
   "design": "platform/decisions/B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001.json",
   "kd_alpha": 1.0,
@@ -58,7 +58,7 @@
  "environment": {
   "MEDZEN_AUDIO_CAP_HOURS": "100",
   "MEDZEN_BATCH_SIZE": "2",
-  "MEDZEN_CHECKPOINT_EVERY": "300",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
   "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl,pidgin=platform/manifests/dev-sentinels/pidgin.jsonl",
   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
   "MEDZEN_EXECUTION_MODE": "arm2_comparative",
@@ -80,7 +80,7 @@
   "MEDZEN_LR": "1e-5",
   "MEDZEN_LR_SCHEDULE": "constant",
   "MEDZEN_MANIFEST_VERSION": "gb9",
-  "MEDZEN_MAX_STEPS": "300",
+  "MEDZEN_MAX_STEPS": "30",
   "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
   "MEDZEN_SEED": "1",
   "MEDZEN_STUDENT_INIT_MODE": "arm1",
@@ -90,25 +90,25 @@
   "MEDZEN_TEMPERATURE": "0.5",
   "MEDZEN_TRAIN_MODE": "full",
   "MEDZEN_VARIANT": "ctc",
-  "MEDZEN_WARMUP_STEPS": "75"
+  "MEDZEN_WARMUP_STEPS": "8"
  },
  "execution_contract": {
   "note": "the image bakes THIS file; environment/distillation/result_verifier/job_id below are byte-equal to it (launcher-enforced)",
-  "path": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-EXECUTION-CONTRACT-2026-001.json",
-  "sha256": "a051ceaf8223777adf73a55eec6214202dc3cff1e4c691fa4d5957acc70988a8"
+  "path": "platform/manifests/B5-UNIVERSAL-ARM2B-MECH-MTCAL-EXECUTION-CONTRACT-2026-002.json",
+  "sha256": "b3cdac8aab8d1f59bfbf44c9d54c354c8a28133be1d470deea86ae593b4817e0"
  },
  "image_provenance": "built + tested (incl. the REAL dual-teacher torch tests in the image gate) + scanned by arm2-trainer-image run 33102504152 from reviewed master commit 9f075d8223c7c25e21d7e82fe2f6cf3b999d0dc6 (Arm-2b: warm-start + retention anchor + both ARM2B execution contracts baked)",
  "image_tag": "arm2-ftcal-9f075d8223c7c25e21d7e82fe2f6cf3b999d0dc6",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:bf8b7b44c99ed7c46d5fa88cfd0773d486c79cdf81b5399069fd62b4e0ae2ee7",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-arm2b-mtcal-2026-001",
+ "job_id": "b5-arm2b-mech-mtcal-2026-002",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always",
- "max_runtime_seconds": 7200,
+ "max_runtime_seconds": 4200,
  "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
- "purpose": "Arm-2b MEMORY + TRAJECTORY calibration: 300 steps, dual-teacher warm-started. GATE (owner directive 2026-08-27): lingala moves from arm1's 19.82% toward base's 18.48%, pidgin stays near arm1's 23.14% (anchors from the ATTESTED Phase-A receipts on these exact sentinel rows), peak GPU under the 22 GiB ceiling with three resident 1B models. PASS -> the four-arm 2000-step grid proceeds.",
- "record": "B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001",
+ "purpose": "Arm-2b mtcal MECHANICS receipt: 30-step below-tier run of the dual-teacher warm-started recipe \u2014 proves both teachers load+freeze, the warm start verifies, the two-term loss is live with correct arithmetic (/2 metrics), and the pidgin/lingala/swahili dev sentinels decode. Produces the calibration receipt the arm-tier mtcal chain requires.",
+ "record": "B5-UNIVERSAL-ARM2B-MECH-MTCAL-SAGEMAKER-BINDINGS-2026-002",
  "result_verifier": {
   "dev_manifests": {
    "lingala": {
@@ -141,12 +141,12 @@
    "swahili",
    "pidgin"
   ],
-  "expected_steps": 300,
+  "expected_steps": 30,
   "gpu_memory_ceiling_bytes": 23622320128,
   "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
   "metrics_artifact": "calibration-metrics.json",
   "metrics_schema": "b5-arm2-calibration-metrics/2",
-  "note": "Arm-2b MEMORY + TRAJECTORY calibration (owner directive 2026-08-27): one inexpensive 300-step dual-teacher warm-started run. GATE (read offline from dev_sentinel_wer + peak_gpu_bytes, anchors computed from the ATTESTED Phase-A scoring receipts on these exact sentinel rows): (a) lingala moves from Arm-1's 19.82% toward base's 18.48%; (b) pidgin stays near Arm-1's 23.14% (base is 33.41%); (c) peak GPU under the ceiling with THREE resident 1B models (student + base + arm1 teachers). PASS -> the four-arm 2000-step grid proceeds; FAIL -> back to the owner.",
+  "note": "Arm-2b mtcal MECHANICS run: proves the dual-teacher warm-started recipe executes end-to-end (both teachers load + freeze, warm start verifies, two-term loss live with correct arithmetic, /2 metrics, dev sentinels decoded incl. pidgin, peak GPU recorded) at 30 steps before the 300-step trajectory run. Trajectory conclusions are NOT read from this run.",
   "required_preservation_coverage": [
    "english",
    "french",
@@ -160,8 +160,8 @@
   ],
   "script": "scripts/verify_arm2_calibration.py"
  },
- "runtime_cap_basis": "Phase-A measured ~2.9 s/step full-mode + ~1100 s fixed overhead (stage+load) + ~90 s dev decode (180 rows @ >2 utt/s) + ~30% dual-teacher forward overhead + arm1-export fetch => ~3300 s expected @300 steps; cap 7200 s is ~2x the expectation (fail-closed on hangs, no silent overrun)",
- "scope": "ARM2B_MEMORY_TRAJECTORY_CALIBRATION_300_STEP_RUN",
+ "runtime_cap_basis": "Phase-A measured ~2.9 s/step full-mode + ~1100 s fixed overhead (stage+load) + ~90 s dev decode (180 rows @ >2 utt/s) + ~30% dual-teacher forward overhead + arm1-export fetch => ~1400 s expected @30 steps; cap 4200 s is ~2x the expectation (fail-closed on hangs, no silent overrun)",
+ "scope": "ARM2B_MECHANICS_30_STEP_RUN",
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
  ],
@@ -175,6 +175,6 @@
   "subnet-00232b25bc1ac407a"
  ],
  "volume_gb": 100,
- "worst_case_basis": "AUTHORITATIVE rate $1.60/h (ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'], owner padded rate) x cap 7200 s = $3.2",
- "worst_case_usd": 3.2
+ "worst_case_basis": "AUTHORITATIVE rate $1.60/h (ON_DEMAND_USD_PER_HOUR['ml.g6.xlarge'], owner padded rate) x cap 4200 s = $1.87",
+ "worst_case_usd": 1.87
 }
