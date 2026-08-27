@@ -1,0 +1,13 @@
+{
+ "record": "ARM2-BASE-SCORING-REFERENCE-2026-001",
+ "kind": "scoring_reference",
+ "arm": "base",
+ "scoring_model_sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+ "artifact": {},
+ "frozen_reference": {
+  "provenance_record": "platform/manifests/B5-UNIVERSAL-ARM1-DEV-SWEEP-BINDINGS-2026-001.json",
+  "base_sha256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+  "note": "The frozen base teacher is the staged omniASR-CTC-1B-v2.pt checkpoint (CTC_MODEL_ARTIFACTS, sha256 354f9817). It has NO fine-tuned export/model.pt, so its scoring runs in the evaluator's base-mode: the evaluator stages the base checkpoint, sha-verifies it against CTC_MODEL_ARTIFACTS, and decodes with it directly (BASE_MODE_NO_EXPORT_LOAD). This scoring reference pins the base decode identity for the nomination scorer, parallel to ARM2-ARM1-SCORING-REFERENCE-2026-001; there is no tar artifact because base loads no export."
+ },
+ "utc": "2026-08-27T03:55:00Z"
+}

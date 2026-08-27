@@ -1,0 +1,30 @@
+{
+ "arm": "H1",
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1547709536,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm2-h1-2026-001/output/medzen-b5-b5-universal-arm2-h1-2026-001/output/model.tar.gz",
+  "s3_version_id": "jATb77wv6MbhG6WSYTOXBv.O8.1WcArI"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "basis": "Live AWS reverification 2026-08-27: describe-training-job medzen-b5-b5-universal-arm2-h1-2026-001 = Completed; TrainingImage == sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6; ModelArtifacts.S3ModelArtifacts == s3://medzen-speech/research/b5-training/b5-universal-arm2-h1-2026-001/output/medzen-b5-b5-universal-arm2-h1-2026-001/output/model.tar.gz; head-object at the pinned VersionId jATb77wv6MbhG6WSYTOXBv.O8.1WcArI = 1547709536 bytes, KMS 9c336116-c648-4548-95c6-1b926478ae57. export/model.pt independently sha256-verified to 9945c049f61424815d7f471849a238e87dbb53314c3460c62d9302ca514f669f by download+extract at authoring time AND proven by the cryptographically attested protected-evaluator decode (the scoring receipt, same tar VersionId).",
+  "failures": [],
+  "mode": "live",
+  "verdict": "PASS"
+ },
+ "export": {
+  "model_sha256": "9945c049f61424815d7f471849a238e87dbb53314c3460c62d9302ca514f669f"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:d9381e46c6485533999548050d350dc9068699208d5c9bfd1c98406b109b36e6",
+ "job": "medzen-b5-b5-universal-arm2-h1-2026-001",
+ "kind": "trained_arm_completion",
+ "record": "ARM2-STAGE1-COMPLETION-H1-2026-001",
+ "terminal_status": "Completed",
+ "training": {
+  "campaign": "SIX-ARM STAGE-1 CAMPAIGN (B6-LOCAL-ENGINEERING-2026-088)",
+  "kd": "on",
+  "steps": 2000
+ },
+ "utc": "2026-08-27T03:55:00Z"
+}
