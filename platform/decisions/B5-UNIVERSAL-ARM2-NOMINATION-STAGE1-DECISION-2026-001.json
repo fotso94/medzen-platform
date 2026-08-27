@@ -1,0 +1,387 @@
+{
+ "decision": {
+  "family_order": [
+   "H1:preservation_english",
+   "H1:preservation_french",
+   "H1:preservation_swahili",
+   "H1:pidgin_retention",
+   "H1:beat_KD_CONTROL",
+   "H1:beat_H0",
+   "H2:preservation_english",
+   "H2:preservation_french",
+   "H2:preservation_swahili",
+   "H2:pidgin_retention",
+   "H2:beat_KD_CONTROL",
+   "H2:beat_H0",
+   "H3:preservation_english",
+   "H3:preservation_french",
+   "H3:preservation_swahili",
+   "H3:pidgin_retention",
+   "H3:beat_KD_CONTROL",
+   "H3:beat_H0",
+   "H4:preservation_english",
+   "H4:preservation_french",
+   "H4:preservation_swahili",
+   "H4:pidgin_retention",
+   "H4:beat_KD_CONTROL",
+   "H4:beat_H0"
+  ],
+  "family_pvalues": [
+   0.6181,
+   0.4757,
+   0.0016,
+   1.0,
+   0.9239,
+   0.6739,
+   0.4112,
+   0.2941,
+   0.0001,
+   1.0,
+   0.2879,
+   0.1032,
+   0.2341,
+   0.1418,
+   0.0031,
+   1.0,
+   0.1449,
+   0.0378,
+   0.5624,
+   0.4203,
+   0.0067,
+   1.0,
+   0.8524,
+   0.6045
+  ],
+  "holm_mask": [
+   false,
+   false,
+   true,
+   false,
+   false,
+   false,
+   false,
+   false,
+   true,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false,
+   false
+  ],
+  "outcome": "NO_RECIPE_QUALIFIES",
+  "per_candidate": {
+   "H1": {
+    "holm_all_rejected": false,
+    "qualifies": false,
+    "tests": {
+     "beat_H0": {
+      "lower_ci95": -0.0010697130116055498,
+      "p": 0.6739
+     },
+     "beat_KD_CONTROL": {
+      "lower_ci95": -0.00141610483212265,
+      "p": 0.9239
+     },
+     "pidgin_retention": {
+      "p": 1.0,
+      "upper_ci95": 0.024053179392985208
+     },
+     "preservation_english": {
+      "p": 0.6181,
+      "upper_ci95": 0.008619772267745018
+     },
+     "preservation_french": {
+      "p": 0.4757,
+      "upper_ci95": 0.00826161790017213
+     },
+     "preservation_swahili": {
+      "p": 0.0016,
+      "upper_ci95": 0.002341235001463271
+     }
+    },
+    "vetoed": true,
+    "vetoes": {
+     "ewe": {
+      "p": 0.1142,
+      "reference": "arm1",
+      "upper_ci95": 0.02127659574468077,
+      "vetoed": true
+     },
+     "kinyarwanda": {
+      "p": 0.0004,
+      "reference": "arm1",
+      "upper_ci95": 0.0,
+      "vetoed": false
+     },
+     "lingala": {
+      "p": 0.0157,
+      "reference": "base",
+      "upper_ci95": 0.0085372794536141,
+      "vetoed": false
+     }
+    }
+   },
+   "H2": {
+    "holm_all_rejected": false,
+    "qualifies": false,
+    "tests": {
+     "beat_H0": {
+      "lower_ci95": -0.00021663236244087725,
+      "p": 0.1032
+     },
+     "beat_KD_CONTROL": {
+      "lower_ci95": -0.0005710235836999533,
+      "p": 0.2879
+     },
+     "pidgin_retention": {
+      "p": 1.0,
+      "upper_ci95": 0.02525760843517852
+     },
+     "preservation_english": {
+      "p": 0.4112,
+      "upper_ci95": 0.007401480296059207
+     },
+     "preservation_french": {
+      "p": 0.2941,
+      "upper_ci95": 0.007306626354245421
+     },
+     "preservation_swahili": {
+      "p": 0.0001,
+      "upper_ci95": 0.0012406947890818976
+     }
+    },
+    "vetoed": true,
+    "vetoes": {
+     "ewe": {
+      "p": 0.1706,
+      "reference": "arm1",
+      "upper_ci95": 0.026666666666666616,
+      "vetoed": true
+     },
+     "kinyarwanda": {
+      "p": 0.0,
+      "reference": "arm1",
+      "upper_ci95": 0.0,
+      "vetoed": false
+     },
+     "lingala": {
+      "p": 0.0056,
+      "reference": "base",
+      "upper_ci95": 0.007384882710686352,
+      "vetoed": false
+     }
+    }
+   },
+   "H3": {
+    "holm_all_rejected": false,
+    "qualifies": false,
+    "tests": {
+     "beat_H0": {
+      "lower_ci95": 7.731874771149672e-05,
+      "p": 0.0378
+     },
+     "beat_KD_CONTROL": {
+      "lower_ci95": -0.00029361001338062964,
+      "p": 0.1449
+     },
+     "pidgin_retention": {
+      "p": 1.0,
+      "upper_ci95": 0.02393583160039045
+     },
+     "preservation_english": {
+      "p": 0.2341,
+      "upper_ci95": 0.006591337099811689
+     },
+     "preservation_french": {
+      "p": 0.1418,
+      "upper_ci95": 0.006186077202243484
+     },
+     "preservation_swahili": {
+      "p": 0.0031,
+      "upper_ci95": 0.002756930617246134
+     }
+    },
+    "vetoed": false,
+    "vetoes": {
+     "ewe": {
+      "p": 0.0454,
+      "reference": "arm1",
+      "upper_ci95": 0.007575757575757569,
+      "vetoed": false
+     },
+     "kinyarwanda": {
+      "p": 0.0004,
+      "reference": "arm1",
+      "upper_ci95": 0.0,
+      "vetoed": false
+     },
+     "lingala": {
+      "p": 0.0027,
+      "reference": "base",
+      "upper_ci95": 0.006622516556291369,
+      "vetoed": false
+     }
+    }
+   },
+   "H4": {
+    "holm_all_rejected": false,
+    "qualifies": false,
+    "tests": {
+     "beat_H0": {
+      "lower_ci95": -0.0008752325288875762,
+      "p": 0.6045
+     },
+     "beat_KD_CONTROL": {
+      "lower_ci95": -0.0014266660793210983,
+      "p": 0.8524
+     },
+     "pidgin_retention": {
+      "p": 1.0,
+      "upper_ci95": 0.02419981019756709
+     },
+     "preservation_english": {
+      "p": 0.5624,
+      "upper_ci95": 0.008173800817380075
+     },
+     "preservation_french": {
+      "p": 0.4203,
+      "upper_ci95": 0.008095952023987996
+     },
+     "preservation_swahili": {
+      "p": 0.0067,
+      "upper_ci95": 0.0029935638377488194
+     }
+    },
+    "vetoed": false,
+    "vetoes": {
+     "ewe": {
+      "p": 0.0286,
+      "reference": "arm1",
+      "upper_ci95": 0.005813953488372103,
+      "vetoed": false
+     },
+     "kinyarwanda": {
+      "p": 0.0009,
+      "reference": "arm1",
+      "upper_ci95": 0.0,
+      "vetoed": false
+     },
+     "lingala": {
+      "p": 0.0044,
+      "reference": "base",
+      "upper_ci95": 0.007121212121212139,
+      "vetoed": false
+     }
+    }
+   }
+  },
+  "qualifiers": []
+ },
+ "inputs": {
+  "B": 10000,
+  "alpha": 0.05,
+  "arm2_holm.py_sha256": "fd3bfaefb4a4761878c0209a3729b9eaaa9516fee27ea6924eed0ec061a0e532",
+  "arm2_nomination_scorer.py_sha256": "a205536ccf5c295f23007d113fa4062eb4121146b782a08adf0ed4333ed58454",
+  "arm_completion_receipts_sha256": {
+   "H0": "cd943fb5f1ef97a6ac225a9ea12c2f58836984472ece09329f7ec57cf172533e",
+   "H1": "df935091bbdfac84318e42d43080c2cd3cba83c439d5cb4b21359f7fd2f702f3",
+   "H2": "4a21b9e890bb023f050e5127529bd480d0daf13575614b4d502c890a7daf1f47",
+   "H3": "086b969f2a9f2acc854ef39c39b33d7deefc3b23a8a56021163c0943c1a0af28",
+   "H4": "ece5abb45755acb7f70fd7411d59412fc8d0dc9007b078660b5a2c10541384ea",
+   "KD_CONTROL": "62354eb2983365d736222818d95ac151d8744e7cb8ec6218bf682f3de90574ba",
+   "arm1": "4718d7791c3f8206960a5bf2bf58844121fb14c0c5225f1330e98a9924676573",
+   "base": "f2ce730f5d8ae43e0afabbc68861d6cc4768bb294ec3a670a2dc42b79b88fc51"
+  },
+  "arm_model_sha256": {
+   "H0": "dbf950c79c57518a92bb195afaff14e3bfb43d0074182ede0f4ddad0de7596ff",
+   "H1": "9945c049f61424815d7f471849a238e87dbb53314c3460c62d9302ca514f669f",
+   "H2": "a22d8c48e11be7693b3ca23b3d15a7f744864a46917cf0b762ac346c8819a8fa",
+   "H3": "682c048f2210ada4ae67340b7f2c36086099e2b1965be4dcbbcc69adf8bc7d52",
+   "H4": "1c09c384ca3d0105c40ceef4e59fdcb2fadbce8818c0f4a21a53909e957b1970",
+   "KD_CONTROL": "7c27574f2bbd8d89d290571a66853ab5ae570b8f59ef103095f3d7480372ec3c",
+   "arm1": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+   "base": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c"
+  },
+  "aws_reverified": [
+   "H0",
+   "H1",
+   "H2",
+   "H3",
+   "H4",
+   "KD_CONTROL",
+   "arm1",
+   "base"
+  ],
+  "master_seed": 20260825,
+  "noninferiority_margin": 0.005,
+  "receipt_attestations": {
+   "H0": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33036266649/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "403783057c0b7fa8f82502dde42154751a1144e8a636592291556fa7690ddfe7"
+   },
+   "H1": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33036834385/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "9b44e0e89ec3e3f3ed58aed0442d80cd726a89558bc3dbbc92ffd4484f1c4207"
+   },
+   "H2": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33036839732/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "8e60e27fc876eab96e96969380c9bdee87559e0696c47ffab4f1b299f5a1d15c"
+   },
+   "H3": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33037911269/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "2c0c5953a9406964ffa9bc4f53bc8835acf40fb850e15a704206e1e27b7192e3"
+   },
+   "H4": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33037920162/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "ac150a3651039e3e0e21c995e0bfb7bca8664cd467ec9aed2c8e4fb11e06a7b6"
+   },
+   "KD_CONTROL": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33036262944/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "30dd6e9e1d756c2be8258b5e3fd6fb049a84174643970b64fbf46e98951f28b6"
+   },
+   "arm1": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33035733578/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "0fbea7eaf22be21c13addcb198b8328d48e0d510939d9f448a4b23686f5222af"
+   },
+   "base": {
+    "run_invocation_uri": "https://github.com/fotso94/medzen-platform/actions/runs/33035728833/attempts/1",
+    "signer_identity": "https://github.com/fotso94/medzen-platform/.github/workflows/arm2-scoring-eval-exec.yml@refs/heads/master",
+    "subject_sha256": "8bc1e981b8c7b014f5b5c3c86bda7bc7281e635090a56dafe96baa99a0a722a3"
+   }
+  },
+  "receipts_sha256": {
+   "H0": "403783057c0b7fa8f82502dde42154751a1144e8a636592291556fa7690ddfe7",
+   "H1": "9b44e0e89ec3e3f3ed58aed0442d80cd726a89558bc3dbbc92ffd4484f1c4207",
+   "H2": "8e60e27fc876eab96e96969380c9bdee87559e0696c47ffab4f1b299f5a1d15c",
+   "H3": "2c0c5953a9406964ffa9bc4f53bc8835acf40fb850e15a704206e1e27b7192e3",
+   "H4": "ac150a3651039e3e0e21c995e0bfb7bca8664cd467ec9aed2c8e4fb11e06a7b6",
+   "KD_CONTROL": "30dd6e9e1d756c2be8258b5e3fd6fb049a84174643970b64fbf46e98951f28b6",
+   "arm1": "0fbea7eaf22be21c13addcb198b8328d48e0d510939d9f448a4b23686f5222af",
+   "base": "8bc1e981b8c7b014f5b5c3c86bda7bc7281e635090a56dafe96baa99a0a722a3"
+  },
+  "repo_head_oid": "abf5e65ec1bb43635b0fb2b627cac04c6b144b6c",
+  "scoring_packet": "platform/decisions/B5-UNIVERSAL-ARM2-NOMINATION-SCORING-PACKET-2026-001.json",
+  "scoring_packet_sha256": "94968e6494bf06b4ef513e665138c3bd0520c95166394f5d1d7b14fbe94c6b6f",
+  "stage1_result": null,
+  "veto_margin": 0.01
+ },
+ "protocol": "B5-UNIVERSAL-ARM2-KD-COMPARISON-PROTOCOL-2026-001",
+ "record": "B5-UNIVERSAL-ARM2-NOMINATION-STAGE1-DECISION"
+}
