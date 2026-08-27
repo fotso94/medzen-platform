@@ -1,0 +1,36 @@
+{
+ "record": "B6-LOCAL-ENGINEERING-2026-089-arm2-scoring-quota-paced",
+ "kind": "append_only_engineering_evidence",
+ "supersedes": null,
+ "successor_of": "B6-LOCAL-ENGINEERING-2026-088-arm2-stage1-campaign-complete",
+ "utc": "2026-08-27T03:10:00Z",
+ "subject": "Arm-2 nomination scoring pass — 8-model launch outcome and quota-driven serial pacing",
+ "context": "Owner authorized the nomination scoring pass (2026-08-27). All 8 SCORE packets (base, arm1, kdcontrol, h0..h4) were authored, committed, reviewed APPROVED, and dispatched together as arm2_scoring protected-workflow launches on the base-mode evaluator image sha256:985c4d9e.",
+ "outcome": {
+  "launched_ok": [
+   {"arm": "base", "job": "medzen-b5-b5-arm2-score-base-2026-001", "workflow_run": 33034868338, "status_at_record": "InProgress", "created_utc": "2026-08-27T02:59:46Z"},
+   {"arm": "arm1", "job": "medzen-b5-b5-arm2-score-arm1-2026-001", "workflow_run": 33034869628, "status_at_record": "InProgress", "created_utc": "2026-08-27T03:00:01Z"}
+  ],
+  "failed_at_create_training_job": [
+   {"arm": "kdcontrol", "workflow_run": 33034870758},
+   {"arm": "h0", "workflow_run": 33034871894},
+   {"arm": "h1", "workflow_run": 33034873204},
+   {"arm": "h2", "workflow_run": 33034874593},
+   {"arm": "h3", "workflow_run": 33034875691},
+   {"arm": "h4", "workflow_run": 33034877194}
+  ]
+ },
+ "root_cause": {
+  "exception": "botocore.errorfactory.ResourceLimitExceeded",
+  "message": "The account-level service limit 'ml.g6.xlarge for training job usage' is 2 Instances, with current utilization of 2 Instances and a request delta of 1 Instances.",
+  "diagnosis": "NOT code, packet, or IAM. base+arm1 consumed the account's only 2 concurrent ml.g6.xlarge training slots; the remaining 6 CreateTrainingJob calls were rejected synchronously (SageMaker does not queue training jobs). The six 2,000-step training runs never tripped this because they were launched serially, one at a time.",
+  "ruled_out": "IAM/role scoping (the create+addtags and versioned-read grants applied for the scoring role are correct and were exercised by the two successful launches); packet render/validate (all 8 returned PASS_EXACT_TRAINING_REQUEST at authoring)."
+ },
+ "resolution": {
+  "decision": "Serial pacing at the quota ceiling: run at most 2 scoring jobs concurrently. base+arm1 hold the 2 slots now; re-dispatch the 6 failed arms two-at-a-time as slots free (kdcontrol+h0, then h1+h2, then h3+h4). Each re-dispatch is a fresh arm-tier protected-workflow launch requiring owner environment-gate approval. Attestation of completed receipts runs in parallel with the next training pair (attest is a signing workflow, not a g6.xlarge job).",
+  "alternative_not_taken": "Request an AWS Service Quotas increase for 'ml.g6.xlarge for training job usage'. Owner action; AWS approval latency (hours-to-day) likely exceeds the ~2h wall-clock of serial pacing given ~40-min decode jobs. Left available to the owner if faster parallelism is wanted.",
+  "no_wasted_spend": "The 6 failed launches created no training jobs and incurred no SageMaker billable time (failure was at CreateTrainingJob, before any instance start)."
+ },
+ "held": ["sealed_evaluation", "promotion", "deployment"],
+ "next": "On base+arm1 completion: recover+cryptographically verify their receipts, attest (2nd gate each), then dispatch kdcontrol+h0. Repeat until all 8 receipt sets exist and are attested, then run the committed Stage-1 Holm scorer over the 24-test family for the provisional finalist."
+}
