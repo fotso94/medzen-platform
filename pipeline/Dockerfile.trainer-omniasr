@@ -56,6 +56,7 @@ COPY scripts/verify_arm2_calibration.py scripts/b5_sagemaker_job.py ./scripts/
 # test stage carries BOTH the launch packet (tests validate it) and the
 # execution contract (the runtime artifact); only the CONTRACT ships (below)
 COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAFT.json \
+     platform/manifests/B5-UNIVERSAL-ARM2-H3-SAGEMAKER-BINDINGS-2026-001.json \
      platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json \
      platform/manifests/B5-UNIVERSAL-ARM2-THRUBENCH-EXECUTION-CONTRACT-2026-001.json \
      platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-EXECUTION-CONTRACT-2026-001.json \
