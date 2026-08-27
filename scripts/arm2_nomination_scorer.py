@@ -410,8 +410,30 @@ def load_arm_completion_receipt(raw: bytes, *, arm: str) -> dict:
          authoritative --live PASS block (strict; the six stage-1 arms);
       2. the Arm-1 completion record (ARM1-B5-2026-005-COMPLETION-003):
          objects["LATEST.json"].content.checkpoint_sha256;
-      3. the frozen-base bindings record: base_model.sha256."""
+      3. the frozen-base bindings record: base_model.sha256;
+      4. a FROZEN-REFERENCE scoring record (kind=='scoring_reference'):
+         the exact DECODE identity the evaluator loads for a frozen reference
+         model — arm1's export/model.pt sha (which differs from its raw
+         checkpoint sha) or the base .pt sha — plus a frozen_reference block
+         pointing to the model's committed provenance. These references are
+         NOT arm2 training outputs, so they carry no arm2 --live block; the
+         evaluator itself verifies the decode sha at run time (base staged-sha
+         / arm1 tar-member sha) and the receipt is attested."""
     doc = json.loads(raw)
+    if doc.get("kind") == "scoring_reference":
+        sr = str(doc.get("scoring_model_sha256") or "")
+        prov = doc.get("frozen_reference") or {}
+        if not re.fullmatch(r"[0-9a-f]{64}", sr):
+            raise ScorerRefusal(
+                f"scoring_reference[{arm}] lacks a 64-hex scoring_model_sha256")
+        if not str(prov.get("provenance_record") or "").startswith(
+                ("platform/evidence/", "platform/manifests/")):
+            raise ScorerRefusal(
+                f"scoring_reference[{arm}] must point frozen_reference."
+                "provenance_record at a committed provenance record")
+        return {"model_sha256": sr, "identity_class": "frozen_reference",
+                "artifact": doc.get("artifact") or {},
+                "training_packet_canonical_sha256": None, "doc": doc}
     export = doc.get("export") or {}
     model = str(export.get("model_sha256") or "")
     if re.fullmatch(r"[0-9a-f]{64}", model):
@@ -805,8 +827,13 @@ def main(argv: list[str] | None = None, *, gh_runner=None,
             raise ScorerRefusal(f"duplicate arm receipt for {arm!r}")
         raw = _committed_bytes(root, rel)
         arm_ids[arm] = load_arm_completion_receipt(raw, arm=arm)
-        aws_reverify_completion(arm_ids[arm]["doc"], arm=arm,
-                                session=aws_session)
+        # AWS reverify applies to arm2 TRAINED arms (they have a describable
+        # SageMaker job + KMS artifact); frozen reference models (base, arm1)
+        # are not arm2 jobs — the evaluator verifies their decode sha at run
+        # time and the receipt is attested, so there is nothing to describe.
+        if arm_ids[arm]["identity_class"] == "trained_arm":
+            aws_reverify_completion(arm_ids[arm]["doc"], arm=arm,
+                                    session=aws_session)
         arm_receipt_shas[arm] = _sha256_bytes(raw)
 
     finalist = None

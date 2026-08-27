@@ -535,3 +535,31 @@ def test_bootstrap_is_paired(tmp_path):
     plan = scorer.resample_plan(len(cl), 500, 42)
     out = scorer.bootstrap_wers({"a": rows, "b": list(rows)}, cl, plan)
     assert out["a"] == out["b"]
+
+
+# ---- scoring-reference shape (frozen base/arm1 decode identity) ----
+def test_scoring_reference_shape_reads_decode_sha():
+    rec = {"kind": "scoring_reference", "arm": "arm1",
+           "scoring_model_sha256": "c6" * 32,
+           "artifact": {"s3_uri": "s3://b/k", "s3_version_id": "V1"},
+           "frozen_reference": {"provenance_record":
+               "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION-003/completion.json"}}
+    ident = scorer.load_arm_completion_receipt(json.dumps(rec).encode(), arm="arm1")
+    assert ident["identity_class"] == "frozen_reference"
+    assert ident["model_sha256"] == "c6" * 32
+
+
+def test_scoring_reference_requires_committed_provenance_pointer():
+    rec = {"kind": "scoring_reference", "arm": "arm1",
+           "scoring_model_sha256": "c6" * 32,
+           "frozen_reference": {"provenance_record": "/etc/passwd"}}
+    with pytest.raises(SystemExit, match="committed provenance record"):
+        scorer.load_arm_completion_receipt(json.dumps(rec).encode(), arm="arm1")
+
+
+def test_real_committed_arm1_scoring_reference_resolves():
+    ident = scorer.load_arm_completion_receipt(
+        (ROOT / "platform/evidence/receipts/"
+         "ARM2-ARM1-SCORING-REFERENCE-2026-001.json").read_bytes(), arm="arm1")
+    assert ident["identity_class"] == "frozen_reference"
+    assert ident["model_sha256"].startswith("c6604a68")

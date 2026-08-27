@@ -1,0 +1,17 @@
+{
+ "arm": "arm1",
+ "artifact": {
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "s3_version_id": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4"
+ },
+ "frozen_reference": {
+  "checkpoint_sha256": "ecedfd30de60d4fae8d6b6912e3754bbf4e578eac36a004ca219227c1c011249",
+  "note": "arm1 is a FROZEN reference model from the Arm-1 campaign (a different pipeline that predates the arm2 --live verifier). Its committed completion record identifies the raw training CHECKPOINT (step-0040000.pt, ecedfd30); the DEPLOYABLE model the evaluator decodes with is export/model.pt inside arm1's committed model.tar.gz at the pinned VersionId, whose sha256 is scoring_model_sha256 above (extracted + hashed from the committed artifact). The evaluator re-verifies this exact member sha at decode time; the hypothesis receipts are Sigstore-attested. No arm2 --live block exists because arm1 was never an arm2 SageMaker job.",
+  "provenance_record": "platform/evidence/receipts/ARM1-B5-2026-005-COMPLETION-003/completion.json",
+  "provenance_record_sha256": "2bb44442bbc09aa71095f65c23bd0dabf26030248ca6f7c22fb147477d60e3f8"
+ },
+ "kind": "scoring_reference",
+ "record": "ARM2-ARM1-SCORING-REFERENCE-2026-001",
+ "scoring_model_sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+ "utc": "2026-08-27T02:35:33Z"
+}
