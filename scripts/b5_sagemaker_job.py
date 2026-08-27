@@ -218,6 +218,43 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
             str(environment.get("MEDZEN_KD_LANGUAGE_WEIGHTS", "")))
         if recipe_weights != env_weights:
             _mismatch("language_weights", recipe_weights, env_weights)
+        # Arm-2b (owner decision 2026-08-27): the retention anchor's recipe
+        # fields are cross-checked exactly like every other KD field — one
+        # canonical recipe, no silent divergence (same F4 discipline).
+        retention_recipe = recipe.get("retention")
+        if str(recipe.get("teacher_mode")) == "base+arm1_retention":
+            if not isinstance(retention_recipe, dict):
+                raise JobRefusal(
+                    "teacher_mode base+arm1_retention requires a "
+                    "distillation.retention recipe block (alpha, languages, "
+                    "teacher pins) — no silent anchor")
+            if float(retention_recipe.get("alpha")) != float(
+                    environment.get("MEDZEN_KD_RETENTION_ALPHA")):
+                _mismatch("retention.alpha", retention_recipe.get("alpha"),
+                          environment.get("MEDZEN_KD_RETENTION_ALPHA"))
+            recipe_ret = {str(x).strip().lower()
+                          for x in retention_recipe.get("languages", [])}
+            env_ret_langs = {t.strip().lower() for t in str(
+                environment.get("MEDZEN_KD_RETENTION_LANGUAGES", "")
+                ).split(",") if t.strip()}
+            if not recipe_ret or recipe_ret != env_ret_langs:
+                _mismatch("retention.languages", sorted(recipe_ret),
+                          sorted(env_ret_langs))
+            ret_teacher = retention_recipe.get("teacher") or {}
+            for field, env_key in (
+                    ("s3_uri", "MEDZEN_KD_RETENTION_TEACHER_S3_URI"),
+                    ("s3_version_id",
+                     "MEDZEN_KD_RETENTION_TEACHER_VERSION_ID"),
+                    ("sha256", "MEDZEN_KD_RETENTION_TEACHER_SHA256")):
+                if str(ret_teacher.get(field)) != str(
+                        environment.get(env_key)):
+                    _mismatch(f"retention.teacher.{field}",
+                              ret_teacher.get(field),
+                              environment.get(env_key))
+        elif retention_recipe is not None:
+            raise JobRefusal(
+                "the packet carries a distillation.retention block but "
+                "teacher_mode is not base+arm1_retention — contradictory")
 
     criteria = bindings.get("acceptance_criteria")
     if not isinstance(criteria, list) or not criteria:
@@ -240,10 +277,16 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     # expected_steps=1 while training runs 30, an enormous GPU ceiling and an
     # empty dev-language list all passed. Pin every field to its canonical
     # value/bound so the packet cannot smuggle a defanged verifier.
-    if str(spec["metrics_schema"]) != "b5-arm2-calibration-metrics/1":
+    # Arm-2b: /1 is the single-KD artifact schema; /2 (dual-KD retention
+    # anchor) is admitted here and pinned to the retention teacher-mode by
+    # the retention-consistency block below — neither layer alone decides.
+    if str(spec["metrics_schema"]) not in ("b5-arm2-calibration-metrics/1",
+                                           "b5-arm2-calibration-metrics/2"):
         raise JobRefusal(
             "result_verifier.metrics_schema must be "
-            "'b5-arm2-calibration-metrics/1' (the trainer's artifact schema)")
+            "'b5-arm2-calibration-metrics/1' (single-KD) or "
+            "'b5-arm2-calibration-metrics/2' (dual-KD retention anchor) — "
+            "the trainer's artifact schemas")
     if str(spec["script"]) != ARM2_CANONICAL_VERIFIER_SCRIPT:
         raise JobRefusal(
             f"result_verifier.script must be {ARM2_CANONICAL_VERIFIER_SCRIPT!r}"
@@ -304,10 +347,16 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
     if not pres:
         raise JobRefusal(
             "no preservation languages resolved for the comparative arm")
-    if not dev_set.issubset(pres):
+    # Arm-2b: dev sentinels may also measure RETENTION languages (the
+    # trajectory gate reads pidgin-vs-arm1) — the measured set is bounded by
+    # the languages the run's objectives anchor (preservation ∪ retention).
+    env_retention = {t.strip().lower() for t in str(
+        environment.get("MEDZEN_KD_RETENTION_LANGUAGES", "")).split(",")
+        if t.strip()}
+    if not dev_set.issubset(pres | env_retention):
         raise JobRefusal(
             "result_verifier.dev_sentinel_languages must be a subset of the "
-            "preservation_languages")
+            "preservation_languages plus (Arm-2b) the retention languages")
     # KD-on: the distillation recipe AND the env must agree with the SHARED set;
     # the KD-off control has no distillation block and skips this.
     if kd_on:
@@ -331,6 +380,57 @@ def validate_arm2_semantics(bindings: dict, environment: dict) -> None:
             "the KD-off comparative control must declare "
             "result_verifier.kd_enabled=false so the verifier skips the "
             "KD-only checks (kd_positive_finite_steps, kd_coverage)")
+    # Arm-2b both-layer pinning (mirror of the /1 discipline): a retention
+    # run's spec must pin metrics_schema /2 AND a required_retention_coverage
+    # equal to the env retention set; a non-retention packet must pin neither.
+    retention_on = kd_on and str(
+        environment.get("MEDZEN_KD_TEACHER_MODE", "base")).strip() \
+        == "base+arm1_retention"
+    spec_ret_cov = spec.get("required_retention_coverage")
+    if retention_on:
+        if str(spec.get("metrics_schema")) != "b5-arm2-calibration-metrics/2":
+            raise JobRefusal(
+                "a dual-KD retention packet must pin result_verifier."
+                "metrics_schema 'b5-arm2-calibration-metrics/2'")
+        spec_ret = {str(x).strip().lower() for x in (spec_ret_cov or [])}
+        if not spec_ret or spec_ret != env_retention:
+            raise JobRefusal(
+                "result_verifier.required_retention_coverage must equal "
+                "MEDZEN_KD_RETENTION_LANGUAGES — the retention-coverage "
+                "check cannot drift from the anchor's language set")
+    else:
+        if spec_ret_cov is not None or str(
+                spec.get("metrics_schema")) == "b5-arm2-calibration-metrics/2":
+            raise JobRefusal(
+                "/2 retention pins (metrics_schema or "
+                "required_retention_coverage) on a non-retention packet — "
+                "contradictory")
+    # Arm-2b warm-start parity: MEDZEN_STUDENT_INIT_MODE=arm1 requires a
+    # top-level student_init block agreeing field-for-field; a student_init
+    # block without the env (or vice versa) is contradictory.
+    init_block = bindings.get("student_init")
+    env_init = str(environment.get("MEDZEN_STUDENT_INIT_MODE", "base")
+                   ).strip() or "base"
+    if env_init == "arm1":
+        if not isinstance(init_block, dict):
+            raise JobRefusal(
+                "MEDZEN_STUDENT_INIT_MODE=arm1 requires a top-level "
+                "student_init block (mode + s3_uri + s3_version_id + sha256) "
+                "— the warm-start identity is reviewed, never env-only")
+        for field, env_key in (
+                ("mode", "MEDZEN_STUDENT_INIT_MODE"),
+                ("s3_uri", "MEDZEN_STUDENT_INIT_S3_URI"),
+                ("s3_version_id", "MEDZEN_STUDENT_INIT_VERSION_ID"),
+                ("sha256", "MEDZEN_STUDENT_INIT_SHA256")):
+            if str(init_block.get(field)) != str(environment.get(env_key)):
+                raise JobRefusal(
+                    f"student_init.{field} {init_block.get(field)!r} != "
+                    f"environment {env_key} {environment.get(env_key)!r} — "
+                    "one canonical warm-start identity, no silent divergence")
+    elif init_block is not None:
+        raise JobRefusal(
+            "the packet declares a student_init block but "
+            "MEDZEN_STUDENT_INIT_MODE is not 'arm1' — contradictory")
 
     # Codex review #20 F3: the calibration WRAPPER needs its inputs bound in the
     # environment — the packet path it verifies against, that packet's canonical

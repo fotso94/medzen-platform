@@ -191,7 +191,10 @@ def test_kd_per_language_weights_parse_and_validate():
 
 
 def test_kinyarwanda_v1_teacher_is_not_yet_wired():
-    with pytest.raises(Exception, match="not wired|base-teacher-only"):
+    # Arm-2b widened the enum to ('base', 'base+arm1_retention') — any OTHER
+    # teacher mode (a Kinyarwanda-v1 card, a typo) still fails closed.
+    with pytest.raises(Exception,
+                       match="not wired|base-teacher-only|not one of"):
         _kd_config(MEDZEN_KD_ENABLE="1", MEDZEN_KD_TEACHER_MODE="kw_v1")
 
 

@@ -154,6 +154,19 @@ class TrainerConfig:
     # Strict Arm-2 execution-mode enum ('plain' | 'arm2_comparative'), bound
     # into the fingerprint so a run cannot resume across a different mode.
     execution_mode: str
+    # Arm-2b (owner decision 2026-08-27): warm-start the student from a pinned
+    # fine-tune export instead of the staged base, and optionally anchor the
+    # retention languages to a SECOND frozen teacher (the Arm-1 export). Both
+    # OFF by default so every pre-2b run keeps a byte-identical fingerprint.
+    student_init_mode: str
+    student_init_s3_uri: str
+    student_init_version_id: str
+    student_init_sha256: str
+    kd_retention_alpha: float
+    kd_retention_languages: tuple[str, ...]
+    kd_retention_teacher_s3_uri: str
+    kd_retention_teacher_version_id: str
+    kd_retention_teacher_sha256: str
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -162,6 +175,8 @@ class TrainerConfig:
         payload["kd_preservation_languages"] = sorted(
             self.kd_preservation_languages)
         payload["kd_language_weights"] = sorted(self.kd_language_weights)
+        payload["kd_retention_languages"] = sorted(
+            self.kd_retention_languages)
         payload["checkpoint_dir"] = str(self.checkpoint_dir)
         payload["output_dir"] = str(self.output_dir)
         # Safe one-way legacy migration (Codex round 33): a PLAIN run keeps its
@@ -172,6 +187,22 @@ class TrainerConfig:
         # other's checkpoint — the mode-switch guard is preserved.
         if self.execution_mode == "plain":
             payload.pop("execution_mode", None)
+        # Same one-way migration for the Arm-2b knobs: base-init single-teacher
+        # runs drop the new keys, keeping every pre-2b fingerprint byte-
+        # identical (Phase-A checkpoints resume unchanged). A warm-started or
+        # dual-teacher run carries the extra keys, so its payload SHAPE differs
+        # and it can never resume a pre-2b checkpoint (or vice versa) — the
+        # critique's resume-splice hazard is structurally excluded.
+        if self.student_init_mode == "base":
+            for key in ("student_init_mode", "student_init_s3_uri",
+                        "student_init_version_id", "student_init_sha256"):
+                payload.pop(key, None)
+        if self.kd_teacher_mode != "base+arm1_retention":
+            for key in ("kd_retention_alpha", "kd_retention_languages",
+                        "kd_retention_teacher_s3_uri",
+                        "kd_retention_teacher_version_id",
+                        "kd_retention_teacher_sha256"):
+                payload.pop(key, None)
         return payload
 
 
@@ -350,11 +381,16 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         if kd_temperature <= 0.0:
             raise TrainerRefusal("MEDZEN_KD_TEMPERATURE must be > 0")
         kd_teacher_mode = env.get("MEDZEN_KD_TEACHER_MODE", "base").strip()
-        if kd_teacher_mode != "base":
+        # Arm-2b (owner decision 2026-08-27): 'base+arm1_retention' adds a
+        # SECOND frozen teacher — a pinned fine-tune export (Arm-1) anchoring
+        # the retention languages — beside the unchanged base teacher. Any
+        # other non-base mode still refuses (a Kinyarwanda-v1 teacher would
+        # require its own reviewed sha-verified card first).
+        if kd_teacher_mode not in ("base", "base+arm1_retention"):
             raise TrainerRefusal(
-                f"MEDZEN_KD_TEACHER_MODE={kd_teacher_mode!r} is not wired — "
-                "Arm-2 calibration is base-teacher-only; a Kinyarwanda-v1 "
-                "teacher requires a reviewed sha-verified card first")
+                f"MEDZEN_KD_TEACHER_MODE={kd_teacher_mode!r} is not one of "
+                "('base', 'base+arm1_retention') — unknown teacher modes "
+                "fail closed")
         # Codex review #18: enforce EXACT teacher == student == pinned CTC_CARD.
         # A different card would break vocab/frame alignment; only the base is
         # byte-identical to the student's staged bytes.
@@ -407,13 +443,116 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                         f"KD weight for {lang} must be finite > 0, got {weight}")
                 weights[lang] = weight
         kd_language_weights = tuple(sorted(weights.items()))
+        # --- Arm-2b retention anchor (owner decision 2026-08-27): a second
+        # frozen teacher (the pinned Arm-1 export) applies a KD term ONLY on
+        # the retention languages. Every knob is REQUIRED when the mode is on
+        # (no default-permit) and the retention set must be DISJOINT from the
+        # preservation set — one row is anchored to exactly one teacher; an
+        # overlap would score the row against both and is refused at parse
+        # time (adversarial-critique invariant, B5-UNIVERSAL-ARM2B design).
+        kd_retention_alpha = 0.0
+        kd_retention_languages: tuple[str, ...] = ()
+        kd_retention_teacher_s3_uri = ""
+        kd_retention_teacher_version_id = ""
+        kd_retention_teacher_sha256 = ""
+        if kd_teacher_mode == "base+arm1_retention":
+            raw_ret_alpha = _require(env, "MEDZEN_KD_RETENTION_ALPHA")
+            try:
+                kd_retention_alpha = float(raw_ret_alpha)
+            except ValueError as exc:
+                raise TrainerRefusal(
+                    f"MEDZEN_KD_RETENTION_ALPHA={raw_ret_alpha!r} is not a "
+                    "float") from exc
+            # same bound + reasoning as MEDZEN_KD_ALPHA (Codex review #18):
+            # 0 would silently disable the anchor while the run claims it,
+            # and the weight is not unbounded.
+            if not math.isfinite(kd_retention_alpha) \
+                    or not (0.0 < kd_retention_alpha <= 1.0):
+                raise TrainerRefusal(
+                    f"MEDZEN_KD_RETENTION_ALPHA={raw_ret_alpha!r} must be a "
+                    "finite number in (0, 1] when the retention anchor is on")
+            ret = tuple(sorted({
+                token.strip().lower() for token in
+                _require(env, "MEDZEN_KD_RETENTION_LANGUAGES").split(",")
+                if token.strip()}))
+            if not ret:
+                raise TrainerRefusal(
+                    "MEDZEN_KD_RETENTION_LANGUAGES named no languages")
+            unknown_ret = [lang for lang in ret if lang not in languages]
+            if unknown_ret:
+                raise TrainerRefusal(
+                    f"KD retention languages {unknown_ret} are not in the "
+                    f"training language set {sorted(languages)}")
+            overlap = sorted(set(ret) & set(pres))
+            if overlap:
+                raise TrainerRefusal(
+                    f"KD retention languages {overlap} are also preservation "
+                    "languages — a row must be anchored to exactly ONE "
+                    "teacher (disjoint masks); refusing the overlap")
+            kd_retention_languages = ret
+            kd_retention_teacher_s3_uri = _require(
+                env, "MEDZEN_KD_RETENTION_TEACHER_S3_URI")
+            if not kd_retention_teacher_s3_uri.startswith("s3://"):
+                raise TrainerRefusal(
+                    "MEDZEN_KD_RETENTION_TEACHER_S3_URI must be an s3:// URI")
+            kd_retention_teacher_version_id = _require(
+                env, "MEDZEN_KD_RETENTION_TEACHER_VERSION_ID")
+            kd_retention_teacher_sha256 = _require(
+                env, "MEDZEN_KD_RETENTION_TEACHER_SHA256").lower()
+            if len(kd_retention_teacher_sha256) != 64 or any(
+                    c not in "0123456789abcdef"
+                    for c in kd_retention_teacher_sha256):
+                raise TrainerRefusal(
+                    "MEDZEN_KD_RETENTION_TEACHER_SHA256 must be 64 hex chars")
     else:
+        # a KD-off run that still names the retention teacher-mode is
+        # contradictory (mirror of the plain+KD refusal above) — the anchor
+        # IS a KD term and must not be silently dropped
+        if env.get("MEDZEN_KD_TEACHER_MODE", "").strip() \
+                == "base+arm1_retention":
+            raise TrainerRefusal(
+                "MEDZEN_KD_TEACHER_MODE=base+arm1_retention with "
+                "MEDZEN_KD_ENABLE falsy is contradictory — the retention "
+                "anchor is a KD term (fail closed)")
         kd_alpha = 0.0
         kd_temperature = 1.0
         kd_teacher_mode = "base"
         kd_teacher_card = ""
         kd_preservation_languages = ()
         kd_language_weights = ()
+        kd_retention_alpha = 0.0
+        kd_retention_languages = ()
+        kd_retention_teacher_s3_uri = ""
+        kd_retention_teacher_version_id = ""
+        kd_retention_teacher_sha256 = ""
+
+    # --- Arm-2b warm-start (owner decision 2026-08-27): initialize the
+    # student from a pinned fine-tune export (the Arm-1 export) instead of
+    # the staged base. Orthogonal to KD (the anchor-OFF control H1 is
+    # warm-start + base-KD only). All three pins are REQUIRED when on; the
+    # export bytes are fetched by exact VersionId and must hash to the pin
+    # before load (fail closed, same discipline as the evaluator).
+    student_init_mode = env.get("MEDZEN_STUDENT_INIT_MODE", "base").strip()
+    if student_init_mode not in ("base", "arm1"):
+        raise TrainerRefusal(
+            f"MEDZEN_STUDENT_INIT_MODE={student_init_mode!r} is not one of "
+            "('base', 'arm1') — unknown init modes fail closed")
+    student_init_s3_uri = ""
+    student_init_version_id = ""
+    student_init_sha256 = ""
+    if student_init_mode == "arm1":
+        student_init_s3_uri = _require(env, "MEDZEN_STUDENT_INIT_S3_URI")
+        if not student_init_s3_uri.startswith("s3://"):
+            raise TrainerRefusal(
+                "MEDZEN_STUDENT_INIT_S3_URI must be an s3:// URI")
+        student_init_version_id = _require(
+            env, "MEDZEN_STUDENT_INIT_VERSION_ID")
+        student_init_sha256 = _require(
+            env, "MEDZEN_STUDENT_INIT_SHA256").lower()
+        if len(student_init_sha256) != 64 or any(
+                c not in "0123456789abcdef" for c in student_init_sha256):
+            raise TrainerRefusal(
+                "MEDZEN_STUDENT_INIT_SHA256 must be 64 hex chars")
 
     return TrainerConfig(
         variant=variant,
@@ -451,6 +590,15 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         kd_preservation_languages=kd_preservation_languages,
         kd_language_weights=kd_language_weights,
         execution_mode=execution_mode,
+        student_init_mode=student_init_mode,
+        student_init_s3_uri=student_init_s3_uri,
+        student_init_version_id=student_init_version_id,
+        student_init_sha256=student_init_sha256,
+        kd_retention_alpha=kd_retention_alpha,
+        kd_retention_languages=kd_retention_languages,
+        kd_retention_teacher_s3_uri=kd_retention_teacher_s3_uri,
+        kd_retention_teacher_version_id=kd_retention_teacher_version_id,
+        kd_retention_teacher_sha256=kd_retention_teacher_sha256,
     )
 
 
@@ -559,6 +707,10 @@ def write_checkpoint_marker(checkpoint_dir: Path, *, step: int,
 # --------------------------------------------------------------------------
 
 CALIBRATION_METRICS_SCHEMA = "b5-arm2-calibration-metrics/1"
+# Arm-2b: dual-KD runs (base + retention teacher) emit /2, which ADDS the
+# kd_retention decomposition + coverage; single-KD and KD-off artifacts stay
+# byte-identical /1 so every existing packet/verifier pairing is unchanged.
+CALIBRATION_METRICS_SCHEMA_V2 = "b5-arm2-calibration-metrics/2"
 CALIBRATION_METRICS_FILE = "calibration-metrics.json"
 # Codex review #20 (F5): the per-step accumulator is checkpointed here so a
 # resumed (spot-reclaimed) run keeps the FULL trajectory, not just post-resume
@@ -579,6 +731,9 @@ class CalibrationMetrics:
         self._micro: list[dict[str, Any]] = []
         self.per_step: list[dict[str, Any]] = []
         self.coverage: dict[str, dict[str, int]] = {}
+        # Arm-2b: running per-language coverage of the retention-anchor term;
+        # empty for single-KD runs (their artifacts stay byte-identical /1)
+        self.retention_coverage: dict[str, dict[str, int]] = {}
         # Codex review #21 F5: wall time must be CUMULATIVE across resume — a
         # resumed run dividing all steps by only its own process runtime
         # overstated throughput. prior_wall_seconds carries the pre-reclaim
@@ -609,8 +764,30 @@ class CalibrationMetrics:
                 run = self.coverage.setdefault(language, {"rows": 0, "frames": 0})
                 run["rows"] += int(bucket.get("rows", 0))
                 run["frames"] += int(bucket.get("frames", 0))
-        self.per_step.append({"step": int(step), "ctc": ctc, "kd": kd,
-                              "total": total, "alpha": alpha, "lr": float(lr)})
+        record = {"step": int(step), "ctc": ctc, "kd": kd,
+                  "total": total, "alpha": alpha, "lr": float(lr)}
+        # Arm-2b: fold the retention term. The dual-KD closure writes
+        # kd_retention on EVERY micro batch when the anchor is on; a mixed
+        # step (some micros with, some without) is a wiring bug, not data.
+        with_ret = [m for m in self._micro if "kd_retention" in m]
+        if with_ret:
+            if len(with_ret) != n:
+                raise TrainerRefusal(
+                    f"step {step}: {len(with_ret)}/{n} micro batches carry a "
+                    "retention KD term — mixed single/dual-KD accumulation "
+                    "is a wiring bug (fail closed)")
+            record["kd_retention"] = sum(
+                m["kd_retention"] for m in with_ret) / n
+            record["retention_alpha"] = sum(
+                m["retention_alpha"] for m in with_ret) / n
+            for m in with_ret:
+                for language, bucket in m.get(
+                        "kd_retention_coverage", {}).items():
+                    run = self.retention_coverage.setdefault(
+                        language, {"rows": 0, "frames": 0})
+                    run["rows"] += int(bucket.get("rows", 0))
+                    run["frames"] += int(bucket.get("frames", 0))
+        self.per_step.append(record)
         self._micro = []
 
     # Codex review #20 (F5): the accumulator restarted EMPTY on resume, so a
@@ -621,6 +798,7 @@ class CalibrationMetrics:
     def to_state(self) -> dict[str, Any]:
         import time
         return {"per_step": self.per_step, "coverage": self.coverage,
+                "retention_coverage": self.retention_coverage,
                 # cumulative elapsed at this checkpoint: prior runs' time plus
                 # this process's own (Codex review #21 F5)
                 "wall_seconds": self.prior_wall_seconds
@@ -630,6 +808,10 @@ class CalibrationMetrics:
         import time
         self.per_step = list(state.get("per_step", []))
         self.coverage = {k: dict(v) for k, v in state.get("coverage", {}).items()}
+        # absent in pre-2b sidecars -> {} (single-KD resume unchanged)
+        self.retention_coverage = {
+            k: dict(v)
+            for k, v in state.get("retention_coverage", {}).items()}
         self.prior_wall_seconds = float(state.get("wall_seconds", 0.0))
         self._proc_start = time.perf_counter()
         self._micro = []
@@ -656,8 +838,16 @@ class CalibrationMetrics:
         # per-step contiguity 1..N is asserted by the verifier; expose it so a
         # torn/resumed accumulator is caught rather than silently short.
         step_sequence = [int(s["step"]) for s in self.per_step]
-        return {
-            "schema": CALIBRATION_METRICS_SCHEMA,
+        # Arm-2b: a run whose steps carried the retention term emits /2 with
+        # the kd_retention decomposition; otherwise the artifact is the
+        # byte-identical /1 every existing packet pins.
+        retention_values = [s["kd_retention"] for s in self.per_step
+                            if "kd_retention" in s]
+        retention_live = bool(retention_values) or bool(
+            self.retention_coverage)
+        out = {
+            "schema": (CALIBRATION_METRICS_SCHEMA_V2 if retention_live
+                       else CALIBRATION_METRICS_SCHEMA),
             "status": status,
             "steps_completed": int(steps_completed),
             "max_steps": int(max_steps),
@@ -681,6 +871,16 @@ class CalibrationMetrics:
             "serve": serve,
             "dev_sentinel_wer": dev_sentinel_wer,
         }
+        if retention_live:
+            ret_positive = sum(1 for v in retention_values
+                               if math.isfinite(v) and v > 0.0)
+            out["kd_retention_min"] = (min(retention_values)
+                                       if retention_values else None)
+            out["kd_retention_max"] = (max(retention_values)
+                                       if retention_values else None)
+            out["kd_retention_positive_finite_steps"] = ret_positive
+            out["kd_retention_coverage"] = self.retention_coverage
+        return out
 
 
 # --------------------------------------------------------------------------
@@ -995,7 +1195,9 @@ def _layout_valid_lengths(layout, rows: int) -> list[int]:
 
 def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
                    preservation_languages, language_weights,
-                   known_languages, metrics_sink=None):
+                   known_languages, metrics_sink=None,
+                   retention_teacher=None, retention_alpha=0.0,
+                   retention_languages=()):
     """Arm-2 preservation-aware distillation loss (in-image / C3).
 
     ONE clean objective (Codex review #18): CTC_mean + alpha * KD_mean.
@@ -1003,7 +1205,16 @@ def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
     return_logits=True, and (logits, layout) without targets — so both calls
     are UNPACKED (a bare tensor was the round-17 crash). KD is a MEAN over
     only the VALID, preservation-weighted encoder frames; the student and
-    teacher encoder output lengths must match."""
+    teacher encoder output lengths must match.
+
+    Arm-2b (owner decision 2026-08-27): with ``retention_teacher`` set, a
+    SECOND KD term anchors the retention languages to that frozen teacher:
+        total = CTC_mean + alpha*KD_base(pres) + retention_alpha*KD_ret(ret)
+    The two masks are DISJOINT by parse-time refusal; a belt-and-braces
+    runtime check refuses any row weighted by both (the adversarial-critique
+    contamination hazard: a combined mask would score retention rows against
+    BASE logits). Each kd_loss call normalizes over its OWN masked rows
+    (omniasr_distill.kd_loss is pure), so the terms are commensurate."""
     import torch
 
     from pipeline.omniasr_distill import (DistillationRefusal, kd_loss,
@@ -1031,6 +1242,33 @@ def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
                  row_weights=weights, valid_lengths=student_lengths)
     ctc_mean = loss_ctc / batch["seqs"].shape[0]
     total = ctc_mean + alpha * kd
+    kd_ret = None
+    ret_weights: list[float] = []
+    if retention_teacher is not None:
+        with torch.no_grad():
+            ret_logits, ret_layout = retention_teacher(
+                batch["seqs"], batch["seqs_layout"])
+        ret_lengths = _layout_valid_lengths(ret_layout, rows)
+        if ret_lengths != student_lengths:
+            raise DistillationRefusal(
+                "student and retention-teacher encoder output lengths differ "
+                "— retention KD frames are not aligned")
+        ret_weights = preservation_mask(
+            batch["languages"], retention_languages, strict=True,
+            known_languages=known_languages)
+        contaminated = [str(batch["languages"][i])
+                        for i in range(rows)
+                        if weights[i] > 0 and ret_weights[i] > 0]
+        if contaminated:
+            raise DistillationRefusal(
+                f"rows {sorted(set(contaminated))} are weighted by BOTH the "
+                "base and retention masks — disjointness violated; a row is "
+                "anchored to exactly one teacher")
+        kd_ret = kd_loss(student_logits, ret_logits,
+                         temperature=temperature,
+                         row_weights=ret_weights,
+                         valid_lengths=student_lengths)
+        total = total + retention_alpha * kd_ret
     # Codex review #19 (F3): the calibration must PROVE the KD term is live
     # and covers each preservation language. Stash the decomposed components
     # and per-language KD coverage (rows + valid frames) so the training loop
@@ -1052,15 +1290,45 @@ def _batch_loss_kd(model, batch, *, teacher, alpha, temperature,
             "alpha": float(alpha),
             "kd_coverage": coverage,
         })
+        if kd_ret is not None:
+            ret_coverage: dict[str, dict[str, int]] = {}
+            for language, weight, length in zip(
+                    batch["languages"], ret_weights, student_lengths):
+                if weight > 0:
+                    bucket = ret_coverage.setdefault(
+                        str(language).strip().lower(),
+                        {"rows": 0, "frames": 0})
+                    bucket["rows"] += 1
+                    bucket["frames"] += int(length)
+            metrics_sink.update({
+                "kd_retention": float(kd_ret.detach()),
+                "retention_alpha": float(retention_alpha),
+                "kd_retention_coverage": ret_coverage,
+            })
     return total
 
 
-def make_batch_loss(config, teacher, *, metrics_sink=None):
+def make_batch_loss(config, teacher, *, retention_teacher=None,
+                    metrics_sink=None):
     """The loss callable run_training_loop consumes: the plain CTC loss
     unless KD is enabled, else a frozen-teacher-anchored closure. The
     KD-disabled selection is host-testable (no torch). When ``metrics_sink``
     is a dict, the KD closure writes its decomposed CTC/KD/total loss and
-    per-language coverage into it each call (Codex review #19 F3)."""
+    per-language coverage into it each call (Codex review #19 F3).
+
+    Arm-2b: a retention teacher may only accompany the retention teacher-mode
+    and vice versa — a mismatch between config and the constructed teacher is
+    a wiring bug and refuses (host-testable, no torch)."""
+    if config.kd_enable:
+        wants_retention = config.kd_teacher_mode == "base+arm1_retention"
+        if wants_retention and retention_teacher is None:
+            raise TrainerRefusal(
+                "kd_teacher_mode=base+arm1_retention but no retention "
+                "teacher was constructed — refusing a silently-absent anchor")
+        if not wants_retention and retention_teacher is not None:
+            raise TrainerRefusal(
+                "a retention teacher was constructed but kd_teacher_mode is "
+                f"{config.kd_teacher_mode!r} — refusing an unpinned teacher")
     if not config.kd_enable:
         # KD-off comparative CONTROL (Codex round 33): the plain CTC path must
         # STILL emit the decomposed metrics so the wrapper can write + verify
@@ -1086,7 +1354,10 @@ def make_batch_loss(config, teacher, *, metrics_sink=None):
             preservation_languages=config.kd_preservation_languages,
             language_weights=config.kd_language_weights,
             known_languages=config.languages,
-            metrics_sink=metrics_sink)
+            metrics_sink=metrics_sink,
+            retention_teacher=retention_teacher,
+            retention_alpha=config.kd_retention_alpha,
+            retention_languages=config.kd_retention_languages)
 
     return _kd_closure
 
@@ -1140,13 +1411,72 @@ def main() -> int:
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(config.seed)
     model, tokenizer, device = _load_model_and_tokenizer(config)
+
+    # Arm-2b: pinned-export fetch shared by warm-start and the retention
+    # teacher — Arm-2b pins BOTH to the same Arm-1 export, so identical pins
+    # download the ~1.5 GB artifact once. _fetch_pinned (the evaluator's own
+    # helper) fetches by EXACT VersionId, safely extracts export/model.pt
+    # from a tar, and refuses any sha mismatch before a single weight loads.
+    _export_state_cache: dict[tuple[str, str, str], Any] = {}
+
+    def _pinned_export_state(s3_uri: str, version_id: str, sha256: str,
+                             dest_name: str) -> Any:
+        key = (s3_uri, version_id, sha256)
+        if key not in _export_state_cache:
+            from pipeline.omniasr_score import _fetch_pinned
+            scratch = Path("/tmp/medzen-arm2b")
+            scratch.mkdir(parents=True, exist_ok=True)
+            dest = scratch / dest_name
+            _fetch_pinned(s3(), s3_uri, version_id, sha256, dest,
+                          expected_sha_of=("member:export/model.pt"
+                                           if s3_uri.endswith(".tar.gz")
+                                           else "object"))
+            state = torch.load(dest, map_location="cpu", weights_only=True)
+            dest.unlink()
+            _export_state_cache[key] = state
+        return _export_state_cache[key]
+
+    if config.student_init_mode == "arm1":
+        # warm-start (owner decision 2026-08-27): the pinned Arm-1 export
+        # loads OVER the staged-base-built architecture strict=True — the
+        # exact identity the protected evaluator decodes for arm1. Applied
+        # BEFORE wrap/unfreeze and before any teacher exists.
+        state = _pinned_export_state(
+            config.student_init_s3_uri, config.student_init_version_id,
+            config.student_init_sha256, "student-init.pt")
+        model.load_state_dict(state, strict=True)
+        print(json.dumps({"status": "STUDENT_WARM_START_LOADED",
+                          "mode": "arm1",
+                          "sha256": config.student_init_sha256},
+                         sort_keys=True))
+
     # Arm-2: obtain the FROZEN teacher BEFORE any wrap/unfreeze so the
     # student's updates can never mutate it (it is a distinct object).
     teacher = None
+    retention_teacher = None
     if config.kd_enable:
-        from pipeline.omniasr_distill import load_teacher, teacher_freeze_audit
+        from pipeline.omniasr_distill import (load_export_teacher,
+                                              load_teacher,
+                                              teacher_freeze_audit)
         teacher = load_teacher(config.kd_teacher_card, device, torch.bfloat16)
         teacher_freeze_audit(teacher)
+        if config.kd_teacher_mode == "base+arm1_retention":
+            # Arm-2b retention anchor: a SECOND frozen teacher — the pinned
+            # Arm-1 export over a fresh base instance (load_export_teacher).
+            # Frozen + audited exactly like the base teacher.
+            ret_state = _pinned_export_state(
+                config.kd_retention_teacher_s3_uri,
+                config.kd_retention_teacher_version_id,
+                config.kd_retention_teacher_sha256,
+                "retention-teacher.pt")
+            retention_teacher = load_export_teacher(
+                config.kd_teacher_card, ret_state, device, torch.bfloat16)
+            teacher_freeze_audit(retention_teacher)
+            print(json.dumps({"status": "RETENTION_TEACHER_LOADED",
+                              "sha256":
+                                  config.kd_retention_teacher_sha256},
+                             sort_keys=True))
+    _export_state_cache.clear()
     # Codex stage-1 review (2026-08-25) finding 2: the teacher load above
     # consumes torch RNG ONLY on KD-enabled arms, so under the SAME seed a
     # KD-on candidate and the KD-off control would enter wrap/training with
@@ -1221,7 +1551,9 @@ def main() -> int:
     _wall_start = _time.perf_counter()
     outcome = run_training_loop(
         model=model, optimizer=optimizer, batches=batches,
-        batch_loss=make_batch_loss(config, teacher, metrics_sink=metrics_sink),
+        batch_loss=make_batch_loss(config, teacher,
+                                   retention_teacher=retention_teacher,
+                                   metrics_sink=metrics_sink),
         config=config, fingerprint=fingerprint, save_state=save_state,
         load_state=load_state, stop_flag=stop_flag,
         metrics=metrics, metrics_sink=metrics_sink)

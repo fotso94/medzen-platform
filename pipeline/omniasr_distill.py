@@ -238,6 +238,29 @@ def load_teacher(card: str, device: Any, dtype: Any) -> Any:
     return teacher
 
 
+def load_export_teacher(card: str, export_state: Any, device: Any,
+                        dtype: Any) -> Any:
+    """Arm-2b: a SECOND frozen teacher built from a pinned fine-tune EXPORT
+    (e.g. the Arm-1 retention anchor). load_teacher resolves only registered
+    fairseq2 cards; a fine-tune export (model.pt state dict) has no card, so
+    the teacher is a fresh base instance with the export weights loaded over
+    it strict=True — the exact identity the protected evaluator decodes
+    (pipeline/omniasr_score.py load pattern). The caller fetches + sha-verifies
+    the export bytes BEFORE this call; a key mismatch (wrong family, wrapped
+    or partial export) refuses here via strict=True. Frozen exactly like the
+    base teacher: eval() + requires_grad_(False), never wrapped, merged,
+    optimized or checkpointed."""
+    teacher = load_teacher(card, device, dtype)
+    missing, unexpected = teacher.load_state_dict(export_state, strict=True)
+    if missing or unexpected:  # strict=True raises; belt-and-braces
+        raise DistillationRefusal(
+            f"export teacher load left missing={len(missing)} "
+            f"unexpected={len(unexpected)} keys — not a full-model export")
+    teacher.eval()
+    teacher.requires_grad_(False)
+    return teacher
+
+
 def teacher_freeze_audit(teacher: Any) -> dict[str, Any]:
     """Assert every teacher parameter has requires_grad == False. Works on a
     torch model OR a host stub whose .parameters() yields objects with a

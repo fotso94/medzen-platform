@@ -501,9 +501,15 @@ def test_real_scoring_packet_shape_and_pins():
         assert not (ROOT / "platform/manifests/arm2-scoring" /
                     f"references-{s}.jsonl").exists(), (
             s, "transcripts must not be committed (item 6)")
-    # item 3: the evaluator identity surface is frozen
+    # item 3: the evaluator identity surface is frozen. Re-pinned 2026-08-27
+    # (forced catch-up, commit b78cf69): base-mode image 985c4d9e + the
+    # compact job scheme (job_id b5-arm2-score-<arm>-... keeps TrainingJobName
+    # under SageMaker's 40-char cap) — the only values consistent with the
+    # attested receipts and the pre-results base-mode smoke.
     ev = packet["evaluator"]
-    assert ev["job_name_pattern"].startswith("medzen-b5-b5-universal-arm2-score-")
+    assert ev["job_name_pattern"] == "medzen-b5-b5-arm2-score-[a-z0-9-]+"
+    assert ev["image_digest"] == ("sha256:985c4d9e64e55a685ccc0c2463641f8e"
+                                  "aba322143ec98fb80e6a142afda8fdee")
     # clusters (no transcripts) stay committed; frozen structure holds
     clusters = json.loads((ROOT / packet["clusters"]["path"]).read_bytes())
     split = json.loads((ROOT / packet["split"]["path"]).read_bytes())[

@@ -33,6 +33,11 @@ from pathlib import Path
 from typing import Any
 
 METRICS_SCHEMA = "b5-arm2-calibration-metrics/1"
+# Arm-2b: dual-KD runs (base preservation teacher + Arm-1 retention anchor)
+# emit /2, adding the kd_retention decomposition + coverage. A packet pins
+# exactly one schema; the artifact must match the PACKET's pin, so a dual-KD
+# run cannot masquerade as single-KD or vice versa.
+METRICS_SCHEMA_V2 = "b5-arm2-calibration-metrics/2"
 CANONICAL_SCRIPT = "scripts/verify_arm2_calibration.py"
 CANONICAL_ARTIFACT = "calibration-metrics.json"
 # g6.xlarge carries a single NVIDIA L4 = 24 GiB. No reviewed ceiling may exceed
@@ -177,9 +182,18 @@ def verify_calibration(metrics: dict[str, Any],
         failures.append(msg)
 
     schema = metrics.get("schema")
-    if schema != METRICS_SCHEMA:
-        fail(f"metrics schema {schema!r} != expected {METRICS_SCHEMA!r}")
+    # the artifact schema must equal the PACKET-pinned schema (/1 single-KD,
+    # /2 dual-KD with the Arm-2b retention anchor); a mismatch in either
+    # direction is a masquerade and nothing else is trustworthy under it
+    want_schema = str(verifier_spec.get("metrics_schema") or METRICS_SCHEMA)
+    if want_schema not in (METRICS_SCHEMA, METRICS_SCHEMA_V2):
+        fail(f"result_verifier.metrics_schema {want_schema!r} is not a known "
+             f"schema ({METRICS_SCHEMA!r} or {METRICS_SCHEMA_V2!r})")
+        return failures
+    if schema != want_schema:
+        fail(f"metrics schema {schema!r} != the packet-pinned {want_schema!r}")
         return failures  # nothing else is trustworthy under a wrong schema
+    dual_kd = want_schema == METRICS_SCHEMA_V2
 
     # (1) completed the declared step budget — no silent short/over run
     expected_steps = int(verifier_spec["expected_steps"])
@@ -194,6 +208,9 @@ def verify_calibration(metrics: dict[str, Any],
              f"{_raw_kd!r}")
         _raw_kd = True   # after failing, run the KD checks (fail closed)
     kd_enabled = _raw_kd
+    if dual_kd and not kd_enabled:
+        fail("metrics_schema /2 (dual-KD retention anchor) with "
+             "kd_enabled=false is contradictory — the anchor IS a KD term")
     status = metrics.get("status")
     if status != "COMPLETED":
         fail(f"status is {status!r}, not COMPLETED (no silent success)")
@@ -241,14 +258,48 @@ def verify_calibration(metrics: dict[str, Any],
                                          rel_tol=1e-4, abs_tol=1e-5):
                 fail(f"step {record.get('step')}: total={record['total']} != "
                      f"ctc={record['ctc']} for a KD-off control")
+        # Arm-2b retention-term shape rules: a /1 record must NOT carry the
+        # retention decomposition (a dual-KD run masquerading as single-KD),
+        # and a /2 record must carry it on EVERY step, finite and > 0 (a
+        # dead anchor must not pass as live).
+        has_retention = ("kd_retention" in record
+                         or "retention_alpha" in record)
+        if not dual_kd and has_retention:
+            fail(f"step {record.get('step')}: retention KD fields present "
+                 "under the single-KD /1 schema — dual-KD masquerade")
+        if dual_kd:
+            if not has_retention:
+                fail(f"step {record.get('step')}: no kd_retention record — "
+                     "the retention anchor was not live on this step")
+            else:
+                for key in ("kd_retention", "retention_alpha"):
+                    if not _finite_number(record.get(key)):
+                        fail(f"step {record.get('step')}: {key} is not a "
+                             f"finite number ({record.get(key)!r})")
+                if _finite_number(record.get("kd_retention")) \
+                        and float(record["kd_retention"]) <= 0.0:
+                    fail(f"step {record.get('step')}: "
+                         f"kd_retention={record['kd_retention']} is not > 0 "
+                         "(the retention anchor is not live on retention "
+                         "batches)")
+                if _finite_number(record.get("retention_alpha")) \
+                        and float(record["retention_alpha"]) <= 0.0:
+                    fail(f"step {record.get('step')}: retention_alpha="
+                         f"{record['retention_alpha']} is not > 0")
         if all(_finite_number(record.get(k)) for k in ("ctc", "kd", "total",
                                                        "alpha")):
             expected_total = float(record["ctc"]) + float(record["alpha"]) \
                 * float(record["kd"])
+            equation = "ctc + alpha*kd"
+            if dual_kd and _finite_number(record.get("kd_retention")) \
+                    and _finite_number(record.get("retention_alpha")):
+                expected_total += (float(record["retention_alpha"])
+                                   * float(record["kd_retention"]))
+                equation = "ctc + alpha*kd + retention_alpha*kd_retention"
             if not math.isclose(float(record["total"]), expected_total,
                                 rel_tol=1e-4, abs_tol=1e-5):
                 fail(f"step {record.get('step')}: total={record['total']} != "
-                     f"ctc + alpha*kd ({expected_total}) — loss equation "
+                     f"{equation} ({expected_total}) — loss equation "
                      "violated")
     # step_sequence must corroborate per_step exactly
     if metrics.get("step_sequence") != [r.get("step") for r in per_step]:
@@ -261,6 +312,24 @@ def verify_calibration(metrics: dict[str, Any],
     elif positive != 0:
         fail(f"kd_positive_finite_steps={positive} != 0 for a KD-off control "
              "— the distillation term must NOT be live in the control")
+    if dual_kd:
+        # the retention anchor must be provably live on EVERY step, and the
+        # summary counter is RECOMPUTED from per_step — never trusted alone
+        # (same discipline as the KD-off control recompute, Codex round 32)
+        ret_positive = int(metrics.get(
+            "kd_retention_positive_finite_steps", 0))
+        if ret_positive != expected_steps:
+            fail(f"kd_retention_positive_finite_steps={ret_positive} != "
+                 f"{expected_steps} — the retention anchor was not "
+                 "positive-and-finite on every step")
+        ret_recomputed = sum(
+            1 for r in per_step
+            if _finite_number(r.get("kd_retention"))
+            and float(r["kd_retention"]) > 0.0)
+        if ret_recomputed != expected_steps:
+            fail(f"recomputed positive-retention steps = {ret_recomputed} != "
+                 f"{expected_steps} (the summary counter alone is not "
+                 "trusted)")
     if not kd_enabled:
         # RECOMPUTE the positive-KD count from per_step — never trust the
         # self-reported summary counter alone (Codex round 32).
@@ -299,6 +368,30 @@ def verify_calibration(metrics: dict[str, Any],
             if int(bucket.get("frames", 0)) <= 0:
                 fail(f"preservation language {language!r} contributed 0 KD "
                      "frames")
+        if dual_kd:
+            # Arm-2b: every required retention language must have contributed
+            # real rows AND frames to the anchor term; an empty requirement
+            # list is a defanged check and fails (same F4 defense-in-depth as
+            # required_preservation_coverage)
+            required_retention = verifier_spec.get(
+                "required_retention_coverage") or []
+            if not required_retention:
+                fail("result_verifier.required_retention_coverage is empty "
+                     "for a dual-KD run — the retention-coverage check "
+                     "cannot be defanged to a no-op")
+            retention_cov = metrics.get("kd_retention_coverage") or {}
+            for language in required_retention:
+                bucket = retention_cov.get(language)
+                if not bucket:
+                    fail(f"no retention-KD coverage recorded for retention "
+                         f"language {language!r}")
+                    continue
+                if int(bucket.get("rows", 0)) <= 0:
+                    fail(f"retention language {language!r} contributed 0 "
+                         "retention-KD rows")
+                if int(bucket.get("frames", 0)) <= 0:
+                    fail(f"retention language {language!r} contributed 0 "
+                         "retention-KD frames")
 
     # (4) peak GPU memory recorded and within the reviewed envelope
     ceiling = int(verifier_spec["gpu_memory_ceiling_bytes"])
@@ -1222,10 +1315,23 @@ def load_verifier_spec(packet: dict[str, Any]) -> dict[str, Any]:
     missing = [k for k in required if k not in spec]
     if missing:
         raise SystemExit(f"result_verifier lacks {missing}")
-    if spec["metrics_schema"] != METRICS_SCHEMA:
+    if spec["metrics_schema"] not in (METRICS_SCHEMA, METRICS_SCHEMA_V2):
         raise SystemExit(
-            f"result_verifier.metrics_schema {spec['metrics_schema']!r} != "
-            f"this verifier's {METRICS_SCHEMA!r}")
+            f"result_verifier.metrics_schema {spec['metrics_schema']!r} is "
+            f"not one of this verifier's ({METRICS_SCHEMA!r}, "
+            f"{METRICS_SCHEMA_V2!r})")
+    if spec["metrics_schema"] == METRICS_SCHEMA_V2:
+        # a dual-KD packet must bind the retention coverage requirement here,
+        # exactly as /1 binds required_preservation_coverage (F4 discipline)
+        ret_cov = spec.get("required_retention_coverage")
+        if not isinstance(ret_cov, list) or not ret_cov:
+            raise SystemExit(
+                "result_verifier.required_retention_coverage must be a "
+                "non-empty list when metrics_schema is /2 (dual-KD)")
+        if spec.get("kd_enabled") is False:
+            raise SystemExit(
+                "result_verifier: metrics_schema /2 with kd_enabled=false is "
+                "contradictory — the retention anchor is a KD term")
     if spec["script"] != CANONICAL_SCRIPT:
         raise SystemExit(
             f"result_verifier.script {spec['script']!r} must be the canonical "
