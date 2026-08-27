@@ -1,0 +1,39 @@
+{
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1545806746,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-arm2b-mtcal-2026-002/output/medzen-b5-b5-arm2b-mtcal-2026-002/output/model.tar.gz",
+  "s3_version_id": "IY_0cHNmAgrCMtxeZ5s1qb4phjveGrvl"
+ },
+ "billable_seconds": 2693,
+ "cost": {
+  "basis": "$1.60/h padded",
+  "billable_seconds": 2693,
+  "on_demand_usd": 1.2
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:f7e412092250c6a555fd3cb0d5f7ef607671df52025271a4af834ea0d24063b3",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-arm2b-mtcal-2026-002",
+ "job_id": "b5-arm2b-mtcal-2026-002",
+ "metrics": {
+  "dev_sentinel_errors": {
+   "lingala": "134/671",
+   "pidgin": "216/925"
+  },
+  "dev_sentinel_wer": {
+   "lingala": 0.1997,
+   "pidgin": 0.2335,
+   "swahili": 0.1513
+  },
+  "metrics_sha256": "f254e607596d0adf09be9c29365dd492a6af84971cf433d7b462d9d44d473c60",
+  "peak_gpu_bytes": 22297381888,
+  "schema": "b5-arm2-calibration-metrics/2",
+  "steps_completed": 300
+ },
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-002.json",
+ "record": "ARM2B-MTCAL-2026-002-COMPLETION",
+ "scope": "WEIGHT-4.0 PROBE CALIBRATION RECEIPT - the endpoint the owner's numeric grid gate reads",
+ "status": "Completed",
+ "utc": "2026-08-28T00:05:00Z",
+ "workflow_run": 33123904670
+}
