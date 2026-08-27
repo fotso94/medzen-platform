@@ -1,0 +1,11 @@
+{
+ "basis": "Owner authorized the nomination scoring pass. Authorizes ONLY the decode job b5-arm2-score-arm1-2026-001 ($2.40 worst, 3,421 rows, arm1 model). render+validate returns PASS_EXACT_TRAINING_REQUEST; entrypoint pipeline.omniasr_score.",
+ "bindings_sha256": "86b18bbce123bfa95870ed4114d368e82d63906fc1f06f7795d666a09ff060b8",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+ "job_id": "b5-arm2-score-arm1-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ARM1-2026-001.json",
+ "reviewer": "owner authorization \u2014 nomination scoring pass (2026-08-27)",
+ "utc": "2026-08-27T02:54:12Z"
+}
