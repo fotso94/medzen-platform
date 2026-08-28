@@ -1,0 +1,39 @@
+{
+ "artifact": {
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1545848294,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-arm2b-h3-2026-001/output/medzen-b5-b5-arm2b-h3-2026-001/output/model.tar.gz",
+  "s3_version_id": "ai8fTcwApq2HkSEyIQsZWnzsx8pY1oiZ"
+ },
+ "billable_seconds": 11632,
+ "cost": {
+  "basis": "$1.60/h padded",
+  "billable_seconds": 11632,
+  "on_demand_usd": 5.17
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:1477717e42fb4150be6a275e2c8f67dfc9904b255d329a59144f131ffa457e70",
+ "in_image_calibration_verify": "PASS",
+ "job": "medzen-b5-b5-arm2b-h3-2026-001",
+ "job_id": "b5-arm2b-h3-2026-001",
+ "metrics": {
+  "dev_sentinel_errors": {
+   "lingala": "138/671",
+   "pidgin": "216/925"
+  },
+  "dev_sentinel_wer": {
+   "lingala": 0.2057,
+   "pidgin": 0.2335,
+   "swahili": 0.1539
+  },
+  "metrics_sha256": "62d7c6a48166e92f166cbc538ab5b1df514a9c68b1c489b18866ab7ff9cc9619",
+  "peak_gpu_bytes": 22359875072,
+  "schema": "b5-arm2-calibration-metrics/2",
+  "steps_completed": 2000
+ },
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-H3-SAGEMAKER-BINDINGS-2026-001.json",
+ "record": "ARM2B-H3-2026-001-COMPLETION",
+ "scope": "FINAL STOP/GO ARM RECEIPT - the 2,000-step endpoint the owner's closure decision reads",
+ "status": "Completed",
+ "utc": "2026-08-28T07:15:00Z",
+ "workflow_run": 33136896184
+}

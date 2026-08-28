@@ -1,0 +1,42 @@
+{
+ "economics": {
+  "arm2b_total_estimate_usd": 11.67,
+  "runs": "mech-001 OOM $0.49 | mech-002 $0.61 | mtcal-001 $1.22 | mech-003 $0.58 | mtcal-002 $1.20 | mech-004 $0.60 | H3 stop/go $5.17 (+ scoring pass $1.84 settled separately)"
+ },
+ "held": [
+  "sealed_evaluation",
+  "promotion",
+  "deployment"
+ ],
+ "kind": "owner_decision",
+ "owner_decision": {
+  "consequence": "Arm-2b CLOSED. Arm-1 (checkpoint ecedfd30 / export c6604a68) remains the research incumbent. No candidate promoted. Sealed evaluation, promotion and deployment remain HELD with nothing queued.",
+  "gate_readout": {
+   "gpu": {
+    "peak_gib": 20.82,
+    "threshold": "<22 GiB",
+    "verdict": "PASS"
+   },
+   "lingala": {
+    "errors": "138/671",
+    "pct": 20.57,
+    "threshold": "<=130/671 (19.37%)",
+    "verdict": "FAIL"
+   },
+   "pidgin": {
+    "errors": "216/925",
+    "pct": 23.35,
+    "threshold": "<=218/925 (23.57%)",
+    "verdict": "PASS"
+   },
+   "swahili_context_pct": 15.39
+  },
+  "rule": "Owner directive 2026-08-28: one actual 2,000-step H3-style arm at lingala weight 4.0 as a FINAL stop/go experiment. 'Pass -> count it as the first grid arm and continue. Fail -> close Arm-2b and keep Arm-1.'",
+  "verdict": "FAIL"
+ },
+ "record": "B5-UNIVERSAL-ARM2B-CLOSEOUT-2026-001",
+ "scientific_summary": "The Arm-2b architecture SOLVED Phase A's binding failure: warm-start + Arm-1 retention anchor holds pidgin at/near the arm1 anchor at every horizon (23.14% @300 exact-match; 23.35% @2000, passing), where every fresh-from-base Phase-A recipe was ~2 points worse. Memory is managed (three resident 1B models peak 20.8 of 22 GiB after the allocator fix). The UNFIXABLE constraint is lingala: across every measurement the endpoint moves AWAY from base with training exposure (arm1 start 133/671; weight-1.5 @300: 136; weight-4.0 @300: 134; weight-4.0 @2000: 138) \u2014 even a ~2.7x anchor-weight increase and a full-length run do not recover Arm-1's imported lingala regression; kd_base rose 0.46->0.72 while CTC improved, i.e. training pressure consistently trades lingala-vs-base away. Conclusion: dual-teacher KD from an arm1 warm start cannot simultaneously hold pidgin and repair lingala at this scale; the lingala repair likely needs a data-side intervention, out of scope for Arm-2b.",
+ "subject": "Arm-2b CLOSED per the owner's pre-committed stop/go rule \u2014 Arm-1 remains the research incumbent",
+ "successor_of": "B5-UNIVERSAL-ARM2-PHASE-A-CLOSEOUT-2026-001",
+ "utc": "2026-08-28T07:15:00Z"
+}
