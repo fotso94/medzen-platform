@@ -29,7 +29,9 @@ LANGS = {
 # kinyarwanda (owner-supplied) + french, pidgin, swahili (owner-provisioned,
 # imported from /medzen/tts/dev/voices). english/ewe/lingala have no voice
 # with a Fish reference_id, so they stay text-only.
-FISH_LANGS = {"kinyarwanda", "french", "pidgin", "swahili"}
+# +english (owner-supplied voice 6d7b6ebb, added 2026-08-28). ewe and
+# lingala remain text-only: no Fish voice with a reference_id exists.
+FISH_LANGS = {"kinyarwanda", "french", "pidgin", "swahili", "english"}
 TTS = {a: ({"backend": "http_fish_v2", "model_version": "fish:s2.1-pro-free"}
            if a in FISH_LANGS else
            {"backend": "http_text_only_v1", "model_version": None})
