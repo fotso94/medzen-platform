@@ -27,8 +27,12 @@ class ClusterHTTPTransport:
     """Bounded HTTP transport with request-scoped connection cancellation."""
 
     def __init__(self, *, timeout_seconds: float = 30.0):
-        if not 0 < timeout_seconds <= 30:
-            raise ValueError("dependency timeout must be between 0 and 30 seconds")
+        # Ceiling raised 30 -> 120 (owner order 2026-08-29): the dev TTS leg
+        # legitimately needs ~40s while Fish s2.1-pro-free runs at peak
+        # latency. The default stays 30.0; only an explicit deploy-time
+        # override (see app.py) reaches higher.
+        if not 0 < timeout_seconds <= 120:
+            raise ValueError("dependency timeout must be between 0 and 120 seconds")
         self.timeout_seconds = timeout_seconds
         self._active: dict[str, set[http.client.HTTPConnection]] = {}
         self._lock = threading.Lock()

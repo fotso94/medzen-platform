@@ -18,7 +18,9 @@ data:
   AWS_REGION: "eu-central-1"
   MEDZEN_ORCHESTRATOR_MODE: "deployed_http_ssm"
   MEDZEN_CLIENT_KEYS_SECRET_ID: "medzen/client-api-keys"
-  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/db93b19798ebacd50d6d0eb5ad2d17f3b09656657cf97cab71019eef3521c032"
+  # TTS leg needs Fish(40s)+gateway overhead; default 30s stays for prod
+  MEDZEN_DEPENDENCY_TIMEOUT_SECONDS: "50"
+  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/3184b2b422e9ed1144e7967faff98cb50e7bba4a1113d5db074f32a77c9242d5"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -48,4 +50,4 @@ data:
   MEDZEN_TTS_AUDIO_KMS_ARN: "arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda"
   MEDZEN_TTS_VOICES_SSM_PARAM: "/medzen/registry/tts/voices"
   # s2.1-pro-free needs 5-15s for long answers; the 2s default degraded them
-  MEDZEN_FISH_TIMEOUT_MS: "25000"
+  MEDZEN_FISH_TIMEOUT_MS: "40000"

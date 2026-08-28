@@ -124,7 +124,8 @@ def build_deployed_orchestrator() -> tuple[SpeechOrchestrator, SecretsManagerKey
         registry_root,
         expected_classification=expected_classification,
     )
-    transport = ClusterHTTPTransport(timeout_seconds=30.0)
+    transport = ClusterHTTPTransport(timeout_seconds=float(
+        os.environ.get("MEDZEN_DEPENDENCY_TIMEOUT_SECONDS", "30")))
     orchestrator = SpeechOrchestrator(
         router=router,
         emergency=EmergencyChecker(_root() / "registry/emergency-policies/v1.yaml"),
