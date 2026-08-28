@@ -1,0 +1,9 @@
+{
+ "kind": "owner_authorization",
+ "packet": "platform/decisions/SEALED-EVAL-ARM1-PACKET-2026-002.json",
+ "packet_sha256": "455052380e0a3e4a3e5a49d5e662c404c3ba88ddf4bba0889346e733fc659985",
+ "record": "SEALED-EVAL-AUTHORIZATION-2026-002",
+ "statement": "The owner's order of 2026-08-29 - verbatim: 're-author the sealed packet to g5 and run it ... do not touch the pipeline workload in eks ... just work on the sealing evaluation automatically and report basically to me' - authorizes sealed evaluation under packet sha256 455052380e0a3e4a3e5a49d5e662c404c3ba88ddf4bba0889346e733fc659985 (SEALED-EVAL-ARM1-PACKET-2026-002, ml.g5.xlarge), which re-authors SEALED-EVAL-ARM1-PACKET-2026-001 solely to move from the still-zero-enforced ml.g6.xlarge processing quota to the APPROVED ml.g5.xlarge quota. The job name and the already-consumed tier-2 sealed holdouts (ledger entries 21-27, consumed_by sealed-eval:medzen-sealed-arm1-2026-001) carry over unchanged - the holdouts are consumed exactly once.",
+ "supersedes": "SEALED-EVAL-AUTHORIZATION-2026-001",
+ "utc": "2026-08-29T03:20:00Z"
+}
