@@ -298,3 +298,41 @@ def test_existing_matching_job_is_adopted_not_recreated(rig):
     assert "sm.create" not in kinds
     env = json.loads((rig["tmp"] / "env.json").read_text())
     assert env["launch"]["adopted"] is True
+
+
+# --------------------------------------------------------------------------
+# REAL-PACKET container regression (Codex sealed-review finding 2: the
+# launcher rehearsals missed a container-side tree bug). These pin the
+# CONTAINER's tree recomputation against the COMMITTED packet's own pins —
+# the exact refusal the first implementation would have died on.
+# --------------------------------------------------------------------------
+
+REAL_PACKET = ROOT / "platform/decisions/SEALED-EVAL-ARM1-PACKET-2026-001.json"
+
+
+@pytest.mark.skipif(not REAL_PACKET.is_file(),
+                    reason="real sealed packet not authored yet")
+def test_container_tree_recomputes_from_the_real_packet_pins():
+    from pipeline.sealed_eval import artifact_tree
+    packet = json.loads(REAL_PACKET.read_bytes())
+    env = packet["environment"]
+    assert artifact_tree(env["MEDZEN_SEALED_ARM1_SHA256"],
+                         env["MEDZEN_SEALED_TOKENIZER_SHA256"]) == \
+        env["MEDZEN_SEALED_ARTIFACT_TREE"], (
+        "the container's tree recomputation does not reproduce the packet's "
+        "candidate tree — the sealed job would refuse before decoding")
+    assert packet["candidate_digest"] == \
+        "sha256:" + env["MEDZEN_SEALED_ARTIFACT_TREE"]
+
+
+@pytest.mark.skipif(not REAL_PACKET.is_file(),
+                    reason="real sealed packet not authored yet")
+def test_container_tree_over_base_sha_is_the_codex_bug():
+    from pipeline.sealed_eval import artifact_tree
+    packet = json.loads(REAL_PACKET.read_bytes())
+    env = packet["environment"]
+    assert artifact_tree(env["MEDZEN_SEALED_BASE_SHA256"],
+                         env["MEDZEN_SEALED_TOKENIZER_SHA256"]) != \
+        env["MEDZEN_SEALED_ARTIFACT_TREE"], (
+        "regression guard: a tree computed over the BASE checkpoint must "
+        "never equal the candidate tree (Codex sealed-review finding 1)")

@@ -91,6 +91,20 @@ def _assemble_parts(parts_dir: Path, dest: Path, want_sha: str,
             f"pins {want_sha[:16]} — refusing a substituted input")
 
 
+def artifact_tree(checkpoint_sha256: str, tokenizer_sha256: str) -> str:
+    """The CANDIDATE artifact tree — canonical json over the candidate's own
+    checkpoint (for Arm-1 that is the EXPORT model.pt sha, NOT the frozen
+    base) plus the tokenizer, exactly as the serving manifest and the
+    model-loader compute it (loader_v2 artifact_tree_sha256). Pure, host-
+    testable — the real-packet regression pins it against the committed
+    packet (Codex sealed-review finding 1: the first implementation hashed
+    the BASE checkpoint here and would have refused before decoding)."""
+    return hashlib.sha256(json.dumps(
+        {"checkpoint_sha256": checkpoint_sha256,
+         "tokenizer_sha256": tokenizer_sha256},
+        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def _load_scorer(want_sha: str):
     """The pinned scorer, imported from the image-baked copy whose bytes
     must hash to the packet pin (the same discipline promotion_check
@@ -132,14 +146,14 @@ def main() -> int:
                             f"languages, got {languages}")
     scorer = _load_scorer(scorer_sha)
 
-    # the tree the receipt attests must recompute from the model identities
-    recomputed_tree = hashlib.sha256(json.dumps(
-        {"checkpoint_sha256": base_sha, "tokenizer_sha256": tok_sha},
-        sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    # the tree the receipt attests must recompute from the CANDIDATE's own
+    # identities: arm1's export sha + the tokenizer (NOT the base — Codex
+    # sealed-review finding 1)
+    recomputed_tree = artifact_tree(arm1_sha, tok_sha)
     if recomputed_tree != tree:
         raise SealedRefusal(
             f"artifact tree {tree[:16]} does not recompute from the pinned "
-            f"checkpoint+tokenizer ({recomputed_tree[:16]})")
+            f"candidate checkpoint+tokenizer ({recomputed_tree[:16]})")
 
     # --- stage the model set from channels, every byte sha-verified ---
     MODELS.mkdir(parents=True, exist_ok=True)
