@@ -1,0 +1,9 @@
+{
+ "kind": "owner_authorization",
+ "packet": "platform/decisions/SEALED-EVAL-ARM1-PACKET-2026-003.json",
+ "packet_sha256": "df3b623a8925ffe64421ab77253afe0594cd8118823088947df3095dfca38605",
+ "record": "SEALED-EVAL-AUTHORIZATION-2026-003",
+ "statement": "The owner's order of 2026-08-29 - verbatim: 're-author the sealed packet to g5 and run it ... just work on the sealing evaluation automatically and report basically to me' - authorizes sealed evaluation under packet sha256 df3b623a8925ffe64421ab77253afe0594cd8118823088947df3095dfca38605 (SEALED-EVAL-ARM1-PACKET-2026-003, ml.g5.xlarge, volume_kms_key_arn null per the AWS constraint that local-NVMe instance types refuse VolumeKmsKeyId; Nitro NVMe hardware encryption preserves no-plaintext-at-rest). Job name and the already-consumed tier-2 sealed holdouts (ledger entries 21-27) carry over unchanged - consumed exactly once.",
+ "supersedes": "SEALED-EVAL-AUTHORIZATION-2026-002",
+ "utc": "2026-08-29T03:40:00Z"
+}

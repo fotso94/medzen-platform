@@ -274,7 +274,13 @@ def build_request(packet: dict, channel_manifests: dict[str, str]) -> dict:
             "InstanceCount": int(contract["instance_count"]),
             "InstanceType": str(contract["instance_type"]),
             "VolumeSizeInGB": int(contract["volume_size_gb"]),
-            "VolumeKmsKeyId": str(contract["volume_kms_key_arn"]),
+            # ml.g5.* uses local NVMe instance storage: SageMaker REFUSES
+            # VolumeKmsKeyId there (ValidationException), and Nitro NVMe
+            # is hardware-encrypted with per-instance ephemeral keys, so
+            # the no-plaintext-at-rest requirement holds without it. The
+            # packet states the choice explicitly: null means OMIT.
+            **({"VolumeKmsKeyId": str(contract["volume_kms_key_arn"])}
+               if contract.get("volume_kms_key_arn") else {}),
         }},
         "StoppingCondition": {
             "MaxRuntimeInSeconds": int(contract["max_runtime_seconds"])},
