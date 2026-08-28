@@ -1,0 +1,9 @@
+{
+ "kind": "owner_authorization",
+ "packet": "platform/decisions/SEALED-EVAL-ARM1-PACKET-2026-004.json",
+ "packet_sha256": "510ca6256c111b04578e153a8983b3054e058d5976ef2542e8ae47f0d1e4a20b",
+ "record": "SEALED-EVAL-AUTHORIZATION-2026-004",
+ "statement": "The owner's order of 2026-08-29 - verbatim: 're-author the sealed packet to g5 and run it ... just work on the sealing evaluation automatically and report basically to me' - authorizes sealed evaluation under packet sha256 510ca6256c111b04578e153a8983b3054e058d5976ef2542e8ae47f0d1e4a20b (SEALED-EVAL-ARM1-PACKET-2026-004, ml.g5.xlarge, volume_kms_key_arn 'none' per the AWS local-NVMe constraint, hardware encryption equivalence recorded in the packet). Job name and the already-consumed tier-2 sealed holdouts (ledger entries 21-27) carry over unchanged - consumed exactly once.",
+ "supersedes": "SEALED-EVAL-AUTHORIZATION-2026-003",
+ "utc": "2026-08-29T04:00:00Z"
+}

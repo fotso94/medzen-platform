@@ -838,6 +838,13 @@ def _describe_contract_view(described: Mapping[str, Any],
         str(x) for x in vpc.get("security_group_ids", [])),
         "subnets": sorted(str(x) for x in vpc.get("subnets", []))}
         if isinstance(vpc, Mapping) else "none")
+    # Same declared-absence convention as vpc_config: SageMaker OMITS
+    # VolumeKmsKeyId in DescribeProcessingJob for local-NVMe instance
+    # types (ml.g5.*), where the API refuses the parameter outright and
+    # Nitro hardware encryption covers data at rest. A contract that
+    # declared a real key ARN still mismatches an absent one and refuses.
+    if view.get("volume_kms_key_arn") is None:
+        view["volume_kms_key_arn"] = "none"
     return view
 
 

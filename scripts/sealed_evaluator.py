@@ -278,9 +278,10 @@ def build_request(packet: dict, channel_manifests: dict[str, str]) -> dict:
             # VolumeKmsKeyId there (ValidationException), and Nitro NVMe
             # is hardware-encrypted with per-instance ephemeral keys, so
             # the no-plaintext-at-rest requirement holds without it. The
-            # packet states the choice explicitly: null means OMIT.
-            **({"VolumeKmsKeyId": str(contract["volume_kms_key_arn"])}
-               if contract.get("volume_kms_key_arn") else {}),
+            # packet declares the absence explicitly with the literal
+            # "none" (the same convention vpc_config already uses).
+            **({} if str(contract["volume_kms_key_arn"]) == "none"
+               else {"VolumeKmsKeyId": str(contract["volume_kms_key_arn"])}),
         }},
         "StoppingCondition": {
             "MaxRuntimeInSeconds": int(contract["max_runtime_seconds"])},
