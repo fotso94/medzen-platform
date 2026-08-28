@@ -492,13 +492,28 @@ def test_acquisition_verifies_reserved_sha_and_is_atomic(tmp_path):
         holdout_ledger.record_consumption(
             "eval/never-reserved/manifest.jsonl", "1" * 64, "x", work)
 
-    # concurrency: exactly ONE of N concurrent acquisitions may win
-    correct_sha = "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df"
+    # concurrency: exactly ONE of N concurrent acquisitions may win.
+    # The kinyarwanda universal holdout was LAWFULLY consumed by the Arm-1
+    # sealed evaluation (ledger entries 21-27), so the race now targets a
+    # test-only reservation appended chain-valid to the COPY — the test is
+    # self-contained against any future real consumption.
+    import json as _json
+    correct_sha = "ab" * 32
+    _lines = [l for l in work.read_text().splitlines() if l.strip()]
+    _entry = {"entry": len(_lines) + 1,
+              "utc": "2026-08-28T00:00:00Z",
+              "event": "RESERVED",
+              "holdout": "eval/test-race/manifest.jsonl",
+              "sha256": correct_sha,
+              "prev_sha256": hashlib.sha256(
+                  _lines[-1].encode()).hexdigest()}
+    with work.open("a") as _fh:
+        _fh.write(_json.dumps(_entry, sort_keys=True) + "\n")
     outcomes = []
     def attempt():
         try:
             holdout_ledger.record_consumption(
-                "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+                "eval/test-race/manifest.jsonl",
                 correct_sha, "racer", work)
             outcomes.append("won")
         except holdout_ledger.LedgerRefusal:
