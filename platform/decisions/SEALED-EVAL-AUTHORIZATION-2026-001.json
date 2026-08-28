@@ -1,8 +1,8 @@
 {
  "kind": "owner_authorization",
  "packet": "platform/decisions/SEALED-EVAL-ARM1-PACKET-2026-001.json",
- "packet_sha256": "66c617e719ab3c796c5211d9700b4fb265f5ee60db57e25b8af2e8e34facaf94",
+ "packet_sha256": "4fa7016eef5d6a759e2df4cee9a803530c28ec65b85b39010a6fed8e5db7376d",
  "record": "SEALED-EVAL-AUTHORIZATION-2026-001",
- "statement": "The owner's directive of 2026-08-28 \u2014 'Proceed autonomously with the Arm-1 end-to-end release. \u2026 implement the existing sealed-evaluator specification, run sealed evaluation, and\u2014only if it passes\u2014reuse the existing KMS promotion pipeline \u2026 If sealed evaluation fails, keep Arm-1 live as nonproduction and do not promote it.' \u2014 authorizes sealed evaluation under packet sha256 66c617e719ab3c796c5211d9700b4fb265f5ee60db57e25b8af2e8e34facaf94 (SEALED-EVAL-ARM1-PACKET-2026-001), consuming the reserved tier-2 sealed holdouts for the seven mandatory languages exactly once via the consumption ledger.",
- "utc": "2026-08-28T18:35:00Z"
+ "statement": "The owner's directive of 2026-08-28 \u2014 'Proceed autonomously with the Arm-1 end-to-end release. \u2026 implement the existing sealed-evaluator specification, run sealed evaluation, and\u2014only if it passes\u2014reuse the existing KMS promotion pipeline \u2026 If sealed evaluation fails, keep Arm-1 live as nonproduction and do not promote it.' \u2014 authorizes sealed evaluation under packet sha256 4fa7016eef5d6a759e2df4cee9a803530c28ec65b85b39010a6fed8e5db7376d (SEALED-EVAL-ARM1-PACKET-2026-001), consuming the reserved tier-2 sealed holdouts for the seven mandatory languages exactly once via the consumption ledger.",
+ "utc": "2026-08-28T21:55:00Z"
 }

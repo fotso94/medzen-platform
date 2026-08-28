@@ -22,7 +22,7 @@
   "MEDZEN_SEALED_ARTIFACT_TREE": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
   "MEDZEN_SEALED_BASE_SHA256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
   "MEDZEN_SEALED_DECODING_CONFIG_SHA256": "b797fb5efdcdf950fd26e5417de5beb9ebf497ac9c5953ccefd3690d1e23091f",
-  "MEDZEN_SEALED_IMAGE_DIGEST": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:39e94c4e03cb6765b1dcd4a87504303a7b8160f45a7e6f0b6f87c7d19aa7ec95",
+  "MEDZEN_SEALED_IMAGE_DIGEST": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:052a07d5906f831ff11313e9ba6807ef6be7e1d10fe73c7eb5961c6555650fe0",
   "MEDZEN_SEALED_JOB_NAME": "medzen-sealed-arm1-2026-001",
   "MEDZEN_SEALED_LANGS": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
   "MEDZEN_SEALED_MANIFEST_ENGLISH": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl:5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f",
@@ -171,10 +171,10 @@
    }
   },
   "checkpoint_config": "none",
-  "environment_sha256": "fe8909fd75f8f1659a3f79e0d61804cfd7ebfd5e5390ebcf9902fe67b840ba1c",
+  "environment_sha256": "5816871a9af12a4fb74b01985b84846873ef8d10e4ba6aa5127cf19f8c7297c1",
   "execution_role_arn": "arn:aws:iam::558069890522:role/medzen-sealed-evaluator-role",
   "hyperparameters_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
-  "image_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:39e94c4e03cb6765b1dcd4a87504303a7b8160f45a7e6f0b6f87c7d19aa7ec95",
+  "image_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:052a07d5906f831ff11313e9ba6807ef6be7e1d10fe73c7eb5961c6555650fe0",
   "instance_count": 1,
   "instance_type": "ml.g6.xlarge",
   "job_name": "medzen-sealed-arm1-2026-001",
@@ -194,5 +194,5 @@
   "method_relative": "paired_clustered_bootstrap_relative",
   "seed": 20260821
  },
- "utc": "2026-08-28T18:35:00Z"
+ "utc": "2026-08-28T21:55:00Z"
 }
