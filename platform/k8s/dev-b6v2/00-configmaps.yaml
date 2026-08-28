@@ -47,3 +47,5 @@ data:
   MEDZEN_TTS_AUDIO_BUCKET: "medzen-audio-cache"
   MEDZEN_TTS_AUDIO_KMS_ARN: "arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda"
   MEDZEN_TTS_VOICES_SSM_PARAM: "/medzen/registry/tts/voices"
+  # s2.1-pro-free needs 5-15s for long answers; the 2s default degraded them
+  MEDZEN_FISH_TIMEOUT_MS: "25000"

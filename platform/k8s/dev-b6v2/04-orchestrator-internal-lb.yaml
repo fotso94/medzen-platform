@@ -1,0 +1,19 @@
+# Dev exposure for the MylestechSpeechVoice test frontend: an INTERNAL
+# classic ELB (legacy in-tree provisioning - the ALB controller stays
+# gated off). Reachable only inside the VPC; the public entry point is
+# the Lambda Function URL, which holds the client token server-side.
+apiVersion: v1
+kind: Service
+metadata:
+  name: speech-orchestrator-lb
+  namespace: medzen
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+spec:
+  type: LoadBalancer
+  selector:
+    app: speech-orchestrator
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080

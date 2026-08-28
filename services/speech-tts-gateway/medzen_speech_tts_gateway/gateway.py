@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import uuid
 from typing import Any
@@ -16,7 +17,11 @@ MODEL_VERSION_KEYS = {"asr", "registry_snapshot", "llm", "rag", "tts"}
 MAX_TEXT_CHARACTERS = 8192
 VOICE_ID = "b6-local-synthetic-fish-voice"
 MEDIA_TYPE = "audio/vnd.medzen.synthetic"
-FISH_TIMEOUT_MS = 2000
+# Fish synthesis budget. The 2s default assumes the paid tier's latency;
+# s2.1-pro-free routinely needs 5-15s for a full paragraph, so dev overrides
+# this via env (owner order 2026-08-28: dev = 25000) rather than silently
+# degrading every long answer to text_only through the FISH_TIMEOUT path.
+FISH_TIMEOUT_MS = int(os.environ.get("MEDZEN_FISH_TIMEOUT_MS", "2000"))
 
 
 class TTSRefusal(RuntimeError):
