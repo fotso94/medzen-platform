@@ -34,6 +34,7 @@ h1 b{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background
 audio{width:100%;margin-top:12px;display:none}
 .meta{color:var(--mut);font-size:.78rem;margin-top:10px;display:none}
 .error{display:none;background:rgba(255,92,122,.12);border:1px solid rgba(255,92,122,.4);color:#ffb3c2;border-radius:12px;padding:12px 16px;font-size:.9rem;white-space:pre-wrap}
+.badge{display:none;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(255,176,92,.15);border:1px solid rgba(255,176,92,.45);color:#ffc98a;margin-bottom:10px;width:max-content}
 footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 </style>
 </head>
@@ -58,7 +59,7 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 
 <div class="card result" id="tcard"><h3>You said</h3><div class="txt" id="transcript"></div></div>
 <div class="card result answer" id="acard">
-  <h3>Answer</h3><div class="txt" id="answer"></div>
+  <h3>Answer</h3><div class="badge" id="badge">General knowledge / ungrounded</div><div class="txt" id="answer"></div>
   <audio id="player" controls></audio>
   <div class="meta" id="meta"></div>
 </div>
@@ -133,6 +134,7 @@ async function stopRec(){
     if(!r.ok||d.error){ showErr("Request failed ("+r.status+"): "+(d.error||JSON.stringify(d).slice(0,300))); setStatus("Pick a language, then tap the microphone and speak."); $("mic").disabled=false; return; }
     $("transcript").textContent=d.transcript||"(empty)";$("tcard").style.display="block";
     $("answer").textContent=d.answer||"(empty)";$("acard").style.display="block";
+    $("badge").style.display=(d.grounded===false)?"inline-block":"none";
     const secs=((Date.now()-t)/1000).toFixed(1);
     $("meta").textContent="language "+d.language+" · asr "+(d.asr_model||"?")+" · tts "+(d.tts_model||"text-only")+" · "+secs+"s round trip";
     $("meta").style.display="block";

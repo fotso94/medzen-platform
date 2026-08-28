@@ -20,6 +20,8 @@ data:
   MEDZEN_CLIENT_KEYS_SECRET_ID: "medzen/client-api-keys"
   # TTS leg needs Fish(40s)+gateway overhead; default 30s stays for prod
   MEDZEN_DEPENDENCY_TIMEOUT_SECONDS: "50"
+  # dev: zero-citation RAG results fall back to general-knowledge Bedrock
+  MEDZEN_ALLOW_UNGROUNDED_FALLBACK: "1"
   MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/3184b2b422e9ed1144e7967faff98cb50e7bba4a1113d5db074f32a77c9242d5"
 ---
 apiVersion: v1
@@ -38,6 +40,7 @@ data:
   AWS_REGION: "eu-central-1"
   MEDZEN_LLM_PROVIDER: "bedrock"
   MEDZEN_BEDROCK_MODEL_ID: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  MEDZEN_ALLOW_UNGROUNDED_FALLBACK: "1"
 ---
 apiVersion: v1
 kind: ConfigMap

@@ -117,6 +117,8 @@ def _speech(payload):
         "language": data.get("language"),
         "transcript": (data.get("transcript") or {}).get("normalized", ""),
         "answer": reply.get("text", ""),
+        "citations": len(reply.get("citations") or []),
+        "grounded": bool(reply.get("citations")),
         "asr_model": mv.get("asr"),
         "llm_model": mv.get("llm"),
         "tts_model": mv.get("tts"),

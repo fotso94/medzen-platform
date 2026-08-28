@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import time
 import uuid
@@ -33,6 +34,14 @@ class GatewayRefusal(RuntimeError):
         self.message = message
         self.status_code = status_code
         self.retryable = retryable
+
+
+# Dev-only fallback (owner order 2026-08-29): when RAG legitimately finds
+# nothing, allow a zero-citation request through to Bedrock as GENERAL
+# KNOWLEDGE and return citations: [] so clients can label the answer
+# ungrounded. Default OFF: without the env the grounded contract is
+# byte-identical. The grounded path is untouched whenever citations exist.
+ALLOW_UNGROUNDED = os.environ.get("MEDZEN_ALLOW_UNGROUNDED_FALLBACK") == "1"
 
 
 def citation_binding(citations: list[dict[str, Any]]) -> str:
@@ -97,7 +106,7 @@ class LLMGateway:
         if not isinstance(snapshot, str) or SHA256_RE.fullmatch(snapshot) is None:
             raise _invalid("RAG index snapshot is malformed")
         citations = rag["citations"]
-        if not isinstance(citations, list) or not citations:
+        if not isinstance(citations, list) or (not citations and not ALLOW_UNGROUNDED):
             raise GatewayRefusal(
                 "CITATIONS_REQUIRED",
                 "at least one RAG citation is required",
@@ -182,7 +191,8 @@ class LLMGateway:
         # Round 3: the subset must be NON-EMPTY — an answer that cites
         # nothing is ungrounded and must never leave this gateway.
         cited_ok = (
-            bool(result.cited_document_ids)
+            (bool(result.cited_document_ids)
+             or (ALLOW_UNGROUNDED and not expected_ids))
             and set(result.cited_document_ids) <= set(expected_ids)
         )
         if (

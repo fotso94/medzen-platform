@@ -132,15 +132,29 @@ class BedrockProvider:
         # no longer causes the model to decline non-clinical transcripts,
         # which produced an empty cited_document_ids and a hard
         # CITATION_BINDING_INVALID refusal at the gateway.
+        if request.citations:
+            grounding_rule = (
+                "Ground factual claims in the supplied citations. You MUST cite "
+                "at least one supplied document id in cited_document_ids, "
+                "choosing the most relevant one even if the match is partial.\n"
+                "If the citations do not fully answer, say what you can and "
+                "note the limit; for health questions suggest consulting a "
+                "clinician.\n"
+            )
+        else:
+            # dev ungrounded fallback: retrieval found nothing relevant —
+            # answer from general knowledge and cite nothing.
+            grounding_rule = (
+                "No reference documents matched this request. Answer from "
+                "your general knowledge, be helpful and concise, and for "
+                "health questions suggest consulting a clinician.\n"
+                "cited_document_ids MUST be exactly [].\n"
+            )
         system = (
             "You are a careful, helpful assistant for the MedZen platform.\n"
             "The user may ask about ANY topic; engage with whatever they say.\n"
             f"Respond ONLY in {request.response_language}.\n"
-            "Ground factual claims in the supplied citations. You MUST cite at "
-            "least one supplied document id in cited_document_ids, choosing the "
-            "most relevant one even if the match is partial.\n"
-            "If the citations do not fully answer, say what you can and note "
-            "the limit; for health questions suggest consulting a clinician.\n"
+            + grounding_rule +
             "Never repeat or invent personal identifiers.\n"
             "Reply with EXACTLY one JSON object, no markdown fences:\n"
             '{"text": "<your reply>", "cited_document_ids": ["<id>", ...]}\n'

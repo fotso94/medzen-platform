@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import time
 import uuid
@@ -21,6 +22,13 @@ from .registry import (
 MODEL_VERSION_KEYS = {"asr", "registry_snapshot", "llm", "rag", "tts"}
 LANGUAGE_RE = re.compile(r"^[a-z]{2,3}$")
 TRANSCRIPT_KEYS = {"verbatim", "normalized", "normalization_version"}
+
+
+# Dev-only fallback (owner order 2026-08-29): with this env set, a RAG
+# result with ZERO citations is passed through to the LLM as a general-
+# knowledge request (the llm-gateway runs the same flag) instead of
+# refusing the whole request. Default OFF - grounded behavior unchanged.
+ALLOW_UNGROUNDED = os.environ.get("MEDZEN_ALLOW_UNGROUNDED_FALLBACK") == "1"
 
 
 class OrchestratorRefusal(RuntimeError):
@@ -283,7 +291,7 @@ class SpeechOrchestrator:
                 or index.get("alias") != route.rag_alias
                 or index.get("snapshot_sha256") != route.rag_snapshot_sha256
                 or not isinstance(rag.get("citations"), list)
-                or not rag["citations"]
+                or (not rag["citations"] and not ALLOW_UNGROUNDED)
                 or not rag_identity_valid
             ):
                 raise OrchestratorRefusal(
@@ -321,7 +329,8 @@ class SpeechOrchestrator:
             )
             citations_ok = (
                 isinstance(reply_citations, list)
-                and bool(reply_citations)
+                and (bool(reply_citations)
+                     or (ALLOW_UNGROUNDED and not rag["citations"]))
                 and all(c in rag["citations"] for c in reply_citations)
                 and len({self._citation_binding([c]) for c in reply_citations})
                 == len(reply_citations)
