@@ -1,0 +1,26 @@
+{
+ "authorization": "Owner FINAL STOP/GO directive 2026-08-28; the owner's click on the arm2-stage1-launch protected environment is the launch authorization",
+ "ceiling_usd": 6,
+ "expires_utc": "2026-08-30T06:00:00Z",
+ "job_id": "b5-arm2b-h3-2026-001",
+ "packet": {
+  "canonical_sha256": "fe3433bcff8ec732539733a3b7f1e8e709ebb93591c8c8ff9595f7620015fa90",
+  "file": "platform/manifests/B5-UNIVERSAL-ARM2B-H3-SAGEMAKER-BINDINGS-2026-001.json"
+ },
+ "receipt": {
+  "record": "platform/evidence/receipts/ARM2B-H3-2026-001/mech-004-launch-receipt.json",
+  "record_sha256": "fe46d73100a9a8f7b80844d6a5cbe99056fb37c757e03dc269893bccaa67abee"
+ },
+ "registry": {
+  "allocation_id": "B5-ARM2B-H3-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-077.json",
+  "sha256": "c2b5deb7b4afb28ff6f93d0b09f9036884d9eaefca8698cbd27c693d92348b7b"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-arm2b-h3-2026-001.json",
+  "reviewer": "owner FINAL STOP/GO directive 2026-08-28 (one 2,000-step H3 arm, weight 4.0)",
+  "sha256": "3fe6e8d13d9b807abfff10cf6c0598f8c5042d2650c91d4141b586111eca1d5d"
+ },
+ "utc": "2026-08-28T03:00:00Z"
+}

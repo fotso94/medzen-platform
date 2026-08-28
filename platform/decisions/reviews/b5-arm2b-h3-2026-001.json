@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY job b5-arm2b-h3-2026-001 ($5.87 worst, 2,000 steps) riding the PASSED mech-004 chain (fe46d73100a9a8f7). STOP/GO GATE: lingala<=130/671, pidgin<=218/925, GPU<22GiB. render+validate PASS_EXACT_TRAINING_REQUEST.",
+ "bindings_sha256": "fe3433bcff8ec732539733a3b7f1e8e709ebb93591c8c8ff9595f7620015fa90",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:1477717e42fb4150be6a275e2c8f67dfc9904b255d329a59144f131ffa457e70",
+ "job_id": "b5-arm2b-h3-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2B-H3-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner FINAL STOP/GO directive 2026-08-28 (one 2,000-step H3 arm, weight 4.0)",
+ "utc": "2026-08-28T03:00:00Z"
+}
