@@ -1,0 +1,125 @@
+{
+ "distillation": {
+  "design": "platform/decisions/B5-UNIVERSAL-ARM2B-EXPERIMENT-DESIGN-2026-001.json",
+  "kd_alpha": 1.0,
+  "kd_temperature": 1.0,
+  "language_weights": {
+   "lingala": 4.0
+  },
+  "language_weights_rationale": "Owner probe directive 2026-08-27: the 300-step mtcal-001 endpoint (lingala 136/671 = 20.27%) failed the direction criterion at weight 1.5 \u2014 this probe changes ONLY the lingala KD weight 1.5 -> 4.0 (weights are validated finite > 0, uncapped); every other knob is byte-identical to the -001 recipe.",
+  "preservation_languages": [
+   "english",
+   "french",
+   "swahili",
+   "lingala"
+  ],
+  "retention": {
+   "alpha": 1.0,
+   "languages": [
+    "pidgin",
+    "kinyarwanda",
+    "ewe"
+   ],
+   "rationale": "The SECOND frozen teacher is the pinned Arm-1 export \u2014 the SAME identity the student warm-starts from and the nomination scorer's arm1 veto reference decodes (ARM2-ARM1-SCORING-REFERENCE-2026-001). It anchors the free languages so the warm-started student cannot drift off Arm-1's pidgin/kinyarwanda/ewe while the base teacher preserves the sentinels.",
+   "teacher": {
+    "s3_uri": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+    "s3_version_id": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+    "sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c"
+   }
+  },
+  "teacher_card": "medzen_omniASR_CTC_1B_v2",
+  "teacher_mode": "base+arm1_retention",
+  "teacher_note": "base teacher is byte-identical to the student's staged base; alignment by construction. Kinyarwanda-v1 teacher deferred (needs its own reviewed card)."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "100",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "2000",
+  "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl,pidgin=platform/manifests/dev-sentinels/pidgin.jsonl",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXECUTION_MODE": "arm2_comparative",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ALPHA": "1.0",
+  "MEDZEN_KD_ENABLE": "1",
+  "MEDZEN_KD_LANGUAGE_WEIGHTS": "lingala=4.0",
+  "MEDZEN_KD_PRESERVATION_LANGUAGES": "english,french,swahili,lingala",
+  "MEDZEN_KD_RETENTION_ALPHA": "1.0",
+  "MEDZEN_KD_RETENTION_LANGUAGES": "pidgin,kinyarwanda,ewe",
+  "MEDZEN_KD_RETENTION_TEACHER_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "MEDZEN_KD_RETENTION_TEACHER_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_KD_RETENTION_TEACHER_VERSION_ID": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+  "MEDZEN_KD_TEACHER_CARD": "medzen_omniASR_CTC_1B_v2",
+  "MEDZEN_KD_TEACHER_MODE": "base+arm1_retention",
+  "MEDZEN_KD_TEMPERATURE": "1.0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_LR": "1e-5",
+  "MEDZEN_LR_SCHEDULE": "constant",
+  "MEDZEN_MANIFEST_VERSION": "gb9",
+  "MEDZEN_MAX_STEPS": "2000",
+  "MEDZEN_MULTILINGUAL_FULL_ACK": "ARCH-2026-001",
+  "MEDZEN_SEED": "1",
+  "MEDZEN_STUDENT_INIT_MODE": "arm1",
+  "MEDZEN_STUDENT_INIT_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "MEDZEN_STUDENT_INIT_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_STUDENT_INIT_VERSION_ID": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+  "MEDZEN_TEMPERATURE": "0.5",
+  "MEDZEN_TRAIN_MODE": "full",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_WARMUP_STEPS": "500"
+ },
+ "job_id": "b5-arm2b-h3-2026-001",
+ "purpose": "SELF-REFERENCE-FREE execution contract for the Arm-2b H3 arm \u2014 the owner's FINAL STOP/GO experiment (2026-08-28): ONE actual 2,000-step arm of the dual-teacher warm-started recipe at lingala KD weight 4.0 (retention alpha 1.0 = the design's H3 slot). PASS the gate -> counts as the FIRST GRID ARM and the campaign continues; FAIL -> Arm-2b closes and Arm-1 remains the incumbent.",
+ "record": "B5-UNIVERSAL-ARM2B-H3-EXECUTION-CONTRACT-2026-001",
+ "result_verifier": {
+  "dev_manifests": {
+   "lingala": {
+    "language": "lingala",
+    "path": "platform/manifests/dev-sentinels/lingala.jsonl",
+    "rows": 60,
+    "sha256": "59b2485c947d6f0556fffaeb83744dd814589a8dca9ccba6d7e52ec0cc4d0f5a",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   },
+   "pidgin": {
+    "language": "pidgin",
+    "path": "platform/manifests/dev-sentinels/pidgin.jsonl",
+    "rows": 60,
+    "sha256": "1ac2952f0372cbabab1764e74e5551a100ec5efdacabc445798825a0946fae26",
+    "source_note": "60 rows drawn deterministically (seed 20260827) from the frozen nomination scoring manifest's pidgin surface (manifest 74735138) joined with the pinned references-pidgin.jsonl; base/arm1 anchor WERs on these exact rows are computable at $0 from the attested Phase-A scoring receipts.",
+    "source_record": "B5-UNIVERSAL-ARM2B-PIDGIN-SENTINEL-2026-001"
+   },
+   "swahili": {
+    "language": "swahili",
+    "path": "platform/manifests/dev-sentinels/swahili.jsonl",
+    "rows": 60,
+    "sha256": "613fad796b8629c351fa023944b384f6198d74125733ea89e61af60adaf4c4a8",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   }
+  },
+  "dev_sentinel_languages": [
+   "lingala",
+   "swahili",
+   "pidgin"
+  ],
+  "expected_steps": 2000,
+  "gpu_memory_ceiling_bytes": 23622320128,
+  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB / 25769803776 B) \u2014 headroom for driver/fragmentation.",
+  "metrics_artifact": "calibration-metrics.json",
+  "metrics_schema": "b5-arm2-calibration-metrics/2",
+  "note": "OWNER STOP/GO GATE (same thresholds as the probes, read at the 2,000-step endpoint): lingala <= 130/671 errors (19.37%), pidgin <= 218/925 (23.57%), peak GPU < 22 GiB. PASS -> first grid arm, continue; FAIL -> close Arm-2b, keep Arm-1.",
+  "required_preservation_coverage": [
+   "english",
+   "french",
+   "lingala",
+   "swahili"
+  ],
+  "required_retention_coverage": [
+   "ewe",
+   "kinyarwanda",
+   "pidgin"
+  ],
+  "script": "scripts/verify_arm2_calibration.py"
+ }
+}

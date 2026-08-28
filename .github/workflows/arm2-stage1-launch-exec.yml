@@ -62,6 +62,7 @@ jobs:
             platform/manifests/B5-UNIVERSAL-ARM2-KDCONTROL-SAGEMAKER-BINDINGS-2026-002.json) ;;
             platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-001.json) ;;
             platform/manifests/B5-UNIVERSAL-ARM2B-MTCAL-SAGEMAKER-BINDINGS-2026-002.json) ;;
+            platform/manifests/B5-UNIVERSAL-ARM2B-H3-SAGEMAKER-BINDINGS-2026-001.json) ;;
             *) echo "::error::$PACKET is not one of the allowlisted stage-1/arm2b packets"; exit 1 ;;
           esac
       - name: require an exact single-line 40-hex commit
