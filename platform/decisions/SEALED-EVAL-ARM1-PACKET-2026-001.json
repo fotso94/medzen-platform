@@ -1,0 +1,198 @@
+{
+ "anchor": {
+  "bucket": "medzen-speech",
+  "key": "research/b5-training/sealed-eval-arm1-2026-001/anchor/packet.json"
+ },
+ "candidate_digest": "sha256:34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "channel_inputs_prefix": "research/b5-training/sealed-eval-arm1-2026-001/inputs",
+ "code_switch": {
+  "alpha": 0.05,
+  "iterations": 10000,
+  "margin": 0.02,
+  "note": "predeclared per protocol; the licensed registry is EMPTY (HOLDOUT-GRADES-2026-001 licensed_code_switch_sets={}) so no code-switch rows can exist and first production promotion is structurally blocked \u2014 recorded expectation",
+  "seed": 20260821
+ },
+ "cost_ceiling_usd": 5.0,
+ "decoding_config_sha256": "b797fb5efdcdf950fd26e5417de5beb9ebf497ac9c5953ccefd3690d1e23091f",
+ "environment": {
+  "MEDZEN_INFERENCE_DEVICE": "cuda",
+  "MEDZEN_LANGUAGES": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_MANIFEST_VERSION": "gb9",
+  "MEDZEN_SEALED_ARM1_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_SEALED_ARTIFACT_TREE": "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+  "MEDZEN_SEALED_BASE_SHA256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+  "MEDZEN_SEALED_DECODING_CONFIG_SHA256": "b797fb5efdcdf950fd26e5417de5beb9ebf497ac9c5953ccefd3690d1e23091f",
+  "MEDZEN_SEALED_IMAGE_DIGEST": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:39e94c4e03cb6765b1dcd4a87504303a7b8160f45a7e6f0b6f87c7d19aa7ec95",
+  "MEDZEN_SEALED_JOB_NAME": "medzen-sealed-arm1-2026-001",
+  "MEDZEN_SEALED_LANGS": "english,ewe,french,kinyarwanda,lingala,pidgin,swahili",
+  "MEDZEN_SEALED_MANIFEST_ENGLISH": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl:5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f",
+  "MEDZEN_SEALED_MANIFEST_EWE": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl:ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4",
+  "MEDZEN_SEALED_MANIFEST_FRENCH": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl:0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b",
+  "MEDZEN_SEALED_MANIFEST_KINYARWANDA": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl:5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
+  "MEDZEN_SEALED_MANIFEST_LINGALA": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl:71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35",
+  "MEDZEN_SEALED_MANIFEST_PIDGIN": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl:fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91",
+  "MEDZEN_SEALED_MANIFEST_SWAHILI": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl:6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb",
+  "MEDZEN_SEALED_SCORER_SHA256": "e3635ed65379057b3fa66fe37d7b333734f697da729b8a2e6ff408d2c98a70e5",
+  "MEDZEN_SEALED_TOKENIZER_SHA256": "8aa11a1092142ef472537476ef6e76541123e2f0d789b79f3ebd119008240b1e",
+  "MEDZEN_SEED": "1",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "languages": {
+  "english": {
+   "alpha": 0.05,
+   "holdout_key": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f",
+   "holdout_s3_version_id": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD",
+   "iterations": 10000,
+   "margin": 0.01,
+   "method": "paired_clustered_bootstrap",
+   "mode": "absolute",
+   "seed": 20260821
+  },
+  "ewe": {
+   "alpha": 0.05,
+   "holdout_key": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4",
+   "holdout_s3_version_id": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi",
+   "iterations": 10000,
+   "margin": 0.02,
+   "method": "paired_clustered_bootstrap",
+   "mode": "absolute",
+   "seed": 20260821
+  },
+  "french": {
+   "alpha": 0.05,
+   "holdout_key": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b",
+   "holdout_s3_version_id": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G",
+   "iterations": 10000,
+   "margin": 0.01,
+   "method": "paired_clustered_bootstrap",
+   "mode": "absolute",
+   "seed": 20260821
+  },
+  "kinyarwanda": {
+   "alpha": 0.05,
+   "holdout_key": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
+   "holdout_s3_version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa",
+   "iterations": 10000,
+   "method": "paired_clustered_bootstrap_relative",
+   "min_relative_gain": 0.03,
+   "mode": "relative",
+   "seed": 20260821
+  },
+  "lingala": {
+   "alpha": 0.05,
+   "holdout_key": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35",
+   "holdout_s3_version_id": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd",
+   "iterations": 10000,
+   "margin": 0.01,
+   "method": "paired_clustered_bootstrap",
+   "mode": "absolute",
+   "seed": 20260821
+  },
+  "pidgin": {
+   "alpha": 0.05,
+   "holdout_key": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+   "holdout_manifest_sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91",
+   "holdout_s3_version_id": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN",
+   "iterations": 10000,
+   "method": "paired_clustered_bootstrap_relative",
+   "min_relative_gain": 0.1,
+   "mode": "relative",
+   "seed": 20260821
+  },
+  "swahili": {
+   "alpha": 0.05,
+   "holdout_key": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+   "holdout_manifest_sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb",
+   "holdout_s3_version_id": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p",
+   "iterations": 10000,
+   "margin": 0.01,
+   "method": "paired_clustered_bootstrap",
+   "mode": "absolute",
+   "seed": 20260821
+  }
+ },
+ "operational_thresholds": {
+  "max_latency_p95_ms": 1500,
+  "max_vram_gb": 22
+ },
+ "owner_authorization_record": "platform/decisions/SEALED-EVAL-AUTHORIZATION-2026-001.json",
+ "protocol_id": "PROMOTION-PROTOCOL-2026-004",
+ "purpose": "Sealed evaluation of the Arm-1 candidate (export c6604a68 over the frozen base, artifact tree 34ca18bab2f7) against the reserved tier-2 sealed holdouts, per the owner's end-to-end release directive 2026-08-28. Grades authority HOLDOUT-GRADES-2026-001 makes english/ewe/lingala/swahili development-grade (the promotion gate will refuse them as sole evidence) and the licensed code-switch registry is empty \u2014 the promotion gate's refusal is the EXPECTED terminal state; the sealed results stand as evidence either way.",
+ "record": "SEALED-EVAL-ARM1-PACKET-2026-001",
+ "scorer_id": "scorer_v1",
+ "scorer_sha256": "e3635ed65379057b3fa66fe37d7b333734f697da729b8a2e6ff408d2c98a70e5",
+ "sealed_run_contract": {
+  "account_id": "558069890522",
+  "channels": {
+   "arm1": {
+    "compression_type": "None",
+    "content_type": null,
+    "input_mode": "File",
+    "s3_data_distribution_type": "FullyReplicated",
+    "s3_data_type": "S3Prefix",
+    "s3_uri": "s3://medzen-speech/research/b5-training/arm1-gpu-resmoke-2026-001/staging/model.pt"
+   },
+   "audio": {
+    "compression_type": "None",
+    "content_type": null,
+    "input_mode": "File",
+    "s3_data_distribution_type": "FullyReplicated",
+    "s3_data_type": "ManifestFile",
+    "s3_uri": "s3://medzen-speech/research/b5-training/sealed-eval-arm1-2026-001/inputs/audio.manifest.json"
+   },
+   "base": {
+    "compression_type": "None",
+    "content_type": null,
+    "input_mode": "File",
+    "s3_data_distribution_type": "FullyReplicated",
+    "s3_data_type": "S3Prefix",
+    "s3_uri": "s3://medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/bundles/omniASR-CTC-1B-v2.pt.parts/"
+   },
+   "manifests": {
+    "compression_type": "None",
+    "content_type": null,
+    "input_mode": "File",
+    "s3_data_distribution_type": "FullyReplicated",
+    "s3_data_type": "ManifestFile",
+    "s3_uri": "s3://medzen-speech/research/b5-training/sealed-eval-arm1-2026-001/inputs/manifests.manifest.json"
+   },
+   "tokenizer": {
+    "compression_type": "None",
+    "content_type": null,
+    "input_mode": "File",
+    "s3_data_distribution_type": "FullyReplicated",
+    "s3_data_type": "S3Prefix",
+    "s3_uri": "s3://medzen-speech/research/asr-base-model/pilot/1cdca3e75195c7c7417550154e36a1f372715e17efd13c835c87ee503fa84eee/bundles/omniASR_tokenizer_written_v2.model.parts/"
+   }
+  },
+  "checkpoint_config": "none",
+  "environment_sha256": "fe8909fd75f8f1659a3f79e0d61804cfd7ebfd5e5390ebcf9902fe67b840ba1c",
+  "execution_role_arn": "arn:aws:iam::558069890522:role/medzen-sealed-evaluator-role",
+  "hyperparameters_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+  "image_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:39e94c4e03cb6765b1dcd4a87504303a7b8160f45a7e6f0b6f87c7d19aa7ec95",
+  "instance_count": 1,
+  "instance_type": "ml.g5.xlarge",
+  "job_name": "medzen-sealed-arm1-2026-001",
+  "max_runtime_seconds": 9000,
+  "network_isolation": true,
+  "output_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "output_s3_prefix": "s3://medzen-sealed-results/medzen-sealed-arm1-2026-001/output",
+  "region": "eu-central-1",
+  "volume_kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "volume_size_gb": 100,
+  "vpc_config": "none"
+ },
+ "statistics": {
+  "alpha": 0.05,
+  "iterations": 10000,
+  "method_absolute": "paired_clustered_bootstrap",
+  "method_relative": "paired_clustered_bootstrap_relative",
+  "seed": 20260821
+ },
+ "utc": "2026-08-28T18:35:00Z"
+}
