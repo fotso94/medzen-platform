@@ -74,28 +74,41 @@ def _speech(payload):
     if audio[:4] != b"RIFF":
         return _resp(400, {"error": "audio must be a WAV recording"})
 
-    request_id = str(uuid.uuid4())
-    body, ctype = _multipart(audio, language, request_id)
-    req = urllib.request.Request(
-        f"{ORCH}/v1/conversations/speech", data=body, method="POST",
-        headers={"Content-Type": ctype,
-                 "Authorization": f"Bearer {TOKEN}",
-                 "X-MedZen-Contract-Version": CONTRACT})
-    try:
-        with urllib.request.urlopen(req, timeout=90) as r:
-            data = json.loads(r.read())
-    except urllib.error.HTTPError as e:
+    # The orchestrator caps each dependency leg at 30s; Fish s2.1-pro-free
+    # sometimes needs 24-26s + gateway overhead, so a retryable 503 here is a
+    # boundary miss, not an outage. One in-proxy retry rides Fish's variance.
+    data = err_out = None
+    for attempt in (1, 2, 3):
+        request_id = str(uuid.uuid4())
+        body, ctype = _multipart(audio, language, request_id)
+        req = urllib.request.Request(
+            f"{ORCH}/v1/conversations/speech", data=body, method="POST",
+            headers={"Content-Type": ctype,
+                     "Authorization": f"Bearer {TOKEN}",
+                     "X-MedZen-Contract-Version": CONTRACT})
         try:
-            err = json.loads(e.read() or b"{}")
-        except Exception:
-            err = {}
-        msg = (err.get("error") or {}).get("message") or str(e)
-        code = (err.get("error") or {}).get("code") or "UPSTREAM_ERROR"
-        return _resp(502, {"error": f"{code}: {msg}", "request_id": request_id,
-                           "retryable": (err.get("error") or {}).get("retryable")})
-    except Exception as e:
-        return _resp(504, {"error": f"platform unreachable: {type(e).__name__}",
-                           "request_id": request_id})
+            with urllib.request.urlopen(req, timeout=100) as r:
+                data = json.loads(r.read())
+            break
+        except urllib.error.HTTPError as e:
+            try:
+                err = json.loads(e.read() or b"{}")
+            except Exception:
+                err = {}
+            msg = (err.get("error") or {}).get("message") or str(e)
+            code = (err.get("error") or {}).get("code") or "UPSTREAM_ERROR"
+            err_out = _resp(502, {"error": f"{code}: {msg}",
+                                  "request_id": request_id,
+                                  "retryable": (err.get("error") or {}).get("retryable")})
+            if not (err.get("error") or {}).get("retryable") or attempt == 3:
+                return err_out
+        except Exception as e:
+            err_out = _resp(504, {"error": f"platform unreachable: {type(e).__name__}",
+                                  "request_id": request_id})
+            if attempt == 3:
+                return err_out
+    if data is None:
+        return err_out
 
     reply = data.get("reply") or {}
     mv = data.get("model_versions") or {}

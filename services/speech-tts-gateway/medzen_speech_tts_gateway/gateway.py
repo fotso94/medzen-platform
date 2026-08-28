@@ -5,6 +5,7 @@ import json
 import os
 import re
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from .cache import CacheRefusal, CachedAudio, ContentHashCache
@@ -22,6 +23,10 @@ MEDIA_TYPE = "audio/vnd.medzen.synthetic"
 # this via env (owner order 2026-08-28: dev = 25000) rather than silently
 # degrading every long answer to text_only through the FISH_TIMEOUT path.
 FISH_TIMEOUT_MS = int(os.environ.get("MEDZEN_FISH_TIMEOUT_MS", "2000"))
+
+# Worker pool for wall-clock-bounded Fish calls (see create() below). Small:
+# the gateway runs single-replica in dev and Fish serializes heavy requests.
+_FISH_EXECUTOR = ThreadPoolExecutor(max_workers=4)
 
 
 class TTSRefusal(RuntimeError):
@@ -223,10 +228,20 @@ class TTSGateway:
         def create() -> CachedAudio:
             nonlocal attempted
             attempted = True
-            result = self.provider.synthesize(
+            # WALL-CLOCK budget, not just the socket read timeout: Fish
+            # streams the MP3, so each chunk resets requests' read timer and
+            # a slow response can run far past FISH_TIMEOUT_MS — blowing the
+            # orchestrator's hard 30s dependency window and turning graceful
+            # degradation into a whole-request 503. result(timeout=...)
+            # raises TimeoutError, which the existing FISH_TIMEOUT degrade
+            # path catches; the abandoned worker thread just drains the
+            # socket and gets discarded.
+            future = _FISH_EXECUTOR.submit(
+                self.provider.synthesize,
                 FishRequest(text, language, voice_id, key, model=voice_model),
                 timeout_ms=FISH_TIMEOUT_MS,
             )
+            result = future.result(timeout=FISH_TIMEOUT_MS / 1000)
             if (
                 not isinstance(result.audio, bytes)
                 or not result.audio
