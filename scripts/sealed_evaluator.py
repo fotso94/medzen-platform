@@ -145,17 +145,50 @@ def anchor_packet(session, packet: dict, raw: bytes) -> dict:
 def consume_holdouts(packet: dict, job_name: str) -> None:
     """Spec item 7: durable, exactly-once acquisition BEFORE any sealed
     byte is read. One CONSUMED entry per holdout, then one durable commit
-    verifying the committed tail."""
-    from scripts.holdout_ledger import record_consumption
+    verifying the committed tail.
+
+    Spec item 8 (ambiguous-launch recovery): when a prior run of THIS SAME
+    job consumed a holdout and then failed before job creation (e.g. an
+    AWS quota refusal), the acquisition is adopted rather than refused —
+    the exactly-once property is per holdout-consumption, and the consumer
+    identity proves it is the same controller retrying, not a second
+    evaluation. A consumption held by ANY OTHER consumer still refuses."""
+    from scripts.holdout_ledger import (LedgerRefusal, record_consumption,
+                                        verify_chain)
     from scripts.launch_sealed_eval import durable_commit
+    consumer = f"sealed-eval:{job_name}"
     last = None
     for lang in sorted(packet["languages"]):
         entry = packet["languages"][lang]
-        last = record_consumption(
-            str(entry["holdout_key"]),
-            str(entry["holdout_manifest_sha256"]),
-            consumed_by=f"sealed-eval:{job_name}")
-    durable_commit(last)
+        key = str(entry["holdout_key"])
+        sha = str(entry["holdout_manifest_sha256"])
+        try:
+            last = record_consumption(key, sha, consumed_by=consumer)
+        except LedgerRefusal as refusal:
+            if "already CONSUMED" not in str(refusal):
+                raise
+            prior = [e for e in verify_chain()
+                     if e["event"] == "CONSUMED" and e.get("holdout") == key
+                     and e.get("sha256") == sha]
+            if not prior or prior[-1].get("consumed_by") != consumer:
+                raise SealedLaunchRefusal(
+                    f"{key} was consumed by "
+                    f"{prior[-1].get('consumed_by') if prior else '?'!r}, "
+                    f"not this job — the seal is spent for another "
+                    "evaluation") from refusal
+    if last is not None:
+        durable_commit(last)
+    else:
+        # pure adoption: every consumption pre-exists — require the ledger
+        # to be committed clean (the durable commit already happened)
+        status = subprocess.run(
+            ["git", "-C", str(ROOT), "status", "--porcelain", "--",
+             "platform/evidence/HOLDOUT-CONSUMPTION-LEDGER.jsonl"],
+            capture_output=True, text=True)
+        if status.stdout.strip():
+            raise SealedLaunchRefusal(
+                "adopted consumptions exist but the ledger is not "
+                "committed clean — durable acquisition is incomplete")
 
 
 def compose_channel_manifests(session, packet: dict) -> dict[str, str]:
