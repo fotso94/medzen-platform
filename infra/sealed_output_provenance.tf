@@ -94,6 +94,18 @@ resource "aws_iam_role_policy" "sealed_evaluator" {
       # job's channels stage the model set and the composed channel manifests
       # from research/*, and the sealed rows' audio for kinyarwanda + pidgin
       # lives under curated/* — reads only, no writes anywhere in medzen-speech.
+      # SageMaker's create-time input pre-check ("No S3 objects found...")
+      # requires ListBucket on the bucket, scoped to exactly the channel
+      # prefixes already readable below - no broader listing.
+      { Sid = "ListSealedRunChannelPrefixes", Effect = "Allow", Action = ["s3:ListBucket"],
+        Resource = ["arn:aws:s3:::medzen-speech"],
+        Condition = { StringLike = { "s3:prefix" = [
+          "eval/*",
+          "research/asr-base-model/pilot/*",
+          "research/b5-training/arm1-gpu-resmoke-2026-001/staging/*",
+          "research/b5-training/sealed-eval-arm1-2026-001/*",
+          "curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/*",
+          "curated/pidgin/asr/av_pcm/v1/audio/*" ] } } },
       { Sid = "ReadSealedRunChannelInputs", Effect = "Allow", Action = ["s3:GetObject"],
         Resource = [
           "arn:aws:s3:::medzen-speech/research/asr-base-model/pilot/*",
