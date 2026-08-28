@@ -88,8 +88,29 @@ resource "aws_iam_role_policy" "sealed_evaluator" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      { Sid = "ReadSealedInputs", Effect = "Allow", Action = ["s3:GetObject"],
+      { Sid = "ReadSealedInputs", Effect = "Allow", Action = ["s3:GetObject", "s3:GetObjectVersion"],
       Resource = ["arn:aws:s3:::medzen-speech/eval/*"] },
+      # Arm-1 sealed run (owner release directive 2026-08-28): the Processing
+      # job's channels stage the model set and the composed channel manifests
+      # from research/*, and the sealed rows' audio for kinyarwanda + pidgin
+      # lives under curated/* — reads only, no writes anywhere in medzen-speech.
+      { Sid = "ReadSealedRunChannelInputs", Effect = "Allow", Action = ["s3:GetObject"],
+        Resource = [
+          "arn:aws:s3:::medzen-speech/research/asr-base-model/pilot/*",
+          "arn:aws:s3:::medzen-speech/research/b5-training/arm1-gpu-resmoke-2026-001/staging/*",
+          "arn:aws:s3:::medzen-speech/research/b5-training/sealed-eval-arm1-2026-001/*",
+          "arn:aws:s3:::medzen-speech/curated/kinyarwanda/asr/cv17_rw/cv17-test-v1/audio/*",
+          "arn:aws:s3:::medzen-speech/curated/pidgin/asr/av_pcm/v1/audio/*",
+      ] },
+      # SageMaker pulls the evaluator image and writes the job log stream
+      # under the execution role.
+      { Sid = "PullTheEvaluatorImage", Effect = "Allow",
+        Action = ["ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability"],
+      Resource = ["arn:aws:ecr:eu-central-1:558069890522:repository/medzen-trainer-omniasr"] },
+      { Sid = "EcrAuth", Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = ["*"] },
+      { Sid = "JobLogs", Effect = "Allow",
+        Action = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
+      Resource = ["arn:aws:logs:eu-central-1:558069890522:log-group:/aws/sagemaker/ProcessingJobs*"] },
       { Sid    = "WriteSealedResultsWithRetention", Effect = "Allow",
         Action = ["s3:PutObject", "s3:PutObjectRetention"],
       Resource = ["${aws_s3_bucket.sealed_results[0].arn}/*"] },

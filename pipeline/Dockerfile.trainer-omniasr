@@ -47,6 +47,7 @@ COPY pipeline/__init__.py pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
      pipeline/omniasr_distill.py pipeline/omniasr_calibrate.py \
      pipeline/omniasr_score.py \
+     pipeline/sealed_eval.py \
      pipeline/normalizers.py \
      ./pipeline/
 # Codex review #20 F6: the calibration verifier + launcher semantics run
@@ -84,6 +85,7 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-SAGEMAKER-BINDINGS-2026-001.DRAF
 # the PREDECLARED frozen dev-sentinel slices (Codex #21 F4) — the in-image
 # tests assert they match the packet's path/sha256/rows declaration
 COPY platform/manifests/dev-sentinels/ ./platform/manifests/dev-sentinels/
+COPY platform/promotion/scorer_v1.py ./promotion/scorer_v1.py
 COPY tests/test_omniasr_lora.py tests/test_omniasr_train.py \
      tests/test_omniasr_distill.py tests/test_arm2_calibration.py \
      tests/test_arm2b_dual_teacher.py ./tests/
@@ -129,6 +131,7 @@ COPY pipeline/omniasr_lora.py pipeline/omniasr_export.py \
      pipeline/omniasr_data.py pipeline/train_asr.py pipeline/languages.py \
      pipeline/omniasr_distill.py pipeline/omniasr_calibrate.py \
      pipeline/omniasr_score.py \
+     pipeline/sealed_eval.py \
      pipeline/normalizers.py \
      /opt/medzen/pipeline/
 COPY pipeline/__init__.py /opt/medzen/pipeline/__init__.py
@@ -168,6 +171,7 @@ COPY platform/manifests/B5-UNIVERSAL-ARM2-FTCAL-EXECUTION-CONTRACT-2026-001.json
 # wrapper refuses to score any slice whose sha differs from the packet's
 # declaration, so the exact reviewed bytes must ship
 COPY platform/manifests/dev-sentinels/ /opt/medzen/platform/manifests/dev-sentinels/
+COPY platform/promotion/scorer_v1.py /opt/medzen/promotion/scorer_v1.py
 # The SAME fairseq2 asset cards the evaluation runtime ships — model and
 # tokenizer identity resolve identically in training and evaluation
 # (r3 died on ModelNotKnownError because the trainer image lacked them).
