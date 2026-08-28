@@ -1100,7 +1100,12 @@ def verify_packet_chronology(report: dict, *,
     if not _utc_ok(anchored_utc):
         raise PromotionCheckRefusal(
             "the anchor authority returned no valid timestamp")
-    contract = validate_sealed_run_contract(candidate_packet.get("sealed_run"))
+    contract = validate_sealed_run_contract(
+        # the sealed launcher's packet schema names the same complete
+        # contract "sealed_run_contract"; both spellings face the
+        # identical validator - no field is optional either way
+        candidate_packet.get("sealed_run")
+        or candidate_packet.get("sealed_run_contract"))
     job = report.get("sealed_run_job")
     if not isinstance(job, Mapping) or str(job.get("name")) != str(
         contract["job_name"]
@@ -1192,7 +1197,12 @@ def verify_admission_receipt(report: dict, *,
         raise PromotionCheckRefusal(
             f"the sealed run is {job.get('status')!r}, not Completed — "
             "an unfinished or failed run cannot promote")
-    contract = validate_sealed_run_contract(candidate_packet.get("sealed_run"))
+    contract = validate_sealed_run_contract(
+        # the sealed launcher's packet schema names the same complete
+        # contract "sealed_run_contract"; both spellings face the
+        # identical validator - no field is optional either way
+        candidate_packet.get("sealed_run")
+        or candidate_packet.get("sealed_run_contract"))
     report_job = report.get("sealed_run_job") or {}
     if not (str(contract["job_name"]) == str(job.get("name"))
             == str(report_job.get("name"))):

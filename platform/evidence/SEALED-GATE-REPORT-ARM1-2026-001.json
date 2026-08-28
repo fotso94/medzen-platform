@@ -1,0 +1,127 @@
+{
+ "candidate_digest": "sha256:34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6",
+ "code_switch_evidence": {
+  "non_inferiority": {
+   "alpha": 0.05,
+   "iterations": 10000,
+   "margin": 0.02,
+   "note": "predeclared per protocol; the licensed registry is EMPTY (HOLDOUT-GRADES-2026-001 licensed_code_switch_sets={}) so no code-switch rows can exist and first production promotion is structurally blocked \u2014 recorded expectation",
+   "seed": 20260821
+  }
+ },
+ "decoding_config_sha256": "b797fb5efdcdf950fd26e5417de5beb9ebf497ac9c5953ccefd3690d1e23091f",
+ "gate_state_counts": {
+  "PASS": 3,
+  "UNEVALUABLE_SINGLE_CLUSTER_HOLDOUT": 4
+ },
+ "languages": {
+  "english": {
+   "holdout_manifest_sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f",
+   "observed": {
+    "baseline_errors": 1441,
+    "candidate_errors": 1499,
+    "clusters": 1,
+    "reference_words": 11711,
+    "rows": 529
+   },
+   "rows_sha256": "9eec97abd49136c093822b767e31242b21f08bb783c0a195ec4b2c5eaa729cd2",
+   "state": "UNEVALUABLE_SINGLE_CLUSTER_HOLDOUT",
+   "unevaluable_reason": "the sealed holdout manifest binds every row to one corpus-level speaker, so the predeclared paired_clustered_bootstrap needs >= 2 clusters and cannot produce a confidence bound"
+  },
+  "ewe": {
+   "holdout_manifest_sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4",
+   "observed": {
+    "baseline_errors": 156,
+    "candidate_errors": 144,
+    "clusters": 1,
+    "reference_words": 149,
+    "rows": 66
+   },
+   "rows_sha256": "dbf0f31e76dd6b41c5daea7702bdfd1f0a3b097bc246d279c6e0bbc1ddefda09",
+   "state": "UNEVALUABLE_SINGLE_CLUSTER_HOLDOUT",
+   "unevaluable_reason": "the sealed holdout manifest binds every row to one corpus-level speaker, so the predeclared paired_clustered_bootstrap needs >= 2 clusters and cannot produce a confidence bound"
+  },
+  "french": {
+   "holdout_manifest_sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b",
+   "non_inferiority": {
+    "alpha": 0.05,
+    "clusters": 7,
+    "iterations": 10000,
+    "margin": 0.01,
+    "method": "paired_clustered_bootstrap",
+    "non_inferior": true,
+    "rows": 258,
+    "seed": 20260821,
+    "upper_ci": -0.09723756906077348
+   },
+   "rows_sha256": "370be69656698e235d30e8aec33de3e5d6fb121c8d13f23a50a00d3574602dec",
+   "state": "PASS"
+  },
+  "kinyarwanda": {
+   "holdout_manifest_sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
+   "improvement": {
+    "alpha": 0.05,
+    "clusters": 41,
+    "improved": true,
+    "iterations": 10000,
+    "lower_ci": 0.07705903145987975,
+    "method": "paired_clustered_bootstrap_relative",
+    "min_relative_gain": 0.03,
+    "rows": 1642,
+    "seed": 20260821
+   },
+   "rows_sha256": "cf2281e62de58594b431f60481b00a5e535d5b9dc62ab33a1ddec1a9ce014a30",
+   "state": "PASS"
+  },
+  "lingala": {
+   "holdout_manifest_sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35",
+   "observed": {
+    "baseline_errors": 1180,
+    "candidate_errors": 1227,
+    "clusters": 1,
+    "reference_words": 6802,
+    "rows": 325
+   },
+   "rows_sha256": "0a5bb5a63631892a79892376e90f4220f5b5d1be9998b49ef2f75c4ca0341b55",
+   "state": "UNEVALUABLE_SINGLE_CLUSTER_HOLDOUT",
+   "unevaluable_reason": "the sealed holdout manifest binds every row to one corpus-level speaker, so the predeclared paired_clustered_bootstrap needs >= 2 clusters and cannot produce a confidence bound"
+  },
+  "pidgin": {
+   "holdout_manifest_sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91",
+   "improvement": {
+    "alpha": 0.05,
+    "clusters": 24,
+    "improved": true,
+    "iterations": 10000,
+    "lower_ci": 0.30518383785890596,
+    "method": "paired_clustered_bootstrap_relative",
+    "min_relative_gain": 0.1,
+    "rows": 1500,
+    "seed": 20260821
+   },
+   "rows_sha256": "fb50b970109423884905ac7ae49167252d6b1ffb6e9b0c6820f5a956fd48f752",
+   "state": "PASS"
+  },
+  "swahili": {
+   "holdout_manifest_sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb",
+   "observed": {
+    "baseline_errors": 915,
+    "candidate_errors": 913,
+    "clusters": 1,
+    "reference_words": 6828,
+    "rows": 343
+   },
+   "rows_sha256": "40cb884a92459735649feb4394d9291e541ff4407529311f7643ae9536e8cc0d",
+   "state": "UNEVALUABLE_SINGLE_CLUSTER_HOLDOUT",
+   "unevaluable_reason": "the sealed holdout manifest binds every row to one corpus-level speaker, so the predeclared paired_clustered_bootstrap needs >= 2 clusters and cannot produce a confidence bound"
+  }
+ },
+ "protocol_id": "PROMOTION-PROTOCOL-2026-004",
+ "record": "SEALED-GATE-REPORT-ARM1-2026-001",
+ "schema_version": 1,
+ "scorer_id": "scorer_v1",
+ "scorer_sha256": "e3635ed65379057b3fa66fe37d7b333734f697da729b8a2e6ff408d2c98a70e5",
+ "sealed_run_job": {
+  "name": "medzen-sealed-arm1-2026-001"
+ }
+}
