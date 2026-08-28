@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: asr-runtime-config, namespace: medzen}
+data:
+  AWS_REGION: "eu-central-1"
+  MODEL_DIR: "/models"
+  MODEL_DESTINATION: "/models"
+  MEDZEN_INFERENCE_DEVICE: "cuda"
+  MEDZEN_ASR_BACKEND: "omniasr"
+  MEDZEN_LOADER_MODE: "b6v2"
+  MEDZEN_B6V2_MANIFEST_URI: "s3://medzen-speech/approved/asr/b6v2-arm1/manifest.json"
+  MEDZEN_B6V2_MANIFEST_SHA256: "74c6e2e37b1696527f0d60a4d314da525012814a28ffde0b23d2908cea7934ad"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: speech-orchestrator-config, namespace: medzen}
+data:
+  AWS_REGION: "eu-central-1"
+  MEDZEN_ORCHESTRATOR_MODE: "deployed_http_ssm"
+  MEDZEN_CLIENT_KEYS_SECRET_ID: "medzen/client-api-keys"
+  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/db93b19798ebacd50d6d0eb5ad2d17f3b09656657cf97cab71019eef3521c032"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: rag-index-config, namespace: medzen}
+data:
+  AWS_REGION: "eu-central-1"
+  # dev multilingual corpus (fr/kin/pcm/swa); the pinned golden fixture
+  # platform/testdata/rag-index stays byte-identical for the test suite
+  RAG_INDEX_ROOT: "/opt/medzen/platform/testdata/rag-index-dev"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: llm-gateway-config, namespace: medzen}
+data:
+  AWS_REGION: "eu-central-1"
+  MEDZEN_LLM_PROVIDER: "bedrock"
+  MEDZEN_BEDROCK_MODEL_ID: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: tts-gateway-config, namespace: medzen}
+data:
+  AWS_REGION: "eu-central-1"
+  MEDZEN_SPEECH_TTS_PROVIDER: "fish"
+  MEDZEN_FISH_SECRET_ID: "medzen/tts/dev/fish-api-key"
+  MEDZEN_TTS_AUDIO_BUCKET: "medzen-audio-cache"
+  MEDZEN_TTS_AUDIO_KMS_ARN: "arn:aws:kms:eu-central-1:558069890522:key/d3c8d8fa-b188-476b-a32b-fb65bebb3bda"
+  MEDZEN_TTS_VOICES_SSM_PARAM: "/medzen/registry/tts/voices"

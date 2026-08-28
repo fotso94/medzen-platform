@@ -1,0 +1,70 @@
+{
+ "classification": "SYNTHETIC_NON_CLINICAL",
+ "documents": [
+  {
+   "content_sha256": "7e59cbce28a530171a9632e4920df90d90f5bc726205f5a04efee2ec4805d68c",
+   "document_id": "synthetic-hours",
+   "language": "en",
+   "section": "hours",
+   "source_uri": "medzen://synthetic/training-desk",
+   "text": "The fictional training desk opens Monday at 09:00. This synthetic example is not medical advice.",
+   "title": "Fictional training desk hours"
+  },
+  {
+   "content_sha256": "edaaf0f8a6ab248c2b1143c6f9b913e219e3db55998c2819f6298952521571e1",
+   "document_id": "synthetic-card",
+   "language": "en",
+   "section": "arrival",
+   "source_uri": "medzen://synthetic/training-desk",
+   "text": "Visitors to the fictional training desk bring a blue practice card. No real patient information is used.",
+   "title": "Fictional practice card"
+  },
+  {
+   "content_sha256": "fe6f9abbbd89dfeacdfefa8e31a9cc9bcc22a6bd8e9174e6c8e6f35f935751eb",
+   "document_id": "synthetic-support",
+   "language": "en",
+   "section": "hours",
+   "source_uri": "medzen://synthetic/support-line",
+   "text": "The synthetic support line closes Friday at 17:00 and exists only for software testing.",
+   "title": "Synthetic support hours"
+  },
+  {
+   "content_sha256": "1ec47d4e781032ad5071fd1e7b752accac31b556c1e860ac5e7730cece0c102b",
+   "document_id": "synthetic-fr-desk",
+   "language": "fr",
+   "section": "desk",
+   "source_uri": "medzen://synthetic/synthetic-fr-desk",
+   "text": "Fiche du bureau de formation fictif. Question frequente: quel est le resultat du match? Reponse: le match s'est joue a un point, 21 a 20, mettant fin a la serie. Cette fiche est la source de reference du bureau pour toute question sur ce match. Exemple synthetique.",
+   "title": "Fiche du bureau de formation - resultat du match"
+  },
+  {
+   "content_sha256": "f73c87bc423e4b5c0a5395ec10378d09a211bcae9ea6359a7def04300efe78d5",
+   "document_id": "synthetic-kin-desk",
+   "language": "kin",
+   "section": "desk",
+   "source_uri": "medzen://synthetic/synthetic-kin-desk",
+   "text": "Ikiro cy'amahugurwa: ni iki wumva kidasanzwe? Turashima imana ku myaka yawe wujujwe. Uru ni urugero rw'ikizamini, si inama y'ubuvuzi.",
+   "title": "Ikiro cy'amahugurwa - ni iki wumva"
+  },
+  {
+   "content_sha256": "e9f012b0785136d77bfaeebbe2755a14ae9c3382a9e06a845a20f6507df03dc7",
+   "document_id": "synthetic-pcm-desk",
+   "language": "pcm",
+   "section": "desk",
+   "source_uri": "medzen://synthetic/synthetic-pcm-desk",
+   "text": "De training desk talk say: abeg if de money wey you transfer give person you no receive am, call de help line. Dis one na synthetic example.",
+   "title": "Training desk - money wey you transfer"
+  },
+  {
+   "content_sha256": "bb7202b4f304ee40c0a662d09f0a283a11cf9ef9a056555d7676d4560125db57",
+   "document_id": "synthetic-swa-desk",
+   "language": "swa",
+   "section": "desk",
+   "source_uri": "medzen://synthetic/synthetic-swa-desk",
+   "text": "Dawati la mafunzo: ulikuwa umeratibiwa kukatwa mnamo Jumanne lakini uliokolewa. Huu ni mfano wa majaribio tu.",
+   "title": "Dawati la mafunzo - ratiba ya Jumanne"
+  }
+ ],
+ "index_version": "dev-multilingual-v1",
+ "schema_version": 1
+}

@@ -1,0 +1,6 @@
+{
+ "alias": "current",
+ "manifest_path": "indexes/dev-multilingual-v1.json",
+ "manifest_sha256": "02a266a9912323198e49015c991c24cce027fd308d774710dfb314c3e260d3a2",
+ "schema_version": 1
+}

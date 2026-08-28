@@ -125,18 +125,29 @@ class BedrockProvider:
         import hashlib as _hashlib
         grounding_sha256 = _hashlib.sha256(
             citations_block.encode("utf-8")).hexdigest()
+        # Dev (owner instruction 2026-08-28): the assistant is GENERAL
+        # PURPOSE — users may say anything, not only medical topics. The
+        # grounding contract is unchanged (answer from the supplied
+        # citations and always cite at least one), but the medical framing
+        # no longer causes the model to decline non-clinical transcripts,
+        # which produced an empty cited_document_ids and a hard
+        # CITATION_BINDING_INVALID refusal at the gateway.
         system = (
-            "You are a careful medical assistant for the MedZen platform.\n"
+            "You are a careful, helpful assistant for the MedZen platform.\n"
+            "The user may ask about ANY topic; engage with whatever they say.\n"
             f"Respond ONLY in {request.response_language}.\n"
-            "Use ONLY the supplied citations for factual claims; if they do "
-            "not support an answer, say so and advise consulting a clinician.\n"
+            "Ground factual claims in the supplied citations. You MUST cite at "
+            "least one supplied document id in cited_document_ids, choosing the "
+            "most relevant one even if the match is partial.\n"
+            "If the citations do not fully answer, say what you can and note "
+            "the limit; for health questions suggest consulting a clinician.\n"
             "Never repeat or invent personal identifiers.\n"
             "Reply with EXACTLY one JSON object, no markdown fences:\n"
             '{"text": "<your reply>", "cited_document_ids": ["<id>", ...]}\n'
             f"cited_document_ids MUST be a subset of {allowed_ids}."
         )
         user = (
-            f"Patient transcript ({request.language}):\n"
+            f"User transcript ({request.language}):\n"
             f"{request.normalized_transcript}\n\n"
             f"Citations:\n{citations_block if citations_block else '(none supplied)'}"
         )

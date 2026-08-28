@@ -35,6 +35,7 @@ COPY --from=runtime-rootfs /etc/ssl/certs /etc/ssl/certs
 COPY --from=builder /opt/site-packages /opt/site-packages
 COPY services/rag-index/medzen_rag_index /opt/medzen/services/rag-index/medzen_rag_index
 COPY platform/testdata/rag-index /opt/medzen/platform/testdata/rag-index
+COPY platform/testdata/rag-index-dev /opt/medzen/platform/testdata/rag-index-dev
 USER 10001:10001
 EXPOSE 8083
 ENTRYPOINT ["/usr/local/bin/python", "-m", "uvicorn", "medzen_rag_index.app:app", "--host", "0.0.0.0", "--port", "8083", "--no-access-log"]

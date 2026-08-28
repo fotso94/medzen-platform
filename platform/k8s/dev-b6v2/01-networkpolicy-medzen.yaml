@@ -1,0 +1,15 @@
+# Dev bring-up: the VPC CNI runs NETWORK_POLICY_ENFORCING_MODE=strict, which
+# denies all pod traffic until a policy admits it. platform/k8s/base ships no
+# NetworkPolicy, so every pod was cut off from the Pod Identity credential
+# endpoint (169.254.170.23) and from its peers. This admits intra-namespace
+# traffic plus DNS and AWS endpoints for the medzen namespace only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: medzen-dev-allow, namespace: medzen}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - {}
+  egress:
+  - {}

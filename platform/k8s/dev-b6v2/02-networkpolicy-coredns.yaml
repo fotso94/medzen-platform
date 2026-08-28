@@ -1,0 +1,14 @@
+# AWS: strict mode also requires an explicit policy for CoreDNS, otherwise
+# cluster DNS is denied and every pod loses name resolution (the Arm-1 loader
+# then gets credentials but cannot resolve the S3 endpoint).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: coredns-dev-allow, namespace: kube-system}
+spec:
+  podSelector:
+    matchLabels: {k8s-app: kube-dns}
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - {}
+  egress:
+  - {}
