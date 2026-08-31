@@ -5,7 +5,9 @@ defaults:
   citations_required: true
   maximum_citations: 5
   maximum_input_characters: 8000
-  maximum_output_tokens: 512
+  # 512 truncated Claude Sonnet 5 answers MID-JSON (stopReason
+  # max_tokens observed live 2026-08-31) -> unparseable -> 502.
+  maximum_output_tokens: 1500
   timeout_ms: 30000
   rules:
     - answer_in_the_requested_language

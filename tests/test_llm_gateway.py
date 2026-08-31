@@ -67,7 +67,7 @@ def test_fake_provider_success_binds_policy_rag_and_all_model_versions():
     assert response["model_versions"]["rag"] == REQUEST["model_versions"]["rag"]
     assert response["model_versions"]["llm"] == "fake-bedrock-local-v1"
     assert provider.calls[0][1] == 30000
-    assert provider.calls[0][0].maximum_output_tokens == 512
+    assert provider.calls[0][0].maximum_output_tokens == 1500
 
 
 def test_requested_language_policy_controls_provider_response_language():

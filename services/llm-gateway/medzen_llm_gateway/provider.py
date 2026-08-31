@@ -180,8 +180,9 @@ class BedrockProvider:
                 inferenceConfig=config,
             )
         except Exception as exc:
-            if ("temperature" not in str(exc)
-                    or getattr(self, "_no_temperature", False)):
+            # retry decision keys on THIS call's config, not the shared
+            # flag - two concurrent first-calls must both self-correct
+            if "temperature" not in str(exc) or "temperature" not in config:
                 raise
             self._no_temperature = True
             config.pop("temperature", None)
@@ -193,10 +194,22 @@ class BedrockProvider:
             )
         parts = response.get("output", {}).get("message", {}).get("content", [])
         raw = "".join(p.get("text", "") for p in parts).strip()
+        if response.get("stopReason") == "max_tokens":
+            # a truncated reply can never satisfy the JSON contract; name
+            # the cause instead of surfacing it as a parse error
+            raise RuntimeError(
+                "model output truncated at maximum_output_tokens - raise "
+                "the policy cap; a cut-off reply cannot be verified")
         import json as _json
         try:
             if raw.startswith("```"):
                 raw = raw.strip("`").removeprefix("json").strip()
+            if not raw.startswith("{"):
+                # tolerate stray prose AROUND the single required JSON
+                # object (never invent one: no object still refuses)
+                start, end = raw.find("{"), raw.rfind("}")
+                if start >= 0 and end > start:
+                    raw = raw[start:end + 1]
             payload = _json.loads(raw)
             text = str(payload["text"])
             cited = tuple(str(x) for x in payload.get("cited_document_ids", []))
