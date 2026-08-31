@@ -22,7 +22,7 @@ data:
   MEDZEN_DEPENDENCY_TIMEOUT_SECONDS: "50"
   # dev: zero-citation RAG results fall back to general-knowledge Bedrock
   MEDZEN_ALLOW_UNGROUNDED_FALLBACK: "1"
-  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/3184b2b422e9ed1144e7967faff98cb50e7bba4a1113d5db074f32a77c9242d5"
+  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/0083b25a573d5b61924810c80ca641b3cbcb761e74cbfaf0825ac294c7b9ee93"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -39,7 +39,7 @@ metadata: {name: llm-gateway-config, namespace: medzen}
 data:
   AWS_REGION: "eu-central-1"
   MEDZEN_LLM_PROVIDER: "bedrock"
-  MEDZEN_BEDROCK_MODEL_ID: "eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+  MEDZEN_BEDROCK_MODEL_ID: "eu.anthropic.claude-sonnet-5"
   MEDZEN_ALLOW_UNGROUNDED_FALLBACK: "1"
 ---
 apiVersion: v1

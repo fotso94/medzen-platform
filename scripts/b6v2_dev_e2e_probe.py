@@ -7,7 +7,7 @@ import json, sys, urllib.request, uuid, hashlib
 BASE = "http://127.0.0.1:18080"
 TREE = "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6"
 ASR_V = f"omniasr_ctc_1b:{TREE[:12]}"
-LLM_V = "bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+LLM_V = "bedrock:eu.anthropic.claude-sonnet-5"
 token = open(sys.argv[1]).read().strip()
 clips = json.load(open(sys.argv[2]))
 

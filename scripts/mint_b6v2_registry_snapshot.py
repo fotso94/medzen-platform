@@ -11,7 +11,7 @@ TREE = "34ca18bab2f7c6f34e67c0598db416438f0bada15ab004f0b58e3dbafa3c0ca6"
 ASR_VERSION = f"omniasr_ctc_1b:{TREE[:12]}"
 REPORTED = "omniasr-nonprod:74c6e2e37b1696527f0d60a4d314da525012814a28ffde0b23d2908cea7934ad"
 RAG_SHA = "02a266a9912323198e49015c991c24cce027fd308d774710dfb314c3e260d3a2"
-LLM = "bedrock:eu.anthropic.claude-haiku-4-5-20251001-v1:0"
+LLM = "bedrock:eu.anthropic.claude-sonnet-5"
 
 # alias -> (response_code, accepted_codes)
 # ewe MUST use ["ee"]: its alias equals its ISO-3 code and the router
@@ -32,7 +32,7 @@ LANGS = {
 # +english (owner-supplied voice 6d7b6ebb, added 2026-08-28). ewe and
 # lingala remain text-only: no Fish voice with a reference_id exists.
 FISH_LANGS = {"kinyarwanda", "french", "pidgin", "swahili", "english"}
-TTS = {a: ({"backend": "http_fish_v2", "model_version": "fish:s2.1-pro-free"}
+TTS = {a: ({"backend": "http_fish_v2", "model_version": "fish:s1"}
            if a in FISH_LANGS else
            {"backend": "http_text_only_v1", "model_version": None})
        for a in LANGS}

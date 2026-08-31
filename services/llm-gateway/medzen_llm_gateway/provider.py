@@ -165,15 +165,32 @@ class BedrockProvider:
             f"{request.normalized_transcript}\n\n"
             f"Citations:\n{citations_block if citations_block else '(none supplied)'}"
         )
-        response = self._bedrock(timeout_ms).converse(
-            modelId=self.model_id,
-            system=[{"text": system}],
-            messages=[{"role": "user", "content": [{"text": user}]}],
-            inferenceConfig={
-                "maxTokens": request.maximum_output_tokens,
-                "temperature": 0.2,
-            },
-        )
+        # Claude 5-family models REFUSE the temperature parameter
+        # (Bedrock ValidationException: "`temperature` is deprecated for
+        # this model"). Try the historical 0.2 once; if the model rejects
+        # it, drop it and remember for the process lifetime.
+        config = {"maxTokens": request.maximum_output_tokens}
+        if not getattr(self, "_no_temperature", False):
+            config["temperature"] = 0.2
+        try:
+            response = self._bedrock(timeout_ms).converse(
+                modelId=self.model_id,
+                system=[{"text": system}],
+                messages=[{"role": "user", "content": [{"text": user}]}],
+                inferenceConfig=config,
+            )
+        except Exception as exc:
+            if ("temperature" not in str(exc)
+                    or getattr(self, "_no_temperature", False)):
+                raise
+            self._no_temperature = True
+            config.pop("temperature", None)
+            response = self._bedrock(timeout_ms).converse(
+                modelId=self.model_id,
+                system=[{"text": system}],
+                messages=[{"role": "user", "content": [{"text": user}]}],
+                inferenceConfig=config,
+            )
         parts = response.get("output", {}).get("message", {}).get("content", [])
         raw = "".join(p.get("text", "") for p in parts).strip()
         import json as _json
