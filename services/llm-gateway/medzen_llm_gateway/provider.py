@@ -154,6 +154,16 @@ class BedrockProvider:
             "You are a careful, helpful assistant for the MedZen platform.\n"
             "The user may ask about ANY topic; engage with whatever they say.\n"
             f"Respond ONLY in {request.response_language}.\n"
+            # Phase 1 (2026-09-02): the reply is READ ALOUD by text-to-speech;
+            # length drives both LLM and TTS latency.
+            "VOICE STYLE: your reply is spoken aloud by text-to-speech. Write 2 "
+            "short spoken sentences (about 35-55 words in total) in natural, "
+            f"conversational {request.response_language}. No lists, bullet "
+            "points, markdown, headings, symbols, emojis or URLs. Say numbers the "
+            "way people say them. Give a longer answer ONLY when the user "
+            "explicitly asks for more detail.\n"
+            "The transcript comes from speech recognition and may contain "
+            "recognition errors; infer what the user most likely meant.\n"
             + grounding_rule +
             "Never repeat or invent personal identifiers.\n"
             "Reply with EXACTLY one JSON object, no markdown fences:\n"

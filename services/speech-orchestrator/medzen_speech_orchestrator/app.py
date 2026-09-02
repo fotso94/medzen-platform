@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -342,7 +343,12 @@ def create_app(
                 await form.close()
         request.state.request_id = request_id
         try:
-            session_id, result = service.handle(
+            # Phase 1 (2026-09-02): handle() blocks for the whole ASR->RAG->
+            # LLM->TTS chain (10-20s). Called inline it froze this worker's
+            # event loop, serializing concurrent users and stalling /healthz.
+            # The streaming path already offloads via to_thread; match it.
+            session_id, result = await asyncio.to_thread(
+                service.handle,
                 audio=raw_audio,
                 request_id=request_id,
                 language_hint=language_hint,

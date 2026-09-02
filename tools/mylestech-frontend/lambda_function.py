@@ -15,6 +15,7 @@ base64 so the page needs no S3 CORS and no cross-origin fetches.
 """
 import base64
 import json
+import time
 import os
 import urllib.error
 import urllib.request
@@ -74,11 +75,13 @@ def _speech(payload):
     if audio[:4] != b"RIFF":
         return _resp(400, {"error": "audio must be a WAV recording"})
 
-    # The orchestrator caps each dependency leg at 30s; Fish s2.1-pro-free
-    # sometimes needs 24-26s + gateway overhead, so a retryable 503 here is a
-    # boundary miss, not an outage. One in-proxy retry rides Fish's variance.
+    # Phase 1 (2026-09-02): ONE scoped retry. Every attempt re-runs the whole
+    # ASR->RAG->LLM->TTS chain, so unbounded retries tripled time-to-failure
+    # and could outlive the Lambda timeout. Retry only a transport failure or
+    # an explicitly retryable upstream refusal; never a 4xx / non-retryable.
+    t_proxy = time.time()
     data = err_out = None
-    for attempt in (1, 2, 3):
+    for attempt in (1, 2):
         request_id = str(uuid.uuid4())
         body, ctype = _multipart(audio, language, request_id)
         req = urllib.request.Request(
@@ -95,17 +98,19 @@ def _speech(payload):
                 err = json.loads(e.read() or b"{}")
             except Exception:
                 err = {}
-            msg = (err.get("error") or {}).get("message") or str(e)
-            code = (err.get("error") or {}).get("code") or "UPSTREAM_ERROR"
+            detail = err.get("error") or {}
+            msg = detail.get("message") or str(e)
+            code = detail.get("code") or "UPSTREAM_ERROR"
+            retryable = bool(detail.get("retryable")) and e.code >= 500
             err_out = _resp(502, {"error": f"{code}: {msg}",
                                   "request_id": request_id,
-                                  "retryable": (err.get("error") or {}).get("retryable")})
-            if not (err.get("error") or {}).get("retryable") or attempt == 3:
+                                  "retryable": retryable})
+            if not retryable or attempt == 2:
                 return err_out
-        except Exception as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
             err_out = _resp(504, {"error": f"platform unreachable: {type(e).__name__}",
                                   "request_id": request_id})
-            if attempt == 3:
+            if attempt == 2:
                 return err_out
     if data is None:
         return err_out
@@ -123,6 +128,7 @@ def _speech(payload):
         "llm_model": mv.get("llm"),
         "tts_model": mv.get("tts"),
         "latency_ms": data.get("latency_ms"),
+        "proxy_overhead_ms": None,
         "audio_b64": None,
         "audio_url": reply.get("audio_url"),
     }
@@ -135,6 +141,12 @@ def _speech(payload):
                 out["audio_b64"] = base64.b64encode(mp3).decode()
         except Exception as e:  # audio degrades gracefully to the URL/text
             out["audio_error"] = type(e).__name__
+    upstream = float(((data.get("latency_ms") or {}).get("total")) or 0.0)
+    out["proxy_overhead_ms"] = round((time.time() - t_proxy) * 1000.0 - upstream, 1)
+    print(json.dumps({"timing": {"request_id": out["request_id"], "language": language,
+                                 "upstream_ms": data.get("latency_ms"),
+                                 "proxy_overhead_ms": out["proxy_overhead_ms"],
+                                 "mp3_bytes": len(out["audio_b64"] or "") * 3 // 4}}))
     return _resp(200, out)
 
 
@@ -159,6 +171,22 @@ def lambda_handler(event, _ctx):
                                  "ua": (http.get("userAgent") or "")[:160]}}))
     if method == "GET" and path in ("/", "/index.html"):
         return _resp(200, INDEX_HTML.decode(), "text/html; charset=utf-8")
+    if method == "POST" and path == "/api/telemetry":
+        # Phase 1: browser-side marks (stop->response, stop->audio playing)
+        try:
+            body = event.get("body") or ""
+            if event.get("isBase64Encoded"):
+                body = base64.b64decode(body).decode()
+            t = json.loads(body or "{}")
+            print(json.dumps({"client_timing": {
+                "request_id": str(t.get("request_id", ""))[:64],
+                "language": str(t.get("language", ""))[:8],
+                "stop_to_response_ms": t.get("stop_to_response_ms"),
+                "stop_to_audio_ms": t.get("stop_to_audio_ms"),
+                "ok": bool(t.get("ok"))}}))
+        except Exception:
+            pass
+        return _resp(204, "")
     if method == "GET" and path == "/api/health":
         return _health()
     if method == "POST" and path == "/api/speech":

@@ -126,12 +126,16 @@ async function stopRec(){
   const wav=encodeWav(all,sr);
   const b64=btoa(new Uint8Array(wav).reduce((a,b)=>a+String.fromCharCode(b),""));
   setStatus("Processing — ASR → RAG → LLM → TTS…");
-  const t=Date.now();
+  const t=Date.now(); let tAudio=null, rid=null;
+  const beacon=(ok)=>{ try{ navigator.sendBeacon("/api/telemetry", new Blob([JSON.stringify({
+      request_id: rid, language: lang, ok, stop_to_response_ms: tResp?(tResp-t):null,
+      stop_to_audio_ms: tAudio?(tAudio-t):null})], {type:"application/json"})); }catch(e){} };
+  let tResp=null;
   try{
     const r=await fetch("/api/speech",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({language:lang,audio_b64:b64})});
-    const d=await r.json();
-    if(!r.ok||d.error){ showErr("Request failed ("+r.status+"): "+(d.error||JSON.stringify(d).slice(0,300))); setStatus("Pick a language, then tap the microphone and speak."); $("mic").disabled=false; return; }
+    const d=await r.json(); tResp=Date.now(); rid=d.request_id||null;
+    if(!r.ok||d.error){ beacon(false); showErr("Request failed ("+r.status+"): "+(d.error||JSON.stringify(d).slice(0,300))); setStatus("Pick a language, then tap the microphone and speak."); $("mic").disabled=false; return; }
     $("transcript").textContent=d.transcript||"(empty)";$("tcard").style.display="block";
     $("answer").textContent=d.answer||"(empty)";$("acard").style.display="block";
     $("badge").style.display=(d.grounded===false)?"inline-block":"none";
@@ -143,14 +147,14 @@ async function stopRec(){
       const blob=new Blob([bytes],{type:"audio/mpeg"}), url=URL.createObjectURL(blob);
       const p=$("player"); p.src=url; p.style.display="block";
       try{ const ab=await bytes.buffer.slice(0); const dec=await ctx.decodeAudioData(ab);
-        const s2=ctx.createBufferSource(); s2.buffer=dec; s2.connect(ctx.destination); s2.start(); }
-      catch(e){ p.play().catch(()=>{}); }
-      setStatus("Done — playing the answer.");
+        const s2=ctx.createBufferSource(); s2.buffer=dec; s2.connect(ctx.destination); s2.start(); tAudio=Date.now(); }
+      catch(e){ p.play().catch(()=>{}); tAudio=Date.now(); }
+      setStatus("Done — playing the answer."); beacon(true);
     } else if(d.audio_url){
-      const p=$("player"); p.src=d.audio_url; p.style.display="block"; p.play().catch(()=>{});
-      setStatus("Done — playing the answer.");
+      const p=$("player"); p.src=d.audio_url; p.style.display="block"; p.play().catch(()=>{}); tAudio=Date.now();
+      setStatus("Done — playing the answer."); beacon(true);
     } else {
-      setStatus("Done — text only (voice unavailable for this reply).");
+      setStatus("Done — text only (voice unavailable for this reply)."); beacon(true);
     }
   }catch(e){ showErr("Network error: "+e.message); setStatus("Pick a language, then tap the microphone and speak."); }
   $("mic").disabled=false;
