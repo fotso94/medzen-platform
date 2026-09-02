@@ -68,6 +68,70 @@ class FakeBedrockProvider:
             model_version=self.model_version,
         )
 
+    def invoke_stream(self, request: ProviderRequest, *, timeout_ms: int,
+                      on_delta) -> ProviderResult:
+        """Phase 3b: deterministic delta narration of the same result."""
+        result = self.invoke(request, timeout_ms=timeout_ms)
+        half = max(1, len(result.text) // 2)
+        on_delta(result.text[:half])
+        on_delta(result.text[half:])
+        return result
+
+
+class _ReplyTextExtractor:
+    """Incrementally decodes the value of the reply's "text" JSON string as
+    raw model output streams in. Emits only fully-decodable characters (a
+    trailing partial escape such as a lone backslash or \\u12 is held back)."""
+
+    def __init__(self):
+        self.raw = ""
+        self.started = False
+        self.finished = False
+        self.emitted = ""
+        self._start = 0
+
+    def feed(self, chunk: str) -> str:
+        import json as _json, re as _re
+        if self.finished:
+            return ""
+        self.raw += chunk
+        if not self.started:
+            m = _re.search(r'"text"\s*:\s*"', self.raw)
+            if not m:
+                return ""
+            self.started = True
+            self._start = m.end()
+        body = self.raw[self._start:]
+        i, end = 0, None
+        while i < len(body):
+            c = body[i]
+            if c == "\\":
+                i += 2
+                continue
+            if c == '"':
+                end = i
+                break
+            i += 1
+        if end is not None:
+            self.finished = True
+            safe = body[:end]
+        else:
+            safe = body
+            bs = len(safe) - len(safe.rstrip("\\"))
+            if bs % 2 == 1:
+                safe = safe[:-1]
+            m2 = _re.search(r'\\u[0-9a-fA-F]{0,3}$', safe)
+            if m2:
+                safe = safe[:m2.start()]
+        try:
+            decoded = _json.loads('"' + safe + '"')
+        except ValueError:
+            return ""
+        fresh = decoded[len(self.emitted):]
+        if fresh:
+            self.emitted = decoded
+        return fresh
+
 
 class BedrockProvider:
     """Real Bedrock backend via the Converse API (model-family agnostic, so
@@ -94,6 +158,32 @@ class BedrockProvider:
         self._region = region
         self._client = client
 
+    def _converse(self, system, messages, config, timeout_ms, _on_delta):
+        response = self._bedrock(timeout_ms).converse(
+            modelId=self.model_id, system=[{"text": system}],
+            messages=messages, inferenceConfig=config)
+        parts = response.get("output", {}).get("message", {}).get("content", [])
+        return "".join(p.get("text", "") for p in parts), response.get("stopReason")
+
+    def _converse_stream(self, system, messages, config, timeout_ms, on_delta):
+        response = self._bedrock(timeout_ms).converse_stream(
+            modelId=self.model_id, system=[{"text": system}],
+            messages=messages, inferenceConfig=config)
+        raw, stop_reason = "", None
+        extractor = _ReplyTextExtractor()
+        for event in response.get("stream", []):
+            delta = (event.get("contentBlockDelta") or {}).get("delta") or {}
+            text = delta.get("text")          # reasoning/tool deltas are skipped
+            if text:
+                raw += text
+                fresh = extractor.feed(text)
+                if fresh:
+                    on_delta(fresh)
+            stop = (event.get("messageStop") or {}).get("stopReason")
+            if stop:
+                stop_reason = stop
+        return raw, stop_reason
+
     def _bedrock(self, timeout_ms: int):
         if self._client is not None:
             return self._client
@@ -107,6 +197,17 @@ class BedrockProvider:
         return self._client
 
     def invoke(self, request: ProviderRequest, *, timeout_ms: int) -> ProviderResult:
+        return self._run(request, timeout_ms=timeout_ms, on_delta=None)
+
+    def invoke_stream(self, request: ProviderRequest, *, timeout_ms: int,
+                      on_delta) -> ProviderResult:
+        """Phase 3b (2026-09-02): ConverseStream. Text deltas of the reply's
+        `text` field are narrated as they arrive (partial-JSON string
+        extraction); the COMPLETE JSON is then parsed and checked exactly
+        like the buffered path, so nothing unvalidated is ever returned."""
+        return self._run(request, timeout_ms=timeout_ms, on_delta=on_delta)
+
+    def _run(self, request: ProviderRequest, *, timeout_ms: int, on_delta):
         allowed_ids = [item["document_id"] for item in request.citations]
         # B6v2 (Codex serving review): grounding comes from the explicit
         # grounding_text field; a citation with BLANK grounding refuses —
@@ -189,13 +290,9 @@ class BedrockProvider:
         config = {"maxTokens": request.maximum_output_tokens}
         if not getattr(self, "_no_temperature", False):
             config["temperature"] = 0.2
+        call = (self._converse_stream if on_delta is not None else self._converse)
         try:
-            response = self._bedrock(timeout_ms).converse(
-                modelId=self.model_id,
-                system=[{"text": system}],
-                messages=messages,
-                inferenceConfig=config,
-            )
+            raw, stop_reason = call(system, messages, config, timeout_ms, on_delta)
         except Exception as exc:
             # retry decision keys on THIS call's config, not the shared
             # flag - two concurrent first-calls must both self-correct
@@ -203,15 +300,9 @@ class BedrockProvider:
                 raise
             self._no_temperature = True
             config.pop("temperature", None)
-            response = self._bedrock(timeout_ms).converse(
-                modelId=self.model_id,
-                system=[{"text": system}],
-                messages=messages,
-                inferenceConfig=config,
-            )
-        parts = response.get("output", {}).get("message", {}).get("content", [])
-        raw = "".join(p.get("text", "") for p in parts).strip()
-        if response.get("stopReason") == "max_tokens":
+            raw, stop_reason = call(system, messages, config, timeout_ms, on_delta)
+        raw = raw.strip()
+        if stop_reason == "max_tokens":
             # a truncated reply can never satisfy the JSON contract; name
             # the cause instead of surfacing it as a parse error
             raise RuntimeError(

@@ -63,6 +63,14 @@ class LLMGateway:
         self.breaker = breaker
 
     def complete(self, value: Any) -> dict[str, Any]:
+        return self._complete(value, on_delta=None)
+
+    def complete_stream(self, value: Any, on_delta) -> dict[str, Any]:
+        """Phase 3b: identical validation and post-checks; only the provider
+        call streams, narrating reply-text deltas through on_delta."""
+        return self._complete(value, on_delta=on_delta)
+
+    def _complete(self, value: Any, on_delta) -> dict[str, Any]:
         started = time.perf_counter()
         base_fields = {"request_id", "language", "transcript", "rag", "model_versions"}
         if not isinstance(value, dict) or set(value) not in (
@@ -184,9 +192,14 @@ class LLMGateway:
             history=tuple((str(t["role"]), str(t["text"])) for t in history),
         )
         try:
-            result = self.provider.invoke(
-                provider_request, timeout_ms=policy.timeout_ms
-            )
+            if on_delta is not None and hasattr(self.provider, "invoke_stream"):
+                result = self.provider.invoke_stream(
+                    provider_request, timeout_ms=policy.timeout_ms,
+                    on_delta=on_delta)
+            else:
+                result = self.provider.invoke(
+                    provider_request, timeout_ms=policy.timeout_ms
+                )
         except ProviderError as exc:
             # B6v2: a data-contract refusal (blank grounding), NOT a
             # provider outage — non-retryable, no breaker penalty

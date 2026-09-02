@@ -150,6 +150,70 @@ def create_app(gateway: LLMGateway | None = None, *,
             )
         return JSONResponse(payload, status_code=200 if ready else 503)
 
+    @app.post("/internal/v1/responses/stream")
+    async def respond_stream(request: Request):
+        # Phase 3b: same validation and checks as /internal/v1/responses;
+        # the provider call streams and reply-text deltas are relayed as
+        # NDJSON {"event":"delta","text":...}, then {"event":"final",...}
+        # (the exact buffered response) or {"event":"error",...}.
+        import asyncio
+        from fastapi.responses import StreamingResponse
+        gateway_value = request.app.state.gateway
+        if gateway_value is None:
+            return JSONResponse({"error": {"code": "PROVIDER_UNAVAILABLE",
+                                           "message": "LLM gateway is not ready",
+                                           "retryable": True}}, status_code=503)
+        raw = await request.body()
+        if len(raw) > max_body_bytes:
+            return JSONResponse({"error": {"code": "PAYLOAD_TOO_LARGE",
+                                           "message": "request body exceeds 65536 bytes",
+                                           "retryable": False}}, status_code=413)
+        try:
+            value = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return JSONResponse({"error": {"code": "INVALID_REQUEST",
+                                           "message": "request JSON is malformed",
+                                           "retryable": False}}, status_code=400)
+        loop = asyncio.get_running_loop()
+        queue: asyncio.Queue = asyncio.Queue()
+        sentinel = object()
+
+        def on_delta(text: str) -> None:
+            loop.call_soon_threadsafe(
+                queue.put_nowait, json.dumps({"event": "delta", "text": text}) + "\n")
+
+        async def run() -> None:
+            try:
+                response = await asyncio.to_thread(
+                    gateway_value.complete_stream, value, on_delta)
+                queue.put_nowait(json.dumps({"event": "final", **response}) + "\n")
+            except GatewayRefusal as exc:
+                queue.put_nowait(json.dumps({
+                    "event": "error", "code": exc.code, "message": exc.message,
+                    "status": exc.status_code, "retryable": exc.retryable}) + "\n")
+            except Exception:
+                queue.put_nowait(json.dumps({
+                    "event": "error", "code": "PROVIDER_UNAVAILABLE",
+                    "message": "LLM provider is unavailable",
+                    "status": 503, "retryable": True}) + "\n")
+            finally:
+                queue.put_nowait(sentinel)
+
+        async def lines():
+            task = asyncio.create_task(run())
+            try:
+                while True:
+                    item = await queue.get()
+                    if item is sentinel:
+                        break
+                    yield item
+            finally:
+                if not task.done():
+                    task.cancel()
+
+        return StreamingResponse(lines(), media_type="application/x-ndjson",
+                                 headers={"Cache-Control": "no-store"})
+
     @app.post("/internal/v1/responses")
     async def respond(request: Request):
         gateway_value = request.app.state.gateway

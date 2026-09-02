@@ -173,8 +173,11 @@ class LocalLLMClient:
         versions: dict[str, str | None],
         route: RegistryRoute,
         history: list[dict[str, str]] | None = None,
+        on_delta=None,
     ) -> dict[str, Any]:
-        result = self._gateway.complete({
+        call = (self._gateway.complete if on_delta is None
+                else (lambda v: self._gateway.complete_stream(v, on_delta)))
+        result = call({
             "request_id": request_id,
             "language": route.alias,
             "transcript": transcript,

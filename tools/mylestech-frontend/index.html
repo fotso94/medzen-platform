@@ -50,7 +50,7 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 
 <div class="card">
   <div class="langs" id="langs"></div>
-  <div id="ctxbar"><span id="ctxinfo">New conversation</span><button id="newconv" title="Forget the previous turns">New conversation</button></div>
+  <div id="ctxbar"><span id="ctxinfo">No previous turns yet</span><button id="newconv" title="Forget the previous turns">New conversation</button></div>
 </div>
 
 <div class="card micwrap">
@@ -85,7 +85,7 @@ function pushTurn(userText, assistantText){
   renderCtx();
 }
 function resetHistory(why){ history=[]; renderCtx(why); }
-function renderCtx(note){ const n=history.length/2; $("ctxinfo").textContent = n? `Remembering ${n} previous ${n===1?"exchange":"exchanges"}` : (note||"New conversation"); }
+function renderCtx(note){ const n=history.length/2; $("ctxinfo").textContent = n? `Remembering ${n} previous ${n===1?"exchange":"exchanges"}` : (note||"No previous turns yet"); }
 const $=id=>document.getElementById(id);
 const langsEl=$("langs");
 LANGS.forEach(([c,n],i)=>{const b=document.createElement("button");b.className="pill"+(i===0?" sel":"");b.textContent=n;b.dataset.c=c;
@@ -143,10 +143,10 @@ async function stopRec(){
   const wav=encodeWav(all,sr);
   const b64=btoa(new Uint8Array(wav).reduce((a,b)=>a+String.fromCharCode(b),""));
   setStatus("Processing — ASR → RAG → LLM → TTS…");
-  const t=Date.now(); let tAudio=null, tText=null, tTranscript=null, tResp=null, rid=null, mode="stream";
+  const t=Date.now(); let tAudio=null, tText=null, tTranscript=null, tResp=null, rid=null, mode="stream", draft="", tFirstDelta=null;
   const beacon=(ok)=>{ try{ navigator.sendBeacon("/api/telemetry", new Blob([JSON.stringify({
       request_id: rid, language: lang, ok, mode,
-      stop_to_transcript_ms: tTranscript?(tTranscript-t):null, stop_to_text_ms: tText?(tText-t):null,
+      stop_to_transcript_ms: tTranscript?(tTranscript-t):null, stop_to_first_word_ms: tFirstDelta?(tFirstDelta-t):null, stop_to_text_ms: tText?(tText-t):null,
       stop_to_response_ms: tResp?(tResp-t):null, stop_to_audio_ms: tAudio?(tAudio-t):null})], {type:"application/json"})); }catch(e){} };
   const playB64=async(b64)=>{
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
@@ -181,6 +181,7 @@ async function stopRec(){
         const line=buf.slice(0,nl).trim(); buf=buf.slice(nl+1); if(!line) continue;
         let ev; try{ ev=JSON.parse(line);}catch(e){ continue; }
         if(ev.event==="transcript_final"){ rid=ev.request_id||rid; showTranscript((ev.transcript||{}).normalized); }
+        else if(ev.event==="reply_delta"){ draft+=(ev.text||""); if(!tText){ $("answer").textContent=draft+" ▍"; $("acard").style.display="block"; tFirstDelta=tFirstDelta||Date.now(); setStatus("Answering…"); } }
         else if(ev.event==="reply_final"){ showAnswer({answer:ev.text, grounded:ev.grounded}); }
         else if(ev.event==="audio_ready"){ if(ev.audio_b64) await playB64(ev.audio_b64); }
         else if(ev.event==="final"){ sawFinal=true; if(!tTranscript) showTranscript(ev.transcript); if(!tText) showAnswer(ev); finish(ev); }

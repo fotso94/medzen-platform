@@ -327,10 +327,14 @@ def test_ndjson_stream_emits_validated_stages_then_the_identical_final_result():
         assert streamed.status_code == 200
         assert streamed.headers["content-type"].startswith("application/x-ndjson")
         events = [json.loads(line) for line in streamed.text.splitlines() if line.strip()]
+        deltas = [e["text"] for e in events if e["event"] == "reply_delta"]
+        events = [e for e in events if e["event"] != "reply_delta"]
         names = [e["event"] for e in events]
         assert names == ["transcript_final", "reply_final", "final"]
         assert events[0]["transcript"] == buffered["transcript"]
         assert events[1]["text"] == buffered["reply"]["text"]
+        # Phase 3b: deltas narrate exactly the validated reply text
+        assert "".join(deltas) == buffered["reply"]["text"]
         final = {k: v for k, v in events[2].items() if k != "event"}
         # only session id (fresh per request) and latency figures may differ
         for key in ("request_id", "language", "transcript", "reply", "model_versions"):

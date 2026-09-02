@@ -174,7 +174,7 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
       try { let b = event.body || ""; if (event.isBase64Encoded) b = Buffer.from(b, "base64").toString();
             const t = JSON.parse(b || "{}");
             log({ client_timing: { request_id: String(t.request_id || "").slice(0, 64), language: String(t.language || "").slice(0, 8),
-                  stop_to_transcript_ms: t.stop_to_transcript_ms ?? null, stop_to_text_ms: t.stop_to_text_ms ?? null,
+                  stop_to_transcript_ms: t.stop_to_transcript_ms ?? null, stop_to_first_word_ms: t.stop_to_first_word_ms ?? null, stop_to_text_ms: t.stop_to_text_ms ?? null,
                   stop_to_response_ms: t.stop_to_response_ms ?? null, stop_to_audio_ms: t.stop_to_audio_ms ?? null,
                   mode: String(t.mode || "").slice(0, 12), ok: !!t.ok } }); } catch {}
       return send(204, "");

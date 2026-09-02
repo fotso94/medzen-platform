@@ -134,6 +134,60 @@ class ClusterHTTPTransport:
             self._release(request_id, connection)
             connection.close()
 
+    def post_stream(
+        self, *, endpoint: str, request_id: str, body: bytes,
+        content_type: str, headers: dict[str, str] | None = None,
+    ):
+        """Phase 3b: same host allow-list, registration, timeout and size
+        bound as post(); yields one parsed JSON object per NDJSON line."""
+        host, port, path = self._target(endpoint)
+        connection = http.client.HTTPConnection(
+            host, port, timeout=self.timeout_seconds
+        )
+        self._register(request_id, connection)
+        request_headers = {
+            "Content-Type": content_type,
+            "Content-Length": str(len(body)),
+            "X-Request-ID": request_id,
+            "Accept": "application/x-ndjson",
+            **(headers or {}),
+        }
+        try:
+            connection.request("POST", path, body=body, headers=request_headers)
+            response = connection.getresponse()
+            media_type = (response.getheader("Content-Type") or "").split(";", 1)[0]
+            if response.status != 200 or media_type != "application/x-ndjson":
+                raise RemoteDependencyRefusal(
+                    "dependency returned a non-success contract response"
+                )
+            total = 0
+            buffer = b""
+            while True:
+                chunk = response.read1(65536) if hasattr(response, "read1") else response.read(65536)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX_RESPONSE_BYTES:
+                    raise RemoteDependencyRefusal(
+                        "dependency response exceeds the bounded size"
+                    )
+                buffer += chunk
+                while b"\n" in buffer:
+                    line, buffer = buffer.split(b"\n", 1)
+                    if line.strip():
+                        value = json.loads(line)
+                        if not isinstance(value, dict):
+                            raise RemoteDependencyRefusal(
+                                "dependency stream line must be a JSON object")
+                        yield value
+        except RemoteDependencyRefusal:
+            raise
+        except Exception as exc:
+            raise RemoteDependencyRefusal("cluster dependency is unavailable") from exc
+        finally:
+            self._release(request_id, connection)
+            connection.close()
+
     def post_json(
         self, *, endpoint: str, request_id: str, value: dict[str, Any]
     ) -> dict[str, Any]:
@@ -213,6 +267,7 @@ class RemoteLLMClient:
         versions: dict[str, str | None],
         route: RegistryRoute,
         history: list[dict[str, str]] | None = None,
+        on_delta=None,
     ) -> dict[str, Any]:
         value = {
             "request_id": request_id,
@@ -227,11 +282,34 @@ class RemoteLLMClient:
         }
         if history:  # Phase 2: optional field, sent only when non-empty
             value["history"] = list(history)
-        return self.transport.post_json(
-            endpoint=route.endpoint("llm"),
+        if on_delta is None:
+            return self.transport.post_json(
+                endpoint=route.endpoint("llm"),
+                request_id=request_id,
+                value=value,
+            )
+        # Phase 3b: the gateway's stream variant narrates reply-text deltas
+        # and ends with the exact buffered response (or an error event).
+        final = None
+        for event in self.transport.post_stream(
+            endpoint=route.endpoint("llm") + "/stream",
             request_id=request_id,
-            value=value,
-        )
+            body=canonical_json(value),
+            content_type="application/json",
+        ):
+            kind = event.get("event")
+            if kind == "delta":
+                text = event.get("text")
+                if isinstance(text, str) and text:
+                    on_delta(text)
+            elif kind == "final":
+                final = {k: v for k, v in event.items() if k != "event"}
+            elif kind == "error":
+                raise RemoteDependencyRefusal(
+                    f"LLM stream refused: {event.get('code')}")
+        if final is None:
+            raise RemoteDependencyRefusal("LLM stream ended without a final result")
+        return final
 
     def cancel(self, request_id: str) -> None:
         self.transport.cancel(request_id)

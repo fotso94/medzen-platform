@@ -225,3 +225,25 @@ def test_history_is_optional_bounded_and_alternating():
     ):
         with pytest.raises(GatewayRefusal):
             service.complete(dict(REQUEST, history=bad))
+
+
+def test_complete_stream_narrates_deltas_and_returns_the_identical_response():
+    """Phase 3b: streaming narrates the reply text in deltas and returns the
+    exact response the buffered call returns (same checks, same binding)."""
+    service, _ = gateway()
+    buffered = service.complete(REQUEST)
+    deltas = []
+    streamed = service.complete_stream(REQUEST, deltas.append)
+    assert "".join(deltas) == streamed["reply"]["text"] == buffered["reply"]["text"]
+    for key in ("request_id", "language", "reply", "policy", "model_versions"):
+        assert streamed[key] == buffered[key]
+
+
+def test_reply_text_extractor_decodes_incrementally_with_escapes():
+    from medzen_llm_gateway.provider import _ReplyTextExtractor
+    x = _ReplyTextExtractor()
+    out = ""
+    for chunk in ['{"te', 'xt": "Bonj', 'our \\"ami\\"', ', \\u00e9t', 'oile", "cited_document_ids": []}']:
+        out += x.feed(chunk)
+    assert out == 'Bonjour "ami", \u00e9toile'
+    assert x.finished

@@ -62,6 +62,7 @@ class LLMClient(Protocol):
         versions: dict[str, str | None],
         route: RegistryRoute,
         history: list[dict[str, str]] | None = None,
+        on_delta: Callable[[str], None] | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -339,6 +340,11 @@ class SpeechOrchestrator:
                     route=route,
                     # absent == empty: existing clients/fakes need no change
                     **({"history": history} if history else {}),
+                    # Phase 3b: narrate reply-text deltas only to a streaming
+                    # client; the validated final reply still gates everything
+                    **({"on_delta": (lambda t: emit("reply_delta", {
+                        "request_id": request_id, "text": t}))}
+                       if on_event is not None else {}),
                 )
             )
             versions = self._versions(llm.get("model_versions"), "LLM")
