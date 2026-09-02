@@ -88,6 +88,7 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 <footer>Dev test app &middot; audio is synthesized from the exact answer text (hash-bound by the platform)</footer>
 
 <script>
+const $=id=>document.getElementById(id);
 const LANGS=[["en","English"],["fr","Français"],["kin","Kinyarwanda"],["pcm","Pidgin"],["swa","Kiswahili"]];
 let lang="en", ctx=null, stream=null, proc=null, src=null, chunks=[], sr=48000, recording=false, t0=0, timerIv=null;
 // Phase 2: client-carried conversation memory — last 4 exchanges, ~4000 chars,
@@ -121,7 +122,6 @@ function pushTurn(userText, assistantText){
 }
 function resetHistory(why){ history=[]; renderCtx(why); }
 function renderCtx(note){ const n=history.length/2; $("ctxinfo").textContent = n? `Remembering ${n} previous ${n===1?"exchange":"exchanges"}` : (note||"No previous turns yet"); }
-const $=id=>document.getElementById(id);
 const langsEl=$("langs");
 LANGS.forEach(([c,n],i)=>{const b=document.createElement("button");b.className="pill"+(i===0?" sel":"");b.textContent=n;b.dataset.c=c;
   b.onclick=()=>{ if(lang!==c) resetHistory("Language changed — new conversation"); lang=c;document.querySelectorAll(".pill").forEach(p=>p.classList.remove("sel"));b.classList.add("sel");};langsEl.appendChild(b);});
@@ -176,6 +176,14 @@ async function stopRec(){
   if(total<sr*0.3){ setStatus("Pick a language, then tap the microphone and speak."); showErr("Recording too short — hold the mic for at least half a second."); $("mic").disabled=false; return; }
   const all=new Float32Array(total); let off=0; chunks.forEach(c=>{all.set(c,off);off+=c.length});
   const wav=encodeWav(all,sr);
+  await processWav(wav);
+}
+
+// Everything after a recording ends: send, stream, render, play, feedback.
+// Exposed as window.__processWav so the exact page path can be verified
+// in a browser without a microphone.
+async function processWav(wav){
+  $("mic").disabled=true;
   const b64=btoa(new Uint8Array(wav).reduce((a,b)=>a+String.fromCharCode(b),""));
   setStatus("Processing — ASR → RAG → LLM → TTS…");
   const t=Date.now(); let tAudio=null, tText=null, tTranscript=null, tResp=null, rid=null, mode="stream", draft="", tFirstDelta=null;
@@ -243,6 +251,7 @@ async function stopRec(){
 }
 
 $("mic").onclick=()=>recording?stopRec():startRec();
+window.__processWav=processWav;
 </script>
 </body>
 </html>
