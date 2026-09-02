@@ -149,8 +149,14 @@ def _health():
 
 
 def lambda_handler(event, _ctx):
-    method = (event.get("requestContext", {}).get("http", {}) or {}).get("method", "GET")
+    http = (event.get("requestContext", {}).get("http", {}) or {})
+    method = http.get("method", "GET")
     path = event.get("rawPath") or "/"
+    # access line: who is testing, from where, on what device (owner ask
+    # 2026-08-29). Function URLs have no built-in access log; this is it.
+    print(json.dumps({"access": {"method": method, "path": path,
+                                 "ip": http.get("sourceIp"),
+                                 "ua": (http.get("userAgent") or "")[:160]}}))
     if method == "GET" and path in ("/", "/index.html"):
         return _resp(200, INDEX_HTML.decode(), "text/html; charset=utf-8")
     if method == "GET" and path == "/api/health":
