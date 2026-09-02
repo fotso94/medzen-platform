@@ -19,6 +19,8 @@ class ProviderRequest:
     citations: tuple[dict[str, Any], ...]
     citation_binding_sha256: str
     maximum_output_tokens: int
+    # Phase 2: prior (role, text) turns, strictly alternating, user first
+    history: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -179,6 +181,11 @@ class BedrockProvider:
         # (Bedrock ValidationException: "`temperature` is deprecated for
         # this model"). Try the historical 0.2 once; if the model rejects
         # it, drop it and remember for the process lifetime.
+        # Phase 2: prior turns become real multi-turn messages; the current
+        # transcript stays verbatim as the final user message.
+        messages = [{"role": role, "content": [{"text": text}]}
+                    for role, text in request.history]
+        messages.append({"role": "user", "content": [{"text": user}]})
         config = {"maxTokens": request.maximum_output_tokens}
         if not getattr(self, "_no_temperature", False):
             config["temperature"] = 0.2
@@ -186,7 +193,7 @@ class BedrockProvider:
             response = self._bedrock(timeout_ms).converse(
                 modelId=self.model_id,
                 system=[{"text": system}],
-                messages=[{"role": "user", "content": [{"text": user}]}],
+                messages=messages,
                 inferenceConfig=config,
             )
         except Exception as exc:
@@ -199,7 +206,7 @@ class BedrockProvider:
             response = self._bedrock(timeout_ms).converse(
                 modelId=self.model_id,
                 system=[{"text": system}],
-                messages=[{"role": "user", "content": [{"text": user}]}],
+                messages=messages,
                 inferenceConfig=config,
             )
         parts = response.get("output", {}).get("message", {}).get("content", [])

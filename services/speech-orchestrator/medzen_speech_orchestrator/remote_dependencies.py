@@ -212,21 +212,25 @@ class RemoteLLMClient:
         rag: dict[str, Any],
         versions: dict[str, str | None],
         route: RegistryRoute,
+        history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
+        value = {
+            "request_id": request_id,
+            "language": route.alias,
+            "transcript": transcript,
+            "rag": {
+                "query_id": rag["query_id"],
+                "index_snapshot_sha256": rag["index"]["snapshot_sha256"],
+                "citations": rag["citations"],
+            },
+            "model_versions": versions,
+        }
+        if history:  # Phase 2: optional field, sent only when non-empty
+            value["history"] = list(history)
         return self.transport.post_json(
             endpoint=route.endpoint("llm"),
             request_id=request_id,
-            value={
-                "request_id": request_id,
-                "language": route.alias,
-                "transcript": transcript,
-                "rag": {
-                    "query_id": rag["query_id"],
-                    "index_snapshot_sha256": rag["index"]["snapshot_sha256"],
-                    "citations": rag["citations"],
-                },
-                "model_versions": versions,
-            },
+            value=value,
         )
 
     def cancel(self, request_id: str) -> None:

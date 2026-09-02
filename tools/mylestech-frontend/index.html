@@ -34,6 +34,9 @@ h1 b{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background
 audio{width:100%;margin-top:12px;display:none}
 .meta{color:var(--mut);font-size:.78rem;margin-top:10px;display:none}
 .error{display:none;background:rgba(255,92,122,.12);border:1px solid rgba(255,92,122,.4);color:#ffb3c2;border-radius:12px;padding:12px 16px;font-size:.9rem;white-space:pre-wrap}
+#ctxbar{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;font-size:.8rem;color:var(--mut)}
+#newconv{border:1px solid #2b3a68;background:var(--card2);color:var(--tx);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.8rem}
+#newconv:hover{border-color:var(--acc)}
 .badge{display:none;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(255,176,92,.15);border:1px solid rgba(255,176,92,.45);color:#ffc98a;margin-bottom:10px;width:max-content}
 footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 </style>
@@ -47,6 +50,7 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 
 <div class="card">
   <div class="langs" id="langs"></div>
+  <div id="ctxbar"><span id="ctxinfo">New conversation</span><button id="newconv" title="Forget the previous turns">New conversation</button></div>
 </div>
 
 <div class="card micwrap">
@@ -70,10 +74,23 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 <script>
 const LANGS=[["en","English"],["fr","Français"],["kin","Kinyarwanda"],["pcm","Pidgin"],["swa","Kiswahili"]];
 let lang="en", ctx=null, stream=null, proc=null, src=null, chunks=[], sr=48000, recording=false, t0=0, timerIv=null;
+// Phase 2: client-carried conversation memory — last 4 exchanges, ~4000 chars,
+// kept only in this page's memory (nothing stored server-side).
+let history=[];
+const HIST_MAX_TURNS=8, HIST_MAX_CHARS=4000;
+function pushTurn(userText, assistantText){
+  history.push({role:"user",text:String(userText||"").slice(0,1000)},{role:"assistant",text:String(assistantText||"").slice(0,1000)});
+  while(history.length>HIST_MAX_TURNS) history.splice(0,2);
+  while(history.reduce((n,t)=>n+t.text.length,0)>HIST_MAX_CHARS && history.length>2) history.splice(0,2);
+  renderCtx();
+}
+function resetHistory(why){ history=[]; renderCtx(why); }
+function renderCtx(note){ const n=history.length/2; $("ctxinfo").textContent = n? `Remembering ${n} previous ${n===1?"exchange":"exchanges"}` : (note||"New conversation"); }
 const $=id=>document.getElementById(id);
 const langsEl=$("langs");
 LANGS.forEach(([c,n],i)=>{const b=document.createElement("button");b.className="pill"+(i===0?" sel":"");b.textContent=n;b.dataset.c=c;
-  b.onclick=()=>{lang=c;document.querySelectorAll(".pill").forEach(p=>p.classList.remove("sel"));b.classList.add("sel");};langsEl.appendChild(b);});
+  b.onclick=()=>{ if(lang!==c) resetHistory("Language changed — new conversation"); lang=c;document.querySelectorAll(".pill").forEach(p=>p.classList.remove("sel"));b.classList.add("sel");};langsEl.appendChild(b);});
+$("newconv").onclick=()=>resetHistory();
 
 function setStatus(t){$("status").textContent=t}
 function showErr(t){const e=$("error");e.textContent=t;e.style.display="block"}
@@ -133,11 +150,12 @@ async function stopRec(){
   let tResp=null;
   try{
     const r=await fetch("/api/speech",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({language:lang,audio_b64:b64})});
+      body:JSON.stringify({language:lang,audio_b64:b64,history})});
     const d=await r.json(); tResp=Date.now(); rid=d.request_id||null;
     if(!r.ok||d.error){ beacon(false); showErr("Request failed ("+r.status+"): "+(d.error||JSON.stringify(d).slice(0,300))); setStatus("Pick a language, then tap the microphone and speak."); $("mic").disabled=false; return; }
     $("transcript").textContent=d.transcript||"(empty)";$("tcard").style.display="block";
     $("answer").textContent=d.answer||"(empty)";$("acard").style.display="block";
+    if(d.transcript && d.answer) pushTurn(d.transcript, d.answer);
     $("badge").style.display=(d.grounded===false)?"inline-block":"none";
     const secs=((Date.now()-t)/1000).toFixed(1);
     $("meta").textContent="language "+d.language+" · asr "+(d.asr_model||"?")+" · tts "+(d.tts_model||"text-only")+" · "+secs+"s round trip";

@@ -64,10 +64,28 @@ class LLMGateway:
 
     def complete(self, value: Any) -> dict[str, Any]:
         started = time.perf_counter()
-        if not isinstance(value, dict) or set(value) != {
-            "request_id", "language", "transcript", "rag", "model_versions"
-        }:
+        base_fields = {"request_id", "language", "transcript", "rag", "model_versions"}
+        if not isinstance(value, dict) or set(value) not in (
+            base_fields, base_fields | {"history"}
+        ):
             raise _invalid("request fields are incomplete or unknown")
+        # Phase 2 (2026-09-02): optional client-carried conversation memory,
+        # bounded and strictly alternating; it never affects grounding.
+        history = value.get("history", [])
+        if not isinstance(history, list) or len(history) > 8:
+            raise _invalid("history must be a list of at most 8 turns")
+        history_chars = 0
+        for i, turn in enumerate(history):
+            if (not isinstance(turn, dict) or set(turn) != {"role", "text"}
+                    or turn["role"] != ("user" if i % 2 == 0 else "assistant")
+                    or not isinstance(turn["text"], str) or not turn["text"].strip()
+                    or len(turn["text"]) > 1000):
+                raise _invalid("history turns must alternate user/assistant with non-empty text")
+            history_chars += len(turn["text"])
+        if history and history[-1]["role"] != "assistant":
+            raise _invalid("history must end with an assistant turn")
+        if history_chars > 4000:
+            raise _invalid("history exceeds the character budget")
         try:
             request_id = str(uuid.UUID(str(value["request_id"])))
         except (ValueError, TypeError, AttributeError) as exc:
@@ -163,6 +181,7 @@ class LLMGateway:
             citations=tuple(dict(item) for item in citations),
             citation_binding_sha256=binding,
             maximum_output_tokens=policy.maximum_output_tokens,
+            history=tuple((str(t["role"]), str(t["text"])) for t in history),
         )
         try:
             result = self.provider.invoke(

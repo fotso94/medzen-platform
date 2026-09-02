@@ -172,6 +172,7 @@ class LocalLLMClient:
         rag: dict[str, Any],
         versions: dict[str, str | None],
         route: RegistryRoute,
+        history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         result = self._gateway.complete({
             "request_id": request_id,

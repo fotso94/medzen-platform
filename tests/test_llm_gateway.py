@@ -203,3 +203,25 @@ def test_real_provider_mode_refuses_at_startup(monkeypatch):
         response = client.post("/internal/v1/responses", json=REQUEST)
         assert response.status_code == 503
         assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
+
+
+def test_history_is_optional_bounded_and_alternating():
+    """Phase 2: an optional, strictly-shaped history field is accepted;
+    anything malformed refuses; absence still behaves exactly as before."""
+    service, provider = gateway()
+    service.complete(REQUEST)
+    assert provider.calls[-1][0].history == ()
+    good = dict(REQUEST, history=[{"role": "user", "text": "hi"},
+                                  {"role": "assistant", "text": "hello"}])
+    service.complete(good)
+    assert provider.calls[-1][0].history == (("user", "hi"), ("assistant", "hello"))
+    for bad in (
+        [{"role": "assistant", "text": "x"}],                                   # must start with user
+        [{"role": "user", "text": "x"}],                                        # must end with assistant
+        [{"role": "user", "text": ""}, {"role": "assistant", "text": "y"}],     # empty text
+        [{"role": "user", "text": "a", "extra": 1}, {"role": "assistant", "text": "b"}],
+        [{"role": "user", "text": "a" * 1001}, {"role": "assistant", "text": "b"}],
+        "not-a-list",
+    ):
+        with pytest.raises(GatewayRefusal):
+            service.complete(dict(REQUEST, history=bad))

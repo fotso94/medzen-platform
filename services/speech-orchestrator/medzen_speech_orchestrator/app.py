@@ -41,7 +41,43 @@ LOGGER = logging.getLogger("medzen.orchestrator")
 CONTRACT_VERSION = "medzen.speech.v1"
 MAX_AUDIO_BYTES = 26_214_400
 LANGUAGE_RE = re.compile(r"^[a-z]{2,3}$")
-FORM_FIELDS = {"audio", "request_id", "language_hint", "response_audio"}
+FORM_FIELDS = {"audio", "request_id", "language_hint", "response_audio", "history"}
+# Phase 2 (2026-09-02): client-carried conversation memory. Bounded so a
+# client can never smuggle a large prompt: <= 8 turns (4 exchanges),
+# <= 1000 chars per turn, <= 4000 chars total, strict user/assistant
+# alternation ending with an assistant turn.
+HISTORY_MAX_TURNS = 8
+HISTORY_MAX_TURN_CHARS = 1000
+HISTORY_MAX_TOTAL_CHARS = 4000
+
+
+def parse_history(raw: object) -> list[dict[str, str]]:
+    """Validate the optional history field; raise ValueError on any violation."""
+    if raw is None:
+        return []
+    if not isinstance(raw, str):
+        raise ValueError("history must be a JSON string")
+    turns = json.loads(raw)
+    if not isinstance(turns, list) or len(turns) > HISTORY_MAX_TURNS:
+        raise ValueError("history must be a list of at most 8 turns")
+    out: list[dict[str, str]] = []
+    total = 0
+    for i, turn in enumerate(turns):
+        if not isinstance(turn, dict) or set(turn) != {"role", "text"}:
+            raise ValueError("history turns are {role, text}")
+        role, text = turn["role"], turn["text"]
+        expected = "user" if i % 2 == 0 else "assistant"
+        if role != expected:
+            raise ValueError("history must alternate user/assistant starting with user")
+        if not isinstance(text, str) or not text.strip() or len(text) > HISTORY_MAX_TURN_CHARS:
+            raise ValueError("history turn text is empty or too long")
+        total += len(text)
+        out.append({"role": role, "text": text})
+    if out and out[-1]["role"] != "assistant":
+        raise ValueError("history must end with an assistant turn")
+    if total > HISTORY_MAX_TOTAL_CHARS:
+        raise ValueError("history exceeds the total character budget")
+    return out
 
 
 def _root() -> Path:
@@ -296,7 +332,7 @@ def create_app(
         except ValueError:
             return refuse("INVALID_REQUEST", "Content-Length is invalid", 400)
         try:
-            form = await request.form(max_files=1, max_fields=3, max_part_size=4096)
+            form = await request.form(max_files=1, max_fields=4, max_part_size=8192)
             items = form.multi_items()
             names = [name for name, _ in items]
             if set(names).difference(FORM_FIELDS) or len(names) != len(set(names)):
@@ -336,6 +372,10 @@ def create_app(
                 return refuse(
                     "INVALID_REQUEST", "response_audio must be true or false", 400
                 )
+            try:
+                history = parse_history(form.get("history"))
+            except (ValueError, TypeError) as exc:
+                return refuse("INVALID_REQUEST", f"history is invalid: {exc}", 400)
         except Exception:
             return refuse("INVALID_REQUEST", "multipart request is malformed", 400)
         finally:
@@ -353,6 +393,7 @@ def create_app(
                 request_id=request_id,
                 language_hint=language_hint,
                 response_audio=(response_audio == "true"),
+                history=history,
             )
         except OrchestratorRefusal as exc:
             return refuse(

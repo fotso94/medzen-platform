@@ -40,7 +40,7 @@ def _resp(status, body, ctype="application/json", extra=None):
     return {"statusCode": status, "headers": headers, "body": body}
 
 
-def _multipart(audio, language, request_id):
+def _multipart(audio, language, request_id, history=None):
     b = uuid.uuid4().hex
     body = b""
 
@@ -57,6 +57,8 @@ def _multipart(audio, language, request_id):
     body += part("language_hint", language.encode())
     body += part("response_audio", b"true")
     body += part("request_id", request_id.encode())
+    if history:  # Phase 2: client-carried memory, validated upstream too
+        body += part("history", json.dumps(history, ensure_ascii=False).encode())
     body += f"--{b}--\r\n".encode()
     return body, f"multipart/form-data; boundary={b}"
 
@@ -65,6 +67,12 @@ def _speech(payload):
     language = str(payload.get("language", "")).strip()
     if language not in ALLOWED:
         return _resp(400, {"error": f"language must be one of {sorted(ALLOWED)}"})
+    history = payload.get("history") or []
+    if (not isinstance(history, list) or len(history) > 8
+            or any(not isinstance(t, dict) or set(t) != {"role", "text"}
+                   or not isinstance(t.get("text"), str) or len(t["text"]) > 1000
+                   for t in history)):
+        return _resp(400, {"error": "history must be <= 8 {role,text} turns"})
     b64 = payload.get("audio_b64") or ""
     if not b64 or len(b64) > MAX_B64:
         return _resp(400, {"error": "audio_b64 missing or too large (max ~30s)"})
@@ -83,7 +91,7 @@ def _speech(payload):
     data = err_out = None
     for attempt in (1, 2):
         request_id = str(uuid.uuid4())
-        body, ctype = _multipart(audio, language, request_id)
+        body, ctype = _multipart(audio, language, request_id, history)
         req = urllib.request.Request(
             f"{ORCH}/v1/conversations/speech", data=body, method="POST",
             headers={"Content-Type": ctype,
@@ -102,9 +110,12 @@ def _speech(payload):
             msg = detail.get("message") or str(e)
             code = detail.get("code") or "UPSTREAM_ERROR"
             retryable = bool(detail.get("retryable")) and e.code >= 500
-            err_out = _resp(502, {"error": f"{code}: {msg}",
-                                  "request_id": request_id,
-                                  "retryable": retryable})
+            # a client-side refusal (4xx) passes through with its own status;
+            # only upstream failures become the proxy's 502
+            err_out = _resp(e.code if 400 <= e.code < 500 else 502,
+                            {"error": f"{code}: {msg}",
+                             "request_id": request_id,
+                             "retryable": retryable})
             if not retryable or attempt == 2:
                 return err_out
         except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:

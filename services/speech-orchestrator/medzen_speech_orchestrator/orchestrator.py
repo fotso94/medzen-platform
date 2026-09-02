@@ -61,6 +61,7 @@ class LLMClient(Protocol):
         rag: dict[str, Any],
         versions: dict[str, str | None],
         route: RegistryRoute,
+        history: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -126,6 +127,13 @@ class SpeechOrchestrator:
         return dict(value)
 
     @staticmethod
+    def _retrieval_query(current: str, history: list[dict[str, str]]) -> str:
+        previous_user = [t["text"] for t in history if t.get("role") == "user"]
+        if not previous_user:
+            return current
+        return f"{previous_user[-1]} {current}"
+
+    @staticmethod
     def _citation_binding(citations: list[dict[str, Any]]) -> str:
         raw = json.dumps(
             citations, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -167,7 +175,11 @@ class SpeechOrchestrator:
     def handle(
         self, *, audio: bytes, request_id: str, language_hint: str | None,
         response_audio: bool = False,
+        history: list[dict[str, str]] | None = None,
     ) -> tuple[str, dict[str, Any]]:
+        # Phase 2: client-carried memory. Validated at the edge (app.py);
+        # here it only widens the retrieval query and rides to the LLM.
+        history = list(history or [])
         total_started = self.clock()
         try:
             initial_route = self.router.resolve(language_hint)
@@ -249,7 +261,10 @@ class SpeechOrchestrator:
             rag, rag_ms = self._timed(
                 lambda: self.rag.retrieve(
                     request_id=request_id,
-                    query=asr.transcript["normalized"],
+                    # Phase 2: a follow-up ("what about X?") retrieves badly on
+                    # its own; widen with the PREVIOUS user question only —
+                    # never assistant text, which would self-reinforce.
+                    query=self._retrieval_query(asr.transcript["normalized"], history),
                     route=route,
                 )
             )
@@ -307,6 +322,8 @@ class SpeechOrchestrator:
                     rag=rag,
                     versions=rag_versions,
                     route=route,
+                    # absent == empty: existing clients/fakes need no change
+                    **({"history": history} if history else {}),
                 )
             )
             versions = self._versions(llm.get("model_versions"), "LLM")
