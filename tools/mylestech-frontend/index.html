@@ -183,7 +183,7 @@ async function stopRec(){
 // Exposed as window.__processWav so the exact page path can be verified
 // in a browser without a microphone.
 async function processWav(wav){
-  $("mic").disabled=true;
+  clearUI(); $("mic").disabled=true;
   const b64=btoa(new Uint8Array(wav).reduce((a,b)=>a+String.fromCharCode(b),""));
   setStatus("Processing — ASR → RAG → LLM → TTS…");
   const t=Date.now(); let tAudio=null, tText=null, tTranscript=null, tResp=null, rid=null, mode="stream", draft="", tFirstDelta=null;
@@ -195,7 +195,11 @@ async function processWav(wav){
     const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));
     const blob=new Blob([bytes],{type:"audio/mpeg"}), url=URL.createObjectURL(blob);
     const p=$("player"); p.src=url; p.style.display="block";
-    try{ const dec=await ctx.decodeAudioData(bytes.buffer.slice(0));
+    // WebAudio decode guarantees autoplay after the mic gesture, but a slow or
+    // unsupported decode must never stall the reply: race it against 4s and
+    // fall back to the <audio> element either way.
+    try{ const dec=await Promise.race([ctx.decodeAudioData(bytes.buffer.slice(0)),
+                                       new Promise((_,rej)=>setTimeout(()=>rej(new Error("decode timeout")),4000))]);
       const s2=ctx.createBufferSource(); s2.buffer=dec; s2.connect(ctx.destination); s2.start(); }
     catch(e){ p.play().catch(()=>{}); }
     tAudio=Date.now();
