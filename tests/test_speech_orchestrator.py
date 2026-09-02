@@ -312,3 +312,26 @@ def test_remote_dependencies_do_not_add_a_general_purpose_http_client():
         assert forbidden not in requirements
     assert "boto3==1.43.58" in deployed_requirements
     assert "botocore==1.43.63" in deployed_requirements
+
+
+def test_ndjson_stream_emits_validated_stages_then_the_identical_final_result():
+    """Phase 3: Accept: application/x-ndjson narrates the SAME pipeline —
+    transcript_final, reply_final, then the buffered result verbatim as the
+    final event; a buffered call returns exactly that result. (Real clock:
+    the deterministic StepClock only serves a single request.)"""
+    app, _ = local_app()
+    with TestClient(app) as client:
+        buffered = request(client).json()
+        headers = dict(HEADERS, Accept="application/x-ndjson")
+        streamed = request(client, headers=headers)
+        assert streamed.status_code == 200
+        assert streamed.headers["content-type"].startswith("application/x-ndjson")
+        events = [json.loads(line) for line in streamed.text.splitlines() if line.strip()]
+        names = [e["event"] for e in events]
+        assert names == ["transcript_final", "reply_final", "final"]
+        assert events[0]["transcript"] == buffered["transcript"]
+        assert events[1]["text"] == buffered["reply"]["text"]
+        final = {k: v for k, v in events[2].items() if k != "event"}
+        # only session id (fresh per request) and latency figures may differ
+        for key in ("request_id", "language", "transcript", "reply", "model_versions"):
+            assert final[key] == buffered[key]

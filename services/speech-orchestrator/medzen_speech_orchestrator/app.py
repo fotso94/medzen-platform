@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.datastructures import UploadFile
 
 from .auth import AuthRefusal, KeyStore, LocalKeyStore, SecretsManagerKeyStore
@@ -382,6 +382,70 @@ def create_app(
             if "form" in locals():
                 await form.close()
         request.state.request_id = request_id
+        wants_stream = "application/x-ndjson" in (request.headers.get("accept") or "")
+        if wants_stream:
+            # Phase 3 (2026-09-02): progressive delivery. Same validated inputs,
+            # same pipeline, same checks; stage events are relayed as NDJSON
+            # lines as each stage passes, then the buffered result verbatim
+            # as {"event":"final", ...} (or {"event":"error", ...}).
+            loop = asyncio.get_running_loop()
+            queue: asyncio.Queue = asyncio.Queue()
+            sentinel = object()
+
+            def on_event(name: str, payload: dict[str, Any]) -> None:
+                line = json.dumps({"event": name, **payload}) + "\n"
+                loop.call_soon_threadsafe(queue.put_nowait, line)
+
+            async def run() -> None:
+                try:
+                    session_id, result = await asyncio.to_thread(
+                        service.handle,
+                        audio=raw_audio,
+                        request_id=request_id,
+                        language_hint=language_hint,
+                        response_audio=(response_audio == "true"),
+                        history=history,
+                        on_event=on_event,
+                    )
+                    request.state.hashed_session_id = hashlib.sha256(
+                        session_id.encode("utf-8")).hexdigest()
+                    request.state.language = result["language"]
+                    request.state.model_versions = result["model_versions"]
+                    queue.put_nowait(json.dumps({"event": "final", **result}) + "\n")
+                except OrchestratorRefusal as exc:
+                    request.state.error_code = exc.code
+                    queue.put_nowait(json.dumps({
+                        "event": "error", "request_id": request_id,
+                        "registry_snapshot": registry_snapshot,
+                        "code": exc.code, "message": exc.message,
+                        "status": exc.status_code, "retryable": exc.retryable,
+                    }) + "\n")
+                except Exception:  # never leak a traceback into the stream
+                    request.state.error_code = "DEPENDENCY_UNAVAILABLE"
+                    queue.put_nowait(json.dumps({
+                        "event": "error", "request_id": request_id,
+                        "code": "DEPENDENCY_UNAVAILABLE",
+                        "message": "a local dependency refused the request",
+                        "status": 503, "retryable": True,
+                    }) + "\n")
+                finally:
+                    queue.put_nowait(sentinel)
+
+            async def lines():
+                task = asyncio.create_task(run())
+                try:
+                    while True:
+                        item = await queue.get()
+                        if item is sentinel:
+                            break
+                        yield item
+                finally:
+                    if not task.done():
+                        task.cancel()
+
+            return StreamingResponse(
+                lines(), media_type="application/x-ndjson",
+                headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
         try:
             # Phase 1 (2026-09-02): handle() blocks for the whole ASR->RAG->
             # LLM->TTS chain (10-20s). Called inline it froze this worker's

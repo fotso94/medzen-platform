@@ -176,10 +176,18 @@ class SpeechOrchestrator:
         self, *, audio: bytes, request_id: str, language_hint: str | None,
         response_audio: bool = False,
         history: list[dict[str, str]] | None = None,
+        on_event: Callable[[str, dict[str, Any]], None] | None = None,
     ) -> tuple[str, dict[str, Any]]:
         # Phase 2: client-carried memory. Validated at the edge (app.py);
         # here it only widens the retrieval query and rides to the LLM.
         history = list(history or [])
+        # Phase 3 (2026-09-02): ONE pipeline, optionally narrated. Each stage
+        # event is emitted only AFTER that stage passed every existing check,
+        # so a streamed client never sees anything the buffered client would
+        # not have received. The final result is byte-identical either way.
+        def emit(name: str, payload: dict[str, Any]) -> None:
+            if on_event is not None:
+                on_event(name, payload)
         total_started = self.clock()
         try:
             initial_route = self.router.resolve(language_hint)
@@ -235,6 +243,13 @@ class SpeechOrchestrator:
                     503,
                     True,
                 )
+            emit("transcript_final", {
+                "request_id": request_id,
+                "language": route.response_code,
+                "transcript": dict(asr.transcript),
+                "model_versions": {"asr": route.asr_model_version},
+                "latency_ms": {"asr": asr_ms},
+            })
             emergency = self.emergency.check(asr.transcript["normalized"])
             session_id = str(self.session_id_factory())
             if emergency.triggered:
@@ -383,6 +398,14 @@ class SpeechOrchestrator:
                     503,
                     True,
                 )
+            emit("reply_final", {
+                "request_id": request_id,
+                "text": reply["text"],
+                "citations": len(reply["citations"]),
+                "grounded": bool(reply["citations"]),
+                "model_versions": dict(versions),
+                "latency_ms": {"rag": rag_ms, "llm": llm_ms},
+            })
             tts_ms = 0.0
             tts_reply = {
                 "audio_url": None,
@@ -441,6 +464,13 @@ class SpeechOrchestrator:
                 # adopt the (possibly route-filled) tts version — already
                 # constrained to the registry-bound identity above
                 versions = tts_versions
+                emit("audio_ready", {
+                    "request_id": request_id,
+                    "audio_url": tts.get("audio_url"),
+                    "tts_backend": tts["tts_backend"],
+                    "model_versions": dict(versions),
+                    "latency_ms": {"tts": tts_ms},
+                })
             total_ms = round((self.clock() - total_started) * 1000, 3)
             reply_out = {
                 "text": reply["text"],
