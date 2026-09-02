@@ -37,6 +37,15 @@ audio{width:100%;margin-top:12px;display:none}
 #ctxbar{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:12px;font-size:.8rem;color:var(--mut)}
 #newconv{border:1px solid #2b3a68;background:var(--card2);color:var(--tx);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.8rem}
 #newconv:hover{border-color:var(--acc)}
+.consent{display:flex;gap:10px;align-items:flex-start;text-align:left;font-size:.8rem;color:var(--mut);margin-top:14px;padding:12px 14px;border:1px solid #223059;border-radius:12px;background:var(--card2)}
+.consent input{margin-top:3px;accent-color:var(--acc)}
+.consent b{color:var(--tx)}
+.fb{display:none;margin-top:12px;padding-top:12px;border-top:1px solid #223059;font-size:.85rem}
+.fb .q{margin:6px 0}
+.fb button{border:1px solid #2b3a68;background:var(--card2);color:var(--tx);border-radius:999px;padding:5px 12px;cursor:pointer;font-size:.8rem;margin-right:6px}
+.fb button.on{background:linear-gradient(90deg,var(--acc),var(--acc2));border-color:transparent}
+.fb textarea{width:100%;margin-top:6px;background:var(--card2);color:var(--tx);border:1px solid #2b3a68;border-radius:10px;padding:8px;font:inherit;font-size:.85rem;display:none}
+.fb .thanks{color:var(--ok);display:none}
 .badge{display:none;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px;background:rgba(255,176,92,.15);border:1px solid rgba(255,176,92,.45);color:#ffc98a;margin-bottom:10px;width:max-content}
 footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 </style>
@@ -51,6 +60,7 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
 <div class="card">
   <div class="langs" id="langs"></div>
   <div id="ctxbar"><span id="ctxinfo">No previous turns yet</span><button id="newconv" title="Forget the previous turns">New conversation</button></div>
+  <label class="consent"><input type="checkbox" id="consent"><span><b>Help improve MedZen (optional).</b> I agree that this recording, transcript/correction, language, and feedback may be securely stored and reviewed to improve speech recognition. This does not affect my use of the app. Please do not include sensitive personal or medical information.</span></label>
 </div>
 
 <div class="card micwrap">
@@ -66,6 +76,12 @@ footer{color:#5a6688;font-size:.75rem;margin-top:26px;text-align:center}
   <h3>Answer</h3><div class="badge" id="badge">General knowledge / ungrounded</div><div class="txt" id="answer"></div>
   <audio id="player" controls></audio>
   <div class="meta" id="meta"></div>
+  <div class="fb" id="fb">
+    <div class="q">Did it hear you correctly? <button id="fb_t_yes">Yes</button><button id="fb_t_no">No — let me correct it</button></div>
+    <textarea id="fb_corr" rows="2" placeholder="Type what you actually said"></textarea>
+    <div class="q">Was the answer useful? <button id="fb_a_yes">👍 Yes</button><button id="fb_a_no">👎 No</button></div>
+    <div class="q"><button id="fb_send">Send feedback</button> <span class="thanks" id="fb_thanks">Thanks — recorded.</span></div>
+  </div>
 </div>
 <div class="card error" id="error"></div>
 
@@ -77,6 +93,25 @@ let lang="en", ctx=null, stream=null, proc=null, src=null, chunks=[], sr=48000, 
 // Phase 2: client-carried conversation memory — last 4 exchanges, ~4000 chars,
 // kept only in this page's memory (nothing stored server-side).
 let history=[];
+// Phase 4: opt-in improvement data. Off by default; nothing is captured
+// unless the box is ticked for THIS request. The session pseudonym is a
+// random per-page id (never the device or network identity).
+const CONSENT_VERSION="2026-09-02-v1";
+const SESSION_PSEUDONYM=(crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2));
+let fb={rid:null, consent:false, transcript_ok:null, answer_useful:null};
+function fbReset(){ fb={rid:null,consent:false,transcript_ok:null,answer_useful:null}; ["fb_t_yes","fb_t_no","fb_a_yes","fb_a_no"].forEach(i=>$(i).classList.remove("on")); $("fb_corr").style.display="none"; $("fb_corr").value=""; $("fb_thanks").style.display="none"; $("fb").style.display="none"; }
+function fbShow(rid, consent){ fbReset(); fb.rid=rid; fb.consent=consent; $("fb").style.display="block"; }
+$("fb_t_yes").onclick=()=>{fb.transcript_ok=true;$("fb_t_yes").classList.add("on");$("fb_t_no").classList.remove("on");$("fb_corr").style.display="none";};
+$("fb_t_no").onclick=()=>{fb.transcript_ok=false;$("fb_t_no").classList.add("on");$("fb_t_yes").classList.remove("on");$("fb_corr").style.display="block";$("fb_corr").focus();};
+$("fb_a_yes").onclick=()=>{fb.answer_useful=true;$("fb_a_yes").classList.add("on");$("fb_a_no").classList.remove("on");};
+$("fb_a_no").onclick=()=>{fb.answer_useful=false;$("fb_a_no").classList.add("on");$("fb_a_yes").classList.remove("on");};
+$("fb_send").onclick=async()=>{
+  const body={request_id:fb.rid, consent:fb.consent, consent_version:CONSENT_VERSION, session_pseudonym:SESSION_PSEUDONYM,
+    transcript_ok:fb.transcript_ok, correction:($("fb_corr").value||"").slice(0,1000), answer_useful:fb.answer_useful, language:lang};
+  try{ const r=await fetch("/api/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+       $("fb_thanks").textContent = r.status===202 ? "Thanks — recorded." : (r.status===204 ? "Thanks — noted (not stored: improvement sharing is off)." : "Could not send feedback.");
+       $("fb_thanks").style.display="inline"; }catch(e){ $("fb_thanks").textContent="Could not send feedback."; $("fb_thanks").style.display="inline"; }
+};
 const HIST_MAX_TURNS=8, HIST_MAX_CHARS=4000;
 function pushTurn(userText, assistantText){
   history.push({role:"user",text:String(userText||"").slice(0,1000)},{role:"assistant",text:String(assistantText||"").slice(0,1000)});
@@ -165,11 +200,15 @@ async function stopRec(){
     $("meta").textContent="language "+d.language+" · asr "+(d.asr_model||"?")+" · tts "+(d.tts_model||"text-only")+" · "+secs+"s · "+mode;
     $("meta").style.display="block";
     if(d.transcript && d.answer) pushTurn(d.transcript, d.answer);
+    fbShow(rid, consent);
     setStatus(tAudio?"Done — playing the answer.":"Done — text only (voice unavailable for this reply).");
     beacon(true); $("mic").disabled=false; };
   const fail=(msg)=>{ showErr(msg); setStatus("Pick a language, then tap the microphone and speak."); beacon(false); $("mic").disabled=false; };
   // Phase 3: progressive delivery over NDJSON; buffered route is the fallback.
-  const payload=JSON.stringify({language:lang,audio_b64:b64,history});
+  const consent=$("consent").checked;
+  const payload=JSON.stringify({language:lang,audio_b64:b64,history,
+    improve: consent ? {consent:true, consent_version:CONSENT_VERSION, session_pseudonym:SESSION_PSEUDONYM} : {consent:false}});
+  fbReset();
   try{
     const r=await fetch("/api/speech-stream",{method:"POST",headers:{"Content-Type":"application/json"},body:payload});
     if(!r.ok||!r.body) throw new Error("stream unavailable "+r.status);

@@ -7,7 +7,51 @@
 //   POST /api/speech-stream NDJSON stage events relayed as they happen
 //   POST /api/telemetry     browser-side timing marks (logged)
 import { readFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+// Phase 4: opt-in improvement data (owner policy 2026-09-02). Raw captures
+// expire after 90 days by bucket lifecycle; reviewed data lives elsewhere
+// for 365 days. Nothing is written unless improve.consent === true.
+const CAPTURE_BUCKET = "medzen-speech";
+const CAPTURE_PREFIX = "raw/_incoming/frontend-sessions/";
+const CAPTURE_KMS = "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57";
+const CONSENT_VERSION = "2026-09-02-v1";
+const CONSENT_TEXT = "Help improve MedZen (optional). I agree that this recording, transcript/correction, language, and feedback may be securely stored and reviewed to improve speech recognition. This does not affect my use of the app. Please do not include sensitive personal or medical information.";
+const RAW_RETENTION_DAYS = 90;
+const s3 = new S3Client({ region: "eu-central-1" });
+
+async function putCapture(key, body, contentType) {
+  await s3.send(new PutObjectCommand({ Bucket: CAPTURE_BUCKET, Key: key, Body: body, ContentType: contentType,
+    ServerSideEncryption: "aws:kms", SSEKMSKeyId: CAPTURE_KMS }));
+}
+function captureFolder(requestId, when) {
+  const day = when.toISOString().slice(0, 10);
+  return `${CAPTURE_PREFIX}${day}/${requestId}/`;
+}
+async function captureSession(input, summary) {
+  // de-identified by construction: no ip, no user agent, no account
+  const now = new Date();
+  const expires = new Date(now.getTime() + RAW_RETENTION_DAYS * 86400000);
+  const folder = captureFolder(summary.request_id, now);
+  const meta = {
+    schema_version: 1, source: "mylestech-frontend", request_id: summary.request_id,
+    captured_at: now.toISOString(),
+    consent: { granted: true, version: CONSENT_VERSION, text: CONSENT_TEXT, consented_at: now.toISOString() },
+    retention: { policy_id: "frontend-sessions-raw-90d", days: RAW_RETENTION_DAYS, expires_at: expires.toISOString(),
+                 reviewed_policy_id: "frontend-sessions-reviewed-365d", reviewed_days: 365 },
+    language: input.language,
+    session_pseudonym: createHash("sha256").update(String(input.improve.session_pseudonym || "")).digest("hex").slice(0, 32),
+    audio: { format: "wav", bytes: input.audio.length, sha256: createHash("sha256").update(input.audio).digest("hex") },
+    asr_hypothesis: summary.transcript, answer: summary.answer, grounded: summary.grounded,
+    model_versions: { asr: summary.asr_model, llm: summary.llm_model, tts: summary.tts_model },
+    latency_ms: summary.latency_ms,
+  };
+  await putCapture(folder + "audio.wav", input.audio, "audio/wav");
+  await putCapture(folder + "meta.json", JSON.stringify(meta, null, 1), "application/json");
+  log({ capture: { request_id: summary.request_id, folder, bytes: input.audio.length } });
+  return folder;
+}
 
 const ORCH = (process.env.MEDZEN_ORCH_URL || "").replace(/\/$/, "");
 const TOKEN = process.env.MEDZEN_CLIENT_TOKEN || "";
@@ -46,10 +90,12 @@ function parseInput(event) {
   if (!b64 || b64.length > MAX_AUDIO_B64) return { error: "audio_b64 missing or too large (max ~30s)" };
   const audio = Buffer.from(b64, "base64");
   if (audio.subarray(0, 4).toString() !== "RIFF") return { error: "audio must be a WAV recording" };
+  const improve = (p.improve && typeof p.improve === "object") ? p.improve : { consent: false };
   const history = Array.isArray(p.history) ? p.history : [];
   if (history.length > 8 || history.some(t => !t || typeof t !== "object" || Object.keys(t).sort().join() !== "role,text"
       || typeof t.text !== "string" || t.text.length > 1000)) return { error: "history must be <= 8 {role,text} turns" };
-  return { language, audio, history };
+  return { language, audio, history, improve: { consent: improve.consent === true,
+           consent_version: String(improve.consent_version || ""), session_pseudonym: String(improve.session_pseudonym || "") } };
 }
 
 async function fetchMp3(url) {
@@ -104,6 +150,9 @@ async function buffered(input, out) {
     if (s.audio_url) s.audio_b64 = await fetchMp3(s.audio_url);
     const upstream = Number((data.latency_ms || {}).total || 0);
     s.proxy_overhead_ms = Math.round(Date.now() - t0 - upstream);
+    if (input.improve.consent && input.improve.consent_version === CONSENT_VERSION) {
+      try { s.captured = await captureSession(input, s); } catch (e) { log({ capture_error: e.name, message: String(e.message || "").slice(0, 160) }); s.captured = null; }
+    }
     log({ timing: { request_id: s.request_id, language: input.language, upstream_ms: data.latency_ms,
                     proxy_overhead_ms: s.proxy_overhead_ms, mode: "buffered" } });
     return out(200, s);
@@ -143,6 +192,9 @@ async function streamed(input, stream) {
         final = ev;
         const s = summarize(ev);
         s.audio_b64 = null;             // already delivered on audio_ready
+        if (input.improve.consent && input.improve.consent_version === CONSENT_VERSION) {
+          try { s.captured = await captureSession(input, s); } catch (e) { log({ capture_error: e.name, message: String(e.message || "").slice(0, 160) }); s.captured = null; }
+        }
         write({ event: "final", ...s, proxy_first_event_ms: firstAt - t0,
                 proxy_overhead_ms: Math.round(Date.now() - t0 - Number((ev.latency_ms || {}).total || 0)) });
       } else {
@@ -178,6 +230,29 @@ export const handler = awslambda.streamifyResponse(async (event, responseStream)
                   stop_to_response_ms: t.stop_to_response_ms ?? null, stop_to_audio_ms: t.stop_to_audio_ms ?? null,
                   mode: String(t.mode || "").slice(0, 12), ok: !!t.ok } }); } catch {}
       return send(204, "");
+    }
+    if (method === "POST" && path === "/api/feedback") {
+      // stored ONLY alongside an opted-in capture; otherwise acknowledged and dropped (204)
+      let f; try { let b = event.body || ""; if (event.isBase64Encoded) b = Buffer.from(b, "base64").toString(); f = JSON.parse(b || "{}"); } catch { return send(400, { error: "invalid JSON" }); }
+      const rid = String(f.request_id || "");
+      if (!/^[0-9a-f-]{36}$/.test(rid)) return send(400, { error: "request_id required" });
+      if (f.consent !== true || f.consent_version !== CONSENT_VERSION) return send(204, "");
+      const feedback = {
+        schema_version: 1, request_id: rid, recorded_at: new Date().toISOString(),
+        consent: { granted: true, version: CONSENT_VERSION },
+        language: String(f.language || "").slice(0, 8),
+        transcript_ok: typeof f.transcript_ok === "boolean" ? f.transcript_ok : null,
+        correction: String(f.correction || "").slice(0, 1000),
+        answer_useful: typeof f.answer_useful === "boolean" ? f.answer_useful : null,
+      };
+      // the capture folder is dated by capture day; try today then yesterday
+      const now = new Date();
+      for (const d of [now, new Date(now.getTime() - 86400000)]) {
+        try { await putCapture(captureFolder(rid, d) + "feedback.json", JSON.stringify(feedback, null, 1), "application/json"); break; }
+        catch (e) { log({ feedback_error: e.name }); }
+      }
+      log({ feedback: { request_id: rid, transcript_ok: feedback.transcript_ok, answer_useful: feedback.answer_useful, corrected: !!feedback.correction } });
+      return send(202, { stored: true });
     }
     if (method === "POST" && (path === "/api/speech" || path === "/api/speech-stream")) {
       let input; try { input = parseInput(event); } catch { input = { error: "invalid JSON body" }; }

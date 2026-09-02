@@ -269,7 +269,8 @@ class BedrockProvider:
             "recognition errors; infer what the user most likely meant.\n"
             + grounding_rule +
             "Never repeat or invent personal identifiers.\n"
-            "Reply with EXACTLY one JSON object, no markdown fences:\n"
+            "Reply with EXACTLY one JSON object, no markdown fences - also in an "
+            "ongoing conversation, EVERY reply is one JSON object:\n"
             '{"text": "<your reply>", "cited_document_ids": ["<id>", ...]}\n'
             f"cited_document_ids MUST be a subset of {allowed_ids}."
         )
@@ -284,8 +285,17 @@ class BedrockProvider:
         # it, drop it and remember for the process lifetime.
         # Phase 2: prior turns become real multi-turn messages; the current
         # transcript stays verbatim as the final user message.
-        messages = [{"role": role, "content": [{"text": text}]}
-                    for role, text in request.history]
+        # Prior ASSISTANT turns are replayed in the SAME JSON envelope the
+        # model must produce: replayed as plain prose they became a style
+        # precedent and multi-turn replies dropped the JSON format (5 of 6
+        # observed 2026-09-03), which the strict parser then refused.
+        import json as _json
+        messages = []
+        for role, text in request.history:
+            shown = (text if role == "user" else
+                     _json.dumps({"text": text, "cited_document_ids": []},
+                                 ensure_ascii=False))
+            messages.append({"role": role, "content": [{"text": shown}]})
         messages.append({"role": "user", "content": [{"text": user}]})
         config = {"maxTokens": request.maximum_output_tokens}
         if not getattr(self, "_no_temperature", False):
