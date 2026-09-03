@@ -1,0 +1,24 @@
+{
+ "record": "CM-PILOT-BASE-INIT-CONTROL-2026-001",
+ "kind": "training_run_relabel",
+ "utc": "2026-09-03T22:00:00Z",
+ "job": "medzen-b5-cm-pilot-diag-2026-001",
+ "relabelled_to": "BASE_INIT_CONTROL",
+ "was_intended_as": "Arm-1 warm-started LoRA diagnostic probe",
+ "finding": "The packet pinned trainer image ft-2026-08-21b (pushed 2026-08-20). Warm-start support (MEDZEN_STUDENT_INIT_MODE, MEDZEN_STUDENT_INIT_S3_URI/_VERSION_ID/_SHA256 and the STUDENT_WARM_START_LOADED marker) landed in commit 2de8a58 on 2026-08-27, SEVEN DAYS AFTER that image was built. The image therefore ignored every MEDZEN_STUDENT_INIT_* variable and initialised from the base model card. The run is a base-initialised control, not an Arm-1 warm start.",
+ "evidence": "The CloudWatch log for the run contains ZERO occurrences of 'student', 'warm', 'arm1' or the Arm-1 hash c6604a68; it goes straight from the mix-load line to TRAIN_PROGRESS step 500. git log -S confirms both the env parsing and the STUDENT_WARM_START_LOADED marker first appear in 2de8a58 (2026-08-27 12:00:17 -0400).",
+ "why_it_passed_validation": "scripts/b5_sagemaker_job.py runs the CURRENT repo's parse_config at packet time, which accepts MEDZEN_STUDENT_INIT_*. Nothing checks that the PINNED IMAGE understands those variables, so a packet can silently buy different training than it declares. This is a real gap in the launcher, surfaced by independent review (Codex), not a defect in the data.",
+ "run_facts": {
+  "status": "Completed", "steps": 2000, "billable_seconds": 3837,
+  "approximate_cost_usd": 1.71, "worst_case_ceiling_usd": 6.4,
+  "mix": "4 manifests at curated version cp1; 10731 eligible rows; 0 rejected",
+  "mean_loss": {"step_500": 30.185691772818565, "step_1000": 27.11209745168686,
+                "step_1500": 26.052642940342427, "step_2000": 25.43921207934618},
+  "export_model_sha256": "d45ca25e0a7bf7af290cc215807663aa268205f0d4dd8a6c0e3a4824916c9773",
+  "export_manifest_sha256": "94c8689d5fc2028c3b297fd4e287d4f7ca2ba130eddc935004726a47bd2a2115",
+  "artifact": "s3://medzen-speech/research/b5-training/cm-pilot-diag-2026-001/output/medzen-b5-cm-pilot-diag-2026-001/output/model.tar.gz"
+ },
+ "retained_because": "A base-initialised control on the same data, seed and schedule is a genuinely useful comparator for the warm-started run. It is NOT to be read as an Arm-1 warm-start result and no gate is applied to it.",
+ "eval_correction": "eval/ngombala/asr/cvcm1/manifest.r2.jsonl drops 2 test clips whose prompt also appears in train under a different Common Voice sentence_id; see CORRECTION.json beside it.",
+ "found_by": "independent review (Codex), relayed by the owner 2026-09-03"
+}
