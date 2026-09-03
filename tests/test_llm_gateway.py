@@ -333,3 +333,57 @@ def test_buffered_route_runs_the_provider_off_the_event_loop():
         response = client.post("/internal/v1/responses", json=REQUEST)
     assert response.status_code == 200 and response.json() == {"ok": True}
     assert seen["thread"] != "MainThread"      # asyncio.to_thread worker
+
+
+class _ScriptedStream:
+    """bedrock-runtime stand-in with a streamed first reply (possibly malformed)
+    and scripted buffered retries."""
+
+    def __init__(self, stream_chunks, retries):
+        self.stream_chunks = list(stream_chunks)
+        self.retries = list(retries)
+        self.stream_calls = 0
+        self.converse_calls = []
+
+    def converse_stream(self, **kwargs):
+        self.stream_calls += 1
+        events = [{"contentBlockDelta": {"delta": {"text": c}}} for c in self.stream_chunks]
+        events.append({"messageStop": {"stopReason": "end_turn"}})
+        return {"stream": events}
+
+    def converse(self, **kwargs):
+        self.converse_calls.append(kwargs)
+        return {"output": {"message": {"content": [{"text": self.retries.pop(0)}]}},
+                "stopReason": "end_turn"}
+
+
+def test_text_already_narrated_is_the_final_answer_never_replaced_by_a_retry():
+    client = _ScriptedStream(['{"text": "WRONG PART', 'IAL'],           # malformed: never closed
+                             ['{"text": "CORRECT FINAL", "cited_document_ids": ["doc-1"]}'])
+    seen = []
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke_stream(
+        _provider_request(), timeout_ms=30000, on_delta=seen.append)
+    assert "".join(seen) == "WRONG PARTIAL"
+    assert result.text == "WRONG PARTIAL" and result.cited_document_ids == ()
+    assert client.converse_calls == []                     # no retry once text was shown
+
+
+def test_nothing_narrated_means_the_retry_may_answer():
+    client = _ScriptedStream(["Muraho, fungura porogaramu."],           # prose: no "text" field
+                             ['{"text": "Fungura MedZen.", "cited_document_ids": []}'])
+    seen = []
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke_stream(
+        _provider_request(with_citation=False), timeout_ms=30000, on_delta=seen.append)
+    assert seen == [] and result.text == "Fungura MedZen." and len(client.converse_calls) == 1
+
+
+def test_retry_shares_the_policy_deadline_and_is_skipped_when_little_budget_remains():
+    client = _ScriptedConverse(["prose once", '{"text": "ok", "cited_document_ids": []}'])
+    provider = BedrockProvider("model-x", "eu-central-1", client=client)
+    result = provider.invoke(_provider_request(with_citation=False), timeout_ms=30000)
+    assert result.text == "ok" and 0 < provider.last_retry_timeout_ms <= 30000
+    client = _ScriptedConverse(["prose once"])
+    provider = BedrockProvider("model-x", "eu-central-1", client=client)
+    result = provider.invoke(_provider_request(with_citation=False), timeout_ms=1000)   # < MINIMUM_RETRY_MS
+    assert result.text == "prose once" and result.cited_document_ids == ()
+    assert len(client.calls) == 1 and provider.last_retry_timeout_ms == 0

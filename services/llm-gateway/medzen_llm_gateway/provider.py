@@ -81,6 +81,10 @@ class FakeBedrockProvider:
         return result
 
 
+# A retry is only worth making with this much of the policy budget left.
+MINIMUM_RETRY_MS = 4000
+
+
 class _ReplyTextExtractor:
     """Incrementally decodes the value of the reply's "text" JSON string as
     raw model output streams in. Emits only fully-decodable characters (a
@@ -183,8 +187,11 @@ class BedrockProvider:
             raise ValueError("empty text")
         return text, cited
 
-    def _converse(self, system, messages, config, timeout_ms, _on_delta):
-        response = self._bedrock(timeout_ms).converse(
+    def _converse(self, system, messages, config, timeout_ms, _on_delta,
+                  fresh_deadline: bool = False):
+        client = (self._bedrock_within(timeout_ms) if fresh_deadline
+                  else self._bedrock(timeout_ms))
+        response = client.converse(
             modelId=self.model_id, system=[{"text": system}],
             messages=messages, inferenceConfig=config)
         parts = response.get("output", {}).get("message", {}).get("content", [])
@@ -209,6 +216,19 @@ class BedrockProvider:
                 stop_reason = stop
         return raw, stop_reason
 
+    def _bedrock_within(self, timeout_ms: int):
+        """A client whose read timeout is the REMAINING budget (used for the
+        single retry). An injected client (tests, fakes) is reused as is."""
+        if self._client is not None and not getattr(self, "_client_owned", False):
+            return self._client
+        import boto3
+        from botocore.config import Config
+        return boto3.client(
+            "bedrock-runtime", region_name=self._region,
+            config=Config(read_timeout=max(1, timeout_ms // 1000),
+                          connect_timeout=5,
+                          retries={"max_attempts": 1}))
+
     def _bedrock(self, timeout_ms: int):
         if self._client is not None:
             return self._client
@@ -219,6 +239,7 @@ class BedrockProvider:
             config=Config(read_timeout=max(1, timeout_ms // 1000),
                           connect_timeout=5,
                           retries={"max_attempts": 1}))
+        self._client_owned = True
         return self._client
 
     def invoke(self, request: ProviderRequest, *, timeout_ms: int) -> ProviderResult:
@@ -326,6 +347,18 @@ class BedrockProvider:
         if not getattr(self, "_no_temperature", False):
             config["temperature"] = 0.2
         call = (self._converse_stream if on_delta is not None else self._converse)
+        import time as _time
+        started = _time.monotonic()
+        # Codex review 2026-09-03 (round 2): everything narrated to the
+        # client is remembered, so a later retry can never replace text
+        # the user has already seen with different text.
+        narrated: list[str] = []
+        if on_delta is not None:
+            _client_delta = on_delta
+
+            def on_delta(fresh: str, _sink=_client_delta) -> None:
+                narrated.append(fresh)
+                _sink(fresh)
         try:
             raw, stop_reason = call(system, messages, config, timeout_ms, on_delta)
         except Exception as exc:
@@ -346,29 +379,45 @@ class BedrockProvider:
         try:
             text, cited = self._parse_reply(raw)
         except ValueError as first_error:
-            # Codex review 2026-09-03: Sonnet occasionally answers in plain
-            # prose (seen in Kinyarwanda) and the hard refusal surfaced as a
-            # 502. Retry ONCE, buffered, with the JSON rule restated; if
-            # the model still writes prose, the prose IS the answer and it
-            # is returned UNGROUNDED (cited_document_ids empty) - never
-            # invented JSON, never an invented citation.
-            reminder = ("\nYour previous reply was not a JSON object. Reply "
-                        "with EXACTLY one JSON object and nothing else: "
-                        '{"text": "<your reply>", "cited_document_ids": [...]}')
-            retry_raw, retry_stop = self._converse(
-                system + reminder, messages, config, timeout_ms, None)
-            retry_raw = retry_raw.strip()
-            try:
-                if retry_stop == "max_tokens":
-                    raise ValueError("retry truncated")
-                text, cited = self._parse_reply(retry_raw)
-            except ValueError:
-                prose = retry_raw if retry_stop != "max_tokens" else raw
-                if not prose or prose.startswith("{"):
-                    raise RuntimeError(
-                        "bedrock reply was not the contracted JSON shape: "
-                        f"{first_error}") from first_error
-                text, cited = prose, ()
+            shown = "".join(narrated).strip()
+            if shown:
+                # Part of a reply was already spoken to the client: that
+                # text IS the answer (ungrounded - the object never
+                # validated). A retry could only contradict what was shown.
+                text, cited = shown, ()
+            else:
+                # Codex review 2026-09-03: Sonnet occasionally answers in
+                # plain prose (seen in Kinyarwanda) and the hard refusal
+                # surfaced as a 502. Retry ONCE, buffered, inside the SAME
+                # deadline as the first call (the policy timeout is the
+                # whole budget - two full calls could exceed the
+                # orchestrator's leg timeout); if the model still writes
+                # prose, the prose IS the answer and it is returned
+                # UNGROUNDED - never invented JSON, never an invented citation.
+                remaining_ms = timeout_ms - int((_time.monotonic() - started) * 1000)
+                if remaining_ms >= MINIMUM_RETRY_MS:
+                    reminder = ("\nYour previous reply was not a JSON object. Reply "
+                                "with EXACTLY one JSON object and nothing else: "
+                                '{"text": "<your reply>", "cited_document_ids": [...]}')
+                    self.last_retry_timeout_ms = remaining_ms
+                    retry_raw, retry_stop = self._converse(
+                        system + reminder, messages, config, remaining_ms, None,
+                        fresh_deadline=True)
+                    retry_raw = retry_raw.strip()
+                else:
+                    self.last_retry_timeout_ms = 0
+                    retry_raw, retry_stop = raw, stop_reason
+                try:
+                    if retry_stop == "max_tokens":
+                        raise ValueError("retry truncated")
+                    text, cited = self._parse_reply(retry_raw)
+                except ValueError:
+                    prose = retry_raw if retry_stop != "max_tokens" else raw
+                    if not prose or prose.startswith("{"):
+                        raise RuntimeError(
+                            "bedrock reply was not the contracted JSON shape: "
+                            f"{first_error}") from first_error
+                    text, cited = prose, ()
         return ProviderResult(
             text=text,
             cited_document_ids=cited,

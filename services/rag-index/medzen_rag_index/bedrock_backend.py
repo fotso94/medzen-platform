@@ -310,6 +310,16 @@ class BedrockRepository:
                     "event": "unmanifested_result_dropped",
                     "corpus": spec.name}, sort_keys=True))
                 continue
+            # Codex review 2026-09-03 (round 2): the KB's metadata filter is
+            # not trusted on its own - the manifest's language for the
+            # document must match the request when this corpus is
+            # language-filtered.
+            if spec.language_filter and document.language != language:
+                LOGGER.warning(json.dumps({
+                    "event": "language_mismatch_dropped",
+                    "corpus": spec.name, "expected": language,
+                    "document_language": document.language}, sort_keys=True))
+                continue
             if isinstance(score, bool) or not isinstance(score, (int, float)) \
                     or score <= 0 or score < floor:
                 continue

@@ -123,7 +123,7 @@ def test_search_filters_by_language_applies_threshold_and_binds_to_manifest(tmp_
         "product": [
             result(URI_EN, BOOKING_EN, 0.91),
             result(URI_EN + "x", "# Not in manifest", 0.99),   # unmanifested: dropped
-            result(URI_FR, BOOKING_FR, 0.80),                    # wrong corpus for language? still manifest; kept
+            result(URI_FR, BOOKING_FR, 0.80),                    # French document for an English request: dropped
             result(URI_EN, "low", 0.30),                         # below threshold: dropped
         ],
         "clinical": [result(URI_WHO, "Give artesunate for severe malaria.", 0.62)],
@@ -131,9 +131,9 @@ def test_search_filters_by_language_applies_threshold_and_binds_to_manifest(tmp_
     repo = bb.BedrockRepository(write_corpus(tmp_path), client=fake, min_score=0.45)
     citations = repo.search("how do I book", language="en", top_k=3)
     assert [c["document_id"] for c in citations] == [
-        "product/en/booking/s01", "product/fr/booking/s01",
+        "product/en/booking/s01",
         "clinical/who/malaria-who#" + sha("Give artesunate for severe malaria.")[:12]]
-    assert [c["rank"] for c in citations] == [1, 2, 3]
+    assert [c["rank"] for c in citations] == [1, 2]
     assert citations[0]["content_sha256"] == sha(BOOKING_EN)
     assert citations[0]["source_uri"] == "medzen://corpus/product/en/booking--s01"
     assert citations[0]["grounding_text"] == BOOKING_EN and citations[0]["excerpt"] == BOOKING_EN[:280]
@@ -142,6 +142,14 @@ def test_search_filters_by_language_applies_threshold_and_binds_to_manifest(tmp_
     assert all(call["knowledgeBaseId"] == "KB123" for call in fake.calls)
     assert all(call["retrievalConfiguration"]["vectorSearchConfiguration"]["numberOfResults"] == 8
                for call in fake.calls)
+
+
+def test_a_document_in_another_language_is_never_cited_even_if_the_kb_filter_lets_it_through(tmp_path):
+    fake = FakeClient({"product": [result(URI_FR, BOOKING_FR, 0.95), result(URI_EN, BOOKING_EN, 0.7)],
+                       "clinical": []})
+    repo = bb.BedrockRepository(write_corpus(tmp_path), client=fake, min_score=0.6)
+    assert [c["document_id"] for c in repo.search("book", language="en")] == ["product/en/booking/s01"]
+    assert [c["document_id"] for c in repo.search("réserver", language="fr")] == ["product/fr/booking/s01"]
 
 
 def test_product_corpus_is_not_queried_without_a_language_and_top_k_dedupes_chunks(tmp_path):
