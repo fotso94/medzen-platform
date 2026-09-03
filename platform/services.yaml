@@ -196,7 +196,12 @@ services:
       role_name: medzen-rag-role
       permissions:
         - {actions: [s3:GetObject, s3:ListBucket], resource: data, path: "content/*"}
+        # 2026-09-03: RAG_BACKEND=bedrock retrieves from the dev corpus
+        # Knowledge Base medzen-speech-rag-kb (Titan v2 on S3 Vectors);
+        # Retrieve only, one named KB
+        - {actions: [bedrock:Retrieve], resource: bedrock_knowledge_base, name: A1CWHQJN6W}
     notes: Index built at image build time; alias switch = publish/rollback.
+           Dev serves the Bedrock corpus (manifest under platform/testdata/rag-bedrock-dev).
 
 # --------------------------------------------------------------------------
 # Init container — runs inside asr-runtime (and later the Qwen/TTS GPU pods)

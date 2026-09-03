@@ -339,3 +339,47 @@ def test_ndjson_stream_emits_validated_stages_then_the_identical_final_result():
         # only session id (fresh per request) and latency figures may differ
         for key in ("request_id", "language", "transcript", "reply", "model_versions"):
             assert final[key] == buffered[key]
+
+
+# ---------------------------------------------------------------------------
+# Codex review 2026-09-03: retrieval query order, ungrounded reply under the flag
+# ---------------------------------------------------------------------------
+from medzen_speech_orchestrator import orchestrator as orchestrator_module  # noqa: E402
+
+
+def test_retrieval_query_keeps_the_current_question_first_and_trims_the_previous_one():
+    long_previous = "previous " * 400          # ~3600 characters
+    history = [{"role": "user", "text": long_previous},
+               {"role": "assistant", "text": "an answer that must never be used"}]
+    query = SpeechOrchestrator._retrieval_query("what about the price?", history)
+    assert query.startswith("what about the price? previous")
+    assert "answer" not in query
+    assert len(query) <= len("what about the price? ") + SpeechOrchestrator.PREVIOUS_QUESTION_CHARACTERS
+    assert SpeechOrchestrator._retrieval_query("only question", []) == "only question"
+
+
+class UngroundedLLM:
+    """A model that used none of the supplied documents."""
+
+    def __init__(self, delegate):
+        self.delegate = delegate
+
+    def complete(self, **kwargs):
+        value = self.delegate.complete(**kwargs)
+        value["reply"]["citations"] = []
+        value["reply"]["citation_binding_sha256"] = SpeechOrchestrator._citation_binding([])
+        return value
+
+
+def test_reply_citing_nothing_is_ungrounded_under_the_flag_and_refused_without(monkeypatch):
+    monkeypatch.setattr(orchestrator_module, "ALLOW_UNGROUNDED", False)
+    base, _ = build_local_orchestrator()
+    base.llm = UngroundedLLM(base.llm)
+    with pytest.raises(OrchestratorRefusal, match="does not match"):
+        base.handle(audio=AUDIO, request_id=REQUEST_ID, language_hint="en")
+    monkeypatch.setattr(orchestrator_module, "ALLOW_UNGROUNDED", True)
+    base, _ = build_local_orchestrator()
+    base.llm = UngroundedLLM(base.llm)
+    _, result = base.handle(audio=AUDIO, request_id=REQUEST_ID, language_hint="en")
+    assert result["reply"]["citations"] == []
+    assert result["reply"]["text"]

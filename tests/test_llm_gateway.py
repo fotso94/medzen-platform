@@ -247,3 +247,89 @@ def test_reply_text_extractor_decodes_incrementally_with_escapes():
         out += x.feed(chunk)
     assert out == 'Bonjour "ami", \u00e9toile'
     assert x.finished
+
+
+# ---------------------------------------------------------------------------
+# Codex review 2026-09-03: prose replies, empty citation sets, worker thread
+# ---------------------------------------------------------------------------
+from medzen_llm_gateway import gateway as gateway_module  # noqa: E402
+from medzen_llm_gateway.provider import BedrockProvider, ProviderRequest  # noqa: E402
+
+
+class _ScriptedConverse:
+    """A bedrock-runtime stand-in: returns the scripted replies in order."""
+
+    def __init__(self, replies):
+        self.replies = list(replies)
+        self.calls = []
+
+    def converse(self, **kwargs):
+        self.calls.append(kwargs)
+        text = self.replies.pop(0)
+        return {"output": {"message": {"content": [{"text": text}]}},
+                "stopReason": "end_turn"}
+
+
+def _provider_request(with_citation=True):
+    citations = ()
+    if with_citation:
+        citations = ({"rank": 1, "document_id": "doc-1", "title": "Booking",
+                      "source_uri": "medzen://corpus/product/en/booking--s01",
+                      "section": "How do I book?", "content_sha256": "a" * 64,
+                      "excerpt": "Open the app", "grounding_text": "Open the app and book.",
+                      "score": 0.9},)
+    return ProviderRequest(
+        language="en", response_language="English", policy_id="en-v1",
+        normalized_transcript="how do i book", citations=citations,
+        citation_binding_sha256="b" * 64, maximum_output_tokens=600)
+
+
+def test_prose_reply_is_retried_once_and_the_json_retry_is_used():
+    client = _ScriptedConverse(["Just open the app and book.",
+                                '{"text": "Open the app and book.", "cited_document_ids": ["doc-1"]}'])
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke(
+        _provider_request(), timeout_ms=5000)
+    assert result.text == "Open the app and book." and result.cited_document_ids == ("doc-1",)
+    assert len(client.calls) == 2
+    assert "not a JSON object" in client.calls[1]["system"][0]["text"]
+
+
+def test_persistent_prose_becomes_an_ungrounded_answer_never_invented_json():
+    client = _ScriptedConverse(["Muraho! Fungura porogaramu.", "Fungura porogaramu ya MedZen."])
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke(
+        _provider_request(), timeout_ms=5000)
+    assert result.text == "Fungura porogaramu ya MedZen." and result.cited_document_ids == ()
+    assert len(client.calls) == 2
+    # a well-formed first reply never triggers the retry
+    client = _ScriptedConverse(['{"text": "ok", "cited_document_ids": []}'])
+    BedrockProvider("model-x", "eu-central-1", client=client).invoke(
+        _provider_request(with_citation=False), timeout_ms=5000)
+    assert len(client.calls) == 1
+
+
+def test_empty_citation_set_is_ungrounded_under_the_dev_flag_and_refused_without(monkeypatch):
+    monkeypatch.setattr(gateway_module, "ALLOW_UNGROUNDED", False)
+    service, _ = gateway(["cites_nothing"])
+    with pytest.raises(GatewayRefusal) as caught:
+        service.complete(REQUEST)
+    assert caught.value.code == "CITATION_BINDING_INVALID"
+    monkeypatch.setattr(gateway_module, "ALLOW_UNGROUNDED", True)
+    service, _ = gateway(["cites_nothing"])
+    response = service.complete(REQUEST)
+    assert response["reply"]["citations"] == []
+    assert service.breaker.state is State.CLOSED
+
+
+def test_buffered_route_runs_the_provider_off_the_event_loop():
+    import threading
+    seen = {}
+
+    class ThreadRecordingGateway:
+        def complete(self, value):
+            seen["thread"] = threading.current_thread().name
+            return {"ok": True}
+
+    with TestClient(create_app(ThreadRecordingGateway())) as client:
+        response = client.post("/internal/v1/responses", json=REQUEST)
+    assert response.status_code == 200 and response.json() == {"ok": True}
+    assert seen["thread"] != "MainThread"      # asyncio.to_thread worker

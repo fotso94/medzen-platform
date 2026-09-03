@@ -53,7 +53,10 @@ class FakeBedrockProvider:
             raise RuntimeError("synthetic provider unavailable")
         document_ids = tuple(item["document_id"] for item in request.citations)
         binding = request.citation_binding_sha256
-        if outcome == "tampered_citation":
+        if outcome == "cites_nothing":
+            # a real model that used none of the supplied documents
+            document_ids = ()
+        elif outcome == "tampered_citation":
             document_ids = ("not-supplied",)
             binding = "0" * 64
         elif outcome != "success":
@@ -157,6 +160,28 @@ class BedrockProvider:
         self.model_version = f"bedrock:{model_id}"
         self._region = region
         self._client = client
+
+    @staticmethod
+    def _parse_reply(raw: str) -> tuple[str, tuple[str, ...]]:
+        """The contracted reply: ONE JSON object {text, cited_document_ids}.
+        Tolerates fences and stray prose AROUND the object; never invents
+        one (no object -> ValueError)."""
+        import json as _json
+        if raw.startswith("```"):
+            raw = raw.strip("`").removeprefix("json").strip()
+        if not raw.startswith("{"):
+            start, end = raw.find("{"), raw.rfind("}")
+            if start >= 0 and end > start:
+                raw = raw[start:end + 1]
+        try:
+            payload = _json.loads(raw)
+            text = str(payload["text"])
+            cited = tuple(str(x) for x in payload.get("cited_document_ids", []))
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError(f"not the contracted JSON shape: {exc}") from exc
+        if not text.strip():
+            raise ValueError("empty text")
+        return text, cited
 
     def _converse(self, system, messages, config, timeout_ms, _on_delta):
         response = self._bedrock(timeout_ms).converse(
@@ -318,22 +343,32 @@ class BedrockProvider:
             raise RuntimeError(
                 "model output truncated at maximum_output_tokens - raise "
                 "the policy cap; a cut-off reply cannot be verified")
-        import json as _json
         try:
-            if raw.startswith("```"):
-                raw = raw.strip("`").removeprefix("json").strip()
-            if not raw.startswith("{"):
-                # tolerate stray prose AROUND the single required JSON
-                # object (never invent one: no object still refuses)
-                start, end = raw.find("{"), raw.rfind("}")
-                if start >= 0 and end > start:
-                    raw = raw[start:end + 1]
-            payload = _json.loads(raw)
-            text = str(payload["text"])
-            cited = tuple(str(x) for x in payload.get("cited_document_ids", []))
-        except (ValueError, KeyError, TypeError) as exc:
-            raise RuntimeError(
-                f"bedrock reply was not the contracted JSON shape: {exc}") from exc
+            text, cited = self._parse_reply(raw)
+        except ValueError as first_error:
+            # Codex review 2026-09-03: Sonnet occasionally answers in plain
+            # prose (seen in Kinyarwanda) and the hard refusal surfaced as a
+            # 502. Retry ONCE, buffered, with the JSON rule restated; if
+            # the model still writes prose, the prose IS the answer and it
+            # is returned UNGROUNDED (cited_document_ids empty) - never
+            # invented JSON, never an invented citation.
+            reminder = ("\nYour previous reply was not a JSON object. Reply "
+                        "with EXACTLY one JSON object and nothing else: "
+                        '{"text": "<your reply>", "cited_document_ids": [...]}')
+            retry_raw, retry_stop = self._converse(
+                system + reminder, messages, config, timeout_ms, None)
+            retry_raw = retry_raw.strip()
+            try:
+                if retry_stop == "max_tokens":
+                    raise ValueError("retry truncated")
+                text, cited = self._parse_reply(retry_raw)
+            except ValueError:
+                prose = retry_raw if retry_stop != "max_tokens" else raw
+                if not prose or prose.startswith("{"):
+                    raise RuntimeError(
+                        "bedrock reply was not the contracted JSON shape: "
+                        f"{first_error}") from first_error
+                text, cited = prose, ()
         return ProviderResult(
             text=text,
             cited_document_ids=cited,

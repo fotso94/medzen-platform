@@ -27,6 +27,15 @@
       }
     },
     {
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:Retrieve"
+      ],
+      "Resource": [
+        "arn:aws:bedrock:eu-central-1:558069890522:knowledge-base/A1CWHQJN6W"
+      ]
+    },
+    {
       "Sid": "SseKmsFor9C336116C648",
       "Effect": "Allow",
       "Action": [

@@ -64,6 +64,10 @@ def arn_for(perm: dict, meta: dict) -> list[str]:
         return ([f"arn:aws:bedrock:{d}::foundation-model/*"
                  for d in destinations]
                 + [f"arn:aws:bedrock:{region}:{acct}:inference-profile/eu.*"])
+    if res == "bedrock_knowledge_base":
+        # one named Knowledge Base (Retrieve only); the KB id is declared
+        # in services.yaml so the live grant is reproducible (2026-09-03)
+        return [f"arn:aws:bedrock:{region}:{acct}:knowledge-base/{perm['name']}"]
     if res == "*":
         return ["*"]
     raise ValueError(f"unknown resource shorthand: {res}")

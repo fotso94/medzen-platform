@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -260,7 +261,13 @@ def create_app(gateway: LLMGateway | None = None, *,
                         value.get("model_versions") if isinstance(value, dict) else None
                     )
                     try:
-                        return gateway_value.complete(value)
+                        # Codex review 2026-09-03: the provider call is a
+                        # blocking Bedrock round trip; running it inline
+                        # froze the event loop (probes failed, five
+                        # concurrent requests all 502). Same worker-thread
+                        # pattern as the stream route.
+                        return await asyncio.to_thread(
+                            gateway_value.complete, value)
                     except GatewayRefusal as exc:
                         refusal = exc
         return JSONResponse(
