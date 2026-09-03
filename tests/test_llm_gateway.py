@@ -368,6 +368,26 @@ def test_text_already_narrated_is_the_final_answer_never_replaced_by_a_retry():
     assert client.converse_calls == []                     # no retry once text was shown
 
 
+def test_malformed_narrated_text_is_the_exact_final_including_spaces():
+    client = _ScriptedStream(['{"text": "  WRONG PARTIAL  '],
+                             ['{"text": "CORRECT FINAL", "cited_document_ids": []}'])
+    seen = []
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke_stream(
+        _provider_request(with_citation=False), timeout_ms=30000, on_delta=seen.append)
+    assert "".join(seen) == result.text == "  WRONG PARTIAL  "
+    assert result.cited_document_ids == () and client.converse_calls == []
+
+
+def test_stream_never_extracts_a_nested_text_field():
+    client = _ScriptedStream(
+        ['{"other":{"text":"WRONG"},"text":"CORRECT","cited_document_ids":[]}'], [])
+    seen = []
+    result = BedrockProvider("model-x", "eu-central-1", client=client).invoke_stream(
+        _provider_request(with_citation=False), timeout_ms=30000, on_delta=seen.append)
+    assert seen == []                       # reordered output finalises without speculative deltas
+    assert result.text == "CORRECT" and result.cited_document_ids == ()
+
+
 def test_nothing_narrated_means_the_retry_may_answer():
     client = _ScriptedStream(["Muraho, fungura porogaramu."],           # prose: no "text" field
                              ['{"text": "Fungura MedZen.", "cited_document_ids": []}'])
@@ -377,13 +397,45 @@ def test_nothing_narrated_means_the_retry_may_answer():
     assert seen == [] and result.text == "Fungura MedZen." and len(client.converse_calls) == 1
 
 
-def test_retry_shares_the_policy_deadline_and_is_skipped_when_little_budget_remains():
+def test_retry_shares_the_policy_deadline_and_is_skipped_when_little_budget_remains(
+        monkeypatch):
+    import time
+
+    ticks = iter([100.0, 126.0])             # first response spent 26 of 30 seconds
+    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
     client = _ScriptedConverse(["prose once", '{"text": "ok", "cited_document_ids": []}'])
     provider = BedrockProvider("model-x", "eu-central-1", client=client)
     result = provider.invoke(_provider_request(with_citation=False), timeout_ms=30000)
-    assert result.text == "ok" and 0 < provider.last_retry_timeout_ms <= 30000
+    assert result.text == "ok" and provider.last_retry_timeout_ms == 4000
+
+    ticks = iter([100.0, 126.001])           # 3,999 ms left: do not start another call
+    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
     client = _ScriptedConverse(["prose once"])
     provider = BedrockProvider("model-x", "eu-central-1", client=client)
-    result = provider.invoke(_provider_request(with_citation=False), timeout_ms=1000)   # < MINIMUM_RETRY_MS
+    result = provider.invoke(_provider_request(with_citation=False), timeout_ms=30000)
     assert result.text == "prose once" and result.cited_document_ids == ()
     assert len(client.calls) == 1 and provider.last_retry_timeout_ms == 0
+
+
+def test_temperature_compatibility_retry_uses_only_the_remaining_stream_budget(monkeypatch):
+    import time
+
+    ticks = iter([100.0, 126.0])
+    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
+    provider = BedrockProvider("model-x", "eu-central-1", client=object())
+    calls = []
+
+    def scripted(system, messages, config, timeout_ms, on_delta,
+                 fresh_deadline=False):
+        calls.append((timeout_ms, fresh_deadline, dict(config)))
+        if len(calls) == 1:
+            raise RuntimeError("temperature is deprecated for this model")
+        return '{"text":"ok","cited_document_ids":[]}', "end_turn"
+
+    provider._converse_stream = scripted
+    result = provider.invoke_stream(
+        _provider_request(with_citation=False), timeout_ms=30000,
+        on_delta=lambda _: None)
+    assert result.text == "ok"
+    assert [(c[0], c[1]) for c in calls] == [(30000, False), (4000, True)]
+    assert "temperature" in calls[0][2] and "temperature" not in calls[1][2]
