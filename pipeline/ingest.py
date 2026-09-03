@@ -95,6 +95,9 @@ def build_adapter(source: str, language: str, task: str | None = None,
     if source == "africanvoices":
         from .adapters.africanvoices import AfricanVoicesAdapter
         return AfricanVoicesAdapter(language, task=task, version=version)
+    if source == "common_voice_cm":     # Cameroon pilot 2026-09-03 (CV26, CC0)
+        from .adapters.common_voice_cm import CommonVoice26CameroonAdapter
+        return CommonVoice26CameroonAdapter(language, task=task, version=version)
     if source == "frontend_sessions":   # Phase 4: opt-in, reviewed recordings
         from .adapters.frontend_sessions import FrontendSessionsAdapter
         return FrontendSessionsAdapter(language, task=task, version=version)
