@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-03 relaying an independent review: 'rerun the identical probe using a post-2de8a58 trainer image. Require STUDENT_WARM_START_LOADED with the exact Arm-1 hash in the logs.' IDENTICAL to the reviewed cm-pilot-diag-2026-001 packet in every field except the trainer image, which moves from ft-2026-08-21b (built 2026-08-20, PREDATES warm-start support and silently ignored MEDZEN_STUDENT_INIT_*) to arm2-ftcal-b6ad15ce (built 2026-08-28; its commit is a verified descendant of 2de8a58 and its trainer contains both MEDZEN_STUDENT_INIT_MODE and the STUDENT_WARM_START_LOADED marker). Same data (curated cp1), same seed, same LoRA rank, same 2000 steps, same equal-language sampling. Worst case $6.40, below the $10 calibration tier. DIAGNOSTIC ONLY: no gate is applied and this is not a promotion candidate. The run is INVALID unless its log emits STUDENT_WARM_START_LOADED naming Arm-1 sha c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c.",
+ "bindings_sha256": "623c8d6e0f1fed842b90552fe6daefb51fd0e72ca1f1df347c32f469a41ffd11",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-03T22:15:00Z",
+ "decision": "APPROVED",
+ "job_id": "cm-pilot-warm-2026-001",
+ "scope": "DIAGNOSTIC_PROBE_NOT_A_PROMOTION_CANDIDATE"
+}
