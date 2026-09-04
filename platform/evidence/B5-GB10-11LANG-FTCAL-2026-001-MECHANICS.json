@@ -1,0 +1,86 @@
+{
+ "record": "B5-GB10-11LANG-FTCAL-2026-001-MECHANICS",
+ "utc": "2026-09-04T16:15:09Z",
+ "status": "MECHANICS_PROVEN_BUT_NOT_A_LAUNCH_RECEIPT",
+ "job": "medzen-b5-b5-gb10-11lang-ftcal-2026-001",
+ "terminal_status": "Completed",
+ "billable_seconds": 1163,
+ "calibration_packet": "platform/manifests/B5-GB10-11LANG-FTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "calibration_bindings_sha256": "2fe684fb8645aeb7a568f240c478cbd511aef0eb0576de00593439ee802e7d01",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:4a7c1663bd88468ee3f6afa5f97404678ac9e7d75d63f3c8a6de4b4acaf686ab",
+ "artifact": {
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-gb10-11lang-ftcal-2026-001/output/medzen-b5-b5-gb10-11lang-ftcal-2026-001/output/model.tar.gz",
+  "s3_version_id": "gdului39iGSj9bez1xFfavrWvWLKoZ5m",
+  "s3_bytes": 1545726785,
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "export_model_sha256": "2ddcf295ff480781c80cd65bdc5dd113614d1011a3b4b7e1938d7be51db07037",
+  "export_manifest_sha256": "3e2fd740ca38ef507281cfbc73f553ca4c03be64974b340a023bc390820e1e92",
+  "contents": [
+   "training-provenance.json",
+   "export/manifest.json",
+   "export/model.pt"
+  ]
+ },
+ "what_this_run_PROVES": {
+  "recipe_runs_end_to_end_on_gb10": "All eleven languages loaded from gb10 and trained for 30 steps to Completed on the arm's exact image and recipe. run_fingerprint a029e87b6f7bc563ce0496ed8aac6d96…",
+  "dataset_binding": {
+   "manifest_version": "gb10",
+   "complete_raw_sha256": "fa8eb87d33214f3a82e0c3c59409eba9976f7e46bab67956804e212be2c37727",
+   "adoption_key": "curated/_versions/gb10/ADOPTION.json",
+   "note": "matches the committed B5-GB10-ADOPTION-2026-001 exactly"
+  },
+  "exclusions_behave_as_predicted": {
+   "policy_declared": 1579,
+   "out_of_scope_declared": 1579,
+   "removed_from_eligible_pool": 0,
+   "conclusion": "Empirically confirms the owner's correction: MEDZEN_EXPECT_EXCLUDED=1579 is the DECLARED count and the run proceeds with 0 rows applied. A value of 0 would have refused."
+  },
+  "licence_gate": "PASS_LICENCE_POLICY_GATE over 1,484,740 eligible rows",
+  "rejected_rows": {
+   "not_permitted": 0,
+   "wrong_split": 0
+  },
+  "per_language_cap_applied_before_sampling": true,
+  "eleven_languages": [
+   "english",
+   "ewe",
+   "french",
+   "gbaya",
+   "kinyarwanda",
+   "lingala",
+   "ngiemboon",
+   "ngombala",
+   "pidgin",
+   "swahili",
+   "yangben"
+  ],
+  "temperature": 0.0,
+  "train_mode": "lora",
+  "lora_rank": 16,
+  "student_init_mode": "arm1"
+ },
+ "why_this_is_NOT_the_launch_receipt": {
+  "finding": "The above-tier launch gate (b5_sagemaker_job.verify_calibration_receipt) requires the receipt to carry an authoritative_verification block produced by scripts/verify_arm2_calibration.py --live. That verifier cannot run against a PLAIN packet, so no conforming receipt exists for this arm.",
+  "evidence": [
+   "pipeline/omniasr_train.py:1569 — `_emit_metrics = config.execution_mode == \"arm2_comparative\"`. A plain run never writes calibration-metrics.json.",
+   "Confirmed empirically: this job's artifact contains training-provenance.json, export/manifest.json and export/model.pt, and NO calibration-metrics.json.",
+   "scripts/b5_sagemaker_job.py:764 — only an arm2_comparative packet renders ContainerArguments ['-m','pipeline.omniasr_calibrate']; a plain packet renders ['-m','pipeline.omniasr_train'].",
+   "scripts/verify_arm2_calibration.py load_verifier_spec unconditionally requires a result_verifier block with dev_sentinel_languages, required_preservation_coverage and a metrics_schema, and verify_live_bundle requires dev_sentinel_wer inside calibration-metrics.json — all patched by the arm2 wrapper only.",
+   "The historical B5-UNIVERSAL-FTCAL-2026-004 receipt for the incumbent's own plain calibration carries no authoritative_verification block, which is consistent: it predates that requirement."
+  ],
+  "consequence": "The receipt chain as implemented is structurally tied to the arm2_comparative KD-calibration path. A plain LoRA arm cannot satisfy it without being converted into an arm2 comparative packet — which would turn the approved warm-start LoRA design into a KD comparative run and add execution-contract and dev-sentinel apparatus. That is a change to the approved science and new governance apparatus, so it was NOT done.",
+  "what_was_deliberately_not_done": [
+   "No receipt was fabricated.",
+   "No gate was weakened or bypassed.",
+   "The approved training design was not silently changed to KD."
+  ]
+ },
+ "arm_packet": "platform/manifests/B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json",
+ "arm_status": "HELD — renders and validates, but cannot pass the above-tier launch gate until this is resolved"
+}

@@ -690,6 +690,63 @@
    },
    "caveat": "The canonical figures are floors: tone carried on a non-precomposing vowel is deleted before alignment, so those errors can never appear as a tone-only substitution. The earlier reading that Gbaya has essentially no tone problem (5.0%) is an artifact — under the mark-preserving tokenization Gbaya is 11.4% and Yangben 12.2%, a near-tie.",
    "surviving_ordering": "Ngiemboon and Ngombala carry far more tone error than Yangben and Gbaya under BOTH tokenizations."
+  },
+  "figures_recomputed_under_the_shipped_scorer": {
+   "why": "The mark-preserving figures in direction_CORRECTED came from an ad-hoc normaliser that kept marks but still measured characters over the NFC stream, so its CER carried the very composition dependence the scorer fix removes. These are the same 1,419 in-domain clips rescored by the SHIPPED scorer (services/asr-eval-runtime/medzen_asr_eval/metrics.py) under each named policy.",
+   "in_domain_pooled": {
+    "legacy_v1_as_published": {
+     "base": {
+      "wer": 42.63,
+      "cer": 11.54
+     },
+     "warm": {
+      "wer": 42.72,
+      "cer": 11.52
+     },
+     "reference_words": 14305,
+     "reference_characters": 46144
+    },
+    "tone_insensitive": {
+     "base": {
+      "wer": 33.27,
+      "cer": 7.22
+     },
+     "warm": {
+      "wer": 32.83,
+      "cer": 7.14
+     },
+     "reference_words": 12754,
+     "reference_characters": 46144
+    },
+    "tone_sensitive": {
+     "base": {
+      "wer": 48.39,
+      "cer": 12.38
+     },
+     "warm": {
+      "wer": 48.37,
+      "cer": 12.46
+     },
+     "reference_words": 12754,
+     "reference_characters": 56655
+    }
+   },
+   "supersedes": "direction_CORRECTED's mark-preserving CER of 13.73% is superseded by 12.38%: the NFD character stream raises reference_characters from 49,938 to 56,655, because a precomposed accented vowel now costs two codepoints exactly as a non-precomposing one does. The WER moves only 48.43 -> 48.39, from the shipped normaliser also dropping marks with no surviving base.",
+   "paired_delta_warm_minus_base_pp": {
+    "legacy_v1": {
+     "wer": 0.09,
+     "cer": -0.02
+    },
+    "tone_insensitive": {
+     "wer": -0.44,
+     "cer": -0.08
+    },
+    "tone_sensitive": {
+     "wer": -0.02,
+     "cer": 0.08
+    }
+   },
+   "conclusion_unchanged": "No pooled in-domain advantage is detected under any of the three policies. The deltas are small and inconsistent in sign, which is what a genuine non-effect looks like."
   }
  },
  "uncertainty_correction": {
