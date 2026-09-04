@@ -1,0 +1,508 @@
+{
+ "record": "CM-PILOT-SCORING-VERDICT-2026-001",
+ "date": "2026-09-04",
+ "status": "COMPLETE_DIAGNOSTIC",
+ "purpose": "Decode-only scoring of the two Cameroon pilot models on the frozen pilot test split. Diagnostic only: neither model is a promotion candidate and the 20% relative-WER nomination gate is deliberately NOT applied.",
+ "models": {
+  "cm-warm": {
+   "training_job": "medzen-b5-cm-pilot-warm-2026-001",
+   "export_sha256": "daa67af9615ebcab0b87241bbfda2499136c32ae9346cdf54d16576b58c34cb0",
+   "init": "Arm-1 warm start, PROVEN in-log",
+   "warm_start_proof": {
+    "status": "STUDENT_WARM_START_LOADED",
+    "mode": "arm1",
+    "sha256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+    "log_stream": "medzen-b5-cm-pilot-warm-2026-001/algo-1-1788471346"
+   }
+  },
+  "cm-base": {
+   "training_job": "medzen-b5-cm-pilot-diag-2026-001",
+   "export_sha256": "d45ca25e0a7bf7af290cc215807663aa268205f0d4dd8a6c0e3a4824916c9773",
+   "init": "BASE_INIT_CONTROL \u2014 pinned image predates warm-start support (commit 2de8a58); no STUDENT_WARM_START_LOADED line exists in its stream, which is the intended control",
+   "warm_start_proof": null
+  }
+ },
+ "identical_training_config": {
+  "lora_r": 16,
+  "max_steps": 2000,
+  "temperature": 0,
+  "manifest_version": "cp1",
+  "replay": "seven-language",
+  "note": "the two runs differ ONLY in initialisation"
+ },
+ "scoring": {
+  "jobs": {
+   "cm-warm": "medzen-b5-b5-arm2-score-cm-warm-2026-004",
+   "cm-base": "medzen-b5-b5-arm2-score-cm-base-2026-004"
+  },
+  "evaluator_image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+  "manifest": {
+   "uri": "s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-scoring-manifest-v3.jsonl",
+   "sha256": "071f45d76243d299cabb7799af476e3a3abc27ad1ff21030dbb24a78bf5600f2",
+   "rows": 1946
+  },
+  "references": {
+   "uri": "s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-references-v3.jsonl"
+  },
+  "row_schema_note": "v1/v2 used audio_s3_uri, copied from the omniasr_score.py module docstring. The evaluator actually reads row['audio_filepath'] (pipeline/omniasr_data.py:35). v3 matches the working Arm-2 manifest exactly: {audio_checksum_sha256, audio_filepath}.",
+  "metric_source": "services/asr-eval-runtime/medzen_asr_eval/metrics.py (normalize_text + error_counts)",
+  "uncertainty": "corpus-level ratio bootstrapped over utterances, 2000 draws for absolute rates and 4000 for paired deltas, fixed seeds; NOT a mean of per-utterance rates"
+ },
+ "surfaces": {
+  "cv_test": "Common Voice 26.0 held-out test \u2014 IN-DOMAIN, speaker- and prompt-disjoint",
+  "soreva": "SOREVA \u2014 OUT-OF-DOMAIN directional metric, single speaker, short utterances; gbaya here is the CAR variety and is not decisive on its own"
+ },
+ "results": {
+  "cm-base": {
+   "cv_test": {
+    "ngiemboon": {
+     "n": 348,
+     "wer": 0.376951,
+     "wer_ci95": [
+      0.357971,
+      0.396192
+     ],
+     "cer": 0.107179,
+     "cer_ci95": [
+      0.10042,
+      0.114023
+     ],
+     "word_errors": 1449,
+     "reference_words": 3844,
+     "character_errors": 1369,
+     "reference_characters": 12773
+    },
+    "ngombala": {
+     "n": 487,
+     "wer": 0.380793,
+     "wer_ci95": [
+      0.364237,
+      0.398629
+     ],
+     "cer": 0.115146,
+     "cer_ci95": [
+      0.108587,
+      0.121496
+     ],
+     "word_errors": 2054,
+     "reference_words": 5394,
+     "character_errors": 1855,
+     "reference_characters": 16110
+    },
+    "yangben": {
+     "n": 216,
+     "wer": 0.670282,
+     "wer_ci95": [
+      0.647474,
+      0.694219
+     ],
+     "cer": 0.142587,
+     "cer_ci95": [
+      0.13399,
+      0.151344
+     ],
+     "word_errors": 1236,
+     "reference_words": 1844,
+     "character_errors": 1207,
+     "reference_characters": 8465
+    },
+    "gbaya": {
+     "n": 368,
+     "wer": 0.421657,
+     "wer_ci95": [
+      0.398244,
+      0.44531
+     ],
+     "cer": 0.101751,
+     "cer_ci95": [
+      0.093857,
+      0.109483
+     ],
+     "word_errors": 1359,
+     "reference_words": 3223,
+     "character_errors": 895,
+     "reference_characters": 8796
+    }
+   },
+   "soreva": {
+    "ngiemboon": {
+     "n": 150,
+     "wer": 0.812992,
+     "wer_ci95": [
+      0.767308,
+      0.867886
+     ],
+     "cer": 0.280818,
+     "cer_ci95": [
+      0.25393,
+      0.30829
+     ],
+     "word_errors": 413,
+     "reference_words": 508,
+     "character_errors": 467,
+     "reference_characters": 1663
+    },
+    "ngombala": {
+     "n": 145,
+     "wer": 0.867958,
+     "wer_ci95": [
+      0.821543,
+      0.920434
+     ],
+     "cer": 0.382369,
+     "cer_ci95": [
+      0.354041,
+      0.411731
+     ],
+     "word_errors": 493,
+     "reference_words": 568,
+     "character_errors": 681,
+     "reference_characters": 1781
+    },
+    "yangben": {
+     "n": 132,
+     "wer": 0.825806,
+     "wer_ci95": [
+      0.782895,
+      0.87033
+     ],
+     "cer": 0.201473,
+     "cer_ci95": [
+      0.180972,
+      0.222798
+     ],
+     "word_errors": 384,
+     "reference_words": 465,
+     "character_errors": 383,
+     "reference_characters": 1901
+    },
+    "gbaya": {
+     "n": 100,
+     "wer": 0.886836,
+     "wer_ci95": [
+      0.834906,
+      0.946078
+     ],
+     "cer": 0.374001,
+     "cer_ci95": [
+      0.333821,
+      0.417361
+     ],
+     "word_errors": 384,
+     "reference_words": 433,
+     "character_errors": 515,
+     "reference_characters": 1377
+    }
+   }
+  },
+  "cm-warm": {
+   "cv_test": {
+    "ngiemboon": {
+     "n": 348,
+     "wer": 0.383715,
+     "wer_ci95": [
+      0.363971,
+      0.403132
+     ],
+     "cer": 0.10851,
+     "cer_ci95": [
+      0.101608,
+      0.115321
+     ],
+     "word_errors": 1475,
+     "reference_words": 3844,
+     "character_errors": 1386,
+     "reference_characters": 12773
+    },
+    "ngombala": {
+     "n": 487,
+     "wer": 0.37894,
+     "wer_ci95": [
+      0.362639,
+      0.396747
+     ],
+     "cer": 0.113966,
+     "cer_ci95": [
+      0.107209,
+      0.120621
+     ],
+     "word_errors": 2044,
+     "reference_words": 5394,
+     "character_errors": 1836,
+     "reference_characters": 16110
+    },
+    "yangben": {
+     "n": 216,
+     "wer": 0.678959,
+     "wer_ci95": [
+      0.65656,
+      0.704417
+     ],
+     "cer": 0.142823,
+     "cer_ci95": [
+      0.134138,
+      0.15165
+     ],
+     "word_errors": 1252,
+     "reference_words": 1844,
+     "character_errors": 1209,
+     "reference_characters": 8465
+    },
+    "gbaya": {
+     "n": 368,
+     "wer": 0.415762,
+     "wer_ci95": [
+      0.394161,
+      0.438348
+     ],
+     "cer": 0.1005,
+     "cer_ci95": [
+      0.092459,
+      0.108834
+     ],
+     "word_errors": 1340,
+     "reference_words": 3223,
+     "character_errors": 884,
+     "reference_characters": 8796
+    }
+   },
+   "soreva": {
+    "ngiemboon": {
+     "n": 150,
+     "wer": 0.805118,
+     "wer_ci95": [
+      0.756148,
+      0.859833
+     ],
+     "cer": 0.282622,
+     "cer_ci95": [
+      0.256164,
+      0.308146
+     ],
+     "word_errors": 409,
+     "reference_words": 508,
+     "character_errors": 470,
+     "reference_characters": 1663
+    },
+    "ngombala": {
+     "n": 145,
+     "wer": 0.899648,
+     "wer_ci95": [
+      0.854063,
+      0.95082
+     ],
+     "cer": 0.408198,
+     "cer_ci95": [
+      0.378739,
+      0.437352
+     ],
+     "word_errors": 511,
+     "reference_words": 568,
+     "character_errors": 727,
+     "reference_characters": 1781
+    },
+    "yangben": {
+     "n": 132,
+     "wer": 0.84086,
+     "wer_ci95": [
+      0.792812,
+      0.888664
+     ],
+     "cer": 0.205681,
+     "cer_ci95": [
+      0.185614,
+      0.227634
+     ],
+     "word_errors": 391,
+     "reference_words": 465,
+     "character_errors": 391,
+     "reference_characters": 1901
+    },
+    "gbaya": {
+     "n": 100,
+     "wer": 0.863741,
+     "wer_ci95": [
+      0.806604,
+      0.92602
+     ],
+     "cer": 0.379085,
+     "cer_ci95": [
+      0.337942,
+      0.422833
+     ],
+     "word_errors": 374,
+     "reference_words": 433,
+     "character_errors": 522,
+     "reference_characters": 1377
+    }
+   }
+  }
+ },
+ "paired_deltas": {
+  "cv_test|ngiemboon": {
+   "n": 348,
+   "delta_wer_warm_minus_base": 0.006764,
+   "delta_wer_ci95": [
+    -0.001346,
+    0.015026
+   ],
+   "p_warm_not_better_wer": 0.94875,
+   "delta_cer_warm_minus_base": 0.001331,
+   "delta_cer_ci95": [
+    -0.000807,
+    0.003375
+   ],
+   "p_warm_not_better_cer": 0.897
+  },
+  "cv_test|ngombala": {
+   "n": 487,
+   "delta_wer_warm_minus_base": -0.001854,
+   "delta_wer_ci95": [
+    -0.009398,
+    0.005525
+   ],
+   "p_warm_not_better_wer": 0.31675,
+   "delta_cer_warm_minus_base": -0.001179,
+   "delta_cer_ci95": [
+    -0.003259,
+    0.000878
+   ],
+   "p_warm_not_better_cer": 0.14675
+  },
+  "cv_test|yangben": {
+   "n": 216,
+   "delta_wer_warm_minus_base": 0.008677,
+   "delta_wer_ci95": [
+    -0.004678,
+    0.021161
+   ],
+   "p_warm_not_better_wer": 0.9055,
+   "delta_cer_warm_minus_base": 0.000236,
+   "delta_cer_ci95": [
+    -0.002525,
+    0.002912
+   ],
+   "p_warm_not_better_cer": 0.57075
+  },
+  "cv_test|gbaya": {
+   "n": 368,
+   "delta_wer_warm_minus_base": -0.005895,
+   "delta_wer_ci95": [
+    -0.016105,
+    0.004568
+   ],
+   "p_warm_not_better_wer": 0.13725,
+   "delta_cer_warm_minus_base": -0.001251,
+   "delta_cer_ci95": [
+    -0.004137,
+    0.00161
+   ],
+   "p_warm_not_better_cer": 0.20275
+  },
+  "cv_test|POOLED": {
+   "n": 1419,
+   "delta_wer_warm_minus_base": 0.000909,
+   "delta_wer_ci95": [
+    -0.003797,
+    0.005458
+   ],
+   "p_warm_not_better_wer": 0.655,
+   "delta_cer_warm_minus_base": -0.000238,
+   "delta_cer_ci95": [
+    -0.001447,
+    0.000972
+   ],
+   "p_warm_not_better_cer": 0.348
+  },
+  "soreva|ngiemboon": {
+   "n": 150,
+   "delta_wer_warm_minus_base": -0.007874,
+   "delta_wer_ci95": [
+    -0.039761,
+    0.022634
+   ],
+   "p_warm_not_better_wer": 0.33625,
+   "delta_cer_warm_minus_base": 0.001804,
+   "delta_cer_ci95": [
+    -0.010996,
+    0.014851
+   ],
+   "p_warm_not_better_cer": 0.62275
+  },
+  "soreva|ngombala": {
+   "n": 145,
+   "delta_wer_warm_minus_base": 0.03169,
+   "delta_wer_ci95": [
+    0.00703,
+    0.057996
+   ],
+   "p_warm_not_better_wer": 0.99475,
+   "delta_cer_warm_minus_base": 0.025828,
+   "delta_cer_ci95": [
+    0.014393,
+    0.038335
+   ],
+   "p_warm_not_better_cer": 1.0
+  },
+  "soreva|yangben": {
+   "n": 132,
+   "delta_wer_warm_minus_base": 0.015054,
+   "delta_wer_ci95": [
+    -0.018789,
+    0.048936
+   ],
+   "p_warm_not_better_wer": 0.81425,
+   "delta_cer_warm_minus_base": 0.004208,
+   "delta_cer_ci95": [
+    -0.007332,
+    0.015541
+   ],
+   "p_warm_not_better_cer": 0.77225
+  },
+  "soreva|gbaya": {
+   "n": 100,
+   "delta_wer_warm_minus_base": -0.023095,
+   "delta_wer_ci95": [
+    -0.055416,
+    0.007009
+   ],
+   "p_warm_not_better_wer": 0.08425,
+   "delta_cer_warm_minus_base": 0.005084,
+   "delta_cer_ci95": [
+    -0.009174,
+    0.020316
+   ],
+   "p_warm_not_better_cer": 0.772
+  },
+  "soreva|POOLED": {
+   "n": 527,
+   "delta_wer_warm_minus_base": 0.005572,
+   "delta_wer_ci95": [
+    -0.009586,
+    0.020624
+   ],
+   "p_warm_not_better_wer": 0.78,
+   "delta_cer_warm_minus_base": 0.009521,
+   "delta_cer_ci95": [
+    0.003265,
+    0.01591
+   ],
+   "p_warm_not_better_cer": 0.999
+  }
+ },
+ "verdict": [
+  "The Arm-1 warm start delivered NO measurable in-domain benefit. Pooled Common Voice delta WER is +0.09 pp (95% CI -0.38 to +0.55) \u2014 warm is nominally worse, and the interval covers zero.",
+  "Out of domain the warm start is neutral-to-harmful. Pooled SOREVA delta WER is +0.56 pp (CI -0.96 to +2.06), but pooled delta CER is +0.95 pp with a CI that EXCLUDES zero (+0.33 to +1.59).",
+  "The single clearly significant per-language effect is Ngombala on SOREVA, where warm is worse on both metrics (delta WER +3.17 pp, CI +0.70 to +5.80; delta CER +2.58 pp, CI +1.44 to +3.83).",
+  "Absolute accuracy is the real finding and it is the same for both models: roughly 38-42% WER on Ngiemboon, Ngombala and Gbaya in domain, and about 67% on Yangben. Character error sits near 10-14% in domain, so the models are recovering phonetics but not word forms.",
+  "Out-of-domain WER of 80-90% on all four languages confirms these adapters do not transfer across recording conditions at this data scale.",
+  "Yangben is the clear outlier and the least-served language of the four; it needs data, not a different init."
+ ],
+ "implication": "2,000 LoRA steps over 21.17 curated hours does not benefit from the Arm-1 multilingual checkpoint for these four languages. Future Cameroon waves should treat initialisation as settled (base init is sufficient and marginally safer) and spend the budget on data volume and domain coverage instead. Do not read any of these numbers as a nomination result.",
+ "not_applied": [
+  "20% relative-WER nomination gate",
+  "incumbent regression gate",
+  "macro-average gate",
+  "promotion, registry write, or deployment of either model"
+ ]
+}
