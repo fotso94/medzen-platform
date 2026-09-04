@@ -19,7 +19,8 @@
  "review": {
   "decision": "APPROVED",
   "file": "platform/decisions/reviews/b5-gb10-11lang-warm-2026-001.json",
-  "reviewer": "claude-primary-engineer; authored by Claude, not the owner — in this repo the review is the reviewer's artifact and is separate from the owner's launch click",
+  "reviewer": "claude-primary-engineer",
+  "reviewer_note": "Authored by Claude, not the owner. In this repo the review record is the REVIEWER's artifact and is deliberately separate from the owner's authorization, which is the click on the protected arm2-stage1-launch environment. This intent authorizes nothing by itself.",
   "sha256": "b0d9858c314e5159b7514178a9a1688a164abab7ae1aa122229d351ebdfd46ef"
  },
  "utc": "2026-09-04T18:04:01Z"
