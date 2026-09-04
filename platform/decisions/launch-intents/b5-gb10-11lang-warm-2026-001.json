@@ -1,0 +1,26 @@
+{
+ "authorization": "Owner approved the training design on 2026-09-04 (gb10, 11 languages, temperature 0, 15h cap, LoRA r16, 40,000 steps) and directed the preparation through to the gate. This document is UNSIGNED and authorizes nothing by itself: the launch authorization is the owner's click on the protected arm2-stage1-launch environment, which is outside every local trust surface.",
+ "ceiling_usd": 164,
+ "expires_utc": "2026-09-11T18:04:01Z",
+ "job_id": "b5-gb10-11lang-warm-2026-001",
+ "packet": {
+  "canonical_sha256": "45fef40c80ceb2f853b00f0213a9e0bb9ab5d592a84d542b4da1607f23d8940a",
+  "file": "platform/manifests/B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json"
+ },
+ "receipt": {
+  "record": "platform/evidence/B5-GB10-11LANG-FTCAL-2026-002-RECEIPT.json",
+  "record_sha256": "3ade1fd945dc5df714cd0599b58380d831b007b40663b10078445eac324c4b41"
+ },
+ "registry": {
+  "allocation_id": "B5-GB10-11LANG-WARM-2026-001",
+  "file": "platform/finance/COST-REGISTRY-2026-079.json",
+  "sha256": "c9d65d749649e3d7337d9554ff0accc8f088ca40d9c815cfa1abe91b7bb2fb1f"
+ },
+ "review": {
+  "decision": "APPROVED",
+  "file": "platform/decisions/reviews/b5-gb10-11lang-warm-2026-001.json",
+  "reviewer": "claude-primary-engineer; authored by Claude, not the owner — in this repo the review is the reviewer's artifact and is separate from the owner's launch click",
+  "sha256": "b0d9858c314e5159b7514178a9a1688a164abab7ae1aa122229d351ebdfd46ef"
+ },
+ "utc": "2026-09-04T18:04:01Z"
+}
