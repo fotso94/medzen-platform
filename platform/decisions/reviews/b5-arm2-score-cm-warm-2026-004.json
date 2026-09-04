@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-04 relaying an independent review: 'Make one narrow functional scoring fix-forward ... then score both WARM and BASE_INIT_CONTROL through the existing workflow.' This packet decodes the Arm-1 warm-started export (STUDENT_WARM_START_LOADED verified with hash c6604a68\u2026) over the frozen Cameroon scoring manifest research/cm-pilot-scoring/cm-pilot-scoring-manifest-v2.jsonl (1946 rows; the earlier v1 carried one Gbaya clip twice under two different references and is superseded). DECODE-ONLY: pipeline.omniasr_score never sees references. Worst case $2.40, PASS_EXACT_TRAINING_REQUEST. Split binding is the CAMEROON manifest sha, not the Arm-2 nomination split. The evaluator binds the arm label into the job name (it requires '-score-<arm>' inside it), so MEDZEN_SCORE_ARM is 'cm-warm', not 'arm1_warm'. DIAGNOSTIC ONLY: no gate is applied to the result and neither model is a promotion candidate. Job id bumped to -002 because the -001 attempt FAILED on the arm/job binding and SageMaker will not reuse a training job name. Bumped again to -003: the -002 attempt failed because medzen-trainer-role (the SageMaker execution role) lacked s3:GetObjectVersion on research/cm-pilot-scoring/*; services.yaml now declares that grant and the generated policy is applied live. Bumped to -004: manifest v3 uses the evaluator's ACTUAL row schema {audio_checksum_sha256, audio_filepath} \u2014 the module docstring says audio_s3_uri but pipeline/omniasr_data.fetch_audio reads audio_filepath.",
+ "bindings_sha256": "844c5a61bfa5ec5b087058e1f931b06e8e6457771e25a022aeab5d684ecf9e12",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-04T02:00:00Z",
+ "decision": "APPROVED",
+ "job_id": "b5-arm2-score-cm-warm-2026-004",
+ "scope": "DIAGNOSTIC_ONLY_NO_GATE_APPLIED"
+}
