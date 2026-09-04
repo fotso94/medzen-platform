@@ -1,0 +1,264 @@
+{
+ "record": "GB10-ELEVEN-LANGUAGE-EVAL-SURFACE-2026-001",
+ "date": "2026-09-04",
+ "purpose": "Names the eval surfaces the eleven-language candidate is scored on, per owner directive 2026-09-04: 'Use the existing clean Tier-1 Ewe and Lingala surfaces; keep the three contaminated legacy sets diagnostic-only.'",
+ "method": "Every ASR eval manifest under s3://medzen-speech/eval/<lang>/asr/ was intersected on audio_checksum_sha256 against the full gb10 training pool (1,484,740 rows). A surface is diagnostic-only if any of its clips appear in training.",
+ "contaminated_surfaces": {
+  "eval/ewe/asr/v1": "34 of 34 clips are in gb10 training (100%)",
+  "eval/lingala/asr/v1": "35 of 35 clips are in gb10 training (100%)",
+  "eval/lingala/asr/v2-holdout": "77 of 77 clips are in gb10 training (100%)",
+  "status": "DIAGNOSTIC ONLY. Never quote a headline WER or CER from these; they measure memorisation.",
+  "note": "Each also has a manifest.r2.jsonl twin over the same clips. Inherited from gb9 unchanged."
+ },
+ "tier1_identification": "The clean replacements match the tier-1 rows recorded in GB1-EVAL-ISOLATION-AUDIT-2026-001-DETAIL.json exactly: ewe tier1 eval_rows=142 is eval/ewe/asr/soreva-v1 (142 rows), lingala tier1 eval_rows=642 is eval/lingala/asr/fleurs-v1 (642 rows), both with audio_checksum_overlap 0.",
+ "per_language": {
+  "english": {
+   "score_on": [
+    {
+     "surface": "eval/english/asr/fleurs-v1",
+     "rows": 1040
+    },
+    {
+     "surface": "eval/english/asr/fleurs-v1-tier2-dev",
+     "rows": 511
+    },
+    {
+     "surface": "eval/english/asr/fleurs-v1-tier2-sealed",
+     "rows": 529
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "ewe": {
+   "score_on": [
+    {
+     "surface": "eval/ewe/asr/soreva-v1",
+     "rows": 142
+    },
+    {
+     "surface": "eval/ewe/asr/soreva-v1-tier2-dev",
+     "rows": 76
+    },
+    {
+     "surface": "eval/ewe/asr/soreva-v1-tier2-sealed",
+     "rows": 66
+    }
+   ],
+   "diagnostic_only": [
+    {
+     "surface": "eval/ewe/asr/v1",
+     "rows": 34
+    }
+   ]
+  },
+  "french": {
+   "score_on": [
+    {
+     "surface": "eval/french/asr/aaf-test-v1",
+     "rows": 475
+    },
+    {
+     "surface": "eval/french/asr/aaf-test-v1-tier2-dev",
+     "rows": 217
+    },
+    {
+     "surface": "eval/french/asr/aaf-test-v1-tier2-sealed",
+     "rows": 258
+    },
+    {
+     "surface": "eval/french/asr/fleurs-v1",
+     "rows": 964
+    },
+    {
+     "surface": "eval/french/asr/fleurs-v1-tier2-dev",
+     "rows": 495
+    },
+    {
+     "surface": "eval/french/asr/fleurs-v1-tier2-sealed",
+     "rows": 469
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "gbaya": {
+   "score_on": [
+    {
+     "surface": "eval/gbaya/asr/cvcm1",
+     "rows": 368
+    },
+    {
+     "surface": "eval/gbaya/asr/soreva-v1",
+     "rows": 101
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "kinyarwanda": {
+   "score_on": [
+    {
+     "surface": "eval/kinyarwanda/asr/cv17-test-v1",
+     "rows": 6657
+    },
+    {
+     "surface": "eval/kinyarwanda/asr/cv17-test-v1-dev",
+     "rows": 3284
+    },
+    {
+     "surface": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection",
+     "rows": 1642
+    },
+    {
+     "surface": "eval/kinyarwanda/asr/cv17-test-v1-sealed",
+     "rows": 3373
+    },
+    {
+     "surface": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed",
+     "rows": 1642
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "lingala": {
+   "score_on": [
+    {
+     "surface": "eval/lingala/asr/fleurs-v1",
+     "rows": 642
+    },
+    {
+     "surface": "eval/lingala/asr/fleurs-v1-tier2-dev",
+     "rows": 317
+    },
+    {
+     "surface": "eval/lingala/asr/fleurs-v1-tier2-sealed",
+     "rows": 325
+    },
+    {
+     "surface": "eval/lingala/asr/soreva-v1",
+     "rows": 150
+    },
+    {
+     "surface": "eval/lingala/asr/soreva-v1-tier2-dev",
+     "rows": 69
+    },
+    {
+     "surface": "eval/lingala/asr/soreva-v1-tier2-sealed",
+     "rows": 81
+    }
+   ],
+   "diagnostic_only": [
+    {
+     "surface": "eval/lingala/asr/v1",
+     "rows": 35
+    },
+    {
+     "surface": "eval/lingala/asr/v2-holdout",
+     "rows": 77
+    }
+   ]
+  },
+  "ngiemboon": {
+   "score_on": [
+    {
+     "surface": "eval/ngiemboon/asr/cvcm1",
+     "rows": 348
+    },
+    {
+     "surface": "eval/ngiemboon/asr/soreva-v1",
+     "rows": 150
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "ngombala": {
+   "score_on": [
+    {
+     "surface": "eval/ngombala/asr/cvcm1",
+     "rows": 489
+    },
+    {
+     "surface": "eval/ngombala/asr/soreva-v1",
+     "rows": 145
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "pidgin": {
+   "score_on": [
+    {
+     "surface": "eval/pidgin/asr/av-heldout-dev",
+     "rows": 1500
+    },
+    {
+     "surface": "eval/pidgin/asr/av-heldout-dev-e1",
+     "rows": 1500
+    },
+    {
+     "surface": "eval/pidgin/asr/av-heldout-sealed",
+     "rows": 1500
+    },
+    {
+     "surface": "eval/pidgin/asr/av-heldout-sealed-e1",
+     "rows": 1500
+    },
+    {
+     "surface": "eval/pidgin/asr/soreva-v1",
+     "rows": 142
+    },
+    {
+     "surface": "eval/pidgin/asr/soreva-v1-tier2-dev",
+     "rows": 72
+    },
+    {
+     "surface": "eval/pidgin/asr/soreva-v1-tier2-sealed",
+     "rows": 70
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "swahili": {
+   "score_on": [
+    {
+     "surface": "eval/swahili/asr/fleurs-v1",
+     "rows": 697
+    },
+    {
+     "surface": "eval/swahili/asr/fleurs-v1-tier2-dev",
+     "rows": 354
+    },
+    {
+     "surface": "eval/swahili/asr/fleurs-v1-tier2-sealed",
+     "rows": 343
+    },
+    {
+     "surface": "eval/swahili/asr/soreva-v1",
+     "rows": 146
+    },
+    {
+     "surface": "eval/swahili/asr/soreva-v1-tier2-dev",
+     "rows": 78
+    },
+    {
+     "surface": "eval/swahili/asr/soreva-v1-tier2-sealed",
+     "rows": 68
+    }
+   ],
+   "diagnostic_only": []
+  },
+  "yangben": {
+   "score_on": [
+    {
+     "surface": "eval/yangben/asr/cvcm1",
+     "rows": 216
+    },
+    {
+     "surface": "eval/yangben/asr/soreva-v1",
+     "rows": 132
+    }
+   ],
+   "diagnostic_only": []
+  }
+ },
+ "excluded_from_scope": "eval/ewe/tts/v1 is a TTS manifest, not ASR. It sits under eval/ewe/ and is excluded here; only <lang>/asr/ surfaces are ASR-scorable.",
+ "all_other_languages": "The other nine languages have no contaminated ASR surface: 0 overlap with gb10 training.",
+ "packet": "platform/manifests/B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json"
+}

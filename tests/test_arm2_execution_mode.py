@@ -131,6 +131,8 @@ def test_injection_fires_for_kd_off_comparative_control():
 # skip: every committed plain packet is either here (renders to golden) or in
 # the fail-closed set below (refuses cleanly with JobRefusal).
 PLAIN_GOLDEN = {
+    "B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json":
+        "edf8181a851d4d2cea5e3afaee192532aadf76c38a1257cdb56fff8a9b0c3d21",
     "CM-PILOT-DIAG-SAGEMAKER-BINDINGS-2026-001.json":
         "451f2419444bcb55f3c23c39f20826b894ab31c8576d314c9dc3bb2f54664736",
     "CM-PILOT-WARM-SAGEMAKER-BINDINGS-2026-001.json":
