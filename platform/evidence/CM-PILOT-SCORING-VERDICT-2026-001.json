@@ -49,14 +49,18 @@
   "manifest": {
    "uri": "s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-scoring-manifest-v3.jsonl",
    "sha256": "071f45d76243d299cabb7799af476e3a3abc27ad1ff21030dbb24a78bf5600f2",
-   "rows": 1946
+   "rows": 1946,
+   "version_id": "z5zfvbQO8UNaaGSpRnsRRifLQ.lPQHp2"
   },
   "references": {
-   "uri": "s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-references-v3.jsonl"
+   "uri": "s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-references-v3.jsonl",
+   "sha256": "4b6de3436074b20b5204578a371973d9adff3dff344cd2f39ea32e131ee9522b",
+   "version_id": "fCILSH2HCX7MCdUv9HFx5HiwrLeogmcy",
+   "rows": 1946
   },
   "row_schema_note": "v1/v2 used audio_s3_uri, copied from the omniasr_score.py module docstring. The evaluator actually reads row['audio_filepath'] (pipeline/omniasr_data.py:35). v3 matches the working Arm-2 manifest exactly: {audio_checksum_sha256, audio_filepath}.",
   "metric_source": "services/asr-eval-runtime/medzen_asr_eval/metrics.py (normalize_text + error_counts)",
-  "uncertainty": "corpus-level ratio bootstrapped over utterances, 2000 draws for absolute rates and 4000 for paired deltas, fixed seeds; NOT a mean of per-utterance rates"
+  "uncertainty": "SUPERSEDED. The absolute-rate intervals in `results` are corpus-level ratios bootstrapped over UTTERANCES (2000 draws, fixed seed). Utterances are clustered within speakers, so those intervals are too narrow and are retained only as lower bounds on the true uncertainty. The defensible treatment is in `uncertainty_correction`, which resamples SPEAKERS."
  },
  "surfaces": {
   "cv_test": "Common Voice 26.0 held-out test — IN-DOMAIN, speaker- and prompt-disjoint",
@@ -501,7 +505,7 @@
   }
  },
  "verdict": [
-  "PRIMARY RESULT, and the only comparison this design supports: on these exact 1,419 in-domain clips, pooled word error moved +0.09 pp under the warm-started run (speaker-clustered 95% CI -0.40 to +0.55, 20 speakers). No pooled in-domain advantage was detected. The null holds under a corrected normaliser too (-0.04 pp).",
+  "PRIMARY RESULT, and the only comparison this design supports: on these exact 1,419 in-domain clips, pooled word error moved +0.09 pp under the warm-started run (speaker-clustered 95% CI -0.40 to +0.55, 20 speakers). NO POOLED IN-DOMAIN ADVANTAGE WAS DETECTED. This is a failure to detect a difference, not evidence that none exists. The same finding survives every normalisation policy tested.",
   "That is NOT an answer to the initialisation question. The two runs used different trainer images and therefore different code and different RNG consumption before LoRA init, so initialisation is confounded with the image. This is a single-seed, cross-image diagnostic.",
   "Neither run used replay. Both trained on the four Cameroon languages only.",
   "Out of domain nothing is resolvable: SOREVA carries one speaker per language.",
@@ -544,10 +548,27 @@
      "written": "menɔ̀ɔn",
      "scored": "menɔ ɔn"
     }
-   ]
+   ],
+   "CORRECTION_characterisation": "Calling the canonical metric 'tone-insensitive' overstates it in one direction and understates it in another. It is SELECTIVELY COMBINING-MARK-BLIND, and that is worse than being cleanly tone-insensitive, because the metric is not internally consistent about tone.",
+   "what_survives_and_what_does_not": {
+    "marks_destroyed": 4240,
+    "marks_that_survive_because_they_precompose": 7201,
+    "share_of_all_marks_lost_pct": 37,
+    "non_tone_marks_among_the_destroyed": {
+     "U+0327 cedilla": 376,
+     "U+0330 tilde below": 2,
+     "share_pct": 8.9
+    },
+    "consequence": [
+     "Tone written on a vowel that precomposes (a-acute, i-acute, a-caron, e-circumflex) IS scored.",
+     "Tone written on a vowel that cannot precompose (schwa, open-o, barred-u, open-e) is DELETED and not scored.",
+     "So the same tone contrast is graded or ignored depending on which vowel carries it, which makes the metric incoherent rather than merely lenient.",
+     "8.9% of what it destroys is not tone at all — cedilla and tilde below are segmental diacritics."
+    ]
+   }
   },
   "direction_CORRECTED": {
-   "counterfactual": "A mark-PRESERVING normaliser: identical to the canonical one except that category Mn characters are kept and stay attached to their base letter. Deleting the marks instead is not a fix — it is the same information loss without the word split, and it reproduces the canonical numbers exactly.",
+   "counterfactual": "A mark-PRESERVING normaliser: identical to the canonical one except that category Mn characters are kept attached to their base letter.",
    "in_domain_pooled_base_init": {
     "wer_canonical": 42.63,
     "wer_mark_preserving": 48.43,
@@ -597,10 +618,10 @@
     }
    },
    "finding": [
-    "The canonical scorer is OPTIMISTIC, not inflationary. Destroying the marks gives the model free credit for every tone error it makes, and that effect dominates the opposing effect of the inflated word denominator.",
-    "Every reported WER and CER in this record is therefore a FLOOR. The tone-sensitive in-domain pooled figures are about 48.4% WER and 13.7% CER, against the 42.6% and 11.5% reported.",
-    "CER is NOT immune. Reference characters rise 8.2% under the fix (46,144 -> 49,938) because the canonical scorer loses exactly one character per destroyed mark. In relative terms CER moves MORE than WER.",
-    "The canonical metrics are best described as TONE-INSENSITIVE WER and CER, and should be labelled that way."
+    "The canonical scorer is OPTIMISTIC, not inflationary. Destroying marks gives the model free credit for the contrasts it deletes, and that outweighs the opposing effect of the inflated word denominator.",
+    "Every reported WER and CER in this record is therefore a FLOOR. The mark-sensitive in-domain pooled figures are about 48.4% WER and 13.7% CER, against the 42.6% and 11.5% reported.",
+    "CER is not immune. Reference characters rise 8.2% under a mark-preserving scorer (46,144 -> 49,938) because the canonical scorer loses exactly one character per destroyed mark.",
+    "The canonical metrics should be labelled SELECTIVELY COMBINING-MARK-BLIND, not tone-insensitive: they grade tone on precomposing vowels and ignore it elsewhere."
    ],
    "reference_word_inflation_pct": {
     "ngiemboon": 11.9,
@@ -609,21 +630,47 @@
     "gbaya": 14.7,
     "pooled": 12.2
    },
-   "cross_language_warning": "Inflation ranges from 9.0% to 18.2%, so the four canonical WERs are not comparable with each other, nor with externally published WER for these languages."
+   "cross_language_warning": "Inflation ranges from 9.0% to 18.2%, so the four canonical WERs are not comparable with each other, nor with externally published WER for these languages.",
+   "CORRECTION_delete_variant": "An earlier version of this record said that deleting the marks instead 'reproduces the canonical numbers exactly'. That is only half true and the wording is withdrawn. Deleting ONLY the marks the canonical scorer would have spaced out leaves the character stream untouched, so CER and the character-error count are genuinely identical (11.54% and 5,326 errors either way). WER is NOT: without the spurious word splits the denominator falls from 14,305 to 12,754 and in-domain pooled WER moves to 43.21% against the published 42.63%.",
+   "three_policies_in_domain_pooled_base_init": {
+    "v1_canonical": {
+     "ref_words": 14305,
+     "ref_chars": 46144,
+     "wer": 42.63,
+     "cer": 11.54
+    },
+    "tone_insensitive_surviving_marks_deleted": {
+     "ref_words": 12754,
+     "ref_chars": 46144,
+     "wer": 43.21,
+     "cer": 11.54
+    },
+    "tone_sensitive_marks_preserved": {
+     "ref_words": 12754,
+     "ref_chars": 49938,
+     "wer": 48.43,
+     "cer": 13.73
+    }
+   }
   },
   "robustness_of_the_primary_result": {
    "note": "The warm-versus-base comparison is NOT affected by any of this — both arms are scored identically.",
    "cv_test_pooled_delta_warm_minus_base_pp": {
-    "canonical": {
+    "v1_canonical": {
      "wer": 0.09,
      "cer": -0.02
     },
-    "mark_preserving": {
+    "tone_insensitive_surviving_marks_deleted": {
+     "wer": -0.37,
+     "cer": -0.02
+    },
+    "tone_sensitive_marks_preserved": {
      "wer": -0.04,
      "cer": 0.06
-    }
+    },
+    "note": "All three are small and inconsistent in sign, which is what a genuine non-effect looks like."
    },
-   "conclusion": "The null holds under both normalisers."
+   "conclusion": "No pooled advantage is detected under any policy. Absence of a detected difference is not proof of no difference, particularly at 20 speakers and a single seed."
   },
   "tone_share_of_word_errors": {
    "method": "Align reference and hypothesis word sequences under ONE tokenization, then count substitutions whose two words are identical after removing combining marks. Denominator is the scorer's own word_errors under that same tokenization.",
