@@ -741,5 +741,18 @@
    "Every per-language significance statement, in both directions."
   ]
  },
- "superseded_claims_note": "This record was corrected on 2026-09-04 after review. The scoring pipeline, the raw counts and the duplicate-removal all verified clean; the corrections are to the experiment description, the uncertainty treatment and the tone analysis."
+ "superseded_claims_note": "This record was corrected on 2026-09-04 after review. The scoring pipeline, the raw counts and the duplicate-removal all verified clean; the corrections are to the experiment description, the uncertainty treatment and the tone analysis.",
+ "scorer_fix_and_corrections": {
+  "record": "ASR-EVAL-TONE-POLICY-CORRECTION-2026-001",
+  "path": "platform/evidence/ASR-EVAL-TONE-POLICY-CORRECTION-2026-001.json",
+  "recorded_utc": "2026-09-04T04:53:09Z",
+  "what_it_does": "The scorer defect this record identified is FIXED. metrics.py now requires every caller to name a tone policy and exposes a tone-sensitive and a declared tone-insensitive variant; the pre-fix behaviour survives only as a named, deprecated policy for reproducing published scores.",
+  "figures_in_THIS_record_are_unchanged": "Nothing here is restated. Every number above stands as published, under the normaliser that produced it. The correction record verified them independently: the v1 in-domain pooled figures, the 46,144 -> 49,938 reference-character count, the 4,240 marks and the full mark inventory all reproduce EXACTLY.",
+  "two_claims_above_are_corrected_there": [
+   "direction_CORRECTED.counterfactual says deleting the marks 'reproduces the canonical numbers exactly'. That holds for CER (11.54 = 11.54) and not for WER (43.21 against 42.63). The conclusion it supports is upheld and strengthened.",
+   "SUPERSEDES withdraws 'pooled 42.6 -> 33.3' on the ground that stripping marks gives the rates different denominators. The withdrawal stands; the stated reason does not. A consistently tone-insensitive normaliser shares its word denominator with the tone-sensitive one (12,754 both); it is v1 (14,305) that is comparable with neither."
+  ],
+  "mark_preserving_figures_above_are_fractionally_higher_than_the_shipped_normaliser": "48.43 vs 48.39 pooled WER, 13.73 vs 13.75 pooled CER, ngombala 45.32 vs 45.22, paired delta -0.04 vs -0.02. The shipped normaliser additionally drops a mark with no surviving base to attach to. No conclusion moves.",
+  "primary_result_restated_as_unchanged": "The warm-versus-base null holds under all three policies (+0.09 pp v1, -0.02 pp tone-sensitive, -0.44 pp tone-insensitive)."
+ }
 }

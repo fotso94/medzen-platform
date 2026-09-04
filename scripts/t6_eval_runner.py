@@ -6,7 +6,8 @@ at the asset card's own path) on the frozen 9-language suite rows, through
 the IDENTICAL inference path that produced the baselines
 (medzen_asr_eval.backends.MetaBackend -> omnilingual ASRInferencePipeline,
 batch_size 1, unconditioned) and the IDENTICAL scorer
-(medzen_asr_eval.metrics.error_counts, pooled per language).
+(medzen_asr_eval.metrics.error_counts under the tone policy named in
+NORMALIZATION_POLICY below, pooled per language).
 
 Inputs (mounted):
   /inputs/t6-selection-*.json   frozen row chunks (hash-pinned upstream)
@@ -32,7 +33,17 @@ from pathlib import Path
 sys.path.insert(0, "/repo/services/asr-eval-runtime")
 
 from medzen_asr_eval.backends import MetaBackend  # noqa: E402
-from medzen_asr_eval.metrics import error_counts  # noqa: E402
+from medzen_asr_eval.metrics import (  # noqa: E402
+    POLICY_LABELS,
+    TONE_SENSITIVE,
+    error_counts,
+)
+
+# Declared tone policy for this gate. Tone is phonemic in several of the
+# nine languages, so the gate scores it. Under the pre-fix normaliser
+# combining marks were destroyed, which handed the model free credit for
+# every tone error; those numbers were optimistic floors.
+NORMALIZATION_POLICY = TONE_SENSITIVE
 
 
 def main() -> int:
@@ -55,7 +66,8 @@ def main() -> int:
             started = time.monotonic()
             transcript = backend.transcribe(audio, None)   # unconditioned
             latency = time.monotonic() - started
-            errors = error_counts(row["reference"], transcript.text)
+            errors = error_counts(
+                row["reference"], transcript.text, policy=NORMALIZATION_POLICY)
             per_language[row["language"]].append(errors)
             receipts.append({
                 "audio_sha256": sha,
@@ -71,6 +83,8 @@ def main() -> int:
     results = {"record": "T6-GATE-MEASUREMENTS",
                "candidate": "omniASR_CTC_1B_v2_medzen_r2",
                "mode": "unconditioned",
+               "normalization_policy": NORMALIZATION_POLICY,
+               "normalization_policy_label": POLICY_LABELS[NORMALIZATION_POLICY],
                "rows": total,
                "per_language": {}}
     for language, items in sorted(per_language.items()):

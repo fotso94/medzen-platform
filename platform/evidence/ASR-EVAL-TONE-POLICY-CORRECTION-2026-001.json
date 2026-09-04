@@ -1,0 +1,555 @@
+{
+ "affected_evaluations": [
+  {
+   "evaluation": "Cameroon diagnostic pilot — CM-PILOT-SCORING-VERDICT-2026-001",
+   "languages": [
+    "ngiemboon",
+    "ngombala",
+    "yangben",
+    "gbaya"
+   ],
+   "primary_result": "UNAFFECTED. Both arms are scored identically and the null holds under every policy: warm minus base pooled WER +0.09 pp under v1, -0.02 pp tone-sensitive, -0.44 pp tone-insensitive.",
+   "rescoring": "POSSIBLE and DONE here — the receipts retain hyp_normalized.",
+   "scorer_path": "metrics.py normalize_text + error_counts (declared in the record's metric_source, and confirmed here by exact reproduction)",
+   "status": "ALREADY DISCLOSED in that record and QUANTIFIED there. Tone-sensitive in-domain pooled figures are about 48.4% WER and 13.7% CER against 42.6% and 11.5% published."
+  },
+  {
+   "distinct_scored_rows": 23768,
+   "evaluation": "ASR base-model pilot — the pilot.py surface across the 003A/003B attempt receipts",
+   "languages_affected": 24,
+   "largest_affected_language_by_rows": {
+    "yoruba": {
+     "marks": 4981,
+     "ref_char_loss_pct": 4.51,
+     "ref_word_inflation_pct": 9.17,
+     "rows": 1321
+    }
+   },
+   "rescoring": "NOT POSSIBLE retroactively. The row receipts set contains_credentials_phi_audio_reference_or_prediction=false and hypothesis TEXT is deliberately never persisted — only its sha256. Correcting these figures requires re-running inference.",
+   "scorer_path": "metrics.py via pilot.py",
+   "status": "AFFECTED. Every published WER and CER for these 24 languages is a tone-blind FLOOR.",
+   "unaffected_languages_in_the_same_pilot": [
+    "amharic",
+    "bamun",
+    "basaa",
+    "duala",
+    "english",
+    "french",
+    "fula",
+    "fulfulde",
+    "hausa",
+    "kera",
+    "kinyarwanda",
+    "lamso",
+    "lingala",
+    "luganda",
+    "malagasy",
+    "mundang",
+    "oromo",
+    "pidgin",
+    "pulaar",
+    "sepedi",
+    "shona",
+    "swahili",
+    "wolof"
+   ],
+   "worst_by_mark_density_per_1k_chars": {
+    "bafia": 73.49,
+    "eton": 132.5,
+    "ghomala": 133.22,
+    "ngiemboon": 76.11,
+    "ngombala": 89.93
+   },
+   "worst_by_word_denominator_inflation_pct": {
+    "bafia": 18.83,
+    "eton": 27.14,
+    "ngiemboon": 22.71,
+    "nugunu": 24.67,
+    "yambeta": 25.53
+   }
+  },
+  {
+   "action": "The A5 gate matrix row 'Tonal-language CER' is NOT_EVALUATED for want of an owner-approved tonal holdout and threshold. It must not be marked evaluated using v1 numbers.",
+   "caveat": "Magnitudes are measured on the eval/ manifests for those languages; the gate's own frozen selection chunks live under research/ and were not re-read for this survey.",
+   "evaluation": "T6 gate — B5-T6-GATE-2026-001",
+   "frozen_pool_languages": [
+    "ewe",
+    "french",
+    "fula",
+    "kinyarwanda",
+    "lingala",
+    "pulaar",
+    "swahili",
+    "wolof",
+    "yemba"
+   ],
+   "languages_affected": [
+    "ewe",
+    "yemba"
+   ],
+   "magnitude": {
+    "ewe": {
+     "marks_per_1k_chars": 13.89,
+     "ref_char_loss_pct": 1.39,
+     "ref_word_inflation_pct": 1.73
+    },
+    "yemba": {
+     "marks_per_1k_chars": 53.42,
+     "ref_char_loss_pct": 5.34,
+     "ref_word_inflation_pct": 8.58
+    }
+   },
+   "scorer_path": "scripts/t6_eval_runner.py -> metrics.py error_counts",
+   "status": "AFFECTED, GATE OUTCOME ROBUST. ewe and yemba are exactly the two languages the report calls improvements (ewe 96.3->92.9, yemba 102.6->94.9). Both were scored FAIL against absolute bars they missed by wide margins, and tone-sensitive scoring can only raise error, so both verdicts hold and would hold harder. The improvement DELTAS are the more robust part of that table, since baseline and candidate were scored identically. The ABSOLUTE ewe and yemba figures are floors."
+  }
+ ],
+ "authority_for_the_defect": "platform/evidence/CM-PILOT-SCORING-VERDICT-2026-001.json, error_decomposition_in_domain",
+ "corrections_to_published_claims": [
+  {
+   "correction": "'Exactly' holds for CER (11.54 = 11.54) and NOT for WER (43.21 against 42.63, a 0.58 pp gap). The word split does move WER on its own, in the same optimistic direction. The conclusion the sentence supports — that deleting marks is not the fix — is unaffected and is strengthened.",
+   "corrects": "CM-PILOT-SCORING-VERDICT-2026-001, error_decomposition_in_domain.direction_CORRECTED.counterfactual: 'Deleting the marks instead is not a fix — it is the same information loss without the word split, and it reproduces the canonical numbers exactly.'",
+   "disposition": "CLAIM NARROWED, CONCLUSION UPHELD",
+   "measured": {
+    "delete_only_the_marks_v1_destroyed_no_split": {
+     "cer_pct": 11.54,
+     "reference_characters": 46144,
+     "reference_words": 12754,
+     "wer_pct": 43.21
+    },
+    "v1_canonical": {
+     "cer_pct": 11.54,
+     "reference_characters": 46144,
+     "reference_words": 14305,
+     "wer_pct": 42.63
+    }
+   }
+  },
+  {
+   "consequence": "The three rates bracket the same system: tone-sensitive 48.39%, v1 42.63%, consistently tone-insensitive 33.27%. v1 is NEITHER metric. It scores tone on the vowels that happen to precompose and ignores it on the vowels that do not, so it cannot be read as tone-sensitive or as tone-insensitive, and the 42.63% figure has no clean interpretation at all.",
+   "correction": "The stated reason for the withdrawal does not hold. A consistently tone-insensitive normaliser shares its WORD denominator with the tone-sensitive one (12,754 both), so the two ARE comparable with each other; it is v1 (14,305) that is comparable with neither. 33.3% was a sound measurement of a DIFFERENT, coherent metric, not an artifact of mismatched denominators. It was right to stop reporting it as if it were the same metric as the 42.6% figure.",
+   "corrects": "CM-PILOT-SCORING-VERDICT-2026-001, error_decomposition_in_domain.SUPERSEDES: the withdrawal of 'pooled 42.6 -> 33.3' on the ground that stripping marks 'changes the tokenization, so the rates had different denominators'.",
+   "disposition": "WITHDRAWAL UPHELD, ITS STATED REASON REPLACED",
+   "measured": {
+    "consistent_tone_insensitive_in_domain_pooled_base": {
+     "cer_pct": 7.22,
+     "reference_characters": 46144,
+     "reference_words": 12754,
+     "wer_pct": 33.27
+    },
+    "tone_sensitive_in_domain_pooled_base": {
+     "cer_pct": 13.75,
+     "reference_characters": 49938,
+     "reference_words": 12754,
+     "wer_pct": 48.39
+    }
+   }
+  }
+ ],
+ "eval_manifest_survey": {
+  "clean_means": "zero category-Mn marks survive NFC in the references, so v1 and the tone-sensitive policy produce identical text. Includes every Latin-script language whose diacritics precompose, and akan, whose eval references carry no combining marks at all despite being tonal.",
+  "column_meanings": {
+   "marks_destroyed_by_v1": "category-Mn codepoints surviving NFC in the references; v1 turned each into a space",
+   "marks_per_1k_chars": "mark density, comparable with the 150/1k that assigned yemba to tonal-norm-v1 in GB1-NORMALIZER-AUDIT-2026-001",
+   "ref_char_loss_pct": "share of reference CHARACTERS v1 never counted — the CER denominator shortfall",
+   "ref_word_inflation_pct": "share by which v1's reference WORD count exceeds the true one — the WER denominator inflation"
+  },
+  "language_prefixes": 49,
+  "languages_affected": 24,
+  "languages_clean": [
+   "acholi",
+   "akan",
+   "amharic",
+   "bamun",
+   "basaa",
+   "duala",
+   "english",
+   "french",
+   "fula",
+   "fulfulde",
+   "hausa",
+   "kera",
+   "kinyarwanda",
+   "lamso",
+   "lingala",
+   "luganda",
+   "malagasy",
+   "mundang",
+   "oromo",
+   "pidgin",
+   "pulaar",
+   "sepedi",
+   "shona",
+   "swahili",
+   "wolof"
+  ],
+  "magnitude_per_language": [
+   {
+    "language": "ghomala",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 152,
+    "marks_per_1k_chars": 133.22,
+    "pct_rows_affected": 85.39,
+    "ref_char_loss_pct": 13.32,
+    "ref_word_inflation_pct": 13.8,
+    "rows": 89,
+    "rows_affected": 76
+   },
+   {
+    "language": "eton",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 232,
+    "marks_per_1k_chars": 132.5,
+    "pct_rows_affected": 75.33,
+    "ref_char_loss_pct": 13.25,
+    "ref_word_inflation_pct": 27.14,
+    "rows": 150,
+    "rows_affected": 113
+   },
+   {
+    "language": "gbaya",
+    "manifests": 2,
+    "marks_destroyed_by_v1": 1060,
+    "marks_per_1k_chars": 94.32,
+    "pct_rows_affected": 72.71,
+    "ref_char_loss_pct": 9.43,
+    "ref_word_inflation_pct": 13.53,
+    "rows": 469,
+    "rows_affected": 341
+   },
+   {
+    "language": "ngombala",
+    "manifests": 2,
+    "marks_destroyed_by_v1": 1800,
+    "marks_per_1k_chars": 91.18,
+    "pct_rows_affected": 86.75,
+    "ref_char_loss_pct": 9.12,
+    "ref_word_inflation_pct": 9.7,
+    "rows": 634,
+    "rows_affected": 550
+   },
+   {
+    "language": "nugunu",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 189,
+    "marks_per_1k_chars": 85.21,
+    "pct_rows_affected": 60.67,
+    "ref_char_loss_pct": 8.52,
+    "ref_word_inflation_pct": 24.67,
+    "rows": 150,
+    "rows_affected": 91
+   },
+   {
+    "language": "bafia",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 112,
+    "marks_per_1k_chars": 73.49,
+    "pct_rows_affected": 55.56,
+    "ref_char_loss_pct": 7.35,
+    "ref_word_inflation_pct": 18.83,
+    "rows": 144,
+    "rows_affected": 80
+   },
+   {
+    "language": "medumba",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 123,
+    "marks_per_1k_chars": 73.08,
+    "pct_rows_affected": 54.79,
+    "ref_char_loss_pct": 7.31,
+    "ref_word_inflation_pct": 16.23,
+    "rows": 146,
+    "rows_affected": 80
+   },
+   {
+    "language": "isu",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 116,
+    "marks_per_1k_chars": 67.21,
+    "pct_rows_affected": 50.34,
+    "ref_char_loss_pct": 6.72,
+    "ref_word_inflation_pct": 11.29,
+    "rows": 147,
+    "rows_affected": 74
+   },
+   {
+    "language": "yambeta",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 134,
+    "marks_per_1k_chars": 64.8,
+    "pct_rows_affected": 46.0,
+    "ref_char_loss_pct": 6.48,
+    "ref_word_inflation_pct": 25.53,
+    "rows": 150,
+    "rows_affected": 69
+   },
+   {
+    "language": "maka",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 102,
+    "marks_per_1k_chars": 60.5,
+    "pct_rows_affected": 50.0,
+    "ref_char_loss_pct": 6.05,
+    "ref_word_inflation_pct": 12.93,
+    "rows": 148,
+    "rows_affected": 74
+   },
+   {
+    "language": "nomaande",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 122,
+    "marks_per_1k_chars": 58.46,
+    "pct_rows_affected": 48.0,
+    "ref_char_loss_pct": 5.85,
+    "ref_word_inflation_pct": 17.46,
+    "rows": 150,
+    "rows_affected": 72
+   },
+   {
+    "language": "ewondo",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 89,
+    "marks_per_1k_chars": 57.57,
+    "pct_rows_affected": 45.67,
+    "ref_char_loss_pct": 5.76,
+    "ref_word_inflation_pct": 14.04,
+    "rows": 127,
+    "rows_affected": 58
+   },
+   {
+    "language": "ngiemboon",
+    "manifests": 2,
+    "marks_destroyed_by_v1": 867,
+    "marks_per_1k_chars": 56.66,
+    "pct_rows_affected": 77.51,
+    "ref_char_loss_pct": 5.67,
+    "ref_word_inflation_pct": 13.04,
+    "rows": 498,
+    "rows_affected": 386
+   },
+   {
+    "language": "ejagham",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 83,
+    "marks_per_1k_chars": 56.04,
+    "pct_rows_affected": 35.17,
+    "ref_char_loss_pct": 5.6,
+    "ref_word_inflation_pct": 13.92,
+    "rows": 145,
+    "rows_affected": 51
+   },
+   {
+    "language": "yemba",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 86,
+    "marks_per_1k_chars": 53.42,
+    "pct_rows_affected": 38.0,
+    "ref_char_loss_pct": 5.34,
+    "ref_word_inflation_pct": 8.58,
+    "rows": 150,
+    "rows_affected": 57
+   },
+   {
+    "language": "fefe",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 80,
+    "marks_per_1k_chars": 51.98,
+    "pct_rows_affected": 42.47,
+    "ref_char_loss_pct": 5.2,
+    "ref_word_inflation_pct": 13.97,
+    "rows": 146,
+    "rows_affected": 62
+   },
+   {
+    "language": "yangben",
+    "manifests": 2,
+    "marks_destroyed_by_v1": 513,
+    "marks_per_1k_chars": 47.16,
+    "pct_rows_affected": 66.38,
+    "ref_char_loss_pct": 4.72,
+    "ref_word_inflation_pct": 16.44,
+    "rows": 348,
+    "rows_affected": 231
+   },
+   {
+    "language": "yoruba",
+    "manifests": 3,
+    "marks_destroyed_by_v1": 5097,
+    "marks_per_1k_chars": 45.37,
+    "pct_rows_affected": 73.45,
+    "ref_char_loss_pct": 4.54,
+    "ref_word_inflation_pct": 9.25,
+    "rows": 1367,
+    "rows_affected": 1004
+   },
+   {
+    "language": "kom",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 78,
+    "marks_per_1k_chars": 43.41,
+    "pct_rows_affected": 30.07,
+    "ref_char_loss_pct": 4.34,
+    "ref_word_inflation_pct": 7.96,
+    "rows": 143,
+    "rows_affected": 43
+   },
+   {
+    "language": "bakoko",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 55,
+    "marks_per_1k_chars": 35.95,
+    "pct_rows_affected": 32.65,
+    "ref_char_loss_pct": 3.59,
+    "ref_word_inflation_pct": 7.84,
+    "rows": 147,
+    "rows_affected": 48
+   },
+   {
+    "language": "baka",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 47,
+    "marks_per_1k_chars": 28.19,
+    "pct_rows_affected": 26.53,
+    "ref_char_loss_pct": 2.82,
+    "ref_word_inflation_pct": 1.48,
+    "rows": 147,
+    "rows_affected": 39
+   },
+   {
+    "language": "kwasio",
+    "manifests": 1,
+    "marks_destroyed_by_v1": 38,
+    "marks_per_1k_chars": 25.23,
+    "pct_rows_affected": 21.97,
+    "ref_char_loss_pct": 2.52,
+    "ref_word_inflation_pct": 3.96,
+    "rows": 132,
+    "rows_affected": 29
+   },
+   {
+    "language": "ewe",
+    "manifests": 5,
+    "marks_destroyed_by_v1": 64,
+    "marks_per_1k_chars": 6.39,
+    "pct_rows_affected": 14.6,
+    "ref_char_loss_pct": 0.64,
+    "ref_word_inflation_pct": 0.97,
+    "rows": 363,
+    "rows_affected": 53
+   },
+   {
+    "language": "igbo",
+    "manifests": 3,
+    "marks_destroyed_by_v1": 13,
+    "marks_per_1k_chars": 0.1,
+    "pct_rows_affected": 0.7,
+    "ref_char_loss_pct": 0.01,
+    "ref_word_inflation_pct": 0.04,
+    "rows": 1437,
+    "rows_affected": 10
+   }
+  ],
+  "manifests": 103,
+  "marks_destroyed_by_v1": 11252,
+  "per_manifest_detail": "platform/evidence/ASR-EVAL-TONE-POLICY-CORRECTION-2026-001-manifest-survey.json",
+  "reference_field": "text_normalized (the field scripts/asr_base_model_pilot_assets.py binds as 'reference')",
+  "reference_rows": 46387,
+  "scope": "every manifest.jsonl under s3://medzen-speech/eval/ as of 2026-09-04"
+ },
+ "independent_reproduction": {
+  "method": "platform/evidence/receipts/cm-pilot-score-cm-{base,warm}-2026-004.receipts.json (hyp_normalized per audio checksum) scored against s3://medzen-speech/research/cm-pilot-scoring/cm-pilot-references-v3.jsonl, surface cv_test, 1,419 rows, through the shipped normalizers.",
+  "reproduced_exactly": {
+   "mark_inventory": {
+    "U+0300 grave": 236,
+    "U+0301 acute": 2879,
+    "U+0302 circumflex": 495,
+    "U+030C caron": 252,
+    "U+0327 cedilla": 376,
+    "U+0330 tilde below": 2
+   },
+   "marks_destroyed_across_all_1946_reference_rows": 4240,
+   "paired_delta_warm_minus_base_v1_pp": {
+    "wer": 0.09
+   },
+   "per_language_wer_v1": {
+    "gbaya": 42.17,
+    "ngiemboon": 37.7,
+    "ngombala": 38.08,
+    "yangben": 67.03
+   },
+   "reference_characters": {
+    "tone_sensitive": 49938,
+    "v1": 46144
+   },
+   "v1_in_domain_pooled_base": {
+    "cer_pct": 11.54,
+    "wer_pct": 42.63
+   }
+  },
+  "small_differences_from_the_verdict_record": {
+   "in_domain_pooled_base_cer_pct": {
+    "shipped_normalizer": 13.75,
+    "verdict": 13.73
+   },
+   "in_domain_pooled_base_wer_pct": {
+    "shipped_normalizer": 48.39,
+    "verdict": 48.43
+   },
+   "ngombala_wer_pct": {
+    "shipped_normalizer": 45.22,
+    "verdict": 45.32
+   },
+   "note": "The verdict's mark-preserving figures came from an ad-hoc variant. The shipped tone-sensitive normaliser additionally drops a mark that has no surviving base to attach to, so it lands fractionally lower. Direction, magnitude and every conclusion are unchanged.",
+   "paired_delta_warm_minus_base_pp": {
+    "shipped_normalizer": -0.02,
+    "verdict": -0.04
+   }
+  }
+ },
+ "not_affected": [
+  {
+   "implication": "Arm-2 nomination WERs are already tone-sensitive. They are NOT comparable with any v1 figure.",
+   "surface": "scripts/arm2_nomination_scorer.py — the Arm-2 nomination and Cameroon-pilot bootstrap scorer",
+   "why": "word_edits() splits on whitespace and applies NO normalisation at all. Its references are pinned text_normalized files and its hypotheses are receipt hyp_normalized, both of which PRESERVE combining marks. It never imports metrics.py."
+  },
+  {
+   "implication": "This fix brings the canonical scorer into line with a convention the repo already had; it does not introduce one.",
+   "surface": "pipeline/normalizers.py and everything scored through it, including scripts/run_baseline.py and the VAL-2026-001 baselines",
+   "why": "its _PUNCT class explicitly whitelists the U+0300-U+036F combining range, so marks were preserved there from the start. It also already carried a per-row normalization_version and a tonal/generic split."
+  }
+ ],
+ "record": "ASR-EVAL-TONE-POLICY-CORRECTION-2026-001",
+ "recorded_utc": "2026-09-04T04:53:09Z",
+ "required_next_actions": [
+  "Before ANY of the 24 affected languages is gated, bind an owner-approved tone policy for it, the same way GB1-NORMALIZER-AUDIT-2026-001 bound tonal-norm-v1 to yemba on measured mark density.",
+  "Re-run the ASR base-model pilot for the affected languages if their absolute WER or CER is to be quoted anywhere load-bearing.",
+  "Do not compare an Arm-2 nomination WER with a v1 pilot WER. They are different metrics."
+ ],
+ "schema_version": 1,
+ "status": "CANONICAL_SCORER_BEHAVIOUR_CHANGE_AND_EXPLICIT_FIGURE_CORRECTION",
+ "subject": "services/asr-eval-runtime/medzen_asr_eval/metrics.py normalize_text destroyed every combining mark that cannot precompose, and split the word where it stood. This record states the fix, the tone policy now required of every caller, which published evaluations are affected, and by how much. It corrects two claims and restates NO historical figure.",
+ "the_change": {
+  "after": "normalize_text(value, *, policy) — the policy is keyword-only and REQUIRED. A silent default is what made the canonical WER and CER tone-blind with no report saying so.",
+  "before": "normalize_text(value) mapped every character that is not alphanumeric, whitespace or an apostrophe to a SPACE. A category-Mn mark surviving NFC is not alphanumeric, so it became a space: the word SPLIT and the mark was DESTROYED. Precomposed vowels are single alphanumeric codepoints and were untouched, so the damage was SELECTIVE — it fell on schwa, open-o, barred-u and open-e, the vowels these orthographies need and Latin-1 lacks.",
+  "breaking_by_design": [
+   "normalize_text() and error_counts() raise TypeError without a named policy.",
+   "aggregate() refuses receipts whose rows carry no normalization_policy. Row receipts written before this change carry none, so re-aggregating them fails closed instead of publishing an unlabelled rate.",
+   "pilot.py refuses to resume a row receipt scored under a different policy than the current run declares."
+  ],
+  "declared_defaults": {
+   "run_pilot": "asr-eval-norm-v2-tone-sensitive (overridable, always recorded in the report)",
+   "scripts/build_cameroon_pilot_splits.py": "asr-eval-norm-v1-mark-destroying, PINNED. It decides prompt IDENTITY, never a score. v1 is what reproduces the cp1 splits, and it is the conservative choice: destroying marks collapses two prompts differing only in tone into ONE identity, forcing them into the SAME split. It can over-merge prompts; it can never leak one across the train/test boundary.",
+   "scripts/t6_eval_runner.py": "asr-eval-norm-v2-tone-sensitive"
+  },
+  "labelling": "error_counts() stamps normalization_policy into every row's counts, mirroring the per-row normalization_version that pipeline/normalizers.py has carried since B2.4. aggregate() REFUSES rows that declare no policy and REFUSES to pool two policies into one rate, and returns normalization_policy plus a human-readable normalization_policy_label. run_pilot() and scripts/t6_eval_runner.py name their policy and record it in their reports.",
+  "policies": {
+   "asr-eval-norm-v1-mark-destroying": "The pre-fix behaviour, byte-for-byte. DEPRECATED. Retained ONLY so an already-published score can be reproduced and shown to be wrong, and so scripts/build_cameroon_pilot_splits.py can keep reproducing the cp1 split partition.",
+   "asr-eval-norm-v2-tone-insensitive": "Marks removed CONSISTENTLY — from precomposed vowels too. A legitimate metric that must be LABELLED as tone-insensitive wherever it is reported. Same tokenisation as tone-sensitive, so the pair differs only in whether tone is scored.",
+   "asr-eval-norm-v2-tone-sensitive": "Combining marks kept, attached to their base character. Never emitted as a space. The honest reading for any figure published as WER or CER on a tone-marked language."
+  }
+ },
+ "what_this_record_does_NOT_do": [
+  "It does not restate any published WER or CER. Every historical figure stands as published, under the normaliser that produced it.",
+  "It does not retroactively correct the ASR base-model pilot tables — that is not computable without re-running inference, and this record says so rather than estimating.",
+  "It does not choose a tone policy for future gates. It makes the choice explicit, labelled and refusable; the policy for any gated language remains an owner decision."
+ ]
+}

@@ -31,7 +31,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "services/asr-eval-runtime"))
-from medzen_asr_eval.metrics import normalize_text  # noqa: E402
+from medzen_asr_eval.metrics import LEGACY_V1, normalize_text  # noqa: E402
+
+# PROMPT-IDENTITY POLICY — PINNED, DO NOT 'UPGRADE'.
+# This normaliser is used to decide whether two rows carry the SAME PROMPT,
+# never to score anything. The cp1 splits were partitioned under the v1
+# normaliser, so v1 is what reproduces them; moving to a tone-sensitive
+# normaliser would repartition every split and silently invalidate every
+# result already computed on them. v1 is also the conservative choice here:
+# it destroys combining marks, so two prompts differing only in tone collapse
+# to ONE identity and are forced into the SAME split. It can over-merge
+# prompts; it can never leak one across the train/test boundary.
+PROMPT_IDENTITY_POLICY = LEGACY_V1
 
 SEED = 20260903
 TARGET_TEST_HOURS = 0.90
@@ -96,7 +107,7 @@ def build(root: Path, locale: str,
     # cannot straddle the split.
     def prompt_of(row: dict) -> str:
         return (row["sentence_id"] if partition_key == "sentence_id"
-                else normalize_text(row["sentence"]))
+                else normalize_text(row["sentence"], policy=PROMPT_IDENTITY_POLICY))
 
     texts = sorted({prompt_of(r) for r in rows})
     rng = random.Random(SEED + stable_hash(locale) % 1000)
@@ -126,7 +137,8 @@ def build(root: Path, locale: str,
     def texts_of(name: str) -> set[str]:
         # assertions ALWAYS run on normalised text, whatever the partition key,
         # so the sentence_id mode still REPORTS the defect it reproduces
-        return {normalize_text(r["sentence"]) for r in splits[name]}
+        return {normalize_text(r["sentence"], policy=PROMPT_IDENTITY_POLICY)
+                for r in splits[name]}
 
     def speakers_of(name: str) -> set[str]:
         return {r["client_id"] for r in splits[name]}

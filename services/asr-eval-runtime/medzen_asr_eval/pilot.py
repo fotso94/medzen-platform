@@ -17,7 +17,7 @@ from .backends import Backend, Transcript
 from .conditioning import language_id, load_conditioning
 from .harness import EvaluationRefusal, canonical_json, write_once
 from .identity import CANDIDATES
-from .metrics import aggregate, error_counts, normalize_text
+from .metrics import POLICY_LABELS, TONE_SENSITIVE, aggregate, error_counts, normalize_text
 
 
 SHA256 = set("0123456789abcdef")
@@ -167,7 +167,9 @@ def _receipt_name(candidate: str, mode: str, checksum: str) -> str:
     return hashlib.sha256(identity).hexdigest() + ".json"
 
 
-def _existing_receipt(path: Path, candidate: str, mode: str, row: dict[str, Any]) -> dict[str, Any] | None:
+def _existing_receipt(
+    path: Path, candidate: str, mode: str, row: dict[str, Any], normalization_policy: str
+) -> dict[str, Any] | None:
     if not path.exists():
         return None
     try:
@@ -179,6 +181,15 @@ def _existing_receipt(path: Path, candidate: str, mode: str, row: dict[str, Any]
         raise EvaluationRefusal("existing row receipt identity differs")
     if value.get("status") not in {"PASS_ROW_INFERENCE", "NOT_APPLICABLE"}:
         raise EvaluationRefusal("existing row receipt is not resumable")
+    if value["status"] == "PASS_ROW_INFERENCE":
+        # A resumed row was scored under whatever policy that run declared.
+        # Reusing it under a different one would pool a tone-sensitive and a
+        # tone-blind count into one rate.
+        scored_under = value.get("errors", {}).get("normalization_policy")
+        if scored_under != normalization_policy:
+            raise EvaluationRefusal(
+                "existing row receipt was scored under normalization policy "
+                f"{scored_under!r}, not {normalization_policy!r}")
     return value
 
 
@@ -190,11 +201,16 @@ def run_pilot(
     receipt_root: Path,
     aggregate_path: Path,
     conditioning_path: Path | None = None,
+    normalization_policy: str = TONE_SENSITIVE,
     backend_loader: Callable[[str, str, str | None, Path], Backend] | None = None,
     model_verifier: Callable[[Path, Path], dict[str, Any]] = verify_model_root,
     sampler: GpuMemorySampler | None = None,
     clock: Callable[[], float] = time.monotonic,
 ) -> dict[str, Any]:
+    if normalization_policy not in POLICY_LABELS:
+        raise EvaluationRefusal(
+            f"unknown normalization policy {normalization_policy!r}; "
+            f"name one of {sorted(POLICY_LABELS)}")
     if backend_loader is None:
         from .backends import load_backend
 
@@ -234,7 +250,7 @@ def run_pilot(
             for mode in modes:
                 for row in rows:
                     path = receipt_root / _receipt_name(candidate, mode, row["audio_checksum_sha256"])
-                    existing = _existing_receipt(path, candidate, mode, row)
+                    existing = _existing_receipt(path, candidate, mode, row, normalization_policy)
                     if existing is not None:
                         receipts.append(existing)
                         not_applicable += existing["status"] == "NOT_APPLICABLE"
@@ -274,7 +290,7 @@ def run_pilot(
                         })
                         raise
                     latency = clock() - started
-                    prediction = normalize_text(transcript.text)
+                    prediction = normalize_text(transcript.text, policy=normalization_policy)
                     value = {
                         "status": "PASS_ROW_INFERENCE",
                         "candidate": candidate,
@@ -287,7 +303,8 @@ def run_pilot(
                         "reference_sha256": row["reference_sha256"],
                         "prediction": prediction,
                         "prediction_sha256": hashlib.sha256(prediction.encode()).hexdigest(),
-                        "errors": error_counts(row["reference"], prediction),
+                        "errors": error_counts(
+                            row["reference"], prediction, policy=normalization_policy),
                         "duration_seconds": row["duration_s"],
                         "latency_seconds": round(latency, 6),
                         "rtf": round(latency / row["duration_s"], 6),
@@ -326,6 +343,8 @@ def run_pilot(
     result = {
         "schema_version": 1,
         "status": summary["status"],
+        "normalization_policy": normalization_policy,
+        "normalization_policy_label": POLICY_LABELS[normalization_policy],
         "model_identity": model_identity,
         "runtime_rows": len(rows),
         "completed_inferences": len(completed),

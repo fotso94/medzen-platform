@@ -19,7 +19,7 @@ if str(PACKAGE) not in sys.path:
 
 from medzen_asr_eval.conditioning import language_id, load_conditioning
 from medzen_asr_eval.harness import EvaluationRefusal
-from medzen_asr_eval.metrics import aggregate, error_counts, normalize_text
+from medzen_asr_eval.metrics import TONE_SENSITIVE, aggregate, error_counts, normalize_text
 from medzen_asr_eval.network_probe import probe_network
 from pipeline.asr_base_model_pilot_receipts import ReceiptStore, STAGES
 from scripts.asr_base_model_pilot_fake import (
@@ -75,12 +75,13 @@ def test_language_conditioning_is_explicit_and_never_proxies() -> None:
 
 
 def test_metrics_normalize_and_aggregate_micro_macro_and_resources() -> None:
-    assert normalize_text("  HÉLLO,\nWORLD! ") == "héllo world"
-    assert error_counts("one two", "one too") == {
+    assert normalize_text("  HÉLLO,\nWORLD! ", policy=TONE_SENSITIVE) == "héllo world"
+    assert error_counts("one two", "one too", policy=TONE_SENSITIVE) == {
         "word_errors": 1,
         "reference_words": 2,
         "character_errors": 1,
         "reference_characters": 6,
+        "normalization_policy": TONE_SENSITIVE,
     }
     rows = []
     for language, word_errors, latency in (("english", 0, 1.0), ("french", 1, 2.0)):
@@ -90,7 +91,7 @@ def test_metrics_normalize_and_aggregate_micro_macro_and_resources() -> None:
             "mode": "unconditioned",
             "language": language,
             "source_id": "fleurs",
-            "errors": {"word_errors": word_errors, "reference_words": 2, "character_errors": word_errors, "reference_characters": 6},
+            "errors": {"word_errors": word_errors, "reference_words": 2, "character_errors": word_errors, "reference_characters": 6, "normalization_policy": TONE_SENSITIVE},
             "latency_seconds": latency,
             "rtf": latency / 2,
             "eos_failure": False,
