@@ -1,0 +1,14 @@
+{
+ "Version": "2012-10-17",
+ "Statement": [
+  {
+   "Sid": "CameroonPilotScoringInputs",
+   "Effect": "Allow",
+   "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+   "Resource": [
+    "arn:aws:s3:::medzen-speech/research/cm-pilot-scoring/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/cm-pilot-*/output/*"
+   ]
+  }
+ ]
+}

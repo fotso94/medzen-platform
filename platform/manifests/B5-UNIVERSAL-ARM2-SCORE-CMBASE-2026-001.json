@@ -31,7 +31,7 @@
  "image_tag": "arm2-ftcal-96992c3f5fe4e6e7b0891a61d9c10e80157c0e8e",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-arm2-score-cm-base-2026-002",
+ "job_id": "b5-arm2-score-cm-base-2026-003",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
  "managed_spot_reason": "owner rule: on-demand basis always",
