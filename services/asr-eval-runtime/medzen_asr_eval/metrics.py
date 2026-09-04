@@ -5,11 +5,20 @@ TONE POLICY (v2, 2026-09-04)
 Scoring text for these languages is not tone-neutral, so the normaliser is
 NOT allowed to pick a tone policy silently. Every caller names one.
 
-  TONE_SENSITIVE     combining marks are kept, attached to their base letter.
+  TONE_SENSITIVE     (v3) combining marks are kept, attached to their base
+                     letter, and CER is measured over the NFD codepoint
+                     stream so a mark costs the same whether or not its
+                     vowel precomposes. v2 kept the marks but still measured
+                     characters over NFC, so its CER was composition-
+                     dependent; the identifier moved to v3 because those two
+                     CERs are NOT poolable.
                      Tone is phonemic in the Grassfields/Bantu orthographies
                      in this eval surface, so this is the honest default for
                      any figure published as "WER" or "CER".
-  TONE_INSENSITIVE   all combining marks are removed, consistently, from
+  TONE_INSENSITIVE   (v2, unchanged: it strips every mark, so there is
+                     nothing for NFD to move and its character counts are
+                     byte-identical before and after the v3 fix)
+                     all combining marks are removed, consistently, from
                      precomposed and decomposed vowels alike. A legitimate
                      metric, but it must be LABELLED as tone-insensitive
                      wherever it is reported.
@@ -47,7 +56,7 @@ from typing import Any, Iterable
 
 from .harness import EvaluationRefusal
 
-TONE_SENSITIVE = "asr-eval-norm-v2-tone-sensitive"
+TONE_SENSITIVE = "asr-eval-norm-v3-tone-sensitive"
 TONE_INSENSITIVE = "asr-eval-norm-v2-tone-insensitive"
 LEGACY_V1 = "asr-eval-norm-v1-mark-destroying"
 

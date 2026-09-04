@@ -1,0 +1,9 @@
+{
+ "basis": "Owner directive 2026-09-04: mint FTCAL-002 because the -001 SageMaker job name is consumed, convert to arm2_comparative with KD explicitly disabled, and rerun the mechanics receipt. With MEDZEN_KD_ENABLE=0 the trainer takes _ctc_only_closure, which calls the SAME _batch_loss as plain training and records kd=0, alpha=0 (pipeline/omniasr_train.py:1347): the gradient path is unchanged, so this is packaging, not science. Worst case $3.20, below the $10 calibration tier. The 40,000-step arm stays held for the owner.",
+ "bindings": "platform/manifests/B5-GB10-11LANG-FTCAL-SAGEMAKER-BINDINGS-2026-002.json",
+ "bindings_sha256": "6e4a9ff9b96fc2c58fc66c1066794ebe295b60dc5548364c9020a640383ea08b",
+ "decision": "APPROVED",
+ "job_id": "b5-gb10-11lang-ftcal-2026-002",
+ "reviewed_utc": "2026-09-04T16:51:27Z",
+ "reviewer": "claude-primary-engineer"
+}

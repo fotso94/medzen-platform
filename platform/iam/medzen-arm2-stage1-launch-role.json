@@ -50,6 +50,39 @@
             "Sid": "CreateOnlyTheSixArm2Stage1JobsUnderHardConditions"
         },
         {
+            "Action": "sagemaker:CreateTrainingJob",
+            "Condition": {
+                "ForAllValues:StringEquals": {
+                    "sagemaker:InstanceTypes": [
+                        "ml.g6.xlarge"
+                    ],
+                    "sagemaker:VpcSecurityGroupIds": [
+                        "sg-0fee72d218ac002a7"
+                    ],
+                    "sagemaker:VpcSubnets": [
+                        "subnet-00232b25bc1ac407a"
+                    ]
+                },
+                "Null": {
+                    "sagemaker:InstanceTypes": "false",
+                    "sagemaker:VpcSecurityGroupIds": "false",
+                    "sagemaker:VpcSubnets": "false"
+                },
+                "NumericLessThanEquals": {
+                    "sagemaker:MaxRuntimeInSeconds": "144000"
+                },
+                "StringEquals": {
+                    "aws:RequestTag/medzen-tier": "arm",
+                    "sagemaker:OutputKmsKeyArn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57"
+                }
+            },
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-gb10-11lang-warm-2026-001"
+            ],
+            "Sid": "CreateOnlyTheGb10ElevenLanguageArmAt144ks"
+        },
+        {
             "Action": [
                 "sagemaker:CreateTrainingJob",
                 "sagemaker:UpdateTrainingJob"
@@ -67,17 +100,18 @@
             "Action": "sagemaker:AddTags",
             "Effect": "Allow",
             "Resource": [
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-001",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-h3-2026-001",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mech-mtcal-2026-004",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mtcal-2026-001",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mtcal-2026-002",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-gb10-11lang-warm-2026-001",
                 "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h0-2026-001",
                 "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h1-2026-001",
                 "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h2-2026-001",
                 "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h3-2026-001",
                 "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-h4-2026-001",
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-002",
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mtcal-2026-001",
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mtcal-2026-002",
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-h3-2026-001",
-                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-arm2b-mech-mtcal-2026-004"
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-001",
+                "arn:aws:sagemaker:eu-central-1:558069890522:training-job/medzen-b5-b5-universal-arm2-kdcontrol-2026-002"
             ],
             "Sid": "TagOnlyTheSixArm2Stage1Jobs"
         },

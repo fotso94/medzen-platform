@@ -1,0 +1,73 @@
+{
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXECUTION_MODE": "arm2_comparative",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,gbaya,kinyarwanda,lingala,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb10",
+  "MEDZEN_MAX_STEPS": "30",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "arm1",
+  "MEDZEN_STUDENT_INIT_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "MEDZEN_STUDENT_INIT_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_STUDENT_INIT_VERSION_ID": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "job_id": "b5-gb10-11lang-ftcal-2026-002",
+ "note": "Self-reference-free companion: same environment, result_verifier and job_id as the packet, and no execution_contract pointer, so the packet binds this file's sha without a cycle.",
+ "purpose": "Mechanics/calibration run for the eleven-language candidate: same recipe as the arm, 30 steps, KD off.",
+ "record": "B5-GB10-11LANG-FTCAL-EXECUTION-CONTRACT",
+ "result_verifier": {
+  "dev_manifests": {
+   "lingala": {
+    "language": "lingala",
+    "path": "platform/manifests/dev-sentinels/lingala.jsonl",
+    "rows": 60,
+    "sha256": "59b2485c947d6f0556fffaeb83744dd814589a8dca9ccba6d7e52ec0cc4d0f5a",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   },
+   "swahili": {
+    "language": "swahili",
+    "path": "platform/manifests/dev-sentinels/swahili.jsonl",
+    "rows": 60,
+    "sha256": "613fad796b8629c351fa023944b384f6198d74125733ea89e61af60adaf4c4a8",
+    "source_note": "all 60 frozen dev-selection rows for this language, copied VERBATIM (uri+checksum+reference) from the reviewed selection record; source pools carried per-row",
+    "source_record": "B5-UNIVERSAL-ARM1-DEV-SELECTION-2026-001"
+   }
+  },
+  "dev_sentinel_languages": [
+   "lingala",
+   "swahili"
+  ],
+  "expected_steps": 30,
+  "gpu_memory_ceiling_bytes": 23622320128,
+  "gpu_memory_ceiling_note": "22 GiB of the g6.xlarge's single NVIDIA L4 (24 GiB) \u2014 driver/fragmentation headroom.",
+  "kd_enabled": false,
+  "metrics_artifact": "calibration-metrics.json",
+  "metrics_schema": "b5-arm2-calibration-metrics/1",
+  "note": "KD-off comparative mechanics run. Same recipe as the arm; only the declared scale keys differ.",
+  "required_preservation_coverage": [
+   "english",
+   "ewe",
+   "french",
+   "kinyarwanda",
+   "lingala",
+   "pidgin",
+   "swahili"
+  ],
+  "script": "scripts/verify_arm2_calibration.py"
+ }
+}

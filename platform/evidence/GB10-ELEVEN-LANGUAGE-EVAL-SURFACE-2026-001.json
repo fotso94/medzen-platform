@@ -1,34 +1,41 @@
 {
  "record": "GB10-ELEVEN-LANGUAGE-EVAL-SURFACE-2026-001",
  "date": "2026-09-04",
- "supersedes_within_this_record": "The first version listed every ASR manifest under `score_on`, which pooled parent sets with their own dev/sealed partitions and would have double-counted audio. It also pinned only paths and row counts, which are not pins. Both are fixed here.",
- "purpose": "Names the surfaces the eleven-language candidate is scored on, per owner directive 2026-09-04: use the clean tier-1 Ewe and Lingala surfaces, keep the three contaminated legacy sets diagnostic-only, define independent primary surfaces that never pool a parent with its children, and pin manifests by sha256 and S3 VersionId rather than by path and row count.",
+ "purpose": "The surfaces the eleven-language candidate is scored on: clean tier-1 Ewe and Lingala, the three contaminated legacy sets diagnostic-only, independent primary surfaces that never pool a parent with its children, and every manifest pinned by sha256 and S3 VersionId.",
+ "MANDATORY_scorer_rule": {
+  "deduplicate_by": "audio_checksum_sha256",
+  "why": "eval/gbaya/asr/soreva-v1/manifest.jsonl carries 101 rows over 100 distinct clips: one clip appears twice with TWO different references ('gee-mɔ' and 'ninꞌam nɛ́ paul'). Scoring both rows would count that clip twice and score it against a reference that cannot both be right.",
+  "how_it_is_handled_here": "This record pins manifest.r2.jsonl wherever one exists — the published correction convention — which for gbaya soreva-v1 is the 100-row corrected file. After that preference NO pinned surface has rows != clips.",
+  "still_required": "The executable scorer MUST deduplicate by audio_checksum_sha256 regardless, and refuse when one checksum carries two different references. The pin is not a substitute for the check."
+ },
  "how_primaries_were_derived": [
-  "Read all 47 ASR manifests under s3://medzen-speech/eval/<lang>/asr/ and take each one's set of audio_checksum_sha256.",
-  "Collapse surfaces whose audio sets are IDENTICAL to a single representative, preferring the -e1 re-issue. This caught eval/pidgin/asr/av-heldout-dev vs av-heldout-dev-e1 and av-heldout-sealed vs -e1: byte-distinct manifests over exactly the same 1,500 clips each. Scoring both would double-count.",
-  "A PRIMARY surface is a representative strictly contained in no other representative of the same language. Partitions (dev/sealed and the deeper cv17-test-v1 nesting) are recorded under their parent and are never pooled with it.",
-  "Verified: primaries within a language are pairwise DISJOINT, so the primary set counts every clip once."
+  "Read all 47 ASR surfaces under s3://medzen-speech/eval/<lang>/asr/, preferring manifest.r2.jsonl over the frozen original wherever a correction exists (both are recorded).",
+  "Collapse surfaces whose audio sets are IDENTICAL to one representative, preferring the -e1 re-issue. This caught pidgin av-heldout-dev vs -dev-e1 and -sealed vs -sealed-e1: byte-distinct manifests over exactly the same 1,500 clips each.",
+  "A PRIMARY is a representative strictly contained in no other representative of the same language. Partitions are recorded under their parent and never pooled with it.",
+  "Verified: primaries within a language are pairwise DISJOINT."
  ],
  "totals": {
   "primary_surfaces": 20,
-  "primary_clips": 16003,
-  "note": "16,003 clips across 11 languages, each counted exactly once"
+  "primary_clips": 16001,
+  "note": "each clip counted exactly once across the primary set"
  },
  "contaminated_diagnostic_only": {
   "eval/ewe/asr/v1": "34 of 34 clips are in gb10 training",
   "eval/lingala/asr/v1": "35 of 35 clips are in gb10 training",
   "eval/lingala/asr/v2-holdout": "77 of 77 clips are in gb10 training",
-  "rule": "Never quote a headline WER or CER from these. They measure memorisation. Inherited from gb9."
+  "rule": "Never quote a headline WER or CER from these. Inherited from gb9, not introduced by gb10."
  },
- "tier1_replacements": "Ewe scores on eval/ewe/asr/soreva-v1 (142 clips) and lingala on eval/lingala/asr/fleurs-v1 (642 clips) — exactly the tier-1 rows GB1-EVAL-ISOLATION-AUDIT-2026-001 recorded with audio_checksum_overlap 0.",
- "pins": "Every surface below carries the sha256 of the manifest bytes and its S3 VersionId. When the executable scoring manifest is built, it must be assembled from these exact object versions and carry its own sha256 + VersionId, as the Cameroon pilot's scoring manifest did.",
- "scope_note": "Only <lang>/asr/ surfaces are ASR-scorable. eval/ewe/tts/v1 sits under eval/ewe/ but is a TTS manifest and is excluded.",
+ "tier1_replacements": "Ewe scores on eval/ewe/asr/soreva-v1 (142 clips) and lingala on eval/lingala/asr/fleurs-v1 (642 clips) — the tier-1 rows GB1-EVAL-ISOLATION-AUDIT-2026-001 recorded with audio_checksum_overlap 0.",
+ "scope_note": "Only <lang>/asr/ surfaces are ASR-scorable; eval/ewe/tts/v1 is a TTS manifest and is excluded.",
  "per_language": {
   "english": {
    "primary_surfaces": [
     {
      "surface": "eval/english/asr/fleurs-v1",
      "manifest": "eval/english/asr/fleurs-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1040,
      "clips": 1040,
      "sha256": "c4dfad31181bf42a557ace36addefd68e8d689276913064a668f20c1342ce634",
      "version_id": "5QmE80XtBmP3s7dt98BBpl_PXbQ2cp2i"
@@ -38,6 +45,9 @@
     {
      "surface": "eval/english/asr/fleurs-v1-tier2-dev",
      "manifest": "eval/english/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 511,
      "clips": 511,
      "sha256": "1b65e5c4a0fd55caf4c155fe759febe5a802a0e34abb2a336133fcd1bbfcf215",
      "version_id": "2quCrzTBtlUG_BZRP8JOIs4yn6NyQOJP",
@@ -46,6 +56,9 @@
     {
      "surface": "eval/english/asr/fleurs-v1-tier2-sealed",
      "manifest": "eval/english/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 529,
      "clips": 529,
      "sha256": "5b0829d7266f850cab1613ff2af9fbd278c009cc8e0af4b9c3ddcb4b7aa5f58f",
      "version_id": "YUuS_GkYFLHjuE3TM4aEmUxix4ZIvHlD",
@@ -60,6 +73,9 @@
     {
      "surface": "eval/ewe/asr/soreva-v1",
      "manifest": "eval/ewe/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 142,
      "clips": 142,
      "sha256": "0aea5487682821bcdeb11c79b299960ae29e3444594a1b2282e82ed613fd7695",
      "version_id": "5ZgsDdaHOLLXWkQrTlTTpyXeG5ZYcYPj"
@@ -69,6 +85,9 @@
     {
      "surface": "eval/ewe/asr/soreva-v1-tier2-dev",
      "manifest": "eval/ewe/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 76,
      "clips": 76,
      "sha256": "f1e594173e68d19015a373d036234571f38e3712262ace2c0725e4f8d0ba734f",
      "version_id": "QTeWOFGyMqKFaJbjcKgvDFAlSHId.1Vd",
@@ -77,6 +96,9 @@
     {
      "surface": "eval/ewe/asr/soreva-v1-tier2-sealed",
      "manifest": "eval/ewe/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 66,
      "clips": 66,
      "sha256": "ee759c96fda8332fca4b09d3e899fc843eb8d097a0caabb2c216201ecc67b5a4",
      "version_id": "Yzgw620kC0jk3owcBouSXDudDbhjyQKi",
@@ -87,10 +109,13 @@
    "diagnostic_only": [
     {
      "surface": "eval/ewe/asr/v1",
-     "manifest": "eval/ewe/asr/v1/manifest.jsonl",
+     "manifest": "eval/ewe/asr/v1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/ewe/asr/v1/manifest.jsonl",
+     "rows": 34,
      "clips": 34,
-     "sha256": "10dba432787cfef6432c8573ffee8f7d95a641fabb4c7b1227bc900f8522c702",
-     "version_id": "wMPaI0gzh.NyXyKroxHMjG1KGzwGDxZT",
+     "sha256": "8142e15496226e1f2e84795bfb77e80c13ca2f71f21332a5726ff6d5c7544788",
+     "version_id": "lZz7_GFOery2eDOjnPURe7dZQYXzyESm",
      "reason": "every clip is in gb10 training"
     }
    ]
@@ -99,14 +124,20 @@
    "primary_surfaces": [
     {
      "surface": "eval/french/asr/aaf-test-v1",
-     "manifest": "eval/french/asr/aaf-test-v1/manifest.jsonl",
+     "manifest": "eval/french/asr/aaf-test-v1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/french/asr/aaf-test-v1/manifest.jsonl",
+     "rows": 475,
      "clips": 475,
-     "sha256": "eba3312c5a365ce7af98a516d77c0641d29645f3daaebb806c4b423a34f4e4f3",
-     "version_id": "2qFoE5rwkjBzn1vZV7JSalfOXMHEKepV"
+     "sha256": "e75582d2739a212b070b529a390263f0e6d43b4b108c88a8f6cf5cc81113121c",
+     "version_id": "xfMM6X66kJBzRCQzLky9CX0rI8Mu8MSP"
     },
     {
      "surface": "eval/french/asr/fleurs-v1",
      "manifest": "eval/french/asr/fleurs-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 964,
      "clips": 964,
      "sha256": "4bab129ecb952ee8aa125ff6d2b0ff0841f9c278fc8d328b91002edb2bf4305b",
      "version_id": "KCWFn_cliob56VHBphkq2ij4LEVVuFcH"
@@ -116,6 +147,9 @@
     {
      "surface": "eval/french/asr/aaf-test-v1-tier2-dev",
      "manifest": "eval/french/asr/aaf-test-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 217,
      "clips": 217,
      "sha256": "a775fe70fff22952193a0f4bb623795d358b23575c2fa9b225a608405ffd513c",
      "version_id": "S77sB8ycRT4Jz90uxFTvL5YinnBcP0lX",
@@ -124,6 +158,9 @@
     {
      "surface": "eval/french/asr/aaf-test-v1-tier2-sealed",
      "manifest": "eval/french/asr/aaf-test-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 258,
      "clips": 258,
      "sha256": "0ca2213d79b931a113f892ca2482af5edfb7736f70d90311c3363bd54afa598b",
      "version_id": "q14ZAMxMhAZT5oZcFs9F8jzdFo7hLk9G",
@@ -132,6 +169,9 @@
     {
      "surface": "eval/french/asr/fleurs-v1-tier2-dev",
      "manifest": "eval/french/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 495,
      "clips": 495,
      "sha256": "adfbf4cfa2e93996d9153f21d7d90700503f1fb2ddc90caaa08b2f0485d3ab58",
      "version_id": "OWrc_I07YF5BTRRi2TtQmCAMxk_Lq2FO",
@@ -140,6 +180,9 @@
     {
      "surface": "eval/french/asr/fleurs-v1-tier2-sealed",
      "manifest": "eval/french/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 469,
      "clips": 469,
      "sha256": "12df143a7370efd2e7efb0b915e8f85a894f9dbc48a05e542e17d67e8a751dbf",
      "version_id": "39xzQDaj2Kbl5A_ncGh1IpG7QDoUe3qV",
@@ -154,16 +197,22 @@
     {
      "surface": "eval/gbaya/asr/cvcm1",
      "manifest": "eval/gbaya/asr/cvcm1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 368,
      "clips": 368,
      "sha256": "bccc4b60d76a4bd25611fcb3261f6bdcbf450abd386078d7cef80b71da25797d",
      "version_id": "T.BzlS7LqnLytpFiQI2p58zmXQZZ9UhE"
     },
     {
      "surface": "eval/gbaya/asr/soreva-v1",
-     "manifest": "eval/gbaya/asr/soreva-v1/manifest.jsonl",
+     "manifest": "eval/gbaya/asr/soreva-v1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/gbaya/asr/soreva-v1/manifest.jsonl",
+     "rows": 100,
      "clips": 100,
-     "sha256": "095b5f496fbece1f7518e6aea87d531d19527ca1d625c098036e3e4e61ba9802",
-     "version_id": "E.BW3RH8syslIu6wEC75DPqWptmiV.fU"
+     "sha256": "585de6329739155aa4e87c77ef277547b884c9ec6a3e051034fedfdb14a54846",
+     "version_id": "vye9XRDoJKpXDzsVdp4Ev2t0YaoWJA7."
     }
    ],
    "partitions_of_a_primary_never_pool": [],
@@ -174,16 +223,22 @@
    "primary_surfaces": [
     {
      "surface": "eval/kinyarwanda/asr/cv17-test-v1",
-     "manifest": "eval/kinyarwanda/asr/cv17-test-v1/manifest.jsonl",
+     "manifest": "eval/kinyarwanda/asr/cv17-test-v1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/kinyarwanda/asr/cv17-test-v1/manifest.jsonl",
+     "rows": 6657,
      "clips": 6657,
-     "sha256": "90f7d619e53f5148882a9093ac4f3008bdb59db55690872598454d58c8895500",
-     "version_id": "X28aD56BOdOm8SbAnd7aSuOqOEdWzUU0"
+     "sha256": "96dd66e0aef9e28157007b9091a3ded04841b1bd9c74b1fe4113e97f1986ecb3",
+     "version_id": ".dVDzcfIMNUUsdAZdDILpWwnUi_mu4mg"
     }
    ],
    "partitions_of_a_primary_never_pool": [
     {
      "surface": "eval/kinyarwanda/asr/cv17-test-v1-dev",
      "manifest": "eval/kinyarwanda/asr/cv17-test-v1-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 3284,
      "clips": 3284,
      "sha256": "fc9d0a7f2fbe69d24b233c1d68d7f3d7a8bc48c693d1f80f69859879f42c3c46",
      "version_id": "BGmUkrtIur0QS29ftFW5CQs6WDmIKz3K",
@@ -192,6 +247,9 @@
     {
      "surface": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection",
      "manifest": "eval/kinyarwanda/asr/cv17-test-v1-dev-selection/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1642,
      "clips": 1642,
      "sha256": "9bad83475139cf399634edcf26e4a5455a3c9cbeb5ce2f515364c9190a5c0569",
      "version_id": "_ZIjFLQ51QiCNgo3PGzF_tQ3Fwyd52Q6",
@@ -200,6 +258,9 @@
     {
      "surface": "eval/kinyarwanda/asr/cv17-test-v1-sealed",
      "manifest": "eval/kinyarwanda/asr/cv17-test-v1-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 3373,
      "clips": 3373,
      "sha256": "f6f50bcfc473a12026efefe94b1fbbebcf42e6006623860c18be21e6583e70b9",
      "version_id": "Z5afijMNC6DAL2kCp2g5tWSlTcY_8BrJ",
@@ -208,6 +269,9 @@
     {
      "surface": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed",
      "manifest": "eval/kinyarwanda/asr/cv17-test-v1-universal-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1642,
      "clips": 1642,
      "sha256": "5ca3ef62e6f7447c5b8a2479e51b1f245ed792795240ac46022de4d6391805df",
      "version_id": "g.pEN_wwKr167PWWsZ7xH.g4kGFUbZqa",
@@ -222,6 +286,9 @@
     {
      "surface": "eval/lingala/asr/fleurs-v1",
      "manifest": "eval/lingala/asr/fleurs-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 642,
      "clips": 642,
      "sha256": "4d958f72b90672bc49dabe92f1566c1d0cabb0bcf9fcac11eafadf1a302294c3",
      "version_id": "XzWiws8OqPkSrd3KgC5oNEBKym5kB52k"
@@ -229,6 +296,9 @@
     {
      "surface": "eval/lingala/asr/soreva-v1",
      "manifest": "eval/lingala/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 150,
      "clips": 150,
      "sha256": "4d83ee983870bd48a8f70f4395b2ed445e1011e98b75b3e90729f2b590d8c749",
      "version_id": "JwWxJ7s7K8Twi7Ew303zkK1f9_Dp6R3Y"
@@ -238,6 +308,9 @@
     {
      "surface": "eval/lingala/asr/fleurs-v1-tier2-dev",
      "manifest": "eval/lingala/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 317,
      "clips": 317,
      "sha256": "fbc9d94c0a3881822a8328f156054532b96f08401c4d2bfafb8b802351d77b00",
      "version_id": "517JjmUaGEfjP04.wC8v14zu0OCyIL8e",
@@ -246,6 +319,9 @@
     {
      "surface": "eval/lingala/asr/fleurs-v1-tier2-sealed",
      "manifest": "eval/lingala/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 325,
      "clips": 325,
      "sha256": "71a45bdb694e6180703a97d0a3d32dd9b97c1b428b123bfa3a21be9a7dd21e35",
      "version_id": "Xpek_zKYJprPu7VKOfTvc2Ju4ALnDYBd",
@@ -254,6 +330,9 @@
     {
      "surface": "eval/lingala/asr/soreva-v1-tier2-dev",
      "manifest": "eval/lingala/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 69,
      "clips": 69,
      "sha256": "e87deac1e3b715fce9490c4fdd1adbb199aa12c30899cd1724509c2690f838d7",
      "version_id": "hLpk__VAdpZRKkaGmX6HEzXQfHg8sMft",
@@ -262,6 +341,9 @@
     {
      "surface": "eval/lingala/asr/soreva-v1-tier2-sealed",
      "manifest": "eval/lingala/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 81,
      "clips": 81,
      "sha256": "238d2a3e8edca16df207733ae79e3a48566f248f6556167179a95c9a5292ab63",
      "version_id": "Fa.zlXFBDkDYmSc.ymU4oTPIW5N8eEcl",
@@ -272,18 +354,24 @@
    "diagnostic_only": [
     {
      "surface": "eval/lingala/asr/v1",
-     "manifest": "eval/lingala/asr/v1/manifest.jsonl",
+     "manifest": "eval/lingala/asr/v1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/lingala/asr/v1/manifest.jsonl",
+     "rows": 35,
      "clips": 35,
-     "sha256": "a1e033bfd734a5b7838b4abfd058700b08f077a19d519bdb751ea94bbd8a8feb",
-     "version_id": "1hTwyD9qijg3dpey_K.noLUshOliWhLu",
+     "sha256": "295565d671810c44ebba075383cb10cea4c27641210b3c5ea548e637663cca5d",
+     "version_id": "yIjsufmAn7QTFIXufDR.mDucWEruJ7sP",
      "reason": "every clip is in gb10 training"
     },
     {
      "surface": "eval/lingala/asr/v2-holdout",
-     "manifest": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+     "manifest": "eval/lingala/asr/v2-holdout/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/lingala/asr/v2-holdout/manifest.jsonl",
+     "rows": 77,
      "clips": 77,
-     "sha256": "82c2a242c504ddd9f73772e34e7d8d2a7733370154b7033945546a12078b706c",
-     "version_id": "iD28Lv_DM6CjHQCqj2lzOR4mDJ_mkFKF",
+     "sha256": "c07cb766744dcdb4f86ccd4a8b4f66d551eb6b19e2d5adb26a9c8d9f9d5e90cf",
+     "version_id": "OhoAurUTYlMcOO0iTx_OxSSXbDe9aloK",
      "reason": "every clip is in gb10 training"
     }
    ]
@@ -293,6 +381,9 @@
     {
      "surface": "eval/ngiemboon/asr/cvcm1",
      "manifest": "eval/ngiemboon/asr/cvcm1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 348,
      "clips": 348,
      "sha256": "3f91b3d1414f146d3d9fbbe406c16522a477d8899eea322f33e88b2596e057a5",
      "version_id": "hAnytfNeOeyI64qTJaS4Pt4AehjaVG4o"
@@ -300,6 +391,9 @@
     {
      "surface": "eval/ngiemboon/asr/soreva-v1",
      "manifest": "eval/ngiemboon/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 150,
      "clips": 150,
      "sha256": "0ac487848cb1701ff1b2fd17a5145a176b26d53784c07c98cc47bb05dceb572b",
      "version_id": "vlenQKBcCUGlA_X4WY2VOCWBDYccU26c"
@@ -313,14 +407,20 @@
    "primary_surfaces": [
     {
      "surface": "eval/ngombala/asr/cvcm1",
-     "manifest": "eval/ngombala/asr/cvcm1/manifest.jsonl",
-     "clips": 489,
-     "sha256": "0f26241cf56aadf23e6fc9f967c35c0c1c113b561b31478cd1ca489ec43b6455",
-     "version_id": "WAN7bZlcVMJejyke6Bhow32TBXk_xOAr"
+     "manifest": "eval/ngombala/asr/cvcm1/manifest.r2.jsonl",
+     "prefers_r2": true,
+     "frozen_original": "eval/ngombala/asr/cvcm1/manifest.jsonl",
+     "rows": 487,
+     "clips": 487,
+     "sha256": "e2191145da6ad2de80091e72c8b8473fe5bf4ea7e7f8e68abd749baf47ffb034",
+     "version_id": "tSko4vuk6Lir3ZIUZ7Dox2870EVlNgL_"
     },
     {
      "surface": "eval/ngombala/asr/soreva-v1",
      "manifest": "eval/ngombala/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 145,
      "clips": 145,
      "sha256": "9190209c38739cdaae702fdb1cd0837dd49d7cebd94b529847bb724c6da07aef",
      "version_id": "fB31UuPguynPnKt3kUn6U6c6K6j3uG1t"
@@ -335,6 +435,9 @@
     {
      "surface": "eval/pidgin/asr/av-heldout-dev-e1",
      "manifest": "eval/pidgin/asr/av-heldout-dev-e1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1500,
      "clips": 1500,
      "sha256": "2a2a8a052f15a0d3acbe70b43e84365386e02e6882a28383bd725fc01593c5e1",
      "version_id": "tAdCVahinQlUDcESAtTtjwupRbxoTpwg"
@@ -342,6 +445,9 @@
     {
      "surface": "eval/pidgin/asr/av-heldout-sealed-e1",
      "manifest": "eval/pidgin/asr/av-heldout-sealed-e1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1500,
      "clips": 1500,
      "sha256": "fca527c0462d927c7729039065cfe1266214bd7947f965e1661574b8e1b58c91",
      "version_id": "B5aVH7BXoq_H9GYi3MbU3EgQKu41yTtN"
@@ -349,6 +455,9 @@
     {
      "surface": "eval/pidgin/asr/soreva-v1",
      "manifest": "eval/pidgin/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 142,
      "clips": 142,
      "sha256": "7d55f0e5ec61307dedcef0453a84fd444ea75e47de26548b02bde3f97aa4fa5a",
      "version_id": "BIOb2Fhrmtm.JoEHKSx1_IbELpW.P4Tr"
@@ -358,6 +467,9 @@
     {
      "surface": "eval/pidgin/asr/soreva-v1-tier2-dev",
      "manifest": "eval/pidgin/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 72,
      "clips": 72,
      "sha256": "f98302268168d9fff2cd25c355cb1ac846e04370766d504dda624f99ead97481",
      "version_id": "5ZhNdQtdWylFGTHSldW8gn7r1xtQXAqY",
@@ -366,6 +478,9 @@
     {
      "surface": "eval/pidgin/asr/soreva-v1-tier2-sealed",
      "manifest": "eval/pidgin/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 70,
      "clips": 70,
      "sha256": "962df457dfb42274f6dc324750df995c10e7349e276caa46b9132e9e7a99d9ab",
      "version_id": "dLYaa8w8wVkFirOo.JljicC.RLTuiwfl",
@@ -376,6 +491,9 @@
     {
      "surface": "eval/pidgin/asr/av-heldout-dev",
      "manifest": "eval/pidgin/asr/av-heldout-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1500,
      "clips": 1500,
      "sha256": "d88fd26141f3fd4502d9e85ac6ab9c019147d7b2f512c29283568a7c5b987c62",
      "version_id": "Ap4SeTeGQUbmiOP_Gt8DElM2xI9XKwUC",
@@ -384,6 +502,9 @@
     {
      "surface": "eval/pidgin/asr/av-heldout-sealed",
      "manifest": "eval/pidgin/asr/av-heldout-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 1500,
      "clips": 1500,
      "sha256": "c52af8c7e8bb53b92f4d3fed48fb908c52288144581f5a2138b114b82293eba8",
      "version_id": "60ZtmgfQLR5Za1pphc8Ntl6UoNi.31Mb",
@@ -397,6 +518,9 @@
     {
      "surface": "eval/swahili/asr/fleurs-v1",
      "manifest": "eval/swahili/asr/fleurs-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 697,
      "clips": 697,
      "sha256": "d702a77abd077577f549c5d9fb9c0593e80765a37b0b77f184609e3f7b1b2de4",
      "version_id": "TtnL9vIugouPj14k7VgQ2HDswbwxep6R"
@@ -404,6 +528,9 @@
     {
      "surface": "eval/swahili/asr/soreva-v1",
      "manifest": "eval/swahili/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 146,
      "clips": 146,
      "sha256": "364d84dafb441d7cd09358990d74d2c7bf0ff87a7fb79964c8008a1ba96f13e1",
      "version_id": "G_DiLav_Z5KAou.WwZdw_Mc2TqtA6CWX"
@@ -413,6 +540,9 @@
     {
      "surface": "eval/swahili/asr/fleurs-v1-tier2-dev",
      "manifest": "eval/swahili/asr/fleurs-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 354,
      "clips": 354,
      "sha256": "b34b8c94c72c50b345075d1f57e29767efaa406c8a95271e72d9e90b40e7f73a",
      "version_id": "2OzUKYDuQYY.EGIoXGzTFlOBVF7tXR6b",
@@ -421,6 +551,9 @@
     {
      "surface": "eval/swahili/asr/fleurs-v1-tier2-sealed",
      "manifest": "eval/swahili/asr/fleurs-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 343,
      "clips": 343,
      "sha256": "6aa501b345befc7554a39b6651f7142f2e8f237ade2767264b7a11b04921e0bb",
      "version_id": "rgT8Ih_v6P5rBnSj3wjrWF.PuTYpNX2p",
@@ -429,6 +562,9 @@
     {
      "surface": "eval/swahili/asr/soreva-v1-tier2-dev",
      "manifest": "eval/swahili/asr/soreva-v1-tier2-dev/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 78,
      "clips": 78,
      "sha256": "15bb51702b035c980ac21adc34260b26a61df9213a74a905133ee00fa3732cf1",
      "version_id": "jeuM_j0M4bGNcxauPT4iylb9V7nkoWQd",
@@ -437,6 +573,9 @@
     {
      "surface": "eval/swahili/asr/soreva-v1-tier2-sealed",
      "manifest": "eval/swahili/asr/soreva-v1-tier2-sealed/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 68,
      "clips": 68,
      "sha256": "9311b77a57814cdfd3f218364cd9664c45d556df9dc054342dc70778122b2e3c",
      "version_id": "NhicuR6DvwTEXSQ4Pv8gKn_rQtrrChAw",
@@ -451,6 +590,9 @@
     {
      "surface": "eval/yangben/asr/cvcm1",
      "manifest": "eval/yangben/asr/cvcm1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 216,
      "clips": 216,
      "sha256": "ee19fe1ea25d68fed1772d59747b777bbe50db2c075a91bdd70b52edfbab7369",
      "version_id": "npoe5jwY4NrLXNyC66p8dxbMP2lvpSTa"
@@ -458,6 +600,9 @@
     {
      "surface": "eval/yangben/asr/soreva-v1",
      "manifest": "eval/yangben/asr/soreva-v1/manifest.jsonl",
+     "prefers_r2": false,
+     "frozen_original": null,
+     "rows": 132,
      "clips": 132,
      "sha256": "bb032998d36f65475184dea8f198b1961ac1fa92b569f2b05b70da83a9fa84e4",
      "version_id": "YWk44VfkoU0jAZuppy.2RTW4oclh9vwQ"

@@ -551,5 +551,12 @@
   "It does not restate any published WER or CER. Every historical figure stands as published, under the normaliser that produced it.",
   "It does not retroactively correct the ASR base-model pilot tables — that is not computable without re-running inference, and this record says so rather than estimating.",
   "It does not choose a tone policy for future gates. It makes the choice explicit, labelled and refusable; the policy for any gated language remains an owner decision."
- ]
+ ],
+ "identifier_superseded_2026-09-04": {
+  "what_changed": "The tone-sensitive identifier in this record, 'asr-eval-norm-v2-tone-sensitive', has been superseded by 'asr-eval-norm-v3-tone-sensitive'.",
+  "why": "v2 kept combining marks but still measured CHARACTERS over the NFC stream, so its CER was composition-dependent: a tone error cost a 1-of-1 substitution on a precomposing vowel (a-acute, one codepoint) and a 1-of-2 deletion on one that cannot precompose (schwa-acute, two). v3 measures CER over the NFD stream, so the same error costs the same either way. The two CERs are NOT poolable, which is exactly why the identifier had to move rather than the semantics changing under a fixed name.",
+  "tone_insensitive_deliberately_unchanged": "'asr-eval-norm-v2-tone-insensitive' keeps its identifier: it strips every mark, so there is nothing for NFD to move and its character counts are byte-identical before and after the fix. Verified on probe strings.",
+  "legacy_v1_unchanged": "'asr-eval-norm-v1-mark-destroying' is frozen, as this record already states.",
+  "effect_on_the_pilot_figures": "Tone-sensitive in-domain pooled CER moves 13.73 -> 12.38 as reference characters rise 49,938 -> 56,655. See CM-PILOT-SCORING-VERDICT-2026-001 error_decomposition_in_domain.figures_recomputed_under_the_shipped_scorer. No conclusion changes."
+ }
 }
