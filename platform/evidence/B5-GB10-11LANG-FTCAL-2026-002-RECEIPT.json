@@ -1,0 +1,68 @@
+{
+ "artifact": {
+  "etag": "\"2e0f0e849bd1162c9cc5ce7f2e6640f4-185\"",
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1545732989,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-gb10-11lang-ftcal-2026-002/output/medzen-b5-b5-gb10-11lang-ftcal-2026-002/output/model.tar.gz",
+  "s3_version_id": "CeyMd_WbLyASZNKtH9ypASDzR5d9T6iN"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "creation_event_verified": true,
+  "failures": [],
+  "launch_principal": null,
+  "metrics_sha256": "626bf0da56a5bfd808f6d62030a31dbad1e0d496460183f4c59ac85cd748a3c0",
+  "mode": "live",
+  "packet_canonical_sha256": "bba76b508f4b706c3911cdfb37352ea98fd5ace87d9fce85fd42267a5e2bb665",
+  "verdict": "PASS",
+  "verifier_script_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523"
+ },
+ "billable_seconds": 1158,
+ "calibration_bindings_sha256": "bba76b508f4b706c3911cdfb37352ea98fd5ace87d9fce85fd42267a5e2bb665",
+ "calibration_packet": "platform/manifests/B5-GB10-11LANG-FTCAL-SAGEMAKER-BINDINGS-2026-002.json",
+ "dataset_complete_raw_sha256": "fa8eb87d33214f3a82e0c3c59409eba9976f7e46bab67956804e212be2c37727",
+ "dataset_version": "gb10",
+ "declared_scale_keys": [
+  "MEDZEN_AUDIO_CAP_HOURS",
+  "MEDZEN_CHECKPOINT_EVERY",
+  "MEDZEN_MAX_STEPS",
+  "MEDZEN_WARMUP_STEPS"
+ ],
+ "environment_invariants": {
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_DEV_SENTINEL_MANIFEST_FILES": "lingala=platform/manifests/dev-sentinels/lingala.jsonl,swahili=platform/manifests/dev-sentinels/swahili.jsonl",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXECUTION_MODE": "arm2_comparative",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,gbaya,kinyarwanda,lingala,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb10",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "arm1",
+  "MEDZEN_STUDENT_INIT_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "MEDZEN_STUDENT_INIT_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_STUDENT_INIT_VERSION_ID": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "export": {
+  "manifest_sha256": "119176f4fa8ecc4d541427e76d0b7d67b139c30b4628fa00c9d4d46f53fa4a41",
+  "model_sha256": "e74251aa29a56c24aa25f932c434c65a030c41cbda44ade992d1bc46197595b8",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:dcd401132653bf4edfcca5415e054d445083fa6d403427a7577a42be7f4940e7",
+ "job": "medzen-b5-b5-gb10-11lang-ftcal-2026-002",
+ "kd_note": "MEDZEN_KD_ENABLE=0. The trainer takes _ctc_only_closure, which calls the same _batch_loss as plain training and records kd=0, alpha=0 — the gradient path is identical to plain CTC training, so running under the comparative wrapper adds metrics and verification, not a different objective.",
+ "record": "B5-GB10-11LANG-FTCAL-2026-002-RECEIPT",
+ "role": "externally-verifiable calibration receipt for the eleven-language candidate. Every field is re-derivable from AWS, and the launch path re-verifies it online before the arm may spend.",
+ "scale_note": "the arm may differ from this calibration ONLY on these keys; every other environment key is byte-identical to the committed calibration packet",
+ "terminal_status": "Completed",
+ "utc": "2026-09-04T17:50:28Z",
+ "verdict": "PASS"
+}

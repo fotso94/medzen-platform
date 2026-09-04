@@ -1,0 +1,10 @@
+{
+ "authored_by_note": "Written by Claude, not by the owner. In this repo the review record is the REVIEWER's artifact and is deliberately separate from the owner's authorization, which is their click on the protected launch environment. Nothing here substitutes for that click.",
+ "basis": "Owner approved the training design on 2026-09-04: gb10, 11 languages, temperature 0, 15-hour cap, LoRA r16, 40,000 steps, Arm-1 warm start, one common trainer image. Converted to arm2_comparative with MEDZEN_KD_ENABLE=0 on owner direction so the existing calibration-receipt chain applies; the loss is unchanged because _ctc_only_closure calls the same _batch_loss and records kd=0, alpha=0 (pipeline/omniasr_train.py:1347). Renders and validates PASS_EXACT_TRAINING_REQUEST at $64 worst case on the image rebuilt from master b1dfb42 (index sha256:cf0b0c34\u2026, amd64 sha256:dcd40113\u2026), which bakes this packet's execution contract. Environment is byte-identical to the FTCAL-002 mechanics packet except the four declared scale keys.\n\nThe calibration receipt B5-GB10-11LANG-FTCAL-2026-002-RECEIPT is now bound: FTCAL-002 Completed in 1,158s and verify_arm2_calibration returned PASS in authoritative --live mode with zero failures and the CloudTrail creation event verified.\n\nNOT YET SATISFIED at the time of writing, and both are the owner's to clear: (1) medzen-arm2-stage1-launch-role does not exist in AWS \u2014 infra/arm2_stage1_launch_role.tf is unapplied and MEDZEN_ARM2_STAGE1_ROLE_ARN is unset; (2) no cost-registry allocation exists for this arm, and the gate requires it to be the single unexpired ACTIVE_RESERVED line, which is a $164 budget decision Claude deliberately did not make.",
+ "bindings": "platform/manifests/B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json",
+ "bindings_sha256": "45fef40c80ceb2f853b00f0213a9e0bb9ab5d592a84d542b4da1607f23d8940a",
+ "decision": "APPROVED",
+ "job_id": "b5-gb10-11lang-warm-2026-001",
+ "reviewed_utc": "2026-09-04T17:50:48Z",
+ "reviewer": "claude-primary-engineer"
+}

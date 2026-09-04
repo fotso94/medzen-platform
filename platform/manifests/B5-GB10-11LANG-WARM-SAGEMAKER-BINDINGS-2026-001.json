@@ -12,6 +12,10 @@
   "MANDATORY in-run upstream decode parity: the scorer path (resample16k + utterance z-norm + seqlen-truncated CTC-greedy + skip-special decode) matches the pinned omnilingual_asr ASRInferencePipeline on >=1 fetched row per dev language, on the fresh base model, fail-never-skip; receipt in metrics.parity",
   "machine verdict: scripts/verify_arm2_calibration.py PASS in AUTHORITATIVE --live mode (the verifier itself pins account/region, calls DescribeTrainingJob, fetches ModelArtifacts from the KMS-encrypted output with VersionId, extracts and hashes model/manifest/metrics; local files are never authoritative)"
  ],
+ "calibration_receipt": {
+  "record": "platform/evidence/B5-GB10-11LANG-FTCAL-2026-002-RECEIPT.json",
+  "record_sha256": "3ade1fd945dc5df714cd0599b58380d831b007b40663b10078445eac324c4b41"
+ },
  "comparative": {
   "note": "The seven incumbent languages this candidate must not regress while it adds the four Cameroon languages. KD is OFF, so this is the comparative CONTROL arm: the loss is the plain CTC loss, byte-identical to plain training (omniasr_train.make_batch_loss returns _ctc_only_closure, which calls the same _batch_loss and records kd=0, alpha=0). The wrapper adds metrics and post-training verification only.",
   "preservation_languages": [
