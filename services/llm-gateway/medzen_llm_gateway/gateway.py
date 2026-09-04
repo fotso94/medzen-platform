@@ -222,9 +222,14 @@ class LLMGateway:
         # refused honest subsets and only fit the synthetic echo.
         # Round 3: the subset must be NON-EMPTY — an answer that cites
         # nothing is ungrounded and must never leave this gateway.
+        # Dev fallback (2026-09-03): with MEDZEN_ALLOW_UNGROUNDED_FALLBACK the
+        # model may cite NOTHING even when documents were supplied (they did
+        # not fit, or the reply came back as prose): the answer then leaves
+        # as UNGROUNDED with an empty citation list, which the orchestrator
+        # and the frontend already label. Without the flag the round-3 rule
+        # stands: a non-empty subset or refusal.
         cited_ok = (
-            (bool(result.cited_document_ids)
-             or (ALLOW_UNGROUNDED and not expected_ids))
+            (bool(result.cited_document_ids) or ALLOW_UNGROUNDED)
             and set(result.cited_document_ids) <= set(expected_ids)
         )
         if (

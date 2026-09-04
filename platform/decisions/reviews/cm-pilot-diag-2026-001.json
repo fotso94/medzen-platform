@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's explicit written directive of 2026-09-03: 'Approved to correct the evaluation plan and continue ... then run one short four-language diagnostic probe and report WER, CER, error counts, and uncertainty on both datasets. Do not make Gbaya alone decisive or apply the old 20% gate yet. No additional governance work.' The owner relayed an independent Codex review that reached the same recommendation. SCOPE: below the $10 calibration tier (validated worst case $6.40 on-demand, PASS_EXACT_TRAINING_REQUEST). LoRA rank 16 on a frozen omniASR CTC 1B base, warm-started from the pinned Arm-1 research export, 2000 steps, equal-language sampling (temperature 0), 15 h per-language cap. Data is curated version cp1: four Common Voice 26.0 Cameroonian corpora under CC0, split disjointly on BOTH speaker and prompt, audio-audited. DIAGNOSTIC ONLY: this run is not a promotion or deployment candidate, no gate is applied to its result, and cp1 deliberately omits the gb9 incumbent corpora, so the run must not be read as a multilingual candidate. Incumbent regression is measured after the fact on the existing eval sets rather than defended by in-mix replay.",
+ "bindings_sha256": "41421d98809238d27dc243ef8f3c224665882e147144251c21f70db1361c8e11",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-03T20:30:00Z",
+ "decision": "APPROVED",
+ "job_id": "cm-pilot-diag-2026-001",
+ "scope": "DIAGNOSTIC_PROBE_NOT_A_PROMOTION_CANDIDATE"
+}

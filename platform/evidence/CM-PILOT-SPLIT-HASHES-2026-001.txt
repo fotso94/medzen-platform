@@ -1,0 +1,42 @@
+nnh: train 4019/9.7798h (12spk,731prompts) | dev 201/0.5035h | test 348/0.8696h (5spk,115prompts) | discard 3014
+    train sha256 0a3981c8ba22c7f65ef1c14e5c1cf2c183f2b5a1fac4fb15c8ad5b1244718043
+    dev   sha256 cd077f03d8997e8d477447cc9ac85e4e9b123855aea5f4b69dce1b5149783944
+    test  sha256 10427d268b4e73967b52ecec05e8cb64ed824b6df513c3a86b412568628a5ae2
+nla: train 1785/3.5368h (10spk,622prompts) | dev 255/0.4968h | test 489/0.8949h (3spk,271prompts) | discard 2054
+    train sha256 8c24ece7efbb6ab30ddf761ccec78897ab6fc421cba35e6cf8ccd31ef0917bc0
+    dev   sha256 d3c95af97e31e58d411a54d7ecf7e180cff350fb2715304a312c59daf3f6087c
+    test  sha256 bc39f0c50e5a339c6a6890b3cce0b33706d13b9019c73545d495b321e14986e7
+yav: train 1886/3.5656h (7spk,488prompts) | dev 270/0.5405h | test 216/0.3802h (3spk,199prompts) | discard 1993
+    train sha256 5c2e2d269b4329ec7db777c39a08dfbcdbf1fdd04f4db594925033cb632fc99b
+    dev   sha256 b9690110f327d80cad69e5841ebc069f6fb0ede74c414217835f1d2e978c08e4
+    test  sha256 cb3c3898b95d1fc54614a10d7349bbb050faad12bbd5596c1308a9fff24e8764
+gya: train 3041/4.2903h (19spk,519prompts) | dev 346/0.496h | test 368/0.403h (9spk,289prompts) | discard 3139
+    train sha256 3cb1e50f89c306896e8a3fa7a311c8818c7c2f4cb9d12a45451e93d0d0d55caf
+    dev   sha256 af141f48a978a41093104dcacb0dc2d911ab5144cfdc4c224a18fabf7fdc2fa5
+    test  sha256 56ab29cac20bbc738254bcd0eaef2573f9fb54ac1cfc546f2317cb87710046b8
+
+REPRODUCED KNOWN DEFECT (partition_key=sentence_id): {'nla': ['hó púŋ wághʼə fuŋ ləfou zághʼə']}
+{
+ "summary_sha256": "ec85bb821be4fd1d9d43d894c3d11f378840e4ff42bca38a96894ef255e9acce"
+}
+nnh: train 4018/9.8056h (12spk,732prompts) | dev 211/0.4867h | test 353/0.8988h (5spk,114prompts) | discard 3000
+    train sha256 d6bbf6805a19cf235479722a93f2605b30c4b0d7cb5ec564d4509d432a7ecdcd
+    dev   sha256 127360e060184a5f42f14d7528e339824be94c885c79fa11a9bd4631c0d1e56a
+    test  sha256 74eb5fc095afd2324f5efc2e0264f09b591a81b05edfef37507cc3c62de13591
+nla: train 1800/3.5558h (10spk,621prompts) | dev 253/0.4942h | test 499/0.9161h (3spk,273prompts) | discard 2031
+    train sha256 72b8e73eda91a58b5b444e444e03cdaa06f4714182c7a1a350f4b96981302213
+    dev   sha256 cf36e6023e8e12a469334a092fe8a2803495d8835dcad25e732eab98f17f5ef7
+    test  sha256 78d9f491396fd19ccf4b7998f603ba6daec882a8ef925030b8e2fae337f59a45
+yav: train 1854/3.5234h (7spk,488prompts) | dev 279/0.5274h | test 199/0.3578h (3spk,187prompts) | discard 2033
+    train sha256 cee1c4a09a7f53884eb9bd4042877890587faf8a2734478d2fbe36d46bb2b008
+    dev   sha256 3ebb754c3a4a0f7a2664ecf151d51fc17f60a5a295efe988697b87546d175b2c
+    test  sha256 bc8334e26816ca505ed314472ed1e7da5f3bccb91db5f7333578bb8df2d61c58
+gya: train 2979/4.2256h (19spk,518prompts) | dev 344/0.4963h | test 364/0.404h (9spk,283prompts) | discard 3207
+    train sha256 8a957a04cad0dffd4eb2bb449193aba3492050b37796610cbbf4d4dc6b73a3b5
+    dev   sha256 b224ff17719d03512e56ae726c09c8b4d9f136cedff29998c953d5fb03e7f3e2
+    test  sha256 7b8b7ba72422888201b75f6ec57703632ff20d92b9de53634a8aed96ee4fff5a
+
+ALL PROMPT AND SPEAKER ASSERTIONS PASSED (assertions are on normalised text)
+{
+ "summary_sha256": "b63ab5feb3456b4b02973c93e539ad33447b547a5b2163957e052ddec6149bf3"
+}

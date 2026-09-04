@@ -150,9 +150,27 @@ def test_bedrock_provider_maps_the_contract(monkeypatch):
     assert "Ikinyarwanda" in captured["system"][0]["text"]
     assert captured["inferenceConfig"]["maxTokens"] == 256
 
+    # Codex review 2026-09-03: a PROSE reply is retried once with the JSON
+    # rule restated; persistent prose becomes the (ungrounded) answer with
+    # an empty cited set - the gateway/orchestrator label it under the dev
+    # fallback flag and refuse it without.
+    class ProseClient:
+        calls = 0
+
+        def converse(self, **kwargs):
+            ProseClient.calls += 1
+            return {"output": {"message": {"content": [{"text": "not json"}]}}}
+
+    prose = BedrockProvider(model_id="m", region="eu-central-1",
+                            client=ProseClient()).invoke(request, timeout_ms=30000)
+    assert (prose.text, prose.cited_document_ids) == ("not json", ())
+    assert ProseClient.calls == 2
+
+    # a malformed JSON object is still refused (never invented, never
+    # passed through as prose)
     class BrokenClient:
         def converse(self, **kwargs):
-            return {"output": {"message": {"content": [{"text": "not json"}]}}}
+            return {"output": {"message": {"content": [{"text": '{"text": '}]}}}
 
     broken = BedrockProvider(model_id="m", region="eu-central-1",
                               client=BrokenClient())

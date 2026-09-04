@@ -1,0 +1,6 @@
+{
+ "alias": "current",
+ "manifest_path": "indexes/medzen-kb-v1.json",
+ "manifest_sha256": "b49627cae8cf847d1c6eb7f3e93a89de3ab32a6ce53e34dd39675d91565fe99d",
+ "schema_version": 1
+}

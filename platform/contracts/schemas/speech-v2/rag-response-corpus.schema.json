@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "medzen.speech.v2.rag-response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "query_id",
+    "index",
+    "citations",
+    "model_versions",
+    "latency_ms"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "query_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alias",
+        "version",
+        "snapshot_sha256",
+        "classification"
+      ],
+      "properties": {
+        "alias": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "classification": {
+          "enum": [
+            "SYNTHETIC_NON_CLINICAL",
+            "NONPROD_REAL_CONTENT_V1"
+          ]
+        }
+      }
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rank",
+          "document_id",
+          "title",
+          "source_uri",
+          "section",
+          "content_sha256",
+          "excerpt",
+          "score",
+          "grounding_text"
+        ],
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "document_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_uri": {
+            "type": "string",
+            "pattern": "^medzen://(synthetic|corpus)/"
+          },
+          "section": {
+            "type": "string"
+          },
+          "content_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "grounding_text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1200
+          }
+        }
+      }
+    },
+    "model_versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "asr",
+        "registry_snapshot",
+        "llm",
+        "rag",
+        "tts"
+      ],
+      "properties": {
+        "asr": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "registry_snapshot": {
+          "type": "string"
+        },
+        "llm": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rag": {
+          "type": "string"
+        },
+        "tts": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "latency_ms": {
+      "type": "number",
+      "minimum": 0
+    }
+  },
+  "$comment": "Superset of rag-response.schema.json for the Bedrock corpus backend (RAG_BACKEND=bedrock, 2026-09-02): index.classification may be NONPROD_REAL_CONTENT_V1 and citations may point at medzen://corpus/ documents. The pinned v2 contract schema is unchanged; adopting this superset into MEDZEN-SPEECH-CONTRACT is a follow-up contract revision."
+}

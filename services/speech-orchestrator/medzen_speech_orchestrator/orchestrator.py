@@ -127,12 +127,18 @@ class SpeechOrchestrator:
             )
         return dict(value)
 
-    @staticmethod
-    def _retrieval_query(current: str, history: list[dict[str, str]]) -> str:
+    # Codex review 2026-09-03: the CURRENT question comes first and the
+    # previous one is trimmed, so retrieval's 1000-character query cap can
+    # never drop the question being asked behind a long earlier turn.
+    PREVIOUS_QUESTION_CHARACTERS = 300
+
+    @classmethod
+    def _retrieval_query(cls, current: str, history: list[dict[str, str]]) -> str:
         previous_user = [t["text"] for t in history if t.get("role") == "user"]
         if not previous_user:
             return current
-        return f"{previous_user[-1]} {current}"
+        previous = " ".join(previous_user[-1].split())[:cls.PREVIOUS_QUESTION_CHARACTERS]
+        return f"{current} {previous}".strip()
 
     @staticmethod
     def _citation_binding(citations: list[dict[str, Any]]) -> str:
@@ -365,10 +371,13 @@ class SpeechOrchestrator:
             reply_citations = (
                 reply.get("citations") if isinstance(reply, dict) else None
             )
+            # Dev fallback (2026-09-03): under the flag an empty reply
+            # citation list is a legitimate UNGROUNDED answer even when
+            # retrieval supplied documents (the gateway applies the same
+            # rule); the client labels it.
             citations_ok = (
                 isinstance(reply_citations, list)
-                and (bool(reply_citations)
-                     or (ALLOW_UNGROUNDED and not rag["citations"]))
+                and (bool(reply_citations) or ALLOW_UNGROUNDED)
                 and all(c in rag["citations"] for c in reply_citations)
                 and len({self._citation_binding([c]) for c in reply_citations})
                 == len(reply_citations)

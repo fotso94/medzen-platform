@@ -1,0 +1,26 @@
+{
+ "record": "CM-PILOT-WARM-RESULT-2026-001",
+ "kind": "training_run_result",
+ "utc": "2026-09-04T00:30:00Z",
+ "job": "medzen-b5-cm-pilot-warm-2026-001",
+ "status": "Completed",
+ "warm_start_verified": {
+  "log_line": "{\"mode\": \"arm1\", \"sha256\": \"c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c\", \"status\": \"STUDENT_WARM_START_LOADED\"}",
+  "arm1_sha256_matches_packet_pin": true,
+  "image": "arm2-ftcal-b6ad15ceb3815e780e0264a4b39a9d0d6ad8238e (commit verified descendant of 2de8a58, which introduced warm-start support)"
+ },
+ "identical_to_control_except_image": true,
+ "mix": "4 manifests at curated version cp1; 10731 eligible rows; 0 rejected",
+ "loss_comparison_warm_vs_base_init_control": {
+  "step_500": [29.588803879618645, 30.185691772818565],
+  "step_1000": [26.618219477176666, 27.11209745168686],
+  "step_1500": [25.601838860869407, 26.052642940342427],
+  "step_2000": [24.90961765164137, 25.43921207934618],
+  "note": "the warm-started run is lower at every checkpoint, by 0.45 to 0.60 nats; training loss is NOT a quality measure and no conclusion is drawn from it"
+ },
+ "export": {"model_sha256": "daa67af9615ebcab0b87241bbfda2499136c32ae9346cdf54d16576b58c34cb0",
+            "manifest_sha256": "6d6bd34b48da4817b5eaad8b76f8de2b2c792196a0b26fec00ccc0184ebee2de",
+            "status": "PASS_MERGED_EXPORT"},
+ "billable_seconds": 3872,
+ "next": "Both exports have authored scoring packets. Decoding requires the owner's gate click on the protected scoring workflow; no WER or CER is claimed until then."
+}

@@ -76,10 +76,12 @@
    "Effect": "Allow",
    "Resource": [
     "arn:aws:s3:::medzen-speech/research/arm2-scoring/*",
-    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-score-*/output/*",
-    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*",
     "arn:aws:s3:::medzen-speech/research/b5-training/b5-arm2-score-*/output/*",
-    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/*"
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/b5-universal-arm2-score-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/b5-training/cm-pilot-*/output/*",
+    "arn:aws:s3:::medzen-speech/research/cm-pilot-scoring/*"
    ],
    "Sid": "ReadScoringInputsAndReceipts"
   },
@@ -101,8 +103,10 @@
     "StringLike": {
      "s3:prefix": [
       "research/arm2-scoring/*",
+      "research/b5-training/b5-arm2-score-*/output/*",
       "research/b5-training/b5-universal-arm2-score-*/output/*",
-      "research/b5-training/b5-arm2-score-*/output/*"
+      "research/b5-training/cm-pilot-*/output/*",
+      "research/cm-pilot-scoring/*"
      ]
     }
    },

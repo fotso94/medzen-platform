@@ -22,16 +22,35 @@ data:
   MEDZEN_DEPENDENCY_TIMEOUT_SECONDS: "50"
   # dev: zero-citation RAG results fall back to general-knowledge Bedrock
   MEDZEN_ALLOW_UNGROUNDED_FALLBACK: "1"
-  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/0083b25a573d5b61924810c80ca641b3cbcb761e74cbfaf0825ac294c7b9ee93"
+  # 2026-09-03: re-minted with the Bedrock corpus manifest as the rag snapshot
+  # (b49627ca...); previous root 0083b25a... stays published for rollback
+  MEDZEN_REGISTRY_ROOT: "/medzen/registry/nonprod/b6v2/a6d559e0b7b69d0809965f74f3e0c2296fcca6fe2c4b24d2398f59c924aa51f2"
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata: {name: rag-index-config, namespace: medzen}
 data:
   AWS_REGION: "eu-central-1"
-  # dev multilingual corpus (fr/kin/pcm/swa); the pinned golden fixture
-  # platform/testdata/rag-index stays byte-identical for the test suite
-  RAG_INDEX_ROOT: "/opt/medzen/platform/testdata/rag-index-dev"
+  # 2026-09-02 (owner order): the seven synthetic cards are replaced by the
+  # real dev corpus served through the Bedrock Knowledge Base A1CWHQJN6W
+  # (product/support in en/fr/kin/pcm/swa + 11 WHO guidelines, Titan v2
+  # embeddings on S3 Vectors). The manifest under RAG_INDEX_ROOT binds the
+  # corpus identity; its sha256 is the registry route's rag snapshot. The
+  # pinned golden fixture platform/testdata/rag-index stays byte-identical.
+  RAG_BACKEND: "bedrock"
+  RAG_INDEX_ROOT: "/opt/medzen/platform/testdata/rag-bedrock-dev"
+  RAG_BEDROCK_MIN_SCORE: "0.60"
+  # measured 2026-09-03 (rag_floor_eval, 51 questions incl. near-domain
+  # distractors such as "send money", "buy a phone", "renew my passport"):
+  # distractors reach 0.663 on the product corpus and 0.692 on the clinical
+  # corpus; relevant product questions score >= 0.78 (kin >= 0.746) and
+  # relevant clinical questions >= 0.73 in en/pcm/swa. Kinyarwanda keeps a
+  # higher floor because its similarity range is compressed (0.62-0.86).
+  RAG_BEDROCK_MIN_SCORE_BY_CORPUS: "product=0.68,clinical=0.70"
+  RAG_BEDROCK_MIN_SCORE_BY_LANGUAGE: "kin=0.72"
+  RAG_BEDROCK_CANDIDATES: "8"
+  RAG_BEDROCK_CORPORA: "product,clinical"
+  RAG_BEDROCK_TIMEOUT_SECONDS: "6"
 ---
 apiVersion: v1
 kind: ConfigMap

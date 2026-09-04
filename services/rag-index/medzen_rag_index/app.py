@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -14,6 +15,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from .bedrock_backend import BedrockRepository
 from .index import IndexRefusal, IndexRepository
 
 
@@ -57,7 +59,38 @@ def _default_index_root() -> Path:
     return Path(__file__).resolve().parents[3] / "platform/testdata/rag-index"
 
 
-def create_app(repository: IndexRepository | None = None, *,
+def _build_repository(index_root: Path, alias: str):
+    """Backend selection (2026-09-02): ``RAG_BACKEND=bedrock`` serves the real
+    dev corpus through a Bedrock Knowledge Base; the default local backend
+    keeps serving the synthetic file index unchanged."""
+    backend = os.environ.get("RAG_BACKEND", "local")
+    if backend == "bedrock":
+        corpora = {
+            item.strip() for item in os.environ.get("RAG_BEDROCK_CORPORA", "").split(",")
+            if item.strip()
+        }
+        def floors(name: str) -> dict[str, float]:
+            out = {}
+            for item in os.environ.get(name, "").split(","):
+                if item.strip():
+                    key, _, floor = item.partition("=")
+                    out[key.strip()] = float(floor)
+            return out
+        return BedrockRepository(
+            index_root, alias,
+            min_score=float(os.environ.get("RAG_BEDROCK_MIN_SCORE", "0.45")),
+            min_score_by_language=floors("RAG_BEDROCK_MIN_SCORE_BY_LANGUAGE"),
+            min_score_by_corpus=floors("RAG_BEDROCK_MIN_SCORE_BY_CORPUS"),
+            candidates=int(os.environ.get("RAG_BEDROCK_CANDIDATES", "8")),
+            corpora=corpora or None,
+            timeout_seconds=float(os.environ.get("RAG_BEDROCK_TIMEOUT_SECONDS", "6")),
+        )
+    if backend != "local":
+        raise IndexRefusal("unknown RAG backend")
+    return IndexRepository(index_root, alias)
+
+
+def create_app(repository: IndexRepository | BedrockRepository | None = None, *,
                index_root: Path | None = None,
                max_body_bytes: int = MAX_BODY_BYTES) -> FastAPI:
     supplied_repository = repository
@@ -65,7 +98,7 @@ def create_app(repository: IndexRepository | None = None, *,
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         try:
-            app.state.repository = supplied_repository or IndexRepository(
+            app.state.repository = supplied_repository or _build_repository(
                 index_root or Path(os.environ.get(
                     "RAG_INDEX_ROOT", str(_default_index_root())
                 )),
@@ -110,7 +143,9 @@ def create_app(repository: IndexRepository | None = None, *,
         ready = repo is not None
         payload: dict[str, Any] = {
             "ready": ready,
-            "classification": "SYNTHETIC_NON_CLINICAL",
+            "classification": (
+                repo.loaded.classification if ready else "SYNTHETIC_NON_CLINICAL"
+            ),
             "index_loaded": ready,
         }
         if ready:
@@ -191,7 +226,8 @@ def create_app(repository: IndexRepository | None = None, *,
             (repo.loaded.snapshot_sha256 + "\n" + (language or "*") + "\n"
              + normalized_query).encode("utf-8")
         ).hexdigest()
-        citations = repo.search(query, language=language, top_k=top_k)
+        citations = await asyncio.to_thread(
+            repo.search, query, language=language, top_k=top_k)
         return {
             "request_id": request_id,
             "query_id": query_id,
