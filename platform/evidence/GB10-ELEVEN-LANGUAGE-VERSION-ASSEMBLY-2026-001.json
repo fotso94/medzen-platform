@@ -1,0 +1,188 @@
+{
+ "record": "GB10-ELEVEN-LANGUAGE-VERSION-ASSEMBLY-2026-001",
+ "date": "2026-09-04",
+ "status": "ASSEMBLED_AND_ADOPTED_TRAINING_STILL_GATED",
+ "authorisation": "Owner directive 2026-09-04: 'Proceed with the 17-manifest/11-language version assembly while the scorer fix finishes. Copy source manifests byte-for-byte, verify zero duplicate audio identities, carry forward the gb9 deferral policy, and create the new COMPLETE/ADOPTION records. Set the future packet explicitly to MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15. Do not build or launch training until the scorer fix is committed and tested.'",
+ "why_this_version_exists": "pipeline/train_asr.py load_mix takes a SINGLE manifest version and refuses a mixed set. Replaying the incumbent seven alongside the four Cameroon languages is therefore impossible without one version that holds both. The constraint is the single-version interface, not any one line.",
+ "version": {
+  "name": "gb10",
+  "supersedes": "gb9",
+  "complete": {
+   "key": "curated/_versions/gb10/COMPLETE.json",
+   "sha256": "fa8eb87d33214f3a82e0c3c59409eba9976f7e46bab67956804e212be2c37727",
+   "version_id": "MSVH5oTeYZgcSKUPlYZ_jDYC3b3_X.CF",
+   "bytes": 8991
+  },
+  "adoption": {
+   "key": "curated/_versions/gb10/ADOPTION.json",
+   "version_id": "TM0y_jbGqqPlV4DoyOINn4Z_a4UozPQw",
+   "bytes": 822,
+   "binds_complete_raw_sha256": "fa8eb87d33214f3a82e0c3c59409eba9976f7e46bab67956804e212be2c37727",
+   "deferral_policy_sha256": "b830ff56f343709e5318eb8f59f74339ce70aaa38e2fe528743b6f12d8c8593f"
+  },
+  "both_written_conditionally": "IfNoneMatch:* — S3 itself rejects the write if the key already exists"
+ },
+ "composition": {
+  "corpora": 17,
+  "languages": 11,
+  "rows": 1484740,
+  "hours": 2444.1888,
+  "incumbent_from_gb9": {
+   "corpora": 13,
+   "languages": 7
+  },
+  "cameroon_from_cp1": {
+   "corpora": 4,
+   "languages": 4,
+   "rows": 10731
+  },
+  "per_corpus": {
+   "english/asr/cv17_en": {
+    "rows": 58145,
+    "hours": 99.9933,
+    "carried_from_version": "gb9",
+    "sha256": "787484e56a19668c83000bd0c727ca55d61bf0933e8bab720e44016f1cab078a"
+   },
+   "english/asr/en_us_fleurs_train": {
+    "rows": 2596,
+    "hours": 7.4351,
+    "carried_from_version": "gb9",
+    "sha256": "317b37cac13c385a9a2d910cea2e68676cc71b8766e43d36fc8a99ea07764bc1"
+   },
+   "ewe/asr/ewe_asr": {
+    "rows": 15046,
+    "hours": 79.3903,
+    "carried_from_version": "gb9",
+    "sha256": "663c55755491ac02258d5920302f268c6414b6327d4fed01d13153624f228bb7"
+   },
+   "french/asr/aaf_ca16_conv": {
+    "rows": 326,
+    "hours": 0.5363,
+    "carried_from_version": "gb9",
+    "sha256": "ce14c38f364957fab64339ed0b4e0bbc4db58e8085a06da7d4d9a6c5506fcdb0"
+   },
+   "french/asr/aaf_ca16_devtest": {
+    "rows": 481,
+    "hours": 0.4133,
+    "carried_from_version": "gb9",
+    "sha256": "3ba09d0c7f96f5a6c0b7c83c9d2106f17b2c9a769a18c1d0292a1e5e86babe7d"
+   },
+   "french/asr/aaf_ca16_read": {
+    "rows": 2716,
+    "hours": 2.4629,
+    "carried_from_version": "gb9",
+    "sha256": "a2f1bccaf53fa7360039d33aaf0a4d863c91d6eb2402750d393c0dd40f890bd3"
+   },
+   "french/asr/aaf_niger_dev": {
+    "rows": 970,
+    "hours": 0.96,
+    "carried_from_version": "gb9",
+    "sha256": "40e67d7801ae586b8ef32488162d12c2fe2445be6bc94b8874aa1dc802ddce01"
+   },
+   "french/asr/aaf_yaounde": {
+    "rows": 8397,
+    "hours": 10.5866,
+    "carried_from_version": "gb9",
+    "sha256": "aa7e6085b9862e2504d6de5e6728f0d4febac9df327ee18fce88e54b79e1674c"
+   },
+   "gbaya/asr/cv26_gya": {
+    "rows": 3041,
+    "hours": 4.2903,
+    "carried_from_version": "cp1",
+    "sha256": "9bc8b77425a397633672fecbfab25fb71b48dcd3dc05e1f8a744ecb13fdeb1d5"
+   },
+   "kinyarwanda/asr/cv17_rw": {
+    "rows": 1018628,
+    "hours": 1442.6799,
+    "carried_from_version": "gb9",
+    "sha256": "900e165f236c3869523f36b5dc9f0de351a79f5e6445a00f5d168adc4f9ebd02"
+   },
+   "lingala/asr/lin_asr": {
+    "rows": 13966,
+    "hours": 67.9989,
+    "carried_from_version": "gb9",
+    "sha256": "eaf840c75cdea09075eefa2e6ac58e1960a3747f5b5409b724e64e2fa8935bc3"
+   },
+   "lingala/asr/lrsc": {
+    "rows": 2920,
+    "hours": 4.993,
+    "carried_from_version": "gb9",
+    "sha256": "c82657f60f4ee2e8fe0d7caef9f3acd928a48f0b8b9e5679f1a0b5279a7907b6"
+   },
+   "ngiemboon/asr/cv26_nnh": {
+    "rows": 4019,
+    "hours": 9.7798,
+    "carried_from_version": "cp1",
+    "sha256": "024d869a4f1efb6001bd6a3ff436c5778c2196406b71fcc953cacd98050ca97e"
+   },
+   "ngombala/asr/cv26_nla": {
+    "rows": 1785,
+    "hours": 3.5368,
+    "carried_from_version": "cp1",
+    "sha256": "ed277104ab9c4a997757a38e52ec22b4082bb0697f191dac1559c268407cfe1a"
+   },
+   "pidgin/asr/av_pcm": {
+    "rows": 291074,
+    "hours": 616.6069,
+    "carried_from_version": "gb9",
+    "sha256": "436c1c583c66c60981d369bf013677fb617d67ddd6ddae04b3ad87a5283b6fe6"
+   },
+   "swahili/asr/cv17_sw": {
+    "rows": 58744,
+    "hours": 88.9598,
+    "carried_from_version": "gb9",
+    "sha256": "74211fcdc28efea3bc4a81164e8175d5dbac4f81d868fb61a7d85e4892e69f2f"
+   },
+   "yangben/asr/cv26_yav": {
+    "rows": 1886,
+    "hours": 3.5656,
+    "carried_from_version": "cp1",
+    "sha256": "17ef98ef84dafcb1a33bc09826184b47882c10cd9b7428e88b9b2641983ee954"
+   }
+  }
+ },
+ "integrity_checks": {
+  "byte_for_byte": "Every manifest was server-side copied then RE-READ and sha256-verified against the source sha recorded in the source version's COMPLETE.json. All 17 matched; a mismatch would have aborted before any record was written.",
+  "duplicate_audio_identities": 0,
+  "unique_audio_identities": 1484740,
+  "duplicate_check_scope": "all 1,484,740 rows across all 17 corpora, on audio_checksum_sha256",
+  "speaker_overlap_incumbent_vs_cameroon": 0,
+  "cross_language_shared_speakers_within_incumbent": {
+   "english_kinyarwanda": 1,
+   "english_swahili": 2,
+   "assessment": "Inherited from gb9 unchanged. All 17 manifests are split=train only, and none of these three speakers appears in any of the 127 eval manifests under s3://medzen-speech/eval/. This is a Common Voice contributor who recorded in more than one language, NOT the train/eval leak that gb9 was cut to fix (that one was an english train speaker also voicing kinyarwanda dev-selection rows)."
+  },
+  "splits": "every row in every one of the 17 manifests is split=train"
+ },
+ "sampling_is_the_design_risk": {
+  "cameroon_share_of_raw_rows_pct": 0.72,
+  "pool_skew": {
+   "kinyarwanda": 68.6,
+   "pidgin": 19.6,
+   "english": 4.1,
+   "swahili": 4.0,
+   "lingala": 1.1,
+   "ewe": 1.0,
+   "french": 0.9
+  },
+  "cameroon_share_of_samples_by_temperature_pct": {
+   "T=1.0": 0.72,
+   "T=0.5": 7.83,
+   "T=0.3": 16.42,
+   "T=0.0": 36.36
+  },
+  "directive": "The future packet sets MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15 EXPLICITLY."
+ },
+ "constraints_the_future_packet_must_satisfy": [
+  "MEDZEN_EXCLUSIONS_REF must point at the DQ-2026-006 policy object. gb10's adoption records a deferral policy, so load_mix refuses any run that does not supply the matching exclusions — the cp1 pilot packets left this unset and would fail against gb10.",
+  "The packet CANNOT use the 'multilingual-full' execution mode. scripts/b5_sagemaker_job.py hard-binds that mode to dataset version gb9, temperature exactly 0.5, and the frozen seven-language set, so an eleven-language run at temperature 0 is refused on three separate counts.",
+  "MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15, set explicitly, never inherited.",
+  "One trainer image for both arms, so initialisation is not confounded with code as it was in the pilot."
+ ],
+ "not_done": [
+  "No training packet was built.",
+  "No training was launched. No compute was spent beyond S3 reads and copies.",
+  "Training remains gated on the ASR scorer normaliser fix being committed and tested.",
+  "publish_adoption.py was NOT used: it is v2-era and requires a policy carrying a bindings block with v2_complete_raw_sha256, which DQ-2026-006 does not have. gb9's own adoption was not produced by it either. The record was written directly in the same shape gb9 and cp1 use, with the same conditional-put guarantee the script provides."
+ ]
+}
