@@ -1,7 +1,7 @@
 {
  "record": "GB10-ELEVEN-LANGUAGE-VERSION-ASSEMBLY-2026-001",
  "date": "2026-09-04",
- "status": "ASSEMBLED_AND_ADOPTED_TRAINING_STILL_GATED",
+ "status": "ASSEMBLED_AND_ADOPTED_CORRECTED_TRAINING_STILL_GATED",
  "authorisation": "Owner directive 2026-09-04: 'Proceed with the 17-manifest/11-language version assembly while the scorer fix finishes. Copy source manifests byte-for-byte, verify zero duplicate audio identities, carry forward the gb9 deferral policy, and create the new COMPLETE/ADOPTION records. Set the future packet explicitly to MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15. Do not build or launch training until the scorer fix is committed and tested.'",
  "why_this_version_exists": "pipeline/train_asr.py load_mix takes a SINGLE manifest version and refuses a mixed set. Replaying the incumbent seven alongside the four Cameroon languages is therefore impossible without one version that holds both. The constraint is the single-version interface, not any one line.",
  "version": {
@@ -152,7 +152,22 @@
    "english_swahili": 2,
    "assessment": "Inherited from gb9 unchanged. All 17 manifests are split=train only, and none of these three speakers appears in any of the 127 eval manifests under s3://medzen-speech/eval/. This is a Common Voice contributor who recorded in more than one language, NOT the train/eval leak that gb9 was cut to fix (that one was an english train speaker also voicing kinyarwanda dev-selection rows)."
   },
-  "splits": "every row in every one of the 17 manifests is split=train"
+  "splits": "every row in every one of the 17 manifests is split=train",
+  "CORRECTION_train_eval_contamination": {
+   "withdrawn_claim": "This record and gb10's COMPLETE.json both concluded '...so there is no train/eval contamination'. That inference is WRONG. A speaker check over three speaker_ids cannot establish the absence of train/eval contamination, and contamination is present.",
+   "measured": {
+    "eval/ewe/asr/v1": "34/34 clips in gb10 training",
+    "eval/lingala/asr/v1": "35/35 clips in gb10 training",
+    "eval/lingala/asr/v2-holdout": "77/77 clips in gb10 training",
+    "distinct_clips": 146,
+    "all_other_eval_manifests": "0 overlap across the remaining 121 of 127"
+   },
+   "gb10_introduced_none_of_it": "Identical against the gb9 sources — 34/34, 35/35, 77/77. gb10 copies gb9 byte-for-byte, so it carries this forward and adds nothing.",
+   "already_documented": "GB1-EVAL-ISOLATION-AUDIT-2026-001-DETAIL.json already measured audio_checksum_overlap and split the eval surface into tier 1 (isolated: ewe 0/142, lingala 0/642) and tier 2 (known overlap: ewe 68/68, lingala 224/374). The 146 clips are a subset of the tier-2 overlaps.",
+   "lingala_holdout_note": "VAL-2026-003 defines the 77-row holdout with training_exclusion_rows=77, but the rows were never removed from the lin_asr manifest and no policy gb9 or gb10 binds carries those checksums. All 65 gb9 packets bind DQ-2026-006, which is 1,579 pulaar rows only.",
+   "consequence": "Two of the eleven languages have a contaminated eval surface. Scoring a gb10-trained model on those three sets measures memorisation. Use tier-1 surfaces for ewe and lingala, or bind a policy that excludes the 146 clips, or rebuild those eval sets — an owner decision.",
+   "correction_record": "s3://medzen-speech/curated/_versions/gb10/CORRECTION-2026-001.json"
+  }
  },
  "sampling_is_the_design_risk": {
   "cameroon_share_of_raw_rows_pct": 0.72,
@@ -171,18 +186,22 @@
    "T=0.3": 16.42,
    "T=0.0": 36.36
   },
-  "directive": "The future packet sets MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15 EXPLICITLY."
+  "directive": "The future packet sets MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15 EXPLICITLY.",
+  "cap_caveat": "The 7.83% figure at T=0.5 is UNCAPPED. omniasr_train.py always passes a per-language audio cap (MEDZEN_AUDIO_CAP_HOURS, default 100) applied BEFORE sampling, which lifts the Cameroon share to about 13.3% at T=0.5. The directed T=0 gives 9.09% per language and 36.36% to the four regardless of the cap, so the directed configuration is unaffected."
  },
  "constraints_the_future_packet_must_satisfy": [
-  "MEDZEN_EXCLUSIONS_REF must point at the DQ-2026-006 policy object. gb10's adoption records a deferral policy, so load_mix refuses any run that does not supply the matching exclusions — the cp1 pilot packets left this unset and would fail against gb10.",
+  "MEDZEN_EXCLUSIONS_REF must point at the DQ-2026-006 policy object AND MEDZEN_LANGUAGES must be set explicitly. Supplying the policy alone is NOT sufficient: DQ-2026-006 is entirely pulaar and gb10 has no pulaar corpus, so an unscoped run is refused with 'deferred row(s) are not in the eligible pool'. Scoping languages makes all 1,579 out-of-scope and removes zero rows. Inherited from gb9; the production path (omniasr_train.py) always requires MEDZEN_LANGUAGES, so this is latent rather than live.",
   "The packet CANNOT use the 'multilingual-full' execution mode. scripts/b5_sagemaker_job.py hard-binds that mode to dataset version gb9, temperature exactly 0.5, and the frozen seven-language set, so an eleven-language run at temperature 0 is refused on three separate counts.",
   "MEDZEN_TEMPERATURE=0 and MEDZEN_AUDIO_CAP_HOURS=15, set explicitly, never inherited.",
-  "One trainer image for both arms, so initialisation is not confounded with code as it was in the pilot."
+  "One trainer image for both arms, so initialisation is not confounded with code as it was in the pilot.",
+  "On the B4 CLI path MEDZEN_EXPECT_EXCLUDED must be 0 for gb10, not the gb3-era 1579 — zero rows are actually removed. The B5/omniasr path has no removed-count gate.",
+  "Do not score ewe or lingala on eval/ewe/asr/v1, eval/lingala/asr/v1 or eval/lingala/asr/v2-holdout: every clip in all three is in gb10 training. Use the tier-1 surfaces."
  ],
  "not_done": [
   "No training packet was built.",
   "No training was launched. No compute was spent beyond S3 reads and copies.",
   "Training remains gated on the ASR scorer normaliser fix being committed and tested.",
   "publish_adoption.py was NOT used: it is v2-era and requires a policy carrying a bindings block with v2_complete_raw_sha256, which DQ-2026-006 does not have. gb9's own adoption was not produced by it either. The record was written directly in the same shape gb9 and cp1 use, with the same conditional-put guarantee the script provides."
- ]
+ ],
+ "independent_verification": "Six adversarial agents recomputed every claim from primary S3 data. Byte-identity, zero duplicate audio identities, totals (1,484,740 rows / 2,444.19 h), the record bindings and the sampling arithmetic all reproduced exactly. Two claims were corrected: the train/eval inference above, and the half-stated exclusions constraint. Both corrections are folded in."
 }
