@@ -1,9 +1,0 @@
-{
- "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-04 relaying an independent review: 'Make one narrow functional scoring fix-forward ... then score both WARM and BASE_INIT_CONTROL through the existing workflow.' This packet decodes the BASE_INIT_CONTROL export (its image predated warm-start support; retained as a comparator) over the frozen Cameroon scoring manifest research/cm-pilot-scoring/cm-pilot-scoring-manifest-v2.jsonl (1946 rows; the earlier v1 carried one Gbaya clip twice under two different references and is superseded). DECODE-ONLY: pipeline.omniasr_score never sees references. Worst case $2.40, PASS_EXACT_TRAINING_REQUEST. Split binding is the CAMEROON manifest sha, not the Arm-2 nomination split. DIAGNOSTIC ONLY: no gate is applied to the result and neither model is a promotion candidate.",
- "bindings_sha256": "227ece873d2244bb87a4c23bc56bc895fddfaca54bb267d299a9fd099cd7b0de",
- "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
- "decided_utc": "2026-09-04T02:00:00Z",
- "decision": "APPROVED",
- "job_id": "b5-arm2-score-cm-base-2026-001",
- "scope": "DIAGNOSTIC_ONLY_NO_GATE_APPLIED"
-}
