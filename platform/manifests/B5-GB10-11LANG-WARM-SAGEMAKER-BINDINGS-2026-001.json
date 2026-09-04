@@ -56,9 +56,9 @@
   "path": "platform/manifests/B5-GB10-11LANG-WARM-EXECUTION-CONTRACT-2026-001.json",
   "sha256": "bfd4379aa9a6cb6d2f66961a37817619d317e967c82d753c1e4c94340b895a82"
  },
- "image_oci_index_digest": "sha256:052a07d5906f831ff11313e9ba6807ef6be7e1d10fe73c7eb5961c6555650fe0",
- "image_tag": "arm2-ftcal-b6ad15ceb3815e780e0264a4b39a9d0d6ad8238e",
- "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:4a7c1663bd88468ee3f6afa5f97404678ac9e7d75d63f3c8a6de4b4acaf686ab",
+ "image_oci_index_digest": "sha256:cf0b0c342c7733cec520cb8a81691479ac54f375fd4ac15ca788515afe175753",
+ "image_tag": "arm2-ftcal-b1dfb42049f8e4ce289af24d95342bdf9c4b35e2",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:dcd401132653bf4edfcca5415e054d445083fa6d403427a7577a42be7f4940e7",
  "instance_type": "ml.g6.xlarge",
  "job_id": "b5-gb10-11lang-warm-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
