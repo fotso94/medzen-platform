@@ -496,7 +496,8 @@
   "The single clearly significant per-language effect is Ngombala on SOREVA, where warm is worse on both metrics (delta WER +3.17 pp, CI +0.70 to +5.80; delta CER +2.58 pp, CI +1.44 to +3.83).",
   "Absolute accuracy is the real finding and it is the same for both models: roughly 38-42% WER on Ngiemboon, Ngombala and Gbaya in domain, and about 67% on Yangben. Character error sits near 10-14% in domain, so the models are recovering phonetics but not word forms.",
   "Out-of-domain WER of 80-90% on all four languages confirms these adapters do not transfer across recording conditions at this data scale.",
-  "Yangben is the clear outlier and the least-served language of the four; it needs data, not a different init."
+  "Yangben is the clear outlier and the least-served language of the four; it needs data, not a different init.",
+  "A post-hoc decomposition changes how the absolute numbers should be read: about 22% of in-domain word errors are tone-diacritic substitutions, rising to 40% for Ngiemboon and 31% for Ngombala and falling to 0% for Gbaya. Word segmentation contributes almost nothing. See error_decomposition_in_domain."
  ],
  "implication": "2,000 LoRA steps over 21.17 curated hours does not benefit from the Arm-1 multilingual checkpoint for these four languages. Future Cameroon waves should treat initialisation as settled (base init is sufficient and marginally safer) and spend the budget on data volume and domain coverage instead. Do not read any of these numbers as a nomination result.",
  "not_applied": [
@@ -504,5 +505,59 @@
   "incumbent regression gate",
   "macro-average gate",
   "promotion, registry write, or deployment of either model"
- ]
+ ],
+ "error_decomposition_in_domain": {
+  "method": "Recomputed on the BASE_INIT_CONTROL hypotheses over the 1,419 in-domain rows. '-tone' strips Unicode combining marks (NFD, category Mn) from BOTH reference and hypothesis before scoring; '-space' removes word boundaries. Diagnostic decomposition only \u2014 the reported headline WER/CER in `results` remains the canonical scorer's output with tone and spacing intact.",
+  "per_language": {
+   "ngiemboon": {
+    "wer": 37.7,
+    "wer_no_tone": 22.6,
+    "tone_share_of_wer_pct": 40,
+    "cer": 10.7,
+    "cer_no_tone": 5.1
+   },
+   "ngombala": {
+    "wer": 38.1,
+    "wer_no_tone": 26.4,
+    "tone_share_of_wer_pct": 31,
+    "cer": 11.5,
+    "cer_no_tone": 6.6
+   },
+   "yangben": {
+    "wer": 67.0,
+    "wer_no_tone": 63.1,
+    "tone_share_of_wer_pct": 6,
+    "cer": 14.3,
+    "cer_no_tone": 10.3
+   },
+   "gbaya": {
+    "wer": 42.2,
+    "wer_no_tone": 42.0,
+    "tone_share_of_wer_pct": 0,
+    "cer": 10.2,
+    "cer_no_tone": 8.4
+   }
+  },
+  "pooled": {
+   "wer": 42.6,
+   "wer_no_tone": 33.3,
+   "tone_share_of_wer_pct": 22,
+   "cer": 11.5,
+   "cer_no_tone": 7.2,
+   "cer_no_space": 11.6,
+   "utterances_wer_ge50_and_cer_le10": 158,
+   "utterances_total": 1419
+  },
+  "finding": [
+   "Word boundaries are NOT the driver: removing spaces moves pooled CER by 0.1 pp (11.5 -> 11.6).",
+   "Tone diacritics ARE. Pooled CER falls 11.5 -> 7.2 and pooled WER falls 42.6 -> 33.3 when combining marks are stripped from both sides, so about 22% of all word errors are tone-only substitutions.",
+   "The effect is entirely language-specific and tracks the orthography. Ngiemboon 40% of word errors are tone-only (37.7 -> 22.6) and Ngombala 31% (38.1 -> 26.4). Gbaya is 0% and Yangben 6% \u2014 their references carry little or no tone marking, so their error is genuinely segmental.",
+   "158 of 1,419 in-domain utterances (11%) score WER >= 50% while CER <= 10%: the phoneme string is nearly right and the word-level metric still reads as failure."
+  ],
+  "implication": [
+   "The headline in-domain WER overstates segmental error for the tone-marked orthographies. Ngiemboon and Ngombala are closer to usable than 38% suggests.",
+   "Two different problems are hiding under one number. Ngiemboon and Ngombala need a tone decision \u2014 model tone explicitly, or fix the normalisation contract and score tone separately. Yangben and Gbaya need data.",
+   "Any future Cameroon gate should report tone-stripped WER alongside the canonical figure, or it will mis-rank languages by orthographic convention rather than by acoustic modelling quality."
+  ]
+ }
 }
