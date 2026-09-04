@@ -149,3 +149,52 @@ def test_aggregate_refuses_undeclared_or_mixed_policies() -> None:
         aggregate([_row(None)], [100.0])
     with pytest.raises(EvaluationRefusal, match="mix normalization policies"):
         aggregate([_row(TONE_SENSITIVE), _row(TONE_INSENSITIVE)], [100.0])
+
+
+# --- CER must not depend on Unicode composition -----------------------------
+# "a-acute" precomposes to ONE codepoint (U+00E1); "schwa-acute" cannot and
+# stays TWO (U+0259 U+0301). Before the NFD character stream, dropping the tone
+# cost a 1-of-1 substitution on the first and a 1-of-2 deletion on the second —
+# the same error priced differently because of Latin-1's coverage.
+
+@pytest.mark.parametrize("base", ["a", "e", "i", "o", "u"])          # precompose
+@pytest.mark.parametrize("mark", ["́", "̀", "̂", "̌"])
+def test_tone_sensitive_cer_is_composition_invariant(base, mark):
+    from medzen_asr_eval.metrics import TONE_SENSITIVE, error_counts
+    precomposing = unicodedata.normalize("NFC", base + mark)
+    # a vowel with no precomposed form for this mark
+    non_precomposing = "ə" + mark                                # schwa
+    assert len(unicodedata.normalize("NFC", non_precomposing)) == 2
+
+    a = error_counts(precomposing, base, policy=TONE_SENSITIVE)
+    b = error_counts(non_precomposing, "ə", policy=TONE_SENSITIVE)
+    assert a["reference_characters"] == b["reference_characters"] == 2
+    assert a["character_errors"] == b["character_errors"] == 1
+
+
+def test_tone_sensitive_cer_parity_holds_inside_a_word():
+    from medzen_asr_eval.metrics import TONE_SENSITIVE, error_counts
+    a = error_counts("káb", "kab", policy=TONE_SENSITIVE)        # precomposed
+    b = error_counts("kə́b", "kəb", policy=TONE_SENSITIVE)
+    assert (a["character_errors"], a["reference_characters"]) == \
+           (b["character_errors"], b["reference_characters"]) == (1, 4)
+
+
+def test_legacy_v1_character_stream_is_frozen_not_normalized():
+    # v1 reproduces published scores, so it must KEEP its composition
+    # dependence: the precomposed vowel is one character, the decomposed one
+    # loses its mark to the space rule entirely.
+    from medzen_asr_eval.metrics import LEGACY_V1, error_counts
+    a = error_counts("á", "a", policy=LEGACY_V1)
+    b = error_counts("ə́", "ə", policy=LEGACY_V1)
+    assert (a["character_errors"], a["reference_characters"]) == (1, 1)
+    assert (b["character_errors"], b["reference_characters"]) == (0, 1)
+
+
+def test_tone_insensitive_cer_is_also_composition_invariant():
+    from medzen_asr_eval.metrics import TONE_INSENSITIVE, error_counts
+    a = error_counts("á", "a", policy=TONE_INSENSITIVE)
+    b = error_counts("ə́", "ə", policy=TONE_INSENSITIVE)
+    # tone is removed from BOTH sides, so neither is an error at all
+    assert a["character_errors"] == b["character_errors"] == 0
+    assert a["reference_characters"] == b["reference_characters"] == 1

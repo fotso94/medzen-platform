@@ -1,10 +1,10 @@
 {
- "cost_ceiling_usd": 164.0,
- "cost_registry_line": "B5-GB10-11LANG-WARM-2026-001 first eleven-language candidate: Arm-1 warm start, gb10 (the incumbent seven replayed alongside the four Cameroon languages), temperature 0 equal-language sampling, 15-hour per-language cap, LoRA r16 for 40,000 steps. The image is sha256:4a7c1663\u2026, the one the WARM pilot arm ran on \u2014 the BASE_INIT_CONTROL pilot ran on sha256:059f4bfb\u2026 and this candidate deliberately uses a single image so initialisation is not confounded with code. Worst case $64 on-demand, budgeted $164 under the owner's standing +$100 buffer rule",
+ "cost_ceiling_usd": 10.0,
+ "cost_registry_line": "B5-GB10-11LANG-FTCAL-2026-001 mechanics/calibration run for the eleven-language candidate: byte-identical environment to B5-GB10-11LANG-WARM-2026-001 on every key except the four declared scale keys, so it proves the RECIPE the arm scales up",
  "environment": {
-  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
   "MEDZEN_BATCH_SIZE": "2",
-  "MEDZEN_CHECKPOINT_EVERY": "2000",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
   "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
   "MEDZEN_EXPECT_EXCLUDED": "1579",
   "MEDZEN_GRAD_ACCUM": "8",
@@ -14,7 +14,7 @@
   "MEDZEN_LORA_RANK": "16",
   "MEDZEN_LR": "1e-4",
   "MEDZEN_MANIFEST_VERSION": "gb10",
-  "MEDZEN_MAX_STEPS": "40000",
+  "MEDZEN_MAX_STEPS": "30",
   "MEDZEN_SEED": "20260904",
   "MEDZEN_STUDENT_INIT_MODE": "arm1",
   "MEDZEN_STUDENT_INIT_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
@@ -28,16 +28,16 @@
  "image_tag": "arm2-ftcal-b6ad15ceb3815e780e0264a4b39a9d0d6ad8238e",
  "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:4a7c1663bd88468ee3f6afa5f97404678ac9e7d75d63f3c8a6de4b4acaf686ab",
  "instance_type": "ml.g6.xlarge",
- "job_id": "b5-gb10-11lang-warm-2026-001",
+ "job_id": "b5-gb10-11lang-ftcal-2026-001",
  "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
  "managed_spot": false,
- "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0, so this runs on-demand; the worst case is $64, ABOVE the $10 calibration tier, which is why the launch path requires the protected workflow, an APPROVED review record, a launch intent and a matching calibration receipt",
- "max_runtime_seconds": 144000,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; this 30-step mechanics run stays below the $10 calibration tier on on-demand arithmetic",
+ "max_runtime_seconds": 7200,
  "security_group_ids": [
   "sg-0fee72d218ac002a7"
  ],
  "subnets": [
   "subnet-00232b25bc1ac407a"
  ],
- "volume_gb": 200
+ "volume_gb": 100
 }

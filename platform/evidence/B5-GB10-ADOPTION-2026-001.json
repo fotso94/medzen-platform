@@ -1,0 +1,19 @@
+{
+ "record": "B5-GB10-ADOPTION-2026-001",
+ "purpose": "Committed mirror of the gb10 adoption in S3, in the exact location and shape the launch path reads (scripts/b5_sagemaker_job.verify_calibration_receipt resolves platform/evidence/B5-<VERSION>-ADOPTION-2026-001.json and compares complete_raw_sha256).",
+ "version": "gb10",
+ "complete_raw_sha256": "fa8eb87d33214f3a82e0c3c59409eba9976f7e46bab67956804e212be2c37727",
+ "deferral_policy_sha256": "b830ff56f343709e5318eb8f59f74339ce70aaa38e2fe528743b6f12d8c8593f",
+ "status": "approved",
+ "adopted_by": "claude-primary-engineer (owner directive 2026-09-04: 'Proceed with the 17-manifest/11-language version assembly while the scorer fix finishes')",
+ "adopted_utc": "2026-09-04T06:21:55Z",
+ "scope": "Approves the DATA VERSION only. Training from gb10 is separately gated: the owner directed that no packet be built and no training launched until the ASR scorer normaliser fix is committed and tested. Carrying gb9's DQ-2026-006 deferral policy forward means any gb10 run MUST supply MEDZEN_EXCLUSIONS_REF pointing at that exact policy object, or train_asr.load_mix refuses.",
+ "s3": {
+  "complete": "s3://medzen-speech/curated/_versions/gb10/COMPLETE.json",
+  "complete_version_id": "MSVH5oTeYZgcSKUPlYZ_jDYC3b3_X.CF",
+  "adoption": "s3://medzen-speech/curated/_versions/gb10/ADOPTION.json",
+  "adoption_version_id": "TM0y_jbGqqPlV4DoyOINn4Z_a4UozPQw",
+  "correction": "s3://medzen-speech/curated/_versions/gb10/CORRECTION-2026-001.json"
+ },
+ "assembly_record": "platform/evidence/GB10-ELEVEN-LANGUAGE-VERSION-ASSEMBLY-2026-001.json"
+}

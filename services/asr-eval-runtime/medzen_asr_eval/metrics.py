@@ -138,6 +138,25 @@ def edit_distance(reference: list[str], hypothesis: list[str]) -> int:
     return previous[-1]
 
 
+def _char_stream(text: str, policy: str) -> str:
+    """The codepoint sequence CER is measured over, with spaces removed.
+
+    Under the v2 policies this is NFD, so a character costs the same whether
+    or not its accent happens to precompose in Unicode. Without it the metric
+    is composition-dependent: "a-acute" is ONE codepoint (U+00E1) and
+    "schwa-acute" is TWO (U+0259 U+0301), so dropping the tone costs a
+    1-of-1 substitution on the first and a 1-of-2 deletion on the second —
+    a different relative penalty for the same error, decided by which vowel
+    Latin-1 happened to precompose. NFD puts both on two codepoints.
+
+    LEGACY_V1 is deliberately excluded: it is frozen to reproduce scores
+    already published under it, and normalising its character stream would
+    silently change those numbers."""
+    if policy == LEGACY_V1:
+        return text.replace(" ", "")
+    return unicodedata.normalize("NFD", text).replace(" ", "")
+
+
 def error_counts(reference: str, hypothesis: str, *, policy: str) -> dict[str, Any]:
     """Edit counts under an explicitly named tone policy.
 
@@ -146,14 +165,16 @@ def error_counts(reference: str, hypothesis: str, *, policy: str) -> dict[str, A
     is meaningless without the normaliser that produced it, and two policies
     must never be pooled into one rate.
 
-    Characters are counted as CODEPOINTS, so under TONE_SENSITIVE a combining
-    mark is its own character. That is what makes `reference_characters` rise
+    Characters are counted as CODEPOINTS over the NFD stream (see
+    _char_stream), so under TONE_SENSITIVE a combining mark is its own
+    character and the cost of a tone error does not depend on whether its
+    vowel precomposes. That is what makes `reference_characters` rise
     against v1 — v1 lost exactly one character per destroyed mark."""
     ref = normalize_text(reference, policy=policy)
     hyp = normalize_text(hypothesis, policy=policy)
     words_ref, words_hyp = ref.split(), hyp.split()
-    chars_ref = list(ref.replace(" ", ""))
-    chars_hyp = list(hyp.replace(" ", ""))
+    chars_ref = list(_char_stream(ref, policy))
+    chars_hyp = list(_char_stream(hyp, policy))
     return {
         "word_errors": edit_distance(words_ref, words_hyp),
         "reference_words": len(words_ref),

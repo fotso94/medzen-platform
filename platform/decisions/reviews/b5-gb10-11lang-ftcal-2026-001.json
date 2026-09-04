@@ -1,0 +1,9 @@
+{
+ "basis": "Owner directive 2026-09-04: 'produce the existing matching mechanics receipt required by the launch path ... proceed autonomously until my final launch-gate click.' This is the 30-step mechanics/calibration run whose receipt the $64 arm needs; it is NOT the arm. Worst case $3.20, below the $10 calibration tier. Its environment is byte-identical to B5-GB10-11LANG-WARM-2026-001 on every key except the four declared scale keys (MEDZEN_MAX_STEPS 30, MEDZEN_CHECKPOINT_EVERY 30, MEDZEN_AUDIO_CAP_HOURS 2), and it binds the same image digest, so it proves the recipe the arm scales up. The arm itself remains held for the owner's launch-gate click.",
+ "bindings": "platform/manifests/B5-GB10-11LANG-FTCAL-SAGEMAKER-BINDINGS-2026-001.json",
+ "bindings_sha256": "2fe684fb8645aeb7a568f240c478cbd511aef0eb0576de00593439ee802e7d01",
+ "decision": "APPROVED",
+ "job_id": "b5-gb10-11lang-ftcal-2026-001",
+ "reviewed_utc": "2026-09-04T15:40:26Z",
+ "reviewer": "claude-primary-engineer"
+}
