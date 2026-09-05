@@ -1,0 +1,9 @@
+{
+ "basis": "Owner directive 2026-09-05. Scores the eleven-language candidate (gb10, Arm-1 warm start, T=0, 15h cap, LoRA r16, 40,000 steps, KD off) on the pinned eleven-language surface (16,001 unique clips, sha a7bdaa7bff9a72b1\u2026, VersionId 1TQKlSWA_6MAM7xTq4f45Km.zzGdOpph) with the same evaluator image and configuration as its counterpart, so the two receipts are directly comparable. Decode-only; nothing is promoted or deployed.",
+ "bindings": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-GB10-2026-001.json",
+ "bindings_sha256": "6e07db6963ca8f550c01d262c16e22a592f2c7fd72ae37cafabee8799b5105a7",
+ "decision": "APPROVED",
+ "job_id": "b5-arm2-score-gb10-2026-001",
+ "reviewed_utc": "2026-09-05T18:20:39Z",
+ "reviewer": "claude-primary-engineer"
+}

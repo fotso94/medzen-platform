@@ -1,0 +1,65 @@
+{
+ "artifact": {
+  "etag": "\"42439ad467da1b0c953ad85abd304571-185\"",
+  "kms_key": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+  "s3_bytes": 1546534099,
+  "s3_uri": "s3://medzen-speech/research/b5-training/b5-gb10-11lang-warm-2026-001/output/medzen-b5-b5-gb10-11lang-warm-2026-001/output/model.tar.gz",
+  "s3_version_id": "nsP3.Tl1P4gFKQycMF5swJQLpRRx0wD8"
+ },
+ "authoritative_verification": {
+  "authoritative": true,
+  "creation_event_verified": true,
+  "failures": [],
+  "launch_principal": "arn:aws:iam::558069890522:role/medzen-arm2-stage1-launch-role",
+  "metrics_sha256": "9623de7e6216fabf1a9e53f62e81f0aa2a2d33ff71d08562b21308be7886ac53",
+  "mode": "live",
+  "packet_canonical_sha256": "45fef40c80ceb2f853b00f0213a9e0bb9ab5d592a84d542b4da1607f23d8940a",
+  "verdict": "PASS",
+  "verifier_script_sha256": "cc40d5cc87022353bffbe9049185c9eebf7a28192729dd40454bde5a7f32b523"
+ },
+ "billable_seconds": 71344,
+ "calibration_receipt": {
+  "record": "platform/evidence/B5-GB10-11LANG-FTCAL-2026-002-RECEIPT.json",
+  "record_sha256": "3ade1fd945dc5df714cd0599b58380d831b007b40663b10078445eac324c4b41"
+ },
+ "cost": {
+  "actual_on_demand_usd": 31.71,
+  "billable_hours": 19.8178,
+  "note": "actual is 49.5% of the worst case and 19.3% of the reservation",
+  "on_demand_rate_usd_per_hour": 1.6,
+  "reserved_usd": 164.0,
+  "worst_case_usd": 64.0
+ },
+ "dataset_version": "gb10",
+ "disposition": "SCORING PENDING. Not promoted, not registered, not deployed; the Arm-1 dev deployment stays live.",
+ "export": {
+  "manifest_sha256": "27db485e234a396c613f359c6b53168f9bf311d89f2e58dfc9587f86b13743bb",
+  "model_sha256": "9f4723e2bc0de9d2ae3798bf665115b0dbed595ca1fd7d9fe8c64c968390c274",
+  "status": "PASS_MERGED_EXPORT"
+ },
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:dcd401132653bf4edfcca5415e054d445083fa6d403427a7577a42be7f4940e7",
+ "job": "medzen-b5-b5-gb10-11lang-warm-2026-001",
+ "packet": "platform/manifests/B5-GB10-11LANG-WARM-SAGEMAKER-BINDINGS-2026-001.json",
+ "packet_canonical_sha256": "45fef40c80ceb2f853b00f0213a9e0bb9ab5d592a84d542b4da1607f23d8940a",
+ "recipe": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_EXECUTION_MODE": "arm2_comparative",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "english,ewe,french,gbaya,kinyarwanda,lingala,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MAX_STEPS": "40000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "arm1",
+  "MEDZEN_STUDENT_INIT_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora"
+ },
+ "record": "B5-GB10-11LANG-WARM-2026-001-COMPLETION-RECEIPT",
+ "role": "externally-verifiable completion receipt for the eleven-language arm; every field re-derivable from AWS",
+ "terminal_status": "Completed",
+ "training_ended": "2026-09-05T11:09:17Z",
+ "training_started": "2026-09-04T15:20:13Z",
+ "utc": "2026-09-05T18:20:39Z",
+ "verdict": "PASS"
+}

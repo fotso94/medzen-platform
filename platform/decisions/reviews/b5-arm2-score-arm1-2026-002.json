@@ -1,0 +1,9 @@
+{
+ "basis": "Owner directive 2026-09-05. Scores the incumbent Arm-1 (the live dev deployment), rescored on the SAME eleven-language surface for a like-for-like delta on the pinned eleven-language surface (16,001 unique clips, sha a7bdaa7bff9a72b1\u2026, VersionId 1TQKlSWA_6MAM7xTq4f45Km.zzGdOpph) with the same evaluator image and configuration as its counterpart, so the two receipts are directly comparable. Decode-only; nothing is promoted or deployed.",
+ "bindings": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ARM1-2026-002.json",
+ "bindings_sha256": "2b202ab866f9aa9253534c8a13380429a42641711a6669b421cba4b5248cb37b",
+ "decision": "APPROVED",
+ "job_id": "b5-arm2-score-arm1-2026-002",
+ "reviewed_utc": "2026-09-05T18:20:39Z",
+ "reviewer": "claude-primary-engineer"
+}
