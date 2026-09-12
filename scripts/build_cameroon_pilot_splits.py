@@ -55,13 +55,35 @@ def stable_hash(value: str) -> int:
     return int(hashlib.sha256(value.encode("utf-8")).hexdigest()[:12], 16)
 
 
+SILENCE_RMS = 1e-4
+
+
 def audited(rows: list[dict], audit: dict) -> list[dict]:
     """Drop near-silent, genuinely clipped (>=6 consecutive saturated samples)
     and edge-truncated clips. mp3 decoder overshoot (peak just over 1.0) is
-    normal and is NOT clipping."""
+    normal and is NOT clipping.
+
+    LOUDNESS GUARD — the `or` idiom this replaced was wrong. `row.get("rms")
+    or 1.0` substitutes 1.0 for any FALSEY rms, and 0.0 is falsey, so a clip of
+    true digital silence (rms == 0.0) was assigned a loudness of 1.0 and KEPT
+    by the very filter meant to drop it. Only rms strictly between 0 and 1e-4
+    was ever caught. A missing measurement was likewise defaulted to 1.0 and
+    kept. Both are now explicit: 0.0 is dropped like any other silent clip, and
+    an unmeasured clip is refused rather than assumed loud, because a row with
+    no rms has not been qualified and silently admitting it is the same defect.
+
+    Reproduction note: on inputs where every row carries an rms >= 1e-4 this
+    function returns exactly what the old one did, so committed splits built
+    from fully-qualified rows are unchanged. Where it differs it differs by
+    dropping a clip that should never have survived, or by raising."""
     keep = []
     for row in rows:
-        if (row.get("rms") or 1.0) < 1e-4:
+        rms = row.get("rms")
+        if rms is None:
+            raise ValueError(
+                f"row has no rms measurement, cannot judge loudness: "
+                f"{row.get('path', row)!r}")
+        if rms < SILENCE_RMS:
             continue
         marks = audit.get(row["path"])
         if marks is not None:
