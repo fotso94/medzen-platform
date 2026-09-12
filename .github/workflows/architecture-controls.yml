@@ -38,4 +38,5 @@ jobs:
             tests/test_arm2_execution_mode.py \
             tests/test_asr_eval_tone_policy.py \
             tests/test_gb10_eval_surface.py \
-            tests/test_b6_local_engineering_record.py
+            tests/test_b6_local_engineering_record.py \
+            tests/test_cameroon_pilot_loudness_guard.py
