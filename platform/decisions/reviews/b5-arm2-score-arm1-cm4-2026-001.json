@@ -1,0 +1,11 @@
+{
+ "basis": "Owner authorized the CM4 baseline pass. Authorizes ONLY the decode job b5-arm2-score-arm1-cm4-2026-001 ($1.60 worst case, 2,197 rows, arm1 model) on the frozen CM4 holdout: basaa/medumba/bafia/ewondo, 3.617 h, 40 speakers, speaker- and prompt-disjoint from their training splits, zero overlap with any pre-existing eval surface or the incumbent training footprint. Two-field decode manifest (audio_filepath, audio_checksum_sha256), byte- and VersionId-pinned; no reference text reaches the decode job. render+validate returns PASS_EXACT_TRAINING_REQUEST; entrypoint pipeline.omniasr_score. DIAGNOSTIC ONLY - measures present ability on four languages no MedZen model has trained on; no promotion, registry write, deployment change or training.",
+ "bindings_sha256": "574cf53f674edf1fd6a9b3093259b2524a272baf47b10ba8271aa8762a5d6f57",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+ "job_id": "b5-arm2-score-arm1-cm4-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ARM1-CM4-2026-001.json",
+ "reviewer": "owner authorization 2026-09-12: \"I authorize the three prepared CM4 baseline-scoring jobs - base, Arm-1 and GB10 - at $1.60 maximum each, $4.80 total.\" Independent review confirmed both scoring fixes, the 2,197-row reference-free decode manifest, all three render/validate passes and the approval hashes.",
+ "utc": "2026-09-12T17:08:50Z"
+}
