@@ -404,6 +404,27 @@ def _preprocess_wave(audio, sr: int):
     return functional.layer_norm(wave, wave.shape, eps=1e-5)
 
 
+def _raw_wave(audio, sr: int):
+    """DIAGNOSTIC ONLY (raw-versus-normalised diagnostic, 2026-09-12): the
+    waveform exactly as the TRAINING path feeds it (pipeline/omniasr_data.py
+    make_batch_source: soundfile float32, mono mean, no resample, no
+    normalisation). Training and evaluation disagree on this: training feeds
+    raw audio, evaluation and serving normalise per utterance.
+
+    Never used by calibration, the parity probe, sealed evaluation or any
+    nomination/promotion scoring. The evaluator reaches it only when
+    MEDZEN_SCORE_INPUT_CONVENTION=raw, and its receipts then declare it.
+    Refuses anything but 16 kHz: training never resamples, so a resampled
+    'raw' input would match neither convention."""
+    if int(sr) != 16000:
+        raise TrainerRefusal(
+            f"raw input convention requires 16 kHz audio (training never "
+            f"resamples), got {sr} Hz")
+    import torch
+
+    return torch.as_tensor(audio, dtype=torch.float32)
+
+
 def _parity_probe(model, tokenizer, device, dev_files: dict[str, str],
                   *, rows_per_language: int = 1) -> dict[str, Any]:
     """MANDATORY upstream decode parity (Codex #25 finding 2): on the FRESH

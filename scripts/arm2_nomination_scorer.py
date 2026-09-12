@@ -339,6 +339,14 @@ def load_receipts(path: Path, *, arm: str, expected_model_sha: str,
                 "model_artifact", "split_sha256", "evaluator_image_digest"):
         if not doc.get(key):
             raise ScorerRefusal(f"receipts[{arm}] lack {key!r}")
+    # Diagnostic receipts (MEDZEN_SCORE_INPUT_CONVENTION=raw, 2026-09-12) are
+    # never nomination evidence. Receipts that predate the field came from the
+    # frozen contract path and read as 'normalized'.
+    convention = doc.get("input_convention", "normalized")
+    if convention != "normalized":
+        raise ScorerRefusal(
+            f"receipts[{arm}] declare input_convention={convention!r} — "
+            "diagnostic receipts can never enter nomination scoring")
     pattern = str(evaluator.get("job_name_pattern") or "")
     if pattern and not re.fullmatch(pattern, str(doc["job_name"])):
         raise ScorerRefusal(
