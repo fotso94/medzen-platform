@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-13, given after an independent technical review closed RAWDIAG-VERDICT-2026-001: \"Correct the matched-input gap comparison and close the diagnostic without rerunning it. Proceed with the agreed 3,000-step Base-versus-Arm-1 pair under identical settings, retaining normalized evaluation and incumbent replay. Cap training plus scoring at $44.80 for first attempts; retries require separate approval. Keep serving unchanged. No larger campaign, promotion, or additional governance work.\" Matched-pair arm 'base': identical to its partner packet in every field except the student initialisation (MEDZEN_STUDENT_INIT_MODE and, for arm1, the three STUDENT_INIT_* keys), the job id and this label. Trainer image dcd40113 (arm2-ftcal-b1dfb420, supports warm start). Data version gb11: the 17 gb10 manifests and the 4 frozen CM4 manifests as byte copies, 15 languages at temperature 0 with incumbent replay, 15 h per-language cap. LoRA r16, LR 1e-4, batch 2x8, KD off, seed 20260904, 3,000 steps. Worst case $9.60 (21,600 s at $1.60/h on-demand), below the $10 calibration tier. The pair's first attempts, with four scoring jobs, are capped at $44.80; any retry needs separate owner approval. Evaluation stays normalised. DIAGNOSTIC ONLY: no promotion, registry write or serving change. The run is INVALID if its log emits any STUDENT_WARM_START_LOADED, or if its training provenance carries student_init keys.",
+ "bindings_sha256": "7b964da3f1fe7c38bc3be79a3719e2e6740811ab2809c7fa01859656c8c6dabd",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-13T19:31:10Z",
+ "decision": "APPROVED",
+ "job_id": "cm-pilot-icmp15-base-2026-001",
+ "scope": "DIAGNOSTIC_PROBE_NOT_A_PROMOTION_CANDIDATE"
+}

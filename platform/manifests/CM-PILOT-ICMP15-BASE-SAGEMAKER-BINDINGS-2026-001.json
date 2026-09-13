@@ -1,0 +1,41 @@
+{
+ "cost_ceiling_usd": 10.0,
+ "cost_registry_line": "CM-PILOT-ICMP15-BASE-2026-001 matched Base-versus-Arm-1 pair arm, Meta pretrained base init; 3,000-step LoRA on gb11 (15 languages, temperature 0, incumbent replay); worst case $9.60 on-demand, below the $10 calibration tier; pair first-attempt cap $44.80 including four scoring jobs",
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "500",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:cf0b0c342c7733cec520cb8a81691479ac54f375fd4ac15ca788515afe175753",
+ "image_tag": "arm2-ftcal-b1dfb42049f8e4ce289af24d95342bdf9c4b35e2",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:dcd401132653bf4edfcca5415e054d445083fa6d403427a7577a42be7f4940e7",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-icmp15-base-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 21600,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 200
+}
