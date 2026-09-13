@@ -25,6 +25,11 @@ reviewed scoring-job packet):
   MEDZEN_SCORE_SPLIT_SHA256: the frozen nomination-split artifact sha.
   MEDZEN_SCORE_EVALUATOR_IMAGE_DIGEST: this job's own image digest (the
       launcher injects the packet-pinned digest; recorded into the receipts).
+  MEDZEN_SCORE_INPUT_CONVENTION (OPTIONAL, default 'normalized'): 'normalized'
+      is the frozen contract path (_preprocess_wave) and serving's convention.
+      'raw' is DIAGNOSTIC ONLY: the waveform exactly as training feeds it
+      (_raw_wave, also imported from calibrate). Receipts declare which was
+      used, and the nomination scorer refuses any that are not 'normalized'.
 The receipts file is written to /opt/ml/model/receipts.json (the SageMaker
 output artifact); the workflow's attest step signs its exact bytes.
 """
@@ -45,6 +50,23 @@ def _require(name: str) -> str:
     if not value:
         raise EvaluatorRefusal(f"{name} is required — the evaluator runs only "
                                "under the reviewed scoring-job packet")
+    return value
+
+
+INPUT_CONVENTIONS = ("normalized", "raw")
+
+
+def resolve_input_convention(environ) -> str:
+    """'normalized' unless MEDZEN_SCORE_INPUT_CONVENTION explicitly says
+    'raw'. An unrecognised value refuses rather than falling back, so a typo
+    can never silently produce contract-path receipts labelled as raw."""
+    value = str(environ.get("MEDZEN_SCORE_INPUT_CONVENTION", "")).strip().lower()
+    if not value:
+        return "normalized"
+    if value not in INPUT_CONVENTIONS:
+        raise EvaluatorRefusal(
+            f"MEDZEN_SCORE_INPUT_CONVENTION={value!r} is not one of "
+            f"{INPUT_CONVENTIONS}")
     return value
 
 
@@ -95,7 +117,8 @@ def _fetch_pinned(cli, s3_uri: str, version_id: str, sha256: str,
 def main() -> int:
     import torch
 
-    from pipeline.omniasr_calibrate import _ctc_greedy_text, _preprocess_wave
+    from pipeline.omniasr_calibrate import (_ctc_greedy_text,
+                                            _preprocess_wave, _raw_wave)
     from pipeline.omniasr_data import fetch_audio
     from pipeline.omniasr_train import (_load_model_and_tokenizer,
                                         parse_config, stage_model_artifacts)
@@ -117,6 +140,7 @@ def main() -> int:
     model_vid = "" if base_mode else _require("MEDZEN_SCORE_MODEL_VERSION_ID")
     split_sha = _require("MEDZEN_SCORE_SPLIT_SHA256")
     image_digest = _require("MEDZEN_SCORE_EVALUATOR_IMAGE_DIGEST")
+    input_convention = resolve_input_convention(os.environ)
     training_packet_sha = os.environ.get(
         "MEDZEN_SCORE_TRAINING_PACKET_CANONICAL_SHA256", "").strip()
     job_name = (os.environ.get("MEDZEN_TRAINING_JOB_NAME")
@@ -192,7 +216,9 @@ def main() -> int:
                             dtype="float32", always_2d=False)
         if getattr(audio, "ndim", 1) > 1:
             audio = audio.mean(axis=1)
-        wave = _preprocess_wave(audio, sr).to(torch.bfloat16).unsqueeze(0)
+        prepared = (_raw_wave(audio, sr) if input_convention == "raw"
+                    else _preprocess_wave(audio, sr))
+        wave = prepared.to(torch.bfloat16).unsqueeze(0)
         if device is not None:
             wave = wave.to(device)
         layout = BatchLayout(tuple(wave.shape), seq_lens=[wave.shape[1]],
@@ -218,12 +244,14 @@ def main() -> int:
         "split_sha256": split_sha,
         "evaluator_image_digest": image_digest,
         "manifest_sha256": manifest_sha,
+        "input_convention": input_convention,
         "rows": out_rows,
     }
     payload = json.dumps(receipts, indent=1, sort_keys=True).encode() + b"\n"
     (work / "receipts.json").write_bytes(payload)
     print(json.dumps({"status": "SCORING_RECEIPTS_WRITTEN",
                       "arm": arm, "rows": len(out_rows),
+                      "input_convention": input_convention,
                       "receipts_sha256":
                           hashlib.sha256(payload).hexdigest()},
                      sort_keys=True))

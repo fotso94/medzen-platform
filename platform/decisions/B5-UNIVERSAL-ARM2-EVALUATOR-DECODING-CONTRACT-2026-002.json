@@ -1,0 +1,33 @@
+{
+ "amendment": {
+  "what_changes": "one OPTIONAL environment key, MEDZEN_SCORE_INPUT_CONVENTION; the default and every existing field are unchanged",
+  "what_does_not_change": [
+   "default audio path: resample to 16 kHz + per-utterance z-normalisation via _preprocess_wave, which is byte-unchanged",
+   "serving: omnilingual_asr ASRInferencePipeline, which never imports the research evaluator",
+   "existing receipts, attestations and reported results",
+   "the decode path and model-loading rule"
+  ],
+  "why": "Training feeds raw waveforms (pipeline/omniasr_data.py make_batch_source) while this contract's evaluator and serving normalise each utterance. Whether that mismatch affects trained models cannot be measured without scoring identical recordings both ways, which the -001 contract did not permit."
+ },
+ "audio": "fetch by manifest URI, mono-mean, resample16k + utterance z-norm (calibrate _preprocess_wave), bfloat16",
+ "base_mode_rule": "owner decision 2026-08-27: when MEDZEN_SCORE_ARM=='base' the export-weight fetch/load is skipped and the sha-verified STAGED base checkpoint (omniASR-CTC-1B-v2.pt == the pinned MEDZEN_SCORE_MODEL_SHA256) is the model; ALL other arms unchanged (fetch + strict-load their export).",
+ "decode": "CTC greedy over model logits truncated to the returned seq_len; consecutive-duplicate collapse; blank drop; skip-special decode (calibrate _ctc_greedy_text)",
+ "decode_parity_rule": "the evaluator IMPORTS _preprocess_wave and _ctc_greedy_text from pipeline.omniasr_calibrate \u2014 the exact functions the mandatory in-run upstream-parity probe validates on every calibration; the evaluator adds NO decode logic of its own The raw diagnostic path is likewise imported from pipeline.omniasr_calibrate (_raw_wave); the evaluator still adds no preprocessing or decode logic of its own.",
+ "diagnostic_input_convention_rule": "MEDZEN_SCORE_INPUT_CONVENTION in {normalized (default), raw}; an unrecognised value refuses. 'raw' feeds the waveform exactly as training does (_raw_wave in pipeline.omniasr_calibrate: float32, mono mean, no resample, no normalisation, refused unless 16 kHz). 'raw' is DIAGNOSTIC ONLY: receipts declare input_convention, and scripts/arm2_nomination_scorer.py refuses any receipts whose input_convention is not 'normalized'. Never used for nomination, promotion or serving.",
+ "environment_contract": "MEDZEN_EXECUTION_MODE=arm2_scoring (strict enum, launcher+trainer parity); MEDZEN_SCORE_* pins injected by the launcher from the reviewed scoring packet",
+ "evaluator_script": {
+  "path": "pipeline/omniasr_score.py",
+  "sha256": "7d2ad3faed36b6e24753454c7f9b22173bd5533b32021f8f706fddb50dbafc49"
+ },
+ "inputs": "scoring manifest fetched by EXACT VersionId + sha; identities only + audio locations; the evaluator NEVER sees references",
+ "model_loading": "stage_model_artifacts (the trainer's own staging step) pulls the base checkpoint to /models BEFORE architecture load; export weights fetched by EXACT S3 VersionId and sha-verified (strict load) \u2014 a substituted model refuses",
+ "purpose": "Frozen decoding contract for the PROTECTED ATTESTED EVALUATOR (Codex final-gap correction item 1): pins the exact decode path, audio preprocessing, model-loading rule and receipts schema BEFORE any candidate hypotheses exist.",
+ "receipts_schema": {
+  "attestation": "the workflow's attest mode signs the EXACT receipts bytes with actions/attest-build-provenance (pinned v2.2.3); the scorer verifies the Sigstore bundle cryptographically",
+  "file": "{record, job_name, arm, model_sha256, model_artifact{s3_uri,s3_version_id}, training_packet_canonical_sha256, split_sha256, evaluator_image_digest, manifest_sha256, input_convention, rows:[{audio_checksum_sha256, hyp_normalized}]}",
+  "input_convention_rule": "present on every receipt from this evaluator version; receipts that predate it are the normalised contract path"
+ },
+ "record": "B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-002",
+ "supersedes": "B5-UNIVERSAL-ARM2-EVALUATOR-DECODING-CONTRACT-2026-001",
+ "utc": "DRAFT \u2014 set at owner approval"
+}
