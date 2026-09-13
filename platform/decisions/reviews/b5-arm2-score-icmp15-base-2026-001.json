@@ -1,0 +1,11 @@
+{
+ "basis": "Owner approved the matched Base-versus-Arm-1 pair. Authorizes ONLY the decode job b5-arm2-score-icmp15-base-2026-001 ($6.40 worst case, 18,759 rows) of the trained export of the base-start arm: training job medzen-b5-cm-pilot-icmp15-base-2026-001, export/model.pt sha bb7bff997229f15b19bc5878698b366712349f6bc47384eedc10bc2ac9517282, output VersionId YR1ycQGIdtKfHzBgZdXfPd7XN561NVG_. finalize_trained.py recorded _status PASS: same image digest, warm-start markers as preregistered, identical recipes apart from the student initialisation, and mix provenance equal to the gb11 reconstruction. Same manifest, evaluator image 985c4d9e and normalised input as the zero-shot receipts. render+validate passes. DIAGNOSTIC ONLY: no promotion, registry write, serving change or training. Counts against the pair's $44.80 first-attempt cap; any retry needs separate owner approval.",
+ "bindings_sha256": "ac9dab05af2b827c9e8be61707c3bae042311083545afb1f5efebcfe5333acfd",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+ "job_id": "b5-arm2-score-icmp15-base-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ICMP15BASE-2026-001.json",
+ "reviewer": "owner instruction 2026-09-13 after independent technical review: \"Proceed with the agreed 3,000-step Base-versus-Arm-1 pair under identical settings, retaining normalized evaluation and incumbent replay. Cap training plus scoring at $44.80 for first attempts; retries require separate approval. Keep serving unchanged.\"",
+ "utc": "2026-09-13T22:44:28Z"
+}
