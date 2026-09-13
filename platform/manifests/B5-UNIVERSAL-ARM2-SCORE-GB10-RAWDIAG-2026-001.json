@@ -1,0 +1,53 @@
+{
+ "authorization": "PENDING OWNER REVIEW \u2014 this packet is prepared, not authorized",
+ "cost_ceiling_usd": 101.6,
+ "cost_registry_line": "B5-UNIVERSAL-ARM2-SCORE-GB10-RAWDIAG-2026-001 decode-only diagnostic, worst case $1.60 on-demand, budgeted $101.60 under the standing +$100 rule",
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_EXECUTION_MODE": "arm2_scoring",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,ewondo,medumba",
+  "MEDZEN_LR": "1e-5",
+  "MEDZEN_MANIFEST_VERSION": "cm4",
+  "MEDZEN_MAX_STEPS": "30",
+  "MEDZEN_SCORE_ARM": "gb10",
+  "MEDZEN_SCORE_EVALUATOR_IMAGE_DIGEST": "sha256:ac6497ddee0b41116474e0ccf2e2f417f43853364b364281f286789e94990f5b",
+  "MEDZEN_SCORE_INPUT_CONVENTION": "raw",
+  "MEDZEN_SCORE_MANIFEST_S3_URI": "s3://medzen-speech/research/arm2-scoring/cm4-decode-manifest-v1.jsonl",
+  "MEDZEN_SCORE_MANIFEST_SHA256": "de59370c005f08bde489b9f3e732dc06f301513e6ae0d495e8190f1390401c26",
+  "MEDZEN_SCORE_MANIFEST_VERSION_ID": "oRLLL0wpjyqRZJ6j.Gz16djfu2ys1Hir",
+  "MEDZEN_SCORE_MODEL_S3_URI": "s3://medzen-speech/research/b5-training/b5-gb10-11lang-warm-2026-001/output/medzen-b5-b5-gb10-11lang-warm-2026-001/output/model.tar.gz",
+  "MEDZEN_SCORE_MODEL_SHA256": "9f4723e2bc0de9d2ae3798bf665115b0dbed595ca1fd7d9fe8c64c968390c274",
+  "MEDZEN_SCORE_MODEL_VERSION_ID": "nsP3.Tl1P4gFKQycMF5swJQLpRRx0wD8",
+  "MEDZEN_SCORE_SPLIT_SHA256": "de59370c005f08bde489b9f3e732dc06f301513e6ae0d495e8190f1390401c26",
+  "MEDZEN_SEED": "1",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_provenance": "arm2-trainer-image-publish from reviewed master 138f8cc90ef4899d715f8bbc31eb8aca8cc7b956 (evaluator with the opt-in MEDZEN_SCORE_INPUT_CONVENTION setting, decoding contract -002)",
+ "image_tag": "arm2-ftcal-138f8cc90ef4899d715f8bbc31eb8aca8cc7b956",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:ac6497ddee0b41116474e0ccf2e2f417f43853364b364281f286789e94990f5b",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "b5-arm2-score-gb10-rawdiag-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "owner rule: on-demand basis always",
+ "max_runtime_seconds": 3600,
+ "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+ "purpose": "Decode-only diagnostic: gb10 on the frozen CM4 holdout (2,197 clips) with RAW training-convention input.",
+ "record": "B5-UNIVERSAL-ARM2-SCORE-GB10-RAWDIAG-2026-001",
+ "scope": "DIAGNOSTIC ONLY - resolves the training input convention; never used for nomination, promotion or serving",
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "3600s ceiling on ml.g6.xlarge at $1.60/h = $1.60; 2,197 clips is ~1.13x the pilot's 1,946 which decoded in 375s, so the ceiling is ~8x the expected decode time",
+ "worst_case_usd": 1.6
+}

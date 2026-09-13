@@ -1,0 +1,11 @@
+{
+ "basis": "Owner authorized the capped raw-versus-normalised diagnostic. Authorizes ONLY the decode job b5-arm2-score-gb10-rawdiag-2026-001 ($1.60 worst case, 2,197 rows, gb10 model, raw input) on the frozen CM4 holdout decode manifest de59370c, evaluator image sha256:ac6497ddee0b built from reviewed master 138f8cc90ef4. render+validate passes. DIAGNOSTIC ONLY: the receipts declare input_convention and are refused by nomination scoring; no promotion, registry write, serving change or training. Counts against the $11.20 diagnostic cap.",
+ "bindings_sha256": "f49633c917eb47e2358f813a5a0bf7ec55e4db731a4f2c55f8aaf6adc94f7081",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:ac6497ddee0b41116474e0ccf2e2f417f43853364b364281f286789e94990f5b",
+ "job_id": "b5-arm2-score-gb10-rawdiag-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-GB10-RAWDIAG-2026-001.json",
+ "reviewer": "owner instruction 2026-09-12 after independent technical review of the bounded diagnostic: \"Proceed through the existing merge/build process and run the four diagnostic jobs. Prepare both contingent packets now, but launch them only if the equivalence control fails. Keep total diagnostic compute within $11.20, including one retry across the entire experiment; image-build costs are separate.\" Review verified 45 comparator tests, 164 repository tests, and render+validate of all six packets.",
+ "utc": "2026-09-13T02:26:23Z"
+}
