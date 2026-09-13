@@ -1,0 +1,11 @@
+{
+ "basis": "Owner authorized the capped raw-versus-normalised diagnostic. Authorizes ONLY the decode job b5-arm2-score-base-normcont-2026-001 ($1.60 worst case, 2,197 rows, base model, normalized input) on the frozen CM4 holdout decode manifest de59370c, evaluator image sha256:ac6497ddee0b built from reviewed master 138f8cc90ef4. render+validate passes. DIAGNOSTIC ONLY: the receipts declare input_convention and are refused by nomination scoring; no promotion, registry write, serving change or training. Counts against the $11.20 diagnostic cap. CONTINGENT: dispatch only if the Arm-1 equivalence control (gate G2) fails against the attested Arm-1 receipt.",
+ "bindings_sha256": "77dca195b6fc0aadfd996f6c87526d3f0774b3d7bbbeb017a25fbaf8bad821ce",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:ac6497ddee0b41116474e0ccf2e2f417f43853364b364281f286789e94990f5b",
+ "job_id": "b5-arm2-score-base-normcont-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BASE-NORMCONT-2026-001.json",
+ "reviewer": "owner instruction 2026-09-12 after independent technical review of the bounded diagnostic: \"Proceed through the existing merge/build process and run the four diagnostic jobs. Prepare both contingent packets now, but launch them only if the equivalence control fails. Keep total diagnostic compute within $11.20, including one retry across the entire experiment; image-build costs are separate.\" Review verified 45 comparator tests, 164 repository tests, and render+validate of all six packets.",
+ "utc": "2026-09-13T02:26:23Z"
+}
