@@ -15,6 +15,7 @@ assembly is confined to make_batch_source, exercised in-container (C3).
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Callable
 
@@ -93,6 +94,14 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
     from fairseq2.nn import BatchLayout
 
     encoder = tokenizer.create_encoder()
+    normalize = getattr(config, "input_convention", "raw") == "normalized"
+    if normalize:
+        # Normalized-input diagnostic (2026-09-13): the evaluator's exact
+        # per-utterance preprocessing, applied to each UNPADDED waveform
+        # before padding, exactly as omniasr_score prepares a clip.
+        from pipeline.omniasr_calibrate import _preprocess_wave
+        print(json.dumps({"input_convention": "normalized",
+                          "status": "TRAIN_INPUT_CONVENTION"}, sort_keys=True))
 
     def _pad(tensors: list, dtype) -> tuple[Any, list[int]]:
         lens = [int(t.shape[0]) for t in tensors]
@@ -107,11 +116,12 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
         rows = batch_rows(mix, config.batch_size, index)
         waves, targets, languages = [], [], []
         for row in rows:
-            audio, _ = sf.read(fetch_audio(cli, row, cache),
-                               dtype="float32", always_2d=False)
+            audio, sr = sf.read(fetch_audio(cli, row, cache),
+                                dtype="float32", always_2d=False)
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
-            waves.append(torch.from_numpy(audio))
+            waves.append(_preprocess_wave(audio, sr) if normalize
+                         else torch.from_numpy(audio))
             targets.append(encoder(row["text_normalized"]))
             languages.append(authoritative_language(row))
         # The model loads in bf16; float32 audio dies in its first conv

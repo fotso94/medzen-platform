@@ -57,6 +57,7 @@ CTC_SCOPE_PREFIX = "encoder."  # wav2vec2 attention lives under the encoder;
 # the llama_decoder default in wrap_lora belongs to the (refused) LLM variant.
 SIGTERM_EXIT = 42  # named: spot reclaim checkpointed and left cleanly
 DIVERGED_EXIT = 43  # named: non-finite loss/grad/params — poison NOT persisted
+TRAIN_INPUT_CONVENTIONS = ("raw", "normalized")
 
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
@@ -167,6 +168,11 @@ class TrainerConfig:
     kd_retention_teacher_s3_uri: str
     kd_retention_teacher_version_id: str
     kd_retention_teacher_sha256: str
+    # Train/eval input convention (CM4 normalized-input diagnostic, 2026-09-13).
+    # 'raw' (default) feeds the waveform exactly as before; 'normalized' applies
+    # the evaluator's per-utterance preprocessing (omniasr_calibrate._preprocess_wave)
+    # to each unpadded clip, so training sees what evaluation and serving see.
+    input_convention: str = "raw"
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -203,6 +209,10 @@ class TrainerConfig:
                         "kd_retention_teacher_version_id",
                         "kd_retention_teacher_sha256"):
                 payload.pop(key, None)
+        # Raw runs keep a byte-identical fingerprint; a normalized run binds the
+        # convention, so it can never resume a raw checkpoint or vice versa.
+        if self.input_convention == "raw":
+            payload.pop("input_convention", None)
         return payload
 
 
@@ -569,6 +579,18 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
                 "Arm-2b pins ONE Arm-1 export for both (uri, VersionId and "
                 "sha256 must be identical)")
 
+    input_convention = (env.get("MEDZEN_TRAIN_INPUT_CONVENTION", "").strip().lower()
+                        or "raw")
+    if input_convention not in TRAIN_INPUT_CONVENTIONS:
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_INPUT_CONVENTION={input_convention!r} is not one of "
+            f"{TRAIN_INPUT_CONVENTIONS} — unknown conventions fail closed")
+    if input_convention == "normalized" and kd_enable:
+        raise TrainerRefusal(
+            "MEDZEN_TRAIN_INPUT_CONVENTION=normalized is refused with KD on: the "
+            "teachers would receive the same normalized batch although they were "
+            "trained on raw audio; the option is for plain runs only")
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -614,6 +636,7 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         kd_retention_teacher_s3_uri=kd_retention_teacher_s3_uri,
         kd_retention_teacher_version_id=kd_retention_teacher_version_id,
         kd_retention_teacher_sha256=kd_retention_teacher_sha256,
+        input_convention=input_convention,
     )
 
 
