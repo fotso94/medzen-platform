@@ -1,0 +1,42 @@
+{
+ "cost_ceiling_usd": 10.0,
+ "cost_registry_line": "CM-PILOT-NORMIN-BASE-2026-001 exploratory normalized-input diagnostic, base start, identical to CM-PILOT-ICMP15-BASE-2026-001 except the trainer image and MEDZEN_TRAIN_INPUT_CONVENTION=normalized; worst case $9.60 on-demand; diagnostic cap $11.20 with scoring",
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "500",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_INPUT_CONVENTION": "normalized",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:9e11de629dd303bfe6b3a6f90bfa65b93384b8be31f08483d7639414763bc9c3",
+ "image_tag": "arm2-ftcal-9b65a7e6012a5e85dab63b5a22dba69c705251ba",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:9b7473df197a673eb888c5523279929cefaae554c68cda81467df981ba7e644b",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-normin-base-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 21600,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 200
+}

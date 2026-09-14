@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-13, given after an independent technical review of the follow-up proposal: \"Proceed with the single normalized-audio diagnostic, subject to my approval of the stated budget. Keep everything else unchanged and test that the default-off path preserves existing behavior. Use the pooled CER endpoint consistently; keep deletion patterns diagnostic only. Describe causal explanations as hypotheses and retention limits relative to the existing trained control. No automatic follow-up run, deployment, or new governance.\" Identical to the committed control packet CM-PILOT-ICMP15-BASE-SAGEMAKER-BINDINGS-2026-001 in every field except the job id, the trainer image (built from reviewed master 9b65a7e6012a carrying the opt-in option, digest sha256:9b7473df197a), MEDZEN_TRAIN_INPUT_CONVENTION=normalized and the cost registry line. Same data version gb11, 15 languages, temperature 0, seed 20260904, LoRA r16, LR 1e-4, batch 2x8, 3,000 steps, KD off, base start. Worst case $9.60 (21,600 s at $1.60/h), below the $10 calibration tier; the diagnostic's cap is $11.20 including scoring; no retry without separate approval. EXPLORATORY diagnostic, not a promotion candidate; Arm-1 keeps serving. The run is INVALID unless its log carries exactly one TRAIN_INPUT_CONVENTION line naming normalized and no STUDENT_WARM_START_LOADED line.",
+ "bindings_sha256": "d82e1f892034cc5e9b024b2c50211f20f7bef0526c8633e7ae25946813bfa4b2",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-14T03:49:54Z",
+ "decision": "APPROVED",
+ "job_id": "cm-pilot-normin-base-2026-001",
+ "scope": "DIAGNOSTIC_PROBE_NOT_A_PROMOTION_CANDIDATE"
+}
