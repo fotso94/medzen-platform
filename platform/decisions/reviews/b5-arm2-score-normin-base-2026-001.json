@@ -1,0 +1,11 @@
+{
+ "basis": "Owner approved the single exploratory normalized-input diagnostic. Authorizes ONLY the decode job b5-arm2-score-normin-base-2026-001 ($1.60 worst case, 18,759 rows) of the diagnostic export: training job medzen-b5-cm-pilot-normin-base-2026-001, export/model.pt sha 444726816e778ab6c1c997ee794543c9879a7393d8903ab740f63407c63beb3d, output VersionId CrwePxrYFjLK8usE4UUeZRAsR9OoV5VG. The validity check recorded _status PASS. Same manifest, evaluator image 985c4d9e and normalised input as the control receipts. render+validate passes. EXPLORATORY DIAGNOSTIC ONLY: no promotion, registry write, serving change or training. Counts against the $11.20 cap; any retry needs separate owner approval.",
+ "bindings_sha256": "9362a46730b0c8fbb905c5440ee489c5cb75e6848fdb84c32fcccbf66873f12f",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+ "job_id": "b5-arm2-score-normin-base-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-NORMINBASE-2026-001.json",
+ "reviewer": "owner instruction 2026-09-13: \"Proceed with the single normalized-audio diagnostic, subject to my approval of the stated budget. Keep everything else unchanged ... No automatic follow-up run, deployment, or new governance.\" Budget: about $4.40 expected, $11.20 cap.",
+ "utc": "2026-09-14T06:27:39Z"
+}
