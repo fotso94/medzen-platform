@@ -1,0 +1,9 @@
+{
+ "basis": "NOT an independent review. Committed by the implementation engineer on the owner's directive of 2026-09-14, given after an independent technical review of the proposal CM4-BMPAIR-PROPOSAL-2026-001: \"Correct the contradictory decision rules and overlap-check scope, plus the exposure, noise and storage wording. Then proceed with one pairing experiment under the $16.10 cap, using the existing control and nine limits. Verify the actual constructed audio and mixture before launch. No retries, additional experiments, deployment changes or new governance.\" Identical to the committed control packet CM-PILOT-ICMP15-BASE-SAGEMAKER-BINDINGS-2026-001 in every field except the job id, MEDZEN_MANIFEST_VERSION=gb12 and the cost registry line: same trainer image dcd40113, 15 languages, temperature 0, 15 h per-language audio cap, seed 20260904, LoRA r16, LR 1e-4, batch 2x8, 3,000 shared updates, KD off, base start, raw input. gb12 equals gb11 except the Bafia and Medumba training rows, rewritten as same-speaker pairs of existing clips. Worst case $9.60 (21,600 s at $1.60/h), below the $10 calibration tier; the experiment cap is $16.10 including scoring and S3; one attempt, no retry. EXPLORATORY, not a promotion candidate; Arm-1 keeps serving. The run is INVALID unless its log reads manifests 21 at version gb12 with the pre-launch reconstruction's eligible-row count, carries no STUDENT_WARM_START_LOADED line, and its mix provenance matches the reconstruction.",
+ "bindings_sha256": "6b118ac88c8803b9dcbd2c301d90ec2bee67430a6dbd0127038da0b2c0b8b4cc",
+ "decided_by": "claude-primary-engineer, on the OWNER's explicit directive",
+ "decided_utc": "2026-09-14T23:11:05Z",
+ "decision": "APPROVED",
+ "job_id": "cm-pilot-bmpair-base-2026-001",
+ "scope": "DIAGNOSTIC_PROBE_NOT_A_PROMOTION_CANDIDATE"
+}
