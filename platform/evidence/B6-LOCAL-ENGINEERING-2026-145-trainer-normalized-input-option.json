@@ -1,15 +1,15 @@
 {
  "behaviour_change_notice": {
-  "default": "MEDZEN_TRAIN_INPUT_CONVENTION absent, blank or 'raw' leaves training exactly as before: the waveform is fed raw, the parsed config carries input_convention 'raw' and the run fingerprint payload omits it, so every existing raw run and packet keeps a byte-identical fingerprint and rendered request (goldens captured from the unmodified trainer are asserted in tests)",
+  "default": "MEDZEN_TRAIN_INPUT_CONVENTION absent, blank or 'raw' leaves training exactly as before: raw waveforms, and a run fingerprint payload without input_convention, so every existing run and packet keeps a byte-identical fingerprint and rendered request (goldens captured from the unmodified trainer are asserted in tests)",
   "newly_bound_sources": [
    "tests/test_train_input_convention.py"
   ],
-  "normalized": "MEDZEN_TRAIN_INPUT_CONVENTION=normalized applies pipeline.omniasr_calibrate._preprocess_wave (resample to 16 kHz if needed, then layer_norm(wave, wave.shape, eps=1e-5)) to each unpadded clip before padding, exactly as pipeline/omniasr_score.py prepares a clip for evaluation; the convention is bound into the run fingerprint and logged once as TRAIN_INPUT_CONVENTION",
+  "normalized": "MEDZEN_TRAIN_INPUT_CONVENTION=normalized applies pipeline.omniasr_calibrate._preprocess_wave (resample to 16 kHz if needed, then layer_norm(wave, wave.shape, eps=1e-5)) to each unpadded clip before padding, exactly as pipeline/omniasr_score.py prepares a clip; the convention is bound into the run fingerprint and logged once as TRAIN_INPUT_CONVENTION",
+  "refusals": "any other value refuses at config parse; normalized with KD on refuses because teachers would receive the same normalized batch",
   "scope": "single exploratory normalized-input diagnostic approved 2026-09-13; serving, the evaluator and every existing packet are unchanged",
-  "tests": "tests/test_train_input_convention.py runs in CI (config and source-contract tests) and in the trainer image build (tensor tests with torch and soundfile)",
-  "unknown": "any other value refuses at config parse"
+  "tests": "tests/test_train_input_convention.py runs in CI (config and source-contract tests) and in the trainer image build (tensor tests); control packet environments are embedded so the image test stage needs no packet files"
  },
- "changed_since_2026": [
+ "changed_since_144": [
   "pipeline/Dockerfile.trainer-omniasr",
   "pipeline/omniasr_data.py",
   "pipeline/omniasr_train.py"
@@ -62,7 +62,7 @@
   "pipeline/omniasr_data.py": "7ae66faf3bc78ebfe451004f57cddc4e805328a9bd650bc8ac1b85f9ca90e919",
   "pipeline/omniasr_distill.py": "f2466f56a0ce855f304e9ce2685908cfbebf36068537ea50ce35541d5c010a2f",
   "pipeline/omniasr_score.py": "7d2ad3faed36b6e24753454c7f9b22173bd5533b32021f8f706fddb50dbafc49",
-  "pipeline/omniasr_train.py": "7ad7135882c57ba6551d13904f4f8c878d7e0839b88f0359aa908ae5313715f8",
+  "pipeline/omniasr_train.py": "661d943a8b7b96caa235675898472942f3602ddbd024132a73e525d63defeabf",
   "pipeline/sealed_eval.py": "917f25c9d91ea12f7c6209e786f7e18c25435b1be9b071e0888d80139c833c3f",
   "pipeline/train_asr.py": "659ad5a934649bb7521a007c9b8c07b2bc94cd4b87bb2ba5f68d94ea319fdb23",
   "platform/contracts/b6v2-real-providers.yaml": "c91a6130bc5e5805016f5f7fd3b3ce5adb091c0b7c1f11525e3bd1dd6d520bd6",
@@ -452,7 +452,7 @@
   "tests/test_score_input_convention.py": "41e356d3d99c8f1763fe4b6bbbcb82e04781a56f2b5abd7d4d57f244f44d53fe",
   "tests/test_sealed_evaluator.py": "dc17f464250120a4a5033b26e810d2cd3975f9cfe3a11509099656b27feac99d",
   "tests/test_speech_orchestrator.py": "799089f2764bde5af9d395650f8521beb7643b0b49cdbf91684add192cd36d01",
-  "tests/test_train_input_convention.py": "ca667893fce01b1c64a6c7344adbe3a00f53898b6d3bfbe53665c71595cc0297",
+  "tests/test_train_input_convention.py": "52438b409511b881febba29eabfe44b179ac532702de15e916426f57080116f7",
   "tools/mylestech-frontend/README.md": "a645a0e168b7503c4855fde5970bf29170796ec491ad81e19174f651218b43b6",
   "tools/mylestech-frontend/index.html": "f45300962e181a72893b4628965494cf5faf58ee5a192e40d681f411aef90296",
   "tools/mylestech-frontend/lambda_function.py": "a98afb979c8702d2301a5fc6beb6d7dad7141a3d3fce6c4b51a851e7fdbd8e6a",
@@ -460,5 +460,5 @@
  },
  "subject": "Adds an opt-in trainer setting that feeds training the same per-utterance normalised audio evaluation and serving use, with the default raw path unchanged.",
  "supersedes_for_current_bindings": "B6-LOCAL-ENGINEERING-2026-144-icmp15-trained-scoring-packets",
- "utc": "2026-09-14T03:17:40Z"
+ "utc": "2026-09-14T03:27:05Z"
 }

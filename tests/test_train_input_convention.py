@@ -32,8 +32,59 @@ _needs_audio = pytest.mark.skipif(
     reason="torch and soundfile are training-host dependencies")
 
 
+# environments of the committed CM-PILOT-ICMP15-{BASE,ARM1} packets, embedded so the test also runs in the trainer image build,
+# whose test stage does not copy those packet files
+CONTROL_ENVS = {
+ "ARM1": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "500",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "arm1",
+  "MEDZEN_STUDENT_INIT_S3_URI": "s3://medzen-speech/research/b5-training/b5-universal-arm1-2026-005/output/medzen-b5-b5-universal-arm1-2026-005/output/model.tar.gz",
+  "MEDZEN_STUDENT_INIT_SHA256": "c6604a689688a5314b23d53c3d45362d2b8123e9c894568b9810de2d40f7490c",
+  "MEDZEN_STUDENT_INIT_VERSION_ID": "QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "BASE": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "500",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ }
+}
+
+
 def _packet_env(arm):
-    return json.loads((ROOT / f"platform/manifests/CM-PILOT-ICMP15-{arm}-SAGEMAKER-BINDINGS-2026-001.json").read_text())["environment"]
+    return dict(CONTROL_ENVS[arm])
 
 
 def test_conventions_are_exactly_raw_and_normalized():
@@ -180,3 +231,13 @@ def test_normalization_happens_before_padding(batch_source):
     padded = torch.zeros(out["seqs"].shape[1]); padded[: len(short_audio)] = torch.from_numpy(short_audio)
     wrong = F.layer_norm(padded, padded.shape, eps=1e-5)[: len(short_audio)].to(torch.bfloat16)
     assert not torch.equal(out["seqs"][1, : len(short_audio)], wrong)
+
+
+def test_normalized_input_refuses_knowledge_distillation():
+    # KD sends the same batch to raw-trained teachers; this diagnostic option is for plain runs only
+    kd_env = {"MEDZEN_VARIANT": "ctc", "MEDZEN_MANIFEST_VERSION": "v9", "MEDZEN_SEED": "7",
+              "MEDZEN_LANGUAGES": "english,french,swahili,lingala,pidgin,kinyarwanda,ewe", "MEDZEN_KD_ENABLE": "1"}
+    assert parse_config(kd_env).kd_enable is True
+    assert parse_config(dict(kd_env, MEDZEN_TRAIN_INPUT_CONVENTION="raw")).kd_enable is True
+    with pytest.raises(TrainerRefusal, match="MEDZEN_TRAIN_INPUT_CONVENTION=normalized is refused with KD on"):
+        parse_config(dict(kd_env, MEDZEN_TRAIN_INPUT_CONVENTION="normalized"))

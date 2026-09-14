@@ -585,6 +585,11 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         raise TrainerRefusal(
             f"MEDZEN_TRAIN_INPUT_CONVENTION={input_convention!r} is not one of "
             f"{TRAIN_INPUT_CONVENTIONS} — unknown conventions fail closed")
+    if input_convention == "normalized" and kd_enable:
+        raise TrainerRefusal(
+            "MEDZEN_TRAIN_INPUT_CONVENTION=normalized is refused with KD on: the "
+            "teachers would receive the same normalized batch although they were "
+            "trained on raw audio; the option is for plain runs only")
 
     return TrainerConfig(
         variant=variant,
