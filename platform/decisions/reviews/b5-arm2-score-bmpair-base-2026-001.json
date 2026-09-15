@@ -1,0 +1,11 @@
+{
+ "basis": "Owner approved the single exploratory Bafia/Medumba pairing experiment. Authorizes ONLY the decode job b5-arm2-score-bmpair-base-2026-001 ($6.40 worst case, 18,759 rows) of the experiment export: training job medzen-b5-cm-pilot-bmpair-base-2026-001, export/model.pt sha e1ac5edd32b0b4e298d453481568fc2de5057dd31d4c3ad443bdebacf0386987, output VersionId 9rdJPaRqUao8yhmbLQjxH7a4vNIwD7b3. The validity check recorded _status PASS. Same manifest, evaluator image 985c4d9e and normalised input and runtime ceiling as the control receipts. render+validate passes. EXPLORATORY ONLY: no promotion, registry write, serving change or training. Counts against the $16.10 cap; no retry.",
+ "bindings_sha256": "734d1b77590724ac8a8a9c31eaffa596a0baa06514053f3a51842174633493a0",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:985c4d9e64e55a685ccc0c2463641f8eaba322143ec98fb80e6a142afda8fdee",
+ "job_id": "b5-arm2-score-bmpair-base-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BMPAIRBASE-2026-001.json",
+ "reviewer": "owner instruction 2026-09-14: \"Then proceed with one pairing experiment under the $16.10 cap, using the existing control and nine limits. Verify the actual constructed audio and mixture before launch. No retries, additional experiments, deployment changes or new governance.\" Budget: about $4.72 expected, $16.10 cap.",
+ "utc": "2026-09-15T02:32:45Z"
+}
