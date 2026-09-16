@@ -1,0 +1,11 @@
+{
+ "basis": "Owner approved ONE Medumba trainer capacity probe under a frozen scope. This packet authorizes ONLY the CONTROL BASELINE decode b5-arm2-score-icmp15-base-byvfit-002 ($1.60 worst case, 607 rows) on the TRAINED CONTROL export bb7bff99..., run BEFORE the training run so the baseline enters already-frozen formulas. Selection and decision formulas were frozen before this job: FIT sha 2d180650..., RANDOM sha 4f1e3cfe..., decode manifest sha 5fded590.... Screens are model-blind; model-derived screening is prohibited. A pass demonstrates fitting the supplied transcripts, NOT reliable Medumba recognition. The two dev groups (149 from the probe's four speakers, 158 from 52 others) are reported separately and never pooled. EXPLORATORY: no promotion, registry write, serving change or training follows from this job. No retry without separate owner approval.",
+ "bindings_sha256": "31cb5e68dfc4f7c7e40c5492d3ed76d4ab5a8054b5eed0cd609883199ada4f46",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-icmp15-base-byvfit-002",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ICMP15-BASE-BYVFIT-002.json",
+ "reviewer": "owner instruction 2026-09-16: \"Proceed with the single diagnostic under the corrected frozen scope: control first, then training and scoring, with the conditional raw-audio check only when required. Keep the $8 runtime ceiling, no automatic retries or follow-on experiments, and Arm-1 unchanged. Report fitting and the two dev groups separately. No further governance work.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
