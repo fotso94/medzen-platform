@@ -1,0 +1,11 @@
+{
+ "basis": "Owner approved the one-job dev decoder diagnostic. SECOND ATTEMPT: the first (b5-arm2-score-devdump-2026-001) was refused by the evaluator's arm/job name binding before decoding any row, costing 109 billable seconds (~$0.05); this packet corrects only the job name. Authorizes ONLY the decode job b5-arm2-score-icmp15-base-dump-2026-002 ($1.60 worst case on a 3,600 s ceiling, 845 rows; about $1.65 including the refused first attempt) of the TRAINED CONTROL export bb7bff99... . Same evaluator family as the control receipts, rebuilt at master b669a79769a7 to carry the default-off dump option; the dump is enabled here and writes into the job's existing output roots. Symbol set pinned by sha f57c212bc048 and VersionId. Offline decoding is tuned on the 795 dev rows only. EXPLORATORY: no promotion, registry write, serving change or training. No retry without separate owner approval.",
+ "bindings_sha256": "bd016faebe969b91659d0eab322d45de87f150a802d3ec45c16d040e6208d17c",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-icmp15-base-dump-2026-002",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ICMP15-BASE-DUMP-2026-002.json",
+ "reviewer": "owner instruction 2026-09-15: \"Implement the one-job dev decoder diagnostic, using the named trained control and existing execution workflow. Report measured results before deciding whether the fitting test is useful. Keep Arm-1 serving; do not automatically launch follow-up training.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
