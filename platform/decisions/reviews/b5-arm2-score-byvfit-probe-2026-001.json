@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the probe scoring job b5-arm2-score-byvfit-probe-2026-001 ($1.60 worst case, 607 rows) on the capacity probe's own export (model sha 91941897, VersionId CDFLN7tz), decoding the SAME manifest sha 5fded590 the control decoded, under the SAME evaluator image and normalized convention. Training completed in 1,959 s ($0.87) with loss 79.11 -> 54.32 over 1,200 steps, still falling, never non-finite; 150 of 150 rows eligible, 0 rejected. The control baseline and all thresholds were frozen before this job. A pass demonstrates fitting the SUPPLIED transcripts, NOT reliable Medumba recognition; labels are machine-screened, not native-verified. DEV_4SPK has 4 speakers, below MIN_SPK_FOR_INTERVAL=5, so its movement is descriptive and is never reported as a generalisation failure. EXPLORATORY: no promotion, registry write, serving change or further training follows. No retry without separate owner approval.",
+ "bindings_sha256": "2eedfc47d6ee775e55f8f7dd756541a0a7a474e2499b5a6f03297f66cea2c71b",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvfit-probe-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVFIT-PROBE-2026-001.json",
+ "reviewer": "owner instruction 2026-09-16: \"Proceed with the single diagnostic under the corrected frozen scope: control first, then training and scoring, with the conditional raw-audio check only when required. Keep the $8 runtime ceiling, no automatic retries or follow-on experiments, and Arm-1 unchanged. Report fitting and the two dev groups separately. No further governance work.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
