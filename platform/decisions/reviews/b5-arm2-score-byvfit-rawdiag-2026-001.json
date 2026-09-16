@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the supplementary raw-input re-score b5-arm2-score-byvfit-rawdiag-2026-001 ($1.60 worst case, 607 rows) of the EXISTING capacity-probe export (model sha 91941897), on the SAME manifest sha 5fded590 and the SAME evaluator image. Exactly ONE variable changes: MEDZEN_SCORE_INPUT_CONVENTION=raw, so the evaluator feeds the waveform the way training fed it. No retraining, no model change, no new data, no new selection. WHY: the probe trained on raw audio but was scored on normalized audio, so the frozen F_fit=39.57 is correct for the normalized path and is silent about fit under the input preparation the model trained on. This separates a scoring-input mismatch from genuinely weak fitting. THE FROZEN RESULT IS PRESERVED: the verified PARTIAL_FIT (F_fit 39.57, band 5.00-42.11) is NOT revised by this job under any outcome. Raw and normalized are reported SIDE BY SIDE for all four groups, never pooled and never substituted. The probe and the control are SEPARATELY TRAINED MODELS from the same base init; no column here is a before/after comparison. Receipts will declare input_convention=raw and are diagnostic-only by construction. No promotion, registry write, serving change, retraining or follow-on experiment follows. No retry without separate owner approval.",
+ "bindings_sha256": "f71ca7cfcd1fffe3497490faedc42184cb8266e8ab0c55eefc81aebcbb1dacb5",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvfit-rawdiag-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVFIT-RAWDIAG-2026-001.json",
+ "reviewer": "owner instruction 2026-09-16: \"Approved: run this one supplementary raw-input re-score, capped at $1.60 runtime. Report raw versus normalized scores for the same model across all four groups, preserving the original PARTIAL_FIT. No retraining, automatic follow-on experiments or serving changes. Keep Arm-1 unchanged.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
