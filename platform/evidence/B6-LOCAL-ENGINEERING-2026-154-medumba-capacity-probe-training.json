@@ -447,7 +447,7 @@
   "tests/test_arch_2026_001.py": "72edade039caa00eae6d9771e8c33ad41beec429f6eb166006a40ddbcbf460d7",
   "tests/test_arm2_activation_rehearsal.py": "ff138ccf7c4116ad682f36544ed5ef307ec9a8716608c1ffc54b93ab4f0c0b6b",
   "tests/test_arm2_calibration.py": "8d8a570203c442f62363ac76c66f74cc552a681e6ec160f65a284631b279709a",
-  "tests/test_arm2_execution_mode.py": "d33c16be1712bbc4ec70c382a05d9b694462afb379f3b8564c985484fa6a2b03",
+  "tests/test_arm2_execution_mode.py": "055636877663283736d06ba2689c4fb784608fb6a7ebcac5fb488816ab1c0489",
   "tests/test_arm2_exposure_index.py": "e52d3add20ab8a9c0215e3d9837491ff55c656155a24fe14817525980349c11e",
   "tests/test_arm2_holm.py": "85431b058c2ec6d18e740d8e47843166671a781131fbd74195e7cc2127bfec88",
   "tests/test_arm2_kd_comparison_protocol.py": "9b60129f88e741678f8a56918bb2129167c1d23d236e80396c766f4969b8c644",
