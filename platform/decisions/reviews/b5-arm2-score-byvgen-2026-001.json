@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the candidate scoring job b5-arm2-score-byvgen-2026-001 ($1.60 worst case, 1,346 rows), job 3 of 3, inside a $6.40 additional-runtime cap of which $2.14 is used. Scores export 8e23a502 on the UNCHANGED manifest sha 08c959df under the SAME normalized convention and evaluator image as the base comparator. Training completed in 4,514 s ($2.01) with 2,895 of 2,895 rows eligible, 0 rejected, PASS_MERGED_EXPORT; loss 71.33 -> 61.88 over 3,000 steps, NON-monotonic (it wobbles), which is expected at about 16.6 passes over 2,895 clips. PREREGISTERED, band fixed before any job and only the baseline substituted: IMPROVES iff candidate G2 <= 39.57 AND the speaker-clustered 95% CI excludes 0; otherwise 'criterion not met' - NEVER 'Medumba cannot improve'. 'Unseen' means excluded from THIS adaptation run; the base model's original pretraining exposure is unknown. G2 primary, G1/G4 separate and never pooled, per-speaker changes alongside every pooled figure. EXPLORATORY: 89 rows, 12 speakers, about 61% of the weight on one speaker. No TEST scoring, no serving change, no retry, no follow-on. Arm-1 unchanged.",
+ "bindings_sha256": "d51a3617e7bbf2417baccd1630119d6dd1e00834079d97f709a5c4eabb9a092a",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvgen-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVGEN-2026-001.json",
+ "reviewer": "owner instruction 2026-09-17: \"Approved: prepare and execute the revised three-job experiment within the $6.40 additional runtime cap. Use the frozen split, fresh base initialization, and identical normalized scoring with the existing tone-sensitive metric for both models. Keep G2 primary and report the other groups separately, including per-speaker results. Treat the result as exploratory and report threshold failure as 'criterion not met'. No TEST scoring, serving changes, automatic retries or follow-on experiments. Keep Arm-1 unchanged.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
