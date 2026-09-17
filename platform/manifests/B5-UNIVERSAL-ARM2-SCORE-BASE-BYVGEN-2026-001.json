@@ -1,0 +1,51 @@
+{
+ "authorization": "PENDING OWNER REVIEW \u2014 this packet is prepared, not authorized",
+ "cost_ceiling_usd": 101.6,
+ "cost_registry_line": "B5-UNIVERSAL-ARM2-SCORE-BASE-BYVGEN-2026-001 unadapted-base comparator for the Medumba generalisation experiment, 1,346 rows, worst case $1.60 on-demand (3,600 s ceiling), budgeted $101.60 under the standing +$100 rule. The experiment's additional runtime is capped at $6.40 across three jobs.",
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "2",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "30",
+  "MEDZEN_EXECUTION_MODE": "arm2_scoring",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LR": "1e-5",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "30",
+  "MEDZEN_SCORE_ARM": "base",
+  "MEDZEN_SCORE_EVALUATOR_IMAGE_DIGEST": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+  "MEDZEN_SCORE_MANIFEST_S3_URI": "s3://medzen-speech/research/arm2-scoring/byvgen-decode-v1.jsonl",
+  "MEDZEN_SCORE_MANIFEST_SHA256": "08c959df5b5dc2ccc5da5e4923cc956f6087b13c0545acff61796d5858d58c6f",
+  "MEDZEN_SCORE_MANIFEST_VERSION_ID": "xGQdY16EkI3S8h5jXV6.doaUvYURqD1G",
+  "MEDZEN_SCORE_MODEL_SHA256": "354f981756aa8f41591ea363e45b9c4eba1ec5144c2273af82e747efbb08919c",
+  "MEDZEN_SCORE_SPLIT_SHA256": "08c959df5b5dc2ccc5da5e4923cc956f6087b13c0545acff61796d5858d58c6f",
+  "MEDZEN_SEED": "1",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:13c934701e95495a841a79cd28c0b594bef9d2ed0dc38a4420e51f0e9c7d4963",
+ "image_provenance": "arm2-trainer-image.yml -> trainer-image-publish (owner-approved) from reviewed master b669a79769a705d53e6da0599d6580110ff3d0dc, which added the DEFAULT-OFF per-frame probability dump to the evaluator (PR #64). linux/amd64 child sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996 under index sha256:13c934701e95495a841a79cd28c0b594bef9d2ed0dc38a4420e51f0e9c7d4963. This is a REBUILD of the evaluator family that produced the control receipts, not that same image.",
+ "image_tag": "arm2-ftcal-b669a79769a705d53e6da0599d6580110ff3d0dc",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "b5-arm2-score-base-byvgen-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "owner rule: on-demand basis always",
+ "max_runtime_seconds": 3600,
+ "network_note": "campaign endpoints verified LIVE 2026-08-20 before binding: vpce-0ce13c7c (s3 gateway), vpce-0ac28d55 (ecr.api), vpce-0e604bec (ecr.dkr), vpce-06c917c3 (logs).",
+ "purpose": "COMPARATOR for the Medumba generalisation experiment, run FIRST. Scores the UNADAPTED BASE checkpoint (omniASR-CTC-1B-v2.pt, sha 354f9817) in the evaluator's base_mode over the frozen 1,346-row manifest sha 08c959df, under the NORMALIZED convention. WHY THE BASE AND NOT THE PREVIOUS CONTROL: that control trained on gb11 with a 15 h audio cap across 15 languages, and byv train is only 6.31 h, so it was never capped out - it consumed clips from this very pool. Recordings withheld from the candidate are NOT unseen to it. The candidate is trained FROM this base, so base and candidate share one clean starting point. GROUPS, reported separately and never pooled: G2_DEV_BOTH_DISJOINT 89 rows / 12 speakers (unseen voice AND unseen sentence, the PRIMARY endpoint), G1_HELD_TRAIN 1,039 rows / 15 speakers (unseen voice, familiar sentences), G4_DEV_SEEN_VOICE 218 rows / 44 speakers. EXPLORATORY: the primary endpoint is small and uneven - one speaker supplies 61% of its weight - so per-speaker changes are reported alongside the pooled result.",
+ "record": "B5-UNIVERSAL-ARM2-SCORE-BASE-BYVGEN-2026-001",
+ "scope": "EXPLORATORY DIAGNOSTIC SCORING ONLY. No promotion, registry write, serving change or deployment. Arm-1 keeps serving. No TEST scoring.",
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "3,600 s ceiling on ml.g6.xlarge at $1.60/h on-demand = $1.60. 607 rows; observed 2,197-row decode jobs on this evaluator billed 319-364 s, so a 607-row job is dominated by fixed staging overhead. The ceiling is the cap, not an estimate.",
+ "worst_case_usd": 1.6
+}

@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the base-comparator scoring job b5-arm2-score-base-byvgen-2026-001 ($1.60 worst case, 1,346 rows), job 1 of 3 in the Medumba generalisation experiment (additional runtime capped at $6.40). Scores the UNADAPTED BASE in base_mode; the candidate will be trained from the same base, so neither side has seen the held-out material. The split is FROZEN before any job: rule sha256('byv-genz-2026/'+speaker_id) ascending, first 15 speakers held out; TRAIN_POOL 2,895 rows sha 79bdf7fd, eval manifest 1,346 rows sha 08c959df. G2 (89 rows, 12 speakers) is the PRIMARY endpoint with verified zero audio, speaker and prompt overlap with TRAIN_POOL. PREREGISTERED: IMPROVES iff candidate <= base - 2.00 CER AND the speaker-clustered 95% CI excludes 0; otherwise the reading is 'criterion not met' - NEVER 'Medumba cannot improve'. 'Unseen' means excluded from THIS adaptation run; the base model's original pretraining exposure is unknown. EXPLORATORY: one speaker supplies 61% of the primary endpoint's weight, so per-speaker changes are reported alongside the pooled figure. No TEST scoring, no serving change, no retry, no follow-on.",
+ "bindings_sha256": "0c07ffc9ed638c524c125bbbebc13cf6cf90bfb15faacc6c6d0725531cf49f0e",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-base-byvgen-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BASE-BYVGEN-2026-001.json",
+ "reviewer": "owner instruction 2026-09-17: \"Approved: prepare and execute the revised three-job experiment within the $6.40 additional runtime cap. Use the frozen split, fresh base initialization, and identical normalized scoring with the existing tone-sensitive metric for both models. Keep G2 primary and report the other groups separately, including per-speaker results. Treat the result as exploratory and report threshold failure as 'criterion not met'. No TEST scoring, serving changes, automatic retries or follow-on experiments. Keep Arm-1 unchanged.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
