@@ -1,0 +1,51 @@
+{
+ "cost_ceiling_usd": 103.2,
+ "cost_registry_line": "CM-PILOT-BYVGEN-SAGEMAKER-BINDINGS-2026-001 Medumba GENERALISATION experiment: fresh 3,000-step LoRA from the unadapted base on data version byvgen1 (2,895 Medumba training clips from 64 speakers, 4.4895 h; 15 speakers held out entirely). Worst case $3.20 on-demand (7,200 s ceiling), below the $10 calibration tier. Expected $1.82-2.31 but the estimate is SOFT - these clips average 5.58 s against the capacity probe's 4.43 s and step time scales with audio length. The experiment's additional runtime is capped at $6.40 across three jobs; $0.13 used by the base comparator.",
+ "data_version_pins": {
+  "complete_key": "curated/_versions/byvgen1/COMPLETE.json",
+  "complete_raw_sha256": "d069bdc78b021c6fd071e61b4d494567a8b76a4eef7a7cee4f480dfa88d4c6e8",
+  "eval_manifest_sha256": "08c959df5b5dc2ccc5da5e4923cc956f6087b13c0545acff61796d5858d58c6f",
+  "hours": 4.4895,
+  "manifest_key": "curated/medumba/asr/cv26_byv/byvgen1/manifest.jsonl",
+  "manifest_sha256": "79bdf7fde9f72ddf32e9dba63a39c019f16bb763528a2bf6529e44429ee97314",
+  "rows": 2895,
+  "split_rule": "sha256('byv-genz-2026/'+speaker_id) ascending, first 15 speakers held out",
+  "why": "MEDZEN_MANIFEST_VERSION names a version; it does not pin its CONTENT. The dispatcher verifies these against live S3 before launching."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "8",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "250",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "medumba",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "byvgen1",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:cf0b0c342c7733cec520cb8a81691479ac54f375fd4ac15ca788515afe175753",
+ "image_tag": "arm2-ftcal-b1dfb42049f8e4ce289af24d95342bdf9c4b35e2",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:dcd401132653bf4edfcca5415e054d445083fa6d403427a7577a42be7f4940e7",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-byvgen-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 7200,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "7,200 s ceiling on ml.g6.xlarge at $1.60/h on-demand = $3.20. 3,000 steps x 16 = 48,000 draws over 2,895 clips = about 16.6 passes, a deliberately different regime from the capacity probe's ~256 passes over 150 clips. The ceiling is the cap, not an estimate."
+}
