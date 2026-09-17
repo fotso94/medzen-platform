@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the scoring job b5-arm2-score-byvfit2400-2026-001 ($1.60 worst case, 607 rows) for the 2,400-step probe export 2fdd4d1c, on the unchanged manifest sha 5fded590 under the NORMALIZED convention, compared directly with the 1,200-step probe's F_fit 39.57. Training completed in 2,888 s ($1.28), loss 79.18 -> 41.91 over 2,400 steps, still falling, never non-finite. MEASURED CAVEAT: despite the same seed the two runs are NOT bit-identical (loss 54.32 vs 53.85 at step 1200), so this is a comparison between two RUNS, not two checkpoints, and run-to-run variance in CER is unmeasured with one run per setting. Bands were fixed before training and are ARBITRARY: CONTINUES <= 33.30, PLATEAUS > 37.57. The original PARTIAL_FIT is PRESERVED. The control baseline is reused, not re-measured. No raw-control job, no serving change, no follow-on run. No retry without separate approval.",
+ "bindings_sha256": "9653f10e9fb0d253e812d745c4ba4b48beb747509c95f5c59d2fb8fcea139c6b",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvfit2400-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVFIT2400-2026-001.json",
+ "reviewer": "owner instruction 2026-09-16: \"Proceed with the single diagnostic under the corrected frozen scope: control first, then training and scoring, with the conditional raw-audio check only when required. Keep the $8 runtime ceiling, no automatic retries or follow-on experiments, and Arm-1 unchanged. Report fitting and the two dev groups separately. No further governance work.\"",
+ "utc": "2026-09-16T03:01:21Z"
+}
