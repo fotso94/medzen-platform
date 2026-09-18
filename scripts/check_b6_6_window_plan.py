@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -50,6 +51,75 @@ SUBNETS = {
     "subnet-05029419c6c61a536",
     "subnet-01fb2fc3f56bce55e",
 }
+AWS_DESCRIPTION_CHARSET = re.compile(
+    r"^[A-Za-z0-9. _:/()#,@\[\]+=&;{}!$*\-]*$"
+)
+
+
+def rendered_plan_description_inventory(plan: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return every rendered Terraform `description` field and fail on ambiguity."""
+    inventory: list[dict[str, Any]] = []
+
+    def visit(value: Any, path: str) -> None:
+        if isinstance(value, dict):
+            for key, child in value.items():
+                child_path = f"{path}.{key}"
+                if key == "description":
+                    if child is None or isinstance(child, str):
+                        inventory.append({"path": child_path, "value": child})
+                    elif (
+                        isinstance(child, dict)
+                        and set(child) == {"constant_value"}
+                        and isinstance(child["constant_value"], str)
+                    ):
+                        inventory.append(
+                            {
+                                "path": f"{child_path}.constant_value",
+                                "value": child["constant_value"],
+                            }
+                        )
+                    else:
+                        raise ValueError(
+                            f"rendered plan description is not a known string at {child_path}"
+                        )
+                visit(child, child_path)
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                visit(child, f"{path}[{index}]")
+
+    visit(plan, "$")
+    return inventory
+
+
+def lint_rendered_plan_description_charset(plan: dict[str, Any]) -> dict[str, Any]:
+    """Refuse any rendered description outside EC2's documented character set."""
+    inventory = rendered_plan_description_inventory(plan)
+    invalid: list[dict[str, Any]] = []
+    for item in inventory:
+        value = item["value"]
+        if value is not None and AWS_DESCRIPTION_CHARSET.fullmatch(value) is None:
+            invalid.append(
+                {
+                    "path": item["path"],
+                    "invalid_codepoints": sorted(
+                        {
+                            f"U+{ord(character):04X}"
+                            for character in value
+                            if AWS_DESCRIPTION_CHARSET.fullmatch(character) is None
+                        }
+                    ),
+                }
+            )
+    if invalid:
+        raise ValueError(f"rendered plan description charset differs: {invalid!r}")
+    return {
+        "status": "PASS",
+        "description_fields": len(inventory),
+        "string_descriptions": sum(item["value"] is not None for item in inventory),
+        "null_descriptions": sum(item["value"] is None for item in inventory),
+        "invalid_descriptions": 0,
+        "allowed_character_class": "A-Za-z0-9. _-:/()#,@[]+=&;{}!$*",
+    }
 
 
 def load(path: Path) -> dict[str, Any]:
@@ -161,6 +231,7 @@ def _principal_set(statement: dict[str, Any]) -> set[str]:
 
 
 def validate_create(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     if actual != {address: ["create"] for address in ADDRESSES}:
         raise ValueError(f"create delta differs: {actual!r}")
@@ -322,12 +393,14 @@ def validate_create(plan: dict[str, Any]) -> None:
 
 
 def validate_destroy(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     if actual != {address: ["delete"] for address in ADDRESSES}:
         raise ValueError(f"destroy delta differs: {actual!r}")
 
 
 def validate_cleanup(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     allowed = ADDRESSES
     if not actual or not set(actual).issubset(allowed):
@@ -337,6 +410,7 @@ def validate_cleanup(plan: dict[str, Any]) -> None:
 
 
 def validate_controller(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     if actual != {CONTROLLER: ["create"]}:
         raise ValueError(f"controller delta differs: {actual!r}")
@@ -414,12 +488,14 @@ def validate_qualification(plan: dict[str, Any]) -> None:
 
 
 def validate_qualification_destroy(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     if actual != {address: ["delete"] for address in QUALIFICATION_ADDRESSES}:
         raise ValueError(f"qualification destroy delta differs: {actual!r}")
 
 
 def validate_qualification_cleanup(plan: dict[str, Any]) -> None:
+    lint_rendered_plan_description_charset(plan)
     actual = changes(plan)
     if not actual or not set(actual).issubset(QUALIFICATION_ADDRESSES):
         raise ValueError(

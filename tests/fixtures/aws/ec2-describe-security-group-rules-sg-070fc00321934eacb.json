@@ -1,0 +1,47 @@
+{
+  "SecurityGroupRules": [
+    {
+      "SecurityGroupRuleId": "sgr-0eb4bedf2bccc75ea",
+      "GroupId": "sg-070fc00321934eacb",
+      "GroupOwnerId": "558069890522",
+      "IsEgress": true,
+      "IpProtocol": "-1",
+      "FromPort": -1,
+      "ToPort": -1,
+      "CidrIpv4": "0.0.0.0/0",
+      "Tags": [],
+      "SecurityGroupRuleArn": "arn:aws:ec2:eu-central-1:558069890522:security-group-rule/sgr-0eb4bedf2bccc75ea"
+    },
+    {
+      "SecurityGroupRuleId": "sgr-0ecf9d306fe7216b8",
+      "GroupId": "sg-070fc00321934eacb",
+      "GroupOwnerId": "558069890522",
+      "IsEgress": false,
+      "IpProtocol": "-1",
+      "FromPort": -1,
+      "ToPort": -1,
+      "ReferencedGroupInfo": {
+        "GroupId": "sg-070fc00321934eacb",
+        "UserId": "558069890522"
+      },
+      "Tags": [],
+      "SecurityGroupRuleArn": "arn:aws:ec2:eu-central-1:558069890522:security-group-rule/sgr-0ecf9d306fe7216b8"
+    },
+    {
+      "SecurityGroupRuleId": "sgr-0a6b239022953f540",
+      "GroupId": "sg-070fc00321934eacb",
+      "GroupOwnerId": "558069890522",
+      "IsEgress": true,
+      "IpProtocol": "-1",
+      "FromPort": -1,
+      "ToPort": -1,
+      "ReferencedGroupInfo": {
+        "GroupId": "sg-070fc00321934eacb",
+        "UserId": "558069890522"
+      },
+      "Description": "Allows EFA traffic, which is not matched by CIDR rules.",
+      "Tags": [],
+      "SecurityGroupRuleArn": "arn:aws:ec2:eu-central-1:558069890522:security-group-rule/sgr-0a6b239022953f540"
+    }
+  ]
+}

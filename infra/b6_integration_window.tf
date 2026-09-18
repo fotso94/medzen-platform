@@ -84,7 +84,7 @@ resource "aws_vpc_security_group_egress_rule" "b6_probe_to_s3" {
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
-  description       = "TLS from the isolated probe to ECR's S3 layer endpoint"
+  description       = "TLS from the isolated probe to the ECR S3 layer endpoint"
 
   tags = local.b6_window_tags
 }

@@ -1,0 +1,53 @@
+{
+  "id": "B6-AWS-READ-FIXTURE-CAPTURE-2026-001",
+  "status": "PASS_READ_ONLY_LIVE_CAPTURE",
+  "recorded_at_utc": "2026-08-10T21:12:29Z",
+  "aws": {
+    "account": "558069890522",
+    "region": "eu-central-1",
+    "caller_identity": "arn:aws:iam::558069890522:user/s.fotso",
+    "security_group_id": "sg-070fc00321934eacb",
+    "mutations": 0
+  },
+  "captures": [
+    {
+      "api": "ec2:DescribeSecurityGroups",
+      "request": {
+        "GroupIds": [
+          "sg-070fc00321934eacb"
+        ]
+      },
+      "path": "tests/fixtures/aws/ec2-describe-security-groups-sg-070fc00321934eacb.json",
+      "sha256": "2f9129d630cadc5f2915a5bf8c9b9885096fb39b43bfbe5125fab23d71c5a49a"
+    },
+    {
+      "api": "ec2:DescribeSecurityGroupRules",
+      "request": {
+        "Filters": [
+          {
+            "Name": "group-id",
+            "Values": [
+              "sg-070fc00321934eacb"
+            ]
+          }
+        ]
+      },
+      "path": "tests/fixtures/aws/ec2-describe-security-group-rules-sg-070fc00321934eacb.json",
+      "sha256": "96dd135dc918f7b7de260d8aa92df3bd7ffd184b8796ab1b90e43933927af469"
+    }
+  ],
+  "confirmed_behavior": {
+    "individual_egress_rules": 2,
+    "merged_egress_permission_objects": 1,
+    "merged_permission_contains_destination_types": [
+      "CidrIpv4",
+      "ReferencedGroupInfo"
+    ],
+    "per_rule_protocol_minus_one_from_port": -1,
+    "per_rule_protocol_minus_one_to_port": -1,
+    "merged_protocol_minus_one_from_port": "ABSENT",
+    "merged_protocol_minus_one_to_port": "ABSENT"
+  },
+  "fixture_fidelity_decision": "platform/decisions/B6-AWS-READ-FIXTURE-FIDELITY-2026-001.json",
+  "contains_credentials_or_phi": false
+}
