@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE 3,000-step training run cm-pilot-byvnfd-2026-001 ($2.67 worst case at 6,000 s) and, separately packeted, its ONE 1,346-row decode. Arm: the same recipe with NFD targets (tone marks as separate symbols; scorer-invisible, 0 edits on all 2,895 rows): the ONE change under test. Image arm2-ftcal-e072ce1e9802d1b8bc2a87060356b283b047270e (child sha256:548270c6a335...), built from reviewed master containing the float32 knob (PR #78) and the default-off augmentation knobs (PR #81, unused here). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line naming trainable_dtypes [float32] and q/v targets (3,932,160 trainable), no SPEED_PERTURB / TRAIN_MASKING line, and the export is PASS_MERGED_EXPORT. Everything else equals the BYVGEN run: seed 20260904, batch 2 x 8, LR 1e-4, rank 16 alpha 32 dropout 0.05, base init, temperature 0, audio cap 8 h, data content pinned. PREREGISTERED (MEDUMBA-NFD-PREREGISTRATION-2026-001): G2 (new voices AND new sentences; 89 clips, 12 speakers, ~62% of weight on one speaker - EXPLORATORY): delta = CER(byvnfd) - CER(byvgenf32). BETTER iff delta <= -1.00 AND the paired speaker-clustered 95% interval excludes 0; WORSE iff delta >= +1.00 AND the interval excludes 0; otherwise NO DETECTABLE DIFFERENCE. One attempt, no retry, no automatic follow-on, no serving change; Arm-1 keeps serving.",
+ "bindings_sha256": "7f4ebbb89bc6762846dd167c54262b68df96027dddd4c136ffcca429c55650bf",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvnfd-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVNFD-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 2 (canonicalised training targets, $6.40 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24; the step-1 preregistration committed that later steps use float32 adapters with their own float32 baseline arm if the precision fix read LOWER.",
+ "utc": "2026-09-25T21:30:00Z"
+}
