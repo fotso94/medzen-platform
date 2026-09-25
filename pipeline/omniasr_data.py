@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 from typing import Any, Callable
 
@@ -82,6 +83,14 @@ def authoritative_language(row: dict[str, Any]) -> str:
     return lang
 
 
+def speed_factor(seed: int, index: int, position: int, factors: tuple) -> float:
+    """The speed factor for clip `position` of micro-batch `index`: a sha256 of
+    (seed, index, position), never Python's salted hash() or global RNG state,
+    so a resumed run replays exactly the factors of the original."""
+    key = f"{seed}:{index}:{position}".encode()
+    return factors[int(hashlib.sha256(key).hexdigest(), 16) % len(factors)]
+
+
 def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
                       *, device=None) -> Callable[[int], dict[str, Any]]:
     """Collate micro-batch `index` into the tensors _batch_loss consumes:
@@ -103,6 +112,26 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
         print(json.dumps({"input_convention": "normalized",
                           "status": "TRAIN_INPUT_CONVENTION"}, sort_keys=True))
 
+    speed = tuple(getattr(config, "speed_perturb", ()) or ())
+    if speed:
+        import torchaudio
+        print(json.dumps({"factors": list(speed), "status": "SPEED_PERTURB_APPLIED"},
+                         sort_keys=True))
+
+    def _speed(wave, sr: int, index: int, position: int):
+        """Resample from a pretend rate sr*f to sr: duration scales by 1/f and
+        pitch by f (classic speed perturbation). The factor comes from a hash
+        of (seed, micro-batch, position), never from global RNG state."""
+        f = speed_factor(config.seed, index, position, speed)
+        if f == 1.0:
+            return wave, f
+        orig = int(round(sr * f))
+        if sr // math.gcd(orig, sr) > 100:
+            # a coprime rate pair builds a sinc kernel of sr/gcd rows per call
+            raise ValueError(f"speed factor {f} at {sr} Hz needs a {sr // math.gcd(orig, sr)}-phase "
+                             "resampler; use factors with at most two decimals on 16 kHz audio")
+        return torchaudio.functional.resample(wave, orig_freq=orig, new_freq=sr), f
+
     def _pad(tensors: list, dtype) -> tuple[Any, list[int]]:
         lens = [int(t.shape[0]) for t in tensors]
         out = torch.zeros(len(tensors), max(lens), dtype=dtype)
@@ -115,11 +144,14 @@ def make_batch_source(mix: list[dict], tokenizer, config, cli, cache: Path,
     def batches(index: int) -> dict[str, Any]:
         rows = batch_rows(mix, config.batch_size, index)
         waves, targets, languages = [], [], []
-        for row in rows:
+        for position, row in enumerate(rows):
             audio, sr = sf.read(fetch_audio(cli, row, cache),
                                 dtype="float32", always_2d=False)
             if audio.ndim > 1:
                 audio = audio.mean(axis=1)
+            if speed:
+                perturbed, _ = _speed(torch.from_numpy(audio), sr, index, position)
+                audio = perturbed.numpy()
             waves.append(_preprocess_wave(audio, sr) if normalize
                          else torch.from_numpy(audio))
             targets.append(encoder(row["text_normalized"]))

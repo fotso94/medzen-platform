@@ -75,6 +75,11 @@ CTC_LORA_SUFFIX_WIDTHS = {"self_attn.q_proj": 2560, "self_attn.k_proj": 2560,
                           "self_attn.v_proj": 2560, "self_attn.output_proj": 2560,
                           "ffn.inner_proj": 6400, "ffn.output_proj": 6400}
 DEFAULT_LORA_CHECKPOINT_BYTES = 200_000_000
+# Opt-in training augmentation (step 4 of the 2026-09-24 improvement plan).
+# Unset keeps the batches and the model forward exactly as before. The 1b_v2
+# arch ships use_masking=False and Meta's CTC recipe adds no augmentation, so
+# neither lever has been exercised on this model.
+SPEED_PERTURB_RANGE = (0.8, 1.25)
 
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
@@ -194,6 +199,11 @@ class TrainerConfig:
     # defaults: q/v adapters in the base weight dtype, byte-identical to before.
     lora_target_suffixes: tuple[str, ...] = ()
     lora_trainable_dtype: str = ""
+    # Opt-in augmentation (2026-09-25). () is the default: no perturbation.
+    # speed_perturb: sorted distinct factors; train_masking: (temporal prob,
+    # temporal span, spatial prob, spatial span) for fairseq2's masker.
+    speed_perturb: tuple[float, ...] = ()
+    train_masking: tuple[float, int, float, int] | tuple[()] = ()
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -243,6 +253,11 @@ class TrainerConfig:
             payload["lora_target_suffixes"] = list(self.lora_target_suffixes)
         if not self.lora_trainable_dtype:
             payload.pop("lora_trainable_dtype", None)
+        for key in ("speed_perturb", "train_masking"):
+            if not getattr(self, key):
+                payload.pop(key, None)
+            else:
+                payload[key] = list(getattr(self, key))
         return payload
 
 
@@ -639,6 +654,18 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             "MEDZEN_LORA_TARGETS / MEDZEN_LORA_TRAINABLE_DTYPE are refused with "
             "MEDZEN_KD_ENABLE on until a KD run measures their memory headroom")
 
+    speed_perturb = parse_speed_perturb(env.get("MEDZEN_SPEED_PERTURB", ""))
+    train_masking = parse_train_masking(env.get("MEDZEN_TRAIN_MASKING", ""))
+    if (speed_perturb or train_masking) and kd_enable:
+        raise TrainerRefusal(
+            "MEDZEN_SPEED_PERTURB / MEDZEN_TRAIN_MASKING are refused with "
+            "MEDZEN_KD_ENABLE on: the frozen teachers would see different "
+            "evidence from the student and no KD run has measured that")
+    if train_masking and train_mode != "lora":
+        raise TrainerRefusal(
+            "MEDZEN_TRAIN_MASKING is refused with MEDZEN_TRAIN_MODE="
+            f"{train_mode!r}: a full-mode checkpoint would carry the masker")
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -687,7 +714,121 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         input_convention=input_convention,
         lora_target_suffixes=lora_target_suffixes,
         lora_trainable_dtype=lora_trainable_dtype,
+        speed_perturb=speed_perturb,
+        train_masking=train_masking,
     )
+
+
+def parse_speed_perturb(raw: str) -> tuple[float, ...]:
+    """MEDZEN_SPEED_PERTURB='0.9,1.0,1.1' -> sorted distinct factors; () = off.
+
+    Each clip in each micro-batch is resampled by one factor chosen from a
+    hash of (seed, micro-batch index, position), so a run is reproducible
+    and every factor is used about equally. A set holding only 1.0 is the
+    default spelled out and collapses to ()."""
+    if not raw.strip():
+        return ()
+    try:
+        values = [float(t) for t in raw.split(",") if t.strip()]
+    except ValueError:
+        raise TrainerRefusal(f"MEDZEN_SPEED_PERTURB={raw!r} is not a list of numbers")
+    # at most two decimals: the sinc resampler's kernel grows with
+    # sr / gcd(round(sr*f), sr), and a factor like 0.9123 builds a ~1 GB kernel
+    # per clip at 16 kHz (review 2026-09-25); two decimals keep it tiny
+    if any(round(v, 2) != v for v in values):
+        raise TrainerRefusal(
+            f"MEDZEN_SPEED_PERTURB={raw!r}: use at most two decimals per factor")
+    factors = sorted(set(values))
+    lo, hi = SPEED_PERTURB_RANGE
+    if not factors or any(not (lo <= f <= hi) for f in factors):
+        raise TrainerRefusal(
+            f"MEDZEN_SPEED_PERTURB={raw!r} needs factors within [{lo}, {hi}]")
+    return () if factors == [1.0] else tuple(factors)
+
+
+def parse_train_masking(raw: str) -> tuple:
+    """MEDZEN_TRAIN_MASKING='<temporal prob>,<temporal span>,<spatial prob>,<spatial span>'
+    -> the arguments of fairseq2's StandardWav2Vec2Masker; () = off (the 1b_v2
+    default). Probabilities are fairseq2's MAXIMUM mask probabilities."""
+    if not raw.strip():
+        return ()
+    parts = [t.strip() for t in raw.split(",")]
+    try:
+        t_prob, t_span, s_prob, s_span = float(parts[0]), int(parts[1]), float(parts[2]), int(parts[3])
+        if len(parts) != 4:
+            raise ValueError
+    except (ValueError, IndexError):
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_MASKING={raw!r} must be 'temporal_prob,temporal_span,"
+            "spatial_prob,spatial_span'")
+    # fairseq2's StandardWav2Vec2Masker refuses max_temporal_mask_prob <= 0,
+    # so temporal masking is required; spatial masking may be 0 (off)
+    if not (0.0 < t_prob < 1.0 and 0.0 <= s_prob < 1.0 and t_span >= 1 and s_span >= 1):
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_MASKING={raw!r}: temporal probability must be in (0, 1), "
+            "spatial in [0, 1), spans >= 1")
+    return (t_prob, t_span, s_prob, s_span)
+
+
+def wav2vec2_frames(samples: float) -> int:
+    """Frames the wav2vec2 conv front end emits for `samples` 16 kHz samples
+    (receptive field 400, stride 320; exact for the 7-layer stack)."""
+    return int((samples - 400) // 320 + 1) if samples >= 400 else 0
+
+
+def check_masking_feasible(masking: tuple, min_duration_s: float,
+                           speed_factors: tuple = (), model_dim: int | None = None) -> dict:
+    """fairseq2 0.6 compute_row_mask draws ONE span count per micro-batch,
+    int(prob / span * (shortest_len - 1)), and raises when it is below the
+    masker's minimum of 2 spans, or when a row is not longer than the span.
+    Batches replay deterministically on resume, so an infeasible setting would
+    crash every attempt. Refuse before any GPU time is spent: the temporal axis
+    against the mix's shortest clip at the fastest speed factor, the spatial
+    axis against the model width."""
+    t_prob, t_span, s_prob, s_span = masking
+    fastest = max(speed_factors) if speed_factors else 1.0
+    # duration_s is rounded to milliseconds in manifests: take one off
+    frames = wav2vec2_frames((min_duration_s - 0.001) * 16000 / fastest)
+    if frames <= t_span or int(t_prob / t_span * (frames - 1)) < 2:
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_MASKING temporal ({t_prob}, span {t_span}) cannot place 2 "
+            f"spans in the shortest clip ({min_duration_s:.3f} s -> {frames} frames at "
+            f"speed {fastest}); needs t_prob >= {2 * t_span / max(frames - 1, 1):.3f}")
+    if model_dim is not None and s_prob > 0 and (
+            s_span >= model_dim or int(s_prob / s_span * (model_dim - 1)) < 2):
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_MASKING spatial ({s_prob}, span {s_span}) cannot place 2 "
+            f"spans in {model_dim} channels; needs s_prob >= {2 * s_span / (model_dim - 1):.4f} "
+            "or 0")
+    return {"shortest_clip_frames": frames, "fastest_speed": fastest}
+
+
+def attach_train_masker(model, masking: tuple, device) -> dict:
+    """Give the model a StandardWav2Vec2Masker for TRAINING only (fairseq2
+    applies it only when model.training). Its temporal mask embedding has no
+    pretrained value on this checkpoint, so it is zero and frozen (masked
+    frames become zeros, as masked channels do); nothing about it trains."""
+    import torch
+    from fairseq2.models.wav2vec2.masker import StandardWav2Vec2Masker
+
+    if not hasattr(model, "masker"):
+        raise TrainerRefusal("model has no masker slot; MEDZEN_TRAIN_MASKING needs "
+                             "a fairseq2 wav2vec2 ASR model")
+    if model.masker is not None:
+        raise TrainerRefusal("model already carries a masker; refusing to replace it")
+    t_prob, t_span, s_prob, s_span = masking
+    model_dim = int(model.final_proj.weight.shape[1])
+    if s_prob > 0 and (s_span >= model_dim or int(s_prob / s_span * (model_dim - 1)) < 2):
+        raise TrainerRefusal(
+            f"MEDZEN_TRAIN_MASKING spatial ({s_prob}, span {s_span}) cannot place 2 "
+            f"spans in {model_dim} channels")
+    masker = StandardWav2Vec2Masker(model_dim, t_span, t_prob, 2, s_span, s_prob, 2)
+    with torch.no_grad():
+        masker.temporal_mask_embed.zero_()
+    masker.temporal_mask_embed.requires_grad_(False)
+    model.masker = masker.to(device=device, dtype=torch.bfloat16)
+    return {"model_dim": model_dim, "temporal_prob": t_prob, "temporal_span": t_span,
+            "spatial_prob": s_prob, "spatial_span": s_span, "mask_embed": "zeros-frozen"}
 
 
 def parse_lora_targets(raw: str) -> tuple[str, ...]:
@@ -1520,6 +1661,13 @@ def main() -> int:
 
     config = parse_config(dict(os.environ))
     mix, provenance = build_gated_mix(config)
+    if config.train_masking:
+        # refuse an infeasible masker before any staging or GPU time
+        feasibility = check_masking_feasible(
+            config.train_masking, min(float(r["duration_s"]) for r in mix),
+            config.speed_perturb)
+        print(json.dumps({"status": "TRAIN_MASKING_FEASIBLE", **feasibility},
+                         sort_keys=True))
     fingerprint = run_fingerprint(config, provenance)
     config.output_dir.mkdir(parents=True, exist_ok=True)
     (config.output_dir / "training-provenance.json").write_bytes(json.dumps({
@@ -1675,6 +1823,10 @@ def main() -> int:
                       "trainable_parameters": total, "total_parameters": total,
                       "trainable_fraction": 1.0}
         adapter_audit = None
+    if config.train_masking:
+        masking_audit = attach_train_masker(model, config.train_masking, device)
+        print(json.dumps({"status": "TRAIN_MASKING_APPLIED", **masking_audit},
+                         sort_keys=True))
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=config.learning_rate)
@@ -1771,6 +1923,13 @@ def main() -> int:
         if adapter_audit is not None:
             # what the run BUILT, not what the packet asked for
             audit_extract.update(adapter_audit)
+    if config.train_masking:
+        # the masker is a training-time regulariser, not part of the model:
+        # the export keeps exactly the base key set the scorer strict-loads
+        model.masker = None
+        audit_extract["train_masking"] = list(config.train_masking)
+    if config.speed_perturb:
+        audit_extract["speed_perturb"] = list(config.speed_perturb)
     export = export_merged_checkpoint(
         model,
         output_dir=config.output_dir / "export",
