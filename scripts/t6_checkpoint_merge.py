@@ -64,6 +64,14 @@ def main() -> int:
                   f"-> {target.name}", flush=True)
             del full_state, state
             continue
+        adapter_dtypes = sorted({str(v.dtype) for v in state["lora"].values()})
+        if adapter_dtypes != ["torch.bfloat16"]:
+            # a MEDZEN_LORA_TRAINABLE_DTYPE=float32 run: loading its float32
+            # masters into bf16 adapters would silently merge different
+            # weights from the trainer's own export
+            raise SystemExit(
+                f"step {step}: adapter dtypes {adapter_dtypes} — this sweep "
+                "merges bf16 adapters only; use the run's own export")
         model = load_model("medzen_omniASR_CTC_1B_v2", device=device,
                            dtype=torch.bfloat16)
         rank = int(os.environ.get("MERGE_RANK", "16"))

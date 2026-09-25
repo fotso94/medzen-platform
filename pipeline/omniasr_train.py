@@ -58,6 +58,23 @@ CTC_SCOPE_PREFIX = "encoder."  # wav2vec2 attention lives under the encoder;
 SIGTERM_EXIT = 42  # named: spot reclaim checkpointed and left cleanly
 DIVERGED_EXIT = 43  # named: non-finite loss/grad/params — poison NOT persisted
 TRAIN_INPUT_CONVENTIONS = ("raw", "normalized")
+# Opt-in LoRA adapter placement and precision (Medumba capacity follow-up,
+# 2026-09-25). Unset keeps q/v adapters in the base weight dtype, exactly as
+# before. Names are full suffixes under CTC_SCOPE_PREFIX: a bare "output_proj"
+# would match both the attention and the feed-forward output projections.
+LORA_TARGET_ALLOWLIST = ("self_attn.q_proj", "self_attn.k_proj",
+                         "self_attn.v_proj", "self_attn.output_proj",
+                         "ffn.inner_proj", "ffn.output_proj")
+LORA_DEFAULT_TARGETS = ("self_attn.q_proj", "self_attn.v_proj")
+LORA_TRAINABLE_DTYPES = ("float32",)
+# in_features + out_features per adapted projection of the omniASR CTC 1B
+# encoder (48 layers, model dim 1280, FFN 5120; read from the base checkpoint's
+# state dict 2026-09-25). Used only to size checkpoints for knob-on runs.
+CTC_ENCODER_LAYERS = 48
+CTC_LORA_SUFFIX_WIDTHS = {"self_attn.q_proj": 2560, "self_attn.k_proj": 2560,
+                          "self_attn.v_proj": 2560, "self_attn.output_proj": 2560,
+                          "ffn.inner_proj": 6400, "ffn.output_proj": 6400}
+DEFAULT_LORA_CHECKPOINT_BYTES = 200_000_000
 
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
@@ -173,6 +190,10 @@ class TrainerConfig:
     # the evaluator's per-utterance preprocessing (omniasr_calibrate._preprocess_wave)
     # to each unpadded clip, so training sees what evaluation and serving see.
     input_convention: str = "raw"
+    # Opt-in adapter placement/precision (2026-09-25). () and "" are the
+    # defaults: q/v adapters in the base weight dtype, byte-identical to before.
+    lora_target_suffixes: tuple[str, ...] = ()
+    lora_trainable_dtype: str = ""
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -213,6 +234,15 @@ class TrainerConfig:
         # convention, so it can never resume a raw checkpoint or vice versa.
         if self.input_convention == "raw":
             payload.pop("input_convention", None)
+        # Same one-way migration for the adapter knobs: default runs keep their
+        # fingerprint; a run that changes placement or precision binds it and
+        # can never resume a default checkpoint (or vice versa).
+        if not self.lora_target_suffixes:
+            payload.pop("lora_target_suffixes", None)
+        else:
+            payload["lora_target_suffixes"] = list(self.lora_target_suffixes)
+        if not self.lora_trainable_dtype:
+            payload.pop("lora_trainable_dtype", None)
         return payload
 
 
@@ -591,6 +621,24 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             "teachers would receive the same normalized batch although they were "
             "trained on raw audio; the option is for plain runs only")
 
+    lora_target_suffixes = parse_lora_targets(env.get("MEDZEN_LORA_TARGETS", ""))
+    lora_trainable_dtype = env.get("MEDZEN_LORA_TRAINABLE_DTYPE", "").strip().lower()
+    if lora_trainable_dtype and lora_trainable_dtype not in LORA_TRAINABLE_DTYPES:
+        raise TrainerRefusal(
+            f"MEDZEN_LORA_TRAINABLE_DTYPE={lora_trainable_dtype!r} is not one of "
+            f"{LORA_TRAINABLE_DTYPES}; leave it unset to keep the adapters in the "
+            "base weight dtype")
+    if (lora_target_suffixes or lora_trainable_dtype) and train_mode != "lora":
+        raise TrainerRefusal(
+            "MEDZEN_LORA_TARGETS / MEDZEN_LORA_TRAINABLE_DTYPE configure LoRA "
+            f"adapters and are refused with MEDZEN_TRAIN_MODE={train_mode!r}")
+    if (lora_target_suffixes or lora_trainable_dtype) and kd_enable:
+        # KD runs already peak at ~22.3 of 23.6 GB on the L4; wider adapters
+        # add saved activations nobody has measured there yet
+        raise TrainerRefusal(
+            "MEDZEN_LORA_TARGETS / MEDZEN_LORA_TRAINABLE_DTYPE are refused with "
+            "MEDZEN_KD_ENABLE on until a KD run measures their memory headroom")
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -637,7 +685,59 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         kd_retention_teacher_version_id=kd_retention_teacher_version_id,
         kd_retention_teacher_sha256=kd_retention_teacher_sha256,
         input_convention=input_convention,
+        lora_target_suffixes=lora_target_suffixes,
+        lora_trainable_dtype=lora_trainable_dtype,
     )
+
+
+def parse_lora_targets(raw: str) -> tuple[str, ...]:
+    """MEDZEN_LORA_TARGETS -> canonical suffix tuple; () means the default.
+
+    Order follows LORA_TARGET_ALLOWLIST so one set has one spelling, and an
+    explicit request for the default q/v pair collapses to () so it keeps
+    the default fingerprint (the same rule as an explicit 'raw' convention).
+    """
+    if not raw.strip():
+        return ()
+    requested = {token.strip() for token in raw.split(",") if token.strip()}
+    unknown = sorted(requested - set(LORA_TARGET_ALLOWLIST))
+    if not requested or unknown:
+        raise TrainerRefusal(
+            f"MEDZEN_LORA_TARGETS={raw!r} names no target or unknown targets "
+            f"{unknown}; allowed full suffixes: {LORA_TARGET_ALLOWLIST}")
+    canonical = tuple(s for s in LORA_TARGET_ALLOWLIST if s in requested)
+    return () if canonical == LORA_DEFAULT_TARGETS else canonical
+
+
+def lora_targets_per_suffix(wrapped_modules: list[str],
+                            suffixes: tuple[str, ...]) -> dict[str, int]:
+    """Count wrapped modules per requested suffix and refuse a placement the
+    model did not honour: every suffix must match, and equally often (one per
+    encoder layer), so a typo or a layout change cannot train a partial set."""
+    counts = {s: sum(1 for name in wrapped_modules if name.endswith(s))
+              for s in suffixes}
+    if any(n == 0 for n in counts.values()) or len(set(counts.values())) != 1:
+        raise TrainerRefusal(
+            f"LoRA placement not honoured by the model: per-suffix matches {counts}")
+    if sum(counts.values()) != len(wrapped_modules):
+        raise TrainerRefusal(
+            f"LoRA wrapped {len(wrapped_modules)} modules but the requested "
+            f"suffixes account for {sum(counts.values())}")
+    return counts
+
+
+def lora_checkpoint_bytes(config: TrainerConfig) -> int:
+    """Disk budget for ONE LoRA checkpoint (adapter tensors + two AdamW
+    moments). Default runs keep the historical 200 MB figure unchanged; a
+    knob-on run is sized from its rank, placement and dtype with 25% headroom
+    (six float32 targets at rank 16 measure 213 MB; rank 32, 425 MB)."""
+    if not (config.lora_target_suffixes or config.lora_trainable_dtype):
+        return DEFAULT_LORA_CHECKPOINT_BYTES
+    suffixes = config.lora_target_suffixes or LORA_DEFAULT_TARGETS
+    element = 4 if config.lora_trainable_dtype == "float32" else 2
+    parameters = CTC_ENCODER_LAYERS * config.lora_rank * sum(
+        CTC_LORA_SUFFIX_WIDTHS[s] for s in suffixes)
+    return max(DEFAULT_LORA_CHECKPOINT_BYTES, int(parameters * element * 3 * 1.25))
 
 
 def run_fingerprint(config: TrainerConfig, mix_provenance: dict[str, Any]) -> str:
@@ -1054,7 +1154,8 @@ def check_disk_envelope(config: TrainerConfig, mix: list[dict],
         ckpt_need = int((n_checkpoints + 1) * model_bytes_estimate
                         + 3 * model_bytes_estimate)
     else:
-        ckpt_need = int(n_checkpoints * 200_000_000 + model_bytes_estimate)
+        ckpt_need = int(n_checkpoints * lora_checkpoint_bytes(config)
+                        + model_bytes_estimate)
     measure = free_bytes or (lambda p: shutil.disk_usage(p).free)
 
     def existing_ancestor(root: Path) -> Path:
@@ -1530,10 +1631,39 @@ def main() -> int:
     # protocol requires. Re-seed after every conditional construction so both
     # arms start the training path at the identical state.
     reseed_matched_rng(config.seed)
-    if config.train_mode == "lora":
+    if config.train_mode == "lora" and (config.lora_target_suffixes
+                                        or config.lora_trainable_dtype):
+        suffixes = config.lora_target_suffixes or LORA_DEFAULT_TARGETS
+        wrap_audit = wrap_lora(
+            model, rank=config.lora_rank, alpha=config.lora_alpha,
+            dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX,
+            target_suffixes=suffixes,
+            trainable_dtype=(getattr(torch, config.lora_trainable_dtype)
+                             if config.lora_trainable_dtype else None))
+        per_suffix = lora_targets_per_suffix(wrap_audit["wrapped_modules"], suffixes)
+        trainable_dtypes = sorted({str(p.dtype).removeprefix("torch.")
+                                   for p in model.parameters() if p.requires_grad})
+        if len(trainable_dtypes) != 1 or (config.lora_trainable_dtype and
+                                          trainable_dtypes != [config.lora_trainable_dtype]):
+            raise TrainerRefusal(
+                f"LoRA adapters built as {trainable_dtypes}, requested "
+                f"{config.lora_trainable_dtype or 'the base weight dtype'}")
+        adapter_audit = {"target_suffixes": list(per_suffix),
+                         "trainable_dtypes": trainable_dtypes,
+                         "wrapped_module_count": len(wrap_audit["wrapped_modules"])}
+        # The image-trap guard (CM-PILOT-BASE-INIT-CONTROL-2026-001): a pinned
+        # image that predates these knobs would silently train the default
+        # adapters, so the run must print what it ACTUALLY built.
+        print(json.dumps({"status": "LORA_ADAPTER_CONFIG_APPLIED",
+                          "target_suffixes": list(suffixes),
+                          "per_suffix_modules": per_suffix,
+                          "trainable_parameters": wrap_audit["trainable_parameters"],
+                          "trainable_dtypes": trainable_dtypes}, sort_keys=True))
+    elif config.train_mode == "lora":
         wrap_audit = wrap_lora(
             model, rank=config.lora_rank, alpha=config.lora_alpha,
             dropout=config.lora_dropout, scope_prefix=CTC_SCOPE_PREFIX)
+        adapter_audit = None
     else:
         # FULL fine-tune (owner option B, B5-KW-DECISIVE-2026-001): every
         # parameter trains; parse enforces one language per job. Optimizer
@@ -1544,6 +1674,7 @@ def main() -> int:
         wrap_audit = {"mode": "full", "merged_modules": [],
                       "trainable_parameters": total, "total_parameters": total,
                       "trainable_fraction": 1.0}
+        adapter_audit = None
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad],
         lr=config.learning_rate)
@@ -1637,6 +1768,9 @@ def main() -> int:
     else:
         audit_extract = {k: wrap_audit[k] for k in
                          ("rank", "alpha", "trainable_parameters")}
+        if adapter_audit is not None:
+            # what the run BUILT, not what the packet asked for
+            audit_extract.update(adapter_audit)
     export = export_merged_checkpoint(
         model,
         output_dir=config.output_dir / "export",

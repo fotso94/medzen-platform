@@ -31,7 +31,8 @@ class LoRAWrapRefusal(RuntimeError):
 
 
 class LoRALinear(nn.Module):
-    def __init__(self, wrapped: nn.Module, rank: int, alpha: float, dropout: float = 0.0):
+    def __init__(self, wrapped: nn.Module, rank: int, alpha: float, dropout: float = 0.0,
+                 trainable_dtype: torch.dtype | None = None):
         super().__init__()
         weight = getattr(wrapped, "weight", None)
         if not isinstance(weight, torch.Tensor) or weight.dim() != 2:
@@ -43,7 +44,12 @@ class LoRALinear(nn.Module):
         self.rank = rank
         self.scaling = alpha / rank
         self.lora_dropout = nn.Dropout(dropout) if dropout > 0 else nn.Identity()
-        factory = {"device": weight.device, "dtype": weight.dtype}
+        # trainable_dtype=None keeps the adapters in the wrapped weight's dtype
+        # (bf16 on the omniASR trainer). float32 keeps a full-precision master
+        # copy: a bf16 parameter cannot absorb an Adam step smaller than half
+        # its own spacing, which froze most of the probe's A matrix
+        # (MEDZEN-BF16-UPDATE-LOSS-2026-001).
+        factory = {"device": weight.device, "dtype": trainable_dtype or weight.dtype}
         self.lora_a = nn.Parameter(torch.empty(rank, in_features, **factory))
         self.lora_b = nn.Parameter(torch.zeros(out_features, rank, **factory))
         nn.init.normal_(self.lora_a, std=1.0 / rank)
@@ -52,11 +58,18 @@ class LoRALinear(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         base = self.wrapped(x)
-        update = self.lora_dropout(x) @ self.lora_a.transpose(0, 1) @ self.lora_b.transpose(0, 1)
+        lora_a, lora_b = self.lora_a, self.lora_b
+        if lora_a.dtype != x.dtype:
+            # full-precision master adapters compute in the activation dtype;
+            # gradients flow back through the cast to the float32 copy
+            lora_a, lora_b = lora_a.to(x.dtype), lora_b.to(x.dtype)
+        update = self.lora_dropout(x) @ lora_a.transpose(0, 1) @ lora_b.transpose(0, 1)
         return base + update * self.scaling
 
     @torch.no_grad()
     def merged_weight(self) -> torch.Tensor:
+        # float32 adapters promote the sum to float32, so the merge rounds to
+        # the wrapped weight's dtype exactly once (in merge_lora's copy_)
         return self.wrapped.weight + (self.lora_b @ self.lora_a) * self.scaling
 
 
@@ -76,6 +89,7 @@ def wrap_lora(
     dropout: float = 0.0,
     target_suffixes: tuple[str, ...] = DEFAULT_TARGET_SUFFIXES,
     scope_prefix: str = "llama_decoder.",
+    trainable_dtype: torch.dtype | None = None,
 ) -> dict[str, Any]:
     """Freeze the model, wrap every matching projection, return an audit."""
     targets = list(_iter_targets(model, target_suffixes, scope_prefix))
@@ -91,11 +105,12 @@ def wrap_lora(
             raise LoRAWrapRefusal(f"{name} is already wrapped")
         parent_name, _, attribute = name.rpartition(".")
         parent = model.get_submodule(parent_name) if parent_name else model
-        setattr(parent, attribute, LoRALinear(module, rank, alpha, dropout))
+        setattr(parent, attribute, LoRALinear(module, rank, alpha, dropout,
+                                              trainable_dtype=trainable_dtype))
         wrapped_names.append(name)
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total = sum(p.numel() for p in model.parameters())
-    return {
+    audit = {
         "status": "PASS_LORA_WRAP",
         "wrapped_modules": wrapped_names,
         "rank": rank,
@@ -104,6 +119,10 @@ def wrap_lora(
         "total_parameters": total,
         "trainable_fraction": trainable / total,
     }
+    if trainable_dtype is not None:
+        audit["trainable_dtypes"] = sorted({str(p.dtype).removeprefix("torch.")
+                                            for p in model.parameters() if p.requires_grad})
+    return audit
 
 
 @torch.no_grad()
