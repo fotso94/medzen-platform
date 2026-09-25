@@ -1,0 +1,477 @@
+{
+ "record": "MEDZEN-BF16-UPDATE-LOSS-2026-001",
+ "kind": "diagnostic_measurement",
+ "utc": "2026-09-25T15:00:00Z",
+ "question": "Do bfloat16 LoRA parameters absorb their Adam updates in the omniASR trainer?",
+ "method": "Read-only. Downloaded LoRA checkpoints of two completed runs (no new compute), parsed them without torch, and compared parameter values between checkpoints. For each entry, the next Adam update was reconstructed from the stored bf16 moments (lr 1e-4, betas 0.9/0.999, eps 1e-8, bias-corrected at the stored step) and compared with half the bf16 spacing of the entry (7 explicit mantissa bits). 'changed_over_100_steps' is measured; 'next_adam_update_below_half_ulp' is a reconstruction.",
+ "sources": {
+  "cm-pilot-byvfit2400-2026-001": "s3://medzen-speech/research/b5-training/cm-pilot-byvfit2400-2026-001/checkpoints/step-{0000100,0000200,0001100,0001200,0002300,0002400}.pt",
+  "cm-pilot-byvgen-2026-001": "s3://medzen-speech/research/b5-training/cm-pilot-byvgen-2026-001/checkpoints/step-{0000250,0000500,0002750,0003000}.pt",
+  "checkpoint_sha256": {
+   "f2400-0000100.pt": "d3749f6743c1e04332ce7528d379fd6761005d33e475f12fe91363fd440d526a",
+   "f2400-0000200.pt": "eda8158eded0ee2280fdb87c3f87c982d39762e9f0aae51485155ce957fbe108",
+   "f2400-0001100.pt": "e8ded291336c54a6cae814517eb8f5b14a05d284bccde7a3956369d5cccc7ddd",
+   "f2400-0001200.pt": "8831e2c97830ea351a1817d0bb57b94cb2a396ad33b167b0a9d6b1598455d18c",
+   "f2400-0002300.pt": "414e4b014adf208f614d0ceffed5bad06adafab0ec2c122205a9557e8c5c8c9b",
+   "f2400-0002400.pt": "26f60fda87953333be7001fa06c70ed6599a1dc193fb57ec4b0bd698eb074a5f",
+   "gen-0000250.pt": "35cf6d2693f7c9701f6cf32e170ea00ce5b2cf5a08c6e1c26a45ab8d9d43232a",
+   "gen-0000500.pt": "290ab7c349d8cd2a78f75b83185630e22c1b938cc5eb09042f080e84cede7ade",
+   "gen-0002750.pt": "fdec946efd87b94d318c5b7cd4fc664e79ad8d1237b3b3261551106b1431dc39",
+   "gen-0003000.pt": "7715613f91342eeaae2159127d56d7a9de4d6cdbd2c0521b83729a6b1604c066"
+  }
+ },
+ "facts": {
+  "dtypes": "LoRA parameters and both AdamW moments are bfloat16 in every checkpoint (no float32 master copy); param_groups lr 1e-4, weight_decay 0.01.",
+  "a_matrix_frozen": "60.0% of LoRA A entries are bit-identical between step 100 and step 2,400; among entries with |a| >= 2^-5 (62.1% of A) 95.6% never changed. A's |a| p50/p99/max are identical at every checkpoint (0.0422/0.161/0.316).",
+  "b_matrix_slowing": "Share of B's next Adam updates below half-ULP: 14.3% at step 200, 45.1% at step 1,200, 58.0% at step 2,400. At step 2,400, B entries in [2^-7, 2^-6) (29% of B) lose 90% of updates and entries in [2^-6, 2^-5) lose 99%.",
+  "update_size": "Median |Adam update| 1.1e-5 to 2.1e-5, versus half-ULP 6.1e-5 at |w| in [2^-6,2^-5) and 1.2e-4 at |w| in [2^-5,2^-4).",
+  "byvgen_same_pattern": "The 3,000-step Medumba generalisation run shows the same pattern (A: 93.1% of next updates below half-ULP; B: 51.4%)."
+ },
+ "reading": "MEASURED: most of the adapter's A matrix never left its random initialisation and B's effective step shrinks as it grows, because bfloat16 cannot represent the Adam steps. NOT MEASURED: how much recognition this costs. That is the question for the float32-master arm of the capacity follow-up.",
+ "not_claimed": [
+  "that float32 masters will improve CER",
+  "that this explains any specific past result",
+  "anything about full fine-tuning, which is also bfloat16 but was not measured here"
+ ],
+ "measurements": [
+  {
+   "from_step": 100,
+   "to_step": 200,
+   "lora_a": {
+    "n": 1966080,
+    "abs_p50": 0.042236328125,
+    "abs_p99": 0.1611328125,
+    "abs_max": 0.31640625,
+    "changed_over_100_steps": 0.3196,
+    "next_adam_update_below_half_ulp": 0.8866,
+    "median_abs_update": 2.0809202396776527e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.0124,
+      "changed_over_100_steps": 0.9993,
+      "next_adam_update_below_half_ulp": 0.0331
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.0372,
+      "changed_over_100_steps": 0.9967,
+      "next_adam_update_below_half_ulp": 0.1615
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.0491,
+      "changed_over_100_steps": 0.9912,
+      "next_adam_update_below_half_ulp": 0.3813
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.0921,
+      "changed_over_100_steps": 0.9779,
+      "next_adam_update_below_half_ulp": 0.6782
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.1868,
+      "changed_over_100_steps": 0.6808,
+      "next_adam_update_below_half_ulp": 0.9463
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.304,
+      "changed_over_100_steps": 0.0138,
+      "next_adam_update_below_half_ulp": 0.9997
+     },
+     {
+      "abs_w": "[0.06250,0.12500)",
+      "share_of_entries": 0.2726,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": ">=0.1250",
+      "share_of_entries": 0.0458,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   },
+   "lora_b": {
+    "n": 1966080,
+    "abs_p50": 0.00127410888671875,
+    "abs_p99": 0.0052490234375,
+    "abs_max": 0.01116943359375,
+    "changed_over_100_steps": 0.9979,
+    "next_adam_update_below_half_ulp": 0.1431,
+    "median_abs_update": 1.5522820831392892e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.3944,
+      "changed_over_100_steps": 0.9986,
+      "next_adam_update_below_half_ulp": 0.0453
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.5573,
+      "changed_over_100_steps": 0.9972,
+      "next_adam_update_below_half_ulp": 0.1887
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.0479,
+      "changed_over_100_steps": 0.9998,
+      "next_adam_update_below_half_ulp": 0.4156
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.0004,
+      "changed_over_100_steps": 1.0,
+      "next_adam_update_below_half_ulp": 0.4761
+     }
+    ]
+   }
+  },
+  {
+   "from_step": 1100,
+   "to_step": 1200,
+   "lora_a": {
+    "n": 1966080,
+    "abs_p50": 0.042236328125,
+    "abs_p99": 0.1611328125,
+    "abs_max": 0.31640625,
+    "changed_over_100_steps": 0.2545,
+    "next_adam_update_below_half_ulp": 0.9241,
+    "median_abs_update": 1.496191634942079e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.0111,
+      "changed_over_100_steps": 0.999,
+      "next_adam_update_below_half_ulp": 0.0473
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.0328,
+      "changed_over_100_steps": 0.9948,
+      "next_adam_update_below_half_ulp": 0.234
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.0417,
+      "changed_over_100_steps": 0.9874,
+      "next_adam_update_below_half_ulp": 0.5162
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.0816,
+      "changed_over_100_steps": 0.955,
+      "next_adam_update_below_half_ulp": 0.8089
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.2041,
+      "changed_over_100_steps": 0.4355,
+      "next_adam_update_below_half_ulp": 0.9789
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.3102,
+      "changed_over_100_steps": 0.0086,
+      "next_adam_update_below_half_ulp": 0.9999
+     },
+     {
+      "abs_w": "[0.06250,0.12500)",
+      "share_of_entries": 0.2727,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": ">=0.1250",
+      "share_of_entries": 0.0458,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   },
+   "lora_b": {
+    "n": 1966080,
+    "abs_p50": 0.003662109375,
+    "abs_p99": 0.015625,
+    "abs_max": 0.03125,
+    "changed_over_100_steps": 0.9772,
+    "next_adam_update_below_half_ulp": 0.4508,
+    "median_abs_update": 1.2065460396115668e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.1451,
+      "changed_over_100_steps": 0.9985,
+      "next_adam_update_below_half_ulp": 0.0594
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.3817,
+      "changed_over_100_steps": 0.9928,
+      "next_adam_update_below_half_ulp": 0.2784
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.2998,
+      "changed_over_100_steps": 0.9841,
+      "next_adam_update_below_half_ulp": 0.6009
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.1612,
+      "changed_over_100_steps": 0.9437,
+      "next_adam_update_below_half_ulp": 0.8913
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.0122,
+      "changed_over_100_steps": 0.5021,
+      "next_adam_update_below_half_ulp": 0.9967
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.0,
+      "changed_over_100_steps": 0.6667,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "from_step": 2300,
+   "to_step": 2400,
+   "lora_a": {
+    "n": 1966080,
+    "abs_p50": 0.042236328125,
+    "abs_p99": 0.1611328125,
+    "abs_max": 0.31640625,
+    "changed_over_100_steps": 0.1839,
+    "next_adam_update_below_half_ulp": 0.9465,
+    "median_abs_update": 1.3417080481303856e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.0089,
+      "changed_over_100_steps": 0.9989,
+      "next_adam_update_below_half_ulp": 0.0529
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.0265,
+      "changed_over_100_steps": 0.9939,
+      "next_adam_update_below_half_ulp": 0.258
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.0344,
+      "changed_over_100_steps": 0.9836,
+      "next_adam_update_below_half_ulp": 0.5706
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.0778,
+      "changed_over_100_steps": 0.9005,
+      "next_adam_update_below_half_ulp": 0.8793
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.2215,
+      "changed_over_100_steps": 0.199,
+      "next_adam_update_below_half_ulp": 0.9943
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.3125,
+      "changed_over_100_steps": 0.0024,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": "[0.06250,0.12500)",
+      "share_of_entries": 0.2727,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": ">=0.1250",
+      "share_of_entries": 0.0458,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   },
+   "lora_b": {
+    "n": 1966080,
+    "abs_p50": 0.00543212890625,
+    "abs_p99": 0.0164794921875,
+    "abs_max": 0.03125,
+    "changed_over_100_steps": 0.9186,
+    "next_adam_update_below_half_ulp": 0.5803,
+    "median_abs_update": 1.1468318007246125e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.0986,
+      "changed_over_100_steps": 0.9985,
+      "next_adam_update_below_half_ulp": 0.0622
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.2783,
+      "changed_over_100_steps": 0.9921,
+      "next_adam_update_below_half_ulp": 0.299
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.287,
+      "changed_over_100_steps": 0.9807,
+      "next_adam_update_below_half_ulp": 0.6387
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.2914,
+      "changed_over_100_steps": 0.8665,
+      "next_adam_update_below_half_ulp": 0.9033
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.0447,
+      "changed_over_100_steps": 0.2264,
+      "next_adam_update_below_half_ulp": 0.9937
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.0,
+      "changed_over_100_steps": 0.1429,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   }
+  },
+  {
+   "from_step": 2750,
+   "to_step": 3000,
+   "lora_a": {
+    "n": 1966080,
+    "abs_p50": 0.042236328125,
+    "abs_p99": 0.1611328125,
+    "abs_max": 0.31640625,
+    "changed_over_100_steps": 0.2438,
+    "next_adam_update_below_half_ulp": 0.9311,
+    "median_abs_update": 1.3955879694549367e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.0112,
+      "changed_over_100_steps": 0.9993,
+      "next_adam_update_below_half_ulp": 0.0489
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.0333,
+      "changed_over_100_steps": 0.9959,
+      "next_adam_update_below_half_ulp": 0.2415
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.0423,
+      "changed_over_100_steps": 0.9892,
+      "next_adam_update_below_half_ulp": 0.5389
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.0862,
+      "changed_over_100_steps": 0.9672,
+      "next_adam_update_below_half_ulp": 0.8583
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.2035,
+      "changed_over_100_steps": 0.3579,
+      "next_adam_update_below_half_ulp": 0.994
+     },
+     {
+      "abs_w": "[0.03125,0.06250)",
+      "share_of_entries": 0.305,
+      "changed_over_100_steps": 0.0043,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": "[0.06250,0.12500)",
+      "share_of_entries": 0.2726,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     },
+     {
+      "abs_w": ">=0.1250",
+      "share_of_entries": 0.0458,
+      "changed_over_100_steps": 0.0,
+      "next_adam_update_below_half_ulp": 1.0
+     }
+    ]
+   },
+   "lora_b": {
+    "n": 1966080,
+    "abs_p50": 0.004302978515625,
+    "abs_p99": 0.0155029296875,
+    "abs_max": 0.02392578125,
+    "changed_over_100_steps": 0.9805,
+    "next_adam_update_below_half_ulp": 0.5142,
+    "median_abs_update": 1.1250924217165448e-05,
+    "by_magnitude": [
+     {
+      "abs_w": "[0.00000,0.00098)",
+      "share_of_entries": 0.1229,
+      "changed_over_100_steps": 0.9989,
+      "next_adam_update_below_half_ulp": 0.0627
+     },
+     {
+      "abs_w": "[0.00098,0.00391)",
+      "share_of_entries": 0.338,
+      "changed_over_100_steps": 0.9945,
+      "next_adam_update_below_half_ulp": 0.2994
+     },
+     {
+      "abs_w": "[0.00391,0.00781)",
+      "share_of_entries": 0.3149,
+      "changed_over_100_steps": 0.9876,
+      "next_adam_update_below_half_ulp": 0.6359
+     },
+     {
+      "abs_w": "[0.00781,0.01562)",
+      "share_of_entries": 0.2153,
+      "changed_over_100_steps": 0.9584,
+      "next_adam_update_below_half_ulp": 0.9108
+     },
+     {
+      "abs_w": "[0.01562,0.03125)",
+      "share_of_entries": 0.009,
+      "changed_over_100_steps": 0.4826,
+      "next_adam_update_below_half_ulp": 0.9978
+     }
+    ]
+   }
+  }
+ ],
+ "long_horizon": [
+  {
+   "label": "lora_a unchanged between step 100 and step 2400",
+   "all": 0.5998,
+   "entries_with_abs_ge_0.03125_at_step100": 0.6212,
+   "unchanged_among_those": 0.9559,
+   "unchanged_among_abs_lt_0.0078": 0.0005
+  },
+  {
+   "label": "lora_b unchanged between step 100 and step 2400",
+   "all": 0.0003,
+   "entries_with_abs_ge_0.03125_at_step100": 0.0,
+   "unchanged_among_those": NaN,
+   "unchanged_among_abs_lt_0.0078": 0.0003
+  }
+ ],
+ "tools": "~/Documents/medzen-experiment-records/improve/bf16/{ptread.py,analyse.py} (local, not in the repo)"
+}

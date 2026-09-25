@@ -41,4 +41,4 @@ jobs:
             tests/test_b6_local_engineering_record.py \
             tests/test_cameroon_pilot_loudness_guard.py \
             tests/test_score_input_convention.py tests/test_train_input_convention.py \
-            tests/test_score_dump_mode.py
+            tests/test_score_dump_mode.py tests/test_lora_adapter_knobs.py
