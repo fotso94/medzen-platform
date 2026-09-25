@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE training run cm-pilot-byvmask-2026-001 ($2.93 worst case at 6,600 s) and, separately packeted, its decode(s). Arm: as byvspd but MEDZEN_TRAIN_MASKING=0.30,10,0.15,64 instead of speed perturbation. ONE change vs byvgenf32. Labelled LIGHT masking: ~17-19% of frames, at most 128 of 1,280 channels. Image e072ce1 (child 548270c6). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, q/v, 3,932,160) and TRAIN_MASKING_FEASIBLE (80 frames) and TRAIN_MASKING_APPLIED (0.3, 10, 0.15, 64, 1280, zeros-frozen), no speed line, and step-250 loss > 1.01 x byvgenf32's; export PASS_MERGED_EXPORT. PREREGISTERED MEDUMBA-STEP4-PREREGISTRATION-2026-001 (sha 22a6df208f4d6653, frozen before any step-2 receipt was read): per arm, G2 delta = CER(arm) - CER(byvgenf32), tone-sensitive v3 pooled. Paired speaker-clustered bootstrap, 10,000 resamples, 98.33% interval (Bonferroni over 3 arms), generator seeded per (arm, comparator, group). BETTER iff delta <= -1.50 and the interval excludes 0; WORSE iff delta >= +1.50 and the interval excludes 0; otherwise NO DETECTABLE DIFFERENCE. One attempt, no retry, no automatic follow-on, no serving change; Arm-1 keeps serving.",
+ "bindings_sha256": "76a3c1942918edf161b6287541397949121216e67b5cf7159007217b4b40c574",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvmask-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVMASK-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24.",
+ "utc": "2026-09-25T23:00:00Z"
+}

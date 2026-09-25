@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE training run cm-pilot-byvclu-2026-001 ($8.00 worst case at 18,000 s) and, separately packeted, its decode(s). Arm: MEDZEN_LANGUAGES=fefe,ghomala,medumba, MEDZEN_MANIFEST_VERSION=byvclu1 (Medumba byvgen1 rows + Ghomala and Fe'fe' cvcm2 train rows; Fe'fe' Greek alpha harmonised to Latin), temperature 1, 9,139 steps so Medumba receives 48,003 draws (baseline 48,000). NOT one change: the POOLED RECIPE = related-language rows + 6,139 extra updates with matched Medumba draws; a result does not license attribution to relatedness. Image e072ce1 (child 548270c6). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, q/v, 3,932,160) and the log line 'manifests 3 at version byvclu1; eligible rows 8819; rejected 0 not permitted, 0 wrong split' and no augmentation lines; export PASS_MERGED_EXPORT. PREREGISTERED MEDUMBA-STEP4-PREREGISTRATION-2026-001 (sha 22a6df208f4d6653, frozen before any step-2 receipt was read): per arm, G2 delta = CER(arm) - CER(byvgenf32), tone-sensitive v3 pooled. Paired speaker-clustered bootstrap, 10,000 resamples, 98.33% interval (Bonferroni over 3 arms), generator seeded per (arm, comparator, group). BETTER iff delta <= -1.50 and the interval excludes 0; WORSE iff delta >= +1.50 and the interval excludes 0; otherwise NO DETECTABLE DIFFERENCE. One attempt, no retry, no automatic follow-on, no serving change; Arm-1 keeps serving.",
+ "bindings_sha256": "abdcfb27672ed512b026ae995f8717b8e9010a01321114c39a4c918db0e2e4bf",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvclu-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVCLU-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24.",
+ "utc": "2026-09-25T23:00:00Z"
+}

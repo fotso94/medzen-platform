@@ -1,0 +1,53 @@
+{
+ "cost_ceiling_usd": 108.0,
+ "cost_registry_line": "CM-PILOT-BYVCLU-2026-001 step 4 (MEDZEN_LANGUAGES=fefe,ghomala,medumba, MEDZEN_MANIFEST_VERSION=byvclu1 (Medumba byvgen1 rows + Ghomala and Fe'fe' cvcm2 train rows; Fe'fe' Greek alpha harmonise). Worst case $8.00 on-demand, below the $10 calibration tier. Step 4 = three trainings + three 1,346-row decodes + one related-language decode = $15.47 worst case against the $16.00 cap. Diagnostic only.",
+ "data_version_pins": {
+  "complete_key": "curated/_versions/byvclu1/COMPLETE.json",
+  "complete_raw_sha256": "464941d086bd2040e6c8e1cb1ce7c9aa48aec70e95401376f4f0951eef18ca9c",
+  "adoption_raw_sha256": "8c06b0aa2fa92923ec9c461c2716d6294811798b1484dc01aeabd35a7dced3d7",
+  "manifests": {
+   "curated/medumba/asr/cv26_byv/byvclu1/manifest.jsonl": "79bdf7fde9f72ddf32e9dba63a39c019f16bb763528a2bf6529e44429ee97314",
+   "curated/ghomala/asr/cv26_bbj/byvclu1/manifest.jsonl": "823bb729d52b74ae3383520dc699510accc0e680938ee3eed782062e4193abc5",
+   "curated/fefe/asr/cv26_fmp/byvclu1/manifest.jsonl": "cebb58673a59730909ad01c779994268ceb0546f24c4afdf3211b4c87bb6dce9"
+  },
+  "rows": 8819,
+  "why": "content pins; the launcher verifies them against live S3"
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "8",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "250",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "fefe,ghomala,medumba",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "byvclu1",
+  "MEDZEN_MAX_STEPS": "9139",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "1",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_LORA_TRAINABLE_DTYPE": "float32"
+ },
+ "image_oci_index_digest": "sha256:d3eaa150548e3ef44f7bf66ea3fa5c000c1a414cc6742ec3bedf5d6368bd659d",
+ "image_tag": "arm2-ftcal-e072ce1e9802d1b8bc2a87060356b283b047270e",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-byvclu-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 18000,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "18,000 s ceiling on ml.g6.xlarge at $1.60/h on-demand = $8.00; set at >= 1.3x the prediction from byvgenf32's billed seconds (MEDUMBA-STEP4-PREREGISTRATION-2026-001). The ceiling is the cap, not an estimate."
+}

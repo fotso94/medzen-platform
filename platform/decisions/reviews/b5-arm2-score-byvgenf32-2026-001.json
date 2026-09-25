@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 1,346-row decode b5-arm2-score-byvgenf32-2026-001 ($0.40 worst case, 900 s) of the byvgenf32 export (model sha 948d1e4e68e3fdb9, VersionId AaMFIfIb6DdzDFXuDnL_gXHuj6eQxLPl), step 2 of the owner-approved sequence. Same manifest sha 08c959df, evaluator image 30166dd2, normalized convention, tone-sensitive pooled CER with a strict 1,346/1,346 join against the local references. Reading preregistered in MEDUMBA-NFD-PREREGISTRATION-2026-001. One attempt, no retry.",
+ "bindings_sha256": "a45094a21c0fcb5b4d03d20064613f3065c608877de3f5fddc97b0c77c38c90a",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvgenf32-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVGENF32-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 2 (canonicalised training targets, $6.40 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24",
+ "utc": "2026-09-25T22:00:00Z"
+}
