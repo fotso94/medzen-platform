@@ -1,0 +1,56 @@
+{
+ "cost_ceiling_usd": 102.93,
+ "cost_registry_line": "CM-PILOT-BYVMASK-2026-001 step 4 (as byvspd but MEDZEN_TRAIN_MASKING=0.30,10,0.15,64 instead of speed perturbation. ONE change vs byvgenf32. Labelled LIGHT masking: ~17-19% of frames, at most 12). Worst case $2.93 on-demand, below the $10 calibration tier. Step 4 = three trainings + three 1,346-row decodes + one related-language decode = $15.47 worst case against the $16.00 cap. Diagnostic only.",
+ "data_version_pins": {
+  "complete_key": "curated/_versions/byvgen1/COMPLETE.json",
+  "complete_raw_sha256": "d069bdc78b021c6fd071e61b4d494567a8b76a4eef7a7cee4f480dfa88d4c6e8",
+  "manifest_key": "curated/medumba/asr/cv26_byv/byvgen1/manifest.jsonl",
+  "manifest_sha256": "79bdf7fde9f72ddf32e9dba63a39c019f16bb763528a2bf6529e44429ee97314",
+  "rows": 2895,
+  "hours": 4.4895,
+  "eval_manifest_sha256": "08c959df5b5dc2ccc5da5e4923cc956f6087b13c0545acff61796d5858d58c6f",
+  "split_rule": "sha256('byv-genz-2026/'+speaker_id) ascending, first 15 speakers held out (unchanged from byvgen1)",
+  "why": "MEDZEN_MANIFEST_VERSION names a version; it does not pin its CONTENT. The launcher verifies these against live S3.",
+  "adoption_key": "curated/_versions/byvgen1/ADOPTION-STEP4.json",
+  "adoption_raw_sha256": "16b1e35ae0946da59a683e5d2a7852d6c88ffab6511e0c0f1bb2980fdd84edc6"
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "8",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "250",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "medumba",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "byvgen1",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_LORA_TRAINABLE_DTYPE": "float32",
+  "MEDZEN_TRAIN_MASKING": "0.30,10,0.15,64",
+  "MEDZEN_ADOPTION_KEY": "curated/_versions/byvgen1/ADOPTION-STEP4.json"
+ },
+ "image_oci_index_digest": "sha256:d3eaa150548e3ef44f7bf66ea3fa5c000c1a414cc6742ec3bedf5d6368bd659d",
+ "image_tag": "arm2-ftcal-e072ce1e9802d1b8bc2a87060356b283b047270e",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-byvmask-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 6600,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "6,600 s ceiling on ml.g6.xlarge at $1.60/h on-demand = $2.93; set at >= 1.3x the prediction from byvgenf32's billed seconds (MEDUMBA-STEP4-PREREGISTRATION-2026-001). The ceiling is the cap, not an estimate."
+}

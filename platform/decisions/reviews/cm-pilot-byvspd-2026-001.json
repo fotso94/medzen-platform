@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE training run cm-pilot-byvspd-2026-001 ($2.93 worst case at 6,600 s) and, separately packeted, its decode(s). Arm: Medumba only (byvgen1 via ADOPTION-STEP4.json), 3,000 steps, temperature 0, MEDZEN_SPEED_PERTURB=0.9,1.0,1.1. ONE change vs byvgenf32. Image e072ce1 (child 548270c6). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, q/v, 3,932,160) and exactly one SPEED_PERTURB_APPLIED line [0.9, 1.0, 1.1] and no masking lines; export PASS_MERGED_EXPORT. PREREGISTERED MEDUMBA-STEP4-PREREGISTRATION-2026-001 (sha 22a6df208f4d6653, frozen before any step-2 receipt was read): per arm, G2 delta = CER(arm) - CER(byvgenf32), tone-sensitive v3 pooled. Paired speaker-clustered bootstrap, 10,000 resamples, 98.33% interval (Bonferroni over 3 arms), generator seeded per (arm, comparator, group). BETTER iff delta <= -1.50 and the interval excludes 0; WORSE iff delta >= +1.50 and the interval excludes 0; otherwise NO DETECTABLE DIFFERENCE. One attempt, no retry, no automatic follow-on, no serving change; Arm-1 keeps serving.",
+ "bindings_sha256": "ffd9759a9ddbb3eeb8aee9bee52eb5e46935ff630270388d1d59a61d618956ff",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvspd-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVSPD-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24.",
+ "utc": "2026-09-25T23:00:00Z"
+}
