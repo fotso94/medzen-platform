@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 607-row decode b5-arm2-score-byvrep-2026-001 ($0.40 worst case, 900 s ceiling) of the byvrep export (model sha 49334586023df38e, VersionId kHfEKB5_blmjOOG1BPvu5HaL6iRb2xBJ), step 1 of the owner-approved sequence. Same manifest sha 5fded590, same evaluator image 30166dd2, normalized convention, tone-sensitive pooled CER with a strict 607/607 join against the local references b8daac4c. Reading preregistered in MEDUMBA-CAPACITY2-PREREGISTRATION-2026-001 (frozen fit bands, 3.00-point comparison margin with the four-speaker and sign-test conditions). One attempt, no retry, no follow-on.",
+ "bindings_sha256": "498d356be71877c3b483f6401324ac520eeb0e22a6e10ce6db687c49d7383270",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvrep-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVREP-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 1 (adapter-capacity fit probe, $6.40 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24",
+ "utc": "2026-09-25T18:30:00Z"
+}
