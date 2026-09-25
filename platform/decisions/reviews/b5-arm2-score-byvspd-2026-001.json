@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 1,346-row decode b5-arm2-score-byvspd-2026-001 ($0.40 worst case, 900 s) of the byvspd export (model sha 5742785b533746a8, VersionId s2os4c74RtHVOg0GXiLeVa8PIAK8C40f), step 4 of the owner-approved sequence. Same manifest sha 08c959df, evaluator image 30166dd2, normalized convention, tone-sensitive pooled CER with a strict 1,346/1,346 join against the local references. Reading preregistered in MEDUMBA-STEP4-PREREGISTRATION-2026-001 (sha 22a6df20). One attempt, no retry.",
+ "bindings_sha256": "ba268b2667452f5b807812c2ffa045fe3111aba9e732f5004d398376bd8bf6c7",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvspd-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVSPD-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24",
+ "utc": "2026-09-25T22:00:00Z"
+}
