@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 1,717-row related-language decode b5-arm2-score-byvclu-rel-2026-001 ($0.40 worst case) of the byvclu export (sha 46c58bc6b57538be, VersionId EPqSo6zY4TKJALZs0RojAEYcDJpqntKt). Manifest research/arm2-scoring/cvcm2-bamileke-decode-v1.jsonl sha e85d8c09bc331d31 (VersionId WdOUMB0Yav.q6N5ryS7HsWyol5uMpuah), evaluator image 30166dd2, normalized convention. Descriptive reading preregistered in MEDUMBA-STEP4-PREREGISTRATION-2026-001 (cv_test primary; intervals only with >= 5 speakers). One attempt, no retry.",
+ "bindings_sha256": "bcbb53a303da1a9afbe8ddd01e1b75d658f42e7663d8767bf783fc49abccab44",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvclu-rel-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVCLU-REL-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24",
+ "utc": "2026-09-25T23:30:00Z"
+}
