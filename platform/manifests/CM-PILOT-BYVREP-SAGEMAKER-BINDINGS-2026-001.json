@@ -1,0 +1,49 @@
+{
+ "cost_ceiling_usd": 101.6,
+ "cost_registry_line": "CM-PILOT-BYVREP-2026-001 Medumba capacity follow-up (step 1): EXACT replicate of the 1,200-step Medumba capacity probe on the new image (no new knob): the same-image baseline and a run-to-run/image-drift check against F_fit 39.57. 1,200-step LoRA from base on byvfit1 (150 Medumba training clips, 0.1848 h, ONE language). Worst case $1.60 on-demand (3,600 s ceiling), below the $10 calibration tier; expected ~$0.9-1.1. Step 1 = three trainings + three 607-row scorings, $6.00 worst case against the $6.40 cap. Diagnostic only - nothing may be promoted, registered or served.",
+ "data_version_pins": {
+  "complete_key": "curated/_versions/byvfit1/COMPLETE.json",
+  "complete_raw_sha256": "b05e92631c6ce5a1a0baff76000b9f2f9d674c93c0fd507a480d2b8dd1672ae0",
+  "fit_subset_sha256": "2d1806501e4d78dc8558caeb847a224d33450349bf5983f868e0591aa24c1ed8",
+  "hours": 0.1848,
+  "manifest_key": "curated/medumba/asr/cv26_byv/byvfit1/manifest.jsonl",
+  "manifest_sha256": "39501bf471d0c5c6b8bcc370d96b01149829a5a8dde01a5cecdebfc01ccc7324",
+  "rows": 150,
+  "why": "MEDZEN_MANIFEST_VERSION names a version; it does not pin its CONTENT. Without these, an overwritten byvfit1/manifest.jsonl would silently retrain on different clips and nothing would notice. The dispatcher verifies these against live S3 before launching."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "1",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "100",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "medumba",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "byvfit1",
+  "MEDZEN_MAX_STEPS": "1200",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc"
+ },
+ "image_oci_index_digest": "sha256:17fea032828056f0a446ba7f8698a8b109691ba170cb8845a9b9271204ca459f",
+ "image_tag": "arm2-ftcal-f3d42b3a197ef9da728991ff9f21e71b02911c1c",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:266689e6828bcc662511df8a37b5311ab844392efd98ffd92a1439e54ede3ee0",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-byvrep-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 3600,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100
+}
