@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 1,346-row decode b5-arm2-score-byvmask-2026-001 ($0.40 worst case, 900 s) of the byvmask export (model sha 64d409d562cbd944, VersionId h2Ne6oQ.vwJ0uPdKscixVyuwmxR273uD), step 4 of the owner-approved sequence. Same manifest sha 08c959df, evaluator image 30166dd2, normalized convention, tone-sensitive pooled CER with a strict 1,346/1,346 join against the local references. Reading preregistered in MEDUMBA-STEP4-PREREGISTRATION-2026-001 (sha 22a6df20). One attempt, no retry.",
+ "bindings_sha256": "0e18dca9018bfe01e0b8cd2ef0935c6867e52878e7957386de5816edca20953a",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvmask-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVMASK-2026-001.json",
+ "reviewer": "owner instruction 2026-09-25: \"proceed in that order autonomously\", approving step 4 (augmentation + related-language pooling, $16.00 worst case) of IMPROVEMENT-ANALYSIS-2026-09-24",
+ "utc": "2026-09-25T22:00:00Z"
+}
