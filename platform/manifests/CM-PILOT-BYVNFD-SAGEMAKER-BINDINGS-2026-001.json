@@ -1,0 +1,52 @@
+{
+ "cost_ceiling_usd": 102.67,
+ "cost_registry_line": "CM-PILOT-BYVNFD-2026-001 step 2 (canonicalised targets): the same recipe with NFD targets (tone marks as separate symbols; scorer-invisible, 0 edits on all 2,895 rows): the ONE change under test. 3,000-step LoRA from base on byvnfd1 (2,895 Medumba training clips). Worst case $2.67 on-demand (6,000 s), below the $10 calibration tier; expected ~$2.0. Step 2 = two trainings + two 1,346-row decodes ($0.40 worst each) = $6.13 worst case against the $6.40 cap. Diagnostic only - nothing may be promoted, registered or served.",
+ "data_version_pins": {
+  "complete_key": "curated/_versions/byvnfd1/COMPLETE.json",
+  "complete_raw_sha256": "e74738e6921c0854940888fbd77b54873f2f70f99c7c67092b86280ffa7db8b2",
+  "manifest_key": "curated/medumba/asr/cv26_byv/byvnfd1/manifest.jsonl",
+  "manifest_sha256": "9066ea7c44bc8f26d3b3fe4918ef2a0ffade9053d02acf177b4f641a99ca524d",
+  "rows": 2895,
+  "hours": 4.4895,
+  "eval_manifest_sha256": "08c959df5b5dc2ccc5da5e4923cc956f6087b13c0545acff61796d5858d58c6f",
+  "split_rule": "sha256('byv-genz-2026/'+speaker_id) ascending, first 15 speakers held out (unchanged from byvgen1)",
+  "why": "MEDZEN_MANIFEST_VERSION names a version; it does not pin its CONTENT. The launcher verifies these against live S3."
+ },
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "8",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "250",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "medumba",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "byvnfd1",
+  "MEDZEN_MAX_STEPS": "3000",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_LORA_TRAINABLE_DTYPE": "float32"
+ },
+ "image_oci_index_digest": "sha256:d3eaa150548e3ef44f7bf66ea3fa5c000c1a414cc6742ec3bedf5d6368bd659d",
+ "image_tag": "arm2-ftcal-e072ce1e9802d1b8bc2a87060356b283b047270e",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-byvnfd-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 6000,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 100,
+ "worst_case_basis": "6,000 s ceiling on ml.g6.xlarge at $1.60/h on-demand = $2.67. The bf16 BYVGEN run of this recipe billed 4,514 s; float32 adapters added no measurable time in step 1 (1,951 vs 1,950 s). The ceiling is the cap, not an estimate."
+}
