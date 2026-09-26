@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE 3,000-step training run cm-pilot-byvwgen-2026-001 ($3.20 worst case at 7,200 s) and, separately packeted, its ONE 1,346-row decode ($0.40). WIDEGEN: float32 adapters on all six encoder projections — the ONE change against the byvgenf32 comparator; everything else identical (byvgen1 content pinned, seed 20260904, batch 2 x 8, LR 1e-4, rank 16 alpha 32 dropout 0.05, base init, KD off, image e072ce1 child 548270c6). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, six suffixes at 48 each, 17,694,720 parameters), no augmentation lines, and the export is PASS_MERGED_EXPORT. PREREGISTERED MEDUMBA-WIDEGEN-PREREGISTRATION-2026-001 (sha 8766a4e575f929a0): G2 (new voices AND new sentences) delta = CER(byvwgen) - CER(byvgenf32), tone-sensitive v3 pooled, paired speaker-clustered bootstrap 10,000 resamples at 95% (single comparison), generator seeded per (arm, comparator, group). BETTER iff delta <= -1.50 and the interval excludes 0; WORSE iff delta >= +1.50 and the interval excludes 0; else NO DETECTABLE DIFFERENCE. The 1.50 margin matches the capacity2 replicate band; run-to-run variance is outside the interval. EXPLORATORY. byvgen1 use runs under its own ADOPTION-WIDEGEN.json (sha 2fd76716). One attempt, no retry, no automatic follow-on; no Arm-1 retrain, no multilingual campaign, no serving change; Arm-1 keeps serving.",
+ "bindings_sha256": "513e9a33cf5aeb257e2f1c24321f3fbf12a696e256b968acbeb3d467410c66a2",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvwgen-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVWGEN-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner message 2026-09-26 forwarding the independent reviewer's recommendation: \"Correct the readout checks, restore the separate development groups, and narrow the report's causal claims. Then prepare one bounded wide-fp32 generalisation comparison against the matched fp32 narrow-adapter recipe, using the same data, image, scoring and training-step budget. Keep it exploratory and report runtime cost. Do not retrain Arm-1 or launch a larger multilingual campaign automatically.\"",
+ "utc": "2026-09-26T05:20:00Z"
+}
