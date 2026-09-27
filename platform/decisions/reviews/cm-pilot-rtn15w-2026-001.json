@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE 3,000-step training run cm-pilot-rtn15w-2026-001 ($6.40 worst case at 14,400 s) and, separately packeted, its ONE 18,759-row decode ($1.60). RETENTION PILOT: the CM-PILOT-ICMP15-BASE environment EXACTLY (gb11, 15 languages, temperature 0, seed 20260904, base init, LR 1e-4, cap 15 h, gb3 exclusions 1,579) plus MEDZEN_LORA_TRAINABLE_DTYPE=float32 and MEDZEN_LORA_TARGETS=<all six encoder projections> — one bundled recipe change on image e072ce1 (child 548270c6). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, six suffixes x 48, 17,694,720 parameters), no augmentation lines, gb11 with 1,579 exclusions, and PASS_MERGED_EXPORT. PREREGISTERED RTN15W-PREREGISTRATION-2026-002 (sha 818447d9df7371f6, reader finished and tested before launch): retention read against SERVING Arm-1 (c6604a68) per incumbent surface — WORSENS iff delta >= +1.00 with the 95% speaker-clustered CI excluding 0; EVERY other outcome INCONCLUSIVE, never a pass; english/lingala/swahili/ewe reported but NOT STATISTICALLY ASSESSABLE; icmp15-base (bb7bff99) is the recipe comparator only. One attempt, no retry, no follow-on, no deployment; Arm-1 keeps serving.",
+ "bindings_sha256": "6f8103d8e446e0f73472a9f0dd3e99ac49b99ff6630f137d8d4104cce2c3e7eb",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-rtn15w-2026-001",
+ "packet": "platform/manifests/CM-PILOT-RTN15W-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner message 2026-09-27 forwarding the independent reviewer's recommendation: \"Proceed with preparing the single $8-capped pilot after making Arm-1 the reference for serving retention, retaining the old pilot for recipe comparison, and explicitly marking unsupported or inconclusive retention results. Finish and test the reader before launch. Evaluate all 15 languages, keep Arm-1 unchanged, and launch no follow-on automatically. Keep the collection work at quote-request stage until pricing is available.\"",
+ "utc": "2026-09-27T03:00:00Z"
+}
