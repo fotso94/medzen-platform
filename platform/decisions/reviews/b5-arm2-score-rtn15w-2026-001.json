@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 18,759-row decode b5-arm2-score-rtn15w-2026-001 ($1.60 worst case, 3,600 s) of the rtn15w export (model sha b18309b4efc53529, VersionId gGEjZZoR46hOqlQP8Q97zpNAY9rnR6X9). Manifest pair15-decode-manifest-v1 sha 4d24a61b VersionId gFnyubKE..., evaluator image 30166dd2, normalized convention, strict join. Reading preregistered in RTN15W-PREREGISTRATION-2026-002 (sha 818447d9, reader tested before launch): retention vs SERVING Arm-1, WORSENS iff >= +1.00 with 95% CI excluding 0, all else INCONCLUSIVE; icmp15-base recipe comparator. One attempt, no retry.",
+ "bindings_sha256": "0aac4665b8da7f5e3b8ae7f0421b24bff2221f0228bd6190625a9ea897c75e51",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-rtn15w-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-RTN15W-2026-001.json",
+ "reviewer": "owner message 2026-09-27 forwarding the reviewer recommendation (retention pilot, $8 cap, Arm-1 reference, no follow-on)",
+ "utc": "2026-09-27T05:00:00Z"
+}
