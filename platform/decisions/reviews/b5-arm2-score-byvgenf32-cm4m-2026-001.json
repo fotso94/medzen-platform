@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 441-row decode b5-arm2-score-byvgenf32-cm4m-2026-001 ($0.40 worst case, 900 s) of the existing byvgenf32 export (model sha 948d1e4e68e3fdb9, VersionId AaMFIfIb6DdzDFXuDnL_gXHuj6eQxLPl). Manifest cm4-medumba-test-decode-v1 sha 4947d4f6 VersionId QmgXvl4iZ7R2GTUYYZxLLuvGrMAW98QU, evaluator image 30166dd2, normalized convention, strict 441/441 join. Reading preregistered in MEDUMBA-CM4-RESCORE-PREREGISTRATION-2026-001 (sha 3821f347), reader tested before launch. Scoring only; no training. One attempt, no retry.",
+ "bindings_sha256": "06b48466091f0a74059fb4833b3858bc5effc219d4c057d46d67b6f64d68bc17",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvgenf32-cm4m-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVGENF32-CM4M-2026-001.json",
+ "reviewer": "owner message 2026-09-29 forwarding the reviewer recommendation (\"Prepare a small, costed scoring-only comparison: evaluate the existing narrow-fp32 and wide-fp32 Medumba models on these same 441 Medumba test recordings\"; no training run)",
+ "utc": "2026-09-29T23:45:00Z"
+}
