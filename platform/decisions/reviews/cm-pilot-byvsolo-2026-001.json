@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE 205-step training run cm-pilot-byvsolo-2026-001 ($1.60 worst case at 3,600 s) and, separately packeted, its ONE 441-row decode ($0.40). The committed CM-PILOT-RTN15W environment EXACTLY (data version gb11, cap 15 h, temperature 0, seed 20260904, base init, LR 1e-4 constant, float32 adapters on all six encoder projections, gb3 exclusions 1,579, image e072ce1 child 548270c6) with TWO changes: MEDZEN_LANGUAGES=medumba and MEDZEN_MAX_STEPS=205. VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, six suffixes x 48, 17,694,720), gb11 with 3,934 eligible Medumba rows and no other language, step 205 reached, no augmentation lines, and PASS_MERGED_EXPORT. PREREGISTERED BYVSOLO-PREREGISTRATION-2026-001 (sha 40e7a3fba70e9f42, reader tested before launch) as a CHEAP STANDALONE BENCHMARK, NOT A CAUSAL EXPERIMENT: audio matched to rtn15w's Medumba (5.27 vs 5.21 h) but not its distinct clips (3,280 vs 2,728), optimizer-update pattern or other 14 languages; labels are descriptive and NO DETECTABLE DIFFERENCE is inconclusive. gb11 use recorded in DATASET-USE-RECONCILIATION-2026-001, authorized like rtn15w. One attempt, no retry, no automatic follow-on (no 9,000-step run, no new adapter architecture, no serving change); Arm-1 keeps serving.",
+ "bindings_sha256": "0d91f6bc3b684760446024061657e93a3b4e90df7e127c1f31e08c5cbef5996e",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:548270c6a335b0c33dfca470af5e3ab2f35f27fc10545eb4a27f1587f36fc6d7",
+ "job_id": "cm-pilot-byvsolo-2026-001",
+ "packet": "platform/manifests/CM-PILOT-BYVSOLO-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner message 2026-09-30 forwarding the independent review: \"I would support the single $2-capped run after correcting its interpretation: treat it as a cheap standalone benchmark, not a decisive causal experiment. No automatic 9,000-step follow-on, new adapter architecture, or serving change.\"",
+ "utc": "2026-09-30T03:30:00Z"
+}
