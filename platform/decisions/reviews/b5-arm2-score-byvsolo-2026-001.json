@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 441-row decode b5-arm2-score-byvsolo-2026-001 ($0.40 worst case, 900 s) of the byvsolo export (model sha 0aede9f95fa9d1ec, VersionId cH.7Mfz_KCwgGKfNRyMBuJdX2VNcFNi9). Manifest cm4-medumba-test-decode-v1 sha 4947d4f6, evaluator image 30166dd2, normalized convention, strict 441/441 join. Reading preregistered in BYVSOLO-PREREGISTRATION-2026-001 (sha 40e7a3fb, reader tested before launch): descriptive labels only; NO DETECTABLE DIFFERENCE is inconclusive. One attempt, no retry, no follow-on.",
+ "bindings_sha256": "05f7ec4da1f9d6a83d76d89316052f1e5d4dca74dfeeeffdd5798dbab949d7e2",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvsolo-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVSOLO-2026-001.json",
+ "reviewer": "owner message 2026-09-30 forwarding the independent review (\"I would support the single $2-capped run after correcting its interpretation: treat it as a cheap standalone benchmark, not a decisive causal experiment\")",
+ "utc": "2026-09-30T06:00:00Z"
+}
