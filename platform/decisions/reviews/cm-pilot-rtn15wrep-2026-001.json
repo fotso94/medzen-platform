@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONE training run cm-pilot-rtn15wrep-2026-001 ($6.40 worst case at 14,400 s) and, separately packeted, its ONE 18,759-row decode ($1.60). REP: the rtn15w environment EXACTLY (a replicate on the new image: removes the image confound and gives the first run-to-run noise estimate). Data version gb11 (cap 15 h, temperature 0, seed 20260904, base init, LR 1e-4 constant, float32 adapters on all six encoder projections, gb3 exclusions 1,579). Image arm2-ftcal-711d7adb3bbc (child eb37160c72ae), built from reviewed master carrying the default-off MEDZEN_MIX_LANGUAGE_WEIGHTS knob (PR #95). VALID only if the log shows exactly one LORA_ADAPTER_CONFIG_APPLIED line (float32, six suffixes x 48, 17,694,720), NO MIX_LANGUAGE_WEIGHTS_APPLIED line, step 3,000 reached, gb11 with 82,769 eligible rows and 1,579 exclusions, no augmentation lines, and PASS_MERGED_EXPORT. PREREGISTERED MEDMIX-PREREGISTRATION-2026-001 (sha e62f2b86db47c693, reader tested before launch): primary Medumba CM4 MEDMIX - REP, CARRIED iff <= -1.50 with the 95% interval below 0; guards on every cell; noise REP - rtn15w; no outcome makes the model servable. gb11 use recorded in DATASET-USE-RECONCILIATION-2026-001. One attempt, no retry, no automatic follow-on; Arm-1 keeps serving.",
+ "bindings_sha256": "da234dbe84a0d8b64e69d7fa147b508d08a3ad3e215c48d78140432e72aae9f3",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:eb37160c72ae752409c685afbbf293d473b4fcf24b428c4c0d27255e56e4a924",
+ "job_id": "cm-pilot-rtn15wrep-2026-001",
+ "packet": "platform/manifests/CM-PILOT-RTN15WREP-SAGEMAKER-BINDINGS-2026-001.json",
+ "reviewer": "owner message 2026-10-04: \"#1 approve\" - approving MEDMIX-DESIGN-2026-001 (DESIGN.md sha 441249cd03723d6d), the recommended two-run version (MEDMIX + REP), designed at the independent review's request: \"design one controlled experiment to carry the Medumba improvement into the multilingual model without damaging Ewe and the existing languages ... no automatic larger run\"",
+ "utc": "2026-10-04T16:00:00Z"
+}

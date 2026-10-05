@@ -1,0 +1,50 @@
+{
+ "cost_ceiling_usd": 109.6,
+ "cost_registry_line": "CM-PILOT-MEDMIX-2026-001 (MEDMIX: the rtn15w environment + MEDZEN_MIX_LANGUAGE_WEIGHTS=medumba=15 + MEDZEN_MAX_STEPS=5800 (Medumba 48,000 draws, every other language ~3,200 as in rtn15w)). Worst case $9.60 on-demand, below the $10 calibration tier. MEDMIX + REP + two 18,759-row decodes cap at $19.20 (reported $119.20). Diagnostic only - nothing may be promoted, registered or served; Arm-1 keeps serving.",
+ "environment": {
+  "MEDZEN_AUDIO_CAP_HOURS": "15",
+  "MEDZEN_BATCH_SIZE": "2",
+  "MEDZEN_CHECKPOINT_EVERY": "500",
+  "MEDZEN_EXCLUSIONS_REF": "s3://medzen-speech/curated/_versions/gb3/DQ-2026-006-gb3-pulaar-question-mark-deferral.json",
+  "MEDZEN_EXPECT_EXCLUDED": "1579",
+  "MEDZEN_GRAD_ACCUM": "8",
+  "MEDZEN_KD_ENABLE": "0",
+  "MEDZEN_LANGUAGES": "bafia,basaa,english,ewe,ewondo,french,gbaya,kinyarwanda,lingala,medumba,ngiemboon,ngombala,pidgin,swahili,yangben",
+  "MEDZEN_LORA_ALPHA": "32",
+  "MEDZEN_LORA_DROPOUT": "0.05",
+  "MEDZEN_LORA_RANK": "16",
+  "MEDZEN_LR": "1e-4",
+  "MEDZEN_MANIFEST_VERSION": "gb11",
+  "MEDZEN_MAX_STEPS": "5800",
+  "MEDZEN_SEED": "20260904",
+  "MEDZEN_STUDENT_INIT_MODE": "base",
+  "MEDZEN_TEMPERATURE": "0",
+  "MEDZEN_TRAIN_MODE": "lora",
+  "MEDZEN_VARIANT": "ctc",
+  "MEDZEN_LORA_TRAINABLE_DTYPE": "float32",
+  "MEDZEN_LORA_TARGETS": "self_attn.q_proj,self_attn.k_proj,self_attn.v_proj,self_attn.output_proj,ffn.inner_proj,ffn.output_proj",
+  "MEDZEN_MIX_LANGUAGE_WEIGHTS": "medumba=15"
+ },
+ "image_oci_index_digest": "sha256:063f763559905df1979faa47ad242f57a76591ec178f94662e4e839c48a87b15",
+ "image_tag": "arm2-ftcal-711d7adb3bbc986208b82400e6478a6b6e4a7d8a",
+ "image_uri_with_digest": "558069890522.dkr.ecr.eu-central-1.amazonaws.com/medzen-trainer-omniasr@sha256:eb37160c72ae752409c685afbbf293d473b4fcf24b428c4c0d27255e56e4a924",
+ "instance_type": "ml.g6.xlarge",
+ "job_id": "cm-pilot-medmix-2026-001",
+ "kms_key_arn": "arn:aws:kms:eu-central-1:558069890522:key/9c336116-c648-4548-95c6-1b926478ae57",
+ "managed_spot": false,
+ "managed_spot_reason": "account spot quota for ml.g6.xlarge is 0; on-demand ceiling keeps worst case below the $10 calibration tier",
+ "max_runtime_seconds": 21600,
+ "security_group_ids": [
+  "sg-0fee72d218ac002a7"
+ ],
+ "subnets": [
+  "subnet-00232b25bc1ac407a"
+ ],
+ "volume_gb": 200,
+ "data_version_pins": {
+  "complete_key": "curated/_versions/gb11/COMPLETE.json",
+  "complete_raw_sha256": "642aab7bd73166597413a400fa23584b711d5e8e22eedf92a90e4f5ab94c001c",
+  "why": "MEDZEN_MANIFEST_VERSION names a version; the launcher verifies gb11's live COMPLETE sha before launching (the trainer's adoption binding re-checks it in-container)."
+ },
+ "worst_case_basis": "21,600 s ceiling = $9.60; predicted ~15,300 s from rtn15w's and byvwgen's measured audio throughput. On-demand ml.g6.xlarge at $1.60/h. The ceiling is the cap, not an estimate."
+}
