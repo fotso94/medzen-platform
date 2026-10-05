@@ -34,6 +34,7 @@ import hashlib
 import json
 import math
 import os
+import random
 import signal
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -81,10 +82,11 @@ DEFAULT_LORA_CHECKPOINT_BYTES = 200_000_000
 # neither lever has been exercised on this model.
 SPEED_PERTURB_RANGE = (0.8, 1.25)
 
-# Opt-in per-language mix weights (MEDMIX design 2026-10-04): at temperature 0
-# a language with weight w gets w times the share of an unweighted language.
-# Unset keeps every language's equal share, i.e. the mix exactly as before.
-MIX_WEIGHT_MAX = 100.0
+# Opt-in extra single-language steps (MEDMIX design, revised 2026-10-04 after
+# review): N optimizer steps made only of one language's clips are inserted
+# evenly between the steps of the UNCHANGED base schedule, so every other
+# language trains on exactly the recordings, in exactly the order and step
+# composition, of the run without the knob. Unset keeps the schedule as before.
 
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
@@ -209,9 +211,9 @@ class TrainerConfig:
     # temporal span, spatial prob, spatial span) for fairseq2's masker.
     speed_perturb: tuple[float, ...] = ()
     train_masking: tuple[float, int, float, int] | tuple[()] = ()
-    # Opt-in per-language mix weights (2026-10-04). () is the default: every
-    # language keeps its equal temperature-0 share.
-    mix_language_weights: tuple[tuple[str, float], ...] = ()
+    # Opt-in extra single-language steps (2026-10-04): (language, steps) or ()
+    # for the default, the base schedule alone.
+    mix_extra_steps: tuple = ()
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -266,11 +268,10 @@ class TrainerConfig:
                 payload.pop(key, None)
             else:
                 payload[key] = list(getattr(self, key))
-        if not self.mix_language_weights:
-            payload.pop("mix_language_weights", None)
+        if not self.mix_extra_steps:
+            payload.pop("mix_extra_steps", None)
         else:
-            payload["mix_language_weights"] = [
-                [lang, weight] for lang, weight in self.mix_language_weights]
+            payload["mix_extra_steps"] = list(self.mix_extra_steps)
         return payload
 
 
@@ -679,27 +680,30 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             "MEDZEN_TRAIN_MASKING is refused with MEDZEN_TRAIN_MODE="
             f"{train_mode!r}: a full-mode checkpoint would carry the masker")
 
-    mix_language_weights = parse_mix_language_weights(
-        env.get("MEDZEN_MIX_LANGUAGE_WEIGHTS", ""), languages)
-    if mix_language_weights:
+    mix_extra_steps = parse_mix_extra_steps(
+        env.get("MEDZEN_MIX_EXTRA_STEPS", ""), languages)
+    if mix_extra_steps:
         if _number("MEDZEN_TEMPERATURE", "0.5", float, 0.0) != 0.0:
             raise TrainerRefusal(
-                "MEDZEN_MIX_LANGUAGE_WEIGHTS is defined only at "
-                "MEDZEN_TEMPERATURE=0, where every language otherwise gets an "
-                "equal share; with a temperature the two would compound")
+                "MEDZEN_MIX_EXTRA_STEPS is reviewed only on a "
+                "MEDZEN_TEMPERATURE=0 base schedule")
         if len(languages) < 2:
             raise TrainerRefusal(
-                "MEDZEN_MIX_LANGUAGE_WEIGHTS needs at least two languages; a "
-                "single-language mix has no share to reweight")
+                "MEDZEN_MIX_EXTRA_STEPS needs at least two languages; on a "
+                "single-language run it is just MEDZEN_MAX_STEPS")
         if kd_enable:
             raise TrainerRefusal(
-                "MEDZEN_MIX_LANGUAGE_WEIGHTS is refused with MEDZEN_KD_ENABLE "
-                "on: the KD preservation terms assume the unweighted mix and no "
-                "KD run has measured a reweighted one")
+                "MEDZEN_MIX_EXTRA_STEPS is refused with MEDZEN_KD_ENABLE on: "
+                "the KD preservation terms assume the base schedule and no KD "
+                "run has measured extra single-language steps")
         if train_mode != "lora":
             raise TrainerRefusal(
-                "MEDZEN_MIX_LANGUAGE_WEIGHTS is refused with MEDZEN_TRAIN_MODE="
+                "MEDZEN_MIX_EXTRA_STEPS is refused with MEDZEN_TRAIN_MODE="
                 f"{train_mode!r}: only plain LoRA runs have been reviewed with it")
+        if mix_extra_steps[1] >= _number("MEDZEN_MAX_STEPS", "600", int, 1):
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_EXTRA_STEPS={mix_extra_steps[1]} leaves no base "
+                "steps: it must be below MEDZEN_MAX_STEPS")
 
     return TrainerConfig(
         variant=variant,
@@ -751,56 +755,37 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         lora_trainable_dtype=lora_trainable_dtype,
         speed_perturb=speed_perturb,
         train_masking=train_masking,
-        mix_language_weights=mix_language_weights,
+        mix_extra_steps=mix_extra_steps,
     )
 
 
-def parse_mix_language_weights(raw: str, languages: tuple[str, ...]
-                               ) -> tuple[tuple[str, float], ...]:
-    """MEDZEN_MIX_LANGUAGE_WEIGHTS='medumba=15' -> (('medumba', 15.0),); () = off.
+def parse_mix_extra_steps(raw: str, languages: tuple[str, ...]) -> tuple:
+    """MEDZEN_MIX_EXTRA_STEPS='medumba=2800' -> ('medumba', 2800); () = off.
 
-    At temperature 0 a language with weight w gets w times the mix share of an
-    unweighted language (weight 1). Every named language must be one of
-    MEDZEN_LANGUAGES, named once; a weight is finite, in (0, MIX_WEIGHT_MAX]
-    with at most two decimals. A set of all-ones is the default spelled out
-    and collapses to ()."""
+    Inserts that many optimizer steps made only of the named language's clips,
+    spread evenly between the steps of the unchanged base schedule, whose length
+    is MEDZEN_MAX_STEPS minus the extra steps. Exactly one language, which must
+    be in MEDZEN_LANGUAGES, and a whole number of steps; '=0' is the default
+    spelled out and collapses to ()."""
     if not raw.strip():
         return ()
-    weights: dict[str, float] = {}
-    for pair in raw.split(","):
-        if not pair.strip():
-            continue
-        lang, sep, value = pair.partition("=")
-        lang = lang.strip().lower()
-        if not sep or not lang or not value.strip():
-            raise TrainerRefusal(
-                f"MEDZEN_MIX_LANGUAGE_WEIGHTS entry {pair!r} is not lang=weight")
-        if lang in weights:
-            raise TrainerRefusal(
-                f"MEDZEN_MIX_LANGUAGE_WEIGHTS names {lang!r} more than once")
-        if lang not in languages:
-            raise TrainerRefusal(
-                f"MEDZEN_MIX_LANGUAGE_WEIGHTS names {lang!r}, which is not in "
-                "MEDZEN_LANGUAGES")
-        try:
-            weight = float(value)
-        except ValueError as exc:
-            raise TrainerRefusal(
-                f"MEDZEN_MIX_LANGUAGE_WEIGHTS weight {value.strip()!r} for "
-                f"{lang} is not a number") from exc
-        if (not math.isfinite(weight) or not 0.0 < weight <= MIX_WEIGHT_MAX
-                or round(weight, 2) != weight):
-            raise TrainerRefusal(
-                f"MEDZEN_MIX_LANGUAGE_WEIGHTS weight for {lang} must be in "
-                f"(0, {MIX_WEIGHT_MAX:g}] with at most two decimals, got "
-                f"{value.strip()!r}")
-        weights[lang] = weight
-    if not weights:
+    pairs = [pair for pair in raw.split(",") if pair.strip()]
+    if len(pairs) != 1:
         raise TrainerRefusal(
-            f"MEDZEN_MIX_LANGUAGE_WEIGHTS={raw!r} names no language")
-    if all(weight == 1.0 for weight in weights.values()):
-        return ()
-    return tuple(sorted(weights.items()))
+            f"MEDZEN_MIX_EXTRA_STEPS={raw!r} must name exactly one language=steps")
+    lang, sep, value = pairs[0].partition("=")
+    lang, value = lang.strip().lower(), value.strip()
+    if not sep or not lang or not value:
+        raise TrainerRefusal(
+            f"MEDZEN_MIX_EXTRA_STEPS entry {pairs[0]!r} is not language=steps")
+    if lang not in languages:
+        raise TrainerRefusal(
+            f"MEDZEN_MIX_EXTRA_STEPS names {lang!r}, which is not in MEDZEN_LANGUAGES")
+    if not value.isdigit():
+        raise TrainerRefusal(
+            f"MEDZEN_MIX_EXTRA_STEPS steps {value!r} for {lang} is not a whole number")
+    steps = int(value)
+    return () if steps == 0 else (lang, steps)
 
 
 def parse_speed_perturb(raw: str) -> tuple[float, ...]:
@@ -1003,17 +988,87 @@ def build_gated_mix(config: TrainerConfig, client=None) -> tuple[list[dict], dic
         adoption_key=config.adoption_key,
         pool_gate=licence_gate,
         per_language_audio_cap_s=config.audio_cap_hours * 3600.0,
-        mix_language_weights=dict(config.mix_language_weights) or None,
     )
-    if config.mix_language_weights:
-        applied = provenance.get("mix_language_weights")
-        if not applied or applied.get("weights") != dict(config.mix_language_weights):
-            raise TrainerRefusal(
-                "MEDZEN_MIX_LANGUAGE_WEIGHTS was requested but the mix does not "
-                f"record it (got {applied!r}); refusing to train an unweighted mix")
-        print(json.dumps({"status": "MIX_LANGUAGE_WEIGHTS_APPLIED", **applied},
+    if config.mix_extra_steps:
+        language, extra = config.mix_extra_steps
+        schedule, report = splice_extra_steps(
+            mix, language, extra, max_steps=config.max_steps,
+            batch_size=config.batch_size, grad_accum=config.grad_accum,
+            seed=config.seed)
+        provenance = dict(provenance, mix_extra_steps=report)
+        print(json.dumps({"status": "MIX_EXTRA_STEPS_APPLIED", **report},
                          sort_keys=True))
+        return schedule, provenance
     return mix, provenance
+
+
+def splice_extra_steps(mix: list[dict], language: str, extra_steps: int, *,
+                       max_steps: int, batch_size: int, grad_accum: int,
+                       seed: int) -> tuple[list[dict], dict[str, Any]]:
+    """The MEDZEN_MIX_EXTRA_STEPS schedule (MEDMIX design, revised 2026-10-04).
+
+    The base run (max_steps - extra_steps steps) draws mix rows exactly as
+    batch_rows would without the knob; its steps keep their rows, order and
+    composition. extra_steps steps made only of `language` rows are inserted
+    evenly between them (output step p is extra iff floor((p+1)K/T) >
+    floor(pK/T)). Extra rows cycle through the language's distinct rows in the
+    mix, reshuffled each pass by an RNG derived from the seed. Returns the flat
+    schedule (max_steps * grad_accum * batch_size rows, so batch_rows never
+    wraps) and a report whose digests let a run be checked against the
+    schedule published before launch."""
+    per_step = batch_size * grad_accum
+    if not 0 < extra_steps < max_steps:
+        raise TrainerRefusal(
+            f"extra steps {extra_steps} must be in (0, {max_steps})")
+    if not mix:
+        raise TrainerRefusal("an empty mix has no base schedule")
+    base_steps = max_steps - extra_steps
+    base = [mix[i % len(mix)] for i in range(base_steps * per_step)]
+    pool: list[dict] = []
+    seen: set[str] = set()
+    for row in mix:
+        if row.get("_lang") == language and row["audio_checksum_sha256"] not in seen:
+            seen.add(row["audio_checksum_sha256"])
+            pool.append(row)
+    if not pool:
+        raise TrainerRefusal(
+            f"MEDZEN_MIX_EXTRA_STEPS: the mix holds no {language!r} rows")
+    rng = random.Random(int(hashlib.sha256(
+        f"{seed}:mix-extra-steps:{language}".encode()).hexdigest()[:16], 16))
+    need = extra_steps * per_step
+    extra: list[dict] = []
+    while len(extra) < need:
+        cycle = pool[:]
+        rng.shuffle(cycle)
+        extra.extend(cycle)
+    extra = extra[:need]
+    schedule: list[dict] = []
+    positions: list[int] = []
+    b = e = 0
+    for step in range(max_steps):
+        if (step + 1) * extra_steps // max_steps > step * extra_steps // max_steps:
+            schedule.extend(extra[e:e + per_step])
+            e += per_step
+            positions.append(step)
+        else:
+            schedule.extend(base[b:b + per_step])
+            b += per_step
+    if b != len(base) or e != len(extra) or len(positions) != extra_steps:
+        raise TrainerRefusal("extra-step splice did not consume its inputs exactly")
+
+    def digest(rows: list[dict]) -> str:
+        return hashlib.sha256("\n".join(
+            r["audio_checksum_sha256"] for r in rows).encode()).hexdigest()
+
+    return schedule, {
+        "language": language, "extra_steps": extra_steps,
+        "base_steps": base_steps, "rows_per_step": per_step,
+        "base_mix_rows": len(mix), "base_draws": len(base),
+        "extra_draws": need, "extra_pool_distinct": len(pool),
+        "first_extra_steps": positions[:8],
+        "base_draws_sha256": digest(base), "extra_draws_sha256": digest(extra),
+        "schedule_sha256": digest(schedule),
+    }
 
 
 # --------------------------------------------------------------------------
