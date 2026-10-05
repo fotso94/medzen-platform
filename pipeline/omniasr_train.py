@@ -81,6 +81,11 @@ DEFAULT_LORA_CHECKPOINT_BYTES = 200_000_000
 # neither lever has been exercised on this model.
 SPEED_PERTURB_RANGE = (0.8, 1.25)
 
+# Opt-in per-language mix weights (MEDMIX design 2026-10-04): at temperature 0
+# a language with weight w gets w times the share of an unweighted language.
+# Unset keeps every language's equal share, i.e. the mix exactly as before.
+MIX_WEIGHT_MAX = 100.0
+
 # The frozen base-model identity the evaluation suite live-proved. The
 # artifacts live as PART files under the meta-source bundle prefix
 # (r4 died on a 403 that was really a wrong-path 404: the b6a root holds
@@ -204,6 +209,9 @@ class TrainerConfig:
     # temporal span, spatial prob, spatial span) for fairseq2's masker.
     speed_perturb: tuple[float, ...] = ()
     train_masking: tuple[float, int, float, int] | tuple[()] = ()
+    # Opt-in per-language mix weights (2026-10-04). () is the default: every
+    # language keeps its equal temperature-0 share.
+    mix_language_weights: tuple[tuple[str, float], ...] = ()
 
     def fingerprint_payload(self) -> dict[str, Any]:
         payload = asdict(self)
@@ -258,6 +266,11 @@ class TrainerConfig:
                 payload.pop(key, None)
             else:
                 payload[key] = list(getattr(self, key))
+        if not self.mix_language_weights:
+            payload.pop("mix_language_weights", None)
+        else:
+            payload["mix_language_weights"] = [
+                [lang, weight] for lang, weight in self.mix_language_weights]
         return payload
 
 
@@ -666,6 +679,28 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
             "MEDZEN_TRAIN_MASKING is refused with MEDZEN_TRAIN_MODE="
             f"{train_mode!r}: a full-mode checkpoint would carry the masker")
 
+    mix_language_weights = parse_mix_language_weights(
+        env.get("MEDZEN_MIX_LANGUAGE_WEIGHTS", ""), languages)
+    if mix_language_weights:
+        if _number("MEDZEN_TEMPERATURE", "0.5", float, 0.0) != 0.0:
+            raise TrainerRefusal(
+                "MEDZEN_MIX_LANGUAGE_WEIGHTS is defined only at "
+                "MEDZEN_TEMPERATURE=0, where every language otherwise gets an "
+                "equal share; with a temperature the two would compound")
+        if len(languages) < 2:
+            raise TrainerRefusal(
+                "MEDZEN_MIX_LANGUAGE_WEIGHTS needs at least two languages; a "
+                "single-language mix has no share to reweight")
+        if kd_enable:
+            raise TrainerRefusal(
+                "MEDZEN_MIX_LANGUAGE_WEIGHTS is refused with MEDZEN_KD_ENABLE "
+                "on: the KD preservation terms assume the unweighted mix and no "
+                "KD run has measured a reweighted one")
+        if train_mode != "lora":
+            raise TrainerRefusal(
+                "MEDZEN_MIX_LANGUAGE_WEIGHTS is refused with MEDZEN_TRAIN_MODE="
+                f"{train_mode!r}: only plain LoRA runs have been reviewed with it")
+
     return TrainerConfig(
         variant=variant,
         model_card=env.get("MEDZEN_MODEL_CARD", CTC_CARD),
@@ -716,7 +751,56 @@ def parse_config(env: dict[str, str]) -> TrainerConfig:
         lora_trainable_dtype=lora_trainable_dtype,
         speed_perturb=speed_perturb,
         train_masking=train_masking,
+        mix_language_weights=mix_language_weights,
     )
+
+
+def parse_mix_language_weights(raw: str, languages: tuple[str, ...]
+                               ) -> tuple[tuple[str, float], ...]:
+    """MEDZEN_MIX_LANGUAGE_WEIGHTS='medumba=15' -> (('medumba', 15.0),); () = off.
+
+    At temperature 0 a language with weight w gets w times the mix share of an
+    unweighted language (weight 1). Every named language must be one of
+    MEDZEN_LANGUAGES, named once; a weight is finite, in (0, MIX_WEIGHT_MAX]
+    with at most two decimals. A set of all-ones is the default spelled out
+    and collapses to ()."""
+    if not raw.strip():
+        return ()
+    weights: dict[str, float] = {}
+    for pair in raw.split(","):
+        if not pair.strip():
+            continue
+        lang, sep, value = pair.partition("=")
+        lang = lang.strip().lower()
+        if not sep or not lang or not value.strip():
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_LANGUAGE_WEIGHTS entry {pair!r} is not lang=weight")
+        if lang in weights:
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_LANGUAGE_WEIGHTS names {lang!r} more than once")
+        if lang not in languages:
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_LANGUAGE_WEIGHTS names {lang!r}, which is not in "
+                "MEDZEN_LANGUAGES")
+        try:
+            weight = float(value)
+        except ValueError as exc:
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_LANGUAGE_WEIGHTS weight {value.strip()!r} for "
+                f"{lang} is not a number") from exc
+        if (not math.isfinite(weight) or not 0.0 < weight <= MIX_WEIGHT_MAX
+                or round(weight, 2) != weight):
+            raise TrainerRefusal(
+                f"MEDZEN_MIX_LANGUAGE_WEIGHTS weight for {lang} must be in "
+                f"(0, {MIX_WEIGHT_MAX:g}] with at most two decimals, got "
+                f"{value.strip()!r}")
+        weights[lang] = weight
+    if not weights:
+        raise TrainerRefusal(
+            f"MEDZEN_MIX_LANGUAGE_WEIGHTS={raw!r} names no language")
+    if all(weight == 1.0 for weight in weights.values()):
+        return ()
+    return tuple(sorted(weights.items()))
 
 
 def parse_speed_perturb(raw: str) -> tuple[float, ...]:
@@ -919,7 +1003,16 @@ def build_gated_mix(config: TrainerConfig, client=None) -> tuple[list[dict], dic
         adoption_key=config.adoption_key,
         pool_gate=licence_gate,
         per_language_audio_cap_s=config.audio_cap_hours * 3600.0,
+        mix_language_weights=dict(config.mix_language_weights) or None,
     )
+    if config.mix_language_weights:
+        applied = provenance.get("mix_language_weights")
+        if not applied or applied.get("weights") != dict(config.mix_language_weights):
+            raise TrainerRefusal(
+                "MEDZEN_MIX_LANGUAGE_WEIGHTS was requested but the mix does not "
+                f"record it (got {applied!r}); refusing to train an unweighted mix")
+        print(json.dumps({"status": "MIX_LANGUAGE_WEIGHTS_APPLIED", **applied},
+                         sort_keys=True))
     return mix, provenance
 
 

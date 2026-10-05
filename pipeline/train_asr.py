@@ -110,7 +110,8 @@ def load_mix(cli, temperature: float, seed: int,
              exclusions_id: str | None = None,
              adoption_key: str | None = None,
              pool_gate=None,
-             per_language_audio_cap_s: float | None = None) -> tuple[list[dict], dict]:
+             per_language_audio_cap_s: float | None = None,
+             mix_language_weights: dict[str, float] | None = None) -> tuple[list[dict], dict]:
     """Build the training mix with temperature sampling. FAILS CLOSED.
 
     Three refusals, each of which was a real hole:
@@ -369,14 +370,37 @@ def load_mix(cli, temperature: float, seed: int,
 
     counts = {k: len(v) for k, v in per_lang.items()}
     weights = {k: n ** temperature for k, n in counts.items()}
+    if mix_language_weights:
+        # Opt-in per-language sampling multipliers (MEDMIX design 2026-10-04).
+        # Defined only at temperature 0, where every language otherwise gets
+        # an equal share: weight w gives a language w times the share of an
+        # unweighted one. Unset, nothing here runs and the mix is unchanged.
+        if temperature != 0.0:
+            raise SystemExit(
+                "REFUSING: mix language weights are defined only at temperature "
+                f"0, got {temperature}; they would compound with the schedule")
+        unknown = sorted(set(mix_language_weights) - set(weights))
+        if unknown:
+            raise SystemExit(
+                f"REFUSING: mix language weights name {unknown}, which "
+                "contribute no rows to this mix")
+        for lang, w in sorted(mix_language_weights.items()):
+            if (isinstance(w, bool) or not isinstance(w, (int, float))
+                    or not math.isfinite(w) or w <= 0):
+                raise SystemExit(
+                    f"REFUSING: mix language weight for {lang!r} must be "
+                    f"finite > 0, got {w!r}")
+            weights[lang] = weights[lang] * float(w)
     total_w = sum(weights.values())
     target = sum(counts.values())
 
     rng = random.Random(seed)
     mix: list[dict] = []
+    mix_rows_by_language: dict[str, int] = {}
     for lang, rows in per_lang.items():
         share = weights[lang] / total_w
         n = max(1, round(target * share))
+        mix_rows_by_language[lang] = n
         pool = rows[:]
         rng.shuffle(pool)
         # sample with replacement only if the target exceeds what exists
@@ -418,6 +442,12 @@ def load_mix(cli, temperature: float, seed: int,
             "cap_seconds": per_language_audio_cap_s,
             "capped_languages": cap_report,
             "applied": "before temperature sampling",
+        }
+    if mix_language_weights:
+        provenance["mix_language_weights"] = {
+            "weights": {k: float(v) for k, v in sorted(mix_language_weights.items())},
+            "mix_rows_by_language": dict(sorted(mix_rows_by_language.items())),
+            "applied": "multiplies the language's temperature-0 sampling weight",
         }
     print(f"  manifests   {len(sources)} at version {version}; "
           f"eligible rows {target}; rejected "
