@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 18,759-row decode b5-arm2-score-medmix-2026-001 ($1.60 worst case, 3,600 s) of the medmix export (model sha 584f141e015e214b, VersionId sW6PymGcKpypvMv_EGdptOkZHyHMwuBc). Manifest pair15-decode-manifest-v1 sha 4d24a61b, evaluator image 30166dd2, normalized convention, strict 18,759/18,759 join. Reading preregistered in MEDMIX-PREREGISTRATION-2026-002 (sha 30edb691) + correction -001 (sha ba20742c: provenance mandatory, reader identifier -002; collector and reader regression-tested; training validity VALID required). One attempt, no retry, no follow-on.",
+ "bindings_sha256": "ade1b9df545fb1a8294c10e00c2317add1b5afd9979657ea803312a8cabf5832",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-medmix-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-MEDMIX-2026-001.json",
+ "reviewer": "owner message 2026-10-04: \"#1 approve\" (MEDMIX-DESIGN-2026-001, the recommended two-run version)",
+ "utc": "2026-10-04T22:00:00Z"
+}
