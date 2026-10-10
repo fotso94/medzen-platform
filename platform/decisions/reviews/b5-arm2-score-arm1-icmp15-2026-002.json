@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 18,759-row decode b5-arm2-score-arm1-icmp15-2026-002 ($1.60 worst case, 3,600 s) of the Arm-1 export (model sha c6604a689688a531, VersionId QfK3zQ_p4Ls43cF1KmIWTzPja7vLW0P4 - the same tar and VersionId the legacy b5-arm2-score-arm1-icmp15-2026-001 decode consumed on image 985c4d9e, so the only changed input is the evaluator image). Manifest pair15-decode-manifest-v1 sha 4d24a61b, evaluator image 30166dd2, normalized convention, strict 18,759/18,759 join. Owner approval 2026-10-10, verbatim from A1-SPEC-2026-001: \"Yes, approve A1: two offline scoring runs, maximum $3.20 compute. Prepare the two scoring approvals. No automatic retries, further training, hosting or routing changes. Keep Arm-1 unchanged and report the results with their limitations.\" One attempt, no retry, no follow-on; Arm-1 unchanged.",
+ "bindings_sha256": "a88c63c9ab4ac2195be6f6709d2d388430c85851488f6fd56780a6609d9f9dbf",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-arm1-icmp15-2026-002",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-ARM1-ICMP15-2026-002.json",
+ "reviewer": "owner message 2026-10-10: \"Yes, approve A1\" (A1-SPEC-2026-001, frozen spec; the full approval is quoted verbatim in basis)",
+ "utc": "2026-10-10T22:11:00Z"
+}
