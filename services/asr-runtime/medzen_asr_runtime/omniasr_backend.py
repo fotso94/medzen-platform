@@ -199,8 +199,11 @@ class OmniASRBackend:
         normalized = " ".join(unicodedata.normalize("NFC", verbatim).split())
         return Transcript(
             language=language_hint or "und",
-            # CTC conditioning is deterministic on the supplied language;
-            # the pipeline exposes no calibrated probability
+            # NOT a model estimate: an echo of the client hint (1.0 =
+            # hint supplied and served, 0.0 = no hint). The pinned
+            # pipeline (OMNI_COMMIT 145a12a66) ignores lang for CTC
+            # models — the hint only gates requests above — and exposes
+            # no calibrated probability.
             language_probability=1.0 if language_hint else 0.0,
             verbatim=verbatim,
             normalized=normalized,
