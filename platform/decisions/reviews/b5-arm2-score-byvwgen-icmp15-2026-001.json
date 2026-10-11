@@ -1,0 +1,11 @@
+{
+ "basis": "Authorizes ONLY the 18,759-row decode b5-arm2-score-byvwgen-icmp15-2026-001 ($1.60 worst case, 3,600 s) of the byvwgen export (model sha ff4160183da89d29, VersionId Ass9dcE4jKu3BQVSrjCQGCUXos1hWgp2; the b5-arm2-score-byvwgen-cm4m-2026-001 rescore consumed the same object and VersionId). Manifest pair15-decode-manifest-v1 sha 4d24a61b, evaluator image 30166dd2, normalized convention, strict 18,759/18,759 join. Owner approval 2026-10-10, verbatim from A1-SPEC-2026-001: \"Yes, approve A1: two offline scoring runs, maximum $3.20 compute. Prepare the two scoring approvals. No automatic retries, further training, hosting or routing changes. Keep Arm-1 unchanged and report the results with their limitations.\" One attempt, no retry, no follow-on; Arm-1 unchanged.",
+ "bindings_sha256": "a63378916eb0d75677fc3f07bc1c76586d0d9a0557a16868a6dc77426811225d",
+ "committed_by": "implementation-engineer-on-owner-directive",
+ "decision": "APPROVED",
+ "image_digest": "sha256:30166dd244b64678a39abb2eb3dc42ccda3a63c26d09c41e4c8e17ce7f032996",
+ "job_id": "b5-arm2-score-byvwgen-icmp15-2026-001",
+ "packet": "platform/manifests/B5-UNIVERSAL-ARM2-SCORE-BYVWGEN-ICMP15-2026-001.json",
+ "reviewer": "owner message 2026-10-10: \"Yes, approve A1\" (A1-SPEC-2026-001, frozen spec; the full approval is quoted verbatim in basis)",
+ "utc": "2026-10-10T22:11:00Z"
+}
